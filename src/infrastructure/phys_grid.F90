@@ -190,6 +190,7 @@ CONTAINS
       use cam_grid_support, only: iMap, hclen => max_hcoordname_len
       use cam_grid_support, only: horiz_coord_t, horiz_coord_create
       use cam_grid_support, only: cam_grid_attribute_copy, cam_grid_attr_exists
+      use shr_const_mod,    only: PI => SHR_CONST_PI
 
       ! Local variables
       integer                             :: index
@@ -206,6 +207,7 @@ CONTAINS
       type(horiz_coord_t),    pointer     :: lat_coord
       type(horiz_coord_t),    pointer     :: lon_coord
       real(r8),               pointer     :: area_d(:)
+      real(r8),               pointer     :: areawt_d(:)
       real(r8)                            :: mem_hw_beg, mem_hw_end
       real(r8)                            :: mem_beg, mem_end
       logical                             :: unstructured
@@ -214,6 +216,7 @@ CONTAINS
       character(len=hclen),   pointer     :: copy_attributes(:)
       character(len=hclen)                :: copy_gridname
       character(len=*),       parameter   :: subname = 'phys_grid_init: '
+      real(r8),               parameter   :: rarea_sphere = 1.0_r8 / (4.0_r8*PI)
 
       nullify(lonvals)
       nullify(latvals)
@@ -221,6 +224,7 @@ CONTAINS
       nullify(lat_coord)
       nullify(lon_coord)
       nullify(area_d)
+      nullify(areawt_d)
       nullify(copy_attributes)
 
       if (calc_memory_increase) then
@@ -416,6 +420,14 @@ CONTAINS
             call cam_grid_attribute_register('physgrid', 'area',              &
                  'physics column areas', 'ncol', area_d, map=grid_map(3,:))
             nullify(area_d) ! Belongs to attribute now
+
+            allocate(areawt_d(size(grid_map, 2)))
+            do col_index = 1, columns_on_task
+               areawt_d(col_index) = phys_columns(col_index)%weight*rarea_sphere
+            end do
+            call cam_grid_attribute_register('physgrid', 'areawt',              &
+                 'physics column area weight', 'ncol', areawt_d, map=grid_map(3,:))
+            nullify(areawt_d) ! Belongs to attribute now
          else
             call endrun(subname//"No 'area' attribute from dycore")
          end if

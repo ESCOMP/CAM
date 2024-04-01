@@ -77,7 +77,7 @@ module subcol_SILHS
       ixnumsnow= 0
    
    ! Pbuf indicies
-   integer :: thlm_idx, rcm_idx, rtm_idx, ice_supersat_idx, &
+   integer :: thlm_idx, rtm_idx, ice_supersat_idx, &
               alst_idx, cld_idx, qrain_idx, qsnow_idx, &
               nrain_idx, nsnow_idx, ztodt_idx, tke_idx, kvh_idx, &
               prec_pcw_idx, snow_pcw_idx, prec_str_idx, snow_str_idx, &
@@ -412,7 +412,6 @@ contains
 
       ! Get physics buffer indexes
       thlm_idx = pbuf_get_index('THLM')
-      rcm_idx = pbuf_get_index('RCM')
       rtm_idx = pbuf_get_index('RTM')
       cld_idx = pbuf_get_index('CLD')
       alst_idx = pbuf_get_index('ALST')  ! SILHS expects clubb's cloud_frac liq stratus fraction
@@ -711,7 +710,6 @@ contains
       real(r8), dimension(state%ngrdcol,pver)  :: dz_g         ! thickness of layer
       real(r8), dimension(state%ngrdcol,pverp-top_lev+1) :: delta_zm     ! Difference in u wind altitudes
       
-      real(r8), dimension(state%ngrdcol,pverp-top_lev+1) :: rcm_in       ! Cld water mixing ratio on CLUBB levs
       real(r8), dimension(state%ngrdcol,pverp-top_lev+1,hydromet_dim) :: hydromet  ! Hydrometeor species
       real(r8), dimension(state%ngrdcol,pverp-top_lev+1,hydromet_dim) :: wphydrometp  ! Hydrometeor flux
       real(r8), dimension(state%ngrdcol,pverp-top_lev+1)              :: Ncm ! Mean cloud droplet concentration, <N_c>
@@ -831,7 +829,6 @@ contains
       real(r8), pointer, dimension(:) :: ztodt_ptr
       real(r8), pointer, dimension(:,:) :: thlm      ! Mean temperature
       real(r8), pointer, dimension(:,:) :: ice_supersat_frac ! ice cloud fraction
-      real(r8), pointer, dimension(:,:) :: rcm       ! CLUBB cld water mr
       real(r8), pointer, dimension(:,:) :: rtm       ! mean moisture mixing ratio
       real(r8), pointer, dimension(:,:) :: cld       ! CAM cloud fraction
       real(r8), pointer, dimension(:,:) :: alst      ! CLUBB liq cloud fraction
@@ -846,7 +843,7 @@ contains
       logical, parameter :: l_est_kessler_microphys = .false.
       logical, parameter :: l_outfld_subcol         = .false.
       
-      type(grid) :: gr(state%ngrdcol)
+      type(grid) :: gr
       
       type(precipitation_fractions) :: precip_fracs      
       
@@ -896,7 +893,6 @@ contains
       call pbuf_get_field(pbuf, thlm_idx, thlm)
       call pbuf_get_field(pbuf, ztodt_idx, ztodt_ptr)
       call pbuf_get_field(pbuf, ice_supersat_idx, ice_supersat_frac)
-      call pbuf_get_field(pbuf, rcm_idx, rcm)
       call pbuf_get_field(pbuf, rtm_idx, rtm)
       call pbuf_get_field(pbuf, alst_idx, alst)
       call pbuf_get_field(pbuf, cld_idx, cld)
@@ -958,12 +954,10 @@ contains
       end do
       
       !  Heights need to be set at each timestep.
-      do i=1, ncol
-        call setup_grid_api( pverp - top_lev, sfc_elevation(i), l_implemented,         & ! intent(in)
-                             grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,pverp - top_lev+1), & ! intent(in)
-                             zi_g(i,:), zt_g(i,:),                            & ! intent(in)
-                             gr(i), begin_height, end_height )                  ! intent(out)
-      end do
+      call setup_grid_api( pverp+1-top_lev, ncol, sfc_elevation(1:ncol), l_implemented,  & ! intent(in)
+                           grid_type, zi_g(1:ncol,2), zi_g(1:ncol,1), zi_g(1:ncol,pverp+1-top_lev),   & ! intent(in)
+                           zi_g(1:ncol,:), zt_g(1:ncol,:),                              & ! intent(in)
+                           gr, begin_height, end_height )        
          
       ! Calculate the distance between grid levels on the host model grid,
       ! using host model grid indices.
@@ -1093,7 +1087,6 @@ contains
       ! Convert from CAM vertical grid to CLUBB
       do k = 1, pverp-top_lev+1 
         do i = 1, ngrdcol
-          rcm_in(i,k)  = rcm(i,pverp-k+1)
           ice_supersat_frac_in(i,k) = ice_supersat_frac(i,pverp-k+1)
         end do
       end do
@@ -1139,7 +1132,7 @@ contains
                                   precip_fracs )
        
       call setup_pdf_parameters_api( gr, pverp-top_lev+1, ngrdcol, pdf_dim, ztodt, &    ! In
-                                     Nc_in_cloud, rcm_in, cld_frac_in, khzm, &          ! In
+                                     Nc_in_cloud, cld_frac_in, khzm, &                  ! In
                                      ice_supersat_frac_in, hydromet, wphydrometp, &     ! In
                                      corr_array_n_cloud, corr_array_n_below, &          ! In
                                      pdf_params_chnk(lchnk), l_stats_samp, &            ! In
@@ -1227,7 +1220,7 @@ contains
       call generate_silhs_sample_api( &
                     iter, pdf_dim, num_subcols, sequence_length, pverp-top_lev+1, ngrdcol, & ! In
                     l_calc_weights_all_levs_itime, &                      ! In 
-                    pdf_params_chnk(lchnk), delta_zm, rcm_in, Lscale, & ! In
+                    pdf_params_chnk(lchnk), delta_zm, Lscale, &           ! In
                     lh_seed, &                                            ! In
                     rho_ds_zt, &                                          ! In 
                     mu_x_1, mu_x_2, sigma_x_1, sigma_x_2, &               ! In 

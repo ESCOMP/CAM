@@ -1,2 +1,4 @@
 ./xmlchange RUN_STARTDATE=2015-01-01
 ./xmlchange CALENDAR=GREGORIAN
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL

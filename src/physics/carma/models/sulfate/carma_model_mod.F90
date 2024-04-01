@@ -11,7 +11,7 @@
 !!   - CARMA_EmitParticle()
 !!
 !! @version Dec-2010
-!! @author  Tianyi Fan, Chuck Bardeen 
+!! @author  Tianyi Fan, Chuck Bardeen
 module carma_model_mod
 
   use carma_precision_mod
@@ -46,7 +46,7 @@ module carma_model_mod
   public CARMA_InitializeModel
   public CARMA_InitializeParticle
   public CARMA_WetDeposition
-  
+
 
   ! Declare public constants
   integer, public, parameter      :: NGROUP   = 1               !! Number of particle groups
@@ -68,7 +68,7 @@ module carma_model_mod
   ! should have a unique number.
   integer, public, parameter      :: I_H2SO4   = 1               !! sulfate aerosol composition
   integer, public, parameter      :: I_WATER   = 2               !! water
-    
+
   ! Define group, element, solute and gas indexes.
   integer, public, parameter      :: I_GRP_SULFATE  = 1              !! sulfate aerosol
 
@@ -88,17 +88,17 @@ contains
   !! Defines all the CARMA components (groups, elements, solutes and gases) and process
   !! (coagulation, growth, nucleation) that will be part of the microphysical model.
   !!
-  !!  @version May-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version May-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DefineModel(carma, rc)
     use physics_buffer, only: pbuf_add_field, dtype_r8
 
     type(carma_type), intent(inout)    :: carma     !! the carma object
     integer, intent(out)               :: rc        !! return code, negative indicates failure
-    
+
     ! Local variables
     real(kind=f), parameter            :: RHO_SULFATE = 1.923_f    ! dry density of sulfate particles (g/cm3)
-!  Set radius of smallest bin such that mass is that of 2 molecules of H2SO4:    
+!  Set radius of smallest bin such that mass is that of 2 molecules of H2SO4:
     real(kind=f), parameter            :: rmin        = 3.43230298e-8_f  ! minimum radius (cm)
     real(kind=f), parameter            :: vmrat       = 2.4_f    ! volume ratio
     integer                            :: LUNOPRT
@@ -109,7 +109,7 @@ contains
 
     call CARMA_Get(carma, rc, do_print=do_print, LUNOPRT=LUNOPRT)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMA_Get failed.')
-    
+
     ! Report model specific configuration parameters.
     if (masterproc) then
       if (do_print) then
@@ -131,7 +131,7 @@ contains
                            scavcoef=0.1_f, is_sulfate=.true., shortname="PURSUL")
     if (rc < 0) call endrun('CARMA_DefineModel::CARMA_AddGroup failed.')
 
-    
+
     ! Define the Elements
     !
     ! NOTE: For CAM, the optional shortname needs to be provided for the group. These names
@@ -139,19 +139,19 @@ contains
     call CARMAELEMENT_Create(carma, I_ELEM_SULFATE, I_GRP_SULFATE, "Sulfate", RHO_SULFATE, &
          I_VOLATILE, I_H2SO4, rc, shortname="PURSUL")
     if (rc < 0) call endrun('CARMA_DefineModel::CARMA_AddElement failed.')
-        
+
     ! Define the Solutes
-    
-    
+
+
     ! Define the Gases
     call CARMAGAS_Create(carma, I_GAS_H2O, "Water Vapor", WTMOL_H2O, I_VAPRTN_H2O_MURPHY2005, I_GCOMP_H2O, &
                          rc, shortname = "Q", ds_threshold=-0.2_f)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
-    
+
     call CARMAGAS_Create(carma, I_GAS_H2SO4, "Sulfuric Acid", WTMOL_H2SO4, I_VAPRTN_H2SO4_AYERS1980, &
                          I_GCOMP_H2SO4, rc, shortname = "H2SO4", ds_threshold=-0.2_f)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
-    
+
     ! Define the Processes
 
     ! Set H2SO4 to be the condensing gas, water vapor is assumed to be in equilibrium
@@ -166,7 +166,7 @@ contains
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMA_AddCoagulation failed.')
 
     call pbuf_add_field('SADSULF', 'global', dtype_r8, (/pcols, pver/), ipbuf4sad)
-    
+
     if (carma_rad_feedback) then
        call pbuf_add_field('VOLC_RAD_GEOM', 'global', dtype_r8, (/pcols, pver/), ipbuf4reff)
        call pbuf_add_field('VOLC_MMR', 'global', dtype_r8, (/pcols, pver/), ipbuf4so4mmr)
@@ -178,8 +178,8 @@ contains
   !! Defines all the CARMA components (groups, elements, solutes and gases) and process
   !! (coagulation, growth, nucleation) that will be part of the microphysical model.
   !!
-  !!  @version May-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version May-2009
+  !!  @author  Chuck Bardeen
   !!
   !!  @see CARMASTATE_SetDetrain
   subroutine CARMA_Detrain(carma, cstate, cam_in, dlf, state, icol, dt, rc, rliq, prec_str, snow_str, &
@@ -198,22 +198,22 @@ contains
     real(r8), intent(in)                 :: dt               !! time step (s)
     integer, intent(out)                 :: rc               !! return code, negative indicates failure
     real(r8), intent(inout), optional    :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional    :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
     real(r8), intent(out), optional      :: tnd_qsnow(pcols,pver) !! snow mass tendency (kg/kg/s)
     real(r8), intent(out), optional      :: tnd_nsnow(pcols,pver) !! snow number tendency (#/kg/s)
 
     ! Default return code.
     rc = RC_OK
-    
+
     return
   end subroutine CARMA_Detrain
 
 
   !! For diagnostic groups, sets up up the CARMA bins based upon the CAM state.
   !!
-  !!  @version July-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DiagnoseBins(carma, cstate, state, pbuf, icol, dt, rc, rliq, prec_str, snow_str)
     use time_manager,     only: is_first_step
 
@@ -227,33 +227,33 @@ contains
     real(r8), intent(in)                  :: dt           !! time step
     integer, intent(out)                  :: rc           !! return code, negative indicates failure
     real(r8), intent(in), optional        :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional     :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional     :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional     :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
-    
+
     real(r8)                             :: mmr(pver) !! elements mass mixing ratio
     integer                              :: ibin      !! bin index
-    
+
     ! Default return code.
     rc = RC_OK
-    
+
     ! By default, do nothing. If diagnosed groups exist, this needs to be replaced by
     ! code to determine the mass in each bin from the CAM state.
-    
+
     return
   end subroutine CARMA_DiagnoseBins
 
 
   !! For diagnostic groups, determines the tendencies on the CAM state from the CARMA bins.
   !!
-  !!  @version July-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DiagnoseBulk(carma, cstate, cam_out, state, pbuf, ptend, icol, dt, rc, rliq, prec_str, snow_str, &
     prec_sed, snow_sed, tnd_qsnow, tnd_nsnow, re_ice)
     use camsrfexch,    only: cam_out_t
     use physics_buffer, only: pbuf_get_field
 
     implicit none
-    
+
     type(carma_type), intent(in)         :: carma     !! the carma object
     type(carmastate_type), intent(inout) :: cstate    !! the carma state object
     type(cam_out_t),      intent(inout)  :: cam_out   !! cam output to surface models
@@ -264,7 +264,7 @@ contains
     real(r8), intent(in)                 :: dt        !! time step
     integer, intent(out)                 :: rc        !! return code, negative indicates failure
     real(r8), intent(inout), optional    :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional    :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
     real(r8), intent(inout), optional    :: prec_sed(pcols)       !! total precip from cloud sedimentation (m/s)
     real(r8), intent(inout), optional    :: snow_sed(pcols)       !! snow from cloud ice sedimentation (m/s)
@@ -308,11 +308,11 @@ contains
         md(:)  = md(:)  + mmr(:)  ! bin integrated stratospheric mass mixing ratio (kg/kg)
       end if
     end do
-    
+
     reff(:) = reff(:) / ad(:) ! wet effective radius in cm
     reff(:) = reff(:) / 100.0_r8 ! cm -> m
     ad(:)  = ad(:) * 4.0_r8 * PI ! surface area density in cm2/cm3
-    
+
     call pbuf_get_field(pbuf, ipbuf4sad, sadsulf_ptr)
     sadsulf_ptr(icol, :cstate%f_NZ) = ad(:cstate%f_NZ)    ! stratospheric aerosol wet surface area density (cm2/cm3)
 
@@ -341,9 +341,9 @@ contains
     use time_manager,  only: get_curr_date, get_perp_date, get_curr_calday, &
                              is_perpetual
     use camsrfexch,       only: cam_in_t
-   
+
     implicit none
-    
+
     type(carma_type), intent(in)       :: carma                 !! the carma object
     integer, intent(in)                :: ielem                 !! element index
     integer, intent(in)                :: ibin                  !! bin index
@@ -354,13 +354,13 @@ contains
     real(r8), intent(out)              :: tendency(pcols, pver) !! constituent tendency (kg/kg/s)
     real(r8), intent(out)              :: surfaceFlux(pcols)    !! constituent surface flux (kg/m^2/s)
     integer,  intent(out)              :: rc                    !! return code, negative indicates failure
-        
+
     ! Default return code.
-    rc = RC_OK   
-             
+    rc = RC_OK
+
     ! Add any surface flux here.
     surfaceFlux = 0._r8
-    
+
     ! For emissions into the atmosphere, put the emission here.
     tendency = 0._r8
 
@@ -381,7 +381,7 @@ contains
     logical, intent(inout)             :: lq_carma(pcnst)       !! flags to indicate whether the constituent
                                                                 !! could have a CARMA tendency
     integer, intent(out)               :: rc                    !! return code, negative indicates failure
-     
+
     ! Default return code.
     rc = RC_OK
 
@@ -400,7 +400,6 @@ contains
   !! @version May-2009
   subroutine CARMA_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
     use shr_kind_mod,   only: r8 => shr_kind_r8
-    use pmgrid,         only: plat, plev, plon
 
     implicit none
 
@@ -422,18 +421,18 @@ contains
 
     return
   end subroutine CARMA_InitializeParticle
-  
-  
+
+
   !!  Called after wet deposition has been performed. Allows the specific model to add
   !!  wet deposition of CARMA aerosols to the aerosols being communicated to the surface.
   !!
-  !!  @version July-2011 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2011
+  !!  @author  Chuck Bardeen
   subroutine CARMA_WetDeposition(carma, ielem, ibin, sflx, cam_out, state, rc)
     use camsrfexch,       only: cam_out_t
 
     implicit none
-    
+
     type(carma_type), intent(in)         :: carma       !! the carma object
     integer, intent(in)                  :: ielem       !! element index
     integer, intent(in)                  :: ibin        !! bin index
@@ -441,13 +440,13 @@ contains
     type(cam_out_t), intent(inout)       :: cam_out     !! cam output to surface models
     type(physics_state), intent(in)      :: state       !! physics state variables
     integer, intent(out)                 :: rc          !! return code, negative indicates failure
-    
+
     integer    :: icol
- 
+
     ! Default return code.
     rc = RC_OK
-    
+
     return
-  end subroutine CARMA_WetDeposition 
+  end subroutine CARMA_WetDeposition
 
 end module

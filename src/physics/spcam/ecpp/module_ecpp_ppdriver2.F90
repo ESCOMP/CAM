@@ -703,28 +703,7 @@ end type ptr2d_t
 !	and cloudy subareas
 
 !
-	idiagaa_ecpp(:) = 0
-!        idiagaa_ecpp(60:63) = 1
-        idiagaa_ecpp(60:63) = -1
-	idiagaa_ecpp(115:119) = 1 ; idiagaa_ecpp(118) = 111
-	idiagaa_ecpp(121:125) = 1
-        idiagaa_ecpp(131:135) = 1
-        idiagaa_ecpp(141:143) = 1
-
-	idiagaa_ecpp(155) = 1
-	idiagaa_ecpp(161) = 1 ; idiagaa_ecpp(162) = 1 ; idiagaa_ecpp(164) = 1
-
-        idiagaa_ecpp(131:135) = -1  ! not output in the MMF model
-        idiagaa_ecpp(115:117) = -1  ! not dump the original field in parampollu_td240clm
-        idiagaa_ecpp(118:119) = -1
-        idiagaa_ecpp(121:125) = -1
-        idiagaa_ecpp(141:143) = -1
-        idiagaa_ecpp(165:167) = -1
-        idiagaa_ecpp(164) = -1
-        idiagaa_ecpp(161) = -1
-        idiagaa_ecpp(162) = -1
-
-        idiagaa_ecpp(121) = -1
+	idiagaa_ecpp(:) = -1
 
 	do i = 1, 199
 	    ldiagaa_ecpp(i) = i

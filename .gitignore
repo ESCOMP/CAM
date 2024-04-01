@@ -9,8 +9,11 @@ src/physics/carma/base
 src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
+src/chemistry/geoschem/geoschem_src
 src/physics/pumas
 src/physics/pumas-frozen
+src/physics/rrtmgp/data
+src/physics/rrtmgp/ext
 src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
 libraries/mct
@@ -18,7 +21,7 @@ libraries/parallelio
 src/atmos_phys
 src/dynamics/mpas/dycore
 share
-
+src/hemco
 # Ignore compiled python
 buildnmlc
 buildcppc

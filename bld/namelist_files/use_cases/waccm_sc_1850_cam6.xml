@@ -60,6 +60,9 @@
 <srf_emis_type>CYCLICAL</srf_emis_type>
 <srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
 
+<csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850</csw_cycle_yr>
+
 <!-- History Files -->
 <do_circulation_diags>.true.</do_circulation_diags>
 <history_chemistry>.true.</history_chemistry>

@@ -4,5 +4,6 @@ nhtfrq=3,3,3,3,3,3
 inithist='ENDOFRUN'
 pbuf_global_allocate=.false.
 history_carma=.true.
+fincl2 = 'CRSLERFC'
 carma_do_fixedinit=.false.
 carma_reftfile="camrun.cam.r.carma_reft.nc"

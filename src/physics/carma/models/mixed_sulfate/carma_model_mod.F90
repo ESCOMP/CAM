@@ -794,7 +794,6 @@ contains
   !! @version May-2009
   subroutine CARMA_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
     use shr_kind_mod,   only: r8 => shr_kind_r8
-    use pmgrid,         only: plat, plev, plon
 
     implicit none
 

@@ -95,15 +95,10 @@
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day -->
-<fincl7>
+<fincl7 dyn="fv">
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl7>
 
 <fv_div24del2flag>42</fv_div24del2flag>
-
-<rxn_rate_sums>
-  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + jeuv_14 + jeuv_15 + jeuv_16 +',
-                   'jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
-</rxn_rate_sums>
 
 </namelist_defaults>

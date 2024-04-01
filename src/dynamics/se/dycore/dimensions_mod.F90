@@ -15,7 +15,6 @@ module dimensions_mod
 #else
   integer, parameter         :: ntrac_d = 0 ! No fvm tracers if CSLAM is off
 #endif
-
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -31,20 +30,14 @@ module dimensions_mod
   !
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
-  !
-  !moist cp in energy conversion term
-  !
-  ! .false.: force dycore to use cpd (cp dry) instead of moist cp
-  ! .true. : use moist cp in dycore
-  !
-  logical           , public :: lcp_moist = .true. 
- 
+
   integer, parameter, public :: np = NP
   integer, parameter, public :: nc = 3       !cslam resolution
   integer           , public :: fv_nphys !physics-grid resolution - the "MAX" is so that the code compiles with NC=0
 
-  integer         :: ntrac = 0 !ntrac is set in dyn_comp
-  integer         :: qsize = 0 !qsize is set in dyn_comp
+  integer         :: ntrac = 0           !ntrac is set in dyn_comp
+  logical, public :: use_cslam = .false. !logical for CSLAM
+  integer         :: qsize = 0           !qsize is set in dyn_comp
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging

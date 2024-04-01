@@ -1,4 +1,3 @@
-
 <?xml version="1.0"?>
 <namelist_defaults>
 
@@ -26,6 +25,9 @@
 <!-- Surface emissions for MAM -->
 <srf_emis_type>     CYCLICAL   </srf_emis_type>
 <srf_emis_cycle_yr> 1850       </srf_emis_cycle_yr>
+
+<csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850</csw_cycle_yr>
 
 <!-- External forcing for BAM or MAM -->
 <ext_frc_type>      CYCLICAL   </ext_frc_type>

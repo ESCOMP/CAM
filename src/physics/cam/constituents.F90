@@ -72,7 +72,6 @@ character(len=16), public :: dcconnam  (pcnst)   ! names of convection tendencie
 character(len=16), public :: fixcnam   (pcnst)   ! names of species slt fixer tendencies
 character(len=16), public :: tendnam   (pcnst)   ! names of total tendencies of species
 character(len=16), public :: ptendnam  (pcnst)   ! names of total physics tendencies of species
-character(len=16), public :: dmetendnam(pcnst)   ! names of dme adjusted tracers (FV)
 character(len=16), public :: sflxnam   (pcnst)   ! names of surface fluxes of species
 character(len=16), public :: tottnam   (pcnst)   ! names for horz + vert + fixer tendencies
 
@@ -174,7 +173,7 @@ subroutine cnst_add (name, mwc, cpc, qminc, &
    padv = padv+1
    ind  = padv
    if (padv > pcnst) then
-      write(errmsg, *) sub//': FATAL: advected tracer index greater than pcnst=', pcnst
+      write(errmsg, *) sub//': FATAL: advected tracer (', trim(name), ') index is greater than number of constituents'
       call endrun(errmsg)
    end if
 
@@ -380,7 +379,7 @@ subroutine cnst_get_ind (name, ind, abort)
    if (present(abort)) abort_on_error = abort
 
    if (abort_on_error) then
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', cnst_name(:)
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in constituent list: ', cnst_name(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
@@ -497,7 +496,6 @@ subroutine cnst_chk_dim
       fixcnam   (m)  = 'DF'//cnst_name(m)
       tendnam   (m)  = 'TE'//cnst_name(m)
       ptendnam  (m)  = 'PTE'//cnst_name(m)
-      dmetendnam(m)  = 'DME'//cnst_name(m)
       tottnam   (m)  = 'TA'//cnst_name(m)
       sflxnam(m)     = 'SF'//cnst_name(m)
    end do

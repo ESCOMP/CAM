@@ -498,6 +498,9 @@ end subroutine phys_grid_readnl
     ! column surface area (from dynamics)
     real(r8), dimension(:), pointer     :: area_d
 
+    ! column surface areawt (from dynamics)
+    real(r8), dimension(:), pointer     :: areawt_d
+
     ! column integration weight (from dynamics)
     real(r8), dimension(:), allocatable :: wght_d
 
@@ -1147,7 +1150,6 @@ end subroutine phys_grid_readnl
     ! Note that if the dycore is using the same points as the physics grid,
     !      it will have already set up 'lat' and 'lon' axes for the physics grid
     !      However, these will be in the dynamics decomposition
-
     if (unstructured) then
       lon_coord => horiz_coord_create('lon', 'ncol', num_global_phys_cols,    &
            'longitude', 'degrees_east', 1, size(lonvals), lonvals,            &
@@ -1188,13 +1190,13 @@ end subroutine phys_grid_readnl
     do i = 1, size(copy_attributes)
       call cam_grid_attribute_copy(copy_gridname, 'physgrid', copy_attributes(i))
     end do
-
     if ((.not. cam_grid_attr_exists('physgrid', 'area')) .and. unstructured) then
       ! Physgrid always needs an area attribute. If we did not inherit one
       !   from the dycore (i.e., physics and dynamics are on different grids),
       !   create that attribute here (unstructured grids only, physgrid is
       !   not supported for structured grids).
       allocate(area_d(size(grid_map, 2)))
+      allocate(areawt_d(size(grid_map, 2)))
       p = 0
       do lcid = begchunk, endchunk
         ncols = lchunks(lcid)%ncols
@@ -1203,16 +1205,21 @@ end subroutine phys_grid_readnl
         cid = lchunks(lcid)%cid
         do i = 1, chunks(cid)%ncols
           area_d(p + i) = lchunks(lcid)%area(i)
+          areawt_d(p + i) = lchunks(lcid)%wght(i)
         end do
         if (pcols > ncols) then
           ! Need to set these to detect unused columns
           area_d(p+ncols+1:p+pcols) = 0.0_r8
+          areawt_d(p+ncols+1:p+pcols) = 0.0_r8
         end if
         p = p + pcols
       end do
       call cam_grid_attribute_register('physgrid', 'area',                    &
            'physics column areas', 'ncol', area_d, map=grid_map(3,:))
+      call cam_grid_attribute_register('physgrid', 'areawt',                &
+           'physics column area wts', 'ncol', areawt_d, map=grid_map(3,:))
       nullify(area_d) ! Belongs to attribute now
+      nullify(areawt_d) ! Belongs to attribute now
     end if
     ! Cleanup pointers (they belong to the grid now)
     nullify(grid_map)

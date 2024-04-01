@@ -2,7 +2,7 @@
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
-# usage on hobart, izumi, leehill, cheyenne
+# usage on hobart, izumi, leehill, derecho
 # ./test_driver.sh
 #
 # **more details in the CAM testing user's guide, accessible
@@ -220,9 +220,9 @@ hostname=`hostname`
 
 case $hostname in
 
-    ##cheyenne
-    ch* | r* )
-    submit_script_cime="`pwd -P`/test_driver_cheyenne_cime_${cur_time}.sh"
+    ##derecho
+    derecho* | dec* )
+    submit_script_cime="`pwd -P`/test_driver_derecho_cime_${cur_time}.sh"
 
     if [ -z "$CAM_ACCOUNT" ]; then
         echo "ERROR: Must set the environment variable CAM_ACCOUNT"
@@ -230,30 +230,34 @@ case $hostname in
     fi
 
     if [ -z "$CAM_BATCHQ" ]; then
-        export CAM_BATCHQ="regular"
+        export CAM_BATCHQ="main"
     fi
 
     # wallclock for run job
     wallclock_limit="5:00:00"
 
     if [ $gmake_j = 0 ]; then
-        gmake_j=36
+        gmake_j=128
     fi
 
-    # run tests on 2 nodes using 18 tasks/node, 2 threads/task
-    CAM_TASKS=36
+    # run tests on 1 node using 64 tasks/node, 2 threads/task
+    # These settings are ignored on derecho.
+    # PE layouts come from config_pes.xml.
+    CAM_TASKS=64
     CAM_THREADS=2
 
-    # change parallel configuration on 2 nodes using 32 tasks, 1 threads/task
+    # change parallel configuration on 1 nodes using 32 tasks, 1 threads/task
+    # These settings are ignored on derecho.
+    # PE layouts come from config_pes.xml.
     CAM_RESTART_TASKS=32
     CAM_RESTART_THREADS=1
 
-    mach_workspace="/glade/scratch"
+    mach_workspace="/glade/derecho/scratch"
 
     # Check for CESM baseline directory
     if [ -n "${BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
         echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
-        exit
+        exit 3
     fi
 
 #-------------------------------------------
@@ -264,15 +268,15 @@ cat > ${submit_script_cime} << EOF
 #PBS -N cime-tests
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
-#PBS -l walltime=4:00:00
-#PBS -l select=1:ncpus=36:mpiprocs=36
+#PBS -l walltime=$wallclock_limit
+#PBS -l select=1:ncpus=128:mpiprocs=128
 #PBS -j oe
-#PBS -l inception=login
 
 EOF
 
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
     ;;
+
 
     ##hobart
     hob* | h[[:digit:]]* )
@@ -431,7 +435,7 @@ cat > ${submit_script_cime} << EOF
 #PBS -N cime-tests
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
-#PBS -l walltime=2:00:00
+#PBS -l walltime=$wallclock_limit
 #PBS -l select=1:ncpus=36:mpiprocs=36:mem=300GB
 #PBS -j oe
 #PBS -V
@@ -448,8 +452,8 @@ esac
 
 cesm_test_mach=""
 comp=""
-if [ "${hostname:0:4}" == "chey" ]; then
-  cesm_test_mach="cheyenne"
+if [ "${hostname:0:5}" == "derec" ] || [ "${hostname:0:3}" == "dec" ]; then
+  cesm_test_mach="derecho"
 fi
 if [ "${hostname:0:6}" == "hobart" ]; then
   cesm_test_mach="hobart"
@@ -465,7 +469,7 @@ if [ -n "${CAM_FC}" ]; then
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
-  if [ "${hostname:0:5}" != "izumi" ]; then
+  if [ "${hostname:0:5}" != "izumi" ] && [ "${hostname:0:7}" != "derecho" ]; then
     module load python
   fi
 
@@ -547,8 +551,8 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       testargs="${testargs} --xml-compiler intel"
     fi
     case $hostname in
-        # cheyenne
-        chey* | r* )
+        # derecho
+        derec* | dec* )
           testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         # casper
@@ -630,6 +634,13 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       chmod u+x ${submit_script_cime}
       qsub ${submit_script_cime}
     fi
+
+    if [ "${hostname:0:2}" == "de" ]; then
+      echo "cd ${script_dir}" >> ${submit_script_cime}
+      echo './create_test' ${testargs} >> ${submit_script_cime}
+      chmod u+x ${submit_script_cime}
+      qsub ${submit_script_cime}
+   fi
 
     if [ "${hostname:0:6}" == "hobart" ]; then
       echo "cd ${script_dir}" >> ${submit_script_cime}

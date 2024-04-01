@@ -24,26 +24,27 @@ module global_norms_mod
   private :: global_maximum
   type (EdgeBuffer_t), private :: edgebuf
 
+  interface global_integral
+     module procedure global_integral_elem
+     module procedure global_integral_fvm
+  end interface global_integral
+
 contains
 
 
-  subroutine global_integrals(elem, h,hybrid,npts,num_flds,nets,nete,I_sphere)
+  subroutine global_integrals(elem,fld,hybrid,npts,num_flds,nets,nete,I_sphere)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np, nelemd
+    use dimensions_mod, only: np
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
     type(element_t)      , intent(in) :: elem(:)
     integer              , intent(in) :: npts,nets,nete,num_flds
-    real (kind=r8), intent(in) :: h(npts,npts,num_flds,nets:nete)
+    real (kind=r8), intent(in) :: fld(npts,npts,num_flds,nets:nete)
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: I_sphere(num_flds)
-
-    real (kind=r8) :: I_priv
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
     !
     ! Local variables
     !
@@ -57,13 +58,12 @@ contains
     !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
     do ie=nets,nete
       do q=1,num_flds
         do j=1,np
           do i=1,np
             da = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
-            J_tmp(ie,q) = J_tmp(ie,q) + da*h(i,j,q,ie)
+            J_tmp(ie,q) = J_tmp(ie,q) + da*fld(i,j,q,ie)
           end do
         end do
       end do
@@ -71,28 +71,21 @@ contains
     do ie=nets,nete
       global_shared_buf(ie,1:num_flds) = J_tmp(ie,:)
     enddo
-    !JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=num_flds, comm=hybrid%par%comm)
-    !JMD    print *,'global_integral: after wrap_repro_sum'
     I_sphere(:) =global_shared_sum(1:num_flds) /(4.0_r8*PI)
   end subroutine global_integrals
 
-  subroutine global_integrals_general(h,hybrid,npts,da,num_flds,nets,nete,I_sphere)
+  subroutine global_integrals_general(fld,hybrid,npts,da,num_flds,nets,nete,I_sphere)
     use hybrid_mod,     only: hybrid_t
-    use dimensions_mod, only: nc, nelemd
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
     integer,         intent(in) :: npts,nets,nete,num_flds
-    real (kind=r8),  intent(in) :: h(npts,npts,num_flds,nets:nete)
+    real (kind=r8),  intent(in) :: fld(npts,npts,num_flds,nets:nete)
     type (hybrid_t), intent(in) :: hybrid
     real (kind=r8),  intent(in) :: da(npts,npts,nets:nete)
 
     real (kind=r8) :: I_sphere(num_flds)
-
-    real (kind=r8) :: I_priv
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
     !
     ! Local variables
     !
@@ -105,12 +98,11 @@ contains
     !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
     do ie=nets,nete
       do q=1,num_flds
         do j=1,npts
           do i=1,npts
-            J_tmp(ie,q) = J_tmp(ie,q) + da(i,j,ie)*h(i,j,q,ie)
+            J_tmp(ie,q) = J_tmp(ie,q) + da(i,j,ie)*fld(i,j,q,ie)
           end do
         end do
       end do
@@ -118,9 +110,7 @@ contains
     do ie=nets,nete
       global_shared_buf(ie,1:num_flds) = J_tmp(ie,:)
     enddo
-    !JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=num_flds, comm=hybrid%par%comm)
-    !JMD    print *,'global_integral: after wrap_repro_sum'
     I_sphere(:) =global_shared_sum(1:num_flds) /(4.0_r8*PI)
   end subroutine global_integrals_general
 
@@ -133,23 +123,19 @@ contains
   !
   ! ================================
   ! --------------------------
-  function global_integral(elem, h,hybrid,npts,nets,nete) result(I_sphere)
+  function global_integral_elem(elem,fld,hybrid,npts,nets,nete) result(I_sphere)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np, nelemd
+    use dimensions_mod, only: np
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
     type(element_t)      , intent(in) :: elem(:)
     integer              , intent(in) :: npts,nets,nete
-    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: I_sphere
-
-    real (kind=r8) :: I_priv
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
 
     ! Local variables
 
@@ -159,31 +145,69 @@ contains
     real (kind=r8) :: da
     real (kind=r8) :: J_tmp(nets:nete)
 !
-! This algorythm is independent of thread count and task count.
+! This algorithm is independent of thread count and task count.
 ! This is a requirement of consistancy checking in cam.
 !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
        do ie=nets,nete
           do j=1,np
              do i=1,np
                 da = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
-                J_tmp(ie) = J_tmp(ie) + da*h(i,j,ie)
+                J_tmp(ie) = J_tmp(ie) + da*fld(i,j,ie)
              end do
           end do
        end do
     do ie=nets,nete
       global_shared_buf(ie,1) = J_tmp(ie)
     enddo
-!JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
-!JMD    print *,'global_integral: after wrap_repro_sum'
     I_tmp = global_shared_sum(1)
-!JMD    print *,'global_integral: after global_shared_sum'
     I_sphere = I_tmp(1)/(4.0_r8*PI)
 
-  end function global_integral
+  end function global_integral_elem
+
+  function global_integral_fvm(fvm,fld,hybrid,npts,nets,nete) result(I_sphere)
+    use hybrid_mod,     only: hybrid_t
+    use fvm_control_volume_mod, only: fvm_struct
+    use physconst,      only: pi
+    use parallel_mod,   only: global_shared_buf, global_shared_sum
+
+    type (fvm_struct)    , intent(in) :: fvm(:)
+    integer              , intent(in) :: npts,nets,nete
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)
+    type (hybrid_t)      , intent(in) :: hybrid
+
+    real (kind=r8) :: I_sphere
+
+    ! Local variables
+
+    integer :: ie,j,i
+    real(kind=r8) :: I_tmp(1)
+
+    real (kind=r8) :: da
+    real (kind=r8) :: J_tmp(nets:nete)
+!
+! This algorithm is independent of thread count and task count.
+! This is a requirement of consistancy checking in cam.
+!
+    J_tmp = 0.0_r8
+    do ie=nets,nete
+       do j=1,npts
+          do i=1,npts
+             da = fvm(ie)%area_sphere(i,j)
+             J_tmp(ie) = J_tmp(ie) + da*fld(i,j,ie)
+          end do
+       end do
+    end do
+    do ie=nets,nete
+       global_shared_buf(ie,1) = J_tmp(ie)
+    enddo
+    call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
+    I_tmp = global_shared_sum(1)
+    I_sphere = I_tmp(1)/(4.0_r8*PI)
+
+  end function global_integral_fvm
 
 !------------------------------------------------------------------------------------
 
@@ -205,23 +229,22 @@ contains
     !   worse viscosity CFL (given by dtnu) is not violated by reducing
     !   viscosity coefficient in regions where CFL is violated
     !
-    use hybrid_mod,     only: hybrid_t, PrintHybrid
+    use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nlev,large_Courant_incr
+    use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
     use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
-    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
+    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
-    use time_mod,       only: tstep
     use mesh_mod,       only: MeshUseMeshFile
     use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
     use physconst,      only: cpair
@@ -241,14 +264,14 @@ contains
     real (kind=r8) :: max_min_dx,min_min_dx,min_max_dx,max_unif_dx   ! used for normalizing scalar HV
     real (kind=r8) :: max_normDinv, min_normDinv  ! used for CFL
     real (kind=r8) :: min_area, max_area,max_ratio !min/max element area
-    real (kind=r8) :: avg_area, avg_min_dx
+    real (kind=r8) :: avg_area, avg_min_dx,tot_area,tot_area_rad
     real (kind=r8) :: min_hypervis, max_hypervis, avg_hypervis, stable_hv
     real (kind=r8) :: normDinv_hypervis
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: scale1,scale2,scale3, max_laplace,z(nlev)
-    integer :: ie,corner, i, j, rowind, colind, k
+    real (kind=r8) :: scale1, max_laplace,z(nlev)
+    integer :: ie, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
 
@@ -257,7 +280,7 @@ contains
     real (kind=r8) :: dt_max_hypervis, dt_max_hypervis_tracer, dt_max_laplacian_top
 
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
-    real(kind=r8) :: h(np,np,nets:nete)
+    real(kind=r8) :: fld(np,np,nets:nete)
 
     logical :: top_000_032km, top_032_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
     logical :: nu_set,div_set,lev_set
@@ -312,9 +335,9 @@ contains
     !
     !******************************************************************************************
     !
-    h(:,:,nets:nete)=1.0_r8
+    fld(:,:,nets:nete)=1.0_r8
     ! Calculate surface area by integrating 1.0_r8 over sphere and dividing by 4*PI (Should be 1)
-    I_sphere = global_integral(elem, h(:,:,nets:nete),hybrid,np,nets,nete)
+    I_sphere = global_integral(elem, fld(:,:,nets:nete),hybrid,np,nets,nete)
 
     min_normDinv = 1E99_r8
     max_normDinv = 0
@@ -341,6 +364,7 @@ contains
     enddo
     call wrap_repro_sum(nvars=2, comm=hybrid%par%comm)
     avg_area     = global_shared_sum(1)/dble(nelem)
+    tot_area_rad = global_shared_sum(1)
     avg_min_dx   = global_shared_sum(2)/dble(nelem)
 
     min_area     = ParallelMin(min_area,hybrid)
@@ -351,16 +375,19 @@ contains
     max_min_dx   = ParallelMax(max_min_dx,hybrid)
     min_max_dx   = ParallelMin(min_max_dx,hybrid)
     max_ratio    = ParallelMax(max_ratio,hybrid)
-    ! Physical units for area
-    min_area = min_area*rearth*rearth/1000000._r8
-    max_area = max_area*rearth*rearth/1000000._r8
-    avg_area = avg_area*rearth*rearth/1000000._r8
+    ! Physical units for area (unit sphere to Earth sphere)
+    min_area = min_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    max_area = max_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    avg_area = avg_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    tot_area = tot_area_rad*rearth*rearth/1000000._r8!m2 (rearth is in units of km)
     if (hybrid%masterthread) then
        write(iulog,* )""
        write(iulog,* )"Running Global Integral Diagnostic..."
        write(iulog,*)"Area of unit sphere is",I_sphere
        write(iulog,*)"Should be 1.0 to round off..."
        write(iulog,'(a,f9.3)') 'Element area:  max/min',(max_area/min_area)
+       write(iulog,'(a,E23.15)') 'Total Grid area:  ',(tot_area)
+       write(iulog,'(a,E23.15)') 'Total Grid area rad^2:  ',(tot_area_rad)
        if (.not.MeshUseMeshFile) then
            write(iulog,'(a,f6.3,f8.2)') "Average equatorial node spacing (deg, km) = ", &
                 dble(90)/dble(ne*(np-1)), PI*rearth/(2000.0_r8*dble(ne*(np-1)))
@@ -550,7 +577,7 @@ contains
     deallocate(gp%weights)
 
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
-    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,1.0_r8,'    ')
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
@@ -573,29 +600,34 @@ contains
     lev_set = sponge_del4_lev < 0
     if (ptop>1000.0_r8) then
       !
-      ! low top (~1000 Pa)
+      ! low top; usually idealized test cases
       !
       top_000_032km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_000_032km"
     else if (ptop>100.0_r8) then
       !
-      ! CAM6 top (~225 Pa)
+      ! CAM6 top (~225 Pa) or CAM7 low top
       !
       top_032_042km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_032_042km"
     else if (ptop>1e-1_r8) then
       !
       ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_042_090km"
     else if (ptop>1E-4_r8) then
       !
       ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_090_140km"
     else
       !
       ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_140_600km"
     end if
     !
     ! Logging text for sponge layer configuration
@@ -607,28 +639,24 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_000_032km) then
+    if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 20
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+    else
       if (sponge_del4_lev       <0) sponge_del4_lev        = 1
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
     end if
 
-   if (top_032_042km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8
-    end if
-
+    ! set max wind speed for diagnostics
+    umax = 120.0_r8
     if (top_042_090km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
-    end if
-
-    if (top_090_140km.or.top_140_600km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 10
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
+       umax = 240._r8
+    else if (top_090_140km) then
+       umax = 300._r8
+    else if (top_140_600km) then
+       umax = 800._r8
     end if
     !
     ! Log sponge layer configuration
@@ -645,7 +673,6 @@ contains
        if (lev_set) then
           write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
        end if
-
        write(iulog,* )""
     end if
 
@@ -654,12 +681,15 @@ contains
     do k=1,nlev
       ! Vertical profile from FV dycore (see Lauritzen et al. 2012 DOI:10.1177/1094342011410088)
       scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/pmid(k))))
-      nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
-      if (sponge_del4_nu_fac.ne.1.0_r8) then
+      if (sponge_del4_nu_div_fac /= 1.0_r8) then
+        nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
+      end if
+      if (sponge_del4_nu_fac /= 1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
     end do
+
     if (hybrid%masterthread)then
       write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
       call std_atm_height(pmid(:),z(:))
@@ -667,8 +697,16 @@ contains
       do k=1,nlev
         write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
       end do
-    end if
+      if (nu_top>0) then
+        write(iulog,*) ": ksponge_end = ",ksponge_end
+        write(iulog,*) ": sponge layer Laplacian damping"
+        write(iulog,*) "k, p, z, nu_scale_top, nu (actual Laplacian damping coefficient)"
 
+        do k=1,ksponge_end
+           write(iulog,'(i3,4e11.4)') k,pmid(k),z(k),nu_scale_top(k),nu_scale_top(k)*nu_top
+        end do
+      end if
+    end if
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -703,20 +741,13 @@ contains
     S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
     S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
     S_rk_tracer = 2.0_r8
-    !
-    ! estimate max winds
-    !
-    if (ptop>100.0_r8) then
-      umax = 120.0_r8
-    else
-      umax = 400.0_r8
-    end if
+
     ugw = 342.0_r8 !max gravity wave speed
 
     dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
     dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
     dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
-    if (ntrac>0) then
+    if (use_cslam) then
       if (large_Courant_incr) then
         dt_max_tracer_fvm      = dble(nhe)*(4.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
       else
@@ -746,14 +777,15 @@ contains
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis,&
            's ',dt_dyn_visco_actual,'s'
       if (dt_dyn_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
-      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
+      if (.not.use_cslam) then
+         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
            dt_tracer_se_actual,'s'
-      if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
-      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
-           dt_tracer_visco_actual,'s'
-      if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
-
-      if (ntrac>0) then
+         if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
+         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
+              dt_tracer_visco_actual,'s'
+         if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
+      end if
+      if (use_cslam) then
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
              's ',dt_tracer_fvm_actual
         if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
@@ -792,13 +824,13 @@ contains
   !
   ! ================================
 
-  function global_maximum(h,hybrid,npts,nets,nete) result(Max_sphere)
+  function global_maximum(fld,hybrid,npts,nets,nete) result(Max_sphere)
 
     use hybrid_mod, only : hybrid_t
     use reduction_mod, only : red_max, pmax_mt
 
     integer              , intent(in) :: npts,nets,nete
-    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: Max_sphere
@@ -807,7 +839,7 @@ contains
 
     real (kind=r8) :: redp(1)
 
-    Max_sphere = MAXVAL(h(:,:,nets:nete))
+    Max_sphere = MAXVAL(fld(:,:,nets:nete))
 
     redp(1) = Max_sphere
     call pmax_mt(red_max,redp,1,hybrid)
@@ -822,39 +854,39 @@ contains
   ! for a scalar quantity
   ! ===========================================================
 
-  function l1_snorm(elem, h,ht,hybrid,npts,nets,nete) result(l1)
+  function l1_snorm(elem,fld,fld_exact,hybrid,npts,nets,nete) result(l1)
 
     use element_mod, only : element_t
     use hybrid_mod, only : hybrid_t
 
     type(element_t)      , intent(in) :: elem(:)
     integer              , intent(in) :: npts,nets,nete
-    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)  ! computed soln
-    real (kind=r8), intent(in) :: ht(npts,npts,nets:nete) ! true soln
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)  ! computed soln
+    real (kind=r8), intent(in) :: fld_exact(npts,npts,nets:nete) ! true soln
     type (hybrid_t)      , intent(in) :: hybrid
     real (kind=r8)             :: l1
 
     ! Local variables
 
-    real (kind=r8) :: dhabs(npts,npts,nets:nete)
-    real (kind=r8) :: htabs(npts,npts,nets:nete)
-    real (kind=r8) :: dhabs_int
-    real (kind=r8) :: htabs_int
+    real (kind=r8) :: dfld_abs(npts,npts,nets:nete)
+    real (kind=r8) :: fld_exact_abs(npts,npts,nets:nete)
+    real (kind=r8) :: dfld_abs_int
+    real (kind=r8) :: fld_exact_abs_int
     integer i,j,ie
 
     do ie=nets,nete
        do j=1,npts
           do i=1,npts
-             dhabs(i,j,ie) = ABS(h(i,j,ie)-ht(i,j,ie))
-             htabs(i,j,ie) = ABS(ht(i,j,ie))
+             dfld_abs(i,j,ie) = ABS(fld(i,j,ie)-fld_exact(i,j,ie))
+             fld_exact_abs(i,j,ie) = ABS(fld_exact(i,j,ie))
           end do
        end do
     end do
 
-    dhabs_int = global_integral(elem, dhabs(:,:,nets:nete),hybrid,npts,nets,nete)
-    htabs_int = global_integral(elem, htabs(:,:,nets:nete),hybrid,npts,nets,nete)
+    dfld_abs_int = global_integral(elem, dfld_abs(:,:,nets:nete),hybrid,npts,nets,nete)
+    fld_exact_abs_int = global_integral(elem, fld_exact_abs(:,:,nets:nete),hybrid,npts,nets,nete)
 
-    l1 = dhabs_int/htabs_int
+    l1 = dfld_abs_int/fld_exact_abs_int
 
   end function l1_snorm
 
@@ -930,38 +962,38 @@ contains
   !
   ! ===========================================================
 
-  function l2_snorm(elem, h,ht,hybrid,npts,nets,nete) result(l2)
+  function l2_snorm(elem,fld,fld_exact,hybrid,npts,nets,nete) result(l2)
     use element_mod, only : element_t
     use hybrid_mod, only : hybrid_t
 
     type(element_t), intent(in) :: elem(:)
     integer              , intent(in) :: npts,nets,nete
-    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)  ! computed soln
-    real (kind=r8), intent(in) :: ht(npts,npts,nets:nete) ! true soln
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)  ! computed soln
+    real (kind=r8), intent(in) :: fld_exact(npts,npts,nets:nete) ! true soln
     type (hybrid_t)      , intent(in) :: hybrid
     real (kind=r8)             :: l2
 
     ! Local variables
 
     real (kind=r8) :: dh2(npts,npts,nets:nete)
-    real (kind=r8) :: ht2(npts,npts,nets:nete)
+    real (kind=r8) :: fld_exact2(npts,npts,nets:nete)
     real (kind=r8) :: dh2_int
-    real (kind=r8) :: ht2_int
+    real (kind=r8) :: fld_exact2_int
     integer i,j,ie
 
     do ie=nets,nete
        do j=1,npts
           do i=1,npts
-             dh2(i,j,ie)=(h(i,j,ie)-ht(i,j,ie))**2
-             ht2(i,j,ie)=ht(i,j,ie)**2
+             dh2(i,j,ie)=(fld(i,j,ie)-fld_exact(i,j,ie))**2
+             fld_exact2(i,j,ie)=fld_exact(i,j,ie)**2
           end do
        end do
     end do
 
     dh2_int = global_integral(elem,dh2(:,:,nets:nete),hybrid,npts,nets,nete)
-    ht2_int = global_integral(elem,ht2(:,:,nets:nete),hybrid,npts,nets,nete)
+    fld_exact2_int = global_integral(elem,fld_exact2(:,:,nets:nete),hybrid,npts,nets,nete)
 
-    l2 = SQRT(dh2_int)/SQRT(ht2_int)
+    l2 = SQRT(dh2_int)/SQRT(fld_exact2_int)
 
   end function l2_snorm
 
@@ -1036,35 +1068,35 @@ contains
   !
   ! ===========================================================
 
-  function linf_snorm(h,ht,hybrid,npts,nets,nete) result(linf)
+  function linf_snorm(fld,fld_exact,hybrid,npts,nets,nete) result(linf)
     use hybrid_mod, only : hybrid_t
     integer              , intent(in) :: npts,nets,nete
-    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)  ! computed soln
-    real (kind=r8), intent(in) :: ht(npts,npts,nets:nete) ! true soln
+    real (kind=r8), intent(in) :: fld(npts,npts,nets:nete)  ! computed soln
+    real (kind=r8), intent(in) :: fld_exact(npts,npts,nets:nete) ! true soln
     type (hybrid_t)      , intent(in) :: hybrid
     real (kind=r8)             :: linf
 
     ! Local variables
 
-    real (kind=r8) :: dhabs(npts,npts,nets:nete)
-    real (kind=r8) :: htabs(npts,npts,nets:nete)
-    real (kind=r8) :: dhabs_max
-    real (kind=r8) :: htabs_max
+    real (kind=r8) :: dfld_abs(npts,npts,nets:nete)
+    real (kind=r8) :: fld_exact_abs(npts,npts,nets:nete)
+    real (kind=r8) :: dfld_abs_max
+    real (kind=r8) :: fld_exact_abs_max
     integer i,j,ie
 
     do ie=nets,nete
        do j=1,npts
           do i=1,npts
-             dhabs(i,j,ie)=ABS(h(i,j,ie)-ht(i,j,ie))
-             htabs(i,j,ie)=ABS(ht(i,j,ie))
+             dfld_abs(i,j,ie)=ABS(fld(i,j,ie)-fld_exact(i,j,ie))
+             fld_exact_abs(i,j,ie)=ABS(fld_exact(i,j,ie))
           end do
        end do
     end do
 
-    dhabs_max = global_maximum(dhabs(:,:,nets:nete),hybrid,npts,nets,nete)
-    htabs_max = global_maximum(htabs(:,:,nets:nete),hybrid,npts,nets,nete)
+    dfld_abs_max = global_maximum(dfld_abs(:,:,nets:nete),hybrid,npts,nets,nete)
+    fld_exact_abs_max = global_maximum(fld_exact_abs(:,:,nets:nete),hybrid,npts,nets,nete)
 
-    linf = dhabs_max/htabs_max
+    linf = dfld_abs_max/fld_exact_abs_max
 
   end function linf_snorm
 

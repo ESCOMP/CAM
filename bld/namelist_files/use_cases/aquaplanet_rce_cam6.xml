@@ -44,9 +44,6 @@
 <prescribed_ozone_type    >CYCLICAL</prescribed_ozone_type>
 <prescribed_ozone_cycle_yr>1990</prescribed_ozone_cycle_yr>
 
-<!-- Set Aquaplanet to True -->
-<aqua_planet              >.true. </aqua_planet>
-
 <!-- Set the uniform_angle for the radiation package -->
 <use_rad_uniform_angle      > .true.        </use_rad_uniform_angle>
 <rad_uniform_angle          > 0.73391095    </rad_uniform_angle>
@@ -71,4 +68,3 @@
 <seasalt_emis_scale> 0.0 </seasalt_emis_scale>
 
 </namelist_defaults>
-

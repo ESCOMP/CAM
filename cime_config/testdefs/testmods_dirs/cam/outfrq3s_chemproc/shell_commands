@@ -1,1 +1,3 @@
 ./xmlchange --append CAM_CONFIG_OPTS="-usr_mech_infile \$TESTS_MODS_DIR/cam/outfrq3s_chemproc/test_mech.in"
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL

@@ -65,10 +65,10 @@ cosp_grLidar532_interface.o: cosp_kinds.o
 cosp_atlid_interface.o     : cosp_kinds.o
 cosp_cloudsat_interface.o  : cosp_kinds.o cosp_config.o quickbeam.o
 cosp_isccp_interface.o     : cosp_kinds.o icarus.o
-cosp_misr_interface.o      : cosp_kinds.o 
+cosp_misr_interface.o      : cosp_kinds.o
 cosp_modis_interface.o     : cosp_kinds.o cosp_config.o modis_simulator.o
 cosp_rttov_interfaceSTUB.o : cosp_kinds.o cosp_config.o cosp_rttovSTUB.o
-cosp_parasol_interface.o   : cosp_kinds.o 
+cosp_parasol_interface.o   : cosp_kinds.o
 cosp_rttovSTUB.o           : cosp_kinds.o cosp_config.o cosp_constants.o
 MISR_simulator.o           : cosp_kinds.o cosp_config.o cosp_stats.o
 modis_simulator.o          : cosp_kinds.o cosp_config.o cosp_stats.o
@@ -82,7 +82,7 @@ scops.o               : cosp_kinds.o mo_rng.o cosp_errorHandling.o
 prec_scops.o	      : cosp_kinds.o cosp_config.o
 cosp_optics.o         : cosp_kinds.o cosp_constants.o modis_simulator.o
 quickbeam_optics.o    : cosp_kinds.o cosp_config.o cosp_constants.o quickbeam.o      \
-			            cosp_errorHandling.o array_lib.o math_lib.o optics_lib.o 
+			            cosp_errorHandling.o array_lib.o math_lib.o optics_lib.o
 optics_lib.o	      : cosp_kinds.o cosp_errorHandling.o
 array_lib.o   	      : cosp_kinds.o cosp_errorHandling.o
 math_lib.o            : cosp_kinds.o array_lib.o mrgrnk.o
@@ -107,37 +107,37 @@ quickbeam.o: $(RS_PATH)/quickbeam.F90
 MISR_simulator.o : $(MISR_PATH)/MISR_simulator.F90
 	$(F90) $(F90FLAGS) -c $<
 
-modis_simulator.o : $(MODIS_PATH)/modis_simulator.F90 
+modis_simulator.o : $(MODIS_PATH)/modis_simulator.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_rttov_interfaceSTUB.o : $(COSP_PATH)/src/simulator/cosp_rttov_interfaceSTUB.F90
+cosp_rttov_interfaceSTUB.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_interfaceSTUB.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_misr_interface.o : $(COSP_PATH)/src/simulator/cosp_misr_interface.F90
+cosp_misr_interface.o : $(COSP_PATH)/src/src/simulator/cosp_misr_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_modis_interface.o : $(COSP_PATH)/src/simulator/cosp_modis_interface.F90
+cosp_modis_interface.o : $(COSP_PATH)/src/src/simulator/cosp_modis_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_isccp_interface.o : $(COSP_PATH)/src/simulator/cosp_isccp_interface.F90
+cosp_isccp_interface.o : $(COSP_PATH)/src/src/simulator/cosp_isccp_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_calipso_interface.o : $(COSP_PATH)/src/simulator/cosp_calipso_interface.F90
+cosp_calipso_interface.o : $(COSP_PATH)/src/src/simulator/cosp_calipso_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_grLidar532_interface.o : $(COSP_PATH)/src/simulator/cosp_grLidar532_interface.F90
+cosp_grLidar532_interface.o : $(COSP_PATH)/src/src/simulator/cosp_grLidar532_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_atlid_interface.o : $(COSP_PATH)/src/simulator/cosp_atlid_interface.F90
+cosp_atlid_interface.o : $(COSP_PATH)/src/src/simulator/cosp_atlid_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_cloudsat_interface.o : $(COSP_PATH)/src/simulator/cosp_cloudsat_interface.F90
+cosp_cloudsat_interface.o : $(COSP_PATH)/src/src/simulator/cosp_cloudsat_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_parasol_interface.o : $(COSP_PATH)/src/simulator/cosp_parasol_interface.F90
+cosp_parasol_interface.o : $(COSP_PATH)/src/src/simulator/cosp_parasol_interface.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_rttovSTUB.o : $(RT_PATH)/cosp_rttovSTUB.F90 
+cosp_rttovSTUB.o : $(RT_PATH)/cosp_rttovSTUB.F90
 	$(F90) $(F90FLAGS) -c $<
 
 lidar_simulator.o : $(CS_PATH)/lidar_simulator.F90
@@ -146,19 +146,19 @@ lidar_simulator.o : $(CS_PATH)/lidar_simulator.F90
 parasol.o : $(PARASOL_PATH)/parasol.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_constants.o :  $(COSP_PATH)/src/cosp_constants.F90
+cosp_constants.o :  $(COSP_PATH)/src/src/cosp_constants.F90
 	$(F90) $(F90FLAGS) -c $<
 
 cosp_kinds.o : $(COSP_PATH)/cosp_kinds.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_config.o :  $(COSP_PATH)/src/cosp_config.F90
+cosp_config.o :  $(COSP_PATH)/src/src/cosp_config.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp.o :  $(COSP_PATH)/src/cosp.F90
+cosp.o :  $(COSP_PATH)/src/src/cosp.F90
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_stats.o :  $(COSP_PATH)/src/cosp_stats.F90
+cosp_stats.o :  $(COSP_PATH)/src/src/cosp_stats.F90
 	$(F90) $(F90FLAGS) -c $<
 
 # COSPv1.4 interface

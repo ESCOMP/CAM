@@ -12,7 +12,6 @@ module short_lived_species
   use ppgrid,       only : pcols, pver, begchunk, endchunk
   use spmd_utils,   only : masterproc
 
-
   implicit none
 
   save
@@ -23,23 +22,35 @@ module short_lived_species
   public :: short_lived_species_writeic
   public :: initialize_short_lived_species
   public :: set_short_lived_species
+  public :: set_short_lived_species_gc ! for GEOS-Chem chemistry
   public :: get_short_lived_species
+  public :: get_short_lived_species_gc ! for GEOS-Chem chemistry
   public :: slvd_index
   public :: pbf_idx
+  public :: short_lived_species_final
 
   integer :: pbf_idx
   integer :: map(nslvd)
 
   character(len=*), parameter :: pbufname = 'ShortLivedSpecies'
 
+  real(r8), allocatable :: slvd_ref_mmr(:)
+
 contains
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
-  subroutine register_short_lived_species
+  subroutine register_short_lived_species (ref_mmr)
     use physics_buffer, only : pbuf_add_field, dtype_r8
 
+    real(r8), optional :: ref_mmr(nslvd)
+
     if ( nslvd < 1 ) return
+
+    if ( present(ref_mmr) ) then
+       allocate(slvd_ref_mmr(nslvd))
+       slvd_ref_mmr = ref_mmr
+    endif
 
     call pbuf_add_field(pbufname,'global',dtype_r8,(/pcols,pver,nslvd/),pbf_idx)
 
@@ -94,6 +105,7 @@ contains
     use mo_tracname,      only : solsym
     use ncdio_atm,        only : infld
     use pio,              only : file_desc_t
+    use phys_control,     only : cam_chempkg_is
     use physics_buffer,   only : physics_buffer_desc, pbuf_set_field
 
     implicit none
@@ -124,18 +136,30 @@ contains
     allocate(tmpptr(pcols,pver,begchunk:endchunk))
 
     do m=1,nslvd
-       n = map(m)
-       fieldname = solsym(n)
+
+       if (cam_chempkg_is('geoschem_mam4')) then
+          fieldname = trim(slvd_lst(m))
+       else
+          n = map(m)
+          fieldname = solsym(n)
+       end if
+
        call infld( fieldname,ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                    tmpptr, found, gridname='physgrid')
 
        if (.not.found) then
-          tmpptr(:,:,:) = 1.e-36_r8
+          if ( allocated(slvd_ref_mmr) ) then
+             tmpptr(:,:,:) = slvd_ref_mmr(m)
+          else
+             tmpptr(:,:,:) = 1.e-36_r8
+          endif
        endif
 
        call pbuf_set_field(pbuf2d, pbf_idx, tmpptr, start=(/1,1,m/),kount=(/pcols,pver,1/))
 
        if (masterproc) write(iulog,*)  fieldname, ' is set to short-lived'
+
+       if ( allocated(slvd_ref_mmr) .and. masterproc) write(iulog,'(a, E16.5E4)') ' --> reference MMR: ', slvd_ref_mmr(m)
 
     enddo
 
@@ -168,6 +192,29 @@ contains
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
+  subroutine set_short_lived_species_gc( q, lchnk, ncol, pbuf )
+
+    use physics_buffer, only : physics_buffer_desc, pbuf_set_field
+
+    implicit none 
+
+    ! 3rd dimension of out array is nslvd if using GEOS-Chem chemistry
+    real(r8), intent(in)               :: q(pcols,pver,nslvd)
+    integer,  intent(in)               :: lchnk, ncol
+    type(physics_buffer_desc), pointer :: pbuf(:)
+
+    integer :: m
+
+    if ( nslvd < 1 ) return
+
+    do m=1,nslvd
+       call pbuf_set_field(pbuf, pbf_idx, q(:,:,m), start=(/1,1,m/),kount=(/pcols,pver,1/))
+    enddo
+
+  end subroutine set_short_lived_species_gc
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
   subroutine get_short_lived_species( q, lchnk, ncol, pbuf )
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
@@ -193,6 +240,31 @@ contains
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
+  subroutine get_short_lived_species_gc( q, lchnk, ncol, pbuf )
+    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
+
+    implicit none 
+
+    ! 3rd dimension of out array is nslvd if using GEOS-Chem chemistry
+    real(r8), intent(inout)            :: q(pcols,pver,nslvd)
+    integer,  intent(in)               :: lchnk, ncol
+    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8),pointer                   :: tmpptr(:,:)
+
+
+    integer :: m
+
+    if ( nslvd < 1 ) return
+
+    do m=1,nslvd
+       call pbuf_get_field(pbuf, pbf_idx, tmpptr, start=(/1,1,m/), kount=(/ pcols,pver,1 /))
+       q(:ncol,:,m) = tmpptr(:ncol,:)
+    enddo
+
+  endsubroutine get_short_lived_species_gc
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
   function slvd_index( name )
     implicit none
 
@@ -213,5 +285,13 @@ contains
     enddo
 
   endfunction slvd_index
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+  subroutine short_lived_species_final
+
+    if ( allocated(slvd_ref_mmr) ) deallocate(slvd_ref_mmr)
+
+  end subroutine short_lived_species_final
 
 end module short_lived_species

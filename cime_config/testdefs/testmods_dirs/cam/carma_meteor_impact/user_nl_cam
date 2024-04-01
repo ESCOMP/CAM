@@ -8,4 +8,7 @@ carma_do_fixedinit=.false.
 carma_reftfile="camrun.cam.r.carma_reft.nc"
 solar_data_type='FIXED'
 solar_data_ymd=20000101
-
+carma_emis_maxlat = 40.
+carma_emis_maxlon = 20.
+carma_emis_minlat = -20.
+carma_emis_minlon = -80.

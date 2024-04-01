@@ -27,7 +27,7 @@
          prod(:,:,4) = 0._r8
          prod(:,:,5) = 0._r8
          prod(:,:,6) = 0._r8
-         prod(:,:,7) =rxt(:,:,3)
+         prod(:,:,7) =rxt(:,:,5)
          prod(:,:,8) = 0._r8
          prod(:,:,9) = 0._r8
          prod(:,:,10) = 0._r8
@@ -45,7 +45,8 @@
          prod(:,:,22) = 0._r8
          prod(:,:,23) = 0._r8
          prod(:,:,24) = 0._r8
-         prod(:,:,25) = + extfrc(:,:,6)
+         prod(:,:,25) = 0._r8
+         prod(:,:,26) = + extfrc(:,:,6)
       end if
       end subroutine indprd
       end module mo_indprd
