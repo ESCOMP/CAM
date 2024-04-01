@@ -1696,7 +1696,7 @@ elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
-if ($fc_type eq "oneapi") {$fc_type = 'intel'; }
+if ($fc_type =~ /intel/) {$fc_type = 'intel'; }
 if ($fc_type) {
     $cfg_ref->set('fc_type', $fc_type);
     if ($print>=2) { print "Fortran compiler type: $fc_type$eol"; }
