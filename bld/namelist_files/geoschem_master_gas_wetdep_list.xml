@@ -1,6 +1,7 @@
 <gas_wetdep_list_definition>
 
 <!-- list of gas phase species that undergo wet deposition -->
+<!-- Note: "gas" dry and wet deposition actually include aerosol (non-MAM) species from GEOS-Chem. -->
 <list id="gas">
   ACTA
   ALD2
@@ -136,6 +137,7 @@
   SALACL
   SALCAL
   SALCCL
+  SO4
   SO4S
   SOAGX
   SOAIE

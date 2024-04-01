@@ -3,6 +3,7 @@
 <drydep_list_definition>
 
 <!-- gas-phase species -->
+<!-- Note: "gas" dry and wet deposition actually include aerosol (non-MAM) species from GEOS-Chem. -->
 <list id="gas_phase">
   ACET
   ACTA
@@ -154,6 +155,7 @@
   SALACL
   SALCAL
   SALCCL
+  SO4
   SO4S
   SOAGX
   SOAIE
