@@ -16,7 +16,6 @@ use shr_const_mod,  only: pi => shr_const_pi
 use time_manager,   only: get_curr_date, get_curr_calday
 use phys_grid,      only: get_rlat_all_p, get_rlon_all_p
 use orbit,          only: zenith
-use cam_logfile,    only: iulog      
       
 use physics_types,  only: physics_state, physics_ptend, &
                           physics_ptend_init, physics_state_copy, &
@@ -1849,7 +1848,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), parameter :: mucon  = 5.3_r8            ! Convective size distribution shape parameter
    real(r8), parameter :: deicon = 50._r8            ! Convective ice effective diameter (meters)
 
-   ! Rainbows: solar zenit angle (SZA)
+   ! Rainbows: solar zenith angle (SZA)
    real(r8), dimension(state%psetcols)  :: &
          zen_angle, &                                      ! solar zenith angles
          rlats, rlons                                      ! chunk latitudes and longitudes (radians)
@@ -1868,7 +1867,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    real(r8), parameter :: rb_rmin  =1.e-6_r8                    ! Strat Rain threshold (mixing ratio)
    real(r8), parameter :: rb_rcmin = 5._r8/(86400._r8*1000._r8) ! Conv Rain Threshold (mm/d--> m/s)
-   real(r8), parameter :: rb_pmin =85000.                       ! Minimum pressure for surface layer
+   real(r8), parameter :: rb_pmin =85000._r8                       ! Minimum pressure for surface layer
    real(r8), parameter :: deg2rad = pi/180._r8            ! Conversion factor
    integer :: top_idx  !Index for top level below rb_pmin
    real(r8) :: convmx
@@ -1876,7 +1875,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: frlow
    real(r8) :: cldtot
    real(r8) :: rmax
-   real(r8) :: rval
+   logical :: rval
       
    !-------------------------------------------------------------------------------
 
@@ -2221,7 +2220,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       state_loc_numgraup(:ncol,:) = 0._r8
    end if
 
-   ! Zero out diagnostic  out arrays
+   ! Zero out diagnostic rainbow arrays
    rbfreq = 0._r8
    rbfrac = 0._r8   
 
@@ -3247,21 +3246,17 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       rmax=maxval(qrout_grid(i,top_idx:))
 
 !     Stratiform precip mixing ratio OR some convective precip
-!      (rval = 1  if any sig precip)
+!      (rval = true  if any sig precip)
 
-      if ((precc(i) > rb_rcmin) .or. (rmax > rb_rmin)) then
-         rval=1.0_r8
-      else
-         rval=0.0_r8
-      end if
+      rval = ((precc(i) > rb_rcmin) .or. (rmax > rb_rmin))
       
 !Now can find conditions for a rainbow:
 ! Maximum cloud cover (CLDTOT) < 0.5
 ! 48 < SZA < 90
 ! freqr (below rb_pmin) > 0.25
-! Spome rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s 
+! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s 
 
-      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. (rval > 0.0_r8)) then  
+      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then  
 
 !Rainbow 'probability' (area) derived from solid angle theory 
 !as the fraction of the hemisphere for a spherical cap with angle phi=sza-48.
