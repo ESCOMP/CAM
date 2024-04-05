@@ -1716,9 +1716,9 @@ contains
       !       last bin should be moved to the just before the first bin (!?!)
       ! =========================================================================
       call get_sw_spectral_boundaries( low_bound, high_bound, 'nm' )
-      wavelength_edges(1:nswbands-1) = high_bound(nswbands-1:1:-1)
-      wavelength_edges(nswbands    ) = high_bound(nswbands       )
-      wavelength_edges(nswbands+1  ) = low_bound( nswbands       )
+      wavelength_edges(1:nswbands-1) = low_bound( nswbands-1:1:-1)
+      wavelength_edges(nswbands    ) = low_bound( nswbands       )
+      wavelength_edges(nswbands+1  ) = high_bound(nswbands       )
       call reorder_optics_array(     aer_tau )
       call reorder_optics_array(   aer_tau_w )
       call reorder_optics_array( aer_tau_w_g )
@@ -1729,17 +1729,14 @@ contains
       ! TODO is this the correct regridding scheme to use?
       n_tuvx_bins = this%n_wavelength_bins_
       do i_col = 1, pcols
-         do i_level = 1, pver
+         do i_level = 1, pver + 1
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau(i_col,pver-i_level,:), optical_depth(i_col,i_level,:))
+               aer_tau(i_col,pver+1-i_level,:), optical_depth(i_col,i_level,:))
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau_w(i_col,pver-i_level,:), single_scattering_albedo(i_col,i_level,:))
+               aer_tau_w(i_col,pver+1-i_level,:), single_scattering_albedo(i_col,i_level,:))
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau_w_g(i_col,pver-i_level,:), asymmetry_factor(i_col,i_level,:))
+               aer_tau_w_g(i_col,pver+1-i_level,:), asymmetry_factor(i_col,i_level,:))
          end do
-         optical_depth(i_col,pver+1,:) = optical_depth(i_col,pver,:)
-         single_scattering_albedo(i_col,pver+1,:) = single_scattering_albedo(i_col,pver,:)
-         asymmetry_factor(i_col,pver+1,:) = asymmetry_factor(i_col,pver,:)
       end do
 
       ! ================================================================
@@ -1748,12 +1745,12 @@ contains
       associate( tau   => optical_depth, &
                  omega => single_scattering_albedo, &
                  g     => asymmetry_factor )
-         where(omega > 0.0_r8)
+         where(omega > 0.0_r8 .and. g > 0.0_r8)
             g = g / omega
          elsewhere
             g = 0.0_r8
          end where
-         where(tau > 0.0_r8)
+         where(tau > 0.0_r8 .and. omega > 0.0_r8)
             omega = omega / tau
          elsewhere
             omega = 0.0_r8
