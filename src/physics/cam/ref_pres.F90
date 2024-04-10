@@ -55,6 +55,7 @@ integer, protected :: nbot_molec = 0
 ! Data for the trop_pref coordinate.  It is the target of a pointer in a hist_coord_t
 ! object in the cam_history_support module.  It is associated by the call to add_vert_coord.
 real(r8), private, allocatable, target :: trop_pref(:)
+real(r8), private, allocatable, target :: trop_prefi(:)
 
 !====================================================================================
 contains
@@ -149,14 +150,23 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
          top=.false.)
    end if
 
-   ! Add vertical coordinate to history file for use with outputs that are only
+   ! Add vertical coordinates to history file for use with outputs that are only
    ! computed in the subdomain bounded by the top of troposphere clouds.
    nlev = pver - trop_cloud_top_lev + 1
+
    allocate(trop_pref(nlev), stat=istat)
    call alloc_err(istat, sub, 'trop_pref', nlev)
-   trop_pref = pref_mid(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
+   trop_pref  = pref_mid(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
+
    call add_vert_coord('trop_pref', nlev, 'troposphere reference pressures', &
       'hPa', trop_pref, positive='down')
+
+   allocate(trop_prefi(nlev+1), stat=istat)
+   call alloc_err(istat, sub, 'trop_prefi', nlev)
+   trop_prefi = pref_edge(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
+
+   call add_vert_coord('trop_prefi', nlev+1, 'troposphere reference pressures (interfaces)', &
+      'hPa', trop_prefi, positive='down')
 
 end subroutine ref_pres_init
 

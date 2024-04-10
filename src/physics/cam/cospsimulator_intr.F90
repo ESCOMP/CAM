@@ -562,9 +562,9 @@ CONTAINS
             'PARASOL-like mono-directional reflectance ', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CFAD_SR532_CAL', (/'cosp_sr','cosp_ht'/), 'A', 'fraction', &
             'Calipso Scattering Ratio CFAD (532 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('MOL532_CAL', (/'lev'/), 'A', 'm-1sr-1', &
+       call addfld('MOL532_CAL', (/'trop_pref'/), 'A', 'm-1sr-1', &
             'Calipso Molecular Backscatter (532 nm) ', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('ATB532_CAL', (/'cosp_scol','lev      '/), 'I', 'no_unit_log10(x)', &
+       call addfld('ATB532_CAL', (/'cosp_scol','trop_pref'/), 'I', 'no_unit_log10(x)', &
             'Calipso Attenuated Total Backscatter (532 nm) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLD_CAL_LIQ', (/'cosp_ht'/), 'A', 'percent', &
             'Calipso Liquid Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
@@ -654,7 +654,7 @@ CONTAINS
        call addfld('CLDTOT_CS2', horiz_only, 'A', 'percent', &
             'Radar total cloud amount without the data for the first kilometer above surface ', &
             flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('DBZE_CS', (/'cosp_scol','lev      '/), 'I', 'dBZe', &
+       call addfld('DBZE_CS', (/'cosp_scol','trop_pref'/), 'I', 'dBZe', &
             'Radar dBZe (94 GHz) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
 
        ! Cloudsat near-sfc precipitation diagnostics
@@ -774,7 +774,7 @@ CONTAINS
     
     ! SUB-COLUMN OUTPUT
     if (lfrac_out) then
-       call addfld('SCOPS_OUT', (/'cosp_scol','lev      '/), 'I', '0=nocld,1=strcld,2=cnvcld', &
+       call addfld('SCOPS_OUT', (/'cosp_scol','trop_pref'/), 'I', '0=nocld,1=strcld,2=cnvcld', &
             'SCOPS Subcolumn output', flag_xyfill=.true., fill_value=R_UNDEF)
 
        call add_default('SCOPS_OUT',cosp_histfile_num,' ')
@@ -799,46 +799,46 @@ CONTAINS
           'PS_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('TS_COSP',         horiz_only,            'I','K',  &
           'TS_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('P_COSP',          (/            'lev'/), 'I','Pa', &
+       call addfld ('P_COSP',          (/            'trop_pref'/), 'I','Pa', &
           'P_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('PH_COSP',         (/            'lev'/), 'I','Pa', &
+       call addfld ('PH_COSP',         (/            'trop_prefi'/), 'I','Pa', &
           'PH_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('ZLEV_COSP',       (/            'lev'/), 'I','m',  &
+       call addfld ('ZLEV_COSP',       (/            'trop_pref'/), 'I','m',  &
           'ZLEV_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('ZLEV_HALF_COSP',  (/            'lev'/), 'I','m',  &
+       call addfld ('ZLEV_HALF_COSP',  (/            'trop_prefi'/), 'I','m',  &
           'ZLEV_HALF_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('T_COSP',          (/            'lev'/), 'I','K',  &
+       call addfld ('T_COSP',          (/            'trop_pref'/), 'I','K',  &
           'T_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('RH_COSP',         (/            'lev'/), 'I','percent', &
+       call addfld ('RH_COSP',         (/            'trop_pref'/), 'I','percent', &
           'RH_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
 
-       call addfld ('TAU_067',         (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('TAU_067',         (/'cosp_scol','trop_pref'/), 'I','1', &
           'Subcolumn 0.67micron optical depth', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('EMISS_11',        (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('EMISS_11',        (/'cosp_scol','trop_pref'/), 'I','1', &
           'Subcolumn 11micron emissivity', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('MODIS_fracliq',   (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('MODIS_fracliq',   (/'cosp_scol','trop_pref'/), 'I','1', &
           'Fraction of tau from liquid water', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('MODIS_asym',      (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('MODIS_asym',      (/'cosp_scol','trop_pref'/), 'I','1', &
           'Asymmetry parameter (MODIS)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('MODIS_ssa',       (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('MODIS_ssa',       (/'cosp_scol','trop_pref'/), 'I','1', &
           'Single-scattering albedo (MODIS)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot',     (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_betatot',     (/'cosp_scol','trop_pref'/), 'I','1', &
           'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot_ice', (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_betatot_ice', (/'cosp_scol','trop_pref'/), 'I','1', &
           'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot_liq', (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_betatot_liq', (/'cosp_scol','trop_pref'/), 'I','1', &
           'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot',      (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_tautot',      (/'cosp_scol','trop_pref'/), 'I','1', &
           'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot_ice',  (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_tautot_ice',  (/'cosp_scol','trop_pref'/), 'I','1', &
           'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot_liq',  (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CAL_tautot_liq',  (/'cosp_scol','trop_pref'/), 'I','1', &
           'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CS_z_vol',        (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CS_z_vol',        (/'cosp_scol','trop_pref'/), 'I','1', &
           'Effective reflectivity factor (CLOUDSAT)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CS_kr_vol',       (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CS_kr_vol',       (/'cosp_scol','trop_pref'/), 'I','1', &
           'Attenuation coefficient (hydro) (CLOUDSAT)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CS_g_vol',        (/'cosp_scol','lev      '/), 'I','1', &
+       call addfld ('CS_g_vol',        (/'cosp_scol','trop_pref'/), 'I','1', &
           'Attenuation coefficient (gases) (CLOUDSAT)', flag_xyfill=.true., fill_value=R_UNDEF)
 
        call add_default('PS_COSP',         cosp_histfile_aux_num,' ')
@@ -1302,10 +1302,10 @@ CONTAINS
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
     real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
-    real(r8),dimension(pcols,nlay*nscol_cosp) :: &
-         tau067_out,emis11_out,fracliq_out,cal_betatot,cal_betatot_ice, &
-         cal_betatot_liq,cal_tautot,cal_tautot_ice,cal_tautot_liq,cs_gvol_out,cs_krvol_out,cs_zvol_out,&
-         asym34_out,ssa34_out
+    real(r8), dimension(pcols,nlay*nscol_cosp) :: &
+       tau067_out, emis11_out, fracliq_out, asym34_out, ssa34_out, &
+       cal_betatot,cal_betatot_ice, cal_betatot_liq, cal_tautot, cal_tautot_ice, &
+       cal_tautot_liq, cs_gvol_out, cs_krvol_out, cs_zvol_out
 
     type(interp_type)  :: interp_wgts
     integer, parameter :: extrap_method = 1   ! sets extrapolation method to boundary value (1)
