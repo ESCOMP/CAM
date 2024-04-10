@@ -811,6 +811,7 @@ CONTAINS
           'T_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('RH_COSP',         (/            'lev'/), 'I','percent', &
           'RH_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+
        call addfld ('TAU_067',         (/'cosp_scol','lev      '/), 'I','1', &
           'Subcolumn 0.67micron optical depth', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('EMISS_11',        (/'cosp_scol','lev      '/), 'I','1', &
