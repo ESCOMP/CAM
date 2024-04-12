@@ -11,7 +11,7 @@ module TJ2016_cam
   !-----------------------------------------------------------------------
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use ppgrid,         only: pcols, pver, pverp
+  use ppgrid,         only: pcols, pver
   use constituents,   only: pcnst
 
   use physics_buffer, only: dtype_r8, pbuf_add_field, physics_buffer_desc, &
@@ -203,7 +203,6 @@ end subroutine Thatcher_Jablonowski_register
 
     real(r8) :: zvirv(pcols,pver)             ! ratio of water vapor to dry air constants - 1
     real(r8) :: clat(state%ncol)              ! latitudes(radians) for columns
-    real(r8) :: lnpint(state%ncol, 2)         ! ln(int. press. (Pa))
     real(r8) :: T(state%ncol, pver)           ! T temporary
     real(r8) :: qv(state%ncol, pver)          ! Q temporary (specific humidity)
     real(r8) :: U(state%ncol, pver)           ! U temporary
@@ -229,7 +228,6 @@ end subroutine Thatcher_Jablonowski_register
     call get_rlat_all_p(lchnk, ncol, clat)
 
     ! Gather temporary arrays
-    lnpint(:ncol, 1:2) = state%lnpint(:ncol,pver:pver+1)
     T(:ncol, :) = state%T(:ncol, :)
     U(:ncol, :) = state%U(:ncol, :)
     V(:ncol, :) = state%V(:ncol, :)
@@ -277,9 +275,9 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call tj2016_sfc_pbl_hs_run(ncol, pver, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pver, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
          rhoh2o, zvirv(:ncol,:),           &
-         ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), lnpint(:,pverp:pver), &
+         ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
          state%rpdel(:ncol,:), T, U, dudt, V, dvdt, qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
          cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol),      &
          ptend%s(:ncol,:), scheme_name, errmsg, errflg)
