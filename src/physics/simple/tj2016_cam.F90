@@ -278,15 +278,15 @@ end subroutine Thatcher_Jablonowski_register
     call tj2016_sfc_pbl_hs_run(ncol, pver, pver, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
          rhoh2o, zvirv(:ncol,:),           &
          ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
-         state%rpdel(:ncol,:), T, U, dudt, V, dvdt, qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
+         state%rpdel(:ncol,:), T, U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
          cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol),      &
          ptend%s(:ncol,:), scheme_name, errmsg, errflg)
 
     ! Back out tendencies from updated fields
     do k = 1, pver
     !  ptend%s(:ncol,k) = (T(:, k) - state%T(:ncol, k)) / ztodt * cpair
-      ptend%u(:ncol,k) = (U(:, k) - state%U(:ncol, k)) / ztodt
-      ptend%v(:ncol,k) = (V(:, k) - state%V(:ncol, k)) / ztodt
+     ! ptend%u(:ncol,k) = (U(:, k) - state%U(:ncol, k)) / ztodt
+     ! ptend%v(:ncol,k) = (V(:, k) - state%V(:ncol, k)) / ztodt
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
     end do
 
