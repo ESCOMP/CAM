@@ -11,7 +11,7 @@ module TJ2016_cam
   !-----------------------------------------------------------------------
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use ppgrid,         only: pcols, pver
+  use ppgrid,         only: pcols, pver, pverp
   use constituents,   only: pcnst
 
   use physics_buffer, only: dtype_r8, pbuf_add_field, physics_buffer_desc, &
@@ -275,7 +275,7 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call tj2016_sfc_pbl_hs_run(ncol, pver, pver, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pver, pverp, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
          rhoh2o, zvirv(:ncol,:),           &
          ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
          state%rpdel(:ncol,:), T, U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
