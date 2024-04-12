@@ -165,10 +165,8 @@ module cospsimulator_intr
   ! Variables for COSP input related to radar simulator
   real(r8) :: radar_freq = 94.0_r8               ! CloudSat radar frequency (GHz) (94.0)
   integer :: surface_radar = 0                   ! surface=1, spaceborne=0 (0)
-  integer :: use_mie_tables = 0                  ! use a precomputed lookup table? yes=1,no=0 (0)
   integer :: use_gas_abs = 1                     ! include gaseous absorption? yes=1,no=0 (1)
   integer :: do_ray = 0                          ! calculate/output Rayleigh refl=1, not=0 (0)
-  integer :: melt_lay = 0                        ! melting layer model off=0, on=1 (0)
   real(r8) :: k2 = -1                            ! |K|^2, -1=use frequency dependent default (-1)
 
   ! Variables for COSP input related to lidar simulator
@@ -822,18 +820,6 @@ CONTAINS
           'Asymmetry parameter (MODIS)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('MODIS_ssa',       (/'cosp_scol','trop_pref'/), 'I','1', &
           'Single-scattering albedo (MODIS)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot',     (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot_ice', (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_betatot_liq', (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Backscatter coefficient (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot',      (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot_ice',  (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('CAL_tautot_liq',  (/'cosp_scol','trop_pref'/), 'I','1', &
-          'Vertically integrated ptical-depth (CALIPSO)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('CS_z_vol',        (/'cosp_scol','trop_pref'/), 'I','1', &
           'Effective reflectivity factor (CLOUDSAT)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('CS_kr_vol',       (/'cosp_scol','trop_pref'/), 'I','1', &
@@ -854,12 +840,6 @@ CONTAINS
        call add_default('MODIS_fracliq',   cosp_histfile_aux_num,' ')
        call add_default('MODIS_asym',      cosp_histfile_aux_num,' ')
        call add_default('MODIS_ssa',       cosp_histfile_aux_num,' ')
-       call add_default('CAL_betatot',     cosp_histfile_aux_num,' ')
-       call add_default('CAL_betatot_ice', cosp_histfile_aux_num,' ')
-       call add_default('CAL_betatot_liq', cosp_histfile_aux_num,' ')
-       call add_default('CAL_tautot',      cosp_histfile_aux_num,' ')
-       call add_default('CAL_tautot_ice',  cosp_histfile_aux_num,' ')
-       call add_default('CAL_tautot_liq',  cosp_histfile_aux_num,' ')
        call add_default('CS_z_vol',        cosp_histfile_aux_num,' ')
        call add_default('CS_kr_vol',       cosp_histfile_aux_num,' ')
        call add_default('CS_g_vol',        cosp_histfile_aux_num,' ')
@@ -904,7 +884,7 @@ CONTAINS
     ! Local
     logical :: ldouble=.false.
     logical :: lsingle=.true. ! Default is to use single moment
-    integer :: i,k
+    integer :: k
 
     prsmid_cosp  = pres_binCenters
     prslim_cosp  = pres_binEdges
@@ -944,8 +924,8 @@ CONTAINS
          isccp_topheight, isccp_topheight_direction, surface_radar, rcfg_cloudsat,           &
          use_vgrid, csat_vgrid, Nlr, nlay, cloudsat_micro_scheme)
 
-    if (use_vgrid) then		!! using fixed vertical grid
-       if (csat_vgrid)       then
+    if (use_vgrid) then      !! using fixed vertical grid
+       if (csat_vgrid) then
           nht_cosp = 40
        else
           nht_cosp = Nlr
@@ -1056,7 +1036,7 @@ CONTAINS
     use cam_history_support,  only: max_fieldname_len
 
 #ifdef USE_COSP
-    use mod_cosp_config,      only: R_UNDEF,parasol_nrefl, Nlvgrid, vgrid_zl, vgrid_zu
+    use mod_cosp_config,      only: R_UNDEF,parasol_nrefl, Nlvgrid
     use mod_cosp,             only: cosp_simulator
     use mod_quickbeam_optics, only: size_distribution
 #endif
@@ -1303,9 +1283,7 @@ CONTAINS
     real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
     real(r8), dimension(pcols,nlay*nscol_cosp) :: &
-       tau067_out, emis11_out, fracliq_out, asym34_out, ssa34_out, &
-       cal_betatot,cal_betatot_ice, cal_betatot_liq, cal_tautot, cal_tautot_ice, &
-       cal_tautot_liq, cs_gvol_out, cs_krvol_out, cs_zvol_out
+       tau067_out, emis11_out, fracliq_out, asym34_out, ssa34_out
 
     type(interp_type)  :: interp_wgts
     integer, parameter :: extrap_method = 1   ! sets extrapolation method to boundary value (1)
@@ -1694,7 +1672,7 @@ CONTAINS
     ! Construct COSP output derived type.
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
-    call construct_cosp_outputs(ncol, nscol_cosp, nlay, Nlvgrid, 0, cospOUT)
+    call construct_cosp_outputs(ncol, nscol_cosp, nlay, Nlvgrid, cospOUT)
     call t_stopf("construct_cosp_outputs")
     
     ! ######################################################################################
@@ -2903,14 +2881,13 @@ CONTAINS
   !
   ! This subroutine allocates output fields based on input logical flag switches.
   ! ######################################################################################  
-  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,Nchan,x)
+  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,x)
     ! Inputs
     integer,intent(in) :: &
          Npoints,         & ! Number of sampled points
          Ncolumns,        & ! Number of subgrid columns
          Nlevels,         & ! Number of model levels
-         Nlvgrid,         & ! Number of levels in L3 stats computation
-         Nchan              ! Number of RTTOV channels  
+         Nlvgrid            ! Number of levels in L3 stats computation
     
     ! Outputs
     type(cosp_outputs),intent(out) :: &
