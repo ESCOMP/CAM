@@ -1164,9 +1164,6 @@ CONTAINS
     ! CAM pointers to get variables from radiation interface (get from rad_cnst_get_gas)
     real(r8), pointer, dimension(:,:) :: q               ! specific humidity (kg/kg)
     real(r8), pointer, dimension(:,:) :: o3              ! Mass mixing ratio 03
-    real(r8), pointer, dimension(:,:) :: co2             ! Mass mixing ratio C02
-    real(r8), pointer, dimension(:,:) :: ch4             ! Mass mixing ratio CH4
-    real(r8), pointer, dimension(:,:) :: n2o             ! Mass mixing ratio N20
     
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
@@ -1197,7 +1194,6 @@ CONTAINS
     ! Multiple "mdims" are collapsed because CAM history buffers only support one mdim.
     ! MIXED DIMS: ntau_cosp*nprs_cosp, CLOUDSAT_DBZE_BINS*nht_cosp, nsr_cosp*nht_cosp, nscol_cosp*nlay,
     !             ntau_cosp*nhtmisr_cosp
-    !  Always making mixed variables VERTICAL*OTHER, e.g., pressure*tau or ht*dbze
     real(r8) :: clisccp2(pcols,ntau_cosp,nprs_cosp)
     real(r8) :: cfad_dbze94(pcols,CLOUDSAT_DBZE_BINS,nht_cosp)
     real(r8) :: cfad_lidarsr532(pcols,nsr_cosp,nht_cosp)
@@ -1457,8 +1453,6 @@ CONTAINS
     ! state%lat   ! lat (radians) 
     ! state%lon   ! lon (radians) 
     ! state%t     ! temperature (K)
-    ! state%u     ! u_wind zonal wind (m/s)
-    ! state%v     ! v_wind meridional wind (m/s)
     ! state%ps    ! surface pressure (Pa)
     ! state%pint  ! p - p_in_full_levels (Pa)
     ! state%pmid  ! ph - p_in_half_levels (Pa)
@@ -1477,9 +1471,6 @@ CONTAINS
     ! radiative constituents (prognostic or data)
     call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)                     
     call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
-    call rad_cnst_get_gas(0,'CH4', state, pbuf,  ch4)
-    call rad_cnst_get_gas(0,'CO2', state, pbuf,  co2)
-    call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
     
     ! fields from physics buffer
     itim_old = pbuf_old_tim_idx()
