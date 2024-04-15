@@ -71,8 +71,8 @@
       real(r8), allocatable :: xs_o3b(:)
       real(r8), allocatable :: xs_wl(:,:)
 
-      real(r8), parameter :: o2xs_llimit = 38._r8 ! ln(NO2) lower limit
-      real(r8), parameter :: o2xs_ulimit = 56._r8 ! ln(NO2) upper limit
+      real(r8), parameter :: lno2_llimit = 38._r8 ! ln(NO2) lower limit
+      real(r8), parameter :: lno2_ulimit = 56._r8 ! ln(NO2) upper limit
 
       contains
 
@@ -1495,13 +1495,13 @@
 
       do k = 1,nlev
 	x  = log( o2col(k) )
-	if( x >= o2xs_llimit .and. x <= o2xs_ulimit ) then
+	if( x >= lno2_llimit .and. x <= lno2_ulimit ) then
           call effxs( x, tlev(k), xs )
           xscho2(k,:) = xs(:)
-	else if( x < o2xs_llimit ) then
+	else if( x < lno2_llimit ) then
 	   ktop1 = k-1
            ktop  = min( ktop1,ktop )
-	else if( x > o2xs_ulimit ) then
+	else if( x > lno2_ulimit ) then
 	   kbot = k
 	end if
       end do
@@ -1653,7 +1653,7 @@
 !-------------------------------------------------------------
       integer :: i
 
-      if (x<o2xs_llimit .or. x>o2xs_ulimit) then
+      if (x<lno2_llimit .or. x>lno2_ulimit) then
          call endrun('mo_jshort::calc_params of O2 abs xs: x is not in the valid range. ')
       end if
 
@@ -1669,7 +1669,7 @@
       contains
 
         ! Use Clenshaw summation algorithm to evaluate Chebyshev polynomial at point
-        ! [pnt - (o2xs_ulimit + o2xs_llimit)/2]/[(o2xs_ulimit - o2xs_llimit)/2]
+        ! [pnt - (lno2_ulimit + lno2_llimit)/2]/[(lno2_ulimit - lno2_llimit)/2]
         ! given coefficients coefs within limits lim1 and lim2
         pure function evalchebpoly( coefs, pnt ) result(cval)
           real(r8), intent(in) :: coefs(:)
@@ -1683,7 +1683,7 @@
 
           ncoef = size(coefs)
 
-          fac(1) = (2._r8*pnt-o2xs_llimit-o2xs_ulimit)/(o2xs_ulimit-o2xs_llimit)
+          fac(1) = (2._r8*pnt-lno2_llimit-lno2_ulimit)/(lno2_ulimit-lno2_llimit)
           fac(2) = 2._r8*fac(1)
 
           ! Clenshaw recurrence summation
