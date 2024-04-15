@@ -608,11 +608,11 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    lengath = count(ideep > 0)
    if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
 
-   jctop(:) = pver
-   jcbot(:) = 1
+   jctop(:) = real(pver,r8)
+   jcbot(:) = 1._r8
    do i = 1,lengath
-      jctop(ideep(i)) = jt(i)
-      jcbot(ideep(i)) = maxg(i)
+      jctop(ideep(i)) = real(jt(i), r8)
+      jcbot(ideep(i)) = real(maxg(i), r8)
    end do
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
@@ -779,8 +779,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
      ! Output ptend variables before they are set to zero with physics_update
-     call outfld('ZMMTU', ptend_loc%u(1,1), pcols, lchnk)
-     call outfld('ZMMTV', ptend_loc%v(1,1), pcols, lchnk)
+     call outfld('ZMMTU', ptend_loc%u, pcols, lchnk)
+     call outfld('ZMMTV', ptend_loc%v, pcols, lchnk)
 
      ! update physics state type state1 with ptend_loc
      call physics_update(state1, ptend_loc, ztodt)
@@ -793,16 +793,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call outfld('ZMMTT', ftem             , pcols, lchnk)
 
      ! Output apparent force from  pressure gradient
-     call outfld('ZMUPGU', pguallu(1,1), pcols, lchnk)
-     call outfld('ZMUPGD', pgdallu(1,1), pcols, lchnk)
-     call outfld('ZMVPGU', pguallv(1,1), pcols, lchnk)
-     call outfld('ZMVPGD', pgdallv(1,1), pcols, lchnk)
+     call outfld('ZMUPGU', pguallu, pcols, lchnk)
+     call outfld('ZMUPGD', pgdallu, pcols, lchnk)
+     call outfld('ZMVPGU', pguallv, pcols, lchnk)
+     call outfld('ZMVPGD', pgdallv, pcols, lchnk)
 
      ! Output in-cloud winds
-     call outfld('ZMICUU', icwuu(1,1), pcols, lchnk)
-     call outfld('ZMICUD', icwdu(1,1), pcols, lchnk)
-     call outfld('ZMICVU', icwuv(1,1), pcols, lchnk)
-     call outfld('ZMICVD', icwdv(1,1), pcols, lchnk)
+     call outfld('ZMICUU', icwuu, pcols, lchnk)
+     call outfld('ZMICUD', icwdu, pcols, lchnk)
+     call outfld('ZMICVU', icwuv, pcols, lchnk)
+     call outfld('ZMICVD', icwdv, pcols, lchnk)
 
    end if
 
