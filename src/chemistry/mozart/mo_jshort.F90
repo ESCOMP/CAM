@@ -1606,7 +1606,7 @@
 !     X = log of slant column of O2
 !     A,B are calculated from Chebyshev polynomial coeffs
 !     AC and BC using Clenshaw summation algorithm within
-!     the interval is 38<ln(NO2)<56.
+!     the interval 38<ln(NO2)<56.
 !
 !     Revision History:
 !
@@ -1666,37 +1666,37 @@
          b(i) = evalchebpoly( bc(:,i), x )
       end do
 
-    contains
+      contains
 
-      ! Use Clenshaw summation algorithm to evaluate Chebyshev polynomial at point
-      ! [pnt - (o2xs_ulimit + o2xs_llimit)/2]/[(o2xs_ulimit - o2xs_llimit)/2]
-      ! given coefficients coefs within limits lim1 and lim2
-      function evalchebpoly( coefs, pnt ) result(cval)
-        real(r8), intent(in) :: coefs(:)
-        real(r8), intent(in) :: pnt
+        ! Use Clenshaw summation algorithm to evaluate Chebyshev polynomial at point
+        ! [pnt - (o2xs_ulimit + o2xs_llimit)/2]/[(o2xs_ulimit - o2xs_llimit)/2]
+        ! given coefficients coefs within limits lim1 and lim2
+        pure function evalchebpoly( coefs, pnt ) result(cval)
+          real(r8), intent(in) :: coefs(:)
+          real(r8), intent(in) :: pnt
 
-        real(r8) :: cval
-        real(r8) :: fac(2)
-        real(r8) :: csum(2) ! Clenshaw summation
-        integer :: ndx
-        integer :: ncoef
+          real(r8) :: cval
+          real(r8) :: fac(2)
+          real(r8) :: csum(2) ! Clenshaw summation
+          integer :: ndx
+          integer :: ncoef
 
-        ncoef = size(coefs)
+          ncoef = size(coefs)
 
-        fac(1) = (2._r8*pnt-o2xs_llimit-o2xs_ulimit)/(o2xs_ulimit-o2xs_llimit)
-        fac(2) = 2._r8*fac(1)
+          fac(1) = (2._r8*pnt-o2xs_llimit-o2xs_ulimit)/(o2xs_ulimit-o2xs_llimit)
+          fac(2) = 2._r8*fac(1)
 
-        ! Clenshaw recurrence summation
-        csum(:) = 0.0_r8
-        do ndx = ncoef, 2, -1
-           cval = csum(1)
-           csum(1) = fac(2)*csum(1) - csum(2) + coefs(ndx)
-           csum(2) = cval
-        end do
+          ! Clenshaw recurrence summation
+          csum(:) = 0.0_r8
+          do ndx = ncoef, 2, -1
+             cval = csum(1)
+             csum(1) = fac(2)*csum(1) - csum(2) + coefs(ndx)
+             csum(2) = cval
+          end do
 
-        cval = fac(1)*csum(1) - csum(2) + 0.5_r8*coefs(1)
+          cval = fac(1)*csum(1) - csum(2) + 0.5_r8*coefs(1)
 
-      end function evalchebpoly
+        end function evalchebpoly
 
       end subroutine calc_params
 
