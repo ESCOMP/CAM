@@ -5516,6 +5516,7 @@ end subroutine print_active_fldlst
 #endif
 
     integer :: yr, mon, day      ! year, month, and day components of a date
+    integer :: yr_mid, mon_mid, day_mid ! year, month, and day components of midpoint date
     integer :: nstep             ! current timestep number
     integer :: ncdate(maxsplitfiles) ! current (or midpoint) date in integer format [yyyymmdd]
     integer :: ncsec(maxsplitfiles)  ! current (or midpoint) time of day [seconds]
@@ -5529,7 +5530,6 @@ end subroutine print_active_fldlst
     logical :: prev              ! Label file with previous date rather than current
     logical :: duplicate         ! Flag for duplicate file name
     integer :: ierr
-    integer :: ncsec_temp
 #if ( defined BFB_CAM_SCAM_IOP )
     integer :: tsec             ! day component of current time
     integer :: dtime            ! seconds component of current time
@@ -5583,6 +5583,7 @@ end subroutine print_active_fldlst
            end if
         end if
       end if
+
       time = ndcur + nscur/86400._r8
       if (is_initfile(file_index=t)) then
         tdata = time   ! Inithist file is always instantanious data
@@ -5590,10 +5591,12 @@ end subroutine print_active_fldlst
         tdata(1) = beg_time(t)
         tdata(2) = time
       end if
+
       ! Set midpoint date/datesec for accumulated file
-      call set_date_from_time_float((tdata(1) + tdata(2)) / 2._r8, yr, mon, day, ncsec_temp)
-      ncsec(accumulated_file_index) = ncsec_temp
-      ncdate(accumulated_file_index) = yr*10000 + mon*100 + day
+      call set_date_from_time_float((tdata(1) + tdata(2)) / 2._r8, &
+         yr_mid, mon_mid, day_mid, ncsec(accumulated_file_index) )
+      ncdate(accumulated_file_index) = yr_mid*10000 + mon_mid*100 + day_mid
+
       if (hstwr(t) .or. (restart .and. rgnht(t))) then
         if(masterproc) then
           if(is_initfile(file_index=t)) then
@@ -5609,7 +5612,7 @@ end subroutine print_active_fldlst
               if (f == instantaneous_file_index) then
                 write(iulog,200) nfils(t),'instantaneous',t,yr,mon,day,ncsec(f)
               else
-                write(iulog,200) nfils(t),'accumulated',t,yr,mon,day,ncsec(f)
+                write(iulog,200) nfils(t),'accumulated',t,yr_mid,mon_mid,day_mid,ncsec(f)
               end if
 200           format('WSHIST: writing time sample ',i3,' to ', a, ' h-file ', &
                    i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)

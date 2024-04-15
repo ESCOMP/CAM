@@ -577,7 +577,7 @@ contains
     deallocate(gp%weights)
 
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
-    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,1.0_r8,'    ')
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
@@ -600,29 +600,34 @@ contains
     lev_set = sponge_del4_lev < 0
     if (ptop>1000.0_r8) then
       !
-      ! low top (~1000 Pa)
+      ! low top; usually idealized test cases
       !
       top_000_032km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_000_032km"
     else if (ptop>100.0_r8) then
       !
-      ! CAM6 top (~225 Pa)
+      ! CAM6 top (~225 Pa) or CAM7 low top
       !
       top_032_042km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_032_042km"
     else if (ptop>1e-1_r8) then
       !
       ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_042_090km"
     else if (ptop>1E-4_r8) then
       !
       ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_090_140km"
     else
       !
       ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_140_600km"
     end if
     !
     ! Logging text for sponge layer configuration
@@ -634,28 +639,24 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_000_032km) then
+    if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 20
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+    else
       if (sponge_del4_lev       <0) sponge_del4_lev        = 1
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
     end if
 
-   if (top_032_042km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8
-    end if
-
+    ! set max wind speed for diagnostics
+    umax = 120.0_r8
     if (top_042_090km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
-    end if
-
-    if (top_090_140km.or.top_140_600km) then
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 10
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
+       umax = 240._r8
+    else if (top_090_140km) then
+       umax = 300._r8
+    else if (top_140_600km) then
+       umax = 800._r8
     end if
     !
     ! Log sponge layer configuration
@@ -672,7 +673,6 @@ contains
        if (lev_set) then
           write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
        end if
-
        write(iulog,* )""
     end if
 
@@ -689,6 +689,7 @@ contains
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
     end do
+
     if (hybrid%masterthread)then
       write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
       call std_atm_height(pmid(:),z(:))
@@ -696,8 +697,16 @@ contains
       do k=1,nlev
         write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
       end do
-    end if
+      if (nu_top>0) then
+        write(iulog,*) ": ksponge_end = ",ksponge_end
+        write(iulog,*) ": sponge layer Laplacian damping"
+        write(iulog,*) "k, p, z, nu_scale_top, nu (actual Laplacian damping coefficient)"
 
+        do k=1,ksponge_end
+           write(iulog,'(i3,4e11.4)') k,pmid(k),z(k),nu_scale_top(k),nu_scale_top(k)*nu_top
+        end do
+      end if
+    end if
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -732,16 +741,6 @@ contains
     S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
     S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
     S_rk_tracer = 2.0_r8
-    !
-    ! estimate max winds
-    !
-    if (ptop>100.0_r8) then
-      umax = 120.0_r8
-    else if (ptop>10.0_r8) then
-      umax = 400.0_r8
-    else
-      umax = 800.0_r8
-    end if
 
     ugw = 342.0_r8 !max gravity wave speed
 
@@ -778,13 +777,14 @@ contains
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis,&
            's ',dt_dyn_visco_actual,'s'
       if (dt_dyn_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
-      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
+      if (.not.use_cslam) then
+         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
            dt_tracer_se_actual,'s'
-      if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
-      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
-           dt_tracer_visco_actual,'s'
-      if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
-
+         if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
+         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
+              dt_tracer_visco_actual,'s'
+         if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
+      end if
       if (use_cslam) then
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
              's ',dt_tracer_fvm_actual
