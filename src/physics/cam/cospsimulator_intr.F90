@@ -1088,7 +1088,8 @@ CONTAINS
     ! cosp convective value includes both deep and shallow convection
     real(r8), allocatable :: &
        zmid(:,:), &           ! layer midpoint height asl (m)
-       zbot(:,:), &           ! bottom interface height asl (m)
+       zint(:,:), &           ! layer interface height asl (m)
+       surf_hgt(:), &         ! surface height (m)
        landmask(:), &         ! landmask (0 or 1)
        mr_ccliq(:,:), &       ! mixing_ratio_convective_cloud_liquid (kg/kg)
        mr_ccice(:,:), &       ! mixing_ratio_convective_cloud_ice (kg/kg)
@@ -1519,7 +1520,8 @@ CONTAINS
 
     allocate( &
        zmid(ncol,nlay), &
-       zbot(ncol,nlay), &
+       zint(ncol,nlayp), &
+       surf_hgt(ncol),   &
        landmask(ncol),   &
        mr_ccliq(ncol,nlay), &
        mr_ccice(ncol,nlay), &
@@ -1543,12 +1545,13 @@ CONTAINS
     
     ! add surface height (surface geopotential/gravity) to convert CAM heights based on
     ! geopotential above surface into height above sea level
+    surf_hgt = state%phis(:ncol)/gravit
     do k = 1, nlay
-       zmid(:,k) = state%zm(:ncol,ktop+k-1) + state%phis(:ncol)/gravit
-       ! bottom interface of each layer
-       zbot(:,k) = state%zi(:ncol,ktop+k)   + state%phis(:ncol)/gravit
+       zmid(:,k) = state%zm(:ncol,ktop+k-1) + surf_hgt
+       zint(:,k) = state%zi(:ncol,ktop+k-1) + surf_hgt
     end do
-    
+    zint(:,nlayp) = surf_hgt
+
     landmask = 0._r8
     do i = 1, ncol
        if (cam_in%landfrac(i) > 0.01_r8) landmask(i)= 1
@@ -1684,21 +1687,19 @@ CONTAINS
     call construct_cospstateIN(ncol, nlay, 0, cospstateIN)      
 
     ! convert to degrees.  Lat in range [-90,..,90], Lon in range [0,..,360]
-    cospstateIN%lat                            = state%lat(:ncol)*180._r8/pi
-    cospstateIN%lon                            = state%lon(:ncol)*180._r8/pi
-    cospstateIN%at                             = state%t(:ncol,ktop:pver) 
-    cospstateIN%qv                             = q(:ncol,ktop:pver)
-    cospstateIN%o3                             = o3(:ncol,ktop:pver)  
-    cospstateIN%sunlit                         = cam_sunlit(:ncol)
-    cospstateIN%skt                            = cam_in%ts(:ncol)
-    cospstateIN%land                           = landmask
-    cospstateIN%pfull                          = state%pmid(:ncol,ktop:pver)
-    cospstateIN%phalf(:,1)                     = 0._r8
-    cospstateIN%phalf(:,2:nlay+1)              = state%pint(1:ncol,ktop+1:pverp)
-    cospstateIN%hgt_matrix                     = zmid
-    cospstateIN%hgt_matrix_half(:ncol,nlay+1)  = 0._r8
-    cospstateIN%hgt_matrix_half(:ncol,:nlay)   = zbot
-    cospstateIN%surfelev                       = zbot(:ncol,nlay)
+    cospstateIN%lat             = state%lat(:ncol)*180._r8/pi
+    cospstateIN%lon             = state%lon(:ncol)*180._r8/pi
+    cospstateIN%at              = state%t(:ncol,ktop:pver)
+    cospstateIN%qv              = q(:ncol,ktop:pver)
+    cospstateIN%o3              = o3(:ncol,ktop:pver)
+    cospstateIN%sunlit          = cam_sunlit(:ncol)
+    cospstateIN%skt             = cam_in%ts(:ncol)
+    cospstateIN%land            = landmask
+    cospstateIN%pfull           = state%pmid(:ncol,ktop:pver)
+    cospstateIN%phalf           = state%pint(:ncol,ktop:pverp)
+    cospstateIN%hgt_matrix      = zmid
+    cospstateIN%hgt_matrix_half = zint
+    cospstateIN%surfelev        = surf_hgt
     call t_stopf("construct_cospstateIN")
 
     ! Optical inputs
