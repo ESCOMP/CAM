@@ -32,9 +32,11 @@ def _build_fms(caseroot, libroot, bldroot):
 
         # Only need FMS for fv3 dycore
         cam_dycore = case.get_value("CAM_DYCORE")
+        srcroot = case.get_value("SRCROOT")
         if cam_dycore == "fv3":
             # first check for the external FMS library and build it
             # Check to see if some other component built it already
+            fmsbuildlib = os.path.join(srcroot, "libraries", "FMS", "buildlib")
             librootfms = os.path.join(libroot, "libfms.a")
             if not os.path.exists(librootfms):
                 if case.get_value("DEBUG"):
@@ -60,8 +62,8 @@ def _build_fms(caseroot, libroot, bldroot):
                         #todo: call checkout_externals to get this component
                         expect(False, "FMS external not found")
                     else:
-                        stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, fmsbuildroot, fmsinstallpath, caseroot), verbose=True)
-                        expect(stat==0, "FMS build Failed {}".format(err))
+                        stat, _, err = run_cmd(f"{fmsbuildlib} {fmsbuildroot} {fmsinstallpath} {caseroot}", verbose=True)
+                        expect(stat==0, f"FMS build Failed {err}")
 
                 if os.path.exists(install_libfms):
                     shutil.copy(install_libfms, libroot)

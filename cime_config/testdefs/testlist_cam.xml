@@ -304,6 +304,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >CAM6-FV3 exact restart test</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
