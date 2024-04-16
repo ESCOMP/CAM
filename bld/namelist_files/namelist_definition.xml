@@ -3771,6 +3771,11 @@ air is supersaturated with respect to ice.
 Plume widths for theta_l and rt
 </entry>
 
+<entry id="clubb_bv_efold" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+E-folding parameter for mixed Brunt Vaisala Frequency
+</entry>
+
 <entry id="clubb_c1" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Limiting value of C1 when skewness of w (vertical velocity) is small in
@@ -4010,6 +4015,15 @@ Gaussian PDF, and also decreases the difference between the means of w from
 each Gaussian.
 </entry>
 
+<entry id="clubb_iiPDF_type" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="1,2,3,4,5,6,7" >
+Selected option for the two-component normal (double Gaussian) PDF type to use for the w, rt,
+and theta-l (or w, chi, and eta) portion of CLUBB's multivariate, two-component PDF.
+iiPDF_ADG1 = 1 (ADG1 PDF), iiPDF_ADG2 = 2 (ADG2 PDF), iiPDF_3D_Luhar = 3 (3D Luhar PDF),
+iiPDF_new = 4 (new PDF), iiPDF_TSDADG = 5 (TSDADG PDF), iiPDF_LY93 = 6 (Lewellen and Yoh (1993)),
+iiPDF_new_hybrid = 7 (new hybrid PDF)
+</entry>
+
 <entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="1,2,3" >
 Option for the placement of the call to CLUBB's PDF closure. The options include: ipdf_pre_advance_fields (1) calls the PDF closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
@@ -4033,11 +4047,32 @@ Flag to uses an alternate equation to calculate the Brunt-Vaisala frequency.
 This equation calculates an in-cloud Brunt-Vaisala frequency.
 </entry>
 
+<entry id="clubb_l_C2_cloud_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use cloud fraction to adjust the value of the
+turbulent dissipation coefficient, C2.
+</entry>
+
+<entry id="clubb_l_calc_thlp2_rad" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Include the contribution of radiation to thlp2
+</entry>
+
+<entry id="clubb_l_calc_w_corr" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Calculate the correlations between w and the hydrometeors
+</entry>
+
 <entry id="clubb_l_call_pdf_closure_twice" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to call CLUBB's PDF closure at both thermodynamic and momentum vertical
 grid levels.  When this flag is turned off, CLUBB's PDF closure is only called
 on thermodynamic grid levels.
+</entry>
+
+<entry id="clubb_l_const_Nc_in_cloud" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use a constant cloud droplet conc. within cloud
 </entry>
 
 <entry id="clubb_l_damp_wp2_using_em" type="logical" category="pblrad"
@@ -4061,6 +4096,17 @@ is turned off, Lscale is calculated first, and then dissipation time-scale tau
 is calculated as tau = Lscale / sqrt(tke).
 </entry>
 
+<entry id="clubb_l_diagnose_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Diagnose correlations instead of using fixed ones
+</entry>
+
+<entry id="clubb_l_diffuse_rtm_and_thlm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Implicit diffusion on moisture and temperature, implemented within CLUBB's
+matrix equations for wprtp/rtm and wpthlp/thlm.
+</entry>
+
 <entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Explicit diffusion on temperature and moisture by CLUBB, in addition to CLUBB's
@@ -4075,6 +4121,11 @@ Flag to run CLUBB with E3SM settings.
 <entry id="clubb_l_enable_relaxed_clipping" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats.
+</entry>
+
+<entry id="clubb_l_fix_w_chi_eta_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use a fixed correlation for s and t Mellor(chi/eta)
 </entry>
 
 <entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
@@ -4171,6 +4222,11 @@ horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
 calculated by down-gradient diffusion.
 </entry>
 
+<entry id="clubb_l_prescribed_avg_deltaz" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+used in adj_low_res_nu. If .true., avg_deltaz = deltaz
+</entry>
+
 <entry id="clubb_l_rcm_supersat_adj" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to take any remaining supersaturation after CLUBB PDF call and add it to
@@ -4178,6 +4234,11 @@ rcm (mean cloud water mixing ratio).  Supersaturation may be found after the
 PDF call due to issues when the PDF is called on both the thermodynamic grid
 levels and the momentum grid levels and variables are interpolated between the
 two grid level types.
+</entry>
+
+<entry id="clubb_l_rtm_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Turn on (true) and off (false) rtm nudging.
 </entry>
 
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
@@ -4192,11 +4253,23 @@ Use the standard discretization for the turbulent advection terms.  Setting to
 advance_wp2_wp3_module.F90 and in advance_xp2_xpyp_module.F90.
 </entry>
 
+<entry id="clubb_l_stability_correct_Kh_N2_zm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Whether or not we want CLUBB to apply a stability correction Kh_N2_zm.
+</entry>
+
 <entry id="clubb_l_stability_correct_tau_zm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use a stability corrected version of CLUBB's time scale (tau_zm).  This
 creates a time scale that provides stronger damping at altitudes where
 Brunt-Vaisala frequency is large.
+</entry>
+
+<entry id="clubb_l_tke_aniso" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use anisotropic turbulent kinetic energy in the CLUBB higher order closure, i.e.
+calculate TKE = 1/2 (u'^2 + v'^2 + w'^2). This improves the simulation of complex
+turbulence but at a greater cost than running without.
 </entry>
 
 <entry id="clubb_l_trapezoidal_rule_zm" type="logical" category="pblrad"
@@ -4215,6 +4288,13 @@ adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zt flag applies this
 adjustment to PDF fields calculated on thermodynamic vertical grid levels.
 </entry>
 
+<entry id="clubb_l_upwind_xm_ma" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent or mean advection terms. It
+affects rtm, thlm, sclrm, um and vm.
+</entry>
+
 <entry id="clubb_l_upwind_xpyp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use "upwind" discretization in the turbulent advection term in the
@@ -4222,6 +4302,11 @@ xpyp predictive equation, where xpyp is a field such as rtp2 (variance of
 vertical velocity) or rtpthlp (covariance of total water and liquid water
 potential temperature).  When this flag is turned off, centered discretization
 is used.
+</entry>
+
+<entry id="clubb_l_uv_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Turn on (true) or off (false) uv wind speed nudging.
 </entry>
 
 <entry id="clubb_l_use_C11_Richardson" type="logical" category="pblrad"
@@ -4244,6 +4329,13 @@ a flux such as total water flux or flux of liquid water potential temperature.
 Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
 levels influence the amount of cloudiness and amount of cloud water in a
 grid box.
+</entry>
+
+<entry id="clubb_l_use_precip_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use precipitation fraction in KK microphysics. The
+precipitation fraction is automatically set to 1 when this
+flag is turned off.
 </entry>
 
 <entry id="clubb_l_use_shear_Richardson" type="logical" category="pblrad"
@@ -4329,6 +4421,16 @@ clubb_up2_sfc_coef increases the values of up2 and vp2 at the surface.
 <entry id="clubb_wpxp_L_thresh" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 CLUBB tunable parameter - Lscale threshold: damp C6 and C7 (units: m)
+</entry>
+
+<entry id="clubb_wpxp_Ri_exp"  type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Exponent for Richardson number in calculation of invrs_tau_wpxp term
+</entry>
+
+<entry id="clubb_z_displace"  type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Displacement of log law profile above ground  (units: m)
 </entry>
 
 <!-- for CLUBB+MF -->
@@ -8251,6 +8353,20 @@ Default: Set by build-namelist.
   3: Hybrid (formulation 1 where hybm>0 else formulation 2)
      Use hybrid PGF option for WACCM-x to make WACCM-x consistent with PGF
      used in CAM in the troposphere and traditional PGF formulation above
+
+  Default: Set by build-namelist.
+</entry>
+
+<entry id="se_dribble_in_rsplit_loop" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="0,1" >
+
+  0: physics tendencies will be added every vertical remapping time-step (dt_phys/se_nsplit)
+     for se_ftype=0,2
+
+  1: physics tendencies will be added every dynamics time-step (dt_phys/se_nsplit*se_rsplit)
+     for se_ftype=0,2
+
+     If se_ftype=1 then se_dribble_in_rsplit_loop has no effect since physics tendencies are added as an adjustment
 
   Default: Set by build-namelist.
 </entry>

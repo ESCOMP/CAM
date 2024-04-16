@@ -262,14 +262,14 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC6" grid="f09_f09_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QSC6" grid="f09_f09_mg17" name="ERP_D_Ln9_P64x2" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
@@ -986,7 +986,7 @@
     </options>
   </test>
 <!--              704 tsm  ter tbl                       -->
-  <test compset="FADIAB" grid="ne5pg4_ne5pg4_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
