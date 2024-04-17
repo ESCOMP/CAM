@@ -3446,6 +3446,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
        add_default($nl, 'clubb_gamma_coefb');
    }
 
+   add_default($nl, 'clubb_bv_efold');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_c_K1');
@@ -3510,6 +3511,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_tridiag_solve_method');
    add_default($nl, 'clubb_up2_sfc_coef');
    add_default($nl, 'clubb_wpxp_L_thresh');
+   add_default($nl, 'clubb_wpxp_Ri_exp');
+   add_default($nl, 'clubb_z_displace');
 
    #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');
@@ -4103,6 +4106,7 @@ if ($dyn =~ /se/) {
 		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
+	          se_dribble_in_rsplit_loop
         );
 
     my %opts;
