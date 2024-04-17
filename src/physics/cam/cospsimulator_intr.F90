@@ -48,6 +48,7 @@ module cospsimulator_intr
   ! Public functions/subroutines
   public :: &
        cospsimulator_intr_readnl,  &
+       cospsimulator_intr_register,&
        cospsimulator_intr_init,    &
        cospsimulator_intr_run
 
@@ -262,8 +263,6 @@ CONTAINS
 
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_readnl
-  ! 
-  ! Read namelist variables and run setcospvalues subroutine.
   ! ######################################################################################
   subroutine cospsimulator_intr_readnl(nlfile)
     use namelist_utils,  only: find_group_name
@@ -431,19 +430,15 @@ CONTAINS
   end subroutine cospsimulator_intr_readnl
 
   ! ######################################################################################
-  ! SUBROUTINE cospsimulator_intr_init
+  ! SUBROUTINE cospsimulator_intr_register
   ! ######################################################################################
-  subroutine cospsimulator_intr_init()
+  subroutine cospsimulator_intr_register()
 
-#ifdef USE_COSP     
+    ! The coordinate variables used for COSP output are defined here.  This
+    ! needs to be done before the call to read_restart_history in order for
+    ! restarts to work.
 
-    use cam_history,         only: addfld, add_default, horiz_only
     use cam_history_support, only: add_hist_coord
-    use physics_buffer,      only: pbuf_get_index
-
-    use mod_cosp_config,     only : R_UNDEF    
-    
-    integer :: i, ierr
     !---------------------------------------------------------------------------
     
     ! Set number of levels used by COSP to the number of levels used by
@@ -451,9 +446,10 @@ CONTAINS
     nlay = pver - ktop + 1
     nlayp = nlay + 1
 
-    ! COSP initialization
+    ! Set COSP coordinate arrays
     call setcosp2values()
 
+#ifdef USE_COSP
     ! Define coordinate variables for COSP outputs.
     if (lisccp_sim .or. lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
@@ -513,6 +509,25 @@ CONTAINS
             bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges_cosp)      
     end if
     
+#endif
+  end subroutine cospsimulator_intr_register
+  
+  ! ######################################################################################
+  ! SUBROUTINE cospsimulator_intr_init
+  ! ######################################################################################
+  subroutine cospsimulator_intr_init()
+
+#ifdef USE_COSP     
+
+    use cam_history,         only: addfld, add_default, horiz_only
+    use physics_buffer,      only: pbuf_get_index
+
+    integer :: i, ierr
+    !---------------------------------------------------------------------------
+    
+    ! The COSP init method was run from cospsimulator_intr_register in order to add
+    ! the history coordinate variables earlier as needed for the restart time sequencing.
+
     ! ISCCP OUTPUTS
     if (lisccp_sim) then
        call addfld('FISCCP1_COSP', (/'cosp_tau','cosp_prs'/), 'A', 'percent', &
