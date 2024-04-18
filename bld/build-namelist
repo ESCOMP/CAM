@@ -920,12 +920,12 @@ if ($aer_model eq 'mam' ) {
   my @mode_spec_src;
   my %modal_groups;
   my %modal_species;
-  
+
   # MOSAIC (dsj)
   my $mosaic = $cfg->get('mosaic');
   if ($mosaic) {
     if ($aero_modes eq '4mode' ) {
-      my %modal_species = ( 'so4'=>'sulfate',
+      %modal_species = ( 'so4'=>'sulfate',
                             'no3'=>'nitrate',
                             'nh4'=>'ammonium',
                             'pom'=>'p-organic',
@@ -942,7 +942,7 @@ if ($aer_model eq 'mam' ) {
     }
   }
   else {
-    my %modal_species = ( 'so4'=>'sulfate',
+    %modal_species = ( 'so4'=>'sulfate',
                           'nh4'=>'ammonium',
                           'pom'=>'p-organic',
                           'soa'=>'s-organic',
@@ -950,7 +950,6 @@ if ($aer_model eq 'mam' ) {
                           'dst'=>'dust',
                           'ncl'=>'seasalt' );
   }
-  
 
   if ($aero_modes eq '3mode' ) {
     # MAM rad_climate settings.  The externally mixed quantities in the modal aerosol
@@ -2814,7 +2813,7 @@ if ($waccmx) {
   add_default($nl,'oplus_ring_polar_filter');
 }
 
-# Chemistry options 
+# Chemistry options
 # MOSAIC (dsj)
 my $mosaic = $cfg->get('mosaic');
 if ($mosaic) {
