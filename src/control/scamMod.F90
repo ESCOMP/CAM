@@ -401,7 +401,6 @@ subroutine readiopdata(hvcoord)
 !-----------------------------------------------------------------------
         use hybvcoord_mod,       only: hvcoord_t
         use getinterpnetcdfdata, only: getinterpncdata
-        use shr_sys_mod,         only: shr_sys_flush
         use string_utils,        only: to_lower
         use wrap_nf,             only: wrap_inq_dimid,wrap_get_vara_realx
 !-----------------------------------------------------------------------
@@ -474,7 +473,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       if (status /= NF90_NOERR) then
          if (masterproc) write(iulog,*) sub//':ERROR - Could not find dimension ID for time/tsec'
          status = NF90_CLOSE ( ncid )
-         call endrun
+         call endrun(sub // ':ERROR - time/tsec must be present on the IOP file.')
       end if
    end if
 
@@ -498,14 +497,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    allocate(dplevs(nlev+1),stat=ios)
    if( ios /= 0 ) then
       write(iulog,*) sub//':ERROR: failed to allocate dplevs; error = ',ios
-      call endrun('ERROR:readiopdata failed to allocate dplevs')
+      call endrun(sub//':ERROR:readiopdata failed to allocate dplevs')
    end if
 
    status = NF90_INQ_VARID( ncid, 'lev', lev_varID )
    if ( status /= nf90_noerr ) then
       if (masterproc) write(iulog,*) sub//':ERROR - scamMod.F90:readiopdata:Could not find variable ID for lev'
       status = NF90_CLOSE ( ncid )
-      call endrun
+      call endrun(sub//':ERROR:ould not find variable ID for lev')
    end if
 
    call handle_ncerr( nf90_get_var (ncid, lev_varID, dplevs(:nlev)),&
@@ -530,13 +529,13 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    status = nf90_inq_varid( ncid, 'Ps', varid   )
    if ( status /= nf90_noerr ) then
-      have_ps = .false.
+      have_ps= .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable Ps'
       if ( .not. scm_backfill_iop_w_init ) then
          status = NF90_CLOSE( ncid )
-         return
+         call endrun(sub//':ERROR :IOP file must contain Surface Pressure (Ps) variable')
       else
-         if ( is_first_step() .and. masterproc) write(iulog,*) 'Using pressure value from Analysis Dataset'
+         if ( is_first_step() .and. masterproc) write(iulog,*) 'Using surface pressure value from IC file if present'
       endif
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -577,7 +576,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
    if ( nlev == 1 ) then
       if (masterproc) write(iulog,*) sub//':Error - scamMod.F90:readiopdata: Ps too low!'
-      return
+      call endrun(sub//':ERROR:Ps value on datasets is incongurent with levs data - mismatch in units?')
    endif
 
 !=====================================================================
@@ -652,12 +651,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
    if ( status /= nf90_noerr ) then
       have_t = .false.
-      if (masterproc) write(iulog,*) sub//':Could not find variable T'
-      if ( .not. scm_backfill_iop_w_init ) then
-         status = NF90_CLOSE( ncid )
-         return
+      if (masterproc) write(iulog,*) sub//':Could not find variable T on IOP file'
+      if ( scm_backfill_iop_w_init ) then
+         if (masterproc) write(iulog,*) sub//':Using value of T(tobs) from IC file if it exists'
       else
-         if (masterproc) write(iulog,*) sub//':Using value from Analysis Dataset'
+         if (masterproc) write(iulog,*) sub//':set tobs to 0.'
       endif
 !
 !     set T3 to Tobs on first time step
@@ -700,12 +698,11 @@ type (hvcoord_t), intent(in) :: hvcoord
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, qobs, status )
    if ( status /= nf90_noerr ) then
       have_q = .false.
-      if (masterproc) write(iulog,*) sub//':Could not find variable q'
-      if ( .not. scm_backfill_iop_w_init ) then
-         status = nf90_close( ncid )
-         return
+      if (masterproc) write(iulog,*) sub//':Could not find variable q on IOP file'
+      if ( scm_backfill_iop_w_init ) then
+         if (masterproc) write(iulog,*) sub//':Using values for q from IC file if available'
       else
-         if (masterproc) write(iulog,*) sub//':Using values from Analysis Dataset'
+         if (masterproc) write(iulog,*) sub//':Setting qobs to 0.'
       endif
    else
       have_q = .true.
@@ -1046,12 +1043,11 @@ type (hvcoord_t), intent(in) :: hvcoord
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, wfld, status )
    if ( status /= nf90_noerr ) then
       have_omega = .false.
-      if (masterproc) write(iulog,*) sub//':Could not find variable omega'
-      if ( .not. scm_backfill_iop_w_init ) then
-         status = nf90_close( ncid )
-         return
+      if (masterproc) write(iulog,*) sub//':Could not find variable omega on IOP'
+      if ( scm_backfill_iop_w_init ) then
+         if (masterproc) write(iulog,*) sub//'Using omega from IC file'
       else
-         if (masterproc) write(iulog,*) sub//'Using value from Analysis Dataset'
+         if (masterproc) write(iulog,*) sub//'setting Omega to 0. throughout the column'
       endif
    else
       have_omega = .true.
@@ -1234,9 +1230,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       fixmascam=srf(1)
    endif
 
-   call shr_sys_flush( iulog )
    status = nf90_close( ncid )
-   call shr_sys_flush( iulog )
 
    deallocate(dplevs)
 
@@ -1301,11 +1295,7 @@ subroutine setiopupdate
 !
    if ( ncdate > last_date .or. (ncdate == last_date &
       .and. ncsec > last_sec))  then
-      if ( .not. scm_backfill_iop_w_init ) then
-         call endrun(sub//':ERROR: Reached the end of the time varient dataset')
-      else
-         doiopupdate = .false.
-      end if
+      call endrun(sub//':ERROR: Reached the end of the time varient dataset')
    endif
 
 #if DEBUG > 1
