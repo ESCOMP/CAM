@@ -48,7 +48,7 @@ subroutine advance_iop_forcing(scm_dt, ps_in, &                   ! In
   real(r8), intent(in) :: t_in(plev)        ! temperature [K]
   real(r8), intent(in) :: q_in(plev,pcnst)  ! q tracer array [units vary] already vertically advected
   real(r8), intent(in) :: t_phys_frc(plev)  ! temperature forcing from physics [K/s]
-  real(r8), intent(in) :: q_phys_frc(plev,pcnst)  ! temperature forcing from physics [K/s]
+  real(r8), intent(in) :: q_phys_frc(plev,pcnst)  ! change in q due to physics.
   type (hvcoord_t), intent(in)   :: hvcoord
   real(r8), intent(in) :: scm_dt            ! model time step [s]
 
@@ -183,12 +183,11 @@ subroutine advance_iop_nudging(ztodt, ps_in,                        &      ! In
   ! scm_relaxation is a logical from scamMod
   ! scm_relax_tau_top_sec and scm_relax_tau_bot_sec are the relaxation times at top and bottom of layer
   ! also defined in scamMod
-  if ( scm_relaxation.and.scm_relax_linear ) then
+  if ( scm_relax_linear ) then
      rslope = (scm_relax_top_p - scm_relax_bot_p)/(scm_relax_tau_top_sec - scm_relax_tau_bot_sec)
      rycept = scm_relax_tau_top_sec - (rslope*scm_relax_top_p)
   endif
 
-  !    prepare scm_relax_fincl for comparison in scmforecast.F90
   scm_fincl_empty=.true.
   do i=1,pcnst
      if (len_trim(scm_relax_fincl(i)) > 0) then
@@ -198,40 +197,38 @@ subroutine advance_iop_nudging(ztodt, ps_in,                        &      ! In
   end do
 
   do k = 1, plev
-     if( scm_relaxation ) then
-        if ( pmidm1(k) <= scm_relax_bot_p.and.pmidm1(k) >= scm_relax_top_p ) then ! inside layer
-           if (scm_relax_linear) then
-              rtau(k) = rslope*pmidm1(k) + rycept ! linear regime
-           else
-              rtau(k)         = max( ztodt, scm_relax_tau_sec ) ! constant for whole layer / no relax outside
-           endif
-        else if  (scm_relax_linear .and. pmidm1(k) <= scm_relax_top_p ) then ! not linear => do nothing / linear => use upper value
-           rtau(k) = scm_relax_tau_top_sec ! above layer keep rtau equal to the top
+     if ( pmidm1(k) <= scm_relax_bot_p.and.pmidm1(k) >= scm_relax_top_p ) then ! inside layer
+        if (scm_relax_linear) then
+           rtau(k) = rslope*pmidm1(k) + rycept ! linear regime
+        else
+           rtau(k)         = max( ztodt, scm_relax_tau_sec ) ! constant for whole layer / no relax outside
         endif
-        ! +BPM: this can't be the best way...
-        ! I put this in because if rtau doesn't get set above, then I don't want to do any relaxation in that layer.
-        ! maybe the logic of this whole loop needs to be re-thinked.
-        if (rtau(k) /= 0) then
-           relax_T(k)      = -  ( tfcst(k)     - tobs(k) )    / rtau(k)
-           relax_u(k)      = -  ( ufcst(k)     - uobs(k) )    / rtau(k)
-           relax_v(k)      = -  ( vfcst(k)     - vobs(k) )    / rtau(k)
-           relax_q(k,1)    = -  ( qfcst(1,k,1) - qobs(k) )    / rtau(k)
-           do m = 2, pcnst
-              relax_q(k,m) = -  ( qfcst(1,k,m) - qinitobs(k,m)   )    / rtau(k)
-           enddo
-           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == 'T')) &
-                tfcst(k)        =      tfcst(k)     + relax_T(k)   * ztodt
-           if (scm_fincl_empty .or.ANY(scm_relax_fincl(:) == 'U')) &
-                ufcst(k)        =      ufcst(k)     + relax_u(k)   * ztodt
-           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == 'V')) &
-                vfcst(k)        =      vfcst(k)     + relax_v(k)   * ztodt
-           do m = 1, pcnst
-              if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == trim(to_upper(cnst_name(m)))) ) then
-                 qfcst(1,k,m) =      qfcst(1,k,m) + relax_q(k,m) * ztodt
-              end if
-           enddo
-        end if
+     else if  (scm_relax_linear .and. pmidm1(k) <= scm_relax_top_p ) then ! not linear => do nothing / linear => use upper value
+        rtau(k) = scm_relax_tau_top_sec ! above layer keep rtau equal to the top
      endif
+     ! +BPM: this can't be the best way...
+     ! I put this in because if rtau doesn't get set above, then I don't want to do any relaxation in that layer.
+     ! maybe the logic of this whole loop needs to be re-thinked.
+     if (rtau(k) /= 0) then
+        relax_T(k)      = -  ( tfcst(k)     - tobs(k) )    / rtau(k)
+        relax_u(k)      = -  ( ufcst(k)     - uobs(k) )    / rtau(k)
+        relax_v(k)      = -  ( vfcst(k)     - vobs(k) )    / rtau(k)
+        relax_q(k,1)    = -  ( qfcst(1,k,1) - qobs(k) )    / rtau(k)
+        do m = 2, pcnst
+           relax_q(k,m) = -  ( qfcst(1,k,m) - qinitobs(k,m)   )    / rtau(k)
+        enddo
+        if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == 'T')) &
+             tfcst(k)        =      tfcst(k)     + relax_T(k)   * ztodt
+        if (scm_fincl_empty .or.ANY(scm_relax_fincl(:) == 'U')) &
+             ufcst(k)        =      ufcst(k)     + relax_u(k)   * ztodt
+        if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == 'V')) &
+             vfcst(k)        =      vfcst(k)     + relax_v(k)   * ztodt
+        do m = 1, pcnst
+           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == trim(to_upper(cnst_name(m)))) ) then
+              qfcst(1,k,m) =      qfcst(1,k,m) + relax_q(k,m) * ztodt
+           end if
+        enddo
+     end if
   enddo
 
 end subroutine advance_iop_nudging

@@ -147,7 +147,7 @@ Turn on CO2 cycle in biogeochemistry model: 0 => no, 1 => yes.
 Modifications that allow perturbation growth testing: 0=off, 1=on.
 </entry>
 <entry id="scam" valid_values="0,1" value="0">
-Configure CAM for single column mode and specify an IOP.
+Configure CAM for single column mode and specify an IOP: 0=no, 1=yes.
 This option only supported for the Eulerian and SE dycores.
 </entry>
 <entry id="scam_iop" valid_values="arm95,arm97,atex,bomex,cgilss11,cgilss12,cgilss6,dycomsrf01,dycomsrf02,gateiii,mpace,rico,sas,sparticus,togaii,twp06,camfrc,none" value="none">

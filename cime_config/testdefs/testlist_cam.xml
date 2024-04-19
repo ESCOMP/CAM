@@ -1156,6 +1156,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Spectral Element SCAM BFB test with CAM w GNU</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1349,7 +1350,8 @@
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
-    </options>
+      <option name="comment" >Derecho Spectral Element SCAM BFB test with CAM (Intel)</option>
+   </options>
   </test>
 <!--              001                        -->
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7_Vnuopc" testmods="cam/scm_prep">
@@ -1468,6 +1470,7 @@
       <machine name="derecho" compiler="intel" category="test_scam"/>
     </machines>
     <options>
+      <option name="comment" >Eulerian ARM97 IOP SCAM Smoke test</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1477,6 +1480,7 @@
       <machine name="derecho" compiler="intel" category="test_scam"/>
     </machines>
     <options>
+      <option name="comment" >pre_alpha Eulerian MPACE IPO SCAM Smoke test</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>

@@ -10,6 +10,7 @@ module history_scam
 !-----------------------------------------------------------------------
    use shr_kind_mod, only: r8 => shr_kind_r8
    use cam_history, only: addfld, add_default, horiz_only
+   use cam_grid_support, only: max_hcoordname_len
 
    implicit none
 
@@ -39,7 +40,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 ! Local variables
 !
-      character(len=100) outgrid
+      character(len=max_hcoordname_len) outgrid
 
       if (dycore_is('SE')) then
          ! for camiop mode use the GLL grid otherwise use physics grids for SCM mode output
@@ -132,7 +133,7 @@ CONTAINS
 
 ! !LOCAL VARIABLES:
     integer m
-    character(len=100) outgrid
+    character(len=max_hcoordname_len) outgrid
 
 !-----------------------------------------------------------------------
 
@@ -159,7 +160,7 @@ CONTAINS
 
        call addfld ('fixmas',  horiz_only,   'A', 'percent','Mass fixer',gridname=trim(outgrid))
        call add_default ('fixmas',2,' ')
-       call addfld ('beta',    horiz_only,   'A', 'percent','Mass fixer',gridname=trim(outgrid))
+       call addfld ('beta',    horiz_only,   'A', 'percent','Energy fixer',gridname=trim(outgrid))
        call add_default ('beta',2,' ')
     end if
 
@@ -173,7 +174,7 @@ CONTAINS
     call add_default ('t',2,' ')
     call addfld ('Tg',      horiz_only,   'A', 'K',      'Surface temperature (radiative) for scam',gridname='physgrid')
     call add_default ('Tg',2,' ')
-    call addfld ('Ps',      horiz_only,   'A', 'Pa',     'Ps for scam',gridname=trim(outgrid))
+    call addfld ('Ps',      horiz_only,   'A', 'Pa',     'Surface Pressure for SCAM',gridname=trim(outgrid))
     call add_default ('Ps',2,' ')
     call addfld ('divT3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for T',gridname=trim(outgrid))
     call add_default ('divT3d',2,' ')

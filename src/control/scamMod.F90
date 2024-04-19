@@ -31,6 +31,7 @@ use shr_scam_mod,   only: shr_scam_getCloseLatLon
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
 use time_manager,   only: get_curr_date, get_nstep,is_first_step,get_start_date,timemgr_time_inc
+use error_messages, only: handle_ncerr
 
 
 implicit none
@@ -41,7 +42,7 @@ private
 public :: scam_readnl         ! read SCAM namelist options
 public :: readiopdata         ! read iop boundary data
 public :: setiopupdate        ! find index in iopboundary data for current time
-public :: plevs0              ! find index in iopboundary data for current time
+public :: plevs0              ! Define the pressures of the interfaces and midpoints
 public :: scmiop_flbc_inti
 public :: setiopupdate_init
 
@@ -73,24 +74,24 @@ logical, public ::  l_diag                ! do we want available diagnostics?
 integer, public ::  error_code            ! Error code from netCDF reads
 integer, public ::  initTimeIdx
 integer, public ::  seedval
-integer bdate, last_date, last_sec
+integer :: bdate, last_date, last_sec
 
-character*(max_path_len), public ::  modelfile
-character*(max_path_len), public ::  analysisfile
-character*(max_path_len), public ::  sicfile
-character*(max_path_len), public ::  userfile
-character*(max_path_len), public ::  sstfile
-character*(max_path_len), public ::  lsmpftfile
-character*(max_path_len), public ::  pressfile
-character*(max_path_len), public ::  topofile
-character*(max_path_len), public ::  ozonefile
-character*(max_path_len), public ::  iopfile
-character*(max_path_len), public ::  absemsfile
-character*(max_path_len), public ::  aermassfile
-character*(max_path_len), public ::  aeropticsfile
-character*(max_path_len), public ::  timeinvfile
-character*(max_path_len), public ::  lsmsurffile
-character*(max_path_len), public ::  lsminifile
+character(len=max_path_len), public ::  modelfile
+character(len=max_path_len), public ::  analysisfile
+character(len=max_path_len), public ::  sicfile
+character(len=max_path_len), public ::  userfile
+character(len=max_path_len), public ::  sstfile
+character(len=max_path_len), public ::  lsmpftfile
+character(len=max_path_len), public ::  pressfile
+character(len=max_path_len), public ::  topofile
+character(len=max_path_len), public ::  ozonefile
+character(len=max_path_len), public ::  iopfile
+character(len=max_path_len), public ::  absemsfile
+character(len=max_path_len), public ::  aermassfile
+character(len=max_path_len), public ::  aeropticsfile
+character(len=max_path_len), public ::  timeinvfile
+character(len=max_path_len), public ::  lsmsurffile
+character(len=max_path_len), public ::  lsminifile
 
 ! note that scm_zadv_q is set to slt to be consistent with CAM BFB testing
 
@@ -169,7 +170,7 @@ integer, public ::     base_secs             ! Time of day of start time (sec)
 logical, public ::  doiopupdate            = .false. ! do we need to read next iop timepoint
 logical, public ::  have_lhflx             = .false. ! dataset contains lhflx
 logical, public ::  have_shflx             = .false. ! dataset contains shflx
-logical, public ::  have_heat_glob         = .false. ! dataset contains shflx
+logical, public ::  have_heat_glob         = .false. ! dataset contains heat total
 logical, public ::  have_tg                = .false. ! dataset contains tg
 logical, public ::  have_tsair             = .false. ! dataset contains tsair
 logical, public ::  have_divq              = .false. ! dataset contains divq
@@ -219,9 +220,9 @@ logical, public ::  scm_use_obs_T          = .false. ! Use the SCAM-IOP observed
 logical, public ::  scm_force_latlon       = .false. ! force scam to use the lat lon fields specified in the namelist not closest
 real(r8), public              ::  scm_relaxation_low      ! lowest level to apply relaxation
 real(r8), public              ::  scm_relaxation_high     ! highest level to apply relaxation
-real(r8), public              ::  scm_relax_top_p       = 1.e36_r8 ! upper bound for scm relaxation
-real(r8), public              ::  scm_relax_bot_p       = -1.e36_r8 !  lower bound for scm relaxation
-real(r8), public              ::  scm_relax_tau_sec       = 10800._r8  ! relaxation time constant (sec)
+real(r8), public              ::  scm_relax_top_p         = 0._r8       ! upper bound for scm relaxation
+real(r8), public              ::  scm_relax_bot_p         = huge(1._r8) ! lower bound for scm relaxation
+real(r8), public              ::  scm_relax_tau_sec       = 10800._r8   ! relaxation time constant (sec)
 
 ! +++BPM:
 ! modification... allow a linear ramp in relaxation time scale:
@@ -236,7 +237,7 @@ character(len=26), public  :: scm_relax_fincl(pcnst)
 
 logical, public ::  scm_use_obs_uv         = .true. ! Use the SCAM-IOP observed u,v at each time step instead of forecasting.
 
-logical, public ::  scm_use_obs_qv         = .false. ! Use the SCAM-IOPobserved qv  at each time step instead of forecasting.
+logical, public ::  scm_use_obs_qv         = .false. ! Use the SCAM-IOP observed qv  at each time step instead of forecasting.
 logical, public ::  scm_use_3dfrc          = .false. ! Use CAMIOP 3d forcing if true, else use dycore vertical plus horizontal
 logical, public ::  scm_iop_lhflxshflxTg   = .false. !turn off LW rad
 logical, public ::  scm_iop_Tg             = .false. !turn off LW rad
@@ -401,14 +402,10 @@ subroutine readiopdata(hvcoord)
         use hybvcoord_mod,       only: hvcoord_t
         use getinterpnetcdfdata, only: getinterpncdata
         use shr_sys_mod,         only: shr_sys_flush
-        use error_messages,      only: handle_ncerr
         use string_utils,        only: to_lower
         use wrap_nf,             only: wrap_inq_dimid,wrap_get_vara_realx
 !-----------------------------------------------------------------------
    implicit none
-#if ( defined RS6000 )
-   implicit automatic ( a-z )
-#endif
 
    character(len=*), parameter ::  sub = "read_iop_data"
 !
@@ -418,32 +415,33 @@ type (hvcoord_t), intent(in) :: hvcoord
 !
 !------------------------------Locals-----------------------------------
 !
-   integer NCID, status
-   integer time_dimID, lev_dimID,  lev_varID, varid
-   integer i,j
-   integer nlev
-   integer total_levs
-   integer u_attlen
+   integer :: NCID, status
+   integer :: time_dimID, lev_dimID,  lev_varID, varid
+   integer :: i,j
+   integer :: nlev
+   integer :: total_levs
+   integer :: u_attlen
 
-   integer k, m
-   integer icldliq,icldice
-   integer inumliq,inumice
+   integer :: k, m
+   integer :: icldliq,icldice
+   integer :: inumliq,inumice
 
-   logical have_srf              ! value at surface is available
-   logical fill_ends             !
-   logical have_cnst(pcnst)
-   real(r8) dummy
-   real(r8) srf(1)                  ! value at surface
-   real(r8) hyam(plev),hybm(plev)
-   real(r8) pmid(plev)  ! pressure at model levels (time n)
-   real(r8) pint(plevp) ! pressure at model interfaces (n  )
-   real(r8) pdel(plev)  ! pdel(k)   = pint  (k+1)-pint  (k)
-   real(r8) weight
-   real(r8) tmpdata(1)
-   real(r8) coldata(plev)
+   logical :: have_srf              ! value at surface is available
+   logical :: fill_ends             !
+   logical :: have_cnst(pcnst)
+   real(r8) :: dummy
+   real(r8) :: srf(1)                  ! value at surface
+   real(r8) :: hyam(plev),hybm(plev)
+   real(r8) :: pmid(plev)  ! pressure at model levels (time n)
+   real(r8) :: pint(plevp) ! pressure at model interfaces (n  )
+   real(r8) :: pdel(plev)  ! pdel(k)   = pint  (k+1)-pint  (k)
+   real(r8) :: weight
+   real(r8) :: tmpdata(1)
+   real(r8) :: coldata(plev)
    real(r8), allocatable :: dplevs( : )
-   integer strt4(4),cnt4(4)
-   integer nstep
+   integer :: strt4(4),cnt4(4)
+   integer :: nstep
+   integer :: ios
    character(len=128) :: units ! Units
 
    nstep = get_nstep()
@@ -452,8 +450,8 @@ type (hvcoord_t), intent(in) :: hvcoord
 !
 !     Open IOP dataset
 !
-  call handle_ncerr( nf90_open (iopfile, 0, ncid),&
-       'readiopdata.F90', __LINE__)
+   call handle_ncerr( nf90_open (iopfile, 0, ncid),&
+       'ERROR - scamMod.F90:readiopdata', __LINE__)
 
 !
 !     if the dataset is a CAM generated dataset set use_camiop to true
@@ -474,14 +472,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    if (status /= NF90_NOERR) then
       status = nf90_inq_dimid (ncid, 'tsec', time_dimID )
       if (status /= NF90_NOERR) then
-         if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find dimension ID for time/tsec'
+         if (masterproc) write(iulog,*) sub//':ERROR - Could not find dimension ID for time/tsec'
          status = NF90_CLOSE ( ncid )
          call endrun
       end if
    end if
 
    call handle_ncerr( nf90_inquire_dimension( ncid, time_dimID, len=ntime ),&
-         'readiopdata.F90', __LINE__)
+         'Error - scamMod.F90:readiopdata unable to find time dimension', __LINE__)
 
 !
 !======================================================
@@ -489,32 +487,36 @@ type (hvcoord_t), intent(in) :: hvcoord
 !
    status = NF90_INQ_DIMID( ncid, 'lev', lev_dimID )
    if ( status /= nf90_noerr ) then
-      if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable dim ID  for lev'
+      if (masterproc) write(iulog,*) sub//':ERROR - Could not find variable dim ID  for lev'
       status = NF90_CLOSE ( ncid )
-      return
+      call endrun(sub // ':ERROR - Could not find variable dim ID for lev')
    end if
 
    call handle_ncerr( nf90_inquire_dimension( ncid, lev_dimID, len=nlev ),&
-         'readiopdata.F90', __LINE__)
+         'Error - scamMod.f90:readiopdata unable to find level dimension', __LINE__)
 
-   allocate(dplevs(nlev+1))
+   allocate(dplevs(nlev+1),stat=ios)
+   if( ios /= 0 ) then
+      write(iulog,*) sub//':ERROR: failed to allocate dplevs; error = ',ios
+      call endrun('ERROR:readiopdata failed to allocate dplevs')
+   end if
 
    status = NF90_INQ_VARID( ncid, 'lev', lev_varID )
    if ( status /= nf90_noerr ) then
-      if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable ID for lev'
+      if (masterproc) write(iulog,*) sub//':ERROR - scamMod.F90:readiopdata:Could not find variable ID for lev'
       status = NF90_CLOSE ( ncid )
-      return
+      call endrun
    end if
 
    call handle_ncerr( nf90_get_var (ncid, lev_varID, dplevs(:nlev)),&
-                    'readiopdata.F90', __LINE__)
+                    'Error - scamMod.F90:readiopdata unable to read pressure levels', __LINE__)
 !
 !CAM generated forcing already has pressure on millibars convert standard IOP if needed.
 !
    call handle_ncerr(nf90_inquire_attribute(ncid, lev_varID, 'units', len=u_attlen),&
-                    'readiopdata.F90', __LINE__)
+                    'Error - scamMod.F90:readiopdata unable to find units attribute', __LINE__)
    call handle_ncerr(nf90_get_att(ncid, lev_varID, 'units', units),&
-                    'readiopdata.F90', __LINE__)
+                    'Error - scamMod.F90:readiopdata unable to read units attribute', __LINE__)
    units=trim(to_lower(units(1:u_attlen)))
 
    if ( units=='pa' .or. units=='pascal' .or. units=='pascals' ) then
@@ -574,7 +576,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       nlev = total_levs
    endif
    if ( nlev == 1 ) then
-      if (masterproc) write(iulog,*) sub//':Error - Readiopdata.F: Ps too low!'
+      if (masterproc) write(iulog,*) sub//':Error - scamMod.F90:readiopdata: Ps too low!'
       return
    endif
 
@@ -623,7 +625,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       if (is_first_step()) write(iulog,*)'using column value of soltsi from boundary data as global solar tsi'
    end if
 !=====================================================================
-!get global vmrs from camiop file
+!get state variables from camiop file
 
    status =  nf90_inq_varid( ncid, 'Tsair', varid   )
    if ( status /= nf90_noerr ) then
@@ -1055,7 +1057,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_omega = .true.
    endif
    call plevs0(plev    ,psobs   ,pint,pmid ,pdel, hvcoord)
-   call shr_sys_flush( iulog )
 !
 ! Build interface vector for the specified omega profile
 ! (weighted average in pressure of specified level values)
@@ -1106,7 +1107,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    else
       have_v = .true.
    endif
-   call shr_sys_flush( iulog )
 
    status = nf90_inq_varid( ncid, 'Prec', varid   )
    if ( status /= nf90_noerr ) then
@@ -1174,7 +1174,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_shflx = .true.
    endif
 
-   call shr_sys_flush( iulog )
    ! If REPLAY is used, then need to read in the global
    !   energy fixer
    status = nf90_inq_varid( ncid, 'heat_glob', varid   )
@@ -1217,8 +1216,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       endif
    endif
 
-   call shr_sys_flush( iulog )
-
    status =  nf90_inq_varid( ncid, 'beta', varid   )
    if ( status /= nf90_noerr ) then
       betacam = 0._r8
@@ -1238,13 +1235,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    call shr_sys_flush( iulog )
-
    status = nf90_close( ncid )
    call shr_sys_flush( iulog )
 
    deallocate(dplevs)
 
-   return
 end subroutine readiopdata
 
 subroutine setiopupdate
@@ -1259,14 +1254,12 @@ subroutine setiopupdate
 !
 !-----------------------------------------------------------------------
   implicit none
-#if ( defined RS6000 )
-  implicit automatic (a-z)
-#endif
-   character(len=*), parameter ::  sub = "setiopupdate"
+
+  character(len=*), parameter ::  sub = "setiopupdate"
 
 !------------------------------Locals-----------------------------------
 
-   integer next_date, next_sec
+   integer :: next_date, next_sec
    integer :: ncsec,ncdate                      ! current time of day,date
    integer :: yr, mon, day                      ! year, month, and day component
 !------------------------------------------------------------------------------
@@ -1309,7 +1302,7 @@ subroutine setiopupdate
    if ( ncdate > last_date .or. (ncdate == last_date &
       .and. ncsec > last_sec))  then
       if ( .not. scm_backfill_iop_w_init ) then
-         call endrun(sub//':ERROR - setiopupdate.c:Reached the end of the time varient dataset')
+         call endrun(sub//':ERROR: Reached the end of the time varient dataset')
       else
          doiopupdate = .false.
       end if
@@ -1318,8 +1311,6 @@ subroutine setiopupdate
 #if DEBUG > 1
    if (masterproc) write(iulog,*) sub//':iop time index = ' , ioptimeidx
 #endif
-
-   return
 
 end subroutine setiopupdate
 
@@ -1333,14 +1324,7 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 ! Define the pressures of the interfaces and midpoints from the
 ! coordinate definitions and the surface pressure.
 !
-! Method:
-!
 ! Author: B. Boville
-!
-!-----------------------------------------------------------------------
-!
-! $Id$
-! $Author$
 !
 !-----------------------------------------------------------------------
 
@@ -1358,7 +1342,7 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 !-----------------------------------------------------------------------
 
 !---------------------------Local workspace-----------------------------
-  integer k             ! Longitude, level indices
+  integer :: k             ! Longitude, level indices
 !-----------------------------------------------------------------------
 !
 ! Set interface pressures
@@ -1376,7 +1360,6 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
      pdel(k) = pint(k+1) - pint(k)
   end do
 
-  return
 end subroutine plevs0
 
 subroutine scmiop_flbc_inti ( co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
@@ -1384,15 +1367,6 @@ subroutine scmiop_flbc_inti ( co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
   !
   ! Purpose:
   ! Get start count for variable
-  !
-  ! Method:
-  !
-  ! Author:
-  !
-  !-----------------------------------------------------------------------
-  !
-  ! $Id$
-  ! $Author$
   !
   !-----------------------------------------------------------------------
 
@@ -1416,19 +1390,11 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
   ! Purpose:
   ! set global lower boundary conditions
   !
-  ! Method:
-  !
-  ! Author:
-  !
-  !-----------------------------------------------------------------------
-  !
-  ! $Id$
-  ! $Author$
-  !
   !-----------------------------------------------------------------------
 
   implicit none
 
+  character(len=*), parameter ::  sub = "get_start_count"
 
 !-----------------------------------------------------------------------
   integer , intent(in)    :: ncid         ! file id
@@ -1438,12 +1404,12 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
   integer , intent(out) :: start(:),count(:)
 
 !---------------------------Local workspace-----------------------------
-  integer     dims_set,nlev,var_ndims
-  logical     usable_var
-  character   dim_name*( 256 )
-  integer     var_dimIDs( NF90_MAX_VAR_DIMS )
-  real(r8)    closelat,closelon
-  integer     latidx,lonidx,status,i
+  integer            :: dims_set,nlev,var_ndims
+  logical            :: usable_var
+  character(len=256) :: dim_name
+  integer            :: var_dimIDs( NF90_MAX_VAR_DIMS )
+  real(r8)           :: closelat,closelon
+  integer            :: latidx,lonidx,status,i
 !-----------------------------------------------------------------------
 
    call shr_scam_GetCloseLatLon(ncid,scmlat,scmlon,closelat,closelon,latidx,lonidx)
@@ -1453,14 +1419,13 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
 !     surface variables
 !
    if ( var_ndims == 0 ) then
-      call endrun('SCAMMOD: var_ndims is 0 for varid:',varid)
-      return
+      call endrun(sub//':ERROR: var_ndims is 0 for varid:',varid)
    endif
 
    STATUS = NF90_INQUIRE_VARIABLE( NCID, varID, dimids=var_dimIDs)
    if ( STATUS /= NF90_NOERR ) then
-      write(iulog,* ) 'ERROR - extractdata.F:Cant get dimension IDs for varid', varid
-      return
+      write(iulog,* ) sub//'ERROR - Cant get dimension IDs for varid', varid
+      call endrun(sub//':ERROR: Cant get dimension IDs for varid',varid)
    endif
 !
 !     Initialize the start and count arrays
@@ -1509,7 +1474,6 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
          usable_var = .true.
       endif
    end do
-   return
  end subroutine get_start_count
 
 !=========================================================================
@@ -1527,66 +1491,72 @@ subroutine setiopupdate_init
 !
 !-----------------------------------------------------------------------
   implicit none
-#if ( defined RS6000 )
-  implicit automatic (a-z)
-#endif
 
 !------------------------------Locals-----------------------------------
 
-   integer NCID,i
-   integer tsec_varID, time_dimID
-   integer bdate_varID
-   integer STATUS
-   integer next_date, next_sec
+   integer :: NCID,i
+   integer :: tsec_varID, time_dimID
+   integer :: bdate_varID
+   integer :: STATUS
+   integer :: next_date, next_sec
    integer :: ncsec,ncdate                      ! current time of day,date
    integer :: yr, mon, day                      ! year, month, and day component
    integer :: start_ymd,start_tod
-!------------------------------------------------------------------------------
 
-    ! Open and read pertinent information from the IOP file
+   character(len=*), parameter ::  sub = "setiopupdate_init"
+!!------------------------------------------------------------------------------
 
-    STATUS = NF90_OPEN( iopfile, NF90_NOWRITE, NCID )
+   ! Open and read pertinent information from the IOP file
 
-    ! Read time (tsec) variable
+   call handle_ncerr( nf90_open (iopfile, 0, ncid),&
+        'ERROR - scamMod.F90:setiopupdate_init Failed to open iop file', __LINE__)
+
+   ! Read time (tsec) variable
 
     STATUS = NF90_INQ_VARID( NCID, 'tsec', tsec_varID )
-    if ( STATUS /= NF90_NOERR ) write(iulog,*)'ERROR - setiopupdate.F:', &
-       'Cant get variable ID for tsec'
+    if ( STATUS /= NF90_NOERR ) then
+       write(iulog,*)sub//':ERROR: Cant get variable ID for tsec'
+       STATUS = NF90_CLOSE ( NCID )
+       call endrun(sub//':ERROR: Cant get variable ID for tsec')
+    end if
 
     STATUS = NF90_INQ_VARID( NCID, 'bdate', bdate_varID )
     if ( STATUS /= NF90_NOERR ) then
        STATUS = NF90_INQ_VARID( NCID, 'basedate', bdate_varID )
-       if ( STATUS /= NF90_NOERR )         &
-          write(iulog,*)'ERROR - setiopupdate.F:Cant get variable ID for bdate'
+       if ( STATUS /= NF90_NOERR ) then
+          write(iulog,*)'ERROR - setiopupdate:Cant get variable ID for base date'
+          STATUS = NF90_CLOSE ( NCID )
+          call endrun(sub//':ERROR: Cant get variable ID for base date')
+       endif
     endif
 
     STATUS = NF90_INQ_DIMID( NCID, 'time', time_dimID )
     if ( STATUS /= NF90_NOERR )  then
        STATUS = NF90_INQ_DIMID( NCID, 'tsec', time_dimID )
        if ( STATUS /= NF90_NOERR )  then
-          write(iulog,* )'ERROR - setiopupdate.F:Could not find variable dim ID for time'
+          write(iulog,* )'ERROR - setiopupdate:Could not find variable dim ID for time'
           STATUS = NF90_CLOSE ( NCID )
-          return
+          call endrun(sub//':ERROR:Could not find variable dim ID for time')
        end if
     end if
 
     if ( STATUS /= NF90_NOERR )  &
-       write(iulog,*)'ERROR - setiopupdate.F:Cant get variable dim ID for time'
+       write(iulog,*)'ERROR - setiopupdate:Cant get variable dim ID for time'
 
     STATUS = NF90_INQUIRE_DIMENSION( NCID, time_dimID, len=ntime )
     if ( STATUS /= NF90_NOERR )then
-       write(iulog,*)'ERROR - setiopupdate.F:Cant get time dimlen'
+       write(iulog,*)'ERROR - setiopupdate:Cant get time dimlen'
     endif
 
     if (.not.allocated(tsec)) allocate(tsec(ntime))
 
     STATUS = NF90_GET_VAR( NCID, tsec_varID, tsec )
     if ( STATUS /= NF90_NOERR )then
-       write(iulog,*)'ERROR - setiopupdate.F:Cant get variable tsec'
+       write(iulog,*)'ERROR - setiopupdate:Cant get variable tsec'
     endif
     STATUS = NF90_GET_VAR( NCID, bdate_varID, bdate )
     if ( STATUS /= NF90_NOERR )then
-       write(iulog,*)'ERROR - setiopupdate.F:Cant get variable bdate'
+       write(iulog,*)'ERROR - setiopupdate:Cant get variable bdate'
     endif
 
     ! Close the netCDF file
@@ -1618,7 +1588,7 @@ subroutine setiopupdate_init
        write(iulog,*) ' Current CAM Date is ',ncdate,' and ',ncsec,' seconds'
        write(iulog,*) ' IOP start is        ',next_date,' and ',next_sec,'seconds'
        write(iulog,*) ' IOP end is          ',last_date,' and ',last_sec,'seconds'
-       call endrun
+       call endrun(sub//':ERROR: Current model time does not fall within IOP period')
     endif
 
     doiopupdate = .true.

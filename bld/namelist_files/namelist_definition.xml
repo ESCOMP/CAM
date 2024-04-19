@@ -5863,7 +5863,7 @@ Default: FALSE
 <entry id="scm_use_3dfrc" type="logical" category="scam"
        group="scam_nl" valid_values="">
 Use the SCAM-IOP 3d forcing if true, use combination of dycore vertical advection and iop horiz advection if false
-Default:
+Default:False
 </entry>
 
 <entry id="scm_force_latlon" type="logical" category="scam"

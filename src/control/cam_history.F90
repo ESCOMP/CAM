@@ -919,8 +919,6 @@ CONTAINS
     end if
     if (inithist == 'CAMIOP') then
        write_camiop=.true.
-    else
-       write_camiop=.false.
     end if
     ! separate namelist reader for the satellite history file
     call sat_hist_readnl(nlfile, hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape)

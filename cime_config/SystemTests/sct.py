@@ -62,14 +62,13 @@ class SCT(SystemTestsCompareTwo):
         self._case.set_value("BFBFLAG","TRUE")
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS").replace('-camiop','')
+        self._case.set_value("CAM_CONFIG_OPTS","{} -scam camfrc ".format(CAM_CONFIG_OPTS))
         if self._case.get_value("CAM_DYCORE") == "se":
-            self._case.set_value("CAM_CONFIG_OPTS","{} -scam camfrc ".format(CAM_CONFIG_OPTS))
             self._case.set_value("PTS_LAT",44.80320177421346)
             self._case.set_value("PTS_LON",276.7082039324993)
             append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scale_dry_air_mass     = 0.0D0")
         else:
             append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
-            self._case.set_value("CAM_CONFIG_OPTS","{} -scam camfrc ".format(CAM_CONFIG_OPTS))
             self._case.set_value("PTS_LAT",-20.0)
             self._case.set_value("PTS_LON",140.0)
 

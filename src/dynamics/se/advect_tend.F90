@@ -91,13 +91,14 @@ contains
   end subroutine compute_adv_tends_xyz
 
   !----------------------------------------------------------------------
-  ! computes camiop specific tendencies and
+  ! computes camiop specific tendencies
   ! and writes these to the camiop file
   ! called twice each time step:
   !   - first call sets the initial mixing ratios/state
   !   - second call computes and outputs the tendencies
   !----------------------------------------------------------------------
   subroutine compute_write_iop_fields(elem,fvm,nets,nete,qn0,n0)
+    use cam_abortutils,         only: endrun
     use cam_history,            only: outfld, hist_fld_active
     use time_manager,           only: get_step_size
     use constituents,           only: pcnst,cnst_name
@@ -120,7 +121,9 @@ contains
     real(r8), allocatable        :: out_ps(:)
 
     integer  :: i,j,ic,nx,ie,nxsq,p
+    integer  :: ierr
     logical  :: init
+    character(len=*), parameter :: sub = 'compute_write_iop_fields:'
     !----------------------------------------------------------------------------
 
     if (use_cslam) then
@@ -136,19 +139,24 @@ contains
     if ( .not. allocated( iop_qtendxyz ) ) then
       init = .true.
 
-      allocate( iop_qtendxyz(nx,nx,nlev,pcnst,nets:nete) )
+      allocate( iop_qtendxyz(nx,nx,nlev,pcnst,nets:nete),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate iop_qtendxyz' )
       iop_qtendxyz = 0._r8
-      allocate( derivedfq(nx,nx,nlev,pcnst,nets:nete) )
+      allocate( derivedfq(nx,nx,nlev,pcnst,nets:nete),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate derivedfq' )
       derivedfq = 0._r8
-      allocate( iop_qtendxyz_init(nx,nx,nlev,pcnst,nets:nete) )
+      allocate( iop_qtendxyz_init(nx,nx,nlev,pcnst,nets:nete),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate ipo_qtendxyz' )
       iop_qtendxyz_init = 0._r8
-      allocate( iop_ttendxyz(nx,nx,nlev,nets:nete) )
+      allocate( iop_ttendxyz(nx,nx,nlev,nets:nete),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate iop_ttendxyz' )
       iop_ttendxyz = 0._r8
-      allocate( iop_ttendxyz_init(nx,nx,nlev,nets:nete) )
+      allocate( iop_ttendxyz_init(nx,nx,nlev,nets:nete),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate iop_ttendxyz_init' )
       iop_ttendxyz_init = 0._r8
     endif
 
-    ! save inital/calc tendencies on second call to this routine.
+    ! save initial/calc tendencies on second call to this routine.
     if (use_cslam) then
       do ie=nets,nete
         do ic=1,pcnst
@@ -175,21 +183,29 @@ contains
     end if
 
     if ( .not. init ) then
-      allocate( q_adv(nxsq,nlev,pcnst) )
+      allocate( q_adv(nxsq,nlev,pcnst),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate q_adv' )
       q_adv = 0._r8
-      allocate( t_adv(npsq,nlev) )
+      allocate( t_adv(npsq,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate t_adv' )
       t_adv = 0._r8
-      allocate( q_new(nx,nx,nlev) )
+      allocate( q_new(nx,nx,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate q_new' )
       q_new = 0._r8
-      allocate( out_q(npsq,nlev) )
+      allocate( out_q(npsq,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate out_q' )
       out_q = 0._r8
-      allocate( out_t(npsq,nlev) )
+      allocate( out_t(npsq,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate out_t' )
       out_t = 0._r8
-      allocate( out_u(npsq,nlev) )
+      allocate( out_u(npsq,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate out_u' )
       out_u = 0._r8
-      allocate( out_v(npsq,nlev) )
+      allocate( out_v(npsq,nlev),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate out_v' )
       out_v = 0._r8
-      allocate( out_ps(npsq) )
+      allocate( out_ps(npsq),stat=ierr )
+      if (ierr/=0) call endrun( sub//': not able to allocate out_ps' )
       out_ps = 0._r8
       do ie=nets,nete
          do j=1,nx

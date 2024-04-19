@@ -239,7 +239,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
     subroutine iop_broadcast()
 
       !---------------------------------------------------------
-      ! Purpose: When running DP-CRM, broadcast relevant logical
+      ! Purpose: Broadcast relevant logical
       !   flags and data to all processors
       !----------------------------------------------------------
 
@@ -320,8 +320,8 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
     subroutine scm_dyn_grid_indicies(elem,scmlat,scmlon,ie_scm,i_scm,j_scm,indx_scm)
 
       !---------------------------------------------------------
-      ! Purpose: When running DP-CRM, broadcast relevant logical
-      !   flags and data to all processors
+      ! Purpose: Determine closest column index in the IOP file
+      !   based on the input scm latitude and longitude
       !----------------------------------------------------------
 
       use shr_const_mod,          only: pi => SHR_CONST_PI
@@ -335,6 +335,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       real(r8) :: scmposlon, minpoint, testlat, testlon, testval
       integer :: ierr
       real(r8), parameter :: rad2deg = 180.0_r8 / pi
+      character(len=*), parameter :: sub = 'scm_dyn_grid_indicies'
 
       ie_scm=0
       i_scm=0
@@ -364,7 +365,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       enddo
 
       if (ie_scm == 0 .or. i_scm == 0 .or. j_scm == 0 .or. indx_scm == 0) then
-         call endrun('Could not find closest SCM point on input datafile')
+         call endrun(sub//':FATAL: Could not find closest SCM point on input datafile')
       endif
 
     end subroutine scm_dyn_grid_indicies

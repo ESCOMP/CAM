@@ -4017,7 +4017,7 @@ if ($cfg->get('scam')) {
     if ($chem =~ /_mam/) {
 	add_default($nl, 'scm_relax_fincl');
     }
-    if ($cfg->get('scam_iop')) {
+    if ($scam_iop) {
 	add_default($nl, 'iopfile');
     }
     if ($scam_iop eq 'SAS') {

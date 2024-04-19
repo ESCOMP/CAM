@@ -290,10 +290,10 @@ contains
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
       if (single_column) then
          ! Single Column Case
-         ! Loop over rsplit vertically lagrangian timesiteps
+         ! Loop over rsplit vertically lagrangian timesteps
          call prim_step_scm(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
       else
-         ! Loop over rsplit vertically lagrangian timesiteps
+         ! Loop over rsplit vertically lagrangian timesteps
          call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
       end if
     enddo
@@ -692,7 +692,7 @@ contains
             hybrid, dt, tl, nets, nete)
 
        call t_stopf('set_prescribed_scm')
-  enddo
+    enddo
 
   end subroutine prim_step_scm
 !=======================================================================================================!
