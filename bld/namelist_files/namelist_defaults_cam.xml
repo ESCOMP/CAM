@@ -3010,7 +3010,7 @@
 <iradlw                                               scam_iop="twp06" > 1  </iradlw>
 <iradsw                                               scam_iop="twp06" > 1  </iradsw>
 
-<!-- IOP USER/User specified IOP forcing/lat:yy/lon:xx/Date:Any/Length:Any/SCAM Forcing -->
+<!-- IOP USER/User specified IOP forcing/lat:yy/lon:xx/Date:Any/Length:Any/-These are just defaults and can be updated by the user via cime_config/usermods_dir -->
 <ncdata            hgrid="ne3np4"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
 <ncdata            hgrid="64x128"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
 <iopfile                                              scam_iop="camfrc"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
