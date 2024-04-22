@@ -740,8 +740,26 @@ module ionosphere_interface
                   ! Might need geometric height on midpoints for output
                   !------------------------------------------------------------
                   if (hist_fld_active('Z3GM')) then
+                    ! (3) Z_gm = (1 + Z_gp/r) * (Zs + Z_gp).
+
+                    ! r8tmp = phys_state(lchnk)%zm(i, k) + phis(i)*rga
+                    ! tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
+
+                    ! (1) Z_gm = 1/(1 - (1+Zs/r) * Z_gp/r) * (Zs + (1+Zs/r) * Z_gp)
+
+                    !  Z_gm: geometric height
+                    !  Zs: Surface height
+                    !  Z_gp: model calculated geopotential height (zm and zi in the model)
+
+                    ! r8tmp = 1._r8+phis(i)*rga*rearth_inv
+                    ! tempm(i, k) = (phis(i)*rga + r8tmp*phys_state(lchnk)%zm(i,k)) &
+                    !              /(1._r8-r8tmp*phys_state(lchnk)%zm(i,k)*rearth_inv)
+
+                    ! If we assume Zs/r << 1, then
+                    ! (2) Z_gm ~= 1/(1 - Z_gp/r) * (Zs + Z_gp)
                      r8tmp = phys_state(lchnk)%zm(i, k) + phis(i)*rga
-                     tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
+                     tempm(i, k) = r8tmp / (1._r8 - (phys_state(lchnk)%zm(i, k) * rearth_inv))
+
                   end if
                   ! physics state fields on interfaces (but only to pver)
                   zi_blck(k, j) = phys_state(lchnk)%zi(i, k) + phis(i)*rga
