@@ -1849,10 +1849,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), parameter :: deicon = 50._r8            ! Convective ice effective diameter (meters)
 
    ! Rainbows: solar zenith angle (SZA)
-   real(r8), dimension(state%psetcols)  :: &
-         zen_angle, &                                      ! solar zenith angles
-         rlats, rlons                                      ! chunk latitudes and longitudes (radians)
-   real(r8) :: sza(state%psetcols)                                  ! solar zenith angles (degrees)
+   real(r8) :: zen_angle(state%psetcols)                   ! Daytime solar zenith angles (radians)
+   real(r8) :: rlats(state%psetcols), rlons(state%psetcols)   ! chunk latitudes and longitudes (radains)
+   real(r8) :: sza(state%psetcols)                         ! solar zenith angles (degrees)
    real(r8), parameter :: rad2deg = 180._r8/pi                ! radians to degrees conversion factor
    real(r8) :: calday  !current calendar day
 
@@ -3216,7 +3215,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !-----------------------------------------------------------------------
 ! Diagnostic Rainbow Calculation. Seriously.
 !-----------------------------------------------------------------------
-! Converted Python code in a loop....
       
    do i = 1, ncol
 
@@ -3233,11 +3231,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          end if 
       end do 
             
-!fractional precip: use maximum in surface layer
-
-!convective based on convective cloud area
+!For all fractional precip calculated below, use maximum in surface layer.
+!For convective precip, base on convective cloud area
       convmx = maxval(concld(i,top_idx:))
-!stratiform based on precip fraction, 
+!For stratiform precip, base on precip fraction
       cldmx= maxval(freqr(i,top_idx:))
 ! Combine and use maximum of strat or conv fraction
       frlow= max(cldmx,convmx)
