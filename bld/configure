@@ -2101,6 +2101,7 @@ sub write_fv3core_filepath
     my $camsrcdir   = $cfg_ref->get('cam_dir');
     my $CASEROOT = "$ENV{'CASEROOT'}";
     print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/src_override\n";
     print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
@@ -2168,7 +2169,7 @@ sub write_filepath
 
     # Weak scaling fix. This has to come before physics/cam and before dycores
     # It also has to come before utils (which is already near the end).
-    if ($dyn eq 'se' or $dyn eq 'mpas') {
+    if ($dyn eq 'se' or $dyn eq 'mpas' or $dyn eq 'fv3') {
       print $fh "$camsrcdir/src/infrastructure\n";
     }
 
@@ -2188,9 +2189,9 @@ sub write_filepath
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
     }
- 
+
     # GEOS-Chem must be prior to Mozart
-    if ($chem_pkg =~ 'geoschem') {	
+    if ($chem_pkg =~ 'geoschem') {
 	print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
 	print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
 	print $fh "$chem_src_dir/geoschem_src/Headers\n";
@@ -2302,7 +2303,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/physics/cam\n";
 
     #Add the CCPP'ized subdirectories
-    print $fh "$camsrcdir/src/atmos_phys/zm\n";
+    print $fh "$camsrcdir/src/atmos_phys/zhang_mcfarlane\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";

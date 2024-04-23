@@ -2015,8 +2015,8 @@ subroutine cofrm(date)
 ! Set outputs gb(ncoef) and gv(ncoef)
 ! These are module data above.
 ! 
-  gb(1) = 0._r8
-  gv(1) = 0._r8
+  gb(:) = 0._r8
+  gv(:) = 0._r8
   f0 = -1.e-5_r8
   do k=2,kmx
     if (n < m) then
