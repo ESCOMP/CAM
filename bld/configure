@@ -69,7 +69,7 @@ OPTIONS
                          waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
                          waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
-     -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
+     -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6 and cam7, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
      -co2_cycle         This option modifies the CAM configuration by
@@ -97,7 +97,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam_dev |
+     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam7 |
                                         held_suarez | adiabatic | kessler | tj2016 | grayrad
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -676,17 +676,6 @@ my $max_n_rad_cnst = $cfg_ref->get('max_n_rad_cnst');
 if ($print>=2) { print "Maximum radiatively active tracers: $max_n_rad_cnst$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# model_top - not set by default
-my $model_top = 'none';
-$cfg_ref->set('model_top', $model_top);
-
-# user override
-if (defined $opts{'model_top'}) {
-    $cfg_ref->set('model_top', $opts{'model_top'});
-}
-if ($print>=2) { print "model_top: $model_top$eol"; }
-
-#-----------------------------------------------------------------------------------------------
 # waccm physics
 my $waccm_phys = 0;
 if ($chem_pkg =~ /waccm_/) {
@@ -823,7 +812,7 @@ elsif ($phys_pkg eq 'cam5') {
 elsif ($phys_pkg eq 'cam6') {
     $microphys_pkg = 'mg2';
 }
-elsif ($phys_pkg eq 'cam_dev') {
+elsif ($phys_pkg eq 'cam7') {
     $microphys_pkg = 'mg3';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -872,7 +861,7 @@ if ($print>=2) { print "CARMA microphysical model: $carma_pkg$eol"; }
 #-----------------------------------------------------------------------------------------------
 # CLUBB
 my $clubb_sgs = 0;
-if ($phys_pkg eq 'cam6' or $phys_pkg eq 'cam_dev') {
+if ($phys_pkg eq 'cam6' or $phys_pkg eq 'cam7') {
     $clubb_sgs = 1;
 }
 
@@ -882,6 +871,13 @@ if (defined $opts{'clubb_sgs'}) {
 }
 
 # consistency checks...
+
+# cam7 only works with CLUBB_SGS
+if (($phys_pkg eq 'cam7') and not ($clubb_sgs )) {
+    die <<"EOF";
+**    ERROR: CLUBB_SGS must be enabled for cam7 physics.
+EOF
+}
 
 # CLUBB_SGS only works with mg microphysics
 if ($clubb_sgs and not ($microphys_pkg =~ m/^mg/ )) {
@@ -955,13 +951,15 @@ if ($phys_pkg =~ /cam[34]/) {
 elsif ($phys_pkg =~ /cam5/) {
     $macrophys_pkg = 'park';
 }
-elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
-    $macrophys_pkg = 'clubb_sgs';
+elsif ($phys_pkg =~ /cam6/) {
+    if ($clubb_sgs) {
+        $macrophys_pkg = 'clubb_sgs';
+    }
+    else {
+        $macrophys_pkg = 'park';
+    }
 }
-elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
-    $macrophys_pkg = 'park';
-}
-elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
     $macrophys_pkg = 'clubb_sgs';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -996,13 +994,15 @@ if ($phys_pkg =~ m/^cam[34]$/) {
 elsif ($phys_pkg =~ /cam5/) {
     $pbl_pkg = 'uw';
 }
-elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
-    $pbl_pkg = 'clubb_sgs';
+elsif ($phys_pkg =~ /cam6/) {
+    if ($clubb_sgs) {
+        $pbl_pkg = 'clubb_sgs';
+    }
+    else {
+        $pbl_pkg = 'uw';
+    }
 }
-elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
-    $pbl_pkg = 'uw';
-}
-elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
     $pbl_pkg = 'clubb_sgs';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -1062,10 +1062,10 @@ if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
 
 # Set default
 my $rad_pkg = 'none';
-if ($phys_pkg =~ m/^cam[34]$|^spcam_sam1mom$/) {
+if ($phys_pkg =~ m/cam3|cam4|spcam_sam1mom/) {
     $rad_pkg = 'camrt';
 }
-elsif ($phys_pkg =~ m/^cam[56]$|^cam_dev$|^spcam_m2005$/) {
+elsif ($phys_pkg =~ m/cam5|cam6|cam7|spcam_m2005/) {
     $rad_pkg = 'rrtmg';
 }
 # Allow the user to override the default via the commandline.
@@ -1116,8 +1116,8 @@ if (defined $opts{'cosp'}) {
 }
 my $cosp = $cfg_ref->get('cosp');
 
-# cosp is only implemented with the cam5 and cam6 physics packages
-if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam_dev')) {
+# cosp is only implemented with the cam5, cam6, and cam7 physics packages
+if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam7')) {
         die "configure ERROR: cosp not implemented for the $phys_pkg physics package \n";
 }
 
@@ -1308,7 +1308,7 @@ my $nlev = 0;
 if ($waccmx) {
     if ($phys_pkg eq 'cam6') {
         $nlev = 130;
-    } elsif ($phys_pkg eq 'cam_dev') {
+    } elsif ($phys_pkg eq 'cam7') {
         $nlev = 130;
     } else {
         $nlev = 126;
@@ -1322,8 +1322,8 @@ elsif ($chem_pkg =~ /waccm_/) {
         $nlev = 70;
     }
 }
-elsif ($phys_pkg eq 'cam_dev') {
-    $nlev = 32;
+elsif ($phys_pkg eq 'cam7') {
+    $nlev = 58;
 }
 elsif ($phys_pkg eq 'cam6') {
     $nlev = 32;
@@ -1362,6 +1362,23 @@ if ($print>=2) { print "Number of vertical levels: $nlev$eol"; }
 if ($phys_pkg eq 'spcam_sam1mom' or $phys_pkg eq 'spcam_m2005') {
    $cfg_ref->set('spcam_nz', $nlev-2);
 }
+
+#-----------------------------------------------------------------------------------------------
+# model_top -- Introduced in cam7 to provide a way to specify the model top
+#              independently of the number of model layers.
+
+# Set default
+my $model_top = 'none';
+if ($phys_pkg =~ m/cam7/) {
+    $model_top = 'lt';
+}
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'}) {
+    $cfg_ref->set('model_top', $opts{'model_top'});
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #------------------------------------------------------------------------------------------------
 # chemistry preprocessor....
@@ -2157,8 +2174,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";
 
-    if ($phys_pkg eq 'cam_dev') {
-      print $fh "$camsrcdir/src/physics/cam_dev\n";
+    if ($phys_pkg eq 'cam7') {
+      print $fh "$camsrcdir/src/physics/cam7\n";
     }
 
     if ($simple_phys) {
@@ -2267,7 +2284,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
     }
 
-    if ($phys_pkg eq 'cam_dev') {
+    if ($phys_pkg eq 'cam7') {
 	print $fh "$camsrcdir/src/physics/pumas\n";
     } else {
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";

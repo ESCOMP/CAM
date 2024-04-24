@@ -1566,7 +1566,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $chem =~ /_mam/) {
+if (($phys =~ /cam6/ or $phys =~ /cam7/) and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1596,9 +1596,9 @@ if (chem_has_species($cfg, 'O3S')) {
 # stratospheric aerosols are needed for heterogeneous chemistry as well as radiation feedback
 my $het_chem = chem_has_species($cfg, 'N2O5');
 
-# Default for CAM6, is that prescribed_strataero_3modes is TRUE, but allow user to override
+# Default for cam6 and cam7 is that prescribed_strataero_3modes is TRUE, but allow user to override
 my $prescribed_strataero_3modes = $FALSE;
-if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
+if ($phys =~ /cam6/ or $phys =~ /cam7/) {
    $prescribed_strataero_3modes = $TRUE;
 }
 if (defined $nl->get_value('prescribed_strataero_3modes')) {
@@ -1854,7 +1854,7 @@ my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
 
 # Tropospheric full chemistry options
-if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/) and ($phys !~ /cam_dev/)) {
+if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/) and ($phys !~ /cam7/)) {
 
     # Surface emission datasets:
     my %verhash;
@@ -2228,7 +2228,7 @@ if ($chem eq 'trop_mam3') {
 }
 
 # CMIP6 emissions
-if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam_dev/)) {
+if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam7/)) {
 
     # OASISS (ocean) DMS emissions
     if (!$aqua_mode and !$scam) {
@@ -2389,7 +2389,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         }
     }
 
-    # Note, this section might need to be modified if cam_dev values
+    # Note, this section might need to be modified if cam7 values
     #   diverge from cam6 values
     my %verhash = ('ver'=>'cam6');
     my $first = 1;
@@ -3150,15 +3150,15 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
 add_default($nl, 'deep_scheme');
 
 # Aerosol convective processes
-if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $nl->get_value('deep_scheme') =~ /ZM/) {
+if (($phys =~ /cam6/ or $phys =~ /cam7/) and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
     add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
 }
 
-# cam_dev specific namelists
-if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+# cam7 specific namelists
+if ($phys =~ /cam7/ and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
 } else {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
@@ -3211,8 +3211,8 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
 
     # namelist options for pumas tag release_v1.22 or later
-    #   (currently only in the cam_dev physics package)
-    if ($phys =~ /cam_dev/) {
+    #   (currently only in the cam7 physics package)
+    if ($phys =~ /cam7/) {
         add_default($nl, 'micro_mg_warm_rain');
 	add_default($nl, 'micro_mg_accre_sees_auto');
 	add_default($nl, 'micro_mg_vtrms_factor');
@@ -3229,7 +3229,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
       
     }else {
     # For CESM2, the decision was made to set micro_do_sb_physics to false
-    # This variable is replaced with micro_mg_warm_rain in cam_dev runs
+    # This variable is replaced with micro_mg_warm_rain in cam7 runs
         add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
     }
 
@@ -3245,13 +3245,13 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '390.D-6';       # default for SIHLS
         }
         elsif ($hgrid =~ /1.9x2.5/ and $phys eq 'cam6') {
-            $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
+            $micro_mg_dcs = '200.D-6';
         }
         elsif ($phys eq 'cam6') {
-            $micro_mg_dcs = '500.D-6';   # default for cam6
+            $micro_mg_dcs = '500.D-6';
         }
-        elsif ($phys eq 'cam_dev') {
-            $micro_mg_dcs = '500.D-6';   # default for cam_dev
+        elsif ($phys eq 'cam7') {
+            $micro_mg_dcs = '500.D-6';
         }
     }
 
@@ -3525,13 +3525,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'do_hb_above_clubb');
 }
 
-# Force exit if running cam_dev and CLUBB is off
-if ($phys eq 'cam_dev') {
-    if ($clubb_sgs  =~ /$FALSE/io) {
-        die "$ProgName - ERROR: If running cam_dev physics, do_clubb_sgs must be .true.\n";
-    }
-}
-
 # Tuning for wet scavenging of modal aerosols
 if ($chem =~ /_mam/) {
     add_default($nl, 'sol_facti_cloud_borne');
@@ -3719,7 +3712,7 @@ if ($chem =~ /_mam(\d)/) {
 # By default, orographic waves are always on
 if (!$simple_phys) {
 
-    if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
+    if ($phys =~ /cam6/ or $phys =~ /cam7/) {
 
        add_default($nl, 'use_gw_oro',        'val'=>'.false.');
 
@@ -3750,7 +3743,7 @@ if (!$simple_phys) {
 }
 
 if ($waccm_phys or
-    (!$simple_phys and $cfg->get('nlev') >= 60)) {
+    (!$simple_phys and $cfg->get('model_top') eq 'mt')) {
     # Spectral gravity waves are part of WACCM physics, and also drive the
     # QBO in the high vertical resolution configuration.
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
@@ -3773,8 +3766,8 @@ if ($waccm_phys or
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
     add_default($nl, 'gw_top_taper');
-} elsif ($phys =~ /cam_dev/) {
-    # cam_dev settings for nlev<60 (Other cam_dev set above)
+} elsif ($phys =~ /cam7/) {
+    # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
@@ -3910,7 +3903,7 @@ if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
      $do_gw_convect_dp or $do_gw_convect_sh )) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
-} elsif ($phys =~ /cam_dev/) {
+} elsif ($phys =~ /cam7/) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');
@@ -5084,8 +5077,8 @@ sub check_snapshot_settings {
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));
         }
-    } elsif ($phys =~ /cam_dev/) {
-        # CAM_DEV physpkg
+    } elsif ($phys =~ /cam7/) {
+        # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
                              "'microp_section'"));

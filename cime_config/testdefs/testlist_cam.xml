@@ -1540,13 +1540,13 @@
       <option name="wallclock">01:00:00</option>
     </options>
   </test>
-  <test compset="2000_CAM%DEV%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+  <test compset="2000_CAM70%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
-      <option name="comment" >GHG chemisty with cam_dev physics and year 2000 use case</option>
+      <option name="comment" >GHG chemisty with cam7 physics and year 2000 use case</option>
     </options>
   </test>
   <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_wetdep">
@@ -1793,7 +1793,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">CAM7 dev low top ~40 km</option>
+      <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
   <test compset="FLTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
@@ -1802,7 +1802,7 @@
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM7 dev low top ~40 km</option>
+      <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
   <test compset="FLTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s_rrtmgp">
@@ -1811,7 +1811,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">CAM7 dev low top ~40 km w/ RRTMGP</option>
+      <option name="comment">CAM7 low top ~40 km w/ RRTMGP</option>
     </options>
   </test>
   <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
@@ -1820,7 +1820,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">CAM7 dev mid top ~80 km</option>
+      <option name="comment">CAM7 mid top ~80 km</option>
     </options>
   </test>
   <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_rrtmgp">
@@ -1829,7 +1829,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">CAM7 dev mid top ~80 km w/ RRTMGP</option>
+      <option name="comment">CAM7 mid top ~80 km w/ RRTMGP</option>
     </options>
   </test>
   <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
@@ -1838,7 +1838,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
-      <option name="comment">CAM7 dev mid top ~80 km</option>
+      <option name="comment">CAM7 mid top ~80 km</option>
     </options>
   </test>
   <test compset="FCts2nudged" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_leapday">
@@ -2270,7 +2270,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
-      <option name="comment" >Low-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
+      <option name="comment" >Low-top CAM-Chem with MAM5 aerosols and cam7 physics</option>
     </options>
   </test>
   <test compset="FCMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
@@ -2279,7 +2279,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
-      <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
+      <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam7 physics</option>
     </options>
   </test>
   <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
@@ -2732,7 +2732,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F1850" grid="f10_f10_mg37" name="ERS_Ld3" testmods="cam/outfrq1d_14dec_ghg_cam_dev">
+  <test compset="F1850" grid="f10_f10_mg37" name="ERS_Ld3" testmods="cam/outfrq1d_14dec_ghg_cam7">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="ghg_cam"/>
