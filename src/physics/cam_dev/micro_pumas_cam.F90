@@ -3185,7 +3185,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 ! Diagnostic Rainbow Calculation. Seriously.
 !-----------------------------------------------------------------------
       
-   do i = 1, ncol
+   do i = 1, ngrdcol
 
       top_idx = pver
       convmx = 0._r8
