@@ -1353,6 +1353,7 @@
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="comment" >001 tsc</option>
