@@ -2744,9 +2744,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(qrsedten_sc,  ngrdcol, lchnk, qrsedtenout_grid(:,top_lev:))
       qssedten_sc(:ncol,:) = proc_rates%qssedten(:ncol,1:nlev)
       call subcol_field_avg(qssedten_sc,  ngrdcol, lchnk, qssedtenout_grid(:,top_lev:))
-
-      call subcol_field_avg(proc_rates%umr,       ngrdcol, lchnk, umrout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%ums,       ngrdcol, lchnk, umsout_grid(:,top_lev:))
+      umr_sc(:ncol,:) = proc_rates%umr(:ncol,1:nlev)
+      call subcol_field_avg(umr_sc,       ngrdcol, lchnk, umrout_grid(:,top_lev:))
+      ums_sc(:ncol,:) = proc_rates%ums(:ncol,1:nlev)
+      call subcol_field_avg(ums_sc,       ngrdcol, lchnk, umsout_grid(:,top_lev:))
 
       if (micro_mg_version > 2) then
             call subcol_field_avg(state_loc%q(:,:,ixgraupel),    ngrdcol, lchnk, qg_grid)
