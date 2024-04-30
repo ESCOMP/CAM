@@ -36,7 +36,8 @@ contains
 !==========================================================================
 
 subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
-     netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     netdt, netdt_shcu, xpwp_shcu, &
+     zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
@@ -66,7 +67,11 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Midpoint zonal/meridional winds.
   real(r8), intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Heating rate due to convection.
-  real(r8), intent(in) :: netdt(:,:)  !from Zhang McFarlane
+  real(r8), intent(in) :: netdt(:,:)  !from deep scheme
+  ! Heating rate due to shallow convection nd PBL turbulence.
+  real(r8), intent(in) :: netdt_shcu(:,:) 
+  ! Higher order flux from ShCu/PBL.
+  real(r8), intent(in) :: xpwp_shcu(ncol,pver+1) 
   ! Midpoint altitudes.
   real(r8), intent(in) :: zm(ncol,pver)
 
@@ -135,24 +140,37 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8) :: hdmm_idx(ncol), uhmm_idx(ncol)
   ! Index for ground based phase speed bin
   real(r8) :: c0(ncol,-band%ngwv:band%ngwv), c_idx(ncol,-band%ngwv:band%ngwv)
+  ! Flux source from ShCu/PBL
+  real(r8) :: xpwp_src(ncol)
+  ! Manual steering level set
+  integer :: Steer_k
+
   !----------------------------------------------------------------------
   ! Initialize tau array
   !----------------------------------------------------------------------
-
   tau = 0.0_r8
   hdepth = 0.0_r8
   q0 = 0.0_r8
   tau0 = 0.0_r8
 
+  !----------------------------------------------------------------------
+  ! Calculate flux source from ShCu/PBL
+  !----------------------------------------------------------------------
+  xpwp_src = shcu_flux_src( xpwp_shcu, ncol, pver+1 )
+  
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors approximately at the source (steering level), then
   ! project winds.
   !------------------------------------------------------------------------
 
   ! Winds at 'steering level' 
-  usteer = u(:,desc%k)  !k defined in line21 (at specified altitude)
-  vsteer = v(:,desc%k)
-  steer_level = 1._r8 * desc%k
+  !usteer = u(:,desc%k)  !k defined in line21 (at specified altitude)
+  !vsteer = v(:,desc%k)
+  !steer_level = 1._r8 * desc%k
+  Steer_k = pver-1
+  usteer = u(:,Steer_k)  !k defined in line21 (at specified altitude)
+  vsteer = v(:,Steer_k)
+  steer_level = 1._r8 * Steer_k
   ! all GW calculations on a plane, which in our case is the wind at 700hPa  source level -> ubi is wind in this plane
   ! Get the unit vector components and magnitude at the source level.
   call get_unit_vector(usteer, vsteer, xv_steer, yv_steer, umag_steer)
@@ -175,7 +193,12 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      usteer(i) = usteer(i) - xv_steer(i)*Cell_Retro_Speed(i)
      vsteer(i) = vsteer(i) - yv_steer(i)*Cell_Retro_Speed(i)
   end do
-
+  !-------------------------------------------------------------------------
+  ! At this point (usteer,vsteer) is the cell-speed, or equivalently, the 2D
+  ! ground based wave phase spped for moving mountain GW
+  !-------------------------------------------------------------------------
+  
+  
   ! Calculate heating depth.
   !
   ! Heating depth is defined as the first height range from the bottom in
@@ -188,7 +211,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   !+++jtb
 #ifdef DEVELOPTEST  
   boti=pver
-  topi=desc%k-5
+  topi=Steer_k-10 ! desc%k-5
 #else
   do k = pver, 1, -1 !start at surface
      do i = 1, ncol
@@ -240,19 +263,16 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Multipy by conversion factor (now 20* larger than what Zahng McFarlane said as they try to describe heating over 100km grid cell)
   q0 = q0 * CF
   qj = 9.81/285*q0 ! unit conversion to m/s3
-  !write(117) qj
- 
-  ! Moving Mountain wind speeds
-  ! Storm speed is taken to be the source wind speed.
-  !+++jtb
+
   
   CS1 = sqrt( usteer**2._r8 + vsteer**2._r8 ) 
   CS = CS1*xv_steer + CS1*yv_steer 
-  ! calculate the xv and yv in the frame of reference of the wave 
 
-
-  ! These are wind profiles relative to steering (or cell) motion.
-  ! If steering wind=0 then this is just like orog gwave
+  ! -----------------------------------------------------------
+  ! Calculate winds in reference frame of wave (uwavef,vwavef).
+  ! This is like "(U-c)" in GW literature, where U and c are in
+  ! ground-based speeds in a plane perpendicular to wave fronts.
+  !------------------------------------------------------------
   do i=1,ncol
      udiff(i) = u(i,topi(i)) - usteer(i)
      vdiff(i) = v(i,topi(i)) - vsteer(i)
@@ -260,33 +280,46 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
         uwavef(i, k ) = u(i, k ) - usteer(i)
         vwavef(i, k ) = v(i, k ) - vsteer(i)
      end do
-    ! xv(i) = -1._r8*udiff(i)/abs(udiff(i))
-    ! yv(i) = -1._r8*vdiff(i)/abs(vdiff(i))
   end do
+  !----------------------------------------------------------
+  ! Wave relative wind at source level. This determines
+  ! orientation of wave in the XY plane, and therefore the
+  ! direction in which force from dissipating GW will be
+  ! applied.
+  !----------------------------------------------------------
+  do i=1,ncol
+     udiff(i) = uwavef( i, topi(i) ) 
+     vdiff(i) = vwavef( i, topi(i) )
+  end do
+  !-----------------------------------------------------------
+  ! Unit vector components (xv,yv) in direction of wavevector
+  ! i.e., in which force will be applied
+  !-----------------------------------------------------------
   call get_unit_vector(udiff , vdiff , xv, yv, ubisrc )
 
-  call outfld('UCONV_MOVMTN', usteer, ncol, lchnk)
-  call outfld('VCONV_MOVMTN', vsteer, ncol, lchnk)
+  call outfld('UCELL_MOVMTN', usteer, ncol, lchnk)
+  call outfld('VCELL_MOVMTN', vsteer, ncol, lchnk)
   call outfld('CS_MOVMTN', CS, ncol, lchnk)
   call outfld('CS1_MOVMTN', CS1, ncol, lchnk)
   call outfld('STEER_LEVEL_MOVMTN',steer_level, ncol, lchnk )
+  call outfld('XPWP_SRC_MOVMTN', xpwp_src , ncol, lchnk )
 
-  
-  ! Project the local wind at midpoints onto the source wind. looping through altitudes ubm is a profile projected on to the steering level
+  !----------------------------------------------------------
+  ! Project the local wave relative wind at midpoints onto the
+  !  direction of the wavevector.
+  !----------------------------------------------------------
   do k = 1, pver
-     !ubm(:,k) = -1._r8*dot_2d(u(:,k), v(:,k), xv, yv)
-     ! let's just try everything in frame of the wave
-     ! remove -1._r8*
      ubm(:,k) = dot_2d(uwavef(:,k), vwavef(:,k), xv, yv)
   end do
-
   ! Source level on-crest wind
   do i=1,ncol
      ubmsrc(i) = ubm(i,topi(i))
   end do
 
-  ! adjust everything so that source level wave frame on-crest wind
-  ! is always positive. Also adjust unit vector comps xv,yv
+  !---------------------------------------------------------------
+  ! adjust everything so that source level wave relative on-crest
+  ! wind is always positive. Also adjust unit vector comps xv,yv
+  !--------------------------------------------------------------
   do k=1,pver
      do i=1,ncol
         ubm(i,k) = sign( 1._r8 , ubmsrc(i) )* ubm(i,k)
@@ -297,16 +330,20 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      xv(i) = sign( 1._r8 , ubmsrc(i) ) * xv(i)
      yv(i) = sign( 1._r8 , ubmsrc(i) ) * yv(i)
   end do
-  !
-  !ubmsrc = abs( ubmsrc )
 
+  
+!+++ jtb (1/17/24)
+  ! I don't think this should be done.
+  ! Comment out
+#if 0
   !Subtract steering wind/cell speed
   do k=1,pver
      do i=1,ncol
         ubm(i,k) = ubm(i,k) - CS1(i)
      end do
   end do
-
+#endif
+  
   
   ! Compute the interface wind projection by averaging the midpoint winds. (both same wind profile, just at different points of the grid)
   ! Use the top level wind at the top interface.
@@ -326,8 +363,13 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Set phase speeds; just use reference speeds.
   !+++jtb
   !c=0
-  !Need to be really sure about the sign here
-  c(:,0) = -CS1(:) !!spread(band%cref, 1, ncol)
+  ! Need to be really sure about the sign here
+  !c(:,0) = -CS1(:) !!spread(band%cref, 1, ncol)
+!+++jtb
+  ! (1/17/24) Think the correct thing to do is to set c=0. 
+  ! Direction and non-zero phase speeds are contained in
+  ! (uwavef,vwavef)=>ubm and in (xv,yv)
+  c(:,0) = 0._r8
 
   !-----------------------------------------------------------------------
   ! Gravity wave sources
@@ -361,7 +403,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      end if ! heating depth above min and not at the pole
 #else
      !+++jtb
-     tau(i,0,topi(i):pver+1 ) = 0.1_r8/10000._r8
+     tau(i,0,topi(i):pver+1 ) = xpwp_src(i) ! 0.1_r8/10000._r8
 #endif
      
   enddo
@@ -396,5 +438,33 @@ function index_of_nearest(x, grid) result(idx)
   end do
 
 end function index_of_nearest
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function shcu_flux_src (xpwp_shcu , ncol, pverx ) result(xpwp_src)
+  integer, intent(in) :: ncol,pverx
+  real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
+
+  real(r8) :: xpwp_src(ncol) , alpha_shcu_flux
+
+  integer :: k, nlayers
+
+  !-----------------------------------
+  ! This is a tunable parameter
+  ! that should go into the namelist
+  !-----------------------------------
+  alpha_shcu_flux = 0.01_r8
+
+  !-----------------------------------
+  ! Simple average over layers.
+  ! Probably can do better
+  !-----------------------------------
+  nlayers=5
+  xpwp_src(:) =0._r8
+  do k = 0, nlayers-1
+     xpwp_src(:) = xpwp_src(:) + xpwp_shcu(:,pverx-k)
+  end do
+  xpwp_src(:) = alpha_shcu_flux * xpwp_src(:)/(1.0_r8*nlayers)
+
+end function shcu_flux_src
 
 end module gw_movmtn

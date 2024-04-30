@@ -161,6 +161,7 @@ module gw_drag
   integer :: upwp_clubb_gw_idx   = -1
   integer :: vpwp_clubb_gw_idx   = -1
   integer :: thlp2_clubb_gw_idx  = -1
+  integer :: wpthlp_clubb_gw_idx  = -1
 
 
   !+++ temp
@@ -943,6 +944,7 @@ subroutine gw_init()
      thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
      upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
      vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
+     wpthlp_clubb_gw_idx  = pbuf_get_index('WPTHLP_CLUBB_GW')
 
      ! Read moving mountain file.
      gw_drag_file_mm = '/glade/work/bramberg/cases/CESM/components/cam/src/physics/cam/mfc0lookup_mm.nc'
@@ -973,6 +975,8 @@ subroutine gw_init()
         write (iulog,*) 'Moving mountain deep level =',movmtn_desc%k
      end if
 
+     call addfld ('GWUT_MOVMTN',(/ 'lev' /), 'I','m/s2', &
+          'Mov Mtn dragforce - ubm component')
      call addfld ('UTGW_MOVMTN',(/ 'lev' /), 'I','m/s2', &
           'Mov Mtn dragforce - u component')
      call addfld ('VTGW_MOVMTN',(/ 'lev' /), 'I','m/s2', &
@@ -989,9 +993,9 @@ subroutine gw_init()
           'Moving Mountain - midpoint wind in direction of wave')
      call addfld ('HDEPTH_MOVMTN',horiz_only,'I','km', &
           'Heating Depth')
-     call addfld ('UCONV_MOVMTN',horiz_only,'I','m/s', &
+     call addfld ('UCELL_MOVMTN',horiz_only,'I','m/s', &
           'Source-level X-wind')
-     call addfld ('VCONV_MOVMTN',horiz_only,'I','m/s', &
+     call addfld ('VCELL_MOVMTN',horiz_only,'I','m/s', &
           'Source-level Y-wind')
      call addfld ('CS_MOVMTN',horiz_only,'I','m/s', &
           'phase speed')
@@ -1009,10 +1013,15 @@ subroutine gw_init()
           'Net heating rate')
      call addfld ('THLP2_CLUBB_GW',(/ 'ilev' /),'A','K+2', &
           'THLP variance from CLUBB to GW')
+     call addfld ('WPTHLP_CLUBB_GW',(/ 'ilev' /),'A','Km s-2', &
+          'WPTHLP from CLUBB to GW')
      call addfld ('UPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
           'X-momflux from CLUBB to GW')
      call addfld ('VPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
           'Y-momflux from CLUBB to GW')
+     call addfld ('XPWP_SRC_MOVMTN',horiz_only,'I','m+2 s-2', &
+          'flux source for moving mtn')
+
   end if
 
   if (use_gw_convect_dp) then
@@ -1556,8 +1565,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   !  New couplings from CLUBB
   real(r8), pointer :: ttend_clubb(:,:)
   real(r8), pointer :: thlp2_clubb_gw(:,:)
+  real(r8), pointer :: wpthlp_clubb_gw(:,:)
   real(r8), pointer :: upwp_clubb_gw(:,:)
   real(r8), pointer :: vpwp_clubb_gw(:,:)
+  real(r8) :: xpwp_clubb(state%ncol,pver+1)
+  
 
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
@@ -1630,6 +1642,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
+
   !------------------------------------------------------------------------
 
   ! Make local copy of input state.
@@ -1714,8 +1727,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
      call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
+     call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+
+     xpwp_clubb = sqrt( upwp_clubb_gw**2 + vpwp_clubb_gw**2 )
 
      if(masterproc) then
        write(iulog,*) " Moving mountain development code"
@@ -1727,10 +1743,18 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !effgw = 0.5_r8
      effgw = 1._r8
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
-          u, v,ttend_dp(:ncol,:), zm, src_level, tend_level, &
+          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:)  , &
+          zm, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           c, hdepth)
-
+     !+++jtb (1/17/24)
+     !-------------------------------------------------------------
+     ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
+     ! and unit vector components describing direction of wavevector
+     ! and application of wave-drag force. I believe correct setting
+     ! for c is c=0, since it is incorporated in ubm and (xv,yv)
+     !--------------------------------------------------------------
+     
      call outfld('SRC_LEVEL_MOVMTN', 1._r8*src_level, ncol, lchnk)
      call outfld('TND_LEVEL_MOVMTN', 1._r8*tend_level, ncol, lchnk)
      call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
@@ -1769,6 +1793,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      end do
      
      call outfld('TAU_MOVMTN', tau(:,0,:), ncol, lchnk)
+     call outfld('GWUT_MOVMTN', gwut(:,:,0), ncol, lchnk)
      call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
      call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
      call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
@@ -1776,6 +1801,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !+++jtb new from CLUBB
      call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk) 
      call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk) 
+     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk) 
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk) 
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk) 
 #endif
