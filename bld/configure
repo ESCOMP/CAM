@@ -1301,6 +1301,20 @@ EOF
 if ($print>=2) { print "Maximum number of sub-columns per column: $psubcols$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+# model_top -- Introduced in cam7 to provide a way to specify the model top
+#              independently of the number of model layers.
+
+# Set default
+my $model_top = 'none';
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'}) {
+    $cfg_ref->set('model_top', $opts{'model_top'});
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
+
+#-----------------------------------------------------------------------------------------------
 # Number of vertical levels
 my $nlev = 0;
 
@@ -1323,7 +1337,7 @@ elsif ($chem_pkg =~ /waccm_/) {
     }
 }
 elsif ($phys_pkg eq 'cam7') {
-    $nlev = 58;
+    $nlev = 32;
 }
 elsif ($phys_pkg eq 'cam6') {
     $nlev = 32;
@@ -1362,23 +1376,6 @@ if ($print>=2) { print "Number of vertical levels: $nlev$eol"; }
 if ($phys_pkg eq 'spcam_sam1mom' or $phys_pkg eq 'spcam_m2005') {
    $cfg_ref->set('spcam_nz', $nlev-2);
 }
-
-#-----------------------------------------------------------------------------------------------
-# model_top -- Introduced in cam7 to provide a way to specify the model top
-#              independently of the number of model layers.
-
-# Set default
-my $model_top = 'none';
-if ($phys_pkg =~ m/cam7/) {
-    $model_top = 'lt';
-}
-$cfg_ref->set('model_top', $model_top);
-
-# user override
-if (defined $opts{'model_top'}) {
-    $cfg_ref->set('model_top', $opts{'model_top'});
-}
-if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #------------------------------------------------------------------------------------------------
 # chemistry preprocessor....
