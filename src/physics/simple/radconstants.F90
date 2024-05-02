@@ -15,11 +15,9 @@ integer, parameter, public :: idx_sw_diag = 1
 integer, parameter, public :: idx_lw_diag = 1
 integer, parameter, public :: idx_nir_diag = 1
 integer, parameter, public :: idx_uv_diag = 1
-integer, parameter, public :: nrh = 1
-integer, parameter, public :: ot_length = 32
 
 public :: rad_gas_index
-public :: get_lw_spectral_boundaries
+public :: get_lw_spectral_boundaries, get_sw_spectral_boundaries
 
 integer, public, parameter :: gasnamelength = 1
 integer, public, parameter :: nradgas = 1
@@ -39,6 +37,7 @@ integer function rad_gas_index(gasname)
 end function rad_gas_index
 
 !------------------------------------------------------------------------------
+
 subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
    ! stub should not be called
 
@@ -48,5 +47,19 @@ subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
    call endrun('get_lw_spectral_boundaries: ERROR: this is a stub')
 
 end subroutine get_lw_spectral_boundaries
+
+!------------------------------------------------------------------------------
+
+subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
+   ! stub should not be called
+
+   real(r8), intent(out) :: low_boundaries(nswbands), high_boundaries(nswbands)
+   character(*), intent(in) :: units ! requested units
+
+   call endrun('get_sw_spectral_boundaries: ERROR: this is a stub')
+
+end subroutine get_sw_spectral_boundaries
+
+!------------------------------------------------------------------------------
 
 end module radconstants

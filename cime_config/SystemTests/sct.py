@@ -43,7 +43,7 @@ class SCT(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "fincl2='T','Q','TDIFF','QDIFF','LANDFRAC'")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1."+RUN_STARTDATE+"-00000.nc'")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1i."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'YEARLY'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
@@ -65,7 +65,7 @@ class SCT(SystemTestsCompareTwo):
                                 success_change=False,
                                 ignore_fieldlist_diffs=False):
         with self._test_status:
-            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
+            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1i*8400.nc ')
             stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/^0,/0.0,/ | sed s/^0\;/0.0\;/ | sed s/\[,\;\].\*// |  uniq')
             array_of_DIFFs=DIFFs.split("\n")
             answer=max([abs(float(x)) for x in array_of_DIFFs])
@@ -79,3 +79,13 @@ class SCT(SystemTestsCompareTwo):
                 self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_FAIL_STATUS)
                 comments="QDIFF,TDIFF: Difference greater than round off."
             append_testlog(comments, self._orig_caseroot)
+
+    def _case_two_custom_prerun_action(self):
+        """ On NCAR derecho system the mpibind script causes ESMF in the second job to think it is using 128 tasks when it should only use 1
+        changing the env variable PBS_SELECT solves this issue
+        """
+        machine = self._case2.get_value("MACH")
+        if "derecho" in machine:
+            os.environ["PBS_SELECT"] = "1:ncpus=1:mpiprocs=1:ompthreads=1:mem=230gb:Qlist=cpu:ngpus=0"
+            
+                      

@@ -67,7 +67,7 @@ OPTIONS
                          trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_vbs |
                          trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
                          waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
-                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext ].
+                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
@@ -88,7 +88,7 @@ OPTIONS
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
-     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk | pumas].
      -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
@@ -103,7 +103,7 @@ OPTIONS
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
-     -rad <name>        Specify the radiation package [rrtmg | camrt]
+     -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
      -spcam_clubb_sgs   Turn on the SPCAM version of CLUBB
      -spcam_nx <n>      SPCAM x-grid. - defaults to 4 (note the CRM requires spcam_nx to be greater than or equal to 4)
@@ -592,7 +592,6 @@ if (defined $opts{'chem'}) {
 
     # If the user has specified a simple physics package...
     if ($simple_phys) {
-        # the only valid chemistry options are 'none' and 'terminator'
         if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator')) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
                 "                 -chem can only be set to 'none' or 'terminator'.\n";
@@ -839,6 +838,10 @@ if (defined $opts{'microphys'}) {
     $microphys_pkg = lc($opts{'microphys'});
 }
 
+if($microphys_pkg eq 'pumas') {
+    $microphys_pkg = 'mg3';
+}
+
 $cfg_ref->set('microphys', $microphys_pkg);
 
 if ($print>=2) { print "Microphysics package: $microphys_pkg$eol"; }
@@ -857,7 +860,7 @@ if ($carma_pkg =~ m/cirrus/i) {
     unless ($microphys_pkg =~ /^mg/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The CARMA cirrus model only works with MG microphysics.
+**    The CARMA cirrus model only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -884,7 +887,7 @@ if (defined $opts{'clubb_sgs'}) {
 if ($clubb_sgs and not ($microphys_pkg =~ m/^mg/ )) {
     die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    CLUBB_SGS only works with MG microphysics.
+**    CLUBB_SGS only works with MG or PUMAS microphysics.
 EOF
 }
 
@@ -1024,7 +1027,7 @@ if ($pbl_pkg =~ m/uw/i) {
     unless ($microphys_pkg =~ /^mg/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The UW PBL scheme only works with MG microphysics.
+**    The UW PBL scheme only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -1066,8 +1069,16 @@ elsif ($phys_pkg =~ m/^cam[56]$|^cam_dev$|^spcam_m2005$/) {
     $rad_pkg = 'rrtmg';
 }
 # Allow the user to override the default via the commandline.
+my $use_rrtmgp_gpu = 0;
 if (defined $opts{'rad'}) {
     $rad_pkg = lc($opts{'rad'});
+    # If the radiation package is set to rrtmgp_gpu then will add the gpu code version
+    # (openmp and openacc) to the Filepath file, but strip off the "_gpu" when setting
+    # the radiation package name in the config_cache file.
+    if ($rad_pkg eq 'rrtmgp_gpu') {
+        $use_rrtmgp_gpu = 1;
+        $rad_pkg = 'rrtmgp';
+    }
 }
 
 # consistency checks...
@@ -1080,12 +1091,17 @@ if ($rad_pkg eq 'camrt') {
             "                 with aerosol package $chem_pkg\n";
     }
 }
-elsif ($rad_pkg eq 'rrtmg') {
+elsif ($rad_pkg =~ m/rrtmg/) {
 
     # The rrtmg package doesn't work with the CAM3 prescribed aerosols
     if ($phys_pkg eq 'cam3') {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with physics package $phys_pkg\n";
+    }
+
+    # RRTMGP not currently working with CARMA
+    if ($rad_pkg eq 'rrtmgp' and $carma_pkg ne 'none') {
+        die "configure ERROR: The CARMA microphysics package does not currently work with RRTMGP\n";
     }
 }
 
@@ -1122,7 +1138,7 @@ if ($phys_pkg eq 'spcam_sam1mom') {
 }
 
 if ($phys_pkg eq 'spcam_m2005') {
-   if ($rad_pkg ne 'rrtmg') {
+   if ($rad_pkg !~ m/rrtmg/) {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with m2005 -- it should be rrtmg\n";
   }
@@ -1356,7 +1372,11 @@ my $chem_cppdefs = '';
 my $chem_src_dir = '';
 
 if (!$prog_species) {
-  $chem_src_dir = "$cam_dir/src/chemistry/pp_$chem_pkg";
+  if ($chem_pkg =~ 'geoschem') {
+    $chem_src_dir = "$cam_dir/src/chemistry/geoschem";
+  } else {
+    $chem_src_dir = "$cam_dir/src/chemistry/pp_$chem_pkg";
+  }
   $cfg_ref->set('chem_src_dir', $chem_src_dir);
 }
 
@@ -1383,10 +1403,10 @@ if ($customize) {
     }
     if ($print>=2) { print "Chem preprocessor compiler: $chemproc_fc $eol"; }
     ($chem_nadv) = chem_preprocess($cfg_ref,$print,$chemproc_fc);
-} elsif ($chem_pkg ne 'none') {
+} elsif ($chem_pkg ne 'none' and $chem_pkg !~ 'geoschem') {
    # copy over chem docs
-    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy failed $! \n";
-    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy failed $! \n";
+    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy of chem_mec.doc failed $! \n";
+    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy of chem_mech.in failed $! \n";
     ($chem_nadv) = chem_number_adv($chem_src_dir);
 }
 
@@ -1400,6 +1420,13 @@ if ($chem_pkg =~ '_mam3') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_7MODE ';
 }
 
+# Customize GEOS-Chem advected species and chemistry CPP definitions
+if ($chem_pkg =~ 'geoschem') {
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING ';
+    if ($chem_pkg =~ '_mam4') {
+        $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+    }
+}
 # CARMA sectional microphysics
 #
 # New CARMA models need to define the number of advected constituents.
@@ -1562,8 +1589,6 @@ $nadv = $cfg_ref->get('nadv');
 if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------------------------
 # Makefile configuration #######################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -1671,7 +1696,7 @@ elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
-if ($fc_type == "oneapi") {$fc_type = 'intel'; }
+if ($fc_type =~ /intel/) {$fc_type = 'intel'; }
 if ($fc_type) {
     $cfg_ref->set('fc_type', $fc_type);
     if ($print>=2) { print "Fortran compiler type: $fc_type$eol"; }
@@ -1937,6 +1962,12 @@ if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 #   HEMCO_CESM - indicates CESM model environment. Deprecated, will be removed soon.
 $cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
 
+# Compiler CPP definitions for GEOS-Chem
+if ($chem_pkg =~ 'geoschem') {
+    if    ($fc_type eq 'intel') { $cfg_cppdefs .= ' -DLINUX_IFORT'; }
+    elsif ($fc_type eq 'gnu')   { $cfg_cppdefs .= ' -DLINUX_GFORTRAN'; }
+}
+
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
 
@@ -2070,6 +2101,7 @@ sub write_fv3core_filepath
     my $camsrcdir   = $cfg_ref->get('cam_dir');
     my $CASEROOT = "$ENV{'CASEROOT'}";
     print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/src_override\n";
     print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
@@ -2137,7 +2169,7 @@ sub write_filepath
 
     # Weak scaling fix. This has to come before physics/cam and before dycores
     # It also has to come before utils (which is already near the end).
-    if ($dyn eq 'se' or $dyn eq 'mpas') {
+    if ($dyn eq 'se' or $dyn eq 'mpas' or $dyn eq 'fv3') {
       print $fh "$camsrcdir/src/infrastructure\n";
     }
 
@@ -2157,10 +2189,21 @@ sub write_filepath
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
     }
+
+    # GEOS-Chem must be prior to Mozart
+    if ($chem_pkg =~ 'geoschem') {
+	print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
+	print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
+	print $fh "$chem_src_dir/geoschem_src/Headers\n";
+	print $fh "$chem_src_dir/geoschem_src/ISORROPIA\n";
+	print $fh "$chem_src_dir/geoschem_src/KPP/fullchem\n";
+	print $fh "$camsrcdir/src/chemistry/pp_none\n";
+    }
+
     if ($chem =~ /_mam/) {
-        print $fh "$camsrcdir/src/chemistry/modal_aero\n";
+	print $fh "$camsrcdir/src/chemistry/modal_aero\n";
     } else {
-        print $fh "$camsrcdir/src/chemistry/bulk_aero\n";
+	print $fh "$camsrcdir/src/chemistry/bulk_aero\n";
     }
     print $fh "$camsrcdir/src/chemistry/aerosol\n";
 
@@ -2201,6 +2244,19 @@ sub write_filepath
     }
     elsif ($rad eq 'camrt') {
         print $fh "$camsrcdir/src/physics/camrt\n";
+    }
+    elsif ($rad eq 'rrtmgp') {
+        print $fh "$camsrcdir/src/physics/rrtmgp\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/gas-optics\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-frontend\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-frontend\n";
+        if ($use_rrtmgp_gpu) {
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels/accel\n";
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels/accel\n";
+        }
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
     }
 
     if ($clubb_sgs) {
@@ -2245,6 +2301,9 @@ sub write_filepath
     # be overridden by modules from directories that occur earlier
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
+
+    #Add the CCPP'ized subdirectories
+    print $fh "$camsrcdir/src/atmos_phys/zhang_mcfarlane\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
