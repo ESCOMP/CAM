@@ -742,7 +742,7 @@ module ionosphere_interface
                   !------------------------------------------------------------
                   if (hist_fld_active('Z3GM')) then
                      ! geometric altitude (meters above sea level)
-                     tempm(i, k) = geometric_hgt(zgp=phys_state(lchnk)%zm(i,k), zsf=phis(i)*rga)
+                     tempm(i,k) = geometric_hgt(zgp=phys_state(lchnk)%zm(i,k), zsf=phis(i)*rga)
                   end if
                   ! physics state fields on interfaces (but only to pver)
                   zi_blck(k, j) = phys_state(lchnk)%zi(i, k) + phis(i)*rga
@@ -751,9 +751,9 @@ module ionosphere_interface
                   !------------------------------------------------------------
                   ! Note: zht is pver instead of pverp because dynamo does not
                   !       use bottom interface
-                  hi_blck(k, j) = geometric_hgt(zgp=phys_state(lchnk)%zi(i,k), zsf=phis(i)*rga)
+                  hi_blck(k,j) = geometric_hgt(zgp=phys_state(lchnk)%zi(i,k), zsf=phis(i)*rga)
                   if (hist_fld_active('Z3GMI')) then
-                     tempi(i, k) = hi_blck(k, j)
+                     tempi(i,k) = hi_blck(k, j)
                   end if
                   omega_blck(k, j) = phys_state(lchnk)%omega(i, k)
                   tn_blck(k, j)    = phys_state(lchnk)%t(i, k)
@@ -1165,20 +1165,23 @@ module ionosphere_interface
 
    !==========================================================================
 
+   ! calculates geometric height (meters above sea level)
    pure function geometric_hgt( zgp, zsf ) result(zgm)
 
-     real(r8), intent(in) :: zgp, zsf
-     real(r8) :: zgm
-     real(r8) :: xtmp
-     
+     real(r8), intent(in) :: zgp ! geopotential height (m)
+     real(r8), intent(in) :: zsf ! surface height above sea level (m)
+     real(r8) :: zgm ! geometric height above sea level (m)
+
+     real(r8) :: tmp
+
      ! Hanli's formulation:
      ! Z_gm = 1/(1 - (1+Zs/r) * Z_gp/r) * (Zs + (1+Zs/r) * Z_gp)
      ! Z_gm: geometric height
      ! Zs: Surface height
      ! Z_gp: model calculated geopotential height (zm and zi in the model)
 
-     xtmp = 1._r8+zsf*rearth_inv
-     zgm = (zsf + xtmp*zgp) / (1._r8 - xtmp*zgp*rearth_inv)
+     tmp = 1._r8+zsf*rearth_inv
+     zgm = (zsf + tmp*zgp) / (1._r8 - tmp*zgp*rearth_inv)
 
    end function geometric_hgt
 
