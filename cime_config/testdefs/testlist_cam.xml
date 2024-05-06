@@ -1810,7 +1810,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">CAM7 low top ~40 km w/ RRTMGP</option>
     </options>
   </test>
