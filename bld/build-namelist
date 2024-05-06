@@ -3082,6 +3082,7 @@ if ($waccmx) {
   add_default($nl,'ionos_xport_nsplit');
   add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
   add_default($nl,'oplus_ring_polar_filter');
+  add_default($nl,'rxn_rate_sums');
 }
 
 # Chemistry options
@@ -3226,7 +3227,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
         my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
         #overwrite the relative pathname with the absolute pathname
         $nl->set_variable_value('pumas_stochastic_tau_nl', 'pumas_stochastic_tau_kernel_filename', $abs_path);
-      
+
     }else {
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     # This variable is replaced with micro_mg_warm_rain in cam7 runs
