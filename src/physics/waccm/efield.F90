@@ -81,7 +81,7 @@
       integer, parameter ::   &
            nmlon1f = nmlon/4, & ! 1 fourth mlon
            nmlon2f = nmlon/2, & ! 2 fourths mlon
-           nmlon3f = 3*nmlon/4  ! 3 fourths mlon 
+           nmlon3f = 3*nmlon/4  ! 3 fourths mlon
 
       real(r8) ::        &
         ylatm(0:nmlat),  &   ! magnetic latitudes (deg)
@@ -1194,7 +1194,7 @@
 ! Author: A. Maute Nov 2003  am 11/20/03
 !----------------------------------------------------------------------------
 
-      use sv_decomp, only : svdcmp, svbksb
+      external DGESV ! LAPACK routine to solve matrix eq
 
 !----------------------------------------------------------------------------
 !       ... dummy arguments
@@ -1216,6 +1216,11 @@
       real(r8) :: w(nmax_a,nmax_a)
       real(r8) :: f(-nmax_sin:nmax_sin,0:nmlon)
 
+      real(r8) :: x(nmax_a)
+      integer :: ipiv(nmax_a), info
+
+      character(len=120) :: msg
+
 !----------------------------------------------------------------------------
 !    Sinusoidal Boundary calculation
 !----------------------------------------------------------------------------
@@ -1224,6 +1229,7 @@
       u(:,:) = 0._r8
       v(:,:) = 0._r8
       w(:,:) = 0._r8
+      ipiv(:) = 0
 
       do ilon = 0,nmlon                  ! long.
         bnd  = nmlath - ihlat_bnd(ilon)  ! switch from pole=0 to pole =90
@@ -1238,19 +1244,18 @@
           end do
         end do
       end do
-
-!     if (debug) write(iulog,*) ' Single Value Decomposition'
-      call svdcmp( u, nmax_a, nmax_a, nmax_a, nmax_a, w, v )
-
-!     if (debug) write(iulog,*) ' Solving'
-      call svbksb( u, w, v, nmax_a, nmax_a, nmax_a, nmax_a, rhs, lsg )
+!
+      x(:) = rhs(:)
+      call DGESV( nmax_a, 1, u, nmax_a, ipiv, x, nmax_a, info)
+      if (info/=0) then
+         write(msg,'(a,i4)') 'bnd_sinus -- LAPACK DGESV return error code: ',info
+         if (masterproc) write(iulog,*) trim(msg)
+         call endrun(trim(msg))
+      end if
+      lsg(:) = x(:)
 !
       do ilon = 0,nmlon  ! long.
-!       sum = 0._r8
         sum = dot_product( lsg(-nmax_sin+ishf:nmax_sin+ishf),f(-nmax_sin:nmax_sin,ilon) )
-!       do i = -nmax_sin,nmax_sin
-!         sum = sum + lsg(i+ishf)*f(i,ilon)
-!       end do
         ihlat_bnd(ilon)    = nmlath - int( sum + .5_r8 )                                ! closest point
         itrans_width(ilon) = int( 8._r8 - 2._r8*cos( ylonm(ilon)*dtr ) + .5_r8 )/dlatm  ! 6 to 10 deg.
       end do

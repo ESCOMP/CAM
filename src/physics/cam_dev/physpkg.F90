@@ -2543,7 +2543,6 @@ contains
 
     real(r8) dlf(pcols,pver)                   ! Detraining cld H20 from shallow + deep convections
     real(r8) dlf2(pcols,pver)                  ! Detraining cld H20 from shallow convections
-    real(r8) pflx(pcols,pverp)                 ! Conv rain flux thru out btm of lev
     real(r8) rtdt                              ! 1./ztodt
 
     integer lchnk                              ! chunk identifier
@@ -2735,7 +2734,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
 
     call dadadj_tend(ztodt, state, ptend)
@@ -2748,7 +2747,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
 
     call t_stopf('dry_adjustment')
@@ -2762,12 +2761,12 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
 
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
-         pflx,    zdu,       &
+         zdu,       &
          rliq,    rice,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
@@ -2787,7 +2786,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
 
     call t_stopf('convect_deep_tend')
@@ -2828,7 +2827,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_diagnostics_calc") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
     call convect_diagnostics_calc (ztodt   , cmfmc, &
              dlf        , dlf2   ,  rliq   , rliq2, &
