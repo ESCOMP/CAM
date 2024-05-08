@@ -1353,6 +1353,7 @@
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="comment" >001 tsc</option>
@@ -1519,6 +1520,15 @@
     <options>
       <option name="wallclock">01:00:00</option>
       <option name="comment">Test PUMAS ML emulated warm rain option</option>
+    </options>
+  </test>
+    <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_pumas_rainbows" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_pumas"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+      <option name="comment">Test PUMAS diagnostics rainbows output</option>
     </options>
   </test>
   <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3" supported="false">

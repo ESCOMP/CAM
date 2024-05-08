@@ -357,7 +357,8 @@ subroutine zm_conv_init(pref_edge)
                   limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, errmsg, errflg)
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
+                  masterproc, iulog, errmsg, errflg)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
@@ -367,7 +368,7 @@ end subroutine zm_conv_init
 !subroutine zm_conv_tend(state, ptend, tdt)
 
 subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
-     tpert   ,pflx    ,zdu      , &
+     tpert   ,zdu      , &
      rliq    ,rice    ,ztodt    , &
      jctop   ,jcbot , &
      state   ,ptend_all   ,landfrac,  pbuf)
@@ -399,7 +400,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), intent(in) :: landfrac(pcols)             ! RBN - Landfrac
 
    real(r8), intent(out) :: mcon(pcols,pverp)  ! Convective mass flux--m sub c
-   real(r8), intent(out) :: pflx(pcols,pverp)  ! scattered precip flux at each level
    real(r8), intent(out) :: cme(pcols,pver)    ! cmf condensation - evaporation
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
@@ -474,12 +474,14 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: md_out(pcols,pver)
 
    ! used in momentum transport calculation
-   real(r8) :: winds(pcols, pver, 2)
-   real(r8) :: wind_tends(pcols, pver, 2)
-   real(r8) :: pguall(pcols, pver, 2)
-   real(r8) :: pgdall(pcols, pver, 2)
-   real(r8) :: icwu(pcols,pver, 2)
-   real(r8) :: icwd(pcols,pver, 2)
+   real(r8) :: pguallu(pcols, pver)
+   real(r8) :: pguallv(pcols, pver)
+   real(r8) :: pgdallu(pcols, pver)
+   real(r8) :: pgdallv(pcols, pver)
+   real(r8) :: icwuu(pcols,pver)
+   real(r8) :: icwuv(pcols,pver)
+   real(r8) :: icwdu(pcols,pver)
+   real(r8) :: icwdv(pcols,pver)
    real(r8) :: seten(pcols, pver)
    logical  :: l_windt(2)
    real(r8) :: tfinal1, tfinal2
@@ -503,7 +505,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ftem = 0._r8
    mu_out(:,:) = 0._r8
    md_out(:,:) = 0._r8
-   wind_tends(:ncol,:pver,:) = 0.0_r8
 
    call physics_state_copy(state,state1)             ! copy state to local state1.
 
@@ -561,7 +562,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ptend_loc%s(:,:) = 0._r8
    mcon(:,:) = 0._r8
    dlf(:,:) = 0._r8
-   pflx(:,:) = 0._r8
    cme(:,:) = 0._r8
    cape(:) = 0._r8
    zdu(:,:) = 0._r8
@@ -587,17 +587,18 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !CACNOTE - Need to check errflg and report errors
    call zm_convr_run(ncol, pver, &
                     pverp, gravit, latice, cpwv, cpliq, rh2o,  &
-                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
-                    pblh(:ncol), state%zm(:ncol,:), state%phis, state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
+                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
+                    pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
                     .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
-                    tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
+                    tpert(:ncol), dlf(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
-                    org_ncol(:,:), orgt_ncol(:,:), zm_org2d_ncol(:,:),  &
+                    org_ncol(:ncol,:), orgt_ncol(:ncol,:), zm_org2d_ncol(:ncol,:),  &
                     dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
                     rice(:ncol), errmsg, errflg)
+
 
    if (zmconv_org) then
       ptend_loc%q(:,:,ixorg)=orgt_ncol(:ncol,:)
@@ -606,6 +607,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    lengath = count(ideep > 0)
    if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
+
+   jctop(:) = real(pver,r8)
+   jcbot(:) = 1._r8
+   do i = 1,lengath
+      jctop(ideep(i)) = real(jt(i), r8)
+      jcbot(ideep(i)) = real(maxg(i), r8)
+   end do
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
 !
@@ -746,32 +754,33 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
      call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_momtran_run', ls=.true., lu=.true., lv=.true.)
 
-     winds(:ncol,:pver,1) = state1%u(:ncol,:pver)
-     winds(:ncol,:pver,2) = state1%v(:ncol,:pver)
-
      l_windt(1) = .true.
      l_windt(2) = .true.
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+     ptend_loc%s(:,:) = 0._r8
+     ptend_loc%u(:,:) = 0._r8
+     ptend_loc%v(:,:) = 0._r8
+!REMOVECAM_END
 
      call t_startf ('zm_conv_momtran_run')
 
-!REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
-     wind_tends(:,:,:) = 0._r8
-!REMOVECAM_END
-
      call zm_conv_momtran_run (ncol, pver, pverp,                    &
-                   l_windt,winds(:ncol,:,:), 2,  mu(:ncol,:), md(:ncol,:),   &
+                   l_windt,state1%u(:ncol,:), state1%v(:ncol,:), 2,  mu(:ncol,:), md(:ncol,:),   &
                    zmconv_momcu, zmconv_momcd, &
                    du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                   nstep,  wind_tends(:ncol,:,:), pguall(:ncol,:,:), pgdall(:ncol,:,:), &
-                   icwu(:ncol,:,:), icwd(:ncol,:,:), ztodt, seten(:ncol,:) )
+                   nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:),&
+                   pguallu(:ncol,:), pguallv(:ncol,:),  pgdallu(:ncol,:), pgdallv(:ncol,:), &
+                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) )
      call t_stopf ('zm_conv_momtran_run')
 
-     ptend_loc%u(:ncol,:pver) = wind_tends(:ncol,:pver,1)
-     ptend_loc%v(:ncol,:pver) = wind_tends(:ncol,:pver,2)
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
 
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+
+     ! Output ptend variables before they are set to zero with physics_update
+     call outfld('ZMMTU', ptend_loc%u, pcols, lchnk)
+     call outfld('ZMMTV', ptend_loc%v, pcols, lchnk)
 
      ! update physics state type state1 with ptend_loc
      call physics_update(state1, ptend_loc, ztodt)
@@ -782,20 +791,18 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
         call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
      endif
      call outfld('ZMMTT', ftem             , pcols, lchnk)
-     call outfld('ZMMTU', wind_tends(1,1,1), pcols, lchnk)
-     call outfld('ZMMTV', wind_tends(1,1,2), pcols, lchnk)
 
      ! Output apparent force from  pressure gradient
-     call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
-     call outfld('ZMUPGD', pgdall(1,1,1), pcols, lchnk)
-     call outfld('ZMVPGU', pguall(1,1,2), pcols, lchnk)
-     call outfld('ZMVPGD', pgdall(1,1,2), pcols, lchnk)
+     call outfld('ZMUPGU', pguallu, pcols, lchnk)
+     call outfld('ZMUPGD', pgdallu, pcols, lchnk)
+     call outfld('ZMVPGU', pguallv, pcols, lchnk)
+     call outfld('ZMVPGD', pgdallv, pcols, lchnk)
 
      ! Output in-cloud winds
-     call outfld('ZMICUU', icwu(1,1,1), pcols, lchnk)
-     call outfld('ZMICUD', icwd(1,1,1), pcols, lchnk)
-     call outfld('ZMICVU', icwu(1,1,2), pcols, lchnk)
-     call outfld('ZMICVD', icwd(1,1,2), pcols, lchnk)
+     call outfld('ZMICUU', icwuu, pcols, lchnk)
+     call outfld('ZMICUD', icwdu, pcols, lchnk)
+     call outfld('ZMICVU', icwuv, pcols, lchnk)
+     call outfld('ZMICVD', icwdv, pcols, lchnk)
 
    end if
 
