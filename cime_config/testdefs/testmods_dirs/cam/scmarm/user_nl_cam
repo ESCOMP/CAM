@@ -1,3 +1,4 @@
 mfilt=1500
 nhtfrq   = 1
 history_budget=.true.
+write_nstep0 = .true.

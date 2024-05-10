@@ -23,6 +23,7 @@ TMC   CAM mass conservation test
     <STOP_N>9</STOP_N>
     <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
     <HIST_N>$STOP_N</HIST_N>
+    <ALLOW_SINGLE_EXE>TRUE</ALLOW_SINGLE_EXE>
   </test>
 
   <test NAME="SUB">
@@ -69,5 +70,15 @@ TMC   CAM mass conservation test
     <HIST_N>$STOP_N</HIST_N>
   </test>
 
+  <test NAME="MGP">
+    <DESC>CAM test: Verify mg3 and pumas give identical answers</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+    <STOP_OPTION>nsteps</STOP_OPTION>
+    <STOP_N>7</STOP_N>
+    <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
+    <HIST_N>$STOP_N</HIST_N>
+  </test>
 
 </config_test>

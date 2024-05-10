@@ -6,6 +6,7 @@ from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.system_tests_common import SystemTestsCommon
 from CIME.test_status import *
 from CIME.utils import append_testlog
+from CIME.baselines.performance import get_latest_cpl_logs
 import glob, gzip
 
 
@@ -22,7 +23,7 @@ class TMC(SystemTestsCommon):
         with self._test_status:
             self._test_status.set_status("COMPARE_MASS", TEST_PEND_STATUS)
         self.run_indv()
-        cpllog = ''.join(self._get_latest_cpl_logs())
+        cpllog = ''.join(get_latest_cpl_logs(self._case))
         atmlog  = cpllog.replace("cpl.log","atm.log")
         atmlog  = atmlog.replace("drv.log","atm.log")
         if '.gz' == atmlog[-3:]:
@@ -35,9 +36,9 @@ class TMC(SystemTestsCommon):
         first_val = -9.0
         with self._test_status:
             self._test_status.set_status("COMPARE_MASS", TEST_PASS_STATUS)
-        use_this_tt_un = False 
+        use_this_tt_un = False
         for line in lines:
-            if re.search('vvvvv gmean_mass: before tphysbc DRY',line.decode('utf-8')): 
+            if re.search('vvvvv gmean_mass: before tphysbc DRY',line.decode('utf-8')):
                 use_this_tt_un = True
             if re.search('TT_UN ',line.decode('utf-8')) and use_this_tt_un:
                 tt_un_flt=re.findall("\d+\.\d+",line.decode('utf-8'))
@@ -49,7 +50,7 @@ class TMC(SystemTestsCommon):
                             self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Mass Not Conserved")
                         comments = "CAM mass conservation test FAILED."
                         append_testlog(comments, self._orig_caseroot)
-                use_this_tt_un = False 
+                use_this_tt_un = False
         if first_val == -9.0:
             with self._test_status:
                 self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Failed to find TT_UN in atm.log")

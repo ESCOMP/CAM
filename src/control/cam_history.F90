@@ -38,7 +38,8 @@ module cam_history
                            pio_int, pio_real, pio_double, pio_char,           &
                            pio_offset_kind, pio_unlimited, pio_global,        &
                            pio_inq_dimlen, pio_def_var, pio_enddef,           &
-                           pio_put_att, pio_put_var, pio_get_att
+                           pio_put_att, pio_put_var, pio_get_att,             &
+                           pio_file_is_open
 
 
    use perf_mod,            only: t_startf, t_stopf
@@ -58,6 +59,7 @@ module cam_history
    use solar_wind_data,     only: solar_wind_on, byimf=>solar_wind_byimf, bzimf=>solar_wind_bzimf
    use solar_wind_data,     only: swvel=>solar_wind_swvel, swden=>solar_wind_swden
    use epotential_params,   only: epot_active, epot_crit_colats
+   use cam_grid_support,    only: maxsplitfiles
 
   implicit none
   private
@@ -126,7 +128,7 @@ module cam_history
   !   The size of these parameters should match the assignments in restart_vars_setnames and restart_dims_setnames below
   !
   integer, parameter :: restartvarcnt              = 45
-  integer, parameter :: restartdimcnt              = 10
+  integer, parameter :: restartdimcnt              = 11
   type(rvar_id)      :: restartvars(restartvarcnt)
   type(rdim_id)      :: restartdims(restartdimcnt)
   integer, parameter :: ptapes_dim_ind             =  1
@@ -139,6 +141,15 @@ module cam_history
   integer, parameter :: maxvarmdims_dim_ind        =  8
   integer, parameter :: registeredmdims_dim_ind    =  9
   integer, parameter :: max_hcoordname_len_dim_ind = 10
+  integer, parameter :: max_num_split_files        = 11
+
+  ! Indices for split history files; must be 1 and 2
+  integer, parameter :: instantaneous_file_index   =  1
+  integer, parameter :: accumulated_file_index     =  2
+  ! Indices for non-split history files; must be 1 or 2
+  integer, parameter :: sat_file_index             =  1
+  integer, parameter :: restart_file_index         =  1
+  integer, parameter :: init_file_index            =  1
 
   integer :: nfmaster = 0             ! number of fields in master field list
   integer :: nflds(ptapes)            ! number of fields per tape
@@ -156,6 +167,7 @@ module cam_history
   logical :: rgnht(ptapes) = .false.  ! flag array indicating regeneration volumes
   logical :: hstwr(ptapes) = .false.  ! Flag for history writes
   logical :: empty_htapes  = .false.  ! Namelist flag indicates no default history fields
+  logical :: write_nstep0  = .false.  ! write nstep==0 time sample to history files (except monthly)
   logical :: htapes_defined = .false. ! flag indicates history contents have been defined
 
   character(len=cl) :: model_doi_url = '' ! Model DOI
@@ -163,8 +175,8 @@ module cam_history
   character(len=*), parameter   :: history_namelist = 'cam_history_nl'
   character(len=max_string_len) :: hrestpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Full history restart pathnames
   character(len=max_string_len) :: nfpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Array of first pathnames, for header
-  character(len=max_string_len) :: cpath(ptapes)                   ! Array of current pathnames
-  character(len=max_string_len) :: nhfil(ptapes)                   ! Array of current file names
+  character(len=max_string_len) :: cpath(ptapes,maxsplitfiles)     ! Array of current pathnames
+  character(len=max_string_len) :: nhfil(ptapes,maxsplitfiles)     ! Array of current file names
   character(len=1)  :: avgflag_pertape(ptapes) = (/(' ',idx=1,ptapes)/) ! per tape averaging flag
   character(len=16)  :: logname             ! user name
   character(len=16)  :: host                ! host name
@@ -296,6 +308,8 @@ module cam_history
   !
   character(len=max_string_len) :: rhfilename_spec = '%c.cam.rh%t.%y-%m-%d-%s.nc' ! history restart
   character(len=max_string_len) :: hfilename_spec(ptapes) = (/ (' ', idx=1, ptapes) /) ! filename specifyer
+  ! Flag for if there are accumulated fields specified for a given tape
+  logical                       :: hfile_accum(ptapes) = .false.
 
 
   interface addfld
@@ -369,7 +383,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer :: t, f              ! tape, field indices
+    integer :: t, fld            ! tape, field indices
     integer :: begdim1           ! on-node dim1 start index
     integer :: enddim1           ! on-node dim1 end index
     integer :: begdim2           ! on-node dim2 start index
@@ -401,18 +415,18 @@ CONTAINS
       write(iulog,*)' ******* MASTER FIELD LIST *******'
     end if
     listentry=>masterlinkedlist
-    f=0
+    fld=0
     do while(associated(listentry))
-      f=f+1
+      fld=fld+1
       if(masterproc) then
         fldname = listentry%field%name
-        write(iulog,9000) f, fldname, listentry%field%units, listentry%field%numlev, &
+        write(iulog,9000) fld, fldname, listentry%field%units, listentry%field%numlev, &
              listentry%avgflag(1), trim(listentry%field%long_name)
 9000    format(i5, 1x, a32, 1x, a16, 1x, i4, 1x, a1, 2x, a)
       end if
       listentry=>listentry%next_entry
     end do
-    nfmaster = f
+    nfmaster = fld
     if(masterproc) write(iulog,*)'intht:nfmaster=',nfmaster
 
     !
@@ -469,24 +483,31 @@ CONTAINS
     ! Initialize history variables
     !
     do t=1,ptapes
-      do f=1,nflds(t)
-        begdim1  = tape(t)%hlist(f)%field%begdim1
-        enddim1  = tape(t)%hlist(f)%field%enddim1
-        begdim2  = tape(t)%hlist(f)%field%begdim2
-        enddim2  = tape(t)%hlist(f)%field%enddim2
-        begdim3  = tape(t)%hlist(f)%field%begdim3
-        enddim3  = tape(t)%hlist(f)%field%enddim3
-        allocate(tape(t)%hlist(f)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-        tape(t)%hlist(f)%hbuf = 0._r8
-        if (tape(t)%hlist(f)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
-           allocate(tape(t)%hlist(f)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-           tape(t)%hlist(f)%sbuf = 0._r8
+      do fld=1,nflds(t)
+        if (nhtfrq(t) == 1) then
+           ! Override any non-I flags if nhtfrq equals 1
+           tape(t)%hlist(fld)%avgflag = 'I'
+        end if
+        if (tape(t)%hlist(fld)%avgflag .ne. 'I') then
+           hfile_accum(t) = .true.
+        end if
+        begdim1  = tape(t)%hlist(fld)%field%begdim1
+        enddim1  = tape(t)%hlist(fld)%field%enddim1
+        begdim2  = tape(t)%hlist(fld)%field%begdim2
+        enddim2  = tape(t)%hlist(fld)%field%enddim2
+        begdim3  = tape(t)%hlist(fld)%field%begdim3
+        enddim3  = tape(t)%hlist(fld)%field%enddim3
+        allocate(tape(t)%hlist(fld)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        tape(t)%hlist(fld)%hbuf = 0._r8
+        if (tape(t)%hlist(fld)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
+           allocate(tape(t)%hlist(fld)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+           tape(t)%hlist(fld)%sbuf = 0._r8
         endif
-        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up areawt weight buffer
-           fdecomp = tape(t)%hlist(f)%field%decomp_type
+        if (tape(t)%hlist(fld)%avgflag .eq. 'N') then ! set up areawt weight buffer
+           fdecomp = tape(t)%hlist(fld)%field%decomp_type
            if (any(allgrids_wt(:)%decomp_type == fdecomp)) then
               wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
               ! first check for an available spot in the array
@@ -501,7 +522,7 @@ CONTAINS
               allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3)=0._r8
               count=0
               do c=begdim3,enddim3
-                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 dimind = tape(t)%hlist(fld)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
                  do i=ib,ie
@@ -509,18 +530,18 @@ CONTAINS
                     allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(count)
                  end do
               end do
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            endif
         endif
-        if(tape(t)%hlist(f)%field%flag_xyfill .or. (avgflag_pertape(t) .eq. 'L')) then
-          allocate (tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
+        if(tape(t)%hlist(fld)%field%flag_xyfill .or. (avgflag_pertape(t) .eq. 'L')) then
+          allocate (tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
         else
-          allocate (tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
+          allocate (tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
         end if
-        tape(t)%hlist(f)%nacs(:,:) = 0
-        tape(t)%hlist(f)%beg_nstep = 0
-        tape(t)%hlist(f)%field%meridional_complement = -1
-        tape(t)%hlist(f)%field%zonal_complement = -1
+        tape(t)%hlist(fld)%nacs(:,:) = 0
+        tape(t)%hlist(fld)%beg_nstep = 0
+        tape(t)%hlist(fld)%field%meridional_complement = -1
+        tape(t)%hlist(fld)%field%zonal_complement = -1
       end do
     end do
     ! Setup vector pairs for unstructured grid interpolation
@@ -553,6 +574,7 @@ CONTAINS
     integer                        :: dtime   ! Step time in seconds
     integer                        :: unitn, ierr, f, t
     character(len=8)               :: ctemp      ! Temporary character string
+    integer                        :: filename_len
 
     character(len=fieldname_lenp2) :: fincl1(pflds)
     character(len=fieldname_lenp2) :: fincl2(pflds)
@@ -605,7 +627,7 @@ CONTAINS
 
     ! History namelist items
     namelist /cam_history_nl/ ndens, nhtfrq, mfilt, inithist, inithist_all,    &
-         avgflag_pertape, empty_htapes, lcltod_start, lcltod_stop,             &
+         avgflag_pertape, empty_htapes, write_nstep0, lcltod_start, lcltod_stop,&
          fincl1lonlat, fincl2lonlat, fincl3lonlat, fincl4lonlat, fincl5lonlat, &
          fincl6lonlat, fincl7lonlat, fincl8lonlat, fincl9lonlat,               &
          fincl10lonlat, collect_column_output, hfilename_spec,                 &
@@ -768,6 +790,13 @@ CONTAINS
           nhtfrq(t) = nint((-nhtfrq(t) * 3600._r8) / dtime)
         end if
       end do
+      ! If nhtfrq == 1, then the output is instantaneous.  Enforce this by setting
+      ! the per-file averaging flag.
+      do t = 1, ptapes
+        if (nhtfrq(t) == 1) then
+          avgflag_pertape(t) = 'I'
+        end if
+      end do
       !
       ! Initialize the filename specifier if not already set
       ! This is the format for the history filenames:
@@ -778,10 +807,15 @@ CONTAINS
         if ( len_trim(hfilename_spec(t)) == 0 )then
           if ( nhtfrq(t) == 0 )then
             ! Monthly files
-            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t.%y-%m.nc'
+            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m.nc'
           else
-            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t.%y-%m-%d-%s.nc'
+            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m-%d-%s.nc'
           end if
+        else
+           ! Append file type - instantaneous or accumulated - to filename
+           ! specifier provided (in front of the .nc extension).
+           filename_len = len_trim(hfilename_spec(t))
+           hfilename_spec(t) = hfilename_spec(t)(:filename_len-3)  // '%f.nc'
         end if
         !
         ! Only one time sample allowed per monthly average file
@@ -792,8 +826,14 @@ CONTAINS
       end do
     end if ! masterproc
 
-    ! Print per-tape averaging flags
+    ! log output
     if (masterproc) then
+
+      if (write_nstep0) then
+        write(iulog,*)'nstep==0 time sample will be written to all files except monthly average.'
+      end if
+
+      ! Print per-tape averaging flags
       do t = 1, ptapes
         if (avgflag_pertape(t) /= ' ') then
           write(iulog,*)'Unless overridden by namelist input on a per-field basis (FINCL),'
@@ -852,6 +892,7 @@ CONTAINS
     call mpi_bcast(lcltod_stop,  ptapes, mpi_integer, masterprocid, mpicom, ierr)
     call mpi_bcast(collect_column_output, ptapes, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(empty_htapes,1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast(write_nstep0,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(avgflag_pertape, ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(hfilename_spec, len(hfilename_spec(1))*ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(fincl, len(fincl (1,1))*pflds*ptapes, mpi_character, masterprocid, mpicom, ierr)
@@ -935,7 +976,7 @@ CONTAINS
     use interp_mod, only: setup_history_interpolation
 
     ! Local variables
-    integer :: hf, f, ff
+    integer :: hf, fld, ffld
     logical :: interp_ok
     character(len=max_fieldname_len) :: mname
     character(len=max_fieldname_len) :: zname
@@ -947,31 +988,31 @@ CONTAINS
            interpolate_output, interpolate_info)
       do hf = 1, ptapes - 2
         if((.not. is_satfile(hf)) .and. (.not. is_initfile(hf))) then
-          do f = 1, nflds(hf)
-            if (field_part_of_vector(trim(tape(hf)%hlist(f)%field%name),      &
+          do fld = 1, nflds(hf)
+            if (field_part_of_vector(trim(tape(hf)%hlist(fld)%field%name),      &
                  mname, zname)) then
               if (len_trim(mname) > 0) then
                 ! This field is a zonal part of a set, find the meridional partner
-                do ff = 1, nflds(hf)
-                  if (trim(mname) == trim(tape(hf)%hlist(ff)%field%name)) then
-                    tape(hf)%hlist(f)%field%meridional_complement = ff
-                    tape(hf)%hlist(ff)%field%zonal_complement     = f
+                do ffld = 1, nflds(hf)
+                  if (trim(mname) == trim(tape(hf)%hlist(ffld)%field%name)) then
+                    tape(hf)%hlist(fld)%field%meridional_complement = ffld
+                    tape(hf)%hlist(ffld)%field%zonal_complement     = fld
                     exit
                   end if
-                  if (ff == nflds(hf)) then
-                    call endrun(trim(subname)//': No meridional match for '//trim(tape(hf)%hlist(f)%field%name))
+                  if (ffld == nflds(hf)) then
+                    call endrun(trim(subname)//': No meridional match for '//trim(tape(hf)%hlist(fld)%field%name))
                   end if
                 end do
               else if (len_trim(zname) > 0) then
                 ! This field is a meridional part of a set, find the zonal partner
-                do ff = 1, nflds(hf)
-                  if (trim(zname) == trim(tape(hf)%hlist(ff)%field%name)) then
-                    tape(hf)%hlist(f)%field%zonal_complement       = ff
-                    tape(hf)%hlist(ff)%field%meridional_complement = f
+                do ffld = 1, nflds(hf)
+                  if (trim(zname) == trim(tape(hf)%hlist(ffld)%field%name)) then
+                    tape(hf)%hlist(fld)%field%zonal_complement       = ffld
+                    tape(hf)%hlist(ffld)%field%meridional_complement = fld
                     exit
                   end if
-                  if (ff == nflds(hf)) then
-                    call endrun(trim(subname)//': No zonal match for '//trim(tape(hf)%hlist(f)%field%name))
+                  if (ffld == nflds(hf)) then
+                    call endrun(trim(subname)//': No zonal match for '//trim(tape(hf)%hlist(fld)%field%name))
                   end if
                 end do
               else
@@ -990,33 +1031,33 @@ CONTAINS
     integer, intent(in)               :: t     ! Current tape
 
     ! Local variables
-    integer :: f, ff
+    integer :: fld, ffld
     character(len=max_fieldname_len) :: field1
     character(len=max_fieldname_len) :: field2
     character(len=*), parameter      :: subname='define_composed_field_ids'
     logical                          :: is_composed
 
-    do f = 1, nflds(t)
-       call composed_field_info(tape(t)%hlist(f)%field%name,is_composed,fname1=field1,fname2=field2)
+    do fld = 1, nflds(t)
+       call composed_field_info(tape(t)%hlist(fld)%field%name,is_composed,fname1=field1,fname2=field2)
        if (is_composed) then
           if (len_trim(field1) > 0 .and. len_trim(field2) > 0) then
              ! set field1/field2 names for htape from the masterfield list
-             tape(t)%hlist(f)%op_field1=trim(field1)
-             tape(t)%hlist(f)%op_field2=trim(field2)
+             tape(t)%hlist(fld)%op_field1=trim(field1)
+             tape(t)%hlist(fld)%op_field2=trim(field2)
              ! find ids for field1/2
-             do ff = 1, nflds(t)
-                if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
-                   tape(t)%hlist(f)%field%op_field1_id = ff
+             do ffld = 1, nflds(t)
+                if (trim(field1) == trim(tape(t)%hlist(ffld)%field%name)) then
+                   tape(t)%hlist(fld)%field%op_field1_id = ffld
                 end if
-                if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
-                   tape(t)%hlist(f)%field%op_field2_id = ff
+                if (trim(field2) == trim(tape(t)%hlist(ffld)%field%name)) then
+                   tape(t)%hlist(fld)%field%op_field2_id = ffld
                 end if
              end do
-             if (tape(t)%hlist(f)%field%op_field1_id == -1) then
-                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
+             if (tape(t)%hlist(fld)%field%op_field1_id == -1) then
+                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(fld)%field%name))
              end if
-             if (tape(t)%hlist(f)%field%op_field2_id == -1) then
-                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+             if (tape(t)%hlist(fld)%field%op_field2_id == -1) then
+                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(fld)%field%name))
              end if
           else
              call endrun(trim(subname)//': Component fields not found for composed field')
@@ -1070,16 +1111,18 @@ CONTAINS
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'cpath'
     restartvars(rvindex)%type = pio_char
-    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%ndims = 3
     restartvars(rvindex)%dims(1) = max_string_len_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%dims(3) = max_num_split_files
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'nhfil'
     restartvars(rvindex)%type = pio_char
-    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%ndims = 3
     restartvars(rvindex)%dims(1) = max_string_len_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%dims(3) = max_num_split_files
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'ndens'
@@ -1402,6 +1445,9 @@ CONTAINS
     restartdims(max_hcoordname_len_dim_ind)%name = 'max_hcoordname_len'
     restartdims(max_hcoordname_len_dim_ind)%len  = max_hcoordname_len
 
+    restartdims(max_num_split_files)%name = 'max_num_split_files'
+    restartdims(max_num_split_files)%len = maxsplitfiles
+
   end subroutine restart_dims_setnames
 
 
@@ -1501,7 +1547,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer :: ierr, t, f
+    integer :: ierr, t, fld
     integer :: rgnht_int(ptapes), start(2), startc(3)
     type(var_desc_t), pointer :: vdesc
 
@@ -1610,10 +1656,10 @@ CONTAINS
     ierr= pio_put_var(File, vdesc, nfpath(1:ptapes))
 
     vdesc => restartvar_getdesc('cpath')
-    ierr= pio_put_var(File, vdesc,  cpath(1:ptapes))
+    ierr= pio_put_var(File, vdesc, cpath(1:ptapes,:))
 
     vdesc => restartvar_getdesc('nhfil')
-    ierr= pio_put_var(File, vdesc, nhfil(1:ptapes))
+    ierr= pio_put_var(File, vdesc, nhfil(1:ptapes,:))
 
     vdesc => restartvar_getdesc('ndens')
     ierr= pio_put_var(File, vdesc, ndens(1:ptapes))
@@ -1675,40 +1721,40 @@ CONTAINS
     do t = 1,ptapes
       start(2)=t
       startc(3)=t
-      do f=1,nflds(t)
-        start(1)=f
-        startc(2)=f
-        ierr = pio_put_var(File, field_name_desc,startc,tape(t)%hlist(f)%field%name)
-        ierr = pio_put_var(File, decomp_type_desc,start,tape(t)%hlist(f)%field%decomp_type)
-        ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(f)%field%numlev)
+      do fld=1,nflds(t)
+        start(1)=fld
+        startc(2)=fld
+        ierr = pio_put_var(File, field_name_desc,startc,tape(t)%hlist(fld)%field%name)
+        ierr = pio_put_var(File, decomp_type_desc,start,tape(t)%hlist(fld)%field%decomp_type)
+        ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(fld)%field%numlev)
 
-        ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(f)%hwrt_prec)
-        call tape(t)%hlist(f)%get_global(integral)
+        ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(fld)%hwrt_prec)
+        call tape(t)%hlist(fld)%get_global(integral)
         ierr = pio_put_var(File, hbuf_integral_desc,start,integral)
-        ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(f)%beg_nstep)
-        ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(f)%field%sampling_seq)
-        ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
-        ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(f)%field%long_name)
-        ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(f)%field%units)
-        ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(f)%avgflag)
+        ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(fld)%beg_nstep)
+        ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(fld)%field%sampling_seq)
+        ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(fld)%field%cell_methods)
+        ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(fld)%field%long_name)
+        ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(fld)%field%units)
+        ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(fld)%avgflag)
 
-        ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(f)%field%fillvalue)
-        ierr = pio_put_var(File, meridional_complement_desc,start, tape(t)%hlist(f)%field%meridional_complement)
-        ierr = pio_put_var(File, zonal_complement_desc,start, tape(t)%hlist(f)%field%zonal_complement)
-        ierr = pio_put_var(File, field_op_desc,startc, tape(t)%hlist(f)%field%field_op)
-        ierr = pio_put_var(File, op_field1_id_desc,start, tape(t)%hlist(f)%field%op_field1_id)
-        ierr = pio_put_var(File, op_field2_id_desc,start, tape(t)%hlist(f)%field%op_field2_id)
-        ierr = pio_put_var(File, op_field1_desc,startc, tape(t)%hlist(f)%op_field1)
-        ierr = pio_put_var(File, op_field2_desc,startc, tape(t)%hlist(f)%op_field2)
-        if(associated(tape(t)%hlist(f)%field%mdims)) then
-          allmdims(1:size(tape(t)%hlist(f)%field%mdims),f,t) = tape(t)%hlist(f)%field%mdims
+        ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(fld)%field%fillvalue)
+        ierr = pio_put_var(File, meridional_complement_desc,start, tape(t)%hlist(fld)%field%meridional_complement)
+        ierr = pio_put_var(File, zonal_complement_desc,start, tape(t)%hlist(fld)%field%zonal_complement)
+        ierr = pio_put_var(File, field_op_desc,startc, tape(t)%hlist(fld)%field%field_op)
+        ierr = pio_put_var(File, op_field1_id_desc,start, tape(t)%hlist(fld)%field%op_field1_id)
+        ierr = pio_put_var(File, op_field2_id_desc,start, tape(t)%hlist(fld)%field%op_field2_id)
+        ierr = pio_put_var(File, op_field1_desc,startc, tape(t)%hlist(fld)%op_field1)
+        ierr = pio_put_var(File, op_field2_desc,startc, tape(t)%hlist(fld)%op_field2)
+        if(associated(tape(t)%hlist(fld)%field%mdims)) then
+          allmdims(1:size(tape(t)%hlist(fld)%field%mdims),fld,t) = tape(t)%hlist(fld)%field%mdims
         else
         end if
-        if(tape(t)%hlist(f)%field%flag_xyfill) then
-           xyfill(f,t) = 1
+        if(tape(t)%hlist(fld)%field%flag_xyfill) then
+           xyfill(fld,t) = 1
         end if
-        if(tape(t)%hlist(f)%field%is_subcol) then
-           is_subcol(f,t) = 1
+        if(tape(t)%hlist(fld)%field%is_subcol) then
+           is_subcol(fld,t) = 1
         end if
       end do
       if (interpolate_output(t)) then
@@ -1742,13 +1788,12 @@ CONTAINS
     ierr = pio_put_var(File, interpolate_nlon_desc, interp_output)
     ! Registered history coordinates
     start(1) = 1
-    do f = 1, registeredmdims
-      start(2) = f
-      ierr = pio_put_var(File, mdimname_desc, start, hist_coord_name(f))
+    do fld = 1, registeredmdims
+      start(2) = fld
+      ierr = pio_put_var(File, mdimname_desc, start, hist_coord_name(fld))
     end do
 
-    deallocate(xyfill, allmdims)
-    return
+    deallocate(xyfill, allmdims, is_subcol, interp_output, restarthistory_tape)
 
   end subroutine write_restart_history
 
@@ -1779,7 +1824,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer t, f, ff                 ! tape, field indices
+    integer t, f, fld, ffld          ! tape, file, field indices
     integer begdim2                  ! on-node vert start index
     integer enddim2                  ! on-node vert end index
     integer begdim1                  ! on-node dim1 start index
@@ -1892,9 +1937,9 @@ CONTAINS
     ierr = pio_inq_varid(File, 'nfpath', vdesc)
     ierr = pio_get_var(File, vdesc, nfpath(1:mtapes))
     ierr = pio_inq_varid(File, 'cpath', vdesc)
-    ierr = pio_get_var(File, vdesc, cpath(1:mtapes))
+    ierr = pio_get_var(File, vdesc, cpath(1:mtapes,:))
     ierr = pio_inq_varid(File, 'nhfil', vdesc)
-    ierr = pio_get_var(File, vdesc, nhfil(1:mtapes))
+    ierr = pio_get_var(File, vdesc, nhfil(1:mtapes,:))
     ierr = pio_inq_varid(File, 'hrestpath', vdesc)
     ierr = pio_get_var(File, vdesc, hrestpath(1:mtapes))
 
@@ -2041,67 +2086,68 @@ CONTAINS
 
 
       call strip_null(nfpath(t))
-      call strip_null(cpath(t))
+      call strip_null(cpath(t,1))
+      call strip_null(cpath(t,2))
       call strip_null(hrestpath(t))
       allocate(tape(t)%hlist(nflds(t)))
 
-      do f=1,nflds(t)
-        if (associated(tape(t)%hlist(f)%field%mdims)) then
-          deallocate(tape(t)%hlist(f)%field%mdims)
+      do fld=1,nflds(t)
+        if (associated(tape(t)%hlist(fld)%field%mdims)) then
+          deallocate(tape(t)%hlist(fld)%field%mdims)
         end if
-        nullify(tape(t)%hlist(f)%field%mdims)
-        ierr = pio_get_var(File,fillval_desc, (/f,t/), tape(t)%hlist(f)%field%fillvalue)
-        ierr = pio_get_var(File,meridional_complement_desc, (/f,t/), tape(t)%hlist(f)%field%meridional_complement)
-        ierr = pio_get_var(File,zonal_complement_desc, (/f,t/), tape(t)%hlist(f)%field%zonal_complement)
-        tape(t)%hlist(f)%field%field_op(1:field_op_len) = ' '
-        ierr = pio_get_var(File,field_op_desc, (/1,f,t/), tape(t)%hlist(f)%field%field_op)
-        call strip_null(tape(t)%hlist(f)%field%field_op)
-        ierr = pio_get_var(File,op_field1_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field1_id)
-        ierr = pio_get_var(File,op_field2_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field2_id)
-        ierr = pio_get_var(File,avgflag_desc, (/f,t/), tape(t)%hlist(f)%avgflag)
-        ierr = pio_get_var(File,longname_desc, (/1,f,t/), tape(t)%hlist(f)%field%long_name)
-        ierr = pio_get_var(File,units_desc, (/1,f,t/), tape(t)%hlist(f)%field%units)
-        tape(t)%hlist(f)%field%sampling_seq(1:max_chars) = ' '
-        ierr = pio_get_var(File,sseq_desc, (/1,f,t/), tape(t)%hlist(f)%field%sampling_seq)
-        call strip_null(tape(t)%hlist(f)%field%sampling_seq)
-        tape(t)%hlist(f)%field%cell_methods(1:max_chars) = ' '
-        ierr = pio_get_var(File,cm_desc, (/1,f,t/), tape(t)%hlist(f)%field%cell_methods)
-        call strip_null(tape(t)%hlist(f)%field%cell_methods)
-        if(xyfill(f,t) ==1) then
-          tape(t)%hlist(f)%field%flag_xyfill=.true.
+        nullify(tape(t)%hlist(fld)%field%mdims)
+        ierr = pio_get_var(File,fillval_desc, (/fld,t/), tape(t)%hlist(fld)%field%fillvalue)
+        ierr = pio_get_var(File,meridional_complement_desc, (/fld,t/), tape(t)%hlist(fld)%field%meridional_complement)
+        ierr = pio_get_var(File,zonal_complement_desc, (/fld,t/), tape(t)%hlist(fld)%field%zonal_complement)
+        tape(t)%hlist(fld)%field%field_op(1:field_op_len) = ' '
+        ierr = pio_get_var(File,field_op_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%field_op)
+        call strip_null(tape(t)%hlist(fld)%field%field_op)
+        ierr = pio_get_var(File,op_field1_id_desc, (/fld,t/), tape(t)%hlist(fld)%field%op_field1_id)
+        ierr = pio_get_var(File,op_field2_id_desc, (/fld,t/), tape(t)%hlist(fld)%field%op_field2_id)
+        ierr = pio_get_var(File,avgflag_desc, (/fld,t/), tape(t)%hlist(fld)%avgflag)
+        ierr = pio_get_var(File,longname_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%long_name)
+        ierr = pio_get_var(File,units_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%units)
+        tape(t)%hlist(fld)%field%sampling_seq(1:max_chars) = ' '
+        ierr = pio_get_var(File,sseq_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%sampling_seq)
+        call strip_null(tape(t)%hlist(fld)%field%sampling_seq)
+        tape(t)%hlist(fld)%field%cell_methods(1:max_chars) = ' '
+        ierr = pio_get_var(File,cm_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%cell_methods)
+        call strip_null(tape(t)%hlist(fld)%field%cell_methods)
+        if(xyfill(fld,t) ==1) then
+          tape(t)%hlist(fld)%field%flag_xyfill=.true.
         else
-          tape(t)%hlist(f)%field%flag_xyfill=.false.
+          tape(t)%hlist(fld)%field%flag_xyfill=.false.
         end if
-        if(is_subcol(f,t) ==1) then
-           tape(t)%hlist(f)%field%is_subcol=.true.
+        if(is_subcol(fld,t) ==1) then
+           tape(t)%hlist(fld)%field%is_subcol=.true.
         else
-           tape(t)%hlist(f)%field%is_subcol=.false.
+           tape(t)%hlist(fld)%field%is_subcol=.false.
         end if
-        call strip_null(tmpname(f,t))
-        call strip_null(tmpf1name(f,t))
-        call strip_null(tmpf2name(f,t))
-        tape(t)%hlist(f)%field%name = tmpname(f,t)
-        tape(t)%hlist(f)%op_field1 = tmpf1name(f,t)
-        tape(t)%hlist(f)%op_field2 = tmpf2name(f,t)
-        tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
-        tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
-        tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
-        tape(t)%hlist(f)%beg_nstep = tmpbeg_nstep(f,t)
-        call tape(t)%hlist(f)%put_global(tmpintegral(f,t))
+        call strip_null(tmpname(fld,t))
+        call strip_null(tmpf1name(fld,t))
+        call strip_null(tmpf2name(fld,t))
+        tape(t)%hlist(fld)%field%name = tmpname(fld,t)
+        tape(t)%hlist(fld)%op_field1 = tmpf1name(fld,t)
+        tape(t)%hlist(fld)%op_field2 = tmpf2name(fld,t)
+        tape(t)%hlist(fld)%field%decomp_type = decomp(fld,t)
+        tape(t)%hlist(fld)%field%numlev = tmpnumlev(fld,t)
+        tape(t)%hlist(fld)%hwrt_prec = tmpprec(fld,t)
+        tape(t)%hlist(fld)%beg_nstep = tmpbeg_nstep(fld,t)
+        call tape(t)%hlist(fld)%put_global(tmpintegral(fld,t))
         ! If the field is an advected constituent set the mixing_ratio attribute
-        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+        fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
         call cnst_get_ind(fname_tmp, idx, abort=.false.)
         mixing_ratio = ''
         if (idx > 0) then
            mixing_ratio = cnst_get_type_byind(idx)
         end if
-        tape(t)%hlist(f)%field%mixing_ratio = mixing_ratio
+        tape(t)%hlist(fld)%field%mixing_ratio = mixing_ratio
 
-        mdimcnt = count(allmdims(:,f,t) > 0)
+        mdimcnt = count(allmdims(:,fld,t) > 0)
         if(mdimcnt > 0) then
-          allocate(tape(t)%hlist(f)%field%mdims(mdimcnt))
+          allocate(tape(t)%hlist(fld)%field%mdims(mdimcnt))
           do i = 1, mdimcnt
-            tape(t)%hlist(f)%field%mdims(i) = get_hist_coord_index(mdimnames(allmdims(i,f,t)))
+            tape(t)%hlist(fld)%field%mdims(i) = get_hist_coord_index(mdimnames(allmdims(i,fld,t)))
           end do
         end if
       end do
@@ -2116,57 +2162,60 @@ CONTAINS
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
     do t = 1, ptapes
-      do f = 1, nflds(t)
-        call set_field_dimensions(tape(t)%hlist(f)%field)
+      do fld = 1, nflds(t)
+        if (tape(t)%hlist(fld)%avgflag .ne. 'I') then
+           hfile_accum(t) = .true.
+        end if
+        call set_field_dimensions(tape(t)%hlist(fld)%field)
 
-        begdim1 = tape(t)%hlist(f)%field%begdim1
-        enddim1 = tape(t)%hlist(f)%field%enddim1
-        begdim2 = tape(t)%hlist(f)%field%begdim2
-        enddim2 = tape(t)%hlist(f)%field%enddim2
-        begdim3 = tape(t)%hlist(f)%field%begdim3
-        enddim3 = tape(t)%hlist(f)%field%enddim3
+        begdim1 = tape(t)%hlist(fld)%field%begdim1
+        enddim1 = tape(t)%hlist(fld)%field%enddim1
+        begdim2 = tape(t)%hlist(fld)%field%begdim2
+        enddim2 = tape(t)%hlist(fld)%field%enddim2
+        begdim3 = tape(t)%hlist(fld)%field%begdim3
+        enddim3 = tape(t)%hlist(fld)%field%enddim3
 
-        allocate(tape(t)%hlist(f)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-        if (tape(t)%hlist(f)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
-           allocate(tape(t)%hlist(f)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        allocate(tape(t)%hlist(fld)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        if (tape(t)%hlist(fld)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
+           allocate(tape(t)%hlist(fld)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
         endif
 
-        if (associated(tape(t)%hlist(f)%varid)) then
-          deallocate(tape(t)%hlist(f)%varid)
+        if (associated(tape(t)%hlist(fld)%varid)) then
+          deallocate(tape(t)%hlist(fld)%varid)
         end if
-        nullify(tape(t)%hlist(f)%varid)
-        if (associated(tape(t)%hlist(f)%nacs)) then
-          deallocate(tape(t)%hlist(f)%nacs)
+        nullify(tape(t)%hlist(fld)%varid)
+        if (associated(tape(t)%hlist(fld)%nacs)) then
+          deallocate(tape(t)%hlist(fld)%nacs)
         end if
-        nullify(tape(t)%hlist(f)%nacs)
-        if(tape(t)%hlist(f)%field%flag_xyfill .or. (avgflag_pertape(t)=='L')) then
-          allocate (tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
+        nullify(tape(t)%hlist(fld)%nacs)
+        if(tape(t)%hlist(fld)%field%flag_xyfill .or. (avgflag_pertape(t)=='L')) then
+          allocate (tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
         else
-          allocate(tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
+          allocate(tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
         end if
         ! initialize all buffers to zero - this will be overwritten later by the
         ! data in the history restart file if it exists.
-        call h_zero(f,t)
+        call h_zero(fld,t)
 
         ! Make sure this field's decomp is listed on the tape
-        fdecomp = tape(t)%hlist(f)%field%decomp_type
-        do ff = 1, size(gridsontape, 1)
-          if (fdecomp == gridsontape(ff, t)) then
+        fdecomp = tape(t)%hlist(fld)%field%decomp_type
+        do ffld = 1, size(gridsontape, 1)
+          if (fdecomp == gridsontape(ffld, t)) then
             exit
-          else if (gridsontape(ff, t) < 0) then
-            gridsontape(ff, t) = fdecomp
+          else if (gridsontape(ffld, t) < 0) then
+            gridsontape(ffld, t) = fdecomp
             exit
           end if
         end do
         !
         !rebuild area wt array and set field wbuf pointer
         !
-        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up area weight buffer
-           nullify(tape(t)%hlist(f)%wbuf)
+        if (tape(t)%hlist(fld)%avgflag .eq. 'N') then ! set up area weight buffer
+           nullify(tape(t)%hlist(fld)%wbuf)
 
-           if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(f)%field%decomp_type)) then
+           if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(fld)%field%decomp_type)) then
               wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
               ! first check for an available spot in the array
@@ -2180,7 +2229,7 @@ CONTAINS
               allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
               cnt=0
               do c=begdim3,enddim3
-                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 dimind = tape(t)%hlist(fld)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
                  do i=ib,ie
@@ -2188,7 +2237,7 @@ CONTAINS
                     allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(cnt)
                  end do
               end do
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            endif
         endif
       end do
@@ -2214,21 +2263,21 @@ CONTAINS
         ! Open history restart file
         !
         call getfil (hrestpath(t), locfn)
-        call cam_pio_openfile(tape(t)%File, locfn, 0)
+        call cam_pio_openfile(tape(t)%Files(restart_file_index), locfn, 0)
         !
         ! Read history restart file
         !
-        do f = 1, nflds(t)
+        do fld = 1, nflds(t)
 
-          fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+          fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
           if(masterproc) write(iulog, *) 'Reading history variable ',fname_tmp
-          ierr = pio_inq_varid(tape(t)%File, fname_tmp, vdesc)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), fname_tmp, vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, ndims, dimids, dimlens)
 
-          call cam_pio_var_info(tape(t)%File, vdesc, ndims, dimids, dimlens)
-          if(.not. associated(tape(t)%hlist(f)%field%mdims)) then
+          if(.not. associated(tape(t)%hlist(fld)%field%mdims)) then
             dimcnt = 0
             do i=1,ndims
-              ierr = pio_inq_dimname(tape(t)%File, dimids(i), dname_tmp)
+              ierr = pio_inq_dimname(tape(t)%Files(restart_file_index), dimids(i), dname_tmp)
               dimid = get_hist_coord_index(dname_tmp)
               if(dimid >= 1) then
                 dimcnt = dimcnt + 1
@@ -2237,20 +2286,20 @@ CONTAINS
               end if
             end do
             if(dimcnt > 0) then
-              allocate(tape(t)%hlist(f)%field%mdims(dimcnt))
-              tape(t)%hlist(f)%field%mdims(:) = tmpdims(1:dimcnt)
+              allocate(tape(t)%hlist(fld)%field%mdims(dimcnt))
+              tape(t)%hlist(fld)%field%mdims(:) = tmpdims(1:dimcnt)
               if(dimcnt > maxvarmdims) maxvarmdims=dimcnt
             end if
           end if
-          call set_field_dimensions(tape(t)%hlist(f)%field)
-          begdim1    =  tape(t)%hlist(f)%field%begdim1
-          enddim1    =  tape(t)%hlist(f)%field%enddim1
+          call set_field_dimensions(tape(t)%hlist(fld)%field)
+          begdim1    =  tape(t)%hlist(fld)%field%begdim1
+          enddim1    =  tape(t)%hlist(fld)%field%enddim1
           fdims(1)   =  enddim1 - begdim1 + 1
-          begdim2    =  tape(t)%hlist(f)%field%begdim2
-          enddim2    =  tape(t)%hlist(f)%field%enddim2
+          begdim2    =  tape(t)%hlist(fld)%field%begdim2
+          enddim2    =  tape(t)%hlist(fld)%field%enddim2
           fdims(2)   =  enddim2 - begdim2 + 1
-          begdim3    =  tape(t)%hlist(f)%field%begdim3
-          enddim3    =  tape(t)%hlist(f)%field%enddim3
+          begdim3    =  tape(t)%hlist(fld)%field%begdim3
+          enddim3    =  tape(t)%hlist(fld)%field%enddim3
           fdims(3)   =  enddim3 - begdim3 + 1
           if (fdims(2) > 1) then
             nfdims = 3
@@ -2258,69 +2307,69 @@ CONTAINS
             nfdims = 2
             fdims(2) = fdims(3)
           end if
-          fdecomp = tape(t)%hlist(f)%field%decomp_type
+          fdecomp = tape(t)%hlist(fld)%field%decomp_type
           if (nfdims > 2) then
-            call cam_grid_read_dist_array(tape(t)%File, fdecomp,              &
-                 fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(f)%hbuf, vdesc)
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
+                 fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%hbuf, vdesc)
           else
-            call cam_grid_read_dist_array(tape(t)%File, fdecomp,              &
-                 fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(f)%hbuf(:,1,:), vdesc)
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
+                 fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%hbuf(:,1,:), vdesc)
           end if
 
-          if ( associated(tape(t)%hlist(f)%sbuf) ) then
+          if ( associated(tape(t)%hlist(fld)%sbuf) ) then
              ! read in variance for standard deviation
-             ierr = pio_inq_varid(tape(t)%File, trim(fname_tmp)//'_var', vdesc)
+             ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_var', vdesc)
              if (nfdims > 2) then
-                call cam_grid_read_dist_array(tape(t)%File, fdecomp,              &
-                     fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(f)%sbuf, vdesc)
+                call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
+                     fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%sbuf, vdesc)
              else
-                call cam_grid_read_dist_array(tape(t)%File, fdecomp,              &
-                     fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(f)%sbuf(:,1,:), vdesc)
+                call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
+                     fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%sbuf(:,1,:), vdesc)
              end if
           endif
 
-          ierr = pio_inq_varid(tape(t)%File, trim(fname_tmp)//'_nacs', vdesc)
-          call cam_pio_var_info(tape(t)%File, vdesc, nacsdimcnt, dimids, dimlens)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_nacs', vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, nacsdimcnt, dimids, dimlens)
 
           if(nacsdimcnt > 0) then
             if (nfdims > 2) then
               ! nacs only has 2 dims (no levels)
               fdims(2) = fdims(3)
             end if
-            allocate(tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
-            nacs       => tape(t)%hlist(f)%nacs(:,:)
-            call cam_grid_read_dist_array(tape(t)%File, fdecomp, fdims(1:2),  &
+            allocate(tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
+            nacs       => tape(t)%hlist(fld)%nacs(:,:)
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp, fdims(1:2),  &
                  dimlens(1:nacsdimcnt), nacs, vdesc)
           else
-            allocate(tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
-            ierr = pio_get_var(tape(t)%File, vdesc, nacsval)
-            tape(t)%hlist(f)%nacs(1,:)= nacsval
+            allocate(tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
+            ierr = pio_get_var(tape(t)%Files(restart_file_index), vdesc, nacsval)
+            tape(t)%hlist(fld)%nacs(1,:)= nacsval
           end if
 
-          ierr = pio_inq_varid(tape(t)%File, trim(fname_tmp)//'_nacs', vdesc)
-          call cam_pio_var_info(tape(t)%File, vdesc, nacsdimcnt, dimids, dimlens)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_nacs', vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, nacsdimcnt, dimids, dimlens)
 
         end do
         !
         ! Done reading this history restart file
         !
-        call cam_pio_closefile(tape(t)%File)
+        call cam_pio_closefile(tape(t)%Files(restart_file_index))
 
       end if  ! rgnht(t)
 
       ! (re)create the master list of grid IDs
-      ff = 0
-      do f = 1, size(gridsontape, 1)
-        if (gridsontape(f, t) > 0) then
-          ff = ff + 1
+      ffld = 0
+      do fld = 1, size(gridsontape, 1)
+        if (gridsontape(fld, t) > 0) then
+          ffld = ffld + 1
         end if
       end do
-      allocate(tape(t)%grid_ids(ff))
-      ff = 1
-      do f = 1, size(gridsontape, 1)
-        if (gridsontape(f, t) > 0) then
-          tape(t)%grid_ids(ff) = gridsontape(f, t)
-          ff = ff + 1
+      allocate(tape(t)%grid_ids(ffld))
+      ffld = 1
+      do fld = 1, size(gridsontape, 1)
+        if (gridsontape(fld, t) > 0) then
+          tape(t)%grid_ids(ffld) = gridsontape(fld, t)
+          ffld = ffld + 1
         end if
       end do
       call patch_init(t)
@@ -2332,7 +2381,6 @@ CONTAINS
     !
     ! NOTE:  No need to perform this operation for IC history files or empty files
     !
-
     do t=1,mtapes
       if (is_initfile(file_index=t)) then
         ! Initialize filename specifier for IC file
@@ -2342,13 +2390,19 @@ CONTAINS
         nfils(t) = 0
       else
         if (nfils(t) > 0) then
-          call getfil (cpath(t), locfn)
-          call cam_pio_openfile(tape(t)%File, locfn, PIO_WRITE)
+           ! Always create the instantaneous file
+           call getfil (cpath(t,instantaneous_file_index), locfn)
+           call cam_pio_openfile(tape(t)%Files(instantaneous_file_index), locfn, PIO_WRITE)
+           if (hfile_accum(t)) then
+              ! Conditionally create the accumulated file
+              call getfil (cpath(t,accumulated_file_index), locfn)
+              call cam_pio_openfile(tape(t)%Files(accumulated_file_index), locfn, PIO_WRITE)
+           end if
           call h_inquire (t)
           if(is_satfile(t)) then
             !  Initialize the sat following history subsystem
             call sat_hist_init()
-            call sat_hist_define(tape(t)%File)
+            call sat_hist_define(tape(t)%Files(sat_file_index))
           end if
         end if
         !
@@ -2356,13 +2410,21 @@ CONTAINS
         !
         if (nfils(t) >= mfilt(t)) then
           if (masterproc) then
-            write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t), mfilt(t)
+            do f = 1, maxsplitfiles
+               if (pio_file_is_open(tape(t)%Files(f))) then
+                  write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,f), mfilt(t)
+               end if
+            end do
           end if
-          do f=1,nflds(t)
-            deallocate(tape(t)%hlist(f)%varid)
-            nullify(tape(t)%hlist(f)%varid)
+          do fld=1,nflds(t)
+            deallocate(tape(t)%hlist(fld)%varid)
+            nullify(tape(t)%hlist(fld)%varid)
           end do
-          call cam_pio_closefile(tape(t)%File)
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call cam_pio_closefile(tape(t)%Files(f))
+             end if
+          end do
           nfils(t) = 0
         end if
       end if
@@ -2380,7 +2442,7 @@ CONTAINS
 
   !#######################################################################
 
-  character(len=max_string_len) function get_hfilepath( tape )
+  character(len=max_string_len) function get_hfilepath( tape, accumulated_flag )
     !
     !-----------------------------------------------------------------------
     !
@@ -2391,8 +2453,14 @@ CONTAINS
     !-----------------------------------------------------------------------
     !
     integer, intent(in) :: tape  ! Tape number
+    logical, intent(in) :: accumulated_flag ! True if calling routine wants the accumulated
+                                            ! file path, False for instantaneous
 
-    get_hfilepath = cpath( tape )
+    if (accumulated_flag) then
+       get_hfilepath = cpath( tape, accumulated_file_index )
+    else
+       get_hfilepath = cpath( tape, instantaneous_file_index )
+    end if
   end function get_hfilepath
 
   !#######################################################################
@@ -2463,7 +2531,7 @@ CONTAINS
     case ('N')
       time_op(:) = 'mean_over_nsteps'
     case ('I')
-      time_op(:) = ' '
+      time_op(:) = 'point'
     case ('X')
       time_op(:) = 'maximum'
     case ('M')
@@ -2496,8 +2564,8 @@ CONTAINS
     !
     !---------------------------Local variables-----------------------------
     !
-    integer t, f                   ! tape, field indices
-    integer ff                     ! index into include, exclude and fprec list
+    integer t, fld                 ! tape, field indices
+    integer ffld                   ! index into include, exclude and fprec list
     integer :: i
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
@@ -2516,16 +2584,6 @@ CONTAINS
     !    on that grid.
     integer, allocatable        :: gridsontape(:,:)
 
-    ! The following list of field names are only valid for the FV dycore.  They appear
-    ! in fincl settings of WACCM use case files which are not restricted to the FV dycore.
-    ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
-    ! versions this short list of fields is checked for and removed from fincl lists when
-    ! the dycore is not FV.
-    integer, parameter :: n_fv_only = 10
-    character(len=6) :: fv_only_flds(n_fv_only) = &
-       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
-         'THzm  ', 'TH    ', 'MSKtem' ]
-
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
     character(len=2) :: avg_suffix
@@ -2538,34 +2596,18 @@ CONTAINS
     errors_found = 0
     do t=1,ptapes
 
-      f = 1
+      fld = 1
       n_vec_comp       = 0
       vec_comp_names   = ' '
       vec_comp_avgflag = ' '
-fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
-        name = getname (fincl(f,t))
-
-        if (.not. dycore_is('FV')) then
-           ! filter out fields only provided by FV dycore
-           do i = 1, n_fv_only
-              if (name == fv_only_flds(i)) then
-                 write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
-                    ' in fincl(', f,', ',t, ') only available with FV dycore'
-                 if (masterproc) then
-                    write(iulog,*) trim(errormsg)
-                    call shr_sys_flush(iulog)
-                 end if
-                 f = f + 1
-                 cycle fincls
-              end if
-           end do
-        end if
+      do while (fld < pflds .and. fincl(fld,t) /= ' ')
+        name = getname (fincl(fld,t))
 
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
         if (associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
-          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', f,', ',t, ') not found'
+          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', fld,', ',t, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
@@ -2575,7 +2617,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
            if (len_trim(mastername)>0 .and. interpolate_output(t)) then
               if (n_vec_comp >= nvecmax) call endrun('FLDLST: need to increase nvecmax')
               ! If this is a vector component then save the name of the complement
-              avgflag = getflag(fincl(f,t))
+              avgflag = getflag(fincl(fld,t))
               if (len_trim(listentry%meridional_field) > 0) then
                  n_vec_comp = n_vec_comp + 1
                  vec_comp_names(n_vec_comp) = listentry%meridional_field
@@ -2587,20 +2629,20 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
               end if
            end if
         end if
-        f = f + 1
-      end do fincls
+        fld = fld + 1
+      end do
 
       ! Interpolation of vector components requires that both be present.  If the fincl
       ! specifier contains any vector components, then the complement was saved in the
       ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
       ! are also present in the fincl array.
 
-      ! The first empty slot in the current fincl array is index f from loop above.
-      add_fincl_idx = f
-      if (f > 1 .and. interpolate_output(t)) then
+      ! The first empty slot in the current fincl array is index fld from loop above.
+      add_fincl_idx = fld
+      if (fld > 1 .and. interpolate_output(t)) then
          do i = 1, n_vec_comp
-            call list_index(fincl(:,t), vec_comp_names(i), ff)
-            if (ff == 0) then
+            call list_index(fincl(:,t), vec_comp_names(i), ffld)
+            if (ffld == 0) then
 
                ! Add vector component to fincl.  Don't need to check whether its in the master
                ! list since this was done at the time of registering the vector components.
@@ -2619,39 +2661,39 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
          end do
       end if
 
-      f = 1
-      do while (f < pflds .and. fexcl(f,t) /= ' ')
+      fld = 1
+      do while (fld < pflds .and. fexcl(fld,t) /= ' ')
         mastername=''
-        listentry => get_entry_by_name(masterlinkedlist, fexcl(f,t))
+        listentry => get_entry_by_name(masterlinkedlist, fexcl(fld,t))
         if(associated(listentry)) mastername = listentry%field%name
 
-        if (fexcl(f,t) /= mastername) then
-          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(fexcl(f,t)), ' in fexcl(', f,', ',t, ') not found'
+        if (fexcl(fld,t) /= mastername) then
+          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(fexcl(fld,t)), ' in fexcl(', fld,', ',t, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
         end if
-        f = f + 1
+        fld = fld + 1
       end do
 
-      f = 1
-      do while (f < pflds .and. fwrtpr(f,t) /= ' ')
-        name = getname (fwrtpr(f,t))
+      fld = 1
+      do while (fld < pflds .and. fwrtpr(fld,t) /= ' ')
+        name = getname (fwrtpr(fld,t))
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
         if(associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
-          write(errormsg,'(3a,i0,a)')'FLDLST: ', trim(name), ' in fwrtpr(', f, ') not found'
+          write(errormsg,'(3a,i0,a)')'FLDLST: ', trim(name), ' in fwrtpr(', fld, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
         end if
-        do ff=1,f-1                 ! If duplicate entry is found, stop
-          if (trim(name) == trim(getname(fwrtpr(ff,t)))) then
+        do ffld=1,fld-1                 ! If duplicate entry is found, stop
+          if (trim(name) == trim(getname(fwrtpr(ffld,t)))) then
             write(errormsg,'(3a)')'FLDLST: Duplicate field ', trim(name), ' in fwrtpr'
             if (masterproc) then
                write(iulog,*) trim(errormsg)
@@ -2660,7 +2702,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
             errors_found = errors_found + 1
           end if
         end do
-        f = f + 1
+        fld = fld + 1
       end do
     end do
 
@@ -2698,14 +2740,14 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       listentry => masterlinkedlist
       do while(associated(listentry))
         mastername = listentry%field%name
-        call list_index (fincl(1,t), mastername, ff)
+        call list_index (fincl(1,t), mastername, ffld)
 
         fieldontape = .false.
-        if (ff > 0) then
+        if (ffld > 0) then
           fieldontape = .true.
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ff)
-          if (ff == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld)
+          if (ffld == 0 .and. listentry%actflag(t)) then
             fieldontape = .true.
           end if
         end if
@@ -2713,11 +2755,11 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
           ! The field is active so increment the number fo fields and add
           ! its decomp type to the list of decomp types on this tape
           nflds(t) = nflds(t) + 1
-          do ff = 1, size(gridsontape, 1)
-            if (listentry%field%decomp_type == gridsontape(ff, t)) then
+          do ffld = 1, size(gridsontape, 1)
+            if (listentry%field%decomp_type == gridsontape(ffld, t)) then
               exit
-            else if (gridsontape(ff, t) < 0) then
-              gridsontape(ff, t) = listentry%field%decomp_type
+            else if (gridsontape(ffld, t) < 0) then
+              gridsontape(ffld, t) = listentry%field%decomp_type
               exit
             end if
           end do
@@ -2746,27 +2788,27 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         ! Allocate the correct number of hentry slots
         allocate(tape(t)%hlist(nflds(t)))
         ! Count up the number of grids output on this tape
-        ff = 0
-        do f = 1, size(gridsontape, 1)
-          if (gridsontape(f, t) > 0) then
-            ff = ff + 1
+        ffld = 0
+        do fld = 1, size(gridsontape, 1)
+          if (gridsontape(fld, t) > 0) then
+            ffld = ffld + 1
           end if
         end do
-        allocate(tape(t)%grid_ids(ff))
-        ff = 1
-        do f = 1, size(gridsontape, 1)
-          if (gridsontape(f, t) > 0) then
-            tape(t)%grid_ids(ff) = gridsontape(f, t)
-            ff = ff + 1
+        allocate(tape(t)%grid_ids(ffld))
+        ffld = 1
+        do fld = 1, size(gridsontape, 1)
+          if (gridsontape(fld, t) > 0) then
+            tape(t)%grid_ids(ffld) = gridsontape(fld, t)
+            ffld = ffld + 1
           end if
         end do
       end if
-      do ff=1,nflds(t)
-        nullify(tape(t)%hlist(ff)%hbuf)
-        nullify(tape(t)%hlist(ff)%sbuf)
-        nullify(tape(t)%hlist(ff)%wbuf)
-        nullify(tape(t)%hlist(ff)%nacs)
-        nullify(tape(t)%hlist(ff)%varid)
+      do ffld=1,nflds(t)
+        nullify(tape(t)%hlist(ffld)%hbuf)
+        nullify(tape(t)%hlist(ffld)%sbuf)
+        nullify(tape(t)%hlist(ffld)%wbuf)
+        nullify(tape(t)%hlist(ffld)%nacs)
+        nullify(tape(t)%hlist(ffld)%varid)
       end do
 
 
@@ -2775,21 +2817,21 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       do while(associated(listentry))
         mastername = listentry%field%name
 
-        call list_index (fwrtpr(1,t), mastername, ff)
-        if (ff > 0) then
-          prec_wrt = getflag(fwrtpr(ff,t))
+        call list_index (fwrtpr(1,t), mastername, ffld)
+        if (ffld > 0) then
+          prec_wrt = getflag(fwrtpr(ffld,t))
         else
           prec_wrt = ' '
         end if
 
-        call list_index (fincl(1,t), mastername, ff)
+        call list_index (fincl(1,t), mastername, ffld)
 
-        if (ff > 0) then
-          avgflag = getflag (fincl(ff,t))
+        if (ffld > 0) then
+          avgflag = getflag (fincl(ffld,t))
           call inifld (t, listentry, avgflag,  prec_wrt)
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ff)
-          if (ff == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld)
+          if (ffld == 0 .and. listentry%actflag(t)) then
             call inifld (t, listentry, ' ', prec_wrt)
           else
             listentry%actflag(t) = .false.
@@ -2815,30 +2857,30 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       ! entries for efficiency in OUTFLD.  Simple bubble sort.
       !
 !!XXgoldyXX: v In the future, we will sort according to decomp to speed I/O
-      do f=nflds(t)-1,1,-1
-        do ff=1,f
+      do fld=nflds(t)-1,1,-1
+        do ffld=1,fld
 
-          if (tape(t)%hlist(ff)%field%numlev > tape(t)%hlist(ff+1)%field%numlev) then
-            tmp = tape(t)%hlist(ff)
-            tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
-            tape(t)%hlist(ff+1) = tmp
+          if (tape(t)%hlist(ffld)%field%numlev > tape(t)%hlist(ffld+1)%field%numlev) then
+            tmp = tape(t)%hlist(ffld)
+            tape(t)%hlist(ffld  ) = tape(t)%hlist(ffld+1)
+            tape(t)%hlist(ffld+1) = tmp
           end if
 
         end do
 
-        do ff=1,f
+        do ffld=1,fld
 
-           if ((tape(t)%hlist(ff)%field%numlev == tape(t)%hlist(ff+1)%field%numlev) .and. &
-                (tape(t)%hlist(ff)%field%name > tape(t)%hlist(ff+1)%field%name)) then
+           if ((tape(t)%hlist(ffld)%field%numlev == tape(t)%hlist(ffld+1)%field%numlev) .and. &
+                (tape(t)%hlist(ffld)%field%name > tape(t)%hlist(ffld+1)%field%name)) then
 
-            tmp = tape(t)%hlist(ff)
-            tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
-            tape(t)%hlist(ff+1) = tmp
+            tmp = tape(t)%hlist(ffld)
+            tape(t)%hlist(ffld  ) = tape(t)%hlist(ffld+1)
+            tape(t)%hlist(ffld+1) = tmp
 
-          else if (tape(t)%hlist(ff  )%field%name == tape(t)%hlist(ff+1)%field%name) then
+          else if (tape(t)%hlist(ffld)%field%name == tape(t)%hlist(ffld+1)%field%name) then
 
             write(errormsg,'(2a,2(a,i3))') 'FLDLST: Duplicate field: ', &
-                 trim(tape(t)%hlist(ff)%field%name),', tape = ', t, ', ff = ', ff
+                 trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld
             call endrun(errormsg)
 
           end if
@@ -2882,7 +2924,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
 
 subroutine print_active_fldlst()
 
-   integer :: f, ff, i, t
+   integer :: fld, ffld, i, t
    integer :: num_patches
 
    character(len=6) :: prec_str
@@ -2898,7 +2940,7 @@ subroutine print_active_fldlst()
 
          if (nflds(t) > 0) then
             write(iulog,*) ' '
-            write(iulog,*)'FLDLST: History file ', t, ' contains ', nflds(t), ' fields'
+            write(iulog,*)'FLDLST: History stream ', t, ' contains ', nflds(t), ' fields'
 
             if (is_initfile(file_index=t)) then
                write(iulog,*) ' Write frequency:                 ',inithist,' (INITIAL CONDITIONS)'
@@ -2933,23 +2975,23 @@ subroutine print_active_fldlst()
 
          end if
 
-         do f = 1, nflds(t)
+         do fld = 1, nflds(t)
             if (associated(hfile(t)%patches)) then
                num_patches = size(hfile(t)%patches)
-               fldname = strip_suffix(hfile(t)%hlist(f)%field%name)
+               fldname = strip_suffix(hfile(t)%hlist(fld)%field%name)
                do i = 1, num_patches
-                  ff = (f-1)*num_patches + i
+                  ffld = (fld-1)*num_patches + i
                   fname_tmp = trim(fldname)
                   call hfile(t)%patches(i)%field_name(fname_tmp)
-                  write(iulog,9000) ff, fname_tmp, hfile(t)%hlist(f)%field%units, &
-                     hfile(t)%hlist(f)%field%numlev, hfile(t)%hlist(f)%avgflag,   &
-                     trim(hfile(t)%hlist(f)%field%long_name)
+                  write(iulog,9000) ffld, fname_tmp, hfile(t)%hlist(fld)%field%units, &
+                     hfile(t)%hlist(fld)%field%numlev, hfile(t)%hlist(fld)%avgflag,   &
+                     trim(hfile(t)%hlist(fld)%field%long_name)
                end do
             else
-               fldname = hfile(t)%hlist(f)%field%name
-               write(iulog,9000) f, fldname, hfile(t)%hlist(f)%field%units,  &
-                  hfile(t)%hlist(f)%field%numlev, hfile(t)%hlist(f)%avgflag, &
-                  trim(hfile(t)%hlist(f)%field%long_name)
+               fldname = hfile(t)%hlist(fld)%field%name
+               write(iulog,9000) fld, fldname, hfile(t)%hlist(fld)%field%units,  &
+                  hfile(t)%hlist(fld)%field%numlev, hfile(t)%hlist(fld)%avgflag, &
+                  trim(hfile(t)%hlist(fld)%field%long_name)
             end if
 
          end do
@@ -3546,7 +3588,7 @@ end subroutine print_active_fldlst
     !
     ! Local variables
     !
-    integer               :: t, f          ! tape, field indices
+    integer               :: t, fld        ! tape, field indices
 
     character*1           :: avgflag       ! averaging flag
 
@@ -3583,30 +3625,30 @@ end subroutine print_active_fldlst
     !      write(iulog,*)'fname_loc=',fname_loc
     do t = 1, ptapes
       if ( .not. masterlist(ff)%thisentry%actflag(t)) cycle
-      f = masterlist(ff)%thisentry%htapeindx(t)
+      fld = masterlist(ff)%thisentry%htapeindx(t)
       !
       ! Update history buffer
       !
-      flag_xyfill = otape(t)%hlist(f)%field%flag_xyfill
-      fillvalue = otape(t)%hlist(f)%field%fillvalue
-      avgflag = otape(t)%hlist(f)%avgflag
-      nacs   => otape(t)%hlist(f)%nacs(:,c)
-      hbuf => otape(t)%hlist(f)%hbuf(:,:,c)
-      if (associated(tape(t)%hlist(f)%wbuf)) then
-         wbuf => otape(t)%hlist(f)%wbuf(:,c)
+      flag_xyfill = otape(t)%hlist(fld)%field%flag_xyfill
+      fillvalue = otape(t)%hlist(fld)%field%fillvalue
+      avgflag = otape(t)%hlist(fld)%avgflag
+      nacs   => otape(t)%hlist(fld)%nacs(:,c)
+      hbuf => otape(t)%hlist(fld)%hbuf(:,:,c)
+      if (associated(tape(t)%hlist(fld)%wbuf)) then
+         wbuf => otape(t)%hlist(fld)%wbuf(:,c)
       endif
-      if (associated(tape(t)%hlist(f)%sbuf)) then
-         sbuf => otape(t)%hlist(f)%sbuf(:,:,c)
+      if (associated(tape(t)%hlist(fld)%sbuf)) then
+         sbuf => otape(t)%hlist(fld)%sbuf(:,:,c)
       endif
-      dimind = otape(t)%hlist(f)%field%get_dims(c)
+      dimind = otape(t)%hlist(fld)%field%get_dims(c)
 
       ! See notes above about validity of avg_subcol_field
-      if (otape(t)%hlist(f)%field%is_subcol) then
+      if (otape(t)%hlist(fld)%field%is_subcol) then
         if (present(avg_subcol_field)) then
           call endrun('OUTFLD: Cannot average '//trim(fname)//', subcolumn output was requested in addfld')
         end if
         avg_subcols = .false.
-      else if (otape(t)%hlist(f)%field%decomp_type == phys_decomp) then
+      else if (otape(t)%hlist(fld)%field%decomp_type == phys_decomp) then
         if (present(avg_subcol_field)) then
           avg_subcols = avg_subcol_field
         else
@@ -3620,15 +3662,15 @@ end subroutine print_active_fldlst
         end if
       end if
 
-      begdim2 = otape(t)%hlist(f)%field%begdim2
-      enddim2 = otape(t)%hlist(f)%field%enddim2
+      begdim2 = otape(t)%hlist(fld)%field%begdim2
+      enddim2 = otape(t)%hlist(fld)%field%enddim2
       if (avg_subcols) then
         allocate(afield(pcols, begdim2:enddim2))
         call subcol_field_avg_handler(idim, field, c, afield)
         ! Hack! Avoid duplicating select statement below
         call outfld(fname, afield, pcols, c)
         deallocate(afield)
-      else if (otape(t)%hlist(f)%field%is_subcol) then
+      else if (otape(t)%hlist(fld)%field%is_subcol) then
         ! We have to assume that using mdimnames (e.g., psubcols) is
         ! incompatible with the begdimx, enddimx usage (checked in addfld)
         ! Since psubcols is included in levels, take that out
@@ -3683,7 +3725,7 @@ end subroutine print_active_fldlst
         case ('L')
           call hbuf_accum_addlcltime(hbuf, ufield, nacs, dimind, pcols,  &
                flag_xyfill, fillvalue, c,                                &
-               otape(t)%hlist(f)%field%decomp_type,                      &
+               otape(t)%hlist(fld)%field%decomp_type,                      &
                lcltod_start(t), lcltod_stop(t))
 
         case ('S') ! Standard deviation
@@ -3725,7 +3767,7 @@ end subroutine print_active_fldlst
         case ('L')
           call hbuf_accum_addlcltime(hbuf, field, nacs, dimind, idim,    &
                flag_xyfill, fillvalue, c,                                &
-               otape(t)%hlist(f)%field%decomp_type,                      &
+               otape(t)%hlist(fld)%field%decomp_type,                      &
                lcltod_start(t), lcltod_stop(t))
 
         case ('S') ! Standard deviation
@@ -3920,7 +3962,7 @@ end subroutine print_active_fldlst
     !
     ! Local workspace
     !
-    integer                  :: f            ! field index
+    integer                  :: f, fld        ! file, field index
     integer                  :: ierr
     integer                  :: i
     integer                  :: num_patches
@@ -3933,103 +3975,118 @@ end subroutine print_active_fldlst
     !
     tape => history_tape
 
-
-
     !
     ! Create variables for model timing and header information
     !
-    if(.not. is_satfile(t)) then
-      ierr=pio_inq_varid (tape(t)%File,'ndcur   ',    tape(t)%ndcurid)
-      ierr=pio_inq_varid (tape(t)%File,'nscur   ',    tape(t)%nscurid)
-      ierr=pio_inq_varid (tape(t)%File,'nsteph  ',    tape(t)%nstephid)
-
-      ierr=pio_inq_varid (tape(t)%File,'time_bnds',   tape(t)%tbndid)
-      ierr=pio_inq_varid (tape(t)%File,'date_written',tape(t)%date_writtenid)
-      ierr=pio_inq_varid (tape(t)%File,'time_written',tape(t)%time_writtenid)
+    do f = 1, maxsplitfiles
+       if (.not. pio_file_is_open(tape(t)%Files(f))) then
+          cycle
+       end if
+       if(.not. is_satfile(t)) then
+         if (f == instantaneous_file_index) then
+            ierr=pio_inq_varid (tape(t)%Files(f),'ndcur   ',    tape(t)%ndcurid)
+            ierr=pio_inq_varid (tape(t)%Files(f),'nscur   ',    tape(t)%nscurid)
+            ierr=pio_inq_varid (tape(t)%Files(f),'nsteph  ',    tape(t)%nstephid)
+         end if
+         ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'date_written',  tape(t)%date_writtenid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'time_written',  tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
-      ierr=pio_inq_varid (tape(t)%File,'tsec    ',tape(t)%tsecid)
-      ierr=pio_inq_varid (tape(t)%File,'bdate   ',tape(t)%bdateid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'tsec    ',tape(t)%tsecid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'bdate   ',tape(t)%bdateid)
 #endif
-      if (.not. is_initfile(file_index=t) ) then
-        ! Don't write the GHG/Solar forcing data to the IC file.  It is never
-        ! read from that file so it's confusing to have it there.
-        ierr=pio_inq_varid (tape(t)%File,'co2vmr  ',    tape(t)%co2vmrid)
-        ierr=pio_inq_varid (tape(t)%File,'ch4vmr  ',    tape(t)%ch4vmrid)
-        ierr=pio_inq_varid (tape(t)%File,'n2ovmr  ',    tape(t)%n2ovmrid)
-        ierr=pio_inq_varid (tape(t)%File,'f11vmr  ',    tape(t)%f11vmrid)
-        ierr=pio_inq_varid (tape(t)%File,'f12vmr  ',    tape(t)%f12vmrid)
-        ierr=pio_inq_varid (tape(t)%File,'sol_tsi ',    tape(t)%sol_tsiid)
-        if (solar_parms_on) then
-          ierr=pio_inq_varid (tape(t)%File,'f107    ',    tape(t)%f107id)
-          ierr=pio_inq_varid (tape(t)%File,'f107a   ',    tape(t)%f107aid)
-          ierr=pio_inq_varid (tape(t)%File,'f107p   ',    tape(t)%f107pid)
-          ierr=pio_inq_varid (tape(t)%File,'kp      ',    tape(t)%kpid)
-          ierr=pio_inq_varid (tape(t)%File,'ap      ',    tape(t)%apid)
-        endif
-        if (solar_wind_on) then
-          ierr=pio_inq_varid (tape(t)%File,'byimf', tape(t)%byimfid)
-          ierr=pio_inq_varid (tape(t)%File,'bzimf', tape(t)%bzimfid)
-          ierr=pio_inq_varid (tape(t)%File,'swvel', tape(t)%swvelid)
-          ierr=pio_inq_varid (tape(t)%File,'swden', tape(t)%swdenid)
-        endif
-        if (epot_active) then
-          ierr=pio_inq_varid (tape(t)%File,'colat_crit1', tape(t)%colat_crit1_id)
-          ierr=pio_inq_varid (tape(t)%File,'colat_crit2', tape(t)%colat_crit2_id)
-        endif
-      end if
-    end if
-    ierr=pio_inq_varid (tape(t)%File,'date    ',    tape(t)%dateid)
-    ierr=pio_inq_varid (tape(t)%File,'datesec ',    tape(t)%datesecid)
-    ierr=pio_inq_varid (tape(t)%File,'time    ',    tape(t)%timeid)
+         if (.not. is_initfile(file_index=t) .and. f == instantaneous_file_index) then
+           ! Don't write the GHG/Solar forcing data to the IC file.  It is never
+           ! read from that file so it's confusing to have it there.
+           ! Only write the GHG/Solar forcing data to the instantaneous file
+           ierr=pio_inq_varid (tape(t)%Files(f),'co2vmr  ',    tape(t)%co2vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'ch4vmr  ',    tape(t)%ch4vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'n2ovmr  ',    tape(t)%n2ovmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'f11vmr  ',    tape(t)%f11vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'f12vmr  ',    tape(t)%f12vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'sol_tsi ',    tape(t)%sol_tsiid)
+           if (solar_parms_on) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107    ',    tape(t)%f107id)
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107a   ',    tape(t)%f107aid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107p   ',    tape(t)%f107pid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'kp      ',    tape(t)%kpid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'ap      ',    tape(t)%apid)
+           endif
+           if (solar_wind_on) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'byimf', tape(t)%byimfid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'bzimf', tape(t)%bzimfid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'swvel', tape(t)%swvelid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'swden', tape(t)%swdenid)
+           endif
+           if (epot_active) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'colat_crit1', tape(t)%colat_crit1_id)
+             ierr=pio_inq_varid (tape(t)%Files(f),'colat_crit2', tape(t)%colat_crit2_id)
+           endif
+         end if
+       end if
+       ierr=pio_inq_varid (tape(t)%Files(f),'date    ',    tape(t)%dateid)
+       ierr=pio_inq_varid (tape(t)%Files(f),'datesec ',    tape(t)%datesecid)
+       ierr=pio_inq_varid (tape(t)%Files(f),'time    ',    tape(t)%timeid)
 
+       !
+       ! Obtain variable name from ID which was read from restart file
+       !
+       do fld=1,nflds(t)
+         if (f == accumulated_file_index) then
+            ! this is the accumulated file - skip instantaneous fields
+            if (tape(t)%hlist(fld)%avgflag == 'I') then
+               cycle
+            end if
+         else
+            ! this is the instantaneous file - skip accumulated fields
+            if (tape(t)%hlist(fld)%avgflag /= 'I') then
+               cycle
+            end if
+         end if
 
-    !
-    ! Obtain variable name from ID which was read from restart file
-    !
-    do f=1,nflds(t)
-      if(.not. associated(tape(t)%hlist(f)%varid)) then
-        if (associated(tape(t)%patches)) then
-          allocate(tape(t)%hlist(f)%varid(size(tape(t)%patches)))
-        else
-          allocate(tape(t)%hlist(f)%varid(1))
-        end if
-      end if
-      !
-      ! If this field will be put out as columns then get column names for field
-      !
-      if (associated(tape(t)%patches)) then
-        num_patches = size(tape(t)%patches)
-        fldname = strip_suffix(tape(t)%hlist(f)%field%name)
-        do i = 1, num_patches
-          fname_tmp = trim(fldname)
-          call tape(t)%patches(i)%field_name(fname_tmp)
-          ierr = pio_inq_varid(tape(t)%File, trim(fname_tmp), tape(t)%hlist(f)%varid(i))
-          call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fname_tmp))
-          ierr = pio_get_att(tape(t)%File, tape(t)%hlist(f)%varid(i), 'basename', basename)
-          call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting basename for '//trim(fname_tmp))
-          if (trim(fldname) /= trim(basename)) then
-            call endrun('H_INQUIRE: basename ('//trim(basename)//') does not match fldname ('//trim(fldname)//')')
-          end if
-        end do
-      else
-        fldname = tape(t)%hlist(f)%field%name
-        ierr = pio_inq_varid(tape(t)%File, trim(fldname), tape(t)%hlist(f)%varid(1))
-        call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fldname))
-      end if
-      if(tape(t)%hlist(f)%field%numlev>1) then
-        ierr = pio_inq_attlen(tape(t)%File,tape(t)%hlist(f)%varid(1),'mdims', mdimsize)
-        if(.not. associated(tape(t)%hlist(f)%field%mdims)) then
-          allocate(tape(t)%hlist(f)%field%mdims(mdimsize))
-        end if
-        ierr=pio_get_att(tape(t)%File,tape(t)%hlist(f)%varid(1),'mdims', &
-             tape(t)%hlist(f)%field%mdims(1:mdimsize))
-        if(mdimsize > int(maxvarmdims, kind=pio_offset_kind)) then
-           maxvarmdims = int(mdimsize)
-        end if
-      end if
+         if(.not. associated(tape(t)%hlist(fld)%varid)) then
+           if (associated(tape(t)%patches)) then
+             allocate(tape(t)%hlist(fld)%varid(size(tape(t)%patches)))
+           else
+             allocate(tape(t)%hlist(fld)%varid(1))
+           end if
+         end if
+         !
+         ! If this field will be put out as columns then get column names for field
+         !
+         if (associated(tape(t)%patches)) then
+           num_patches = size(tape(t)%patches)
+           fldname = strip_suffix(tape(t)%hlist(fld)%field%name)
+           do i = 1, num_patches
+             fname_tmp = trim(fldname)
+             call tape(t)%patches(i)%field_name(fname_tmp)
+             ierr = pio_inq_varid(tape(t)%Files(f), trim(fname_tmp), tape(t)%hlist(fld)%varid(i))
+             call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fname_tmp))
+             ierr = pio_get_att(tape(t)%Files(f), tape(t)%hlist(fld)%varid(i), 'basename', basename)
+             call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting basename for '//trim(fname_tmp))
+             if (trim(fldname) /= trim(basename)) then
+               call endrun('H_INQUIRE: basename ('//trim(basename)//') does not match fldname ('//trim(fldname)//')')
+             end if
+           end do
+         else
+           fldname = tape(t)%hlist(fld)%field%name
+           ierr = pio_inq_varid(tape(t)%Files(f), trim(fldname), tape(t)%hlist(fld)%varid(1))
+           call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fldname))
+         end if
+         if(tape(t)%hlist(fld)%field%numlev>1) then
+           ierr = pio_inq_attlen(tape(t)%Files(f),tape(t)%hlist(fld)%varid(1),'mdims', mdimsize)
+           if(.not. associated(tape(t)%hlist(fld)%field%mdims)) then
+             allocate(tape(t)%hlist(fld)%field%mdims(mdimsize))
+           end if
+           ierr=pio_get_att(tape(t)%Files(f),tape(t)%hlist(fld)%varid(1),'mdims', &
+                tape(t)%hlist(fld)%field%mdims(1:mdimsize))
+           if(mdimsize > int(maxvarmdims, kind=pio_offset_kind)) then
+              maxvarmdims = int(mdimsize)
+           end if
+         end if
 
+       end do
     end do
-
     if(masterproc) then
       write(iulog,*)'H_INQUIRE: Successfully opened netcdf file '
     end if
@@ -4148,7 +4205,7 @@ end subroutine print_active_fldlst
     ! Method: Issue the required netcdf wrapper calls to define the history file contents
     !
     !-----------------------------------------------------------------------
-     use phys_control,    only: phys_getopts
+    use phys_control,    only: phys_getopts
     use cam_grid_support, only: cam_grid_header_info_t
     use cam_grid_support, only: cam_grid_write_attr, cam_grid_write_var
     use time_manager,     only: get_step_size, get_ref_date, timemgr_get_calendar_cf
@@ -4167,9 +4224,9 @@ end subroutine print_active_fldlst
     !
     ! Local workspace
     !
-    integer :: i, j            ! longitude, latitude indices
+    integer :: i, j, f         ! longitude, latitude, file indices
     integer :: grd             ! indices for looping through grids
-    integer :: f               ! field index
+    integer :: fld             ! field index
     integer :: ncreal          ! real data type for output
     integer :: dtime           ! timestep size
     integer :: sec_nhtfrq      ! nhtfrq converted to seconds
@@ -4224,6 +4281,7 @@ end subroutine print_active_fldlst
     character(len=32)                :: cam_take_snapshot_before
     character(len=32)                :: cam_take_snapshot_after
 
+
     call phys_getopts(cam_take_snapshot_before_out= cam_take_snapshot_before, &
                       cam_take_snapshot_after_out = cam_take_snapshot_after,  &
                       cam_snapshot_before_num_out = cam_snapshot_before_num,  &
@@ -4234,34 +4292,50 @@ end subroutine print_active_fldlst
       if(masterproc) write(iulog,*)'Opening netcdf history restart file ', trim(hrestpath(t))
     else
       tape => history_tape
-      if(masterproc) write(iulog,*)'Opening netcdf history file ', trim(nhfil(t))
+      if(masterproc) then
+         if (hfile_accum(t)) then
+            ! We have an accumulated file in addition to the instantaneous
+            write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,accumulated_file_index)), &
+                  '  ', trim(nhfil(t,instantaneous_file_index))
+         else
+            ! We just have the instantaneous file
+            write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,instantaneous_file_index))
+         end if
+      end if
     end if
 
     amode = PIO_CLOBBER
 
     if(restart) then
-      call cam_pio_createfile (tape(t)%File, hrestpath(t), amode)
+      call cam_pio_createfile (tape(t)%Files(restart_file_index), hrestpath(t), amode)
+    else if (is_initfile(file_index=t) .or. is_satfile(t)) then
+      call cam_pio_createfile (tape(t)%Files(sat_file_index), nhfil(t,sat_file_index), amode)
     else
-      call cam_pio_createfile (tape(t)%File, nhfil(t), amode)
+      ! figure out how many history files to generate for this tape
+      ! Always create the instantaneous file
+      call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
+      if (hfile_accum(t)) then
+         ! Conditionally create the accumulated file
+         call cam_pio_createfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), amode)
+      end if
     end if
     if(is_satfile(t)) then
       interpolate = .false. ! !!XXgoldyXX: Do we ever want to support this?
       patch_output = .false.
-      call cam_pio_def_dim(tape(t)%File, 'ncol', pio_unlimited, timdim)
-      call cam_pio_def_dim(tape(t)%File, 'nbnd', 2, bnddim)
+      call cam_pio_def_dim(tape(t)%Files(sat_file_index), 'ncol', pio_unlimited, timdim)
+      call cam_pio_def_dim(tape(t)%Files(sat_file_index), 'nbnd', 2, bnddim)
 
       allocate(latvar(1), lonvar(1))
       allocate(latvar(1)%vd, lonvar(1)%vd)
-      call cam_pio_def_var(tape(t)%File, 'lat', pio_double, (/timdim/),       &
+      call cam_pio_def_var(tape(t)%Files(sat_file_index), 'lat', pio_double, (/timdim/),       &
            latvar(1)%vd)
-      ierr=pio_put_att (tape(t)%File, latvar(1)%vd, 'long_name', 'latitude')
-      ierr=pio_put_att (tape(t)%File, latvar(1)%vd, 'units', 'degrees_north')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), latvar(1)%vd, 'long_name', 'latitude')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), latvar(1)%vd, 'units', 'degrees_north')
 
-      call cam_pio_def_var(tape(t)%File, 'lon', pio_double, (/timdim/),       &
+      call cam_pio_def_var(tape(t)%Files(sat_file_index), 'lon', pio_double, (/timdim/),       &
            lonvar(1)%vd)
-      ierr=pio_put_att (tape(t)%File, lonvar(1)%vd,'long_name','longitude')
-      ierr=pio_put_att (tape(t)%File, lonvar(1)%vd,'units','degrees_east')
-
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), lonvar(1)%vd,'long_name','longitude')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), lonvar(1)%vd,'units','degrees_east')
     else
       !
       ! Setup netcdf file - create the dimensions of lat,lon,time,level
@@ -4274,7 +4348,11 @@ end subroutine print_active_fldlst
       ! Interpolation is special in that we ignore the native grids
       if(interpolate) then
         allocate(header_info(1))
-        call cam_grid_write_attr(tape(t)%File, interpolate_info(t)%grid_id, header_info(1))
+        do f = 1, maxsplitfiles
+           if (pio_file_is_open(tape(t)%Files(f))) then
+              call cam_grid_write_attr(tape(t)%Files(f), interpolate_info(t)%grid_id, header_info(1), file_index=f)
+           end if
+        end do
       else if (patch_output) then
         ! We are doing patch (column) output
         if (allocated(header_info)) then
@@ -4282,91 +4360,42 @@ end subroutine print_active_fldlst
           call endrun('H_DEFINE: header_info should not be allocated for patch output')
         end if
         do i = 1, size(tape(t)%patches)
-          call tape(t)%patches(i)%write_attrs(tape(t)%File)
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call tape(t)%patches(i)%write_attrs(tape(t)%Files(f))
+             end if
+          end do
         end do
       else
         allocate(header_info(size(tape(t)%grid_ids)))
         do i = 1, size(tape(t)%grid_ids)
-          call cam_grid_write_attr(tape(t)%File, tape(t)%grid_ids(i), header_info(i))
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call cam_grid_write_attr(tape(t)%Files(f), tape(t)%grid_ids(i), header_info(i), file_index=f)
+             end if
+          end do
         end do
       end if   ! interpolate
-
       ! Define the unlimited time dim
-      call cam_pio_def_dim(tape(t)%File, 'time', pio_unlimited, timdim)
-      call cam_pio_def_dim(tape(t)%File, 'nbnd', 2, bnddim, existOK=.true.)
-      call cam_pio_def_dim(tape(t)%File, 'chars', 8, chardim)
+      do f = 1, maxsplitfiles
+         if (pio_file_is_open(tape(t)%Files(f))) then
+            call cam_pio_def_dim(tape(t)%Files(f), 'time', pio_unlimited, timdim)
+            call cam_pio_def_dim(tape(t)%Files(f), 'nbnd', 2, bnddim, existOK=.true.)
+            call cam_pio_def_dim(tape(t)%Files(f), 'chars', 8, chardim)
+         end if
+      end do
     end if   ! is satfile
-
-    ! Store snapshot location
-    if (t == cam_snapshot_before_num) then
-       ierr=pio_put_att(tape(t)%File, PIO_GLOBAL, 'cam_snapshot_before',      &
-            trim(cam_take_snapshot_before))
-    end if
-    if (t == cam_snapshot_after_num) then
-       ierr=pio_put_att(tape(t)%File, PIO_GLOBAL, 'cam_snapshot_after',       &
-            trim(cam_take_snapshot_after))
-    end if
-
-    ! Populate the history coordinate (well, mdims anyway) attributes
-    ! This routine also allocates the mdimids array
-    call write_hist_coord_attrs(tape(t)%File, bnddim, mdimids, restart)
 
     call get_ref_date(yr, mon, day, nbsec)
     nbdate = yr*10000 + mon*100 + day
-    ierr=pio_def_var (tape(t)%File,'time',pio_double,(/timdim/),tape(t)%timeid)
-    ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'long_name', 'time')
-    str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
-    ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'units', trim(str))
-
     calendar = timemgr_get_calendar_cf()
-    ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'calendar', trim(calendar))
-
-
-    ierr=pio_def_var (tape(t)%File,'date    ',pio_int,(/timdim/),tape(t)%dateid)
-    str = 'current date (YYYYMMDD)'
-    ierr=pio_put_att (tape(t)%File, tape(t)%dateid, 'long_name', trim(str))
-
-
-    ierr=pio_def_var (tape(t)%File,'datesec ',pio_int,(/timdim/), tape(t)%datesecid)
-    str = 'current seconds of current date'
-    ierr=pio_put_att (tape(t)%File, tape(t)%datesecid, 'long_name', trim(str))
-
-    !
-    ! Character header information
-    !
-    str = 'CF-1.0'
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'Conventions', trim(str))
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'source', 'CAM')
-#if ( defined BFB_CAM_SCAM_IOP )
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'CAM_GENERATED_FORCING','create SCAM IOP dataset')
-#endif
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'case',caseid)
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'logname',logname)
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'host', host)
-
-! Put these back in when they are filled properly
-!    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'title',ctitle)
-!    ierr= pio_put_att (tape(t)%File, PIO_GLOBAL, 'Version', &
-!         '$Name$')
-!    ierr= pio_put_att (tape(t)%File, PIO_GLOBAL, 'revision_Id', &
-!         '$Id$')
-
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'initial_file', ncdata)
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'topography_file', bnd_topo)
-    if (len_trim(model_doi_url) > 0) then
-       ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'model_doi_url', model_doi_url)
-    end if
-
     ! Determine what time period frequency is being output for each file
     ! Note that nhtfrq is now in timesteps
-
     sec_nhtfrq = nhtfrq(t)
-
     ! If nhtfrq is in hours, convert to seconds
     if (nhtfrq(t) < 0) then
       sec_nhtfrq = abs(nhtfrq(t))*3600
     end if
-
     dtime = get_step_size()
     if (sec_nhtfrq == 0) then                                !month
       time_per_freq = 'month_1'
@@ -4380,412 +4409,495 @@ end subroutine print_active_fldlst
       write(time_per_freq,999) 'second_',sec_nhtfrq*dtime
     end if
 999 format(a,i0)
+    do f = 1, maxsplitfiles
+       if (.not. pio_file_is_open(tape(t)%Files(f))) then
+          cycle
+       end if
+       ! Store snapshot location
+       if (t == cam_snapshot_before_num) then
+          ierr=pio_put_att(tape(t)%Files(f), PIO_GLOBAL, 'cam_snapshot_before',      &
+               trim(cam_take_snapshot_before))
+       end if
+       if (t == cam_snapshot_after_num) then
+          ierr=pio_put_att(tape(t)%Files(f), PIO_GLOBAL, 'cam_snapshot_after',       &
+               trim(cam_take_snapshot_after))
+       end if
 
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'time_period_freq', trim(time_per_freq))
+       ! Populate the history coordinate (well, mdims anyway) attributes
+       ! This routine also allocates the mdimids array
+       call write_hist_coord_attrs(tape(t)%Files(f), bnddim, mdimids, restart)
 
-    if(.not. is_satfile(t)) then
+       ierr=pio_def_var (tape(t)%Files(f),'time',pio_double,(/timdim/),tape(t)%timeid)
 
-      ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'bounds', 'time_bnds')
+       ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'long_name', 'time')
+       str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+       ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'units', trim(str))
 
-      ierr=pio_def_var (tape(t)%File,'time_bnds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
-      ierr=pio_put_att (tape(t)%File, tape(t)%tbndid, 'long_name', 'time interval endpoints')
-      !
-      ! Character
-      !
-      dimenchar(1) = chardim
-      dimenchar(2) = timdim
-      ierr=pio_def_var (tape(t)%File,'date_written',PIO_CHAR,dimenchar, tape(t)%date_writtenid)
-      ierr=pio_def_var (tape(t)%File,'time_written',PIO_CHAR,dimenchar, tape(t)%time_writtenid)
-      !
-      ! Integer Header
-      !
+       ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'calendar', trim(calendar))
 
-      ierr=pio_def_var (tape(t)%File,'ndbase',PIO_INT,tape(t)%ndbaseid)
-      str = 'base day'
-      ierr=pio_put_att (tape(t)%File, tape(t)%ndbaseid, 'long_name', trim(str))
+       ierr=pio_def_var (tape(t)%Files(f),'date    ',pio_int,(/timdim/),tape(t)%dateid)
+       str = 'current date (YYYYMMDD)'
+       ierr=pio_put_att (tape(t)%Files(f), tape(t)%dateid, 'long_name', trim(str))
 
-      ierr=pio_def_var (tape(t)%File,'nsbase',PIO_INT,tape(t)%nsbaseid)
-      str = 'seconds of base day'
-      ierr=pio_put_att (tape(t)%File, tape(t)%nsbaseid, 'long_name', trim(str))
+       ierr=pio_def_var (tape(t)%Files(f),'datesec ',pio_int,(/timdim/), tape(t)%datesecid)
+       str = 'current seconds of current date'
+       ierr=pio_put_att (tape(t)%Files(f), tape(t)%datesecid, 'long_name', trim(str))
 
-      ierr=pio_def_var (tape(t)%File,'nbdate',PIO_INT,tape(t)%nbdateid)
-      str = 'base date (YYYYMMDD)'
-      ierr=pio_put_att (tape(t)%File, tape(t)%nbdateid, 'long_name', trim(str))
+       !
+       ! Character header information
+       !
+       str = 'CF-1.0'
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'Conventions', trim(str))
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'source', 'CAM')
+#if ( defined BFB_CAM_SCAM_IOP )
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'CAM_GENERATED_FORCING','create SCAM IOP dataset')
+#endif
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'case',caseid)
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'logname',logname)
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'host', host)
+
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'initial_file', ncdata)
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'topography_file', bnd_topo)
+       if (len_trim(model_doi_url) > 0) then
+          ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'model_doi_url', model_doi_url)
+       end if
+
+       ierr=pio_put_att (tape(t)%Files(f), PIO_GLOBAL, 'time_period_freq', trim(time_per_freq))
+
+       if(.not. is_satfile(t)) then
+
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
+
+         ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
+         str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
+         !
+         ! Character
+         !
+         dimenchar(1) = chardim
+         dimenchar(2) = timdim
+         ierr=pio_def_var (tape(t)%Files(f),'date_written',PIO_CHAR,dimenchar, tape(t)%date_writtenid)
+         ierr=pio_def_var (tape(t)%Files(f),'time_written',PIO_CHAR,dimenchar, tape(t)%time_writtenid)
+         !
+         ! Integer Header
+         !
+
+         ierr=pio_def_var (tape(t)%Files(f),'ndbase',PIO_INT,tape(t)%ndbaseid)
+         str = 'base day'
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%ndbaseid, 'long_name', trim(str))
+
+         ierr=pio_def_var (tape(t)%Files(f),'nsbase',PIO_INT,tape(t)%nsbaseid)
+         str = 'seconds of base day'
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%nsbaseid, 'long_name', trim(str))
+
+         ierr=pio_def_var (tape(t)%Files(f),'nbdate',PIO_INT,tape(t)%nbdateid)
+         str = 'base date (YYYYMMDD)'
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%nbdateid, 'long_name', trim(str))
 
 #if ( defined BFB_CAM_SCAM_IOP )
-      ierr=pio_def_var (tape(t)%File,'bdate',PIO_INT,tape(t)%bdateid)
-      str = 'base date (YYYYMMDD)'
-      ierr=pio_put_att (tape(t)%File, tape(t)%bdateid, 'long_name', trim(str))
+         ierr=pio_def_var (tape(t)%Files(f),'bdate',PIO_INT,tape(t)%bdateid)
+         str = 'base date (YYYYMMDD)'
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%bdateid, 'long_name', trim(str))
 #endif
-      ierr=pio_def_var (tape(t)%File,'nbsec',PIO_INT,tape(t)%nbsecid)
-      str = 'seconds of base date'
-      ierr=pio_put_att (tape(t)%File, tape(t)%nbsecid, 'long_name', trim(str))
+         ierr=pio_def_var (tape(t)%Files(f),'nbsec',PIO_INT,tape(t)%nbsecid)
+         str = 'seconds of base date'
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%nbsecid, 'long_name', trim(str))
 
-      ierr=pio_def_var (tape(t)%File,'mdt',PIO_INT,tape(t)%mdtid)
-      ierr=pio_put_att (tape(t)%File, tape(t)%mdtid, 'long_name', 'timestep')
-      ierr=pio_put_att (tape(t)%File, tape(t)%mdtid, 'units', 's')
+         ierr=pio_def_var (tape(t)%Files(f),'mdt',PIO_INT,tape(t)%mdtid)
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%mdtid, 'long_name', 'timestep')
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%mdtid, 'units', 's')
 
-      !
-      ! Create variables for model timing and header information
-      !
-
-      ierr=pio_def_var (tape(t)%File,'ndcur   ',pio_int,(/timdim/),tape(t)%ndcurid)
-      str = 'current day (from base day)'
-      ierr=pio_put_att (tape(t)%File, tape(t)%ndcurid, 'long_name', trim(str))
-
-      ierr=pio_def_var (tape(t)%File,'nscur   ',pio_int,(/timdim/),tape(t)%nscurid)
-      str = 'current seconds of current day'
-      ierr=pio_put_att (tape(t)%File, tape(t)%nscurid, 'long_name', trim(str))
-
-
-      if (.not. is_initfile(file_index=t)) then
-        ! Don't write the GHG/Solar forcing data to the IC file.
-        ierr=pio_def_var (tape(t)%File,'co2vmr  ',pio_double,(/timdim/),tape(t)%co2vmrid)
-        str = 'co2 volume mixing ratio'
-        ierr=pio_put_att (tape(t)%File, tape(t)%co2vmrid, 'long_name', trim(str))
-
-        ierr=pio_def_var (tape(t)%File,'ch4vmr  ',pio_double,(/timdim/),tape(t)%ch4vmrid)
-        str = 'ch4 volume mixing ratio'
-        ierr=pio_put_att (tape(t)%File, tape(t)%ch4vmrid, 'long_name', trim(str))
-
-        ierr=pio_def_var (tape(t)%File,'n2ovmr  ',pio_double,(/timdim/),tape(t)%n2ovmrid)
-        str = 'n2o volume mixing ratio'
-        ierr=pio_put_att (tape(t)%File, tape(t)%n2ovmrid, 'long_name', trim(str))
-
-        ierr=pio_def_var (tape(t)%File,'f11vmr  ',pio_double,(/timdim/),tape(t)%f11vmrid)
-        str = 'f11 volume mixing ratio'
-        ierr=pio_put_att (tape(t)%File, tape(t)%f11vmrid, 'long_name', trim(str))
-
-        ierr=pio_def_var (tape(t)%File,'f12vmr  ',pio_double,(/timdim/),tape(t)%f12vmrid)
-        str = 'f12 volume mixing ratio'
-        ierr=pio_put_att (tape(t)%File, tape(t)%f12vmrid, 'long_name', trim(str))
-
-        ierr=pio_def_var (tape(t)%File,'sol_tsi ',pio_double,(/timdim/),tape(t)%sol_tsiid)
-        str = 'total solar irradiance'
-        ierr=pio_put_att (tape(t)%File, tape(t)%sol_tsiid, 'long_name', trim(str))
-        str = 'W/m2'
-        ierr=pio_put_att (tape(t)%File, tape(t)%sol_tsiid, 'units', trim(str))
-
-        if (solar_parms_on) then
-          ! solar / geomagetic activity indices...
-          ierr=pio_def_var (tape(t)%File,'f107',pio_double,(/timdim/),tape(t)%f107id)
-          str = '10.7 cm solar radio flux (F10.7)'
-          ierr=pio_put_att (tape(t)%File, tape(t)%f107id, 'long_name', trim(str))
-          str = '10^-22 W m^-2 Hz^-1'
-          ierr=pio_put_att (tape(t)%File, tape(t)%f107id, 'units', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'f107a',pio_double,(/timdim/),tape(t)%f107aid)
-          str = '81-day centered mean of 10.7 cm solar radio flux (F10.7)'
-          ierr=pio_put_att (tape(t)%File, tape(t)%f107aid, 'long_name', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'f107p',pio_double,(/timdim/),tape(t)%f107pid)
-          str = 'Pervious day 10.7 cm solar radio flux (F10.7)'
-          ierr=pio_put_att (tape(t)%File, tape(t)%f107pid, 'long_name', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'kp',pio_double,(/timdim/),tape(t)%kpid)
-          str = 'Daily planetary K geomagnetic index'
-          ierr=pio_put_att (tape(t)%File, tape(t)%kpid, 'long_name', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'ap',pio_double,(/timdim/),tape(t)%apid)
-          str = 'Daily planetary A geomagnetic index'
-          ierr=pio_put_att (tape(t)%File, tape(t)%apid, 'long_name', trim(str))
-        endif
-        if (solar_wind_on) then
-
-          ierr=pio_def_var (tape(t)%File,'byimf',pio_double,(/timdim/),tape(t)%byimfid)
-          str = 'Y component of the interplanetary magnetic field'
-          ierr=pio_put_att (tape(t)%File, tape(t)%byimfid, 'long_name', trim(str))
-          str = 'nT'
-          ierr=pio_put_att (tape(t)%File, tape(t)%byimfid, 'units', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'bzimf',pio_double,(/timdim/),tape(t)%bzimfid)
-          str = 'Z component of the interplanetary magnetic field'
-          ierr=pio_put_att (tape(t)%File, tape(t)%bzimfid, 'long_name', trim(str))
-          str = 'nT'
-          ierr=pio_put_att (tape(t)%File, tape(t)%bzimfid, 'units', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'swvel',pio_double,(/timdim/),tape(t)%swvelid)
-          str = 'Solar wind speed'
-          ierr=pio_put_att (tape(t)%File, tape(t)%swvelid, 'long_name', trim(str))
-          str = 'km/sec'
-          ierr=pio_put_att (tape(t)%File, tape(t)%swvelid, 'units', trim(str))
-
-          ierr=pio_def_var (tape(t)%File,'swden',pio_double,(/timdim/),tape(t)%swdenid)
-          str = 'Solar wind ion number density'
-          ierr=pio_put_att (tape(t)%File, tape(t)%swdenid, 'long_name', trim(str))
-          str = 'cm-3'
-          ierr=pio_put_att (tape(t)%File, tape(t)%swdenid, 'units', trim(str))
-
-        endif
-        if (epot_active) then
-          ierr=pio_def_var (tape(t)%File,'colat_crit1',pio_double,(/timdim/),tape(t)%colat_crit1_id)
-          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit1_id, 'long_name', &
-                           'First co-latitude of electro-potential critical angle')
-          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit1_id, 'units', 'degrees')
-
-          ierr=pio_def_var (tape(t)%File,'colat_crit2',pio_double,(/timdim/),tape(t)%colat_crit2_id)
-          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit2_id, 'long_name',&
-                           'Second co-latitude of electro-potential critical angle')
-          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit2_id, 'units', 'degrees')
-        endif
-      end if
+         !
+         ! Create variables for model timing and header information
+         !
+         if (f == instantaneous_file_index) then
+            ierr=pio_def_var (tape(t)%Files(f),'ndcur   ',pio_int,(/timdim/),tape(t)%ndcurid)
+            str = 'current day (from base day)'
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%ndcurid, 'long_name', trim(str))
+            ierr=pio_def_var (tape(t)%Files(f),'nscur   ',pio_int,(/timdim/),tape(t)%nscurid)
+            str = 'current seconds of current day'
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%nscurid, 'long_name', trim(str))
+         end if
 
 
+         if (.not. is_initfile(file_index=t) .and. f == instantaneous_file_index) then
+           ! Don't write the GHG/Solar forcing data to the IC file.
+           ! Only write the GHG/Solar forcing data to the instantaneous file
+           ierr=pio_def_var (tape(t)%Files(f),'co2vmr  ',pio_double,(/timdim/),tape(t)%co2vmrid)
+           str = 'co2 volume mixing ratio'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%co2vmrid, 'long_name', trim(str))
+
+           ierr=pio_def_var (tape(t)%Files(f),'ch4vmr  ',pio_double,(/timdim/),tape(t)%ch4vmrid)
+           str = 'ch4 volume mixing ratio'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%ch4vmrid, 'long_name', trim(str))
+
+           ierr=pio_def_var (tape(t)%Files(f),'n2ovmr  ',pio_double,(/timdim/),tape(t)%n2ovmrid)
+           str = 'n2o volume mixing ratio'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%n2ovmrid, 'long_name', trim(str))
+
+           ierr=pio_def_var (tape(t)%Files(f),'f11vmr  ',pio_double,(/timdim/),tape(t)%f11vmrid)
+           str = 'f11 volume mixing ratio'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%f11vmrid, 'long_name', trim(str))
+
+           ierr=pio_def_var (tape(t)%Files(f),'f12vmr  ',pio_double,(/timdim/),tape(t)%f12vmrid)
+           str = 'f12 volume mixing ratio'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%f12vmrid, 'long_name', trim(str))
+
+           ierr=pio_def_var (tape(t)%Files(f),'sol_tsi ',pio_double,(/timdim/),tape(t)%sol_tsiid)
+           str = 'total solar irradiance'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%sol_tsiid, 'long_name', trim(str))
+           str = 'W/m2'
+           ierr=pio_put_att (tape(t)%Files(f), tape(t)%sol_tsiid, 'units', trim(str))
+
+           if (solar_parms_on) then
+             ! solar / geomagnetic activity indices...
+             ierr=pio_def_var (tape(t)%Files(f),'f107',pio_double,(/timdim/),tape(t)%f107id)
+             str = '10.7 cm solar radio flux (F10.7)'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%f107id, 'long_name', trim(str))
+             str = '10^-22 W m^-2 Hz^-1'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%f107id, 'units', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'f107a',pio_double,(/timdim/),tape(t)%f107aid)
+             str = '81-day centered mean of 10.7 cm solar radio flux (F10.7)'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%f107aid, 'long_name', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'f107p',pio_double,(/timdim/),tape(t)%f107pid)
+             str = 'Pervious day 10.7 cm solar radio flux (F10.7)'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%f107pid, 'long_name', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'kp',pio_double,(/timdim/),tape(t)%kpid)
+             str = 'Daily planetary K geomagnetic index'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%kpid, 'long_name', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'ap',pio_double,(/timdim/),tape(t)%apid)
+             str = 'Daily planetary A geomagnetic index'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%apid, 'long_name', trim(str))
+           endif
+           if (solar_wind_on) then
+
+             ierr=pio_def_var (tape(t)%Files(f),'byimf',pio_double,(/timdim/),tape(t)%byimfid)
+             str = 'Y component of the interplanetary magnetic field'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%byimfid, 'long_name', trim(str))
+             str = 'nT'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%byimfid, 'units', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'bzimf',pio_double,(/timdim/),tape(t)%bzimfid)
+             str = 'Z component of the interplanetary magnetic field'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%bzimfid, 'long_name', trim(str))
+             str = 'nT'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%bzimfid, 'units', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'swvel',pio_double,(/timdim/),tape(t)%swvelid)
+             str = 'Solar wind speed'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%swvelid, 'long_name', trim(str))
+             str = 'km/sec'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%swvelid, 'units', trim(str))
+
+             ierr=pio_def_var (tape(t)%Files(f),'swden',pio_double,(/timdim/),tape(t)%swdenid)
+             str = 'Solar wind ion number density'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%swdenid, 'long_name', trim(str))
+             str = 'cm-3'
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%swdenid, 'units', trim(str))
+
+           endif
+           if (epot_active) then
+             ierr=pio_def_var (tape(t)%Files(f),'colat_crit1',pio_double,(/timdim/),tape(t)%colat_crit1_id)
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%colat_crit1_id, 'long_name', &
+                              'First co-latitude of electro-potential critical angle')
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%colat_crit1_id, 'units', 'degrees')
+
+             ierr=pio_def_var (tape(t)%Files(f),'colat_crit2',pio_double,(/timdim/),tape(t)%colat_crit2_id)
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%colat_crit2_id, 'long_name',&
+                              'Second co-latitude of electro-potential critical angle')
+             ierr=pio_put_att (tape(t)%Files(f), tape(t)%colat_crit2_id, 'units', 'degrees')
+           endif
+         end if
+
+         if (f == instantaneous_file_index) then
 #if ( defined BFB_CAM_SCAM_IOP )
-      ierr=pio_def_var (tape(t)%File,'tsec ',pio_int,(/timdim/), tape(t)%tsecid)
-      str = 'current seconds of current date needed for scam'
-      ierr=pio_put_att (tape(t)%File, tape(t)%tsecid, 'long_name', trim(str))
+            ierr=pio_def_var (tape(t)%Files(f),'tsec ',pio_int,(/timdim/), tape(t)%tsecid)
+            str = 'current seconds of current date needed for scam'
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tsecid, 'long_name', trim(str))
 #endif
-      ierr=pio_def_var (tape(t)%File,'nsteph  ',pio_int,(/timdim/),tape(t)%nstephid)
-      str = 'current timestep'
-      ierr=pio_put_att (tape(t)%File, tape(t)%nstephid, 'long_name', trim(str))
-    end if ! .not. is_satfile
+            ierr=pio_def_var (tape(t)%Files(f),'nsteph  ',pio_int,(/timdim/),tape(t)%nstephid)
+            str = 'current timestep'
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%nstephid, 'long_name', trim(str))
+         end if
+       end if ! .not. is_satfile
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !
-    ! Create variables and attributes for field list
-    !
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !
+       ! Create variables and attributes for field list
+       !
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    do f = 1, nflds(t)
+       do fld = 1, nflds(t)
+         if (.not. is_satfile(t) .and. .not. restart .and. .not. is_initfile(t)) then
+            if (f == accumulated_file_index) then
+               ! this is the accumulated file of a potentially split history tape - skip instantaneous fields
+               if (tape(t)%hlist(fld)%avgflag == 'I') then
+                  cycle
+               end if
+            else
+               ! this is the instantaneous file of a potentially split history tape - skip accumulated fields
+               if (tape(t)%hlist(fld)%avgflag /= 'I') then
+                  cycle
+               end if
+            end if
+         end if
+         !! Collect some field properties
+         call AvgflagToString(tape(t)%hlist(fld)%avgflag, tape(t)%hlist(fld)%time_op)
+         if ((tape(t)%hlist(fld)%hwrt_prec == 8) .or. restart) then
+           ncreal = pio_double
+         else
+           ncreal = pio_real
+         end if
 
-      !! Collect some field properties
-      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op)
-      if ((tape(t)%hlist(f)%hwrt_prec == 8) .or. restart) then
-        ncreal = pio_double
-      else
-        ncreal = pio_real
-      end if
+         if(associated(tape(t)%hlist(fld)%field%mdims)) then
+           mdims => tape(t)%hlist(fld)%field%mdims
+           mdimsize = size(mdims)
+         else if(tape(t)%hlist(fld)%field%numlev > 1) then
+           call endrun('mdims not defined for variable '//trim(tape(t)%hlist(fld)%field%name))
+         else
+           mdimsize=0
+         end if
 
-      if(associated(tape(t)%hlist(f)%field%mdims)) then
-        mdims => tape(t)%hlist(f)%field%mdims
-        mdimsize = size(mdims)
-      else if(tape(t)%hlist(f)%field%numlev > 1) then
-        call endrun('mdims not defined for variable '//trim(tape(t)%hlist(f)%field%name))
-      else
-        mdimsize=0
-      end if
+         ! num_patches will loop through the number of patches (or just one
+         !             for the whole grid) for this field for this tape
+         if (patch_output) then
+           num_patches = size(tape(t)%patches)
+         else
+           num_patches = 1
+         end if
+         if(.not.associated(tape(t)%hlist(fld)%varid)) then
+           allocate(tape(t)%hlist(fld)%varid(num_patches))
+         end if
+         fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
 
-      ! num_patches will loop through the number of patches (or just one
-      !             for the whole grid) for this field for this tape
-      if (patch_output) then
-        num_patches = size(tape(t)%patches)
-      else
-        num_patches = 1
-      end if
-      if(.not.associated(tape(t)%hlist(f)%varid)) then
-        allocate(tape(t)%hlist(f)%varid(num_patches))
-      end if
-      fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+         if(is_satfile(t)) then
+           num_hdims=0
+           nfils(t)=1
+           call sat_hist_define(tape(t)%Files(f))
+         else if (interpolate) then
+           ! Interpolate can't use normal grid code since we are forcing fields
+           ! to use interpolate decomp
+           if (.not. allocated(header_info)) then
+             ! Safety check
+             call endrun('h_define: header_info not allocated')
+           end if
+           num_hdims = 2
+           do i = 1, num_hdims
+             dimindex(i) = header_info(1)%get_hdimid(i)
+             nacsdims(i) = header_info(1)%get_hdimid(i)
+           end do
+         else if (patch_output) then
+           ! All patches for this variable should be on the same grid
+           num_hdims = tape(t)%patches(1)%num_hdims(tape(t)%hlist(fld)%field%decomp_type)
+         else
+           ! Normal grid output
+           ! Find appropriate grid in header_info
+           if (.not. allocated(header_info)) then
+             ! Safety check
+             call endrun('h_define: header_info not allocated')
+           end if
+           grd = -1
+           do i = 1, size(header_info)
+             if (header_info(i)%get_gridid() == tape(t)%hlist(fld)%field%decomp_type) then
+               grd = i
+               exit
+             end if
+           end do
+           if (grd < 0) then
+             write(errormsg, '(a,i0,2a)') 'grid, ',tape(t)%hlist(fld)%field%decomp_type,', not found for ',trim(fname_tmp)
+             call endrun('H_DEFINE: '//errormsg)
+           end if
+           num_hdims = header_info(grd)%num_hdims()
+           do i = 1, num_hdims
+             dimindex(i) = header_info(grd)%get_hdimid(i)
+             nacsdims(i) = header_info(grd)%get_hdimid(i)
+           end do
+         end if     ! is_satfile
 
-      if(is_satfile(t)) then
-        num_hdims=0
-        nfils(t)=1
-        call sat_hist_define(tape(t)%File)
-      else if (interpolate) then
-        ! Interpolate can't use normal grid code since we are forcing fields
-        ! to use interpolate decomp
-        if (.not. allocated(header_info)) then
-          ! Safety check
-          call endrun('h_define: header_info not allocated')
-        end if
-        num_hdims = 2
-        do i = 1, num_hdims
-          dimindex(i) = header_info(1)%get_hdimid(i)
-          nacsdims(i) = header_info(1)%get_hdimid(i)
-        end do
-      else if (patch_output) then
-        ! All patches for this variable should be on the same grid
-        num_hdims = tape(t)%patches(1)%num_hdims(tape(t)%hlist(f)%field%decomp_type)
-      else
-        ! Normal grid output
-        ! Find appropriate grid in header_info
-        if (.not. allocated(header_info)) then
-          ! Safety check
-          call endrun('h_define: header_info not allocated')
-        end if
-        grd = -1
-        do i = 1, size(header_info)
-          if (header_info(i)%get_gridid() == tape(t)%hlist(f)%field%decomp_type) then
-            grd = i
-            exit
-          end if
-        end do
-        if (grd < 0) then
-          write(errormsg, '(a,i0,2a)') 'grid, ',tape(t)%hlist(f)%field%decomp_type,', not found for ',trim(fname_tmp)
-          call endrun('H_DEFINE: '//errormsg)
-        end if
-        num_hdims = header_info(grd)%num_hdims()
-        do i = 1, num_hdims
-          dimindex(i) = header_info(grd)%get_hdimid(i)
-          nacsdims(i) = header_info(grd)%get_hdimid(i)
-        end do
-      end if     ! is_satfile
+         !
+         !  Create variables and atributes for fields written out as columns
+         !
 
-      !
-      !  Create variables and atributes for fields written out as columns
-      !
+         do i = 1, num_patches
+           fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
+           varid => tape(t)%hlist(fld)%varid(i)
+           dimids_tmp = dimindex
+           ! Figure the dimension ID array for this field
+           ! We have defined the horizontal grid dimensions in dimindex
+           fdims = num_hdims
+           do j = 1, mdimsize
+             fdims = fdims + 1
+             dimids_tmp(fdims) = mdimids(mdims(j))
+           end do
+           if(.not. restart) then
+             ! Only add time dimension if this is not a restart history tape
+             fdims = fdims + 1
+             dimids_tmp(fdims) = timdim
+           end if
+           if (patch_output) then
+             ! For patch output, we need new dimension IDs and a different name
+             call tape(t)%patches(i)%get_var_data(fname_tmp,                     &
+                  dimids_tmp(1:fdims), tape(t)%hlist(fld)%field%decomp_type)
+           end if
+           ! Define the variable
+           call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), ncreal,           &
+                dimids_tmp(1:fdims), varid)
+           if (mdimsize > 0) then
+             ierr = pio_put_att(tape(t)%Files(f), varid, 'mdims', mdims(1:mdimsize))
+             call cam_pio_handle_error(ierr, 'h_define: cannot define mdims for '//trim(fname_tmp))
+           end if
+           str = tape(t)%hlist(fld)%field%sampling_seq
+           if (len_trim(str) > 0) then
+             ierr = pio_put_att(tape(t)%Files(f), varid, 'Sampling_Sequence', trim(str))
+             call cam_pio_handle_error(ierr, 'h_define: cannot define Sampling_Sequence for '//trim(fname_tmp))
+           end if
 
-      do i = 1, num_patches
-        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
-        varid => tape(t)%hlist(f)%varid(i)
-        dimids_tmp = dimindex
-        ! Figure the dimension ID array for this field
-        ! We have defined the horizontal grid dimensions in dimindex
-        fdims = num_hdims
-        do j = 1, mdimsize
-          fdims = fdims + 1
-          dimids_tmp(fdims) = mdimids(mdims(j))
-        end do
-        if(.not. restart) then
-          ! Only add time dimension if this is not a restart history tape
-          fdims = fdims + 1
-          dimids_tmp(fdims) = timdim
-        end if
-        if (patch_output) then
-          ! For patch output, we need new dimension IDs and a different name
-          call tape(t)%patches(i)%get_var_data(fname_tmp,                     &
-               dimids_tmp(1:fdims), tape(t)%hlist(f)%field%decomp_type)
-        end if
-        ! Define the variable
-        call cam_pio_def_var(tape(t)%File, trim(fname_tmp), ncreal,           &
-             dimids_tmp(1:fdims), varid)
-        if (mdimsize > 0) then
-          ierr = pio_put_att(tape(t)%File, varid, 'mdims', mdims(1:mdimsize))
-          call cam_pio_handle_error(ierr, 'h_define: cannot define mdims for '//trim(fname_tmp))
-        end if
-        str = tape(t)%hlist(f)%field%sampling_seq
-        if (len_trim(str) > 0) then
-          ierr = pio_put_att(tape(t)%File, varid, 'Sampling_Sequence', trim(str))
-          call cam_pio_handle_error(ierr, 'h_define: cannot define Sampling_Sequence for '//trim(fname_tmp))
-        end if
+           if (tape(t)%hlist(fld)%field%flag_xyfill) then
+             ! Add both _FillValue and missing_value to cover expectations
+             !     of various applications.
+             ! The attribute type must match the data type.
+             if ((tape(t)%hlist(fld)%hwrt_prec == 8) .or. restart) then
+               ierr = pio_put_att(tape(t)%Files(f), varid, '_FillValue',             &
+                    tape(t)%hlist(fld)%field%fillvalue)
+               call cam_pio_handle_error(ierr,                                   &
+                    'h_define: cannot define _FillValue for '//trim(fname_tmp))
+               ierr = pio_put_att(tape(t)%Files(f), varid, 'missing_value',          &
+                    tape(t)%hlist(fld)%field%fillvalue)
+               call cam_pio_handle_error(ierr,                                   &
+                    'h_define: cannot define missing_value for '//trim(fname_tmp))
+             else
+               ierr = pio_put_att(tape(t)%Files(f), varid, '_FillValue',             &
+                    REAL(tape(t)%hlist(fld)%field%fillvalue,r4))
+               call cam_pio_handle_error(ierr,                                   &
+                    'h_define: cannot define _FillValue for '//trim(fname_tmp))
+               ierr = pio_put_att(tape(t)%Files(f), varid, 'missing_value',          &
+                    REAL(tape(t)%hlist(fld)%field%fillvalue,r4))
+               call cam_pio_handle_error(ierr,                                   &
+                    'h_define: cannot define missing_value for '//trim(fname_tmp))
+             end if
+           end if
 
-        if (tape(t)%hlist(f)%field%flag_xyfill) then
-          ! Add both _FillValue and missing_value to cover expectations
-          !     of various applications.
-          ! The attribute type must match the data type.
-          if ((tape(t)%hlist(f)%hwrt_prec == 8) .or. restart) then
-            ierr = pio_put_att(tape(t)%File, varid, '_FillValue',             &
-                 tape(t)%hlist(f)%field%fillvalue)
-            call cam_pio_handle_error(ierr,                                   &
-                 'h_define: cannot define _FillValue for '//trim(fname_tmp))
-            ierr = pio_put_att(tape(t)%File, varid, 'missing_value',          &
-                 tape(t)%hlist(f)%field%fillvalue)
-            call cam_pio_handle_error(ierr,                                   &
-                 'h_define: cannot define missing_value for '//trim(fname_tmp))
-          else
-            ierr = pio_put_att(tape(t)%File, varid, '_FillValue',             &
-                 REAL(tape(t)%hlist(f)%field%fillvalue,r4))
-            call cam_pio_handle_error(ierr,                                   &
-                 'h_define: cannot define _FillValue for '//trim(fname_tmp))
-            ierr = pio_put_att(tape(t)%File, varid, 'missing_value',          &
-                 REAL(tape(t)%hlist(f)%field%fillvalue,r4))
-            call cam_pio_handle_error(ierr,                                   &
-                 'h_define: cannot define missing_value for '//trim(fname_tmp))
-          end if
-        end if
+           str = tape(t)%hlist(fld)%field%units
+           if (len_trim(str) > 0) then
+             ierr=pio_put_att (tape(t)%Files(f), varid, 'units', trim(str))
+             call cam_pio_handle_error(ierr,                                     &
+                  'h_define: cannot define units for '//trim(fname_tmp))
+           end if
 
-        str = tape(t)%hlist(f)%field%units
-        if (len_trim(str) > 0) then
-          ierr=pio_put_att (tape(t)%File, varid, 'units', trim(str))
-          call cam_pio_handle_error(ierr,                                     &
-               'h_define: cannot define units for '//trim(fname_tmp))
-        end if
+           str = tape(t)%hlist(fld)%field%mixing_ratio
+           if (len_trim(str) > 0) then
+             ierr=pio_put_att (tape(t)%Files(f), varid, 'mixing_ratio', trim(str))
+             call cam_pio_handle_error(ierr,                                     &
+                  'h_define: cannot define mixing_ratio for '//trim(fname_tmp))
+           end if
 
-        str = tape(t)%hlist(f)%field%mixing_ratio
-        if (len_trim(str) > 0) then
-          ierr=pio_put_att (tape(t)%File, varid, 'mixing_ratio', trim(str))
-          call cam_pio_handle_error(ierr,                                     &
-               'h_define: cannot define mixing_ratio for '//trim(fname_tmp))
-        end if
+           str = tape(t)%hlist(fld)%field%long_name
+           ierr=pio_put_att (tape(t)%Files(f), varid, 'long_name', trim(str))
+           call cam_pio_handle_error(ierr,                                       &
+                'h_define: cannot define long_name for '//trim(fname_tmp))
 
-        str = tape(t)%hlist(f)%field%long_name
-        ierr=pio_put_att (tape(t)%File, varid, 'long_name', trim(str))
-        call cam_pio_handle_error(ierr,                                       &
-             'h_define: cannot define long_name for '//trim(fname_tmp))
+           ! Assign field attributes defining valid levels and averaging info
 
-        ! Assign field attributes defining valid levels and averaging info
+           cell_methods = ''
+           if (len_trim(tape(t)%hlist(fld)%field%cell_methods) > 0) then
+             if (len_trim(cell_methods) > 0) then
+               cell_methods = trim(cell_methods)//' '//trim(tape(t)%hlist(fld)%field%cell_methods)
+             else
+               cell_methods = trim(cell_methods)//trim(tape(t)%hlist(fld)%field%cell_methods)
+             end if
+           end if
+           ! Time cell methods is after field method because time averaging is
+           ! applied later (just before output) than field method which is applied
+           ! before outfld call.
+           str = tape(t)%hlist(fld)%time_op
+           if (tape(t)%hlist(fld)%avgflag == 'I') then
+              str = 'point'
+           else
+              str = tape(t)%hlist(fld)%time_op
+           end if
+           cell_methods = adjustl(trim(cell_methods)//' '//'time: '//str)
+           if (len_trim(cell_methods) > 0) then
+             ierr = pio_put_att(tape(t)%Files(f), varid, 'cell_methods', trim(cell_methods))
+             call cam_pio_handle_error(ierr,                                     &
+                  'h_define: cannot define cell_methods for '//trim(fname_tmp))
+           end if
+           if (patch_output) then
+             ierr = pio_put_att(tape(t)%Files(f), varid, 'basename',                 &
+                  tape(t)%hlist(fld)%field%name)
+             call cam_pio_handle_error(ierr,                                     &
+                  'h_define: cannot define basename for '//trim(fname_tmp))
+           end if
 
-        cell_methods = ''
-        if (len_trim(tape(t)%hlist(f)%field%cell_methods) > 0) then
-          if (len_trim(cell_methods) > 0) then
-            cell_methods = trim(cell_methods)//' '//trim(tape(t)%hlist(f)%field%cell_methods)
-          else
-            cell_methods = trim(cell_methods)//trim(tape(t)%hlist(f)%field%cell_methods)
-          end if
-        end if
-        ! Time cell methods is after field method because time averaging is
-        ! applied later (just before output) than field method which is applied
-        ! before outfld call.
-        str = tape(t)%hlist(f)%time_op
-        select case (str)
-        case ('mean', 'maximum', 'minimum', 'standard_deviation')
-          if (len_trim(cell_methods) > 0) then
-            cell_methods = trim(cell_methods)//' '//'time: '//str
-          else
-            cell_methods = trim(cell_methods)//'time: '//str
-          end if
-        end select
-        if (len_trim(cell_methods) > 0) then
-          ierr = pio_put_att(tape(t)%File, varid, 'cell_methods', trim(cell_methods))
-          call cam_pio_handle_error(ierr,                                     &
-               'h_define: cannot define cell_methods for '//trim(fname_tmp))
-        end if
-        if (patch_output) then
-          ierr = pio_put_att(tape(t)%File, varid, 'basename',                 &
-               tape(t)%hlist(f)%field%name)
-          call cam_pio_handle_error(ierr,                                     &
-               'h_define: cannot define basename for '//trim(fname_tmp))
-        end if
-
-        if (restart) then
-          ! For restart history files, we need to save accumulation counts
-          fname_tmp = trim(fname_tmp)//'_nacs'
-          if (.not. associated(tape(t)%hlist(f)%nacs_varid)) then
-            allocate(tape(t)%hlist(f)%nacs_varid)
-          end if
-          if (size(tape(t)%hlist(f)%nacs, 1) > 1) then
-            call cam_pio_def_var(tape(t)%File, trim(fname_tmp), pio_int,      &
-                 nacsdims(1:num_hdims), tape(t)%hlist(f)%nacs_varid)
-          else
-            ! Save just one value representing all chunks
-            call cam_pio_def_var(tape(t)%File, trim(fname_tmp), pio_int,      &
-                 tape(t)%hlist(f)%nacs_varid)
-          end if
-          ! for standard deviation
-          if (associated(tape(t)%hlist(f)%sbuf)) then
-             fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
-             fname_tmp = trim(fname_tmp)//'_var'
-             if ( .not.associated(tape(t)%hlist(f)%sbuf_varid)) then
-                allocate(tape(t)%hlist(f)%sbuf_varid)
+           if (restart) then
+             ! For restart history files, we need to save accumulation counts
+             fname_tmp = trim(fname_tmp)//'_nacs'
+             if (.not. associated(tape(t)%hlist(fld)%nacs_varid)) then
+               allocate(tape(t)%hlist(fld)%nacs_varid)
+             end if
+             if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
+               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                    nacsdims(1:num_hdims), tape(t)%hlist(fld)%nacs_varid)
+             else
+               ! Save just one value representing all chunks
+               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                    tape(t)%hlist(fld)%nacs_varid)
+             end if
+             ! for standard deviation
+             if (associated(tape(t)%hlist(fld)%sbuf)) then
+                fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
+                fname_tmp = trim(fname_tmp)//'_var'
+                if ( .not.associated(tape(t)%hlist(fld)%sbuf_varid)) then
+                   allocate(tape(t)%hlist(fld)%sbuf_varid)
+                endif
+                call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_double,      &
+                     dimids_tmp(1:fdims), tape(t)%hlist(fld)%sbuf_varid)
              endif
-             call cam_pio_def_var(tape(t)%File, trim(fname_tmp), pio_double,      &
-                  dimids_tmp(1:fdims), tape(t)%hlist(f)%sbuf_varid)
-          endif
-        end if
-      end do ! Loop over output patches
-    end do   ! Loop over fields
-    !
-    deallocate(mdimids)
-    ret = pio_enddef(tape(t)%File)
+           end if
+         end do ! Loop over output patches
+       end do   ! Loop over fields
+       !
+       deallocate(mdimids)
+       ret = pio_enddef(tape(t)%Files(f))
+       if (ret /= PIO_NOERR) then
+          call endrun('H_DEFINE: ERROR exiting define mode in PIO')
+       end if
 
-    if(masterproc) then
-      write(iulog,*)'H_DEFINE: Successfully opened netcdf file '
-    endif
+       if(masterproc) then
+         write(iulog,*)'H_DEFINE: Successfully opened netcdf file '
+       endif
+    end do ! Loop over files
     !
     ! Write time-invariant portion of history header
     !
     if(.not. is_satfile(t)) then
       if(interpolate) then
-        call cam_grid_write_var(tape(t)%File, interpolate_info(t)%grid_id)
+        do f = 1, maxsplitfiles
+           if (pio_file_is_open(tape(t)%Files(f))) then
+              call cam_grid_write_var(tape(t)%Files(f), interpolate_info(t)%grid_id, file_index=f)
+           end if
+        end do
       else if((.not. patch_output) .or. restart) then
         do i = 1, size(tape(t)%grid_ids)
-          call cam_grid_write_var(tape(t)%File, tape(t)%grid_ids(i))
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call cam_grid_write_var(tape(t)%Files(f), tape(t)%grid_ids(i), file_index=f)
+             end if
+          end do
         end do
       else
         ! Patch output
         do i = 1, size(tape(t)%patches)
-          call tape(t)%patches(i)%write_vals(tape(t)%File)
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call tape(t)%patches(i)%write_vals(tape(t)%Files(f))
+             end if
+          end do
         end do
       end if ! interpolate
       if (allocated(lonvar)) then
@@ -4796,28 +4908,32 @@ end subroutine print_active_fldlst
       end if
 
       dtime = get_step_size()
-      ierr = pio_put_var(tape(t)%File, tape(t)%mdtid, (/dtime/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put mdt')
-      !
-      ! Model date info
-      !
-      ierr = pio_put_var(tape(t)%File, tape(t)%ndbaseid, (/ndbase/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put ndbase')
-      ierr = pio_put_var(tape(t)%File, tape(t)%nsbaseid, (/nsbase/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put nsbase')
+      do f = 1, maxsplitfiles
+         if (.not. pio_file_is_open(tape(t)%Files(f))) then
+            cycle
+         end if
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%mdtid, (/dtime/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put mdt')
+         !
+         ! Model date info
+         !
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%ndbaseid, (/ndbase/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put ndbase')
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%nsbaseid, (/nsbase/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put nsbase')
 
-      ierr = pio_put_var(tape(t)%File, tape(t)%nbdateid, (/nbdate/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put nbdate')
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%nbdateid, (/nbdate/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put nbdate')
 #if ( defined BFB_CAM_SCAM_IOP )
-      ierr = pio_put_var(tape(t)%File, tape(t)%bdateid, (/nbdate/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put bdate')
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%bdateid, (/nbdate/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put bdate')
 #endif
-      ierr = pio_put_var(tape(t)%File, tape(t)%nbsecid, (/nbsec/))
-      call cam_pio_handle_error(ierr, 'h_define: cannot put nbsec')
-      !
-      ! Reduced grid info
-      !
-
+         ierr = pio_put_var(tape(t)%Files(f), tape(t)%nbsecid, (/nbsec/))
+         call cam_pio_handle_error(ierr, 'h_define: cannot put nbsec')
+         !
+         ! Reduced grid info
+         !
+      end do
     end if ! .not. is_satfile
 
     if (allocated(header_info)) then
@@ -4828,13 +4944,17 @@ end subroutine print_active_fldlst
     end if
 
     ! Write the mdim variable data
-    call write_hist_coord_vars(tape(t)%File, restart)
+    do f = 1, maxsplitfiles
+       if (pio_file_is_open(tape(t)%Files(f))) then
+          call write_hist_coord_vars(tape(t)%Files(f), restart)
+       end if
+    end do
 
   end subroutine h_define
 
   !#######################################################################
 
-  subroutine h_normalize (f, t)
+  subroutine h_normalize (fld, t)
 
     use cam_history_support, only: dim_index_2d
     use time_manager, only: get_nstep
@@ -4851,7 +4971,7 @@ end subroutine print_active_fldlst
     !
     ! Input arguments
     !
-    integer, intent(in) :: f       ! field index
+    integer, intent(in) :: fld     ! field index
     integer, intent(in) :: t       ! tape index
     !
     ! Local workspace
@@ -4873,16 +4993,16 @@ end subroutine print_active_fldlst
 
     call t_startf ('h_normalize')
 
-    call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+    call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
 
     !
     ! normalize by number of accumulations for averaged case
     !
-    flag_xyfill = tape(t)%hlist(f)%field%flag_xyfill
-    avgflag = tape(t)%hlist(f)%avgflag
+    flag_xyfill = tape(t)%hlist(fld)%field%flag_xyfill
+    avgflag = tape(t)%hlist(fld)%avgflag
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
 
       ib = dimind%beg1
       ie = dimind%end1
@@ -4891,55 +5011,55 @@ end subroutine print_active_fldlst
 
       if (flag_xyfill) then
         do k = jb, je
-          where (tape(t)%hlist(f)%nacs(ib:ie, c) == 0)
-            tape(t)%hlist(f)%hbuf(ib:ie,k,c) = tape(t)%hlist(f)%field%fillvalue
+          where (tape(t)%hlist(fld)%nacs(ib:ie, c) == 0)
+            tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = tape(t)%hlist(fld)%field%fillvalue
           endwhere
         end do
       end if
 
       if (avgflag == 'A' .or. avgflag == 'B' .or. avgflag == 'L') then
-        if (size(tape(t)%hlist(f)%nacs, 1) > 1) then
+        if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
           do k = jb, je
-            where (tape(t)%hlist(f)%nacs(ib:ie,c) /= 0)
-              tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                   tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
-                   / tape(t)%hlist(f)%nacs(ib:ie,c)
+            where (tape(t)%hlist(fld)%nacs(ib:ie,c) /= 0)
+              tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                   tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
+                   / tape(t)%hlist(fld)%nacs(ib:ie,c)
             endwhere
           end do
-        else if(tape(t)%hlist(f)%nacs(1,c) > 0) then
+        else if(tape(t)%hlist(fld)%nacs(1,c) > 0) then
           do k=jb,je
-            tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                 tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
-                 / tape(t)%hlist(f)%nacs(1,c)
+            tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                 tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
+                 / tape(t)%hlist(fld)%nacs(1,c)
           end do
         end if
       end if
       currstep=get_nstep()
       if (avgflag == 'N' .and. currstep >  0) then
-         if( currstep > tape(t)%hlist(f)%beg_nstep) then
-            nsteps=currstep-tape(t)%hlist(f)%beg_nstep
+         if( currstep > tape(t)%hlist(fld)%beg_nstep) then
+            nsteps=currstep-tape(t)%hlist(fld)%beg_nstep
             do k=jb,je
-               tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                    tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
+               tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                    tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
                     / nsteps
             end do
          else
-            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(f)%beg_nstep
+            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(fld)%beg_nstep
             call endrun(trim(errmsg))
          end if
       end if
       if (avgflag == 'S') then
          ! standard deviation ...
          ! from http://www.johndcook.com/blog/standard_deviation/
-         tmpfill = merge(tape(t)%hlist(f)%field%fillvalue,0._r8,flag_xyfill)
+         tmpfill = merge(tape(t)%hlist(fld)%field%fillvalue,0._r8,flag_xyfill)
          do k=jb,je
             do i = ib,ie
                ii = merge(i,1,flag_xyfill)
-               if (tape(t)%hlist(f)%nacs(ii,c) > 1) then
-                  variance = tape(t)%hlist(f)%sbuf(i,k,c)/(tape(t)%hlist(f)%nacs(ii,c)-1)
-                  tape(t)%hlist(f)%hbuf(i,k,c) = sqrt(variance)
+               if (tape(t)%hlist(fld)%nacs(ii,c) > 1) then
+                  variance = tape(t)%hlist(fld)%sbuf(i,k,c)/(tape(t)%hlist(fld)%nacs(ii,c)-1)
+                  tape(t)%hlist(fld)%hbuf(i,k,c) = sqrt(variance)
                else
-                  tape(t)%hlist(f)%hbuf(i,k,c) = tmpfill
+                  tape(t)%hlist(fld)%hbuf(i,k,c) = tmpfill
                endif
             end do
          end do
@@ -4953,7 +5073,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine h_zero (f, t)
+  subroutine h_zero (fld, t)
     use cam_history_support, only: dim_index_2d
     use time_manager, only: get_nstep, is_first_restart_step
     !
@@ -4965,7 +5085,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f     ! field index
+    integer, intent(in) :: fld   ! field index
     integer, intent(in) :: t     ! tape index
     !
     ! Local workspace
@@ -4977,19 +5097,19 @@ end subroutine print_active_fldlst
 
     call t_startf ('h_zero')
 
-    call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+    call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
-      tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
-      if (associated(tape(t)%hlist(f)%sbuf)) then ! zero out variance buffer for standard deviation
-         tape(t)%hlist(f)%sbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
+      tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
+      if (associated(tape(t)%hlist(fld)%sbuf)) then ! zero out variance buffer for standard deviation
+         tape(t)%hlist(fld)%sbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
       end if
     end do
-    tape(t)%hlist(f)%nacs(:,:) = 0
+    tape(t)%hlist(fld)%nacs(:,:) = 0
 
     !Don't reset beg_nstep if this is a restart
-    if (.not. is_first_restart_step()) tape(t)%hlist(f)%beg_nstep = get_nstep()
+    if (.not. is_first_restart_step()) tape(t)%hlist(fld)%beg_nstep = get_nstep()
 
     call t_stopf ('h_zero')
 
@@ -4998,7 +5118,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine h_global (f, t)
+  subroutine h_global (fld, t)
 
     use cam_history_support, only: dim_index_2d
     use shr_reprosum_mod,    only: shr_reprosum_calc
@@ -5012,60 +5132,60 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f     ! field index
+    integer, intent(in) :: fld   ! field index
     integer, intent(in) :: t     ! tape index
     !
     ! Local workspace
     !
     type (dim_index_2d)     :: dimind    ! 2-D dimension index
     integer                 :: ie        ! dim3 index
-    integer                 :: count     ! tmp index 
+    integer                 :: count     ! tmp index
     integer                 :: i1        ! dim1 index
     integer                 :: j1        ! dim2 index
     integer                 :: fdims(3)  ! array shape
-    integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        ! 
+    integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        !
     real(r8)                :: globalsum(1) ! globalsum
     real(r8), allocatable   :: globalarr(:) ! globalarr values for this pe
-        
+
     call t_startf ('h_global')
 
     ! wbuf contains the area weighting for this field decomposition
-    if (associated(tape(t)%hlist(f)%wbuf) ) then
-       
-       begdim1    =  tape(t)%hlist(f)%field%begdim1
-       enddim1    =  tape(t)%hlist(f)%field%enddim1
+    if (associated(tape(t)%hlist(fld)%wbuf) ) then
+
+       begdim1    =  tape(t)%hlist(fld)%field%begdim1
+       enddim1    =  tape(t)%hlist(fld)%field%enddim1
        fdims(1)   =  enddim1 - begdim1 + 1
-       begdim2    =  tape(t)%hlist(f)%field%begdim2
-       enddim2    =  tape(t)%hlist(f)%field%enddim2
+       begdim2    =  tape(t)%hlist(fld)%field%begdim2
+       enddim2    =  tape(t)%hlist(fld)%field%enddim2
        fdims(2)   =  enddim2 - begdim2 + 1
-       begdim3    =  tape(t)%hlist(f)%field%begdim3
-       enddim3    =  tape(t)%hlist(f)%field%enddim3
+       begdim3    =  tape(t)%hlist(fld)%field%begdim3
+       enddim3    =  tape(t)%hlist(fld)%field%enddim3
        fdims(3)   =  enddim3 - begdim3 + 1
-       
+
        allocate(globalarr(fdims(1)*fdims(2)*fdims(3)))
        count=0
        globalarr=0._r8
        do ie = begdim3, enddim3
-          dimind = tape(t)%hlist(f)%field%get_dims(ie)
+          dimind = tape(t)%hlist(fld)%field%get_dims(ie)
           do j1 = dimind%beg2, dimind%end2
              do i1 = dimind%beg1, dimind%end1
                 count=count+1
-                globalarr(count)=globalarr(count)+tape(t)%hlist(f)%hbuf(i1,j1,ie)*tape(t)%hlist(f)%wbuf(i1,ie)
+                globalarr(count)=globalarr(count)+tape(t)%hlist(fld)%hbuf(i1,j1,ie)*tape(t)%hlist(fld)%wbuf(i1,ie)
              end do
           end do
        end do
        ! call fixed-point algorithm
        call shr_reprosum_calc (globalarr, globalsum, count, count, 1, commid=mpicom)
-       if (masterproc) write(iulog,*)'h_global:field:',trim(tape(t)%hlist(f)%field%name),' global integral=',globalsum(1)
+       if (masterproc) write(iulog,*)'h_global:field:',trim(tape(t)%hlist(fld)%field%name),' global integral=',globalsum(1)
        ! store global entry for this history tape entry
-       call tape(t)%hlist(f)%put_global(globalsum(1))
+       call tape(t)%hlist(fld)%put_global(globalsum(1))
        ! deallocate temp array
        deallocate(globalarr)
     end if
     call t_stopf ('h_global')
   end subroutine h_global
 
-  subroutine h_field_op (f, t)
+  subroutine h_field_op (fld, t)
     use cam_history_support, only: dim_index_2d
     !
     !-----------------------------------------------------------------------
@@ -5076,56 +5196,57 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f        ! field index
+    integer, intent(in) :: fld      ! field index
     integer, intent(in) :: t        ! tape index
     !
     ! Local workspace
     !
     type (dim_index_2d) :: dimind   ! 2-D dimension index
     integer :: c                    ! chunk index
-    integer :: f1,f2                ! fields to be operated on
+    integer :: fld1,fld2            ! fields to be operated on
     integer :: begdim1, begdim2, begdim3              ! on-node chunk or lat start index
     integer :: enddim1, enddim2, enddim3              ! on-node chunk or lat end index
     character(len=field_op_len) :: optype             ! field operation only sum or diff supported
 
     call t_startf ('h_field_op')
-    f1 = tape(t)%hlist(f)%field%op_field1_id
-    f2 = tape(t)%hlist(f)%field%op_field2_id
-    optype =  trim(adjustl(tape(t)%hlist(f)%field%field_op))
+    fld1 = tape(t)%hlist(fld)%field%op_field1_id
+    fld2 = tape(t)%hlist(fld)%field%op_field2_id
+    optype =  trim(adjustl(tape(t)%hlist(fld)%field%field_op))
 
-    begdim3  = tape(t)%hlist(f)%field%begdim3
-    enddim3  = tape(t)%hlist(f)%field%enddim3
+    begdim3  = tape(t)%hlist(fld)%field%begdim3
+    enddim3  = tape(t)%hlist(fld)%field%enddim3
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
-      if (trim(optype) == 'dif') then 
-         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
-         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
-         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
+      if (trim(optype) == 'dif') then
+         tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(fld1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
+         tape(t)%hlist(fld2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else if (trim(optype) == 'sum') then
-         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
-         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
-         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+         tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(fld1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
+         tape(t)%hlist(fld2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
          call endrun('h_field_op: ERROR: composed field operation type unknown:'//trim(optype))
       end if
     end do
     ! Set nsteps for composed fields using value of one of the component fields
-    tape(t)%hlist(f)%beg_nstep=tape(t)%hlist(f1)%beg_nstep
-    tape(t)%hlist(f)%nacs(:,:)=tape(t)%hlist(f1)%nacs(:,:)
+    tape(t)%hlist(fld)%beg_nstep=tape(t)%hlist(fld1)%beg_nstep
+    tape(t)%hlist(fld)%nacs(:,:)=tape(t)%hlist(fld1)%nacs(:,:)
     call t_stopf ('h_field_op')
   end subroutine h_field_op
 
   !#######################################################################
 
-  subroutine dump_field (f, t, restart)
+  subroutine dump_field (fld, t, f, restart)
     use cam_history_support, only: history_patch_t, dim_index_2d, dim_index_3d
     use cam_grid_support,    only: cam_grid_write_dist_array, cam_grid_dimensions
     use interp_mod,       only : write_interpolated
 
     ! Dummy arguments
-    integer,     intent(in)    :: f
-    integer,     intent(in)    :: t
+    integer,     intent(in)    :: fld              ! Field index
+    integer,     intent(in)    :: t                ! Tape index
+    integer,     intent(in)    :: f                ! File index
     logical,     intent(in)    :: restart
     !
     !-----------------------------------------------------------------------
@@ -5165,10 +5286,10 @@ end subroutine print_active_fldlst
     !!! Get the field's shape and decomposition
 
     ! Shape on disk
-    call tape(t)%hlist(f)%field%get_shape(fdims, frank)
+    call tape(t)%hlist(fld)%field%get_shape(fdims, frank)
 
     ! Shape of array
-    dimind = tape(t)%hlist(f)%field%get_dims()
+    dimind = tape(t)%hlist(fld)%field%get_dims()
     call dimind%dim_sizes(adims)
     if (adims(2) <= 1) then
       adims(2) = adims(3)
@@ -5176,7 +5297,7 @@ end subroutine print_active_fldlst
     else
       nadims = 3
     end if
-    fdecomp = tape(t)%hlist(f)%field%decomp_type
+    fdecomp = tape(t)%hlist(fld)%field%decomp_type
 
     ! num_patches will loop through the number of patches (or just one
     !             for the whole grid) for this field for this tape
@@ -5187,12 +5308,12 @@ end subroutine print_active_fldlst
     end if
 
     do index = 1, num_patches
-      varid => tape(t)%hlist(f)%varid(index)
+      varid => tape(t)%hlist(fld)%varid(index)
 
       if (restart) then
-        call pio_setframe(tape(t)%File, varid, int(-1,kind=PIO_OFFSET_KIND))
+        call pio_setframe(tape(t)%Files(f), varid, int(-1,kind=PIO_OFFSET_KIND))
       else
-        call pio_setframe(tape(t)%File, varid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
+        call pio_setframe(tape(t)%Files(f), varid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
       end if
       if (patch_output) then
         ! We are outputting patches
@@ -5200,115 +5321,108 @@ end subroutine print_active_fldlst
         if (interpolate) then
           call endrun('dump_field: interpolate incompatible with regional output')
         end if
-        call patchptr%write_var(tape(t)%File, fdecomp, adims(1:nadims),       &
-             pio_double, tape(t)%hlist(f)%hbuf, varid)
+        call patchptr%write_var(tape(t)%Files(f), fdecomp, adims(1:nadims),       &
+             pio_double, tape(t)%hlist(fld)%hbuf, varid)
       else
         ! We are doing output via the field's grid
         if (interpolate) then
 
           !Determine what the output field kind should be:
-          if (tape(t)%hlist(f)%hwrt_prec == 8) then
+          if (tape(t)%hlist(fld)%hwrt_prec == 8) then
             ncreal = pio_double
           else
             ncreal = pio_real
           end if
 
-          mdimsize = tape(t)%hlist(f)%field%enddim2 - tape(t)%hlist(f)%field%begdim2 + 1
+          mdimsize = tape(t)%hlist(fld)%field%enddim2 - tape(t)%hlist(fld)%field%begdim2 + 1
           if (mdimsize == 0) then
-            mdimsize = tape(t)%hlist(f)%field%numlev
+            mdimsize = tape(t)%hlist(fld)%field%numlev
           end if
-          if (tape(t)%hlist(f)%field%meridional_complement > 0) then
-            compind = tape(t)%hlist(f)%field%meridional_complement
+          if (tape(t)%hlist(fld)%field%meridional_complement > 0) then
+            compind = tape(t)%hlist(fld)%field%meridional_complement
             compid => tape(t)%hlist(compind)%varid(index)
             ! We didn't call set frame on the meridional complement field
-            call pio_setframe(tape(t)%File, compid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
-            call write_interpolated(tape(t)%File, varid, compid,              &
-                 tape(t)%hlist(f)%hbuf, tape(t)%hlist(compind)%hbuf,          &
+            call pio_setframe(tape(t)%Files(f), compid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
+            call write_interpolated(tape(t)%Files(f), varid, compid,              &
+                 tape(t)%hlist(fld)%hbuf, tape(t)%hlist(compind)%hbuf,          &
                  mdimsize, ncreal, fdecomp)
-          else if (tape(t)%hlist(f)%field%zonal_complement > 0) then
-            ! We don't want to double write so do nothing here
-!            compind = tape(t)%hlist(f)%field%zonal_complement
-!            compid => tape(t)%hlist(compind)%varid(index)
-!            call write_interpolated(tape(t)%File, compid, varid,              &
-!                 tape(t)%hlist(compind)%hbuf, tape(t)%hlist(f)%hbuf,          &
-!                 mdimsize, PIO_DOUBLE, fdecomp)
-          else
+          else if (tape(t)%hlist(fld)%field%zonal_complement <= 0) then
             ! Scalar field
-            call write_interpolated(tape(t)%File, varid,                      &
-                 tape(t)%hlist(f)%hbuf, mdimsize, ncreal, fdecomp)
+            call write_interpolated(tape(t)%Files(f), varid,                      &
+                 tape(t)%hlist(fld)%hbuf, mdimsize, ncreal, fdecomp)
           end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
-           if ((tape(t)%hlist(f)%hwrt_prec == 4) .and. (.not. restart)) then
-              call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+           if ((tape(t)%hlist(fld)%hwrt_prec == 4) .and. (.not. restart)) then
+              call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
               allocate(rtemp2(dimind%beg1:dimind%end1, begdim3:enddim3))
               rtemp2 = 0.0_r4
               do ind3 = begdim3, enddim3
-                 dimind2 = tape(t)%hlist(f)%field%get_dims(ind3)
+                 dimind2 = tape(t)%hlist(fld)%field%get_dims(ind3)
                  rtemp2(dimind2%beg1:dimind2%end1,ind3) = &
-                      tape(t)%hlist(f)%hbuf(dimind2%beg1:dimind2%end1, 1, ind3)
+                      tape(t)%hlist(fld)%hbuf(dimind2%beg1:dimind2%end1, 1, ind3)
               end do
-              call cam_grid_write_dist_array(tape(t)%File, fdecomp,           &
+              call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp,           &
                    adims(1:nadims), fdims(1:frank), rtemp2, varid)
               deallocate(rtemp2)
            else
-              call cam_grid_write_dist_array(tape(t)%File, fdecomp,           &
+              call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp,           &
                    adims(1:nadims), fdims(1:frank),                           &
-                   tape(t)%hlist(f)%hbuf(:,1,:), varid)
+                   tape(t)%hlist(fld)%hbuf(:,1,:), varid)
            end if
         else
-           if ((tape(t)%hlist(f)%hwrt_prec == 4) .and. (.not. restart)) then
-              call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+           if ((tape(t)%hlist(fld)%hwrt_prec == 4) .and. (.not. restart)) then
+              call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
               allocate(rtemp3(dimind%beg1:dimind%end1,                        &
                    dimind%beg2:dimind%end2, begdim3:enddim3))
               rtemp3 = 0.0_r4
               do ind3 = begdim3, enddim3
-                 dimind2 = tape(t)%hlist(f)%field%get_dims(ind3)
+                 dimind2 = tape(t)%hlist(fld)%field%get_dims(ind3)
                  rtemp3(dimind2%beg1:dimind2%end1, dimind2%beg2:dimind2%end2, &
-                      ind3) = tape(t)%hlist(f)%hbuf(dimind2%beg1:dimind2%end1,&
+                      ind3) = tape(t)%hlist(fld)%hbuf(dimind2%beg1:dimind2%end1,&
                       dimind2%beg2:dimind2%end2, ind3)
               end do
-              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,    &
+              call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp, adims,    &
                    fdims(1:frank), rtemp3, varid)
               deallocate(rtemp3)
            else
-              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,    &
+              call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp, adims,    &
                    fdims(1:frank),                                            &
-                   tape(t)%hlist(f)%hbuf, varid)
+                   tape(t)%hlist(fld)%hbuf, varid)
            end if
         end if
       end if
     end do
     !! write accumulation counter and variance to hist restart file
     if(restart) then
-       if (associated(tape(t)%hlist(f)%sbuf) ) then
+       if (associated(tape(t)%hlist(fld)%sbuf) ) then
            ! write variance data to restart file for standard deviation calc
           if (nadims == 2) then
            ! Special case for 2D field (no levels) due to sbuf structure
-             call cam_grid_write_dist_array(tape(t)%File, fdecomp,            &
+             call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp,        &
                   adims(1:nadims), fdims(1:frank),                            &
-                  tape(t)%hlist(f)%sbuf(:,1,:), tape(t)%hlist(f)%sbuf_varid)
+                  tape(t)%hlist(fld)%sbuf(:,1,:), tape(t)%hlist(fld)%sbuf_varid)
           else
-             call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,     &
-                  fdims(1:frank), tape(t)%hlist(f)%sbuf,                      &
-                  tape(t)%hlist(f)%sbuf_varid)
+             call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp, adims, &
+                  fdims(1:frank), tape(t)%hlist(fld)%sbuf,                    &
+                  tape(t)%hlist(fld)%sbuf_varid)
           endif
        endif
      !! NACS
-       if (size(tape(t)%hlist(f)%nacs, 1) > 1) then
+       if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
           if (nadims > 2) then
              adims(2) = adims(3)
              nadims = 2
           end if
           call cam_grid_dimensions(fdecomp, fdims(1:2), nacsrank)
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp, &
+          call cam_grid_write_dist_array(tape(t)%Files(f), fdecomp, &
                adims(1:nadims), fdims(1:nacsrank), &
-               tape(t)%hlist(f)%nacs, tape(t)%hlist(f)%nacs_varid)
+               tape(t)%hlist(fld)%nacs, tape(t)%hlist(fld)%nacs_varid)
        else
-          bdim3 = tape(t)%hlist(f)%field%begdim3
-          edim3 = tape(t)%hlist(f)%field%enddim3
-          ierr = pio_put_var(tape(t)%File, tape(t)%hlist(f)%nacs_varid,       &
-               tape(t)%hlist(f)%nacs(:, bdim3:edim3))
+          bdim3 = tape(t)%hlist(fld)%field%begdim3
+          edim3 = tape(t)%hlist(fld)%field%enddim3
+          ierr = pio_put_var(tape(t)%Files(f), tape(t)%hlist(fld)%nacs_varid,       &
+               tape(t)%hlist(fld)%nacs(:, bdim3:edim3))
        end if
     end if
 
@@ -5375,6 +5489,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     use time_manager,  only: get_nstep, get_curr_date, get_curr_time, get_step_size
+    use time_manager,  only: set_date_from_time_float
     use chem_surfvals, only: chem_surfvals_get, chem_surfvals_co2_rad
     use solar_irrad_data, only: sol_tsi
     use sat_hist,      only: sat_hist_write
@@ -5390,7 +5505,7 @@ end subroutine print_active_fldlst
     character(len=8) :: ctime  ! system time
 
     logical  :: rgnht(ptapes), restart
-    integer t, f               ! tape, field indices
+    integer t, f, fld          ! tape, file, field indices
     integer start              ! starting index required by nf_put_vara
     integer count1             ! count values required by nf_put_vara
     integer startc(2)          ! start values required by nf_put_vara (character)
@@ -5402,20 +5517,23 @@ end subroutine print_active_fldlst
 
     integer :: yr, mon, day      ! year, month, and day components of a date
     integer :: nstep             ! current timestep number
-    integer :: ncdate            ! current date in integer format [yyyymmdd]
-    integer :: ncsec             ! current time of day [seconds]
+    integer :: ncdate(maxsplitfiles) ! current (or midpoint) date in integer format [yyyymmdd]
+    integer :: ncsec(maxsplitfiles)  ! current (or midpoint) time of day [seconds]
     integer :: ndcur             ! day component of current time
     integer :: nscur             ! seconds component of current time
-    real(r8) :: time             ! current time
+    real(r8) :: time             ! current (or midpoint) time
     real(r8) :: tdata(2)         ! time interval boundaries
     character(len=max_string_len) :: fname ! Filename
+    character(len=max_string_len) :: fname_inst ! Filename for instantaneous tape
+    character(len=max_string_len) :: fname_acc ! Filename for accumulated tape
     logical :: prev              ! Label file with previous date rather than current
+    logical :: duplicate         ! Flag for duplicate file name
     integer :: ierr
+    integer :: ncsec_temp
 #if ( defined BFB_CAM_SCAM_IOP )
     integer :: tsec             ! day component of current time
     integer :: dtime            ! seconds component of current time
 #endif
-
     if(present(rgnht_in)) then
       rgnht=rgnht_in
       restart=.true.
@@ -5427,8 +5545,8 @@ end subroutine print_active_fldlst
     end if
 
     nstep = get_nstep()
-    call get_curr_date(yr, mon, day, ncsec)
-    ncdate = yr*10000 + mon*100 + day
+    call get_curr_date(yr, mon, day, ncsec(instantaneous_file_index))
+    ncdate(instantaneous_file_index) = yr*10000 + mon*100 + day
     call get_curr_time(ndcur, nscur)
     !
     ! Write time-varying portion of history file header
@@ -5446,30 +5564,58 @@ end subroutine print_active_fldlst
           prev     = .false.
         else
           if (nhtfrq(t) == 0) then
-            hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec == 0
+            hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec(instantaneous_file_index) == 0
             prev     = .true.
           else
-            hstwr(t) = mod(nstep,nhtfrq(t)) == 0
-            prev     = .false.
-          end if
+            if (nstep == 0) then
+              if (write_nstep0) then
+                hstwr(t) = .true.
+              else
+                ! zero the buffers if nstep==0 data not written
+                do f = 1, nflds(t)
+                  call h_zero(f, t)
+                end do
+              end if
+            else
+              hstwr(t) = mod(nstep,nhtfrq(t)) == 0
+            endif
+            prev = .false.
+           end if
         end if
       end if
+      time = ndcur + nscur/86400._r8
+      if (is_initfile(file_index=t)) then
+        tdata = time   ! Inithist file is always instantanious data
+      else
+        tdata(1) = beg_time(t)
+        tdata(2) = time
+      end if
+      ! Set midpoint date/datesec for accumulated file
+      call set_date_from_time_float((tdata(1) + tdata(2)) / 2._r8, yr, mon, day, ncsec_temp)
+      ncsec(accumulated_file_index) = ncsec_temp
+      ncdate(accumulated_file_index) = yr*10000 + mon*100 + day
       if (hstwr(t) .or. (restart .and. rgnht(t))) then
         if(masterproc) then
           if(is_initfile(file_index=t)) then
-            write(iulog,100) yr,mon,day,ncsec
+            write(iulog,100) yr,mon,day,ncsec(init_file_index)
 100         format('WSHIST: writing time sample to Initial Conditions h-file', &
                  ' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           else if(is_satfile(t)) then
-            write(iulog,150) nfils(t),t,yr,mon,day,ncsec
+            write(iulog,150) nfils(t),t,yr,mon,day,ncsec(sat_file_index)
 150         format('WSHIST: writing sat columns ',i6,' to h-file ', &
                  i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           else if(hstwr(t)) then
-            write(iulog,200) nfils(t),t,yr,mon,day,ncsec
-200         format('WSHIST: writing time sample ',i3,' to h-file ', &
-                 i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
+            do f = 1, maxsplitfiles
+              if (f == instantaneous_file_index) then
+                write(iulog,200) nfils(t),'instantaneous',t,yr,mon,day,ncsec(f)
+              else
+                write(iulog,200) nfils(t),'accumulated',t,yr,mon,day,ncsec(f)
+              end if
+200           format('WSHIST: writing time sample ',i3,' to ', a, ' h-file ', &
+                   i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
+            end do
           else if(restart .and. rgnht(t)) then
-            write(iulog,300) nfils(t),t,yr,mon,day,ncsec
+            write(iulog,300) nfils(t),t,yr,mon,day,ncsec(restart_file_index)
 300         format('WSHIST: writing history restart ',i3,' to hr-file ', &
                  i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           end if
@@ -5478,6 +5624,9 @@ end subroutine print_active_fldlst
         !
         ! Starting a new volume => define the metadata
         !
+        fname = ''
+        fname_acc = ''
+        fname_inst = ''
         if (nfils(t)==0 .or. (restart.and.rgnht(t))) then
           if(restart) then
             rhfilename_spec = '%c.cam' // trim(inst_suffix) // '.rh%t.%y-%m-%d-%s.nc'
@@ -5486,28 +5635,53 @@ end subroutine print_active_fldlst
           else if(is_initfile(file_index=t)) then
             fname = interpret_filename_spec( hfilename_spec(t) )
           else
-            fname = interpret_filename_spec( hfilename_spec(t), number=(t-1), &
-                 prev=prev )
+            fname_acc = interpret_filename_spec( hfilename_spec(t), number=(t-1), &
+                 prev=prev, flag_spec='a' )
+            fname_inst = interpret_filename_spec( hfilename_spec(t), number=(t-1), &
+                 prev=prev, flag_spec='i' )
           end if
           !
           ! Check that this new filename isn't the same as a previous or current filename
           !
-          do f = 1, ptapes
-            if (masterproc.and. trim(fname) == trim(nhfil(f)) )then
-              write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
-              write(iulog,*)'Is there an error in your filename specifiers?'
-              write(iulog,*)'hfilename_spec(', t, ') = ', hfilename_spec(t)
-              if ( t /= f )then
-                write(iulog,*)'hfilename_spec(', f, ') = ', hfilename_spec(f)
+          duplicate = .false.
+          do f = 1, t
+            if (masterproc)then
+              if (trim(fname) == trim(nhfil(f,1)) .and. trim(fname) /= '') then
+                 write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
+                 duplicate = .true.
+              else if (trim(fname_acc) == trim(nhfil(f,accumulated_file_index)) .and. trim(fname_acc) /= '') then
+                 write(iulog,*)'WSHIST: New accumulated filename same as old file = ', trim(fname_acc)
+                 duplicate = .true.
+              else if (trim(fname_inst) == trim(nhfil(f,instantaneous_file_index)) .and. trim(fname_inst) /= '') then
+                 write(iulog,*)'WSHIST: New instantaneous filename same as old file = ', trim(fname_inst)
+                 duplicate = .true.
               end if
-              call endrun
+              if (duplicate) then
+                 write(iulog,*)'Is there an error in your filename specifiers?'
+                 write(iulog,*)'hfilename_spec(', t, ') = ', trim(hfilename_spec(t))
+                 if ( t /= f )then
+                   write(iulog,*)'hfilename_spec(', f, ') = ', trim(hfilename_spec(f))
+                 end if
+                 call endrun('WSHIST: ERROR - see atm log file for information')
+              end if
             end if
           end do
           if(.not. restart) then
-            nhfil(t) = fname
-            if(masterproc) write(iulog,*)'WSHIST: nhfil(',t,')=',trim(nhfil(t))
-            cpath(t) = nhfil(t)
-            if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t)
+            if (is_initfile(file_index=t)) then
+               nhfil(t,:) = fname
+               if(masterproc) then
+                  write(iulog,*)'WSHIST: initfile nhfil(',t,')=',trim(nhfil(t,init_file_index))
+               end if
+            else
+               nhfil(t,accumulated_file_index) = fname_acc
+               nhfil(t,instantaneous_file_index) = fname_inst
+               if(masterproc) then
+                  write(iulog,*)'WSHIST: accumulated nhfil(',t,')=',trim(nhfil(t,accumulated_file_index))
+                  write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,instantaneous_file_index))
+               end if
+            end if
+            cpath(t,:) = nhfil(t,:)
+            if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t, 1)
           end if
           call h_define (t, restart)
         end if
@@ -5526,85 +5700,106 @@ end subroutine print_active_fldlst
           if (interpolate_output(t) .and. (.not. restart)) then
             call set_interp_hfile(t, interpolate_info)
           end if
+          ierr = pio_put_var (tape(t)%Files(instantaneous_file_index),tape(t)%ndcurid,(/start/),(/count1/),(/ndcur/))
+          ierr = pio_put_var (tape(t)%Files(instantaneous_file_index), tape(t)%nscurid,(/start/),(/count1/),(/nscur/))
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%dateid,(/start/),(/count1/),(/ncdate(f)/))
+             end if
+          end do
 
-          ierr = pio_put_var (tape(t)%File, tape(t)%ndcurid,(/start/), (/count1/),(/ndcur/))
-          ierr = pio_put_var (tape(t)%File, tape(t)%nscurid,(/start/), (/count1/),(/nscur/))
-          ierr = pio_put_var (tape(t)%File, tape(t)%dateid,(/start/), (/count1/),(/ncdate/))
+          do f = 1, maxsplitfiles
+            if (.not. is_initfile(file_index=t) .and. f == instantaneous_file_index) then
+              ! Don't write the GHG/Solar forcing data to the IC file.
+              ! Only write GHG/Solar forcing data to the instantaneous file
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%co2vmrid,(/start/), (/count1/),(/chem_surfvals_co2_rad(vmr_in=.true.)/))
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%ch4vmrid,(/start/), (/count1/),(/chem_surfvals_get('CH4VMR')/))
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%n2ovmrid,(/start/), (/count1/),(/chem_surfvals_get('N2OVMR')/))
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%f11vmrid,(/start/), (/count1/),(/chem_surfvals_get('F11VMR')/))
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%f12vmrid,(/start/), (/count1/),(/chem_surfvals_get('F12VMR')/))
+              ierr=pio_put_var (tape(t)%Files(f), tape(t)%sol_tsiid,(/start/), (/count1/),(/sol_tsi/))
 
-          if (.not. is_initfile(file_index=t)) then
-            ! Don't write the GHG/Solar forcing data to the IC file.
-            ierr=pio_put_var (tape(t)%File, tape(t)%co2vmrid,(/start/), (/count1/),(/chem_surfvals_co2_rad(vmr_in=.true.)/))
-            ierr=pio_put_var (tape(t)%File, tape(t)%ch4vmrid,(/start/), (/count1/),(/chem_surfvals_get('CH4VMR')/))
-            ierr=pio_put_var (tape(t)%File, tape(t)%n2ovmrid,(/start/), (/count1/),(/chem_surfvals_get('N2OVMR')/))
-            ierr=pio_put_var (tape(t)%File, tape(t)%f11vmrid,(/start/), (/count1/),(/chem_surfvals_get('F11VMR')/))
-            ierr=pio_put_var (tape(t)%File, tape(t)%f12vmrid,(/start/), (/count1/),(/chem_surfvals_get('F12VMR')/))
-            ierr=pio_put_var (tape(t)%File, tape(t)%sol_tsiid,(/start/), (/count1/),(/sol_tsi/))
-
-            if (solar_parms_on) then
-              ierr=pio_put_var (tape(t)%File, tape(t)%f107id, (/start/), (/count1/),(/ f107 /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%f107aid,(/start/), (/count1/),(/ f107a /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%f107pid,(/start/), (/count1/),(/ f107p /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%kpid,   (/start/), (/count1/),(/ kp /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%apid,   (/start/), (/count1/),(/ ap /) )
-            endif
-            if (solar_wind_on) then
-              ierr=pio_put_var (tape(t)%File, tape(t)%byimfid, (/start/), (/count1/),(/ byimf /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%bzimfid, (/start/), (/count1/),(/ bzimf /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%swvelid, (/start/), (/count1/),(/ swvel /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%swdenid, (/start/), (/count1/),(/ swden /) )
-            endif
-            if (epot_active) then
-              ierr=pio_put_var (tape(t)%File, tape(t)%colat_crit1_id, (/start/), (/count1/),(/ epot_crit_colats(1) /) )
-              ierr=pio_put_var (tape(t)%File, tape(t)%colat_crit2_id, (/start/), (/count1/),(/ epot_crit_colats(2) /) )
-            endif
-          end if
-
-          ierr = pio_put_var (tape(t)%File, tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))
+              if (solar_parms_on) then
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107id, (/start/), (/count1/),(/ f107 /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107aid,(/start/), (/count1/),(/ f107a /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107pid,(/start/), (/count1/),(/ f107p /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%kpid,   (/start/), (/count1/),(/ kp /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%apid,   (/start/), (/count1/),(/ ap /) )
+              endif
+              if (solar_wind_on) then
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%byimfid, (/start/), (/count1/),(/ byimf /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%bzimfid, (/start/), (/count1/),(/ bzimf /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%swvelid, (/start/), (/count1/),(/ swvel /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%swdenid, (/start/), (/count1/),(/ swden /) )
+              endif
+              if (epot_active) then
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit1_id, (/start/), (/count1/),(/ epot_crit_colats(1) /) )
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit2_id, (/start/), (/count1/),(/ epot_crit_colats(2) /) )
+              endif
+            end if
+          end do
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f),tape(t)%datesecid,(/start/),(/count1/),(/ncsec(f)/))
+             end if
+          end do
 #if ( defined BFB_CAM_SCAM_IOP )
           dtime = get_step_size()
           tsec=dtime*nstep
-          ierr = pio_put_var (tape(t)%File, tape(t)%tsecid,(/start/),(/count1/),(/tsec/))
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f),tape(t)%tsecid,(/start/),(/count1/),(/tsec/))
+             end if
+          end do
 #endif
-          ierr = pio_put_var (tape(t)%File, tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
-          time = ndcur + nscur/86400._r8
-          ierr=pio_put_var (tape(t)%File, tape(t)%timeid, (/start/),(/count1/),(/time/))
-
+          ierr = pio_put_var (tape(t)%Files(instantaneous_file_index),tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
           startc(1) = 1
           startc(2) = start
           countc(1) = 2
           countc(2) = 1
-          if (is_initfile(file_index=t)) then
-            tdata = time   ! Inithist file is always instantanious data
-          else
-            tdata(1) = beg_time(t)
-            tdata(2) = time
-          end if
-          ierr=pio_put_var (tape(t)%File, tape(t)%tbndid, startc, countc, tdata)
+          do f = 1, maxsplitfiles
+             if (.not. pio_file_is_open(tape(t)%Files(f))) then
+                cycle
+             end if
+             ! We have two files - one for accumulated and one for instantaneous fields
+             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t)) then
+                ! accumulated tape - time is midpoint of time_bounds
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+             else
+                ! not an accumulated history tape - time is current time
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
+             end if
+             ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
+          end do
           if(.not.restart) beg_time(t) = time  ! update beginning time of next interval
           startc(1) = 1
           startc(2) = start
           countc(1) = 8
           countc(2) = 1
           call datetime (cdate, ctime)
-          ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/cdate/))
-          ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
+          do f = 1, maxsplitfiles
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%date_writtenid, startc, countc, (/cdate/))
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%time_writtenid, startc, countc, (/ctime/))
+             end if
+          end do
 
           if(.not. restart) then
-             !$OMP PARALLEL DO PRIVATE (F)
-             do f=1,nflds(t)
-                ! Normalize all non composed fields, composed fields are calculated next using the normalized components 
-                if (tape(t)%hlist(f)%avgflag /= 'I'.and..not.tape(t)%hlist(f)%field%is_composed()) then
-                   call h_normalize (f, t)
+             !$OMP PARALLEL DO PRIVATE (FLD)
+             do fld=1,nflds(t)
+                ! Normalize all non composed fields, composed fields are calculated next using the normalized components
+                if (tape(t)%hlist(fld)%avgflag /= 'I'.and..not.tape(t)%hlist(fld)%field%is_composed()) then
+                   call h_normalize (fld, t)
                 end if
              end do
           end if
 
           if(.not. restart) then
-             !$OMP PARALLEL DO PRIVATE (F)
-             do f=1,nflds(t)
+             !$OMP PARALLEL DO PRIVATE (FLD)
+             do fld=1,nflds(t)
                 ! calculate composed fields from normalized components
-                if (tape(t)%hlist(f)%field%is_composed()) then
-                   call h_field_op (f, t)
+                if (tape(t)%hlist(fld)%field%is_composed()) then
+                   call h_field_op (fld, t)
                 end if
              end do
           end if
@@ -5612,31 +5807,42 @@ end subroutine print_active_fldlst
           ! Write field to history tape.  Note that this is NOT threaded due to netcdf limitations
           !
           call t_startf ('dump_field')
-          do f=1,nflds(t)
-            call dump_field(f, t, restart)
+          do fld=1,nflds(t)
+            do f = 1, maxsplitfiles
+               if (.not. pio_file_is_open(tape(t)%Files(f))) then
+                  cycle
+               end if
+               ! we may have a history split, conditionally skip fields that are for the other file
+               if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. f == accumulated_file_index .and. .not. restart) then
+                  cycle
+               else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. f == instantaneous_file_index .and. .not. restart) then
+                  cycle
+               end if
+               call dump_field(fld, t, f, restart)
+            end do
           end do
           call t_stopf ('dump_field')
           !
           ! Calculate globals
           !
-          do f=1,nflds(t)
-             call h_global(f, t)
+          do fld=1,nflds(t)
+             call h_global(fld, t)
           end do
           !
           ! Zero history buffers and accumulators now that the fields have been written.
           !
           if(restart) then
-            do f=1,nflds(t)
-              if(associated(tape(t)%hlist(f)%varid)) then
-                deallocate(tape(t)%hlist(f)%varid)
-                nullify(tape(t)%hlist(f)%varid)
+            do fld=1,nflds(t)
+              if(associated(tape(t)%hlist(fld)%varid)) then
+                deallocate(tape(t)%hlist(fld)%varid)
+                nullify(tape(t)%hlist(fld)%varid)
               end if
             end do
-            call cam_pio_closefile(tape(t)%File)
+            call cam_pio_closefile(tape(t)%Files(restart_file_index))
           else
-            !$OMP PARALLEL DO PRIVATE (F)
-            do f=1,nflds(t)
-              call h_zero (f, t)
+            !$OMP PARALLEL DO PRIVATE (FLD)
+            do fld=1,nflds(t)
+              call h_zero (fld, t)
             end do
           end if
         end if
@@ -5889,8 +6095,8 @@ end subroutine print_active_fldlst
           write(errormsg, *) "Cannot add ", trim(fname),                      &
                "Subcolumn history output only allowed on physgrid"
           call endrun("ADDFLD: "//errormsg)
-          listentry%field%is_subcol = .true.
         end if
+        listentry%field%is_subcol = .true.
       end if
     end if
     ! Levels
@@ -5916,7 +6122,7 @@ end subroutine print_active_fldlst
 
     if (present(optype)) then
        ! make sure optype is "sum" or "dif"
-       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then 
+       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then
           write(errormsg, '(2a)')': Fatal : optype must be "sum" or "dif" not ',trim(optype)
           call endrun (trim(subname)//errormsg)
        end if
@@ -6171,7 +6377,6 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    use pio, only : pio_file_is_open
     use shr_kind_mod,  only: r8 => shr_kind_r8
     use ioFileMod
     use time_manager,  only: get_nstep, get_curr_date, get_curr_time
@@ -6197,7 +6402,8 @@ end subroutine print_active_fldlst
     logical  :: lhfill           ! true => history file is full
 
     integer  :: t                ! History file number
-    integer  :: f
+    integer  :: f                ! File index
+    integer  :: fld              ! Field index
     real(r8) :: tday             ! Model day number for printout
     !-----------------------------------------------------------------------
 
@@ -6217,7 +6423,6 @@ end subroutine print_active_fldlst
     !
     do t=1,ptapes
       if (nflds(t) == 0) cycle
-
       lfill(t) = .false.
       !
       ! Find out if file is full
@@ -6239,18 +6444,29 @@ end subroutine print_active_fldlst
         ! Is this the 0 timestep data of a monthly run?
         ! If so, just close primary unit do not dispose.
         !
-        if (masterproc) write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t))
-        if(pio_file_is_open(tape(t)%File)) then
+        if (masterproc) then
+           do f = 1, maxsplitfiles
+              if (pio_file_is_open(tape(t)%Files(f))) then
+                 write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t,f))
+              end if
+           end do
+        end if
+        if(pio_file_is_open(tape(t)%Files(accumulated_file_index)) .or. &
+           pio_file_is_open(tape(t)%Files(instantaneous_file_index))) then
           if (nlend .or. lfill(t)) then
-            do f=1,nflds(t)
-              if (associated(tape(t)%hlist(f)%varid)) then
-                deallocate(tape(t)%hlist(f)%varid)
-                nullify(tape(t)%hlist(f)%varid)
+            do fld=1,nflds(t)
+              if (associated(tape(t)%hlist(fld)%varid)) then
+                deallocate(tape(t)%hlist(fld)%varid)
+                nullify(tape(t)%hlist(fld)%varid)
               end if
             end do
           end if
-          call cam_pio_closefile(tape(t)%File)
         end if
+        do f = 1, maxsplitfiles
+          if (pio_file_is_open(tape(t)%Files(f))) then
+             call cam_pio_closefile(tape(t)%Files(f))
+          end if
+        end do
         if (nhtfrq(t) /= 0 .or. nstep > 0) then
 
           !
@@ -6273,7 +6489,12 @@ end subroutine print_active_fldlst
           ! Must position auxiliary files if not full
           !
           if (.not.nlend .and. .not.lfill(t)) then
-            call cam_PIO_openfile (tape(t)%File, nhfil(t), PIO_WRITE)
+            ! Always open the instantaneous file
+            call cam_PIO_openfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), PIO_WRITE)
+            if (hfile_accum(t)) then
+               ! Conditionally open the accumulated file
+               call cam_PIO_openfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), PIO_WRITE)
+            end if
             call h_inquire(t)
           end if
         endif                 ! if 0 timestep of montly run****
@@ -6518,7 +6739,7 @@ end subroutine print_active_fldlst
     !
     !  Local.
     !
-    integer :: f
+    integer :: fld
     integer :: t
 
     !
@@ -6536,17 +6757,17 @@ end subroutine print_active_fldlst
     end do
 
     do t = 1, ptapes
-      do f = 1, nflds(t)
-        listentry => get_entry_by_name(masterlinkedlist, tape(t)%hlist(f)%field%name)
+      do fld = 1, nflds(t)
+        listentry => get_entry_by_name(masterlinkedlist, tape(t)%hlist(fld)%field%name)
         if(.not.associated(listentry)) then
           write(iulog,*) 'BLD_HTAPEFLD_INDICES: something wrong, field not found on masterlist'
-          write(iulog,*) 'BLD_HTAPEFLD_INDICES: t, f, ff = ', t, f
-          write(iulog,*) 'BLD_HTAPEFLD_INDICES: tape%name = ', tape(t)%hlist(f)%field%name
+          write(iulog,*) 'BLD_HTAPEFLD_INDICES: t, f, ff = ', t, fld
+          write(iulog,*) 'BLD_HTAPEFLD_INDICES: tape%name = ', tape(t)%hlist(fld)%field%name
           call endrun
         end if
         listentry%act_sometape = .true.
         listentry%actflag(t) = .true.
-        listentry%htapeindx(t) = f
+        listentry%htapeindx(t) = fld
       end do
     end do
 
@@ -6609,10 +6830,10 @@ end subroutine print_active_fldlst
     logical :: hist_fld_col_active(numcols)
 
     ! Local variables
-    integer                         :: ff          ! masterlist index pointer
+    integer                         :: ffld        ! masterlist index pointer
     integer                         :: i
     integer                         :: t           ! history file (tape) index
-    integer                         :: f           ! field index
+    integer                         :: fld         ! field index
     integer                         :: decomp
     logical                         :: activeloc(numcols)
     integer                         :: num_patches
@@ -6628,22 +6849,22 @@ end subroutine print_active_fldlst
     hist_fld_col_active = .false.
 
     ! Check for name in the master list.
-    call get_field_properties(fname, found, tape_out=tape, ff_out=ff)
+    call get_field_properties(fname, found, tape_out=tape, ff_out=ffld)
 
     ! If not in master list then return.
     if (.not. found) return
 
     ! If in master list, but not active on any file then return
-    if (.not. masterlist(ff)%thisentry%act_sometape) return
+    if (.not. masterlist(ffld)%thisentry%act_sometape) return
 
     ! Loop over history files and check for the field/column in each one
     do t = 1, ptapes
 
       ! Is the field active in this file?  If not the cycle to next file.
-      if (.not. masterlist(ff)%thisentry%actflag(t)) cycle
+      if (.not. masterlist(ffld)%thisentry%actflag(t)) cycle
 
-      f = masterlist(ff)%thisentry%htapeindx(t)
-      decomp = tape(t)%hlist(f)%field%decomp_type
+      fld = masterlist(ffld)%thisentry%htapeindx(t)
+      decomp = tape(t)%hlist(fld)%field%decomp_type
       patch_output = associated(tape(t)%patches)
 
       ! Check whether this file has patch (column) output.

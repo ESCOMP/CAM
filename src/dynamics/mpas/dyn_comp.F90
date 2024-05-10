@@ -3,7 +3,7 @@ module dyn_comp
 ! CAM component interfaces to the MPAS Dynamical Core
 
 use shr_kind_mod,       only: r8=>shr_kind_r8
-use spmd_utils,         only: iam, masterproc, mpicom, npes
+use spmd_utils,         only: masterproc, mpicom, npes
 use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
@@ -13,23 +13,18 @@ use const_init,         only: cnst_init_default
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
 
-use cam_grid_support,   only: cam_grid_id, cam_grid_get_gcid, &
-                              cam_grid_dimensions, cam_grid_get_dim_names, &
-                              cam_grid_get_latvals, cam_grid_get_lonvals,  &
-                              max_hcoordname_len
+use cam_grid_support,   only: cam_grid_id, &
+                              cam_grid_get_latvals, cam_grid_get_lonvals
 use cam_map_utils,      only: iMap
 
 use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
 use dyn_tests_utils,    only: vcoord=>vc_height
 
-use cam_history,        only: add_default, horiz_only, register_vector_field, &
-                              outfld, hist_fld_active
-use cam_history_support, only: max_fieldname_len
+use cam_history,        only: addfld, horiz_only
 use string_utils,       only: date2yyyymmdd, sec2hms, int2str
 
 use ncdio_atm,          only: infld
-use pio,                only: file_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR, &
-                              pio_inq_dimid, pio_inq_dimlen, PIO_NOERR
+use pio,                only: file_desc_t
 use cam_pio_utils,      only: clean_iodesc_list
 
 use time_manager,       only: get_start_date, get_stop_date, get_run_duration, &
@@ -42,6 +37,8 @@ use mpas_timekeeping,   only : MPAS_TimeInterval_type
 use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
+
+use phys_control,       only: use_gw_front, use_gw_front_igw
 
 implicit none
 private
@@ -198,6 +195,24 @@ type dyn_export_t
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
    !
+   ! Invariant -- needed for computing the frontogenesis function
+   !
+   real(r8), dimension(:,:),   pointer :: defc_a
+   real(r8), dimension(:,:),   pointer :: defc_b
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
+   real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
+   real(r8), dimension(:),     pointer :: dvEdge
+   real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
+
+   integer, dimension(:,:), pointer :: edgesOnCell
+   integer, dimension(:,:), pointer :: cellsOnEdge
+   integer, dimension(:),   pointer :: nEdgesOnCell
+
+   real(r8), dimension(:,:),     pointer :: utangential  ! velocity tangent to cell edge,
+                                                         ! diagnosed by mpas
+
+   !
    ! State that may be directly derived from dycore prognostic state
    !
    real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
@@ -214,6 +229,10 @@ type dyn_export_t
    real(r8), dimension(:,:),   pointer :: divergence  ! Horizontal velocity divergence [s^-1]
                                                       !                              (nver,ncol)
 end type dyn_export_t
+
+! Frontogenesis indices
+integer, public    :: frontgf_idx      = -1
+integer, public    :: frontga_idx      = -1
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
@@ -246,11 +265,8 @@ subroutine dyn_readnl(NLFileName)
    character(len=*), intent(in) :: NLFileName
 
    ! Local variables
-   integer :: ierr
    integer, dimension(2) :: logUnits   ! stdout and stderr for MPAS logging
    integer :: yr, mon, day, tod, ndate, nday, nsec
-   character(len=10) :: date_str
-   character(len=8)  :: tod_str
    character(len=*), parameter :: subname = 'dyn_comp:dyn_readnl'
    !----------------------------------------------------------------------------
 
@@ -279,6 +295,7 @@ subroutine dyn_readnl(NLFileName)
    call mpas_pool_add_config(domain_ptr % configs, 'config_restart_timestamp_name', 'restart_timestamp')
    call mpas_pool_add_config(domain_ptr % configs, 'config_IAU_option', 'off')
    call mpas_pool_add_config(domain_ptr % configs, 'config_do_DAcycling', .false.)
+   call mpas_pool_add_config(domain_ptr % configs, 'config_halo_exch_method', 'mpas_halo')
 
    call cam_mpas_init_phase2(pio_subsystem, endrun, timemgr_get_calendar_cf())
 
@@ -293,8 +310,16 @@ subroutine dyn_register()
 
    use physics_buffer,  only: pbuf_add_field, dtype_r8
    use ppgrid,          only: pcols, pver
+   use phys_control,    only: use_gw_front, use_gw_front_igw
    !----------------------------------------------------------------------------
 
+   ! These fields are computed by the dycore and passed to the physics via the
+   ! physics buffer.
+
+   if (use_gw_front .or. use_gw_front_igw) then
+      call pbuf_add_field("FRONTGF", "global", dtype_r8, (/pcols,pver/), frontgf_idx)
+      call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
+   end if
 
 end subroutine dyn_register
 
@@ -314,9 +339,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
-   use constituents,       only : cnst_get_ind
-   use phys_control,       only: phys_getopts
-   use cam_budget,         only: thermo_budget_history
+   use cam_budget,         only : thermo_budget_history
 
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
@@ -474,6 +497,24 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
 
+   ! for frontogenesis calc
+
+   if (use_gw_front .or. use_gw_front_igw) then
+      dyn_out % areaCell => dyn_in % areaCell
+      dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
+      call mpas_pool_get_array(mesh_pool, 'defc_a',               dyn_out % defc_a)
+      call mpas_pool_get_array(mesh_pool, 'defc_b',               dyn_out % defc_b)
+      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_x', dyn_out % cell_gradient_coef_x)
+      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_y', dyn_out % cell_gradient_coef_y)
+      call mpas_pool_get_array(mesh_pool, 'edgesOnCell_sign',     dyn_out % edgesOnCell_sign)
+      call mpas_pool_get_array(mesh_pool, 'dvEdge',               dyn_out % dvEdge)
+      call mpas_pool_get_array(mesh_pool, 'edgesOnCell',          dyn_out % edgesOnCell)
+      call mpas_pool_get_array(mesh_pool, 'nEdgesOnCell',         dyn_out % nEdgesOnCell)
+      call mpas_pool_get_array(diag_pool, 'v',                    dyn_out % utangential)
+   endif
+
+   ! cam-required hydrostatic pressures
+
    allocate(dyn_out % pmiddry(nVertLevels,   nCells), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pmiddry array')
 
@@ -550,7 +591,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       call cam_budget_em_register('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
                       longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
    end if
-      
+
    !
    ! initialize CAM thermodynamic infrastructure
    !
@@ -575,9 +616,9 @@ subroutine dyn_init(dyn_in, dyn_out)
                                 m,thermodynamic_active_species_ice_idx_dycore(m)
       end if
    end do
-   
+
  end subroutine dyn_init
- 
+
 !=========================================================================================
 
 subroutine dyn_run(dyn_in, dyn_out)
@@ -712,7 +753,7 @@ subroutine read_inidat(dyn_in)
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
    use cam_initfiles, only : scale_dry_air_mass
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
    use mpas_constants, only : Rv_over_Rd => rvord
@@ -770,7 +811,6 @@ subroutine read_inidat(dyn_in)
 
    real(r8), allocatable :: qv(:), tm(:)
 
-   real(r8) :: dz, h
    logical  :: readvar
 
    character(len=shr_kind_cx) :: str
@@ -1264,7 +1304,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    ! if no errors were encountered, all MPI ranks have valid namelists in their configPool.
 
    use spmd_utils,         only: mpicom, masterproc, masterprocid, &
-                                 mpi_integer, mpi_real8,  mpi_logical, mpi_character, mpi_success
+                                 mpi_integer, mpi_real8, mpi_logical, mpi_character
    use namelist_utils,     only: find_group_name
 
    use mpas_derived_types, only: mpas_pool_type
@@ -1317,6 +1357,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    real(r8)                :: mpas_cam_coef = 0.0_r8
+   integer                 :: mpas_cam_damping_levels = 0
    logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
    integer                 :: mpas_number_rayleigh_damp_u_levels = 3
@@ -1367,6 +1408,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_zd, &
            mpas_xnutr, &
            mpas_cam_coef, &
+           mpas_cam_damping_levels, &
            mpas_rayleigh_damp_u, &
            mpas_rayleigh_damp_u_timescale_days, &
            mpas_number_rayleigh_damp_u_levels
@@ -1502,6 +1544,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_zd,       1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_xnutr,    1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_cam_coef, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_cam_damping_levels,             1, mpi_integer, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_rayleigh_damp_u,                1, mpi_logical, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_rayleigh_damp_u_timescale_days, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_number_rayleigh_damp_u_levels,  1, mpi_integer, masterprocid, mpicom, mpi_ierr)
@@ -1509,6 +1552,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_zd', mpas_zd)
    call mpas_pool_add_config(configPool, 'config_xnutr', mpas_xnutr)
    call mpas_pool_add_config(configPool, 'config_mpas_cam_coef', mpas_cam_coef)
+   call mpas_pool_add_config(configPool, 'config_number_cam_damping_levels', mpas_cam_damping_levels)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u', mpas_rayleigh_damp_u)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
@@ -1659,6 +1703,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
       write(iulog,*) '   mpas_cam_coef = ', mpas_cam_coef
+      write(iulog,*) '   mpas_cam_damping_levels = ', mpas_cam_damping_levels
       write(iulog,*) '   mpas_rayleigh_damp_u = ', mpas_rayleigh_damp_u
       write(iulog,*) '   mpas_rayleigh_damp_u_timescale_days = ', mpas_rayleigh_damp_u_timescale_days
       write(iulog,*) '   mpas_number_rayleigh_damp_u_levels = ', mpas_number_rayleigh_damp_u_levels
@@ -1713,7 +1758,6 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
    real(r8) :: preliminary_avg_dry_surface_pressure, scaled_avg_dry_surface_pressure
    real(r8) :: scaling_ratio
    real(r8) :: sphere_surface_area
-   real(r8) :: surface_integral, test_value
 
    integer :: ixqv,ierr
 

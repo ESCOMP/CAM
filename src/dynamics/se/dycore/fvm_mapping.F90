@@ -34,6 +34,12 @@ module fvm_mapping
   real(kind=r8), allocatable, dimension(:,:,:,:)     :: save_overlap_area
   integer      , allocatable, dimension(:,:,:,:,:)   :: save_overlap_idx
   integer      , allocatable, dimension(:,:,:,:)     :: save_num_overlap
+
+  interface fvm2dyn
+     module procedure fvm2dynt1
+     module procedure fvm2dyntn
+  end interface fvm2dyn
+
 contains
   !
   ! map all mass variables from gll to fvm
@@ -220,7 +226,8 @@ contains
      deallocate(fld_phys,llimiter,fld_gll,qgll)
   end subroutine phys2dyn_forcings_fvm
 
-  subroutine fvm2dyn(fld_fvm,fld_gll,hybrid,nets,nete,numlev,num_flds,fvm,llimiter)
+  ! for multiple fields
+  subroutine fvm2dyntn(fld_fvm,fld_gll,hybrid,nets,nete,numlev,num_flds,fvm,llimiter)
     use dimensions_mod, only: np, nhc, nc
     use hybrid_mod    , only: hybrid_t
     use bndry_mod     , only: ghost_exchange
@@ -244,7 +251,7 @@ contains
     do ie=nets,nete
        call ghostpack(ghostBufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
-    call ghost_exchange(hybrid,ghostbufQnhc_s,location='fvm2dyn')
+    call ghost_exchange(hybrid,ghostbufQnhc_s,location='fvm2dyntn')
     do ie=nets,nete
        call ghostunpack(ghostbufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
@@ -257,7 +264,46 @@ contains
       call tensor_lagrange_interp(fvm(ie)%cubeboundary,np,nc,nhc,numlev,num_flds,fld_fvm(:,:,:,:,ie),&
            fld_gll(:,:,:,:,ie),llimiter,iwidth,fvm(ie)%norm_elem_coord)
     end do
-  end subroutine fvm2dyn
+  end subroutine fvm2dyntn
+
+  ! for single field
+  subroutine fvm2dynt1(fld_fvm,fld_gll,hybrid,nets,nete,numlev,fvm,llimiter)
+    use dimensions_mod, only: np, nhc, nc
+    use hybrid_mod    , only: hybrid_t
+    use bndry_mod     , only: ghost_exchange
+    use edge_mod      , only: ghostpack,ghostunpack
+    use fvm_mod       , only: ghostBufQnhc_t1
+    !
+    integer              , intent(in)    :: nets,nete,numlev
+    real (kind=r8), intent(inout) :: fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,numlev,1,nets:nete)
+    real (kind=r8), intent(out)   :: fld_gll(np,np,numlev,1,nets:nete)
+    type (hybrid_t)      , intent(in)    :: hybrid
+    type(fvm_struct)     , intent(in)    :: fvm(nets:nete)
+    logical              , intent(in)    :: llimiter(1)
+    integer                              :: ie, iwidth
+    !
+    !*********************************************
+    !
+    ! halo exchange
+    !
+    !*********************************************
+    !
+    do ie=nets,nete
+       call ghostpack(ghostBufQnhc_t1, fld_fvm(:,:,:,1,ie),numlev,0,ie)
+    end do
+    call ghost_exchange(hybrid,ghostbufQnhc_t1,location='fvm2dynt1')
+    do ie=nets,nete
+       call ghostunpack(ghostbufQnhc_t1, fld_fvm(:,:,:,1,ie),numlev,0,ie)
+    end do
+    !
+    ! mapping
+    !
+    iwidth=2
+    do ie=nets,nete
+      call tensor_lagrange_interp(fvm(ie)%cubeboundary,np,nc,nhc,numlev,1,fld_fvm(:,:,:,:,ie),&
+           fld_gll(:,:,:,:,ie),llimiter,iwidth,fvm(ie)%norm_elem_coord)
+    end do
+  end subroutine fvm2dynt1
 
 
   subroutine fill_halo_phys(fld_phys,hybrid,nets,nete,num_lev,num_flds)
@@ -451,7 +497,7 @@ contains
       tmp = 1.0_r8
       inv_area  = 1.0_r8/dyn2phys(tmp,elem(ie)%metdet(:,:))
       phis_phys(:,ie) = RESHAPE(dyn2phys(elem(ie)%state%phis(:,:),elem(ie)%metdet(:,:),inv_area),SHAPE(phis_phys(:,ie)))
-      ps_phys(:,ie) = ptop      
+      ps_phys(:,ie) = ptop
       if (nc.ne.fv_nphys) then
         tmp = 1.0_r8
         do k=1,nlev

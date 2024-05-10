@@ -63,10 +63,10 @@ Physics package: cam3, cam4, cam5, cam6, cam_dev, held_suarez, adiabatic, kessle
 <entry id="hemco" valid_values="0,1" value="0">
 Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.
 </entry>
-<entry id="microphys" valid_values="rk,mg1,mg2,mg3,spcam_m2005,spcam_sam1mom,none" value="">
+<entry id="microphys" valid_values="rk,mg1,mg2,mg3,pumas,spcam_m2005,spcam_sam1mom,none" value="">
 Microphysics package: rk (Rasch and Kristjansson), mg1 (Morrison and
 Gettelman two moment scheme CAM5.1), mg2 (Morrison and Gettelman second
-version CAM6), mg3 (MG scheme 3rd version, graupel), SPCAM_m2005, SPCAM_sam1mom.
+version CAM6), mg3 (MG scheme 3rd version, graupel), PUMAS, SPCAM_m2005, SPCAM_sam1mom.
 </entry>
 <entry id="macrophys" valid_values="rk,park,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
 Macrophysics package: RK, Park, CLUBB_SGS, SPCAM_sam1mom, SPCAM_m2005.

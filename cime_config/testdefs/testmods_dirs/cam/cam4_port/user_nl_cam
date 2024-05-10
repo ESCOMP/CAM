@@ -13,3 +13,4 @@
  rad_data_output = .false.
  mfilt=100,100
  nhtfrq=-120,73
+ write_nstep0 = .true.

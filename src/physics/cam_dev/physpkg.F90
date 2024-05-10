@@ -769,6 +769,8 @@ contains
     use cam_budget,         only: cam_budget_init
     use phys_grid_ctem,     only: phys_grid_ctem_init
 
+    use ccpp_constituent_prop_mod, only: ccpp_const_props_init
+
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
@@ -946,6 +948,10 @@ contains
        call modal_aero_wateruptake_init(pbuf2d)
 
     end if
+
+    ! Initialize CAM CCPP constituent properties array
+    ! for use in CCPP-ized physics schemes:
+    call ccpp_const_props_init()
 
     ! Initialize qneg3 and qneg4
     call qneg_init()

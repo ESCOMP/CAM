@@ -737,9 +737,12 @@ contains
     !
     if (ptop>100.0_r8) then
       umax = 120.0_r8
-    else
+    else if (ptop>10.0_r8) then
       umax = 400.0_r8
+    else
+      umax = 800.0_r8
     end if
+
     ugw = 342.0_r8 !max gravity wave speed
 
     dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)

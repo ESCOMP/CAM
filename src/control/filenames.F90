@@ -48,7 +48,7 @@ end function get_dir
 !===============================================================================
 
 character(len=cl) function interpret_filename_spec( filename_spec, number, prev, case, &
-   yr_spec, mon_spec, day_spec, sec_spec )
+   yr_spec, mon_spec, day_spec, sec_spec, flag_spec )
 
 ! Create a filename from a filename specifier. The 
 ! filename specifyer includes codes for setting things such as the
@@ -77,12 +77,14 @@ character(len=cl) function interpret_filename_spec( filename_spec, number, prev,
    integer         , intent(in), optional :: mon_spec        ! Simulation month
    integer         , intent(in), optional :: day_spec        ! Simulation day
    integer         , intent(in), optional :: sec_spec        ! Seconds into current simulation day
+   character(len=*), intent(in), optional :: flag_spec       ! flag for accumulated or instantaneous
 
    ! Local variables
    integer :: year  ! Simulation year
    integer :: month ! Simulation month
    integer :: day   ! Simulation day
    integer :: ncsec ! Seconds into current simulation day
+   character(len=1) :: flag
    character(len=cl) :: string    ! Temporary character string 
    character(len=cl) :: format    ! Format character string 
    integer :: i, n  ! Loop variables
@@ -115,6 +117,11 @@ character(len=cl) function interpret_filename_spec( filename_spec, number, prev,
       else
          call get_curr_date(year, month, day, ncsec)
       end if
+   end if
+   if (present(flag_spec)) then
+      flag = flag_spec
+   else
+      flag = ''
    end if
    !
    ! Go through each character in the filename specifyer and interpret if special string
@@ -170,6 +177,8 @@ character(len=cl) function interpret_filename_spec( filename_spec, number, prev,
             write(string,'(i2.2)') day
          case( 's' )   ! second
             write(string,'(i5.5)') ncsec
+         case( 'f' )   ! flag
+            write(string,'(a)') flag
          case( '%' )   ! percent character
             string = "%"
          case default

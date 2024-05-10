@@ -466,53 +466,53 @@ contains
     call get_indices( obs_lats, obs_lons, ncols, nocols, has_dyn_flds, col_ndxs, chk_ndxs, &
          fdyn_ndxs, ldyn_ndxs, phs_owners, dyn_owners, mlats, mlons, phs_dists )
 
-    if ( .not. pio_file_is_open(tape%File) ) then
+    if ( .not. pio_file_is_open(tape%Files(1)) ) then
        call endrun('sat file not open')
     endif
 
 
-    ierr = pio_inq_dimid(tape%File,'ncol',coldim )
+    ierr = pio_inq_dimid(tape%Files(1),'ncol',coldim )
 
-    ierr = pio_inq_varid(tape%File, 'lat', out_latid )
-    ierr = pio_inq_varid(tape%File, 'lon', out_lonid )
-    ierr = pio_inq_varid(tape%File, 'distance', out_dstid )
+    ierr = pio_inq_varid(tape%Files(1), 'lat', out_latid )
+    ierr = pio_inq_varid(tape%Files(1), 'lon', out_lonid )
+    ierr = pio_inq_varid(tape%Files(1), 'distance', out_dstid )
 
     call write_record_coord( tape, mlats(:), mlons(:), phs_dists(:), ncols, nfils )
 
    ! dump columns of 2D fields
     if (has_phys_srf_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, 1, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, 1, nfils, &
                           col_ndxs, chk_ndxs, phs_owners, phys_decomp )
     endif
     if (has_dyn_srf_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, 1, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, 1, nfils, &
                           fdyn_ndxs, ldyn_ndxs, dyn_owners, dyn_decomp )
     endif
 
    ! dump columns of 3D fields defined on mid pres levels
     if (has_phys_lev_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, pver, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, pver, nfils, &
                           col_ndxs, chk_ndxs, phs_owners, phys_decomp )
     endif
     if (has_dyn_lev_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, pver, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, pver, nfils, &
                           fdyn_ndxs, ldyn_ndxs, dyn_owners, dyn_decomp )
     endif
 
    ! dump columns of 3D fields defined on interface pres levels
     if (has_phys_ilev_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, pverp, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, pverp, nfils, &
                           col_ndxs, chk_ndxs, phs_owners, phys_decomp )
     endif
     if (has_dyn_ilev_flds) then
-       call dump_columns( tape%File, tape%hlist, nflds, nocols, pverp, nfils, &
+       call dump_columns( tape%Files(1), tape%hlist, nflds, nocols, pverp, nfils, &
                           fdyn_ndxs, ldyn_ndxs, dyn_owners, dyn_decomp )
     endif
 
     deallocate( col_ndxs, chk_ndxs, fdyn_ndxs, ldyn_ndxs, phs_owners, dyn_owners )
     deallocate( mlons, mlats, phs_dists )
     deallocate( obs_lons, obs_lats )
-    call pio_syncfile(tape%File)
+    call pio_syncfile(tape%Files(1))
 
     nfils = nfils + nocols
 
@@ -763,19 +763,19 @@ contains
     allocate( rtmp(ncols * sathist_nclosest) )
 
     itmp(:) = ncdate
-    ierr = pio_put_var(tape%File, tape%dateid,(/nfils/), (/ncols * sathist_nclosest/),itmp)
+    ierr = pio_put_var(tape%Files(1), tape%dateid,(/nfils/), (/ncols * sathist_nclosest/),itmp)
     itmp(:) = ncsec
-    ierr = pio_put_var(tape%File, tape%datesecid,(/nfils/),(/ncols * sathist_nclosest/),itmp)
+    ierr = pio_put_var(tape%Files(1), tape%datesecid,(/nfils/),(/ncols * sathist_nclosest/),itmp)
     rtmp(:) = time
-    ierr = pio_put_var(tape%File, tape%timeid, (/nfils/),(/ncols * sathist_nclosest/),rtmp)
+    ierr = pio_put_var(tape%Files(1), tape%timeid, (/nfils/),(/ncols * sathist_nclosest/),rtmp)
 
     deallocate(itmp)
     deallocate(rtmp)
 
     ! output model column coordinates
-    ierr = pio_put_var(tape%File, out_latid, (/nfils/),(/ncols * sathist_nclosest/), mod_lats)
-    ierr = pio_put_var(tape%File, out_lonid, (/nfils/),(/ncols * sathist_nclosest/), mod_lons)
-    ierr = pio_put_var(tape%File, out_dstid, (/nfils/),(/ncols * sathist_nclosest/), mod_dists / 1000._r8)
+    ierr = pio_put_var(tape%Files(1), out_latid, (/nfils/),(/ncols * sathist_nclosest/), mod_lats)
+    ierr = pio_put_var(tape%Files(1), out_lonid, (/nfils/),(/ncols * sathist_nclosest/), mod_lons)
+    ierr = pio_put_var(tape%Files(1), out_dstid, (/nfils/),(/ncols * sathist_nclosest/), mod_dists / 1000._r8)
 
     ! output instrument location
     allocate( out_lats(ncols * sathist_nclosest) )
@@ -786,40 +786,40 @@ contains
       out_lons(((i-1)*sathist_nclosest)+1 : (i*sathist_nclosest)) = obs_lons(i)
     enddo
 
-    ierr = pio_put_var(tape%File, out_instr_lat_vid, (/nfils/),(/ncols * sathist_nclosest/), out_lats)
-    ierr = pio_put_var(tape%File, out_instr_lon_vid, (/nfils/),(/ncols * sathist_nclosest/), out_lons)
+    ierr = pio_put_var(tape%Files(1), out_instr_lat_vid, (/nfils/),(/ncols * sathist_nclosest/), out_lats)
+    ierr = pio_put_var(tape%Files(1), out_instr_lon_vid, (/nfils/),(/ncols * sathist_nclosest/), out_lons)
 
     deallocate(out_lats)
     deallocate(out_lons)
 
 
-    ierr = copy_data( infile, date_vid, tape%File, out_obs_date_vid, in_start_col, nfils, ncols )
-    ierr = copy_data( infile, time_vid, tape%File, out_obs_time_vid, in_start_col, nfils, ncols )
+    ierr = copy_data( infile, date_vid, tape%Files(1), out_obs_date_vid, in_start_col, nfils, ncols )
+    ierr = copy_data( infile, time_vid, tape%Files(1), out_obs_time_vid, in_start_col, nfils, ncols )
 
     ! output observation identifiers
     if (instr_vid>0) then
-       ierr = copy_data( infile, instr_vid, tape%File, out_instrid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, instr_vid, tape%Files(1), out_instrid, in_start_col, nfils, ncols )
     endif
     if (orbit_vid>0) then
-       ierr = copy_data( infile, orbit_vid, tape%File, out_orbid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, orbit_vid, tape%Files(1), out_orbid, in_start_col, nfils, ncols )
     endif
     if (prof_vid>0) then
-       ierr = copy_data( infile, prof_vid, tape%File, out_profid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, prof_vid, tape%Files(1), out_profid, in_start_col, nfils, ncols )
     endif
     if (zenith_vid>0) then
-       ierr = copy_data( infile, zenith_vid, tape%File, out_zenithid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, zenith_vid, tape%Files(1), out_zenithid, in_start_col, nfils, ncols )
     endif
     if (in_julian_vid>0) then
-       ierr = copy_data( infile, in_julian_vid, tape%File, out_julian_vid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, in_julian_vid, tape%Files(1), out_julian_vid, in_start_col, nfils, ncols )
     endif
     if (in_occ_type_vid>0) then
-       ierr = copy_data( infile, in_occ_type_vid, tape%File, out_occ_type_vid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, in_occ_type_vid, tape%Files(1), out_occ_type_vid, in_start_col, nfils, ncols )
     endif
     if (in_localtime_vid>0) then
-       ierr = copy_data( infile, in_localtime_vid, tape%File, out_localtime_vid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, in_localtime_vid, tape%Files(1), out_localtime_vid, in_start_col, nfils, ncols )
     endif
     if (in_doy_vid>0) then
-       ierr = copy_data( infile, in_doy_vid, tape%File, out_doy_vid, in_start_col, nfils, ncols )
+       ierr = copy_data( infile, in_doy_vid, tape%Files(1), out_doy_vid, in_start_col, nfils, ncols )
     endif
 
     call t_stopf ('sat_hist::write_record_coord')

@@ -1,5 +1,6 @@
 dtime = 1800
 nhtfrq = 0,-24,-6,-3
+write_nstep0 = .true.
 mfilt = 1,5000,5000
 ndens = 2,2,2,2,2,2
 history_budget = .true.

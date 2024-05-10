@@ -95,7 +95,7 @@
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day -->
-<fincl7>
+<fincl7 dyn="fv">
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl7>
 

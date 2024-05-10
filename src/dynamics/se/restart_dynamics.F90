@@ -46,7 +46,7 @@ use thread_mod,       only: horz_num_threads
 use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac, use_cslam
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
-use time_mod,         only: tstep, TimeLevel_Qdp
+use se_dyn_time_mod,  only: tstep, TimeLevel_Qdp
 
 use edge_mod,         only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,     only: EdgeBuffer_t
