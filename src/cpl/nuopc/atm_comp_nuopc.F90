@@ -911,12 +911,12 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        else
 !+++ARH
-       if (masterproc) then
-          write(iam+1000,*) '--------------'
-          write(iam+1000,*) 'DataInitialize'
-          write(iam+1000,*) '  cam_run1 sets cam_out'
-          write(iam+1000,*) '  nstep=',get_nstep()
-       end if
+!       if (masterproc) then
+!          write(iam+1000,*) '--------------'
+!          write(iam+1000,*) 'DataInitialize'
+!          write(iam+1000,*) '  cam_run1 sets cam_out'
+!          write(iam+1000,*) '  nstep=',get_nstep()
+!       end if
 !---ARH
           call cam_read_srfrest( gcomp, clock, rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1102,12 +1102,12 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        call t_stopf  ('CAM_import')
 !+++ARH
-       if (masterproc) then
-          write(iam+1000,*) '--------------'
-          write(iam+1000,*) 'Model Advance'
-          write(iam+1000,*) '  CAM_import sets cam_in'
-          write(iam+1000,*) '  nstep=',get_nstep()
-       end if
+!       if (masterproc) then
+!          write(iam+1000,*) '--------------'
+!          write(iam+1000,*) 'Model Advance'
+!          write(iam+1000,*) '  CAM_import sets cam_in'
+!          write(iam+1000,*) '  nstep=',get_nstep()
+!       end if
 !---ARH
     end if
 
@@ -1162,12 +1162,12 @@ contains
        call t_stopf  ('CAM_run4')
 
 !+++ARH
-       if (masterproc) then
-          write(iam+1000,*) '--------------'
-          write(iam+1000,*) 'ModelAdvance'
-          write(iam+1000,*) '  cam_run2,cam_run3,cam_run4'
-          write(iam+1000,*) '  nstep=',get_nstep()
-       end if
+!       if (masterproc) then
+!          write(iam+1000,*) '--------------'
+!          write(iam+1000,*) 'ModelAdvance'
+!          write(iam+1000,*) '  cam_run2,cam_run3,cam_run4'
+!          write(iam+1000,*) '  nstep=',get_nstep()
+!       end if
 !---ARH
 
        ! Advance cam time step
@@ -1183,12 +1183,12 @@ contains
        call t_stopf  ('CAM_run1')
 
 !+++ARH
-       if (masterproc) then
-          write(iam+1000,*) '--------------'
-          write(iam+1000,*) 'ModelAdvance'
-          write(iam+1000,*) '  CAM_adv_timestep,cam_run1'
-          write(iam+1000,*) '  nstep=',get_nstep()
-       end if
+!       if (masterproc) then
+!          write(iam+1000,*) '--------------'
+!          write(iam+1000,*) 'ModelAdvance'
+!          write(iam+1000,*) '  CAM_adv_timestep,cam_run1'
+!          write(iam+1000,*) '  nstep=',get_nstep()
+!       end if
 !---ARH
 
     end do

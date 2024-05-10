@@ -4776,7 +4776,12 @@ end subroutine clubb_init_cnst
         rtm(i,pverp-k+1)          = rtm_in(i,k)
         wprtp(i,pverp-k+1)        = wprtp_in(i,k)
         wpthlp(i,pverp-k+1)       = wpthlp_in(i,k)
-        wp2(i,pverp-k+1)          = wp2_in(i,k)
+!+++ARH This where wp2 pbuf is set
+         if (do_clubb_mf_addtke) then
+           wp2(i,pverp-k+1)          = wp2_in(i,k) + s_aww(i,k)
+         else
+           wp2(i,pverp-k+1)          = wp2_in(i,k)
+         end if
         wp3(i,pverp-k+1)          = wp3_in(i,k)
         rtp2(i,pverp-k+1)         = rtp2_in(i,k)
         thlp2(i,pverp-k+1)        = thlp2_in(i,k)
@@ -5445,12 +5450,7 @@ end subroutine clubb_init_cnst
          wprtp_output(i,k)   = wprtp(i,k)
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
-
-         if (do_clubb_mf_addtke) then
-           tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k)+s_aww_output(i,k))   !  turbulent kinetic energy
-         else
-           tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
-         end if
+         tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
 
          if (do_clubb_mf) then
            ! comment out for kinemtatic fluxes 
