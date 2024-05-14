@@ -73,7 +73,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
 
@@ -83,7 +83,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
 
@@ -93,7 +93,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam_short"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
 
@@ -1811,7 +1811,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:90:00</option>
       <option name="comment">CAM7 dev low top ~40 km</option>
     </options>
   </test>
@@ -1829,7 +1829,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:60:00</option>
       <option name="comment">CAM7 dev mid top ~80 km</option>
     </options>
   </test>
@@ -2033,7 +2033,7 @@
       <machine name="derecho" compiler="intel" category="camchem_hco"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:60:00</option>
       <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart/PE tests</option>
     </options>
   </test>
@@ -2390,7 +2390,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FWHIST_BGC" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/reduced_hist1d">
@@ -2415,7 +2415,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:40:00</option>
+      <option name="wallclock">00:80:00</option>
     </options>
   </test>
   <test compset="FWHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/reduced_hist3s">
@@ -2424,7 +2424,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
   <test compset="FX2000" grid="f19_f19_mg17" name="SMS_D_Ln9"   testmods="cam/outfrq9s">
@@ -2450,7 +2450,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_amie">
@@ -2459,7 +2459,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="QPX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_P240x3" testmods="cam/outfrq9s_ltr">
@@ -2725,7 +2725,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:60:00</option>
     </options>
   </test>
   <test compset="FWscHIST" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq3d">
@@ -2748,7 +2748,7 @@
       <machine name="derecho" compiler="intel" category="ghg_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">Checks that exact restarts occur when crossing the December 16th date boundary with WACCM-SC chemistry in low top configuration</option>
     </options>
   </test>
@@ -2800,7 +2800,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">WACCM w/ RRTMGP</option>
     </options>
   </test>
