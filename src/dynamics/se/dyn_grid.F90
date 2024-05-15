@@ -44,7 +44,6 @@ use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
 use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
-use hybvcoord_mod,          only: hvcoord_t
 use prim_init,              only: prim_init1
 use edge_mod,               only: initEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
@@ -68,7 +67,6 @@ character(len=6), protected :: ini_grid_hdim_name = ''
 integer, parameter :: ptimelevels = 2
 
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
-type (hvcoord_t)           :: hvcoord
 type(element_t),   pointer :: elem(:) => null()  ! local GLL elements for this task
 type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this task
 
@@ -77,7 +75,6 @@ public :: ini_grid_name
 public :: ini_grid_hdim_name
 public :: ptimelevels
 public :: TimeLevel
-public :: hvcoord
 public :: elem
 public :: fvm
 public :: edgebuf
@@ -122,8 +119,7 @@ subroutine dyn_grid_init()
 
    ! Initialize SE grid, and decomposition.
 
-   use hycoef,              only: hycoef_init, hypi, hypm, nprlev, &
-                                  hyam, hybm, hyai, hybi, ps0
+   use hycoef,              only: hycoef_init, hypi, hypm, nprlev
    use ref_pres,            only: ref_pres_init
    use spmd_utils,          only: MPI_MAX, MPI_INTEGER, mpicom
    use time_manager,        only: get_nstep, get_step_size
@@ -162,15 +158,6 @@ subroutine dyn_grid_init()
 
    ! Initialize hybrid coordinate arrays
    call hycoef_init(fh_ini, psdry=.true.)
-
-   hvcoord%hyam = hyam
-   hvcoord%hyai = hyai
-   hvcoord%hybm = hybm
-   hvcoord%hybi = hybi
-   hvcoord%ps0  = ps0
-   do k = 1, nlev
-      hvcoord%hybd(k) = hvcoord%hybi(k+1) - hvcoord%hybi(k)
-   end do
 
    ! Initialize reference pressures
    call ref_pres_init(hypi, hypm, nprlev)

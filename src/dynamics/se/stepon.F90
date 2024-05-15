@@ -19,7 +19,7 @@ use microp_aero,            only: aerosol_state_object, aerosol_properties_objec
 use scamMod,                only: use_iop, doiopupdate, single_column, &
                                   setiopupdate, readiopdata
 use se_single_column_mod,   only: scm_setfield, iop_broadcast
-use dyn_grid,               only: hvcoord
+use hycoef,                 only: hvcoord
 use time_manager,           only: get_step_size, is_first_restart_step
 use cam_history,            only: outfld, write_camiop, addfld, add_default, horiz_only
 use cam_history,            only: write_inithist, hist_fld_active, fieldname_len
