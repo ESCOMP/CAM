@@ -58,8 +58,6 @@ module zm_conv_intr
       dp_cldice_idx, &
       dlfzm_idx,     &     ! detrained convective cloud water mixing ratio.
       difzm_idx,     &     ! detrained convective cloud ice mixing ratio.
-      dnlfzm_idx,    &     ! detrained convective cloud water num concen.
-      dnifzm_idx,    &     ! detrained convective cloud ice num concen.
       prec_dp_idx,   &
       snow_dp_idx,   &
       mconzm_idx           ! convective mass flux
@@ -445,8 +443,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: dp_cldice
    real(r8), pointer :: dlf(:,:)    ! detrained convective cloud water mixing ratio.
    real(r8), pointer :: dif(:,:)    ! detrained convective cloud ice mixing ratio.
-   real(r8), pointer :: dnlf(:,:)   ! detrained convective cloud water num concen.
-   real(r8), pointer :: dnif(:,:)   ! detrained convective cloud ice num concen.
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
    real(r8), pointer :: mconzm(:,:)     !convective mass fluxes
@@ -543,8 +539,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call pbuf_get_field(pbuf, difzm_idx,  dif)
    call pbuf_get_field(pbuf, mconzm_idx, mconzm)
 
-   allocate(dnlf(pcols,pver), dnif(pcols,pver))
-
 !
 ! Begin with Zhang-McFarlane (1996) convection parameterization
 !
@@ -567,8 +561,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    zdu(:,:) = 0._r8
    rprd(:,:) = 0._r8
    dif(:,:) = 0._r8
-   dnlf(:,:) = 0._r8
-   dnif(:,:) = 0._r8
    mu(:,:) = 0._r8
    eu(:,:) = 0._r8
    du(:,:) = 0._r8
@@ -596,8 +588,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
                     org_ncol(:ncol,:), orgt_ncol(:ncol,:), zm_org2d_ncol(:ncol,:),  &
-                    dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
-                    rice(:ncol), errmsg, errflg)
+                    dif(:ncol,:), rice(:ncol), errmsg, errflg)
 
 
    if (zmconv_org) then
@@ -765,7 +756,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call t_startf ('zm_conv_momtran_run')
 
      call zm_conv_momtran_run (ncol, pver, pverp,                    &
-                   l_windt,state1%u(:ncol,:), state1%v(:ncol,:), 2,  mu(:ncol,:), md(:ncol,:),   &
+                   l_windt,state1%u(:ncol,:), state1%v(:ncol,:), mu(:ncol,:), md(:ncol,:),   &
                    zmconv_momcu, zmconv_momcd, &
                    du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
@@ -845,7 +836,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       deallocate(zm_org2d)
    end if
 
-   deallocate(dnlf, dnif)
 
 end subroutine zm_conv_tend
 !=========================================================================================
