@@ -87,7 +87,6 @@
 
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
-    difzm_idx  = -1,    & ! ZM detrained convective cloud ice mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
     dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
 
@@ -486,7 +485,6 @@ end subroutine macrop_driver_readnl
 
   ! ZM microphysics
   real(r8), pointer :: dlfzm(:,:)  ! ZM detrained convective cloud water mixing ratio.
-  real(r8), pointer :: difzm(:,:)  ! ZM detrained convective cloud ice mixing ratio.
   real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
   real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 

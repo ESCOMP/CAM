@@ -57,7 +57,6 @@ module zm_conv_intr
       ixorg,       &
       dp_cldice_idx, &
       dlfzm_idx,     &     ! detrained convective cloud water mixing ratio.
-      difzm_idx,     &     ! detrained convective cloud ice mixing ratio.
       prec_dp_idx,   &
       snow_dp_idx,   &
       mconzm_idx           ! convective mass flux
@@ -149,8 +148,6 @@ subroutine zm_conv_register
    ! detrained convective cloud water mixing ratio.
    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
    ! detrained convective cloud ice mixing ratio.
-   call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
-   ! convective mass fluxes
    call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
 
 !CACNOTE - Is zm_org really a constituent or was it just a handy structure to use for an allocatable which persists in the run?
@@ -442,7 +439,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: dp_cldliq
    real(r8), pointer, dimension(:,:) :: dp_cldice
    real(r8), pointer :: dlf(:,:)    ! detrained convective cloud water mixing ratio.
-   real(r8), pointer :: dif(:,:)    ! detrained convective cloud ice mixing ratio.
+   real(r8)          :: dif(pcols,pver)    ! detrained convective cloud ice mixing ratio.
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
    real(r8), pointer :: mconzm(:,:)     !convective mass fluxes
@@ -536,10 +533,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call pbuf_get_field(pbuf, zm_ideep_idx,   ideep)
 
    call pbuf_get_field(pbuf, dlfzm_idx,  dlf)
-   call pbuf_get_field(pbuf, difzm_idx,  dif)
    call pbuf_get_field(pbuf, mconzm_idx, mconzm)
 
-!
 ! Begin with Zhang-McFarlane (1996) convection parameterization
 !
    call t_startf ('zm_convr_run')
