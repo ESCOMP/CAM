@@ -7,7 +7,7 @@
       implicit none
       save
 
-      INTEGER, PARAMETER   :: nTracersMax = 267    ! Must be equal to chem_nadv
+      INTEGER, PARAMETER   :: nTracersMax = 269    ! = chem_nadv in cam/bld/configure
       INTEGER              :: nTracers
       REAL(r8)             :: ref_MMR(pcnst)
 
@@ -62,10 +62,10 @@
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 269, & ! number of "gas phase" species (same as solsym length)
-                                               ! Includes GC advected species (233), MAM aerosols (33),
-                                               ! and CO2 (1), as well as any non-advected species added
-                                               ! to solsym and mo_sim_dat.F90.
+                            gas_pcnst = 271, & ! number of "gas phase" species (=solsym length)
+                                               ! Includes GC advected species, MAM aerosols,
+                                               ! and CO2, and any non-advected species added
+                                               ! to solsym within mo_sim_dat.F90.
                             nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
@@ -81,7 +81,7 @@
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 0, & ! number of tagged reactions (unused in GEOS-Chem)
                             enthalpy_cnt = 0, &
-                            nslvd = 86  ! number of short-lived (non-advected) species
+                            nslvd = 88  ! number of short-lived (non-advected) species
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0

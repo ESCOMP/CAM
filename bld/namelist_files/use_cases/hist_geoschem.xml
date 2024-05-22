@@ -6,8 +6,6 @@
 
 <!-- Settings for using GEOS-Chem -->
 
-<geoschem_cheminputs>atm/cam/geoschem/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
-
 <ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
@@ -29,7 +27,7 @@
 <gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
 
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_c170126.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-25001216_CMIP6_SSP585_0p5degLat_c20200824.nc</flbc_file>
 
 <prescribed_strataero_type>SERIAL</prescribed_strataero_type>
 

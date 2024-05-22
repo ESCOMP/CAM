@@ -27,6 +27,7 @@ module mo_neu_wetdep
   real(r8),allocatable, dimension(:) :: mol_weight
   logical ,allocatable, dimension(:) :: ice_uptake
   integer                     :: index_cldice,index_cldliq,nh3_ndx,co2_ndx,so2_ndx
+  integer                     :: so4_ndx,so4s_ndx ! geos-chem
   logical                     :: debug   = .false.
   integer                     :: hno3_ndx = 0
 !
@@ -141,6 +142,12 @@ subroutine neu_wetdep_init
     end if
     if ( trim(test_name) == 'SO2' ) then
       so2_ndx = m
+    end if
+    if ( trim(test_name) == 'SO4' ) then ! GEOS-Chem bulk sulfate
+      so4_ndx = m
+    end if
+    if ( trim(test_name) == 'SO4S' ) then ! GEOS-Chem bulk sulfate on surface seasalt
+      so4s_ndx = m
     end if
 !
   end do
@@ -364,20 +371,20 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
       endif
 !
       if( dheff(5,l) /= 0._r8 ) then
-        if( nh3_ndx > 0 .or. co2_ndx > 0 .or. so2_ndx > 0 ) then
+        if( nh3_ndx > 0 .or. co2_ndx > 0 .or. so2_ndx > 0 .or. so4_ndx > 0 .or. so4s_ndx > 0 ) then
           e298 = dheff(3,l)
           dhr  = dheff(4,l)
           dk1s(:) = e298*exp( dhr*wrk(:) )
           e298 = dheff(5,l)
           dhr  = dheff(6,l)
           dk2s(:) = e298*exp( dhr*wrk(:) )
-          if( m == co2_ndx .or. m == so2_ndx ) then
+          if( m == co2_ndx .or. m == so2_ndx .or. m == so4_ndx .or. m == so4s_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph_inv*(1._r8 + dk2s(:)*ph_inv))
           else if( m == nh3_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph/dk2s(:))
           else
-             write(iulog,*) 'error in assigning henrys law coefficients'
-             write(iulog,*) 'species ',m
+             if ( masterproc ) write(iulog,*) 'error in assigning henrys law coefficients'
+             if ( masterproc ) write(iulog,*) 'species ',m
           end if
         end if
       end if
