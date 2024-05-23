@@ -304,7 +304,6 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('ZMICVU',   (/ 'lev' /),  'A', 'm/s', 'ZM in-cloud V updrafts')
     call addfld ('ZMICVD',   (/ 'lev' /),  'A', 'm/s', 'ZM in-cloud V downdrafts')
 
-    call addfld ('DIFZM'   ,(/ 'lev' /), 'A','kg/kg/s ','Detrained ice water from ZM convection')
     call addfld ('DLFZM'   ,(/ 'lev' /), 'A','kg/kg/s ','Detrained liquid water from ZM convection')
 
     call phys_getopts( history_budget_out = history_budget, &
@@ -439,7 +438,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: dp_cldliq
    real(r8), pointer, dimension(:,:) :: dp_cldice
    real(r8), pointer :: dlf(:,:)    ! detrained convective cloud water mixing ratio.
-   real(r8)          :: dif(pcols,pver)    ! detrained convective cloud ice mixing ratio.
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
    real(r8), pointer :: mconzm(:,:)     !convective mass fluxes
@@ -555,7 +553,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    cape(:) = 0._r8
    zdu(:,:) = 0._r8
    rprd(:,:) = 0._r8
-   dif(:,:) = 0._r8
    mu(:,:) = 0._r8
    eu(:,:) = 0._r8
    du(:,:) = 0._r8
@@ -583,7 +580,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
                     org_ncol(:ncol,:), orgt_ncol(:ncol,:), zm_org2d_ncol(:ncol,:),  &
-                    dif(:ncol,:), rice(:ncol), errmsg, errflg)
+                    rice(:ncol), errmsg, errflg)
 
 
    if (zmconv_org) then
@@ -636,7 +633,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call outfld('ZMDQ    ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   )
    call t_stopf ('zm_convr_run')
 
-   call outfld('DIFZM'   ,dif            ,pcols, lchnk)
    call outfld('DLFZM'   ,dlf            ,pcols, lchnk)
 
    pcont(:ncol) = state%ps(:ncol)
