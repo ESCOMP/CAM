@@ -3357,6 +3357,12 @@ if ($use_subcol_microp =~ /$TRUE/io) {
 }
 
 # CLUBB_SGS
+my $do_clubb_sgs = $nl->get_value('do_clubb_sgs');
+if (defined $do_clubb_sgs) {
+    die "CAM Namelist ERROR: User may not specify the value of do_clubb_sgs.\n".
+        "This variable is set by build-namelist based on information\n".
+        "from the configure cache file.\n";
+}
 add_default($nl, 'do_clubb_sgs');
 my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 if ($clubb_sgs  =~ /$TRUE/io) {
