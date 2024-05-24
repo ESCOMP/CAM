@@ -1485,7 +1485,7 @@
 <!--                    (unsupported)                         -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 
-  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_default">
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_default">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
     </machines>
@@ -1493,14 +1493,14 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>   
-  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>  
+  </test>
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
