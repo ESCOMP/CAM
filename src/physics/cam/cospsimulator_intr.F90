@@ -1730,7 +1730,7 @@ CONTAINS
 
     call t_startf("subsample_and_optics")
     ! The arrays passed here contain only active columns and the limited vertical
-    ! domain operated on by COSP.  Unsubscripted array arguments have alread been
+    ! domain operated on by COSP.  Unsubscripted array arguments have already been
     ! allocated to the correct size.  Arrays the size of a CAM chunk (pcol,pver)
     ! need to pass the correct section (:ncol,ktop:pver).
     call subsample_and_optics( &
