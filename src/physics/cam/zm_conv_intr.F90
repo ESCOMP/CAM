@@ -323,32 +323,10 @@ subroutine zm_conv_init(pref_edge)
        call add_default('ZMMTT    ', history_budget_histfile_num, ' ')
     end if
 
-!
-! Limit deep convection to regions below 40 mb
-! Note this calculation is repeated in the shallow convection interface
-!
-    limcnv = 0   ! null value to check against below
-    if (pref_edge(1) >= 4.e3_r8) then
-       limcnv = 1
-    else
-       do k=1,plev
-          if (pref_edge(k) < 4.e3_r8 .and. pref_edge(k+1) >= 4.e3_r8) then
-             limcnv = k
-             exit
-          end if
-       end do
-       if ( limcnv == 0 ) limcnv = plevp
-    end if
-
-    if (masterproc) then
-       write(iulog,*)'ZM_CONV_INIT: Deep convection will be capped at intfc ',limcnv, &
-            ' which is ',pref_edge(limcnv),' pascals'
-    end if
-
     no_deep_pbl = phys_deepconv_pbl()
 !CACNOTE - Need to check errflg and report errors
-    call zm_convr_init(cpair, epsilo, gravit, latvap, tmelt, rair, &
-                  limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
+    call zm_convr_init(plev, plevp, cpair, epsilo, gravit, latvap, tmelt, rair, &
+                  pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   no_deep_pbl, zmconv_tiedke_add, &
                   zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
