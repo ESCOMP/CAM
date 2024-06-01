@@ -185,8 +185,8 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 
 [submodule "clm"]
 path = components/clm
-url = https://github.com/jedwards4b/CTSM
-fxtag = ctsm5.2.007/candidate
+url = https://github.com/ESCOMP/CTSM
+fxtag = ctsm5.2.007
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
