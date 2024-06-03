@@ -12,6 +12,8 @@ The externals are stored in:
 
 .gitmodules can be modified.  Then run "bin/git-fleximod update" to get the updated externals
 
+Details about git-fleximod and the variables in the .gitmodules file can be found at:  .lib/git-fleximod/README.md
+
 ------------
 
 ### CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html

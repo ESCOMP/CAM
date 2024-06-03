@@ -1,0 +1,3 @@
+echo "Error:  manage_externals/checkout_externals is no longer supported"
+echo "        It has been replaced by bin/git-fleximod"
+echo "        Please refer to the README.md file in the home directory of a CAM checkout for more information"
