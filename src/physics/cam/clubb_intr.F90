@@ -2018,7 +2018,7 @@ end subroutine clubb_init_cnst
 
     use physics_types,  only: physics_state, physics_ptend, &
                               physics_state_copy, physics_ptend_init, &
-                              physics_ptend_sum, physics_update, set_wet_to_dry
+                              physics_ptend_sum, physics_update
 
     use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
     use physics_buffer, only: pbuf_set_field
@@ -2483,7 +2483,7 @@ end subroutine clubb_init_cnst
     real(r8) :: temp2d(pcols,pver), temp2dp(pcols,pverp)  ! temporary array for holding scaled outputs
 
     integer :: nlev
-
+    integer :: m
     intrinsic :: max
 
     character(len=*), parameter :: subr='clubb_tend_cam'
@@ -2549,16 +2549,20 @@ end subroutine clubb_init_cnst
     ! Copy the state to state1 array to use in this routine
     call physics_state_copy(state, state1)
 
+    !  Determine number of columns and which chunk computation is to be performed on
+    ncol = state%ncol
+    lchnk = state%lchnk
+
     ! constituents are all treated as dry mmr by clubb
-    call set_wet_to_dry(state1)
+    do m = 1,pcnst
+       if (cnst_type(m).eq.'wet') then
+          state1%q(:ncol,:,m) = state1%q(:ncol,:,m)*state1%pdel(:ncol,:)/state1%pdeldry(:ncol,:)
+       endif
+    end do
 
     if (clubb_do_liqsupersat) then
       call pbuf_get_field(pbuf, npccn_idx, npccn)
     endif
-
-    !  Determine number of columns and which chunk computation is to be performed on
-    ncol = state%ncol
-    lchnk = state%lchnk
 
     !  Determine time step of physics buffer
     itim_old = pbuf_old_tim_idx()
