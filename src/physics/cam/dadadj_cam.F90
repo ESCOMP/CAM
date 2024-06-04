@@ -132,11 +132,16 @@ subroutine dadadj_tend(dt, state, ptend)
         ncol, dt, state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), state%t(:ncol,:), state%q(:ncol,:,1), cappav(:ncol,:,lchnk), &
         ptend%s(:ncol,:), ptend%q(:ncol,:,1), dadpdf(:ncol,:), scheme_name, errmsg, errflg)
 
+   ! error exit
    if (errflg /= 0) then
-      ! error exit
-      write(errstring, *) errmsg,' at lat,lon:', &
-           state%lat(errflg)*180._r8/pi, state%lon(errflg)*180._r8/pi
-      call endrun('dadadj_tend: Error returned from dadadj_run: '//trim(errstring))
+      ! If this is a Convergence error then output lat lon of problem column using column index (errflg)
+      if(index('Convergence', errmsg) /= 0)then
+         write(errstring, *) trim(adjustl(errmsg)),' lat:',state%lat(errflg)*180._r8/pi,' lon:', &
+              state%lon(errflg)*180._r8/pi
+      else
+         errstring=trim(errmsg)
+      end if
+      call endrun('Error dadadj_tend:'//trim(errstring))
    end if
 
    call outfld('DADADJ_PD',  dadpdf(:ncol,:),  ncol, lchnk)
