@@ -877,7 +877,7 @@ subroutine radiation_tend( &
    ! Aerosol shortwave radiative properties
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
 
    ! Aerosol longwave absorption optical depth

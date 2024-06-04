@@ -5,7 +5,7 @@ module convect_deep
 !
 ! CAM interface to several deep convection interfaces. Currently includes:
 !    Zhang-McFarlane (default)
-!    Kerry Emanuel 
+!    Kerry Emanuel
 !
 !
 ! Author: D.B. Coleman, Sep 2004
@@ -28,34 +28,34 @@ module convect_deep
       convect_deep_tend,               &! return tendencies
       convect_deep_tend_2,             &! return tendencies
       deep_scheme_does_scav_trans             ! = .t. if scheme does scavenging and conv. transport
-   
+
 ! Private module data
    character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
-! Physics buffer indices 
-   integer     ::  icwmrdp_idx      = 0 
-   integer     ::  rprddp_idx       = 0 
-   integer     ::  nevapr_dpcu_idx  = 0 
-   integer     ::  cldtop_idx       = 0 
-   integer     ::  cldbot_idx       = 0 
-   integer     ::  cld_idx          = 0 
-   integer     ::  fracis_idx       = 0 
+! Physics buffer indices
+   integer     ::  icwmrdp_idx      = 0
+   integer     ::  rprddp_idx       = 0
+   integer     ::  nevapr_dpcu_idx  = 0
+   integer     ::  cldtop_idx       = 0
+   integer     ::  cldbot_idx       = 0
+   integer     ::  cld_idx          = 0
+   integer     ::  fracis_idx       = 0
 
-   integer     ::  pblh_idx        = 0 
-   integer     ::  tpert_idx       = 0 
+   integer     ::  pblh_idx        = 0
+   integer     ::  tpert_idx       = 0
    integer     ::  prec_dp_idx     = 0
    integer     ::  snow_dp_idx     = 0
 
    integer     ::  ttend_dp_idx        = 0
 
 !=========================================================================================
-  contains 
+  contains
 
 !=========================================================================================
 function deep_scheme_does_scav_trans()
 !
 ! Function called by tphysbc to determine if it needs to do scavenging and convective transport
 ! or if those have been done by the deep convection scheme. Each scheme could have its own
-! identical query function for a less-knowledgable interface but for now, we know that KE 
+! identical query function for a less-knowledgable interface but for now, we know that KE
 ! does scavenging & transport, and ZM doesn't
 !
 
@@ -76,7 +76,7 @@ subroutine convect_deep_register
 ! Purpose: register fields with the physics buffer
 !----------------------------------------
 
-  
+
   use physics_buffer, only : pbuf_add_field, dtype_r8
   use zm_conv_intr, only: zm_conv_register
   use phys_control, only: phys_getopts, use_gw_convect_dp
@@ -118,12 +118,12 @@ subroutine convect_deep_init(pref_edge)
 ! Purpose:  declare output fields, initialize variables needed by convection
 !----------------------------------------
 
-  use cam_history,    only: addfld                          
+  use cam_history,    only: addfld
   use pmgrid,         only: plevp
   use spmd_utils,     only: masterproc
   use zm_conv_intr,   only: zm_conv_init
   use cam_abortutils, only: endrun
-  
+
   use physics_buffer, only: physics_buffer_desc, pbuf_get_index
 
   implicit none
@@ -169,14 +169,14 @@ end subroutine convect_deep_init
 
 subroutine convect_deep_tend( &
      mcon    ,cme     ,          &
-     pflx    ,zdu      , &
+     zdu      , &
      rliq    ,rice     , &
      ztodt   , &
      state   ,ptend   ,landfrac ,pbuf)
 
 
    use physics_types, only: physics_state, physics_ptend, physics_tend, physics_ptend_init
-   
+
    use cam_history,    only: outfld
    use constituents,   only: pcnst
    use zm_conv_intr,   only: zm_conv_tend
@@ -187,15 +187,14 @@ subroutine convect_deep_tend( &
 ! Arguments
    type(physics_state), intent(in ) :: state   ! Physics state variables
    type(physics_ptend), intent(out) :: ptend   ! individual parameterization tendencies
-   
+
 
    type(physics_buffer_desc), pointer :: pbuf(:)
    real(r8), intent(in) :: ztodt               ! 2 delta t (model time increment)
    real(r8), intent(in) :: landfrac(pcols)     ! Land fraction
-      
+
 
    real(r8), intent(out) :: mcon(pcols,pverp)  ! Convective mass flux--m sub c
-   real(r8), intent(out) :: pflx(pcols,pverp)  ! scattered precip flux at each level
    real(r8), intent(out) :: cme(pcols,pver)    ! cmf condensation - evaporation
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
@@ -203,11 +202,11 @@ subroutine convect_deep_tend( &
    real(r8), intent(out) :: rice(pcols) ! reserved ice (not yet in cldice) for energy integrals
 
    real(r8), pointer :: prec(:)   ! total precipitation
-   real(r8), pointer :: snow(:)   ! snow from ZM convection 
+   real(r8), pointer :: snow(:)   ! snow from ZM convection
 
    real(r8), pointer, dimension(:) :: jctop
    real(r8), pointer, dimension(:) :: jcbot
-   real(r8), pointer, dimension(:,:,:) :: cld        
+   real(r8), pointer, dimension(:,:,:) :: cld
    real(r8), pointer, dimension(:,:) :: ql        ! wg grid slice of cloud liquid water.
    real(r8), pointer, dimension(:,:) :: rprd      ! rain production rate
    real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
@@ -230,9 +229,8 @@ subroutine convect_deep_tend( &
 
   select case ( deep_scheme )
   case('off', 'UNICON', 'CLUBB_SGS') ! in UNICON case the run method is called from convect_shallow_tend
-    zero = 0     
+    zero = 0
     mcon = 0
-    pflx = 0
     cme = 0
     zdu = 0
     rliq = 0
@@ -244,7 +242,7 @@ subroutine convect_deep_tend( &
 ! Associate pointers with physics buffer fields
 !
 
-    call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1/),   kount=(/pcols,pver/) ) 
+    call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1/),   kount=(/pcols,pver/) )
     call pbuf_get_field(pbuf, rprddp_idx,      rprd )
     call pbuf_get_field(pbuf, fracis_idx,      fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/) )
     call pbuf_get_field(pbuf, nevapr_dpcu_idx, evapcdp )
@@ -267,7 +265,7 @@ subroutine convect_deep_tend( &
      call pbuf_get_field(pbuf, tpert_idx, tpert)
 
      call zm_conv_tend( pblh    ,mcon    ,cme     , &
-          tpert   ,pflx    ,zdu      , &
+          tpert   ,zdu      , &
           rliq    ,rice    , &
           ztodt   , &
           jctop, jcbot , &
@@ -291,7 +289,7 @@ end subroutine convect_deep_tend
 subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
 
    use physics_types, only: physics_state, physics_ptend, physics_ptend_init
-   
+
    use physics_buffer,  only: physics_buffer_desc
    use constituents, only: pcnst
    use zm_conv_intr, only: zm_conv_tend_2
@@ -299,14 +297,14 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
 ! Arguments
    type(physics_state), intent(in ) :: state          ! Physics state variables
    type(physics_ptend), intent(out) :: ptend          ! indivdual parameterization tendencies
-   
+
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
 
 
    if ( deep_scheme .eq. 'ZM' ) then  ! Zhang-McFarlane
-      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
+      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf)
    else
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
    end if

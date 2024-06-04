@@ -177,12 +177,12 @@ subroutine dyn_grid_init()
    if (iam < par%nprocs) then
 
       call prim_init1(elem, fvm, par, TimeLevel)
-      if (fv_nphys > 0) then
+      if (use_cslam) then
          call dp_init(elem, fvm)
       end if
 
       if (fv_nphys > 0) then
-         qsize_local = thermodynamic_active_species_num + 3
+         qsize_local = 3
       else
          qsize_local = pcnst + 3
       end if

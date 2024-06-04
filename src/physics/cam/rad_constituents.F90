@@ -17,9 +17,9 @@ use physconst,      only: rga
 use physics_types,  only: physics_state
 use phys_control,   only: use_simple_phys
 use constituents,   only: cnst_get_ind
-use radconstants,   only: nradgas, rad_gas_index, ot_length
+use radconstants,   only: nradgas, rad_gas_index
 use phys_prop,      only: physprop_accum_unique_files, physprop_init, &
-                          physprop_get_id
+                          physprop_get_id, ot_length
 use cam_history,    only: addfld, fieldname_len, outfld, horiz_only
 use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
 

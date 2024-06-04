@@ -8,29 +8,43 @@ module mo_chem_utls
 
 contains
 
-  integer function get_spc_ndx( spc_name )
+  integer function get_spc_ndx( spc_name, ignore_case )
     !-----------------------------------------------------------------------
     !     ... return overall species index associated with spc_name
     !-----------------------------------------------------------------------
 
     use chem_mods,     only : gas_pcnst
     use mo_tracname,   only : tracnam => solsym
+    use string_utils,  only : to_upper
 
     implicit none
 
     !-----------------------------------------------------------------------
     !     ... dummy arguments
     !-----------------------------------------------------------------------
-    character(len=*), intent(in) :: spc_name
+    character(len=*), intent(in)           :: spc_name
+    logical,          intent(in), optional :: ignore_case
 
     !-----------------------------------------------------------------------
     !     ... local variables
     !-----------------------------------------------------------------------
     integer :: m
+    logical :: convert_to_upper
+    logical :: match
+
+    convert_to_upper = .false.
+    if ( present( ignore_case ) ) then
+       convert_to_upper = ignore_case
+    endif
 
     get_spc_ndx = -1
     do m = 1,gas_pcnst
-       if( trim( spc_name ) == trim( tracnam(m) ) ) then
+       if ( .not. convert_to_upper ) then
+          match = trim( spc_name ) == trim( tracnam(m) )
+       else
+          match = trim( to_upper( spc_name ) ) == trim( to_upper( tracnam(m) ) )
+       endif
+       if( match ) then
           get_spc_ndx = m
           exit
        end if

@@ -25,7 +25,7 @@ class TMC(SystemTestsCommon):
         self.run_indv()
         cpllog = ''.join(get_latest_cpl_logs(self._case))
         atmlog  = cpllog.replace("cpl.log","atm.log")
-        atmlog  = atmlog.replace("drv.log","atm.log")
+        atmlog  = atmlog.replace("med.log","atm.log")
         if '.gz' == atmlog[-3:]:
             fopen = gzip.open
         else:

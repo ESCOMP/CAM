@@ -459,7 +459,7 @@
        lptr2_soa_g_amode(:) = -1
        soa_ndx = 0
        do i = 1, pcnst
-          if (cnst_name(i)(:4) == 'SOAG') then
+          if (cnst_name(i)(:4) == 'SOAG' .and. cnst_name(i)(:5) /= 'SOAGX') then
              soa_ndx = soa_ndx+1
              lptr2_soa_g_amode(soa_ndx) = i
           endif

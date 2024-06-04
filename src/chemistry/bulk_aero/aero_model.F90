@@ -124,16 +124,16 @@ contains
   !=============================================================================
   subroutine aero_model_init( pbuf2d )
 
-    use mo_chem_utls,  only: get_inv_ndx, get_spc_ndx
-    use cam_history,   only: addfld, add_default, horiz_only
-    use phys_control,  only: phys_getopts
-    use mo_aerosols,   only: aerosols_inti
-    use mo_setsoa,     only: soa_inti
-    use dust_model,    only: dust_init
-    use seasalt_model, only: seasalt_init
-    use drydep_mod,    only: inidrydep
-    use wetdep,        only: wetdep_init
-    use mo_setsox,     only: has_sox
+    use mo_chem_utls,   only: get_inv_ndx, get_spc_ndx
+    use cam_history,    only: addfld, add_default, horiz_only
+    use phys_control,   only: phys_getopts
+    use mo_aerosols,    only: aerosols_inti
+    use mo_setsoa,      only: soa_inti
+    use dust_model,     only: dust_init
+    use seasalt_model,  only: seasalt_init
+    use aer_drydep_mod, only: inidrydep
+    use wetdep,         only: wetdep_init
+    use mo_setsox,      only: has_sox
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -384,7 +384,7 @@ contains
   subroutine aero_model_drydep  ( state, pbuf, obklen, ustar, cam_in, dt, cam_out, ptend )
 
     use dust_sediment_mod, only: dust_sediment_tend
-    use drydep_mod,        only: d3ddflux, calcram
+    use aer_drydep_mod,    only: d3ddflux, calcram
     use dust_model,        only: dust_depvel, dust_nbin, dust_names
     use seasalt_model,     only: sslt_depvel=>seasalt_depvel, sslt_nbin=>seasalt_nbin, sslt_names=>seasalt_names
 

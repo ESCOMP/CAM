@@ -19,7 +19,6 @@ module prim_driver_mod
   private
   public :: prim_init2, prim_run_subcycle, prim_finalize
   public :: prim_set_dry_mass
-
 contains
 
 !=============================================================================!
@@ -61,9 +60,10 @@ contains
 
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
-    real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
-    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
+    real (kind=r8) :: dt_dyn_del2_sponge
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
+    real (kind=r8) :: dt_dyn_vis      ! viscosity timestep
+    real (kind=r8) :: dt_remap        ! remapping timestep
 
     real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
     real (kind=r8) :: ps_ref(np,np,nets:nete)
@@ -219,7 +219,7 @@ contains
 !
     use hybvcoord_mod, only : hvcoord_t
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-    use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit
+    use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit, dribble_in_rsplit_loop
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
@@ -227,8 +227,8 @@ contains
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc_h
-    use dimensions_mod,         only: use_cslam,fv_nphys, ksponge_end
-
+    use dimensions_mod,         only: use_cslam,fv_nphys
+    use fvm_mapping,            only: cslam2gll
     type (element_t) , intent(inout) :: elem(:)
     type(fvm_struct), intent(inout)  :: fvm(:)
     type (hybrid_t), intent(in)      :: hybrid  ! distributed parallel structure (shared)
@@ -245,7 +245,6 @@ contains
     real (kind=r8)  :: dp_np1(np,np)
     real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
     logical         :: compute_diagnostics
-
     ! ===================================
     ! Main timestepping loop
     ! ===================================
@@ -282,12 +281,33 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
-    call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
+    if (dribble_in_rsplit_loop==0) then
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+      call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
+    end if
     do r=1,rsplit
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
-      call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+      !
+      ! if nsplit==1 and physics time-step is long then there will be noise in the
+      ! pressure field; hence "dripple" in tendencies
+      !
+      if (dribble_in_rsplit_loop==1) then
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+         call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt,dt_phys,nets,nete,MAX(nsubstep,r))
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
+      end if
+      !
+      ! right after physics overwrite Qdp with CSLAM values
+      !
+      if (use_cslam.and.nsubstep==1.and.r==1) then
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+         call cslam2gll(elem, fvm, hybrid,nets,nete, tl%n0, n0_qdp)
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
+      end if
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBL')
+      call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r,nsubstep==nsplit,dt_remap)
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,n0_qdp,'dAL')
     enddo
 
     
@@ -363,7 +383,6 @@ contains
           end do
         end do
       end do
-
       if (nsubstep==nsplit.and.variable_nsplit) then
          call t_startf('adjust_nsplit')
          call adjust_nsplit(elem, tl, hybrid,nets,nete, fvm, omega_cn)
@@ -389,7 +408,7 @@ contains
   end subroutine prim_run_subcycle
 
 
-  subroutine prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord, rstep)
+  subroutine prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord, rstep, last_step,dt_remap)
     !
     !   Take qsplit dynamics steps and one tracer step
     !   for vertically lagrangian option, this subroutine does only the horizontal step
@@ -418,7 +437,8 @@ contains
     use dimensions_mod,         only: kmin_jet, kmax_jet
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
     use fvm_mod,                only: ghostBufQ1_h,ghostBufQnhcJet_h, ghostBufFluxJet_h
-
+    use se_dyn_time_mod,        only: timelevel_qdp
+    use fvm_mapping,            only: cslam2gll
 #ifdef waccm_debug
   use cam_history, only: outfld
 #endif  
@@ -433,6 +453,8 @@ contains
     real(kind=r8),      intent(in)    :: dt  ! "timestep dependent" timestep
     type (TimeLevel_t), intent(inout) :: tl
     integer, intent(in)               :: rstep ! vertical remap subcycling step
+    logical, intent(in)               :: last_step! last step before d_p_coupling
+    real(kind=r8), intent(in)         :: dt_remap
 
     type (hybrid_t):: hybridnew,hybridnew2
     real(kind=r8)  :: st, st1, dp, dt_q
@@ -440,6 +462,7 @@ contains
     integer        :: ithr
     integer        :: region_num_threads
     integer        :: kbeg,kend
+    integer        :: n0_qdp, np1_qdp
 
     real (kind=r8) :: tempdp3d(np,np), x
     real (kind=r8) :: tempmass(nc,nc)
@@ -517,7 +540,6 @@ contains
       end do
     end if
 #endif
-
     ! current dynamics state variables:
     !    derived%dp              =  dp at start of timestep
     !    derived%vn0             =  mean horiz. flux:   U*dp
@@ -537,32 +559,19 @@ contains
     ! special case in CAM: if CSLAM tracers are turned on , qsize=1 but this tracer should
     ! not be advected.  This will be cleaned up when the physgrid is merged into CAM trunk
     ! Currently advecting all species
-    if (qsize > 0) then
-
+    if (.not.use_cslam) then
       call t_startf('prim_advec_tracers_remap')
-      if(use_cslam) then 
-        ! Deactivate threading in the tracer dimension if this is a CSLAM run
-        region_num_threads = 1
-      else
-        region_num_threads=tracer_num_threads
-      endif  
+      region_num_threads=tracer_num_threads
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-      if(use_cslam) then 
-        ! Deactivate threading in the tracer dimension if this is a CSLAM run
-        hybridnew = config_thread_region(hybrid,'serial')
-      else
-        hybridnew = config_thread_region(hybrid,'tracer')
-      endif  
+      hybridnew = config_thread_region(hybrid,'tracer')
       call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
       call t_stopf('prim_advec_tracers_remap')
-    end if
-    !
-    ! only run fvm transport every fvm_supercycling rstep
-    !
-    if (use_cslam) then
+   else
+      !
+      ! only run fvm transport every fvm_supercycling rstep
       !
       ! FVM transport
       !
@@ -594,7 +603,9 @@ contains
               fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  hvcoord%hyai(1)*hvcoord%ps0
             end do
           end do
-        end do
+       end do
+       call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
+       if (.not.last_step) call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
       else if ((mod(rstep,fvm_supercycling_jet) == 0)) then
         !
         ! shorter fvm time-step in jet region
@@ -609,7 +620,7 @@ contains
              (/nc*nc,nlev/)), nc*nc, ie)
       end do
 #endif
-    endif
+   endif
 
    end subroutine prim_step
 

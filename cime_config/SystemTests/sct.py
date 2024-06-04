@@ -79,3 +79,13 @@ class SCT(SystemTestsCompareTwo):
                 self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_FAIL_STATUS)
                 comments="QDIFF,TDIFF: Difference greater than round off."
             append_testlog(comments, self._orig_caseroot)
+
+    def _case_two_custom_prerun_action(self):
+        """ On NCAR derecho system the mpibind script causes ESMF in the second job to think it is using 128 tasks when it should only use 1
+        changing the env variable PBS_SELECT solves this issue
+        """
+        machine = self._case2.get_value("MACH")
+        if "derecho" in machine:
+            os.environ["PBS_SELECT"] = "1:ncpus=1:mpiprocs=1:ompthreads=1:mem=230gb:Qlist=cpu:ngpus=0"
+            
+                      

@@ -532,7 +532,7 @@ subroutine ma_convproc_dp_intr(                &
 
    integer :: i
    integer :: itmpveca(pcols)
-   integer :: l, lchnk, lun
+   integer :: l, lchnk, lun, ncol
    integer :: nstep
 
    real(r8) :: dpdry(pcols,pver)     ! layer delta-p-dry (mb)
@@ -565,6 +565,7 @@ subroutine ma_convproc_dp_intr(                &
    ! Initialize
 
    lchnk = state%lchnk
+   ncol = state%ncol
    nstep = get_nstep()
    lun   = iulog
 
@@ -587,6 +588,7 @@ subroutine ma_convproc_dp_intr(                &
    call pbuf_get_field(pbuf, zm_ideep_idx,    ideep)
 
    lengath = count(ideep > 0)
+   if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
 
    fracice(:,:) = 0.0_r8
 
