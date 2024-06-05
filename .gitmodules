@@ -2,7 +2,7 @@
 	path = chem_proc
 	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
         fxrequired = AlwaysRequired
-        fxtag = chem_proc5_0_05
+        fxtag = chem_proc5_0_06
 	fxDONOTUSEurl = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
 
 [submodule "carma"]
@@ -46,7 +46,7 @@
         fxrequired = AlwaysRequired
         fxtag = fv3int_053124
 	fxDONOTUSEurl = https://github.com/ESCOMP/CAM_FV3_interface.git
-        
+
 [submodule "geoschem"]
 	path = src/chemistry/geoschem/geoschem_src
 	url = https://github.com/geoschem/geos-chem.git
@@ -95,7 +95,7 @@
 	path = src/physics/clubb
 	url = https://github.com/larson-group/clubb_release
         fxrequired = AlwaysRequired
-        fxsparse = ../.clubb_sparse_checkout 
+        fxsparse = ../.clubb_sparse_checkout
         fxtag = clubb_4ncar_20231115_5406350
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
@@ -126,7 +126,7 @@ url = https://github.com/ESCOMP/mizuRoute
 fxtag = cesm-coupling.n02_v2.1.2
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
-        
+
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
