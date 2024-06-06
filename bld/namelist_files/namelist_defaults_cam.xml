@@ -2179,8 +2179,9 @@
 <clubb_l_damp_wp3_Skw_squared                     > .false. </clubb_l_damp_wp3_Skw_squared>
 <clubb_l_diagnose_correlations                    > .false. </clubb_l_diagnose_correlations>
 <clubb_l_diffuse_rtm_and_thlm                     > .false. </clubb_l_diffuse_rtm_and_thlm>
-<clubb_l_do_expldiff_rtm_thlm                     > .false. </clubb_l_do_expldiff_rtm_thlm>
-<clubb_l_do_expldiff_rtm_thlm phys="cam_dev"      > .true.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm                        > .false. </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1"          > .true.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" silhs="1"> .false.  </clubb_l_do_expldiff_rtm_thlm>
 <clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
 <clubb_l_enable_relaxed_clipping                  > .false. </clubb_l_enable_relaxed_clipping>
 <clubb_l_fix_w_chi_eta_correlations               > .true.  </clubb_l_fix_w_chi_eta_correlations>
