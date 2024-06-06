@@ -1401,10 +1401,15 @@ subroutine gw_init_movmtn(file_name, band, desc)
   call handle_pio_error(stat, &
        'Error finding mfcc in: '//trim(file_path))
 
+  !++jtb ( 06/04/24 )
+  !stat = pio_get_var(gw_file_desc, mfccid, &
+  !     start=[1,1,ngwv_file-band%ngwv+1], count=shape(desc%mfcc), &
+  !     ival=desc%mfcc)
   stat = pio_get_var(gw_file_desc, mfccid, &
-       start=[1,1,ngwv_file-band%ngwv+1], count=shape(desc%mfcc), &
+       start=[1,1], count=shape(desc%mfcc), &
        ival=desc%mfcc)
-
+  !--jtb
+  
   call handle_pio_error(stat, &
        'Error reading mfcc from: '//trim(file_path))
 
