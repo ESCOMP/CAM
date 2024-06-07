@@ -159,7 +159,7 @@ end subroutine Thatcher_Jablonowski_register
     call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
     call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
-    call tj2016_precip_run(ncol, pver, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, rhoh2o, &
+    call tj2016_precip_run(ncol, pver, gravit, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, rhoh2o, &
          ps0, etamid, &
          ztodt, state%pmid(:ncol,:), state%pdel(:ncol,:), T, qv, relhum(:ncol,:), prec_pcw(:ncol), ptend%s(:ncol,:), &
          scheme_name, errmsg, errflg)
@@ -183,11 +183,11 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use physconst,          only: gravit, cappa, latvap, rh2o, epsilo, rhoh2o
+    use physconst,          only: gravit, latvap, rh2o, epsilo, rhoh2o, pi
     use hycoef,             only: ps0, etamid
     use phys_grid,          only: get_rlat_all_p
     use TJ2016_sfc_pbl_hs,  only: tj2016_sfc_pbl_hs_run
-    use air_composition,    only: cpairv, rairv
+    use air_composition,    only: cpairv, rairv, cappav
 
     ! Arguments
     type(physics_state), intent(in)    :: state
@@ -275,7 +275,7 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, pver, pverp, gravit, cappa, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, pver, pverp, gravit, pi, cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
          rhoh2o, zvirv(:ncol,:),           &
          ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
          state%rpdel(:ncol,:), T, U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
