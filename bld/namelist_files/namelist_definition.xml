@@ -2520,6 +2520,15 @@ will be saved.
 Default: FALSE
 </entry>
 
+<entry id="cosp_lrttov_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, RTTOV simulator will be run and output
+will be saved according to the appropriate RTTOV
+instrument namelist files in "rttov_instrument_namelists".
+
+Default: FALSE
+</entry>
+
 <!-- COSP input control parameters -->
 
 <entry id="cosp_ncolumns" type="integer"  category="cosp"
@@ -2527,6 +2536,128 @@ Default: FALSE
 Number of subcolumns in SCOPS
 This default logical is set in cospsimulator_intr.F90
 Default: 50
+</entry>
+
+<entry id="rttov_Ninstruments" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Number of RTTOV instruments to simulate.
+This default logical is set in cospsimulator_intr.F90
+Default: 0
+</entry>
+    
+<entry id="rttov_instrument_namelists" type="char*256(50)"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+List of RTTOV instrument namelist files read when running RTTOV in COSP.
+Default: none
+</entry>
+
+<!-- Swathing input control parameters. -->
+<entry id="N_SWATHS_ISCCP" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP ISCCP data.
+Default: none
+</entry>
+
+<entry id="N_SWATHS_MISR" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP MISR data.
+Default: none
+</entry>
+
+<entry id="N_SWATHS_MODIS" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP MODIS data.
+Default: none
+</entry>
+
+<entry id="N_SWATHS_CSCAL" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP CloudSat-CALIPSO data.
+Default: none
+</entry>
+
+<entry id="N_SWATHS_PARASOL" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP PARASOL data.
+Default: none
+</entry>
+
+<entry id="N_SWATHS_ATLID" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths to mask COSP ATLID data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_ISCCP" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP ISCCP data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_MISR" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP MISR data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_MODIS" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP MODIS data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_CSCAL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_PARASOL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP PARASOL data.
+Default: none
+</entry>
+
+<entry id="SWATH_LOCALTIMES_ATLID" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP ATLID data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_ISCCP" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP ISCCP data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_MISR" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP MISR data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_MODIS" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP MODIS data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_CSCAL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP CSCAL data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_PARASOL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP PARASOL data.
+Default: none
+</entry>
+
+<entry id="SWATH_WIDTHS_ATLID" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP ATLID data.
+Default: none
 </entry>
 
 <!-- COSP output parameters -->

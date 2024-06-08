@@ -297,6 +297,14 @@ Switch to enable building COSP simulator package.  1 => build COSP.
 <entry id="cosp_libdir" value="">
 Directory containing COSP library.
 </entry>
+<entry id="rttov" valid_values="0,1" value="0">
+Switch to enable building the RTTOV radiative transfer model. With COSP.
+1 => link COSP with RTTOV with building.
+</entry>
+<entry id="rttov_libdir" value="">
+Directory containing RTTOV libraries. For example:
+/glade/u/home/jonahshaw/w/RTTOV2/hdfseries_build/lib/
+</entry>
 <entry id="fv3core_libdir" value="">
 Directory containing FV3CORE library.
 </entry>
