@@ -35,8 +35,8 @@ git checkout cam_cesm2_1_rel_41
 
 ## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](https://www.cgd.ucar.edu/sections/cseg/policies).
 ```
-git checkout cam6_3_002
-./manage_externals/checkout_externals
+git checkout cam6_3_162
+./bin/git-fleximod update
 ```
 ### CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
 
