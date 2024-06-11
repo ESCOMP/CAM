@@ -143,8 +143,8 @@ fxDONOTUSEurl = https://github.com/ESMCI/cime
 
 [submodule "cmeps"]
 path = components/cmeps
-url = https://github.com/ESCOMP/CMEPS.git
-fxtag = cmeps0.14.63
+url = https://github.com/brian-eaton/CMEPS.git
+fxtag = cam7b
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
