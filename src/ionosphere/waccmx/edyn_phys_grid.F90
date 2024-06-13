@@ -1,3 +1,6 @@
+!-------------------------------------------------------------------------------
+! Initializes the CAM physics grid mesh
+!-------------------------------------------------------------------------------
 module edyn_phys_grid
   use shr_kind_mod,   only: r8 => shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
   use cam_logfile,    only: iulog
