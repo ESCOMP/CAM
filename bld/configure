@@ -209,6 +209,7 @@ EOF
 # command was issued from the current working directory.
 
 (my $ProgName = $0) =~ s!(.*)/!!;      # name of this script
+$ProgName = "CAM $ProgName";           # distinquish from other components configure
 my $ProgDir = $1;                      # name of directory containing this script -- may be a
                                        # relative or absolute path, or null if the script is in
                                        # the user's PATH
@@ -534,21 +535,16 @@ if ($print>=2) { print "Coupling framework: $cpl$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Physics package
-#
-# The default physics package is cam6.  Physics packages >=cam5 use chemistry packages
-# that include modal aerosols, i.e., the -chem value matches /_mam/.  If the chem_pkg
-# name doesn't match /_mam/ then set the default physics package to cam4.
-my $phys_pkg = 'cam6';
-if (defined $opts{'chem'} and $opts{'chem'} !~ /_mam/) {
-    $phys_pkg = 'cam4';
-}
-elsif (defined $opts{'waccmx'}) {
-    $phys_pkg = 'cam4';
-}
 
-# user override
+my $phys_pkg = 'not_set';
+
+# There is no default physics package.  It is always specified by the CAM component part
+# of a compset longname.  Add check that -phys has been set.
+
 if (defined $opts{'phys'}) {
     $phys_pkg = lc($opts{'phys'});
+} else {
+    die "$ProgName ERROR: the -phys option must be set";
 }
 
 # Add to the config object.
@@ -566,7 +562,7 @@ if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$|^grayrad$/) {
 #-----------------------------------------------------------------------------------------------
 # Chemistry package
 
-my $chem_pkg = 'trop_mam4';
+my $chem_pkg = 'not_set';
 
 # defaults based on physics package
 if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
@@ -574,6 +570,12 @@ if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
 }
 elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
     $chem_pkg = 'trop_mam3';
+}
+elsif ($phys_pkg eq 'cam6') {
+    $chem_pkg = 'trop_mam4';
+}
+elsif ($phys_pkg eq 'cam7') {
+    $chem_pkg = 'ghg_mam4';
 }
 
 # some overrides for special configurations

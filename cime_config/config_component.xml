@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM70[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                                 >CAM cam7 physics:</desc>
+    <desc atm="CAM70[%LT][%MT][%CCTS1]"                                                                                                 >CAM cam7 physics:</desc>
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%GEOSCHEM]"                                                               >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%GEOSCHEM]"                                                         >CAM cam4 physics:</desc>
@@ -43,7 +43,6 @@
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
     <desc option="LT"           >CAM low top model </desc>
-    <desc option="GHGMAM4"      >Prognostic GHG chemistry mechanism for CAM7:</desc>
     <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
     <desc option="MT"           >CAM mid top model </desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
@@ -137,7 +136,6 @@
       <value compset="_CAM70">-phys cam7</value>
 
       <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
-      <value compset="_CAM.*(%GHGMAM4)">-chem ghg_mam4</value>
       <value compset="_CAM.*(%CCTS1|%CFIRE)">-chem trop_strat_mam5_vbs</value>
       <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
