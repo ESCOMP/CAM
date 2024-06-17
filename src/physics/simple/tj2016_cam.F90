@@ -275,7 +275,7 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, pver, pverp, gravit, pi, cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, 1, pver, pverp, gravit, pi, cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
          rhoh2o, zvirv(:ncol,:),           &
          ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
          state%rpdel(:ncol,:), T, U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
