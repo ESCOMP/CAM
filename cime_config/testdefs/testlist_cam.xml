@@ -2428,7 +2428,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:40:00</option>
     </options>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_amie">
