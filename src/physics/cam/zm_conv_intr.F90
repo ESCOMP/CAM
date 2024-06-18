@@ -452,7 +452,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: icwdu(pcols,pver)
    real(r8) :: icwdv(pcols,pver)
    real(r8) :: seten(pcols, pver)
-   logical  :: l_windt(2)
+   logical  :: l_windt
    real(r8) :: tfinal1, tfinal2
    integer  :: ii
 
@@ -714,8 +714,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
      call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_momtran_run', ls=.true., lu=.true., lv=.true.)
 
-     l_windt(1) = .true.
-     l_windt(2) = .true.
+     l_windt = .true.
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
      ptend_loc%s(:,:) = 0._r8
      ptend_loc%u(:,:) = 0._r8
@@ -816,6 +815,8 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    use time_manager,  only: get_nstep
    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
    use constituents,   only: pcnst, cnst_is_convtran2
+   use ccpp_constituent_prop_mod, only: ccpp_const_props
+
 
 ! Arguments
    type(physics_state), intent(in )   :: state          ! Physics state variables
@@ -845,6 +846,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    integer,  pointer :: jt(:)      ! (pcols)
    integer,  pointer :: maxg(:)    ! (pcols)
    integer,  pointer :: ideep(:)   ! (pcols)
+
    !-----------------------------------------------------------------------------------
 
 
