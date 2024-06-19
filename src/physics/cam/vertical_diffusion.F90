@@ -911,7 +911,7 @@ subroutine vertical_diffusion_tend( &
   ! ----------------------- !
 
   ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state)
+  call set_dry_to_wet(state, convert_cnst_type='dry')
 
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
@@ -1384,7 +1384,7 @@ subroutine vertical_diffusion_tend( &
      endif
   end do
   ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state)
+  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt
