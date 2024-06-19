@@ -135,7 +135,7 @@ module gw_drag
   character(len=256) :: gw_drag_file = ""
   character(len=256) :: gw_drag_file_sh = ""
   character(len=256) :: gw_drag_file_mm = ""
- 
+
   ! Beres settings and table.
   type(BeresSourceDesc) :: beres_dp_desc
   type(BeresSourceDesc) :: beres_sh_desc
@@ -166,7 +166,7 @@ module gw_drag
 
   !+++ temp
   logical :: use_gw_movmtn = .true.
- 
+
   ! anisotropic ridge fields
   integer, parameter :: prdg = 16
 
@@ -1409,7 +1409,7 @@ subroutine gw_init_movmtn(file_name, band, desc)
        start=[1,1], count=shape(desc%mfcc), &
        ival=desc%mfcc)
   !--jtb
-  
+
   call handle_pio_error(stat, &
        'Error reading mfcc from: '//trim(file_path))
 
@@ -1491,7 +1491,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_front,        only: gw_cm_src
   use gw_convect,      only: gw_beres_src
   use gw_movmtn,       only: gw_movmtn_src
-  
+
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
@@ -1574,7 +1574,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), pointer :: upwp_clubb_gw(:,:)
   real(r8), pointer :: vpwp_clubb_gw(:,:)
   real(r8) :: xpwp_clubb(state%ncol,pver+1)
-  
+
 
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
@@ -1716,10 +1716,10 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !------------------------------------------------------------------
      !Convective moving mountain gravity waves (Beres scheme).
      !------------------------------------------------------------------
-     
+
      call outfld('U_MOVMTN_IN', u, ncol, lchnk)
      call outfld('V_MOVMTN_IN', v, ncol, lchnk)
-     
+
      ! Allocate wavenumber fields.
      allocate(tau(ncol,-band_movmtn%ngwv:band_movmtn%ngwv,pver+1))
      allocate(gwut(ncol,pver,-band_movmtn%ngwv:band_movmtn%ngwv))
@@ -1736,7 +1736,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
 
-     xpwp_clubb = sqrt( upwp_clubb_gw**2 + vpwp_clubb_gw**2 )
+     xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
      if(masterproc) then
        write(iulog,*) " Moving mountain development code"
@@ -1759,7 +1759,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! and application of wave-drag force. I believe correct setting
      ! for c is c=0, since it is incorporated in ubm and (xv,yv)
      !--------------------------------------------------------------
-     
+
      call outfld('SRC_LEVEL_MOVMTN', 1._r8*src_level, ncol, lchnk)
      call outfld('TND_LEVEL_MOVMTN', 1._r8*tend_level, ncol, lchnk)
      call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
@@ -1796,7 +1796,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      do k = 1, pver
         ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
      end do
-     
+
      call outfld('TAU_MOVMTN', tau(:,0,:), ncol, lchnk)
      call outfld('GWUT_MOVMTN', gwut(:,:,0), ncol, lchnk)
      call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
@@ -1804,13 +1804,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
      call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
      !+++jtb new from CLUBB
-     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk) 
-     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk) 
-     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk) 
-     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk) 
-     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk) 
+     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
+     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
+     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
+     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
+     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
 #endif
-     
+
      deallocate(tau, gwut, c)
   end if
 
