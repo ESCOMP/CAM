@@ -164,11 +164,9 @@ end subroutine Thatcher_Jablonowski_register
          ztodt, state%pmid(:ncol,:), state%pdel(:ncol,:), T, qv, relhum(:ncol,:), prec_pcw(:ncol), ptend%s(:ncol,:), &
          scheme_name, errmsg, errflg)
 
-    ! Back out temperature and specific humidity tendencies from updated fields
+    ! Back out specific humidity tendencies from updated fields
     do k = 1, pver
-      !ptend%s(:ncol,k)   = (T(:, k) - state%T(:ncol, k)) / ztodt * cpair
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
-      ! state%q(:ncol,k,1) = qv(:, k)
     end do
 
  end subroutine Thatcher_Jablonowski_precip_tend
@@ -284,9 +282,6 @@ end subroutine Thatcher_Jablonowski_register
 
     ! Back out tendencies from updated fields
     do k = 1, pver
-    !  ptend%s(:ncol,k) = (T(:, k) - state%T(:ncol, k)) / ztodt * cpair
-     ! ptend%u(:ncol,k) = (U(:, k) - state%U(:ncol, k)) / ztodt
-     ! ptend%v(:ncol,k) = (V(:, k) - state%V(:ncol, k)) / ztodt
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
     end do
 
