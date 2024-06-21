@@ -2118,25 +2118,21 @@ contains
     integer :: nstep                          ! current timestep number
 
     real(r8) :: net_flx(pcols) = 0._r8
-
     real(r8) :: zdu(pcols,pver) = 0._r8       ! detraining mass flux from deep convection
     real(r8) :: cmfmc(pcols,pverp) = 0._r8    ! Convective mass flux--m sub c
+    real(r8) :: cmfcme(pcols,pver) = 0._r8    ! cmf condensation - evaporation
+    real(r8) :: dlf(pcols,pver) = 0._r8       ! Detraining cld H20 from shallow + deep convections
+    real(r8) :: dlf2(pcols,pver) = 0._r8      ! Detraining cld H20 from shallow convections
+    real(r8) :: rtdt                          ! 1./ztodt
 
-    real(r8) cmfcme(pcols,pver) = 0._r8        ! cmf condensation - evaporation
-
-    real(r8) dlf(pcols,pver) = 0._r8           ! Detraining cld H20 from shallow + deep convections
-    real(r8) dlf2(pcols,pver) = 0._r8          ! Detraining cld H20 from shallow convections
-    real(r8) rtdt                              ! 1./ztodt
-
-    integer lchnk                              ! chunk identifier
-    integer ncol                               ! number of atmospheric columns
-
-    integer :: i                               ! column indicex
-    integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
+    integer :: lchnk                          ! chunk identifier
+    integer :: ncol                           ! number of atmospheric columns
+    integer :: i                              ! column indicex
+    integer :: ixcldice, ixcldliq, ixq        ! constituent indices for cloud liquid and ice water.
     integer :: m, m_cnst
     ! for macro/micro co-substepping
-    integer :: macmic_it                       ! iteration variables
-    real(r8) :: cld_macmic_ztodt               ! modified timestep
+    integer :: macmic_it                      ! iteration variables
+    real(r8) :: cld_macmic_ztodt              ! modified timestep
     ! physics buffer fields to compute tendencies for stratiform package
     integer itim_old, ifld
     real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
