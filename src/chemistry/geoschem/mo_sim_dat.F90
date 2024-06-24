@@ -138,7 +138,7 @@
       'TOLU           ', 'TSOA0          ', 'TSOA1          ', &
       'TSOA2          ', 'TSOA3          ', 'TSOG0          ', &
       'TSOG1          ', 'TSOG2          ', 'TSOG3          ', &
-      'XYLE           ', 'bc_a1          ', 'bc_a4          ', & ! Species after MAM aerosols are non-advected and will not be constituents
+      'XYLE           ', 'bc_a1          ', 'bc_a4          ', &
       'dst_a1         ', 'dst_a2         ', 'dst_a3         ', &
       'ncl_a1         ', 'ncl_a2         ', 'ncl_a3         ', &
       'num_a1         ', 'num_a2         ', 'num_a3         ', &
