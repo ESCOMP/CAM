@@ -220,7 +220,7 @@
 
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="93"             ic_ymd="101" >/glade/derecho/scratch/aherring/restart/L93v2/cam6_3_153_FMTHIST_ne3pg3_ne3pg3_mg37_36pes_240517_L93v2.001.cam.i.1979-02-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="93"             ic_ymd="101" >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L32_01-01-31_c230520.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L58_01-01-31_c230520.nc</ncdata>
