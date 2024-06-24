@@ -255,7 +255,7 @@
 
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="58"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="93"  aquaplanet="1" ic_ymd="101" >/glade/derecho/scratch/aherring/restart/L93v2/cam6_3_153_QPC6_ne3pg3_ne3pg3_mg37_36pes_240518_L93v2.001.cam.i.0001-02-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="93"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L93_01_02_01_c240518.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne5np4_L32_c170517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne16np4_L32_c170509.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne30np4_L32_c170509.nc</ncdata>
