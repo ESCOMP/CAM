@@ -1907,7 +1907,7 @@ contains
     use Toms_Mod,            only : Compute_Overhead_O3
     use UCX_Mod,             only : Set_H2O_Trac
     use Unitconv_Mod,        only : Convert_Spc_Units, UNIT_STR
-    use Unitconv_Mod,        only : KG_SPECIES_PER_KG_DRY_AIR
+    use Unitconv_Mod,        only : KG_SPECIES_PER_KG_DRY_AIR, KG_SPECIES_PER_M2
     use Wetscav_Mod,         only : Setup_Wetscav
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
@@ -3718,7 +3718,7 @@ contains
                             State_Chm  = State_Chm(LCHNK),            &
                             State_Grid = State_Grid(LCHNK),           &
                             State_Met  = State_Met(LCHNK),            &
-                            OutUnit    = KG_SPECIES_PER_KG_DRY_AIR,   &
+                            OutUnit    = KG_SPECIES_PER_M2,           &
                             OrigUnit   = OrigUnit,                    &
                             RC         = RC                          )
  
