@@ -2066,6 +2066,7 @@ contains
     LOGICAL                :: lastChunk
     INTEGER                :: RC
 
+    call t_startf('GEOSChem_All_Tend')
 
     ! Initialize pointers
     SpcInfo  => NULL()
@@ -2082,6 +2083,7 @@ contains
     pbuf_ik  => NULL()
     pbuf_i   => NULL()
 
+    call t_startf('GEOSChem_CAM_Interfacing')
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
@@ -2250,6 +2252,11 @@ contains
        State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
     ENDDO
 
+    call t_stopf('GEOSChem_CAM_Interfacing')
+
+    ! We want to put t_startf timers outside of C-preprocessor flags
+    ! in order to always have these timers present even if zero. (hplin, 4/30/24)
+    call t_startf('GEOSChem_MAM_Interfacing')
 #if defined( MODAL_AERO )
     ! NOTE: GEOS-Chem bulk aerosol concentrations (BCPI, BCPO, SO4, ...) are ZEROED OUT
     ! here in order to be reconstructed from the modal concentrations.
@@ -2519,7 +2526,9 @@ contains
           mmr_tend(:nY,:nZ,N) = state%q(:nY,:nZ,-M)
        ENDIF
     ENDDO
+    call t_stopf('GEOSChem_MAM_Interfacing')
 
+    call t_startf('GEOSChem_CAM_Interfacing')
     ! If H2O tendencies are propagated to specific humidity, then make sure
     ! that Q actually applies tendencies
     IF ( Input_Opt%applyQtend ) lq(cQ) = .True.
@@ -3461,6 +3470,7 @@ contains
        ENDIF
 
     ENDIF
+    call t_stopf('GEOSChem_CAM_Interfacing')
 
     ! This is not necessary as we prescribe CH4 surface mixing ratios
     ! through CAM.
@@ -3555,6 +3565,8 @@ contains
     !
     ! Thibaud M. Fritz - 27 Feb 2020
     !==================================================================
+
+    call t_startf('GEOSChem_DryDep')
 
     IF ( Input_Opt%LDryD ) THEN
        ! Compute the Olson landmap fields of State_Met
@@ -3653,7 +3665,11 @@ contains
     ENDIF
 
     !===========================================================
-    !      ***** M I X E D   L A Y E R   M I X I N G *****
+    !          ***** S U R F A C E  F L U X E S *****
+    ! Note: Turbulence (PBL mixing) is NOT done by GEOS-Chem routines
+    ! and is handled by CAM. But we reuse GEOS-Chem code here to compute
+    ! the surface *deposition-only* fluxes (-dflx) to merge with the CAM
+    ! fluxes passed to turbulence. (hplin, 4/30/24)
     !===========================================================
 
     ! Updates from Bob Yantosca, 06/2020
@@ -3678,23 +3694,30 @@ contains
        ENDIF
     ENDIF
 
+    ! This dry deposition timer intentionally ends after Compute_Sflx_For_Vdiff
+    ! because the SurfaceFlux is only the GEOS-Chem deposition flux. (hplin, 4/30/24)
+    call t_stopf('GEOSChem_DryDep')
+
     !-----------------------------------------------------------------------
     ! Get emissions from HEMCO + Lightning + Fire
     ! Add surface emissions to cam_in
     !-----------------------------------------------------------------------
 
+    call t_startf('GEOSChem_Emissions')
     CALL GC_Emissions_Calc( state      = state,            &
                             hco_pbuf2d = hco_pbuf2d,       &
                             State_Met  = State_Met(LCHNK), &
                             cam_in     = cam_in,           &
                             eflx       = eflx,             &
                             iStep      = iStep            )
+    call t_stopf('GEOSChem_Emissions')
 
     !-----------------------------------------------------------------------
-    ! Add dry deposition flux 
+    ! Add dry deposition flux from GEOS-Chem State_Chm%SurfaceFlux
     ! (stored as SurfaceFlux = -dflx)
     !-----------------------------------------------------------------------
 
+    call t_startf('GEOSChem_DryDep')
     IF ( Input_Opt%LDryD ) THEN
        DO ND = 1, State_Chm(BEGCHUNK)%nDryDep
           ! Get the species ID from the drydep ID
@@ -3708,10 +3731,13 @@ contains
                               + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
        ENDDO
     ENDIF
+    call t_stopf('GEOSChem_DryDep')
 
     !-----------------------------------------------------------------------
     ! Add non-surface emissions
     !-----------------------------------------------------------------------
+
+    call t_startf('GEOSChem_Emissions')
 
     ! Use units of kg/m2 as State_Chm%Species to add emissions fluxes
     CALL Convert_Spc_Units( Input_Opt  = Input_Opt,                   &
@@ -3756,6 +3782,8 @@ contains
        ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    call t_stopf('GEOSChem_Emissions')
 
     !==============================================================
     !               ***** C H E M I S T R Y *****
@@ -3831,6 +3859,8 @@ contains
        iSfcMrObj => iSfcMrObj%Next
     ENDDO
 
+    call t_startf('GEOSChem_Fullchem')
+
     ! Reset photolysis rates
     State_Chm(LCHNK)%Phot%ZPJ = 0.0e+0_r8
 
@@ -3846,6 +3876,8 @@ contains
        ErrMsg = 'Error encountered in "Do_Chemistry"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    call t_stopf('GEOSChem_Fullchem')
 
     ! GEOS-Chem considers CO2 as a dead species and resets its concentration
     ! internally. Right after the call to `Do_Chemistry`, State_Chm%Species(iCO2)
@@ -3911,6 +3943,7 @@ contains
     !==============================================================
 
 #if defined( MODAL_AERO )
+    call t_startf('GEOSChem_MAM_Interfacing')
     ! Construct dgncur_a array for the dry geometric mean diameter [m]
     ! of given number distribution. (hplin, 3/6/23)
     ! Requires a pbuf field DGNUM
@@ -4036,6 +4069,9 @@ contains
        ENDIF
     ENDIF
 
+    call t_stopf('GEOSChem_MAM_Interfacing')
+    call t_startf('GEOSChem_MAM_GasAerExch')
+
     call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
                                 lchnk             = LCHNK,                  &
@@ -4058,6 +4094,9 @@ contains
                                 vmr0              = vmr0,                   &
                                 vmr               = vmr1,                   &
                                 pbuf              = pbuf )
+
+    call t_stopf('GEOSChem_MAM_GasAerExch')
+    call t_startf('GEOSChem_MAM_Interfacing')
 
     ! Repartition MAM SOAs following mapping:
     ! TSOA0 + ASOAN + SOAIE + SOAGX -> soa1_a* + soa2_a*
@@ -4166,10 +4205,12 @@ contains
     ENDDO
 
 #endif
+    call t_stopf('GEOSChem_MAM_Interfacing')
 
     !==============================================================
     ! ***** W E T   D E P O S I T I O N  (rainout + washout) *****
     !==============================================================
+    call t_startf('GEOSChem_Neu_Wetdep')
     IF ( Input_Opt%LWetD ) THEN
 
        IF ( gas_wetdep_method == 'NEU' ) THEN
@@ -4193,6 +4234,7 @@ contains
        ENDIF
 
     ENDIF
+    call t_stopf('GEOSChem_Neu_Wetdep')
 
     !==============================================================
     ! ***** B O U N D A R Y   C O N D I T I O N S            *****
@@ -4247,6 +4289,7 @@ contains
     ENDDO
 
 #if defined( MODAL_AERO )
+    call t_startf('GEOSChem_MAM_Interfacing')
     ! Here apply tendencies to MAM aerosols
     ! Initial mass in bin SM is stored as state%q(N)
     ! Final mass in bin SM is stored as binRatio(SM,M) * State_Chm(P)
@@ -4297,6 +4340,7 @@ contains
                                   * adv_mass(P) / MWDry
        ENDIF
     ENDDO
+    call t_stopf('GEOSChem_MAM_Interfacing')
 #endif
 
     DO N = 1, gas_pcnst
@@ -4315,6 +4359,7 @@ contains
        ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
     ENDIF
 
+    call t_startf('GEOSChem_Diagnostics')
     CALL GC_Diagnostics_Calc( Input_Opt  = Input_Opt,         &
                               State_Chm  = State_Chm(LCHNK),  &
                               State_Diag = State_Diag(LCHNK), &
@@ -4358,6 +4403,7 @@ contains
                                HistoryConfig = HistoryConfig,     &
                                LCHNK         = LCHNK,             &
                                RC            = RC             )
+    call t_stopf('GEOSChem_Diagnostics')
 
     IF ( ghg_chem ) THEN
        ptend%lq(1) = .True.
@@ -4394,6 +4440,8 @@ contains
     IF ( FIRST ) THEN
         FIRST = .false.
     ENDIF
+
+    call t_stopf('GEOSChem_All_Tend')
 
   end subroutine chem_timestep_tend
 
