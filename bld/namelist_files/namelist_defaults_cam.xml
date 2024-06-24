@@ -125,7 +125,7 @@
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4" nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">/glade/derecho/scratch/aherring/restart/L93v2/f.cam6_3_160.FCMT_ne30.moving_mtn.001.cam.i.1996-01-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.cam6_3_160.FCMT_ne30.moving_mtn.001.cam.i.1996-01-01-00000_c240618.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">/glade/derecho/scratch/aherring/restart/L93v2/c153_ne30pg3_FMTHIST_x02.cam.i.1990-01-01-00000.nc</ncdata>
