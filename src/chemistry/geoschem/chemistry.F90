@@ -72,6 +72,7 @@ module chemistry
   CHARACTER(LEN=500) :: speciesDB = 'species_database.yml'
 
   CHARACTER(LEN=shr_kind_cl) :: geoschem_chem_inputs
+  CHARACTER(LEN=shr_kind_cl) :: geoschem_aeropt_inputs
   CHARACTER(LEN=shr_kind_cl) :: geoschem_photol_inputs
 
   ! Debugging
@@ -1009,7 +1010,7 @@ contains
     use GC_Grid_Mod,           only : SetGridFromCtrEdges
     use Input_Mod,             only : Read_Input_File, Validate_Directories
     use Input_Opt_Mod,         only : Set_Input_Opt
-    use isorropiaII_Mod,       only : Init_IsorropiaII
+    use Aerosol_Thermodynamics_Mod, only : Init_ATE
     use Linear_Chem_Mod,       only : Init_Linear_Chem
     use Linoz_Mod,             only : Linoz_Read
     use Photolysis_Mod,        only : Init_Photolysis
@@ -1163,10 +1164,11 @@ contains
                           State_Grid = maxGrid,   &
                           RC         = RC        )
 
-    ! First setup directories
+    ! First setup directories. FAST-JX directory is still used for
+    ! optical properties of aerosols outside of Cloud-J.
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_chem_inputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_photol_inputs)
+    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_aeropt_inputs)
     Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_photol_inputs)
 
     !----------------------------------------------------------
@@ -1451,7 +1453,9 @@ contains
        ENDIF
 
        ! Start with v/v dry (CAM standard)
-       State_Chm(I)%Spc_Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
+       DO N = 1, State_Chm(I)%nSpecies
+          State_Chm(I)%Species(N)%Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
+       ENDDO
 
     ENDDO
     Input_Opt%amIRoot = MasterProc
@@ -1665,7 +1669,7 @@ contains
     ENDIF
 
     IF ( Input_Opt%LSSalt ) THEN
-       CALL INIT_ISORROPIAII( State_Grid = maxGrid )
+       CALL INIT_ATE( State_Grid = maxGrid )
     ENDIF
 
     ! Get some indices
@@ -1810,6 +1814,7 @@ contains
     character(len=*), parameter :: subname = 'geoschem_readnl'
 
     namelist /geoschem_nl/ geoschem_chem_inputs
+    namelist /geoschem_nl/ geoschem_aeropt_inputs
     namelist /geoschem_nl/ geoschem_photol_inputs
 
     ! Read namelist
@@ -1831,6 +1836,11 @@ contains
     CALL mpi_bcast(geoschem_chem_inputs, LEN(geoschem_chem_inputs), mpi_character, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
        CALL endrun(subname//': MPI_BCAST ERROR: geoschem_chem_inputs')
+    ENDIF
+
+    CALL mpi_bcast(geoschem_aeropt_inputs, LEN(geoschem_aeropt_inputs), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: geoschem_aeropt_inputs')
     ENDIF
 
     CALL mpi_bcast(geoschem_photol_inputs, LEN(geoschem_photol_inputs), mpi_character, masterprocid, mpicom, ierr)
@@ -2043,7 +2053,7 @@ contains
     TYPE(Species),  POINTER :: SpcInfo
     TYPE(SfcMrObj), POINTER :: iSfcMrObj
 
-    INTEGER                 :: OrigUnit
+    INTEGER                 :: previous_units
 
     REAL(r8)               :: SlsData(PCOLS, PVER, nSls)
 
@@ -2153,9 +2163,9 @@ contains
 
     ! 2. Copy tracers into State_Chm
     ! Data was received in kg/kg dry
-    State_Chm(LCHNK)%Spc_Units = KG_SPECIES_PER_KG_DRY_AIR
-    ! Initialize ALL State_Chm species data to zero, not just tracers
+    ! Initialize ALL State_Chm species data to zero, not just tracer
     DO N = 1, State_Chm(LCHNK)%nSpecies
+       State_Chm(LCHNK)%Species(N)%Units = KG_SPECIES_PER_KG_DRY_AIR
        State_Chm(LCHNK)%Species(N)%Conc = 0.0e+0_fp
     ENDDO
 
@@ -2745,7 +2755,7 @@ contains
        ENDIF
     ENDDO
 
-    ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
+    ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDICE
     ! Description: Olson land fraction
     !              Fraction of land
     !              Fraction of ocean
@@ -2761,8 +2771,8 @@ contains
     State_Met(LCHNK)%FROCEAN   (1,:nY) = cam_in%ocnFrac(:nY) + cam_in%iceFrac(:nY)
     State_Met(LCHNK)%FRSEAICE  (1,:nY) = cam_in%iceFrac(:nY)
     State_Met(LCHNK)%FRLAKE    (1,:nY) = 0.0e+0_fp
-    State_Met(LCHNK)%FRLANDIC  (1,:nY) = 0.0e+0_fp
-    State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%FRLANDICE (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%FRSNOW    (1,:nY) = 0.0e+0_fp
 
     ! Field      : GWETROOT, GWETTOP
     ! Description: Root and top soil moisture
@@ -3269,11 +3279,11 @@ contains
     ! isIce, which are based on albedo. Rather, we use CLM landFranc, ocnFrac
     ! and iceFrac. We also compute isSnow
     DO J = 1, nY
-       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
-                            State_Met(LCHNK)%FRLANDIC(1,J) + &
-                            State_Met(LCHNK)%FRLAKE(1,J),    &
-                            State_Met(LCHNK)%FRSEAICE(1,J),  &
-                            State_Met(LCHNK)%FROCEAN(1,J)  - &
+       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)    + &
+                            State_Met(LCHNK)%FRLANDICE(1,J) + &
+                            State_Met(LCHNK)%FRLAKE(1,J),     &
+                            State_Met(LCHNK)%FRSEAICE(1,J),   &
+                            State_Met(LCHNK)%FROCEAN(1,J)  -  &
                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
        ! reset ocean to 0
@@ -3739,13 +3749,13 @@ contains
     call t_startf('GEOSChem_Emissions')
 
     ! Use units of kg/m2 as State_Chm%Species to add emissions fluxes
-    CALL Convert_Spc_Units( Input_Opt  = Input_Opt,                   &
-                            State_Chm  = State_Chm(LCHNK),            &
-                            State_Grid = State_Grid(LCHNK),           &
-                            State_Met  = State_Met(LCHNK),            &
-                            OutUnit    = KG_SPECIES_PER_M2,           &
-                            OrigUnit   = OrigUnit,                    &
-                            RC         = RC                          )
+    CALL Convert_Spc_Units( Input_Opt      = Input_Opt,          &
+                            State_Chm      = State_Chm(LCHNK),   &
+                            State_Grid     = State_Grid(LCHNK),  &
+                            State_Met      = State_Met(LCHNK),   &
+                            new_units      = KG_SPECIES_PER_M2,  &
+                            previous_units = previous_units,     &
+                            RC             = RC                    )
  
 
     IF ( RC /= GC_SUCCESS ) THEN
@@ -3773,7 +3783,7 @@ contains
                             State_Chm  = State_Chm(LCHNK),  &
                             State_Grid = State_Grid(LCHNK), &
                             State_Met  = State_Met(LCHNK),  &
-                            OutUnit    = OrigUnit,          &
+                            new_units  = previous_units,    &
                             RC         = RC                )
 
     ! Convert State_Chm%Species back to original units
@@ -3885,9 +3895,9 @@ contains
     State_Chm(LCHNK)%Species(iCO2)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(iCO2)%Conc(1,:nY,:nZ) &
                                              + MMR_Beg(:nY,:nZ,iCO2)
 
-    ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
-    IF ( State_Chm(LCHNK)%Spc_Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
-       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Spc_Units))
+    ! Make sure State_Chm(LCHNK) is back in kg/kg dry! Just check first species.
+    IF ( State_Chm(LCHNK)%Species(1)%Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Species(1)%Units))
        Write(iulog,*) 'Expected unit = ', TRIM(UNIT_STR(KG_SPECIES_PER_KG_DRY_AIR))
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
     ENDIF
@@ -4256,9 +4266,9 @@ contains
                         adv_mass(N) / MWDry
     ENDDO
 
-    ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
-    IF ( State_Chm(LCHNK)%Spc_Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
-       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Spc_Units))
+    ! Make sure State_Chm(LCHNK) is back in kg/kg dry! Only check first species.
+    IF ( State_Chm(LCHNK)%Species(1)%Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Species(1)%Units))
        Write(iulog,*) 'Expected unit = ', TRIM(UNIT_STR(KG_SPECIES_PER_KG_DRY_AIR))
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
     ENDIF

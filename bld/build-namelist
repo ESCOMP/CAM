@@ -2040,6 +2040,7 @@ if ($chem =~ /geoschem/) {
 
     # Input directories
     add_default($nl, 'geoschem_chem_inputs');
+    add_default($nl, 'geoschem_aeropt_inputs');
     add_default($nl, 'geoschem_photol_inputs');
 
     # Species with fixed lower boundary
