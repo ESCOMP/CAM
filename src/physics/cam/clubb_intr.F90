@@ -37,6 +37,7 @@ module clubb_intr
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
 #endif
+  use scamMOD,            only: single_column,scm_clubb_iop_name,scm_cambfb_mode
 
   implicit none
 #ifdef CLUBB_SGS
@@ -186,7 +187,7 @@ module clubb_intr
   real(r8) :: clubb_bv_efold = unset_r8
   real(r8) :: clubb_wpxp_Ri_exp = unset_r8
   real(r8) :: clubb_z_displace = unset_r8
-  
+
   integer :: &
     clubb_iiPDF_type,          & ! Selected option for the two-component normal
                                  ! (double Gaussian) PDF type to use for the w, rt,
@@ -314,7 +315,7 @@ module clubb_intr
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
-                                          ! eliminates spurious drying tendencies at model top  
+                                          ! eliminates spurious drying tendencies at model top
     clubb_l_intr_sfc_flux_smooth = .false.  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
 !  Constant parameters
@@ -477,7 +478,7 @@ module clubb_intr
     ! Register physics buffer fields and constituents !
     !------------------------------------------------ !
 
-    !  Add CLUBB fields to pbuf 
+    !  Add CLUBB fields to pbuf
     use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
     use subcol_utils,    only: subcol_get_scheme
 
@@ -844,7 +845,7 @@ end subroutine clubb_init_cnst
 
     !----- Begin Code -----
 
-    !  Determine if we want clubb_history to be output  
+    !  Determine if we want clubb_history to be output
     clubb_history                     = .false.   ! Initialize to false
     stats_metadata%l_stats            = .false.   ! Initialize to false
     stats_metadata%l_output_rad_files = .false.   ! Initialize to false
@@ -1201,7 +1202,7 @@ end subroutine clubb_init_cnst
 
     !  Overwrite defaults if they are true
     if (clubb_history) stats_metadata%l_stats = .true.
-    if (clubb_rad_history) stats_metadata%l_output_rad_files = .true. 
+    if (clubb_rad_history) stats_metadata%l_output_rad_files = .true.
     if (clubb_cloudtop_cooling) do_cldcool = .true.
     if (clubb_rainevap_turb) do_rainturb = .true.
 
@@ -1529,7 +1530,7 @@ end subroutine clubb_init_cnst
     stats_metadata%l_stats_samp = .false.
     stats_metadata%l_grads = .false.
 
-    !  Overwrite defaults if needbe     
+    !  Overwrite defaults if needbe
     if (stats_metadata%l_stats) stats_metadata%l_stats_samp = .true.
 
     !  Define physics buffers indexes
@@ -1679,7 +1680,7 @@ end subroutine clubb_init_cnst
     clubb_params(ibv_efold) = clubb_bv_efold
     clubb_params(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
     clubb_params(iz_displace) = clubb_z_displace
-   
+
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
     !  at each time step, which is why dummy arrays are read in here for heights
@@ -2033,7 +2034,6 @@ end subroutine clubb_init_cnst
 
 #ifdef CLUBB_SGS
     use hb_diff,                   only: pblintd
-    use scamMOD,                   only: single_column,scm_clubb_iop_name
     use clubb_api_module, only: &
       nparams, &
       setup_parameters_api, &
@@ -2489,9 +2489,9 @@ end subroutine clubb_init_cnst
     character(len=*), parameter :: subr='clubb_tend_cam'
     real(r8), parameter :: rad2deg=180.0_r8/pi
     real(r8) :: tmp_lon1, tmp_lonN
-                          
+
     type(grid) :: gr
-    
+
     type(nu_vertical_res_dep) :: nu_vert_res_dep   ! Vertical resolution dependent nu values
     real(r8) :: lmin
 
@@ -2666,16 +2666,8 @@ end subroutine clubb_init_cnst
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for
     !  variable mesh grids and lat-lon grids
-    if (single_column) then
-      ! If single column specify grid box size to be something
-      !  similar to a GCM run
-      grid_dx(:) = 100000._r8
-      grid_dy(:) = 100000._r8
-    else
 
-      call grid_size(state1, grid_dx, grid_dy)
-
-    end if
+    call grid_size(state1, grid_dx, grid_dy)
 
     if (clubb_do_icesuper) then
 
@@ -2974,7 +2966,7 @@ end subroutine clubb_init_cnst
     ! This section of code block is NOT called in       !
     ! global simulations                                !
     ! ------------------------------------------------- !
-    if (single_column) then
+    if (single_column .and. .not. scm_cambfb_mode) then
 
       !  Initialize zo if variable ustar is used
       if (cam_in%landfrac(1) >= 0.5_r8) then
@@ -3033,10 +3025,10 @@ end subroutine clubb_init_cnst
 
     stats_nsamp = nint(stats_metadata%stats_tsamp/dtime)
     stats_nout = nint(stats_metadata%stats_tout/dtime)
- 
-    !  Heights need to be set at each timestep.  Therefore, recall 
-    !  setup_grid and setup_parameters for this.  
-   
+
+    !  Heights need to be set at each timestep.  Therefore, recall
+    !  setup_grid and setup_parameters for this.
+
     !  Set-up CLUBB core at each CLUBB call because heights can change
     !  Important note:  do not make any calls that use CLUBB grid-height
     !                   operators (such as zt2zm_api, etc.) until AFTER the
@@ -3333,7 +3325,7 @@ end subroutine clubb_init_cnst
 
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
-  
+
       !  Increment the statistics then begin stats timestep
       if (stats_metadata%l_stats) then
         call stats_begin_timestep_api( t, stats_nsamp, stats_nout, &
@@ -3808,7 +3800,7 @@ end subroutine clubb_init_cnst
 
    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
-     
+
     if (clubb_do_adv) then
       if (macmic_it == cld_macmic_num_steps) then
 
@@ -4180,7 +4172,7 @@ end subroutine clubb_init_cnst
       enddo
     enddo
 
-    if (single_column) then
+    if (single_column .and. .not. scm_cambfb_mode) then
       if (trim(scm_clubb_iop_name)  ==  'ATEX_48hr'       .or. &
           trim(scm_clubb_iop_name)  ==  'BOMEX_5day'      .or. &
           trim(scm_clubb_iop_name)  ==  'DYCOMSrf01_4day' .or. &
@@ -4370,8 +4362,8 @@ end subroutine clubb_init_cnst
     end if
 
     !  Output CLUBB history here
-    if (stats_metadata%l_stats) then 
-      
+    if (stats_metadata%l_stats) then
+
       do j=1,stats_zt(1)%num_output_fields
 
         temp1 = trim(stats_zt(1)%file%grid_avg_var(j)%name)
@@ -4390,7 +4382,7 @@ end subroutine clubb_init_cnst
         call outfld(trim(sub),out_zm(:,:,j), pcols, lchnk)
       enddo
 
-      if (stats_metadata%l_output_rad_files) then  
+      if (stats_metadata%l_output_rad_files) then
         do j=1,stats_rad_zt(1)%num_output_fields
           call outfld(trim(stats_rad_zt(1)%file%grid_avg_var(j)%name), out_radzt(:,:,j), pcols, lchnk)
         enddo
@@ -4758,8 +4750,8 @@ end function diag_ustar
       !  Initialize zt (mass points)
 
       i = 1
-      do while ( ichar(clubb_vars_zt(i)(1:1)) /= 0 .and. & 
-                 len_trim(clubb_vars_zt(i))   /= 0 .and. & 
+      do while ( ichar(clubb_vars_zt(i)(1:1)) /= 0 .and. &
+                 len_trim(clubb_vars_zt(i))   /= 0 .and. &
                  i <= nvarmax_zt )
          i = i + 1
       enddo
@@ -4802,8 +4794,8 @@ end function diag_ustar
       !  Initialize zm (momentum points)
 
       i = 1
-      do while ( ichar(clubb_vars_zm(i)(1:1)) /= 0  .and. & 
-                 len_trim(clubb_vars_zm(i)) /= 0    .and. & 
+      do while ( ichar(clubb_vars_zm(i)(1:1)) /= 0  .and. &
+                 len_trim(clubb_vars_zm(i)) /= 0    .and. &
                  i <= nvarmax_zm )
          i = i + 1
       end do
@@ -4839,10 +4831,10 @@ end function diag_ustar
       !  Initialize rad_zt (radiation points)
 
       if (stats_metadata%l_output_rad_files) then
-      
+
          i = 1
-         do while ( ichar(clubb_vars_rad_zt(i)(1:1)) /= 0  .and. & 
-                    len_trim(clubb_vars_rad_zt(i))   /= 0  .and. & 
+         do while ( ichar(clubb_vars_rad_zt(i)(1:1)) /= 0  .and. &
+                    len_trim(clubb_vars_rad_zt(i))   /= 0  .and. &
                     i <= nvarmax_rad_zt )
             i = i + 1
          end do
@@ -4876,10 +4868,10 @@ end function diag_ustar
                                      stats_metadata, stats_rad_zt(j) )
 
          !  Initialize rad_zm (radiation points)
-   
+
          i = 1
-         do while ( ichar(clubb_vars_rad_zm(i)(1:1)) /= 0 .and. & 
-                    len_trim(clubb_vars_rad_zm(i))   /= 0 .and. & 
+         do while ( ichar(clubb_vars_rad_zm(i)(1:1)) /= 0 .and. &
+                    len_trim(clubb_vars_rad_zm(i))   /= 0 .and. &
                     i <= nvarmax_rad_zm )
             i = i + 1
          end do
@@ -4908,7 +4900,7 @@ end function diag_ustar
 
          allocate( stats_rad_zm(j)%file%grid_avg_var( stats_rad_zm(j)%num_output_fields ) )
          allocate( stats_rad_zm(j)%file%z( stats_rad_zm(j)%kk ) )
-     
+
          call stats_init_rad_zm_api( clubb_vars_rad_zm, &
                                      l_error, &
                                      stats_metadata, stats_rad_zm(j) )
@@ -4918,8 +4910,8 @@ end function diag_ustar
       !  Initialize sfc (surface point)
 
       i = 1
-      do while ( ichar(clubb_vars_sfc(i)(1:1)) /= 0 .and. & 
-                 len_trim(clubb_vars_sfc(i))   /= 0 .and. & 
+      do while ( ichar(clubb_vars_sfc(i)(1:1)) /= 0 .and. &
+                 len_trim(clubb_vars_sfc(i))   /= 0 .and. &
                  i <= nvarmax_sfc )
          i = i + 1
       end do
@@ -4961,30 +4953,30 @@ end function diag_ustar
     endif
 
     ! Now call add fields
-      
+
     do i = 1, stats_zt(1)%num_output_fields
-    
+
       temp1 = trim(stats_zt(1)%file%grid_avg_var(i)%name)
       sub   = temp1
       if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-     
+
         call addfld( trim(sub), (/ 'ilev' /), 'A', &
                      trim(stats_zt(1)%file%grid_avg_var(i)%units), &
                      trim(stats_zt(1)%file%grid_avg_var(i)%description) )
     enddo
-    
+
     do i = 1, stats_zm(1)%num_output_fields
-    
+
       temp1 = trim(stats_zm(1)%file%grid_avg_var(i)%name)
       sub   = temp1
       if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-    
+
        call addfld( trim(sub), (/ 'ilev' /), 'A', &
                     trim(stats_zm(1)%file%grid_avg_var(i)%units), &
                     trim(stats_zm(1)%file%grid_avg_var(i)%description) )
     enddo
 
-    if (stats_metadata%l_output_rad_files) then     
+    if (stats_metadata%l_output_rad_files) then
 
        do i = 1, stats_rad_zt(1)%num_output_fields
           temp1 = trim(stats_rad_zt(1)%file%grid_avg_var(i)%name)
@@ -4994,7 +4986,7 @@ end function diag_ustar
                        trim(stats_rad_zt(1)%file%grid_avg_var(i)%units), &
                        trim(stats_rad_zt(1)%file%grid_avg_var(i)%description) )
        enddo
-    
+
        do i = 1, stats_rad_zm(1)%num_output_fields
           temp1 = trim(stats_rad_zm(1)%file%grid_avg_var(i)%name)
           sub   = temp1
@@ -5004,7 +4996,7 @@ end function diag_ustar
                        trim(stats_rad_zm(1)%file%grid_avg_var(i)%description) )
        enddo
     endif
-    
+
     do i = 1, stats_sfc(1)%num_output_fields
        temp1 = trim(stats_sfc(1)%file%grid_avg_var(i)%name)
        sub   = temp1
@@ -5013,7 +5005,7 @@ end function diag_ustar
                     trim(stats_sfc(1)%file%grid_avg_var(i)%units), &
                     trim(stats_sfc(1)%file%grid_avg_var(i)%description) )
     enddo
-    
+
 
     return
 
@@ -5102,7 +5094,7 @@ end function diag_ustar
       enddo
     enddo
 
-    if (stats_metadata%l_output_rad_files) then 
+    if (stats_metadata%l_output_rad_files) then
       do i = 1, stats_rad_zt%num_output_fields
         do k = 1, stats_rad_zt%kk
           out_radzt(thecol,pverp-k+1,i) = stats_rad_zt%accum_field_values(1,1,k,i)

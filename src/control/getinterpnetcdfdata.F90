@@ -3,13 +3,12 @@ module getinterpnetcdfdata
 ! Description:
 !   Routines for extracting a column from a netcdf file
 !
-! Author: 
-!   
+! Author:
+!
 ! Modules Used:
 !
   use cam_abortutils, only: endrun
   use pmgrid,         only: plev
-  use scamMod,        only: scm_crm_mode
   use cam_logfile,    only: iulog
 
   implicit none
@@ -22,10 +21,10 @@ module getinterpnetcdfdata
 contains
 
 subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
-   varName, have_surfdat, surfdat, fill_ends, &
-   press, npress, ps, outData, STATUS )
+   varName, have_surfdat, surfdat, fill_ends, scm_crm_mode, &
+   press, npress, ps, hyam, hybm, outData, STATUS )
 
-!     getinterpncdata: extracts the entire level dimension for a 
+!     getinterpncdata: extracts the entire level dimension for a
 !     particular lat,lon,time from a netCDF file
 !     and interpolates it onto the input pressure levels, placing
 !     result in outData, and the error status inx STATUS
@@ -41,12 +40,15 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
 
    integer, intent(in)  :: NCID          ! NetCDF ID
    integer, intent(in)  :: TimeIdx       ! time index
-   real(r8), intent(in) :: camlat,camlon ! target lat and lon to be extracted  
+   real(r8), intent(in) :: camlat,camlon ! target lat and lon to be extracted
    logical, intent(in)  :: have_surfdat  ! is surfdat provided
-   logical, intent(in)  :: fill_ends ! extrapolate the end values
+   logical, intent(in)  :: fill_ends     ! extrapolate the end values
+   logical, intent(in)  :: scm_crm_mode  ! scam column radiation mode
    integer, intent(in)  :: npress        ! number of dataset pressure levels
    real(r8), intent(in) :: press(npress) ! dataset pressure levels
-   real(r8), intent(in) :: ps ! dataset pressure levels
+   real(r8), intent(in) :: ps            ! surface pressure
+   real(r8), intent(in) :: hyam(:)       ! dataset hybrid midpoint pressure levels
+   real(r8), intent(in) :: hybm(:)       ! dataset hybrid midpoint pressure levels
 
 !     ---------- outputs ----------
 
@@ -67,7 +69,7 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
    integer     dims_set
    integer     i
    integer     var_dimIDs( NF90_MAX_VAR_DIMS )
-   integer     start( NF90_MAX_VAR_DIMS ) 
+   integer     start( NF90_MAX_VAR_DIMS )
    integer     count( NF90_MAX_VAR_DIMS )
 
    character   varName*(*)
@@ -115,9 +117,9 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
       write(iulog,* ) 'ERROR - extractdata.F:Cant get dimension IDs for', varName
       return
    endif
-!     
-!     Initialize the start and count arrays 
-!     
+!
+!     Initialize the start and count arrays
+!
    dims_set = 0
    nlev = 1
    do i =  var_ndims, 1, -1
@@ -127,12 +129,12 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
 
       if ( dim_name .EQ. 'lat' ) then
          start( i ) =  latIdx
-         count( i ) = 1           ! Extract a single value 
+         count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
          usable_var = .true.
       endif
 
-      if ( dim_name .EQ. 'lon' ) then
+      if ( dim_name .EQ. 'lon' .or. dim_name .EQ. 'ncol' .or. dim_name .EQ. 'ncol_d' ) then
          start( i ) = lonIdx
          count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
@@ -155,10 +157,10 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
          usable_var = .true.
       endif
 
-      if ( dim_name .EQ. 'time' .OR. dim_name .EQ. 'tsec' ) then 
+      if ( dim_name .EQ. 'time' .OR. dim_name .EQ. 'tsec' ) then
          start( i ) = TimeIdx
-         count( i ) = 1           ! Extract a single value 
-         dims_set = dims_set + 1   
+         count( i ) = 1           ! Extract a single value
+         dims_set = dims_set + 1
          usable_var = .true.
       endif
 
@@ -187,11 +189,11 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
 
    if ( nlev .eq. 1 ) then
       outdata(1) = tmp(1)
-      return                 ! no need to do interpolation 
+      return                 ! no need to do interpolation
    endif
 !   if ( use_camiop .and. nlev.eq.plev) then
    if ( nlev.eq.plev .or. nlev.eq.plev+1) then
-      outData(:nlev)= tmp(:nlev)! no need to do interpolation 
+      outData(:nlev)= tmp(:nlev)! no need to do interpolation
    else
 !
 !     add the surface data if available, else
@@ -224,7 +226,7 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
       endif
 !
 ! reset status to zero
-!     
+!
       STATUS = 0
 !
       do i=1, npress
@@ -236,7 +238,7 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
       enddo
 #endif
 !
-      call interplevs( tmp(:npress), press, npress, ps, fill_ends,outdata )
+      call interplevs( tmp(:npress), press, npress, ps, fill_ends, hyam, hybm, outdata )
 
    endif
 
@@ -245,10 +247,9 @@ subroutine getinterpncdata( NCID, camlat, camlon, TimeIdx, &
  end subroutine getinterpncdata
 
 subroutine interplevs( inputdata,   dplevs,   nlev, &
-                       ps, fill_ends,   outdata)
+                       ps, fill_ends, hyam, hybm, outdata)
 
    use shr_kind_mod, only: r8 => shr_kind_r8, i8 => shr_kind_i8
-   use hycoef, only: hyam, hybm
    use interpolate_data, only: lininterp
    implicit none
 
@@ -264,12 +265,14 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
 !     ------- inputs -----------
    integer, intent(in) :: nlev                 ! num press levels in dataset
 
-   real(r8), intent(in) :: ps     ! surface pressure
+   real(r8), intent(in) :: ps                  ! surface pressure
+   real(r8), intent(in) :: hyam(:)             ! a midpoint pressure
+   real(r8), intent(in) :: hybm(:)             ! b midpoint pressure
    real(r8), intent(in) :: inputdata(nlev)     ! data from netcdf dataset
-   real(r8), intent(in) :: dplevs(nlev)         ! input data pressure levels 
+   real(r8), intent(in) :: dplevs(nlev)        ! input data pressure levels
 
    logical, intent(in) :: fill_ends            ! fill in missing end values(used for
-                                            ! global model datasets)
+                                               ! global model datasets)
 
 
 ! ------- outputs ----------
@@ -281,7 +284,7 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
    real(r8) interpdata( PLEV )
 
 
-   integer dstart_lev, dend_lev 
+   integer dstart_lev, dend_lev
    integer mstart_lev, mend_lev
    integer data_nlevs, model_nlevs, i
    integer STATUS
@@ -293,14 +296,14 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
    do i = 1, plev
       mplevs( i ) = 1000.0_r8 * hyam( i ) + ps * hybm( i ) / 100.0_r8
    end do
-!     
+!
 !     the following algorithm assumes that pressures are increasing in the
 !     arrays
-!     
-!     
+!
+!
 !     Find the data pressure levels that are just outside the range
 !     of the model pressure levels, and that contain valid values
-!     
+!
    dstart_lev = 1
    do i= 1, nlev
       if ( dplevs(i) .LE. mplevs(1) ) dstart_lev  = i
@@ -312,7 +315,7 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
          dend_lev  = i
       endif
    end do
-!         
+!
 !     Find the model pressure levels that are just inside the range
 !     of the data pressure levels
 !
@@ -340,10 +343,10 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
       outdata( i+mstart_lev-1 ) = interpdata( i )
    end do
 !
-!     fill in the missing end values 
+!     fill in the missing end values
 !           (usually  done if this is global model dataset)
 !
-   if ( fill_ends ) then 
+   if ( fill_ends ) then
       do i=1, mstart_lev
          outdata(i) = inputdata(1)
       end do
@@ -355,4 +358,3 @@ subroutine interplevs( inputdata,   dplevs,   nlev, &
    return
 end subroutine interplevs
 end module getinterpnetcdfdata
-

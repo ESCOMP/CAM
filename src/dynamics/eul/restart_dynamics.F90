@@ -9,11 +9,10 @@ module restart_dynamics
        pdeld, ps, vort, div, &
        dps, phis, dpsl, dpsm, omga, ptimelevels
   use scanslt,         only:  lammp, phimp, sigmp, qfcst
-#if ( defined BFB_CAM_SCAM_IOP )
   use iop,             only: dqfx3sav,divq3dsav,divt3dsav,t2sav,betasav,fusav,fvsav
-#endif
   use cam_logfile,  only: iulog
   use spmd_utils,   only: masterproc
+  use cam_history,  only: write_camiop
 
   implicit none
   private
@@ -125,7 +124,7 @@ CONTAINS
 
     vcnt=vcnt+1
     call set_r_var('PDELD', ptimelevels, vcnt, v4=pdeld )
-    
+
 
     vcnt=vcnt+1
     call set_r_var('LAMMP', 1, vcnt, v3=lammp )
@@ -138,32 +137,32 @@ CONTAINS
     call set_r_var('Q_fcst', 1, vcnt, v4=qfcst )
 
 
-#if ( defined BFB_CAM_SCAM_IOP )
-!
-! Write scam values
-!
-    vcnt=vcnt+1
-    call set_r_var('DQFX', 1, vcnt, v4=dqfx3sav )
+    if (write_camiop) then
+       !
+       ! Write scam values
+       !
+       vcnt=vcnt+1
+       call set_r_var('DQFX', 1, vcnt, v4=dqfx3sav )
 
-    vcnt=vcnt+1
-    call set_r_var('DIVQ', 1, vcnt, v4=divq3dsav )
+       vcnt=vcnt+1
+       call set_r_var('DIVQ', 1, vcnt, v4=divq3dsav )
 
-    vcnt=vcnt+1
-    call set_r_var('DIVT', 1, vcnt, v3=divt3dsav )
+       vcnt=vcnt+1
+       call set_r_var('DIVT', 1, vcnt, v3=divt3dsav )
 
-    vcnt=vcnt+1
-    call set_r_var('T2', 1, vcnt, v3=t2sav )
+       vcnt=vcnt+1
+       call set_r_var('T2', 1, vcnt, v3=t2sav )
 
-    vcnt=vcnt+1
-    call set_r_var('FU', 1, vcnt, v3=fusav )
+       vcnt=vcnt+1
+       call set_r_var('FU', 1, vcnt, v3=fusav )
 
-    vcnt=vcnt+1
-    call set_r_var('FV', 1, vcnt, v3=fvsav )
+       vcnt=vcnt+1
+       call set_r_var('FV', 1, vcnt, v3=fvsav )
 
-    vcnt=vcnt+1
-    call set_r_var('BETA', 1, vcnt, v1=betasav )
+       vcnt=vcnt+1
+       call set_r_var('BETA', 1, vcnt, v1=betasav )
 
-#endif    
+    end if
 
     if(vcnt.ne.restartvarcnt) then
        write(iulog,*) 'vcnt= ',vcnt, ' restartvarcnt=',restartvarcnt
@@ -231,11 +230,11 @@ subroutine init_restart_dynamics(File, dyn_out)
     qdims(1:2) = hdimids(1:2)
     qdims(3) = vdimids(1)
     qdims(5) = timelevels_dimid
-    
+
     call init_restart_varlist()
 
     do i=1,restartvarcnt
-    
+
        call get_restart_var(i, name, timelevels, ndims, vdesc)
        if(timelevels>1) then
           if(ndims==3) then
@@ -356,15 +355,15 @@ subroutine init_restart_dynamics(File, dyn_out)
              else if(ndims==5) then
                 call pio_write_darray(File, vdesc, iodesc4d, transfer(restartvars(i)%v5d(:,:,:,:,ct), mold), ierr)
              end if
-             
+
           end do
-          
+
        end if
     end do
     call pio_freedecomp(File, iodesc2d)
     call pio_freedecomp(File, iodesc3d)
     call pio_freedecomp(File, iodesc4d)
-    
+
     return
   end subroutine write_restart_dynamics
 
@@ -393,10 +392,8 @@ subroutine init_restart_dynamics(File, dyn_out)
 
     use pmgrid,          only: plon, plat, beglat, endlat
     use ppgrid,          only: pver
-    
-#if ( defined BFB_CAM_SCAM_IOP )
+
     use iop,             only: init_iop_fields
-#endif
     use massfix,         only: alpha, hw1, hw2, hw3
     use prognostics,     only: n3m2, n3m1, n3
 
@@ -467,9 +464,8 @@ subroutine init_restart_dynamics(File, dyn_out)
 
     call init_restart_varlist()
 
-#if ( defined BFB_CAM_SCAM_IOP )
-    call init_iop_fields()
-#endif
+    if (write_camiop) call init_iop_fields()
+
     do i=1,restartvarcnt
        call get_restart_var(i, name, timelevels, ndims, vdesc)
 
@@ -533,13 +529,13 @@ subroutine init_restart_dynamics(File, dyn_out)
     endlatxy = get_dyn_grid_parm('endlatxy')
 
     plat = get_dyn_grid_parm('plat')
-    
-    
+
+
     lcnt=(endlatxy-beglatxy+1)*nlev*(endlonxy-beglonxy+1)
 
     allocate(ldof(lcnt))
     lcnt=0
-    ldof(:)=0	
+    ldof(:)=0
     do j=beglatxy,endlatxy
        do k=1,nlev
           do i=beglonxy, endlonxy

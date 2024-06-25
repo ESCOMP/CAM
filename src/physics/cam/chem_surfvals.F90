@@ -512,6 +512,7 @@ subroutine chem_surfvals_set()
 
    use ppgrid,         only: begchunk, endchunk
    use mo_flbc,        only: flbc_gmean_vmr, flbc_chk
+   use scamMod,        only: single_column, scmiop_flbc_inti, use_camiop
 
 !---------------------------Local variables-----------------------------
 
@@ -527,7 +528,12 @@ subroutine chem_surfvals_set()
    elseif (scenario_ghg == 'CHEM_LBC_FILE') then
       ! set mixing ratios from cam-chem/waccm lbc file 
       call flbc_chk()
-      call flbc_gmean_vmr(co2vmr,ch4vmr,n2ovmr,f11vmr,f12vmr)
+      if (single_column .and. use_camiop) then
+         call scmiop_flbc_inti( co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
+      else
+         ! set by lower boundary conditions file
+         call flbc_gmean_vmr(co2vmr,ch4vmr,n2ovmr,f11vmr,f12vmr)
+      endif
    endif
 
    if (masterproc .and. is_end_curr_day()) then

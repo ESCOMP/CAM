@@ -70,7 +70,6 @@ subroutine cam_init(                                             &
    !
    !-----------------------------------------------------------------------
 
-   use history_defaults, only: bldfld
    use cam_initfiles,    only: cam_initfiles_open
    use dyn_grid,         only: dyn_grid_init
    use phys_grid,        only: phys_grid_init
@@ -81,15 +80,12 @@ subroutine cam_init(                                             &
    use stepon,           only: stepon_init
    use ionosphere_interface, only: ionosphere_init
    use camsrfexch,       only: hub2atm_alloc, atm2hub_alloc
-   use cam_history,      only: intht
-   use history_scam,     only: scm_intht
+   use cam_history,      only: intht, write_camiop
+   use history_scam,     only: scm_intht, initialize_iop_history
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot_common, only: cam_snapshot_deactivate
    use air_composition,  only: air_composition_init
-#if (defined BFB_CAM_SCAM_IOP)
-   use history_defaults, only: initialize_iop_history
-#endif
    use phys_grid_ctem,   only: phys_grid_ctem_reg
 
    ! Arguments
@@ -193,14 +189,11 @@ subroutine cam_init(                                             &
 
       call cam_read_restart(cam_in, cam_out, dyn_in, dyn_out, pbuf2d, stop_ymd, stop_tod)
 
-#if (defined BFB_CAM_SCAM_IOP)
-      call initialize_iop_history()
-#endif
    end if
 
-   call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
+   if (write_camiop) call initialize_iop_history()
 
-   call bldfld ()       ! master field list (if branch, only does hash tables)
+   call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
    call stepon_init(dyn_in, dyn_out)
 

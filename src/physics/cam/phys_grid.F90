@@ -111,6 +111,7 @@ module phys_grid
 
 ! The identifier for the physics grid
    integer, parameter, public :: phys_decomp = 100
+   integer, parameter, public :: phys_decomp_scm = 200
 
 ! dynamics field grid information
    integer, private :: hdim1_d, hdim2_d
@@ -451,6 +452,8 @@ end subroutine phys_grid_readnl
     !-----------------------------------------------------------------------
     use mpi,              only: MPI_REAL8, MPI_MAX
     use shr_mem_mod,      only: shr_mem_getusage
+    use shr_scam_mod,     only: shr_scam_GetCloseLatLon
+    use scamMod,          only: closeioplonidx, closeioplatidx, single_column
     use pmgrid,           only: plev
     use dycore,           only: dycore_is
     use dyn_grid,         only: get_block_bounds_d, &
@@ -525,6 +528,7 @@ end subroutine phys_grid_readnl
     real(r8),               allocatable :: latdeg_p(:)
     real(r8),               allocatable :: londeg_p(:)
     integer(iMap),  pointer             :: grid_map(:,:)
+    integer(iMap),  pointer             :: grid_map_scm(:,:)
     integer(iMap),  allocatable         :: coord_map(:)
     type(horiz_coord_t), pointer        :: lat_coord
     type(horiz_coord_t), pointer        :: lon_coord
@@ -540,6 +544,7 @@ end subroutine phys_grid_readnl
     nullify(lonvals)
     nullify(latvals)
     nullify(grid_map)
+    if (single_column) nullify(grid_map_scm)
     nullify(lat_coord)
     nullify(lon_coord)
 
@@ -1105,10 +1110,13 @@ end subroutine phys_grid_readnl
     unstructured = dycore_is('UNSTRUCTURED')
     if (unstructured) then
       allocate(grid_map(3, pcols * (endchunk - begchunk + 1)))
+      if (single_column) allocate(grid_map_scm(3, pcols * (endchunk - begchunk + 1)))
     else
       allocate(grid_map(4, pcols * (endchunk - begchunk + 1)))
+      if (single_column) allocate(grid_map_scm(4, pcols * (endchunk - begchunk + 1)))
     end if
     grid_map = 0
+    if (single_column) grid_map_scm = 0
     allocate(latvals(size(grid_map, 2)))
     allocate(lonvals(size(grid_map, 2)))
     p = 0
@@ -1132,12 +1140,21 @@ end subroutine phys_grid_readnl
         p = p + 1
         grid_map(1, p) = i
         grid_map(2, p) = lcid
+        if (single_column) then
+           grid_map_scm(1, p) = i
+           grid_map_scm(2, p) = lcid
+        end if
         if ((i <= ncols) .and. (gcols(i) > 0)) then
           if (unstructured) then
             grid_map(3, p) = gcols(i)
+            if (single_column) grid_map_scm(3, p) = closeioplonidx
           else
-            grid_map(3, p) = get_lon_p(lcid, i)
-            grid_map(4, p) = get_lat_p(lcid, i)
+              grid_map(3, p) = get_lon_p(lcid, i)
+              grid_map(4, p) = get_lat_p(lcid, i)
+              if (single_column) then
+                 grid_map_scm(3, p) = closeioplonidx
+                 grid_map_scm(4, p) = closeioplatidx
+              end if
           end if
         else
           if (i <= ncols) then
@@ -1184,6 +1201,8 @@ end subroutine phys_grid_readnl
     end if
     call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
+    if (single_column) call cam_grid_register('physgrid_scm', phys_decomp_scm, lat_coord, lon_coord,     &
+         grid_map_scm, unstruct=unstructured, block_indexed=.true.)
     ! Copy required attributes from the dynamics array
     nullify(copy_attributes)
     call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
@@ -1223,6 +1242,7 @@ end subroutine phys_grid_readnl
     end if
     ! Cleanup pointers (they belong to the grid now)
     nullify(grid_map)
+    if (single_column) nullify(grid_map_scm)
     deallocate(latvals)
     nullify(latvals)
     deallocate(lonvals)
