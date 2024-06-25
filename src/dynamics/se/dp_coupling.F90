@@ -312,7 +312,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    use fvm_mapping,      only: phys2dyn_forcings_fvm
    use test_fvm_mapping, only: test_mapping_overwrite_tendencies
    use test_fvm_mapping, only: test_mapping_output_mapped_tendencies
-
+   use dimensions_mod,   only: use_cslam
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
@@ -427,8 +427,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          !JMD        hybrid = config_thread_region(par,'horizontal')
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
-
-         ! high-order mapping of ft and fm (and fq if no cslam) using fvm technology
+         !
+         ! high-order mapping of ft and fm using fvm technology
+         !
          call t_startf('phys2dyn')
          call phys2dyn_forcings_fvm(elem, dyn_in%fvm, hybrid,nets,nete,ntrac==0, tl_f, tl_qdp)
          call t_stopf('phys2dyn')
@@ -474,19 +475,20 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                            &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                       &
                  dyn_in%elem(ie)%spheremp(:,:)
-            do m = 1, qsize
-               dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                       &
-                    dyn_in%elem(ie)%derived%FQ(:,:,k,m) *                  &
-                    dyn_in%elem(ie)%spheremp(:,:)
-            end do
          end do
       end if
       kptr = 0
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FM(:,:,:,:), 2*nlev, kptr, ie)
       kptr = kptr + 2*nlev
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
-      kptr = kptr + nlev
-      call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      if (.not. use_cslam) then
+         !
+         ! if using CSLAM qdp is being overwritten with CSLAM values in the dynamics
+         ! so no need to do boundary exchange of tracer tendency on GLL grid here
+         !
+         kptr = kptr + nlev
+         call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      end if
    end do
 
    if (iam < par%nprocs) then
@@ -499,7 +501,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       kptr = kptr + 2*nlev
       call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
       kptr = kptr + nlev
-      call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      if (.not. use_cslam) then
+         call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      end if
       if (fv_nphys > 0) then
          do k = 1, nlev
             dyn_in%elem(ie)%derived%FM(:,:,1,k) =                             &
@@ -511,11 +515,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                               &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                          &
                  dyn_in%elem(ie)%rspheremp(:,:)
-            do m = 1, qsize
-               dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                          &
-                    dyn_in%elem(ie)%derived%FQ(:,:,k,m) *                     &
-                    dyn_in%elem(ie)%rspheremp(:,:)
-            end do
          end do
       end if
    end do
@@ -691,23 +690,21 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
+      ! Ensure tracers are all positive
+      call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
+           1, pcnst, qmin  ,phys_state(lchnk)%q)
+
       ! Compute initial geopotential heights - based on full pressure
       call geopotential_t(phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint, &
          phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                , &
          phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv        , &
          phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol)
-
       ! Compute initial dry static energy, include surface geopotential
       call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t(1:ncol,:),  &
                                         phys_state(lchnk)%zm(1:ncol,:),               &
                                         phys_state(lchnk)%phis(1:ncol),               &
                                         phys_state(lchnk)%s(1:ncol,:),                &
                                         cpairv(1:ncol,:,lchnk), errflg, errmsg)
-
-      ! Ensure tracers are all positive
-      call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
-           1, pcnst, qmin  ,phys_state(lchnk)%q)
-
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
