@@ -351,6 +351,10 @@
     <lname>HIST_CAM%DEV%MT%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
+    <alias>FCts4MTHIST</alias>
+    <lname>HIST_CAM%DEV%MT%CCTS4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>FCvbsxHIST</alias>
     <lname>HIST_CAM60%CVBSX_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
