@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- emissions -->
+
+<csw_time_type> 'SERIAL'</csw_time_type>
+
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<flbc_type>SERIAL</flbc_type>
+
+</namelist_defaults>
