@@ -96,7 +96,7 @@
 	url = https://github.com/larson-group/clubb_release
         fxrequired = AlwaysRequired
         fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20231115_5406350
+        fxtag = clubb_4ncar_20240605_73d60f6
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
 [submodule "cism"]
