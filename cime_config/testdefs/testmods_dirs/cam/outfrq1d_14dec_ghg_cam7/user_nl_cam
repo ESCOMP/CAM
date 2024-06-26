@@ -1,0 +1,9 @@
+mfilt=1,1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1,1
+nhtfrq=-24,-24,-24,-24,-24,-24,-24,-24,-24,-24
+tracer_cnst_specifier = 'O3','OH','NO3','HO2','HALONS'
+flbc_cycle_yr=1850
+phys_grid_ctem_nfreq=-6
+phys_grid_ctem_zm_nbas=16
+phys_grid_ctem_za_nlat=15
+fincl2 = 'THphys','VTHzm','WTHzm','UVzm','UWzm','Uzm','Vzm','Wzm','THzm'
