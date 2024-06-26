@@ -1501,8 +1501,8 @@ subroutine set_wet_to_dry(state, convert_cnst_type)
 
   ! check input
   if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
-    write(iulog,*) sub//': FATAL: convert_cnst_type not recognozed: '//convert_cnst_type
-    call endrun(sub//': FATAL: convert_cnst_type not recognozed: '//convert_cnst_type)
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
   end if
 
   ncol = state%ncol
@@ -1537,8 +1537,8 @@ subroutine set_dry_to_wet(state, convert_cnst_type)
 
   ! check input
   if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
-    write(iulog,*) sub//': FATAL: convert_cnst_type not recognozed: '//convert_cnst_type
-    call endrun(sub//': FATAL: convert_cnst_type not recognozed: '//convert_cnst_type)
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
   end if
 
   ncol = state%ncol
