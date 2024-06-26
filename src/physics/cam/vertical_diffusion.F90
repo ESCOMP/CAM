@@ -449,7 +449,7 @@ subroutine vertical_diffusion_init(pbuf2d)
      do_pbl_diags = .true.
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam_dev or cam6 physics
+     ! run HB scheme where CLUBB is not active when running cam7 or cam6 physics
      ! else init_hb_diff is called just for diagnostic purposes
      !
      if (do_hb_above_clubb) then
@@ -1057,7 +1057,7 @@ subroutine vertical_diffusion_tend( &
 
   case ( 'CLUBB_SGS' )
     !
-    ! run HB scheme where CLUBB is not active when running cam_dev
+    ! run HB scheme where CLUBB is not active when running cam7
     !
     if (do_hb_above_clubb) then
       call compute_hb_free_atm_diff( ncol          , &
@@ -1194,7 +1194,7 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     if (cam_physpkg_is("cam_dev")) then
+     if (cam_physpkg_is("cam7")) then
        ! surface fluxes applied in clubb emissions module
        cflux(:,2:) = 0._r8
      else
