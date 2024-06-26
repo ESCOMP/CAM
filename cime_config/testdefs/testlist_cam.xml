@@ -1444,11 +1444,6 @@
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
-  <test compset="FGRAYRAD" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prebeta"/>
-    </machines>
-  </test>
 
   <test compset="FHIST_DARTC6" grid="f09_f09_mg17" name="SMS_C80_P128x1_Lh1" testmods="cam/dartcambigens">
     <machines>
