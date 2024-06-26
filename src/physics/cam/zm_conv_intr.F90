@@ -17,7 +17,6 @@ module zm_conv_intr
 
    use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
                                rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
-   use ndrop_bam,        only: ndrop_bam_init
    use cam_abortutils,   only: endrun
    use physconst,        only: pi
    use spmd_utils,       only: masterproc
@@ -248,6 +247,12 @@ subroutine zm_conv_init(pref_edge)
 
   real(r8),intent(in) :: pref_edge(plevp)        ! reference pressures at interfaces
 
+  ! local variables
+  real(r8), parameter :: scale_height = 7000._r8  ! std atm scale height (m)
+  real(r8), parameter :: dz_min = 100._r8         ! minimum thickness for using 
+                                                  !   zmconv_parcel_pbl=.false. 
+  real(r8)            :: dz_bot_layer             ! thickness of bottom layer (m)
+
   character(len=512) :: errmsg
   integer            :: errflg
 
@@ -349,6 +354,19 @@ subroutine zm_conv_init(pref_edge)
     if (masterproc) then
        write(iulog,*)'ZM_CONV_INIT: Deep convection will be capped at intfc ',limcnv, &
             ' which is ',pref_edge(limcnv),' pascals'
+    end if
+
+    ! If thickness of bottom layer is less than dz_min, and zmconv_parcel_pbl=.false.,
+    ! then issue a warning.
+    dz_bot_layer = scale_height * log(pref_edge(pverp)/pref_edge(pver))
+    if (dz_bot_layer < dz_min .and. .not. zmconv_parcel_pbl) then
+       if (masterproc) then
+          write(iulog,*)'********** WARNING **********'
+          write(iulog,*)' ZM_CONV_INIT: Bottom layer thickness (m) is ', dz_bot_layer
+          write(iulog,*)' The namelist variable zmconv_parcel_pbl should be set to .true.'
+          write(iulog,*)' when the bottom layer thickness is < ', dz_min
+          write(iulog,*)'********** WARNING **********'
+       end if
     end if
 
     no_deep_pbl = phys_deepconv_pbl()
