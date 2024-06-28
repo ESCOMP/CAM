@@ -204,9 +204,7 @@ end subroutine Thatcher_Jablonowski_register
     real(r8) :: T(state%ncol, pver)           ! T temporary
     real(r8) :: qv(state%ncol, pver)          ! Q temporary (specific humidity)
     real(r8) :: U(state%ncol, pver)           ! U temporary
-    real(r8) :: dudt(state%ncol, pver)        ! U tendencies
     real(r8) :: V(state%ncol, pver)           ! V temporary
-    real(r8) :: dvdt(state%ncol, pver)        ! V tendencies
     logical  :: lq(pcnst)                     ! Calc tendencies?
 
     ! output from parameterization
