@@ -90,7 +90,7 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use physconst,          only: gravit, cappa, latvap, rh2o, epsilo, rhoh2o
+    use physconst,          only: gravit, latvap, rh2o, epsilo, rhoh2o
     use hycoef,             only: ps0, etamid
     use air_composition,    only: cpairv, rairv
     use TJ2016_precip,      only: tj2016_precip_run
