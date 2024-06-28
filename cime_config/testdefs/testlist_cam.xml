@@ -1397,8 +1397,6 @@
     </options>
   </test>
 
-  <test compset="FTJ16" grid="ne3pg3_ne3pg3_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
-
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="MGP_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_pumas"/>
