@@ -1,4 +1,3 @@
-#define DEVELOPTEST
 module gw_movmtn
 
 !
@@ -23,7 +22,7 @@ type :: MovMtnSourceDesc
    ! Heating depths below this value [m] will be ignored.
    real(r8) :: min_hdepth
    ! Table bounds, for convenience. (Could be inferred from shape(mfcc).)
-   integer :: maxh !-bounds of the lookup table heating depths 
+   integer :: maxh !-bounds of the lookup table heating depths
    integer :: maxuh ! bounds of the lookup table wind
    ! Heating depths [m].
    real(r8), allocatable :: hd(:), uh(:)
@@ -37,7 +36,7 @@ contains
 
 subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      netdt, netdt_shcu, xpwp_shcu, &
-     zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     zm, alpha_gw_movmtn, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
@@ -49,11 +48,13 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
 ! specifying the gravity wave spectrum above convection based on latent
 ! heating properties and background wind". J. Atmos. Sci., Vol 61, No. 3,
 ! pp. 324-337.
+! CACNOTE - DOI?
 !
 !-----------------------------------------------------------------------
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, pver, qbo_hdepth_scaling
   use cam_history, only: outfld
+  use phys_control,   only: use_gw_movmtn_pbl
 !------------------------------Arguments--------------------------------
   ! Column dimension.
   integer, intent(in) :: ncol , lchnk
@@ -69,11 +70,13 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Heating rate due to convection.
   real(r8), intent(in) :: netdt(:,:)  !from deep scheme
   ! Heating rate due to shallow convection nd PBL turbulence.
-  real(r8), intent(in) :: netdt_shcu(:,:) 
+  real(r8), intent(in) :: netdt_shcu(:,:)
   ! Higher order flux from ShCu/PBL.
-  real(r8), intent(in) :: xpwp_shcu(ncol,pver+1) 
+  real(r8), intent(in) :: xpwp_shcu(ncol,pver+1)
   ! Midpoint altitudes.
   real(r8), intent(in) :: zm(ncol,pver)
+  ! tunable parameter controlling proportion of PBL momentum flux emitted as GW
+  real(r8), intent(in) :: alpha_gw_movmtn
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -97,7 +100,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   integer :: i, k
 
   ! Zonal/meridional wind at steering level, i.e., 'cell speed'.
-  ! May be later modified by retrograde motion .... 
+  ! May be later modified by retrograde motion ....
   real(r8) :: usteer(ncol), vsteer(ncol)
   real(r8) :: uwavef(ncol,pver),vwavef(ncol,pver)
   ! Steering level (integer converted to real*8)
@@ -108,7 +111,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Maximum heating rate.
   real(r8) :: q0(ncol), qj(ncol)
   ! unit vector components at steering level and mag
-  real(r8) :: xv_steer(ncol), yv_steer(ncol), umag_steer(ncol) 
+  real(r8) :: xv_steer(ncol), yv_steer(ncol), umag_steer(ncol)
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
   ! Index for looking up heating depth dimension in the table.
@@ -125,7 +128,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8) :: udiff(ncol),vdiff(ncol)
   ! "on-crest" source level wind
   real(r8) :: ubmsrc(ncol),ubisrc(ncol)
-  
+
   ! Index to shift spectra relative to ground.
   integer :: shift
   ! Other wind quantities
@@ -156,21 +159,19 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   !----------------------------------------------------------------------
   ! Calculate flux source from ShCu/PBL
   !----------------------------------------------------------------------
-  xpwp_src = shcu_flux_src( xpwp_shcu, ncol, pver+1 )
-  
+  xpwp_src = shcu_flux_src( xpwp_shcu, ncol, pver+1, alpha_gw_movmtn )
+
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors approximately at the source (steering level), then
   ! project winds.
   !------------------------------------------------------------------------
 
-  ! Winds at 'steering level' 
-  !usteer = u(:,desc%k)  !k defined in line21 (at specified altitude)
-  !vsteer = v(:,desc%k)
-  !steer_level = 1._r8 * desc%k
+  ! Winds at 'steering level'
   Steer_k = pver-1
   usteer = u(:,Steer_k)  !k defined in line21 (at specified altitude)
   vsteer = v(:,Steer_k)
   steer_level = 1._r8 * Steer_k
+
   ! all GW calculations on a plane, which in our case is the wind at 700hPa  source level -> ubi is wind in this plane
   ! Get the unit vector components and magnitude at the source level.
   call get_unit_vector(usteer, vsteer, xv_steer, yv_steer, umag_steer)
@@ -197,62 +198,60 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! At this point (usteer,vsteer) is the cell-speed, or equivalently, the 2D
   ! ground based wave phase spped for moving mountain GW
   !-------------------------------------------------------------------------
-  
-  
+
+
   ! Calculate heating depth.
   !
   ! Heating depth is defined as the first height range from the bottom in
   ! which heating rate is continuously positive.
   !-----------------------------------------------------------------------
 
-  ! First find the indices for the top and bottom of the heating range.  !nedt is heating profile from Zhang McFarlane (it's pressure coordinates, therefore k=0 is the top)
+  ! First find the indices for the top and bottom of the heating range.
+  !nedt is heating profile from Zhang McFarlane (it's pressure coordinates, therefore k=0 is the top)
+
   boti = 0 !bottom
   topi = 0  !top
-  !+++jtb
-#ifdef DEVELOPTEST  
-  boti=pver
-  topi=Steer_k-10 ! desc%k-5
-#else
-  do k = pver, 1, -1 !start at surface
-     do i = 1, ncol
-        if (boti(i) == 0) then
-           ! Detect if we are outside the maximum range (where z = 20 km).
-           if (zm(i,k) >= 20000._r8) then
-              boti(i) = k
-              topi(i) = k
-           else
-              ! First spot where heating rate is positive.
-              if (netdt(i,k) > 0.0_r8) boti(i) = k
-           end if
-        else if (topi(i) == 0) then
-           ! Detect if we are outside the maximum range (z = 20 km).
-           if (zm(i,k) >= 20000._r8) then
-              topi(i) = k
-           else
-              ! First spot where heating rate is no longer positive.
-              if (.not. (netdt(i,k) > 0.0_r8)) topi(i) = k
-           end if
-        end if
-     end do
-     ! When all done, exit.
-     if (all(topi /= 0)) exit
-  end do
-#endif
- 
+
+  if (use_gw_movmtn_pbl) then
+     boti=pver
+     topi=Steer_k-10 ! desc%k-5
+  else
+    do k = pver, 1, -1 !start at surface
+       do i = 1, ncol
+          if (boti(i) == 0) then
+             ! Detect if we are outside the maximum range (where z = 20 km).
+             if (zm(i,k) >= 20000._r8) then
+                boti(i) = k
+                topi(i) = k
+             else
+                ! First spot where heating rate is positive.
+                if (netdt(i,k) > 0.0_r8) boti(i) = k
+             end if
+          else if (topi(i) == 0) then
+             ! Detect if we are outside the maximum range (z = 20 km).
+             if (zm(i,k) >= 20000._r8) then
+                topi(i) = k
+             else
+                ! First spot where heating rate is no longer positive.
+                if (.not. (netdt(i,k) > 0.0_r8)) topi(i) = k
+             end if
+          end if
+       end do
+       ! When all done, exit.
+       if (all(topi /= 0)) exit
+    end do
+  end if
   ! Heating depth in m.  (top-bottom altitudes)
   hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
-
-  ! J. Richter: this is an effective reduction of the GW phase speeds (needed to drive the QBO)
-!  hdepth = hdepth*qbo_hdepth_scaling
-! where in the lookup table do I find this heating depth
   hd_idx = index_of_nearest(hdepth, desc%hd)
-  !write(111) hd_idx
+
   ! hd_idx=0 signals that a heating depth is too shallow, i.e. that it is
   ! either not big enough for the lowest table entry, or it is below the
   ! minimum allowed for this convection type.
-  ! Values above the max in the table still get the highest value, though. 
+  ! Values above the max in the table still get the highest value, though.
+
   where (hdepth < max(desc%min_hdepth, desc%hd(1))) hd_idx = 0
- 
+
   ! Maximum heating rate.
   do k = minval(topi), maxval(boti)
      where (k >= topi .and. k <= boti)
@@ -260,13 +259,14 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      end where
   end do
 
-  ! Multipy by conversion factor (now 20* larger than what Zahng McFarlane said as they try to describe heating over 100km grid cell)
+  ! Multipy by conversion factor
+  ! (now 20* larger than what Zahng McFarlane said as they try to describe heating over 100km grid cell)
   q0 = q0 * CF
   qj = 9.81/285*q0 ! unit conversion to m/s3
 
-  
-  CS1 = sqrt( usteer**2._r8 + vsteer**2._r8 ) 
-  CS = CS1*xv_steer + CS1*yv_steer 
+
+  CS1 = sqrt( usteer**2._r8 + vsteer**2._r8 )
+  CS = CS1*xv_steer + CS1*yv_steer
 
   ! -----------------------------------------------------------
   ! Calculate winds in reference frame of wave (uwavef,vwavef).
@@ -288,7 +288,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! applied.
   !----------------------------------------------------------
   do i=1,ncol
-     udiff(i) = uwavef( i, topi(i) ) 
+     udiff(i) = uwavef( i, topi(i) )
      vdiff(i) = vwavef( i, topi(i) )
   end do
   !-----------------------------------------------------------
@@ -331,21 +331,11 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      yv(i) = sign( 1._r8 , ubmsrc(i) ) * yv(i)
   end do
 
-  
-!+++ jtb (1/17/24)
-  ! I don't think this should be done.
-  ! Comment out
-#if 0
-  !Subtract steering wind/cell speed
-  do k=1,pver
-     do i=1,ncol
-        ubm(i,k) = ubm(i,k) - CS1(i)
-     end do
-  end do
-#endif
-  
-  
-  ! Compute the interface wind projection by averaging the midpoint winds. (both same wind profile, just at different points of the grid)
+
+
+  ! Compute the interface wind projection by averaging the midpoint winds. (both same wind profile,
+  ! just at different points of the grid)
+
   ! Use the top level wind at the top interface.
   ubi(:,1) = ubm(:,1)
 
@@ -361,14 +351,6 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   end do
 
   ! Set phase speeds; just use reference speeds.
-  !+++jtb
-  !c=0
-  ! Need to be really sure about the sign here
-  !c(:,0) = -CS1(:) !!spread(band%cref, 1, ncol)
-!+++jtb
-  ! (1/17/24) Think the correct thing to do is to set c=0. 
-  ! Direction and non-zero phase speeds are contained in
-  ! (uwavef,vwavef)=>ubm and in (xv,yv)
   c(:,0) = 0._r8
 
   !-----------------------------------------------------------------------
@@ -382,30 +364,30 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      ! Look up spectrum only if the heating depth is large enough, else leave
      ! tau = 0.
      !---------------------------------------------------------------------
-#ifndef DEVELOPTEST
-     if (hd_idx(i) > 0) then
-        !------------------------------------------------------------------
-        ! Look up the spectrum using depth and uh.
-        !------------------------------------------------------------------
-        !hdmm_idx = index_of_nearest(hdepth, desc%hd)
-        !write(110) hdmm_idx
-        uhmm_idx = index_of_nearest(uh, desc%uh)
-        taumm(i) = abs(desc%mfcc(uhmm_idx(i),hd_idx(i),0))
-        !write(1111) taumm(i)
-        taumm(i) = taumm(i)*qj(i)*qj(i)/AL/1000._r8
-        ! assign sign to MF based on the ground based phase speed, ground based phase speed = CS
-        taumm(i) = -1._r8*sign(taumm(i),CS(i))
-        !find the right phase speed bin
-        c0(i,:) = CS(i) 
-        c_idx(i,:) = index_of_nearest(c0(i,:),c(i,:))
-        !write(1112) taumm(i)
-        tau(i,c_idx(i,:),topi(i):topi(i)+1) = taumm(i) !input tau to top +1 level, interface level just below top of heating, remember it's in pressure - everything is upside down (source level of GWs, level where GWs are launched)        
-     end if ! heating depth above min and not at the pole
-#else
-     !+++jtb
-     tau(i,0,topi(i):pver+1 ) = xpwp_src(i) ! 0.1_r8/10000._r8
-#endif
-     
+     if (.not. use_gw_movmtn_pbl) then
+        if (hd_idx(i) > 0) then
+           !------------------------------------------------------------------
+           ! Look up the spectrum using depth and uh.
+           !------------------------------------------------------------------
+           !hdmm_idx = index_of_nearest(hdepth, desc%hd)
+           uhmm_idx = index_of_nearest(uh, desc%uh)
+           taumm(i) = abs(desc%mfcc(uhmm_idx(i),hd_idx(i),0))
+           taumm(i) = taumm(i)*qj(i)*qj(i)/AL/1000._r8
+           ! assign sign to MF based on the ground based phase speed, ground based phase speed = CS
+           taumm(i) = -1._r8*sign(taumm(i),CS(i))
+           !find the right phase speed bin
+           c0(i,:) = CS(i)
+           c_idx(i,:) = index_of_nearest(c0(i,:),c(i,:))
+
+           !input tau to top +1 level, interface level just below top of heating, remember it's in pressure
+           ! everything is upside down (source level of GWs, level where GWs are launched)
+           tau(i,c_idx(i,:),topi(i):topi(i)+1) = taumm(i)
+
+        end if ! heating depth above min and not at the pole
+     else
+        tau(i,0,topi(i):pver+1 ) = xpwp_src(i) ! 0.1_r8/10000._r8
+     endif
+
   enddo
   !-----------------------------------------------------------------------
   ! End loop over all columns.
@@ -440,19 +422,14 @@ function index_of_nearest(x, grid) result(idx)
 end function index_of_nearest
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-function shcu_flux_src (xpwp_shcu , ncol, pverx ) result(xpwp_src)
+function shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn ) result(xpwp_src)
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
+  real(r8), intent(in) :: alpha_gw_movmtn
 
-  real(r8) :: xpwp_src(ncol) , alpha_shcu_flux
+  real(r8) :: xpwp_src(ncol)
 
   integer :: k, nlayers
-
-  !-----------------------------------
-  ! This is a tunable parameter
-  ! that should go into the namelist
-  !-----------------------------------
-  alpha_shcu_flux = 0.01_r8
 
   !-----------------------------------
   ! Simple average over layers.
@@ -463,7 +440,7 @@ function shcu_flux_src (xpwp_shcu , ncol, pverx ) result(xpwp_src)
   do k = 0, nlayers-1
      xpwp_src(:) = xpwp_src(:) + xpwp_shcu(:,pverx-k)
   end do
-  xpwp_src(:) = alpha_shcu_flux * xpwp_src(:)/(1.0_r8*nlayers)
+  xpwp_src(:) = alpha_gw_movmtn * xpwp_src(:)/(1.0_r8*nlayers)
 
 end function shcu_flux_src
 
