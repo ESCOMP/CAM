@@ -155,7 +155,6 @@ module gw_drag
   integer :: frontga_idx  = -1
   integer :: sgh_idx      = -1
 
-  !+++jtb
   ! From CLUBB
   integer :: ttend_clubb_idx  = -1
   integer :: upwp_clubb_gw_idx   = -1
@@ -572,7 +571,7 @@ subroutine gw_init()
   if ( use_gw_oro ) then
 
      if (effgw_oro == unset_r8) then
-        call endrun("gw_drag_init: Orographic gravity waves enabled, &
+        call endrun("gw_init: Orographic gravity waves enabled, &
              &but effgw_oro was not set.")
      end if
   end if
@@ -864,7 +863,7 @@ subroutine gw_init()
      frontga_idx = pbuf_get_index('FRONTGA')
 
      call shr_assert(unset_r8 /= frontgfc, &
-          "gw_drag_init: Frontogenesis enabled, but frontgfc was &
+          "gw_init: Frontogenesis enabled, but frontgfc was &
           & not set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -897,7 +896,7 @@ subroutine gw_init()
   if (use_gw_front) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm, taubgnd ]), &
-          "gw_drag_init: Frontogenesis mid-scale waves enabled, but not &
+          "gw_init: Frontogenesis mid-scale waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -919,7 +918,7 @@ subroutine gw_init()
   if (use_gw_front_igw) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm_igw, taubgnd_igw ]), &
-          "gw_drag_init: Frontogenesis inertial waves enabled, but not &
+          "gw_init: Frontogenesis inertial waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -941,7 +940,6 @@ subroutine gw_init()
   ! ========= Moving Mountain initialization! ==========================
   if (use_gw_movmtn_pbl) then
 
-     !+++ jtb
      ! get pbuf indices for CLUBB couplings
      ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
      thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
@@ -956,22 +954,18 @@ subroutine gw_init()
 
      ! Confirm moving mountain file is enabled
      call shr_assert(trim(gw_drag_file_mm) /= "", &
-          "gw_drag_init: No gw_drag_file provided for DP GW moving mountain lookup &
+          "gw_init: No gw_drag_file provided for DP GW moving mountain lookup &
           &table. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
      call gw_init_movmtn(gw_drag_file_mm, band_movmtn, movmtn_desc)
-     ! set 700hPa index
+
      do k = 0, pver
-        !+++jtb
-        ! 700 hPa index
-        ! if (pref_edge(k+1) < 70000._r8) movmtn_desc%k = k+1
         ! 950 hPa index
         if (pref_edge(k+1) < 95000._r8) movmtn_desc%k = k+1
      end do
+
     ! Don't use deep convection heating depths below this limit.
-     !movmtn_desc%min_hdepth = 1000._r8
-     !+++jtb
      movmtn_desc%min_hdepth = 1._r8
      if (masterproc) then
         write (iulog,*) 'Moving mountain deep level =',movmtn_desc%k
@@ -1049,7 +1043,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file) /= "", &
-          "gw_drag_init: No gw_drag_file provided for Beres deep &
+          "gw_init: No gw_drag_file provided for Beres deep &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -1096,7 +1090,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file_sh) /= "", &
-          "gw_drag_init: No gw_drag_file_sh provided for Beres shallow &
+          "gw_init: No gw_drag_file_sh provided for Beres shallow &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -1228,8 +1222,8 @@ subroutine gw_init_beres(file_name, band, desc)
   ngwv_file = (ngwv_file-1)/2
 
   call shr_assert(ngwv_file >= band%ngwv, &
-       "gw_beres_init: PS in lookup table file does not cover the whole &
-       &spectrum implied by the model's ngwv.")
+       "gw_init_beres: PhaseSpeed in lookup table file does not cover the whole &
+       &spectrum implied by the model's ngwv. ")
 
   ! Allocate hd and get data.
 
@@ -1341,8 +1335,7 @@ subroutine gw_init_movmtn(file_name, band, desc)
   ngwv_file = (ngwv_file-1)/2
 
   call shr_assert(ngwv_file >= band%ngwv, &
-       "gw_movmtn_init: PS in lookup table file does not cover the whole &
-       &spectrum implied by the model's ngwv.")
+       "gw_movmtn_init: PhaseSpeed in lookup table inconsistent with moving mountain")
 
   ! Allocate hd and get data.
 
@@ -1372,7 +1365,7 @@ subroutine gw_init_movmtn(file_name, band, desc)
   allocate(desc%uh(desc%maxuh), stat=stat, errmsg=msg)
 
   call shr_assert(stat == 0, &
-       "gw_init_movmtn: Allocation error (mw): "//msg// &
+       "gw_init_movmtn: Allocation error (uh): "//msg// &
        errMsg(__FILE__, __LINE__))
 
   stat = pio_inq_varid(gw_file_desc,'UARR',uhid)
@@ -1393,7 +1386,7 @@ subroutine gw_init_movmtn(file_name, band, desc)
        -band%ngwv:band%ngwv), stat=stat, errmsg=msg)
 
   call shr_assert(stat == 0, &
-       "gw_init_beres: Allocation error (mfcc): "//msg// &
+       "gw_init_movmtn: Allocation error (mfcc): "//msg// &
        errMsg(__FILE__, __LINE__))
 
   ! Get mfcc data.
@@ -1403,14 +1396,9 @@ subroutine gw_init_movmtn(file_name, band, desc)
   call handle_pio_error(stat, &
        'Error finding mfcc in: '//trim(file_path))
 
-  !++jtb ( 06/04/24 )
-  !stat = pio_get_var(gw_file_desc, mfccid, &
-  !     start=[1,1,ngwv_file-band%ngwv+1], count=shape(desc%mfcc), &
-  !     ival=desc%mfcc)
   stat = pio_get_var(gw_file_desc, mfccid, &
        start=[1,1], count=shape(desc%mfcc), &
        ival=desc%mfcc)
-  !--jtb
 
   call handle_pio_error(stat, &
        'Error reading mfcc from: '//trim(file_path))
@@ -1420,9 +1408,6 @@ subroutine gw_init_movmtn(file_name, band, desc)
   if (masterproc) then
 
      write(iulog,*) "Read in Mov Mountain source file."
-     !write(iulog,*) "NEWMF for moving mountain max, min = ", &
-      !    maxval(desc%mfcc),", ",minval(desc%mfcc)
-     !write(iulog,*) "shape NEWMF " , shape( desc%mfcc )
 
   endif
 
@@ -1568,7 +1553,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Temperature change due to shallow convection.
   real(r8), pointer :: ttend_sh(:,:)
 
-  !+++jtb
   !  New couplings from CLUBB
   real(r8), pointer :: ttend_clubb(:,:)
   real(r8), pointer :: thlp2_clubb_gw(:,:)
@@ -1730,7 +1714,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
 
-     !+++jtb
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
      call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
@@ -1754,7 +1737,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           zm, alpha_gw_movmtn, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           c, hdepth)
-     !+++jtb (1/17/24)
      !-------------------------------------------------------------
      ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
      ! and unit vector components describing direction of wavevector
@@ -1805,7 +1787,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
      call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
      call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
-     !+++jtb new from CLUBB
      call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
      call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
      call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)

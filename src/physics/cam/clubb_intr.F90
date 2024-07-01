@@ -403,7 +403,6 @@ module clubb_intr
     ztodt_idx,&         ! physics timestep for SILHS
     clubbtop_idx        ! level index for CLUBB top
 
-  !+++jtb
   !   For GW code
   integer :: &
        ttend_clubb_idx, &
@@ -588,8 +587,7 @@ module clubb_intr
     call pbuf_add_field('WP2UP2',     'global', dtype_r8, (/pcols,pverp/), wp2up2_idx)
     call pbuf_add_field('WP2VP2',     'global', dtype_r8, (/pcols,pverp/), wp2vp2_idx)
 
-    !+++ jtb
-    ! Things for GW scheme
+    ! pbuf fields for GW scheme
     call pbuf_add_field('TTEND_CLUBB',  'physpkg', dtype_r8, (/pcols,pver/),  ttend_clubb_idx)
     call pbuf_add_field('UPWP_CLUBB_GW',   'physpkg', dtype_r8, (/pcols,pverp/), upwp_clubb_gw_idx)
     call pbuf_add_field('VPWP_CLUBB_GW',   'physpkg', dtype_r8, (/pcols,pverp/), vpwp_clubb_gw_idx)
@@ -601,7 +599,6 @@ module clubb_intr
     call pbuf_add_field('VPWP_CLUBB_GW_MC',   'physpkg', dtype_r8, (/pcols,pverp/), vpwp_clubb_gw_mc_idx)
     call pbuf_add_field('THLP2_CLUBB_GW_MC',   'physpkg', dtype_r8, (/pcols,pverp/), thlp2_clubb_gw_mc_idx)
     call pbuf_add_field('WPTHLP_CLUBB_GW_MC',   'physpkg', dtype_r8, (/pcols,pverp/), wpthlp_clubb_gw_mc_idx)
-    !---
 
     ! For SILHS microphysical covariance contributions
     call pbuf_add_field('rtp2_mc_zt', 'global', dtype_r8, (/pcols,pverp/), rtp2_mc_zt_idx)
@@ -1558,7 +1555,7 @@ end subroutine clubb_init_cnst
     stats_metadata%l_stats_samp = .false.
     stats_metadata%l_grads = .false.
 
-    !  Overwrite defaults if needbe
+    !  Overwrite defaults if needed
     if (stats_metadata%l_stats) stats_metadata%l_stats_samp = .true.
 
     !  Define physics buffers indexes
@@ -2013,7 +2010,6 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf2d, pdf_zm_varnce_w_2_idx, 0.0_r8)
        call pbuf_set_field(pbuf2d, pdf_zm_mixt_frac_idx, 0.0_r8)
 
-       !+++ jtb (For GW)
        call pbuf_set_field(pbuf2d,  ttend_clubb_idx, 0.0_r8)
        call pbuf_set_field(pbuf2d,  upwp_clubb_gw_idx, 0.0_r8)
        call pbuf_set_field(pbuf2d,  vpwp_clubb_gw_idx, 0.0_r8)
@@ -2464,7 +2460,6 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: wpthlp_mc_zt
     real(r8), pointer, dimension(:,:) :: rtpthlp_mc_zt
 
-    !+++ jtb
     ! Connections to GW param
     real(r8), pointer, dimension(:,:) :: ttend_clubb
     real(r8), pointer, dimension(:,:) :: upwp_clubb_gw
@@ -2701,7 +2696,6 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, wpthlp_mc_zt_idx,  wpthlp_mc_zt)
     call pbuf_get_field(pbuf, rtpthlp_mc_zt_idx, rtpthlp_mc_zt)
 
-    !+++jtb
     ! For GW
     call pbuf_get_field(pbuf, ttend_clubb_idx,       ttend_clubb )
     call pbuf_get_field(pbuf, thlp2_clubb_gw_idx,    thlp2_clubb_gw )
@@ -3404,7 +3398,6 @@ end subroutine clubb_init_cnst
 
     endif
 
-    !+++jtb
     ! need to initialize macmic coupling to zero
     if (macmic_it==1) ttend_clubb_mc(:ncol,:) = 0._r8
     if (macmic_it==1) upwp_clubb_gw_mc(:ncol,:) = 0._r8
@@ -3445,18 +3438,18 @@ end subroutine clubb_init_cnst
                             um_in(i,:), vm_in(i,:), thlm_in(i,:),    rtm_in(i,:), thv(i,:),    & ! input
                                                     thlm_zm_in(i,:), rtm_zm_in(i,:),                  & ! input
                                                     wpthlp_sfc(i), wprtp_sfc(i),  pblh(i),            & ! input
-                            mf_dry_a(i,:),    mf_moist_a(i,:),                                          & ! output - plume diagnostics
-                            mf_dry_w(i,:),    mf_moist_w(i,:),                                          & ! output - plume diagnostics
-                            mf_dry_qt(i,:),   mf_moist_qt(i,:),                                         & ! output - plume diagnostics
-                            mf_dry_thl(i,:),  mf_moist_thl(i,:),                                        & ! output - plume diagnostics
-                            mf_dry_u(i,:),    mf_moist_u(i,:),                                          & ! output - plume diagnostics
-                            mf_dry_v(i,:),    mf_moist_v(i,:),                                          & ! output - plume diagnostics
-                                              mf_moist_qc(i,:),                                         & ! output - plume diagnostics
-                              s_ae(i,:),      s_aw(i,:),                                                & ! output - plume diagnostics
-                              s_awthl(i,:),   s_awqt(i,:),                                              & ! output - plume diagnostics
-                              s_awql(i,:),    s_awqi(i,:),                                              & ! output - plume diagnostics
-                              s_awu(i,:),     s_awv(i,:),                                               & ! output - plume diagnostics
-                              mf_thlflx(i,:), mf_qtflx(i,:) )                                             ! output - variables needed for solver
+                            mf_dry_a(i,:),    mf_moist_a(i,:),                                        & ! output - plume diagnostics
+                            mf_dry_w(i,:),    mf_moist_w(i,:),                                        & ! output - plume diagnostics
+                            mf_dry_qt(i,:),   mf_moist_qt(i,:),                                       & ! output - plume diagnostics
+                            mf_dry_thl(i,:),  mf_moist_thl(i,:),                                      & ! output - plume diagnostics
+                            mf_dry_u(i,:),    mf_moist_u(i,:),                                        & ! output - plume diagnostics
+                            mf_dry_v(i,:),    mf_moist_v(i,:),                                        & ! output - plume diagnostics
+                                              mf_moist_qc(i,:),                                       & ! output - plume diagnostics
+                              s_ae(i,:),      s_aw(i,:),                                              & ! output - plume diagnostics
+                              s_awthl(i,:),   s_awqt(i,:),                                            & ! output - plume diagnostics
+                              s_awql(i,:),    s_awqi(i,:),                                            & ! output - plume diagnostics
+                              s_awu(i,:),     s_awv(i,:),                                             & ! output - plume diagnostics
+                              mf_thlflx(i,:), mf_qtflx(i,:) )                                 ! output - variables needed for solver
         end do
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
@@ -3683,13 +3676,12 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    !+++ jtb
     !  Accumulate vars throug macmic subcycle
     upwp_clubb_gw_mc(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)   + upwp(:ncol,:)
     vpwp_clubb_gw_mc(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)   + vpwp(:ncol,:)
     thlp2_clubb_gw_mc(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)  + thlp2(:ncol,:)
     wpthlp_clubb_gw_mc(:ncol,:) = wpthlp_clubb_gw_mc(:ncol,:) + wpthlp(:ncol,:)
-    !+++ jtb
+
     ! And average at last macmic step
     if (macmic_it == cld_macmic_num_steps) then
        upwp_clubb_gw(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps)
@@ -3904,10 +3896,10 @@ end subroutine clubb_init_cnst
    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
 
-    !+++ jtb
     ! Accumulate TTEND for GW parameterization
     ttend_clubb_mc(:ncol,:pver) = ttend_clubb_mc(:ncol,:pver) + ptend_loc%s(:ncol,:pver)/cpair
-    ! And average at last macmic step
+
+    ! Average at last macmic step
     if (macmic_it == cld_macmic_num_steps) then
        ttend_clubb(:ncol,:)  = ttend_clubb_mc(:ncol,:pver)/REAL(cld_macmic_num_steps)
     end if
