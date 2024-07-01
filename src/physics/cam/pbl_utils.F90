@@ -27,7 +27,7 @@ public calc_ustar
 public calc_obklen
 public virtem
 public compute_radf
-public austausch_atm
+public austausch_atm, austausch_atm_free
 
 real(r8), parameter :: ustar_min = 0.01_r8
 
@@ -407,5 +407,63 @@ subroutine austausch_atm(pcols, ncol, pver, ntop, nbot, ml2, ri, s2, kvf)
   end do
 
 end subroutine austausch_atm
+
+subroutine austausch_atm_free(pcols, ncol, pver, ntop, nbot, ml2, ri, s2, kvf)
+
+  !---------------------------------------------------------------------- !
+  !                                                                       !
+  ! same as austausch_atm but only mixing for Ri<0                        !
+  ! i.e. no background mixing and mixing for Ri>0                         !
+  !                                                                       !
+  !---------------------------------------------------------------------- !
+
+  ! --------------- !
+  ! Input arguments !
+  ! --------------- !
+
+  integer,  intent(in)  :: pcols                ! Atmospheric columns dimension size
+  integer,  intent(in)  :: ncol                 ! Number of atmospheric columns
+  integer,  intent(in)  :: pver                 ! Number of atmospheric layers
+  integer,  intent(in)  :: ntop                 ! Top layer for calculation
+  integer,  intent(in)  :: nbot                 ! Bottom layer for calculation
+
+  real(r8), intent(in)  :: ml2(pver+1)          ! Mixing lengths squared
+  real(r8), intent(in)  :: s2(pcols,pver)       ! Shear squared
+  real(r8), intent(in)  :: ri(pcols,pver)       ! Richardson no
+
+  ! ---------------- !
+  ! Output arguments !
+  ! ---------------- !
+
+  real(r8), intent(out) :: kvf(pcols,pver+1)    ! Eddy diffusivity for heat and tracers
+
+  ! --------------- !
+  ! Local Variables !
+  ! --------------- !
+
+  real(r8)              :: fofri                ! f(ri)
+  real(r8)              :: kvn                  ! Neutral Kv
+
+  integer               :: i                    ! Longitude index
+  integer               :: k                    ! Vertical index
+
+  ! ----------------------- !
+  ! Main Computation Begins !
+  ! ----------------------- !
+
+  kvf(:ncol,:)           = 0.0_r8
+  ! Compute the free atmosphere vertical diffusion coefficients: kvh = kvq = kvm.
+  do k = ntop, nbot - 1
+     do i = 1, ncol
+        if( ri(i,k) < 0.0_r8 ) then
+           fofri = sqrt( max( 1._r8 - 18._r8 * ri(i,k), 0._r8 ) )
+        else
+           fofri = 0.0_r8
+        end if
+        kvn = ml2(k) * sqrt(s2(i,k))
+        kvf(i,k+1) = kvn * fofri
+     end do
+  end do
+end subroutine austausch_atm_free
 
 end module pbl_utils

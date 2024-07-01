@@ -262,7 +262,7 @@ end subroutine init_hb_diff
     !
     !-----------------------------------------------------------------------
 
-    use pbl_utils, only: virtem, calc_ustar, calc_obklen, austausch_atm
+    use pbl_utils, only: virtem, calc_ustar, calc_obklen, austausch_atm_free
 
     !------------------------------Arguments--------------------------------
     !
@@ -321,7 +321,7 @@ end subroutine init_hb_diff
     !
     ! Get free atmosphere exchange coefficients
     !
-    call austausch_atm(pcols, ncol, pver, ntop_turb, nbot_turb, &
+    call austausch_atm_free(pcols, ncol, pver, ntop_turb, nbot_turb, &
          ml2, ri, s2, kvf)
 
     kvq(:ncol,:) = kvf(:ncol,:)

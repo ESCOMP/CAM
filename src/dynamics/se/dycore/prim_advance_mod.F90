@@ -444,7 +444,7 @@ contains
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: nu_t_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
-    use control_mod,    only: molecular_diff
+    use control_mod,    only: molecular_diff,sponge_del4_lev
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk, vlaplace_sphere_wk_mol
@@ -668,7 +668,7 @@ contains
       call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dCH')
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
-        do k=ksponge_end,nlev
+        do k=sponge_del4_lev+2,nlev
           !
           ! only do "frictional heating" away from sponge
           !
