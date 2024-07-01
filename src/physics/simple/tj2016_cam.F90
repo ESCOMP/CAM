@@ -159,9 +159,9 @@ end subroutine Thatcher_Jablonowski_register
     call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
     call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
-    call tj2016_precip_run(ncol, pver, gravit, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, rhoh2o, &
-         ps0, etamid, &
-         ztodt, state%pmid(:ncol,:), state%pdel(:ncol,:), T, qv, relhum(:ncol,:), prec_pcw(:ncol), ptend%s(:ncol,:), &
+    call tj2016_precip_run(ncol, pver, gravit, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), &
+         latvap, rh2o, epsilo, rhoh2o, ps0, etamid, ztodt, state%pmid(:ncol,:),             &
+         state%pdel(:ncol,:), T, qv, relhum(:ncol,:), prec_pcw(:ncol), ptend%s(:ncol,:),    &
          scheme_name, errmsg, errflg)
 
     ! Back out specific humidity tendencies from updated fields
@@ -271,11 +271,12 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, 1, pver, pverp, gravit, pi, cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo, &
-         rhoh2o, zvirv(:ncol,:),           &
-         ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), state%lnpint(:ncol,:),    &
-         state%rpdel(:ncol,:), T, U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),        &
-         cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol),      &
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, 1, pver, pverp, gravit, pi,                                      &
+         cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo,                &
+         rhoh2o, zvirv(:ncol,:), ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:),                   &
+         state%pint(:ncol,:), state%lnpint(:ncol,:), state%rpdel(:ncol,:), T,                                      &
+         U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),    &
+         cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol), &
          ptend%s(:ncol,:), scheme_name, errmsg, errflg)
 
     ! Back out tendencies from updated fields
