@@ -259,7 +259,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      end where
   end do
 
-  ! Multipy by conversion factor
+  ! Multiply by conversion factor
   ! (now 20* larger than what Zahng McFarlane said as they try to describe heating over 100km grid cell)
   q0 = q0 * CF
   qj = 9.81/285*q0 ! unit conversion to m/s3
