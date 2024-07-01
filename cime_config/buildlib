@@ -52,7 +52,7 @@ def _build_fms(caseroot, libroot, bldroot):
 
                 mpilib = case.get_value("MPILIB")
                 sharedpath = os.path.join(case.get_value("COMPILER"), mpilib,
-                                          strdebug, strthread, "nuopc")
+                                          strdebug, strthread)
                 slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
                 fmsbuildroot = os.path.join(slr, sharedpath)
                 fmsinstallpath = os.path.join(fmsbuildroot, "FMS")
@@ -108,7 +108,7 @@ def _build_cam(caseroot, libroot, bldroot):
             threaded = "threads" if case.get_value("BUILD_THREADED") or case.get_value("FORCE_BUILD_SMP") else "nothreads"
             comp_interface = case.get_value("COMP_INTERFACE")
             fmsbuilddir = os.path.join(
-                slr, compiler, mpilib, debug, threaded, comp_interface, "FMS")
+                slr, compiler, mpilib, debug, threaded, "FMS")
             user_incldir = '"-I{} -I{} -I{}"'.format(
                 os.path.join(srcroot, "libraries", "FMS", "src", "include"),
                 os.path.join(srcroot, "libraries", "FMS", "src", "mpp", "include"),
