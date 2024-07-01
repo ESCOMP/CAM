@@ -162,7 +162,7 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
       'hPa', trop_pref, positive='down')
 
    allocate(trop_prefi(nlev+1), stat=istat)
-   call alloc_err(istat, sub, 'trop_prefi', nlev)
+   call alloc_err(istat, sub, 'trop_prefi', nlev+1)
    trop_prefi = pref_edge(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
 
    call add_vert_coord('trop_prefi', nlev+1, 'troposphere reference pressures (interfaces)', &

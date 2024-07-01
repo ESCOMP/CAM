@@ -526,7 +526,7 @@ CONTAINS
     character(len=*), parameter :: sub = 'cospsimulator_intr_init'
     !---------------------------------------------------------------------------
     
-    ! The COSP init method was run from cospsimulator_intr_register in order to add
+    ! The COSP init method (setcosp2values) was run from cospsimulator_intr_register in order to add
     ! the history coordinate variables earlier as needed for the restart time sequencing.
 
     ! ISCCP OUTPUTS
@@ -576,7 +576,7 @@ CONTAINS
             'PARASOL-like mono-directional reflectance ', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CFAD_SR532_CAL', (/'cosp_sr','cosp_ht'/), 'A', 'fraction', &
             'Calipso Scattering Ratio CFAD (532 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('MOL532_CAL', (/'trop_pref'/), 'A', 'm-1sr-1', &
+       call addfld('MOL532_CAL', (/'trop_pref'/), 'A', 'm-1 sr-1', &
             'Calipso Molecular Backscatter (532 nm) ', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('ATB532_CAL', (/'cosp_scol','trop_pref'/), 'I', 'no_unit_log10(x)', &
             'Calipso Attenuated Total Backscatter (532 nm) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
@@ -586,14 +586,14 @@ CONTAINS
             'Calipso Ice Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLD_CAL_UN', (/'cosp_ht'/), 'A', 'percent',  &
             'Calipso Undefined-Phase Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLD_CAL_TMP', (/'cosp_ht'/), 'A', 'percent', &
-            'NOT SURE WHAT THIS IS Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLD_CAL_TMPLIQ', (/'cosp_ht'/), 'A', 'percent', &
-            'NOT SURE WHAT THIS IS Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLD_CAL_TMPICE', (/'cosp_ht'/), 'A', 'percent', &
-            'NOT SURE WHAT THIS IS Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLD_CAL_TMPUN', (/'cosp_ht'/), 'A', 'percent', &
-            'NOT SURE WHAT THIS IS Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLD_CAL_TMP', (/'cosp_ht'/), 'A', 'K', &
+            'Calipso Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLD_CAL_TMPLIQ', (/'cosp_ht'/), 'A', 'K', &
+            'Calipso Liquid Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLD_CAL_TMPICE', (/'cosp_ht'/), 'A', 'K', &
+            'Calipso Ice Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLD_CAL_TMPUN', (/'cosp_ht'/), 'A', 'K', &
+            'Calipso Undefined-Phase Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDTOT_CAL_ICE', horiz_only, 'A', 'percent', &
             'Calipso Total Ice Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDTOT_CAL_LIQ', horiz_only, 'A', 'percent', &
@@ -759,11 +759,11 @@ CONTAINS
        call addfld('IWPMODIS', horiz_only, 'A', 'kg m-2', &
             'MODIS Cloud Ice Water Path*CLIMODIS', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLMODIS', (/'cosp_tau_modis','cosp_prs      '/), 'A', '%', &
-            'MODIS Cloud Area Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
+            'MODIS Cloud Area Fraction (tau-pressure histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLRIMODIS', (/'cosp_tau_modis','cosp_reffice  '/), 'A', '%', &
-            'MODIS Cloud Area Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
+            'MODIS Cloud Area Fraction (tau-reffice histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLRLMODIS', (/'cosp_tau_modis','cosp_reffliq  '/), 'A', '%', &
-            'MODIS Cloud Area Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
+            'MODIS Cloud Area Fraction (tau-reffliq histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        
        call add_default('CLTMODIS',cosp_histfile_num,' ')
        call add_default('CLWMODIS',cosp_histfile_num,' ')
@@ -811,21 +811,21 @@ CONTAINS
     !! ADDFLD, ADD_DEFAULT, OUTFLD CALLS FOR COSP OUTPUTS IF RUNNING COSP OFF-LINE
     if (cosp_histfile_aux) then
        call addfld ('PS_COSP',         horiz_only,            'I','Pa', &
-          'PS_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Surface Pressure', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('TS_COSP',         horiz_only,            'I','K',  &
-          'TS_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Skin Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('P_COSP',          (/            'trop_pref'/), 'I','Pa', &
-          'P_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Pressure (layer midpoint)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('PH_COSP',         (/            'trop_prefi'/), 'I','Pa', &
-          'PH_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Pressure (layer interface)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('ZLEV_COSP',       (/            'trop_pref'/), 'I','m',  &
-          'ZLEV_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Height (layer midpoint)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('ZLEV_HALF_COSP',  (/            'trop_prefi'/), 'I','m',  &
-          'ZLEV_HALF_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Height (layer interface)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('T_COSP',          (/            'trop_pref'/), 'I','K',  &
-          'T_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('RH_COSP',         (/            'trop_pref'/), 'I','percent', &
-          'RH_COSP', flag_xyfill=.true., fill_value=R_UNDEF)
+          'COSP Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld ('Q_COSP',          (/            'trop_pref'/), 'I','percent', &
+          'COSP Specific Humidity', flag_xyfill=.true., fill_value=R_UNDEF)
 
        call addfld ('TAU_067',         (/'cosp_scol','trop_pref'/), 'I','1', &
           'Subcolumn 0.67micron optical depth', flag_xyfill=.true., fill_value=R_UNDEF)
@@ -851,7 +851,7 @@ CONTAINS
        call add_default('ZLEV_COSP',       cosp_histfile_aux_num,' ')
        call add_default('ZLEV_HALF_COSP',  cosp_histfile_aux_num,' ')
        call add_default('T_COSP',          cosp_histfile_aux_num,' ')
-       call add_default('RH_COSP',         cosp_histfile_aux_num,' ')
+       call add_default('Q_COSP',          cosp_histfile_aux_num,' ')
        call add_default('TAU_067',         cosp_histfile_aux_num,' ')
        call add_default('EMISS_11',        cosp_histfile_aux_num,' ')
        call add_default('MODIS_fracliq',   cosp_histfile_aux_num,' ')
@@ -935,7 +935,7 @@ CONTAINS
     call quickbeam_optics_init()
 
     ! DS2017: The setting up of the vertical grid for regridding the CALIPSO and Cloudsat products is 
-    !         now donein cosp_init, but these fields are stored in cosp_config.F90.
+    !         now done in cosp_init, but these fields are stored in cosp_config.F90.
     !         Additionally all static fields used by the individual simulators are set up by calls
     !         to _init functions in cosp_init.
     ! DS2019: Add logicals, default=.false., for new Lidar simuldators (Earthcare (atlid) and ground-based
@@ -1010,7 +1010,7 @@ CONTAINS
     
     ! next, assign collapsed reference vectors for cam_history.F90
     ! convention for saving output = prs1,tau1 ... prs1,tau7 ; prs2,tau1 ... prs2,tau7 etc.
-    ! actual output is specified in cospsimulator1_intr.F90
+    ! actual output is specified in cospsimulator_intr_init.
     do k=1,nprs_cosp
        prstau_taumid_cosp(ntau_cosp*(k-1)+1:k*ntau_cosp)=taumid_cosp(1:ntau_cosp)
        prstau_prsmid_cosp(ntau_cosp*(k-1)+1:k*ntau_cosp)=prsmid_cosp(k)
@@ -1053,7 +1053,7 @@ CONTAINS
     use constituents,         only: cnst_get_ind
     use rad_constituents,     only: rad_cnst_get_gas
     use interpolate_data,     only: lininterp_init,lininterp,lininterp_finish,interp_type
-    use physconst,            only: pi, gravit
+    use physconst,            only: pi, inverse_gravit => rga
     use cam_history,          only: outfld,hist_fld_col_active 
     use cam_history_support,  only: max_fieldname_len
 
@@ -1089,6 +1089,8 @@ CONTAINS
     integer :: isc
     integer :: is
     integer :: id
+
+    real(r8), parameter :: rad2deg = 180._r8/pi
     
     ! Microphysics variables
     integer :: ixcldliq                                   ! cloud liquid amount index for state%q
@@ -1101,9 +1103,6 @@ CONTAINS
     
     ! COSP input variables that depend on CAM
     integer :: Npoints                                    ! Number of gridpoints COSP will process
-    logical :: use_reff                                   ! True if effective radius to be used by radar simulator 
-    ! (always used by lidar)
-    logical :: use_precipitation_fluxes                   ! True if precipitation fluxes are input to the algorithm 
     real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns 
     
     ! Local vars related to calculations to go from CAM input to COSP input
@@ -1564,7 +1563,7 @@ CONTAINS
     
     ! add surface height (surface geopotential/gravity) to convert CAM heights based on
     ! geopotential above surface into height above sea level
-    surf_hgt = state%phis(:ncol)/gravit
+    surf_hgt = state%phis(:ncol)*inverse_gravit
     do k = 1, nlay
        zmid(:,k) = state%zm(:ncol,ktop+k-1) + surf_hgt
        zint(:,k) = state%zi(:ncol,ktop+k-1) + surf_hgt
@@ -1575,13 +1574,6 @@ CONTAINS
     do i = 1, ncol
        if (cam_in%landfrac(i) > 0.01_r8) landmask(i)= 1
     end do
-    
-    ! calculate necessary input cloud/precip variables
-    ! CAM4 note: don't take the cloud water from the hack shallow convection scheme or the deep convection.  
-    ! cloud water values for convection are the same as the stratiform value. (Sungsu)
-    ! all precip fluxes are mid points, all values are grid-box mean ("gbm") (Yuying)
-    
-    use_precipitation_fluxes = .true.      !!! consistent with cam4 implementation.
     
     ! Add together deep and shallow convection precipitation fluxes.
     ! Note: sh_flxprc and dp_flxprc variables are rain+snow
@@ -1644,9 +1636,6 @@ CONTAINS
        end do
     end do
     
-    !! if use_reff=.false. then all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
-    use_reff = .true.
-
     !! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011.
     !! The values from the physics buffer are in microns... convert to meters for COSP.
     reff_cosp(:,:,I_LSCLIQ) = rel(:ncol,ktop:pver)*1.e-6_r8
@@ -1706,8 +1695,8 @@ CONTAINS
     call construct_cospstateIN(ncol, nlay, 0, cospstateIN)      
 
     ! convert to degrees.  Lat in range [-90,..,90], Lon in range [0,..,360]
-    cospstateIN%lat             = state%lat(:ncol)*180._r8/pi
-    cospstateIN%lon             = state%lon(:ncol)*180._r8/pi
+    cospstateIN%lat             = state%lat(:ncol)*rad2deg
+    cospstateIN%lon             = state%lon(:ncol)*rad2deg
     cospstateIN%at              = state%t(:ncol,ktop:pver)
     cospstateIN%qv              = q(:ncol,ktop:pver)
     cospstateIN%o3              = o3(:ncol,ktop:pver)
@@ -1735,7 +1724,7 @@ CONTAINS
     ! need to pass the correct section (:ncol,ktop:pver).
     call subsample_and_optics( &
        ncol, nlay, nscol_cosp, nhydro, overlap, &
-       use_precipitation_fluxes, lidar_ice_type,sd_cs(lchnk), &
+       lidar_ice_type, sd_cs(lchnk), &
        cld(:ncol,ktop:pver), concld(:ncol,ktop:pver), &
        rain_ls_interp, snow_ls_interp, grpl_ls_interp, rain_cv_interp, &
        snow_cv_interp, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
@@ -1777,7 +1766,7 @@ CONTAINS
        call outfld('ZLEV_COSP',      cospstateIN%hgt_matrix,       ncol,lchnk)
        call outfld('ZLEV_HALF_COSP', cospstateIN%hgt_matrix_half,  ncol,lchnk)
        call outfld('T_COSP',         cospstateIN%at,               ncol,lchnk)
-       call outfld('RH_COSP',        cospstateIN%qv,               ncol,lchnk)
+       call outfld('Q_COSP',         cospstateIN%qv,               ncol,lchnk)
 
        ! 3D outputs, but first compress to 2D
        do i=1,ncol
@@ -2350,7 +2339,7 @@ CONTAINS
   ! SUBROUTINE subsample_and_optics
   ! ######################################################################################
   subroutine subsample_and_optics(nPoints, nLevels, nColumns, nHydro,overlap,            &
-                                  use_precipitation_fluxes, lidar_ice_type, sd, tca, cca,&
+                                  lidar_ice_type, sd, tca, cca,                          &
                                   fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN,    &
                                   fl_ccsnowIN, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice,   &
                                   reffIN, dtau_c, dtau_s, dem_c, dem_s, dtau_s_snow,     &
@@ -2368,8 +2357,6 @@ CONTAINS
     use mod_cosp_config,      only: Nlvgrid, vgrid_zl, vgrid_zu
     use mod_cosp_stats,       only: cosp_change_vertical_grid
     ! Inputs
-    logical,intent(in) :: &
-         use_precipitation_fluxes
     integer,intent(in) :: &
          nPoints,      & ! Number of gridpoints
          nLevels,      & ! Number of vertical levels
@@ -2446,17 +2433,11 @@ CONTAINS
        call scops(NPoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
        deallocate(seed,rngs)
        
-       ! Sum up precipitation rates. If not using preciitation fluxes, mixing ratios are 
-       ! stored in _rate variables.
+       ! Sum up precipitation rates.
        allocate(ls_p_rate(nPoints,nLevels), cv_p_rate(nPoints,Nlevels), stat=istat)
        call handle_allocate_error(istat, sub, 'ls_p_rate, cv_p_rate')
-       if(use_precipitation_fluxes) then
-          ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
-          cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
-       else
-          ls_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow) + mixing_ratio (groupel)
-          cv_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow)
-       endif
+       ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
+       cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
        
        ! Call PREC_SCOPS
        allocate(frac_prec(nPoints,nColumns,nLevels), stat=istat)
@@ -2567,26 +2548,14 @@ CONTAINS
              endif
              
              ! Precipitation
-             if (use_precipitation_fluxes) then
-                if (prec_ls(j,k) .ne. 0._r8) then
-                   fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
-                   fl_lssnow(j,k) = fl_lssnowIN(j,k)/prec_ls(j,k)
-                   fl_lsgrpl(j,k) = fl_lsgrplIN(j,k)/prec_ls(j,k)
-                endif
-                if (prec_cv(j,k) .ne. 0._r8) then
-                   fl_ccrain(j,k) = fl_ccrainIN(j,k)/prec_cv(j,k)
-                   fl_ccsnow(j,k) = fl_ccsnowIN(j,k)/prec_cv(j,k)
-                endif
-             else
-                if (prec_ls(j,k) .ne. 0._r8) then
-                   mr_hydro(j,:,k,I_LSRAIN) = mr_hydro(j,:,k,I_LSRAIN)/prec_ls(j,k)
-                   mr_hydro(j,:,k,I_LSSNOW) = mr_hydro(j,:,k,I_LSSNOW)/prec_ls(j,k)
-                   mr_hydro(j,:,k,I_LSGRPL) = mr_hydro(j,:,k,I_LSGRPL)/prec_ls(j,k)
-                endif
-                if (prec_cv(j,k) .ne. 0._r8) then
-                   mr_hydro(j,:,k,I_CVRAIN) = mr_hydro(j,:,k,I_CVRAIN)/prec_cv(j,k)
-                   mr_hydro(j,:,k,I_CVSNOW) = mr_hydro(j,:,k,I_CVSNOW)/prec_cv(j,k)
-                endif
+             if (prec_ls(j,k) .ne. 0._r8) then
+                fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
+                fl_lssnow(j,k) = fl_lssnowIN(j,k)/prec_ls(j,k)
+                fl_lsgrpl(j,k) = fl_lsgrplIN(j,k)/prec_ls(j,k)
+             endif
+             if (prec_cv(j,k) .ne. 0._r8) then
+                fl_ccrain(j,k) = fl_ccrainIN(j,k)/prec_cv(j,k)
+                fl_ccsnow(j,k) = fl_ccsnowIN(j,k)/prec_cv(j,k)
              endif
           enddo
        enddo
@@ -2594,43 +2563,42 @@ CONTAINS
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        ! Convert precipitation fluxes to mixing ratios
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       if (use_precipitation_fluxes) then
-          ! LS rain
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSRAIN), n_bx(I_LSRAIN),         &
-               alpha_x(I_LSRAIN), c_x(I_LSRAIN),   d_x(I_LSRAIN),   g_x(I_LSRAIN),       &
-               a_x(I_LSRAIN),   b_x(I_LSRAIN),   gamma_1(I_LSRAIN), gamma_2(I_LSRAIN),   &
-               gamma_3(I_LSRAIN), gamma_4(I_LSRAIN), fl_lsrain,                          &
-               mr_hydro(:,:,:,I_LSRAIN), Reff(:,:,:,I_LSRAIN))
-          ! LS snow
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp,  n_ax(I_LSSNOW),  n_bx(I_LSSNOW),       &
-               alpha_x(I_LSSNOW), c_x(I_LSSNOW),  d_x(I_LSSNOW),  g_x(I_LSSNOW),         &
-               a_x(I_LSSNOW),   b_x(I_LSSNOW),   gamma_1(I_LSSNOW),  gamma_2(I_LSSNOW),  &
-               gamma_3(I_LSSNOW), gamma_4(I_LSSNOW), fl_lssnow,                          &
-               mr_hydro(:,:,:,I_LSSNOW), Reff(:,:,:,I_LSSNOW))
-          ! CV rain
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVRAIN),  n_bx(I_CVRAIN),        &
-               alpha_x(I_CVRAIN), c_x(I_CVRAIN),   d_x(I_CVRAIN),   g_x(I_CVRAIN),       &
-               a_x(I_CVRAIN),   b_x(I_CVRAIN),   gamma_1(I_CVRAIN), gamma_2(I_CVRAIN),   &
-               gamma_3(I_CVRAIN), gamma_4(I_CVRAIN), fl_ccrain,                          &
-               mr_hydro(:,:,:,I_CVRAIN), Reff(:,:,:,I_CVRAIN))
-          ! CV snow
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVSNOW),  n_bx(I_CVSNOW),        &
-               alpha_x(I_CVSNOW),  c_x(I_CVSNOW),   d_x(I_CVSNOW),   g_x(I_CVSNOW),      &
-               a_x(I_CVSNOW),   b_x(I_CVSNOW),   gamma_1(I_CVSNOW), gamma_2(I_CVSNOW),   &
-               gamma_3(I_CVSNOW), gamma_4(I_CVSNOW), fl_ccsnow,                          &
-               mr_hydro(:,:,:,I_CVSNOW), Reff(:,:,:,I_CVSNOW))
-          ! LS groupel.
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSGRPL),  n_bx(I_LSGRPL),        &
-               alpha_x(I_LSGRPL), c_x(I_LSGRPL),   d_x(I_LSGRPL),   g_x(I_LSGRPL),       &
-               a_x(I_LSGRPL),   b_x(I_LSGRPL),   gamma_1(I_LSGRPL),  gamma_2(I_LSGRPL),  &
-               gamma_3(I_LSGRPL), gamma_4(I_LSGRPL), fl_lsgrpl,                          &
-               mr_hydro(:,:,:,I_LSGRPL), Reff(:,:,:,I_LSGRPL))              
-       endif
+
+       ! LS rain
+       call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+            cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSRAIN), n_bx(I_LSRAIN),         &
+            alpha_x(I_LSRAIN), c_x(I_LSRAIN),   d_x(I_LSRAIN),   g_x(I_LSRAIN),       &
+            a_x(I_LSRAIN),   b_x(I_LSRAIN),   gamma_1(I_LSRAIN), gamma_2(I_LSRAIN),   &
+            gamma_3(I_LSRAIN), gamma_4(I_LSRAIN), fl_lsrain,                          &
+            mr_hydro(:,:,:,I_LSRAIN), Reff(:,:,:,I_LSRAIN))
+       ! LS snow
+       call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+            cospstateIN%at, frac_prec, 1._wp,  n_ax(I_LSSNOW),  n_bx(I_LSSNOW),       &
+            alpha_x(I_LSSNOW), c_x(I_LSSNOW),  d_x(I_LSSNOW),  g_x(I_LSSNOW),         &
+            a_x(I_LSSNOW),   b_x(I_LSSNOW),   gamma_1(I_LSSNOW),  gamma_2(I_LSSNOW),  &
+            gamma_3(I_LSSNOW), gamma_4(I_LSSNOW), fl_lssnow,                          &
+            mr_hydro(:,:,:,I_LSSNOW), Reff(:,:,:,I_LSSNOW))
+       ! CV rain
+       call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+            cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVRAIN),  n_bx(I_CVRAIN),        &
+            alpha_x(I_CVRAIN), c_x(I_CVRAIN),   d_x(I_CVRAIN),   g_x(I_CVRAIN),       &
+            a_x(I_CVRAIN),   b_x(I_CVRAIN),   gamma_1(I_CVRAIN), gamma_2(I_CVRAIN),   &
+            gamma_3(I_CVRAIN), gamma_4(I_CVRAIN), fl_ccrain,                          &
+            mr_hydro(:,:,:,I_CVRAIN), Reff(:,:,:,I_CVRAIN))
+       ! CV snow
+       call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+            cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVSNOW),  n_bx(I_CVSNOW),        &
+            alpha_x(I_CVSNOW),  c_x(I_CVSNOW),   d_x(I_CVSNOW),   g_x(I_CVSNOW),      &
+            a_x(I_CVSNOW),   b_x(I_CVSNOW),   gamma_1(I_CVSNOW), gamma_2(I_CVSNOW),   &
+            gamma_3(I_CVSNOW), gamma_4(I_CVSNOW), fl_ccsnow,                          &
+            mr_hydro(:,:,:,I_CVSNOW), Reff(:,:,:,I_CVSNOW))
+       ! LS groupel.
+       call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+            cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSGRPL),  n_bx(I_LSGRPL),        &
+            alpha_x(I_LSGRPL), c_x(I_LSGRPL),   d_x(I_LSGRPL),   g_x(I_LSGRPL),       &
+            a_x(I_LSGRPL),   b_x(I_LSGRPL),   gamma_1(I_LSGRPL),  gamma_2(I_LSGRPL),  &
+            gamma_3(I_LSGRPL), gamma_4(I_LSGRPL), fl_lsgrpl,                          &
+            mr_hydro(:,:,:,I_LSGRPL), Reff(:,:,:,I_LSGRPL))
 
     else
        cospIN%frac_out(:,:,:) = 1  
