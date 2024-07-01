@@ -20,6 +20,7 @@ module ionosphere_interface
    use pio,                 only: var_desc_t
    use perf_mod,            only: t_startf, t_stopf
    use epotential_params,   only: epot_active, epot_crit_colats
+   use shr_const_mod,  only: SHR_CONST_REARTH ! meters
 
    implicit none
 
@@ -94,6 +95,8 @@ module ionosphere_interface
    logical :: ionos_debug_hist = .false.
 
    integer :: mag_nlon=0, mag_nlat=0, mag_nlev=0, mag_ngrid=0
+
+   real(r8), parameter :: rearth_inv = 1._r8/SHR_CONST_REARTH ! /meters
 
  contains
 
@@ -480,7 +483,6 @@ module ionosphere_interface
       ! Gridded component call
       use edyn_grid_comp, only: edyn_grid_comp_run2
       use shr_assert_mod, only: shr_assert_in_domain
-      use shr_const_mod,  only: SHR_CONST_REARTH ! meters
 
       ! - pull some fields from pbuf and dyn_in
       ! - invoke ionosphere/electro-dynamics coupling
@@ -546,7 +548,6 @@ module ionosphere_interface
       real(r8)          :: r8tmp
       real(r8), pointer :: tempm(:,:) => null() ! Temp midpoint field for outfld
       real(r8), pointer :: tempi(:,:) => null() ! Temp interface field for outfld
-      real(r8), parameter :: rearth_inv = 1._r8/SHR_CONST_REARTH ! /meters
       real(r8), parameter :: n2min = 1.e-6_r8  ! lower limit of N2 mixing ratios
 
       character(len=*), parameter :: subname = 'ionosphere_run2'
@@ -740,8 +741,8 @@ module ionosphere_interface
                   ! Might need geometric height on midpoints for output
                   !------------------------------------------------------------
                   if (hist_fld_active('Z3GM')) then
-                     r8tmp = phys_state(lchnk)%zm(i, k) + phis(i)*rga
-                     tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
+                     ! geometric altitude (meters above sea level)
+                     tempm(i,k) = geometric_hgt(zgp=phys_state(lchnk)%zm(i,k), zsf=phis(i)*rga)
                   end if
                   ! physics state fields on interfaces (but only to pver)
                   zi_blck(k, j) = phys_state(lchnk)%zi(i, k) + phis(i)*rga
@@ -750,9 +751,9 @@ module ionosphere_interface
                   !------------------------------------------------------------
                   ! Note: zht is pver instead of pverp because dynamo does not
                   !       use bottom interface
-                  hi_blck(k, j) = zi_blck(k, j) * (1._r8 + (zi_blck(k, j) * rearth_inv))
+                  hi_blck(k,j) = geometric_hgt(zgp=phys_state(lchnk)%zi(i,k), zsf=phis(i)*rga)
                   if (hist_fld_active('Z3GMI')) then
-                     tempi(i, k) = hi_blck(k, j)
+                     tempi(i,k) = hi_blck(k, j)
                   end if
                   omega_blck(k, j) = phys_state(lchnk)%omega(i, k)
                   tn_blck(k, j)    = phys_state(lchnk)%t(i, k)
@@ -1164,5 +1165,24 @@ module ionosphere_interface
 
    !==========================================================================
 
+   ! calculates geometric height (meters above sea level)
+   pure function geometric_hgt( zgp, zsf ) result(zgm)
+
+     real(r8), intent(in) :: zgp ! geopotential height (m)
+     real(r8), intent(in) :: zsf ! surface height above sea level (m)
+     real(r8) :: zgm ! geometric height above sea level (m)
+
+     real(r8) :: tmp
+
+     ! Hanli's formulation:
+     ! Z_gm = 1/(1 - (1+Zs/r) * Z_gp/r) * (Zs + (1+Zs/r) * Z_gp)
+     ! Z_gm: geometric height
+     ! Zs: Surface height
+     ! Z_gp: model calculated geopotential height (zm and zi in the model)
+
+     tmp = 1._r8+zsf*rearth_inv
+     zgm = (zsf + tmp*zgp) / (1._r8 - tmp*zgp*rearth_inv)
+
+   end function geometric_hgt
 
 end module ionosphere_interface
