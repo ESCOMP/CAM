@@ -441,6 +441,7 @@ CONTAINS
     use cam_history_support, only: add_hist_coord
     !---------------------------------------------------------------------------
     
+#ifdef USE_COSP
     ! Set number of levels used by COSP to the number of levels used by
     ! CAM's cloud macro/microphysics parameterizations.
     nlay = pver - ktop + 1
@@ -449,7 +450,6 @@ CONTAINS
     ! Set COSP coordinate arrays
     call setcosp2values()
 
-#ifdef USE_COSP
     ! Define coordinate variables for COSP outputs.
     if (lisccp_sim .or. lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
