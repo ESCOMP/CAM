@@ -4833,44 +4833,48 @@ end subroutine print_active_fldlst
              call cam_pio_handle_error(ierr,                                     &
                   'h_define: cannot define basename for '//trim(fname_tmp))
            end if
-
-           if (restart) then
-             ! For restart history files, we need to save accumulation counts
-             fname_tmp = trim(fname_tmp)//'_nacs'
-             if (.not. associated(tape(t)%hlist(fld)%nacs_varid)) then
-               allocate(tape(t)%hlist(fld)%nacs_varid)
-             end if
-             if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
-               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
-                    nacsdims(1:num_hdims), tape(t)%hlist(fld)%nacs_varid)
-             else
-               ! Save just one value representing all chunks
-               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
-                    tape(t)%hlist(fld)%nacs_varid)
-             end if
-             ! for standard deviation
-             if (associated(tape(t)%hlist(fld)%sbuf)) then
-                fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
-                fname_tmp = trim(fname_tmp)//'_var'
-                if ( .not.associated(tape(t)%hlist(fld)%sbuf_varid)) then
-                   allocate(tape(t)%hlist(fld)%sbuf_varid)
-                endif
-                call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_double,      &
-                     dimids_tmp(1:fdims), tape(t)%hlist(fld)%sbuf_varid)
-             endif
-           end if
-         end do ! Loop over output patches
-       end do   ! Loop over fields
-       !
-       deallocate(mdimids)
-       ret = pio_enddef(tape(t)%Files(f))
-       if (ret /= PIO_NOERR) then
-          call endrun('H_DEFINE: ERROR exiting define mode in PIO')
-       end if
-
-       if(masterproc) then
-         write(iulog,*)'H_DEFINE: Successfully opened netcdf file '
-       endif
+        enddo
+     enddo
+     ! For restart history files, we need to save accumulation counts
+     if (restart) then
+        do fld = 1, nflds(t)
+           do i = 1, num_patches
+              fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
+              fname_tmp = trim(fname_tmp)//'_nacs'
+              if (.not. associated(tape(t)%hlist(fld)%nacs_varid)) then
+                 allocate(tape(t)%hlist(fld)%nacs_varid)
+              end if
+              if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
+                 call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                      nacsdims(1:num_hdims), tape(t)%hlist(fld)%nacs_varid)
+              else
+                 ! Save just one value representing all chunks
+                 call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                      tape(t)%hlist(fld)%nacs_varid)
+              end if
+              ! for standard deviation
+              if (associated(tape(t)%hlist(fld)%sbuf)) then
+                 fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
+                 fname_tmp = trim(fname_tmp)//'_var'
+                 if ( .not.associated(tape(t)%hlist(fld)%sbuf_varid)) then
+                    allocate(tape(t)%hlist(fld)%sbuf_varid)
+                 endif
+                 call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_double,      &
+                      dimids_tmp(1:fdims), tape(t)%hlist(fld)%sbuf_varid)
+              endif
+           end do ! Loop over output patches
+        end do   ! Loop over fields
+     end if
+     !
+     deallocate(mdimids)
+     ret = pio_enddef(tape(t)%Files(f))
+     if (ret /= PIO_NOERR) then
+        call endrun('H_DEFINE: ERROR exiting define mode in PIO')
+     end if
+     
+     if(masterproc) then
+        write(iulog,*)'H_DEFINE: Successfully opened netcdf file '
+     endif
     end do ! Loop over files
     !
     ! Write time-invariant portion of history header
