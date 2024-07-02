@@ -112,7 +112,6 @@
   'jo2_a', 'jo2_b', 'jo3_a',  'jo3_b', 'jhocl', 'jno3_b', 'jcl2o2',
   'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE','AOA1','AOA2',
   'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
-  'VTHzm', 'WTHzm', 'UVzm', 'UWzm', 'TH', 'MSKtem',
   'O2_1S', 'O2_1D',
   'Op', 'O2p', 'Np', 'NOp', 'N2p', 'e',
   'UIONTEND', 'VIONTEND', 'UTGWSPEC', 'UTGWORO', 'VTGWSPEC', 'VTGWORO', 'TTGW',
