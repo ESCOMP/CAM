@@ -35,10 +35,11 @@ module gw_drag
   ! These are the actual switches for different gravity wave sources.
   use phys_control,   only: use_gw_oro, use_gw_front, use_gw_front_igw, &
                             use_gw_convect_dp, use_gw_convect_sh,       &
-                            use_simple_phys
+                            use_simple_phys, use_gw_movmtn_pbl
 
   use gw_common,      only: GWBand
   use gw_convect,     only: BeresSourceDesc
+  use gw_movmtn,      only: MovMtnSourceDesc
   use gw_front,       only: CMSourceDesc
 
 ! Typical module header
@@ -64,6 +65,8 @@ module gw_drag
   type(GWBand) :: band_mid
   ! Long scale waves for IGWs.
   type(GWBand) :: band_long
+  ! Medium scale waves for moving mountain
+  type(GWBand) :: band_movmtn
 
   ! Top level for gravity waves.
   integer, parameter :: ktop = 1
@@ -131,10 +134,14 @@ module gw_drag
   ! Files to read Beres source spectra from.
   character(len=256) :: gw_drag_file = ""
   character(len=256) :: gw_drag_file_sh = ""
+  character(len=256) :: gw_drag_file_mm = ""
 
   ! Beres settings and table.
   type(BeresSourceDesc) :: beres_dp_desc
   type(BeresSourceDesc) :: beres_sh_desc
+
+  ! Moving mountain settings and table.
+  type(MovMtnSourceDesc) :: movmtn_desc
 
   ! Frontogenesis wave settings.
   type(CMSourceDesc) :: cm_desc
@@ -147,6 +154,13 @@ module gw_drag
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
   integer :: sgh_idx      = -1
+
+  ! From CLUBB
+  integer :: ttend_clubb_idx  = -1
+  integer :: upwp_clubb_gw_idx   = -1
+  integer :: vpwp_clubb_gw_idx   = -1
+  integer :: thlp2_clubb_gw_idx  = -1
+  integer :: wpthlp_clubb_gw_idx  = -1
 
   ! anisotropic ridge fields
   integer, parameter :: prdg = 16
@@ -189,6 +203,8 @@ module gw_drag
   ! Width of gaussian used to create frontogenesis tau profile [m/s].
   real(r8) :: front_gaussian_width = -huge(1._r8)
 
+  real(r8) :: alpha_gw_movmtn
+
   logical :: gw_top_taper=.false.
   real(r8), pointer :: vramp(:)=>null()
 
@@ -224,7 +240,7 @@ subroutine gw_drag_readnl(nlfile)
 
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
-       fcrit2, frontgfc, gw_drag_file, gw_drag_file_sh, taubgnd, &
+       fcrit2, frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
        taubgnd_igw, gw_polar_taper, &
        use_gw_rdg_beta, n_rdg_beta, effgw_rdg_beta, effgw_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
@@ -232,7 +248,7 @@ subroutine gw_drag_readnl(nlfile)
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
-       gw_top_taper, front_gaussian_width
+       gw_top_taper, front_gaussian_width, alpha_gw_movmtn
   !----------------------------------------------------------------------
 
   if (use_simple_phys) return
@@ -332,9 +348,14 @@ subroutine gw_drag_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file")
   call mpi_bcast(gw_drag_file_sh, len(gw_drag_file_sh), mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file_sh")
+  call mpi_bcast(gw_drag_file_mm, len(gw_drag_file_mm), mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file_mm")
 
   call mpi_bcast(front_gaussian_width, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: front_gaussian_width")
+
+  call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
 
   ! Check if fcrit2 was set.
   call shr_assert(fcrit2 /= unset_r8, &
@@ -355,6 +376,7 @@ subroutine gw_drag_readnl(nlfile)
   band_oro = GWBand(0, gw_dc, fcrit2, wavelength_mid)
   band_mid = GWBand(pgwv, gw_dc, 1.0_r8, wavelength_mid)
   band_long = GWBand(pgwv_long, gw_dc_long, 1.0_r8, wavelength_long)
+  band_movmtn = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
 
   if (use_gw_rdg_gamma .or. use_gw_rdg_beta) then
      call gw_rdg_readnl(nlfile)
@@ -549,7 +571,7 @@ subroutine gw_init()
   if ( use_gw_oro ) then
 
      if (effgw_oro == unset_r8) then
-        call endrun("gw_drag_init: Orographic gravity waves enabled, &
+        call endrun("gw_init: Orographic gravity waves enabled, &
              &but effgw_oro was not set.")
      end if
   end if
@@ -841,7 +863,7 @@ subroutine gw_init()
      frontga_idx = pbuf_get_index('FRONTGA')
 
      call shr_assert(unset_r8 /= frontgfc, &
-          "gw_drag_init: Frontogenesis enabled, but frontgfc was &
+          "gw_init: Frontogenesis enabled, but frontgfc was &
           & not set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -874,7 +896,7 @@ subroutine gw_init()
   if (use_gw_front) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm, taubgnd ]), &
-          "gw_drag_init: Frontogenesis mid-scale waves enabled, but not &
+          "gw_init: Frontogenesis mid-scale waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -896,7 +918,7 @@ subroutine gw_init()
   if (use_gw_front_igw) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm_igw, taubgnd_igw ]), &
-          "gw_drag_init: Frontogenesis inertial waves enabled, but not &
+          "gw_init: Frontogenesis inertial waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -912,6 +934,89 @@ subroutine gw_init()
      ! Output for gravity waves from frontogenesis.
      call gw_spec_addflds(prefix=cm_igw_pf, scheme="C&M IGW", &
           band=band_long, history_defaults=history_waccm)
+
+  end if
+
+  ! ========= Moving Mountain initialization! ==========================
+  if (use_gw_movmtn_pbl) then
+
+     ! get pbuf indices for CLUBB couplings
+     ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
+     thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
+     upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
+     vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
+     wpthlp_clubb_gw_idx  = pbuf_get_index('WPTHLP_CLUBB_GW')
+
+     if (masterproc) then
+        write (iulog,*) 'Moving Mountain development code call init_movmtn'
+     end if
+
+
+     ! Confirm moving mountain file is enabled
+     call shr_assert(trim(gw_drag_file_mm) /= "", &
+          "gw_init: No gw_drag_file provided for DP GW moving mountain lookup &
+          &table. Set this via namelist."// &
+          errMsg(__FILE__, __LINE__))
+
+     call gw_init_movmtn(gw_drag_file_mm, band_movmtn, movmtn_desc)
+
+     do k = 0, pver
+        ! 950 hPa index
+        if (pref_edge(k+1) < 95000._r8) movmtn_desc%k = k+1
+     end do
+
+    ! Don't use deep convection heating depths below this limit.
+     movmtn_desc%min_hdepth = 1._r8
+     if (masterproc) then
+        write (iulog,*) 'Moving mountain deep level =',movmtn_desc%k
+     end if
+
+     call addfld ('GWUT_MOVMTN',(/ 'lev' /), 'I','m/s2', &
+          'Mov Mtn dragforce - ubm component')
+     call addfld ('UTGW_MOVMTN',(/ 'lev' /), 'I','m/s2', &
+          'Mov Mtn dragforce - u component')
+     call addfld ('VTGW_MOVMTN',(/ 'lev' /), 'I','m/s2', &
+          'Mov Mtn dragforce - v component')
+     call addfld('TAU_MOVMTN', (/ 'ilev' /), 'I', 'N/m2', &
+          'Moving Mountain momentum flux profile')
+     call addfld('U_MOVMTN_IN', (/ 'lev' /), 'I', 'm/s', &
+          'Moving Mountain - midpoint zonal input wind')
+     call addfld('V_MOVMTN_IN', (/ 'lev' /), 'I', 'm/s', &
+          'Moving Mountain - midpoint meridional input wind')
+     call addfld('UBI_MOVMTN', (/ 'ilev' /), 'I', 'm/s', &
+          'Moving Mountain - interface wind in direction of wave')
+     call addfld('UBM_MOVMTN', (/ 'lev' /), 'I', 'm/s', &
+          'Moving Mountain - midpoint wind in direction of wave')
+     call addfld ('HDEPTH_MOVMTN',horiz_only,'I','km', &
+          'Heating Depth')
+     call addfld ('UCELL_MOVMTN',horiz_only,'I','m/s', &
+          'Source-level X-wind')
+     call addfld ('VCELL_MOVMTN',horiz_only,'I','m/s', &
+          'Source-level Y-wind')
+     call addfld ('CS_MOVMTN',horiz_only,'I','m/s', &
+          'phase speed')
+     call addfld ('CS1_MOVMTN',horiz_only,'I','m/s', &
+          'phase speed')
+     call addfld ('STEER_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'steering level for movmtn GW')
+     call addfld ('SRC_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'launch level for movmtn GW')
+     call addfld ('TND_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'tendency lowest level for movmtn GW')
+     call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K/s', &
+          'Net heating rate')
+     call addfld ('TTEND_CLUBB',(/ 'lev' /),'A','K/s', &
+          'Net heating rate')
+     call addfld ('THLP2_CLUBB_GW',(/ 'ilev' /),'A','K+2', &
+          'THLP variance from CLUBB to GW')
+     call addfld ('WPTHLP_CLUBB_GW',(/ 'ilev' /),'A','Km s-2', &
+          'WPTHLP from CLUBB to GW')
+     call addfld ('UPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'X-momflux from CLUBB to GW')
+     call addfld ('VPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'Y-momflux from CLUBB to GW')
+     call addfld ('XPWP_SRC_MOVMTN',horiz_only,'I','m+2 s-2', &
+          'flux source for moving mtn')
 
   end if
 
@@ -938,7 +1043,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file) /= "", &
-          "gw_drag_init: No gw_drag_file provided for Beres deep &
+          "gw_init: No gw_drag_file provided for Beres deep &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -985,7 +1090,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file_sh) /= "", &
-          "gw_drag_init: No gw_drag_file_sh provided for Beres shallow &
+          "gw_init: No gw_drag_file_sh provided for Beres shallow &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -1117,8 +1222,8 @@ subroutine gw_init_beres(file_name, band, desc)
   ngwv_file = (ngwv_file-1)/2
 
   call shr_assert(ngwv_file >= band%ngwv, &
-       "gw_beres_init: PS in lookup table file does not cover the whole &
-       &spectrum implied by the model's ngwv.")
+       "gw_init_beres: PhaseSpeed in lookup table file does not cover the whole &
+       &spectrum implied by the model's ngwv. ")
 
   ! Allocate hd and get data.
 
@@ -1179,6 +1284,134 @@ subroutine gw_init_beres(file_name, band, desc)
 
 end subroutine gw_init_beres
 
+!==============================================================
+subroutine gw_init_movmtn(file_name, band, desc)
+
+  use ioFileMod, only: getfil
+  use pio, only: file_desc_t, pio_nowrite, pio_inq_varid, pio_get_var, &
+       pio_closefile
+  use cam_pio_utils, only: cam_pio_openfile
+
+  character(len=*), intent(in) :: file_name
+  type(GWBand), intent(in) :: band
+
+  type(MovMtnSourceDesc), intent(inout) :: desc
+
+  type(file_desc_t) :: gw_file_desc
+
+  ! PIO variable ids and error code.
+  integer :: mfccid, uhid, hdid, stat
+
+  ! Number of wavenumbers in the input file.
+  integer :: ngwv_file
+
+  ! Full path to gw_drag_file.
+  character(len=256) :: file_path
+
+  character(len=256) :: msg
+
+  !----------------------------------------------------------------------
+  ! read in look-up table for source spectra
+  !-----------------------------------------------------------------------
+
+  call getfil(file_name, file_path)
+
+  call cam_pio_openfile(gw_file_desc, file_path, pio_nowrite)
+
+  ! Get HD (heating depth) dimension.
+
+  desc%maxh = 15 !get_pio_dimlen(gw_file_desc, "HD", file_path)
+
+  ! Get MW (mean wind) dimension.
+
+ desc%maxuh = 241 ! get_pio_dimlen(gw_file_desc, "MW", file_path)
+
+  ! Get PS (phase speed) dimension.
+
+  ngwv_file = 0 !get_pio_dimlen(gw_file_desc, "PS", file_path)
+
+  ! Number in each direction is half of total (and minus phase speed of 0).
+  desc%maxuh = (desc%maxuh-1)/2
+  ngwv_file = (ngwv_file-1)/2
+
+  call shr_assert(ngwv_file >= band%ngwv, &
+       "gw_movmtn_init: PhaseSpeed in lookup table inconsistent with moving mountain")
+
+  ! Allocate hd and get data.
+
+  allocate(desc%hd(desc%maxh), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (hd): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  stat = pio_inq_varid(gw_file_desc,'HDEPTH',hdid)
+
+  call handle_pio_error(stat, &
+       'Error finding HD in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, hdid, start=[1], count=[desc%maxh], &
+       ival=desc%hd)
+
+  call handle_pio_error(stat, &
+       'Error reading HD from: '//trim(file_path))
+
+  ! While not currently documented in the file, it uses kilometers. Convert
+  ! to meters.
+  desc%hd = desc%hd*1000._r8
+
+ ! Allocate wind and get data.
+
+  allocate(desc%uh(desc%maxuh), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (uh): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  stat = pio_inq_varid(gw_file_desc,'UARR',uhid)
+
+  call handle_pio_error(stat, &
+       'Error finding UH in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, uhid, start=[1], count=[desc%maxuh], &
+       ival=desc%uh)
+
+  call handle_pio_error(stat, &
+       'Error reading UH from: '//trim(file_path))
+
+  ! Allocate mfcc. "desc%maxh" and "desc%maxuh" are from the file, but the
+  ! model determines wavenumber dimension.
+
+  allocate(desc%mfcc(desc%maxh,-desc%maxuh:desc%maxuh,&
+       -band%ngwv:band%ngwv), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (mfcc): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  ! Get mfcc data.
+
+  stat = pio_inq_varid(gw_file_desc,'NEWMF',mfccid)
+
+  call handle_pio_error(stat, &
+       'Error finding mfcc in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, mfccid, &
+       start=[1,1], count=shape(desc%mfcc), &
+       ival=desc%mfcc)
+
+  call handle_pio_error(stat, &
+       'Error reading mfcc from: '//trim(file_path))
+
+  call pio_closefile(gw_file_desc)
+
+  if (masterproc) then
+
+     write(iulog,*) "Read in Mov Mountain source file."
+
+  endif
+
+end subroutine gw_init_movmtn
 !==========================================================================
 
 ! Utility to reduce the repetitiveness of reads during initialization.
@@ -1244,6 +1477,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_oro,          only: gw_oro_src
   use gw_front,        only: gw_cm_src
   use gw_convect,      only: gw_beres_src
+  use gw_movmtn,       only: gw_movmtn_src
 
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
@@ -1319,6 +1553,15 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Temperature change due to shallow convection.
   real(r8), pointer :: ttend_sh(:,:)
 
+  !  New couplings from CLUBB
+  real(r8), pointer :: ttend_clubb(:,:)
+  real(r8), pointer :: thlp2_clubb_gw(:,:)
+  real(r8), pointer :: wpthlp_clubb_gw(:,:)
+  real(r8), pointer :: upwp_clubb_gw(:,:)
+  real(r8), pointer :: vpwp_clubb_gw(:,:)
+  real(r8) :: xpwp_clubb(state%ncol,pver+1)
+
+
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
 
@@ -1390,6 +1633,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
+
   !------------------------------------------------------------------------
 
   ! Make local copy of input state.
@@ -1454,6 +1698,104 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   egwdffi_tot = 0._r8
   flx_heat = 0._r8
 
+  if (use_gw_movmtn_pbl) then
+     !------------------------------------------------------------------
+     !Convective moving mountain gravity waves (Beres scheme).
+     !------------------------------------------------------------------
+
+     call outfld('U_MOVMTN_IN', u, ncol, lchnk)
+     call outfld('V_MOVMTN_IN', v, ncol, lchnk)
+
+     ! Allocate wavenumber fields.
+     allocate(tau(ncol,-band_movmtn%ngwv:band_movmtn%ngwv,pver+1))
+     allocate(gwut(ncol,pver,-band_movmtn%ngwv:band_movmtn%ngwv))
+     allocate(c(ncol,-band_movmtn%ngwv:band_movmtn%ngwv))
+
+     ! Set up heating
+     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+
+     !   New couplings from CLUBB
+     call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
+     call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
+     call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
+     call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
+     call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+
+     xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
+
+     if(masterproc) then
+       write(iulog,*) " Moving mountain development code"
+       write(iulog,*) " in moving mountain gw "
+       write(iulog,*) " shape of c " , shape(c)
+       write(iulog,*) " values of c " , c
+    end if
+
+     !effgw = 0.5_r8
+     effgw = 1._r8
+     call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
+          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:)  , &
+          zm, alpha_gw_movmtn, src_level, tend_level, &
+          tau, ubm, ubi, xv, yv, &
+          c, hdepth)
+     !-------------------------------------------------------------
+     ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
+     ! and unit vector components describing direction of wavevector
+     ! and application of wave-drag force. I believe correct setting
+     ! for c is c=0, since it is incorporated in ubm and (xv,yv)
+     !--------------------------------------------------------------
+
+     call outfld('SRC_LEVEL_MOVMTN', 1._r8*src_level, ncol, lchnk)
+     call outfld('TND_LEVEL_MOVMTN', 1._r8*tend_level, ncol, lchnk)
+     call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
+     call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
+
+     call gw_drag_prof(ncol, band_movmtn, p, src_level, tend_level, dt, &
+          t, vramp,    &
+          piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
+          effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
+          lapply_effgw_in=gw_apply_tndmax )
+
+     ! Project stress into directional components.
+     taucd = calc_taucd(ncol, band_movmtn%ngwv, tend_level, tau, c, xv, yv, ubi)
+
+     !  add the diffusion coefficients
+     do k = 1, pver+1
+        egwdffi_tot(:,k) = egwdffi_tot(:,k) + egwdffi(:,k)
+     end do
+
+     ! Store constituents tendencies
+     do m=1, pcnst
+        do k = 1, pver
+           ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
+        end do
+     end do
+
+      ! Add the momentum tendencies to the output tendency arrays.
+     do k = 1, pver
+        ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
+        ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
+     end do
+
+     do k = 1, pver
+        ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
+     end do
+
+     call outfld('TAU_MOVMTN', tau(:,0,:), ncol, lchnk)
+     call outfld('GWUT_MOVMTN', gwut(:,:,0), ncol, lchnk)
+     call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
+     call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
+     call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
+     call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
+     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
+     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
+     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
+     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
+     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
+
+     deallocate(tau, gwut, c)
+  end if
+
   if (use_gw_convect_dp) then
      !------------------------------------------------------------------
      ! Convective gravity waves (Beres scheme, deep).
@@ -1467,6 +1809,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
 
+     if(masterproc) then
+       write(iulog,*) " in gw_convect_dp ...  "
+     end if
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
      where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))

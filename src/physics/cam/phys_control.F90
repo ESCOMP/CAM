@@ -56,7 +56,7 @@ logical           :: history_vdiag        = .false.    ! output the variables us
 logical           :: history_aerosol      = .false.    ! output the MAM aerosol variables and tendencies
 logical           :: history_aero_optics  = .false.    ! output the aerosol
 logical           :: history_eddy         = .false.    ! output the eddy variables
-logical           :: history_budget       = .false.    ! output tendencies and state variables for T, water vapor, 
+logical           :: history_budget       = .false.    ! output tendencies and state variables for T, water vapor,
                                                        ! cloud ice and cloud liquid budgets
 logical           :: convproc_do_aer      = .false.    ! switch for new convective scavenging treatment for modal aerosols
 
@@ -98,6 +98,7 @@ logical, public, protected :: use_gw_front = .false.      ! Frontogenesis.
 logical, public, protected :: use_gw_front_igw = .false.  ! Frontogenesis to inertial spectrum.
 logical, public, protected :: use_gw_convect_dp = .false. ! Deep convection.
 logical, public, protected :: use_gw_convect_sh = .false. ! Shallow convection.
+logical, public, protected :: use_gw_movmtn_pbl = .false. ! moving mountain
 
 ! FV dycore angular momentum correction
 logical, public, protected :: fv_am_correction = .false.
@@ -136,7 +137,7 @@ subroutine phys_ctl_readnl(nlfile)
       history_waccmx, history_chemistry, history_carma, history_clubb, history_dust, &
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
-      use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
+      use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, use_gw_movmtn_pbl, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
       cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, use_hemco, do_hb_above_clubb
    !-----------------------------------------------------------------------------
@@ -193,6 +194,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(use_gw_front_igw,            1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_gw_convect_dp,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_gw_convect_sh,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
+   call mpi_bcast(use_gw_movmtn_pbl,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(cld_macmic_num_steps,        1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(offline_driver,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(convproc_do_aer,             1,                     mpi_logical,   masterprocid, mpicom, ierr)
