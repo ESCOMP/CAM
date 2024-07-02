@@ -48,7 +48,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
 ! specifying the gravity wave spectrum above convection based on latent
 ! heating properties and background wind". J. Atmos. Sci., Vol 61, No. 3,
 ! pp. 324-337.
-! CACNOTE - DOI?
+! https://doi.org/10.1175/1520-0469(2004)061<0324:AMOSTG>2.0.CO;2
 !
 !-----------------------------------------------------------------------
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
