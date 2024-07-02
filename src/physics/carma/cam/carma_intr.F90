@@ -1036,7 +1036,7 @@ contains
     ! The CARMA interface assumes that mass mixing ratios are relative to a
     ! wet atmosphere, so convert any dry mass mixing ratios to wet.
     call physics_state_copy(state, state_loc)
-    call set_dry_to_wet(state_loc)
+    call set_dry_to_wet(state_loc, convert_cnst_type='dry')
 
     spdiags(:, :, :)       = 0.0_r8
     gpdiags(:, :, :, :)    = 0.0_r8
