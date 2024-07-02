@@ -2,7 +2,7 @@
 
 <namelist_defaults>
 
-<!-- emissions -->
+<ncdata hgrid="ne30np4">atm/cam/inic/se/f.cam6_3_153.FCMTnudged_climate_chemistry_ne30.factor_fix.cam.i.1996-01-01-00000_c220522.nc</ncdata>
 
 <csw_time_type> 'SERIAL'</csw_time_type>
 
@@ -11,5 +11,36 @@
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 
 <flbc_type>SERIAL</flbc_type>
+
+<rxn_rate_sums>
+  'O3_Prod = NO_HO2 + CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ',
+           ' MACRO2_NOa + MCO3_NO + .92*ISOPO2_NO + ISOPNO3_NO + XO2_NO + jnoa + jonitr + NOA_OH ',
+  'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3',
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O3 + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + ',
+         ' 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3 + SO_O3 + ',
+         ' C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3',
+  'O3_alkenes = C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3',
+  'RO2_NO_sum = CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + MACRO2_NOa + ',
+         ' MACRO2_NOb + MCO3_NO + ISOPO2_NO + ISOPNO3_NO + XO2_NO',
+  'RO2_NO3_sum = MACRO2_NO3 + MCO3_NO3 + ISOPO2_NO3 + ISOPNO3_NO3 + XO2_NO3',
+  'RO2_HO2_sum = CH3O2_HO2 + C2H5O2_HO2 + CH3CO3_HO2 + EO2_HO2 + C3H7O2_HO2 + PO2_HO2 + RO2_HO2 + MACRO2_HO2 + ',
+         ' MCO3_HO2 + ISOPO2_HO2 + ISOPNO3_HO2 + XO2_HO2',
+  'RO2_RO2_sum = CH3O2_CH3O2a + CH3O2_CH3O2b + C2H5O2_CH3O2 + C2H5O2_C2H5O2 + CH3CO3_CH3O2 + CH3CO3_CH3CO3 + C3H7O2_CH3O2 + ',
+         ' RO2_CH3O2 + MACRO2_CH3O2 + MACRO2_CH3CO3 + MCO3_CH3O2 + MCO3_CH3CO3 + MCO3_MCO3 + ISOPO2_CH3O2 + ',
+         ' ISOPO2_CH3CO3 + XO2_CH3O2 + XO2_CH3CO3',
+  'RCO2_NO2_sum = CH3CO3_NO2 + MCO3_NO2',
+  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O',
+  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
+  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
+  'OddOx_CLOxBROx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+         ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b',
+  'Ox_Prod = 2.0*jo2_a + 2.0*jo2_b + NO_HO2 + CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
+         ' RO2_NO + MACRO2_NOa + MCO3_NO + .92*ISOPO2_NO + ISOPNO3_NO + XO2_NO + jnoa + jonitr + NOA_OH',
+  'Ox_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+         ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + C2H4_O3 + ',
+         ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3'
+</rxn_rate_sums>
 
 </namelist_defaults>
