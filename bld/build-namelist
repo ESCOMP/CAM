@@ -2096,10 +2096,7 @@ if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
     }
 
     # Species with fixed lower boundary
-    if ($chem =~ /_ts4/) {
-      $val = "'CCL4','CF2CLBR','CF3BR','CFC11','CFC113','CFC12','CH3BR','CH3CCL3','CH3CL','CH4','CO2'"
-            .",'H2','HCFC22','N2O','CFC114','CFC115','HCFC141B','HCFC142B','H2402'";
-    } elsif ($chem =~ /_tsmlt_mam/ or $chem =~ /trop_strat/) {
+    if ($chem =~ /_tsmlt_mam/ or $chem =~ /trop_strat/) {
       $val = "'CCL4','CF2CLBR','CF3BR','CFC11','CFC113','CFC12','CH3BR','CH3CCL3','CH3CL','CH4','CO2'"
             .",'H2','HCFC22','N2O','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
     } else {
