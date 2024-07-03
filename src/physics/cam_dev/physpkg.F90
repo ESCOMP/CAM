@@ -887,7 +887,7 @@ contains
        endif
     endif
 
-    call cloud_diagnostics_init()
+    call cloud_diagnostics_init(pbuf2d)
 
     call radheat_init(pref_mid)
 
