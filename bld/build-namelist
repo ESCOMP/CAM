@@ -3735,6 +3735,10 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_rdg_beta',   'val'=>'.false.');
     }
 
+    if ($phys =~ /cam7/) {
+       add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
