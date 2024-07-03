@@ -1223,6 +1223,10 @@ contains
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
+       ! Set grid metadata. This has to be after State_Grid is initialized.
+       State_Grid(I)%CPU_Subdomain_ID = I
+       State_Grid(I)%CPU_Subdomain_FirstID = BEGCHUNK
+
        State_Grid(I)%NX = nX
        State_Grid(I)%NY = NCOL(I)
        State_Grid(I)%NZ = nZ
@@ -1613,16 +1617,20 @@ contains
     IF ( Input_Opt%ITS_A_FULLCHEM_SIM .or. &
          Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
        DO I = BEGCHUNK, ENDCHUNK
-          ! Restrict prints to one thread only
-          Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
-
           CALL Init_Photolysis( Input_Opt  = Input_Opt,                &
                                 State_Grid = State_Grid(I),            &
                                 State_Chm  = State_Chm(I),             &
                                 State_Diag = State_Diag(I),            &
                                 RC         = RC                       )
+
+          ! Only the root chunk (on all CPUs) should be reading the data
+          ! in State_Chm%Phot%OREF and State_Chm%Phot%TREF, and the rest should be copied.
+          ! This fixes a hang condition in the ne30 (SE dycore) compsets. (hplin, 7/3/24)
+          IF( I .ne. BEGCHUNK ) THEN
+            State_Chm(I)%Phot%TREF = State_Chm(BEGCHUNK)%Phot%TREF
+            State_Chm(I)%Phot%OREF = State_Chm(BEGCHUNK)%Phot%OREF
+          ENDIF
        ENDDO
-       Input_Opt%amIRoot = MasterProc
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Photolysis"!'
@@ -1650,7 +1658,7 @@ contains
               CALL mpi_bcast( State_Chm(I)%NOXCOEFF, size(State_Chm(I)%NOXCOEFF), mpi_real8, masterprocid, mpicom, ierr )
               IF ( ierr /= mpi_success ) CALL endrun('Error in mpi_bcast of NOXCOEFF in first chunk')
            ELSE
-              State_CHM(I)%NOXCOEFF = State_Chm(BEGCHUNK)%NOXCOEFF
+              State_Chm(I)%NOXCOEFF = State_Chm(BEGCHUNK)%NOXCOEFF
            ENDIF
         ENDDO
     ENDIF
