@@ -88,6 +88,7 @@ contains
     use phys_control,  only: phys_getopts
     use constituents,  only: cnst_get_ind
     use cloud_cover_diags, only: cloud_cover_diags_init
+    use time_manager, only: is_first_step
 
     implicit none
 
@@ -108,8 +109,10 @@ contains
     if (two_mom_clouds) then
 
        ! initialize to zero
-       call pbuf_set_field(pbuf2d, iciwp_idx, 0._r8)
-       call pbuf_set_field(pbuf2d, iclwp_idx, 0._r8)
+       if (is_first_step()) then
+          call pbuf_set_field(pbuf2d, iciwp_idx, 0._r8)
+          call pbuf_set_field(pbuf2d, iclwp_idx, 0._r8)
+       end if
 
        call addfld ('ICWMR', (/ 'lev' /), 'A', 'kg/kg', 'Prognostic in-cloud water mixing ratio')
        call addfld ('ICIMR', (/ 'lev' /), 'A', 'kg/kg', 'Prognostic in-cloud ice mixing ratio'  )
