@@ -232,14 +232,14 @@
       <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
-      <value compset="1850_CAM70%LT"     >1850_cam_lt</value>
-      <value compset="1850_CAM70%MT"     >1850_cam_mt</value>
+      <value compset="1850[CE]?_CAM70%LT"     >1850_cam_lt</value>
+      <value compset="1850[CE]?_CAM70%MT"     >1850_cam_mt</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
-      <value compset="2000_CAM70"        >2000_cam6</value>
+      <value compset="2000[CE]?_CAM70"        >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
@@ -279,7 +279,7 @@
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
       <value compset="HIST(C_|E_|_)CAM.*CT1S">hist_trop_strat_vbs_cam6</value>
-      <value compset="HISTC_CAM7.*CT4S"  >hist_trop_strat_ts4_cam7</value>
+      <value compset="HIST[CE]?_CAM7.*CT4S"  >hist_trop_strat_ts4_cam7</value>
       <value compset="HIST_CAM60%.*CT[12]S%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
@@ -392,9 +392,9 @@
     <type>char</type>
     <default_value>2000</default_value>
     <values match="last">
-      <value compset="^1850_">1850</value>
+      <value compset="^1850[CE]?_">1850</value>
       <value compset="^2010_">2010</value>
-      <value compset="^HIST_">1850</value>
+      <value compset="^HIST[CE]?_">1850</value>
       <value compset="^SSP"  >2015</value>
     </values>
     <group>run_component_cam</group>
@@ -407,8 +407,8 @@
     <default_value>2000</default_value>
     <values match="last">
       <value compset="^2010_">2010</value>
-      <value compset="^1850_">1850</value>
-      <value compset="^HIST_">2015</value>
+      <value compset="^1850[CE]?_">1850</value>
+      <value compset="^HIST[CE]?_">2015</value>
       <value compset="^SSP"  >2101</value>
     </values>
     <group>run_component_cam</group>
@@ -420,7 +420,7 @@
     <type>char</type>
     <default_value>1</default_value>
     <values match="last">
-      <value compset="^HIST_">1850</value>
+      <value compset="^HIST[CE]?_">1850</value>
       <value compset="^SSP"  >2015</value>
     </values>
     <group>run_component_cam</group>
@@ -437,10 +437,10 @@
       <value compset="^SSP126_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP1-2.6-WACCM_1849-2101_monthly_c191007.nc</value>
       <value compset="^SSP245_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP2-4.5-WACCM_1849-2101_monthly_c191007.nc</value>
       <value compset="^SSP370_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_SSP370_b.e21.BWSSP370cmip6.f09_g17.CMIP6-SSP3-7.0-WACCM.002_1849-2101_monthly_0.9x1.25_c211216.nc</value>
-      <value compset="^HIST"   >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
+      <value compset="^HIST[CE]?_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
       <value compset="^2000_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
       <value compset="^2010_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
-      <value compset="^1850_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</value>
+      <value compset="^1850[CE]?_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
