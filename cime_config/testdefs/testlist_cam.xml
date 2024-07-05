@@ -1919,10 +1919,10 @@
   <test compset="FCts4MTHIST" grid="ne3pg3_ne3pg3_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="camchem"/>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
+      <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
     </options>
   </test>
   <test compset="FCMTHIST" grid="ne3pg3_ne3pg3_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
@@ -2281,6 +2281,25 @@
     <options>
       <option name="wallclock">00:40:00</option>
       <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam7 physics</option>
+    </options>
+  </test>
+  <test compset="FCts4MTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
+    </options>
+  </test>
+  <test compset="FCts4MTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
     </options>
   </test>
   <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
