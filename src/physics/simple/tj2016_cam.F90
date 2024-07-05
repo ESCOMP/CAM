@@ -50,11 +50,8 @@ end subroutine Thatcher_Jablonowski_register
     use cam_history,    only: addfld, add_default
     use physconst,      only: gravit, cappa, rair, cpair, latvap, rh2o, epsilo, rhoh2o, zvir
     use hycoef,         only: ps0, etamid
-    use tj2016,         only: Thatcher_Jablonowski_set_const
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-
-    call Thatcher_Jablonowski_set_const(gravit, cappa, rair, cpair, latvap, rh2o, epsilo, rhoh2o, zvir, ps0, etamid)
 
     ! This field is added by radiation when full physics is used
     call addfld('QRS', (/ 'lev' /), 'A', 'K/s', &
