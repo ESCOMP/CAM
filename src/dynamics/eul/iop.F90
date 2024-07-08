@@ -126,8 +126,6 @@ contains
    if (present(ps)) ps(1,1,timelevel)           = psobs
    if (present(t3)) t3(1,ioptop:,1,timelevel)   = tobs(ioptop:)
    if (present(q3)) q3(1,ioptop:,1,1,timelevel) = qobs(ioptop:)
-!!!!!jt revert next line only for bfb
-   ioptop=1
    if (present(u3)) u3(1,ioptop:,1,timelevel)   = uobs(ioptop:)
    if (present(v3)) v3(1,ioptop:,1,timelevel)   = vobs(ioptop:)
 
