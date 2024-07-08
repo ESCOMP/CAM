@@ -137,7 +137,7 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.0.246
+fxtag = cime6.1.0
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
@@ -161,13 +161,6 @@ url = https://github.com/ESCOMP/CESM_share
 fxtag = share1.0.19
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_share
-
-[submodule "mct"]
-path = libraries/mct
-url = https://github.com/MCSclimate/MCT
-fxtag = MCT_2.11.0
-fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/MCSclimate/MCT
 
 [submodule "parallelio"]
 path = libraries/parallelio
