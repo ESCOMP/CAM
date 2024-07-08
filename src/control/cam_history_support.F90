@@ -1407,7 +1407,7 @@ contains
     if (i == 0) then
        call add_hist_coord(trim(name), i)
        if(masterproc) then
-          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord: ', trim(name),  &
                '(', i, ') with length: ', vlen
        end if
     end if
@@ -1472,7 +1472,7 @@ contains
     if (i == 0) then
        call add_hist_coord(trim(name), i)
        if(masterproc) then
-          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord: ', trim(name),  &
                '(', i, ') with length: ', vlen
        end if
     end if
@@ -1551,7 +1551,7 @@ contains
            vertical_coord=.true.)
       i = get_hist_coord_index(trim(name))
       if(masterproc) then
-         write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),   &
+         write(iulog, '(3a,i0,a,i0)') 'Registering hist coord: ', trim(name),   &
               '(', i, ') with length: ', vlen
       end if
     end if

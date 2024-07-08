@@ -3605,7 +3605,9 @@ Default: set by build-namelist
 
 <entry id="do_clubb_sgs" type="logical" category="conv"
        group="phys_ctl_nl" valid_values="" >
-Switch for CLUBB_SGS
+Flag for CLUBB_SGS.  N.B. this variable may not be set by the user.  It is
+set by build-namelist via information in the configure cache file to be
+consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 

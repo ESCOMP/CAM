@@ -57,8 +57,8 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam_dev,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
-Physics package: cam3, cam4, cam5, cam6, cam_dev, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
+<entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
+Physics package: cam3, cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
 </entry>
 <entry id="hemco" valid_values="0,1" value="0">
 Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.

@@ -398,7 +398,7 @@
 	  <nthrds_cpl>1</nthrds_cpl>
 	</nthrds>
       </pes>
-      <pes pesize="any" compset="_CAM%DEV%MT%CC">
+      <pes pesize="any" compset="_CAM70%MT%CC">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-8</ntasks_atm>
@@ -421,7 +421,7 @@
   </grid>
   <grid name="a%ne30" >
     <mach name="cheyenne">
-      <pes pesize="any" compset="_CAM%DEV%LT%GHGMAM4_">
+      <pes pesize="any" compset="_CAM70%LT%GHGMAM4_">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-8</ntasks_atm>
@@ -448,7 +448,7 @@
 	  <rootpe_cpl>0</rootpe_cpl>
 	</rootpe>
       </pes>
-      <pes pesize="any" compset="_CAM%DEV%MT%GHGMAM4_">
+      <pes pesize="any" compset="_CAM70%MT%GHGMAM4_">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-12</ntasks_atm>
@@ -506,7 +506,7 @@
   </grid>
   <grid name="a%ne120">
     <mach name="cheyenne">
-      <pes pesize="any" compset="_CAM6|_CAM%DEV">
+      <pes pesize="any" compset="_CAM6|_CAM7">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>1800</ntasks_atm>

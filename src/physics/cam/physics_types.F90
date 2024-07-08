@@ -1481,40 +1481,72 @@ end subroutine set_state_pdry
 
 !===============================================================================
 
-subroutine set_wet_to_dry (state)
+subroutine set_wet_to_dry(state, convert_cnst_type)
+
+  ! Convert mixing ratios from a wet to dry basis for constituents of type
+  ! convert_cnst_type.  Constituents are given a type when they are added
+  ! to the constituent array by a call to cnst_add during the register
+  ! phase of initialization.  There are two constituent types: 'wet' for
+  ! water species and 'dry' for non-water species.
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=3),    intent(in)    :: convert_cnst_type
 
+  ! local variables
   integer m, ncol
+  character(len=*), parameter :: sub = 'set_wet_to_dry'
+  !-----------------------------------------------------------------------------
+
+  ! check input
+  if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
+  end if
 
   ncol = state%ncol
 
-  do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+  do m = 1, pcnst
+     if (cnst_type(m) == convert_cnst_type) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdel(:ncol,:)/state%pdeldry(:ncol,:)
-     endif
+     end if
   end do
 
 end subroutine set_wet_to_dry
 
 !===============================================================================
 
-subroutine set_dry_to_wet (state)
+subroutine set_dry_to_wet(state, convert_cnst_type)
+
+  ! Convert mixing ratios from a dry to wet basis for constituents of type
+  ! convert_cnst_type.  Constituents are given a type when they are added
+  ! to the constituent array by a call to cnst_add during the register
+  ! phase of initialization.  There are two constituent types: 'wet' for
+  ! water species and 'dry' for non-water species.
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=3),    intent(in)    :: convert_cnst_type
 
+  ! local variables
   integer m, ncol
+  character(len=*), parameter :: sub = 'set_dry_to_wet'
+  !-----------------------------------------------------------------------------
+
+  ! check input
+  if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
+  end if
 
   ncol = state%ncol
 
-  do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+  do m = 1, pcnst
+     if (cnst_type(m) == convert_cnst_type) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdeldry(:ncol,:)/state%pdel(:ncol,:)
-     endif
+     end if
   end do
 
 end subroutine set_dry_to_wet
