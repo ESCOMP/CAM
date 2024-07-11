@@ -1644,7 +1644,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   call physics_state_copy(state, state1)
 
   ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state1)
+  call set_dry_to_wet(state1, convert_cnst_type='dry')
 
   lchnk = state1%lchnk
   ncol  = state1%ncol
