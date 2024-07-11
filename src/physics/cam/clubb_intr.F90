@@ -403,7 +403,7 @@ module clubb_intr
     ztodt_idx,&         ! physics timestep for SILHS
     clubbtop_idx        ! level index for CLUBB top
 
-  !   For GW code
+  !   For Gravity Wave code
   integer :: &
        ttend_clubb_idx, &
        ttend_clubb_mc_idx, &
@@ -587,7 +587,7 @@ module clubb_intr
     call pbuf_add_field('WP2UP2',     'global', dtype_r8, (/pcols,pverp/), wp2up2_idx)
     call pbuf_add_field('WP2VP2',     'global', dtype_r8, (/pcols,pverp/), wp2vp2_idx)
 
-    ! pbuf fields for GW scheme
+    ! pbuf fields for Gravity Wave scheme
     call pbuf_add_field('TTEND_CLUBB',  'physpkg', dtype_r8, (/pcols,pver/),  ttend_clubb_idx)
     call pbuf_add_field('UPWP_CLUBB_GW',   'physpkg', dtype_r8, (/pcols,pverp/), upwp_clubb_gw_idx)
     call pbuf_add_field('VPWP_CLUBB_GW',   'physpkg', dtype_r8, (/pcols,pverp/), vpwp_clubb_gw_idx)
@@ -2460,7 +2460,7 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: wpthlp_mc_zt
     real(r8), pointer, dimension(:,:) :: rtpthlp_mc_zt
 
-    ! Connections to GW param
+    ! Connections to Gravity Wave parameterization
     real(r8), pointer, dimension(:,:) :: ttend_clubb
     real(r8), pointer, dimension(:,:) :: upwp_clubb_gw
     real(r8), pointer, dimension(:,:) :: vpwp_clubb_gw
@@ -2696,7 +2696,7 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, wpthlp_mc_zt_idx,  wpthlp_mc_zt)
     call pbuf_get_field(pbuf, rtpthlp_mc_zt_idx, rtpthlp_mc_zt)
 
-    ! For GW
+    ! For Gravity Wave
     call pbuf_get_field(pbuf, ttend_clubb_idx,       ttend_clubb )
     call pbuf_get_field(pbuf, thlp2_clubb_gw_idx,    thlp2_clubb_gw )
     call pbuf_get_field(pbuf, upwp_clubb_gw_idx,     upwp_clubb_gw )
@@ -3676,7 +3676,7 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    !  Accumulate vars throug macmic subcycle
+    !  Accumulate vars through macmic subcycle
     upwp_clubb_gw_mc(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)   + upwp(:ncol,:)
     vpwp_clubb_gw_mc(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)   + vpwp(:ncol,:)
     thlp2_clubb_gw_mc(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)  + thlp2(:ncol,:)
@@ -3684,10 +3684,10 @@ end subroutine clubb_init_cnst
 
     ! And average at last macmic step
     if (macmic_it == cld_macmic_num_steps) then
-       upwp_clubb_gw(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps)
-       vpwp_clubb_gw(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps)
-       thlp2_clubb_gw(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps)
-       wpthlp_clubb_gw(:ncol,:) = wpthlp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps)
+       upwp_clubb_gw(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
+       vpwp_clubb_gw(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
+       thlp2_clubb_gw(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
+       wpthlp_clubb_gw(:ncol,:) = wpthlp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
     end if
 
     do k=1, nlev+1
@@ -3896,12 +3896,12 @@ end subroutine clubb_init_cnst
    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
 
-    ! Accumulate TTEND for GW parameterization
+    ! Accumulate TTEND for Gravity Wave parameterization
     ttend_clubb_mc(:ncol,:pver) = ttend_clubb_mc(:ncol,:pver) + ptend_loc%s(:ncol,:pver)/cpair
 
     ! Average at last macmic step
     if (macmic_it == cld_macmic_num_steps) then
-       ttend_clubb(:ncol,:)  = ttend_clubb_mc(:ncol,:pver)/REAL(cld_macmic_num_steps)
+       ttend_clubb(:ncol,:)  = ttend_clubb_mc(:ncol,:pver)/REAL(cld_macmic_num_steps,r8)
     end if
 
 

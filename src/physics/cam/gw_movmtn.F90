@@ -70,7 +70,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8), intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Heating rate due to convection.
   real(r8), intent(in) :: netdt(:,:)  !from deep scheme
-  ! Heating rate due to shallow convection nd PBL turbulence.
+  ! Heating rate due to shallow convection and PBL turbulence.
   real(r8), intent(in) :: netdt_shcu(:,:)
   ! Higher order flux from ShCu/PBL.
   real(r8), intent(in) :: xpwp_shcu(ncol,pver+1)
@@ -86,7 +86,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
 
   ! Wave Reynolds stress.
   real(r8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1) !tau = momentum flux (m2/s2) at interface level ngwv = band of phase speeds
-  ! Projectin of wind at midpoints and interfaces.
+  ! Projection of wind at midpoints and interfaces.
   real(r8), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
   ! Unit vectors of source wind (zonal and meridional components).
   real(r8), intent(out) :: xv(ncol), yv(ncol) !determined by vector direction of wind at 700hPa
@@ -171,7 +171,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   Steer_k = pver-1
   usteer = u(:,Steer_k)  !k defined in line21 (at specified altitude)
   vsteer = v(:,Steer_k)
-  steer_level = 1._r8 * Steer_k
+  steer_level = real(Steer_k,r8)
 
   ! all GW calculations on a plane, which in our case is the wind at 700hPa  source level -> ubi is wind in this plane
   ! Get the unit vector components and magnitude at the source level.
@@ -197,7 +197,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   end do
   !-------------------------------------------------------------------------
   ! At this point (usteer,vsteer) is the cell-speed, or equivalently, the 2D
-  ! ground based wave phase spped for moving mountain GW
+  ! ground based wave phase speed for moving mountain GW
   !-------------------------------------------------------------------------
 
 
@@ -261,7 +261,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   end do
 
   ! Multiply by conversion factor
-  ! (now 20* larger than what Zahng McFarlane said as they try to describe heating over 100km grid cell)
+  ! (now 20* larger than what Zhang McFarlane said as they try to describe heating over 100km grid cell)
   q0 = q0 * CF
   qj = 9.81/285*q0 ! unit conversion to m/s3
 
@@ -423,7 +423,7 @@ function index_of_nearest(x, grid) result(idx)
 end function index_of_nearest
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-function shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn ) result(xpwp_src)
+pure function shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn ) result(xpwp_src)
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
