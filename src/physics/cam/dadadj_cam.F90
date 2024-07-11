@@ -129,8 +129,9 @@ subroutine dadadj_tend(dt, state, ptend)
    ! dadadj_run returns t tend, we are passing the ptend%s array to receive the t tendency and will convert it to s
    ! before it is returned to CAM..
    call dadadj_run( &
-        ncol, dt, state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), state%t(:ncol,:), state%q(:ncol,:,1), cappav(:ncol,:,lchnk), &
-        ptend%s(:ncol,:), ptend%q(:ncol,:,1), dadpdf(:ncol,:), scheme_name, errmsg, errflg)
+        ncol, pver, dt, state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
+        state%t(:ncol,:), state%q(:ncol,:,1), cappav(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), ptend%s(:ncol,:), &
+        ptend%q(:ncol,:,1), dadpdf(:ncol,:), scheme_name, errmsg, errflg)
 
    ! error exit
    if (errflg /= 0) then
@@ -145,9 +146,6 @@ subroutine dadadj_tend(dt, state, ptend)
    end if
 
    call outfld('DADADJ_PD',  dadpdf(:ncol,:),  ncol, lchnk)
-
-   ! convert the t tendency to an s tendency for cam
-   ptend%s(:ncol,:) = ptend%s(:ncol,:) * cpairv(:ncol,:,lchnk)
 
 end subroutine dadadj_tend
 
