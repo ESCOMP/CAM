@@ -23,7 +23,7 @@ contains
     use edyn_esmf,    only: edyn_esmf_chkerr, edyn_esmf_update_phys_mesh
     use shr_const_mod,only: shr_const_pi
     use ppgrid,       only: pcols
-
+    use error_messages,only: alloc_err
 
     ! Local variables
     integer                               :: ncols
@@ -59,7 +59,9 @@ contains
     do chnk = begchunk, endchunk
        total_cols = total_cols + get_ncols_p(chnk)
     end do
-    allocate(decomp(total_cols))
+    allocate(decomp(total_cols), stat=rc)
+    call alloc_err(rc,subname,'decomp',total_cols)
+
     dindex = 0
     do chnk = begchunk, endchunk
        ncols = get_ncols_p(chnk)
@@ -68,13 +70,16 @@ contains
           decomp(dindex) = get_gcol_p(chnk, col)
        end do
     end do
+
     ! Create a DistGrid based on the physics decomp
     dist_grid_2d = ESMF_DistGridCreate(arbSeqIndexList=decomp, rc=rc)
     call edyn_esmf_chkerr(subname, 'ESMF_DistGridCreate phys decomp', rc)
+
     ! Create an ESMF_mesh for the physics decomposition
     phys_mesh = ESMF_MeshCreate(trim(grid_file), ESMF_FILEFORMAT_ESMFMESH,  &
          elementDistgrid=dist_grid_2d, rc=rc)
     call edyn_esmf_chkerr(subname, 'ESMF_MeshCreateFromFile', rc)
+
     call edyn_esmf_update_phys_mesh(phys_mesh)
 
     ! Check that the mesh coordinates are consistent with the model physics column coordinates
@@ -90,8 +95,15 @@ contains
             trim(tempc1) //" not equal to local size "// trim(tempc2))
     end if
 
-    allocate(ownedElemCoords(spatialDim*numOwnedElements))
-    allocate(lonMesh(total_cols), latMesh(total_cols))
+    allocate(ownedElemCoords(spatialDim*numOwnedElements), stat=rc)
+    call alloc_err(rc,subname,'ownedElemCoords',spatialDim*numOwnedElements)
+
+    allocate(lonMesh(total_cols), stat=rc)
+    call alloc_err(rc,subname,'lonMesh',total_cols)
+
+    allocate(latMesh(total_cols), stat=rc)
+    call alloc_err(rc,subname,'latMesh',total_cols)
+
     call ESMF_MeshGet(phys_mesh, ownedElemCoords=ownedElemCoords)
 
     do n = 1,total_cols
@@ -100,8 +112,16 @@ contains
     end do
 
     ! obtain internally generated cam lats and lons
-    allocate(lon(total_cols)); lon(:) = 0._r8
-    allocate(lat(total_cols)); lat(:) = 0._r8
+    allocate(lon(total_cols), stat=rc);
+    call alloc_err(rc,subname,'lon',total_cols)
+
+    lon(:) = 0._r8
+
+    allocate(lat(total_cols), stat=rc);
+    call alloc_err(rc,subname,'lat',total_cols)
+
+    lat(:) = 0._r8
+
     n=0
     do c = begchunk, endchunk
        ncols = get_ncols_p(c)
