@@ -1483,6 +1483,7 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_default">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
+      <machine name="derecho" compiler="nvhpc" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -1491,6 +1492,7 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
+      <machine name="derecho" compiler="nvhpc" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>

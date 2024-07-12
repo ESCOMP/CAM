@@ -1,4 +1,4 @@
-#!/bin/sh
+!/bin/sh
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
@@ -468,6 +468,7 @@ if [ -n "${CAM_FC}" ]; then
   comp="_${CAM_FC,,}"
 else
   echo "ERROR: Must specify CAM_FC"
+  exit 1
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
