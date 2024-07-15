@@ -2549,8 +2549,9 @@ end subroutine clubb_init_cnst
     ! Copy the state to state1 array to use in this routine
     call physics_state_copy(state, state1)
 
-    ! constituents are all treated as dry mmr by clubb
-    call set_wet_to_dry(state1)
+    ! Constituents are all treated as dry mmr by clubb.  Convert the water species to
+    ! a dry basis.
+    call set_wet_to_dry(state1, convert_cnst_type='wet')
 
     if (clubb_do_liqsupersat) then
       call pbuf_get_field(pbuf, npccn_idx, npccn)
