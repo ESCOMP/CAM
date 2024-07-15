@@ -3897,7 +3897,7 @@ end subroutine clubb_init_cnst
    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
 
-    ! Accumulate TTEND for Gravity Wave parameterization
+    ! Accumulate Air Temperature Tendency (TTEND) for Gravity Wave parameterization
     ttend_clubb_mc(:ncol,:pver) = ttend_clubb_mc(:ncol,:pver) + ptend_loc%s(:ncol,:pver)/cpair
 
     ! Average at last macmic step
