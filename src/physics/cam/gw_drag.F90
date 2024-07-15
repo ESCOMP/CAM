@@ -20,7 +20,6 @@ module gw_drag
   use shr_kind_mod,   only: r8=>shr_kind_r8, cl=>shr_kind_cl
   use shr_log_mod,    only: errMsg => shr_log_errMsg
   use shr_assert_mod, only: shr_assert
-  use shr_kind_mod,   only: cl => shr_kind_cl
 
   use ppgrid,         only: pcols, pver, begchunk, endchunk
   use constituents,   only: pcnst
@@ -586,11 +585,11 @@ subroutine gw_init()
      ! Declare history variables for orographic term
      call addfld ('TAUAORO',    (/ 'ilev' /), 'I','N m-2',  &
           'Total stress from original OGW scheme')
-     call addfld ('TTGWORO',    (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWORO',    (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave drag')
-     call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave, diffusion.')
-     call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave, breaking KE.')
      call addfld ('UTGWORO',    (/ 'lev' /), 'A','m s-2', &
           'U tendency - orographic gravity wave drag')
@@ -1006,9 +1005,9 @@ subroutine gw_init()
           'Gravity Wave Moving Mountain - launch level for movmtn GW')
      call addfld ('TND_LEVEL_MOVMTN',horiz_only,'I','1', &
           'Gravity Wave Moving Mountain - tendency lowest level for movmtn GW')
-     call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K/s', &
+     call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K s-1', &
           'Gravity Wave Moving Mountain - Net heating rate')
-     call addfld ('TTEND_CLUBB',(/ 'lev' /),'A','K/s', &
+     call addfld ('TTEND_CLUBB',(/ 'lev' /),'A','K s-1', &
           'Gravity Wave Moving Mountain - CLUBB Net heating rate')
      call addfld ('THLP2_CLUBB_GW',(/ 'ilev' /),'A','K+2', &
           'Gravity Wave Moving Mountain - THLP variance from CLUBB to GW')
@@ -1056,9 +1055,9 @@ subroutine gw_init()
      call gw_spec_addflds(prefix=beres_dp_pf, scheme="Beres (deep)", &
           band=band_mid, history_defaults=history_waccm)
 
-     call addfld ('NETDT',(/ 'lev' /), 'A','K/s', &
+     call addfld ('NETDT',(/ 'lev' /), 'A','K s-1', &
           'Net heating rate')
-     call addfld ('MAXQ0',horiz_only  ,  'A','K/day', &
+     call addfld ('MAXQ0',horiz_only  ,  'A','K day-1', &
           'Max column heating rate')
      call addfld ('HDEPTH',horiz_only,    'A','km', &
           'Heating Depth')
@@ -1103,9 +1102,9 @@ subroutine gw_init()
      call gw_spec_addflds(prefix=beres_sh_pf, scheme="Beres (shallow)", &
           band=band_mid, history_defaults=history_waccm)
 
-     call addfld ('SNETDT',(/ 'lev' /), 'A','K/s', &
+     call addfld ('SNETDT',(/ 'lev' /), 'A','K s-1', &
           'Net heating rate')
-     call addfld ('SMAXQ0',horiz_only  ,  'A','K/day', &
+     call addfld ('SMAXQ0',horiz_only  ,  'A','K day-1', &
           'Max column heating rate')
      call addfld ('SHDEPTH',horiz_only,    'A','km', &
           'Heating Depth')
@@ -1132,7 +1131,7 @@ subroutine gw_init()
   call register_vector_field('UTGW_TOTAL', 'VTGW_TOTAL')
 
   ! Total temperature tendency output.
-  call addfld ('TTGW', (/ 'lev' /), 'A', 'K/s',  &
+  call addfld ('TTGW', (/ 'lev' /), 'A', 'K s-1',  &
        'T tendency - gravity wave drag')
 
   ! Water budget terms.
@@ -2676,7 +2675,7 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
        trim(scheme)//' V tendency - gravity wave spectrum')
   call register_vector_field(trim(prefix)//'UTGWSPEC',trim(prefix)//'VTGWSPEC')
 
-  call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' T tendency - gravity wave spectrum')
 
   ! Wind tendencies broken across five spectral bins.
@@ -2714,9 +2713,9 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
        trim(scheme)//' Southward MF')
 
   ! Temperature tendency terms.
-  call addfld (trim(prefix)//'TTGWSDF' , (/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSDF' , (/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' t tendency - diffusion term')
-  call addfld (trim(prefix)//'TTGWSKE' , (/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSKE' , (/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' t tendency - kinetic energy conversion term')
 
   ! Gravity wave source spectra by wave number.
