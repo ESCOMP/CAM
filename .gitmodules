@@ -51,14 +51,14 @@
 	path = src/chemistry/geoschem/geoschem_src
 	url = https://github.com/geoschem/geos-chem.git
         fxrequired = AlwaysRequired
-        fxtag = feature/geoschem_14.4_in_cesm
+        fxtag = 14.4.2
         fxDONOTUSEurl = https://github.com/geoschem/geos-chem.git
 
 [submodule "cloud_j"]
 	path = src/chemistry/cloud_j
 	url = https://github.com/geoschem/cloud-j.git
         fxrequired = AlwaysRequired
-        fxtag = feature/set_levels_with_cloud_from_parent_model
+        fxtag = 7.7.2
         fxDONOTUSEurl = https://github.com/geoschem/cloud-j.git
 
 [submodule "hetp"]
