@@ -132,9 +132,10 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Averaging length.
   real(r8), parameter :: AL = 1.0e5_r8
   ! Index for moving mountain lookuptable
-  real(r8) :: hdmm_idx(ncol), uhmm_idx(ncol)
+  integer :: hdmm_idx(ncol), uhmm_idx(ncol)
   ! Index for ground based phase speed bin
-  real(r8) :: c0(ncol,-band%ngwv:band%ngwv), c_idx(ncol,-band%ngwv:band%ngwv)
+  real(r8) :: c0(ncol,-band%ngwv:band%ngwv)
+  integer :: c_idx(ncol,-band%ngwv:band%ngwv)
   ! Flux source from ShCu/PBL
   real(r8) :: xpwp_src(ncol)
   ! Manual steering level set
