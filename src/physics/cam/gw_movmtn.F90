@@ -179,6 +179,8 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   !     usteer = usteer - Cell_Retrograde_Speed * xv_steer
   !     vsteer = vsteer - Cell_Retrograde_Speed * yv_steer
   !-----------------------------------------------------------------------
+  ! Cell_Retro_Speed is always =0 for now
+  !-----------------------------------------------------------------------
   do i=1,ncol
      Cell_Retro_Speed(i) = min( sqrt(usteer(i)**2 + vsteer(i)**2), 0._r8)
   end do
@@ -256,7 +258,10 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   q0 = q0 * CF
   qj = gravit/rair*q0 ! unit conversion to m/s3
 
-
+  !-------------------------------------------------
+  ! CS1 and CS should be equal in current implemen-
+  ! tation.
+  !-------------------------------------------------
   CS1 = sqrt( usteer**2._r8 + vsteer**2._r8 )
   CS = CS1*xv_steer + CS1*yv_steer
 
@@ -292,7 +297,6 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   call outfld('UCELL_MOVMTN', usteer, ncol, lchnk)
   call outfld('VCELL_MOVMTN', vsteer, ncol, lchnk)
   call outfld('CS_MOVMTN', CS, ncol, lchnk)
-  call outfld('CS1_MOVMTN', CS1, ncol, lchnk)
   call outfld('STEER_LEVEL_MOVMTN',steer_level, ncol, lchnk )
   call outfld('XPWP_SRC_MOVMTN', xpwp_src , ncol, lchnk )
 

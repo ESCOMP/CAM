@@ -996,9 +996,7 @@ subroutine gw_init()
      call addfld ('VCELL_MOVMTN',horiz_only,'I','m s-1', &
           'Gravity Wave Moving Mountain - Source-level Y-wind')
      call addfld ('CS_MOVMTN',horiz_only,'I','m s-1', &
-          'Gravity Wave Moving Mountain - phase speed')
-     call addfld ('CS1_MOVMTN',horiz_only,'I','m s-1', &
-          'Gravity Wave Moving Mountain - phase speed')
+          'Gravity Wave Moving Mountain - phase speed in direction of wave')
      call addfld ('STEER_LEVEL_MOVMTN',horiz_only,'I','1', &
           'Gravity Wave Moving Mountain - steering level for movmtn GW')
      call addfld ('SRC_LEVEL_MOVMTN',horiz_only,'I','1', &
