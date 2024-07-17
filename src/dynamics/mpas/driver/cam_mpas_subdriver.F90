@@ -884,15 +884,16 @@ contains
 
        use pio, only : file_desc_t
 
-       use mpas_kind_types, only : StrKIND
+       use mpas_kind_types, only : StrKIND, RKIND
        use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
        use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger, &
                                       MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
-                                      MPAS_pool_add_config
+                                      MPAS_pool_add_config, MPAS_pool_get_dimension, MPAS_pool_get_array
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
        use mpas_stream_manager, only : postread_reindex
+       use mpas_constants, only : pii
 
        ! Arguments
        type (file_desc_t), pointer :: fh_ini
@@ -929,8 +930,13 @@ contains
 
        type (MPAS_Stream_type) :: mesh_stream
 
+       integer, pointer :: nCells
+       real(kind=RKIND), dimension(:), pointer :: lonCell_arr
+
        nullify(cell_gradient_coef_x)
        nullify(cell_gradient_coef_y)
+       nullify(nCells)
+       nullify(lonCell_arr)
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
@@ -1170,6 +1176,12 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) then
            call endrun(subname//': FATAL: Failed to close static input stream.')
        end if
+
+       call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
+       call mpas_pool_get_array(meshPool, 'lonCell', lonCell_arr)
+
+       ! Ensure longitudes w/i [0, 2*pi) range
+       lonCell_arr(:) = lonCell_arr(:) - (2.*pii) * floor(lonCell_arr(:) / (2.*pii))
 
        !
        ! Perform halo updates for all decomposed fields (i.e., fields with
