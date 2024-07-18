@@ -90,6 +90,7 @@
   <test compset="FHIST_BDRD" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="aux_cam_short"/>
     </machines>
     <options>
