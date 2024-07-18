@@ -29,6 +29,7 @@ module aero_model
 
   use modal_aero_wateruptake, only: modal_strat_sulfate
   use mo_setsox,              only: setsox, has_sox
+  use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
   implicit none
   private
@@ -105,6 +106,8 @@ module aero_model
   logical :: modal_accum_coarse_exch = .false.
 
   logical :: convproc_do_aer
+
+  class(modal_aerosol_properties), pointer :: aero_props=>null()
 
 contains
 
@@ -255,7 +258,8 @@ contains
     ! call modal_aero_deposition_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
     if (.not.aerodep_flx_prescribed()) then
-       call aero_deposition_cam_init()
+       aero_props => modal_aerosol_properties()
+       call aero_deposition_cam_init(aero_props)
     endif
 
     if (convproc_do_aer) then

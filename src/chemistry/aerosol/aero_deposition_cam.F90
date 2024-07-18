@@ -2,7 +2,7 @@ module aero_deposition_cam
 !------------------------------------------------------------------------------
 ! Purpose:
 !
-! Partition the contributions from modal components of wet and dry
+! Partition the contributions from aerosols of wet and dry
 ! deposition at the surface into the fields passed to the coupler.
 !------------------------------------------------------------------------------
 
@@ -11,7 +11,6 @@ module aero_deposition_cam
   use camsrfexch,   only: cam_out_t
   use aerosol_properties_mod, only: aero_name_len
   use aerosol_properties_mod, only: aerosol_properties
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
   implicit none
 
@@ -40,32 +39,23 @@ module aero_deposition_cam
   ! bulk dust bins (meters)
 
   integer, parameter :: n_bulk_dst_bins = 4
+
+  ! CAM4 bulk dust bin sizes (https://doi.org/10.1002/2013MS000279)
   real(r8), parameter :: bulk_dst_edges(n_bulk_dst_bins+1) = &
-       (/1.0e-15_r8, 0.5e-6_r8, 1.25e-6_r8, 2.5e-6_r8, 1.0e-2_r8/) ! meters
-!       (/0.05e-6_r8, 0.5e-6_r8, 1.25e-6_r8, 2.5e-6_r8, 5.0e-6_r8/) ! meters
-!       (/1.e-15_r8, 1.25e-6_r8, 2.5e-6_r8, 5.0e-6_r8, 1.0e-2_r8/) ! meters (Flanner's)
-
-! in mo_setaer.F90 :
-! dust is treated as 4 size distributions
-! 0.05 - 0.5; 0.5 - 1.25; 1.25 - 2.5; 2.5 - 5.0 microns
-
-! in components/cice/src/icepack/columnphysics/icepack_zbgc_shared.F90
-      ! Aerosol order and type should be consistent with order/type
-      ! specified in delta Eddington:  1) hydrophobic black carbon;
-      ! 2) hydrophilic black carbon; 3) dust (0.05-0.5 micron);
-      ! 4) dust (0.5-1.25 micron); 5) dust (1.25-2.5 micron);
-      ! 6) dust (2.5-5 micron)
+       (/0.1e-6_r8, 1.0e-6_r8, 2.5e-6_r8, 5.0e-6_r8, 10.e-6_r8/)
 
 contains
 
   !============================================================================
-  subroutine aero_deposition_cam_init()
+  subroutine aero_deposition_cam_init(aero_props_in)
+
+    class(aerosol_properties),target, intent(in) :: aero_props_in
 
     integer :: pcnt, scnt
     character(len=*), parameter :: subrname = 'aero_deposition_cam_init'
 
     ! construct the aerosol properties object
-    aero_props => modal_aerosol_properties()
+    aero_props => aero_props_in
 
     ! set the cam constituent indices and determine the counts
     ! for the specified aerosol types
@@ -192,7 +182,7 @@ contains
       dst_fluxes = 0._r8
 
       do ibin = 1,aero_props%nbins()
-         do ispec = 0,aero_props%nspecies(ibin)
+         do ispec = 0,aero_props%nmasses(ibin)
             if (ispec==0) then
                call aero_props%num_names(ibin, specname, name_c)
             else
