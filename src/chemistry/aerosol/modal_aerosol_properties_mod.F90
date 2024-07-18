@@ -694,7 +694,8 @@ contains
     character(len=aero_name_len) :: spectype
     character(len=aero_name_len) :: modetype
 
-    real(r8), parameter :: sqrtwo =sqrt(2._r8)
+    real(r8), parameter :: sqrtwo = sqrt(2._r8)
+    real(r8), parameter :: onethrd = 1._r8/3._r8
 
     nbulk = size(bulk_fluxes)
 
@@ -719,7 +720,7 @@ contains
        end do
        mode_has_dust: if (has_dust) then
           call rad_cnst_get_info(0, m, mode_type=modetype)
-          if (Ntot>0._r8 .and. Mdust>0._r8 .and. Mtotal>0._r8) then
+          if (Ntot>1.e-40_r8 .and. Mdust>1.e-40_r8 .and. Mtotal>1.e-40_r8) then
 
              call rad_cnst_get_mode_props(0, m, sigmag=sigma_g)
              tmp = sqrtwo*log(sigma_g)
@@ -728,7 +729,7 @@ contains
              Ndust = Ntot * Mdust/Mtotal ! #/m2
 
              ! 2. dust volume median diameter (wetdep): meters
-             vmd = (6._r8*Mdust/(pi*Ndust*dns_dst))**(1._r8/3._r8) * exp(1.5_r8*(log(sigma_g))**2)
+             vmd = (6._r8*Mdust/(pi*Ndust*dns_dst))**onethrd * exp(1.5_r8*(log(sigma_g))**2)
 
              massfrac_bin = 0._r8
 
