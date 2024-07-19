@@ -1332,6 +1332,12 @@ Whether or not to enable gravity waves produced by shallow convection.
 Default: .false.
 </entry>
 
+<entry id="use_gw_movmtn_pbl" type="logical" category="gw_drag"
+       group="phys_ctl_nl" valid_values="" >
+Whether or not to enable gravity waves from PBL moving mountains source.
+Default: .false.
+</entry>
+
 <entry id="pgwv" type="integer" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Gravity wave spectrum dimension (wave numbers are from -pgwv to pgwv).
@@ -1533,6 +1539,13 @@ Width of gaussian used to create frontogenesis tau profile [m/s].
 Default: set by build-namelist.
 </entry>
 
+<entry id="alpha_gw_movmtn" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Tunable parameter controlling proportion of boundary layer momentum flux escaping as GW momentum flux
+Default: set by build-namelist.
+</entry>
+
+
 <entry id="gw_drag_file" type="char*256" input_pathname="abs" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Full pathname of Beres lookup table data file for gravity waves sourced
@@ -1544,6 +1557,12 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Full pathname of Beres lookup table data file for gravity waves sourced
 from shallow convection.
+Default: set by build-namelist.
+</entry>
+
+<entry id="gw_drag_file_mm" type="char*256" input_pathname="abs" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Relative pathname of lookup table for deep convective moving mountain GW source
 Default: set by build-namelist.
 </entry>
 
@@ -3605,7 +3624,9 @@ Default: set by build-namelist
 
 <entry id="do_clubb_sgs" type="logical" category="conv"
        group="phys_ctl_nl" valid_values="" >
-Switch for CLUBB_SGS
+Flag for CLUBB_SGS.  N.B. this variable may not be set by the user.  It is
+set by build-namelist via information in the configure cache file to be
+consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
