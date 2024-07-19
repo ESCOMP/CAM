@@ -843,6 +843,7 @@
 <!-- gravity wave options -->
 <gw_drag_file>atm/waccm/gw/newmfspectra40_dc25.nc</gw_drag_file>
 <gw_drag_file_sh>atm/waccm/gw/mfspectra_shallow_c140530.nc</gw_drag_file_sh>
+<gw_drag_file_mm>atm/waccm/gw/mfc0lookup_mm.nc</gw_drag_file_mm>
 <gw_prndl                               >0.25d0 </gw_prndl>
 <gw_prndl                 waccm_phys="1">0.5d0  </gw_prndl>
 <gw_prndl     chem="geoschem_mam4">0.5d0  </gw_prndl>
@@ -893,6 +894,7 @@
 <gw_rdg_orovmin                         > 1.0d-3 </gw_rdg_orovmin>
 <gw_rdg_orostratmin                     > 0.002d0</gw_rdg_orostratmin>
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
+<alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
 
 <!-- Dry Convective Adjustment options -->
 <dadadj_niter>15</dadadj_niter>

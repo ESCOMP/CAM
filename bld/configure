@@ -2185,6 +2185,7 @@ sub write_filepath
       print $fh "$camsrcdir/src/physics/simple\n";
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
       print $fh "$camsrcdir/src/atmos_phys/held_suarez\n";
+      print $fh "$camsrcdir/src/atmos_phys/tj2016\n";
     }
 
     # Weak scaling fix. This has to come before physics/cam and before dycores

@@ -3773,6 +3773,10 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_rdg_beta',   'val'=>'.false.');
     }
 
+    if ($phys =~ /cam7/) {
+       add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
@@ -3826,6 +3830,7 @@ my $do_gw_front      = ($nl->get_value('use_gw_front')      =~ /$TRUE/io);
 my $do_gw_front_igw  = ($nl->get_value('use_gw_front_igw')  =~ /$TRUE/io);
 my $do_gw_convect_dp = ($nl->get_value('use_gw_convect_dp') =~ /$TRUE/io);
 my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
+my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
 
@@ -3881,6 +3886,11 @@ if ($do_gw_convect_dp) {
 if ($do_gw_convect_sh) {
     add_default($nl, 'gw_drag_file_sh');
     add_default($nl, 'effgw_beres_sh');
+}
+
+if ($do_gw_movmtn_pbl) {
+    add_default($nl, 'gw_drag_file_mm');
+    add_default($nl, 'alpha_gw_movmtn');
 }
 
 if ($do_gw_rdg_beta) {
