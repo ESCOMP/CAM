@@ -359,6 +359,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physconst,     only: gravit, latice, latvap, tmelt, cpwv, cpliq, rh2o
 
    use phys_control,  only: cam_physpkg_is
+   use ccpp_constituent_prop_mod, only: ccpp_const_props
 
    ! Arguments
 
@@ -788,7 +789,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt, ccpp_const_props, errflg, errmsg)
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -847,6 +848,9 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    integer,  pointer :: maxg(:)    ! (pcols)
    integer,  pointer :: ideep(:)   ! (pcols)
 
+   character(len=512) :: errmsg
+   integer            :: errflg
+
    !-----------------------------------------------------------------------------------
 
 
@@ -886,11 +890,12 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    ptend%q(:,:,:) = 0._r8
 !REMOVECAM_END
 
+!CACNOTE - Need to check errflg and report errors
       call zm_conv_convtran_run (ncol, pver,          &
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt,  ccpp_const_props, errflg, errmsg)
       call t_stopf ('convtran2')
    end if
 
