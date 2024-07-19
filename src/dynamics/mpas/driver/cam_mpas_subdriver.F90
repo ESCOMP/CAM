@@ -890,7 +890,7 @@ contains
                                       field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger, &
                                       MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
-                                      MPAS_pool_add_config, MPAS_pool_get_dimension, MPAS_pool_get_array
+                                      MPAS_pool_add_config, MPAS_pool_get_array
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
        use mpas_stream_manager, only : postread_reindex
        use mpas_constants, only : pii
@@ -930,12 +930,10 @@ contains
 
        type (MPAS_Stream_type) :: mesh_stream
 
-       integer, pointer :: nCells
        real(kind=RKIND), dimension(:), pointer :: lonCell_arr
 
        nullify(cell_gradient_coef_x)
        nullify(cell_gradient_coef_y)
-       nullify(nCells)
        nullify(lonCell_arr)
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
@@ -1177,7 +1175,6 @@ contains
            call endrun(subname//': FATAL: Failed to close static input stream.')
        end if
 
-       call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
        call mpas_pool_get_array(meshPool, 'lonCell', lonCell_arr)
 
        ! Ensure longitudes w/i [0, 2*pi) range
