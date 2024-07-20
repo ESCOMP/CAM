@@ -888,7 +888,7 @@ contains
        endif
     endif
 
-    call cloud_diagnostics_init()
+    call cloud_diagnostics_init(pbuf2d)
 
     call radheat_init(pref_mid)
 
@@ -2408,7 +2408,7 @@ contains
       !
       ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
       !
-      call set_dry_to_wet(state)
+      call set_dry_to_wet(state, convert_cnst_type='dry')
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&

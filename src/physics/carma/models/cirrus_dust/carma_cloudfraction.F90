@@ -24,8 +24,7 @@
     use carma_mod
   
     use shr_kind_mod,   only: r8 => shr_kind_r8
-    use physics_types,  only: physics_state, physics_ptend, set_wet_to_dry, &
-                              set_dry_to_wet
+    use physics_types,  only: physics_state, physics_ptend
     use constituents,   only: cnst_get_ind
     use cam_abortutils, only: endrun
 
