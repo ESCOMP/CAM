@@ -35,6 +35,7 @@ module physpkg
   use phys_control,    only: use_hemco            ! Use Harmonized Emissions Component (HEMCO)
 
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
+  use modal_aero_calcsize,    only: modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
   implicit none
@@ -909,7 +910,7 @@ contains
        endif
     endif
 
-    call cloud_diagnostics_init()
+    call cloud_diagnostics_init(pbuf2d)
 
     call radheat_init(pref_mid)
 
@@ -1948,7 +1949,7 @@ contains
       !
       ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
       !
-      call set_dry_to_wet(state)
+      call set_dry_to_wet(state, convert_cnst_type='dry')
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
         call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2067,7 +2068,7 @@ contains
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
-    use aero_model,      only: aero_model_wetdep
+    use aero_model,      only: aero_model_wetdep, wetdep_lq
     use carma_intr,      only: carma_wetdep_tend, carma_timestep_tend
     use carma_flags_mod, only: carma_do_detrain, carma_do_cldice, carma_do_cldliq,  carma_do_wetdep
     use radiation,       only: radiation_tend
@@ -2797,10 +2798,22 @@ contains
        !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
-       call t_startf('bc_aerosols')
-       if (clim_modal_aero .and. .not. prog_modal_aero) then
-          call modal_aero_calcsize_diag(state, pbuf)
-          call modal_aero_wateruptake_dr(state, pbuf)
+       call t_startf('aerosol_wet_processes')
+       if (clim_modal_aero) then
+          if (prog_modal_aero) then
+             call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
+             ! Do calculations of mode radius and water uptake if:
+             ! 1) modal aerosols are affecting the climate, or
+             ! 2) prognostic modal aerosols are enabled
+             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf)
+             ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
+             ! modes is done in conjunction with the dry radius calculation
+             call modal_aero_wateruptake_dr(state, pbuf)
+             call physics_update(state, ptend, ztodt, tend)
+          else
+             call modal_aero_calcsize_diag(state, pbuf)
+             call modal_aero_wateruptake_dr(state, pbuf)
+          endif
        endif
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
@@ -2840,7 +2853,7 @@ contains
        ! check tracer integrals
        call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
 
-       call t_stopf('bc_aerosols')
+       call t_stopf('aerosol_wet_processes')
 
    endif
 
