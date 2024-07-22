@@ -200,7 +200,7 @@ subroutine ma_convproc_init
    call addfld('DP_WCLDBASE', horiz_only, 'A', 'm/s', &
                'Deep conv. cloudbase vertical velocity' )
    call addfld('DP_KCLDBASE', horiz_only, 'A', '1', &
-        'Deep conv. cloudbase level index' )
+               'Deep conv. cloudbase level index' )
 
    ! output wet deposition fields to history
    !    I = in-cloud removal;     E = precip-evap resuspension
@@ -238,12 +238,16 @@ subroutine ma_convproc_init
 
    if ( history_aerosol .and. &
       ( convproc_do_aer .or.  convproc_do_gas)  ) then
-      call add_default( 'SH_MFUP_MAX', 1, ' ' )
-      call add_default( 'SH_WCLDBASE', 1, ' ' )
-      call add_default( 'SH_KCLDBASE', 1, ' ' )
-      call add_default( 'DP_MFUP_MAX', 1, ' ' )
-      call add_default( 'DP_WCLDBASE', 1, ' ' )
-      call add_default( 'DP_KCLDBASE', 1, ' ' )
+      if (convproc_do_shallow) then
+         call add_default( 'SH_MFUP_MAX', 1, ' ' )
+         call add_default( 'SH_WCLDBASE', 1, ' ' )
+         call add_default( 'SH_KCLDBASE', 1, ' ' )
+      end if
+      if (convproc_do_deep) then
+         call add_default( 'DP_MFUP_MAX', 1, ' ' )
+         call add_default( 'DP_WCLDBASE', 1, ' ' )
+         call add_default( 'DP_KCLDBASE', 1, ' ' )
+      end if
    end if
 
    fracis_idx      = pbuf_get_index('FRACIS')
@@ -1097,6 +1101,9 @@ subroutine ma_convproc_tend(                                           &
    real(r8) zmagl(pver)          ! working height above surface (m)
    real(r8) zkm                  ! working height above surface (km)
 
+   real(r8) :: dcondt2(pcols,pver,pcnst_extd)
+   real(r8) :: conu2(pcols,pver,pcnst_extd)
+
    character(len=16) :: cnst_name_extd(pcnst_extd)
 
    !Fractional area of ensemble mean updrafts in ZM scheme set to 0.01
@@ -1135,6 +1142,9 @@ subroutine ma_convproc_tend(                                           &
 
    wup(:) = 0.0_r8
 
+   dcondt2 = 0.0_r8
+   conu2 = 0.0_r8
+
 ! set doconvproc_extd (extended array) values
 ! inititialize aqfrac to 1.0 for activated aerosol species, 0.0 otherwise
    doconvproc_extd(:) = .false.
@@ -1160,7 +1170,7 @@ subroutine ma_convproc_tend(                                           &
       if (l <= pcnst) then
          cnst_name_extd(l) = cnst_name(l)
       else
-         cnst_name_extd(l) = trim(cnst_name(l-pcnst)) // '_cw'
+         cnst_name_extd(l) = cnst_name_cw(l-pcnst)
       end if
    end do
 
@@ -1295,6 +1305,10 @@ i_loop_main_aa: &
 
 !  load tracer mixing ratio array, which will be updated at the end of each jtsub interation
       q_i(1:pver,1:pcnst) = q(icol,1:pver,1:pcnst)
+
+      do m = 1,pcnst
+         conu2(icol,1:pver,m) = q(icol,1:pver,m)
+      end do
 
 !
 !   when method_reduce_actfrac = 2, need to do the updraft calc twice
@@ -1547,6 +1561,8 @@ k_loop_main_bb: &
                      kactfirst,  ipass_calc_updraft                     )
                end if
 
+               conu2(icol,k,:) = conu(:,k)
+
             end if ! (convproc_method_activate <= 1)
 
 ! aqueous chemistry
@@ -1613,6 +1629,7 @@ k_loop_main_bb: &
                      dconudt_wetdep(m,k) = conu(m,k)*aqfrac(m)*expcdtm1
                      conu(m,k) = conu(m,k) + dconudt_wetdep(m,k)
                      dconudt_wetdep(m,k) = dconudt_wetdep(m,k) / dt_u(k)
+                     conu2(icol,k,m) = conu(m,k)
                   end if
                enddo
             end if
@@ -1775,6 +1792,8 @@ k_loop_main_cc: &
                   'qakww1-'//convtype(1:4), lchnk, icol, k, m, jtsub, &
                   dtsub*tmpveca(1:6)/dp_i(k)
             end if
+
+            dcondt2(icol,k,m) = dcondt(m,k)
 
             end if   ! "(doconvproc_extd(m))"
          end do      ! "m = 2,ncnst_extd"
@@ -2117,6 +2136,24 @@ k_loop_main_cc: &
 
    end do i_loop_main_aa  ! of the main "do i = il1g, il2g" loop
 
+   do n = 1, ntot_amode
+      do ll = 0, nspec_amode(n)
+         if (ll == 0) then
+            la = numptr_amode(n)
+            lc = numptrcw_amode(n) + pcnst
+         else
+            la = lmassptr_amode(ll,n)
+            lc = lmassptrcw_amode(ll,n) + pcnst
+         end if
+
+         call outfld( trim(cnst_name_extd(la))//'WETC', dcondt2(:,:,la), pcols, lchnk )
+         call outfld( trim(cnst_name_extd(la))//'CONU', conu2(:,:,la), pcols, lchnk )
+         call outfld( trim(cnst_name_extd(lc))//'WETC', dcondt2(:,:,lc), pcols, lchnk )
+         call outfld( trim(cnst_name_extd(lc))//'CONU', conu2(:,:,lc), pcols, lchnk )
+
+      end do
+   end do
+
    return
 end subroutine ma_convproc_tend
 
@@ -2216,10 +2253,7 @@ end subroutine ma_convproc_tend
             ! use -dcondt_wetdep(m,k) as it is negative (or zero)
             wd_flux(m) = wd_flux(m) + tmpdp*max(0.0_r8, -dcondt_wetdep(m,k))
             del_wd_flux_evap = wd_flux(m)*fdel_pr_flux_evap
-            wd_flux(m) = max( 0.0_r8, wd_flux(m)-del_wd_flux_evap )
-
             dcondt_prevap(m,k) = del_wd_flux_evap/tmpdp
-            dcondt(m,k) = dcondt(m,k) + dcondt_prevap(m,k)
          end if
       end do
 
@@ -2251,6 +2285,12 @@ end subroutine ma_convproc_tend
          enddo
 
       end if
+
+      do m = 2, pcnst_extd
+         if ( doconvproc_extd(m) ) then
+            dcondt(m,k) = dcondt(m,k) + dcondt_prevap(m,k)
+         end if
+      end do
 
       pr_flux = max( 0.0_r8, pr_flux-del_pr_flux_evap )
 

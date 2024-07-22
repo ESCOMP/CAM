@@ -73,15 +73,6 @@ def buildcpp(case):
         case.set_value("EPS_AAREA", "1.0e-04")
         case.set_value("EPS_AGRID", "1.0e-05")
 
-    # The vector mapping (in the mediator) needs to be 'cart3d' for SE
-    # NB: This is currently the default, is it working by conincidence for
-    #     other unstructured dycores?
-    # For cmeps/nuopc cart3d is always the default option for all grids
-    match = re.match(r'ne[0-9]', atm_grid)
-    if match:
-        if (comp_interface == 'mct'):
-            case.set_value('VECT_MAP', 'cart3d')
-
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-dyn", cam_dycore,
                    "-hgrid", atm_grid, "-cpl", comp_interface,
