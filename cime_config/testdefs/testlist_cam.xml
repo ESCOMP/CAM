@@ -2472,7 +2472,16 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_P240x3" testmods="cam/outfrq9s_ltr">
+  <test compset="FXHIST" grid="ne16pg3_ne16pg3_mg17" name="SMS_C2_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="waccmx"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">WACCM-X multi-instance test</option>
+    </options>
+  </test>
+  <test compset="QPX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_P256x3" testmods="cam/outfrq9s_ltr">
     <machines>
       <machine name="derecho" compiler="intel" category="waccmx"/>
     </machines>
@@ -2489,6 +2498,7 @@
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
+      <option name="comment">WACCM-X multi-instance test</option>
     </options>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3"   testmods="cam/outfrq1d_amie">

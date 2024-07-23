@@ -3347,6 +3347,14 @@
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
                    'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
 </rxn_rate_sums>
+<rxn_rate_sums chem="waccm_ma" waccmx="1">
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_mad_mam5" waccmx="1">
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
 <rxn_rate_sums chem="trop_strat_mam5_ts2">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
