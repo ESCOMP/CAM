@@ -6194,7 +6194,7 @@ Default: FALSE
 </entry>
 
 <entry id="aer_wetdep_list" type="char*16(1000)" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 List of aerosol species that undergo wet deposition.
 Default: set by build-namelist.
 </entry>
@@ -6277,19 +6277,19 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factb_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for below cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factic_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_facti_cloud_borne" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of cloud-borne modal aerosols.
 Default: set by build-namelist.
 </entry>

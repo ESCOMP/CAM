@@ -70,6 +70,8 @@ module aerosol_properties_mod
      procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
      procedure(aero_optics_params), deferred :: optics_params
      procedure(aero_bin_name), deferred :: bin_name
+     procedure(aero_scav_diam), deferred :: scav_diam
+     procedure(aero_resuspension_resize), deferred :: resuspension_resize
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -96,7 +98,7 @@ module aerosol_properties_mod
      !  species morphology
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                               spectype, specmorph, refindex_sw, refindex_lw)
+                               spectype, specname, specmorph, refindex_sw, refindex_lw)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -105,6 +107,7 @@ module aerosol_properties_mod
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
        character(len=*), optional, intent(out) :: spectype  ! species type
+       character(len=*), optional, intent(out) :: specname  ! species name
        character(len=*), optional, intent(out) :: specmorph ! species morphology
        complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
        complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
@@ -377,6 +380,30 @@ module aerosol_properties_mod
        character(len=32) name
 
      end function aero_bin_name
+
+     !------------------------------------------------------------------------------
+     ! returns scavenging diameter for a given aerosol bin number
+     !------------------------------------------------------------------------------
+     function aero_scav_diam(self, bin_ndx) result(diam)
+       import :: aerosol_properties, r8
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx  ! bin number
+
+       real(r8) :: diam
+
+     end function aero_scav_diam
+
+     !------------------------------------------------------------------------------
+     ! adjust aerosol concentration tendencies to create larger sizes of aerosols
+     ! during resuspension
+     !------------------------------------------------------------------------------
+     subroutine aero_resuspension_resize(self, dcondt)
+       import :: aerosol_properties, r8
+
+       class(aerosol_properties), intent(in) :: self
+       real(r8), intent(inout) :: dcondt(:)
+
+     end subroutine aero_resuspension_resize
 
   end interface
 
