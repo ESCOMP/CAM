@@ -1,4 +1,10 @@
 module aero_deposition_cam
+!------------------------------------------------------------------------------
+! Purpose:
+!
+! Partition the contributions from aerosols of wet
+! deposition at the surface into the fields passed to the coupler.
+!------------------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
   use constituents, only: cnst_get_ind, pcnst
@@ -9,8 +15,13 @@ module aero_deposition_cam
   implicit none
 
   private
+
+! Public interfaces
+
   public :: aero_deposition_cam_init
   public :: aero_deposition_cam_setwet
+
+! Private module data
 
   integer :: bcarbon_ndx( pcnst ) = -1
   integer :: bcarbon_cnt = 0
@@ -43,6 +54,9 @@ contains
   contains
 
     !==============================================================================
+    ! utility function to get constituent indices (and count) of specified aerosol type
+    ! which have particulate sizes above min_radius and below max_radius if specified
+    !==============================================================================
     subroutine get_indices( type, indices, count, min_radius, max_radius )
 
       character(len=*), intent(in) :: type
@@ -58,7 +72,6 @@ contains
 
       count = 0
       indices(:) = -1
-
 
       do ibin = 1, aero_props%nbins()
 
@@ -95,7 +108,9 @@ contains
 
   end subroutine aero_deposition_cam_init
 
-  !==============================================================================
+  !============================================================================
+  ! Set surface wet deposition fluxes passed to coupler.
+  !============================================================================
   subroutine aero_deposition_cam_setwet(aerdepwetis, aerdepwetcw, cam_out)
 
 

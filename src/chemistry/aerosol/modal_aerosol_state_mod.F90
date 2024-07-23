@@ -37,7 +37,6 @@ module modal_aerosol_state_mod
      procedure :: hetfrz_size_wght
      procedure :: hygroscopicity
      procedure :: water_uptake
-     procedure :: wgtpct
      procedure :: dry_volume
      procedure :: wet_volume
      procedure :: water_volume
@@ -515,17 +514,6 @@ contains
 
 
   end subroutine water_uptake
-
-  !------------------------------------------------------------------------------
-  ! aerosol weight precent of H2SO4/H2O solution
-  !------------------------------------------------------------------------------
-  function wgtpct(self) result(wtp)
-    class(modal_aerosol_state), intent(in) :: self
-    real(r8), pointer :: wtp(:,:) ! weight precent of H2SO4/H2O solution
-
-    nullify(wtp)
-
-  end function wgtpct
 
   !------------------------------------------------------------------------------
   ! aerosol dry volume (m3/kg) for given radiation diagnostic list number and bin number

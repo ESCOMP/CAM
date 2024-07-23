@@ -51,7 +51,6 @@ module aerosol_state_mod
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
      procedure(aero_hygroscopicity), deferred :: hygroscopicity
      procedure(aero_water_uptake), deferred :: water_uptake
-     procedure(aero_wgtpct), deferred :: wgtpct
      procedure :: refractive_index_sw
      procedure :: refractive_index_lw
      procedure(aero_volume), deferred :: dry_volume
@@ -250,16 +249,6 @@ module aerosol_state_mod
        real(r8),intent(out) :: qaerwat(ncol,nlev)  ! aerosol water concentration (g/g)
 
      end subroutine aero_water_uptake
-
-     !------------------------------------------------------------------------------
-     ! aerosol weight precent of H2SO4/H2O solution
-     !------------------------------------------------------------------------------
-     function aero_wgtpct(self) result(wtp)
-       import :: aerosol_state, r8
-       class(aerosol_state), intent(in) :: self
-       real(r8), pointer :: wtp(:,:)
-
-     end function aero_wgtpct
 
      !------------------------------------------------------------------------------
      ! aerosol volume interface
