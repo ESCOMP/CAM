@@ -1178,7 +1178,7 @@ contains
        call mpas_pool_get_array(meshPool, 'lonCell', lonCell_arr)
 
        ! Ensure longitudes w/i [0, 2*pi) range
-       lonCell_arr(:) = lonCell_arr(:) - (2.*pii) * floor(lonCell_arr(:) / (2.*pii))
+       lonCell_arr(:) = lonCell_arr(:) - (2._RKIND*pii) * floor(lonCell_arr(:) / (2._RKIND*pii))
 
        !
        ! Perform halo updates for all decomposed fields (i.e., fields with
