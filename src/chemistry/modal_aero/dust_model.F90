@@ -6,6 +6,7 @@ module dust_model
   use spmd_utils,       only: masterproc
   use cam_abortutils,   only: endrun
   use modal_aero_data,  only: ntot_amode, ndst=>nDust
+  use cam_logfile,      only: iulog
 
   implicit none
   private
@@ -30,8 +31,10 @@ module dust_model
   real(r8), allocatable :: dust_dmt_vwr(:)
   real(r8), allocatable :: dust_stk_crc(:)
 
-  real(r8)          :: dust_emis_fact = -1.e36_r8        ! tuning parameter for dust emissions
-  character(len=cl) :: soil_erod_file = 'soil_erod_file' ! full pathname for soil erodibility dataset
+  real(r8)          :: dust_emis_fact = -1.e36_r8          ! tuning parameter for dust emissions
+  character(len=cl) :: soil_erod_file = 'soil_erod_file'   ! full pathname for soil erodibility dataset
+
+  logical :: soil_erod_active = .true.
 
   logical :: dust_active = .false.
 
@@ -43,8 +46,7 @@ module dust_model
   subroutine dust_readnl(nlfile)
 
     use namelist_utils,  only: find_group_name
-    use units,           only: getunit, freeunit
-    use mpishorthand
+    use spmd_utils,      only: mpicom, masterprocid, mpi_character, mpi_logical, mpi_real8, mpi_success
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -52,14 +54,13 @@ module dust_model
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'dust_readnl'
 
-    namelist /dust_nl/ dust_emis_fact, soil_erod_file
+    namelist /dust_nl/ dust_emis_fact, soil_erod_file, soil_erod_active
 
     !-----------------------------------------------------------------------------
 
     ! Read namelist
     if (masterproc) then
-       unitn = getunit()
-       open( unitn, file=trim(nlfile), status='old' )
+       open( newunit=unitn, file=trim(nlfile), status='old' )
        call find_group_name(unitn, 'dust_nl', status=ierr)
        if (ierr == 0) then
           read(unitn, dust_nl, iostat=ierr)
@@ -68,14 +69,27 @@ module dust_model
           end if
        end if
        close(unitn)
-       call freeunit(unitn)
     end if
 
-#ifdef SPMD
     ! Broadcast namelist variables
-    call mpibcast(dust_emis_fact, 1,                   mpir8,   0, mpicom)
-    call mpibcast(soil_erod_file, len(soil_erod_file), mpichar, 0, mpicom)
-#endif
+    call mpi_bcast(soil_erod_file, len(soil_erod_file), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//' MPI_BCAST ERROR: soil_erod_file')
+    end if
+    call mpi_bcast(dust_emis_fact, 1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//' MPI_BCAST ERROR: dust_emis_fact')
+    end if
+    call mpi_bcast(soil_erod_active, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//' MPI_BCAST ERROR: soil_erod_active')
+    end if
+
+    if (masterproc) then
+       write(iulog,*) subname,': soil_erod_active = ',soil_erod_active
+       write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
+       write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
+    end if
 
   end subroutine dust_readnl
 
@@ -131,7 +145,9 @@ module dust_model
     dust_active = any(dust_indices(:) > 0)
     if (.not.dust_active) return
 
-    call  soil_erod_init( dust_emis_fact, soil_erod_file )
+    if (soil_erod_active) then
+       call  soil_erod_init( dust_emis_fact, soil_erod_file )
+    end if
 
     call dust_set_params( dust_nbin, dust_dmt_grd, dust_dmt_vwr, dust_stk_crc )
 
@@ -158,29 +174,43 @@ module dust_model
 
     ! set dust emissions
 
-    col_loop: do i =1,ncol
+    if (soil_erod_active) then
+       col_loop: do i =1,ncol
 
-       soil_erod(i) = soil_erodibility( i, lchnk )
+          soil_erod(i) = soil_erodibility( i, lchnk )
 
-       if( soil_erod(i) .lt. soil_erod_threshold ) soil_erod(i) = 0._r8
+          if( soil_erod(i) .lt. soil_erod_threshold ) soil_erod(i) = 0._r8
 
-       ! rebin and adjust dust emissons..
-       do m = 1,dust_nbin
+          ! rebin and adjust dust emissons
+          do m = 1,dust_nbin
 
-          idst = dust_indices(m)
+             idst = dust_indices(m)
 
-          cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
-               * dust_emis_sclfctr(m)*soil_erod(i)/soil_erod_fact*1.15_r8
+             cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
+                  * dust_emis_sclfctr(m)*soil_erod(i)/soil_erod_fact*1.15_r8
 
-          x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
+             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
 
-          inum = dust_indices(m+dust_nbin)
+             inum = dust_indices(m+dust_nbin)
 
-          cflx(i,inum) = cflx(i,idst)*x_mton
+             cflx(i,inum) = cflx(i,idst)*x_mton
 
-       enddo
+          enddo
 
-    end do col_loop
+       end do col_loop
+    else
+       ! rebin dust emissons
+       do i = 1,ncol
+          do m = 1,dust_nbin
+             idst = dust_indices(m)
+             cflx(i,idst) = sum( -dust_flux_in(i,:) ) * dust_emis_sclfctr(m) ! mass mixing ratio
+             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
+             inum = dust_indices(m+dust_nbin)
+             cflx(i,inum) = cflx(i,idst)*x_mton ! number mixing ratio
+          end do
+       end do
+    end if
+
 
   end subroutine dust_emis
 
