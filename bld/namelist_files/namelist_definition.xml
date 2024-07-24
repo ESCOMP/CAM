@@ -6745,7 +6745,7 @@ Default: set by build-namelist.
 <entry id="soil_erod_active" type="logical"  category="cam_chem"
        group="dust_nl" valid_values="" >
 Switch to turn on/off soil erodibility for dust emissions in CAM.
-Default: FALSE
+Default: TRUE
 </entry>
 
 
