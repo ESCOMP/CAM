@@ -33,8 +33,8 @@ module dust_model
   real(r8), allocatable :: dust_dmt_vwr(:)
   real(r8), allocatable :: dust_stk_crc(:)
 
-  real(r8)          :: dust_emis_fact = -huge(1._r8)       ! tuning parameter for dust emissions
-  character(len=cl) :: soil_erod_file = 'soil_erod_file'   ! full pathname for soil erodibility dataset
+  real(r8)          :: dust_emis_fact = -huge(1._r8) ! tuning parameter for dust emissions
+  character(len=cl) :: soil_erod_file = 'none'       ! full pathname for soil erodibility dataset
 
   logical :: dust_active = .false.
 
@@ -85,11 +85,19 @@ module dust_model
 
     call shr_dust_emis_readnl(mpicom, 'drv_flds_in')
 
+    if ((soil_erod_file /= 'none') .and. (.not.is_zender_soil_erod_from_atm())) then
+       call endrun(subname//': should not specify soil_erod_file if Zender soil erosion is not in CAM')
+    end if
+
     if (masterproc) then
-       write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
-       write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
-       write(iulog,*) subname,': is_dust_emis_zender : ',is_dust_emis_zender()
-       write(iulog,*) subname,': is_zender_soil_erod_from_atm : ',is_zender_soil_erod_from_atm()
+       if (is_dust_emis_zender()) then
+          write(iulog,*) subname,': Zender_2003 dust emission method is being used.'
+       end if
+       if (is_zender_soil_erod_from_atm()) then
+          write(iulog,*) subname,': Zender soil erod file is handled in atm'
+          write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
+          write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
+       end if
     end if
 
   end subroutine dust_readnl
@@ -163,6 +171,7 @@ module dust_model
     use soil_erod_mod, only : soil_erodibility
     use mo_constants,  only : dust_density
     use physconst,     only : pi
+    use cam_history_support, only : fillvalue
 
   ! args
     integer,  intent(in)    :: ncol, lchnk
@@ -174,31 +183,39 @@ module dust_model
     integer :: i, m, idst, inum
     real(r8) :: x_mton
     real(r8),parameter :: soil_erod_threshold = 0.1_r8
-    real(r8) :: erodfctr(ncol)
+
+    soil_erod(:) = fillvalue
 
     ! set dust emissions
 
     if (is_zender_soil_erod_from_atm()) then
-       col_loop: do i =1,ncol
+       col_loop1: do i = 1,ncol
           soil_erod(i) = soil_erodibility( i, lchnk )
           if( soil_erod(i) .lt. soil_erod_threshold ) soil_erod(i) = 0._r8
-          erodfctr(i) = soil_erod(i)/soil_erod_fact*1.15_r8
-       end do col_loop
-    else
-       erodfctr(:) = 1._r8
+
+          ! rebin and adjust dust emissons.
+          do m = 1,dust_nbin
+             idst = dust_indices(m)
+             cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
+                  * dust_emis_sclfctr(m)*soil_erod(i)/dust_emis_fact*1.15_r8
+             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
+             inum = dust_indices(m+dust_nbin)
+             cflx(i,inum) = cflx(i,idst)*x_mton
+          enddo
+       enddo col_loop1
+    else ! no scaling
+       col_loop2: do i = 1,ncol
+          ! rebin and adjust dust emissons.
+          do m = 1,dust_nbin
+             idst = dust_indices(m)
+             cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
+                  * dust_emis_sclfctr(m) / dust_emis_fact
+             x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
+             inum = dust_indices(m+dust_nbin)
+             cflx(i,inum) = cflx(i,idst)*x_mton
+          enddo
+       enddo col_loop2
     end if
-
-    ! rebin dust emissons
-
-    do i = 1,ncol
-       do m = 1,dust_nbin
-          idst = dust_indices(m)
-          cflx(i,idst) = sum( -dust_flux_in(i,:) ) * dust_emis_sclfctr(m) * erodfctr(i) ! mass mixing ratio
-          x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
-          inum = dust_indices(m+dust_nbin)
-          cflx(i,inum) = cflx(i,idst)*x_mton ! number mixing ratio
-       end do
-    end do
 
   end subroutine dust_emis
 

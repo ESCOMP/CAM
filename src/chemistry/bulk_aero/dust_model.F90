@@ -87,11 +87,19 @@ contains
 
     call shr_dust_emis_readnl(mpicom, 'drv_flds_in')
 
+    if ((soil_erod_file /= 'none') .and. (.not.is_zender_soil_erod_from_atm())) then
+       call endrun(subname//': should not specify soil_erod_file if Zender soil erosion is not in CAM')
+    end if
+
     if (masterproc) then
-       write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
-       write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
-       write(iulog,*) subname,': is_dust_emis_zender : ',is_dust_emis_zender()
-       write(iulog,*) subname,': is_zender_soil_erod_from_atm : ',is_zender_soil_erod_from_atm()
+       if (is_dust_emis_zender()) then
+          write(iulog,*) subname,': Zender_2003 dust emission method is being used.'
+       end if
+       if (is_zender_soil_erod_from_atm()) then
+          write(iulog,*) subname,': Zender soil erod file is handled in atm'
+          write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
+          write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
+       end if
     end if
 
   end subroutine dust_readnl
@@ -126,6 +134,7 @@ contains
   subroutine dust_emis( ncol, lchnk, dust_flux_in, cflx, soil_erod )
     use soil_erod_mod, only : soil_erod_fact
     use soil_erod_mod, only : soil_erodibility
+    use cam_history_support, only : fillvalue
 
    ! args
     integer,  intent(in)    :: ncol, lchnk
@@ -139,32 +148,46 @@ contains
     real(r8), parameter :: dust_emis_sclfctr(dust_nbin) &
          = (/ 0.011_r8/0.032456_r8, 0.087_r8/0.174216_r8, 0.277_r8/0.4085517_r8, 0.625_r8/0.384811_r8 /)
 
+    soil_erod(:) = fillvalue
+
     if (.not.dust_active) return
 
     ! set dust emissions
 
     if (is_zender_soil_erod_from_atm()) then
-       do i =1,ncol
-          ! adjust emissions based on soil erosion
+
+       col_loop1: do i =1,ncol
+
           soil_erod(i) = soil_erodibility( i, lchnk )
-          erodfctr(i) = soil_erod(i)/soil_erod_fact*1.15_r8
-       end do
+
+          ! adjust emissions based on soil erosion
+          do m = 1,dust_nbin
+
+             idst = dust_indices(m)
+             cflx(i,idst) = -dust_flux_in(i,m) &
+                  * dust_emis_sclfctr(m)*soil_erod(i)/dust_emis_fact*1.15_r8
+
+          enddo
+
+       end do col_loop1
+
     else
-       erodfctr(:) = 1._r8
+
+       col_loop2: do i =1,ncol
+
+          soil_erod(i) = soil_erodibility( i, lchnk )
+
+          ! adjust emissions based on soil erosion
+          do m = 1,dust_nbin
+
+             idst = dust_indices(m)
+             cflx(i,idst) = -dust_flux_in(i,m) * dust_emis_sclfctr(m) / dust_emis_fact
+
+          enddo
+
+       end do col_loop2
+
     end if
-
-    ! rebin dust emissons
-
-    do i =1,ncol
-
-       do m = 1,dust_nbin
-
-          idst = dust_indices(m)
-          cflx(i,idst) = -dust_flux_in(i,m) * dust_emis_sclfctr(m) * erodfctr(i)
-
-       enddo
-
-    end do
 
   end subroutine dust_emis
 
