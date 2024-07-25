@@ -6,6 +6,8 @@ module dust_model
   use spmd_utils,      only: masterproc
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
+  use shr_dust_emis_mod,only: is_dust_emis_zender, is_zender_soil_erod_from_atm
+  use cam_control_mod, only: aqua_planet
 
   implicit none
   private
@@ -38,8 +40,6 @@ module dust_model
   real(r8)          :: dust_emis_fact = -1.e36_r8        ! tuning parameter for dust emissions
   character(len=cl) :: soil_erod_file = 'soil_erod_file' ! full pathname for soil erodibility dataset
 
-  logical :: soil_erod_active = .true.
-
 contains
 
   !=============================================================================
@@ -48,7 +48,8 @@ contains
   subroutine dust_readnl(nlfile)
 
     use namelist_utils,  only: find_group_name
-    use spmd_utils,      only: mpicom, masterprocid, mpi_character, mpi_logical, mpi_real8, mpi_success
+    use spmd_utils,      only: mpicom, masterprocid, mpi_character, mpi_real8, mpi_success
+    use shr_dust_emis_mod, only: shr_dust_emis_readnl
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -56,9 +57,10 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'dust_readnl'
 
-    namelist /dust_nl/ dust_emis_fact, soil_erod_file, soil_erod_active
+    namelist /dust_nl/ dust_emis_fact, soil_erod_file
 
     !-----------------------------------------------------------------------------
+    if (aqua_planet) return
 
     ! Read namelist
     if (masterproc) then
@@ -82,15 +84,14 @@ contains
     if (ierr/=mpi_success) then
        call endrun(subname//' MPI_BCAST ERROR: dust_emis_fact')
     end if
-    call mpi_bcast(soil_erod_active, 1, mpi_logical, masterprocid, mpicom, ierr)
-    if (ierr/=mpi_success) then
-       call endrun(subname//' MPI_BCAST ERROR: soil_erod_active')
-    end if
+
+    call shr_dust_emis_readnl(mpicom, 'drv_flds_in')
 
     if (masterproc) then
-       write(iulog,*) subname,': soil_erod_active = ',soil_erod_active
        write(iulog,*) subname,': soil_erod_file = ',trim(soil_erod_file)
        write(iulog,*) subname,': dust_emis_fact = ',dust_emis_fact
+       write(iulog,*) subname,': is_dust_emis_zender : ',is_dust_emis_zender()
+       write(iulog,*) subname,': is_zender_soil_erod_from_atm : ',is_zender_soil_erod_from_atm()
     end if
 
   end subroutine dust_readnl
@@ -104,13 +105,15 @@ contains
 
     integer :: n
 
+    if (aqua_planet) return
+
     do n = 1, dust_nbin
        call cnst_get_ind(dust_names(n), dust_indices(n),abort=.false.)
     end do
     dust_active = any(dust_indices(:) > 0)
     if (.not.dust_active) return
 
-    if (soil_erod_active) then
+    if (is_zender_soil_erod_from_atm()) then
        call  soil_erod_init( dust_emis_fact, soil_erod_file )
     endif
 
@@ -132,35 +135,36 @@ contains
 
    ! local vars
     integer :: i, m, idst
+    real(r8) :: erodfctr(ncol)
     real(r8), parameter :: dust_emis_sclfctr(dust_nbin) &
          = (/ 0.011_r8/0.032456_r8, 0.087_r8/0.174216_r8, 0.277_r8/0.4085517_r8, 0.625_r8/0.384811_r8 /)
 
+    if (.not.dust_active) return
+
     ! set dust emissions
 
-    if (soil_erod_active) then
-       col_loop: do i =1,ncol
-
-          soil_erod(i) = soil_erodibility( i, lchnk )
-
+    if (is_zender_soil_erod_from_atm()) then
+       do i =1,ncol
           ! adjust emissions based on soil erosion
-          do m = 1,dust_nbin
-
-             idst = dust_indices(m)
-             cflx(i,idst) = -dust_flux_in(i,m) &
-                  * dust_emis_sclfctr(m)*soil_erod(i)/soil_erod_fact*1.15_r8
-
-          enddo
-
-       end do col_loop
-    else
-       ! rebin dust emissons
-       do i = 1,ncol
-          do m = 1,dust_nbin
-             idst = dust_indices(m)
-             cflx(i,idst) = -dust_flux_in(i,m) * dust_emis_sclfctr(m)
-          end do
+          soil_erod(i) = soil_erodibility( i, lchnk )
+          erodfctr(i) = soil_erod(i)/soil_erod_fact*1.15_r8
        end do
+    else
+       erodfctr(:) = 1._r8
     end if
+
+    ! rebin dust emissons
+
+    do i =1,ncol
+
+       do m = 1,dust_nbin
+
+          idst = dust_indices(m)
+          cflx(i,idst) = -dust_flux_in(i,m) * dust_emis_sclfctr(m) * erodfctr(i)
+
+       enddo
+
+    end do
 
   end subroutine dust_emis
 
