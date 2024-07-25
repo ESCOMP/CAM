@@ -1463,10 +1463,10 @@ contains
 
     logical :: labort                  ! abort flag
 
-    real(r8) :: surfric(pcols) = 0._r8 ! surface friction velocity
-    real(r8) :: obklen(pcols) = 0._r8  ! Obukhov length
-    real(r8) :: fh2o(pcols) = 0._r8    ! h2o flux to balance source from methane chemistry
-    real(r8) :: flx_heat(pcols) = 0._r8      ! Heat flux for check_energy_chng.
+    real(r8) surfric(pcols)            ! surface friction velocity
+    real(r8) obklen(pcols)             ! Obukhov length
+    real(r8) :: fh2o(pcols)            ! h2o flux to balance source from methane chemistry
+    real(r8) :: flx_heat(pcols)        ! Heat flux for check_energy_chng.
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
@@ -2117,18 +2117,22 @@ contains
 
     integer :: nstep                          ! current timestep number
 
-    real(r8) :: net_flx(pcols) = 0._r8
-    real(r8) :: zdu(pcols,pver) = 0._r8       ! detraining mass flux from deep convection
-    real(r8) :: cmfmc(pcols,pverp) = 0._r8    ! Convective mass flux--m sub c
-    real(r8) :: cmfcme(pcols,pver) = 0._r8    ! cmf condensation - evaporation
-    real(r8) :: dlf(pcols,pver) = 0._r8       ! Detraining cld H20 from shallow + deep convections
-    real(r8) :: dlf2(pcols,pver) = 0._r8      ! Detraining cld H20 from shallow convections
-    real(r8) :: rtdt                          ! 1./ztodt
+    real(r8) :: net_flx(pcols)
 
-    integer :: lchnk                          ! chunk identifier
-    integer :: ncol                           ! number of atmospheric columns
-    integer :: i                              ! column indicex
-    integer :: ixcldice, ixcldliq, ixq        ! constituent indices for cloud liquid and ice water.
+    real(r8) :: zdu(pcols,pver)               ! detraining mass flux from deep convection
+    real(r8) :: cmfmc(pcols,pverp)            ! Convective mass flux--m sub c
+
+    real(r8) cmfcme(pcols,pver)                ! cmf condensation - evaporation
+
+    real(r8) dlf(pcols,pver)                   ! Detraining cld H20 from shallow + deep convections
+    real(r8) dlf2(pcols,pver)                  ! Detraining cld H20 from shallow convections
+    real(r8) rtdt                              ! 1./ztodt
+
+    integer lchnk                              ! chunk identifier
+    integer ncol                               ! number of atmospheric columns
+
+    integer :: i                               ! column indicex
+    integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
     integer :: m, m_cnst
     ! for macro/micro co-substepping
     integer :: macmic_it                      ! iteration variables
@@ -2183,13 +2187,13 @@ contains
     ! energy checking variables
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
-    real(r8) :: rliq(pcols) = 0._r8            ! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8) :: rice(pcols) = 0._r8            ! vertical integral of ice not yet in q(ixcldice)
-    real(r8) :: rliq2(pcols) = 0._r8           ! vertical integral of liquid from shallow scheme
-    real(r8) :: det_s  (pcols) = 0._r8         ! vertical integral of detrained static energy from ice
-    real(r8) :: det_ice(pcols) = 0._r8         ! vertical integral of detrained ice
+    real(r8) :: rliq(pcols)                    ! vertical integral of liquid not yet in q(ixcldliq)
+    real(r8) :: rice(pcols)                    ! vertical integral of ice not yet in q(ixcldice)
+    real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
+    real(r8) :: det_s  (pcols)                 ! vertical integral of detrained static energy from ice
+    real(r8) :: det_ice(pcols)                 ! vertical integral of detrained ice
     real(r8) :: flx_cnd(pcols)
-    real(r8) :: flx_heat(pcols) = 0._r8
+    real(r8) :: flx_heat(pcols)
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
 
