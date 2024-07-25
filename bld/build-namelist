@@ -3728,6 +3728,11 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         }
     }
 }
+if (!($simple_phys or $aqua_mode)) {
+    add_default($nl, 'dust_emis_method');
+    add_default($nl, 'zender_soil_erod_source');
+}
+
 if (chem_has_species($cfg, 'NO')) {
     # set scaling of lightning NOx production
     add_default($nl, 'lght_no_prd_factor' );
@@ -4410,7 +4415,7 @@ my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl dust_emis_inparm);
 
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
