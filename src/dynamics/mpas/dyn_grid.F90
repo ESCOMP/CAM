@@ -490,7 +490,7 @@ subroutine setup_time_invariant(fh_ini)
    ! longitude range, MPAS may have any (radian) value in lonCell
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
    do k=1,nCells
-      if (lonCell(k) < 0._r8 .or. lonCell(k) .ge. (2._r8 * pi)) then
+      if (lonCell(k) < 0._r8 .or. lonCell(k) >= (2._r8 * pi)) then
          lonCell(k) = lonCell(k) - (2._r8 * pi) * floor(lonCell(k) / (2._r8 * pi))
       end if
    end do
