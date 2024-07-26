@@ -486,8 +486,9 @@ subroutine setup_time_invariant(fh_ini)
    end if
 
    ! Ensure longitudes are within the [0,2*pi) range, and only remap values that
-   ! are outside the range.  Some non-simple physics in CAM require this
-   ! longitude range, MPAS may have any (radian) value in lonCell
+   ! are outside the range. Some non-simple physics in CAM require this
+   ! longitude range, the MPAS-A dycore does not require any specific range for
+   ! lonCell
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
    do k=1,nCells
       if (lonCell(k) < 0._r8 .or. lonCell(k) >= (2._r8 * pi)) then
