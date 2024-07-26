@@ -11,6 +11,7 @@ module aoa_tracers
   use constituents, only: pcnst, cnst_add, cnst_name, cnst_longname
   use cam_logfile,  only: iulog
   use ref_pres,     only: pref_mid_norm
+  use time_manager, only: get_curr_date, get_start_date, get_julday
 
   implicit none
   private
@@ -27,19 +28,20 @@ module aoa_tracers
 
   ! Private module data
 
-  integer, parameter :: ncnst=4  ! number of constituents implemented by this module
+  integer, parameter :: ncnst=5  ! number of constituents implemented by this module
 
   ! constituent names
-  character(len=8), parameter :: c_names(ncnst) = (/'AOA1', 'AOA2', 'HORZ', 'VERT'/)
+  character(len=6), parameter :: c_names(ncnst) = (/'AOA1  ', 'AOA2  ', 'HORZ  ', 'VERT  ', 'AOA1MF'/)
 
   ! constituent source/sink names
-  character(len=8), parameter :: src_names(ncnst) = (/'AOA1SRC', 'AOA2SRC', 'HORZSRC', 'VERTSRC'/)
+  character(len=9), parameter :: src_names(ncnst) = (/'AOA1SRC  ', 'AOA2SRC  ', 'HORZSRC  ', 'VERTSRC  ', 'AOA1MFSRC'/)
 
   integer :: ifirst ! global index of first constituent
   integer :: ixaoa1 ! global index for AOA1 tracer
   integer :: ixaoa2 ! global index for AOA2 tracer
   integer :: ixht   ! global index for HORZ tracer
   integer :: ixvt   ! global index for VERT tracer
+  integer :: ixaoa5 = -1 ! global index for AOA1MFSRC tracer
 
   ! Data from namelist variables
   logical :: aoa_tracers_flag  = .false.    ! true => turn on test tracer code, namelist variable
@@ -67,6 +69,8 @@ module aoa_tracers
   ! doi: http://dx.doi.org/10.1175/1520-0469(2000)057<0673:TDOGAI>2.0.CO;2
 
   real(r8) :: qrel_vert(pver)  ! = -7._r8*log(pref_mid_norm(k)) + vert_offset
+  real(r8) :: jday0 = -huge(1._r8)
+  real(r8) :: jday1 = -huge(1._r8), years = -huge(1._r8)
 
 !===============================================================================
 contains
@@ -136,6 +140,9 @@ contains
                   longname='horizontal tracer')
     call cnst_add(c_names(4), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
                   longname='vertical tracer')
+
+    call cnst_add(c_names(5), mwdry, cpair, 0._r8, ixaoa5, readiv=aoa_read_from_ic_file, &
+                  longname='molar fraction LB tracer')
 
   end subroutine aoa_tracers_register
 
@@ -212,6 +219,7 @@ contains
     use cam_history,    only: addfld, add_default
 
     integer :: m, mm, k
+    integer :: yr, mon, day, sec
     !-----------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
@@ -231,6 +239,9 @@ contains
        qrel_vert(k) = -7._r8*log(pref_mid_norm(k)) + vert_offset
     enddo
 
+    call get_start_date(yr, mon, day, sec)
+    jday0 = get_julday (yr, mon, day, sec)
+
   end subroutine aoa_tracers_init
 
 !===============================================================================
@@ -240,7 +251,6 @@ contains
     ! Provides a place to reinitialize diagnostic constituents HORZ and VERT
     !-----------------------------------------------------------------------
 
-    use time_manager,   only: get_curr_date
     use ppgrid,         only: begchunk, endchunk
     use physics_types,  only: physics_state
 
@@ -249,11 +259,14 @@ contains
 
     integer c, i, k, ncol
     integer yr, mon, day, tod
+
     !--------------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
 
     call get_curr_date (yr,mon,day,tod)
+    jday1 = get_julday (yr,mon,day,tod)
+    years = (jday1-jday0)/365._r8
 
     if ( day == 1 .and. tod == 0) then
        if (masterproc) then
@@ -302,6 +315,7 @@ contains
     real(r8) :: teul                          ! relaxation in  1/sec*dt/2 = k*dt/2
     real(r8) :: wimp                          !     1./(1.+ k*dt/2)
     real(r8) :: wsrc                          !  teul*wimp
+
     !------------------------------------------------------------------
 
     teul = .5_r8*dt/(86400._r8 * treldays)   ! 1/2 for the semi-implicit scheme if dt=time step
@@ -318,6 +332,8 @@ contains
     lq(ixaoa2) = .TRUE.
     lq(ixht)   = .TRUE.
     lq(ixvt)   = .TRUE.
+    lq(ixaoa5) = .TRUE.
+
     call physics_ptend_init(ptend,state%psetcols, 'aoa_tracers', lq=lq)
 
     nstep = get_nstep()
@@ -344,13 +360,18 @@ contains
           ptend%q(i,k,ixvt) = (xvert - state%q(i,k,ixvt)) / dt
 
        end do
+
     end do
+
+    ptend%q(1:ncol,1:pver-1,ixaoa5) = 0._r8
+    ptend%q(1:ncol,pver,ixaoa5) = 1.e-6_r8 * 0.02_r8 * years / dt
 
     ! record tendencies on history files
     call outfld (src_names(1), ptend%q(:,:,ixaoa1), pcols, lchnk)
     call outfld (src_names(2), ptend%q(:,:,ixaoa2), pcols, lchnk)
     call outfld (src_names(3), ptend%q(:,:,ixht),   pcols, lchnk)
     call outfld (src_names(4), ptend%q(:,:,ixvt),   pcols, lchnk)
+    call outfld (src_names(5), ptend%q(:,:,ixaoa5),   pcols, lchnk)
 
     ! Set tracer fluxes
     do i = 1, ncol
@@ -406,6 +427,9 @@ contains
        do j = 1, gsize
           q(j,:) = 2._r8 + sin(latvals(j))
        end do
+    else if (m == ixaoa5) then
+
+       q(:,:) = 0.0_r8
 
     else if (m == ixvt) then
 
