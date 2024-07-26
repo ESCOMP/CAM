@@ -8,7 +8,6 @@ module dust_model
   use modal_aero_data,  only: ntot_amode, ndst=>nDust
   use cam_logfile,      only: iulog
   use shr_dust_emis_mod,only: is_dust_emis_zender, is_zender_soil_erod_from_atm
-  use cam_control_mod, only: aqua_planet
 
   implicit none
   private
@@ -58,7 +57,6 @@ module dust_model
     namelist /dust_nl/ dust_emis_fact, soil_erod_file
 
     !-----------------------------------------------------------------------------
-    if (aqua_planet) return
 
     ! Read namelist
     if (masterproc) then
@@ -113,8 +111,6 @@ module dust_model
     integer :: l, m, mm, ndx, nspec
     character(len=32) :: spec_name
     integer, parameter :: mymodes(7) = (/ 2, 1, 3, 4, 5, 6, 7 /) ! tricky order ...
-
-    if (aqua_planet) return
 
     dust_nbin = ndst
     dust_nnum = ndst
@@ -171,7 +167,6 @@ module dust_model
     use soil_erod_mod, only : soil_erodibility
     use mo_constants,  only : dust_density
     use physconst,     only : pi
-    use cam_history_support, only : fillvalue
 
   ! args
     integer,  intent(in)    :: ncol, lchnk
@@ -183,8 +178,6 @@ module dust_model
     integer :: i, m, idst, inum
     real(r8) :: x_mton
     real(r8),parameter :: soil_erod_threshold = 0.1_r8
-
-    soil_erod(:) = fillvalue
 
     ! set dust emissions
 

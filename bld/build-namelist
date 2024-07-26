@@ -3728,10 +3728,9 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         }
     }
 }
-if (!($simple_phys or $aqua_mode)) {
-    add_default($nl, 'dust_emis_method');
-    add_default($nl, 'zender_soil_erod_source');
-}
+# Dust emissions scheme (all configurations for now)
+add_default($nl, 'dust_emis_method');
+add_default($nl, 'zender_soil_erod_source');
 
 if (chem_has_species($cfg, 'NO')) {
     # set scaling of lightning NOx production

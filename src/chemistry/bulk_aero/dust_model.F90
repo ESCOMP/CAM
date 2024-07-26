@@ -7,7 +7,6 @@ module dust_model
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
   use shr_dust_emis_mod,only: is_dust_emis_zender, is_zender_soil_erod_from_atm
-  use cam_control_mod, only: aqua_planet
 
   implicit none
   private
@@ -60,7 +59,6 @@ contains
     namelist /dust_nl/ dust_emis_fact, soil_erod_file
 
     !-----------------------------------------------------------------------------
-    if (aqua_planet) return
 
     ! Read namelist
     if (masterproc) then
@@ -113,8 +111,6 @@ contains
 
     integer :: n
 
-    if (aqua_planet) return
-
     do n = 1, dust_nbin
        call cnst_get_ind(dust_names(n), dust_indices(n),abort=.false.)
     end do
@@ -147,10 +143,6 @@ contains
     real(r8) :: erodfctr(ncol)
     real(r8), parameter :: dust_emis_sclfctr(dust_nbin) &
          = (/ 0.011_r8/0.032456_r8, 0.087_r8/0.174216_r8, 0.277_r8/0.4085517_r8, 0.625_r8/0.384811_r8 /)
-
-    soil_erod(:) = fillvalue
-
-    if (.not.dust_active) return
 
     ! set dust emissions
 
