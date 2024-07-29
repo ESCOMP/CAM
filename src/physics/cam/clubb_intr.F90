@@ -1844,13 +1844,13 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)' )
     end if
 
-    if ( trim(subcol_scheme) .ne. 'SILHS' ) then
+    if ( trim(subcol_scheme) /= 'SILHS' ) then
        ! hm_metadata is set up by calling init_pdf_hydromet_arrays_api in subcol_init_SILHS.
        ! So if we are not using silhs, we allocate the parts of hm_metadata that need allocating
        ! in order to making intel debug tests happy.
-       allocate( hm_metadata%hydromet_list(1), ierr)
+       allocate( hm_metadata%hydromet_list(1), stat=ierr)
        if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%hydromet_list' )
-       allocate( hm_metadata%l_mix_rat_hm(1), ierr)
+       allocate( hm_metadata%l_mix_rat_hm(1), stat=ierr)
        if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%l_mix_rat_hm' )
     end if
 
