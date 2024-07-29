@@ -53,17 +53,11 @@ module clubb_intr
   type (stats_metadata_type) :: &
     stats_metadata
 
-!$omp threadprivate(stats_metadata)
-
   type (hm_metadata_type) :: &
     hm_metadata
 
-!$omp threadprivate(hm_metadata)
-
   type (sclr_idx_type) :: &
     sclr_idx
-
-!$omp threadprivate(sclr_idx)
 
 #endif
 
@@ -100,7 +94,7 @@ module clubb_intr
   real(r8), dimension(nparams), public :: clubb_params_single_col    ! Adjustable CLUBB parameters (C1, C2 ...)
 #endif
 
-  ! These are zero by default, but will be set by SILHS before 
+  ! These are zero by default, but will be set by SILHS before they are used by subcolumns
   integer :: &
       hydromet_dim = 0, & 
       pdf_dim      = 0

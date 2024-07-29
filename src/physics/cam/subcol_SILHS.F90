@@ -373,7 +373,7 @@ contains
           iiNi,         & ! Hydrometeor array index for ice concentration, Ni
           iiNg            ! Hydrometeor array index for graupel concentration, Ng
 
-      integer :: l  ! Loop variable
+      integer :: l, ierr=0  ! Loop variable, error check
 
       ! Set CLUBB's debug level
       ! This is called in module clubb_intr; no need to do it here.
@@ -474,8 +474,8 @@ contains
       !-------------------------------
       ! Set up hydrometeors and correlation arrays for SILHS
       !-------------------------------
-      allocate(corr_array_n_cloud(pdf_dim,pdf_dim))
-      allocate(corr_array_n_below(pdf_dim,pdf_dim))
+      allocate( corr_array_n_cloud(pdf_dim,pdf_dim), corr_array_n_below(pdf_dim,pdf_dim), stat=ierr)
+      if( ierr /= 0 ) call endrun(' subcol_init_SILHS: failed to allocate corr_array fields ')
 
       corr_file_path_cloud = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//cloud_file_ext
       corr_file_path_below = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//below_file_ext
