@@ -565,7 +565,7 @@
 <mam4_mode4_file rad="rrtmgp">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam4_mode4_file>
 
 <mam4_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
-<mam4_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
+<mam4_mode3_file rad="rrtmgp" ver="strat" phys="cam6">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
 
 <mam5_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
 <mam5_mode2_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
