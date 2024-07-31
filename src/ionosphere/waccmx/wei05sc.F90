@@ -1126,7 +1126,7 @@ contains
         return
      end if
      rm = real(m, r8)
-     km_n = sqrt(2._r8*exp(lngamma(rn+rm+1._r8)-lngamma(rn-rm+1._r8))) / &
+     km_n = sqrt(2._r8*exp(log_gamma(rn+rm+1._r8)-log_gamma(rn-rm+1._r8))) / &
           (2._r8**m*factorial(m))
   end function km_n
 !-----------------------------------------------------------------------
@@ -1296,32 +1296,6 @@ contains
         end if
      end do
   end function value_locate
-!-----------------------------------------------------------------------
-  real(r8) function lngamma(xx)
-     !
-     ! This is an f90 translation from C code copied from
-     ! gammln routine from "Numerical Recipes in C" Chapter 6.1.
-     ! see: http://numerical.recipes
-     !
-
-     real(r8), intent(in) :: xx
-     real(r8) :: x,y,tmp,ser
-     real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8,      &
-          24.01409824083091_r8, -1.231739572450155_r8,                        &
-          0.1208650973866179e-2_r8, -0.5395239384953e-5_r8/)
-     integer :: j
-     !
-     y = xx
-     x = xx
-     tmp = x+5.5_r8
-     tmp = tmp-(x + 0.5_r8) * log(tmp)
-     ser = 1.000000000190015_r8
-     do j = 1, 5
-        y = y + 1
-        ser = ser + (cof(j) / y)
-     end do
-     lngamma = -tmp+log(2.5066282746310005_r8*ser/x)
-  end function lngamma
 !-----------------------------------------------------------------------
   real(r8) function factorial(n)
      integer,intent(in) :: n

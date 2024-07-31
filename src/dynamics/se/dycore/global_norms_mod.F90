@@ -639,7 +639,11 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
+    if (top_042_090km) then
+       if (sponge_del4_lev       <0) sponge_del4_lev        = 4
+       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 3.375_r8 !max value without having to increase subcycling of div4
+       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 3.375_r8 !max value without having to increase subcycling of div4
+    else if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
       if (sponge_del4_lev       <0) sponge_del4_lev        = 20
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8

@@ -45,9 +45,10 @@ module aero_model
 
   public :: calc_1_impact_rate
   public :: nimptblgrow_mind, nimptblgrow_maxd
+  public :: wetdep_lq
 
   ! Accessor functions
-  public ::  get_scavimptblvol, get_scavimptblnum, get_dlndg_nimptblgrow
+  public :: get_scavimptblvol, get_scavimptblnum, get_dlndg_nimptblgrow
 
   ! Misc private data
 
@@ -100,7 +101,7 @@ module aero_model
   integer :: nwetdep = 0
   integer,allocatable :: wetdep_indices(:)
   logical :: drydep_lq(pcnst)
-  logical :: wetdep_lq(pcnst)
+  logical, protected :: wetdep_lq(pcnst)
 
   logical :: modal_accum_coarse_exch = .false.
 
@@ -525,8 +526,21 @@ contains
                 horiz_only,  'A','kg/m2/s','Wet deposition flux (precip evap, stratiform) at surface')
              call addfld (trim(cnst_name_cw(n))//'SFSBD', &
                 horiz_only,  'A','kg/m2/s','Wet deposition flux (belowcloud, deep convective) at surface')
-          end if
 
+             call addfld (trim(cnst_name(n))//'WETC',  &
+                  (/ 'lev' /), 'A',unit_basename//'/kg/s ','wet deposition tendency')
+             call addfld (trim(cnst_name(n))//'CONU',  &
+                  (/ 'lev' /), 'A',unit_basename//'/kg ','updraft mixing ratio')
+
+             call addfld (trim(cnst_name_cw(n))//'WETC',  &
+                  (/ 'lev' /), 'A',unit_basename//'/kg/s ','wet deposition tendency')
+             call addfld (trim(cnst_name_cw(n))//'CONU',  &
+                  (/ 'lev' /), 'A',unit_basename//'/kg ','updraft mixing ratio')
+
+             call addfld( trim(cnst_name_cw(n))//'RSPTD', (/ 'lev' /), 'A', unit_basename//'/kg/s',   &
+                  trim(cnst_name_cw(n))//' resuspension tendency')
+
+          end if
 
           if ( history_aerosol.or. history_chemistry ) then
              call add_default( cnst_name_cw(n), 1, ' ' )
@@ -970,8 +984,6 @@ contains
     use modal_aero_deposition, only: set_srf_wetdep
     use wetdep,                only: wetdepa_v2, wetdep_inputs_set, wetdep_inputs_t
     use modal_aero_data
-    use modal_aero_calcsize,   only: modal_aero_calcsize_sub
-    use modal_aero_wateruptake,only: modal_aero_wateruptake_dr
     use modal_aero_convproc,   only: deepconv_wetdep_history, ma_convproc_intr, convproc_do_evaprain_atonce
 
     ! args
@@ -1076,20 +1088,6 @@ contains
 
     call physics_ptend_init(ptend, state%psetcols, 'aero_model_wetdep', lq=wetdep_lq)
 
-    ! Do calculations of mode radius and water uptake if:
-    ! 1) modal aerosols are affecting the climate, or
-    ! 2) prognostic modal aerosols are enabled
-
-    call t_startf('calcsize')
-    ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
-    ! modes is done in conjunction with the dry radius calculation
-    call modal_aero_calcsize_sub(state, ptend, dt, pbuf)
-    call t_stopf('calcsize')
-
-    call t_startf('wateruptake')
-    call modal_aero_wateruptake_dr(state, pbuf)
-    call t_stopf('wateruptake')
-
     if (nwetdep<1) return
 
     call wetdep_inputs_set( state, pbuf, dep_inputs )
@@ -1109,15 +1107,9 @@ contains
             *state%pdel(:ncol,k)/gravit
     end do
 
-    if(convproc_do_aer) then
-       qsrflx_mzaer2cnvpr(:,:,:) = 0.0_r8
-       aerdepwetis(:,:)          = 0.0_r8
-       aerdepwetcw(:,:)          = 0.0_r8
-    else
-       qsrflx_mzaer2cnvpr(:,:,:) = nan
-       aerdepwetis(:,:)          = nan
-       aerdepwetcw(:,:)          = nan
-    endif
+    qsrflx_mzaer2cnvpr(:,:,:) = 0.0_r8
+    aerdepwetis(:,:)          = 0.0_r8
+    aerdepwetcw(:,:)          = 0.0_r8
 
     ! calculate the mass-weighted sol_factic for coarse mode species
     ! sol_factic_coarse(:,:) = 0.30_r8 ! tuned 1/4
@@ -1130,8 +1122,8 @@ contains
        if ((lcoardust > 0) .and. (lcoarnacl > 0)) then
           do k = 1, pver
              do i = 1, ncol
-                tmpdust = max( 0.0_r8, state%q(i,k,lcoardust) + ptend%q(i,k,lcoardust)*dt )
-                tmpnacl = max( 0.0_r8, state%q(i,k,lcoarnacl) + ptend%q(i,k,lcoarnacl)*dt )
+                tmpdust = max( 0.0_r8, state%q(i,k,lcoardust) )
+                tmpnacl = max( 0.0_r8, state%q(i,k,lcoarnacl) )
                 if ((tmpdust+tmpnacl) > 1.0e-30_r8) then
                    ! sol_factic_coarse(i,k) = (0.2_r8*tmpdust + 0.4_r8*tmpnacl)/(tmpdust+tmpnacl) ! tuned 1/6
                    f_act_conv_coarse(i,k) = (f_act_conv_coarse_dust*tmpdust &
@@ -1154,6 +1146,35 @@ contains
        strt_loop   =  2
        end_loop    =  1
        stride_loop = -1
+    endif
+
+    if (convproc_do_aer) then
+       call t_startf('ma_convproc')
+       call ma_convproc_intr( state, ptend, pbuf, dt, &
+            nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis, dcondt_resusp3d)
+
+       if (convproc_do_evaprain_atonce) then
+          do m = 1, ntot_amode ! main loop over aerosol modes
+
+             do lspec = 0, nspec_amode(m) ! loop over number + chem constituents
+                if (lspec == 0) then ! number
+                   mm = numptrcw_amode(m)
+                else if (lspec <= nspec_amode(m)) then ! non-water mass
+                   mm = lmassptrcw_amode(lspec,m)
+                endif
+                fldcw => qqcw_get_field(pbuf, mm,lchnk)
+
+                call outfld( trim(cnst_name_cw(mm))//'RSPTD', dcondt_resusp3d(mm+pcnst,:ncol,:), ncol, lchnk )
+
+                do k = 1,pver
+                   do i = 1,ncol
+                      fldcw(i,k) = max(0._r8, fldcw(i,k) + dcondt_resusp3d(mm+pcnst,i,k)*dt)
+                   end do
+                end do
+             end do ! loop over number + chem constituents
+          end do   ! m aerosol modes
+       end if
+       call t_stopf('ma_convproc')
     endif
 
     do m = 1, ntot_amode ! main loop over aerosol modes
@@ -1289,7 +1310,7 @@ contains
              if ((lphase == 1) .and. (lspec <= nspec_amode(m))) then
                 ptend%lq(mm) = .TRUE.
                 dqdt_tmp(:,:) = 0.0_r8
-                ! q_tmp reflects changes from modal_aero_calcsize and is the "most current" q
+                ! q_tmp is the "most current" q
                 q_tmp(1:ncol,:) = state%q(1:ncol,:,mm) + ptend%q(1:ncol,:,mm)*dt
                 if(convproc_do_aer) then
                    !Feed in the saved cloudborne mixing ratios from phase 2
@@ -1326,7 +1347,7 @@ contains
                    endif
                 endif
 
-                   ptend%q(1:ncol,:,mm) = ptend%q(1:ncol,:,mm) + dqdt_tmp(1:ncol,:)
+                ptend%q(1:ncol,:,mm) = ptend%q(1:ncol,:,mm) + dqdt_tmp(1:ncol,:)
 
                 call outfld( trim(cnst_name(mm))//'WET', dqdt_tmp(:,:), pcols, lchnk)
                 call outfld( trim(cnst_name(mm))//'SIC', icscavt, pcols, lchnk)
@@ -1341,7 +1362,7 @@ contains
                    enddo
                 enddo
                 if (.not.convproc_do_aer) call outfld( trim(cnst_name(mm))//'SFWET', sflx, pcols, lchnk)
-                aerdepwetis(:ncol,mm) = sflx(:ncol)
+                aerdepwetis(:ncol,mm) = aerdepwetis(:ncol,mm) + sflx(:ncol)
 
                 sflx(:)=0._r8
                 do k=1,pver
@@ -1367,7 +1388,7 @@ contains
                    enddo
                 enddo
                 call outfld( trim(cnst_name(mm))//'SFSBC', sflx, pcols, lchnk)
-                if (convproc_do_aer)sflxbc = sflx
+                if (convproc_do_aer) sflxbc = sflx
 
                 sflx(:)=0._r8
                 do k=1,pver
@@ -1610,42 +1631,6 @@ contains
           enddo ! lspec = 0, nspec_amode(m)+1
        enddo ! lphase = 1, 2
     enddo ! m = 1, ntot_amode
-
-    if (convproc_do_aer) then
-       call t_startf('ma_convproc')
-       call ma_convproc_intr( state, ptend, pbuf, dt,                &
-            nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis, &
-            dcondt_resusp3d)
-
-       if (convproc_do_evaprain_atonce) then
-          do m = 1, ntot_amode ! main loop over aerosol modes
-             do lphase = strt_loop,end_loop, stride_loop
-                ! loop over interstitial (1) and cloud-borne (2) forms
-                do lspec = 0, nspec_amode(m)+1 ! loop over number + chem constituents + water
-                   if (lspec == 0) then ! number
-                      if (lphase == 1) then
-                         mm = numptr_amode(m)
-                      else
-                         mm = numptrcw_amode(m)
-                      endif
-                   else if (lspec <= nspec_amode(m)) then ! non-water mass
-                      if (lphase == 1) then
-                         mm = lmassptr_amode(lspec,m)
-                      else
-                         mm = lmassptrcw_amode(lspec,m)
-                      endif
-                   endif
-                   if (lphase == 2) then
-                      fldcw => qqcw_get_field(pbuf, mm,lchnk)
-                      fldcw(:ncol,:) = fldcw(:ncol,:) + dcondt_resusp3d(mm,:ncol,:)*dt
-                   end if
-                end do ! loop over number + chem constituents + water
-             end do  ! lphase
-          end do   ! m aerosol modes
-       end if
-
-       call t_stopf('ma_convproc')
-    endif
 
     ! if the user has specified prescribed aerosol dep fluxes then
     ! do not set cam_out dep fluxes according to the prognostic aerosols
