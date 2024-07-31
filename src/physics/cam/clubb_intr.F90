@@ -41,24 +41,22 @@ module clubb_intr
 #endif
 
   implicit none
+
 #ifdef CLUBB_SGS
   ! Variables that contains all the statistics
-
   type (stats), target, save :: stats_zt(pcols),      & ! stats_zt grid
                                 stats_zm(pcols),      & ! stats_zm grid
                                 stats_rad_zt(pcols),  & ! stats_rad_zt grid
                                 stats_rad_zm(pcols),  & ! stats_rad_zm grid
                                 stats_sfc(pcols)        ! stats_sfc
-
+  type (hm_metadata_type) :: &
+    hm_metadata
+                                
   type (stats_metadata_type) :: &
     stats_metadata
 
-  type (hm_metadata_type) :: &
-    hm_metadata
-
   type (sclr_idx_type) :: &
     sclr_idx
-
 #endif
 
   private
@@ -103,6 +101,7 @@ module clubb_intr
   ! ------------------------ !
   !  Sometimes private data  !
   ! ------------------------ !
+#ifdef CLUBB_SGS
 #ifdef SILHS
   ! If SILHS is in use, it will initialize these
   public :: &
@@ -116,7 +115,8 @@ module clubb_intr
     pdf_dim, &
     hm_metadata
 #endif
-
+#endif
+      
   ! ------------ !
   ! Private data !
   ! ------------ !
