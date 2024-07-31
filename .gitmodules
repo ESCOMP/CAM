@@ -174,7 +174,7 @@ path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
 fxtag = cesm_cice6_5_0_10
 fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
+fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
 [submodule "clm"]
 path = components/clm
