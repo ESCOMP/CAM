@@ -413,6 +413,10 @@
     <alias>FC2000climo_HCO</alias>
     <lname>2000_CAM60%CCTS1%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
+  <compset>
+    <alias>FC2000climo_GC</alias>
+    <lname>2000_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>FC2010climo</alias>
@@ -422,11 +426,20 @@
     <alias>FC2010climo_HCO</alias>
     <lname>2010_CAM60%CCTS1%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
+  <compset>
+    <alias>FC2010climo_GC</alias>
+    <lname>2010_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>FCHIST</alias>
     <lname>HIST_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
+    <compset>
+    <alias>FCHIST_GC</alias>
+    <lname>HIST_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
   <compset>
     <alias>FCLTHIST</alias>
     <lname>HIST_CAM70%LT%CCTS1_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
@@ -456,6 +469,11 @@
     <alias>FCnudged</alias>
     <lname>HIST_CAM60%CCTS1%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
+    <compset>
+    <alias>FCnudged_GC</alias>
+    <lname>HIST_CAM60%GEOSCHEM%HEMCO%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
   <compset>
     <alias>FCts2nudged</alias>
     <lname>HIST_CAM60%CCTS2%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
@@ -642,26 +660,6 @@
   <compset>
     <alias>FXmadSD</alias>
     <lname>HIST_CAM60%WXIED%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FC2000climo_GC</alias>
-    <lname>2000_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FC2010climo_GC</alias>
-    <lname>2010_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FCHIST_GC</alias>
-    <lname>HIST_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FCnudged_GC</alias>
-    <lname>HIST_CAM60%GEOSCHEM%HEMCO%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <!-- ENTRIES -->
