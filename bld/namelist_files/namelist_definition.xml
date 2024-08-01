@@ -9521,36 +9521,4 @@ If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
 </entry>
 
-<!-- ndep stream forcing -->
-
-<!-- ========================================================================================  -->
-<!-- ndepdyn streams namelist                                                                  -->
-<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
-<!-- ========================================================================================  -->
-
-<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream meshfile for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-First year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Last year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Simulation year that aligns with stream_year_first_ndep value
-</entry>
-
 </namelist_definition>
