@@ -18,6 +18,9 @@
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog
    use phys_control,      only : phys_getopts
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
+   use ref_pres,          only: trop_cloud_top_lev
+   use phys_control,      only:  phys_getopts
 
    implicit none
    private
@@ -472,9 +475,17 @@
    real(r8), pointer, dimension(:,:) :: cmfmc2              ! (pcols,pverp) Updraft mass flux by shallow convection [ kg/s/m2 ]
    real(r8), pointer, dimension(:,:) :: sh_e_ed_ratio       ! (pcols,pver) fer/(fer+fdr) from uwschu
 
+   real(r8), dimension(pcols,pver) :: fsnow_conv
+   real(r8), dimension(pcols,pver) :: fice
+
    logical                           :: lq(pcnst)
 
    type(unicon_out_t) :: unicon_out
+
+   character(len=16) :: macrop_scheme
+   integer :: top_lev
+
+
 
    ! ----------------------- !
    ! Main Computation Begins !
@@ -871,7 +882,15 @@
     tend_s_snwprd(:,:) = 0._r8
     tend_s_snwevmlt(:,:) = 0._r8
     snow(:) = 0._r8
+    fice(:,:) = 0._r8
+    fsnow_conv(:,:) = 0._r8
     !REMOVECAM_END
+
+    top_lev = 1
+    call phys_getopts (macrop_scheme_out  = macrop_scheme)
+    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+
+    call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:))
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
@@ -880,7 +899,8 @@
          landfracdum(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprdsh(:ncol,:), cld(:ncol,:), ztodt, &
-         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
+         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:), &
+         fsnow_conv(:ncol,:) )
 
    ! ---------------------------------------------- !
    ! record history variables from zm_conv_evap_run !

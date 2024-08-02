@@ -14,6 +14,7 @@ module zm_conv_intr
    use zm_convr,             only: zm_convr_init, zm_convr_run
    use zm_conv_convtran,     only: zm_conv_convtran_run
    use zm_conv_momtran,      only: zm_conv_momtran_run
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
 
    use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
                                rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
@@ -24,6 +25,8 @@ module zm_conv_intr
    use perf_mod
    use cam_logfile,  only: iulog
    use constituents, only: cnst_add
+   use ref_pres,     only: trop_cloud_top_lev
+   use phys_control, only:  phys_getopts
 
    implicit none
    private
@@ -457,6 +460,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: tfinal1, tfinal2
    integer  :: ii
 
+   real(r8) :: fice(pcols,pver)
+   real(r8) :: fsnow_conv(pcols,pver)
    real(r8),pointer :: zm_org2d(:,:)
    real(r8),allocatable :: orgt_alloc(:,:), org_alloc(:,:)
 
@@ -464,6 +469,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: orgt_ncol(state%ncol,pver), org_ncol(state%ncol,pver)
 
    logical  :: lq(pcnst)
+   character(len=16) :: macrop_scheme
+   integer :: top_lev
 
    !----------------------------------------------------------------------
 
@@ -660,7 +667,15 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     flxprec(:,:) = 0._r8
     flxsnow(:,:) = 0._r8
     snow(:) = 0._r8
+    fice(:,:) = 0._r8
+    fsnow_conv(:,:) = 0._r8
 !REMOVECAM_END
+
+    top_lev = 1
+    call phys_getopts (macrop_scheme_out  = macrop_scheme)
+    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+
+    call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:))
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
@@ -669,7 +684,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
          landfrac(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprd(:ncol,:), cld(:ncol,:), ztodt, &
-         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
+         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
+         fsnow_conv(:ncol,:) )
 
     evapcdp(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
 
@@ -789,7 +805,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt, ccpp_const_props, errflg, errmsg)
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt, ccpp_const_props, errmsg, errflg)
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -895,7 +911,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt,  ccpp_const_props, errflg, errmsg)
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt,  ccpp_const_props, errmsg, errflg)
       call t_stopf ('convtran2')
    end if
 
