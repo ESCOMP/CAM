@@ -316,6 +316,10 @@ contains
     real(r8) :: wimp                          !     1./(1.+ k*dt/2)
     real(r8) :: wsrc                          !  teul*wimp
 
+    real(r8) :: xmmr
+    real(r8), parameter :: mmr0 = 1.0e-6_r8   ! initial lower boundary mmr
+    real(r8), parameter :: per_yr = 0.02_r8   ! fractional increase per year
+
     !------------------------------------------------------------------
 
     teul = .5_r8*dt/(86400._r8 * treldays)   ! 1/2 for the semi-implicit scheme if dt=time step
@@ -363,15 +367,16 @@ contains
 
     end do
 
-    ptend%q(1:ncol,1:pver-1,ixaoa5) = 0._r8
-    ptend%q(1:ncol,pver,ixaoa5) = 1.e-6_r8 * 0.02_r8 * years / dt
+    ! AOA1MF
+    xmmr = mmr0*(1._r8 + per_yr*years)
+    ptend%q(1:ncol,pver,ixaoa5) = (xmmr - state%q(1:ncol,pver,ixaoa5)) / dt
 
     ! record tendencies on history files
     call outfld (src_names(1), ptend%q(:,:,ixaoa1), pcols, lchnk)
     call outfld (src_names(2), ptend%q(:,:,ixaoa2), pcols, lchnk)
     call outfld (src_names(3), ptend%q(:,:,ixht),   pcols, lchnk)
     call outfld (src_names(4), ptend%q(:,:,ixvt),   pcols, lchnk)
-    call outfld (src_names(5), ptend%q(:,:,ixaoa5),   pcols, lchnk)
+    call outfld (src_names(5), ptend%q(:,:,ixaoa5), pcols, lchnk)
 
     ! Set tracer fluxes
     do i = 1, ncol
@@ -391,6 +396,9 @@ contains
 
        ! VERT
        cflx(i,ixvt) = 0._r8
+
+       ! AOA1MF
+       cflx(i,ixaoa5) = 0._r8
 
     end do
 
@@ -429,6 +437,7 @@ contains
        end do
     else if (m == ixaoa5) then
 
+       ! AOA1MF
        q(:,:) = 0.0_r8
 
     else if (m == ixvt) then
