@@ -684,8 +684,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
          landfrac(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprd(:ncol,:), cld(:ncol,:), ztodt, &
-         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
-         fsnow_conv(:ncol,:) )
+         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:))
 
     evapcdp(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
 
