@@ -565,7 +565,7 @@
 <mam4_mode4_file rad="rrtmgp">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam4_mode4_file>
 
 <mam4_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
-<mam4_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
+<mam4_mode3_file rad="rrtmgp" ver="strat" phys="cam6">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
 
 <mam5_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
 <mam5_mode2_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
@@ -3344,6 +3344,14 @@
 <rxn_rate_sums chem="waccm_ma_mam5" waccmx="1">
   'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
 	     '2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3',
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_ma" waccmx="1">
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_mad_mam5" waccmx="1">
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
                    'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
 </rxn_rate_sums>
