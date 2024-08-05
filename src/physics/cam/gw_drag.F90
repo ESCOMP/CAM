@@ -168,7 +168,9 @@ module gw_drag
   integer, parameter :: prdg = 16
 
   real(r8), allocatable, dimension(:,:), target :: &
-     rdg_gbxar
+     rdg_gbxar, &
+     rdg_isovar, &
+     rdg_isowgt
 
      ! Meso Beta
   real(r8), allocatable, dimension(:,:,:), target :: &
@@ -648,6 +650,8 @@ subroutine gw_init()
      ! Get beta ridge data
      allocate( &
         rdg_gbxar(pcols,begchunk:endchunk),      &
+        rdg_isovar(pcols,begchunk:endchunk),     &
+        rdg_isowgt(pcols,begchunk:endchunk),     &
         rdg_hwdth(pcols,prdg,begchunk:endchunk), &
         rdg_clngt(pcols,prdg,begchunk:endchunk), &
         rdg_mxdis(pcols,prdg,begchunk:endchunk), &
@@ -658,6 +662,14 @@ subroutine gw_init()
                          begchunk, endchunk, rdg_gbxar, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: GBXAR not found on topo file')
      rdg_gbxar = rdg_gbxar * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
+
+     call infld('ISOVAR', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isovar, found, gridname='physgrid')
+     if (.not. found) call endrun(sub//': ERROR: ISOVAR not found on topo file')
+
+     call infld('ISOWGT', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isowgt, found, gridname='physgrid')
+     if (.not. found) call endrun(sub//': ERROR: ISOWGT not found on topo file')
 
      call infld('HWDTH', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_hwdth, found, gridname='physgrid')
@@ -734,15 +746,39 @@ subroutine gw_init()
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
 
+     
+     call addfld('NIEGW',  (/ 'ilev' /) , 'I'  ,'1/s' ,  &
+          'interface BV freq in GW code ' )
+     call addfld('NMEGW',  (/ 'lev' /) , 'I'  ,'1/s' ,  &
+          'midlayer BV freq in GW code ' )
+     call addfld('RHOIEGW',  (/ 'ilev' /) , 'I'  ,'kg/m^3' ,  &
+          'interface density in GW code ' )
+     call addfld('PINTEGW',  (/ 'ilev' /) , 'I'  ,'Pa' ,  &
+          'interface density in GW code ' )
+
      call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
      call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
+     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'m s-1' ,  &
           'On-ridge wind profile           ' )
-     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-1' , &
+     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-2' , &
           'On-ridge wind tendency from ridge 1     ')
 
+     call addfld('TAURESIDBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('UBMRESIDBETA',  (/ 'lev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile           ' )
+     call addfld('UBIRESIDBETA',  (/ 'ilev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile (interface)          ' )
+     call addfld('SRC_LEVEL_RESIDBETA',  horiz_only , 'I'  ,'1' ,  &
+          'src level index for ridge residual         ' )
+     call addfld('TAUORO_RESID',  horiz_only , 'I'  ,'N m-2' ,  &
+          'Surface mom flux from ridge reisdual       ' )
+     call addfld('TAUDIAG_RESID' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+
+     
      do i = 1, 6
         write(cn, '(i1)') i
         call addfld('TAU'//cn//'RDGBETAY' , (/ 'ilev' /), 'I', 'N m-2', &
@@ -1580,6 +1616,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), pointer :: angll(:,:)
   ! anisotropy of ridges.
   real(r8), pointer :: anixy(:,:)
+  ! sqrt(residual variance) not repr by ridges (assumed isotropic).
+  real(r8), pointer :: isovar(:)
+  ! area fraction of res variance
+  real(r8), pointer :: isowgt(:)
+
+  
 
      ! Gamma ridges
   ! width of ridges.
@@ -2257,6 +2299,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      mxdis => rdg_mxdis(:ncol,:,lchnk)
      angll => rdg_angll(:ncol,:,lchnk)
      anixy => rdg_anixy(:ncol,:,lchnk)
+     isovar => rdg_isovar(:ncol,lchnk)
+     isowgt => rdg_isowgt(:ncol,lchnk)
 
      where(mxdis < 0._r8)
         mxdis = 0._r8
@@ -2276,6 +2320,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         nm, ni, rhoi, kvtt, q, dse,               &
         effgw_rdg_beta, effgw_rdg_beta_max,       &
         hwdth, clngt, gbxar, mxdis, angll, anixy, &
+        isovar, isowgt,                           &
         rdg_beta_cd_llb, trpd_leewv_rdg_beta,     &
         ptend, flx_heat)
 
@@ -2306,6 +2351,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         nm, ni, rhoi, kvtt, q, dse,                    &
         effgw_rdg_gamma, effgw_rdg_gamma_max,          &
         hwdthg, clngtg, gbxar, mxdisg, angllg, anixyg, &
+        isovar, isowgt,                                &
         rdg_gamma_cd_llb, trpd_leewv_rdg_gamma,        &
         ptend, flx_heat)
 
@@ -2347,11 +2393,12 @@ subroutine gw_rdg_calc( &
    effgw_rdg, effgw_rdg_max, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
+   isovar, isowgt, &
    rdg_cd_llb, trpd_leewv, &
    ptend, flx_heat)
 
    use coords_1d,  only: Coords1D
-   use gw_rdg,     only: gw_rdg_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
+   use gw_rdg,     only: gw_rdg_src, gw_rdg_resid_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
    use gw_common,  only: gw_drag_prof, energy_change
 
    character(len=5), intent(in) :: type         ! BETA or GAMMA
@@ -2384,6 +2431,9 @@ subroutine gw_rdg_calc( &
    real(r8),         intent(in) :: mxdis(ncol,prdg) ! Height estimate for ridge (m).
    real(r8),         intent(in) :: angll(ncol,prdg) ! orientation of ridges.
    real(r8),         intent(in) :: anixy(ncol,prdg) ! Anisotropy parameter.
+
+   real(r8),         intent(in) :: isovar(ncol)     ! sqrt of residual variance
+   real(r8),         intent(in) :: isowgt(ncol)     ! area frac of residual variance
 
    real(r8),         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
    logical,          intent(in) :: trpd_leewv
@@ -2603,6 +2653,58 @@ subroutine gw_rdg_calc( &
       end if
 
    end do ! end of loop over multiple ridges
+
+   ! Add additional GW from residual variance. Assumed isotropic
+      !kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
+      kwvrdg  = 0.001_r8 / ( 100._r8 )
+      effgw   = 1.0_r8 * isowgt
+      tauoro = 0._r8
+      
+      call gw_rdg_resid_src(ncol, band_oro, p, &
+         u, v, t, isovar, kwvrdg, zi, nm, &
+         src_level, tend_level, tau, ubm, ubi, xv, yv,  &
+         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, phase_speeds, tauoro )
+
+      call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
+         t, vramp,    &
+         piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
+         effgw, phase_speeds, kvtt, q, dse, tau, utgw, vtgw, &
+         ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
+         kwvrdg=kwvrdg, &
+         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
+
+      ! Add the tendencies from isotropic residual to the totals.
+      do k = 1, pver
+         ! diagnostics
+         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
+         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
+         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
+         ! physics tendencies
+         ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
+         ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
+         ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
+      end do
+
+      do m = 1, pcnst
+         do k = 1, pver
+            ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
+         end do
+      end do
+
+      do k = 1, pver+1
+         taurx0(:,k) =  tau(:,0,k)*xv
+         taury0(:,k) =  tau(:,0,k)*yv
+         taurx(:,k)  =  taurx(:,k) + taurx0(:,k)
+         taury(:,k)  =  taury(:,k) + taury0(:,k)
+      end do
+
+      call outfld('TAUDIAG_RESID', tau_diag,  ncol, lchnk)
+      call outfld('TAUORO_RESID', tauoro ,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
+      call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
+      call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
+      call outfld('SRC_LEVEL_RESID'//trim(type),      1._r8*src_level ,         ncol, lchnk)
+   ! end of residual variance calc
 
    ! Calculate energy change for output to CAM's energy checker.
    call energy_change(dt, p, u, v, ptend%u(:ncol,:), &
