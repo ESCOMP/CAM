@@ -11,7 +11,7 @@ module TJ2016_cam
   !-----------------------------------------------------------------------
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use ppgrid,         only: pcols, pver
+  use ppgrid,         only: pcols, pver, pverp
   use constituents,   only: pcnst
 
   use physics_buffer, only: dtype_r8, pbuf_add_field, physics_buffer_desc, &
@@ -50,11 +50,8 @@ end subroutine Thatcher_Jablonowski_register
     use cam_history,    only: addfld, add_default
     use physconst,      only: gravit, cappa, rair, cpair, latvap, rh2o, epsilo, rhoh2o, zvir
     use hycoef,         only: ps0, etamid
-    use tj2016,         only: Thatcher_Jablonowski_set_const
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-
-    call Thatcher_Jablonowski_set_const(gravit, cappa, rair, cpair, latvap, rh2o, epsilo, rhoh2o, zvir, ps0, etamid)
 
     ! This field is added by radiation when full physics is used
     call addfld('QRS', (/ 'lev' /), 'A', 'K/s', &
@@ -90,8 +87,10 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use physconst,          only: cpair
-    use TJ2016,             only: Thatcher_Jablonowski_precip
+    use physconst,          only: gravit, latvap, rh2o, epsilo, rhoh2o
+    use hycoef,             only: ps0, etamid
+    use air_composition,    only: cpairv, rairv
+    use TJ2016_precip,      only: tj2016_precip_run
 
     ! arguments
 
@@ -101,6 +100,9 @@ end subroutine Thatcher_Jablonowski_register
     type(physics_ptend), intent(out)   :: ptend                         ! Package tendencies
 
     type(physics_buffer_desc), pointer :: pbuf(:)
+    character(len=512) :: scheme_name        ! CCPP physics scheme name (not used in CAM)
+    character(len=512) :: errmsg
+    integer            :: errflg
 
     ! local variables
 
@@ -150,18 +152,17 @@ end subroutine Thatcher_Jablonowski_register
     ! Output arguments
     ! relhum: relative humidity (%)
     ! precl:  large-scale precipitation rate (m/s)
-    ! precc:  convective precipitation rate (m/s) (optional process)
 
     call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
     call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
-    call Thatcher_Jablonowski_precip(ncol, pver, ztodt,                     &
-         state%pmid(:ncol,:), state%pdel(:ncol,:),                          &
-         T, qv, relhum(:ncol,:), prec_pcw(:ncol), precc)
+    call tj2016_precip_run(ncol, pver, gravit, rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), &
+         latvap, rh2o, epsilo, rhoh2o, ps0, etamid, ztodt, state%pmid(:ncol,:),             &
+         state%pdel(:ncol,:), T, qv, relhum(:ncol,:), prec_pcw(:ncol), ptend%s(:ncol,:),    &
+         scheme_name, errmsg, errflg)
 
-    ! Back out temperature and specific humidity tendencies from updated fields
+    ! Back out specific humidity tendencies from updated fields
     do k = 1, pver
-      ptend%s(:ncol,k)   = (T(:, k) - state%T(:ncol, k)) / ztodt * cpair
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
     end do
 
@@ -177,9 +178,11 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use physconst,          only: cpair
+    use physconst,          only: gravit, latvap, rh2o, epsilo, rhoh2o, pi
+    use hycoef,             only: ps0, etamid
     use phys_grid,          only: get_rlat_all_p
-    use TJ2016,             only: Thatcher_Jablonowski_sfc_pbl_hs
+    use TJ2016_sfc_pbl_hs,  only: tj2016_sfc_pbl_hs_run
+    use air_composition,    only: cpairv, rairv, cappav
 
     ! Arguments
     type(physics_state), intent(in)    :: state
@@ -193,8 +196,8 @@ end subroutine Thatcher_Jablonowski_register
     integer  :: lchnk                         ! chunk identifier
     integer  :: ncol                          ! number of atmospheric columns
 
+    real(r8) :: zvirv(pcols,pver)             ! ratio of water vapor to dry air constants - 1
     real(r8) :: clat(state%ncol)              ! latitudes(radians) for columns
-    real(r8) :: lnpint(state%ncol, 2)         ! ln(int. press. (Pa))
     real(r8) :: T(state%ncol, pver)           ! T temporary
     real(r8) :: qv(state%ncol, pver)          ! Q temporary (specific humidity)
     real(r8) :: U(state%ncol, pver)           ! U temporary
@@ -207,6 +210,10 @@ end subroutine Thatcher_Jablonowski_register
     real(r8) :: dtdt_heating(state%ncol,pver) ! temperature tendency from relaxation in K/s
     real(r8) :: Km(state%ncol,pver+1)         ! Eddy diffusivity at layer interfaces for boundary layer calculations (m2/s)
     real(r8) :: Ke(state%ncol,pver+1)         ! Eddy diffusivity at layer interfaces for boundary layer calculations (m2/s)
+
+    character(len=512)  :: scheme_name         ! CCPP physics scheme name (not used in CAM)
+    character(len=512) :: errmsg
+    integer            :: errflg
     !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -214,11 +221,14 @@ end subroutine Thatcher_Jablonowski_register
     call get_rlat_all_p(lchnk, ncol, clat)
 
     ! Gather temporary arrays
-    lnpint(:ncol, 1:2) = state%lnpint(:ncol,pver:pver+1)
     T(:ncol, :) = state%T(:ncol, :)
     U(:ncol, :) = state%U(:ncol, :)
     V(:ncol, :) = state%V(:ncol, :)
     qv(:ncol, :) = state%Q(:ncol, :, 1)
+
+    do k = 1, pver
+      zvirv(:ncol,k) = rh2o/rairv(:ncol,k, lchnk) - 1._r8
+    end do
 
     ! initialize individual parameterization tendencies
     lq           = .false.
@@ -258,17 +268,16 @@ end subroutine Thatcher_Jablonowski_register
     ! Ke:           Eddy diffusivity for boundary layer calculations
     ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call Thatcher_Jablonowski_sfc_pbl_hs(ncol, pver, ztodt, clat,                 &
-         state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), lnpint,       &
-         state%rpdel(:ncol,:), T, U, V, qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), &
-         cam_in%wsx(:ncol), cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff,  &
-         dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol))
+    call tj2016_sfc_pbl_hs_run(ncol, pver, pverp, 1, pver, pverp, gravit, pi,                                      &
+         cappav(:ncol,:, lchnk), rairv(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), latvap, rh2o, epsilo,                &
+         rhoh2o, zvirv(:ncol,:), ps0, etamid, ztodt, clat, state%ps(:ncol), state%pmid(:ncol,:),                   &
+         state%pint(:ncol,:), state%lnpint(:ncol,:), state%rpdel(:ncol,:), T,                                      &
+         U, ptend%u(:ncol,:), V, ptend%v(:ncol,:), qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), cam_in%wsx(:ncol),    &
+         cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol), &
+         ptend%s(:ncol,:), scheme_name, errmsg, errflg)
 
     ! Back out tendencies from updated fields
     do k = 1, pver
-      ptend%s(:ncol,k) = (T(:, k) - state%T(:ncol, k)) / ztodt * cpair
-      ptend%u(:ncol,k) = (U(:, k) - state%U(:ncol, k)) / ztodt
-      ptend%v(:ncol,k) = (V(:, k) - state%V(:ncol, k)) / ztodt
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
     end do
 

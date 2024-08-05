@@ -218,6 +218,7 @@
 <ncdata           hgrid="8x16"      nlev="26"              ic_ymd="901" >atm/cam/inic/gaus/cami_0000-09-01_8x16_L26_c030918.nc</ncdata>
 <ncdata           hgrid="8x16"      nlev="30"              ic_ymd="101" >atm/cam/inic/gaus/cami_0000-01-01_8x16_L30_c090102.nc</ncdata>
 
+<ncdata dyn="se" hgrid="ne3np4" nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="901" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-09-01-00000.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
@@ -246,7 +247,7 @@
 
 <ncdata dyn="se" hgrid="ne240np4" nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01-ne240np4_L30_c111004.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne5np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
+<ncdata dyn="se" hgrid="ne5np4"   nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne16np4_L26_c170417.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
 <ncdata dyn="se" hgrid="ne60np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne60np4_L26_c171023.nc</ncdata>
@@ -569,7 +570,7 @@
 <mam4_mode4_file rad="rrtmgp">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam4_mode4_file>
 
 <mam4_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
-<mam4_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
+<mam4_mode3_file rad="rrtmgp" ver="strat" phys="cam6">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
 
 <mam5_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
 <mam5_mode2_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
@@ -847,6 +848,7 @@
 <!-- gravity wave options -->
 <gw_drag_file>atm/waccm/gw/newmfspectra40_dc25.nc</gw_drag_file>
 <gw_drag_file_sh>atm/waccm/gw/mfspectra_shallow_c140530.nc</gw_drag_file_sh>
+<gw_drag_file_mm>atm/waccm/gw/mfc0lookup_mm.nc</gw_drag_file_mm>
 <gw_prndl                               >0.25d0 </gw_prndl>
 <gw_prndl                 waccm_phys="1">0.5d0  </gw_prndl>
 <gw_prndl     chem="geoschem_mam4">0.5d0  </gw_prndl>
@@ -897,6 +899,7 @@
 <gw_rdg_orovmin                         > 1.0d-3 </gw_rdg_orovmin>
 <gw_rdg_orostratmin                     > 0.002d0</gw_rdg_orostratmin>
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
+<alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
 
 <!-- Dry Convective Adjustment options -->
 <dadadj_niter>15</dadadj_niter>
@@ -3480,6 +3483,14 @@
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
                    'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
 </rxn_rate_sums>
+<rxn_rate_sums chem="waccm_ma" waccmx="1">
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_mad_mam5" waccmx="1">
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
 <rxn_rate_sums chem="trop_strat_mam5_ts2">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
@@ -3590,6 +3601,35 @@
               'C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + BCARY_O3 + S_O3 + SO_O3 +',
               'APIN_O3 + BPIN_O3 + LIMON_O3 + MYRC_O3 + ',
               'ISOPN1D_O3 + ISOPN4D_O3 + ISOPNOOHD_O3 + NC4CHO_O3 + TERPF1_O3 + TERPF2_O3'
+</rxn_rate_sums>
+<rxn_rate_sums chem="trop_strat_mam5_ts4">
+  'O3_Prod = NO_HO2 + CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ',
+           ' MACRO2_NOa + MCO3_NO + .92*ISOPO2_NO + ISOPNO3_NO + XO2_NO + jnoa + jonitr + NOA_OH ',
+           'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3',
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O3 + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + ',
+            ' 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3 + SO_O3 + ',
+            ' C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3',
+  'O3_alkenes = C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3',
+  'RO2_NO_sum = CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + MACRO2_NOa + ',
+              ' MACRO2_NOb + MCO3_NO + ISOPO2_NO + ISOPNO3_NO + XO2_NO', 'RO2_NO3_sum = MACRO2_NO3 + MCO3_NO3 + ISOPO2_NO3 + ISOPNO3_NO3 + XO2_NO3',
+  'RO2_HO2_sum = CH3O2_HO2 + C2H5O2_HO2 + CH3CO3_HO2 + EO2_HO2 + C3H7O2_HO2 + PO2_HO2 + RO2_HO2 + MACRO2_HO2 + ',
+               ' MCO3_HO2 + ISOPO2_HO2 + ISOPNO3_HO2 + XO2_HO2',
+  'RO2_RO2_sum = CH3O2_CH3O2a + CH3O2_CH3O2b + C2H5O2_CH3O2 + C2H5O2_C2H5O2 + CH3CO3_CH3O2 + CH3CO3_CH3CO3 + C3H7O2_CH3O2 + ',
+               ' RO2_CH3O2 + MACRO2_CH3O2 + MACRO2_CH3CO3 + MCO3_CH3O2 + MCO3_CH3CO3 + MCO3_MCO3 + ISOPO2_CH3O2 + ',
+               ' ISOPO2_CH3CO3 + XO2_CH3O2 + XO2_CH3CO3',
+  'RCO2_NO2_sum = CH3CO3_NO2 + MCO3_NO2',
+  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O',
+  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
+  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
+  'OddOx_CLOxBROx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+                  ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b',
+  'Ox_Prod = 2.0*jo2_a + 2.0*jo2_b + NO_HO2 + CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
+           ' RO2_NO + MACRO2_NOa + MCO3_NO + .92*ISOPO2_NO + ISOPNO3_NO + XO2_NO + jnoa + jonitr + NOA_OH',
+  'Ox_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+           ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + C2H4_O3 + ',
+           ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3'
 </rxn_rate_sums>
 <rxn_rate_sums>
   'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + ',

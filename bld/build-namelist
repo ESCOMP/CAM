@@ -2307,14 +2307,8 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
      # for troposphere gas-phase chemistry
     if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/) {
         %species = (%species,
-                    'BENZENE_an_srf_file' => 'BENZENE',
-                    'BENZENE_bb_srf_file' => 'BENZENE',
                     'BIGALK_an_srf_file' => 'BIGALK',
                     'BIGALK_bb_srf_file' => 'BIGALK',
-                    'BIGENE_an_srf_file' => 'BIGENE',
-                    'BIGENE_bb_srf_file' => 'BIGENE',
-                    'C2H2_an_srf_file' => 'C2H2',
-                    'C2H2_bb_srf_file' => 'C2H2',
                     'C2H4_an_srf_file' => 'C2H4',
                     'C2H4_bb_srf_file' => 'C2H4',
                     'C2H4_ot_srf_file' => 'C2H4',
@@ -2331,8 +2325,6 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'C3H8_ot_srf_file' => 'C3H8',
                     'CH3CHO_an_srf_file' => 'CH3CHO',
                     'CH3CHO_bb_srf_file' => 'CH3CHO',
-                    'CH3CN_an_srf_file' => 'CH3CN',
-                    'CH3CN_bb_srf_file' => 'CH3CN',
                     'CH3COCH3_an_srf_file' => 'CH3COCH3',
                     'CH3COCH3_bb_srf_file' => 'CH3COCH3',
                     'CH3COCHO_bb_srf_file' => 'CH3COCHO',
@@ -2341,25 +2333,39 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'CH3OH_an_srf_file' => 'CH3OH',
                     'CH3OH_bb_srf_file' => 'CH3OH',
                     'GLYALD_bb_srf_file' => 'GLYALD',
+                    'ISOP_bb_srf_file' => 'ISOP',
+                    'NH3_an_srf_file' => 'NH3',
+                    'NH3_bb_srf_file' => 'NH3',
+                    'NH3_ot_srf_file' => 'NH3',
+                    'E90_srf_file' => 'E90' );
+        if ($chem !~ /_ts4/) {
+	    %species = (%species,
+                    'BENZENE_an_srf_file' => 'BENZENE',
+                    'BENZENE_bb_srf_file' => 'BENZENE',
+                    'BIGENE_an_srf_file' => 'BIGENE',
+                    'BIGENE_bb_srf_file' => 'BIGENE',
+                    'C2H2_an_srf_file' => 'C2H2',
+                    'C2H2_bb_srf_file' => 'C2H2',
+                    'CH3CN_an_srf_file' => 'CH3CN',
+                    'CH3CN_bb_srf_file' => 'CH3CN',
                     'HCN_an_srf_file' => 'HCN',
                     'HCN_bb_srf_file' => 'HCN',
                     'HCOOH_an_srf_file' => 'HCOOH',
                     'HCOOH_bb_srf_file' => 'HCOOH',
-                    'ISOP_bb_srf_file' => 'ISOP',
                     'MEK_an_srf_file' => 'MEK',
                     'MEK_bb_srf_file' => 'MEK',
-                    'NH3_an_srf_file' => 'NH3',
-                    'NH3_bb_srf_file' => 'NH3',
-                    'NH3_ot_srf_file' => 'NH3',
                     'TOLUENE_an_srf_file' => 'TOLUENE',
                     'TOLUENE_bb_srf_file' => 'TOLUENE',
                     'XYLENES_an_srf_file' => 'XYLENES',
-                    'XYLENES_bb_srf_file' => 'XYLENES',
-                    'E90_srf_file' => 'E90' );
+                    'XYLENES_bb_srf_file' => 'XYLENES' ) ;
+        }
         if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'APIN') ;
-        } else {
+        } elsif ($chem =~ /_ts4/) {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'TERP') ;
+	} else {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'MTERP' );
         }
@@ -2381,7 +2387,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'IVOC_bb_srf_file' => 'IVOCbb',
                     'SVOC_an_srf_file' => 'SVOCff',
                     'SVOC_bb_srf_file' => 'SVOCbb' );
-        } else {
+        } elsif ($chem !~ /_ts4/) {
             %species = (%species,
                     'IVOC_an_srf_file' => 'IVOC',
                     'IVOC_bb_srf_file' => 'IVOC',
@@ -2406,7 +2412,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4'or $chem eq 'ghg_mam4') {
+    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4' or  $chem =~ /_ts4/) {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
 	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
         my %soae_fctrs = ('BENZENE_an_srf_file' => '2.5592D0',
@@ -2612,6 +2618,38 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 . "'HCN = hydrogen_cyanide',"
                 . "'C3H8 = propane',"
                 . "'C3H6 = propene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
+    if ($chem =~ /trop_strat_mam5_ts4/) {
+        my $val = "'ISOP = isoprene',"
+                . "'TERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a +',"
+                . "' myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a +',"
+                . "' terpinene_g + terpinolene + phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone +',"
+                . "' jasmone + verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene +',"
+                . "' farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b +',"
+                . "' bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a +',"
+                . "' cubebene_a + cubebene_b + elemene_b + farnescene_b + germacrene_B + germacrene_D + gurjunene_b +',"
+                . "' humulene_a + humulene_g + isolongifolene + longifolene + longipinene + muurolene_a + muurolene_g +',"
+                . "' selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT +',"
+                . "' cedrol + decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane +',"
+                . "' hexanal + hexanol_1 + pentanal + heptanone', 'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone', 'CH3CHO = acetaldehyde', 'C2H5OH = ethanol',"
+                . "'CH2O = formaldehyde', 'CH3COOH = acetic_acid', 'CO = carbon_monoxide',"
+                . "'C2H6 = ethane', 'C2H4 = ethene', 'C3H8 = propane', 'C3H6 = propene',"
+                . "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
+                . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
+                . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
+                . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
+                . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene) + ',"
+                . "' 12.3942*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
+                . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b +',"
+                . "' germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene +',"
+                . "' longifolene + longipinene + muurolene_a + muurolene_g + selinene_b + selinene_d +',"
+                . "' nerolidol_c + nerolidol_t)'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
@@ -3083,6 +3121,7 @@ if ($waccmx) {
   add_default($nl,'ionos_xport_nsplit');
   add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
   add_default($nl,'oplus_ring_polar_filter');
+  add_default($nl,'rxn_rate_sums');
 }
 
 # Chemistry options
@@ -3736,6 +3775,10 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_rdg_beta',   'val'=>'.false.');
     }
 
+    if ($phys =~ /cam7/) {
+       add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
@@ -3789,6 +3832,7 @@ my $do_gw_front      = ($nl->get_value('use_gw_front')      =~ /$TRUE/io);
 my $do_gw_front_igw  = ($nl->get_value('use_gw_front_igw')  =~ /$TRUE/io);
 my $do_gw_convect_dp = ($nl->get_value('use_gw_convect_dp') =~ /$TRUE/io);
 my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
+my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
 
@@ -3844,6 +3888,11 @@ if ($do_gw_convect_dp) {
 if ($do_gw_convect_sh) {
     add_default($nl, 'gw_drag_file_sh');
     add_default($nl, 'effgw_beres_sh');
+}
+
+if ($do_gw_movmtn_pbl) {
+    add_default($nl, 'gw_drag_file_mm');
+    add_default($nl, 'alpha_gw_movmtn');
 }
 
 if ($do_gw_rdg_beta) {
