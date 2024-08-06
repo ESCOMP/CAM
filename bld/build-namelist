@@ -623,11 +623,17 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
 }
 if ($chem) {
-    # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
-    # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
-        add_default($nl, 'drydep_srf_file');
+
+    # drydep_srf_file is not needed for simple physics or aquaplanet
+    if ( !($simple_phys or $aqua_mode) ) {
+
+        # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
+        # structured grids can do interpolation on the fly.
+        if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
+            add_default($nl, 'drydep_srf_file');
+        }
     }
+
     add_default($nl, 'dep_data_file');
 }
 
