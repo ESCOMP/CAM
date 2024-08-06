@@ -3006,7 +3006,7 @@
 <scm_relax_tau_top_sec           scam="1"                  > 172800.D0  </scm_relax_tau_top_sec>
 
 
-<!-- iop spefic defaults for SCAM mode -->
+<!-- IOP SCAM defaults (The Single Column Atmosphere Model Version 6 (SCAM6), J. Adv. Model. Earth Sy., 11, 1381–1401, https://doi.org/10.1029/2018MS001578-->
 
 <!-- IOP ARM95/ARM Southern Great Plains/lat:36/lon:263/Jul 1995/18d/M. Zhang et al. (2016)/Land convection -->
 <ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>

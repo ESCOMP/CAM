@@ -146,7 +146,7 @@ contains
       if (ierr/=0) call endrun( sub//': not able to allocate derivedfq' )
       derivedfq = 0._r8
       allocate( iop_qtendxyz_init(nx,nx,nlev,pcnst,nets:nete),stat=ierr )
-      if (ierr/=0) call endrun( sub//': not able to allocate ipo_qtendxyz' )
+      if (ierr/=0) call endrun( sub//': not able to allocate iop_qtendxyz' )
       iop_qtendxyz_init = 0._r8
       allocate( iop_ttendxyz(nx,nx,nlev,nets:nete),stat=ierr )
       if (ierr/=0) call endrun( sub//': not able to allocate iop_ttendxyz' )

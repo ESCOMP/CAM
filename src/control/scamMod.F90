@@ -19,7 +19,7 @@ module scamMod
   !   scam_readnl
   !-----------------------------------------------------------------------
 
-use shr_kind_mod,   only: r8 => shr_kind_r8
+use shr_kind_mod,   only: r8 => shr_kind_r8, cl => shr_kind_cl
 use spmd_utils,     only: masterproc,npes
 use pmgrid,         only: plon, plat, plev, plevp
 use constituents,   only: cnst_get_ind, pcnst, cnst_name
@@ -1396,7 +1396,7 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
 !---------------------------Local workspace-----------------------------
   integer            :: dims_set,nlev,var_ndims
   logical            :: usable_var
-  character(len=256) :: dim_name
+  character(len=cl)  :: dim_name
   integer            :: var_dimIDs( NF90_MAX_VAR_DIMS )
   real(r8)           :: closelat,closelon
   integer            :: latidx,lonidx,status,i
