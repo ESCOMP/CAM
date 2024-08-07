@@ -15,7 +15,7 @@ sys.path.append(os.path.join(CIMEROOT, "CIME", "Tools"))
 
 from standard_script_setup import *
 
-from CIME.utils import run_cmd_no_fail
+from CIME.utils import run_cmd
 from CIME.case import Case
 from CIME.buildnml import parse_input
 
@@ -73,15 +73,6 @@ def buildcpp(case):
         case.set_value("EPS_AAREA", "1.0e-04")
         case.set_value("EPS_AGRID", "1.0e-05")
 
-    # The vector mapping (in the mediator) needs to be 'cart3d' for SE
-    # NB: This is currently the default, is it working by conincidence for
-    #     other unstructured dycores?
-    # For cmeps/nuopc cart3d is always the default option for all grids
-    match = re.match(r'ne[0-9]', atm_grid)
-    if match:
-        if (comp_interface == 'mct'):
-            case.set_value('VECT_MAP', 'cart3d')
-
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-dyn", cam_dycore,
                    "-hgrid", atm_grid, "-cpl", comp_interface,
@@ -136,7 +127,10 @@ def buildcpp(case):
         srcroot = testpath
     cmd = os.path.join(srcroot, "bld", "configure") + \
           " " + " ".join(config_opts)
-    run_cmd_no_fail(cmd, from_dir=camconf)
+
+    stat, output, err = run_cmd(cmd, from_dir=camconf)
+    if stat:
+        logger.warning(err)
 
     # determine cppdefs - caseroot/camconf/CESM_cppdefs is created by the call to configure
     with open(os.path.join(camconf, "CESM_cppdefs"), 'r') as f:

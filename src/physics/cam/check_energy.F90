@@ -485,13 +485,14 @@ end subroutine check_energy_get_integrals
       !
       if (state%psetcols == pcols) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
+        scaling(:ncol,:)  = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair
+        scaling(:ncol,:)  = 1.0_r8
       endif
       !
       ! enthalpy scaling for energy consistency
       !
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       temp(1:ncol,:)   = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
