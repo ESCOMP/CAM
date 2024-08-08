@@ -256,7 +256,7 @@ contains
     call modal_aero_coag_init
     call modal_aero_newnuc_init
 
-    ! call modal_aero_deposition_init only if the user has not specified
+    ! call aero_deposition_cam_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
     if (.not.aerodep_flx_prescribed()) then
        aero_props => modal_aerosol_properties()
