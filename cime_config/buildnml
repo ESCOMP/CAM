@@ -215,6 +215,7 @@ def buildnml(case, caseroot, compname):
         # -----------------------------------------------------
         # copy geos-chem config files to rundir if using geos-chem chemistry
         # -----------------------------------------------------
+
         if os.path.isdir(rundir) \
             and os.path.exists(os.path.join(caseroot, "species_database.yml"))\
             and '-chem geoschem' in CAM_CONFIG_OPTS:

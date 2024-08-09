@@ -2218,19 +2218,11 @@ sub write_filepath
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
     }
- 
-    # Cloud-J for computing J-values in chemistry; currently only built for GEOS-Chem
+
+    # GEOS-Chem and dependencies; GEOS-Chem must be prior to Mozart
     if ($chem_pkg =~ 'geoschem') {
 	print $fh "$camsrcdir/src/chemistry/cloud_j/src/Core\n";
-    }
-
-    # HETP for aerosol thermodynamics in GEOS-Chem chemistry
-    if ($chem_pkg =~ 'geoschem') {
 	print $fh "$camsrcdir/src/chemistry/hetp/src/Core\n";
-    }
-
-    # GEOS-Chem must be prior to Mozart
-    if ($chem_pkg =~ 'geoschem') {
 	print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
 	print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
 	print $fh "$chem_src_dir/geoschem_src/Headers\n";
