@@ -569,6 +569,14 @@ if ($cfg->get('debug')) {
 my $prescribe_aerosols = $TRUE;
 if ($simple_phys) {$prescribe_aerosols = $FALSE;}
 
+# Dust emissions scheme (all configurations for now)
+add_default($nl, 'dust_emis_method');
+if ( $nl->get_value('dust_emis_method') =~ /Zender/ ) {
+    add_default($nl, 'zender_soil_erod_source');
+}
+my $soil_erod_atm = $FALSE;
+if ($nl->get_value('dust_emis_method') eq 'atm') {$soil_erod_atm = $TRUE;}
+
 # Chemistry deposition lists
 if ( ($chem ne 'none') or ( $prog_species ) ){
     my $chem_proc_src = $cfg->get('chem_proc_src');
@@ -1786,7 +1794,7 @@ if ( $prog_species ) {
       add_default($nl, 'ghg_chem', 'val'=>".true.");
       add_default($nl, 'bndtvg');
     }
-    if ( $prog_species =~ /DST/ )  {
+    if ( $prog_species =~ /DST/ and $soil_erod_atm)  {
       add_default($nl, 'soil_erod_file' );
     }
 
@@ -2076,9 +2084,11 @@ if ($chem =~ /geoschem/) {
         add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
     }
 
-    my @files;
     # Datasets
-    @files = ( 'soil_erod_file', 'flbc_file' );
+    my @files = ( 'flbc_file' );
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2117,11 +2127,14 @@ if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
     my @files;
     # Datasets
     if ($chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
-       @files = ( 'soil_erod_file', 'flbc_file',
+       @files = ( 'flbc_file',
                   'xs_coef_file','xs_short_file','xs_long_file', 'rsf_file' );
     } else {
-       @files = ( 'soil_erod_file', 'flbc_file',
+       @files = ( 'flbc_file',
                   'xs_coef_file','xs_short_file','xs_long_file', 'rsf_file', 'exo_coldens_file', 'sulf_file' );
+    }
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
         add_default($nl, $file);
@@ -2220,8 +2233,10 @@ if ($chem eq 'trop_mam3') {
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ('soil_erod_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2725,8 +2740,10 @@ if (($chem eq 'trop_mam4') or ($chem eq 'waccm_sc_mam4') or ($chem eq 'ghg_mam4'
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2814,8 +2831,10 @@ if ($chem eq 'trop_mam7') {
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2874,8 +2893,10 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
                  'depvel_lnd_file',
-                 'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file',
-                 'soil_erod_file' );
+                 'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file' );
+    if ($soil_erod_atm) {
+        @files = ( @files, 'soil_erod_file' );
+    }
 
     if (!$waccmx) { @files = (@files, 'tgcm_ubc_file', 'snoe_ubc_file' ); }
 
@@ -3728,9 +3749,6 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         }
     }
 }
-# Dust emissions scheme (all configurations for now)
-add_default($nl, 'dust_emis_method');
-add_default($nl, 'zender_soil_erod_source');
 
 if (chem_has_species($cfg, 'NO')) {
     # set scaling of lightning NOx production

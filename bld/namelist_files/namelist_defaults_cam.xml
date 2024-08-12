@@ -2534,6 +2534,7 @@
 
 <!-- dust emissions method -->
 <dust_emis_method>Zender_2003</dust_emis_method>
+<dust_emis_method phys='cam7'>Leung_2023</dust_emis_method>
 <zender_soil_erod_source>atm</zender_soil_erod_source>
 
 <!-- seasalt emission tuning factor -->
