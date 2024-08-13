@@ -31,27 +31,32 @@ module clubb_intr
 
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, &
-                                 nu_vertical_res_dep, stats_metadata_type
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, & 
+                                 nu_vertical_res_dep, stats_metadata_type, &
+                                 hm_metadata_type, sclr_idx_type
+
   use clubb_api_module,    only: nparams
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
 #endif
 
   implicit none
+
 #ifdef CLUBB_SGS
   ! Variables that contains all the statistics
-
   type (stats), target, save :: stats_zt(pcols),      & ! stats_zt grid
                                 stats_zm(pcols),      & ! stats_zm grid
                                 stats_rad_zt(pcols),  & ! stats_rad_zt grid
                                 stats_rad_zm(pcols),  & ! stats_rad_zm grid
                                 stats_sfc(pcols)        ! stats_sfc
-
+  type (hm_metadata_type) :: &
+    hm_metadata
+                                
   type (stats_metadata_type) :: &
     stats_metadata
 
-
+  type (sclr_idx_type) :: &
+    sclr_idx
 #endif
 
   private
@@ -84,31 +89,51 @@ module clubb_intr
 
 #ifdef CLUBB_SGS
   type(clubb_config_flags_type), public :: clubb_config_flags
-  real(r8), dimension(nparams), public :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
+  real(r8), dimension(nparams), public :: clubb_params_single_col    ! Adjustable CLUBB parameters (C1, C2 ...)
 #endif
 
+  ! These are zero by default, but will be set by SILHS before they are used by subcolumns
+  integer :: &
+      hydromet_dim = 0, & 
+      pdf_dim      = 0
+
+
+  ! ------------------------ !
+  !  Sometimes private data  !
+  ! ------------------------ !
+#ifdef CLUBB_SGS
+#ifdef SILHS
+  ! If SILHS is in use, it will initialize these
+  public :: &
+    hydromet_dim, &
+    pdf_dim, &
+    hm_metadata
+#else
+  ! If SILHS is not in use, there is no need for them to be public
+  private :: &
+    hydromet_dim, &
+    pdf_dim, &
+    hm_metadata
+#endif
+#endif
+      
   ! ------------ !
   ! Private data !
   ! ------------ !
 
   integer, parameter :: &
       grid_type    = 3, &               ! The 2 option specifies stretched thermodynamic levels
-      hydromet_dim = 0                  ! The hydromet array in SAM-CLUBB is currently 0 elements
+      sclr_dim     = 0                  ! Higher-order scalars, set to zero
 
   ! Even though sclr_dim is set to 0, the dimension here is set to 1 to prevent compiler errors
   ! See github ticket larson-group/cam#133 for details
   real(r8), parameter, dimension(1) :: &
       sclr_tol = 1.e-8_r8               ! Total water in kg/kg
 
-  character(len=6) :: saturation_equation
-
   real(r8), parameter :: &
       theta0   = 300._r8, &             ! Reference temperature                     [K]
       ts_nudge = 86400._r8, &           ! Time scale for u/v nudging (not used)     [s]
       p0_clubb = 100000._r8
-
-  integer, parameter :: &
-    sclr_dim = 0                        ! Higher-order scalars, set to zero
 
   real(r8), parameter :: &
     wp3_const = 1._r8                   ! Constant to add to wp3 when moments are advected
@@ -195,8 +220,8 @@ module clubb_intr
     clubb_ipdf_call_placement = unset_i, & ! Selected option for the placement of the call to
                                            ! CLUBB's PDF.
     clubb_penta_solve_method = unset_i,  & ! Specifier for method to solve the penta-diagonal system
-    clubb_tridiag_solve_method = unset_i   ! Specifier for method to solve tri-diagonal systems
-
+    clubb_tridiag_solve_method = unset_i,& ! Specifier for method to solve tri-diagonal systems
+    clubb_saturation_equation = unset_i    ! Specifier for which saturation formula to use
 
 
   logical :: &
@@ -314,14 +339,16 @@ module clubb_intr
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
-                                          ! eliminates spurious drying tendencies at model top
-    clubb_l_intr_sfc_flux_smooth = .false.  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+                                          ! eliminates spurious drying tendencies at model top  
+    clubb_l_host_applies_sfc_fluxes       ! Whether the host model applies the surface fluxes
+
+  logical :: &
+    clubb_l_intr_sfc_flux_smooth = .false. ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
 !  Constant parameters
   logical, parameter, private :: &
-    l_implemented    = .true.,        &  ! Implemented in a host model (always true)
-    l_host_applies_sfc_fluxes = .false.  ! Whether the host model applies the surface fluxes
-
+    l_implemented    = .true.            ! Implemented in a host model (always true)
+    
   logical, parameter, private :: &
     apply_to_heat    = .false.           ! Apply WACCM energy fixer to heat or not (.true. = yes (duh))
 
@@ -500,13 +527,8 @@ module clubb_intr
                        history_budget_out              = history_budget, &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        do_hb_above_clubb_out           = do_hb_above_clubb)
-    subcol_scheme = subcol_get_scheme()
 
-    if (trim(subcol_scheme) == 'SILHS') then
-      saturation_equation = "flatau"
-    else
-      saturation_equation = "gfdl"       ! Goff & Gratch (1946) approximation for SVP
-    end if
+    subcol_scheme = subcol_get_scheme()
 
     if (clubb_do_adv) then
        cnst_names =(/'THLP2  ','RTP2   ','RTPTHLP','WPTHLP ','WPRTP  ','WP2    ','WP3    ','UP2    ','VP2    '/)
@@ -882,6 +904,7 @@ end subroutine clubb_init_cnst
                                              clubb_ipdf_call_placement, & ! Out
                                              clubb_penta_solve_method, & ! Out
                                              clubb_tridiag_solve_method, & ! Out
+                                             clubb_saturation_equation, & ! Out
                                              clubb_l_use_precip_frac, & ! Out
                                              clubb_l_predict_upwp_vpwp, & ! Out
                                              clubb_l_min_wp2_from_corr_wx, & ! Out
@@ -935,7 +958,8 @@ end subroutine clubb_init_cnst
                                              clubb_l_mono_flux_lim_rtm, & ! Out
                                              clubb_l_mono_flux_lim_um, & ! Out
                                              clubb_l_mono_flux_lim_vm, & ! Out
-                                             clubb_l_mono_flux_lim_spikefix ) ! Out
+                                             clubb_l_mono_flux_lim_spikefix, &  ! Out
+                                             clubb_l_host_applies_sfc_fluxes ) ! Out
 
     !  Call CLUBB+MF namelist
     call clubb_mf_readnl(nlfile)
@@ -1184,10 +1208,14 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_vm")
     call mpi_bcast(clubb_l_mono_flux_lim_spikefix,   1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_spikefix")
+    call mpi_bcast(clubb_l_host_applies_sfc_fluxes,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_host_applies_sfc_fluxes")
     call mpi_bcast(clubb_penta_solve_method,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_penta_solve_method")
     call mpi_bcast(clubb_tridiag_solve_method,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_tridiag_solve_method")
+    call mpi_bcast(clubb_saturation_equation,    1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_saturation_equation")
     call mpi_bcast(clubb_l_intr_sfc_flux_smooth,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_intr_sfc_flux_smooth")
     call mpi_bcast(clubb_l_vary_convect_depth,    1, mpi_logical, mstrid, mpicom, ierr)
@@ -1293,6 +1321,7 @@ end subroutine clubb_init_cnst
     if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
     if(clubb_penta_solve_method == unset_i) call endrun(sub//": FATAL: clubb_penta_solve_method not set")
     if(clubb_tridiag_solve_method == unset_i) call endrun(sub//": FATAL: clubb_tridiag_solve_method not set")
+    if(clubb_saturation_equation == unset_i) call endrun(sub//": FATAL: clubb_saturation_equation not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) &
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1300,6 +1329,7 @@ end subroutine clubb_init_cnst
                                                  clubb_ipdf_call_placement, & ! In
                                                  clubb_penta_solve_method, & ! In
                                                  clubb_tridiag_solve_method, & ! In
+                                                 clubb_saturation_equation, & ! In
                                                  clubb_l_use_precip_frac, & ! In
                                                  clubb_l_predict_upwp_vpwp, & ! In
                                                  clubb_l_min_wp2_from_corr_wx, & ! In
@@ -1354,6 +1384,7 @@ end subroutine clubb_init_cnst
                                                  clubb_l_mono_flux_lim_um, & ! In
                                                  clubb_l_mono_flux_lim_vm, & ! In
                                                  clubb_l_mono_flux_lim_spikefix, & ! In
+                                                 clubb_l_host_applies_sfc_fluxes, & ! In
                                                  clubb_config_flags ) ! Out
 
 #endif
@@ -1399,7 +1430,8 @@ end subroutine clubb_init_cnst
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
-         setup_clubb_core_api, &
+         setup_parameters_model_api, &
+         check_clubb_settings_api, &
          init_pdf_params_api, &
          time_precision, &
          core_rknd, &
@@ -1410,19 +1442,13 @@ end subroutine clubb_init_cnst
          read_parameters_api, &
          w_tol_sqd, &
          rt_tol, &
-         thl_tol
-
-    !  These are only needed if we're using a passive scalar
-    use clubb_api_module, only: &
-         iisclr_rt, &
-         iisclr_thl, &
-         iisclr_CO2, &
-         iiedsclr_rt, &
-         iiedsclr_thl, &
-         iiedsclr_CO2
+         thl_tol, &
+         saturation_bolton, & ! Constant for Bolton approximations of saturation
+         saturation_gfdl,   & ! Constant for the GFDL approximation of saturation
+         saturation_flatau, & ! Constant for Flatau approximations of saturation
+         saturation_lookup    ! Use a lookup table for mixing length
 
     use time_manager,              only: is_first_step
-    use clubb_api_module,          only: hydromet_dim
     use constituents,           only: cnst_get_ind
     use phys_control,           only: phys_getopts
     use spmd_utils,             only: iam
@@ -1578,13 +1604,13 @@ end subroutine clubb_init_cnst
     npccn_idx       = pbuf_get_index('NPCCN')
 
 
-    iisclr_rt  = -1
-    iisclr_thl = -1
-    iisclr_CO2 = -1
+    sclr_idx%iisclr_rt  = -1
+    sclr_idx%iisclr_thl = -1
+    sclr_idx%iisclr_CO2 = -1
 
-    iiedsclr_rt  = -1
-    iiedsclr_thl = -1
-    iiedsclr_CO2 = -1
+    sclr_idx%iiedsclr_rt  = -1
+    sclr_idx%iiedsclr_thl = -1
+    sclr_idx%iiedsclr_CO2 = -1
 
     ! ----------------------------------------------------------------- !
     ! Define number of tracers for CLUBB to diffuse
@@ -1626,7 +1652,7 @@ end subroutine clubb_init_cnst
                Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
                wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace )
 
-    call read_parameters_api( -99, "", &
+    call read_parameters_api( 1, -99, "", &
                               C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
                               C4, C_uu_shr, C_uu_buoy, C6rt, C6rtb, C6rtc, &
                               C6thl, C6thlb, C6thlc, C7, C7b, C7c, C8, C8b, C10, &
@@ -1651,75 +1677,81 @@ end subroutine clubb_init_cnst
                               C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                               Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
                               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace, &
-                              clubb_params )
+                              clubb_params_single_col )
 
-    clubb_params(iC2rtthl) = clubb_C2rtthl
-    clubb_params(iC8) = clubb_C8
-    clubb_params(iC11) = clubb_c11
-    clubb_params(iC11b) = clubb_c11b
-    clubb_params(iC14) = clubb_c14
-    clubb_params(iC_wp3_pr_turb) = clubb_C_wp3_pr_turb
-    clubb_params(ic_K10) = clubb_c_K10
-    clubb_params(imult_coef) = clubb_mult_coef
-    clubb_params(iSkw_denom_coef) = clubb_Skw_denom_coef
-    clubb_params(iC2rt) = clubb_C2rt
-    clubb_params(iC2thl) = clubb_C2thl
-    clubb_params(ibeta) = clubb_beta
-    clubb_params(iC6rt) = clubb_c6rt
-    clubb_params(iC6rtb) = clubb_c6rtb
-    clubb_params(iC6rtc) = clubb_c6rtc
-    clubb_params(iC6thl) = clubb_c6thl
-    clubb_params(iC6thlb) = clubb_c6thlb
-    clubb_params(iC6thlc) = clubb_c6thlc
-    clubb_params(iwpxp_L_thresh) = clubb_wpxp_L_thresh
-    clubb_params(iC7) = clubb_C7
-    clubb_params(iC7b) = clubb_C7b
-    clubb_params(igamma_coef) = clubb_gamma_coef
-    clubb_params(ic_K10h) = clubb_c_K10h
-    clubb_params(ilambda0_stability_coef) = clubb_lambda0_stability_coef
-    clubb_params(ilmin_coef) = clubb_lmin_coef
-    clubb_params(iC8b) = clubb_C8b
-    clubb_params(iskw_max_mag) = clubb_skw_max_mag
-    clubb_params(iC1)  = clubb_C1
-    clubb_params(iC1b) = clubb_C1b
-    clubb_params(igamma_coefb) = clubb_gamma_coefb
-    clubb_params(iup2_sfc_coef) = clubb_up2_sfc_coef
-    clubb_params(iC4) = clubb_C4
-    clubb_params(iC_uu_shr) = clubb_C_uu_shr
-    clubb_params(iC_uu_buoy) = clubb_C_uu_buoy
-    clubb_params(ic_K1) = clubb_c_K1
-    clubb_params(ic_K2) = clubb_c_K2
-    clubb_params(inu2)  = clubb_nu2
-    clubb_params(ic_K8) = clubb_c_K8
-    clubb_params(ic_K9) = clubb_c_K9
-    clubb_params(inu9)  = clubb_nu9
-    clubb_params(iC_wp2_splat) = clubb_C_wp2_splat
-    clubb_params(iC_invrs_tau_bkgnd) = clubb_C_invrs_tau_bkgnd
-    clubb_params(iC_invrs_tau_sfc) = clubb_C_invrs_tau_sfc
-    clubb_params(iC_invrs_tau_shear) = clubb_C_invrs_tau_shear
-    clubb_params(iC_invrs_tau_N2) = clubb_C_invrs_tau_N2
-    clubb_params(iC_invrs_tau_N2_wp2) = clubb_C_invrs_tau_N2_wp2
-    clubb_params(iC_invrs_tau_N2_xp2) = clubb_C_invrs_tau_N2_xp2
-    clubb_params(iC_invrs_tau_N2_wpxp) = clubb_C_invrs_tau_N2_wpxp
-    clubb_params(iC_invrs_tau_N2_clear_wp3) = clubb_C_invrs_tau_N2_clear_wp3
-    clubb_params(ibv_efold) = clubb_bv_efold
-    clubb_params(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
-    clubb_params(iz_displace) = clubb_z_displace
+    clubb_params_single_col(iC2rtthl) = clubb_C2rtthl
+    clubb_params_single_col(iC8) = clubb_C8
+    clubb_params_single_col(iC11) = clubb_c11
+    clubb_params_single_col(iC11b) = clubb_c11b
+    clubb_params_single_col(iC14) = clubb_c14
+    clubb_params_single_col(iC_wp3_pr_turb) = clubb_C_wp3_pr_turb
+    clubb_params_single_col(ic_K10) = clubb_c_K10
+    clubb_params_single_col(imult_coef) = clubb_mult_coef
+    clubb_params_single_col(iSkw_denom_coef) = clubb_Skw_denom_coef
+    clubb_params_single_col(iC2rt) = clubb_C2rt
+    clubb_params_single_col(iC2thl) = clubb_C2thl
+    clubb_params_single_col(ibeta) = clubb_beta
+    clubb_params_single_col(iC6rt) = clubb_c6rt
+    clubb_params_single_col(iC6rtb) = clubb_c6rtb
+    clubb_params_single_col(iC6rtc) = clubb_c6rtc
+    clubb_params_single_col(iC6thl) = clubb_c6thl
+    clubb_params_single_col(iC6thlb) = clubb_c6thlb
+    clubb_params_single_col(iC6thlc) = clubb_c6thlc
+    clubb_params_single_col(iwpxp_L_thresh) = clubb_wpxp_L_thresh
+    clubb_params_single_col(iC7) = clubb_C7
+    clubb_params_single_col(iC7b) = clubb_C7b
+    clubb_params_single_col(igamma_coef) = clubb_gamma_coef
+    clubb_params_single_col(ic_K10h) = clubb_c_K10h
+    clubb_params_single_col(ilambda0_stability_coef) = clubb_lambda0_stability_coef
+    clubb_params_single_col(ilmin_coef) = clubb_lmin_coef
+    clubb_params_single_col(iC8b) = clubb_C8b
+    clubb_params_single_col(iskw_max_mag) = clubb_skw_max_mag
+    clubb_params_single_col(iC1)  = clubb_C1
+    clubb_params_single_col(iC1b) = clubb_C1b
+    clubb_params_single_col(igamma_coefb) = clubb_gamma_coefb
+    clubb_params_single_col(iup2_sfc_coef) = clubb_up2_sfc_coef
+    clubb_params_single_col(iC4) = clubb_C4
+    clubb_params_single_col(iC_uu_shr) = clubb_C_uu_shr
+    clubb_params_single_col(iC_uu_buoy) = clubb_C_uu_buoy
+    clubb_params_single_col(ic_K1) = clubb_c_K1
+    clubb_params_single_col(ic_K2) = clubb_c_K2
+    clubb_params_single_col(inu2)  = clubb_nu2
+    clubb_params_single_col(ic_K8) = clubb_c_K8
+    clubb_params_single_col(ic_K9) = clubb_c_K9
+    clubb_params_single_col(inu9)  = clubb_nu9
+    clubb_params_single_col(iC_wp2_splat) = clubb_C_wp2_splat
+    clubb_params_single_col(iC_invrs_tau_bkgnd) = clubb_C_invrs_tau_bkgnd
+    clubb_params_single_col(iC_invrs_tau_sfc) = clubb_C_invrs_tau_sfc
+    clubb_params_single_col(iC_invrs_tau_shear) = clubb_C_invrs_tau_shear
+    clubb_params_single_col(iC_invrs_tau_N2) = clubb_C_invrs_tau_N2
+    clubb_params_single_col(iC_invrs_tau_N2_wp2) = clubb_C_invrs_tau_N2_wp2
+    clubb_params_single_col(iC_invrs_tau_N2_xp2) = clubb_C_invrs_tau_N2_xp2
+    clubb_params_single_col(iC_invrs_tau_N2_wpxp) = clubb_C_invrs_tau_N2_wpxp
+    clubb_params_single_col(iC_invrs_tau_N2_clear_wp3) = clubb_C_invrs_tau_N2_clear_wp3
+    clubb_params_single_col(ibv_efold) = clubb_bv_efold
+    clubb_params_single_col(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
+    clubb_params_single_col(iz_displace) = clubb_z_displace
 
+    ! Override clubb default 
+    if ( trim(subcol_scheme) == 'SILHS' ) then
+      clubb_config_flags%saturation_formula = saturation_flatau
+    else
+      clubb_config_flags%saturation_formula = saturation_gfdl     ! Goff & Gratch (1946) approximation for SVP
+    end if
+
+    ! Define model constant parameters
+    call setup_parameters_model_api( theta0, ts_nudge, clubb_params_single_col(iSkw_max_mag) )
+   
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
     !  at each time step, which is why dummy arrays are read in here for heights
     !  as they are immediately overwrote.
 !$OMP PARALLEL
-    call setup_clubb_core_api( &
-           nlev+1, theta0, ts_nudge, &           ! In
-           hydromet_dim,  sclr_dim, &            ! In
-           sclr_tol, edsclr_dim, clubb_params, & ! In
-           l_host_applies_sfc_fluxes, &          ! In
-           saturation_equation, &                ! In
-           l_input_fields, &                     ! In
-           clubb_config_flags, &                 ! In
-           err_code )                            ! Out
+    call check_clubb_settings_api( nlev+1, clubb_params_single_col,  & ! Intent(in)
+                                   l_implemented,                    & ! Intent(in)
+                                   l_input_fields,                   & ! Intent(in)
+                                   clubb_config_flags,               & ! intent(in)
+                                   err_code )                          ! Intent(out)
 
     if ( err_code == clubb_fatal_error ) then
        call endrun('clubb_ini_cam:  FATAL ERROR CALLING SETUP_CLUBB_CORE')
@@ -1729,7 +1761,7 @@ end subroutine clubb_init_cnst
     ! Print the list of CLUBB parameters
     if ( masterproc ) then
        do j = 1, nparams, 1
-          write(iulog,*) params_list(j), " = ", clubb_params(j)
+          write(iulog,*) params_list(j), " = ", clubb_params_single_col(j)
        enddo
     endif
 
@@ -1836,18 +1868,27 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)' )
     end if
 
+    if ( trim(subcol_scheme) /= 'SILHS' ) then
+       ! hm_metadata is set up by calling init_pdf_hydromet_arrays_api in subcol_init_SILHS.
+       ! So if we are not using silhs, we allocate the parts of hm_metadata that need allocating
+       ! in order to making intel debug tests happy.
+       allocate( hm_metadata%hydromet_list(1), stat=ierr)
+       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%hydromet_list' )
+       allocate( hm_metadata%l_mix_rat_hm(1), stat=ierr)
+       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%l_mix_rat_hm' )
+    end if
+
     !  Initialize statistics, below are dummy variables
     dum1 = 300._r8
     dum2 = 1200._r8
     dum3 = 300._r8
 
-
     if (stats_metadata%l_stats) then
-
-       call stats_init_clubb( .true., dum1, dum2, &
-                              nlev+1, nlev+1, nlev+1, dum3, &
-                              stats_zt(:), stats_zm(:), stats_sfc(:), &
-                              stats_rad_zt(:), stats_rad_zm(:))
+      
+      call stats_init_clubb( .true., dum1, dum2, &
+                             nlev+1, nlev+1, nlev+1, dum3, &
+                             stats_zt(:), stats_zm(:), stats_sfc(:), &
+                             stats_rad_zt(:), stats_rad_zm(:))
 
        allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields), stat=ierr)
        if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_zt' )
@@ -2085,7 +2126,7 @@ end subroutine clubb_init_cnst
       rt_tol, &
       thl_tol, &
       stats_begin_timestep_api, &
-      hydromet_dim, calculate_thlp2_rad_api, update_xp2_mc_api, &
+      calculate_thlp2_rad_api, update_xp2_mc_api, &
       sat_mixrat_liq_api, &
       fstderr, &
       ipdf_post_advance_fields, &
@@ -2294,7 +2335,7 @@ end subroutine clubb_init_cnst
       wp2up2_inout,             & ! w'^2 u'^2 (momentum levels)
       wp2vp2_inout,             & ! w'^2 v'^2 (momentum levels)
       zt_g,                     & ! Thermodynamic grid of CLUBB		      	[m]
-      zi_g			                 ! Momentum grid of CLUBB		      	[m]
+      zi_g                        ! Momentum grid of CLUBB		      	[m]
 
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
@@ -2548,6 +2589,9 @@ end subroutine clubb_init_cnst
     type(nu_vertical_res_dep) :: nu_vert_res_dep   ! Vertical resolution dependent nu values
     real(r8) :: lmin
 
+    real(r8), dimension(state%ncol,nparams) :: &
+      clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
+ 
 #endif
     det_s(:)   = 0.0_r8
     det_ice(:) = 0.0_r8
@@ -3114,6 +3158,10 @@ end subroutine clubb_init_cnst
                          zi_g, zt_g,                                      & ! intent(in)
                          gr )                                               ! intent(out)
 
+    do i = 1, ncol
+      clubb_params(i,:) = clubb_params_single_col(:)
+    end do
+
     call setup_parameters_api( zi_g(:,2), clubb_params, gr, ncol, grid_type,  & ! intent(in)
                                clubb_config_flags%l_prescribed_avg_deltaz,    & ! intent(in)
                                lmin, nu_vert_res_dep, err_code )                ! intent(out)
@@ -3473,7 +3521,9 @@ end subroutine clubb_init_cnst
 
       !  Advance CLUBB CORE one timestep in the future
       call advance_clubb_core_api( gr, pverp+1-top_lev, ncol, &
-          l_implemented, dtime, fcor, sfc_elevation, hydromet_dim, &
+          l_implemented, dtime, fcor, sfc_elevation, &
+          hydromet_dim, &
+          sclr_dim, sclr_tol, edsclr_dim, sclr_idx, &
           thlm_forcing, rtm_forcing, um_forcing, vm_forcing, &
           sclrm_forcing, edsclrm_forcing, wprtp_forcing, &
           wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
@@ -3484,7 +3534,8 @@ end subroutine clubb_init_cnst
           rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, &
           p_in_Pa, rho_zm, rho_zt, exner, &
           rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
-          invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, hydromet, &
+          invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, &
+          hydromet, hm_metadata%l_mix_rat_hm, &
           rfrzm, radf, &
           wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt, &
           grid_dx, grid_dy, &
@@ -3565,7 +3616,7 @@ end subroutine clubb_init_cnst
         thlp2_rad_out(:,:) = 0._r8
 
         do i=1, ncol
-          call calculate_thlp2_rad_api(nlev+1, rcm_out_zm(i,:), thlprcp_out(i,:), qrl_zm(i,:), clubb_params, &
+          call calculate_thlp2_rad_api(nlev+1, rcm_out_zm(i,:), thlprcp_out(i,:), qrl_zm(i,:), clubb_params(i,:), &
                                        thlp2_rad_out(i,:))
         end do
 
@@ -3880,22 +3931,22 @@ end subroutine clubb_init_cnst
     rtm_integral_ltend(:) = 0._r8
 
     do k=1, pver
-      do i=1, ncol
+       do i=1, ncol
 
-        ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               / hdtime ! east-west wind
-        ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               / hdtime ! north-south wind
-        ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) / hdtime ! water vapor
-        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
-        ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
+          ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               / hdtime ! east-west wind
+          ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               / hdtime ! north-south wind
+          ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) / hdtime ! water vapor
+          ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
+          ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
 
-        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
-        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
+          rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
+          rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
 
-     end do
-   end do
+       end do
+    end do
 
-   rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
-   rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
+    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
+    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
 
     ! Accumulate Air Temperature Tendency (TTEND) for Gravity Wave parameterization
     ttend_clubb_mc(:ncol,:pver) = ttend_clubb_mc(:ncol,:pver) + ptend_loc%s(:ncol,:pver)/cpair
@@ -3904,7 +3955,6 @@ end subroutine clubb_init_cnst
     if (macmic_it == cld_macmic_num_steps) then
        ttend_clubb(:ncol,:)  = ttend_clubb_mc(:ncol,:pver)/REAL(cld_macmic_num_steps,r8)
     end if
-
 
     if (clubb_do_adv) then
       if (macmic_it == cld_macmic_num_steps) then
@@ -4788,7 +4838,7 @@ end function diag_ustar
 
     !  Set stats_variables variables with inputs from calling subroutine
     stats_metadata%l_stats = l_stats_in
-
+    
     stats_metadata%stats_tsamp = stats_tsamp_in
     stats_metadata%stats_tout  = stats_tout_in
 
@@ -4892,7 +4942,9 @@ end function diag_ustar
       if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%file%z")
 
       !  Default initialization for array indices for zt
-      call stats_init_zt_api( clubb_vars_zt, &
+      call stats_init_zt_api( hydromet_dim, sclr_dim, edsclr_dim, &
+                              hm_metadata%hydromet_list, hm_metadata%l_mix_rat_hm, &
+                              clubb_vars_zt, &
                               l_error, &
                               stats_metadata, stats_zt(j) )
 
@@ -4929,7 +4981,9 @@ end function diag_ustar
       allocate( stats_zm(j)%file%grid_avg_var( stats_zm(j)%num_output_fields ) )
       allocate( stats_zm(j)%file%z( stats_zm(j)%kk ) )
 
-      call stats_init_zm_api( clubb_vars_zm, &
+      call stats_init_zm_api( hydromet_dim, sclr_dim, edsclr_dim, &
+                              hm_metadata%hydromet_list, hm_metadata%l_mix_rat_hm, &
+                              clubb_vars_zm, &
                               l_error, &
                               stats_metadata, stats_zm(j) )
 
@@ -5013,7 +5067,6 @@ end function diag_ustar
 
 
       !  Initialize sfc (surface point)
-
       i = 1
       do while ( ichar(clubb_vars_sfc(i)(1:1)) /= 0 .and. &
                  len_trim(clubb_vars_sfc(i))   /= 0 .and. &
