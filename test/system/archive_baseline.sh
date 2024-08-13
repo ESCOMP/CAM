@@ -76,7 +76,7 @@ case $hostname in
       echo "Must specify CAM_FC"
     fi
     test_file_list="tests_pretag_derecho_${CAM_FC,,}"
-    cam_tag=$1
+    cam_tag=$1_${CAM_FC,,}
     baselinedir="/glade/campaign/cesm/community/amwg/cam_baselines/$cam_tag"
   ;;
 
