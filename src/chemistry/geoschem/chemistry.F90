@@ -1128,12 +1128,12 @@ contains
     ! Find maximum tropopause level, set at 40 hPa (based on GEOS-Chem 72 and 47
     ! layer grids)
     nTrop = nZ
-    DO WHILE ( hyam(nZ+1-nTrop) * ps0 < 4000.0 )
+    DO WHILE ( hyam(nZ+1-nTrop) * ps0 < 4000.0_r8 )
        nTrop = nTrop-1
     ENDDO
     ! Find stratopause level, defined at 1 hPa
     nStrat = nZ
-    DO WHILE ( hyam(nZ+1-nStrat) * ps0 < 100.0 )
+    DO WHILE ( hyam(nZ+1-nStrat) * ps0 < 100.0_r8 )
        nStrat = nStrat-1
     ENDDO
 
@@ -2004,11 +2004,10 @@ contains
     CHARACTER(LEN=64) :: aerName
 
     ! For prescribed aerosol distributions.
-    ! These are REAL because the underlying routines are not r8.
-    REAL              :: prescr_aer_xnum(3)
-    REAL              :: prescr_aer_xmas(3)
+    REAL(r8)          :: prescr_aer_xnum(3)
+    REAL(r8)          :: prescr_aer_xmas(3)
     REAL(r8)          :: vmr_so4_sum(state%ncol, pver)
-    REAL              :: prescr_aer_lbnd, prescr_aer_abnd, prescr_aer_cbnd, prescr_aer_ubnd
+    REAL(r8)          :: prescr_aer_lbnd, prescr_aer_abnd, prescr_aer_cbnd, prescr_aer_ubnd
     REAL(r8), POINTER :: dgncur_a(:,:,:)
 
 #endif
@@ -3316,7 +3315,7 @@ contains
 
        State_Met(LCHNK)%isSnow(1,J) = &
                                ( State_Met(LCHNK)%FRSEAICE(1,J) > 0.0e+0_fp &
-                                 .or. State_Met(LCHNK)%SNODP(1,J) > 0.01 )
+                                 .or. State_Met(LCHNK)%SNODP(1,J) > 0.01_fp )
 
     ENDDO
 
@@ -3995,8 +3994,8 @@ contains
         ! it may be necessary to prescribe the bin spacing as well to fit a1-3 definitions
         ! D < 0.05 is aitken mode, 0.05 to 2 is accumulation mode, D > 2um is coarse.
 
-        prescr_aer_lbnd = 0.0
-        prescr_aer_ubnd = 10.0
+        prescr_aer_lbnd = 0.0_r8
+        prescr_aer_ubnd = 10.0_r8
 
         ! First, sum all the available VMRs
         vmr_so4_sum(:nY,:nZ) = vmr0(:nY,:nZ,mapCnst(lptr_so4_a_amode(1))) + &
@@ -4007,20 +4006,20 @@ contains
         DO J = 1, nY
         DO L = 1, nZ
             ! Get geometric mean diameters of all aerosol bins before further MAM4 calculation
-            prescr_aer_abnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 2)) * 1e6 / 2
-            prescr_aer_cbnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 3)) * 1e6 / 2
+            prescr_aer_abnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 2)) * 1e6_r8 / 2.0_r8
+            prescr_aer_cbnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 3)) * 1e6_r8 / 2.0_r8
 
             ! thus, sect02_mam4 is developed for this use.
-            call sect02_mam4(dgnum_um = 0.14,                      & ! SO4 geometric mean dia. of log-normal distr [um]
-                             sigmag   = 1.6,                       & ! sigma
-                             duma     = 1.0,                       & ! (unknown scaling factor)
+            call sect02_mam4(dgnum_um = 0.14_r8,                   & ! SO4 geometric mean dia. of log-normal distr [um]
+                             sigmag   = 1.6_r8,                    & ! sigma
+                             duma     = 1.0_r8,                    & ! (unknown scaling factor)
                              nbin     = 3,                         & ! put into a1, a2, a3 three 'bins'
                              dlo_sect = (/prescr_aer_lbnd, prescr_aer_abnd, prescr_aer_cbnd/),  & ! diameter bounds [um]
                              dhi_sect = (/prescr_aer_abnd, prescr_aer_cbnd, prescr_aer_ubnd/), & ! diameter bounds [um]
-                             !dlo_sect = (/0.0390625, 0.1,  2.0/),  & ! diameter bounds [um]
-                             !dhi_sect = (/0.1,       2.0,  10.0/), & ! diameter bounds [um]
-                             !dlo_um   = 0.0390625,                 & ! lower bound um
-                             !dhi_um   = 10.0,                      & ! upper bound um
+                             !dlo_sect = (/0.0390625_r8, 0.1_r8,  2.0_r8/),  & ! diameter bounds [um]
+                             !dhi_sect = (/0.1_r8,       2.0_r8,  10.0_r8/), & ! diameter bounds [um]
+                             !dlo_um   = 0.0390625_r8,                 & ! lower bound um
+                             !dhi_um   = 10.0_r8,                      & ! upper bound um
                              xnum_sect= prescr_aer_xnum,           & ! prescribed aerosol number ratios
                              xmas_sect= prescr_aer_xmas)             ! prescribed aerosol mass ratios
 
@@ -4035,20 +4034,20 @@ contains
             ! so4_a3 (coarse mode)
             ! ensure that total num molec is conserved. otherwise, this will be a silent sulfate sink.
             ! note that prescr_xnum(2) is large, so for maximum precision, use 1.0 to minus it first.
-            prescr_aer_xnum(3) = (1.0 - prescr_aer_xnum(2)) - prescr_aer_xnum(1)
-            prescr_aer_xmas(3) = (1.0 - prescr_aer_xmas(2)) - prescr_aer_xmas(1)
+            prescr_aer_xnum(3) = (1.0_r8 - prescr_aer_xnum(2)) - prescr_aer_xnum(1)
+            prescr_aer_xmas(3) = (1.0_r8 - prescr_aer_xmas(2)) - prescr_aer_xmas(1)
 
             ! there may also be the case that presc_aer_x(3) is lower than 0 (!) which would be unphysical.
             ! for safety sake, ensure that coarse sulfate ratio is no lower than 0.01.
             ! we can compensate from x(2) (accumulation mode) which is generally the greatest.
-            if(prescr_aer_xnum(3) .lt. 0.01) then
-                prescr_aer_xnum(3) = 0.01
-                prescr_aer_xnum(2) = 1.0 - prescr_aer_xnum(3) - prescr_aer_xnum(1)
+            if(prescr_aer_xnum(3) .lt. 0.01_r8) then
+                prescr_aer_xnum(3) = 0.01_r8
+                prescr_aer_xnum(2) = 1.0_r8 - prescr_aer_xnum(3) - prescr_aer_xnum(1)
             endif
 
-            if(prescr_aer_xmas(3) .lt. 0.01) then
-                prescr_aer_xmas(3) = 0.01
-                prescr_aer_xmas(2) = 1.0 - prescr_aer_xmas(3) - prescr_aer_xmas(1)
+            if(prescr_aer_xmas(3) .lt. 0.01_r8) then
+                prescr_aer_xmas(3) = 0.01_r8
+                prescr_aer_xmas(2) = 1.0_r8 - prescr_aer_xmas(3) - prescr_aer_xmas(1)
             endif
 
             ! so4_a2 (aitken mode) -- note this is smallest even though its a2!
@@ -4061,7 +4060,7 @@ contains
 
             ! write out?
             ! if(masterproc .and. J .eq. 1 .and. L .eq. nZ) then
-            !     write(iulog,*) "prescribe aer (so4): L = ", L, " dgncur_a (um) = ", dgncur_a(J, L, :) * 1e6
+            !     write(iulog,*) "prescribe aer (so4): L = ", L, " dgncur_a (um) = ", dgncur_a(J, L, :) * 1e6_r8
             !     write(iulog,*) "prescribe aer (so4): L = ", L, " prescr_aer_xnum = ", prescr_aer_xnum
             !     write(iulog,*) "prescribe aer (so4): L = ", L, " prescr_aer_xmas = ", prescr_aer_xmas
             ! endif
@@ -4680,21 +4679,20 @@ contains
 ! Feng, X., Lin, H., Fu, T.-M., Sulprizio, M. P., Zhuang, J., Jacob, D. J., Tian, H., Ma, Y., Zhang, L., Wang, X., Chen, Q., and Han, Z.: WRF-GC (v2.0): online two-way coupling of WRF (v3.9.1.1) and GEOS-Chem (v12.7.2) for modeling regional atmospheric chemistry–meteorology interactions, Geosci. Model Dev., 14, 3741–3768, https://doi.org/10.5194/gmd-14-3741-2021, 2021.
 !
 
-  real function erfc_num_recipes( x )
+  real(8) function erfc_num_recipes( x )
     !
     !   from press et al, numerical recipes, 1990, page 164
     !
     implicit none
-    real x
-    double precision erfc_dbl, dum, t, z
+    real(r8) :: x, erfc_dbl, dum, t, z
     z = abs(x)
     t = 1.0/(1.0 + 0.5*z)
-    dum =  ( -z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +   &
-      t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +   &
-                                       t*(-1.13520398 +   &
-      t*(1.48851587 + t*(-0.82215223 + t*0.17087277 )))))))))
+    dum =  ( -z*z - 1.26551223_r8 + t*(1.00002368_r8 + t*(0.37409196_r8 +   &
+      t*(0.09678418_r8 + t*(-0.18628806_r8 + t*(0.27886807_r8 +   &
+                                       t*(-1.13520398_r8 +   &
+      t*(1.48851587_r8 + t*(-0.82215223_r8 + t*0.17087277_r8 )))))))))
     erfc_dbl = t * exp(dum)
-    if (x .lt. 0.0) erfc_dbl = 2.0d0 - erfc_dbl
+    if (x .lt. 0.0_f8) erfc_dbl = 2.0_r8 - erfc_dbl
     erfc_num_recipes = erfc_dbl
     return
   end function erfc_num_recipes
@@ -4719,25 +4717,25 @@ contains
         ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
 
         implicit none
-        real, dimension(nbin), intent(out) :: xnum_sect, xmas_sect
-        integer                            :: n, nbin
-        real                               :: dgnum, dgnum_um, dhi,  &
-                                              dlo, duma, dumfrac,    &
-                                              dx, sigmag,            &
-                                              sx, sxroot2, thi, tlo, x0, x3, &
-                                              xhi, xlo, xmtot, xntot
-        real, intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
-        real                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
-        real                               :: pi
-        parameter (pi = 3.141592653589)
+        real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
+        integer                               :: n, nbin
+        real(8)                               :: dgnum, dgnum_um, dhi,  &
+                                                 dlo, duma, dumfrac,    &
+                                                 dx, sigmag,            &
+                                                 sx, sxroot2, thi, tlo, x0, x3, &
+                                                 xhi, xlo, xmtot, xntot
+        real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
+        real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
+        real(8)                               :: pi
+        parameter (pi = 3.141592653589_r8)
 
         xmtot = duma
         xntot = duma
 
         ! Compute bins based on number of bins. Originally sect02_new.
         ! For MAM4, we prescribe the bin ranges as well.
-        ! dlo = dlo_um*1.0E-4
-        ! dhi = dhi_um*1.0E-4
+        ! dlo = dlo_um*1.0E-4_r8
+        ! dhi = dhi_um*1.0E-4_r8
         ! xlo = log( dlo )
         ! xhi = log( dhi )
         ! dx  = (xhi - xlo)/nbin
@@ -4749,31 +4747,31 @@ contains
         ! dlo_sect and dhi_sect have to be scaled by 1e-4
         ! in order to fit parameters in the above calculation, if they are prescribed.
 
-        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4
-        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4
+        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
+        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
 
-        dgnum = dgnum_um*1.0E-4
+        dgnum = dgnum_um*1.0E-4_r8
         sx = log( sigmag )
         x0 = log( dgnum )
-        x3 = x0 + 3.*sx*sx
-        sxroot2 = sx * sqrt( 2.0 )
+        x3 = x0 + 3.0_r8*sx*sx
+        sxroot2 = sx * sqrt( 2.0_r8 )
         do n = 1, nbin
             xlo = log( my_dlo_sect(n) )
             xhi = log( my_dhi_sect(n) )
             tlo = (xlo - x0)/sxroot2
             thi = (xhi - x0)/sxroot2
-            if (tlo .le. 0.) then
-                dumfrac = 0.5*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
+            if (tlo .le. 0.0_r8) then
+                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
             else
-                dumfrac = 0.5*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
+                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
             end if
             xnum_sect(n) = xntot*dumfrac
             tlo = (xlo - x3)/sxroot2
             thi = (xhi - x3)/sxroot2
-            if (tlo .le. 0.) then
-                dumfrac = 0.5*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
+            if (tlo .le. 0.0_r8) then
+                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
             else
-                dumfrac = 0.5*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
+                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
             endif
             xmas_sect(n) = xmtot*dumfrac
         enddo
