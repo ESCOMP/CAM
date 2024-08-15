@@ -96,7 +96,7 @@
 	url = https://github.com/larson-group/clubb_release
         fxrequired = AlwaysRequired
         fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20231115_5406350
+        fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
 [submodule "cism"]
@@ -151,7 +151,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 [submodule "cdeps"]
 path = components/cdeps
 url = https://github.com/ESCOMP/CDEPS.git
-fxtag = cdeps1.0.43
+fxtag = cdeps1.0.45
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
@@ -174,7 +174,7 @@ path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
 fxtag = cesm_cice6_5_0_10
 fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
+fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
 [submodule "clm"]
 path = components/clm

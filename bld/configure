@@ -641,6 +641,10 @@ if ($dyn_pkg eq 'fv3' and $spmd eq 'OFF') {
     die "configure: FATAL: the fv3 dycore requires at least 6 tasks SPMD must not be switched off.$eol";
 }
 
+if ($dyn_pkg eq 'se' and $smp eq 'ON') {
+    die "CAM configure: ERROR: The SE dycore does not currently work with threading on. $eol";
+}
+
 if ($print>=2) { print "Dynamics package: $dyn_pkg$eol"; }
 
 $cfg_ref->set('analytic_ic', (defined $opts{'analytic_ic'}) ? $opts{'analytic_ic'} : 0);
