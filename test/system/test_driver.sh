@@ -1,4 +1,4 @@
-#!/bin/sh
+!/bin/sh
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
@@ -466,6 +466,9 @@ if [ "${hostname:0:6}" == "casper" ] || [ "${hostname:0:5}" == "crhtc" ]; then
 fi
 if [ -n "${CAM_FC}" ]; then
   comp="_${CAM_FC,,}"
+else
+  echo "ERROR: Must specify CAM_FC"
+  exit 1
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
@@ -547,8 +550,6 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
     if [ -n "${CAM_FC}" ]; then
       testargs="${testargs} --xml-compiler ${CAM_FC,,}"
-    else
-      testargs="${testargs} --xml-compiler intel"
     fi
     case $hostname in
         # derecho
@@ -586,8 +587,6 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
         cmd="query_testlists --xml-category $cesm_test --xml-machine  ${cesm_test_mach}"
         if [ -n "${CAM_FC}" ]; then
             cmd="${cmd} --xml-compiler ${CAM_FC,,}"
-        else
-            cmd="${cmd} --xml-compiler intel"
         fi
         cmd="${CIME_ROOT}/scripts/"$cmd
         cime_testlist=`$cmd`
