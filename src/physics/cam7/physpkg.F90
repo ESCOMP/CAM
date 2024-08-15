@@ -94,6 +94,8 @@ module physpkg
   integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
   integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid
+  integer ::  psl_idx            = 0
+
 !=======================================================================
 contains
 !=======================================================================
@@ -1036,6 +1038,8 @@ contains
     dvcore_idx = pbuf_get_index('DVCORE')
     dtcore_idx = pbuf_get_index('DTCORE')
     dqcore_idx = pbuf_get_index('DQCORE')
+
+    psl_idx = pbuf_get_index('PSL')
 
   end subroutine phys_init
 
@@ -2504,7 +2508,9 @@ contains
     use physics_types,   only: physics_update, &
                                physics_state_check, &
                                dyn_te_idx
-    use cam_diagnostics, only: diag_conv_tend_ini, diag_conv, diag_export, diag_state_b4_phys_write
+    use physconst,       only: rair, gravit
+    use cam_diagnostics, only: diag_conv_tend_ini, diag_export, diag_state_b4_phys_write
+    use cam_diagnostic_utils, only: cpslec
     use cam_history,     only: outfld
     use constituents,    only: qmin
     use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
@@ -2612,6 +2618,8 @@ contains
     real(r8) :: flx_heat(pcols)
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
+
+    real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
     logical   :: lq(pcnst)
 
@@ -2890,6 +2898,8 @@ contains
 
     ! Save atmospheric fields to force surface models
     call t_startf('cam_export')
+    call pbuf_get_field(pbuf, psl_idx, psl)
+    call cpslec(ncol, state%pmid, state%phis, state%ps, state%t, psl, gravit, rair)
     call cam_export (state,cam_out,pbuf)
     call t_stopf('cam_export')
 

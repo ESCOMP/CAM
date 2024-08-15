@@ -901,11 +901,12 @@ contains
     ! Purpose: output dry physics diagnostics
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cappa
-    use time_manager,       only: get_nstep
-    use interpolate_data,   only: vertinterp
-    use tidal_diag,         only: tidal_diag_write
-    use air_composition,    only: cpairv, rairv
+    use physconst,            only: gravit, rga, rair, cappa
+    use time_manager,         only: get_nstep
+    use interpolate_data,     only: vertinterp
+    use tidal_diag,           only: tidal_diag_write
+    use air_composition,      only: cpairv, rairv
+    use cam_diagnostic_utils, only: cpslec
     !-----------------------------------------------------------------------
     !
     ! Arguments
