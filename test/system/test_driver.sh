@@ -1,4 +1,4 @@
-!/bin/sh
+#!/bin/sh
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
