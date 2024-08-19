@@ -100,7 +100,7 @@ def _main_prog():
     ghub = Github(token)
 
     #+++++++++++++++++++++
-    #Open NCAR/CAMDEN repo
+    #Open ESCOMP/CAM repo
     #+++++++++++++++++++++
 
     cam_repo = ghub.get_repo("ESCOMP/CAM")
