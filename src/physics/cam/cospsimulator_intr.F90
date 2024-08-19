@@ -2657,6 +2657,8 @@ CONTAINS
 
     cospstateIN%sza(1:ncol)                    = acosd(coszrs(1:ncol)) ! Hokey because we get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
 
+    cospstateIN%cloudIce(1:ncol,1:pver) = allcld_ice ! gridcell ice water mixing ratio
+    cospstateIN%cloudLiq(1:ncol,1:pver) = allcld_liq ! gridcell liquid water mixing ratio
    !  if (masterproc) then
    !     if (docosp) then 
    !         write(iulog,*)'cospstateIN%rttov_date(:,1):    ',cospstateIN%rttov_date(:,1)     
@@ -2680,8 +2682,7 @@ CONTAINS
    !  cospstateIN%cloudIce = mr_lsice(1:ncol,1:pver) + mr_ccice(1:ncol,1:pver)
    !  cospstateIN%cloudLiq = mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)
     ! Updated version that calculates the cloud water mixing ratios consistently with cloud_diagnostics.F90 which is used in the radiation scheme
-    cospstateIN%cloudIce = allcld_ice ! gridcell ice water mixing ratio
-    cospstateIN%cloudLiq = allcld_liq ! gridcell liquid water mixing ratio
+
     ! Alternatively use the in-cloud mixing ratios to be more consistent with the radiation scheme. But then need to modify rttov_config % opts % rt_ir % grid_box_avg_cloud
 
    !  if (masterproc) write(iulog,*) 'cospstateIN%at(:,;):  ',cospstateIN%at(:,:)
