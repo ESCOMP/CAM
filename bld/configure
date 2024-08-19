@@ -2329,6 +2329,7 @@ sub write_filepath
 
     #Add the CCPP'ized subdirectories
     print $fh "$camsrcdir/src/atmos_phys/zhang_mcfarlane\n";
+    print $fh "$camsrcdir/src/atmos_phys/dry_adiabatic_adjust\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
