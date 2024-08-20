@@ -952,7 +952,7 @@ contains
     call metdata_phys_init()
 #endif
     call sslt_rebin_init()
-    call tropopause_find_init(cappa, rair, gravit)
+    call tropopause_init()
     call dadadj_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')
