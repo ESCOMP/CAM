@@ -1716,7 +1716,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call alloc_err(istat,'gw_tend','phase_speeds',ncol*band_movmtn%ngwv**2+1)
 
      ! Set up heating
-     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     if (ttend_dp_idx > 0) then
+        call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     else
+        allocate(ttend_dp(pcols,pver), stat=istat)
+        call alloc_err(istat, 'gw_tend', 'ttend_dp', pcols*pver)
+        ttend_dp = 0.0_r8
+     end if
 
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
