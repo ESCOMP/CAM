@@ -639,10 +639,13 @@ contains
 
     nullify(aero_optics)
 
-    call tropopause_findChemTrop(state, troplev)
-
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    !REMOVECAM
+    troplev(:) = 0
+    !REMOVECAM_END
+    call tropopause_findChemTrop(state, troplev(1:ncol))
 
     mass(:ncol,:)        = state%pdeldry(:ncol,:)*rga
     air_density(:ncol,:) = state%pmid(:ncol,:)/(rair*state%t(:ncol,:))

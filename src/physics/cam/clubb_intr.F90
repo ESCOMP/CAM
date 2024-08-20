@@ -2923,7 +2923,10 @@ end subroutine clubb_init_cnst
 
     call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
 
-    call tropopause_findChemTrop(state, troplev)
+    !REMOVECAM
+    troplev(:) = 0
+    !REMOVECAM_END
+    call tropopause_findChemTrop(state, troplev(1:ncol))
 
     ! Initialize EDMF outputs
     if (do_clubb_mf) then

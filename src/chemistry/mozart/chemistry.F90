@@ -1218,12 +1218,16 @@ end function chem_is_active
 !-----------------------------------------------------------------------
 ! get tropopause level
 !-----------------------------------------------------------------------
+    !REMOVECAM
+    tropLev(:) = 0
+    tropLevChem(:) = 0
+    !REMOVECAM_END
     if (.not.chem_use_chemtrop) then
-       call tropopause_find(state,tropLev)
+       call tropopause_find(state,tropLev(1:ncol))
        tropLevChem=tropLev
     else
-       call tropopause_find(state,tropLev)
-       call tropopause_findChemTrop(state, tropLevChem)
+       call tropopause_find(state,tropLev(1:ncol))
+       call tropopause_findChemTrop(state, tropLevChem(1:ncol))
     endif
 
     tim_ndx = pbuf_old_tim_idx()

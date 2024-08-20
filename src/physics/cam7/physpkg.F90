@@ -708,7 +708,7 @@ contains
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
     use physconst,          only: rair, cpair, gravit, zvir, &
-                                  karman
+                                  karman, cappa
     use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
@@ -920,7 +920,7 @@ contains
 #if ( defined OFFLINE_DYN )
     call metdata_phys_init()
 #endif
-    call tropopause_init()
+    call tropopause_init(cappa, rair, gravit)
     call dadadj_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')

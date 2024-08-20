@@ -720,7 +720,7 @@ contains
     !-----------------------------------------------------------------------
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
-    use physconst,          only: rair, cpair, gravit, zvir, karman
+    use physconst,          only: rair, cpair, gravit, zvir, karman, cappa
     use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
@@ -952,7 +952,7 @@ contains
     call metdata_phys_init()
 #endif
     call sslt_rebin_init()
-    call tropopause_init()
+    call tropopause_find_init(cappa, rair, gravit)
     call dadadj_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')

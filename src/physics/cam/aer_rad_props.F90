@@ -229,7 +229,10 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
       tau_w_f(1:ncol,:,:) = 0._r8
    end if
 
-   call tropopause_find(state, troplev)
+   !REMOVECAM
+   troplev = 0
+   !REMOVECAM_END
+   call tropopause_find(state, troplev(1:ncol))
 
    ! Contributions from bulk aerosols.
    do iaerosol = 1, numaerosols

@@ -626,7 +626,10 @@ subroutine rk_stratiform_tend( &
    end if
 
    if ( do_psrhmin ) then
-      call tropopause_find(state, troplev, primary=TROP_ALG_TWMO, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM
+      troplev(:) = 0
+      !REMOVECAM_END
+      call tropopause_find(state, troplev(1:ncol), primary=TROP_ALG_TWMO, backup=TROP_ALG_CLIMATE)
       call get_rlat_all_p(lchnk,ncol,rlat)
       dlat(:ncol) = rlat(:ncol)*rad2deg
    endif

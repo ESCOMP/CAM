@@ -318,7 +318,10 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    if (modal_strat_sulfate) then
       ! get tropopause level
-      call tropopause_find(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM
+      tropLev(:) = 0
+      !REMOVECAM_END
+      call tropopause_find(state, tropLev(1:ncol), primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
 
    h2ommr => state%q(:,:,1)
