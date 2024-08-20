@@ -66,8 +66,6 @@ module tropopause
   real(r8), pointer     :: tropp_p_loc(:,:,:)                        ! climatological tropopause pressures
 
   integer, parameter :: NOTFOUND = -1
-
-  real(r8),parameter :: ALPHA  = 0.03_r8
     
   ! physical constants
   ! These constants are set in module variables rather than as parameters 
@@ -363,7 +361,7 @@ contains
   ! for the tropopause level, temperature and pressure.
   subroutine tropopause_find(pstate, tropLev, tropP, tropT, tropZ, primary, backup)
 
-    use tropopause_find, only: tropopause_findUsing
+    use tropopause_find, only: tropopause_findWithBackup
 
     use cam_history,     only: outfld
     use time_manager,    only: get_curr_calday
@@ -373,21 +371,27 @@ contains
     type(physics_state), intent(in)     :: pstate 
     integer, optional, intent(in)       :: primary                   ! primary detection algorithm
     integer, optional, intent(in)       :: backup                    ! backup detection algorithm
-    integer,            intent(out)     :: tropLev(pcols)            ! tropopause level index   
-    real(r8), optional, intent(out)     :: tropP(pcols)              ! tropopause pressure (Pa)  
-    real(r8), optional, intent(out)     :: tropT(pcols)              ! tropopause temperature (K)
-    real(r8), optional, intent(out)     :: tropZ(pcols)              ! tropopause height (m)
+    integer,            intent(out)     :: tropLev(:)                ! tropopause level index
+    real(r8), optional, intent(out)     :: tropP(:)                  ! tropopause pressure (Pa)
+    real(r8), optional, intent(out)     :: tropT(:)                  ! tropopause temperature (K)
+    real(r8), optional, intent(out)     :: tropZ(:)                  ! tropopause height (m)
     
     ! Local Variable
     integer       :: primAlg            ! Primary algorithm  
     integer       :: backAlg            ! Backup algorithm  
 
-    integer       :: calday
+    real(r8)      :: calday
     integer       :: ncol
 
     real(r8)      :: hstobie_trop  (pcols, pver)
     real(r8)      :: hstobie_linoz (pcols, pver)
     real(r8)      :: hstobie_tropop(pcols, pver)
+
+    ! These are the "actual" out arguments for tropopause_findWithBackup, as this subroutine
+    ! no longer accepts optional arguments during the CCPP-ization process.
+    real(r8)      :: tropP_out(pstate%ncol)
+    real(r8)      :: tropT_out(pstate%ncol)
+    real(r8)      :: tropZ_out(pstate%ncol)
 
     character(len=512) :: errmsg
     integer            :: errflg
@@ -415,72 +419,52 @@ contains
     ! Get compatibility variables for CCPP-ized routine
     ncol   = pstate%ncol
     calday = get_curr_calday()
-    
-    ! Try to find the tropopause using the primary algorithm.
-    if (primAlg /= TROP_ALG_NONE) then
-      ! This does not call the CCPP-ized "run" routine directly, because the CCPP-ized "run"
-      ! routine computes multiple needed tropopauses simultaneously. For non-SIMA CAM,
-      ! we can specify the algorithm needed directly to the algorithm driver routine.
-      ! Note that the underlying routines accept data sized :ncol, so subsetting is needed here.
-      call tropopause_findUsing( &
-            ncol           = ncol, &
-            pver           = pver, &
-            lat            = pstate%lat(:ncol), &
-            pint           = pstate%pint(:ncol, :pverp), &
-            pmid           = pstate%pmid(:ncol, :pver), &
-            t              = pstate%t(:ncol, :pver), &
-            zi             = pstate%zi(:ncol, :pverp), &
-            zm             = pstate%zm(:ncol, :pver), &,
-            phis           = pstate%phis(:ncol), &,
-            calday         = calday, &
-            tropp_p_loc    = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
-            tropp_days     = days, &
-            algorithm      = primAlg, &
-            tropLev        = tropLev, &
-            tropP          = tropP, &
-            tropT          = tropT, &
-            tropZ          = tropZ, &
-            hstobie_trop   = hstobie_trop, &    ! Only used if TROP_ALG_HYBSTOB
-            hstobie_linoz  = hstobie_linoz, &   ! Only used if TROP_ALG_HYBSTOB
-            hstobie_tropop = hstobie_tropop, &  ! Only used if TROP_ALG_HYBSTOB
-            errmsg         = errmsg, &
-            errflg         = errflg &
-         )
 
-         ! hstobie diagnostics were previously written inside tropopause_find_hybridstobie,
-         ! and this behavior is no longer in the CCPP-ized routine. so if hybridstobie is used,
-         ! then replicate those outfld calls here.
-         if(primAlg == TROP_ALG_HYBSTOB) then
-            call outfld('hstobie_trop',   hstobie_trop(:ncol,:),    ncol, pstate%lchnk )
-            call outfld('hstobie_linoz',  hstobie_linoz(:ncol,:),   ncol, pstate%lchnk )
-            call outfld('hstobie_tropop', hstobie_tropop(:ncol,:),  ncol, pstate%lchnk )
-         endif
-    end if
- 
-    if ((backAlg /= TROP_ALG_NONE) .and. any(tropLev(:) == NOTFOUND)) then
-      call tropopause_findUsing( &
-         ncol        = ncol, &
-         pver        = pver, &
-         lat         = pstate%lat(:ncol), &
-         pint        = pstate%pint(:ncol, :pverp), &
-         pmid        = pstate%pmid(:ncol, :pver), &
-         t           = pstate%t(:ncol, :pver), &
-         zi          = pstate%zi(:ncol, :pverp), &
-         zm          = pstate%zm(:ncol, :pver), &,
-         phis        = pstate%phis(:ncol), &,
-         calday      = calday, &
-         tropp_p_loc = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
-         tropp_days  = days, &
-         algorithm   = backAlg, &
-         tropLev     = tropLev, &
-         tropP       = tropP, &
-         tropT       = tropT, &
-         tropZ       = tropZ, &
-         errmsg      = errmsg, &
-         errflg      = errflg &
-      )
-    end if
-    
+    ! This does not call the CCPP-ized "run" routine directly, because the CCPP-ized "run"
+    ! routine computes multiple needed tropopauses simultaneously. For non-SIMA CAM,
+    ! we can specify the algorithm needed directly to the algorithm driver routine.
+    ! Note that the underlying routines accept data sized :ncol, so subsetting to the
+    ! active columns is needed here.
+    call tropopause_findWithBackup( &
+         ncol           = ncol, &
+         pver           = pver, &
+         lat            = pstate%lat(:ncol), &
+         pint           = pstate%pint(:ncol, :pverp), &
+         pmid           = pstate%pmid(:ncol, :pver), &
+         t              = pstate%t(:ncol, :pver), &
+         zi             = pstate%zi(:ncol, :pverp), &
+         zm             = pstate%zm(:ncol, :pver), &
+         phis           = pstate%phis(:ncol), &
+         calday         = calday, &
+         tropp_p_loc    = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
+         tropp_days     = days, &
+         tropLev        = tropLev, &
+         tropP          = tropP_out, &
+         tropT          = tropT_out, &
+         tropZ          = tropZ_out, &
+         primary        = primAlg, &
+         backup         = backAlg, &
+         hstobie_trop   = hstobie_trop, &    ! Only used if TROP_ALG_HYBSTOB
+         hstobie_linoz  = hstobie_linoz, &   ! Only used if TROP_ALG_HYBSTOB
+         hstobie_tropop = hstobie_tropop, &  ! Only used if TROP_ALG_HYBSTOB
+         errmsg         = errmsg, &
+         errflg         = errflg &
+    )
+
+    ! Copy to the optional out arguments if present...
+    if (present(tropP)) tropP(:ncol) = tropP_out(:ncol)
+    if (present(tropT)) tropT(:ncol) = tropT_out(:ncol)
+    if (present(tropZ)) tropZ(:ncol) = tropZ_out(:ncol)
+
+    ! hstobie diagnostics were previously written inside tropopause_find_hybridstobie,
+    ! and this behavior is no longer in the CCPP-ized routine. so if hybridstobie is used,
+    ! then replicate those outfld calls here.
+    if(primAlg == TROP_ALG_HYBSTOB) then
+       call outfld('hstobie_trop',   hstobie_trop(:ncol,:),    ncol, pstate%lchnk )
+       call outfld('hstobie_linoz',  hstobie_linoz(:ncol,:),   ncol, pstate%lchnk )
+       call outfld('hstobie_tropop', hstobie_tropop(:ncol,:),  ncol, pstate%lchnk )
+    endif
+
     return
   end subroutine tropopause_find
   
@@ -493,43 +477,62 @@ contains
   ! eliminate false events that are sometimes detected in the cold polar stratosphere.
   !
   ! NOTE: This routine was adapted from code in chemistry.F90 and mo_gasphase_chemdr.F90.
-  subroutine tropopause_findChemTrop(pstate, tropLev, primary, backup)
+  subroutine tropopause_findChemTrop(pstate, tropLev)
+
+    use tropopause_find, only: tropopause_findWithBackup
+
+    use time_manager,    only: get_curr_calday
 
     implicit none
 
-    type(physics_state), intent(in)     :: pstate 
-    integer, optional, intent(in)       :: primary                   ! primary detection algorithm
-    integer, optional, intent(in)       :: backup                    ! backup detection algorithm
-    integer,            intent(out)     :: tropLev(pcols)            ! tropopause level index   
+    type(physics_state), intent(in)     :: pstate
+    integer,             intent(out)     :: tropLev(:)            ! tropopause level index
 
     ! Local Variable
-    real(r8), parameter :: rad2deg = 180._r8/pi                      ! radians to degrees conversion factor
-    real(r8)            :: dlats(pcols)
+    real(r8)            :: calday
     integer             :: i
     integer             :: ncol
-    integer             :: backAlg
+
+    ! These are the "actual" out arguments for tropopause_findWithBackup, as this subroutine
+    ! no longer accepts optional arguments during the CCPP-ization process.
+    real(r8)      :: tropP_out(pstate%ncol)
+    real(r8)      :: tropT_out(pstate%ncol)
+    real(r8)      :: tropZ_out(pstate%ncol)
+
+    character(len=512) :: errmsg
+    integer            :: errflg
+
+    ! Get compatibility variables for CCPP-ized routine
+    ncol   = pstate%ncol
+    calday = get_curr_calday()
 
     ! Now call the unified routine with the new CHEMTROP option, which automatically does backup.
-    call tropopause_findUsing( &
-         ncol        = ncol, &
-         pver        = pver, &
-         lat         = pstate%lat(:ncol), &
-         pint        = pstate%pint(:ncol, :pverp), &
-         pmid        = pstate%pmid(:ncol, :pver), &
-         t           = pstate%t(:ncol, :pver), &
-         zi          = pstate%zi(:ncol, :pverp), &
-         zm          = pstate%zm(:ncol, :pver), &,
-         phis        = pstate%phis(:ncol), &,
-         calday      = calday, &
-         tropp_p_loc = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
-         tropp_days  = days, &
-         algorithm   = TROP_ALG_CHEMTROP, &
-         tropLev     = tropLev, &
-         tropP       = tropP, &
-         tropT       = tropT, &
-         tropZ       = tropZ, &
-         errmsg      = errmsg, &
-         errflg      = errflg &
+    ! This does not call the CCPP-ized "run" routine directly, because the CCPP-ized "run"
+    ! routine computes multiple needed tropopauses simultaneously. For non-SIMA CAM,
+    ! we can specify the algorithm needed directly to the algorithm driver routine.
+    ! Note that the underlying routines accept data sized :ncol, so subsetting to the
+    ! active columns is needed here.
+    call tropopause_findWithBackup( &
+         ncol           = ncol, &
+         pver           = pver, &
+         lat            = pstate%lat(:ncol), &
+         pint           = pstate%pint(:ncol, :pverp), &
+         pmid           = pstate%pmid(:ncol, :pver), &
+         t              = pstate%t(:ncol, :pver), &
+         zi             = pstate%zi(:ncol, :pverp), &
+         zm             = pstate%zm(:ncol, :pver), &
+         phis           = pstate%phis(:ncol), &
+         calday         = calday, &
+         tropp_p_loc    = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
+         tropp_days     = days, &
+         tropLev        = tropLev, &
+         tropP          = tropP_out, &
+         tropT          = tropT_out, &
+         tropZ          = tropZ_out, &
+         primary        = TROP_ALG_CHEMTROP, &
+         backup         = TROP_ALG_CLIMATE, &
+         errmsg         = errmsg, &
+         errflg         = errflg &
     )
 
     return
