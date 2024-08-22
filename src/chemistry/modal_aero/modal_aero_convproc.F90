@@ -1098,8 +1098,6 @@ subroutine ma_convproc_tend(                                           &
    real(r8) tmpmata(pcnst_extd,3) ! work variables
    real(r8) xinv_ntsub           ! 1.0/ntsub
    real(r8) wup(pver)            ! working updraft velocity (m/s)
-   real(r8) zmagl(pver)          ! working height above surface (m)
-   real(r8) zkm                  ! working height above surface (km)
 
    real(r8) :: dcondt2(pcols,pver,pcnst_extd)
    real(r8) :: conu2(pcols,pver,pcnst_extd)
@@ -1293,16 +1291,6 @@ i_loop_main_aa: &
       dtsub = dt*xinv_ntsub
       courantmax = courantmax*xinv_ntsub
 
-! zmagl(k) = height above surface for middle of level k
-      zmagl(pver) = 0.0_r8
-      do k = pver, 1, -1
-         if (k < pver) then
-            zmagl(k) = zmagl(k+1) + 0.5_r8*dz
-         end if
-         dz = dp_i(k)*hund_ovr_g/rhoair_i(k)
-         zmagl(k) = zmagl(k) + 0.5_r8*dz
-      end do
-
 !  load tracer mixing ratio array, which will be updated at the end of each jtsub interation
       q_i(1:pver,1:pcnst) = q(icol,1:pver,1:pcnst)
 
@@ -1448,6 +1436,7 @@ k_loop_main_bb: &
 
 ! compute lagrangian transport time (dt_u) and updraft fractional area (fa_u)
 ! *** these must obey    dt_u(k)*mu_p_eudp(k) = dp_i(k)*fa_u(k)
+            dz = dp_i(k)*hund_ovr_g/rhoair_i(k)
             dt_u(k) = dz/wup(k)
             dt_u(k) = min( dt_u(k), dt )
             fa_u(k) = dt_u(k)*(mu_p_eudp(k)/dp_i(k))
@@ -2324,6 +2313,7 @@ end subroutine ma_convproc_tend
 
      integer :: m,n, nl,ns
 
+     nl = -1
      ! find constituent index of the largest mode for the species
      loop1: do m = 1,ntot_amode-1
         nl = lptr(mode_size_order(m))
