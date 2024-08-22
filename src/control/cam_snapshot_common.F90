@@ -48,7 +48,7 @@ private :: fill_pbuf_info
 
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
-integer, parameter :: npbuf_all = 327
+integer, parameter :: npbuf_all = 325
 
 type snapshot_type
   character(len=40)  :: ddt_string
@@ -1481,7 +1481,6 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'SH_FLXSNW              ','unset                  ',&
           'SH_FRAC                ','unset                  ',&
           'shfrc                  ','unset                  ',&
-          'smaw                   ','unset                  ',&
           'SNOW_DP                ','unset                  ',&
           'SNOW_PCW               ','unset                  ',&
           'SNOW_SED               ','unset                  ',&
@@ -1523,17 +1522,16 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'TTEND_DP               ','unset                  ',&
           'TTEND_SH               ','unset                  ',&
           'T_TTEND                ','unset                  ',&
-          'turbtype               ','unset                  ',&
           "UI                     ",'m/s                    ',&
           'UM                     ','unset                  ',&
           'UP2_nadv               ','unset                  ',&
           'UPWP                   ','m^2/s^2                ',&
           'UZM                    ','M/S                    ',&
-          'VI                     ','m/s                    '    /),                  (/2,100/))
+          'VI                     ','m/s                    ',&
+          'VM                     ','m/s                    ',&
+          'VOLC_MMR               ','unset                  '  /),                  (/2,100/))
 
      pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
-          'VM                     ','m/s                    ',&
-          'VOLC_MMR               ','unset                  ',&
           'VOLC_RAD_GEOM          ','unset                  ',&
           'VP2_nadv               ','unset                  ',&
           'VPWP                   ','m^2/s^2                ',&
@@ -1558,7 +1556,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ZM_MAXG                ','unset                  ',&
           'ZM_MD                  ','unset                  ',&
           'ZM_MU                  ','unset                  ',&
-          'ZTODT                  ','unset                  '  /),                     (/2,27/))
+          'ZTODT                  ','unset                  '  /),                     (/2,25/))
 
 ! Fields which are added with pbuf_add_field calls, but are data driven.  These are not
 ! included in the above list.  This means that these fields will not have proper units
