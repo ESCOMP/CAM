@@ -569,13 +569,13 @@ if ($cfg->get('debug')) {
 my $prescribe_aerosols = $TRUE;
 if ($simple_phys) {$prescribe_aerosols = $FALSE;}
 
-# Dust emissions scheme (all configurations for now)
+# CTSM Dust emissions scheme
+my $soil_erod_atm = $FALSE;
 add_default($nl, 'dust_emis_method');
 if ( $nl->get_value('dust_emis_method') =~ /Zender/ ) {
     add_default($nl, 'zender_soil_erod_source');
+    if ($nl->get_value('zender_soil_erod_source') =~ /atm/) {$soil_erod_atm = $TRUE;}
 }
-my $soil_erod_atm = $FALSE;
-if ($nl->get_value('dust_emis_method') eq 'atm') {$soil_erod_atm = $TRUE;}
 
 # Chemistry deposition lists
 if ( ($chem ne 'none') or ( $prog_species ) ){
@@ -1794,7 +1794,7 @@ if ( $prog_species ) {
       add_default($nl, 'ghg_chem', 'val'=>".true.");
       add_default($nl, 'bndtvg');
     }
-    if ( $prog_species =~ /DST/ and $soil_erod_atm)  {
+    if ( $prog_species =~ /DST/ and $soil_erod_atm =~ /$TRUE/io)  {
       add_default($nl, 'soil_erod_file' );
     }
 
@@ -2086,7 +2086,7 @@ if ($chem =~ /geoschem/) {
 
     # Datasets
     my @files = ( 'flbc_file' );
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
@@ -2133,7 +2133,7 @@ if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
        @files = ( 'flbc_file',
                   'xs_coef_file','xs_short_file','xs_long_file', 'rsf_file', 'exo_coldens_file', 'sulf_file' );
     }
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
@@ -2234,7 +2234,7 @@ if ($chem eq 'trop_mam3') {
 
     # Datasets
     my @files = ('soil_erod_file', 'rsf_file', 'exo_coldens_file' );
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
@@ -2741,7 +2741,7 @@ if (($chem eq 'trop_mam4') or ($chem eq 'waccm_sc_mam4') or ($chem eq 'ghg_mam4'
 
     # Datasets
     my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
@@ -2832,7 +2832,7 @@ if ($chem eq 'trop_mam7') {
 
     # Datasets
     my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
@@ -2894,7 +2894,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
                  'euvac_file', 'solar_parms_data_file',
                  'depvel_lnd_file',
                  'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file' );
-    if ($soil_erod_atm) {
+    if ($soil_erod_atm =~ /$TRUE/io) {
         @files = ( @files, 'soil_erod_file' );
     }
 
