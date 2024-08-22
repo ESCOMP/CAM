@@ -9,7 +9,7 @@
 ./xmlchange REST_OPTION=never
 
 # Note that clm cannot use initial conditions with SCAM -so will only use specified phenology
-# Only change if CLM_FORCE_COLDSTART exists and dycore is eulerian
-if [ `./xmlquery --value CAM_DYCORE` == 'eul' ] && [ `./xmlquery --value CLM_FORCE_COLDSTART |& grep -c 'ERROR'` -eq 0 ]; then
+# Only change if CLM_FORCE_COLDSTART exists.
+if [ `./xmlquery --value CLM_FORCE_COLDSTART 2>&1 | grep -c 'ERROR'` -eq 0  ]; then
 ./xmlchange CLM_FORCE_COLDSTART='on'
 fi
