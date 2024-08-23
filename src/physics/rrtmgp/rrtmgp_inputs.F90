@@ -150,11 +150,20 @@ subroutine rrtmgp_set_state( &
 
    ! Add extra layer values if needed.
    if (nlay == pverp) then
-      t_rad(:,1)      = state%t(:ncol,1)
-      pmid_rad(:,1)   = 0.5_r8 * state%pint(:ncol,1)
+      t_rad(:,1) = state%t(:ncol,1)
       ! The top reference pressure from the RRTMGP coefficients datasets is 1.005183574463 Pa
       ! Set the top of the extra layer just below that.
       pint_rad(:,1) = 1.01_r8
+
+      ! next interface down in LT will always be > 1Pa
+      ! but in MT we apply adjustment to have it be 1.02 Pa if it was too high
+      where (pint_rad(:,2) <= pint_rad(:,1)) pint_rad(:,2) = pint_rad(:,1)+0.01_r8
+      
+      ! set the highest pmid (in the "extra layer") to the midpoint (guarantees > 1Pa) 
+      pmid_rad(:,1)   = pint_rad(:,1) + 0.5_r8 * (pint_rad(:,2) - pint_rad(:,1))
+      
+      ! For case of CAM MT, also ensure pint_rad(:,2) > pint_rad(:,1) & pmid_rad(:,2) > max(pmid_rad(:,1), min_pressure)
+      where (pmid_rad(:,2) <= kdist_sw%get_press_min()) pmid_rad(:,2) = pint_rad(:,2) + 0.01_r8
    else
       ! nlay < pverp, thus the 1 Pa level is within a CAM layer.  Assuming the top interface of
       ! this layer is at a pressure < 1 Pa, we need to adjust the top of this layer so that it
