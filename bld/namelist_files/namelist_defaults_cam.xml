@@ -388,19 +388,6 @@
 
 <!-- Bulk aerosol physical properties (includes optics) -->
 
-<!-- CAM3 Bulk aerosols.  Optics for CAM-RT -->
-<bam_cam3_sul   rad="camrt">atm/cam/physprops/sul_cam3_c080918.nc</bam_cam3_sul>
-<bam_cam3_dust1 rad="camrt">atm/cam/physprops/dustv1b1_cam3_c080918.nc</bam_cam3_dust1>
-<bam_cam3_dust2 rad="camrt">atm/cam/physprops/dustv1b2_cam3_c080918.nc</bam_cam3_dust2>
-<bam_cam3_dust3 rad="camrt">atm/cam/physprops/dustv1b3_cam3_c080918.nc</bam_cam3_dust3>
-<bam_cam3_dust4 rad="camrt">atm/cam/physprops/dustv1b4_cam3_c080918.nc</bam_cam3_dust4>
-<bam_cam3_bcpho rad="camrt">atm/cam/physprops/bcpho_cam3_c080918.nc</bam_cam3_bcpho>
-<bam_cam3_bcphi rad="camrt">atm/cam/physprops/bcphi_cam3_c080918.nc</bam_cam3_bcphi>
-<bam_cam3_ocpho rad="camrt">atm/cam/physprops/ocpho_cam3_c080918.nc</bam_cam3_ocpho>
-<bam_cam3_ocphi rad="camrt">atm/cam/physprops/ocphi_cam3_c080918.nc</bam_cam3_ocphi>
-<bam_cam3_ssam  rad="camrt">atm/cam/physprops/ssam_cam3_c080918.nc</bam_cam3_ssam>
-<bam_cam3_sscm  rad="camrt">atm/cam/physprops/sscm_cam3_c080918.nc</bam_cam3_sscm>
-
 <!-- CAM-Chem bulk aerosols (different aerosol names used in prescribed and prognostic modes) -->
 <!-- Optics for CAM-RT -->
 <bam_sulf  rad="camrt">atm/cam/physprops/sulfate_camrt_c080918.nc</bam_sulf>
@@ -2925,7 +2912,6 @@
 <cldsed_ice_stokes_fac hgrid="1.9x2.5"   phys="cam4"      > 0.5D0 </cldsed_ice_stokes_fac>
 
 <!-- FV dycore -->
-<fv_fft_flt phys="cam3"  >0</fv_fft_flt>
 <fv_fft_flt              >1</fv_fft_flt>
 
 <fv_div24del2flag                                       > 2</fv_div24del2flag>
