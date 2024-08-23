@@ -793,7 +793,7 @@ subroutine radiation_tend( &
    use interpolate_data,    only: vertinterp
    use radiation_data,      only: rad_data_write
    use cloud_cover_diags,   only: cloud_cover_diags_out
-   use tropopause,          only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,          only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    use orbit,               only: zenith
 
    ! Arguments
@@ -1001,7 +1001,7 @@ subroutine radiation_tend( &
       ! Solar radiation computation
 
       if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-         call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+         call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
       endif
 
       if (dosw) then

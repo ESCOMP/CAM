@@ -438,7 +438,7 @@ subroutine rk_stratiform_tend( &
    use cldwat,           only: pcond
    use pkg_cldoptics,    only: cldefr
    use phys_control,     only: cam_physpkg_is
-   use tropopause,       only: tropopause_find, TROP_ALG_TWMO, TROP_ALG_CLIMATE
+   use tropopause,       only: tropopause_find_cam
    use phys_grid,        only: get_rlat_all_p
    use physconst,        only: pi
 
@@ -629,7 +629,7 @@ subroutine rk_stratiform_tend( &
       !REMOVECAM
       troplev(:) = 0
       !REMOVECAM_END
-      call tropopause_find(state, troplev(1:ncol), primary=TROP_ALG_TWMO, backup=TROP_ALG_CLIMATE)
+      call tropopause_find_cam(state, troplev(1:ncol))
       call get_rlat_all_p(lchnk,ncol,rlat)
       dlat(:ncol) = rlat(:ncol)*rad2deg
    endif

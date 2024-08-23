@@ -1388,7 +1388,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    use physics_buffer,  only: pbuf_col_type_index
    use subcol,          only: subcol_field_avg
-   use tropopause,      only: tropopause_find, TROP_ALG_CPP, TROP_ALG_NONE, NOTFOUND
+   use tropopause,      only: tropopause_find_cam, TROP_ALG_CPP, TROP_ALG_NONE, NOTFOUND
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
 
@@ -2169,7 +2169,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       cp_z(:) = 0._r8
       cp_t(:) = 0._r8
       !REMOVECAM_END
-      call tropopause_find(state_loc, troplev(1:ncol), primary=TROP_ALG_CPP, backup=TROP_ALG_NONE, &
+      call tropopause_find_cam(state_loc, troplev(1:ncol), primary=TROP_ALG_CPP, backup=TROP_ALG_NONE, &
                            tropZ=cp_z(1:ncol), tropT=cp_t(1:ncol))
 
       do i = 1, ncol

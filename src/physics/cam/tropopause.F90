@@ -24,7 +24,7 @@ module tropopause
 
   private
   
-  public  :: tropopause_readnl, tropopause_init, tropopause_find, tropopause_output
+  public  :: tropopause_readnl, tropopause_init, tropopause_find_cam, tropopause_output
   public  :: tropopause_findChemTrop
   public  :: TROP_ALG_NONE, TROP_ALG_ANALYTIC, TROP_ALG_CLIMATE
   public  :: TROP_ALG_STOBIE, TROP_ALG_HYBSTOB, TROP_ALG_TWMO, TROP_ALG_WMO
@@ -359,7 +359,7 @@ contains
   ! backup routine which will be tried only if the first routine fails. If the
   ! tropopause can not be identified by either routine, then a NOTFOUND is returned
   ! for the tropopause level, temperature and pressure.
-  subroutine tropopause_find(pstate, tropLev, tropP, tropT, tropZ, primary, backup)
+  subroutine tropopause_find_cam(pstate, tropLev, tropP, tropT, tropZ, primary, backup)
 
     use tropopause_find, only: tropopause_findWithBackup
 
@@ -466,7 +466,7 @@ contains
     endif
 
     return
-  end subroutine tropopause_find
+  end subroutine tropopause_find_cam
   
   ! Searches all the columns in the chunk and attempts to identify the "chemical"
   ! tropopause. This is the lapse rate tropopause, backed up by the climatology
@@ -567,7 +567,7 @@ contains
     ncol  = pstate%ncol
 
     ! Find the tropopause using the default algorithm backed by the climatology.
-    call tropopause_find(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ)
+    call tropopause_find_cam(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ)
     
     tropPdf(:,:) = 0._r8
     tropFound(:) = 0._r8
@@ -589,7 +589,7 @@ contains
     
     
     ! Find the tropopause using just the primary algorithm.
-    call tropopause_find(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, backup=TROP_ALG_NONE)
+    call tropopause_find_cam(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, backup=TROP_ALG_NONE)
 
     tropPdf(:,:) = 0._r8
     tropFound(:) = 0._r8
@@ -612,7 +612,7 @@ contains
 
 
     ! Find the tropopause using just the cold point algorithm.
-    call tropopause_find(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, primary=TROP_ALG_CPP, backup=TROP_ALG_NONE)
+    call tropopause_find_cam(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, primary=TROP_ALG_CPP, backup=TROP_ALG_NONE)
 
     tropPdf(:,:) = 0._r8
     tropFound(:) = 0._r8
@@ -640,7 +640,7 @@ contains
       do alg = 2, TROP_NALG
     
         ! Find the tropopause using just the analytic algorithm.
-        call tropopause_find(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, primary=alg, backup=TROP_ALG_NONE)
+        call tropopause_find_cam(pstate, tropLev, tropP=tropP, tropT=tropT, tropZ=tropZ, primary=alg, backup=TROP_ALG_NONE)
   
         tropPdf(:,:) = 0._r8
         tropFound(:) = 0._r8

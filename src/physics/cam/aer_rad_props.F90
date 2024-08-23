@@ -119,7 +119,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    ! Return bulk layer tau, omega, g, f for all spectral intervals.
 
    use physics_buffer, only : physics_buffer_desc
-   use tropopause,     only : tropopause_find
+   use tropopause,     only : tropopause_find_cam
    ! Arguments
    integer,             intent(in) :: list_idx      ! index of the climate or a diagnostic list
    type(physics_state), intent(in), target :: state
@@ -232,7 +232,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    !REMOVECAM
    troplev = 0
    !REMOVECAM_END
-   call tropopause_find(state, troplev(1:ncol))
+   call tropopause_find_cam(state, troplev(1:ncol))
 
    ! Contributions from bulk aerosols.
    do iaerosol = 1, numaerosols

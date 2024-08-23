@@ -368,7 +368,7 @@ contains
     use time_manager,  only: get_curr_date, get_perp_date, get_curr_calday, &
                              is_perpetual, is_first_step
     use camsrfexch,    only: cam_in_t
-    use tropopause,    only: tropopause_find
+    use tropopause,    only: tropopause_find_cam
     use physconst,     only: gravit
 
     implicit none
@@ -492,7 +492,7 @@ contains
         !REMOVECAM
         troplev(:) = 0
         !REMOVECAM_END
-        call tropopause_find(state, tropLev(1:ncol), tropZ=tropZ)
+        call tropopause_find_cam(state, tropLev(1:ncol), tropZ=tropZ)
 
         ! Loop over all of the columns.
         do icol = 1, ncol
