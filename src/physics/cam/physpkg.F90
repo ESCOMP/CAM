@@ -2914,22 +2914,7 @@ contains
     ! Diagnose the location of the tropopause and its location to the history file(s).
     call t_startf('tropopause')
 
-    if (trim(cam_take_snapshot_before) == "tropopause_output") then
-       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
-    end if
-
     call tropopause_output(state)
-
-    if ( (trim(cam_take_snapshot_after) == "tropopause_output") .and.     &
-         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-       call cam_snapshot_ptend_outfld(ptend, lchnk)
-    end if
-
-    if (trim(cam_take_snapshot_after) == "tropopause_output") then
-       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
-    end if
 
     call t_stopf('tropopause')
 
