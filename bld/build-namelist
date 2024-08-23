@@ -3734,19 +3734,15 @@ if ($cfg->get('microphys') eq 'rk') {
 }
 
 # Dust emissions tuning factor
-# If dust is prognostic ==> supply the tuning factor
-if ( length($nl->get_value('soil_erod_file'))>0 ) {
-    # check whether turbulent mountain stress parameterization is on
-    if ($nl->get_value('do_tms') =~ /$TRUE/io) {
-        add_default($nl, 'dust_emis_fact', 'tms'=>'1');
+# check whether turbulent mountain stress parameterization is on
+if ($nl->get_value('do_tms') =~ /$TRUE/io) {
+    add_default($nl, 'dust_emis_fact', 'tms'=>'1');
+} else {
+    if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
+        add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
     }
     else {
-        if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
-            add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
-        }
-        else {
-            add_default($nl, 'dust_emis_fact');
-        }
+        add_default($nl, 'dust_emis_fact');
     }
 }
 if (chem_has_species($cfg, 'NO')) {

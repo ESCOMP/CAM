@@ -32,8 +32,8 @@ module dust_model
   real(r8), allocatable :: dust_dmt_vwr(:)
   real(r8), allocatable :: dust_stk_crc(:)
 
-  real(r8)          :: dust_emis_fact = -huge(1._r8) ! tuning parameter for dust emissions
-  character(len=cl) :: soil_erod_file = 'none'       ! full pathname for soil erodibility dataset
+  real(r8)          :: dust_emis_fact = 0._r8     ! tuning parameter for dust emissions
+  character(len=cl) :: soil_erod_file = 'none'    ! full pathname for soil erodibility dataset
 
   logical :: dust_active = .false.
 
@@ -196,11 +196,13 @@ module dust_model
              cflx(i,inum) = cflx(i,idst)*x_mton
           enddo
        enddo col_loop1
-    else ! no scaling
+    else ! Leung emissions
+
        col_loop2: do i = 1,ncol
           ! rebin and adjust dust emissons.
           do m = 1,dust_nbin
              idst = dust_indices(m)
+
              cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
                   * dust_emis_sclfctr(m) / dust_emis_fact
              x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
