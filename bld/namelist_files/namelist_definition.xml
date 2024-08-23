@@ -1338,6 +1338,12 @@ Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
 </entry>
 
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="phys_ctl_nl" valid_values="" >
+JULIO - need to add comment
+Default: .false.
+</entry>
+
 <entry id="pgwv" type="integer" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Gravity wave spectrum dimension (wave numbers are from -pgwv to pgwv).
@@ -1439,6 +1445,12 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0
+</entry>
+
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+JULIO - need to add comment and appropriate default
+Default: ?????? JULIO
 </entry>
 
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"

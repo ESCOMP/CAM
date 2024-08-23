@@ -3795,6 +3795,7 @@ my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
 my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
+my $do_gw_rdg_resid  = ($nl->get_value('use_gw_rdg_resid')  =~ /$TRUE/io);
 
 my $do_divstream        = ($nl->get_value('gw_rdg_do_divstream')  =~ /$TRUE/io);
 
@@ -3870,6 +3871,10 @@ if ($do_gw_rdg_beta) {
     add_default($nl, 'gw_prndl',      'val'=>'0.5D0');
 } elsif (!$simple_phys) {
     add_default($nl, 'gw_prndl');
+}
+
+if ($do_gw_rdg_resid) {
+    add_default($nl, 'effgw_rdg_resid');
 }
 
 if ($do_gw_rdg_gamma) {

@@ -110,6 +110,11 @@ module gw_drag
   ! Beres (shallow convection).
   real(r8) :: effgw_beres_sh = unset_r8
 
+
+  ! JULIO - Please put in appropriate comment
+  logical :: use_gw_rdg_resid = false
+  read(r8) :: effgw_rdg_resid = unset_r8
+
   ! Horzontal wavelengths [m].
   real(r8), parameter :: wavelength_mid = 1.e5_r8
   real(r8), parameter :: wavelength_long = 3.e5_r8
@@ -252,7 +257,9 @@ subroutine gw_drag_readnl(nlfile)
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
-       gw_top_taper, front_gaussian_width, alpha_gw_movmtn
+       gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
+       effgw_rdg_resid
+
   !----------------------------------------------------------------------
 
   if (use_simple_phys) return
@@ -360,6 +367,11 @@ subroutine gw_drag_readnl(nlfile)
 
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
+
+  call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_resid")
+  call mpi_bcast(effgw_rdg_resid, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_resid")
 
   ! Check if fcrit2 was set.
   call shr_assert(fcrit2 /= unset_r8, &
@@ -746,7 +758,7 @@ subroutine gw_init()
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
 
-     
+
      call addfld('NIEGW',  (/ 'ilev' /) , 'I'  ,'1/s' ,  &
           'interface BV freq in GW code ' )
      call addfld('NMEGW',  (/ 'lev' /) , 'I'  ,'1/s' ,  &
@@ -778,7 +790,7 @@ subroutine gw_init()
      call addfld('TAUDIAG_RESID' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
 
-     
+
      do i = 1, 6
         write(cn, '(i1)') i
         call addfld('TAU'//cn//'RDGBETAY' , (/ 'ilev' /), 'I', 'N m-2', &
@@ -1621,7 +1633,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! area fraction of res variance
   real(r8), pointer :: isowgt(:)
 
-  
+
 
      ! Gamma ridges
   ! width of ridges.
@@ -2659,7 +2671,7 @@ subroutine gw_rdg_calc( &
       kwvrdg  = 0.001_r8 / ( 100._r8 )
       effgw   = 1.0_r8 * isowgt
       tauoro = 0._r8
-      
+
       call gw_rdg_resid_src(ncol, band_oro, p, &
          u, v, t, isovar, kwvrdg, zi, nm, &
          src_level, tend_level, tau, ubm, ubi, xv, yv,  &
