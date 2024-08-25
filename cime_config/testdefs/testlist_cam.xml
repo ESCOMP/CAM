@@ -1159,6 +1159,7 @@
   <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >002 tsc</option>
@@ -1168,6 +1169,7 @@
   <test compset="QPC6" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >Spectral Element SCAM BFB test with CAM w GNU</option>
@@ -1178,6 +1180,7 @@
   <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >004 tsc</option>
@@ -1197,6 +1200,7 @@
   <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >003 tsm</option>
@@ -1361,6 +1365,7 @@
   <test compset="QPC5" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="test_scam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -1371,6 +1376,7 @@
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="test_scam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
@@ -1484,7 +1490,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FSCAMARM97" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/scam_mpace_outfrq9s">
+  <test compset="FSCAMMPACE" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="test_scam"/>
