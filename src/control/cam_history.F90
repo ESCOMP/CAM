@@ -182,6 +182,7 @@ module cam_history
   character(len=16)  :: host                ! host name
   character(len=8)   :: inithist = 'YEARLY' ! If set to '6-HOURLY, 'DAILY', 'MONTHLY' or
   ! 'YEARLY' then write IC file
+  logical            :: write_camiop = .false. ! setup to use iop fields if true.
   logical            :: inithist_all = .false. ! Flag to indicate set of fields to be
                                           ! included on IC file
                                           !  .false.  include only required fields
@@ -317,8 +318,9 @@ module cam_history
     module procedure addfld_nd
   end interface
 
-  ! Needed by cam_diagnostics
-  public :: inithist_all
+
+  public :: inithist_all  ! Needed by cam_diagnostics
+  public :: write_camiop  ! Needed by cam_comp
 
   integer :: lcltod_start(ptapes) ! start time of day for local time averaging (sec)
   integer :: lcltod_stop(ptapes)  ! stop time of day for local time averaging, stop > start is wrap around (sec)
@@ -852,25 +854,6 @@ CONTAINS
       end do
     end if
 
-    ! Write out inithist info
-    if (masterproc) then
-      if (inithist == '6-HOURLY' ) then
-        write(iulog,*)'Initial conditions history files will be written 6-hourly.'
-      else if (inithist == 'DAILY' ) then
-        write(iulog,*)'Initial conditions history files will be written daily.'
-      else if (inithist == 'MONTHLY' ) then
-        write(iulog,*)'Initial conditions history files will be written monthly.'
-      else if (inithist == 'YEARLY' ) then
-        write(iulog,*)'Initial conditions history files will be written yearly.'
-      else if (inithist == 'CAMIOP' ) then
-        write(iulog,*)'Initial conditions history files will be written for IOP.'
-      else if (inithist == 'ENDOFRUN' ) then
-        write(iulog,*)'Initial conditions history files will be written at end of run.'
-      else
-        write(iulog,*)'Initial conditions history files will not be created'
-      end if
-    end if
-
     ! Print out column-output information
     do t = 1, size(fincllonlat, 2)
       if (ANY(len_trim(fincllonlat(:,t)) > 0)) then
@@ -916,6 +899,27 @@ CONTAINS
       interpolate_info(t)%interp_nlon = interpolate_nlon(t)
     end do
 
+    ! Write out inithist info
+    if (masterproc) then
+      if (inithist == '6-HOURLY' ) then
+        write(iulog,*)'Initial conditions history files will be written 6-hourly.'
+      else if (inithist == 'DAILY' ) then
+        write(iulog,*)'Initial conditions history files will be written daily.'
+      else if (inithist == 'MONTHLY' ) then
+        write(iulog,*)'Initial conditions history files will be written monthly.'
+      else if (inithist == 'YEARLY' ) then
+        write(iulog,*)'Initial conditions history files will be written yearly.'
+      else if (inithist == 'CAMIOP' ) then
+         write(iulog,*)'Initial conditions history files will be written for IOP.'
+      else if (inithist == 'ENDOFRUN' ) then
+        write(iulog,*)'Initial conditions history files will be written at end of run.'
+      else
+        write(iulog,*)'Initial conditions history files will not be created'
+      end if
+    end if
+    if (inithist == 'CAMIOP') then
+       write_camiop=.true.
+    end if
     ! separate namelist reader for the satellite history file
     call sat_hist_readnl(nlfile, hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape)
 

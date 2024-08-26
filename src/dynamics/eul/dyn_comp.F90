@@ -11,7 +11,7 @@ use spmd_utils,      only: masterproc, npes, mpicom, mpir8
 
 use physconst,       only: pi
 use pmgrid,          only: plon, plat, plev, plevp, plnlv, beglat, endlat
-use commap,          only: clat, clon
+use commap,          only: clat, clon, latdeg
 use dyn_grid,        only: ptimelevels
 
 
@@ -32,7 +32,7 @@ use eul_control_mod, only: dif2, hdif_order, kmnhdn, hdif_coef, divdampn, eps, &
 
 use scamMod,         only: single_column, use_camiop, have_u, have_v, &
                            have_cldliq, have_cldice, loniop, latiop, scmlat, scmlon, &
-                           qobs,tobs,scm_cambfb_mode
+                           qobs,tobs,scm_cambfb_mode,uobs,vobs,psobs
 
 use cam_pio_utils,   only: clean_iodesc_list, cam_pio_get_var
 use pio,             only: file_desc_t, pio_noerr, pio_inq_varid, pio_get_att, &
@@ -222,9 +222,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 #if (defined SPMD)
    use spmd_dyn,             only: spmdbuf
 #endif
-#if (defined BFB_CAM_SCAM_IOP )
-   use history_defaults,     only: initialize_iop_history
-#endif
    use dyn_tests_utils, only: vc_dycore, vc_moist_pressure,string_vc, vc_str_lgth
    ! Arguments are not used in this dycore, included for compatibility
    type(dyn_import_t), intent(out) :: dyn_in
@@ -258,10 +255,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_phis()
 
    if (initial_run) then
-
-#if (defined BFB_CAM_SCAM_IOP )
-      call initialize_iop_history()
-#endif
       call read_inidat()
       call clean_iodesc_list()
    end if
@@ -367,8 +360,9 @@ subroutine read_inidat()
 
    use ncdio_atm,        only: infld
 
-   use iop,              only: setiopupdate,readiopdata
-
+   use scamMod,          only: setiopupdate,setiopupdate_init,readiopdata
+   use iop,              only: iop_update_prognostics
+   use hycoef,           only: hyam, hybm, hyai, hybi, ps0
    ! Local variables
 
    integer i,c,m,n,lat                     ! indices
@@ -529,6 +523,7 @@ subroutine read_inidat()
    deallocate ( phis_tmp )
 
    if (single_column) then
+      call setiopupdate_init()
       if ( scm_cambfb_mode ) then
 
          fieldname = 'CLAT1'
@@ -537,8 +532,9 @@ subroutine read_inidat()
          if (.not. readvar) then
             call endrun('CLAT not on iop initial file')
          else
-            clat(:) = clat2d(1,:)
-            clat_p(:)=clat(:)
+            clat = clat2d(1,1)
+            clat_p(:)=clat2d(1,1)
+            latdeg(1) = clat(1)*45._r8/atan(1._r8)
          end if
 
          fieldname = 'CLON1'
@@ -582,11 +578,8 @@ subroutine read_inidat()
          loniop(1)=(mod(scmlon-2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          loniop(2)=(mod(scmlon+2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          call setiopupdate()
-         ! readiopdata will set all n1 level prognostics to iop value timestep 0
-         call readiopdata(timelevel=1)
-         ! set t3, and q3(n1) values from iop on timestep 0
-         t3(1,:,1,1) = tobs
-         q3(1,:,1,1,1) = qobs
+         call readiopdata(hyam,hybm,hyai,hybi,ps0)
+         call iop_update_prognostics(1,t3=t3,u3=u3,v3=v3,q3=q3,ps=ps)
       end if
    end if
 
@@ -608,7 +601,7 @@ subroutine set_phis()
 
    ! Local variables
    type(file_desc_t), pointer :: fh_topo
-   
+
    integer :: ierr, pio_errtype
    integer :: lonid, latid
    integer :: mlon, morec      ! lon/lat dimension lengths from topo file
@@ -628,7 +621,7 @@ subroutine set_phis()
 
    readvar = .false.
 
-   if (associated(fh_topo)) then    
+   if (associated(fh_topo)) then
 
       call pio_seterrorhandling(fh_topo, PIO_BCAST_ERROR, pio_errtype)
 

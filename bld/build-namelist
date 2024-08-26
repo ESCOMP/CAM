@@ -511,6 +511,7 @@ if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
 # Single column mode
 my $scam = $cfg->get('scam');
+my $scam_iop = $cfg->get('scam_iop');
 
 # Coupling interval
 # The default is for CAM to couple to the surface components every CAM timestep.
@@ -2516,7 +2517,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # MEGAN emissions
-    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode and !$scam){
+    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode){
         my $val = "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
                 . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
                 . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
@@ -4089,6 +4090,30 @@ if ($dyn eq 'sld') {
 # Single column model
 if ($cfg->get('scam')) {
     add_default($nl, 'iopfile');
+    add_default($nl, 'nhtfrq');
+    add_default($nl, 'mfilt');
+    add_default($nl, 'scm_use_obs_uv');
+    add_default($nl, 'scale_dry_air_mass');
+    add_default($nl, 'scm_relaxation');
+    add_default($nl, 'scm_relax_bot_p');
+    add_default($nl, 'scm_relax_top_p');
+    add_default($nl, 'scm_relax_linear');
+    add_default($nl, 'scm_relax_tau_bot_sec');
+    add_default($nl, 'scm_relax_tau_top_sec');
+    if ($chem =~ /_mam/) {
+	add_default($nl, 'scm_relax_fincl');
+    }
+    if ($scam_iop) {
+	add_default($nl, 'iopfile');
+    }
+    if ($scam_iop eq 'SAS') {
+	add_default($nl, 'use_gw_front');
+	add_default($nl, 'scm_backfill_iop_w_init');
+    }
+    if ($scam_iop eq 'twp06') {
+        add_default($nl, 'iradsw');
+        add_default($nl, 'iradlw');
+    }
 }
 
 # CAM generates IOP file for SCAM
