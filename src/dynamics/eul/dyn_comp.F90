@@ -361,8 +361,8 @@ subroutine read_inidat()
    use ncdio_atm,        only: infld
 
    use scamMod,          only: setiopupdate,setiopupdate_init,readiopdata
-   use dyn_grid,         only: hvcoord
    use iop,              only: iop_update_prognostics
+   use hycoef,           only: hyam, hybm, hyai, hybi, ps0
    ! Local variables
 
    integer i,c,m,n,lat                     ! indices
@@ -578,7 +578,7 @@ subroutine read_inidat()
          loniop(1)=(mod(scmlon-2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          loniop(2)=(mod(scmlon+2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          call setiopupdate()
-         call readiopdata(hvcoord)
+         call readiopdata(hyam,hybm,hyai,hybi,ps0)
          call iop_update_prognostics(1,t3=t3,u3=u3,v3=v3,q3=q3,ps=ps)
       end if
    end if

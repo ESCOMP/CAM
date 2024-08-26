@@ -115,7 +115,7 @@ CONTAINS
     use derivative_mod, only: gradient_sphere, ugradv_sphere
     use edge_mod,       only: edgevpack, edgevunpack
     use bndry_mod,      only: bndry_exchange
-    use hycoef,         only: hvcoord
+    use dyn_grid,       only: hvcoord
     use dimensions_mod, only: fv_nphys,ntrac
     use fvm_mapping,    only: dyn2phys_vector,dyn2phys
 

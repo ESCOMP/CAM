@@ -22,7 +22,6 @@ module stepon
   use aerosol_properties_mod, only: aerosol_properties
   use aerosol_state_mod,      only: aerosol_state
   use microp_aero,            only: aerosol_state_object, aerosol_properties_object
-  use dyn_grid,               only: hvcoord
 
   implicit none
   private
@@ -293,6 +292,7 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
   use eul_control_mod,only: eul_nsplit
   use prognostics,    only: ps
   use iop,            only: iop_update_prognostics
+  use hycoef,         only: hyam, hybm, hyai, hybi, ps0
 
   real(r8), intent(in) :: ztodt            ! twice time step unless nstep=0
   type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
@@ -312,7 +312,7 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
      ! Read IOP data and update prognostics if needed
 
      if (doiopupdate) then
-        call readiopdata(hvcoord)
+        call readiopdata(hyam, hybm, hyai, hybi, ps0)
         call iop_update_prognostics(n3,ps=ps)
      end if
   endif

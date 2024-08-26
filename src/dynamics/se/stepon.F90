@@ -19,7 +19,7 @@ use microp_aero,            only: aerosol_state_object, aerosol_properties_objec
 use scamMod,                only: use_iop, doiopupdate, single_column, &
                                   setiopupdate, readiopdata
 use se_single_column_mod,   only: scm_setfield, iop_broadcast
-use hycoef,                 only: hvcoord
+use dyn_grid,               only: hvcoord
 use time_manager,           only: get_step_size, is_first_restart_step
 use cam_history,            only: outfld, write_camiop, addfld, add_default, horiz_only
 use cam_history,            only: write_inithist, hist_fld_active, fieldname_len
@@ -141,13 +141,13 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
 
      ! If first restart step then ensure that IOP data is read
      if (is_first_restart_step()) then
-        if (masterproc) call readiopdata( hvcoord )
+        if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
         call iop_broadcast()
      endif
 
      iop_update_phase1 = .true.
      if ((is_first_restart_step() .or. doiopupdate) .and. masterproc) then
-        call readiopdata(hvcoord)
+        call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
      endif
      call iop_broadcast()
 
@@ -256,7 +256,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
       ! Update IOP properties e.g. omega, divT, divQ
       iop_update_phase1 = .false.
       if (doiopupdate) then
-         if (masterproc) call readiopdata(hvcoord)
+         if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
          call iop_broadcast()
          call scm_setfield(dyn_out%elem,iop_update_phase1)
       endif

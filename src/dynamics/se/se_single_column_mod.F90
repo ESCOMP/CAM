@@ -324,7 +324,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       !   based on the input scm latitude and longitude
       !----------------------------------------------------------
 
-      use shr_const_mod,          only: pi => SHR_CONST_PI
+      use shr_const_mod,          only: SHR_CONST_PI
       use cam_abortutils,         only: endrun
 
       type(element_t), intent(in) :: elem(:)
@@ -334,7 +334,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       integer :: i, j, indx, ie
       real(r8) :: scmposlon, minpoint, testlat, testlon, testval
       integer :: ierr
-      real(r8), parameter :: rad2deg = 180.0_r8 / pi
+      real(r8), parameter :: rad2deg = 180.0_r8 / SHR_CONST_PI
       character(len=*), parameter :: sub = 'scm_dyn_grid_indicies'
 
       ie_scm=0

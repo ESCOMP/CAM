@@ -11,7 +11,7 @@ use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname,
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw
-use dyn_grid,               only: ini_grid_name, timelevel, edgebuf, &
+use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf, &
                                   ini_grid_hdim_name
 
 use cam_grid_support,       only: cam_grid_id, cam_grid_get_gcid, &
@@ -48,7 +48,7 @@ use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
 use se_single_column_mod,   only: scm_setinitial
 use scamMod,                only: single_column, readiopdata, use_iop, setiopupdate_init
-use hycoef,                 only: hyai, hybi, ps0, hvcoord
+use hycoef,                 only: hyai, hybi, ps0
 
 implicit none
 private
@@ -753,7 +753,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       call read_inidat(dyn_in)
       if (use_iop .and. masterproc) then
          call setiopupdate_init()
-         call readiopdata( hvcoord )
+         call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0 )
          call scm_setinitial(dyn_in%elem)
       end if
       call clean_iodesc_list()
@@ -1195,6 +1195,7 @@ end subroutine dyn_final
 subroutine read_inidat(dyn_in)
    use air_composition,     only: thermodynamic_active_species_num, dry_air_species_num
    use shr_sys_mod,         only: shr_sys_flush
+   use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
 
    use element_mod,         only: timelevels

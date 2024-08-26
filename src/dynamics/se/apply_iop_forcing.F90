@@ -71,7 +71,7 @@ subroutine advance_iop_forcing(scm_dt, ps_in, &                   ! In
   character(len=*), parameter :: subname = 'advance_iop_forcing'
 
   ! Get vertical level profiles
-  call plevs0(plev    ,ps_in   ,pintm1 ,pmidm1 ,pdelm1, hvcoord)
+  call plevs0(plev, ps_in, hvcoord%ps0, hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, pintm1 ,pmidm1 ,pdelm1)
 
   !  Advance T and Q due to large scale forcing
   if (use_3dfrc) then
@@ -173,7 +173,7 @@ subroutine advance_iop_nudging(ztodt, ps_in,                        &      ! In
 
   if ( .not. scm_relaxation) return
 
-  call plevs0(plev    ,ps_in   ,pintm1 ,pmidm1 ,pdelm1, hvcoord)
+  call plevs0(plev, ps_in, hvcoord%ps0, hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, pintm1 ,pmidm1 ,pdelm1)
 
   relax_T(:)             = 0._r8
   relax_u(:)             = 0._r8

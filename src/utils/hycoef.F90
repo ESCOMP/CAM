@@ -10,7 +10,6 @@ use pio,              only: file_desc_t, var_desc_t, &
                             pio_double, pio_def_dim, pio_def_var, &
                             pio_put_var, pio_get_var, &
                             pio_seterrorhandling, PIO_BCAST_ERROR, PIO_NOERR
-use hybvcoord_mod,    only: hvcoord_t
 
 implicit none
 private
@@ -52,8 +51,6 @@ real(r8), target :: ailev(plevp)  ! interface level values for 'ilev' coord
 integer, public :: nprlev       ! number of pure pressure levels at top
 
 public hycoef_init
-
-type (hvcoord_t),public :: hvcoord
 
 type(var_desc_t) :: hyam_desc, hyai_desc, hybm_desc, hybi_desc, p0_desc
 public init_restart_hycoef, write_restart_hycoef
@@ -247,14 +244,6 @@ subroutine hycoef_init(file, psdry)
          standard_name='atmosphere_hybrid_sigma_pressure_coordinate',        &
          formula_terms=formula_terms)
    end if
-
-   ! Initialize the hvcoord coordinate
-   hvcoord%hyam = hyam
-   hvcoord%hyai = hyai
-   hvcoord%hybm = hybm
-   hvcoord%hybi = hybi
-   hvcoord%hybd = hybd
-   hvcoord%ps0  = ps0
 
    if (masterproc) then
       write(iulog,'(a)')' Layer Locations (*1000) '

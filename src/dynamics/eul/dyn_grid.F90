@@ -17,7 +17,6 @@ use cam_initfiles,    only: initial_file_get_id
 
 use cam_abortutils,   only: endrun
 use cam_logfile,      only: iulog
-use hybvcoord_mod,    only: hvcoord_t
 use shr_const_mod,    only: SHR_CONST_PI, SHR_CONST_REARTH
 
 #if (defined SPMD)
@@ -49,7 +48,6 @@ public :: &
                               ! from a given global column index
    get_horiz_grid_d,         &! horizontal grid coordinates
    get_horiz_grid_dim_d,     &! horizontal dimensions of dynamics grid
-   hvcoord,                  &! vertical coordinate parameters
    physgrid_copy_attributes_d
 
 ! The Eulerian dynamics grids
@@ -60,8 +58,6 @@ integer, parameter, public :: ptimelevels = 3  ! number of time levels in the dy
 real(r8), parameter :: rad2deg = 180._r8/SHR_CONST_PI
 
 integer :: ngcols_d = 0     ! number of dynamics columns
-
-type (hvcoord_t)           :: hvcoord
 
 !========================================================================================
 contains
@@ -130,15 +126,6 @@ subroutine dyn_grid_init
 
    ! Initialize hybrid coordinate arrays
    call hycoef_init(fh_ini)
-
-   hvcoord%hyam = hyam
-   hvcoord%hyai = hyai
-   hvcoord%hybm = hybm
-   hvcoord%hybi = hybi
-   hvcoord%ps0  = ps0
-   do k = 1, plev
-      hvcoord%hybd(k) = hvcoord%hybi(k+1) - hvcoord%hybi(k)
-   end do
 
    ! Initialize reference pressures
    call ref_pres_init(hypi, hypm, nprlev)

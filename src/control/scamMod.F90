@@ -388,8 +388,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
   end if
 
 end subroutine scam_readnl
-
-subroutine readiopdata(hvcoord)
+subroutine readiopdata(hyam, hybm, hyai, hybi, ps0)
 !-----------------------------------------------------------------------
 !
 !     Open and read netCDF file containing initial IOP  conditions
@@ -399,7 +398,6 @@ subroutine readiopdata(hvcoord)
 !     Written by J.  Truesdale    August, 1996, revised January, 1998
 !
 !-----------------------------------------------------------------------
-        use hybvcoord_mod,       only: hvcoord_t
         use getinterpnetcdfdata, only: getinterpncdata
         use string_utils,        only: to_lower
         use wrap_nf,             only: wrap_inq_dimid,wrap_get_vara_realx
@@ -410,7 +408,7 @@ subroutine readiopdata(hvcoord)
 !
 !------------------------------Input Arguments--------------------------
 !
-type (hvcoord_t), intent(in) :: hvcoord
+   real(r8),intent(in) :: hyam(plev),hybm(plev),hyai(plevp),hybi(plevp),ps0
 !
 !------------------------------Locals-----------------------------------
 !
@@ -430,7 +428,8 @@ type (hvcoord_t), intent(in) :: hvcoord
    logical :: have_cnst(pcnst)
    real(r8) :: dummy
    real(r8) :: srf(1)                  ! value at surface
-   real(r8) :: hyam(plev),hybm(plev)
+   real(r8) :: hyamiop(plev)  ! a hybrid coef midpoint
+   real(r8) :: hybmiop(plev)  ! b hybrid coef midpoint
    real(r8) :: pmid(plev)  ! pressure at model levels (time n)
    real(r8) :: pint(plevp) ! pressure at model interfaces (n  )
    real(r8) :: pdel(plev)  ! pdel(k)   = pint  (k+1)-pint  (k)
@@ -550,11 +549,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    status =  nf90_inq_varid( ncid, 'hyam', varid   )
    if ( status == nf90_noerr .and. have_ps) then
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
-      status = nf90_get_var(ncid, varid, hyam, strt4)
+      status = nf90_get_var(ncid, varid, hyamiop, strt4)
       status =  nf90_inq_varid( ncid, 'hybm', varid   )
-      status = nf90_get_var(ncid, varid, hybm, strt4)
+      status = nf90_get_var(ncid, varid, hybmiop, strt4)
       do i = 1, nlev
-         dplevs( i ) = 1000.0_r8 * hyam( i ) + psobs * hybm( i ) / 100.0_r8
+         dplevs( i ) = 1000.0_r8 * hyamiop( i ) + psobs * hybmiop( i ) / 100.0_r8
       end do
    endif
 
@@ -643,11 +642,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    if ( use_camiop ) then
      call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,'t', have_tsair, &
           tsair(1), fill_ends, scm_crm_mode, &
-          dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm,tobs, status )
+          dplevs, nlev,psobs, hyam, hybm,tobs, status )
    else
      call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,'T', have_tsair, &
           tsair(1), fill_ends, scm_crm_mode, &
-          dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, tobs, status )
+          dplevs, nlev,psobs, hyam, hybm, tobs, status )
    endif
    if ( status /= nf90_noerr ) then
       have_t = .false.
@@ -695,7 +694,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    qobs(:)= 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'q', have_srf, &
       srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, qobs, status )
+      dplevs, nlev,psobs, hyam, hybm, qobs, status )
    if ( status /= nf90_noerr ) then
       have_q = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable q on IOP file'
@@ -710,7 +709,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    cldobs = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'cld', .false., &
-      dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldobs, status )
+      dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hyam, hybm, cldobs, status )
    if ( status /= nf90_noerr ) then
       have_cld = .false.
    else
@@ -719,7 +718,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    clwpobs = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'clwp', .false., &
-      dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, clwpobs, status )
+      dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hyam, hybm, clwpobs, status )
    if ( status /= nf90_noerr ) then
       have_clwp = .false.
    else
@@ -742,7 +741,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
         'divq', have_srf, srf(1), fill_ends, scm_crm_mode, &
-        dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq(:,1), status )
+        dplevs, nlev,psobs, hyam, hybm, divq(:,1), status )
    if ( status /= nf90_noerr ) then
       have_divq = .false.
    else
@@ -765,7 +764,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivq', &
         have_srf, srf(1), fill_ends, scm_crm_mode, &
-        dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivq(:,1), status )
+        dplevs, nlev,psobs, hyam, hybm, vertdivq(:,1), status )
    if ( status /= nf90_noerr ) then
       have_vertdivq = .false.
    else
@@ -788,7 +787,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    do m = 1, pcnst
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dten', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq3d(:,m), status )
+      dplevs, nlev,psobs, hyam, hybm, divq3d(:,m), status )
       write(iulog,*)'checking ',trim(cnst_name(m))//'_dten',status
       if ( status /= nf90_noerr ) then
          have_cnst(m) = .false.
@@ -801,7 +800,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       coldata = 0._r8
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dqfx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, coldata, status )
+      dplevs, nlev,psobs, hyam, hybm, coldata, status )
       if ( STATUS /= NF90_NOERR ) then
          dqfxcam(1,:,m)=0._r8
       else
@@ -811,7 +810,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       tmpdata = 0._r8
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_alph', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, tmpdata, status )
+      dplevs, nlev,psobs, hyam, hybm, tmpdata, status )
       if ( status /= nf90_noerr ) then
          alphacam(m)=0._r8
       else
@@ -827,7 +826,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_srf = .false.
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'NUMLIQ', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
-           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, numliqobs, status )
+           dplevs, nlev,psobs, hyam, hybm, numliqobs, status )
       if ( status /= nf90_noerr ) then
          have_numliq = .false.
       else
@@ -844,7 +843,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    if ( icldliq > 0 ) then
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'CLDLIQ', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
-           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldliqobs, status )
+           dplevs, nlev,psobs, hyam, hybm, cldliqobs, status )
       if ( status /= nf90_noerr ) then
          have_cldliq = .false.
       else
@@ -859,7 +858,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    if ( icldice > 0 ) then
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'CLDICE', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
-           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldiceobs, status )
+           dplevs, nlev,psobs, hyam, hybm, cldiceobs, status )
       if ( status /= nf90_noerr ) then
          have_cldice = .false.
       else
@@ -875,7 +874,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_srf = .false.
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'NUMICE', &
          have_srf, srf(1), fill_ends, scm_crm_mode, &
-         dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, numiceobs, status )
+         dplevs, nlev,psobs, hyam, hybm, numiceobs, status )
       if ( status /= nf90_noerr ) then
          have_numice = .false.
       else
@@ -900,7 +899,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    divu = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divu', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divu, status )
+      dplevs, nlev,psobs, hyam, hybm, divu, status )
    if ( status /= nf90_noerr ) then
       have_divu = .false.
    else
@@ -921,7 +920,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    divv = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divv', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divv, status )
+      dplevs, nlev,psobs, hyam, hybm, divv, status )
    if ( status /= nf90_noerr ) then
       have_divv = .false.
    else
@@ -942,7 +941,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    divt=0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'divT', have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt, status )
+      dplevs, nlev,psobs, hyam, hybm, divt, status )
    if ( status /= nf90_noerr ) then
       have_divt = .false.
    else
@@ -964,11 +963,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    vertdivt=0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivTx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
+      dplevs, nlev,psobs, hyam, hybm, vertdivt, status )
    if ( status /= nf90_noerr ) then
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivT', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
-           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
+           dplevs, nlev,psobs, hyam, hybm, vertdivt, status )
       if ( status /= nf90_noerr ) then
          have_vertdivt = .false.
       else
@@ -994,7 +993,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divT3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt3d, status )
+      dplevs, nlev,psobs, hyam, hybm, divt3d, status )
       write(iulog,*)'checking divT3d:',status,nf90_noerr
    if ( status /= nf90_noerr ) then
       have_divt3d = .false.
@@ -1006,7 +1005,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divU3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divu3d, status )
+      dplevs, nlev,psobs, hyam, hybm, divu3d, status )
    if ( status /= nf90_noerr ) then
       have_divu3d = .false.
    else
@@ -1017,7 +1016,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divV3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divv3d, status )
+      dplevs, nlev,psobs, hyam, hybm, divv3d, status )
    if ( status /= nf90_noerr ) then
       have_divv3d = .false.
    else
@@ -1040,7 +1039,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'omega', .true., ptend, fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, wfld, status )
+      dplevs, nlev,psobs, hyam, hybm, wfld, status )
    if ( status /= nf90_noerr ) then
       have_omega = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable omega on IOP'
@@ -1052,7 +1051,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    else
       have_omega = .true.
    endif
-   call plevs0(plev    ,psobs   ,pint,pmid ,pdel, hvcoord)
+   call plevs0(plev, psobs, ps0, hyam, hybm, hyai, hybi, pint, pmid ,pdel)
 !
 ! Build interface vector for the specified omega profile
 ! (weighted average in pressure of specified level values)
@@ -1077,7 +1076,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'u', have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, uobs, status )
+      dplevs, nlev,psobs, hyam, hybm, uobs, status )
    if ( status /= nf90_noerr ) then
       have_u = .false.
    else
@@ -1097,7 +1096,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'v', have_srf, srf(1), fill_ends, scm_crm_mode, &
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vobs, status )
+      dplevs, nlev,psobs, hyam, hybm, vobs, status )
    if ( status /= nf90_noerr ) then
       have_v = .false.
    else
@@ -1117,7 +1116,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'Q1', &
       .false., dummy, fill_ends, scm_crm_mode, & ! datasets don't contain Q1 at surface
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, q1obs, status )
+      dplevs, nlev,psobs, hyam, hybm, q1obs, status )
    if ( status /= nf90_noerr ) then
       have_q1 = .false.
    else
@@ -1128,7 +1127,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'Q2', &
       .false., dummy, fill_ends, scm_crm_mode, & ! datasets don't contain Q2 at surface
-      dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, q1obs, status )
+      dplevs, nlev,psobs, hyam, hybm, q1obs, status )
    if ( status /= nf90_noerr ) then
       have_q2 = .false.
    else
@@ -1306,7 +1305,7 @@ end subroutine setiopupdate
 
 !===============================================================================
 
-subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
+subroutine plevs0 (nver, ps, ps0, hyam, hybm, hyai, hybi, pint    ,pmid    ,pdel)
 
 !-----------------------------------------------------------------------
 !
@@ -1317,18 +1316,20 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 ! Author: B. Boville
 !
 !-----------------------------------------------------------------------
-
-  use hybvcoord_mod, only : hvcoord_t
   implicit none
 
 
 !-----------------------------------------------------------------------
   integer , intent(in)  :: nver         ! vertical dimension
   real(r8), intent(in)  :: ps           ! Surface pressure (pascals)
+  real(r8), intent(in)  :: ps0          ! reference pressure (pascals)
+  real(r8), intent(in)  :: hyam(plev)   ! hybrid midpoint coef
+  real(r8), intent(in)  :: hybm(plev)   ! hybrid midpoint coef
+  real(r8), intent(in)  :: hyai(plevp)  ! hybrid interface coef
+  real(r8), intent(in)  :: hybi(plevp)  ! hybrid interface coef
   real(r8), intent(out) :: pint(nver+1) ! Pressure at model interfaces
   real(r8), intent(out) :: pmid(nver)   ! Pressure at model levels
   real(r8), intent(out) :: pdel(nver)   ! Layer thickness (pint(k+1) - pint(k))
-  type (hvcoord_t), intent(in) :: hvcoord
 !-----------------------------------------------------------------------
 
 !---------------------------Local workspace-----------------------------
@@ -1339,14 +1340,14 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 !
 !$OMP PARALLEL DO PRIVATE (K)
   do k=1,nver+1
-     pint(k) = hvcoord%hyai(k)*hvcoord%ps0 + hvcoord%hybi(k)*ps
+     pint(k) = hyai(k)*ps0 + hybi(k)*ps
   end do
 !
 ! Set midpoint pressures and layer thicknesses
 !
 !$OMP PARALLEL DO PRIVATE (K)
   do k=1,nver
-     pmid(k) = hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps
+     pmid(k) = hyam(k)*ps0 + hybm(k)*ps
      pdel(k) = pint(k+1) - pint(k)
   end do
 
