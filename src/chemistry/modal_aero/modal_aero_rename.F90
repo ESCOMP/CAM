@@ -183,9 +183,6 @@ contains
     real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
     real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
     ! tendencies for "other" continuous growth process
-    ! currently in cam3
-    !     dqdt is from gas (h2so4, nh3) condensation
-    !     dqdt_other is from aqchem and soa
     ! *** NOTE ncol and pcnstxx dimensions
     real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
     logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which
@@ -286,9 +283,6 @@ contains
    real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
    real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
                               ! tendencies for "other" continuous growth process
-                              ! currently in cam3
-                              !     dqdt is from gas (h2so4, nh3) condensation
-                              !     dqdt_other is from aqchem and soa
                               ! *** NOTE ncol and pcnstxx dimensions
    real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
    logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which
@@ -878,9 +872,6 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
    real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
    real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
                               ! tendencies for "other" continuous growth process
-                              ! currently in cam3
-                              !     dqdt is from gas (h2so4, nh3) condensation
-                              !     dqdt_other is from aqchem and soa
                               ! *** NOTE ncol and pcnstxx dimensions
    real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
    logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which

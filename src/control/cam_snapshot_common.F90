@@ -48,7 +48,7 @@ private :: fill_pbuf_info
 
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
-integer, parameter :: npbuf_all = 325
+integer, parameter :: npbuf_all = 314
 
 type snapshot_type
   character(len=40)  :: ddt_string
@@ -1240,17 +1240,6 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'AurIPRateSum           ','unset                  ',&
           'awk_PBL                ','unset                  ',&
           'bprod                  ','unset                  ',&
-          'cam3_bcphi             ','unset                  ',&
-          'cam3_bcpho             ','unset                  ',&
-          'cam3_dust1             ','unset                  ',&
-          'cam3_dust2             ','unset                  ',&
-          'cam3_dust3             ','unset                  ',&
-          'cam3_dust4             ','unset                  ',&
-          'cam3_ocphi             ','unset                  ',&
-          'cam3_ocpho             ','unset                  ',&
-          'cam3_ssam              ','unset                  ',&
-          'cam3_sscm              ','unset                  ',&
-          'cam3_sul               ','unset                  ',&
           'CC_ni                  ','unset                  ',&
           'CC_nl                  ','unset                  ',&
           'CC_qi                  ','unset                  ',&
@@ -1325,9 +1314,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'delta_thl_PBL          ','unset                  ',&
           'delta_tr_PBL           ','unset                  ',&
           'delta_u_PBL            ','unset                  ',&
-          'delta_v_PBL            ','unset                  '/) ,  (/2,100/))
-
-     pbuf_all(1:2,101:200) = reshape ( (/  &
+          'delta_v_PBL            ','unset                  ',&
           'DES                    ','unset                  ',&
           'DGNUM                  ','unset                  ',&
           'DGNUMWET               ','unset                  ',&
@@ -1338,7 +1325,9 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'DP_CLDICE              ','unset                  ',&
           'DP_CLDLIQ              ','unset                  ',&
           'DP_FLXPRC              ','unset                  ',&
-          'DP_FLXSNW              ','unset                  ',&
+          'DP_FLXSNW              ','unset                  '  /),  (/2,100/))
+
+     pbuf_all(1:2,101:200) = reshape ( (/  &
           'DP_FRAC                ','unset                  ',&
           'dragblj                ','1/s                    ',&
           'DRYMASS                ','unset                  ',&
@@ -1427,9 +1416,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QCWAT                  ','unset                  ',&
           'QFLX                   ','kg/m2/s                ',&
           'QFLX_RES               ','unset                  ',&
-          'QINI                   ','unset                  '  /),    (/2,100/))
-
-     pbuf_all(1:2,201:300) = reshape ( (/  &
+          'QINI                   ','unset                  ',&
           'qir_det                ','kg/kg                  ',&
           'QIST                   ','unset                  ',&
           'qlr_det                ','kg/kg                  ',&
@@ -1440,7 +1427,9 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QRL                    ','K/s                    ',&
           'qrlin                  ','unset                  ',&
           'QRS                    ','K/s                    ',&
-          'qrsin                  ','unset                  ',&
+          'qrsin                  ','unset                  '  /),    (/2,100/))
+
+     pbuf_all(1:2,201:300) = reshape ( (/  &
           'QSATFAC                ','-                      ',&
           'QSNOW                  ','kg/kg                  ',&
           'QTeAur                 ','unset                  ',&
@@ -1529,9 +1518,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'UZM                    ','M/S                    ',&
           'VI                     ','m/s                    ',&
           'VM                     ','m/s                    ',&
-          'VOLC_MMR               ','unset                  '  /),                  (/2,100/))
-
-     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
+          'VOLC_MMR               ','unset                  ',&
           'VOLC_RAD_GEOM          ','unset                  ',&
           'VP2_nadv               ','unset                  ',&
           'VPWP                   ','m^2/s^2                ',&
@@ -1542,7 +1529,9 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'wprtp_mc_zt            ','unset                  ',&
           'WPRTP_nadv             ','unset                  ',&
           'wpthlp_mc_zt           ','unset                  ',&
-          'WPTHLP_nadv            ','unset                  ',&
+          'WPTHLP_nadv            ','unset                  '  /),                  (/2,100/))
+
+     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
           'WPTHVP                 ','unset                  ',&
           'WSEDL                  ','unset                  ',&
           'wstarPBL               ','unset                  ',&
@@ -1556,7 +1545,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ZM_MAXG                ','unset                  ',&
           'ZM_MD                  ','unset                  ',&
           'ZM_MU                  ','unset                  ',&
-          'ZTODT                  ','unset                  '  /),                     (/2,25/))
+          'ZTODT                  ','unset                  '  /),                     (/2,14/))
 
 ! Fields which are added with pbuf_add_field calls, but are data driven.  These are not
 ! included in the above list.  This means that these fields will not have proper units

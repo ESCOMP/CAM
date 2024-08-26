@@ -130,8 +130,6 @@ contains
     use tracers,            only: tracers_register
     use check_energy,       only: check_energy_register
     use carma_intr,         only: carma_register
-    use cam3_aero_data,     only: cam3_aero_data_on, cam3_aero_data_register
-    use cam3_ozone_data,    only: cam3_ozone_data_on, cam3_ozone_data_register
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
@@ -281,20 +279,12 @@ contains
        call co2_register()
 
        ! register data model ozone with pbuf
-       if (cam3_ozone_data_on) then
-          call cam3_ozone_data_register()
-       end if
        call prescribed_volcaero_register()
        call prescribed_strataero_register()
        call prescribed_ozone_register()
        call prescribed_aero_register()
        call prescribed_ghg_register()
        call sslt_rebin_register
-
-       ! CAM3 prescribed aerosols
-       if (cam3_aero_data_on) then
-          call cam3_aero_data_register()
-       end if
 
        ! register various data model gasses with pbuf
        call ghg_data_register()
@@ -743,8 +733,6 @@ contains
     use convect_shallow,    only: convect_shallow_init
     use cam_diagnostics,    only: diag_init
     use gw_drag,            only: gw_init
-    use cam3_aero_data,     only: cam3_aero_data_on, cam3_aero_data_init
-    use cam3_ozone_data,    only: cam3_ozone_data_on, cam3_ozone_data_init
     use radheat,            only: radheat_init
     use radiation,          only: radiation_init
     use cloud_diagnostics,  only: cloud_diagnostics_init
@@ -859,9 +847,6 @@ contains
     ! solar irradiance data modules
     call solar_data_init()
 
-    ! CAM3 prescribed aerosols
-    if (cam3_aero_data_on) call cam3_aero_data_init(phys_state)
-
     ! Initialize rad constituents and their properties
     call rad_cnst_init()
 
@@ -891,9 +876,6 @@ contains
     if (co2_transport()) then
        call co2_init()
     end if
-
-    ! CAM3 prescribed ozone
-    if (cam3_ozone_data_on) call cam3_ozone_data_init(phys_state)
 
     call gw_init()
 
@@ -2942,8 +2924,6 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use physics_buffer,      only: physics_buffer_desc
   use carma_intr,          only: carma_timestep_init
   use ghg_data,            only: ghg_data_timestep_init
-  use cam3_aero_data,      only: cam3_aero_data_on, cam3_aero_data_timestep_init
-  use cam3_ozone_data,     only: cam3_ozone_data_on, cam3_ozone_data_timestep_init
   use aoa_tracers,         only: aoa_tracers_timestep_init
   use vertical_diffusion,  only: vertical_diffusion_ts_init
   use radheat,             only: radheat_timestep_init
@@ -3006,12 +2986,6 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 
   ! prescribed aerosol deposition fluxes
   call aerodep_flx_adv(phys_state, pbuf2d, cam_out)
-
-  ! CAM3 prescribed aerosol masses
-  if (cam3_aero_data_on) call cam3_aero_data_timestep_init(pbuf2d,  phys_state)
-
-  ! CAM3 prescribed ozone data
-  if (cam3_ozone_data_on) call cam3_ozone_data_timestep_init(pbuf2d,  phys_state)
 
   ! Time interpolate data models of gasses in pbuf2d
   call ghg_data_timestep_init(pbuf2d,  phys_state)
