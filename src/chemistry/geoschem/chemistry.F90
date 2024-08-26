@@ -4692,7 +4692,7 @@ contains
                                        t*(-1.13520398_r8 +   &
       t*(1.48851587_r8 + t*(-0.82215223_r8 + t*0.17087277_r8 )))))))))
     erfc_dbl = t * exp(dum)
-    if (x .lt. 0.0_f8) erfc_dbl = 2.0_r8 - erfc_dbl
+    if (x .lt. 0.0_r8) erfc_dbl = 2.0_r8 - erfc_dbl
     erfc_num_recipes = erfc_dbl
     return
   end function erfc_num_recipes
