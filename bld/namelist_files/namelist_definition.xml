@@ -1480,12 +1480,6 @@ Full pathname of boundary dataset for meso-gamma ridges.
 Default: set by build-namelist.
 </entry>
 
-<entry id="fcrit2" type="real"  category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Critical Froude number squared (used only for orographic waves).
-Default: set by build-namelist.
-</entry>
-
 <entry id="gw_oro_south_fac" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Factor to multiply tau by, for orographic waves in the southern hemisphere.

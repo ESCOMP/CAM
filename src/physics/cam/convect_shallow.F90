@@ -249,7 +249,7 @@
       call add_default( 'CMFDICE  ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDT   ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDQ   ', history_budget_histfile_num, ' ' )
-      if( cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') ) then
+      if( cam_physpkg_is('cam4') ) then
          call add_default( 'EVAPQCM  ', history_budget_histfile_num, ' ' )
          call add_default( 'EVAPTCM  ', history_budget_histfile_num, ' ' )
       end if

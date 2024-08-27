@@ -1,7 +1,7 @@
 module radconstants
 
 ! This module contains constants that are specific to the radiative transfer
-! code used in the CAM3 model.
+! code used in the CAM4 model.
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use cam_abortutils, only: endrun
