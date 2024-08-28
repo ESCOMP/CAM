@@ -383,15 +383,19 @@ module aerosol_properties_mod
      end function aero_bin_name
 
      !------------------------------------------------------------------------------
-     ! returns dust deposition fluxes rebinned to specified diameter limits
+     ! returns bulk deposition fluxes of the specified species type
+     ! rebinned to specified diameter limits
      !------------------------------------------------------------------------------
-     subroutine aero_rebin_bulk_fluxes(self, bulk_type, dep_fluxes, diam_edges, bulk_fluxes)
+     subroutine aero_rebin_bulk_fluxes(self, bulk_type, dep_fluxes, diam_edges, bulk_fluxes, &
+                                       error_code, error_string)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
-       character(len=*),intent(in) :: bulk_type ! aerosol type to rebin
-       real(r8), intent(in) :: dep_fluxes(:) ! kg/m2
-       real(r8), intent(in) :: diam_edges(:) ! meters
-       real(r8), intent(out) :: bulk_fluxes(:) ! kg/m2
+       character(len=*),intent(in) :: bulk_type       ! aerosol type to rebin
+       real(r8), intent(in) :: dep_fluxes(:)          ! kg/m2
+       real(r8), intent(in) :: diam_edges(:)          ! meters
+       real(r8), intent(out) :: bulk_fluxes(:)        ! kg/m2
+       integer,  intent(out) :: error_code            ! error code (0 if no error)
+       character(len=*), intent(out) :: error_string  ! error string
 
      end subroutine aero_rebin_bulk_fluxes
 

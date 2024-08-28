@@ -7,8 +7,10 @@ module aero_deposition_cam
 !------------------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: cl => shr_kind_cl
   use constituents, only: cnst_get_ind, pcnst
   use camsrfexch,   only: cam_out_t
+  use cam_abortutils,only: endrun
   use aerosol_properties_mod, only: aero_name_len
   use aerosol_properties_mod, only: aerosol_properties
 
@@ -140,6 +142,8 @@ contains
    real(r8) :: dep_fluxes(nele_tot)
    real(r8) :: dst_fluxes(n_bulk_dst_bins)
    character(len=aero_name_len) :: specname, name_c
+   integer :: errstat
+   character(len=cl) :: errstr
 
    ncol = cam_out%ncol
 
@@ -156,21 +160,25 @@ contains
    !        srf models want positive definite fluxes.
    do i = 1, ncol
 
-      ! black carbon fluxes
+      ! hydrophilic black carbon fluxes
       do ispec=1,bcphi_cnt
          cam_out%bcphiwet(i) = cam_out%bcphiwet(i) &
                              - (aerdepwetis(i,bcphi_ndx(ispec))+aerdepwetcw(i,bcphi_ndx(ispec)))
       enddo
+
+      ! hydrophobic black carbon fluxes
       do ispec=1,bcpho_cnt
          cam_out%bcphiwet(i) = cam_out%bcphiwet(i) &
                              - (aerdepwetis(i,bcpho_ndx(ispec))+aerdepwetcw(i,bcpho_ndx(ispec)))
       enddo
 
-      ! organic carbon fluxes
+      ! hydrophilic organic carbon fluxes
       do ispec=1,ocphi_cnt
          cam_out%ocphiwet(i) = cam_out%ocphiwet(i) &
                              - (aerdepwetis(i,ocphi_ndx(ispec))+aerdepwetcw(i,ocphi_ndx(ispec)))
       enddo
+
+      ! hydrophobic organic carbon fluxes
       do ispec=1,ocpho_cnt
          cam_out%ocphiwet(i) = cam_out%ocphiwet(i) &
                              - (aerdepwetis(i,ocpho_ndx(ispec))+aerdepwetcw(i,ocpho_ndx(ispec)))
@@ -197,19 +205,23 @@ contains
       end do
 
       ! rebin dust fluxes to bulk dust bins
-      call aero_props%rebin_bulk_fluxes('dust', dep_fluxes, bulk_dst_edges, dst_fluxes)
+      call aero_props%rebin_bulk_fluxes('dust', dep_fluxes, bulk_dst_edges, dst_fluxes, errstat, errstr)
+      if (errstat/=0) then
+         call endrun('aero_deposition_cam_setwet: '//trim(errstr))
+      end if
+
       cam_out%dstwet1(i) = cam_out%dstwet1(i) + dst_fluxes(1)
       cam_out%dstwet2(i) = cam_out%dstwet2(i) + dst_fluxes(2)
       cam_out%dstwet3(i) = cam_out%dstwet3(i) + dst_fluxes(3)
       cam_out%dstwet4(i) = cam_out%dstwet4(i) + dst_fluxes(4)
 
       ! in rare cases, integrated deposition tendency is upward
-      if (cam_out%bcphiwet(i) .lt. 0._r8) cam_out%bcphiwet(i) = 0._r8
-      if (cam_out%ocphiwet(i) .lt. 0._r8) cam_out%ocphiwet(i) = 0._r8
-      if (cam_out%dstwet1(i)  .lt. 0._r8) cam_out%dstwet1(i)  = 0._r8
-      if (cam_out%dstwet2(i)  .lt. 0._r8) cam_out%dstwet2(i)  = 0._r8
-      if (cam_out%dstwet3(i)  .lt. 0._r8) cam_out%dstwet3(i)  = 0._r8
-      if (cam_out%dstwet4(i)  .lt. 0._r8) cam_out%dstwet4(i)  = 0._r8
+      if (cam_out%bcphiwet(i) < 0._r8) cam_out%bcphiwet(i) = 0._r8
+      if (cam_out%ocphiwet(i) < 0._r8) cam_out%ocphiwet(i) = 0._r8
+      if (cam_out%dstwet1(i)  < 0._r8) cam_out%dstwet1(i)  = 0._r8
+      if (cam_out%dstwet2(i)  < 0._r8) cam_out%dstwet2(i)  = 0._r8
+      if (cam_out%dstwet3(i)  < 0._r8) cam_out%dstwet3(i)  = 0._r8
+      if (cam_out%dstwet4(i)  < 0._r8) cam_out%dstwet4(i)  = 0._r8
 
    enddo
 
@@ -232,6 +244,8 @@ contains
    real(r8) :: dep_fluxes(nele_tot)
    real(r8) :: dst_fluxes(n_bulk_dst_bins)
    character(len=aero_name_len) :: specname, name_c
+   integer :: errstat
+   character(len=cl) :: errstr
 
    ncol = cam_out%ncol
 
@@ -250,21 +264,25 @@ contains
    !        srf models want positive definite fluxes.
    do i = 1, ncol
 
-      ! black carbon fluxes
+      ! hydrophilic black carbon fluxes
       do ispec=1,bcphi_cnt
          cam_out%bcphidry(i) = cam_out%bcphidry(i) &
                              + (aerdepdryis(i,bcphi_ndx(ispec))+aerdepdrycw(i,bcphi_ndx(ispec)))
       enddo
+
+      ! hydrophobic black carbon fluxes
       do ispec=1,bcpho_cnt
          cam_out%bcphodry(i) = cam_out%bcphodry(i) &
                              + (aerdepdryis(i,bcpho_ndx(ispec))+aerdepdrycw(i,bcpho_ndx(ispec)))
       enddo
 
-      ! organic carbon fluxes
+      ! hydrophilic organic carbon fluxes
       do ispec=1,ocphi_cnt
          cam_out%ocphidry(i) = cam_out%ocphidry(i) &
                              + (aerdepdryis(i,ocphi_ndx(ispec))+aerdepdrycw(i,ocphi_ndx(ispec)))
       enddo
+
+      ! hydrophobic organic carbon fluxes
       do ispec=1,ocpho_cnt
          cam_out%ocphodry(i) = cam_out%ocphodry(i) &
                              + (aerdepdryis(i,ocpho_ndx(ispec))+aerdepdrycw(i,ocpho_ndx(ispec)))
@@ -291,21 +309,25 @@ contains
       end do
 
       ! rebin dust fluxes to bulk dust bins
-      call aero_props%rebin_bulk_fluxes('dust', dep_fluxes, bulk_dst_edges, dst_fluxes)
+      call aero_props%rebin_bulk_fluxes('dust', dep_fluxes, bulk_dst_edges, dst_fluxes, errstat, errstr)
+      if (errstat/=0) then
+         call endrun('aero_deposition_cam_setdry: '//trim(errstr))
+      end if
+
       cam_out%dstdry1(i) = cam_out%dstdry1(i) + dst_fluxes(1)
       cam_out%dstdry2(i) = cam_out%dstdry2(i) + dst_fluxes(2)
       cam_out%dstdry3(i) = cam_out%dstdry3(i) + dst_fluxes(3)
       cam_out%dstdry4(i) = cam_out%dstdry4(i) + dst_fluxes(4)
 
       ! in rare cases, integrated deposition tendency is upward
-      if (cam_out%bcphidry(i) .lt. 0._r8) cam_out%bcphidry(i) = 0._r8
-      if (cam_out%ocphidry(i) .lt. 0._r8) cam_out%ocphidry(i) = 0._r8
-      if (cam_out%bcphodry(i) .lt. 0._r8) cam_out%bcphodry(i) = 0._r8
-      if (cam_out%ocphodry(i) .lt. 0._r8) cam_out%ocphodry(i) = 0._r8
-      if (cam_out%dstdry1(i)  .lt. 0._r8) cam_out%dstdry1(i)  = 0._r8
-      if (cam_out%dstdry2(i)  .lt. 0._r8) cam_out%dstdry2(i)  = 0._r8
-      if (cam_out%dstdry3(i)  .lt. 0._r8) cam_out%dstdry3(i)  = 0._r8
-      if (cam_out%dstdry4(i)  .lt. 0._r8) cam_out%dstdry4(i)  = 0._r8
+      if (cam_out%bcphidry(i) < 0._r8) cam_out%bcphidry(i) = 0._r8
+      if (cam_out%ocphidry(i) < 0._r8) cam_out%ocphidry(i) = 0._r8
+      if (cam_out%bcphodry(i) < 0._r8) cam_out%bcphodry(i) = 0._r8
+      if (cam_out%ocphodry(i) < 0._r8) cam_out%ocphodry(i) = 0._r8
+      if (cam_out%dstdry1(i)  < 0._r8) cam_out%dstdry1(i)  = 0._r8
+      if (cam_out%dstdry2(i)  < 0._r8) cam_out%dstdry2(i)  = 0._r8
+      if (cam_out%dstdry3(i)  < 0._r8) cam_out%dstdry3(i)  = 0._r8
+      if (cam_out%dstdry4(i)  < 0._r8) cam_out%dstdry4(i)  = 0._r8
 
    enddo
 
