@@ -778,7 +778,7 @@ contains
     use sslt_rebin,         only: sslt_rebin_init
     use tropopause,         only: tropopause_init
     use solar_data,         only: solar_data_init
-    use dadadj_cam,         only: dadadj_init
+    use dadadj_cam,         only: dadadj_cam_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
@@ -953,7 +953,7 @@ contains
 #endif
     call sslt_rebin_init()
     call tropopause_init()
-    call dadadj_init()
+    call dadadj_cam_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
@@ -1088,9 +1088,7 @@ contains
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
-#if (defined BFB_CAM_SCAM_IOP )
-    use cam_history,    only: outfld
-#endif
+    use cam_history,    only: outfld, write_camiop
     use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1158,11 +1156,11 @@ contains
     !-----------------------------------------------------------------------
     !
 
-#if (defined BFB_CAM_SCAM_IOP )
-    do c=begchunk, endchunk
-      call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
-    end do
-#endif
+    if (write_camiop) then
+       do c=begchunk, endchunk
+          call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
+       end do
+    end if
 
     call t_barrierf('sync_bc_physics', mpicom)
     call t_startf ('bc_physics')
@@ -2136,8 +2134,8 @@ contains
     integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
     integer :: m, m_cnst
     ! for macro/micro co-substepping
-    integer :: macmic_it                       ! iteration variables
-    real(r8) :: cld_macmic_ztodt               ! modified timestep
+    integer :: macmic_it                      ! iteration variables
+    real(r8) :: cld_macmic_ztodt              ! modified timestep
     ! physics buffer fields to compute tendencies for stratiform package
     integer itim_old, ifld
     real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
