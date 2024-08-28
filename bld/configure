@@ -124,7 +124,10 @@ OPTIONS
 
      -camiop            Configure CAM to generate an IOP file that can be used to drive SCAM.
                         This switch only works with the Eulerian dycore.
-     -scam              Compiles model in single column mode.  Only works with Eulerian dycore.
+     -scam <iopname>    Compiles model in single column mode and configures for iop
+                        [ arm95 | arm97 | atex | bomex | cgilsS11 | cgilsS12 | cgilsS6 | dycomsRF01 |
+                          dycomsRF02 | gateIII | mpace | rico | sparticus | togaII | twp06 | SAS | camfrc ].
+                        Default: arm97
 
   CAM parallelization:
 
@@ -297,7 +300,7 @@ GetOptions(
     "psubcols=s"                => \$opts{'psubcols'},
     "rad=s"                     => \$opts{'rad'},
     "offline_drv=s"             => \$opts{'offline_drv'},
-    "scam"                      => \$opts{'scam'},
+    "scam=s"                    => \$opts{'scam'},
     "silhs"                     => \$opts{'silhs'},
     "s|silent"                  => \$opts{'silent'},
     "smp!"                      => \$opts{'smp'},
@@ -1207,15 +1210,25 @@ if ($print>=2) { print "Perturbation growth testing: $pergro$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Single column mode
+
+# Set default iop
+my $scam_iop;
+
+# Allow the user to override the default via the commandline.
+if (defined $opts{'scam'}) {
+    $scam_iop = lc($opts{'scam'});
+    $cfg_ref->set('scam_iop', $scam_iop);
+}
+
 if (defined $opts{'scam'}) {
     $cfg_ref->set('scam', 1);
 }
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
-# The only dycore supported in SCAM mode is Eulerian
-if ($scam eq 'ON' and $dyn_pkg ne 'eul') {
+# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
+if ($scam eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: SCAM mode only works with Eulerian dycore.
+**  ERROR: SCAM mode only works with Eulerian or SE dycores.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1229,10 +1242,10 @@ if (defined $opts{'camiop'}) {
 }
 my $camiop = $cfg_ref->get('camiop') ? "ON" : "OFF";
 
-# The only dycore supported in CAMIOP mode is Eulerian
-if ($camiop eq 'ON' and $dyn_pkg ne 'eul') {
+# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
+if ($camiop eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: CAMIOP mode only works with Eulerian dycore.
+**  ERROR: CAMIOP mode only works with the Eulerian or Spectral Element dycores.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
