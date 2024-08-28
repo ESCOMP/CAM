@@ -74,7 +74,7 @@ CONTAINS
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
-    allocate(frontga_thr(nphys,nphys,nlev,nets:nete))    
+    allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
     call compute_frontogenesis(frontgf_thr,frontga_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
     if (fv_nphys>0) then
       do ie=nets,nete
@@ -111,14 +111,14 @@ CONTAINS
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     use physconst,      only: cappa
     use air_composition,only: dry_air_species_num, thermodynamic_active_species_num
-    use air_composition,only: thermodynamic_active_species_idx_dycore    
+    use air_composition,only: thermodynamic_active_species_idx_dycore
     use derivative_mod, only: gradient_sphere, ugradv_sphere
     use edge_mod,       only: edgevpack, edgevunpack
     use bndry_mod,      only: bndry_exchange
     use dyn_grid,       only: hvcoord
     use dimensions_mod, only: fv_nphys,ntrac
     use fvm_mapping,    only: dyn2phys_vector,dyn2phys
-    
+
     type(hybrid_t),     intent(in)            :: hybrid
     type(element_t),    intent(inout), target :: elem(:)
     type(derivative_t), intent(in)            :: ederiv
@@ -157,16 +157,16 @@ CONTAINS
         pint(:,:) = pint(:,:)+elem(ie)%state%dp3d(:,:,k,tl)
         !
         theta(:,:) = elem(ie)%state%T(:,:,k,tl)*(psurf_ref / p(:,:))**cappa
-        ! gradth(:,:,:,k,ie) = gradient_sphere(theta,ederiv,elem(ie)%Dinv)        
-        call gradient_sphere(theta,ederiv,elem(ie)%Dinv,gradth(:,:,:,k,ie))        
+        ! gradth(:,:,:,k,ie) = gradient_sphere(theta,ederiv,elem(ie)%Dinv)
+        call gradient_sphere(theta,ederiv,elem(ie)%Dinv,gradth(:,:,:,k,ie))
         ! compute C = (grad(theta) dot grad ) u
-        C(:,:,:) = ugradv_sphere(gradth(:,:,:,k,ie), elem(ie)%state%v(:,:,:,k,tl),ederiv,elem(ie))        
+        C(:,:,:) = ugradv_sphere(gradth(:,:,:,k,ie), elem(ie)%state%v(:,:,:,k,tl),ederiv,elem(ie))
         ! gradth dot C
-        frontgf_gll(:,:,k,ie) = -( C(:,:,1)*gradth(:,:,1,k,ie) +  C(:,:,2)*gradth(:,:,2,k,ie)  )        
+        frontgf_gll(:,:,k,ie) = -( C(:,:,1)*gradth(:,:,1,k,ie) +  C(:,:,2)*gradth(:,:,2,k,ie)  )
         ! apply mass matrix
         gradth(:,:,1,k,ie)=gradth(:,:,1,k,ie)*elem(ie)%spheremp(:,:)
         gradth(:,:,2,k,ie)=gradth(:,:,2,k,ie)*elem(ie)%spheremp(:,:)
-        frontgf_gll(:,:,k,ie)=frontgf_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)        
+        frontgf_gll(:,:,k,ie)=frontgf_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)
       enddo
       ! pack
       call edgeVpack(edge3, frontgf_gll(:,:,:,ie),nlev,0,ie)
@@ -180,7 +180,7 @@ CONTAINS
       do k=1,nlev
         gradth(:,:,1,k,ie)=gradth(:,:,1,k,ie)*elem(ie)%rspheremp(:,:)
         gradth(:,:,2,k,ie)=gradth(:,:,2,k,ie)*elem(ie)%rspheremp(:,:)
-        frontgf_gll(:,:,k,ie)=frontgf_gll(:,:,k,ie)*elem(ie)%rspheremp(:,:)        
+        frontgf_gll(:,:,k,ie)=frontgf_gll(:,:,k,ie)*elem(ie)%rspheremp(:,:)
       end do
       if (fv_nphys>0) then
         uv_tmp(:,:,:) = dyn2phys_vector(gradth(:,:,:,:,ie),elem(ie))
@@ -201,7 +201,7 @@ CONTAINS
         area_inv = 1.0_r8/area_inv
         do k=1,nlev
           frontgf(:,:,k,ie) = dyn2phys(frontgf_gll(:,:,k,ie),elem(ie)%metdet,area_inv)
-        end do        
+        end do
       else
         do k=1,nlev
           frontgf(:,:,k,ie)=frontgf_gll(:,:,k,ie)
