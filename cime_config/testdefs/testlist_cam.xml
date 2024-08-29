@@ -16,7 +16,7 @@
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
-  </test>
+  </test>/
   <test compset="FC2000climo_GC" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
@@ -1514,7 +1514,7 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>   
+  </test>
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
@@ -2263,7 +2263,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FCLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s">
+  <test compset="FCLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s_Leung_dust">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="camchem"/>
