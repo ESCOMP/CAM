@@ -6002,6 +6002,12 @@ Use the SCAM-IOP specified observed water vapor at each time step instead of for
 Default: FALSE
 </entry>
 
+<entry id="scm_use_3dfrc" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use the SCAM-IOP 3d forcing if true, use combination of dycore vertical advection and iop horiz advection if false
+Default:False
+</entry>
+
 <entry id="scm_force_latlon" type="logical" category="scam"
        group="scam_nl" valid_values="">
 Force scam to use the lat lon fields specified in the scam namelist not what is closest to IOP avail lat lon
@@ -9534,38 +9540,6 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
-</entry>
-
-<!-- ndep stream forcing -->
-
-<!-- ========================================================================================  -->
-<!-- ndepdyn streams namelist                                                                  -->
-<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
-<!-- ========================================================================================  -->
-
-<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream meshfile for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-First year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Last year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>
