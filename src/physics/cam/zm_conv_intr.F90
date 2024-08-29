@@ -608,7 +608,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
-                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
+                    ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
                     tpert(:ncol), dlf(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
