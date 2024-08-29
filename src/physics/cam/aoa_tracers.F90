@@ -28,20 +28,18 @@ module aoa_tracers
 
   ! Private module data
 
-  integer, parameter :: ncnst=5  ! number of constituents implemented by this module
+  integer, parameter :: ncnst=3  ! number of constituents implemented by this module
 
   ! constituent names
-  character(len=6), parameter :: c_names(ncnst) = (/'AOA1  ', 'AOA2  ', 'HORZ  ', 'VERT  ', 'AOA1MF'/)
+  character(len=6), parameter :: c_names(ncnst) = (/'AOAMF ', 'HORZ  ', 'VERT  ' /)
 
   ! constituent source/sink names
-  character(len=9), parameter :: src_names(ncnst) = (/'AOA1SRC  ', 'AOA2SRC  ', 'HORZSRC  ', 'VERTSRC  ', 'AOA1MFSRC'/)
+  character(len=8), parameter :: src_names(ncnst) = (/'AOAMFSRC', 'HORZSRC ', 'VERTSRC '/)
 
-  integer :: ifirst ! global index of first constituent
-  integer :: ixaoa1 ! global index for AOA1 tracer
-  integer :: ixaoa2 ! global index for AOA2 tracer
-  integer :: ixht   ! global index for HORZ tracer
-  integer :: ixvt   ! global index for VERT tracer
-  integer :: ixaoa5 = -1 ! global index for AOA1MFSRC tracer
+  integer :: ifirst = -1 ! global index of first constituent
+  integer :: ixaoa  = -1 ! global index for AOAMFSRC tracer
+  integer :: ixht   = -1 ! global index for HORZ tracer
+  integer :: ixvt   = -1 ! global index for VERT tracer
 
   ! Data from namelist variables
   logical :: aoa_tracers_flag  = .false.    ! true => turn on test tracer code, namelist variable
@@ -79,12 +77,9 @@ contains
 !================================================================================
   subroutine aoa_tracers_readnl(nlfile)
 
-    use namelist_utils,     only: find_group_name
-    use units,              only: getunit, freeunit
-    use mpishorthand
-    use cam_abortutils,     only: endrun
-
-    implicit none
+    use namelist_utils, only: find_group_name
+    use cam_abortutils, only: endrun
+    use spmd_utils,     only: mpicom, masterprocid, mpi_logical, mpi_success
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -92,14 +87,12 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'aoa_tracers_readnl'
 
-
     namelist /aoa_tracers_nl/ aoa_tracers_flag, aoa_read_from_ic_file
 
     !-----------------------------------------------------------------------------
 
     if (masterproc) then
-       unitn = getunit()
-       open( unitn, file=trim(nlfile), status='old' )
+       open( newunit=unitn, file=trim(nlfile), status='old' )
        call find_group_name(unitn, 'aoa_tracers_nl', status=ierr)
        if (ierr == 0) then
           read(unitn, aoa_tracers_nl, iostat=ierr)
@@ -108,13 +101,16 @@ contains
           end if
        end if
        close(unitn)
-       call freeunit(unitn)
     end if
 
-#ifdef SPMD
-    call mpibcast(aoa_tracers_flag, 1, mpilog,  0, mpicom)
-    call mpibcast(aoa_read_from_ic_file, 1, mpilog,  0, mpicom)
-#endif
+    call mpi_bcast(aoa_tracers_flag, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//': MPI_BCAST ERROR: aoa_tracers_flag')
+    end if
+    call mpi_bcast(aoa_read_from_ic_file, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//': MPI_BCAST ERROR: aoa_read_from_ic_file')
+    end if
 
   endsubroutine aoa_tracers_readnl
 
@@ -131,18 +127,15 @@ contains
 
     if (.not. aoa_tracers_flag) return
 
-    call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa1, readiv=aoa_read_from_ic_file, &
-                  longname='Age-of_air tracer 1')
-    ifirst = ixaoa1
-    call cnst_add(c_names(2), mwdry, cpair, 0._r8, ixaoa2, readiv=aoa_read_from_ic_file, &
-                  longname='Age-of_air tracer 2')
-    call cnst_add(c_names(3), mwdry, cpair, 1._r8, ixht,   readiv=aoa_read_from_ic_file, &
+    call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa, readiv=aoa_read_from_ic_file, &
+                  longname='mixing ratio LB tracer')
+
+    call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,   readiv=aoa_read_from_ic_file, &
                   longname='horizontal tracer')
-    call cnst_add(c_names(4), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
+    call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
                   longname='vertical tracer')
 
-    call cnst_add(c_names(5), mwdry, cpair, 0._r8, ixaoa5, readiv=aoa_read_from_ic_file, &
-                  longname='molar fraction LB tracer')
+    ifirst = ixaoa
 
   end subroutine aoa_tracers_register
 
@@ -256,7 +249,6 @@ contains
 
     type(physics_state), intent(inout), dimension(begchunk:endchunk), optional :: phys_state
 
-
     integer c, i, k, ncol
     integer yr, mon, day, tod
 
@@ -265,8 +257,6 @@ contains
     if (.not. aoa_tracers_flag) return
 
     call get_curr_date (yr,mon,day,tod)
-    jday1 = get_julday (yr,mon,day,tod)
-    years = (jday1-jday0)/365._r8
 
     if ( day == 1 .and. tod == 0) then
        if (masterproc) then
@@ -285,21 +275,22 @@ contains
 
     end if
 
+    jday1 = get_julday(yr,mon,day,tod)
+    years = (jday1-jday0)/365._r8
+
   end subroutine aoa_tracers_timestep_init
 
 !===============================================================================
 
-  subroutine aoa_tracers_timestep_tend(state, ptend, cflx, landfrac, dt)
+  subroutine aoa_tracers_timestep_tend(state, ptend, cflx, dt)
 
     use physics_types, only: physics_state, physics_ptend, physics_ptend_init
     use cam_history,   only: outfld
-    use time_manager,  only: get_nstep
 
     ! Arguments
     type(physics_state), intent(in)    :: state              ! state variables
     type(physics_ptend), intent(out)   :: ptend              ! package tendencies
     real(r8),            intent(inout) :: cflx(pcols,pcnst)  ! Surface constituent flux (kg/m^2/s)
-    real(r8),            intent(in)    :: landfrac(pcols)    ! Land fraction
     real(r8),            intent(in)    :: dt                 ! timestep
 
     !----------------- Local workspace-------------------------------
@@ -307,7 +298,6 @@ contains
     integer :: i, k
     integer :: lchnk                          ! chunk identifier
     integer :: ncol                           ! no. of column in chunk
-    integer :: nstep                          ! current timestep number
     real(r8) :: qrel                          ! value to be relaxed to
     real(r8) :: xhorz                         ! updated value of HORZ
     real(r8) :: xvert                         ! updated value of VERT
@@ -331,27 +321,22 @@ contains
        return
     end if
 
-    lq(:)      = .FALSE.
-    lq(ixaoa1) = .TRUE.
-    lq(ixaoa2) = .TRUE.
-    lq(ixht)   = .TRUE.
-    lq(ixvt)   = .TRUE.
-    lq(ixaoa5) = .TRUE.
+    lq(:)     = .FALSE.
+    lq(ixaoa) = .TRUE.
+    lq(ixht)  = .TRUE.
+    lq(ixvt)  = .TRUE.
 
     call physics_ptend_init(ptend,state%psetcols, 'aoa_tracers', lq=lq)
 
-    nstep = get_nstep()
     lchnk = state%lchnk
     ncol  = state%ncol
 
+    ! AOAMF
+    xmmr = mmr0*(1._r8 + per_yr*years)
+    ptend%q(1:ncol,pver,ixaoa) = (xmmr - state%q(1:ncol,pver,ixaoa)) / dt
+
     do k = 1, pver
        do i = 1, ncol
-
-          ! AOA1
-          ptend%q(i,k,ixaoa1) = 0.0_r8
-
-          ! AOA2
-          ptend%q(i,k,ixaoa2) = 0.0_r8
 
           ! HORZ
           qrel              = 2._r8 + sin(state%lat(i))          ! qrel  should zonal mean
@@ -367,38 +352,22 @@ contains
 
     end do
 
-    ! AOA1MF
-    xmmr = mmr0*(1._r8 + per_yr*years)
-    ptend%q(1:ncol,pver,ixaoa5) = (xmmr - state%q(1:ncol,pver,ixaoa5)) / dt
-
     ! record tendencies on history files
-    call outfld (src_names(1), ptend%q(:,:,ixaoa1), pcols, lchnk)
-    call outfld (src_names(2), ptend%q(:,:,ixaoa2), pcols, lchnk)
-    call outfld (src_names(3), ptend%q(:,:,ixht),   pcols, lchnk)
-    call outfld (src_names(4), ptend%q(:,:,ixvt),   pcols, lchnk)
-    call outfld (src_names(5), ptend%q(:,:,ixaoa5), pcols, lchnk)
+    call outfld (src_names(1), ptend%q(:,:,ixaoa),  pcols, lchnk)
+    call outfld (src_names(2), ptend%q(:,:,ixht),   pcols, lchnk)
+    call outfld (src_names(3), ptend%q(:,:,ixvt),   pcols, lchnk)
 
     ! Set tracer fluxes
     do i = 1, ncol
 
-       ! AOA1
-       cflx(i,ixaoa1) = 1.e-6_r8
-
-       ! AOA2
-       if (landfrac(i) .eq. 1._r8  .and.  state%lat(i) .gt. 0.35_r8) then
-          cflx(i,ixaoa2) = 1.e-6_r8 + 1e-6_r8*0.0434_r8*real(nstep,r8)*dt/(86400._r8*365._r8)
-       else
-          cflx(i,ixaoa2) = 0._r8
-       endif
+       ! AOAMF
+       cflx(i,ixaoa) = 0._r8
 
        ! HORZ
        cflx(i,ixht) = 0._r8
 
        ! VERT
        cflx(i,ixvt) = 0._r8
-
-       ! AOA1MF
-       cflx(i,ixaoa5) = 0._r8
 
     end do
 
@@ -418,30 +387,25 @@ contains
     !-----------------------------------------------------------------------
 
     if (masterproc) then
-      write(iulog,*) 'AGE-OF-AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
+       write(iulog,*) 'AGE-OF-AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
     end if
 
-    if (m == ixaoa1) then
+    if (m == ixaoa) then
 
-       q(:,:) = 0.0_r8
-
-    else if (m == ixaoa2) then
-
+       ! AOAMF
        q(:,:) = 0.0_r8
 
     else if (m == ixht) then
 
+       ! HORZ
        gsize = size(q, 1)
        do j = 1, gsize
           q(j,:) = 2._r8 + sin(latvals(j))
        end do
-    else if (m == ixaoa5) then
-
-       ! AOA1MF
-       q(:,:) = 0.0_r8
 
     else if (m == ixvt) then
 
+       ! VERT
        do k = 1, pver
           do j = 1, size(q,1)
              q(j,k) = qrel_vert(k)
@@ -453,6 +417,5 @@ contains
   end subroutine init_cnst_3d
 
 !=====================================================================
-
 
 end module aoa_tracers
