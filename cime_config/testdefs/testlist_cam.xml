@@ -1159,9 +1159,20 @@
   <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >002 tsc</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPC6" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
+    </machines>
+    <options>
+      <option name="comment" >Spectral Element SCAM BFB test with CAM w GNU</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1169,6 +1180,7 @@
   <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >004 tsc</option>
@@ -1188,6 +1200,7 @@
   <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="test_scam"/>
     </machines>
     <options>
       <option name="comment" >003 tsm</option>
@@ -1349,10 +1362,21 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+  <test compset="QPC5" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="test_scam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >Derecho Spectral Element SCAM BFB test with CAM (Intel)</option>
+   </options>
+  </test>
 <!--              001                        -->
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="test_scam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
@@ -1456,21 +1480,23 @@
   </test>
 
 <!--              CAM SCAM runs                      -->
-  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FSCAMARM97" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="test_scam"/>
     </machines>
     <options>
+      <option name="comment" >Eulerian ARM97 IOP SCAM Smoke test</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/scam_mpace_outfrq9s">
+  <test compset="FSCAMMPACE" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="test_scam"/>
     </machines>
     <options>
+      <option name="comment" >pre_alpha Eulerian MPACE IPO SCAM Smoke test</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1480,6 +1506,24 @@
 <!--                    (unsupported)                         -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_default">
+    <machines>
+      <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
+      <machine name="derecho" compiler="nvhpc" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>   
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
+    <machines>
+      <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
+      <machine name="derecho" compiler="nvhpc" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_pumas"/>
@@ -1541,51 +1585,6 @@
     <machines>
       <machine name="derecho" compiler="intel" category="camchem"/>
     </machines>
-  </test>
-  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_default">
-    <machines>
-      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
-      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:59:00</option>
-    </options>
-  </test>
-  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg2_default">
-    <machines>
-      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
-      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:59:00</option>
-    </options>
-  </test>
-  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_nondefault">
-    <machines>
-      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
-      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:59:00</option>
-    </options>
-  </test>
-  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_pcols1536">
-    <machines>
-      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
-      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:59:00</option>
-    </options>
-  </test>
-  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_G4" testmods="cam/outfrq9s_mg3_default">
-    <machines>
-      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
-      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:59:00</option>
-    </options>
   </test>
   <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
