@@ -66,7 +66,7 @@ module aoa_tracers
   ! Troposphere and Stratosphere. J. Atmos. Sci., 57, 673-699.
   ! doi: http://dx.doi.org/10.1175/1520-0469(2000)057<0673:TDOGAI>2.0.CO;2
 
-  real(r8) :: qrel_vert(pver)  ! = -7._r8*log(pref_mid_norm(k)) + vert_offset
+  real(r8) :: qrel_vert(pver) = -huge(1._r8)  ! = -7._r8*log(pref_mid_norm(k)) + vert_offset
 
   integer :: yr0 = -huge(1)
   real(r8) :: calday0 = -huge(1._r8)
@@ -127,6 +127,8 @@ contains
     use physconst,  only: cpair, mwdry
     !-----------------------------------------------------------------------
 
+    integer :: k
+
     if (.not. aoa_tracers_flag) return
 
     call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa, readiv=aoa_read_from_ic_file, &
@@ -138,6 +140,11 @@ contains
                   longname='vertical tracer')
 
     ifirst = ixaoa
+
+    do k = 1,pver
+       qrel_vert(k) = -7._r8*log(pref_mid_norm(k)) + vert_offset
+       if (masterproc) write(*,*) 'FVDBG.aoa_tracers_register : ',k,pref_mid_norm(k),qrel_vert(k)
+    enddo
 
   end subroutine aoa_tracers_register
 
@@ -213,7 +220,7 @@ contains
 
     use cam_history,    only: addfld, add_default
 
-    integer :: m, mm, k
+    integer :: m, mm
     integer :: yr, mon, day, sec, ymd
 
     !-----------------------------------------------------------------------
@@ -230,10 +237,6 @@ contains
        call add_default (cnst_name(mm), 1, ' ')
        call add_default (src_names(m),  1, ' ')
     end do
-
-    do k = 1,pver
-       qrel_vert(k) = -7._r8*log(pref_mid_norm(k)) + vert_offset
-    enddo
 
     call get_start_date(yr, mon, day, sec)
 
