@@ -19,6 +19,7 @@ save
 ! Public interface
 public :: gw_rdg_readnl
 public :: gw_rdg_src
+public :: gw_rdg_resid_src
 public :: gw_rdg_belowpeak
 public :: gw_rdg_break_trap
 public :: gw_rdg_do_vdiff
@@ -174,6 +175,211 @@ subroutine gw_rdg_readnl(nlfile)
 
 end subroutine gw_rdg_readnl
 
+
+!==========================================================================
+subroutine gw_rdg_resid_src(ncol, band, p, &
+     u, v, t, mxdis, kwvrdg, zi, nm, &
+     src_level, tend_level, tau, ubm, ubi, xv, yv,  & 
+     ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, c, tauoro )
+  use gw_common, only: rair, GWBand
+  use gw_utils, only:  dot_2d, midpoint_interp, get_unit_vector
+  !-----------------------------------------------------------------------
+  ! Orographic source for multiple gravity wave drag parameterization.
+  !
+  ! The stress is returned for a single wave with c=0, over orography.
+  ! For points where the orographic variance is small (including ocean),
+  ! the returned stress is zero.
+  !------------------------------Arguments--------------------------------
+  ! Column dimension.
+  integer, intent(in) :: ncol
+
+  ! Band to emit orographic waves in.
+  ! Regardless, we will only ever emit into l = 0.
+  type(GWBand), intent(in) :: band
+  ! Pressure coordinates.
+  type(Coords1D), intent(in) :: p
+
+
+  ! Midpoint zonal/meridional winds. ( m s-1)
+  real(r8), intent(in) :: u(ncol,pver), v(ncol,pver)
+  ! Midpoint temperatures. (K)
+  real(r8), intent(in) :: t(ncol,pver)
+  ! Height estimate for ridge (m) [anisotropic orography].
+  real(r8), intent(in) :: mxdis(ncol)
+  ! horiz wavenumber [anisotropic orography].
+  real(r8), intent(in) :: kwvrdg(ncol)
+  ! Interface altitudes above ground (m).
+  real(r8), intent(in) :: zi(ncol,pver+1)
+  ! Midpoint Brunt-Vaisalla frequencies (s-1).
+  real(r8), intent(in) :: nm(ncol,pver)
+
+  ! Indices of top gravity wave source level and lowest level where wind
+  ! tendencies are allowed.
+  integer, intent(out) :: src_level(ncol)
+  integer, intent(out) :: tend_level(ncol)
+
+  ! Averages over source region.
+  real(r8), intent(out) :: nsrc(ncol) ! B-V frequency.
+  real(r8), intent(out) :: rsrc(ncol) ! Density.
+  real(r8), intent(out) :: usrc(ncol) ! Zonal wind.
+  real(r8), intent(out) :: vsrc(ncol) ! Meridional wind.
+  real(r8), intent(out) :: ubmsrc(ncol) ! On-obstacle wind.
+  ! normalized wavenumber
+  real(r8), intent(out) :: m2src(ncol)
+
+
+  ! Wave Reynolds stress.
+  real(r8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  ! Projection of wind at midpoints and interfaces.
+  real(r8), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
+  ! Unit vectors of source wind (zonal and meridional components).
+  real(r8), intent(out) :: xv(ncol), yv(ncol)
+  ! Phase speeds.
+  real(r8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  ! source level mom. flux
+  real(r8), intent(out) :: tauoro(ncol)
+
+  !---------------------------Local Storage-------------------------------
+  ! Column and level indices.
+  integer :: i, k
+
+  ! Surface streamline displacement height (2*sgh).
+  real(r8) :: hdsp(ncol)
+
+  ! Difference in interface pressure across source region.
+  real(r8) :: dpsrc(ncol)
+  ! Thickness of downslope wind region.
+  real(r8) :: ddw(ncol)
+  ! Thickness of linear wave region.
+  real(r8) :: dwv(ncol)
+  ! Wind speed in source region.
+  real(r8) :: wmsrc(ncol)
+  ! source level mom. flux
+  !real(r8) :: tauoro(ncol)
+
+  real(r8) :: ragl(ncol)
+  real(r8) :: Fcrit_res,sghmax
+  
+!--------------------------------------------------------------------------
+! Check that ngwav is equal to zero, otherwise end the job
+!--------------------------------------------------------------------------
+  if (band%ngwv /= 0) call endrun(' gw_rdg_src :: ERROR - band%ngwv must be zero and it is not')
+
+!--------------------------------------------------------------------------
+! Average the basic state variables for the wave source over the depth of
+! the orographic standard deviation. Here we assume that the appropiate
+! values of wind, stability, etc. for determining the wave source are
+! averages over the depth of the atmosphere penterated by the typical
+! mountain.
+! Reduces to the bottom midpoint values when mxdis=0, such as over ocean.
+!--------------------------------------------------------------------------
+
+  Fcrit_res = 1.0_r8
+  hdsp      = mxdis ! no longer multipied by 2
+  where(hdsp < 10._r8)
+     hdsp = 0._r8
+  end where
+     
+  src_level = pver+1
+
+  tau(:,0,:) = 0.0_r8
+
+  ! Find depth of "source layer" for mountain waves
+  ! i.e., between ground and mountain top
+  do k = pver, 1, -1
+     do i = 1, ncol
+        ! Need to have h >= z(k+1) here or code will bomb when h=0.
+        if ( (hdsp(i) >= zi(i,k+1)) .and. (hdsp(i) < zi(i,k))   ) then
+           src_level(i) = k  
+        end if
+     end do
+  end do
+
+  rsrc = 0._r8
+  usrc = 0._r8 
+  vsrc = 0._r8
+  nsrc = 0._r8
+  do i = 1, ncol
+      do k = pver, src_level(i), -1
+           rsrc(i) = rsrc(i) + p%mid(i,k) / (rair*t(i,k))* p%del(i,k)
+           usrc(i) = usrc(i) + u(i,k) * p%del(i,k)
+           vsrc(i) = vsrc(i) + v(i,k) * p%del(i,k)
+           nsrc(i) = nsrc(i) + nm(i,k)* p%del(i,k)
+     end do
+  end do
+
+
+  do i = 1, ncol
+     dpsrc(i) = p%ifc(i,pver+1) - p%ifc(i,src_level(i))
+  end do
+
+  rsrc = rsrc / dpsrc
+  usrc = usrc / dpsrc
+  vsrc = vsrc / dpsrc
+  nsrc = nsrc / dpsrc
+
+  ! Get the unit vector components and magnitude at the surface.
+  call get_unit_vector(usrc, vsrc, xv, yv, wmsrc )
+
+  ubmsrc = wmsrc
+  
+  ! Project the local wind at midpoints onto the source wind.
+  do k = 1, pver
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+  end do
+
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+
+  ubi(:,2:pver) = midpoint_interp(ubm)
+
+  ! The minimum stratification allowing GW behavior
+  ! should really depend on horizontal scale since
+  !
+  !      m^2 ~ (N/U)^2 - k^2
+  !
+  
+  m2src = ( (nsrc/(ubmsrc+0.01_r8))**2 - kwvrdg**2 ) /((nsrc/(ubmsrc+0.01_r8))**2)
+
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+  ubi(:,2:pver) = midpoint_interp(ubm)
+  ubi(:,pver+1) = ubm(:,pver)
+
+
+
+  ! Determine the orographic c=0 source term following McFarlane (1987).
+  ! Set the source top interface index to pver, if the orographic term is
+  ! zero.
+  do i = 1, ncol
+     if ( ( src_level(i) > 0 ) .and. ( m2src(i) > orom2min ) ) then
+        sghmax = Fcrit_res * (ubmsrc(i) / nsrc(i))**2
+        tauoro(i) = 0.5_r8 * kwvrdg(i) * min(hdsp(i)**2, sghmax) * &
+             rsrc(i) * nsrc(i) * ubmsrc(i) 
+     else
+        tauoro(i) = 0._r8
+     end if
+  end do
+
+  do i = 1, ncol
+     do k=src_level(i),pver+1
+        tau(i,0,k) = tauoro(i)
+     end do
+  end do
+
+  
+  ! Allow wind tendencies all the way to the model bottom.
+  tend_level = pver
+
+  ! No spectrum; phase speed is just 0.
+  c = 0._r8
+
+end subroutine gw_rdg_resid_src
+
+
+!==========================================================================
 
 subroutine gw_rdg_src(ncol, band, p, &
      u, v, t, mxdis, angxy, anixy, kwvrdg, iso, zi, nm, &
