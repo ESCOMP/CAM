@@ -11,11 +11,11 @@ module aoa_tracers
   use constituents, only: pcnst, cnst_add, cnst_name, cnst_longname
   use cam_logfile,  only: iulog
   use ref_pres,     only: pref_mid_norm
-  use time_manager, only: get_curr_date, get_start_date, get_julday
+  use time_manager, only: get_curr_date, get_start_date
+  use time_manager, only: is_leapyear, timemgr_get_calendar_cf, get_calday
 
   implicit none
   private
-  save
 
   ! Public interfaces
   public :: aoa_tracers_register         ! register constituents
@@ -31,7 +31,7 @@ module aoa_tracers
   integer, parameter :: ncnst=3  ! number of constituents implemented by this module
 
   ! constituent names
-  character(len=6), parameter :: c_names(ncnst) = (/'AOAMF ', 'HORZ  ', 'VERT  ' /)
+  character(len=6), parameter :: c_names(ncnst) = (/'AOAMF ', 'HORZ  ', 'VERT  '/)
 
   ! constituent source/sink names
   character(len=8), parameter :: src_names(ncnst) = (/'AOAMFSRC', 'HORZSRC ', 'VERTSRC '/)
@@ -67,8 +67,10 @@ module aoa_tracers
   ! doi: http://dx.doi.org/10.1175/1520-0469(2000)057<0673:TDOGAI>2.0.CO;2
 
   real(r8) :: qrel_vert(pver)  ! = -7._r8*log(pref_mid_norm(k)) + vert_offset
-  real(r8) :: jday0 = -huge(1._r8)
-  real(r8) :: jday1 = -huge(1._r8), years = -huge(1._r8)
+
+  integer :: yr0 = -huge(1)
+  real(r8) :: calday0 = -huge(1._r8)
+  real(r8) :: years = -huge(1._r8)
 
 !===============================================================================
 contains
@@ -212,7 +214,8 @@ contains
     use cam_history,    only: addfld, add_default
 
     integer :: m, mm, k
-    integer :: yr, mon, day, sec
+    integer :: yr, mon, day, sec, ymd
+
     !-----------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
@@ -233,7 +236,11 @@ contains
     enddo
 
     call get_start_date(yr, mon, day, sec)
-    jday0 = get_julday (yr, mon, day, sec)
+
+    ymd = yr*10000 + mon*100 + day
+
+    yr0 = yr
+    calday0 = get_calday(ymd, sec)
 
   end subroutine aoa_tracers_init
 
@@ -250,8 +257,8 @@ contains
     type(physics_state), intent(inout), dimension(begchunk:endchunk), optional :: phys_state
 
     integer c, i, k, ncol
-    integer yr, mon, day, tod
-
+    integer yr, mon, day, tod,  ymd
+    real(r8) :: calday, dpy
     !--------------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
@@ -275,8 +282,14 @@ contains
 
     end if
 
-    jday1 = get_julday(yr,mon,day,tod)
-    years = (jday1-jday0)/365._r8
+    ymd = yr*10000 + mon*100 + day
+    calday = get_calday(ymd, tod)
+
+    dpy = 365._r8
+    if (timemgr_get_calendar_cf() == 'gregorian' .and. is_leapyear(yr)) then
+       dpy = 366._r8
+    end if
+    years = (yr-yr0) + (calday-calday0)/dpy
 
   end subroutine aoa_tracers_timestep_init
 
