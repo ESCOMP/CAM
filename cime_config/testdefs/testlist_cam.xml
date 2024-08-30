@@ -1514,7 +1514,7 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>   
+  </test>
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9_G4-a100-openacc" testmods="cam/outfrq9s_mg3_pcols760">
     <machines>
       <machine name="derecho" compiler="nvhpc" category="derecho_gpu"/>
@@ -2284,7 +2284,6 @@
   </test>
   <test compset="FCts4MTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="camchem"/>
     </machines>
     <options>
@@ -2292,9 +2291,10 @@
       <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
     </options>
   </test>
-  <test compset="FCts4MTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+  <test compset="FCts4MTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ld3" testmods="cam/outfrq1d_aoa">
     <machines>
       <machine name="derecho" compiler="intel" category="camchem"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
