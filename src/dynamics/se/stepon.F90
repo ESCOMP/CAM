@@ -1,7 +1,7 @@
 module stepon
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use spmd_utils,     only: iam, mpicom
+use spmd_utils,     only: iam, mpicom, masterproc
 use ppgrid,         only: begchunk, endchunk
 
 use physics_types,  only: physics_state, physics_tend
@@ -11,11 +11,18 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use dimensions_mod, only: nelemd
+use dimensions_mod, only: np, npsq, nlev, nelemd
 
 use aerosol_properties_mod, only: aerosol_properties
 use aerosol_state_mod,      only: aerosol_state
 use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+use scamMod,                only: use_iop, doiopupdate, single_column, &
+                                  setiopupdate, readiopdata
+use se_single_column_mod,   only: scm_setfield, iop_broadcast
+use dyn_grid,               only: hvcoord
+use time_manager,           only: get_step_size, is_first_restart_step
+use cam_history,            only: outfld, write_camiop, addfld, add_default, horiz_only
+use cam_history,            only: write_inithist, hist_fld_active, fieldname_len
 
 implicit none
 private
@@ -29,6 +36,7 @@ public stepon_final
 
 class(aerosol_properties), pointer :: aero_props_obj => null()
 logical :: aerosols_transported = .false.
+logical :: iop_update_phase1
 
 !=========================================================================================
 contains
@@ -36,7 +44,6 @@ contains
 
 subroutine stepon_init(dyn_in, dyn_out )
 
-   use cam_history,    only: addfld, add_default, horiz_only
    use constituents,   only: pcnst, cnst_name, cnst_longname
    use dimensions_mod, only: fv_nphys, cnst_name_gll, cnst_longname_gll, qsize
 
@@ -95,7 +102,6 @@ end subroutine stepon_init
 subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
                         pbuf2d, dyn_in, dyn_out )
 
-   use time_manager,   only: get_step_size
    use dp_coupling,    only: d_p_coupling
    use physics_buffer, only: physics_buffer_desc
 
@@ -122,6 +128,31 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
       ! write diagnostic fields on gll grid and initial file
       call diag_dynvar_ic(dyn_out%elem, dyn_out%fvm)
    end if
+
+   ! Determine whether it is time for an IOP update;
+   ! doiopupdate set to true if model time step > next available IOP
+
+
+   if (use_iop .and. masterproc) then
+       call setiopupdate
+   end if
+
+   if (single_column) then
+
+     ! If first restart step then ensure that IOP data is read
+     if (is_first_restart_step()) then
+        if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+        call iop_broadcast()
+     endif
+
+     iop_update_phase1 = .true.
+     if ((is_first_restart_step() .or. doiopupdate) .and. masterproc) then
+        call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+     endif
+     call iop_broadcast()
+
+     call scm_setfield(dyn_out%elem,iop_update_phase1)
+   endif
 
    call t_barrierf('sync_d_p_coupling', mpicom)
    call t_startf('d_p_coupling')
@@ -205,10 +236,12 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    use camsrfexch,     only: cam_out_t
    use dyn_comp,       only: dyn_run
-   use advect_tend,    only: compute_adv_tends_xyz
+   use advect_tend,    only: compute_adv_tends_xyz, compute_write_iop_fields
    use dyn_grid,       only: TimeLevel
    use se_dyn_time_mod,only: TimeLevel_Qdp
    use control_mod,    only: qsplit
+   use constituents,   only: pcnst, cnst_name
+
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -219,10 +252,21 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    integer :: tl_f, tl_fQdp
    !--------------------------------------------------------------------------------------
 
+   if (single_column) then
+      ! Update IOP properties e.g. omega, divT, divQ
+      iop_update_phase1 = .false.
+      if (doiopupdate) then
+         if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+         call iop_broadcast()
+         call scm_setfield(dyn_out%elem,iop_update_phase1)
+      endif
+   endif
+
    call t_startf('comp_adv_tends1')
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
 
    call t_barrierf('sync_dyn_run', mpicom)
@@ -234,6 +278,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends2')
 
 end subroutine stepon_run3
@@ -251,7 +296,6 @@ end subroutine stepon_final
 
 subroutine diag_dynvar_ic(elem, fvm)
    use constituents,           only: cnst_type
-   use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
    use dyn_grid,               only: TimeLevel
 
    use se_dyn_time_mod,        only: TimeLevel_Qdp   !  dynamics typestep

@@ -2,7 +2,7 @@ module dadadj_cam
 
 ! CAM interfaces for the dry adiabatic adjustment parameterization
 
-use shr_kind_mod,    only: r8=>shr_kind_r8, cs=>shr_kind_cs
+use shr_kind_mod,    only: r8=>shr_kind_r8, cs=>shr_kind_cs, cm=>shr_kind_cm
 use ppgrid,          only: pcols, pver, pverp
 use constituents,    only: pcnst
 use air_composition, only: cappav, cpairv
@@ -17,7 +17,7 @@ use spmd_utils,      only: masterproc, masterprocid, mpicom, mpi_integer
 use namelist_utils,  only: find_group_name
 use units,           only: getunit, freeunit
 
-use dadadj,          only: dadadj_initial, dadadj_calc
+use dadadj,          only: dadadj_init, dadadj_run
 
 implicit none
 private
@@ -25,7 +25,7 @@ save
 
 public :: &
    dadadj_readnl, &
-   dadadj_init, &
+   dadadj_cam_init, &
    dadadj_tend
 
 ! Namelist variables
@@ -42,8 +42,10 @@ subroutine dadadj_readnl(filein)
 
    namelist /dadadj_nl/ dadadj_nlvdry, dadadj_niter
 
-   integer :: unitn, ierr
-   character(len=*), parameter :: sub='dadadj_readnl'
+   integer                            :: unitn, ierr
+   integer                            :: errflg             ! CCPP physics scheme error flag
+   character(len=512)                 :: errmsg             ! CCPP physics scheme error message
+   character(len=*), parameter        :: sub='dadadj_readnl'
    !------------------------------------------------------------------
 
    ! Read namelist
@@ -67,13 +69,16 @@ subroutine dadadj_readnl(filein)
    call mpibcast(dadadj_niter, 1, mpi_integer, masterprocid, mpicom)
 #endif
 
-   call dadadj_initial(dadadj_nlvdry, dadadj_niter)
+   call dadadj_init(dadadj_nlvdry, dadadj_niter, pver, errmsg, errflg)
+   if (errflg /=0) then
+      call endrun('dadadj_readnl: Error returned from dadadj_init: '//trim(errmsg))
+   end if
 
    if (masterproc .and. .not. use_simple_phys) then
       write(iulog,*)'Dry adiabatic adjustment applied to top N layers; N=', &
-                    dadadj_nlvdry
+           dadadj_nlvdry
       write(iulog,*)'Dry adiabatic adjustment number of iterations for convergence =', &
-                    dadadj_niter
+           dadadj_niter
    end if
 
 end subroutine dadadj_readnl
@@ -81,12 +86,12 @@ end subroutine dadadj_readnl
 
 !===============================================================================
 
-subroutine dadadj_init()
+subroutine dadadj_cam_init()
     use cam_history,   only: addfld
 
     call addfld('DADADJ_PD', (/ 'lev' /), 'A', 'probability', 'dry adiabatic adjustment probability')
 
-end subroutine dadadj_init
+end subroutine dadadj_cam_init
 
 
 !===============================================================================
@@ -98,39 +103,49 @@ subroutine dadadj_tend(dt, state, ptend)
    type(physics_state),       intent(in)  :: state      ! Physics state variables
    type(physics_ptend),       intent(out) :: ptend      ! parameterization tendencies
 
-   logical :: lq(pcnst)
-   real(r8) :: dadpdf(pcols, pver)
-   integer :: ncol, lchnk, icol_err
-   character(len=128) :: errstring  ! Error string
+   character(len=512)                     :: errstring  ! Error string
+   character(len=512)                     :: errmsg     ! CCPP physics scheme error message
+   character(len=64)                      :: scheme_name! CCPP physics scheme name (not used in CAM)
+   integer                                :: icol_err
+   integer                                :: lchnk
+   integer                                :: ncol
+   integer                                :: errflg     ! CCPP physics scheme error flag
+   logical                                :: lq(pcnst)
+   real(r8)                               :: dadpdf(pcols, pver)
 
-    ncol  = state%ncol
-    lchnk = state%lchnk
-    lq(:) = .FALSE.
-    lq(1) = .TRUE.
-    call physics_ptend_init(ptend, state%psetcols, 'dadadj', ls=.true., lq=lq)
+   !------------------------------------------------------------------
+   ncol  = state%ncol
+   lchnk = state%lchnk
+   lq(:) = .FALSE.
+   lq(1) = .TRUE.
+   call physics_ptend_init(ptend, state%psetcols, 'dadadj', ls=.true., lq=lq)
 
-    ! use the ptend components for temporary storate and copy state info for input to
-    ! dadadj_calc which directly updates the temperature and moisture input arrays.
+   !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   dadpdf = 0._r8
+   ptend%s = 0._r8
+   ptend%q = 0._r8
+   !REMOVECAM_END
 
-    ptend%s(:ncol,:pver)   = state%t(:ncol,:pver)
-    ptend%q(:ncol,:pver,1) = state%q(:ncol,:pver,1)
+   ! dadadj_run returns t tend, we are passing the ptend%s array to receive the t tendency and will convert it to s
+   ! before it is returned to CAM..
+   call dadadj_run( &
+        ncol, pver, dt, state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
+        state%t(:ncol,:), state%q(:ncol,:,1), cappav(:ncol,:,lchnk), cpairv(:ncol,:,lchnk), ptend%s(:ncol,:), &
+        ptend%q(:ncol,:,1), dadpdf(:ncol,:), scheme_name, errmsg, errflg)
 
-    call dadadj_calc( &
-       ncol, state%pmid, state%pint, state%pdel, cappav(:,:,lchnk), ptend%s, &
-       ptend%q(:,:,1), dadpdf, icol_err)
-       
-    call outfld('DADADJ_PD',  dadpdf(:ncol,:),  ncol, lchnk)
+   ! error exit
+   if (errflg /= 0) then
+      ! If this is a Convergence error then output lat lon of problem column using column index (errflg)
+      if(index('Convergence', errmsg) /= 0)then
+         write(errstring, *) trim(adjustl(errmsg)),' lat:',state%lat(errflg)*180._r8/pi,' lon:', &
+              state%lon(errflg)*180._r8/pi
+      else
+         errstring=trim(errmsg)
+      end if
+      call endrun('Error dadadj_tend:'//trim(errstring))
+   end if
 
-    if (icol_err > 0) then
-       ! error exit
-       write(errstring, *) &
-          'dadadj_calc: No convergence in column at lat,lon:', &
-          state%lat(icol_err)*180._r8/pi, state%lon(icol_err)*180._r8/pi
-       call handle_errmsg(errstring, subname="dadadj_tend")
-    end if
-
-    ptend%s(:ncol,:)   = (ptend%s(:ncol,:)   - state%t(:ncol,:)  )/dt * cpairv(:ncol,:,lchnk)
-    ptend%q(:ncol,:,1) = (ptend%q(:ncol,:,1) - state%q(:ncol,:,1))/dt
+   call outfld('DADADJ_PD',  dadpdf(:ncol,:),  ncol, lchnk)
 
 end subroutine dadadj_tend
 

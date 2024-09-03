@@ -36,6 +36,8 @@ module modal_aerosol_properties_mod
      procedure :: soluble
      procedure :: min_mass_mean_rad
      procedure :: bin_name
+     procedure :: rebin_bulk_fluxes
+     procedure :: hydrophilic
 
      final :: destructor
   end type modal_aerosol_properties
@@ -43,6 +45,8 @@ module modal_aerosol_properties_mod
   interface modal_aerosol_properties
      procedure :: constructor
   end interface modal_aerosol_properties
+
+  logical, parameter :: debug = .false.
 
 contains
 
@@ -182,12 +186,13 @@ contains
   !  density
   !  hygroscopicity
   !  species type
+  !  species name
   !  short wave species refractive indices
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
   subroutine get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                 spectype, specmorph, refindex_sw, refindex_lw)
+                 spectype, specname, specmorph, refindex_sw, refindex_lw)
 
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
@@ -196,6 +201,7 @@ contains
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
     character(len=*), optional, intent(out) :: spectype  ! species type
+    character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
     complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
@@ -211,6 +217,10 @@ contains
     call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, &
                                 density_aer=density, hygro_aer=hygro, spectype=spectype, &
                                 refindex_aer_sw=refindex_sw, refindex_aer_lw=refindex_lw)
+
+    if (present(specname)) then
+       call rad_cnst_get_info(ilist, bin_ndx, species_ndx, spec_name=specname)
+    end if
 
     if (present(specmorph)) then
        specmorph = 'UNKNOWN'
@@ -664,5 +674,115 @@ contains
     call rad_cnst_get_info(list_ndx, bin_ndx, mode_type=name)
 
   end function bin_name
+
+  !------------------------------------------------------------------------------
+  ! returns bulk deposition fluxes of the specified species type
+  ! rebinned to specified diameter limits
+  !------------------------------------------------------------------------------
+  subroutine rebin_bulk_fluxes(self, bulk_type, dep_fluxes, diam_edges, bulk_fluxes, &
+                               error_code, error_string)
+    use infnan, only: nan, assignment(=)
+
+    class(modal_aerosol_properties), intent(in) :: self
+    character(len=*),intent(in) :: bulk_type       ! aerosol type to rebin
+    real(r8), intent(in) :: dep_fluxes(:)          ! kg/m2
+    real(r8), intent(in) :: diam_edges(:)          ! meters
+    real(r8), intent(out) :: bulk_fluxes(:)        ! kg/m2
+    integer,  intent(out) :: error_code            ! error code (0 if no error)
+    character(len=*), intent(out) :: error_string  ! error string
+
+    real(r8) :: dns_dst ! kg/m3
+    real(r8) :: sigma_g, vmd, tmp, massfrac_bin(size(bulk_fluxes))
+    real(r8) :: Ntype, Mtype, Mtotal, Ntot
+    integer :: k,l,m,mm, nbulk
+    logical :: has_type, type_not_found
+
+    character(len=aero_name_len) :: spectype
+    character(len=aero_name_len) :: modetype
+
+    real(r8), parameter :: sqrtwo = sqrt(2._r8)
+    real(r8), parameter :: onethrd = 1._r8/3._r8
+
+    error_code = 0
+    error_string = ' '
+
+    type_not_found = .true.
+
+    nbulk = size(bulk_fluxes)
+
+    bulk_fluxes(:) = 0.0_r8
+
+    do m = 1,self%nbins()
+       Mtype = 0._r8
+       Mtotal = 0._r8
+       mm = self%indexer(m,0)
+       Ntot = dep_fluxes(mm) ! #/m2
+
+       has_type = .false.
+
+       do l = 1,self%nspecies(m)
+          mm = self%indexer(m,l)
+          call self%get(m,l, spectype=spectype, density=dns_dst) ! kg/m3
+          if (spectype==bulk_type) then
+             Mtype = dep_fluxes(mm) ! kg/m2
+             has_type = .true.
+             type_not_found = .false.
+          end if
+          Mtotal = Mtotal + dep_fluxes(mm) ! kg/m2
+       end do
+       mode_has_type: if (has_type) then
+          call rad_cnst_get_info(0, m, mode_type=modetype)
+          if (Ntot>1.e-40_r8 .and. Mtype>1.e-40_r8 .and. Mtotal>1.e-40_r8) then
+
+             call rad_cnst_get_mode_props(0, m, sigmag=sigma_g)
+             tmp = sqrtwo*log(sigma_g)
+
+             ! type number concentration
+             Ntype = Ntot * Mtype/Mtotal ! #/m2
+
+             ! volume median diameter (meters)
+             vmd = (6._r8*Mtype/(pi*Ntype*dns_dst))**onethrd * exp(1.5_r8*(log(sigma_g))**2)
+
+             massfrac_bin = 0._r8
+
+             do k = 1,nbulk
+                massfrac_bin(k) = 0.5_r8*( erf((log(diam_edges(k+1)/vmd))/tmp) &
+                                - erf((log(diam_edges(k  )/vmd))/tmp) )
+                bulk_fluxes(k) = bulk_fluxes(k) + massfrac_bin(k) * Mtype
+             end do
+
+             if (debug) then
+                if (abs(1._r8-sum(massfrac_bin)) > 1.e-6_r8) then
+                   write(*,*) 'rebin_bulk_fluxes WARNING mode-num, massfrac_bin, sum(massfrac_bin) = ', &
+                        m, massfrac_bin, sum(massfrac_bin)
+                end if
+             end if
+
+          end if
+       end if mode_has_type
+    end do
+
+    if (type_not_found) then
+       bulk_fluxes(:) = nan
+       error_code = 1
+       write(error_string,*) 'aerosol_properties::rebin_bulk_fluxes ERROR : ',trim(bulk_type),' not found'
+    end if
+
+  end subroutine rebin_bulk_fluxes
+
+  !------------------------------------------------------------------------------
+  ! Returns TRUE if bin is hydrophilic, otherwise FALSE
+  !------------------------------------------------------------------------------
+  logical function hydrophilic(self, bin_ndx)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx ! bin number
+
+    character(len=aero_name_len) :: modetype
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+
+    hydrophilic = (trim(modetype) == 'accum')
+
+  end function hydrophilic
 
 end module modal_aerosol_properties_mod

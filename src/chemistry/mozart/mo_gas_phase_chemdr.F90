@@ -1072,7 +1072,7 @@ contains
     do m = 1,pcnst
        n = map2chm( m )
        if ( n > 0 ) then
-         if (cam_physpkg_is("cam_dev")) then
+         if (cam_physpkg_is("cam7")) then
            ! apply to qtend array
            if (cnst_type(m).eq.'dry') then
              qtend(:ncol,pver,m) = qtend(:ncol,pver,m) - sflx(:ncol,n)*rpdeldry(:ncol,pver)*gravit

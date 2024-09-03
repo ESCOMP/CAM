@@ -453,6 +453,7 @@ subroutine radiation_init(pbuf2d)
    ! pressure interfaces below 1 Pa.  When the entire model atmosphere is
    ! below 1 Pa then an extra layer is added to the top of the model for
    ! the purpose of the radiation calculation.
+
    nlay = count( pref_edge(:) > 1._r8 ) ! pascals (0.01 mbar)
 
    if (nlay == pverp) then
@@ -461,6 +462,14 @@ subroutine radiation_init(pbuf2d)
       ktopcam = 1
       ktoprad = 2
       nlaycam = pver
+   else if (nlay == (pverp-1)) then
+      ! Special case nlay == (pverp-1) -- topmost interface outside bounds (CAM MT config), treat as if it is ok.
+      ktopcam = 1
+      ktoprad = 2
+      nlaycam = pver
+      nlay = nlay+1 ! reassign the value so later code understands to treat this case like nlay==pverp
+      write(iulog,*) 'RADIATION_INIT: Special case of 1 model interface at p < 1Pa. Top layer will be INCLUDED in radiation calculation.'
+      write(iulog,*) 'RADIATION_INIT: nlay = ',nlay, ' same as pverp: ',nlay==pverp
    else
       ! nlay < pverp.  nlay layers are used in radiation calcs, and they are
       ! all CAM layers.
@@ -468,7 +477,7 @@ subroutine radiation_init(pbuf2d)
       ktoprad = 1
       nlaycam = nlay
    end if
-
+   
    ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
    ! work with CAM's uppercase names, but other objects that get input from the gas
    ! concs objects don't work.

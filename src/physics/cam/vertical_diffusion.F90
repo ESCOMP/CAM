@@ -449,7 +449,7 @@ subroutine vertical_diffusion_init(pbuf2d)
      do_pbl_diags = .true.
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam_dev or cam6 physics
+     ! run HB scheme where CLUBB is not active when running cam7 or cam6 physics
      ! else init_hb_diff is called just for diagnostic purposes
      !
      if (do_hb_above_clubb) then
@@ -911,7 +911,7 @@ subroutine vertical_diffusion_tend( &
   ! ----------------------- !
 
   ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state)
+  call set_dry_to_wet(state, convert_cnst_type='dry')
 
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
@@ -1057,7 +1057,7 @@ subroutine vertical_diffusion_tend( &
 
   case ( 'CLUBB_SGS' )
     !
-    ! run HB scheme where CLUBB is not active when running cam_dev
+    ! run HB scheme where CLUBB is not active when running cam7
     !
     if (do_hb_above_clubb) then
       call compute_hb_free_atm_diff( ncol          , &
@@ -1194,7 +1194,7 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     if (cam_physpkg_is("cam_dev")) then
+     if (cam_physpkg_is("cam7")) then
        ! surface fluxes applied in clubb emissions module
        cflux(:,2:) = 0._r8
      else
@@ -1384,7 +1384,7 @@ subroutine vertical_diffusion_tend( &
      endif
   end do
   ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state)
+  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt
@@ -1554,7 +1554,7 @@ subroutine vertical_diffusion_tend( &
   call outfld( 'KVT'          , kvt,                       pcols, lchnk )
   call outfld( 'KVM'          , kvm,                       pcols, lchnk )
   call outfld( 'CGS'          , cgs,                       pcols, lchnk )
-  dtk(:ncol,:) = dtk(:ncol,:) / cpair              ! Normalize heating for history
+  dtk(:ncol,:) = dtk(:ncol,:) / cpair / ztodt      ! Normalize heating for history
   call outfld( 'DTVKE'        , dtk,                       pcols, lchnk )
   dtk(:ncol,:) = ptend%s(:ncol,:) / cpair          ! Normalize heating for history using dtk
   call outfld( 'DTV'          , dtk,                       pcols, lchnk )

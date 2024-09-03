@@ -654,7 +654,7 @@ contains
         !
         ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
         !
-        call set_dry_to_wet(state)
+        call set_dry_to_wet(state, convert_cnst_type='dry')
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
         call tot_energy_phys(state, 'phAM')
         call tot_energy_phys(state, 'dyAM', vc=vc_dycore)

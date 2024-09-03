@@ -8,7 +8,7 @@ module cloud_diagnostics
 !
 ! Author: Byron Boville  Sept 06, 2002
 !  Modified Oct 15, 2008
-!    
+!
 !
 !---------------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ module cloud_diagnostics
 
    logical :: do_cld_diag, mg_clouds, rk_clouds, camrt_rad, spcam_m2005_clouds, spcam_sam1mom_clouds
    logical :: one_mom_clouds, two_mom_clouds
-   
+
    integer :: cicewp_idx = -1
    integer :: cliqwp_idx = -1
    integer :: cldemis_idx = -1
@@ -82,14 +82,17 @@ contains
   end subroutine cloud_diagnostics_register
 
 !===============================================================================
-  subroutine cloud_diagnostics_init()
+  subroutine cloud_diagnostics_init(pbuf2d)
 !-----------------------------------------------------------------------
-    use physics_buffer,only: pbuf_get_index
+    use physics_buffer,only: pbuf_get_index, pbuf_set_field, physics_buffer_desc
     use phys_control,  only: phys_getopts
     use constituents,  only: cnst_get_ind
     use cloud_cover_diags, only: cloud_cover_diags_init
+    use time_manager, only: is_first_step
 
     implicit none
+
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 !-----------------------------------------------------------------------
 
@@ -105,13 +108,19 @@ contains
 
     if (two_mom_clouds) then
 
+       ! initialize to zero
+       if (is_first_step()) then
+          call pbuf_set_field(pbuf2d, iciwp_idx, 0._r8)
+          call pbuf_set_field(pbuf2d, iclwp_idx, 0._r8)
+       end if
+
        call addfld ('ICWMR', (/ 'lev' /), 'A', 'kg/kg', 'Prognostic in-cloud water mixing ratio')
        call addfld ('ICIMR', (/ 'lev' /), 'A', 'kg/kg', 'Prognostic in-cloud ice mixing ratio'  )
        call addfld ('IWC',   (/ 'lev' /), 'A', 'kg/m3', 'Grid box average ice water content'    )
        call addfld ('LWC',   (/ 'lev' /), 'A', 'kg/m3', 'Grid box average liquid water content' )
 
        ! determine the add_default fields
-       call phys_getopts(history_amwg_out           = history_amwg) 
+       call phys_getopts(history_amwg_out           = history_amwg)
 
        if (history_amwg) then
           call add_default ('ICWMR', 1, ' ')
@@ -136,11 +145,11 @@ contains
     do_cld_diag = one_mom_clouds .or. two_mom_clouds
 
     if (.not.do_cld_diag) return
-    
-    if (rk_clouds) then 
+
+    if (rk_clouds) then
        wpunits = 'gram/m2'
        sampling_seq='rad_lwsw'
-    else if (two_mom_clouds .or. spcam_sam1mom_clouds) then 
+    else if (two_mom_clouds .or. spcam_sam1mom_clouds) then
        wpunits = 'kg/m2'
        sampling_seq=''
     end if
@@ -157,7 +166,7 @@ contains
          sampling_seq=sampling_seq)
     call addfld ('TGCLDIWP',horiz_only,  'A',wpunits,'Total grid-box cloud ice water path'   , &
          sampling_seq=sampling_seq)
-    
+
     if(two_mom_clouds) then
        call addfld ('lambda_cloud',(/ 'lev' /),'I','1/meter','lambda in cloud')
        call addfld ('mu_cloud',    (/ 'lev' /),'I','1','mu in cloud')
@@ -208,10 +217,10 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 !
 ! Compute (liquid+ice) water path and cloud water/ice diagnostics
 ! *** soon this code will compute liquid and ice paths from input liquid and ice mixing ratios
-! 
+!
 ! **** mixes interface and physics code temporarily
 !-----------------------------------------------------------------------
-    use physics_types, only: physics_state    
+    use physics_types, only: physics_state
     use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use pkg_cldoptics, only: cldovrlap, cldclw,  cldems
     use conv_water,    only: conv_water_in_rad, conv_water_4rad
@@ -277,7 +286,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     real(r8) :: effcld(pcols,pver)      ! effective cloud=cld*emis
 
     logical :: dosw,dolw
-  
+
 !-----------------------------------------------------------------------
     if (.not.do_cld_diag) return
 
@@ -364,7 +373,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
        if( conv_water_in_rad /= 0 ) then
           allcld_ice(:ncol,:) = 0._r8 ! Grid-avg all cloud liquid
           allcld_liq(:ncol,:) = 0._r8 ! Grid-avg all cloud ice
-    
+
           call conv_water_4rad(state, pbuf, allcld_liq, allcld_ice)
        else
           allcld_liq(:ncol,top_lev:pver) = state%q(:ncol,top_lev:pver,ixcldliq)  ! Grid-ave all cloud liquid
@@ -415,7 +424,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
           allcld_liq = state%q(:,:,ixcldliq)
           allcld_ice = state%q(:,:,ixcldice)
        end if
-    
+
        do k=1,pver
           do i = 1,ncol
              gicewp(i,k) = allcld_ice(i,k)*state%pdel(i,k)/gravit*1000.0_r8  ! Grid box ice water path.
@@ -436,7 +445,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
        call cloud_cover_diags_out(lchnk, ncol, cld, state%pmid, nmxrgn, pmxrgn )
     endif
     end if
-    
+
     tgicewp(:ncol) = 0._r8
     tgliqwp(:ncol) = 0._r8
 
@@ -453,14 +462,14 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
        ! Cloud emissivity.
        call cldems(lchnk, ncol, cwp, ficemr, rei, cldemis, cldtau)
-       
+
        ! Effective cloud cover
        do k=1,pver
           do i=1,ncol
              effcld(i,k) = cld(i,k)*cldemis(i,k)
           end do
        end do
-       
+
        call outfld('EFFCLD'  ,effcld , pcols,lchnk)
        if (camrt_rad) then
           call outfld('EMIS' ,cldemis, pcols,lchnk)
@@ -481,7 +490,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
     endif
 
-    if (.not. use_spcam) then 
+    if (.not. use_spcam) then
        ! for spcam, these are diagnostics in crm_physics.F90
        call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
        call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
@@ -505,7 +514,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     call cldclw(lchnk, ncol, state%zi, clwpold, tpw, hl)
     call outfld('SETLWP'  ,clwpold, pcols,lchnk)
     call outfld('LWSH'    ,hl     , pcols,lchnk)
-    
+
     if(one_mom_clouds) then
        if (cldemis_idx<0) deallocate(cldemis)
        if (cldtau_idx<0) deallocate(cldtau)

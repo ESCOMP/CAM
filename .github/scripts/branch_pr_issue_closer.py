@@ -21,8 +21,6 @@ Written by:  Jesse Nusbaumer <nusbaume@ucar.edu> - October, 2019
 
 import re
 import sys
-import subprocess
-import shlex
 import argparse
 
 from github import Github
@@ -30,42 +28,6 @@ from github import Github
 #################
 #HELPER FUNCTIONS
 #################
-
-#+++++++++++++++++++++++++++++++++++++++++
-#Curl command needed to move project cards
-#+++++++++++++++++++++++++++++++++++++++++
-
-def  project_card_move(oa_token, column_id, card_id):
-
-    """
-    Currently pyGithub doesn't contain the methods required
-    to move project cards from one column to another, so
-    the unix curl command must be called directly, which is
-    what this function does.
-
-    The specific command-line call made is:
-
-    curl -H "Authorization: token OA_token" -H \
-    "Accept: application/vnd.github.inertia-preview+json" \
-    -X POST -d '{"position":"top", "column_id":<column_id>}' \
-    https://api.github.com/projects/columns/cards/<card_id>/moves
-
-    """
-
-    #create required argument strings from inputs:
-    github_oa_header = ''' "Authorization: token {0}" '''.format(oa_token)
-    github_url_str = '''https://api.github.com/projects/columns/cards/{0}/moves'''.format(card_id)
-    json_post_inputs = ''' '{{"position":"top", "column_id":{}}}' '''.format(column_id)
-
-    #Create curl command line string:
-    curl_cmdline = '''curl -H '''+github_oa_header+''' -H "Accept: application/vnd.github.inertia-preview+json" -X POST -d '''+\
-                   json_post_inputs+''' '''+github_url_str
-
-    #Split command line string into argument list:
-    curl_arg_list = shlex.split(curl_cmdline)
-
-    #Run command using subprocess:
-    subprocess.run(curl_arg_list, check=True)
 
 #++++++++++++++++++++++++++++++
 #Input Argument parser function
@@ -101,7 +63,7 @@ def end_script(msg):
     """
     Prints message to screen, and then exits script.
     """
-    print("\n{}\n".format(msg))
+    print(f"\n{msg}\n")
     print("Issue closing check has completed successfully.")
     sys.exit(0)
 
@@ -137,11 +99,10 @@ def _main_prog():
 
     ghub = Github(token)
 
-    #++++++++++++++++++++
+    #+++++++++++++++++++++
     #Open ESCOMP/CAM repo
-    #++++++++++++++++++++
+    #+++++++++++++++++++++
 
-    #Official CAM repo:
     cam_repo = ghub.get_repo("ESCOMP/CAM")
 
     #+++++++++++++++++++++++++++++
@@ -162,6 +123,9 @@ def _main_prog():
     #Search for merge text, starting at beginning of message:
     commit_msg_match = pr_merge_pattern.match(commit_message)
 
+    #Initialize variables:
+    pr_num = 0
+
     #Check if match exists:
     if commit_msg_match is not None:
         #If it does then pull out text immediately after message:
@@ -174,7 +138,7 @@ def _main_prog():
         first_word = post_msg_word_list[0]
 
         #Print merged pr number to screen:
-        print("Merged PR: {}".format(first_word))
+        print(f"Merged PR: {first_word}")
 
         try:
             #Try assuming the word is just a number:
@@ -251,6 +215,7 @@ def _main_prog():
     pr_msg_lower = merged_pull.body.lower()
 
     #search for at least one keyword:
+    word_matches = []
     if keyword_pattern.search(pr_msg_lower) is not None:
         #If at least one keyword is found, then determine location of every keyword instance:
         word_matches = keyword_pattern.finditer(pr_msg_lower)
@@ -258,9 +223,9 @@ def _main_prog():
         endmsg = "Pull request was merged without using any of the keywords.  Thus there are no issues to close."
         end_script(endmsg)
 
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #Extract issue and PR numbers associated with found keywords in merged PR message
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #Extract issue and PR numbers associated with found keywords in merged PR message
+    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     #create issue pattern ("the number symbol {#} + a number"),
     #which ends with either a space, a comma, a period, or
@@ -268,10 +233,10 @@ def _main_prog():
     issue_pattern = re.compile(r'#[0-9]+(\s|,|$)|.')
 
     #Create new "close" issues list:
-    close_issues = list()
+    close_issues = []
 
     #Create new "closed" PR list:
-    close_pulls = list()
+    close_pulls = []
 
     #Search text right after keywords for possible issue numbers:
     for match in word_matches:
@@ -299,13 +264,13 @@ def _main_prog():
                     #so set the issue number to one that will never be found:
                     issue_num = -9999
 
-            #Check that number is actually for an issue (as opposed to a PR):
-            if issue_num in open_issues:
-                #Add issue number to "close issues" list:
-                close_issues.append(issue_num)
-            elif issue_num in open_pulls:
-                #If in fact a PR, then add to PR list:
+            #Check if number is actually for a PR (as opposed to an issue):
+            if issue_num in open_pulls:
+                #Add PR number to "close pulls" list:
                 close_pulls.append(issue_num)
+            elif issue_num in open_issues:
+                #If in fact an issue, then add to "close issues" list:
+                close_issues.append(issue_num)
 
     #If no issue numbers are present after any of the keywords, then exit script:
     if not close_issues and not close_pulls:
@@ -322,183 +287,26 @@ def _main_prog():
         print("PRs referenced by the merged PR: "+", ".join(\
               str(pull) for pull in close_pulls))
 
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #Determine name of project associated with merged Pull Request
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #++++++++++++++++++++++++++++++++++++++++++++++
+    #Attempt to close all referenced issues and PRs
+    #++++++++++++++++++++++++++++++++++++++++++++++
 
-    #Pull-out all projects from repo:
-    projects = cam_repo.get_projects()
+    #Loop over referenced issues:
+    for issue_num in close_issues:
+        #Extract github issue object:
+        cam_issue = cam_repo.get_issue(number=issue_num)
+        #Close issue:
+        cam_issue.edit(state='closed')
+        print(f"Issue #{issue_num} has been closed.")
 
-    #Initalize modified project name:
-    proj_mod_name = None
-
-    #Loop over all repo projects:
-    for project in projects:
-        #Pull-out columns from each project:
-        proj_columns = project.get_columns()
-
-        #Loop over columns:
-        for column in proj_columns:
-
-            #check if column name is "Completed Tags"
-            if column.name == "Completed tags":
-                #If so, then extract cards:
-                cards = column.get_cards()
-
-                #Loop over cards:
-                for card in cards:
-                    #Extract card content:
-                    card_content = card.get_content()
-
-                    #Next, check if card number exists and matches merged PR number:
-                    if card_content is not None and card_content.number == pr_num:
-                        #If so, and if Project name is None, then set string:
-                        if proj_mod_name is None:
-                            proj_mod_name = project.name
-                            #Break out of card loop:
-                            break
-
-                        #If already set, then somehow merged PR is in two different projects,
-                        #which is not what this script is expecting, so just exit:
-                        endmsg = "Merged Pull Request found in two different projects, so script will do nothing."
-                        end_script(endmsg)
-
-    #Print project name associated with merged PR:
-    print("merged PR project name: {}".format(proj_mod_name))
-
-    #++++++++++++++++++++++++++++++++++++++++
-    #Extract repo project "To do" card issues
-    #++++++++++++++++++++++++++++++++++++++++
-
-    #Initalize issue counting dictionary:
-    proj_issues_count = dict()
-
-    #Initalize issue id to project card id dictionary:
-    proj_issue_card_ids = dict()
-
-    #Initialize list for issues that have already been closed:
-    already_closed_issues = list()
-
-    #Loop over all repo projects:
-    for project in projects:
-
-        #Next, pull-out columns from each project:
-        proj_columns = project.get_columns()
-
-        #Loop over columns:
-        for column in proj_columns:
-            #Check if column name is "To do"
-            if column.name == "To do":
-                #If so, then extract cards:
-                cards = column.get_cards()
-
-                #Loop over cards:
-                for card in cards:
-                    #Extract card content:
-                    card_content = card.get_content()
-
-                    #Next, check if card issue number matches any of the "close" issue numbers from the PR:
-                    if card_content is not None and card_content.number in close_issues:
-
-                        #If so, then check if issue number is already in proj_issues_count:
-                        if card_content.number in proj_issues_count:
-                            #Add one to project issue counter:
-                            proj_issues_count[card_content.number] += 1
-
-                            #Also add issue id and card id to id dictionary used for card move, if in relevant project:
-                            if project.name == proj_mod_name:
-                                proj_issue_card_ids[card_content.number] = card.id
-
-                        else:
-                            #If not, then append to project issues count dictionary:
-                            proj_issues_count[card_content.number] = 1
-
-                            #Also add issue id and card id to id dictionary used for card move, if in relevant project:
-                            if project.name == proj_mod_name:
-                                proj_issue_card_ids[card_content.number] = card.id
-
-            #Otherwise, check if column name matches "closed issues" column:
-            elif column.name == "closed issues" and project.name == proj_mod_name:
-                #Save column id:
-                column_target_id = column.id
-
-                #Extract cards:
-                closed_cards = column.get_cards()
-
-                #Loop over cards:
-                for closed_card in closed_cards:
-                    #Extract card content:
-                    closed_card_content = closed_card.get_content()
-
-                    #Check if card issue number matches any of the "close" issue numbers from the PR:
-                    if closed_card_content is not None and closed_card_content.number in close_issues:
-                        #If issue number matches, then it likely means the same
-                        #commit message or issue number reference was used in multiple
-                        #pushes to the same repo (e.g., for a PR and then a tag). Thus
-                        #the issue should be marked as "already closed":
-                        already_closed_issues.append(closed_card_content.number)
-
-    #Remove all issues from issue dictionary that are "already closed":
-    for already_closed_issue_num in already_closed_issues:
-        if already_closed_issue_num in proj_issues_count:
-            proj_issues_count.pop(already_closed_issue_num)
-
-    #If no project cards are found that match the issue, then exit script:
-    if not proj_issues_count:
-        endmsg = "No project cards match the issue being closed, so the script will do nothing."
-        end_script(endmsg)
-
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #Check if the number of "To-do" project cards matches the total number
-    #of merged PRs for each 'close' issue.
-    #
-    #Then, close all issues for which project cards equals merged PRs
-    #
-    #If not, then simply move the project card to the relevant project's
-    #"closed issues" column.
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    #Loop over project issues and counts that have been "closed" by merged PR:
-    for issue_num, issue_count in proj_issues_count.items():
-
-        #If issue count is just one, then close issue:
-        if issue_count == 1:
-            #Extract github issue object:
-            cam_issue = cam_repo.get_issue(number=issue_num)
-            #Close issue:
-            cam_issue.edit(state='closed')
-            print("Issue #{} has been closed.".format(issue_num))
-        else:
-            #Extract card id from id dictionary:
-            if issue_num in proj_issue_card_ids:
-                card_id = proj_issue_card_ids[issue_num]
-            else:
-                #If issue isn't in dictionary, then it means the issue
-                #number was never found in the "To do" column, which
-                #likely means the user either referenced the wrong
-                #issue number, or the issue was never assigned to the
-                #project.  Warn user and then exit with a non-zero
-                #error so that the Action fails:
-                endmsg = 'Issue #{} was not found in the "To Do" Column of the "{}" project.\n' \
-                         'Either the wrong issue number was referenced, or the issue was never ' \
-                         'attached to the project.'.format(issue_num, proj_mod_name)
-                print(endmsg)
-                sys.exit(1)
-
-            #Then move the card on the relevant project page to the "closed issues" column:
-            project_card_move(token.strip(), column_target_id, card_id)
-
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #Finally, close all Pull Requests in "close_pulls" list:
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    #Loop over referenced PRs:
     for pull_num in close_pulls:
         #Extract Pull request object:
         cam_pull = cam_repo.get_pull(number=pull_num)
 
         #Close Pull Request:
         cam_pull.edit(state='closed')
-        print("Pull Request #{} has been closed.".format(pull_num))
+        print(f"Pull Request #{pull_num} has been closed.")
 
     #++++++++++
     #End script

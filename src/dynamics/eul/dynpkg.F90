@@ -1,14 +1,14 @@
 
 subroutine dynpkg (adv_state, t2      ,fu      ,fv      ,etamid  ,          &
                    cwava   ,detam   ,flx_net ,ztodt   )
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Driving routines for dynamics and transport.
-! 
-! Method: 
-! 
-! Author: 
+!
+! Method:
+!
+! Author:
 ! Original version:  CCM3
 !
 !-----------------------------------------------------------------------
@@ -20,10 +20,9 @@ subroutine dynpkg (adv_state, t2      ,fu      ,fv      ,etamid  ,          &
    use scanslt,      only: scanslt_run, plond, platd, advection_state
    use scan2,        only: scan2run
    use scamMod,      only: single_column,scm_crm_mode,switch,wfldh
-#if ( defined BFB_CAM_SCAM_IOP )
    use iop, only: t2sav,fusav,fvsav
-#endif
    use perf_mod
+   use cam_history, only: write_camiop
 !-----------------------------------------------------------------------
    implicit none
 
@@ -36,7 +35,7 @@ subroutine dynpkg (adv_state, t2      ,fu      ,fv      ,etamid  ,          &
    real(r8), intent(inout) :: fu(plon,plev,beglat:endlat)         ! u wind tendency
    real(r8), intent(inout) :: fv(plon,plev,beglat:endlat)         ! v wind tendency
 
-   real(r8), intent(in) :: etamid(plev)                ! vertical coords at midpoints 
+   real(r8), intent(in) :: etamid(plev)                ! vertical coords at midpoints
    real(r8), intent(inout) :: cwava(plat)                 ! weight applied to global integrals
    real(r8), intent(inout) :: detam(plev)                 ! intervals between vert full levs.
    real(r8), intent(in) :: flx_net(plon,beglat:endlat) ! net flux from physics
@@ -60,7 +59,7 @@ subroutine dynpkg (adv_state, t2      ,fu      ,fv      ,etamid  ,          &
    real(r8) grd1(2*maxm,plev,plat/2)   ! |
    real(r8) grd2(2*maxm,plev,plat/2)   ! |
    real(r8) grfu1(2*maxm,plev,plat/2)  ! |- see quad for definitions
-   real(r8) grfu2(2*maxm,plev,plat/2)  ! | 
+   real(r8) grfu2(2*maxm,plev,plat/2)  ! |
    real(r8) grfv1(2*maxm,plev,plat/2)  ! |
    real(r8) grfv2(2*maxm,plev,plat/2)  ! |
    real(r8) grut1(2*maxm,plev,plat/2)  ! |
@@ -80,13 +79,13 @@ subroutine dynpkg (adv_state, t2      ,fu      ,fv      ,etamid  ,          &
 ! SCANDYN Dynamics scan
 !----------------------------------------------------------
 !
-#if ( defined BFB_CAM_SCAM_IOP )
-do c=beglat,endlat
-   t2sav(:plon,:,c)= t2(:plon,:,c)
-   fusav(:plon,:,c)= fu(:plon,:,c)
-   fvsav(:plon,:,c)= fv(:plon,:,c)
-enddo
-#endif
+if (write_camiop) then
+   do c=beglat,endlat
+      t2sav(:plon,:,c)= t2(:plon,:,c)
+      fusav(:plon,:,c)= fu(:plon,:,c)
+      fvsav(:plon,:,c)= fv(:plon,:,c)
+   enddo
+end if
 
 if ( single_column ) then
    etadot(1,:,1)=wfldh(:)
@@ -150,4 +149,3 @@ endif
 
    return
 end subroutine dynpkg
-

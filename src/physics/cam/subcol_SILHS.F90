@@ -19,16 +19,20 @@ module subcol_SILHS
 #ifdef SILHS
   use clubb_intr, only: &
         clubb_config_flags, &
-        clubb_params, &
+        clubb_params_single_col, &
         stats_metadata, &
         stats_zt, stats_zm, stats_sfc, &
-        pdf_params_chnk
+        pdf_params_chnk, &
+        hm_metadata, &
+        hydromet_dim, &
+        pdf_dim
         
    use clubb_api_module, only: &
         hmp2_ip_on_hmm2_ip_slope_type, &
         hmp2_ip_on_hmm2_ip_intrcpt_type, &
         precipitation_fractions, &
-        stats
+        stats, &
+        core_rknd
 
    use silhs_api_module, only: &
         silhs_config_flags_type
@@ -59,6 +63,11 @@ module subcol_SILHS
    type (stats), target :: stats_lh_zt,   &
                            stats_lh_sfc
    !$omp threadprivate(stats_lh_zt, stats_lh_sfc)
+
+  real( kind = core_rknd ), dimension(:,:), allocatable :: &
+      corr_array_n_cloud, &
+      corr_array_n_below
+
 #endif
 
    !-----
@@ -334,10 +343,8 @@ contains
 #ifdef CLUBB_SGS
 #ifdef SILHS
       use clubb_api_module,        only: core_rknd, &
-                                         pdf_dim, &
                                          setup_corr_varnce_array_api, &
                                          init_pdf_hydromet_arrays_api, &
-                                         Ncnp2_on_Ncnm2, &
                                          set_clubb_debug_level_api
 
 #endif
@@ -357,7 +364,6 @@ contains
 
       ! To set up CLUBB hydromet indices
       integer :: &
-          hydromet_dim, & ! Number of enabled hydrometeors
           iirr,         & ! Hydrometeor array index for rain water mixing ratio, rr
           iirs,         & ! Hydrometeor array index for snow mixing ratio, rs
           iiri,         & ! Hydrometeor array index for ice mixing ratio, ri
@@ -367,7 +373,7 @@ contains
           iiNi,         & ! Hydrometeor array index for ice concentration, Ni
           iiNg            ! Hydrometeor array index for graupel concentration, Ng
 
-      integer :: l  ! Loop variable
+      integer :: l, ierr=0  ! Loop variable, error check
 
       ! Set CLUBB's debug level
       ! This is called in module clubb_intr; no need to do it here.
@@ -446,36 +452,38 @@ contains
       !-------------------------------
       iirr = 1
       iirs = 3
-      iiri  = 5
+      iiri = 5
       iirg = -1
 
-      iiNr    = 2
+      iiNr = 2
       iiNs = 4
-      iiNi    = 6
+      iiNi = 6
       iiNg = -1
 
       hydromet_dim = 6
-
  
       ! Set up pdf indices, hydromet indicies, hydromet arrays, and hydromet variance ratios
-      call init_pdf_hydromet_arrays_api( 1.0_core_rknd, 1.0_core_rknd,  & ! intent(in)
-                                         hydromet_dim,                  & ! intent(in)
-                                         iirr, iiri, iirs, iirg,        & ! intent(in)
-                                         iiNr, iiNi, iiNs, iiNg,        & ! intent(in)
-                                         subcol_SILHS_hmp2_ip_on_hmm2_ip_slope,      & ! optional(in)
-                                         subcol_SILHS_hmp2_ip_on_hmm2_ip_intrcpt )     ! optional(in)
-
-      Ncnp2_on_Ncnm2 = subcol_SILHS_ncnp2_on_ncnm2
+      call init_pdf_hydromet_arrays_api( 1.0_core_rknd, 1.0_core_rknd, hydromet_dim,  & ! intent(in)
+                                         iirr, iiNr, iiri, iiNi,                      & ! intent(in)
+                                         iirs, iiNs, iirg, iiNg,                      & ! intent(in)
+                                         subcol_SILHS_ncnp2_on_ncnm2,                 & ! intent(in)
+                                         hm_metadata, pdf_dim,                        & ! intent(out)
+                                         subcol_SILHS_hmp2_ip_on_hmm2_ip_slope,       & ! optional(in)
+                                         subcol_SILHS_hmp2_ip_on_hmm2_ip_intrcpt )      ! optional(in)
 
       !-------------------------------
       ! Set up hydrometeors and correlation arrays for SILHS
       !-------------------------------
+      allocate( corr_array_n_cloud(pdf_dim,pdf_dim), corr_array_n_below(pdf_dim,pdf_dim), stat=ierr)
+      if( ierr /= 0 ) call endrun(' subcol_init_SILHS: failed to allocate corr_array fields ')
+
       corr_file_path_cloud = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//cloud_file_ext
       corr_file_path_below = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//below_file_ext
 
       call setup_corr_varnce_array_api( corr_file_path_cloud, corr_file_path_below, &
-                                        newunit(iunit), &
-                                        clubb_config_flags%l_fix_w_chi_eta_correlations )
+                                        pdf_dim, hm_metadata, newunit(iunit), &
+                                        clubb_config_flags%l_fix_w_chi_eta_correlations,               & ! In
+                                        corr_array_n_cloud, corr_array_n_below )
 
       !-------------------------------
       ! Register output fields from SILHS
@@ -600,30 +608,14 @@ contains
 
 #ifdef CLUBB_SGS
 #ifdef SILHS
-      use clubb_api_module,       only : hydromet_dim, &
-
-                                         setup_pdf_parameters_api, &
-
-                                         hydromet_pdf_parameter, &
+      use clubb_api_module,       only : setup_pdf_parameters_api, &
 
                                          zm2zt_api, setup_grid_heights_api, &
-
-                                         iirr, iiNr, iirs, iiri, &
-                                         iirg, iiNs, &
-                                         iiNi, iiNg, &
 
                                          core_rknd, &
 
                                          w_tol_sqd, zero_threshold, &
                                          em_min, cloud_frac_min, & ! rc_tol, &
-
-                                         pdf_dim, &
-                                         corr_array_n_cloud, &
-                                         corr_array_n_below, &
-                                         iiPDF_chi, iiPDF_rr, &
-                                         iiPDF_w, iiPDF_Nr, &
-                                         iiPDF_ri, iiPDF_Ni, &
-                                         iiPDF_Ncn, iiPDF_rs, iiPDF_Ns, &
 
                                          genrand_intg, genrand_init_api, &
 
@@ -844,6 +836,13 @@ contains
       type(grid) :: gr
       
       type(precipitation_fractions) :: precip_fracs      
+
+      ! Used as shortcuts to avoid typing hm_metadata%iiPDF_xx
+      integer :: &
+        iiPDF_chi, iiPDF_rr, iiPDF_w, iiPDF_Nr, &
+        iiPDF_ri, iiPDF_Ni, iiPDF_Ncn, iiPDF_rs, iiPDF_Ns, &
+        iirr, iiNr, iirs, iiri, &
+        iirg, iiNs, iiNi, iiNg
       
       !------------------------------------------------
       !                     Begin Code
@@ -885,6 +884,26 @@ contains
                          !           does not?
                          ! #ERDBG:   The model iteration number is not used in SILHS unless
                          !           sequence_length > 1, but nobody runs with that option.
+
+      ! Copy hm_metadata indices to shortcuts
+      iiPDF_chi = hm_metadata%iiPDF_chi
+      iiPDF_Ncn = hm_metadata%iiPDF_Ncn
+      iiPDF_rr  = hm_metadata%iiPDF_rr
+      iiPDF_w   = hm_metadata%iiPDF_w
+      iiPDF_Nr  = hm_metadata%iiPDF_Nr
+      iiPDF_ri  = hm_metadata%iiPDF_ri
+      iiPDF_Ni  = hm_metadata%iiPDF_Ni
+      iiPDF_rs  = hm_metadata%iiPDF_rs
+      iiPDF_Ns  = hm_metadata%iiPDF_Ns
+      iirr      = hm_metadata%iirr
+      iiNr      = hm_metadata%iiNr
+      iirs      = hm_metadata%iirs
+      iiri      = hm_metadata%iiri
+      iirg      = hm_metadata%iirg
+      iiNs      = hm_metadata%iiNs
+      iiNi      = hm_metadata%iiNi
+      iiNg      = hm_metadata%iiNg
+
       !----------------
       ! Establish associations between pointers and physics buffer fields
       !----------------
@@ -902,7 +921,7 @@ contains
       call pbuf_get_field(pbuf, kvh_idx, khzm_in)
 
       ! Pull c_K from clubb parameters.
-      c_K = clubb_params(ic_K)
+      c_K = clubb_params_single_col(ic_K)
 
       !----------------
       ! Copy state and populate numbers and values of sub-columns
@@ -1129,27 +1148,28 @@ contains
       call init_precip_fracs_api( pverp-top_lev+1, ngrdcol, &
                                   precip_fracs )
        
-      call setup_pdf_parameters_api( gr, pverp-top_lev+1, ngrdcol, pdf_dim, ztodt, &    ! In
-                                     Nc_in_cloud, cld_frac_in, khzm, &                  ! In
-                                     ice_supersat_frac_in, hydromet, wphydrometp, &     ! In
-                                     corr_array_n_cloud, corr_array_n_below, &          ! In
-                                     pdf_params_chnk(lchnk), &                          ! In
-                                     clubb_params, &                                    ! In
-                                     clubb_config_flags%iiPDF_type, &                   ! In
-                                     clubb_config_flags%l_use_precip_frac, &            ! In
-                                     clubb_config_flags%l_predict_upwp_vpwp, &          ! In
-                                     clubb_config_flags%l_diagnose_correlations, &      ! In
-                                     clubb_config_flags%l_calc_w_corr, &                ! In
-                                     clubb_config_flags%l_const_Nc_in_cloud, &          ! In
-                                     clubb_config_flags%l_fix_w_chi_eta_correlations, & ! In
-                                     stats_metadata, &                                  ! In
-                                     stats_zt, stats_zm, stats_sfc, &                   ! In
-                                     hydrometp2, &                                      ! Inout
-                                     mu_x_1, mu_x_2, &                                  ! Out
-                                     sigma_x_1, sigma_x_2, &                            ! Out
-                                     corr_array_1, corr_array_2, &                      ! Out
-                                     corr_cholesky_mtx_1, corr_cholesky_mtx_2, &        ! Out
-                                     precip_fracs )                                     ! Inout
+      call setup_pdf_parameters_api( gr, pverp-top_lev+1, ngrdcol, pdf_dim, hydromet_dim, ztodt,  & ! In
+                                     Nc_in_cloud, cld_frac_in, khzm, &                              ! In
+                                     ice_supersat_frac_in, hydromet, wphydrometp, &                 ! In
+                                     corr_array_n_cloud, corr_array_n_below, &                      ! In
+                                     hm_metadata, &                                                 ! In
+                                     pdf_params_chnk(lchnk), &                                      ! In
+                                     clubb_params_single_col, &                                     ! In
+                                     clubb_config_flags%iiPDF_type, &                               ! In
+                                     clubb_config_flags%l_use_precip_frac, &                        ! In
+                                     clubb_config_flags%l_predict_upwp_vpwp, &                      ! In
+                                     clubb_config_flags%l_diagnose_correlations, &                  ! In
+                                     clubb_config_flags%l_calc_w_corr, &                            ! In
+                                     clubb_config_flags%l_const_Nc_in_cloud, &                      ! In
+                                     clubb_config_flags%l_fix_w_chi_eta_correlations, &             ! In
+                                     stats_metadata, &                                              ! In
+                                     stats_zt, stats_zm, stats_sfc, &                               ! In
+                                     hydrometp2, &                                                  ! Inout
+                                     mu_x_1, mu_x_2, &                                              ! Out
+                                     sigma_x_1, sigma_x_2, &                                        ! Out
+                                     corr_array_1, corr_array_2, &                                  ! Out
+                                     corr_cholesky_mtx_1, corr_cholesky_mtx_2, &                    ! Out
+                                     precip_fracs )                                                 ! Inout
       
       ! In order for Lscale to be used properly, it needs to be passed out of
       ! advance_clubb_core, saved to the pbuf, and then pulled out of the
@@ -1220,15 +1240,11 @@ contains
                     iter, pdf_dim, num_subcols, sequence_length, pverp-top_lev+1, ngrdcol, & ! In
                     l_calc_weights_all_levs_itime, &                      ! In 
                     pdf_params_chnk(lchnk), delta_zm, Lscale, &           ! In
-                    lh_seed, &                                            ! In
+                    lh_seed, hm_metadata, &                               ! In
                     rho_ds_zt, &                                          ! In 
                     mu_x_1, mu_x_2, sigma_x_1, sigma_x_2, &               ! In 
                     corr_cholesky_mtx_1, corr_cholesky_mtx_2, &           ! In
                     precip_fracs, silhs_config_flags, &                   ! In
-                    clubb_params, &                                       ! In
-                    clubb_config_flags%l_uv_nudge, &                      ! In
-                    clubb_config_flags%l_tke_aniso, &                     ! In
-                    clubb_config_flags%l_standard_term_ta, &              ! In
                     vert_decorr_coef, &                                   ! In
                     stats_metadata, &                                     ! In
                     stats_lh_zt, stats_lh_sfc, &                          ! InOut
@@ -1236,15 +1252,15 @@ contains
                     lh_sample_point_weights)                              ! Out
 
       ! Extract clipped variables from subcolumns
-      call clip_transform_silhs_output_api( gr, pverp-top_lev+1, ngrdcol, num_subcols, &   ! In
-                                            pdf_dim, hydromet_dim, & ! In
-                                            X_mixt_comp_all_levs, & ! In
-                                            X_nl_all_levs, &        ! In
-                                            pdf_params_chnk(lchnk), & ! In
-                                            l_use_Ncn_to_Nc, & ! In
-                                            lh_rt_clipped, lh_thl_clipped, & ! Out
-                                            lh_rc_clipped, lh_rv_clipped, & ! Out
-                                            lh_Nc_clipped ) ! Out
+      call clip_transform_silhs_output_api( gr, pverp-top_lev+1, ngrdcol, num_subcols, & ! In
+                                            pdf_dim, hydromet_dim, hm_metadata,        & ! In
+                                            X_mixt_comp_all_levs,                      & ! In
+                                            X_nl_all_levs,                             & ! In
+                                            pdf_params_chnk(lchnk),                    & ! In
+                                            l_use_Ncn_to_Nc,                           & ! In
+                                            lh_rt_clipped, lh_thl_clipped,             & ! Out
+                                            lh_rc_clipped, lh_rv_clipped,              & ! Out
+                                            lh_Nc_clipped )                              ! Out
       !$acc wait
        
       if ( l_est_kessler_microphys ) then

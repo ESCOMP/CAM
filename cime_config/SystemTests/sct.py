@@ -30,15 +30,17 @@ class SCT(SystemTestsCompareTwo):
 
     def _case_one_setup(self):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'CAMIOP'")
+        if self._case.get_value("CAM_DYCORE") == "se":
+            append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scale_dry_air_mass     = 0.0D0")
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
+        self._case.set_value("BFBFLAG","TRUE")
 
 
 
     def _case_two_setup(self):
         case_name = self._case.get_value("CASE")
         RUN_STARTDATE = self._case1.get_value("RUN_STARTDATE")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS    = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
@@ -47,6 +49,8 @@ class SCT(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'YEARLY'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_relaxation         = .false.")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_3dfrc          = .true.")
         for comp in self._case.get_values("COMP_CLASSES"):
             self._case.set_value("NTASKS_{}".format(comp), 1)
             self._case.set_value("NTHRDS_{}".format(comp), 1)
@@ -54,18 +58,28 @@ class SCT(SystemTestsCompareTwo):
 
         if self._case.get_value("COMP_INTERFACE") == "mct":
             self._case.set_value("PTS_MODE","TRUE")
-        self._case.set_value("PTS_LAT",-20.0)
-        self._case.set_value("PTS_LON",140.0)
 
-        CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
-        self._case.set_value("CAM_CONFIG_OPTS","{} -scam ".format(CAM_CONFIG_OPTS))
+        self._case.set_value("BFBFLAG","TRUE")
+
+        CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS").replace('-camiop','')
+        self._case.set_value("CAM_CONFIG_OPTS","{} -scam camfrc ".format(CAM_CONFIG_OPTS))
+        if self._case.get_value("CAM_DYCORE") == "se":
+            self._case.set_value("PTS_LAT",44.80320177421346)
+            self._case.set_value("PTS_LON",276.7082039324993)
+            append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scale_dry_air_mass     = 0.0D0")
+        else:
+            append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
+            self._case.set_value("PTS_LAT",-20.0)
+            self._case.set_value("PTS_LON",140.0)
+
+        self._case.set_value("STOP_N",5)
         self._case.case_setup(test_mode=True, reset=True)
 
     def _component_compare_test(self, suffix1, suffix2,
                                 success_change=False,
                                 ignore_fieldlist_diffs=False):
         with self._test_status:
-            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1i*8400.nc ')
+            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*0000.nc ')
             stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/^0,/0.0,/ | sed s/^0\;/0.0\;/ | sed s/\[,\;\].\*// |  uniq')
             array_of_DIFFs=DIFFs.split("\n")
             answer=max([abs(float(x)) for x in array_of_DIFFs])

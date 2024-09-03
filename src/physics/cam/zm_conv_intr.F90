@@ -17,7 +17,6 @@ module zm_conv_intr
 
    use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
                                rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
-   use ndrop_bam,        only: ndrop_bam_init
    use cam_abortutils,   only: endrun
    use physconst,        only: pi
    use spmd_utils,       only: masterproc
@@ -248,6 +247,12 @@ subroutine zm_conv_init(pref_edge)
 
   real(r8),intent(in) :: pref_edge(plevp)        ! reference pressures at interfaces
 
+  ! local variables
+  real(r8), parameter :: scale_height = 7000._r8  ! std atm scale height (m)
+  real(r8), parameter :: dz_min = 100._r8         ! minimum thickness for using
+                                                  !   zmconv_parcel_pbl=.false.
+  real(r8)            :: dz_bot_layer             ! thickness of bottom layer (m)
+
   character(len=512) :: errmsg
   integer            :: errflg
 
@@ -349,6 +354,19 @@ subroutine zm_conv_init(pref_edge)
     if (masterproc) then
        write(iulog,*)'ZM_CONV_INIT: Deep convection will be capped at intfc ',limcnv, &
             ' which is ',pref_edge(limcnv),' pascals'
+    end if
+
+    ! If thickness of bottom layer is less than dz_min, and zmconv_parcel_pbl=.false.,
+    ! then issue a warning.
+    dz_bot_layer = scale_height * log(pref_edge(pverp)/pref_edge(pver))
+    if (dz_bot_layer < dz_min .and. .not. zmconv_parcel_pbl) then
+       if (masterproc) then
+          write(iulog,*)'********** WARNING **********'
+          write(iulog,*)' ZM_CONV_INIT: Bottom layer thickness (m) is ', dz_bot_layer
+          write(iulog,*)' The namelist variable zmconv_parcel_pbl should be set to .true.'
+          write(iulog,*)' when the bottom layer thickness is < ', dz_min
+          write(iulog,*)'********** WARNING **********'
+       end if
     end if
 
     no_deep_pbl = phys_deepconv_pbl()
@@ -590,7 +608,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
-                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
+                    ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
                     tpert(:ncol), dlf(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
@@ -829,7 +847,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:))
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -929,7 +947,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
       call t_stopf ('convtran2')
    end if
 

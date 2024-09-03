@@ -70,6 +70,8 @@ module aerosol_properties_mod
      procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
      procedure(aero_optics_params), deferred :: optics_params
      procedure(aero_bin_name), deferred :: bin_name
+     procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
+     procedure(aero_hydrophilic), deferred :: hydrophilic
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -91,12 +93,13 @@ module aerosol_properties_mod
      !  density
      !  hygroscopicity
      !  species type
+     !  species name
      !  short wave species refractive indices
      !  long wave species refractive indices
      !  species morphology
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                               spectype, specmorph, refindex_sw, refindex_lw)
+                               spectype, specname, specmorph, refindex_sw, refindex_lw)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -105,6 +108,7 @@ module aerosol_properties_mod
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
        character(len=*), optional, intent(out) :: spectype  ! species type
+       character(len=*), optional, intent(out) :: specname  ! species name
        character(len=*), optional, intent(out) :: specmorph ! species morphology
        complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
        complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
@@ -377,6 +381,32 @@ module aerosol_properties_mod
        character(len=32) name
 
      end function aero_bin_name
+
+     !------------------------------------------------------------------------------
+     ! returns bulk deposition fluxes of the specified species type
+     ! rebinned to specified diameter limits
+     !------------------------------------------------------------------------------
+     subroutine aero_rebin_bulk_fluxes(self, bulk_type, dep_fluxes, diam_edges, bulk_fluxes, &
+                                       error_code, error_string)
+       import :: aerosol_properties, r8
+       class(aerosol_properties), intent(in) :: self
+       character(len=*),intent(in) :: bulk_type       ! aerosol type to rebin
+       real(r8), intent(in) :: dep_fluxes(:)          ! kg/m2
+       real(r8), intent(in) :: diam_edges(:)          ! meters
+       real(r8), intent(out) :: bulk_fluxes(:)        ! kg/m2
+       integer,  intent(out) :: error_code            ! error code (0 if no error)
+       character(len=*), intent(out) :: error_string  ! error string
+
+     end subroutine aero_rebin_bulk_fluxes
+
+     !------------------------------------------------------------------------------
+     ! Returns TRUE if bin is hydrophilic, otherwise FALSE
+     !------------------------------------------------------------------------------
+     logical function aero_hydrophilic(self, bin_ndx)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx ! bin number
+     end function aero_hydrophilic
 
   end interface
 

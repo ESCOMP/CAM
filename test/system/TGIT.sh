@@ -1,6 +1,6 @@
 #!/bin/sh
 # Test for bad git repo
-# Ensures that the top-level CAM directory 
+# Ensures that the top-level CAM directory
 # has ".git" directory and ".gitignore" file,
 # and no other git files or directories.
 
@@ -9,7 +9,7 @@
 # 2: Missing ".git" directory
 # 3: Missing ".gitignore" file
 # 4: Missing ".github" directory
-# 5: More than three ".git*" files or directories
+# 5: Missing ".gitmodules" file
 # 6: Error from running an external command
 
 # Utility to check return code.
@@ -66,7 +66,7 @@ The ".gitignore" file is missing from the CAM git repo.  Was this repo cloned, c
 modified incorrectly?  If so then copy the .gitignore file from a standard CAM git repo.
 EOF
         rc=3
-    fi   
+    fi
 
     # Check for ".github" directory:
     if [ ! -d "${cam_top_dir}/.github" ]; then
@@ -77,15 +77,11 @@ EOF
         rc=4
     fi
 
-    # Check if there are more ".git*" files or directories than just ".git", ".gitignore",
-    # and ".github":
-    git_file_num=$(find "${cam_top_dir}" -maxdepth 1 -name '.git*' | wc -l)
-
-    check_code "$?" "Problem running 'find' command for multi-git file check."
-
-    if [ "${git_file_num}" -gt 3 ]; then
+    # Check for ".github" directory:
+    if [ ! -f "${cam_top_dir}/.gitmodules" ]; then
         cat <<EOF
-More than three ".git*" files or sub-directories present in this CAM git repo.
+The ".gitmodules" directory is missing from the CAM git repo.  Was this repo cloned, copied, or
+modified incorrectly?  If so then copy the .gitmodules directory from a standard CAM git repo.
 EOF
         rc=5
     fi
@@ -94,7 +90,7 @@ fi # git-repo check
 
 # If all tests pass, let user know:
 if [ "$rc" -eq 0 ]; then
-    echo "No problems found in the git repostiory ($cam_top_dir)."
+    echo "No problems found in the git repository ($cam_top_dir)."
 fi
 
 # Exit script with final error value:

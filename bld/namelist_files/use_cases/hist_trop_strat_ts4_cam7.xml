@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- Initial conditions -->
+<ncdata hgrid="ne30np4">atm/cam/inic/se/f.cam6_3_153.FCMTnudged_climate_chemistry_ne30.factor_fix.cam.i.1996-01-01-00000_c220522.nc</ncdata>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_data_type>SERIAL</solar_data_type>
+
+<!-- Emissions -->
+<csw_time_type>SERIAL</csw_time_type>
+
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- Lower boundary concentrations -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_17500116-25001216_CMIP6_SSP585_0p5degLat_c20200824.nc</flbc_file>
+<flbc_list>
+  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
+  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'H2402', 'OCS', 'SF6', 'CFC11eq'
+</flbc_list>
+
+<!-- history output -->
+<history_chemistry>.true.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+
+</namelist_defaults>

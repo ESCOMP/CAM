@@ -1,4 +1,4 @@
-./xmlchange NTASKS=36
+./xmlchange NTASKS=128
 ./xmlchange NTHRDS=1
 ./xmlchange ROOTPE='0'
 ./xmlchange ROF_NCPL=`./xmlquery --value ATM_NCPL`

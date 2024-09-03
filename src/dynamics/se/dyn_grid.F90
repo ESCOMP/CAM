@@ -59,6 +59,7 @@ integer, parameter :: dyn_decomp = 101 ! The SE dynamics grid
 integer, parameter :: fvm_decomp = 102 ! The FVM (CSLAM) grid
 integer, parameter :: physgrid_d = 103 ! physics grid on dynamics decomp
 integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading initial file
+integer, parameter :: ini_decomp_scm = 205 ! alternate dynamics grid for reading initial file
 character(len=3), protected :: ini_grid_name
 
 ! Name of horizontal grid dimension in initial file.
@@ -732,8 +733,8 @@ subroutine define_cam_grids()
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
    use dimensions_mod,   only: nc
-   use shr_const_mod,       only: PI => SHR_CONST_PI
-
+   use shr_const_mod,    only: PI => SHR_CONST_PI
+   use scamMod,          only: closeioplon,closeioplat,closeioplonidx,single_column
    ! Local variables
    integer                      :: i, ii, j, k, ie, mapind
    character(len=8)             :: latname, lonname, ncolname, areaname
@@ -741,6 +742,7 @@ subroutine define_cam_grids()
    type(horiz_coord_t), pointer :: lat_coord
    type(horiz_coord_t), pointer :: lon_coord
    integer(iMap),       pointer :: grid_map(:,:)
+   integer(iMap),       pointer :: grid_map_scm(:,:) !grid_map decomp for single column mode
 
    real(r8),        allocatable :: pelat_deg(:)  ! pe-local latitudes (degrees)
    real(r8),        allocatable :: pelon_deg(:)  ! pe-local longitudes (degrees)
@@ -748,6 +750,8 @@ subroutine define_cam_grids()
    real(r8),        pointer     :: pearea_wt(:)  ! pe-local areas normalized for unit sphere
    integer(iMap)                :: fdofP_local(npsq,nelemd) ! pe-local map for dynamics decomp
    integer(iMap),   allocatable :: pemap(:)                 ! pe-local map for PIO decomp
+   integer(iMap),   allocatable :: pemap_scm(:)             ! pe-local map for single column PIO decomp
+   real(r8)                     :: latval(1),lonval(1)
 
    integer                      :: ncols_fvm, ngcols_fvm
    real(r8),        allocatable :: fvm_coord(:)
@@ -859,7 +863,6 @@ subroutine define_cam_grids()
    ! If dim name is 'ncol', create INI grid
    ! We will read from INI grid, but use GLL grid for all output
    if (trim(ini_grid_hdim_name) == 'ncol') then
-
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
       lon_coord => horiz_coord_create('lon', 'ncol', ngcols_d,  &
@@ -893,6 +896,42 @@ subroutine define_cam_grids()
    ! grid_map cannot be deallocated as the cam_filemap_t object just points
    ! to it.  It can be nullified.
    nullify(grid_map)
+
+   !---------------------------------
+   ! Create SCM grid object when running single column mode
+   !---------------------------------
+
+   if ( single_column) then
+      allocate(pemap_scm(1))
+      pemap_scm = 0_iMap
+      pemap_scm = closeioplonidx
+
+      ! Map for scm grid
+      allocate(grid_map_scm(3,npsq))
+      grid_map_scm = 0_iMap
+      mapind = 1
+      j = 1
+      do i = 1, npsq
+         grid_map_scm(1, mapind) = i
+         grid_map_scm(2, mapind) = j
+         grid_map_scm(3, mapind) = pemap_scm(1)
+         mapind = mapind + 1
+      end do
+      latval=closeioplat
+      lonval=closeioplon
+
+      lat_coord => horiz_coord_create('lat', 'ncol', 1,  &
+         'latitude', 'degrees_north', 1, 1, latval, map=pemap_scm)
+      lon_coord => horiz_coord_create('lon', 'ncol', 1,  &
+         'longitude', 'degrees_east', 1, 1, lonval, map=pemap_scm)
+
+      call cam_grid_register('SCM', ini_decomp_scm, lat_coord, lon_coord,         &
+         grid_map_scm, block_indexed=.false., unstruct=.true.)
+      deallocate(pemap_scm)
+      ! grid_map cannot be deallocated as the cam_filemap_t object just points
+      ! to it.  It can be nullified.
+      nullify(grid_map_scm)
+   end if
 
    !---------------------------------
    ! Create FVM grid object for CSLAM

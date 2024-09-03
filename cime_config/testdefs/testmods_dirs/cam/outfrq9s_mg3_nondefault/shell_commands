@@ -1,8 +1,0 @@
-./xmlchange NTASKS=36
-./xmlchange NTHRDS=1
-./xmlchange ROOTPE='0'
-./xmlchange ROF_NCPL=`./xmlquery --value ATM_NCPL`
-./xmlchange GLC_NCPL=`./xmlquery --value ATM_NCPL`
-./xmlchange CAM_CONFIG_OPTS=' -microphys mg3' --append
-./xmlchange TIMER_DETAIL='6'
-./xmlchange TIMER_LEVEL='999'
