@@ -298,7 +298,7 @@ contains
 
 !===============================================================================
 
-  subroutine aoa_tracers_timestep_tend(state, ptend, cflx, dt)
+  subroutine aoa_tracers_timestep_tend(state, ptend, dt)
 
     use physics_types, only: physics_state, physics_ptend, physics_ptend_init
     use cam_history,   only: outfld
@@ -306,8 +306,7 @@ contains
     ! Arguments
     type(physics_state), intent(in)    :: state              ! state variables
     type(physics_ptend), intent(out)   :: ptend              ! package tendencies
-    real(r8),            intent(inout) :: cflx(pcols,pcnst)  ! Surface constituent flux (kg/m^2/s)
-    real(r8),            intent(in)    :: dt                 ! timestep
+    real(r8),            intent(in)    :: dt                 ! timestep size (sec)
 
     !----------------- Local workspace-------------------------------
 
@@ -372,20 +371,6 @@ contains
     call outfld (src_names(1), ptend%q(:,:,ixaoa),  pcols, lchnk)
     call outfld (src_names(2), ptend%q(:,:,ixht),   pcols, lchnk)
     call outfld (src_names(3), ptend%q(:,:,ixvt),   pcols, lchnk)
-
-    ! Set tracer fluxes
-    do i = 1, ncol
-
-       ! AOAMF
-       cflx(i,ixaoa) = 0._r8
-
-       ! HORZ
-       cflx(i,ixht) = 0._r8
-
-       ! VERT
-       cflx(i,ixvt) = 0._r8
-
-    end do
 
   end subroutine aoa_tracers_timestep_tend
 
