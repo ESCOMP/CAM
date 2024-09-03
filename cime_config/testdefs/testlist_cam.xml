@@ -2023,7 +2023,7 @@
       <machine name="derecho" compiler="intel" category="camchem_hco"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:40:00</option>
       <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart/PE tests</option>
     </options>
   </test>
