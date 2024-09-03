@@ -36,8 +36,8 @@ module dust_model
   real(r8) :: dust_dmt_vwr(dust_nbin)
   real(r8) :: dust_stk_crc(dust_nbin)
 
-  real(r8)          :: dust_emis_fact = -1.e36_r8        ! tuning parameter for dust emissions
-  character(len=cl) :: soil_erod_file = 'soil_erod_file' ! full pathname for soil erodibility dataset
+  real(r8)          :: dust_emis_fact = -1.e36_r8  ! tuning parameter for dust emissions
+  character(len=cl) :: soil_erod_file = 'none'     ! full pathname for soil erodibility dataset
 
 contains
 
@@ -152,7 +152,7 @@ contains
 
           soil_erod(i) = soil_erodibility( i, lchnk )
 
-          ! adjust emissions based on soil erosion
+          ! adjust emissions
           do m = 1,dust_nbin
 
              idst = dust_indices(m)
@@ -167,9 +167,7 @@ contains
 
        col_loop2: do i =1,ncol
 
-          soil_erod(i) = soil_erodibility( i, lchnk )
-
-          ! adjust emissions based on soil erosion
+          ! adjust emissions
           do m = 1,dust_nbin
 
              idst = dust_indices(m)
