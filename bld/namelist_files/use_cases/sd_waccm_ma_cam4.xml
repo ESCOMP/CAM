@@ -79,7 +79,10 @@
 
 <!-- turn on clm MEGAN VOC emis -->
 <megan_mapped_emisfctrs>.false.</megan_mapped_emisfctrs>
-<megan_specifier>'CH2O = formaldehyde','CO = carbon_monoxide'</megan_specifier>
+<megan_specifier>
+ 'CH2O = formaldehyde',
+ 'CO = carbon_monoxide'
+</megan_specifier>
 
 <!-- History Streams -->
 
