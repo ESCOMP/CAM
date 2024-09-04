@@ -2543,6 +2543,10 @@
 <dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam6"    ver="chem">0.9D0</dust_emis_fact>
 <dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam7"    ver="chem">0.9D0</dust_emis_fact>
 
+<!-- dust emissions method -->
+<dust_emis_method>Zender_2003</dust_emis_method>
+<zender_soil_erod_source>atm</zender_soil_erod_source>
+
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
 <seasalt_emis_scale                                                      >1.35D0</seasalt_emis_scale>
