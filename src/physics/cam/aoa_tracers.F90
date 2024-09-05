@@ -143,7 +143,6 @@ contains
 
     do k = 1,pver
        qrel_vert(k) = -7._r8*log(pref_mid_norm(k)) + vert_offset
-       if (masterproc) write(*,*) 'FVDBG.aoa_tracers_register : ',k,pref_mid_norm(k),qrel_vert(k)
     enddo
 
   end subroutine aoa_tracers_register
