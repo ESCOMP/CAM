@@ -81,7 +81,7 @@ integer :: npbuf_var
 integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
-type (snapshot_type)    ::  state_snapshot(27)
+type (snapshot_type)    ::  state_snapshot(31)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
