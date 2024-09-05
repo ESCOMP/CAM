@@ -241,8 +241,8 @@ subroutine zm_conv_init(pref_edge)
 
   ! local variables
   real(r8), parameter :: scale_height = 7000._r8  ! std atm scale height (m)
-  real(r8), parameter :: dz_min = 100._r8         ! minimum thickness for using 
-                                                  !   zmconv_parcel_pbl=.false. 
+  real(r8), parameter :: dz_min = 100._r8         ! minimum thickness for using
+                                                  !   zmconv_parcel_pbl=.false.
   real(r8)            :: dz_bot_layer             ! thickness of bottom layer (m)
 
   character(len=512) :: errmsg
@@ -598,7 +598,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
-                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
+                    ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
                     tpert(:ncol), dlf(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
@@ -833,7 +833,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:))
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -933,7 +933,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt)
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
       call t_stopf ('convtran2')
    end if
 

@@ -35,6 +35,7 @@ module physpkg
   use phys_control,    only: use_hemco            ! Use Harmonized Emissions Component (HEMCO)
 
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
+  use modal_aero_calcsize,    only: modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
   implicit none
@@ -777,7 +778,7 @@ contains
     use sslt_rebin,         only: sslt_rebin_init
     use tropopause,         only: tropopause_init
     use solar_data,         only: solar_data_init
-    use dadadj_cam,         only: dadadj_init
+    use dadadj_cam,         only: dadadj_cam_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
@@ -909,7 +910,7 @@ contains
        endif
     endif
 
-    call cloud_diagnostics_init()
+    call cloud_diagnostics_init(pbuf2d)
 
     call radheat_init(pref_mid)
 
@@ -952,7 +953,7 @@ contains
 #endif
     call sslt_rebin_init()
     call tropopause_init()
-    call dadadj_init()
+    call dadadj_cam_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
@@ -1087,9 +1088,7 @@ contains
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
-#if (defined BFB_CAM_SCAM_IOP )
-    use cam_history,    only: outfld
-#endif
+    use cam_history,    only: outfld, write_camiop
     use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1157,11 +1156,11 @@ contains
     !-----------------------------------------------------------------------
     !
 
-#if (defined BFB_CAM_SCAM_IOP )
-    do c=begchunk, endchunk
-      call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
-    end do
-#endif
+    if (write_camiop) then
+       do c=begchunk, endchunk
+          call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
+       end do
+    end if
 
     call t_barrierf('sync_bc_physics', mpicom)
     call t_startf ('bc_physics')
@@ -2067,7 +2066,7 @@ contains
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
-    use aero_model,      only: aero_model_wetdep
+    use aero_model,      only: aero_model_wetdep, wetdep_lq
     use carma_intr,      only: carma_wetdep_tend, carma_timestep_tend
     use carma_flags_mod, only: carma_do_detrain, carma_do_cldice, carma_do_cldliq,  carma_do_wetdep
     use radiation,       only: radiation_tend
@@ -2135,8 +2134,8 @@ contains
     integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
     integer :: m, m_cnst
     ! for macro/micro co-substepping
-    integer :: macmic_it                       ! iteration variables
-    real(r8) :: cld_macmic_ztodt               ! modified timestep
+    integer :: macmic_it                      ! iteration variables
+    real(r8) :: cld_macmic_ztodt              ! modified timestep
     ! physics buffer fields to compute tendencies for stratiform package
     integer itim_old, ifld
     real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
@@ -2797,10 +2796,22 @@ contains
        !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
-       call t_startf('bc_aerosols')
-       if (clim_modal_aero .and. .not. prog_modal_aero) then
-          call modal_aero_calcsize_diag(state, pbuf)
-          call modal_aero_wateruptake_dr(state, pbuf)
+       call t_startf('aerosol_wet_processes')
+       if (clim_modal_aero) then
+          if (prog_modal_aero) then
+             call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
+             ! Do calculations of mode radius and water uptake if:
+             ! 1) modal aerosols are affecting the climate, or
+             ! 2) prognostic modal aerosols are enabled
+             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf)
+             ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
+             ! modes is done in conjunction with the dry radius calculation
+             call modal_aero_wateruptake_dr(state, pbuf)
+             call physics_update(state, ptend, ztodt, tend)
+          else
+             call modal_aero_calcsize_diag(state, pbuf)
+             call modal_aero_wateruptake_dr(state, pbuf)
+          endif
        endif
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
@@ -2840,7 +2851,7 @@ contains
        ! check tracer integrals
        call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
 
-       call t_stopf('bc_aerosols')
+       call t_stopf('aerosol_wet_processes')
 
    endif
 
