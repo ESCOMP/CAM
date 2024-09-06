@@ -739,7 +739,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol),maxg(:ncol),ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt  )
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
 
 end subroutine crmclouds_convect_tend
 !=====================================================================================================

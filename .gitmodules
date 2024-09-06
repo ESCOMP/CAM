@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_03_000
+        fxtag =  atmos_phys0_04_001
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -151,7 +151,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 [submodule "cdeps"]
 path = components/cdeps
 url = https://github.com/ESCOMP/CDEPS.git
-fxtag = cdeps1.0.45
+fxtag = cdeps1.0.48
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
@@ -172,14 +172,14 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm_cice6_5_0_10
+fxtag = cesm_cice6_5_0_12
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
 [submodule "clm"]
 path = components/clm
 url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.2.009
+fxtag = ctsm5.2.027
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
@@ -189,4 +189,3 @@ url = https://github.com/ESCOMP/FMS_interface
 fxtag = fi_240516
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
-

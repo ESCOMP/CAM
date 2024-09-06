@@ -65,10 +65,10 @@
 <history_cesm_forcing>.true.</history_cesm_forcing>
 <history_scwaccm_forcing>.true.</history_scwaccm_forcing>
 
-<fexcl1> 'AOA1SRC', 'AOA2SRC', 'NO2_CMXF' </fexcl1>
+<fexcl1> 'NO2_CMXF' </fexcl1>
 
 <fincl1>
-   'ABSORB', 'ACBZO2', 'ACTREL', 'ALKNIT', 'ALKO2', 'ALKOOH', 'AOA1', 'AOA_NH', 'AODABSdn', 'AODBCdn', 'AODdnDUST01', 'AODdnDUST02',
+   'ABSORB', 'ACBZO2', 'ACTREL', 'ALKNIT', 'ALKO2', 'ALKOOH', 'AOA_NH', 'AODABSdn', 'AODBCdn', 'AODdnDUST01', 'AODdnDUST02',
    'AODdnDUST03', 'AODdn_aitken', 'AODdn_accum', 'AODdn_coarse', 'AODDUST02', 'AODDUST', 'AODNIRstdn', 'AODPOMdn', 'AODSO4dn', 'AODSOAdn', 'AODSSdn',
    'AODUVdn', 'AODUVstdn', 'AODVIS', 'AODVISdn', 'AODVISstdn', 'AQ_SO2', 'AREA', 'AREI', 'AREL', 'bc_a1', 'bc_a1DDF',
    'bc_a1SFWET', 'bc_a4', 'bc_a4_CLXF', 'bc_a4DDF', 'bc_a4SFWET', 'BCARY', 'bc_c1', 'bc_c1DDF', 'bc_c1SFWET', 'bc_c4', 'bc_c4DDF',
