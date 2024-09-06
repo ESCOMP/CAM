@@ -1,31 +1,34 @@
+module cam_diagnostic_utils
 
-subroutine cpslec (ncol, pmid, phis, ps, t, psl, gravit, rair)
+! Collection of routines used for diagnostic calculations.
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use ppgrid,       only: pcols, pver
+
+
+implicit none
+private
+save
+
+public :: &
+   cpslec      ! compute sea level pressure
+
+!===============================================================================
+contains
+!===============================================================================
+
+subroutine cpslec(ncol, pmid, phis, ps, t, psl, gravit, rair)
 
 !----------------------------------------------------------------------- 
 ! 
-! Purpose: 
-! Hybrid coord version:  Compute sea level pressure for a latitude line
+! Compute sea level pressure.
 ! 
-! Method: 
-! CCM2 hybrid coord version using ECMWF formulation
-! Algorithm: See section 3.1.b in NCAR NT-396 "Vertical 
+! Uses ECMWF formulation Algorithm: See section 3.1.b in NCAR NT-396 "Vertical 
 ! Interpolation and Truncation of Model-Coordinate Data
 !
-! Author: Stolen from the Processor by Erik Kluzek
-! 
-!-----------------------------------------------------------------------
-!
-! $Id$
-! $Author$
-!
 !-----------------------------------------------------------------------
 
-  use shr_kind_mod, only: r8 => shr_kind_r8
-  use ppgrid, only: pcols, pver
-
-  implicit none
-
-!-----------------------------Arguments---------------------------------
+  !-----------------------------Arguments---------------------------------
   integer , intent(in) :: ncol             ! longitude dimension
 
   real(r8), intent(in) :: pmid(pcols,pver) ! Atmospheric pressure (pascals)
@@ -36,21 +39,19 @@ subroutine cpslec (ncol, pmid, phis, ps, t, psl, gravit, rair)
   real(r8), intent(in) :: rair             ! gas constant for dry air
 
   real(r8), intent(out):: psl(pcols)       ! Sea level pressures (pascals)
-!-----------------------------------------------------------------------
 
-!-----------------------------Parameters--------------------------------
+  !-----------------------------Parameters--------------------------------
   real(r8), parameter :: xlapse = 6.5e-3_r8   ! Temperature lapse rate (K/m)
-!-----------------------------------------------------------------------
 
-!-----------------------------Local Variables---------------------------
-  integer i              ! Loop index
-  real(r8) alpha         ! Temperature lapse rate in terms of pressure ratio (unitless)
-  real(r8) Tstar         ! Computed surface temperature
-  real(r8) TT0           ! Computed temperature at sea-level
-  real(r8) alph          ! Power to raise P/Ps to get rate of increase of T with pressure
-  real(r8) beta          ! alpha*phis/(R*T) term used in approximation of PSL
-!-----------------------------------------------------------------------
-!
+  !-----------------------------Local Variables---------------------------
+  integer  :: i             ! Loop index
+  real(r8) :: alpha         ! Temperature lapse rate in terms of pressure ratio (unitless)
+  real(r8) :: Tstar         ! Computed surface temperature
+  real(r8) :: TT0           ! Computed temperature at sea-level
+  real(r8) :: alph          ! Power to raise P/Ps to get rate of increase of T with pressure
+  real(r8) :: beta          ! alpha*phis/(R*T) term used in approximation of PSL
+  !-----------------------------------------------------------------------
+
   alpha = rair*xlapse/gravit
   do i=1,ncol
      if ( abs(phis(i)/gravit) < 1.e-4_r8 )then
@@ -77,5 +78,8 @@ subroutine cpslec (ncol, pmid, phis, ps, t, psl, gravit, rair)
      end if
   enddo
 
-  return
 end subroutine cpslec
+
+!===============================================================================
+
+end module cam_diagnostic_utils
