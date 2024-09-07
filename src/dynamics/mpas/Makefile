@@ -1,4 +1,5 @@
-CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELIST_SUFFIX=atmosphere -DMPAS_CAM_DYCORE -DMPAS_PIO_SUPPORT -DMPAS_NO_ESMF_INIT
+CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_CAM_DYCORE -DMPAS_PIO_SUPPORT -DMPAS_NO_ESMF_INIT -DMPAS_GIT_VERSION="unknown" -DMPAS_BUILD_TARGET="N/A" -DMPAS_NAMELIST_SUFFIX="atmosphere"
+
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
 endif
@@ -80,6 +81,8 @@ FRAME_OBJS = \
 	mpas_io_streams.o \
 	mpas_bootstrapping.o \
 	mpas_io_units.o \
+	mpas_stream_inquiry.o \
+	stream_inquiry.o \
 	mpas_stream_manager.o \
 	mpas_stream_list.o \
 	mpas_forcing.o \
@@ -179,6 +182,8 @@ mpas_io_units.o: mpas_kind_types.o
 
 mpas_threading.o: mpas_kind_types.o
 
+mpas_stream_inquiry.o: mpas_derived_types.o mpas_log.o mpas_c_interfacing.o stream_inquiry.o
+
 mpas_stream_list.o: mpas_derived_types.o mpas_kind_types.o mpas_io_streams.o mpas_timekeeping.o regex_matching.o mpas_log.o
 
 mpas_stream_manager.o: mpas_io_streams.o mpas_timekeeping.o mpas_derived_types.o mpas_kind_types.o mpas_c_interfacing.o mpas_stream_list.o mpas_dmpar.o mpas_io.o mpas_threading.o mpas_log.o
@@ -226,7 +231,7 @@ streams_gen: $(STREAMS_GEN_OBJS) ezxml.o
 #
 incs: $(REGISTRY_FILE)
 	( cpp -P -traditional $(CPPFLAGS) -I$(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/diagnostics $(REGISTRY_FILE) > Registry_processed.xml )
-	( ./registry Registry_processed.xml )
+	( ./registry Registry_processed.xml $(CPPFLAGS) )
 
 #
 # Dycore
