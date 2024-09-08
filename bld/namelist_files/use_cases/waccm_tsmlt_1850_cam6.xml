@@ -63,7 +63,7 @@
 <history_cesm_forcing>.true.</history_cesm_forcing>
 <history_scwaccm_forcing>.true.</history_scwaccm_forcing>
 
-<fexcl1> 'AOA1SRC', 'AOA2SRC', 'NO2_CMXF', 'NO2_CLXF'</fexcl1>
+<fexcl1> 'NO2_CMXF', 'NO2_CLXF'</fexcl1>
 
 <fincl1>
    'ACTREL', 'AQ_SO2', 'AREA', 'BROX', 'BROY', 'BRY', 'CLOX', 'CLOY', 'CLY',  'NOX', 'NOY', 'TBRY', 'TCLY',  'CFC11STAR',
