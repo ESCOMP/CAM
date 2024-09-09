@@ -98,7 +98,7 @@ type :: GWBand
    real(r8) :: dc
    ! Reference speeds [m/s].
    real(r8), allocatable :: cref(:)
-   ! Critical Froude number, squared (usually 1, but CAM3 used 0.5).
+   ! Critical Froude number, squared
    real(r8) :: fcrit2
    ! Horizontal wave number [1/m].
    real(r8) :: kwv

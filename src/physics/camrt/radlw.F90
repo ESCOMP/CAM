@@ -435,11 +435,7 @@ subroutine radclwmx(lchnk   ,ncol    ,doabsems                  , &
    ntopcld = max(ntopcld, trop_cloud_top_lev)
 
    cldp(:ncol,1:ntopcld) = 0.0_r8
-   if ( cam_physpkg_is('cam3')) then
-      cldp(:ncol,ntoplw:pver) = cld(:ncol,ntoplw:pver)
-   else
-      cldp(:ncol,ntopcld+1:pver) = cld(:ncol,ntopcld+1:pver)
-   end if
+   cldp(:ncol,ntopcld+1:pver) = cld(:ncol,ntopcld+1:pver)
    cldp(:ncol,pverp) = 0.0_r8
 !
 !

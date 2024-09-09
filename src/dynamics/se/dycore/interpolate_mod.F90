@@ -1625,8 +1625,8 @@ end subroutine interpolate_ce
 
     if (npts==np) then
        interp => interp_p
-    else if (npts==np) then
-       call endrun('interpolate_vector2d: Error in interpolate_vector(): input must be on velocity grid')
+    else
+       call endrun('interpolate_vector2d: Error in interpolate_vector(): input must be on GLL grid')
     endif
 
 
@@ -1715,8 +1715,8 @@ end subroutine interpolate_ce
 
     if (npts==np) then
        interp => interp_p
-    else if (npts==np) then
-       call endrun('interpolate_vector3d: Error in interpolate_vector(): input must be on velocity grid')
+    else
+       call endrun('interpolate_vector3d: Error in interpolate_vector(): input must be on GLL grid')
     endif
 
 

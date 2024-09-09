@@ -235,14 +235,9 @@ subroutine gw_drag_readnl(nlfile)
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  ! fcrit2 for the mid-scale waves has been made a namelist variable to
-  ! facilitate backwards compatibility with the CAM3 version of this
-  ! parameterization.  In CAM3, fcrit2=0.5.
-  real(r8) :: fcrit2 = unset_r8   ! critical froude number squared
-
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
-       fcrit2, frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
+       frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
        taubgnd_igw, gw_polar_taper, &
        use_gw_rdg_beta, n_rdg_beta, effgw_rdg_beta, effgw_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
@@ -320,8 +315,6 @@ subroutine gw_drag_readnl(nlfile)
 
   call mpi_bcast(gw_oro_south_fac, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_oro_south_fac")
-  call mpi_bcast(fcrit2, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: fcrit2")
   call mpi_bcast(frontgfc, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frontgfc")
   call mpi_bcast(taubgnd, 1, mpi_real8, mstrid, mpicom, ierr)
@@ -359,11 +352,6 @@ subroutine gw_drag_readnl(nlfile)
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
 
-  ! Check if fcrit2 was set.
-  call shr_assert(fcrit2 /= unset_r8, &
-       "gw_drag_readnl: fcrit2 must be set via the namelist."// &
-       errMsg(__FILE__, __LINE__))
-
   ! Check if pgwv was set.
   call shr_assert(pgwv >= 0, &
        "gw_drag_readnl: pgwv must be set via the namelist and &
@@ -375,7 +363,7 @@ subroutine gw_drag_readnl(nlfile)
        "gw_drag_readnl: gw_dc must be set via the namelist."// &
        errMsg(__FILE__, __LINE__))
 
-  band_oro = GWBand(0, gw_dc, fcrit2, wavelength_mid)
+  band_oro = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
   band_mid = GWBand(pgwv, gw_dc, 1.0_r8, wavelength_mid)
   band_long = GWBand(pgwv_long, gw_dc_long, 1.0_r8, wavelength_long)
   band_movmtn = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
@@ -1716,7 +1704,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call alloc_err(istat,'gw_tend','phase_speeds',ncol*band_movmtn%ngwv**2+1)
 
      ! Set up heating
-     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     if (ttend_dp_idx > 0) then
+        call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     else
+        allocate(ttend_dp(pcols,pver), stat=istat)
+        call alloc_err(istat, 'gw_tend', 'ttend_dp', pcols*pver)
+        ttend_dp = 0.0_r8
+     end if
 
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
@@ -1789,7 +1783,15 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
 
+     !Deallocate variables that are no longer used:
      deallocate(tau, gwut, phase_speeds)
+
+     !Deallocate/nullify ttend_dp if not a pbuf variable:
+     if (ttend_dp_idx <= 0) then
+       deallocate(ttend_dp)
+       nullify(ttend_dp)
+     end if
+
   end if
 
   if (use_gw_convect_dp) then
