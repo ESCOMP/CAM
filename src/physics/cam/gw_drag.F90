@@ -1783,7 +1783,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
 
-     !Deallocae variables that are no longer used:
+     !Deallocate variables that are no longer used:
      deallocate(tau, gwut, phase_speeds)
 
      !Deallocate/nullify ttend_dp if not a pbuf variable:
