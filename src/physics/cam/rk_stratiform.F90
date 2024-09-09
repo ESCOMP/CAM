@@ -3,7 +3,7 @@ module rk_stratiform
 !-------------------------------------------------------------------------------------------------------
 !
 ! Provides the CAM interface to the Rasch and Kristjansson (RK)
-! prognostic cloud microphysics, and the cam3/4 macrophysics.
+! prognostic cloud microphysics, and the cam4 macrophysics.
 !
 !-------------------------------------------------------------------------------------------------------
 
@@ -356,7 +356,7 @@ subroutine rk_stratiform_init()
       call add_default ('EVAPPREC ', history_budget_histfile_num, ' ')
       call add_default ('CMELIQ   ', history_budget_histfile_num, ' ')
 
-      if( cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') ) then
+      if( cam_physpkg_is('cam4') ) then
 
          call add_default ('ZMDLF    ', history_budget_histfile_num, ' ')
          call add_default ('CME      ', history_budget_histfile_num, ' ')
@@ -954,20 +954,16 @@ subroutine rk_stratiform_tend( &
    call physics_ptend_sum( ptend_loc, ptend_all, ncol )
    call physics_update( state1, ptend_loc, dtime )
 
-   if (.not. cam_physpkg_is('cam3')) then
-
-      call t_startf("cldfrc")
-      call cldfrc( lchnk, ncol, pbuf,                                  &
-                   state1%pmid, state1%t, state1%q(:,:,1), state1%omega, state1%phis, &
-                   shfrc, use_shfrc,                                                  &
-                   cld, rhcloud, clc, state1%pdel,                                    &
-                   cmfmc, cmfmc_sh, landfrac, snowh, concld, cldst,                   &
-                   ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
-                   state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
-                   relhum, 0 )
-      call t_stopf("cldfrc")
-
-   endif
+   call t_startf("cldfrc")
+   call cldfrc( lchnk, ncol, pbuf,                                  &
+                state1%pmid, state1%t, state1%q(:,:,1), state1%omega, state1%phis, &
+                shfrc, use_shfrc,                                                  &
+                cld, rhcloud, clc, state1%pdel,                                    &
+                cmfmc, cmfmc_sh, landfrac, snowh, concld, cldst,                   &
+                ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
+                state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
+                relhum, 0 )
+   call t_stopf("cldfrc")
 
    call outfld( 'CONCLD  ', concld, pcols, lchnk )
    call outfld( 'CLDST   ', cldst,  pcols, lchnk )

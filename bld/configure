@@ -97,7 +97,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam7 |
+     -phys <name>       Physics option [cam4 | cam5 | cam6 | cam7 |
                                         held_suarez | adiabatic | kessler | tj2016 | grayrad
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -602,8 +602,8 @@ if (defined $opts{'chem'}) {
                 "                 -chem can only be set to 'none' or 'terminator'.\n";
         }
     }
-    elsif ($phys_pkg =~ m/^cam3$|^cam4$|^spcam_sam1mom$/) {
-        # The modal aerosols are not valid with cam3 or cam4 physics
+    elsif ($phys_pkg =~ m/^cam4$|^spcam_sam1mom$/) {
+        # The modal aerosols are not valid with cam4 physics
         if ($chem_pkg =~ /_mam/) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
                 "                 -chem cannot be set to a modal aerosol option.\n";
@@ -1071,7 +1071,7 @@ if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
 
 # Set default
 my $rad_pkg = 'none';
-if ($phys_pkg =~ m/cam3|cam4|spcam_sam1mom/) {
+if ($phys_pkg =~ m/cam4|spcam_sam1mom/) {
     $rad_pkg = 'camrt';
 }
 elsif ($phys_pkg =~ m/cam5|cam6|cam7|spcam_m2005/) {
@@ -1101,12 +1101,6 @@ if ($rad_pkg eq 'camrt') {
     }
 }
 elsif ($rad_pkg =~ m/rrtmg/) {
-
-    # The rrtmg package doesn't work with the CAM3 prescribed aerosols
-    if ($phys_pkg eq 'cam3') {
-        die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
-            "                 with physics package $phys_pkg\n";
-    }
 
     # RRTMGP not currently working with CARMA
     if ($rad_pkg eq 'rrtmgp' and $carma_pkg ne 'none') {
@@ -1371,9 +1365,6 @@ elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
 elsif ($phys_pkg eq 'cam4' or $phys_pkg eq 'spcam_sam1mom') {
     $nlev = 26;
 }
-elsif ($phys_pkg eq 'cam3') {
-    $nlev = 26;
-}
 else {
     # This will be used for Held-Suarez and other 'simple' physics
     # We may change this to 32 once IC files are available.
@@ -1615,7 +1606,7 @@ else {
     if ($print>=2 and $ttrac_nadv) { print "Advected constituents added by test tracer package: $ttrac_nadv$eol"; }
 
     if ($age_of_air_trcs eq "ON") {
-        $nadv += 4;
+        $nadv += 3;
         if ($print>=2) { print "Advected constituents added by the age of air tracer package: 4$eol"; }
     }
 

@@ -57,8 +57,8 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
-Physics package: cam3, cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
+<entry id="phys" valid_values="cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
+Physics package: cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
 </entry>
 <entry id="hemco" valid_values="0,1" value="0">
 Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.
@@ -93,7 +93,7 @@ PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
 </entry>
 <entry id="rad" valid_values="rrtmgp,rrtmg,camrt,none" value="">
 Radiative transfer calculation:
-camrt (CAM3 and CAM4 RT package), rrtmg (RRTMG package from AER), rrtmgp (updated version).
+camrt (CAM4 RT package), rrtmg (RRTMG package from AER), rrtmgp (updated version).
 </entry>
 <entry id="carma" valid_values="none,bc_strat,cirrus,cirrus_dust,dust,meteor_impact,meteor_smoke,mixed_sulfate,pmc,pmc_sulfate,sea_salt,sulfate,tholin,test_detrain,test_growth,test_passive,test_radiative,test_swelling,test_tracers,test_tracers2" value="none">
 CARMA sectional microphysics:

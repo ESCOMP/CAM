@@ -764,7 +764,7 @@ if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
 elsif (!$simple_phys) {
 
    if ($chem eq 'none' and !($prog_species =~ /SO4/) ) { # Spectral solar data is needed for photolysis
-      # this preserves the default cam3 and cam4 configurations which do not have chemistry
+      # this preserves the default cam4 configuration which does not have chemistry
       unless (defined $nl->get_value('solar_irrad_data_file')) {
         add_default($nl, 'solar_const');
       }
@@ -843,16 +843,7 @@ if ($test_tracer_num > 0) {
 
 if ($cfg->get('age_of_air_trcs')) { add_default($nl, 'aoa_tracers_flag', 'val'=>'.true.'); }
 
-# If phys option is "cam3" then turn on the CAM3 prescribed ozone and aerosols
-if ($phys eq 'cam3' and !$aqua_mode) {
-    add_default($nl, 'cam3_ozone_data_on', 'val'=>'.true.');
-    add_default($nl, 'cam3_aero_data_on', 'val'=>'.true.');
-}
-
 # Defaults for radiatively active constituents
-
-my $cam3_ozone_data = $FALSE;
-my $cam3_aero_data = $FALSE;
 
 my $moz_ozone_data = $FALSE;
 if (!$rad_prog_ozone) {
@@ -862,24 +853,6 @@ if (!$rad_prog_ozone) {
 my $moz_aero_data = $FALSE;
 if (!($rad_prog_ocarb) or !($rad_prog_bcarb) or !($rad_prog_sulf) or !($rad_prog_dust) or !($rad_prog_sslt)){
     $moz_aero_data = $TRUE;
-}
-
-# CAM3 prescribed ozone only by request
-if (defined $nl->get_value('cam3_ozone_data_on') and
-    $nl->get_value('cam3_ozone_data_on') =~ /$TRUE/io) {
-    add_default($nl, 'bndtvo');
-    $cam3_ozone_data = $TRUE;
-    $moz_ozone_data = $FALSE;
-}
-
-# CAM3 prescribed aerosols only by request
-if (defined $nl->get_value('cam3_aero_data_on') and
-    $nl->get_value('cam3_aero_data_on') =~ /$TRUE/io) {
-
-    # CAM3 aerosol mass climatology dataset (horizontal resolution dependent)
-    add_default($nl, 'bndtvaer');
-    $cam3_aero_data = $TRUE;
-    $moz_aero_data = $FALSE;
 }
 
 if ($chem_rad_passive or $aqua_mode) {
@@ -930,8 +903,6 @@ if ($rad_prog_ozone) {
         add_default($nl, 'prescribed_ozone_type');
         add_default($nl, 'prescribed_ozone_cycle_yr');
     }
-} elsif ($cam3_ozone_data =~ /$TRUE/io) {
-    $radval .= ",'N:O3:O3'";
 } else {
     die "ERROR: can not set ozone rad_climate specification\n";
 }
@@ -1118,9 +1089,6 @@ if ($aer_model eq 'mam' ) {
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "sulf");
     push(@aerosources, "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_sul" );
-    push(@aerosources, "N:" );
   } else {
     die "ERROR: can not set sulf rad_climate specification\n";
   }
@@ -1130,9 +1098,6 @@ if ($aer_model eq 'mam' ) {
     push(@aerosources, "A:", "A:", "A:", "A:" );
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "dust1", "dust2", "dust3", "dust4");
-    push(@aerosources, "N:", "N:", "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_dust1", "cam3_dust2", "cam3_dust3", "cam3_dust4" );
     push(@aerosources, "N:", "N:", "N:", "N:" );
   } else {
     die "ERROR: can not set dust rad_climate specification\n";
@@ -1144,9 +1109,6 @@ if ($aer_model eq 'mam' ) {
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "bcar1", "bcar2");
     push(@aerosources, "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_bcpho", "cam3_bcphi");
-    push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set black carbon rad_climate specification\n";
   }
@@ -1156,9 +1118,6 @@ if ($aer_model eq 'mam' ) {
     push(@aerosources, "A:", "A:" );
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "ocar1", "ocar2");
-    push(@aerosources, "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_ocpho", "cam3_ocphi");
     push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set organic carbon rad_climate specification\n";
@@ -1180,9 +1139,6 @@ if ($aer_model eq 'mam' ) {
         push(@aero_names, "SSLTA", "SSLTC");
         push(@aerosources, "N:", "N:");
     }
-  } elsif ($cam3_aero_data =~ /$TRUE/io ) {
-    push(@aero_names, "cam3_ssam", "cam3_sscm");
-    push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set sslt rad_climate specification\n";
   }
@@ -1203,7 +1159,7 @@ if ( $prescribed_aero_model ne 'none' ) {
 
   # Prescribed aerosol deposition fluxes.
   # Not needed if in aquaplanet mode.
-  if ( (($moz_aero_data =~ /$TRUE/io) or ($cam3_aero_data =~ /$TRUE/io)) and !$aqua_mode ) {
+  if ( $moz_aero_data =~ /$TRUE/io and !$aqua_mode ) {
       # If user has not set aerodep_flx_file, then use defaults
       unless (defined $nl->get_value('aerodep_flx_file')) {
           my @settings = ('aerodep_flx_datapath', 'aerodep_flx_file', 'aerodep_flx_type',
@@ -3223,9 +3179,10 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
 
 # Deep convection scheme
 add_default($nl, 'deep_scheme');
+my $deep_scheme = $nl->get_value('deep_scheme');
 
 # Aerosol convective processes
-if (($phys =~ /cam6/ or $phys =~ /cam7/) and $nl->get_value('deep_scheme') =~ /ZM/) {
+if (($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
@@ -3233,7 +3190,7 @@ if (($phys =~ /cam6/ or $phys =~ /cam7/) and $nl->get_value('deep_scheme') =~ /Z
 }
 
 # cam7 specific namelists
-if ($phys =~ /cam7/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+if ($phys =~ /cam7/ and $deep_scheme =~ /ZM/) {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
 } else {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
@@ -3823,12 +3780,13 @@ if (!$simple_phys) {
     add_default($nl, 'gw_rdg_do_divstream'       , 'val'=>'.true.');
 }
 
+my $use_gw_convect_dp = '.false.';
 if ($waccm_phys or
     (!$simple_phys and $cfg->get('model_top') eq 'mt')) {
     # Spectral gravity waves are part of WACCM physics, and also drive the
     # QBO in the high vertical resolution configuration.
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    $use_gw_convect_dp = '.true.';
     my $hdepth_scaling = '0.25D0' ;
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
@@ -3850,12 +3808,16 @@ if ($waccm_phys or
 } elsif ($phys =~ /cam7/) {
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    $use_gw_convect_dp = '.true.';
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
 }
+# Check if deep convection scheme used.  If not set use_gw_convect_dp=.false.
+if ($deep_scheme =~ /off/) {
+    $use_gw_convect_dp = '.false.';
+}
+add_default($nl, 'use_gw_convect_dp', 'val'=>$use_gw_convect_dp);
 
 # We need a lot of logic to use these below, so make flags for them.
 my $do_gw_oro        = ($nl->get_value('use_gw_oro')        =~ /$TRUE/io);
@@ -3869,10 +3831,6 @@ my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
 
 my $do_divstream        = ($nl->get_value('gw_rdg_do_divstream')  =~ /$TRUE/io);
 
-if (!$simple_phys) {
-    # GW option used only for backwards compatibility with CAM3.
-    add_default($nl, 'fcrit2', 'val'=>'1.0');
-}
 # Mid-scale wavelength settings.
 if ($do_gw_front or $do_gw_convect_dp or $do_gw_convect_sh) {
     add_default($nl, 'pgwv');
