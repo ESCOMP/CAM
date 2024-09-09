@@ -73,13 +73,20 @@ contains
     !-----------------------------------------------------------------------
     subroutine cam_mpas_init_phase1(mpicom, endrun, logUnits, realkind)
 
+#ifdef MPAS_USE_MPI_F08
+       use mpi_f08, only : mpi_comm_type => mpi_comm
+#endif
        use mpas_domain_routines, only : mpas_allocate_domain
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_kind_types, only : RKIND
 
        ! Dummy argument
+#ifdef MPAS_USE_MPI_F08
+       type(mpi_comm_type), intent(in) :: mpicom
+#else
        integer, intent(in) :: mpicom
+#endif
        procedure(halt_model) :: endrun
        integer, dimension(2), intent(in) :: logUnits
        integer, intent(in) :: realkind

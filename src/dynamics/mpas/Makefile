@@ -6,6 +6,8 @@ endif
 ifeq ($(strip $(COMP_INTERFACE)),nuopc)
   CPPFLAGS += -DMPAS_EXTERNAL_ESMF_LIB
 endif
+# Uncomment next line to enable MPAS to use mpi_f08 module
+#CPPFLAGS += -DMPAS_USE_MPI_F08
 
 REGISTRY_FILE := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/Registry.xml
 
