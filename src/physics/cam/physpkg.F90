@@ -1392,6 +1392,7 @@ contains
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
     use check_energy,       only: tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
+    use check_energy_cam,   only: check_energy_cam_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
