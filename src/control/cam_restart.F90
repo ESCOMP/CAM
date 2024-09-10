@@ -163,11 +163,11 @@ subroutine write_rest_pfile(restart_file, yr_spec, mon_spec, day_spec, sec_spec)
    !---------------------------------------------------------------------------
 
    if (masterproc) then
-      if(inst_suffix .ne. "") then
-         rest_pfile = interpret_filename_spec('rpointer.cpl.%y-%m-%d-%s',&
+      if(len_trim(inst_suffix) > 0) then
+         rest_pfile = interpret_filename_spec('rpointer.cam.'//trim(inst_suffix)//'.'//'%y-%m-%d-%s',&
               yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
       else
-         rest_pfile = interpret_filename_spec('rpointer.cpl.'//trim(inst_suffix)//'.'//'%y-%m-%d-%s',&
+         rest_pfile = interpret_filename_spec('rpointer.cam.%y-%m-%d-%s',&
               yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
       endif
       nsds = getunit()
