@@ -49,7 +49,7 @@ contains
     ! handling inside this shim module. (hplin, 9/9/24)
     if(state%psetcols == pcols) then
         ! No subcolumns
-        local_cp_phys(:,:) = cpairv(:,:,lchnk)
+        local_cp_phys(:ncol,:) = cpairv(:ncol,:,lchnk)
         local_cp_or_cv_dycore(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
     else if (state%psetcols > pcols) then
         ! Subcolumns code
@@ -148,10 +148,10 @@ contains
 
     if(state%psetcols == pcols) then
         ! No subcolumns
-        local_cp_phys(:,:) = cpairv(:,:,lchnk)
+        local_cp_phys(:ncol,:) = cpairv(:ncol,:,lchnk)
         local_cp_or_cv_dycore(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
 
-        scaling_dycore(:ncol,:)  = cpairv(:,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
+        scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
     elseif(state%psetcols > pcols) then
         ! Subcolumns
         if(.not. all(cpairv(:,:,:) == cpair)) then
@@ -164,14 +164,14 @@ contains
         if (vc_dycore == vc_height) then
             ! compute cv if vertical coordinate is height: cv = cp - R
             local_cp_or_cv_dycore(:ncol,:) = cpair-rair
-            scaling_dycore(:ncol,:)  = cpairv(:,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
+            scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
         else if (vc_dycore == vc_dry_pressure) then
             ! SE specific hydrostatic energy
             local_cp_or_cv_dycore(:ncol,:) = cpair
             scaling_dycore(:ncol,:) = 1.0_r8
         else
             ! Moist pressure... use phys formula
-            local_cp_or_cv_dycore(:,:) = local_cp_phys(:,:)
+            local_cp_or_cv_dycore(:ncol,:) = local_cp_phys(:ncol,:)
             scaling_dycore(:ncol,:)  = cpairv(:,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
         end if
     endif
