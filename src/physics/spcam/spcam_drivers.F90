@@ -300,7 +300,8 @@ subroutine tphysbc_spcam (ztodt, state,   &
     use cam_history,     only: outfld
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use time_manager,    only: get_nstep
-    use check_energy,    only: check_energy_chng, check_energy_fix
+    use check_energy_cam,only: check_energy_cam_chng
+    use check_energy,    only: check_energy_fix
     use check_energy,    only: check_tracers_data, check_tracers_init
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
@@ -443,7 +444,7 @@ subroutine tphysbc_spcam (ztodt, state,   &
     if (dycore_is('LR') .or. dycore_is('SE'))  then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
-       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld('EFIX', flx_heat, pcols,lchnk)
     end if
     ! Save state for convective tendency calculations.
@@ -557,7 +558,7 @@ subroutine tphysbc_spcam (ztodt, state,   &
 
     call physics_update(state, ptend, ztodt, tend)
 
-    call check_energy_chng(state, tend, "spradheat", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "spradheat", nstep, ztodt, zero, zero, zero, zero)
 
     call t_stopf('radiation')
 

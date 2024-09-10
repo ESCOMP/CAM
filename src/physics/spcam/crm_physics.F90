@@ -750,7 +750,7 @@ end subroutine crm_init_cnst
    use crmx_crm_module,     only: crm
    use crmx_microphysics,   only: nmicro_fields
    use physconst,           only: latvap
-   use check_energy,        only: check_energy_chng
+   use check_energy_cam,    only: check_energy_cam_chng
    use phys_grid,           only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p
    use modal_aero_calcsize, only: modal_aero_calcsize_sub
    use micro_pumas_utils,      only: size_dist_param_liq, mg_liq_props, mincld, qsmall
@@ -2152,7 +2152,7 @@ end subroutine crm_init_cnst
        end if
 
        ! check water and energy conservation
-       call check_energy_chng(state_loc, tend_loc, "crm_tend", nstep, ztodt, zero, &
+       call check_energy_cam_chng(state_loc, tend_loc, "crm_tend", nstep, ztodt, zero, &
                 prec_dp(:ncol)+(qli_hydro(:ncol,2)-qli_hydro(:ncol,1))/ztodt/1000._r8,  &
                 snow_dp(:ncol)+(qi_hydro(:ncol,2)-qi_hydro(:ncol,1))/ztodt/1000._r8, radflux)
 

@@ -171,7 +171,7 @@ contains
             scaling_dycore(:ncol,:) = 1.0_r8
         else
             ! Moist pressure... use phys formula
-            local_cp_or_cv_dycore(:ncol,:) = local_cp_phys(:ncol,:,lchnk)
+            local_cp_or_cv_dycore(:,:) = local_cp_phys(:,:)
             scaling_dycore(:ncol,:)  = cpairv(:,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
         end if
     endif
@@ -205,6 +205,11 @@ contains
         latvap          = latvap, &
         vc_physics      = vc_physics, &
         vc_dycore       = vc_dycore,  &
+        name            = name,       &
+        flx_vap         = flx_vap,    &
+        flx_cnd         = flx_cnd,    &
+        flx_ice         = flx_ice,    &
+        flx_sen         = flx_sen,    &
         errmsg          = errmsg, &
         errflg          = errflg  &
     )
