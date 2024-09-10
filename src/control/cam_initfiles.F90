@@ -42,10 +42,6 @@ character(len=cl) :: cam_branch_file = ' '      ! Filepath of primary restart fi
 
 real(r8), public, protected :: scale_dry_air_mass = 0.0_r8 ! Toggle and target avg air mass for MPAS dycore
 
-! The restart pointer file contains name of most recently written primary restart file.
-! The contents of this file are updated by cam_write_restart as new restart files are written.
-character(len=cl), public, protected :: rest_pfile
-
 ! Filename for initial restart file.
 character(len=cl) :: restart_file = ' '
 
@@ -61,7 +57,7 @@ type(file_desc_t), target  :: fh_restart
 contains
 !========================================================================================
 
-subroutine cam_initfiles_readnl(nlfile)
+subroutine cam_initfiles_readnl(nlfile, restart_pointer_file)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
@@ -70,7 +66,7 @@ subroutine cam_initfiles_readnl(nlfile)
    use cam_instance,    only: inst_suffix
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-
+   character(len=*), optional, intent(in) :: restart_pointer_file
    ! Local variables
    integer :: unitn, ierr
 
@@ -78,6 +74,10 @@ subroutine cam_initfiles_readnl(nlfile)
    logical                  :: filefound
    integer                  :: xtype
    integer(pio_offset_kind) :: slen
+   logical                  :: found
+
+   ! The restart pointer file contains name of most recently written primary restart file.
+   character(len=cl)       :: rest_pfile
 
    character(len=*), parameter :: sub = 'cam_initfiles_readnl'
 
@@ -112,18 +112,25 @@ subroutine cam_initfiles_readnl(nlfile)
    call mpi_bcast(scale_dry_air_mass, 1, mpir8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: scale_dry_air_mass")
 
-   ! Set pointer file name based on instance suffix
-   rest_pfile = './rpointer.atm' // trim(inst_suffix)
-
+   if(present(restart_pointer_file)) then
+      rest_pfile = restart_pointer_file
+   else
+      ! Set pointer file name based on instance suffix
+      rest_pfile = './rpointer.atm' // trim(inst_suffix)
+   endif
    ! Set name of primary restart file
    if (restart_run) then
       ! Read name of restart file from pointer file
       if (masterproc) then
+         inquire(file=trim(rest_pfile),exist=found)
+         if(.not. found) then
+            call endrun(sub // ': ERROR: rpointer file: '//trim(rest_pfile) // ' not found')
+         endif
          unitn = getunit()
          call opnfil(rest_pfile, unitn, 'f', status="old")
          read (unitn, '(a)', iostat=ierr) restart_file
          if (ierr /= 0) then
-            call endrun(sub // ': ERROR: reading rpointer file')
+            call endrun(sub // ': ERROR: reading rpointer file: '//trim(rest_pfile))
          end if
          close(unitn)
          call freeunit(unitn)

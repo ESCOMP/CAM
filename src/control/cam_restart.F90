@@ -132,38 +132,44 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
    call ionosphere_write_restart(fh)
    call write_restart_physics(fh, cam_in, cam_out, pbuf2d)
 
-   if (present(yr_spec).and.present(mon_spec).and.&
-      present(day_spec).and.present(sec_spec)) then
-      call write_restart_history(fh, yr_spec=yr_spec, mon_spec=mon_spec, &
-                                 day_spec=day_spec, sec_spec= sec_spec )
-   else
-      call write_restart_history(fh)
-   end if
+   call write_restart_history(fh, yr_spec=yr_spec, mon_spec=mon_spec, &
+        day_spec=day_spec, sec_spec= sec_spec )
 
    ! Close the primary restart file
    call pio_closefile(fh)
 
    ! Update the restart pointer file
-   call write_rest_pfile(fname)
+   call write_rest_pfile(fname, yr_spec=yr_spec, mon_spec=mon_spec, &
+                                 day_spec=day_spec, sec_spec= sec_spec )
 
 end subroutine cam_write_restart
 
 !========================================================================================
 
-subroutine write_rest_pfile(restart_file)
+subroutine write_rest_pfile(restart_file, yr_spec, mon_spec, day_spec, sec_spec)
 
    ! Write the restart pointer file
-
-   use cam_initfiles, only: rest_pfile
-
+   use cam_instance,     only: inst_suffix
+   use filenames,        only: interpret_filename_spec
    character(len=*), intent(in) :: restart_file
+   integer,       optional, intent(in) :: yr_spec         ! Simulation year
+   integer,       optional, intent(in) :: mon_spec        ! Simulation month
+   integer,       optional, intent(in) :: day_spec        ! Simulation day
+   integer,       optional, intent(in) :: sec_spec        ! Seconds into current simulation day
 
    integer :: nsds, ierr
+   character(len=CL) :: rest_pfile
    character(len=*), parameter :: sub='write_rest_pfile'
    !---------------------------------------------------------------------------
 
    if (masterproc) then
-
+      if(inst_suffix .ne. "") then
+         rest_pfile = interpret_filename_spec('rpointer.cpl.%y-%m-%d-%s',&
+              yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
+      else
+         rest_pfile = interpret_filename_spec('rpointer.cpl.'//trim(inst_suffix)//'.'//'%y-%m-%d-%s',&
+              yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
+      endif
       nsds = getunit()
       call opnfil(rest_pfile, nsds, 'f')
       rewind nsds

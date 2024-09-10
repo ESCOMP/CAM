@@ -16,7 +16,7 @@ use shr_sys_mod,       only: shr_sys_flush
 use spmd_utils,        only: masterproc, mpicom
 use cam_control_mod,   only: cam_ctrl_init, cam_ctrl_set_orbit
 use runtime_opts,      only: read_namelist
-use time_manager,      only: timemgr_init, get_nstep
+use time_manager,      only: timemgr_init, get_nstep, get_curr_date
 use camsrfexch,        only: cam_out_t, cam_in_t
 use ppgrid,            only: begchunk, endchunk
 use physics_types,     only: physics_state, physics_tend
@@ -122,11 +122,11 @@ subroutine cam_init(                                             &
    integer,           intent(in) :: stop_tod              ! Stop time of day (sec)
    integer,           intent(in) :: ref_ymd               ! Reference date (YYYYMMDD)
    integer,           intent(in) :: ref_tod               ! Reference time of day (sec)
-
    type(cam_out_t),   pointer    :: cam_out(:)       ! Output from CAM to surface
    type(cam_in_t) ,   pointer    :: cam_in(:)        ! Merged input state to CAM
 
    ! Local variables
+   integer           :: yr, mon, day, tod
    character(len=cs) :: filein      ! Input namelist filename
    !-----------------------------------------------------------------------
 
@@ -152,7 +152,15 @@ subroutine cam_init(                                             &
 
    ! Read CAM namelists.
    filein = "atm_in" // trim(inst_suffix)
-   call read_namelist(filein, single_column, scmlat, scmlon)
+   call get_curr_date(yr, mon, day, tod)
+   if(len_trim(inst_suffix) > 0) then
+      restart_pointer_file = interpret_filename_spec("rpointer.cam."//trim(inst_suffix)//".%y-%m-%d-%s", &
+              yr=yr_spec, mon=mon_spec, day=day_spec, tod= sec_spec )
+   else
+      restart_pointer_file = interpret_filename_spec("rpointer.cam.%y-%m-%d-%s", &
+              yr=yr_spec, mon=mon_spec, day=day_spec, tod= sec_spec )
+   endif
+   call read_namelist(filein, single_column, scmlat, scmlon, restart_pointer_file=restart_pointer_file)
 
    ! Open initial or restart file, and topo file if specified.
    call cam_initfiles_open()
