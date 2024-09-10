@@ -118,7 +118,7 @@ contains
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height, vc_dry_pressure
     use cam_abortutils,  only: endrun
     use physics_types,   only: phys_te_idx, dyn_te_idx
-    use physconst,       only: cpair, rair
+    use physconst,       only: cpair, rair, latice, latvap
     use air_composition, only: cpairv, cp_or_cv_dycore
 
     ! CCPP-ized subroutine
@@ -201,6 +201,8 @@ contains
         z_ini           = state%z_ini(:ncol,:),             &
         count           = state%count,                      &
         ztodt           = ztodt,                            &
+        latice          = latice, &
+        latvap          = latvap, &
         vc_physics      = vc_physics, &
         vc_dycore       = vc_dycore,  &
         errmsg          = errmsg, &
