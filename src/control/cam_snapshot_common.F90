@@ -48,7 +48,7 @@ private :: fill_pbuf_info
 
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
-integer, parameter :: npbuf_all = 314
+integer, parameter :: npbuf_all = 310
 
 type snapshot_type
   character(len=40)  :: ddt_string
@@ -1322,14 +1322,12 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'DLFZM                  ','kg/kg/s                ',&
           'DNIFZM                 ','1/kg/s                 ',&
           'DNLFZM                 ','1/kg/s                 ',&
-          'DP_CLDICE              ','unset                  ',&
-          'DP_CLDLIQ              ','unset                  ',&
           'DP_FLXPRC              ','unset                  ',&
-          'DP_FLXSNW              ','unset                  '  /),  (/2,100/))
+          'DP_FLXSNW              ','unset                  ',&
+          'DP_FRAC                ','unset                  ',&
+          'dragblj                ','1/s                    '  /),  (/2,100/))
 
      pbuf_all(1:2,101:200) = reshape ( (/  &
-          'DP_FRAC                ','unset                  ',&
-          'dragblj                ','1/s                    ',&
           'DRYMASS                ','unset                  ',&
           'DRYRAD                 ','unset                  ',&
           'DRYVOL                 ','unset                  ',&
@@ -1427,11 +1425,11 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QRL                    ','K/s                    ',&
           'qrlin                  ','unset                  ',&
           'QRS                    ','K/s                    ',&
-          'qrsin                  ','unset                  '  /),    (/2,100/))
+          'qrsin                  ','unset                  ',&
+          'QSATFAC                ','-                      ',&
+          'QSNOW                  ','kg/kg                  '  /),    (/2,100/))
 
      pbuf_all(1:2,201:300) = reshape ( (/  &
-          'QSATFAC                ','-                      ',&
-          'QSNOW                  ','kg/kg                  ',&
           'QTeAur                 ','unset                  ',&
           'qti_flx                ','unset                  ',&
           'qtl_flx                ','unset                  ',&
@@ -1459,9 +1457,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'SD                     ','unset                  ',&
           'SGH30                  ','unset                  ',&
           'SGH                    ','unset                  ',&
-          'SH_CLDICE1             ','unset                  ',&
           'SH_CLDICE              ','unset                  ',&
-          'SH_CLDLIQ1             ','unset                  ',&
           'SH_CLDLIQ              ','unset                  ',&
           'SH_E_ED_RATIO          ','unset                  ',&
           'SHFLX                  ','W/m2                   ',&
@@ -1529,13 +1525,13 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'wprtp_mc_zt            ','unset                  ',&
           'WPRTP_nadv             ','unset                  ',&
           'wpthlp_mc_zt           ','unset                  ',&
-          'WPTHLP_nadv            ','unset                  '  /),                  (/2,100/))
-
-     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
+          'WPTHLP_nadv            ','unset                  ',&
           'WPTHVP                 ','unset                  ',&
           'WSEDL                  ','unset                  ',&
           'wstarPBL               ','unset                  ',&
-          'ZM_DP                  ','unset                  ',&
+          'ZM_DP                  ','unset                  '  /),                  (/2,100/))
+
+     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
           'ZM_DSUBCLD             ','unset                  ',&
           'ZM_DU                  ','unset                  ',&
           'ZM_ED                  ','unset                  ',&
@@ -1545,7 +1541,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ZM_MAXG                ','unset                  ',&
           'ZM_MD                  ','unset                  ',&
           'ZM_MU                  ','unset                  ',&
-          'ZTODT                  ','unset                  '  /),                     (/2,14/))
+          'ZTODT                  ','unset                  '  /),                     (/2,10/))
 
 ! Fields which are added with pbuf_add_field calls, but are data driven.  These are not
 ! included in the above list.  This means that these fields will not have proper units
