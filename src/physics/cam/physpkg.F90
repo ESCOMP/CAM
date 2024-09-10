@@ -2044,7 +2044,8 @@ contains
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
-    use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
+    use check_energy_cam,only: check_energy_cam_timestep_init, check_energy_cam_chng
+    use check_energy,    only: check_energy_fix
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
@@ -2630,7 +2631,7 @@ contains
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
-             call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
+             call check_energy_cam_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
           if (trim(cam_take_snapshot_before) == "microp_section") then

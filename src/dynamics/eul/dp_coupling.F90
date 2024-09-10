@@ -14,7 +14,7 @@ module dp_coupling
    use physconst,         only: cpair, gravit, rair, zvir
    use air_composition,   only: rairv
    use geopotential,      only: geopotential_t
-   use check_energy,      only: check_energy_timestep_init
+   use check_energy_cam,  only: check_energy_cam_timestep_init
 #if (defined SPMD)
    use spmd_dyn,          only: buf1, buf1win, buf2, buf2win, &
                                 spmdbuf_siz, local_dp_map, &
@@ -291,7 +291,7 @@ CONTAINS
 
 ! Compute energy and water integrals of input state
        pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk )
+       call check_energy_cam_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk )
 
     end do
 

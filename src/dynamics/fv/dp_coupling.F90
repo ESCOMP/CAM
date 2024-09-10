@@ -12,7 +12,7 @@ module dp_coupling
    use physconst,         only: gravit, zvir
    use air_composition,   only: cpairv, rairv
    use geopotential,      only: geopotential_t
-   use check_energy,      only: check_energy_timestep_init
+   use check_energy_cam,  only: check_energy_cam_timestep_init
    use dynamics_vars,     only: T_FVDYCORE_GRID, t_fvdycore_state
    use dyn_internal_state,only: get_dyn_state
    use dyn_comp,          only: dyn_import_t, dyn_export_t, fv_print_dpcoup_warn
@@ -621,7 +621,7 @@ chnk_loop2 : &
 ! Compute energy and water integrals of input state
 
        pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
+       call check_energy_cam_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
 
     end do
     call t_stopf('derived_fields')

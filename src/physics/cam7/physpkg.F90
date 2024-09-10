@@ -1366,7 +1366,8 @@ contains
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o
     use aero_model,         only: aero_model_drydep
-    use check_energy,       only: check_energy_chng, tot_energy_phys
+    use check_energy_cam,   only: check_energy_cam_timestep_init, check_energy_cam_chng
+    use check_energy,       only: tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
@@ -1405,7 +1406,6 @@ contains
     use aero_model,         only: aero_model_wetdep
     use aero_wetdep_cam,    only: wetdep_lq
     use physics_buffer,     only: col_type_subcol
-    use check_energy,       only: check_energy_timestep_init
     use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain
     use carma_flags_mod,    only: carma_do_cldice, carma_do_cldliq, carma_do_wetdep
@@ -1775,7 +1775,7 @@ contains
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
-             call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
+             call check_energy_cam_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
           if (trim(cam_take_snapshot_before) == "microp_section") then

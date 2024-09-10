@@ -413,7 +413,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    ! MPAS prognostic fields.
 
    use geopotential,    only: geopotential_t
-   use check_energy,    only: check_energy_timestep_init
+   use check_energy_cam,  only: check_energy_cam_timestep_init
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
    use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
@@ -564,7 +564,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-      call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
+      call check_energy_cam_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
 
    end do
 
