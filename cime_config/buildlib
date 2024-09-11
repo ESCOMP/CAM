@@ -181,6 +181,8 @@ def _build_tuvx(caseroot, libroot, bldroot):
         cmake_args += "-DTUVX_ENABLE_COVERAGE=OFF "
         cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
         cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
+        cmake_args += "-DTUVX_INSTALL_INCLUDE_DIR='{}' ".format(_tuvx_include_dir(libroot))
+        cmake_args += "-DTUVX_INSTALL_MOD_DIR='{}' ".format(_tuvx_include_dir(libroot))
         cmake_args += srcpath
 
         _run_cmd("cmake {}".format(cmake_args), bldpath)
@@ -205,7 +207,7 @@ def _tuvx_include_dir(libroot):
 ###############################################################################
 # Returns the path to the TUV-x include directory
 
-    coreinc = os.path.join(_tuvx_install_dir(libroot), "include", "")
+    coreinc = os.path.join(libroot, "include", "")
     expect(os.path.exists(coreinc), \
            "TUV-x include directory not found at {}".format(coreinc))
     return coreinc
