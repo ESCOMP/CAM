@@ -230,11 +230,6 @@
   <!-- CAM aquaplanet compsets -->
 
   <compset>
-    <alias>QPC3</alias>
-    <lname>2000_CAM30_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPC4</alias>
     <lname>2000_CAM40_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>

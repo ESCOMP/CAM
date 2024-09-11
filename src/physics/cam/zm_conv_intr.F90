@@ -52,9 +52,7 @@ module zm_conv_intr
       zm_ideep_idx,   &
       dp_flxprc_idx, &
       dp_flxsnw_idx, &
-      dp_cldliq_idx, &
       ixorg,       &
-      dp_cldice_idx, &
       dlfzm_idx,     &     ! detrained convective cloud water mixing ratio.
       difzm_idx,     &     ! detrained convective cloud ice mixing ratio.
       dnlfzm_idx,    &     ! detrained convective cloud water num concen.
@@ -134,12 +132,6 @@ subroutine zm_conv_register
 
 ! Flux of snow from deep convection (kg/m2/s)
    call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx)
-
-! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)
-
-! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)
 
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
@@ -459,8 +451,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: evapcdp      ! Evaporation of deep convective precipitation
    real(r8), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
    real(r8), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
-   real(r8), pointer, dimension(:,:) :: dp_cldliq
-   real(r8), pointer, dimension(:,:) :: dp_cldice
    real(r8), pointer :: dlf(:,:)    ! detrained convective cloud water mixing ratio.
    real(r8), pointer :: dif(:,:)    ! detrained convective cloud ice mixing ratio.
    real(r8), pointer :: dnlf(:,:)   ! detrained convective cloud water num concen.
@@ -709,10 +699,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     call pbuf_get_field(pbuf, dp_flxprc_idx, flxprec    )
     call pbuf_get_field(pbuf, dp_flxsnw_idx, flxsnow    )
-    call pbuf_get_field(pbuf, dp_cldliq_idx, dp_cldliq  )
-    call pbuf_get_field(pbuf, dp_cldice_idx, dp_cldice  )
-    dp_cldliq(:ncol,:) = 0._r8
-    dp_cldice(:ncol,:) = 0._r8
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
     flxprec(:,:) = 0._r8
     flxsnow(:,:) = 0._r8
@@ -766,23 +752,21 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
   call physics_update(state1, ptend_loc, ztodt)
 
 
-  ! Momentum Transport (non-cam3 physics)
+  ! Momentum Transport
 
-  if ( .not. cam_physpkg_is('cam3')) then
+  call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_momtran_run', ls=.true., lu=.true., lv=.true.)
 
-     call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_momtran_run', ls=.true., lu=.true., lv=.true.)
-
-     l_windt(1) = .true.
-     l_windt(2) = .true.
+  l_windt(1) = .true.
+  l_windt(2) = .true.
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
-     ptend_loc%s(:,:) = 0._r8
-     ptend_loc%u(:,:) = 0._r8
-     ptend_loc%v(:,:) = 0._r8
+  ptend_loc%s(:,:) = 0._r8
+  ptend_loc%u(:,:) = 0._r8
+  ptend_loc%v(:,:) = 0._r8
 !REMOVECAM_END
 
-     call t_startf ('zm_conv_momtran_run')
+  call t_startf ('zm_conv_momtran_run')
 
-     call zm_conv_momtran_run (ncol, pver, pverp,                    &
+  call zm_conv_momtran_run (ncol, pver, pverp,                    &
                    l_windt,state1%u(:ncol,:), state1%v(:ncol,:), 2,  mu(:ncol,:), md(:ncol,:),   &
                    zmconv_momcu, zmconv_momcd, &
                    du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
@@ -790,47 +774,45 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                    nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:),&
                    pguallu(:ncol,:), pguallv(:ncol,:),  pgdallu(:ncol,:), pgdallv(:ncol,:), &
                    icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) )
-     call t_stopf ('zm_conv_momtran_run')
+  call t_stopf ('zm_conv_momtran_run')
 
-     ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
+  ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
 
-     call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+  call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
-     ! Output ptend variables before they are set to zero with physics_update
-     call outfld('ZMMTU', ptend_loc%u, pcols, lchnk)
-     call outfld('ZMMTV', ptend_loc%v, pcols, lchnk)
+  ! Output ptend variables before they are set to zero with physics_update
+  call outfld('ZMMTU', ptend_loc%u, pcols, lchnk)
+  call outfld('ZMMTV', ptend_loc%v, pcols, lchnk)
 
-     ! update physics state type state1 with ptend_loc
-     call physics_update(state1, ptend_loc, ztodt)
+  ! update physics state type state1 with ptend_loc
+  call physics_update(state1, ptend_loc, ztodt)
 
-     ftem(:ncol,:pver) = seten(:ncol,:pver)/cpair
-     if (zmconv_org) then
-        call outfld('ZM_ORG', state%q(:,:,ixorg), pcols, lchnk)
-        call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
-     endif
-     call outfld('ZMMTT', ftem             , pcols, lchnk)
+  ftem(:ncol,:pver) = seten(:ncol,:pver)/cpair
+  if (zmconv_org) then
+     call outfld('ZM_ORG', state%q(:,:,ixorg), pcols, lchnk)
+     call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
+  endif
+  call outfld('ZMMTT', ftem             , pcols, lchnk)
 
-     ! Output apparent force from  pressure gradient
-     call outfld('ZMUPGU', pguallu, pcols, lchnk)
-     call outfld('ZMUPGD', pgdallu, pcols, lchnk)
-     call outfld('ZMVPGU', pguallv, pcols, lchnk)
-     call outfld('ZMVPGD', pgdallv, pcols, lchnk)
+  ! Output apparent force from  pressure gradient
+  call outfld('ZMUPGU', pguallu, pcols, lchnk)
+  call outfld('ZMUPGD', pgdallu, pcols, lchnk)
+  call outfld('ZMVPGU', pguallv, pcols, lchnk)
+  call outfld('ZMVPGD', pgdallv, pcols, lchnk)
 
-     ! Output in-cloud winds
-     call outfld('ZMICUU', icwuu, pcols, lchnk)
-     call outfld('ZMICUD', icwdu, pcols, lchnk)
-     call outfld('ZMICVU', icwuv, pcols, lchnk)
-     call outfld('ZMICVD', icwdv, pcols, lchnk)
+  ! Output in-cloud winds
+  call outfld('ZMICUU', icwuu, pcols, lchnk)
+  call outfld('ZMICUD', icwdu, pcols, lchnk)
+  call outfld('ZMICVU', icwuv, pcols, lchnk)
+  call outfld('ZMICVD', icwdv, pcols, lchnk)
 
-   end if
+  ! Transport cloud water and ice only
+  call cnst_get_ind('CLDLIQ', ixcldliq)
+  call cnst_get_ind('CLDICE', ixcldice)
 
-   ! Transport cloud water and ice only
-   call cnst_get_ind('CLDLIQ', ixcldliq)
-   call cnst_get_ind('CLDICE', ixcldice)
-
-   lq(:)  = .FALSE.
-   lq(2:) = cnst_is_convtran1(2:)
-   call physics_ptend_init(ptend_loc, state1%psetcols, 'convtran1', lq=lq)
+  lq(:)  = .FALSE.
+  lq(2:) = cnst_is_convtran1(2:)
+  call physics_ptend_init(ptend_loc, state1%psetcols, 'convtran1', lq=lq)
 
 
    ! dpdry is not used in this call to convtran since the cloud liquid and ice mixing
