@@ -31,6 +31,8 @@ module check_energy
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
   use cam_logfile,     only: iulog
+  use scamMod,         only: single_column, use_camiop, heat_glob_scm
+  use cam_history,     only: outfld, write_camiop
 
   implicit none
   private
@@ -485,13 +487,14 @@ end subroutine check_energy_get_integrals
       !
       if (state%psetcols == pcols) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
+        scaling(:ncol,:)  = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair
+        scaling(:ncol,:)  = 1.0_r8
       endif
       !
       ! enthalpy scaling for energy consistency
       !
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       temp(1:ncol,:)   = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
@@ -509,6 +512,7 @@ end subroutine check_energy_get_integrals
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physics_types,   only: dyn_te_idx
+    use cam_history,     only: write_camiop
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -587,8 +591,11 @@ end subroutine check_energy_get_integrals
 !---------------------------Local storage-------------------------------
     integer  :: i                        ! column
     integer  :: ncol                     ! number of atmospheric columns in chunk
+    integer  :: lchnk                    ! chunk number
+    real(r8) :: heat_out(pcols)
 !-----------------------------------------------------------------------
-    ncol = state%ncol
+    lchnk = state%lchnk
+    ncol  = state%ncol
 
     call physics_ptend_init(ptend, state%psetcols, 'chkenergyfix', ls=.true.)
 
@@ -596,8 +603,21 @@ end subroutine check_energy_get_integrals
     ! disable the energy fix for offline driver
     heat_glob = 0._r8
 #endif
-! add (-) global mean total energy difference as heating
+
+    ! Special handling of energy fix for SCAM - supplied via CAMIOP - zero's for normal IOPs
+    if (single_column) then
+       if ( use_camiop) then
+          heat_glob = heat_glob_scm(1)
+       else
+          heat_glob = 0._r8
+       endif
+    endif
     ptend%s(:ncol,:pver) = heat_glob
+
+    if (nstep > 0 .and. write_camiop) then
+      heat_out(:ncol) = heat_glob
+      call outfld('heat_glob',  heat_out(:ncol), pcols, lchnk)
+    endif
 
 ! compute effective sensible heat flux
     do i = 1, ncol
@@ -942,10 +962,10 @@ end subroutine check_energy_get_integrals
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    
+
     mr_cnst = rga*rearth**3
     mo_cnst = rga*omega*rearth**4
-    
+
     mr = 0.0_r8
     mo = 0.0_r8
     do k = 1, pver
@@ -953,12 +973,12 @@ end subroutine check_energy_get_integrals
           cos_lat = cos(state%lat(i))
           mr_tmp = mr_cnst*state%u(i,k)*state%pdel(i,k)*cos_lat
           mo_tmp = mo_cnst*state%pdel(i,k)*cos_lat**2
-          
+
           mr(i) = mr(i) + mr_tmp
           mo(i) = mo(i) + mo_tmp
        end do
     end do
-    
+
     call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
     call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 

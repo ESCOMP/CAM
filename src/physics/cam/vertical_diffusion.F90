@@ -141,6 +141,8 @@ logical              :: do_pbl_diags = .false.
 logical              :: waccmx_mode = .false.
 logical              :: do_hb_above_clubb = .false.
 
+real(r8),allocatable :: kvm_sponge(:)
+
 contains
 
   ! =============================================================================== !
@@ -280,6 +282,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
   use phys_control,      only : waccmx_is, fv_am_correction
+  use ref_pres,          only : ptop_ref
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   character(128) :: errstring   ! Error status for init_vdiff
@@ -289,7 +292,7 @@ subroutine vertical_diffusion_init(pbuf2d)
 
   real(r8), parameter :: ntop_eddy_pres = 1.e-7_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
 
-  integer :: im, l, m, nmodes, nspec
+  integer :: im, l, m, nmodes, nspec, ierr
 
   logical :: history_amwg                 ! output the variables used by the AMWG diag package
   logical :: history_eddy                 ! output the eddy variables
@@ -297,10 +300,48 @@ subroutine vertical_diffusion_init(pbuf2d)
   integer :: history_budget_histfile_num  ! output history file number for budget fields
   logical :: history_waccm                ! output variables of interest for WACCM runs
 
-  ! ----------------------------------------------------------------- !
+  !
+  ! add sponge layer vertical diffusion
+  !
+  if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
+     !
+     ! CAM7 FMT (but not CAM6 top (~225 Pa) or CAM7 low top or lower)
+     !
+     allocate(kvm_sponge(4), stat=ierr)
+     if( ierr /= 0 ) then
+        write(iulog,*) 'vertical_diffusion_init:  kvm_sponge allocation error = ',ierr
+        call endrun('vertical_diffusion_init: failed to allocate kvm_sponge array')
+     end if
+     kvm_sponge(1) = 2E6_r8
+     kvm_sponge(2) = 2E6_r8
+     kvm_sponge(3) = 0.5E6_r8
+     kvm_sponge(4) = 0.1E6_r8
+  else if (ptop_ref>1e-4_r8) then
+     !
+     ! WACCM and WACCM-x
+     !
+     allocate(kvm_sponge(6), stat=ierr)
+     if( ierr /= 0 ) then
+        write(iulog,*) 'vertical_diffusion_init:  kvm_sponge allocation error = ',ierr
+        call endrun('vertical_diffusion_init: failed to allocate kvm_sponge array')
+     end if
+     kvm_sponge(1) = 2E6_r8
+     kvm_sponge(2) = 2E6_r8
+     kvm_sponge(3) = 1.5E6_r8
+     kvm_sponge(4) = 1.0E6_r8
+     kvm_sponge(5) = 0.5E6_r8
+     kvm_sponge(6) = 0.1E6_r8
+  end if
 
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
+     if (allocated(kvm_sponge)) then
+        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
+        do k=1,size(kvm_sponge(:),1)
+           write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
+                                                kvm_sponge(k),' m2 s-2'
+        end do
+     end if !allocated
   end if
 
   ! Check to see if WACCM-X is on (currently we don't care whether the
@@ -408,7 +449,7 @@ subroutine vertical_diffusion_init(pbuf2d)
      do_pbl_diags = .true.
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam_dev or cam6 physics
+     ! run HB scheme where CLUBB is not active when running cam7 or cam6 physics
      ! else init_hb_diff is called just for diagnostic purposes
      !
      if (do_hb_above_clubb) then
@@ -633,7 +674,6 @@ subroutine vertical_diffusion_init(pbuf2d)
         call pbuf_set_field(pbuf2d, qti_flx_idx,  0.0_r8)
      end if
   end if
-
 end subroutine vertical_diffusion_init
 
 ! =============================================================================== !
@@ -695,6 +735,7 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
   use phys_control,       only : cam_physpkg_is
+  use ref_pres,           only : ptop_ref
 
   ! --------------- !
   ! Input Arguments !
@@ -870,7 +911,7 @@ subroutine vertical_diffusion_tend( &
   ! ----------------------- !
 
   ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state)
+  call set_dry_to_wet(state, convert_cnst_type='dry')
 
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
@@ -1016,7 +1057,7 @@ subroutine vertical_diffusion_tend( &
 
   case ( 'CLUBB_SGS' )
     !
-    ! run HB scheme where CLUBB is not active when running cam_dev
+    ! run HB scheme where CLUBB is not active when running cam7
     !
     if (do_hb_above_clubb) then
       call compute_hb_free_atm_diff( ncol          , &
@@ -1067,6 +1108,14 @@ subroutine vertical_diffusion_tend( &
 
   call outfld( 'ustar',   ustar(:), pcols, lchnk )
   call outfld( 'obklen', obklen(:), pcols, lchnk )
+  !
+  ! add sponge layer vertical diffusion
+  !
+  if (allocated(kvm_sponge)) then
+     do k=1,size(kvm_sponge(:),1)
+        kvm(:ncol,1) = kvm(:ncol,1)+kvm_sponge(k)
+     end do
+  end if
 
   ! kvh (in pbuf) is used by other physics parameterizations, and as an initial guess in compute_eddy_diff
   ! on the next timestep.  It is not updated by the compute_vdiff call below.
@@ -1145,7 +1194,7 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     if (cam_physpkg_is("cam_dev")) then
+     if (cam_physpkg_is("cam7")) then
        ! surface fluxes applied in clubb emissions module
        cflux(:,2:) = 0._r8
      else
@@ -1335,7 +1384,7 @@ subroutine vertical_diffusion_tend( &
      endif
   end do
   ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state)
+  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt
@@ -1505,7 +1554,7 @@ subroutine vertical_diffusion_tend( &
   call outfld( 'KVT'          , kvt,                       pcols, lchnk )
   call outfld( 'KVM'          , kvm,                       pcols, lchnk )
   call outfld( 'CGS'          , cgs,                       pcols, lchnk )
-  dtk(:ncol,:) = dtk(:ncol,:) / cpair              ! Normalize heating for history
+  dtk(:ncol,:) = dtk(:ncol,:) / cpair / ztodt      ! Normalize heating for history
   call outfld( 'DTVKE'        , dtk,                       pcols, lchnk )
   dtk(:ncol,:) = ptend%s(:ncol,:) / cpair          ! Normalize heating for history using dtk
   call outfld( 'DTV'          , dtk,                       pcols, lchnk )

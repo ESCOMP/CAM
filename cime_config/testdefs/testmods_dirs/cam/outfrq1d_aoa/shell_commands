@@ -1,0 +1,2 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange --append CAM_CONFIG_OPTS="-age_of_air_trcs"

@@ -2,7 +2,7 @@
 CIME MGP test.  This class inherits from SystemTestsCompareTwo
 
 This is a changing config options test to compare between MG3 and 
-PUMAS in camdev. The use of MG3 or PUMAS should be bfb.
+PUMAS in cam7. The use of MG3 or PUMAS should be bfb.
 This is just like an ERC test and it's meant for CAM only 
 as it only does a single build.
  
@@ -39,9 +39,9 @@ class MGP(SystemTestsCompareTwo):
     def _case_one_setup(self):
         stop_n = self._case1.get_value("STOP_N")
         expect(stop_n >= 3, "STOP_N must be at least 3, STOP_N = {}".format(stop_n))
-        self._case.set_value("CAM_CONFIG_OPTS","-phys cam_dev -microphys mg3")
+        self._case.set_value("CAM_CONFIG_OPTS","-phys cam7 -microphys mg3")
 
     def _case_two_setup(self):
-        self._case.set_value("CAM_CONFIG_OPTS","-phys cam_dev -microphys pumas")
+        self._case.set_value("CAM_CONFIG_OPTS","-phys cam7 -microphys pumas")
 
 

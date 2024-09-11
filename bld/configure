@@ -64,12 +64,12 @@ OPTIONS
                         Default: none.
     -chem <name>       Build CAM with specified prognostic chemistry package
                        [ none | ghg_mam4 | terminator | trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_ts2 |
-                         trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_vbs |
+                         trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_ts4 | trop_strat_mam5_vbs |
                          trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
                          waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
                          waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
-     -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
+     -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6 and cam7, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
      -co2_cycle         This option modifies the CAM configuration by
@@ -89,7 +89,7 @@ OPTIONS
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
      -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk | pumas].
-     -model_top <name>  Specify the model_top option [ lt | mt ].
+     -model_top <name>  Specify the model_top option for cam7 [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
      -nlev <n>          Set number of levels to <n>.
@@ -97,7 +97,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam_dev |
+     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam7 |
                                         held_suarez | adiabatic | kessler | tj2016 | grayrad
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -124,7 +124,10 @@ OPTIONS
 
      -camiop            Configure CAM to generate an IOP file that can be used to drive SCAM.
                         This switch only works with the Eulerian dycore.
-     -scam              Compiles model in single column mode.  Only works with Eulerian dycore.
+     -scam <iopname>    Compiles model in single column mode and configures for iop
+                        [ arm95 | arm97 | atex | bomex | cgilsS11 | cgilsS12 | cgilsS6 | dycomsRF01 |
+                          dycomsRF02 | gateIII | mpace | rico | sparticus | togaII | twp06 | SAS | camfrc ].
+                        Default: arm97
 
   CAM parallelization:
 
@@ -209,6 +212,7 @@ EOF
 # command was issued from the current working directory.
 
 (my $ProgName = $0) =~ s!(.*)/!!;      # name of this script
+$ProgName = "CAM $ProgName";           # distinquish from other components configure
 my $ProgDir = $1;                      # name of directory containing this script -- may be a
                                        # relative or absolute path, or null if the script is in
                                        # the user's PATH
@@ -296,7 +300,7 @@ GetOptions(
     "psubcols=s"                => \$opts{'psubcols'},
     "rad=s"                     => \$opts{'rad'},
     "offline_drv=s"             => \$opts{'offline_drv'},
-    "scam"                      => \$opts{'scam'},
+    "scam=s"                    => \$opts{'scam'},
     "silhs"                     => \$opts{'silhs'},
     "s|silent"                  => \$opts{'silent'},
     "smp!"                      => \$opts{'smp'},
@@ -534,21 +538,16 @@ if ($print>=2) { print "Coupling framework: $cpl$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Physics package
-#
-# The default physics package is cam6.  Physics packages >=cam5 use chemistry packages
-# that include modal aerosols, i.e., the -chem value matches /_mam/.  If the chem_pkg
-# name doesn't match /_mam/ then set the default physics package to cam4.
-my $phys_pkg = 'cam6';
-if (defined $opts{'chem'} and $opts{'chem'} !~ /_mam/) {
-    $phys_pkg = 'cam4';
-}
-elsif (defined $opts{'waccmx'}) {
-    $phys_pkg = 'cam4';
-}
 
-# user override
+my $phys_pkg = 'not_set';
+
+# There is no default physics package.  It is always specified by the CAM component part
+# of a compset longname.  Add check that -phys has been set.
+
 if (defined $opts{'phys'}) {
     $phys_pkg = lc($opts{'phys'});
+} else {
+    die "$ProgName ERROR: the -phys option must be set";
 }
 
 # Add to the config object.
@@ -566,7 +565,7 @@ if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$|^grayrad$/) {
 #-----------------------------------------------------------------------------------------------
 # Chemistry package
 
-my $chem_pkg = 'trop_mam4';
+my $chem_pkg = 'not_set';
 
 # defaults based on physics package
 if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
@@ -574,6 +573,12 @@ if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
 }
 elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
     $chem_pkg = 'trop_mam3';
+}
+elsif ($phys_pkg eq 'cam6') {
+    $chem_pkg = 'trop_mam4';
+}
+elsif ($phys_pkg eq 'cam7') {
+    $chem_pkg = 'ghg_mam4';
 }
 
 # some overrides for special configurations
@@ -639,6 +644,10 @@ if ($dyn_pkg eq 'fv3' and $spmd eq 'OFF') {
     die "configure: FATAL: the fv3 dycore requires at least 6 tasks SPMD must not be switched off.$eol";
 }
 
+if ($dyn_pkg eq 'se' and $smp eq 'ON') {
+    die "CAM configure: ERROR: The SE dycore does not currently work with threading on. $eol";
+}
+
 if ($print>=2) { print "Dynamics package: $dyn_pkg$eol"; }
 
 $cfg_ref->set('analytic_ic', (defined $opts{'analytic_ic'}) ? $opts{'analytic_ic'} : 0);
@@ -674,17 +683,6 @@ if (defined $opts{'max_n_rad_cnst'}) {
 my $max_n_rad_cnst = $cfg_ref->get('max_n_rad_cnst');
 
 if ($print>=2) { print "Maximum radiatively active tracers: $max_n_rad_cnst$eol"; }
-
-#-----------------------------------------------------------------------------------------------
-# model_top - not set by default
-my $model_top = 'none';
-$cfg_ref->set('model_top', $model_top);
-
-# user override
-if (defined $opts{'model_top'}) {
-    $cfg_ref->set('model_top', $opts{'model_top'});
-}
-if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # waccm physics
@@ -823,7 +821,7 @@ elsif ($phys_pkg eq 'cam5') {
 elsif ($phys_pkg eq 'cam6') {
     $microphys_pkg = 'mg2';
 }
-elsif ($phys_pkg eq 'cam_dev') {
+elsif ($phys_pkg eq 'cam7') {
     $microphys_pkg = 'mg3';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -872,7 +870,7 @@ if ($print>=2) { print "CARMA microphysical model: $carma_pkg$eol"; }
 #-----------------------------------------------------------------------------------------------
 # CLUBB
 my $clubb_sgs = 0;
-if ($phys_pkg eq 'cam6' or $phys_pkg eq 'cam_dev') {
+if ($phys_pkg eq 'cam6' or $phys_pkg eq 'cam7') {
     $clubb_sgs = 1;
 }
 
@@ -882,6 +880,13 @@ if (defined $opts{'clubb_sgs'}) {
 }
 
 # consistency checks...
+
+# cam7 only works with CLUBB_SGS
+if (($phys_pkg eq 'cam7') and not ($clubb_sgs )) {
+    die <<"EOF";
+**    ERROR: CLUBB_SGS must be enabled for cam7 physics.
+EOF
+}
 
 # CLUBB_SGS only works with mg microphysics
 if ($clubb_sgs and not ($microphys_pkg =~ m/^mg/ )) {
@@ -955,13 +960,15 @@ if ($phys_pkg =~ /cam[34]/) {
 elsif ($phys_pkg =~ /cam5/) {
     $macrophys_pkg = 'park';
 }
-elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
-    $macrophys_pkg = 'clubb_sgs';
+elsif ($phys_pkg =~ /cam6/) {
+    if ($clubb_sgs) {
+        $macrophys_pkg = 'clubb_sgs';
+    }
+    else {
+        $macrophys_pkg = 'park';
+    }
 }
-elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
-    $macrophys_pkg = 'park';
-}
-elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
     $macrophys_pkg = 'clubb_sgs';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -996,13 +1003,15 @@ if ($phys_pkg =~ m/^cam[34]$/) {
 elsif ($phys_pkg =~ /cam5/) {
     $pbl_pkg = 'uw';
 }
-elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
-    $pbl_pkg = 'clubb_sgs';
+elsif ($phys_pkg =~ /cam6/) {
+    if ($clubb_sgs) {
+        $pbl_pkg = 'clubb_sgs';
+    }
+    else {
+        $pbl_pkg = 'uw';
+    }
 }
-elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
-    $pbl_pkg = 'uw';
-}
-elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
     $pbl_pkg = 'clubb_sgs';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
@@ -1062,10 +1071,10 @@ if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
 
 # Set default
 my $rad_pkg = 'none';
-if ($phys_pkg =~ m/^cam[34]$|^spcam_sam1mom$/) {
+if ($phys_pkg =~ m/cam3|cam4|spcam_sam1mom/) {
     $rad_pkg = 'camrt';
 }
-elsif ($phys_pkg =~ m/^cam[56]$|^cam_dev$|^spcam_m2005$/) {
+elsif ($phys_pkg =~ m/cam5|cam6|cam7|spcam_m2005/) {
     $rad_pkg = 'rrtmg';
 }
 # Allow the user to override the default via the commandline.
@@ -1116,8 +1125,8 @@ if (defined $opts{'cosp'}) {
 }
 my $cosp = $cfg_ref->get('cosp');
 
-# cosp is only implemented with the cam5 and cam6 physics packages
-if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam_dev')) {
+# cosp is only implemented with the cam5, cam6, and cam7 physics packages
+if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam7')) {
         die "configure ERROR: cosp not implemented for the $phys_pkg physics package \n";
 }
 
@@ -1201,15 +1210,25 @@ if ($print>=2) { print "Perturbation growth testing: $pergro$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Single column mode
+
+# Set default iop
+my $scam_iop;
+
+# Allow the user to override the default via the commandline.
+if (defined $opts{'scam'}) {
+    $scam_iop = lc($opts{'scam'});
+    $cfg_ref->set('scam_iop', $scam_iop);
+}
+
 if (defined $opts{'scam'}) {
     $cfg_ref->set('scam', 1);
 }
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
-# The only dycore supported in SCAM mode is Eulerian
-if ($scam eq 'ON' and $dyn_pkg ne 'eul') {
+# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
+if ($scam eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: SCAM mode only works with Eulerian dycore.
+**  ERROR: SCAM mode only works with Eulerian or SE dycores.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1223,10 +1242,10 @@ if (defined $opts{'camiop'}) {
 }
 my $camiop = $cfg_ref->get('camiop') ? "ON" : "OFF";
 
-# The only dycore supported in CAMIOP mode is Eulerian
-if ($camiop eq 'ON' and $dyn_pkg ne 'eul') {
+# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
+if ($camiop eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: CAMIOP mode only works with Eulerian dycore.
+**  ERROR: CAMIOP mode only works with the Eulerian or Spectral Element dycores.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1301,6 +1320,24 @@ EOF
 if ($print>=2) { print "Maximum number of sub-columns per column: $psubcols$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+# model_top -- Introduced in cam7 to provide a way to specify the model top
+#              independently of the number of model layers.
+
+# Set default
+my $model_top = 'none';
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'} and $opts{'model_top'} ne 'none') {
+    if ($phys_pkg eq 'cam7') {
+        $cfg_ref->set('model_top', $opts{'model_top'});
+    } else {
+        die "configure ERROR: model_top=$opts{'model_top'} is only implemented for cam7 physics";
+    }
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
+
+#-----------------------------------------------------------------------------------------------
 # Number of vertical levels
 my $nlev = 0;
 
@@ -1308,7 +1345,7 @@ my $nlev = 0;
 if ($waccmx) {
     if ($phys_pkg eq 'cam6') {
         $nlev = 130;
-    } elsif ($phys_pkg eq 'cam_dev') {
+    } elsif ($phys_pkg eq 'cam7') {
         $nlev = 130;
     } else {
         $nlev = 126;
@@ -1322,7 +1359,7 @@ elsif ($chem_pkg =~ /waccm_/) {
         $nlev = 70;
     }
 }
-elsif ($phys_pkg eq 'cam_dev') {
+elsif ($phys_pkg eq 'cam7') {
     $nlev = 32;
 }
 elsif ($phys_pkg eq 'cam6') {
@@ -1578,7 +1615,7 @@ else {
     if ($print>=2 and $ttrac_nadv) { print "Advected constituents added by test tracer package: $ttrac_nadv$eol"; }
 
     if ($age_of_air_trcs eq "ON") {
-        $nadv += 4;
+        $nadv += 3;
         if ($print>=2) { print "Advected constituents added by the age of air tracer package: 4$eol"; }
     }
 
@@ -1696,7 +1733,7 @@ elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
-if ($fc_type eq "oneapi") {$fc_type = 'intel'; }
+if ($fc_type =~ /intel/) {$fc_type = 'intel'; }
 if ($fc_type) {
     $cfg_ref->set('fc_type', $fc_type);
     if ($print>=2) { print "Fortran compiler type: $fc_type$eol"; }
@@ -2101,6 +2138,7 @@ sub write_fv3core_filepath
     my $camsrcdir   = $cfg_ref->get('cam_dir');
     my $CASEROOT = "$ENV{'CASEROOT'}";
     print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/src_override\n";
     print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
@@ -2156,19 +2194,20 @@ sub write_filepath
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";
 
-    if ($phys_pkg eq 'cam_dev') {
-      print $fh "$camsrcdir/src/physics/cam_dev\n";
+    if ($phys_pkg eq 'cam7') {
+      print $fh "$camsrcdir/src/physics/cam7\n";
     }
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
       print $fh "$camsrcdir/src/atmos_phys/held_suarez\n";
+      print $fh "$camsrcdir/src/atmos_phys/tj2016\n";
     }
 
     # Weak scaling fix. This has to come before physics/cam and before dycores
     # It also has to come before utils (which is already near the end).
-    if ($dyn eq 'se' or $dyn eq 'mpas') {
+    if ($dyn eq 'se' or $dyn eq 'mpas' or $dyn eq 'fv3') {
       print $fh "$camsrcdir/src/infrastructure\n";
     }
 
@@ -2188,9 +2227,9 @@ sub write_filepath
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
     }
- 
+
     # GEOS-Chem must be prior to Mozart
-    if ($chem_pkg =~ 'geoschem') {	
+    if ($chem_pkg =~ 'geoschem') {
 	print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
 	print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
 	print $fh "$chem_src_dir/geoschem_src/Headers\n";
@@ -2266,7 +2305,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
     }
 
-    if ($phys_pkg eq 'cam_dev') {
+    if ($phys_pkg eq 'cam7') {
 	print $fh "$camsrcdir/src/physics/pumas\n";
     } else {
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
@@ -2302,7 +2341,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/physics/cam\n";
 
     #Add the CCPP'ized subdirectories
-    print $fh "$camsrcdir/src/atmos_phys/zm\n";
+    print $fh "$camsrcdir/src/atmos_phys/zhang_mcfarlane\n";
+    print $fh "$camsrcdir/src/atmos_phys/dry_adiabatic_adjust\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";

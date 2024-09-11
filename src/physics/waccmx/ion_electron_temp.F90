@@ -34,6 +34,7 @@ module ion_electron_temp
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog ! Output unit
   use ionos_state_mod,  only : ionos_state
+  use air_composition,only : cpairv
 
   implicit none
 
@@ -135,16 +136,16 @@ contains
     !-------------------------------------------------------------------------------
     !  Add history variables for ionosphere
     !-------------------------------------------------------------------------------
-    call addfld ('QIonElec' ,(/ 'lev' /), 'I', 'K/s', 'Electron Ion Thermal Heating Rate')
+    call addfld ('QIonElec' ,(/ 'lev' /), 'I', 'K sec-1', 'Electron Ion Thermal Heating Rate')
     call addfld ('TElec&IC'     ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon&IC'      ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
     call addfld ('TElec'        ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon'         ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
     call addfld ('ElecColDens'  ,horiz_only , 'I', 'TECU',   'Electron Column Density')
     if (.not.steady_state_ion_elec_temp) then
-       call addfld ('QIN'          ,(/ 'lev' /), 'I', 'J/kg/s', 'Ion-neutral Heating')
-       call addfld ('QEN'          ,(/ 'lev' /), 'I', ' ',      'Electron-neutral Heating')
-       call addfld ('QEI'          ,(/ 'lev' /), 'I', ' ',      'Electron-ion Heating')
+       call addfld ('QIN'          ,(/ 'lev' /), 'I', 'K sec-1','Ion-neutral Heating Rate')
+       call addfld ('QEN'          ,(/ 'lev' /), 'I', 'K sec-1','Electron-neutral Heating Rate')
+       call addfld ('QEI'          ,(/ 'lev' /), 'I', 'K sec-1','Electron-ion Heating Rate')
        call addfld ('LOSS_g3'      ,(/ 'lev' /), 'I', ' ',      'Loss Term g3')
        call addfld ('LOSS_EI'      ,(/ 'lev' /), 'I', ' ',      'Loss Term EI')
        call addfld ('LOSS_IN'      ,(/ 'lev' /), 'I', ' ',      'Loss Term IN')
@@ -334,7 +335,6 @@ contains
 
   subroutine ion_electron_temp_tend(state, ptend, pbuf, ztodt)
 
-    use air_composition,     only: cpairv
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation
     !-------------------------------------------------------------------------------------
@@ -1037,9 +1037,9 @@ contains
     real(r8), dimension(pcols,pver)     :: delZ         ! Delta z: midpoints
 
     real(r8), dimension(pcols,pver)     :: qjoule       ! joule heating
-    real(r8), dimension(pcols,pver)     :: qen          ! electron-neutral heating
-    real(r8), dimension(pcols,pver)     :: qei          ! electron-ion Coulomb heating
-    real(r8), dimension(pcols,pver)     :: qin          ! ion-neutral heating
+    real(r8), dimension(pcols,pver)     :: qen          ! electron-neutral heating (units: ev/g/s)
+    real(r8), dimension(pcols,pver)     :: qei          ! electron-ion Coulomb heating (units: ev/g/s)
+    real(r8), dimension(pcols,pver)     :: qin          ! ion-neutral heating (units: ev/g/s)
     real(r8), dimension(pcols,pver)     :: rho          ! mass density
 
     real(r8), dimension(pcols,pver)     :: wrk2
@@ -1053,6 +1053,7 @@ contains
     logical, dimension(pcols)           :: colConv      ! flag for column converging
     logical                             :: converged    ! Flag for convergence in electron temperature
                                                         ! calculation iteration loop
+    real(r8) :: qrate(pcols,pver) ! heating rate diagnostic
 
     !---------------------------------------------------------------------------------------------------------
     !  Initialize arrays to zero and column convergence logical to .false.
@@ -1452,9 +1453,14 @@ contains
 
    dSETendOut(1:ncol,1:teTiBot) = (qei(1:ncol,1:teTiBot)+qen(1:ncol,1:teTiBot)) / sToQConv    ! J/kg/s
 
-   call outfld ('QEN', qen, pcols, lchnk)
-   call outfld ('QEI', qei, pcols, lchnk)
-   call outfld ('QIN', qin, pcols, lchnk)
+   qrate(:ncol,:) = qen(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QEN', qrate, pcols, lchnk)
+
+   qrate(:ncol,:) = qei(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QEI', qrate, pcols, lchnk)
+
+   qrate(:ncol,:) = qin(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QIN', qrate, pcols, lchnk)
 
    return
 

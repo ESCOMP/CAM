@@ -12,7 +12,7 @@ use ppgrid,          only: pcols, pver, begchunk, endchunk
 use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
 use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
 
-use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all
+use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all, write_camiop
 use cam_history_support, only: max_fieldname_len
 use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, apcnst, bpcnst, cnst_get_ind
@@ -221,7 +221,7 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if (.not.dycore_is('EUL')) then 
+    if (.not.dycore_is('EUL')) then
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
@@ -365,7 +365,7 @@ contains
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
       call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if (.not.dycore_is('EUL')) then 
+      if (.not.dycore_is('EUL')) then
         call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
       end if
     end if
@@ -501,6 +501,8 @@ contains
     call addfld ('TREFHTMX', horiz_only, 'X','K','Maximum reference height temperature over output period')
     call addfld ('QREFHT',   horiz_only, 'A', 'kg/kg','Reference height humidity')
     call addfld ('U10',      horiz_only, 'A', 'm/s','10m wind speed')
+    call addfld ('UGUST',    horiz_only, 'A', 'm/s','Gustiness term added to U10')
+    call addfld ('U10WITHGUSTS',horiz_only, 'A', 'm/s','10m wind speed with gustiness added')
     call addfld ('RHREFHT',  horiz_only, 'A', 'fraction','Reference height relative humidity')
 
     call addfld ('LANDFRAC', horiz_only, 'A', 'fraction','Fraction of sfc area covered by land')
@@ -899,11 +901,12 @@ contains
     ! Purpose: output dry physics diagnostics
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cappa
-    use time_manager,       only: get_nstep
-    use interpolate_data,   only: vertinterp
-    use tidal_diag,         only: tidal_diag_write
-    use air_composition,    only: cpairv, rairv
+    use physconst,            only: gravit, rga, rair, cappa
+    use time_manager,         only: get_nstep
+    use interpolate_data,     only: vertinterp
+    use tidal_diag,           only: tidal_diag_write
+    use air_composition,      only: cpairv, rairv
+    use cam_diagnostic_utils, only: cpslec
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -940,9 +943,7 @@ contains
 
     call outfld('PHIS    ',state%phis,    pcols,   lchnk     )
 
-#if (defined BFB_CAM_SCAM_IOP )
-    call outfld('phis    ',state%phis,    pcols,   lchnk     )
-#endif
+    if (write_camiop) call outfld('phis    ',state%phis,    pcols,   lchnk     )
 
     call outfld( 'CPAIRV', cpairv(:ncol,:,lchnk), ncol, lchnk )
     call outfld( 'RAIRV', rairv(:ncol,:,lchnk), ncol, lchnk )
@@ -1033,9 +1034,7 @@ contains
       call outfld('OMEGA   ',state%omega,    pcols,   lchnk     )
     endif
 
-#if (defined BFB_CAM_SCAM_IOP )
-    call outfld('omega   ',state%omega,    pcols,   lchnk     )
-#endif
+    if (write_camiop) call outfld('omega   ',state%omega,    pcols,   lchnk     )
 
     ftem(:ncol,:) = state%omega(:ncol,:)*state%t(:ncol,:)
     call outfld('OMEGAT  ',ftem,    pcols,   lchnk     )
@@ -1697,9 +1696,7 @@ contains
       call outfld('PRECLav ', precl, pcols, lchnk )
       call outfld('PRECCav ', precc, pcols, lchnk )
 
-#if ( defined BFB_CAM_SCAM_IOP )
-      call outfld('Prec   ' , prect, pcols, lchnk )
-#endif
+      if (write_camiop) call outfld('Prec   ' , prect, pcols, lchnk )
 
       ! Total convection tendencies.
 
@@ -1785,6 +1782,9 @@ contains
       call outfld('TREFHTMN', cam_in%tref,      pcols, lchnk)
       call outfld('QREFHT',   cam_in%qref,      pcols, lchnk)
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
+      call outfld('UGUST',    cam_in%ugustOut,  pcols, lchnk)
+      call outfld('U10WITHGUSTS',cam_in%u10withGusts, pcols, lchnk)
+
       !
       ! Calculate and output reference height RH (RHREFHT)
       call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
@@ -1794,11 +1794,13 @@ contains
       call outfld('RHREFHT',   ftem,      pcols, lchnk)
 
 
-#if (defined BFB_CAM_SCAM_IOP )
-      call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
-      call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
-      call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
-#endif
+      if (write_camiop) then
+         call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
+         call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
+         call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
+         call outfld('Tg', cam_in%ts, pcols, lchnk)
+         call outfld('Tsair',cam_in%ts, pcols, lchnk)
+      end if
       !
       ! Ouput ocn and ice fractions
       !
@@ -2055,7 +2057,7 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (.not.dycore_is('EUL')) then 
+    if (.not.dycore_is('EUL')) then
       call check_energy_get_integrals( heat_glob_out=heat_glob )
       ftem2(:ncol)  = heat_glob/cpair
       call outfld('TFIX', ftem2, pcols, lchnk   )

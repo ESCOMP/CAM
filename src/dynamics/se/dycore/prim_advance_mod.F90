@@ -14,7 +14,6 @@ module prim_advance_mod
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
-
 contains
 
   subroutine prim_advance_init(par, elem)
@@ -28,7 +27,9 @@ contains
     integer                                 :: i
 
     call initEdgeBuffer(par,edge3   ,elem,4*nlev   ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
-    call initEdgeBuffer(par,edgeSponge,elem,4*ksponge_end,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    if (ksponge_end>0) then
+       call initEdgeBuffer(par,edgeSponge,elem,4*ksponge_end,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    end if
     call initEdgeBuffer(par,edgeOmega ,elem,nlev         ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
 
     if(.not. allocated(ur_weights)) allocate(ur_weights(qsplit))
@@ -112,6 +113,7 @@ contains
     ! ==================================
     ! Take timestep
     ! ==================================
+    call t_startf('prim_adv_prep')
     do nq=1,thermodynamic_active_species_num
       qidx(nq) = nq
     end do
@@ -134,7 +136,7 @@ contains
     do ie=nets,nete
       call get_kappa_dry(qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
     end do
-
+    call t_stopf('prim_adv_prep')
 
     dt_vis = dt
 
@@ -280,7 +282,7 @@ contains
     real (kind=r8) :: pdel(np,np,nlev)
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
 
-
+    call t_startf('applyCAMforc')
     if (use_cslam) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
 
     if (ftype==0) then
@@ -333,7 +335,7 @@ contains
       !
       ! tracers
       !
-      if (qsize>0.and.dt_local_tracer>0) then
+      if (.not.use_cslam.and.dt_local_tracer>0) then
 #if (defined COLUMN_OPENMP)
     !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
 #endif
@@ -389,7 +391,7 @@ contains
         if (use_cslam) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
       end if
 
-      if (ftype_conserve==1) then
+      if (ftype_conserve==1.and..not.use_cslam) then
         call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO, &
              thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
         do k=1,nlev
@@ -422,6 +424,7 @@ contains
     end if
     if (ftype==1.and.nsubstep==1) call tot_energy_dyn(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (use_cslam) deallocate(ftmp_fvm)
+    call t_stopf('applyCAMforc')
   end subroutine applyCAMforcing
 
 
@@ -441,7 +444,7 @@ contains
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: nu_t_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
-    use control_mod,    only: molecular_diff
+    use control_mod,    only: molecular_diff,sponge_del4_lev
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk, vlaplace_sphere_wk_mol
@@ -505,7 +508,7 @@ contains
       call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dBH')
 
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
-      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord)
+      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend)
 
       do ie=nets,nete
         ! compute mean flux
@@ -665,7 +668,7 @@ contains
       call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dCH')
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
-        do k=ksponge_end,nlev
+        do k=sponge_del4_lev+2,nlev
           !
           ! only do "frictional heating" away from sponge
           !
