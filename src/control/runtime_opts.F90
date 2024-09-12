@@ -19,7 +19,7 @@ public :: read_namelist
 contains
 !=======================================================================
 
-subroutine read_namelist(nlfilename, single_column, scmlat, scmlon, restart_pointer_file)
+subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
 
    use cam_initfiles,       only: cam_initfiles_readnl
    use constituents,        only: cnst_readnl
@@ -109,7 +109,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon, restart_poin
    logical,          intent(in) :: single_column
    real(r8),         intent(in) :: scmlat
    real(r8),         intent(in) :: scmlon
-   character(len=*), optional, intent(in) :: restart_pointer_file
    !---------------------------Local variables-----------------------------
    character(len=*), parameter ::  subname = "read_namelist"
 
@@ -133,7 +132,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon, restart_poin
 !++bee 13 Oct 2015, need to fix the pbuf_global_allocate functionality, then
 !                   can uncomment the pbuf_readnl line
 !   call pbuf_readnl(nlfilename)
-   call cam_initfiles_readnl(nlfilename, restart_pointer_file=restart_pointer_file)
+   call cam_initfiles_readnl(nlfilename)
    call cnst_readnl(nlfilename)
    call history_readnl(nlfilename)
    call chem_surfvals_readnl(nlfilename)

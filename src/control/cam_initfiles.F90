@@ -57,19 +57,19 @@ type(file_desc_t), target  :: fh_restart
 contains
 !========================================================================================
 
-subroutine cam_initfiles_readnl(nlfile, restart_pointer_file)
+subroutine cam_initfiles_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpir8=>mpi_real8, &
                               mpichar=>mpi_character, mpi_logical
    use cam_instance,    only: inst_suffix
-
+   use filenames,       only: interpret_filename_spec
+   
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-   character(len=*), optional, intent(in) :: restart_pointer_file
+
    ! Local variables
    integer :: unitn, ierr
-
    character(len=cl)        :: locfn
    logical                  :: filefound
    integer                  :: xtype
@@ -112,19 +112,19 @@ subroutine cam_initfiles_readnl(nlfile, restart_pointer_file)
    call mpi_bcast(scale_dry_air_mass, 1, mpir8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: scale_dry_air_mass")
 
-   if(present(restart_pointer_file)) then
-      rest_pfile = restart_pointer_file
-   else
-      ! Set pointer file name based on instance suffix
-      rest_pfile = './rpointer.atm' // trim(inst_suffix)
-   endif
    ! Set name of primary restart file
    if (restart_run) then
       ! Read name of restart file from pointer file
       if (masterproc) then
+         rest_pfile = interpret_filename_spec("rpointer.cam"//trim(inst_suffix)//".%y-%m-%d-%s", prev=.true.)
          inquire(file=trim(rest_pfile),exist=found)
          if(.not. found) then
-            call endrun(sub // ': ERROR: rpointer file: '//trim(rest_pfile) // ' not found')
+            write(iulog, "Warning : rpointer file "//trim(rest_pfile)//" not found.")
+            rest_pfile = "rpointer.cam"//trim(inst_suffix)
+            inquire(file=trim(rest_pfile),exist=found)
+            if(.not. found) then
+               call endrun(sub // ': ERROR: rpointer file: '//trim(rest_pfile) // ' not found')
+            endif
          endif
          unitn = getunit()
          call opnfil(rest_pfile, unitn, 'f', status="old")

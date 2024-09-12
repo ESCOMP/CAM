@@ -16,7 +16,7 @@ use shr_sys_mod,       only: shr_sys_flush
 use spmd_utils,        only: masterproc, mpicom
 use cam_control_mod,   only: cam_ctrl_init, cam_ctrl_set_orbit
 use runtime_opts,      only: read_namelist
-use time_manager,      only: timemgr_init, get_nstep, get_prev_date
+use time_manager,      only: timemgr_init, get_nstep
 use camsrfexch,        only: cam_out_t, cam_in_t
 use ppgrid,            only: begchunk, endchunk
 use physics_types,     only: physics_state, physics_tend
@@ -126,8 +126,6 @@ subroutine cam_init(                                             &
    type(cam_in_t) ,   pointer    :: cam_in(:)        ! Merged input state to CAM
 
    ! Local variables
-   character(len=cl) :: restart_pointer_file
-   integer           :: yr, mon, day, tod
    character(len=cs) :: filein      ! Input namelist filename
    !-----------------------------------------------------------------------
 
@@ -153,17 +151,8 @@ subroutine cam_init(                                             &
 
    ! Read CAM namelists.
    filein = "atm_in" // trim(inst_suffix)
-   call get_prev_date(yr, mon, day, tod)
-   if(len_trim(inst_suffix) > 0) then
-      restart_pointer_file = interpret_filename_spec("rpointer.cam."//trim(inst_suffix)//".%y-%m-%d-%s", &
-              yr_spec=yr, mon_spec=mon, day_spec=day, sec_spec=tod )
-   else
-      restart_pointer_file = interpret_filename_spec("rpointer.cam.%y-%m-%d-%s", &
-              yr_spec=yr, mon_spec=mon, day_spec=day, sec_spec=tod )
 
-   endif
-   print *,__FILE__,__LINE__,trim(restart_pointer_file)
-   call read_namelist(filein, single_column, scmlat, scmlon, restart_pointer_file=restart_pointer_file)
+   call read_namelist(filein, single_column, scmlat, scmlon)
 
    ! Open initial or restart file, and topo file if specified.
    call cam_initfiles_open()
