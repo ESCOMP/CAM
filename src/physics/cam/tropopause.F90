@@ -1,4 +1,4 @@
-! This is the CAM "shim" to the CCPP-ized tropopause_find scheme.
+! This is the CAM interface to the CCPP-ized tropopause_find scheme.
 ! Full compatibility, bit-for-bit, to old CAM approach is achieved through
 ! this module, however this module will not be necessary in CAM-SIMA.
 !
