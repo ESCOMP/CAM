@@ -51,11 +51,9 @@
 <ncdata hgrid="mpasa480" nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L58_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L58_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L58_notopo_coords_c240814.nc</ncdata>
-<ncdata hgrid="mpasa30"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L58_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
-<ncdata hgrid="mpasa30"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L93_notopo_coords_c240814.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
