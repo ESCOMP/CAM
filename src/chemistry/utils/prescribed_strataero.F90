@@ -418,10 +418,10 @@ end subroutine prescribed_strataero_readnl
        area(:ncol,:) = area_fact*area(:ncol,:)
 
        ! this definition of tropopause is consistent with what is used in chemistry
-       !REMOVECAM
+       !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
        tropLev = 0
        !REMOVECAM_END
-       call tropopause_findChemTrop(state(c), tropLev(1:ncol))
+       call tropopause_findChemTrop(state(c), tropLev)
 
        do i = 1,ncol
           do k = 1,pver

@@ -397,11 +397,11 @@ contains
     integer            :: errflg
 
     ! Initialize the results to a missing value, so that the algorithms will
-    ! attempt to find the tropopause for all of them.
-    tropLev(:) = NOTFOUND
-    if (present(tropP)) tropP(:) = fillvalue
-    if (present(tropT)) tropT(:) = fillvalue
-    if (present(tropZ)) tropZ(:) = fillvalue
+    ! attempt to find the tropopause for all of them. Only do this for the active columns.
+    tropLev(:ncol) = NOTFOUND
+    if (present(tropP)) tropP(:ncol) = fillvalue
+    if (present(tropT)) tropT(:ncol) = fillvalue
+    if (present(tropZ)) tropZ(:ncol) = fillvalue
 
     ! Set the algorithms to be used, either the ones provided or the defaults.
     if (present(primary)) then
@@ -437,17 +437,17 @@ contains
          zm             = pstate%zm(:ncol, :pver), &
          phis           = pstate%phis(:ncol), &
          calday         = calday, &
-         tropp_p_loc    = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
+         tropp_p_loc    = tropp_p_loc(:ncol,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
          tropp_days     = days, &
-         tropLev        = tropLev, &
+         tropLev        = tropLev(:ncol), &
          tropP          = tropP_out, &
          tropT          = tropT_out, &
          tropZ          = tropZ_out, &
          primary        = primAlg, &
          backup         = backAlg, &
-         hstobie_trop   = hstobie_trop, &    ! Only used if TROP_ALG_HYBSTOB
-         hstobie_linoz  = hstobie_linoz, &   ! Only used if TROP_ALG_HYBSTOB
-         hstobie_tropop = hstobie_tropop, &  ! Only used if TROP_ALG_HYBSTOB
+         hstobie_trop   = hstobie_trop(:ncol, :pver), &    ! Only used if TROP_ALG_HYBSTOB
+         hstobie_linoz  = hstobie_linoz(:ncol, :pver), &   ! Only used if TROP_ALG_HYBSTOB
+         hstobie_tropop = hstobie_tropop(:ncol, :pver), &  ! Only used if TROP_ALG_HYBSTOB
          errmsg         = errmsg, &
          errflg         = errflg &
     )
@@ -465,8 +465,6 @@ contains
        call outfld('hstobie_linoz',  hstobie_linoz(:ncol,:),   ncol, pstate%lchnk )
        call outfld('hstobie_tropop', hstobie_tropop(:ncol,:),  ncol, pstate%lchnk )
     endif
-
-    return
   end subroutine tropopause_find_cam
 
   ! Searches all the columns in the chunk and attempts to identify the "chemical"
@@ -487,7 +485,7 @@ contains
     implicit none
 
     type(physics_state), intent(in)     :: pstate
-    integer,             intent(out)     :: tropLev(:)            ! tropopause level index
+    integer,             intent(out)    :: tropLev(:)            ! tropopause level index
 
     ! Local Variable
     real(r8)            :: calday
@@ -525,9 +523,9 @@ contains
          zm             = pstate%zm(:ncol, :pver), &
          phis           = pstate%phis(:ncol), &
          calday         = calday, &
-         tropp_p_loc    = tropp_p_loc(:,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
+         tropp_p_loc    = tropp_p_loc(:ncol,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
          tropp_days     = days, &
-         tropLev        = tropLev, &
+         tropLev        = tropLev(1:ncol), &
          tropP          = tropP_out, &
          tropT          = tropT_out, &
          tropZ          = tropZ_out, &
@@ -536,8 +534,6 @@ contains
          errmsg         = errmsg, &
          errflg         = errflg &
     )
-
-    return
   end subroutine tropopause_findChemTrop
 
   ! Output the tropopause pressure and temperature to the history files. Two sets
@@ -661,7 +657,5 @@ contains
         call outfld('TROP' // TROP_LETTER(alg) // '_FD',  tropFound(:ncol),  ncol, lchnk)
       end do
     end if
-
-    return
   end subroutine tropopause_output
 end module tropopause

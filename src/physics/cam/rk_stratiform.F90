@@ -626,10 +626,10 @@ subroutine rk_stratiform_tend( &
    end if
 
    if ( do_psrhmin ) then
-      !REMOVECAM
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
       troplev(:) = 0
       !REMOVECAM_END
-      call tropopause_find_cam(state, troplev(1:ncol))
+      call tropopause_find_cam(state, troplev)
       call get_rlat_all_p(lchnk,ncol,rlat)
       dlat(:ncol) = rlat(:ncol)*rad2deg
    endif

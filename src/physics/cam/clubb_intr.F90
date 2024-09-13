@@ -2967,10 +2967,10 @@ end subroutine clubb_init_cnst
 
     call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
 
-    !REMOVECAM
+    !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
     troplev(:) = 0
     !REMOVECAM_END
-    call tropopause_findChemTrop(state, troplev(1:ncol))
+    call tropopause_findChemTrop(state, troplev)
 
     ! Initialize EDMF outputs
     if (do_clubb_mf) then

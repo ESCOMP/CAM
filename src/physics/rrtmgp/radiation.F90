@@ -1081,7 +1081,11 @@ subroutine radiation_tend( &
 
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-      call tropopause_find_cam(state, troplev(1:ncol), tropP=p_trop(1:ncol), primary=TROP_ALG_HYBSTOB, &
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      p_trop(:) = 0._r8
+      !REMOVECAM_END
+      call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, &
                            backup=TROP_ALG_CLIMATE)
    end if
 

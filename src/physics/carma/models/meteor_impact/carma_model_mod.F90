@@ -489,10 +489,10 @@ contains
       if ((shortname == "CRDUST") .or. (shortname == "CRSOOT")) then
 
         ! Find the tropopause using the default algorithm backed by the climatology.
-        !REMOVECAM
+        !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
         troplev(:) = 0
         !REMOVECAM_END
-        call tropopause_find_cam(state, tropLev(1:ncol), tropZ=tropZ)
+        call tropopause_find_cam(state, tropLev, tropZ=tropZ)
 
         ! Loop over all of the columns.
         do icol = 1, ncol

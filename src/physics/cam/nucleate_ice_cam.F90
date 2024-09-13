@@ -522,10 +522,10 @@ subroutine nucleate_ice_cam_calc( &
    ! Use the same criteria that is used in chemistry and in CLUBB (for cloud fraction)
    ! to determine whether to use tropospheric or stratospheric settings. Include the
    ! tropopause level so that the cold point tropopause will use the stratospheric values.
-   !REMOVECAM
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
    troplev(:) = 0
    !REMOVECAM_END
-   call tropopause_findChemTrop(state, troplev(1:ncol))
+   call tropopause_findChemTrop(state, troplev)
 
    if ((nucleate_ice_subgrid .eq. -1._r8) .or. (nucleate_ice_subgrid_strat .eq. -1._r8)) then
       call pbuf_get_field(pbuf, qsatfac_idx, qsatfac)

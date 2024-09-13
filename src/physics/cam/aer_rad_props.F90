@@ -229,10 +229,10 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
       tau_w_f(1:ncol,:,:) = 0._r8
    end if
 
-   !REMOVECAM
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
    troplev = 0
    !REMOVECAM_END
-   call tropopause_find_cam(state, troplev(1:ncol))
+   call tropopause_find_cam(state, troplev)
 
    ! Contributions from bulk aerosols.
    do iaerosol = 1, numaerosols

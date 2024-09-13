@@ -2589,7 +2589,7 @@ contains
 
     ! Retrieve tropopause level
     Trop_Lev = 0
-    CALL Tropopause_FindChemTrop(state, Trop_Lev(1:nY))
+    CALL Tropopause_FindChemTrop(state, Trop_Lev)
     ! Back out the pressure
     Trop_P = 1000.0e+0_r8
     DO J = 1, nY

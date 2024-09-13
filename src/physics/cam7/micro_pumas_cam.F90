@@ -2232,6 +2232,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       cp_dt(:ncol)         = 0._r8
       cp_dz(:ncol)         = 0._r8
 
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      cp_z(:) = 0._r8
+      cp_t(:) = 0._r8
+      !REMOVECAM_END
       call tropopause_find_cam(state_loc, troplev, primary=TROP_ALG_CPP, backup=TROP_ALG_NONE, &
                            tropZ=cp_z, tropT=cp_t)
 

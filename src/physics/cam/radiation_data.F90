@@ -984,11 +984,11 @@ contains
           call pbuf_get_field(pbuf, qrsin_idx, qrsin)
           call pbuf_get_field(pbuf, qrlin_idx, qrlin)
 
-          !REMOVECAM
+          !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
           troplev(:) = 0
           tropp(:) = 0._r8
           !REMOVECAM_END
-          call tropopause_find_cam(phys_state(c), troplev(1:ncol), tropP=tropp(1:ncol), primary=TROP_ALG_CLIMATE, &
+          call tropopause_find_cam(phys_state(c), troplev, tropP=tropp, primary=TROP_ALG_CLIMATE, &
                                backup=TROP_ALG_CLIMATE)
 
           qrsin(:,:) = qrs_ptrs(c)%array(:,:)

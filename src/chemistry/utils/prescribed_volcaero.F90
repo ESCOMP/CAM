@@ -260,10 +260,10 @@ end subroutine prescribed_volcaero_readnl
        call pbuf_get_field(pbuf_chnk, fields(1)%pbuf_ndx, data)
        data(:ncol,:) = to_mmr(:ncol,:) * data(:ncol,:) ! mmr
 
-       !REMOVECAM
+       !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
        tropLev(:) = 0
        !REMOVECAM_END
-       call tropopause_find_cam(state(c), tropLev(1:ncol))
+       call tropopause_find_cam(state(c), tropLev)
        do i = 1,ncol
           do k = 1,pver
              ! set to zero below tropopause
