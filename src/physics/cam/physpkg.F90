@@ -2913,9 +2913,7 @@ contains
 
     ! Diagnose the location of the tropopause and its location to the history file(s).
     call t_startf('tropopause')
-
     call tropopause_output(state)
-
     call t_stopf('tropopause')
 
     ! Save atmospheric fields to force surface models
