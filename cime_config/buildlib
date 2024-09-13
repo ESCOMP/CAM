@@ -138,6 +138,7 @@ def _cmake_default_args(caseroot):
         args += "-DCMAKE_C_COMPILER_WORKS=1 "
         args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
         args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        args += "-DDEBUG={} ".format(build.get_value("DEBUG"))
         cmd = "cmake {} .".format(args)
         rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
         expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
