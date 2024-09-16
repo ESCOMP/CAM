@@ -160,12 +160,13 @@
     use coords_1d, only: Coords1D
     use linear_1d_operators, only : BoundaryType, BoundaryFixedLayer, &
          BoundaryData, BoundaryFlux, TriDiagDecomp
-    use vdiff_lu_solver,     only : fin_vol_lu_decomp
+    use new_decomp,          only : fin_vol_solve
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
     use air_composition,     only: rairv
   
-    use phys_control,        only : phys_getopts 
+    use phys_control,        only : phys_getopts
+    use vdiff_lu_solver,     only : fin_vol_lu_decomp
  
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
@@ -576,10 +577,10 @@
 
        du = u(:ncol,:)
        dv = v(:ncol,:)
-       call new_fin_vol_lu_decomp(ztodt, p, u(:ncol,:), du, ncol, pver, &
+       du = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
-       call new_fin_vol_lu_decomp(ztodt, p, v(:ncol,:), dv, ncol, pver, &
+       dv = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
        u(:ncol,:) = u(:ncol,:) + du
@@ -750,12 +751,12 @@
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
            ddse = dse(:ncol,:)
-           call new_fin_vol_lu_decomp(ztdot, p, dse(:ncol,:), ddse, &
+           ddse = fin_vol_solve(ztodt, p, dse(:ncol,:), &
                                       ncol, pver, &
                                       coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
                                       upper_bndry=interface_boundary, &
                                       l_cond=BoundaryData(dse_top(:ncol)))
-           dse(:nol,:) = dse(:ncol,:) + ddse
+           dse(:ncol,:) = dse(:ncol,:) + ddse
           endif
 
           ! Calculate flux at top interface
@@ -771,13 +772,12 @@
           ! upper boundary is zero flux for extended model
           if (.not. use_spcam) then
              dttemp = ttemp
-             call new_fin_vol_lu_decomp(ztdot, p, ttemp, dttemp, ncol, pver, &
-                                        coef_q_diff=kvt(:ncol,:)*dpidz_sq &
+             dttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
+                                        coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
                                         coef_q_weight=cpairv(:ncol,:))
              ttemp = ttemp + dttemp
           end if
 
-          call decomp%finalize()
 
           !-------------------------------------
           !  Update dry static energy
@@ -798,8 +798,7 @@
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
-             ddse = dse(:ncol,:)
-             call new_fin_vol_lu_decomp(ztdot, p, dse(:ncol,:), ddse, ncol, pver, &
+             ddse = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
                                         coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
                                         upper_bndry=interface_boundary, &
                                         l_cond=BoundaryData(dse_top(:ncol)))
