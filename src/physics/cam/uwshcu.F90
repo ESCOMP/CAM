@@ -3765,7 +3765,7 @@ end subroutine uwshcu_readnl
           ! -------------------------------------------------------------------------- !
           ! 'rliq' : Verticall-integrated 'suspended cloud condensate'                 !
           !  [m/s]   This is so called 'reserved liquid water'  in other subroutines   ! 
-          ! of CAM3, since the contribution of this term should not be included into   !
+          ! of CAM, since the contribution of this term should not be included into   !
           ! the tendency of each layer or surface flux (precip)  within this cumulus   !
           ! scheme. The adding of this term to the layer tendency will be done inthe   !
           ! 'stratiform_tend', just after performing sediment process there.           !
@@ -3928,9 +3928,9 @@ end subroutine uwshcu_readnl
 
        ! --------------------------------------------------------------------------- !
        ! Until now, all the calculations are done completely in this shallow cumulus !
-       ! scheme. If you want to use this cumulus scheme other than CAM3, then do not !
+       ! scheme. If you want to use this cumulus scheme other than CAM, then do not !
        ! perform below block. However, for compatible use with the other subroutines !
-       ! in CAM3, I should subtract the effect of 'qc(k)' ('rliq') from the tendency !
+       ! in CAM, I should subtract the effect of 'qc(k)' ('rliq') from the tendency !
        ! equation in each layer, since this effect will be separately added later in !
        ! in 'stratiform_tend' just after performing sediment process there. In order !
        ! to be consistent with 'stratiform_tend', just subtract qc(k)  from tendency !

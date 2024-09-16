@@ -182,10 +182,6 @@
 !        =  (9.8066)(86400)(1e-5)/(1.004)
 !      heatfac = 8.4391_r8
 
-!     Modified values for consistency with CAM3:
-!        =  (9.80616)(86400)(1e-5)/(1.00464)
-!      heatfac = 8.43339130434_r8
-
 !     Calculate heatfac directly from CAM constants:
       heatfac = grav * cday * 1.e-5_r8 / (cpair * 1.e-3_r8)
 
