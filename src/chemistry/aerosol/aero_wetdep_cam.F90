@@ -79,7 +79,7 @@ contains
 
     character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
-    integer                       :: unitn, ierr, i
+    integer                       :: unitn, ierr
     character(len=*), parameter   :: subname = 'aero_wetdep_readnl'
 
     ! ===================
@@ -196,7 +196,7 @@ contains
     do m = 1, aero_props%nbins()
        write(binstr,'(i2.2)') m
        call addfld('SOLFACTB'//binstr,  (/ 'lev' /), 'A',unit_basename//'/kg ','below cld sol fact')
-      !call add_default('SOLFACTB'//binstr, 2, ' ')
+
        do l = 0, aero_props%nmasses(m)
 
           if (l == 0) then   ! number
@@ -228,8 +228,14 @@ contains
        end do
     end do
 
-    allocate(scavimptblnum(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()))
-    allocate(scavimptblvol(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()))
+    allocate(scavimptblnum(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()), stat=astat)
+    if (astat/=0) then
+       call endrun(subrname//' : not able to allocate scavimptblnum array')
+    end if
+    allocate(scavimptblvol(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()), stat=astat)
+    if (astat/=0) then
+       call endrun(subrname//' : not able to allocate scavimptblvol array')
+    end if
     scavimptblnum = nan
     scavimptblvol = nan
 
@@ -239,8 +245,6 @@ contains
 
     call init_bcscavcoef()
     call aero_convproc_init(aero_props)
-
-    !call aero_deposition_cam_init(aero_props)
 
   contains
 
@@ -348,7 +352,7 @@ contains
 
     real(r8) :: rtscavt(pcols, pver, 0:nspec_max)
 
-    integer :: ncol, lchnk, m, ndx,mm, l, astat
+    integer :: ncol, lchnk, m, ndx,mm, l
     integer :: i,k
 
     real(r8), pointer :: insolfr_ptr(:,:)
@@ -399,7 +403,7 @@ contains
     if (nmodes>0) then
        aero_state => modal_aerosol_state(state,pbuf)
        if (.not.associated(aero_state)) then
-          call endrun('aero_wetdep_tend: construction of aero_state modal_aerosol_state object failed')
+          call endrun(subrname//' : construction of aero_state modal_aerosol_state object failed')
        end if
     else
        call endrun(subrname//' : cannot determine aerosol model')
@@ -779,7 +783,6 @@ contains
        call set_srf_wetdep(aerdepwetis, aerdepwetcw, cam_out)
     end if
 
-    return
   contains
 
     ! below cloud impaction scavenging coefs
@@ -857,8 +860,6 @@ contains
     !
     !-----------------------------------------------------------------------
 
-    use shr_kind_mod,   only: r8 => shr_kind_r8
-    use cam_abortutils, only: endrun
     use mo_constants,   only: pi
 
     !   local variables
@@ -875,6 +876,8 @@ contains
 
     real(r8) :: xxfitnum(1,nnfit_maxd), yyfitnum(nnfit_maxd)
     real(r8) :: xxfitvol(1,nnfit_maxd), yyfitvol(nnfit_maxd)
+
+    character(len=*), parameter :: subname = 'aero_wetdep_cam::init_bcscavcoef'
 
     lunerr = iulog
     dlndg_nimptblgrow = log( 1.25_r8 )
@@ -920,7 +923,7 @@ contains
           nnfit = nnfit + 1
           if (nnfit > nnfit_maxd) then
              write(lunerr,9110)
-             call endrun()
+             call endrun(subname//' : nnfit > nnfit_maxd')
           end if
 9110      format( '*** subr. init_bcscavcoef -- nnfit too big' )
 
@@ -940,7 +943,7 @@ contains
   contains
 
     !===============================================================================
-    subroutine calc_1_impact_rate(             &
+    subroutine calc_1_impact_rate(          &
          dg0, logsig, rhoaero, temp, press, &
          scavratenum, scavratevol, lunerr )
       !
@@ -956,7 +959,6 @@ contains
       !   scavratevol = volume or mass scavenging rate (1/h)
       !   lunerr = logical unit for error message
       !
-      use shr_kind_mod, only: r8 => shr_kind_r8
       use mo_constants, only: boltz_cgs, pi, rhowater => rhoh2o_cgs, rgas => rgas_cgs
 
       implicit none
@@ -996,7 +998,7 @@ contains
       nr = 1 + nint( (rhi-rlo)/dr )
       if (nr > nrainsvmax) then
          write(lunerr,9110)
-         call endrun()
+         call endrun(subname//' : nr > nrainsvmax')
       end if
 
 9110  format( '*** subr. calc_1_impact_rate -- nr > nrainsvmax' )
@@ -1020,7 +1022,7 @@ contains
       na = 1 + nint( (xhi-xlo)/dx )
       if (na > naerosvmax) then
          write(lunerr,9120)
-         call endrun()
+         call endrun(subname//' : na > naerosvmax')
       end if
 
 9120  format( '*** subr. calc_1_impact_rate -- na > naerosvmax' )
@@ -1172,7 +1174,6 @@ contains
       scavratenum = scavsumnum*3600._r8
       scavratevol = scavsumvol*3600._r8
 
-      return
     end subroutine calc_1_impact_rate
 
   end subroutine init_bcscavcoef

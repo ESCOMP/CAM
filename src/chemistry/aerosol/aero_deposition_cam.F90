@@ -65,7 +65,7 @@ contains
       real(r8), intent(in), optional :: min_radius ! meters
       real(r8), intent(in), optional :: max_radius ! meters
 
-      integer :: ibin,ispc, ndx, nspec
+      integer :: ibin, ispc, ndx
       character(len=aero_name_len) :: spec_type, spec_name
       real(r8) :: minrad
       logical :: getndx

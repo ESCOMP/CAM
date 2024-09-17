@@ -646,8 +646,8 @@ contains
        if ((lcoardust > 0) .and. (lcoarnacl > 0)) then
           do k = 1, nlev
              do i = 1, ncol
-                tmpdust = max( 0.0_r8, self%state%q(i,k,lcoardust) ) !+ ptend%q(i,k,lcoardust)*dt )
-                tmpnacl = max( 0.0_r8, self%state%q(i,k,lcoarnacl) ) !+ ptend%q(i,k,lcoarnacl)*dt )
+                tmpdust = max( 0.0_r8, self%state%q(i,k,lcoardust) )
+                tmpnacl = max( 0.0_r8, self%state%q(i,k,lcoarnacl) )
                 if ((tmpdust+tmpnacl) > 1.0e-30_r8) then
                    f_act_conv_coarse(i,k) = (f_act_conv_coarse_dust*tmpdust &
                         + f_act_conv_coarse_nacl*tmpnacl)/(tmpdust+tmpnacl)
