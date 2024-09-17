@@ -957,10 +957,6 @@ i_loop_main_aa: &
       dtsub = dt*xinv_ntsub
       courantmax = courantmax*xinv_ntsub
 
-      do k = pver, 1, -1
-         dz = dp_i(k)*hund_ovr_g/rhoair_i(k)
-      end do
-
 !  load tracer mixing ratio array, which will be updated at the end of each jtsub interation
       do m = 1, aero_props%nbins()
          do l = 0, aero_props%nmasses(m)
@@ -1103,6 +1099,7 @@ k_loop_main_bb: &
 
 ! compute lagrangian transport time (dt_u) and updraft fractional area (fa_u)
 ! *** these must obey    dt_u(k)*mu_p_eudp(k) = dp_i(k)*fa_u(k)
+            dz = dp_i(k)*hund_ovr_g/rhoair_i(k)
             dt_u(k) = dz/wup(k)
             dt_u(k) = min( dt_u(k), dt )
             fa_u(k) = dt_u(k)*(mu_p_eudp(k)/dp_i(k))
@@ -1139,8 +1136,7 @@ k_loop_main_bb: &
                      call activate_convproc( aero_props, &
                         conu(:,:,k), dconudt_activa(:,:,k), conu(:,:,k),  &
                         tmpa,       dt_u(k),            wup(k),           &
-                        t(icol,k),  rhoair_i(k),         &
-                        icol,  ipass_calc_updraft )
+                        t(icol,k),  rhoair_i(k), ipass_calc_updraft )
                   else if (f_ent > 0.0_r8) then
                      ! current layer is above cloud base (=first layer with activation)
                      !    only allow activation at k = kactfirst thru kactfirst-(method1_activate_nlayers-1)
@@ -1148,8 +1144,7 @@ k_loop_main_bb: &
                         call activate_convproc( aero_props, &
                            conu(:,:,k),  dconudt_activa(:,:,k), const(:,:,k), &
                            f_ent,      dt_u(k),             wup(k),           &
-                           t(icol,k),  rhoair_i(k),         &
-                           icol, ipass_calc_updraft  )
+                           t(icol,k),  rhoair_i(k), ipass_calc_updraft  )
                      end if
                   end if
 ! the following was for cam2 shallow convection (hack),
@@ -1633,8 +1628,7 @@ end subroutine aero_convproc_tend
    subroutine activate_convproc( aero_props,    &
               conu,       dconudt,   conent,    &
               f_ent,      dt_u,      wup,       &
-              tair,       rhoair,               &
-              i,          ipass_calc_updraft )
+              tair,       rhoair, ipass_calc_updraft )
 !-----------------------------------------------------------------------
 !
 ! Purpose:
@@ -1703,7 +1697,6 @@ end subroutine aero_convproc_tend
    real(r8), intent(in)    :: tair   ! Temperature in Kelvin
    real(r8), intent(in)    :: rhoair ! air density (kg/m3)
 
-   integer,  intent(in)    :: i      ! column index
    integer,  intent(in)    :: ipass_calc_updraft
 
 !-----------------------------------------------------------------------
