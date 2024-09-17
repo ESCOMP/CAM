@@ -312,7 +312,7 @@ contains
   subroutine aero_wetdep_tend( state, dt, dlf, cam_out, ptend, pbuf)
     use wetdep, only: wetdepa_v2, wetdep_inputs_set, wetdep_inputs_t
     use aerodep_flx, only: aerodep_flx_prescribed
-    use modal_aero_deposition, only: set_srf_wetdep
+    use aero_deposition_cam, only: aero_deposition_cam_setwet
 
     type(physics_state), target, intent(in) :: state  ! Physics state variables
     real(r8),            intent(in)    :: dt          ! time step
@@ -779,9 +779,11 @@ contains
        nullify(aero_state)
     end if
 
-    if (.not.aerodep_flx_prescribed()) then
-       call set_srf_wetdep(aerdepwetis, aerdepwetcw, cam_out)
-    end if
+    ! if the user has specified prescribed aerosol dep fluxes then
+    ! do not set cam_out dep fluxes according to the prognostic aerosols
+    if (.not. aerodep_flx_prescribed()) then
+       call aero_deposition_cam_setwet(aerdepwetis, aerdepwetcw, cam_out)
+    endif
 
   contains
 

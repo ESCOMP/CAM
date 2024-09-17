@@ -9,10 +9,9 @@
     ===============
    -->
     <desc atm="CAM70[%LT][%MT][%CCTS1][%CCTS4]"                                                                                                 >CAM cam7 physics:</desc>
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM]">CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%GEOSCHEM]"                                                               >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%GEOSCHEM]"                                                         >CAM cam4 physics:</desc>
-    <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"               >CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                     >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                               >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
 
   <!--
@@ -28,7 +27,7 @@
      SINGLE COLUMN CAM
     ===============
    -->
-    <desc atm="CAM[456]0%SCAM">CAM stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
+    <desc atm="CAM60%SCAM">CAM stand-alone single column mode -- user defined IOP settings can be placed under the usermods scam_user directory:</desc>
     <desc atm="[%SDYN]">CAM specified dynamics is used in finite volume dynamical core:</desc>
     <desc atm="[%NUDG]">CAM physics is nudged towards prescribed meteorology:</desc>
   <!--
@@ -130,7 +129,6 @@
     <valid_values></valid_values>
     <default_value></default_value>
     <values match="last" modifier='additive'>
-      <value compset="_CAM30">-phys cam3</value>
       <value compset="_CAM40">-phys cam4</value>
       <value compset="_CAM50">-phys cam5</value>
       <value compset="_CAM60">-phys cam6</value>
@@ -145,7 +143,6 @@
       <value compset="CAM60%CCTS2">-chem trop_strat_mam5_ts2</value>
       <value compset="CAM.*%CCTS4">-chem trop_strat_mam5_ts4</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-dyn eul -scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
       <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
       <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
@@ -177,6 +174,24 @@
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
       <value compset="_CAM70%LT">-nlev 58 -model_top lt</value>
       <value compset="_CAM70%MT">-nlev 93 -model_top mt</value>
+
+      <!-- SCAM IOPs -->
+      <value compset="_CAM.*%SCAMARM95">-scam arm95</value>
+      <value compset="_CAM.*%SCAMARM97">-scam arm97</value>
+      <value compset="_CAM.*%SCAMATEX">-scam atex</value>
+      <value compset="_CAM.*%SCAMBOMEX">-scam bomex</value>
+      <value compset="_CAM.*%SCAMCGILSS11">-scam cgilss11</value>
+      <value compset="_CAM.*%SCAMCGILSS12">-scam cgilss12</value>
+      <value compset="_CAM.*%SCAMCGILSS6">-scam cgilss6</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF01">-scam dycomsrf01</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF02">-scam dycomsrf02</value>
+      <value compset="_CAM.*%SCAMGATE3">-scam gateIII</value>
+      <value compset="_CAM.*%SCAMMPACE">-scam mpace</value>
+      <value compset="_CAM.*%SCAMRICO">-scam rico</value>
+      <value compset="_CAM.*%SCAMSPARTICUS">-scam sparticus</value>
+      <value compset="_CAM.*%SCAMTOGA2">-scam togaII</value>
+      <value compset="_CAM.*%SCAMTWP06">-scam twp06</value>
+      <value compset="_CAM.*%SCAMCAMFRC">-scam camfrc</value>
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
@@ -233,7 +248,6 @@
       <value compset="2000_CAM60%GEOSCHEM" >2000_geoschem</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
-      <value compset="2000_CAM30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
       <value compset="2000_CAM50_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam5</value>
@@ -304,9 +318,6 @@
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%GRAYRAD"       >dctest_frierson</value>
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
-
-      <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
-      <!--       <value compset="CAM[456]0%SCAM"    >scam_arm97</value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -363,7 +374,8 @@
     <values match="last">
     <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
-    <value compset="CAM[456]0%.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM.*%SCAMCAMFRC">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_camfrc</value>
     </values>
     <group>run_component_cam</group>
     <file>env_case.xml</file>

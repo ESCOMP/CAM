@@ -476,20 +476,6 @@
        Default: none
        </entry>
 
-<!-- Aerosols: Data (CAM version) -->
-
-<entry id="bndtvaer" type="char*256" input_pathname="abs" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Full pathname of time-variant boundary dataset for aerosol masses.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_aero_data_on" type="logical" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Add CAM3 prescribed aerosols to the physics buffer.
-Default: FALSE
-</entry>
-
 <!-- Physics grid decomp including physics dynamics coupling methods -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
@@ -685,8 +671,7 @@ Default: 0
 
 <entry id="fv_fft_flt" type="integer"  category="dyn_fv"
        group="dyn_fv_inparm" valid_values="0,1" >
-1 for FFT filter always, 0 for combined algebraic/FFT filter.  The value 0
-is used for CAM3, otherwise it is using the value 1.
+1 for FFT filter always, 0 for combined algebraic/FFT filter.
 Default: set by build-namelist
 </entry>
 
@@ -1492,12 +1477,6 @@ Default: set by build-namelist
 <entry id="bnd_rdggm" type="char*256" input_pathname="abs" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Full pathname of boundary dataset for meso-gamma ridges.
-Default: set by build-namelist.
-</entry>
-
-<entry id="fcrit2" type="real"  category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Critical Froude number squared (used only for orographic waves).
 Default: set by build-namelist.
 </entry>
 
@@ -4913,30 +4892,6 @@ Specifies the name of the sea salt emission parameterization.
 Default: Gong
 </entry>
 
-
-=======
-<!-- Ozone: Data (original CAM version) -->
-
-<entry id="bndtvo" type="char*256" input_pathname="abs" category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Full pathname of time-variant ozone mixing ratio boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_ozone_data_on" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Add CAM3 prescribed ozone to the physics buffer.
-Default: FALSE
-</entry>
-
-<entry id="ozncyc" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Flag for yearly cycling of ozone data. If set to FALSE, a multi-year
-dataset is assumed, otherwise a single-year dataset is assumed, and ozone
-will be cycled over the 12 monthly averages in the file.
-Default: TRUE
-</entry>
-
 <!-- Performance Tuning and Profiling -->
 
 <entry id="papi_ctr1_str" type="char*16"  category="performance"
@@ -5070,7 +5025,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -6000,6 +5955,12 @@ Default: FALSE
        group="scam_nl" valid_values="">
 Use the SCAM-IOP specified observed water vapor at each time step instead of forecast value
 Default: FALSE
+</entry>
+
+<entry id="scm_use_3dfrc" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use the SCAM-IOP 3d forcing if true, use combination of dycore vertical advection and iop horiz advection if false
+Default:False
 </entry>
 
 <entry id="scm_force_latlon" type="logical" category="scam"
@@ -7696,6 +7657,21 @@ Default: .false.
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
 Default: set by build-namelist.
+</entry>
+
+<entry id="dust_emis_method" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="Zender_2003,Leung_2023" >
+Which dust emission method is going to be used.
+Either the Zender 2003 scheme or the Leung 2023 scheme.
+Default: Zender_2003
+</entry>
+
+<entry id="zender_soil_erod_source" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="none,lnd,atm" >
+Option only applying for the Zender_2003 method for whether the soil erodibility
+file is handled in the active LAND model or in the ATM model.
+(only used when dust_emis_method is Zender_2003)
+Default: atm
 </entry>
 
 <!-- Ozone namelist variables shared between CAM and driver -->
@@ -9519,38 +9495,6 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
-</entry>
-
-<!-- ndep stream forcing -->
-
-<!-- ========================================================================================  -->
-<!-- ndepdyn streams namelist                                                                  -->
-<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
-<!-- ========================================================================================  -->
-
-<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream meshfile for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-First year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Last year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>

@@ -29,6 +29,7 @@ module aero_model
 
   use modal_aero_wateruptake, only: modal_strat_sulfate
   use mo_setsox,              only: setsox, has_sox
+  use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
   implicit none
   private
@@ -96,6 +97,8 @@ module aero_model
   logical :: drydep_lq(pcnst)
 
   logical :: modal_accum_coarse_exch = .false.
+
+  type(modal_aerosol_properties), pointer :: aero_props=>null()
 
 contains
 
@@ -177,7 +180,7 @@ contains
 
     use modal_aero_calcsize,   only: modal_aero_calcsize_init
     use modal_aero_coag,       only: modal_aero_coag_init
-    use modal_aero_deposition, only: modal_aero_deposition_init
+    use aero_deposition_cam, only: aero_deposition_cam_init
     use modal_aero_gasaerexch, only: modal_aero_gasaerexch_init
     use modal_aero_newnuc,     only: modal_aero_newnuc_init
     use modal_aero_rename,     only: modal_aero_rename_init
@@ -234,10 +237,11 @@ contains
     call modal_aero_coag_init
     call modal_aero_newnuc_init
 
-    ! call modal_aero_deposition_init only if the user has not specified
+    ! call aero_deposition_cam_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
     if (.not.aerodep_flx_prescribed()) then
-       call modal_aero_deposition_init
+       aero_props => modal_aerosol_properties()
+       call aero_deposition_cam_init(aero_props)
     endif
 
     call dust_init()
@@ -551,7 +555,7 @@ contains
     use modal_aero_data,   only: numptrcw_amode
     use modal_aero_data,   only: lmassptr_amode
     use modal_aero_data,   only: lmassptrcw_amode
-    use modal_aero_deposition, only: set_srf_drydep
+    use aero_deposition_cam,only: aero_deposition_cam_setdry
 
   ! args
     type(physics_state),    intent(in)    :: state     ! Physics state variables
@@ -829,7 +833,7 @@ contains
     ! if the user has specified prescribed aerosol dep fluxes then
     ! do not set cam_out dep fluxes according to the prognostic aerosols
     if (.not.aerodep_flx_prescribed()) then
-       call set_srf_drydep(aerdepdryis, aerdepdrycw, cam_out)
+       call aero_deposition_cam_setdry(aerdepdryis, aerdepdrycw, cam_out)
     endif
 
   endsubroutine aero_model_drydep

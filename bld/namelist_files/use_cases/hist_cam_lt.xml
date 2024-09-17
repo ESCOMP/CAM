@@ -13,7 +13,7 @@
 
 <!-- Low top upper boundary conditions -->
 <ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
-<ubc_file_path>atm/cam/chem/ubc/f.e21.FWHISTBgcCrop.f09_f09_mg17.CMIP6-AMIP-WACCM.ensAvg123.cam.h0zm.UBC.195001-201412_c220322.nc</ubc_file_path>
+<ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.1849-2014_c240604.nc</ubc_file_path>
 <ubc_file_input_type>'SERIAL'</ubc_file_input_type>
 
 <!-- ozone data -->
