@@ -1941,7 +1941,8 @@ contains
     integer                             :: ixcldliq
     integer                             :: ixcldice
     real(r8)                            :: totcond(pcols, pver)   ! total condensate
-    real(r8)                            :: solfac                 ! solubility factor
+    real(r8)                            :: solfac(pcols, pver)    ! solubility factor
+    real(r8)                            :: solfactor
     real(r8)                            :: scavcoef               ! scavenging Coefficient
     logical                             :: do_wetdep
     integer                             :: ncol                   ! number of columns
@@ -2029,7 +2030,9 @@ contains
       if (rc < 0) call endrun('carma_wetdep_tend::CARMAELEMENT_Get failed.')
 
       call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, do_wetdep=do_wetdep, &
-        solfac=solfac, scavcoef=scavcoef, maxbin=maxbin)
+           solfac=solfactor, scavcoef=scavcoef, maxbin=maxbin)
+      solfac(:ncol,:) = solfactor
+
       if (rc < 0) call endrun('carma_wetdep_tend::CARMAGROUP_Get failed.')
 
       if ((do_wetdep) .and. (cnsttype == I_CNSTTYPE_PROGNOSTIC)) then
@@ -2096,7 +2099,7 @@ contains
                            iscavt, &
                            cldv, &
                            fracis(:, :, icnst), &
-                           solfac, &
+                           solfactor, &
                            ncol, &
                            z_scavcoef)
             else
