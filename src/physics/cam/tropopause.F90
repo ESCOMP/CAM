@@ -133,8 +133,6 @@ contains
     ! Call underlying CCPP-initialization routine.
     call tropopause_find_init(cappa, rair, gravit, pi, errmsg, errflg)
 
-    ! The below calls have to be maintained as the CCPP routines in tropopause_diagnostics.F90
-    ! are using the new CAM-SIMA History infrastructure.
     ! Define the output fields.
     call addfld('TROP_P',          horiz_only,  'A', 'Pa',          'Tropopause Pressure',              flag_xyfill=.True.)
     call addfld('TROP_T',          horiz_only,  'A', 'K',           'Tropopause Temperature',           flag_xyfill=.True.)
@@ -420,11 +418,9 @@ contains
     ncol   = pstate%ncol
     calday = get_curr_calday()
 
-    ! This does not call the CCPP-ized "run" routine directly, because the CCPP-ized "run"
-    ! routine computes multiple needed tropopauses simultaneously. For non-SIMA CAM,
-    ! we can specify the algorithm needed directly to the algorithm driver routine.
-    ! Note that the underlying routines accept data sized :ncol, so subsetting to the
-    ! active columns is needed here.
+    ! This does not call the tropopause_find_run routine directly, because it
+    ! computes multiple needed tropopauses simultaneously. Instead, here we
+    ! specify the algorithm needed directly to the algorithm driver routine.
     call tropopause_findWithBackup( &
          ncol           = ncol, &
          pver           = pver, &
@@ -457,9 +453,7 @@ contains
     if (present(tropT)) tropT(:ncol) = tropT_out(:ncol)
     if (present(tropZ)) tropZ(:ncol) = tropZ_out(:ncol)
 
-    ! hstobie diagnostics were previously written inside tropopause_find_hybridstobie,
-    ! and this behavior is no longer in the CCPP-ized routine. so if hybridstobie is used,
-    ! then replicate those outfld calls here.
+    ! Output hybridstobie specific fields
     if(primAlg == TROP_ALG_HYBSTOB) then
        call outfld('hstobie_trop',   hstobie_trop(:ncol,:),    ncol, pstate%lchnk )
        call outfld('hstobie_linoz',  hstobie_linoz(:ncol,:),   ncol, pstate%lchnk )
@@ -492,8 +486,7 @@ contains
     integer             :: i
     integer             :: ncol
 
-    ! These are the "actual" out arguments for tropopause_findWithBackup, as this subroutine
-    ! no longer accepts optional arguments during the CCPP-ization process.
+    ! Dummy out arguments from tropopause_findWithBackup as it does not accept optional arguments.
     real(r8)      :: tropP_out(pstate%ncol)
     real(r8)      :: tropT_out(pstate%ncol)
     real(r8)      :: tropZ_out(pstate%ncol)
@@ -505,12 +498,8 @@ contains
     ncol   = pstate%ncol
     calday = get_curr_calday()
 
-    ! Now call the unified routine with the new CHEMTROP option, which automatically does backup.
-    ! This does not call the CCPP-ized "run" routine directly, because the CCPP-ized "run"
-    ! routine computes multiple needed tropopauses simultaneously. For non-SIMA CAM,
-    ! we can specify the algorithm needed directly to the algorithm driver routine.
-    ! Note that the underlying routines accept data sized :ncol, so subsetting to the
-    ! active columns is needed here.
+    ! Now call the unified routine with the CHEMTROP option, which has automatic
+    ! backup fall to climatology.
     call tropopause_findWithBackup( &
          ncol           = ncol, &
          pver           = pver, &
