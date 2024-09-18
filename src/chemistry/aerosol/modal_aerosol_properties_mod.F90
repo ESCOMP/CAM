@@ -182,12 +182,36 @@ contains
     newobj%num_poa_ = npoa
     newobj%num_bc_ = nbc
 
-    allocate(newobj%sulfate_mode_ndxs_(newobj%nbins()))
-    allocate(newobj%dust_mode_ndxs_(newobj%nbins()))
-    allocate(newobj%ssalt_mode_ndxs_(newobj%nbins()))
-    allocate(newobj%ammon_mode_ndxs_(newobj%nbins()))
-    allocate(newobj%nitrate_mode_ndxs_(newobj%nbins()))
-    allocate(newobj%msa_mode_ndxs_(newobj%nbins()))
+    allocate(newobj%sulfate_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%dust_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%ssalt_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%ammon_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%nitrate_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%msa_mode_ndxs_(newobj%nbins()),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
 
     newobj%sulfate_mode_ndxs_ = 0
     newobj%dust_mode_ndxs_ = 0
@@ -196,9 +220,21 @@ contains
     newobj%nitrate_mode_ndxs_ = 0
     newobj%msa_mode_ndxs_ = 0
 
-    allocate(newobj%porganic_mode_ndxs_(newobj%nbins(),npoa))
-    allocate(newobj%sorganic_mode_ndxs_(newobj%nbins(),nsoa))
-    allocate(newobj%bcarbon_mode_ndxs_(newobj%nbins(),nbc))
+    allocate(newobj%porganic_mode_ndxs_(newobj%nbins(),npoa),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%sorganic_mode_ndxs_(newobj%nbins(),nsoa),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%bcarbon_mode_ndxs_(newobj%nbins(),nbc),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
 
     newobj%porganic_mode_ndxs_ = 0._r8
     newobj%sorganic_mode_ndxs_ = 0._r8
