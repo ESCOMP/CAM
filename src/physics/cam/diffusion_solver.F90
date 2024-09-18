@@ -575,8 +575,6 @@
           tau_damp_rate(:,k) = tau_damp_rate(:,k) + dragblj(:ncol,k)
        end do
 
-       du = u(:ncol,:)
-       dv = v(:ncol,:)
        du = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
@@ -750,7 +748,6 @@
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
-           ddse = dse(:ncol,:)
            ddse = fin_vol_solve(ztodt, p, dse(:ncol,:), &
                                       ncol, pver, &
                                       coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
@@ -771,7 +768,6 @@
 
           ! upper boundary is zero flux for extended model
           if (.not. use_spcam) then
-             dttemp = ttemp
              dttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
                                         coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
                                         coef_q_weight=cpairv(:ncol,:))

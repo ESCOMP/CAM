@@ -180,6 +180,7 @@ function vd_lu_solve(                                                     &
            lower_bndry=molec_boundary)
    end if
 
+   du = u
    if (cnst_fixed_ubflx) then
       call decomp%left_div(du(:ncol,:), &
                       l_cond=BoundaryFlux( &
@@ -233,9 +234,10 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
    type(Coords1D), intent(in) :: p
 
    ! Matrix to decomp from.
-   real(r8), intent(in) :: u(ncols,pver)
+   ! real(r8), intent(in) :: u(ncols,pver)
    integer,  intent(in)    :: ncols
    integer,  intent(in)    :: pver
+   real(r8), intent(in) :: u(ncols,pver)
 
    ! Coefficients for diffusion and advection.
    !
@@ -307,7 +309,7 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
    ! Ensure local objects are deallocated.
    call net_operator%finalize()
    call add_term%finalize()
-
+   du = u
    ! call decomp%left_div(du(:ncols, :), l_cond, r_cond)
    call decomp%left_div(du(:ncols, :), l_cond=l_cond)
    call decomp%finalize()
