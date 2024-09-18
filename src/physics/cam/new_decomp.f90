@@ -305,15 +305,17 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
 
    ! Decompose
    decomp = TriDiagDecomp(net_operator)
-
+   du = u
+   call decomp%left_div(du(:ncols, :), l_cond=l_cond)
+   du = du - u
    ! Ensure local objects are deallocated.
    call net_operator%finalize()
    call add_term%finalize()
-   du = u
+   ! du = u
    ! call decomp%left_div(du(:ncols, :), l_cond, r_cond)
-   call decomp%left_div(du(:ncols, :), l_cond=l_cond)
+   ! call decomp%left_div(du(:ncols, :), l_cond=l_cond)
    call decomp%finalize()
-   du = u - du
+   ! du = u - du
 
 end function fin_vol_solve
 
