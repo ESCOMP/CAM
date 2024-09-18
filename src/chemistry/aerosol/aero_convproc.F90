@@ -90,13 +90,10 @@ integer :: icwmrsh_idx        = 0
 integer :: sh_frac_idx        = 0
 integer :: dp_frac_idx        = 0
 
-integer :: zm_mu_idx          = 0
 integer :: zm_eu_idx          = 0
 integer :: zm_du_idx          = 0
-integer :: zm_md_idx          = 0
 integer :: zm_ed_idx          = 0
 integer :: zm_dp_idx          = 0
-integer :: zm_dsubcld_idx     = 0
 integer :: zm_jt_idx          = 0
 integer :: zm_maxg_idx        = 0
 integer :: zm_ideep_idx       = 0
@@ -264,13 +261,10 @@ subroutine aero_convproc_init(aero_props)
    dp_frac_idx     = pbuf_get_index('DP_FRAC')
    sh_frac_idx     = pbuf_get_index('SH_FRAC')
 
-   zm_mu_idx       = pbuf_get_index('ZM_MU')
    zm_eu_idx       = pbuf_get_index('ZM_EU')
    zm_du_idx       = pbuf_get_index('ZM_DU')
-   zm_md_idx       = pbuf_get_index('ZM_MD')
    zm_ed_idx       = pbuf_get_index('ZM_ED')
    zm_dp_idx       = pbuf_get_index('ZM_DP')
-   zm_dsubcld_idx  = pbuf_get_index('ZM_DSUBCLD')
    zm_jt_idx       = pbuf_get_index('ZM_JT')
    zm_maxg_idx     = pbuf_get_index('ZM_MAXG')
    zm_ideep_idx    = pbuf_get_index('ZM_IDEEP')
@@ -501,7 +495,6 @@ subroutine aero_convproc_dp_intr( aero_props,  &
 !
 !-----------------------------------------------------------------------
 
-
    ! Arguments
    class(aerosol_properties), intent(in) :: aero_props
 
@@ -530,16 +523,13 @@ subroutine aero_convproc_dp_intr( aero_props,  &
    real(r8), pointer :: evapcdp(:,:)   ! Deep conv precip evaporation (kg/kg/s - grid avg)
    real(r8), pointer :: icwmrdp(:,:)   ! Deep conv cloud condensate (kg/kg - in cloud)
    real(r8), pointer :: dp_frac(:,:)   ! Deep conv cloud frac (0-1)
-   ! mu, md, ..., ideep, lengath are all deep conv variables
-   real(r8), pointer :: mu(:,:)        ! Updraft mass flux (positive) (pcols,pver)
-   real(r8), pointer :: md(:,:)        ! Downdraft mass flux (negative) (pcols,pver)
+
+   ! deep conv variables
    real(r8), pointer :: du(:,:)        ! Mass detrain rate from updraft (pcols,pver)
    real(r8), pointer :: eu(:,:)        ! Mass entrain rate into updraft (pcols,pver)
    real(r8), pointer :: ed(:,:)        ! Mass entrain rate into downdraft (pcols,pver)
                                        ! eu, ed, du are "d(massflux)/dp" and are all positive
    real(r8), pointer :: dp(:,:)        ! Delta pressure between interfaces (pcols,pver)
-   real(r8), pointer :: dsubcld(:)     ! Delta pressure from cloud base to sfc (pcols)
-
    integer,  pointer :: jt(:)          ! Index of cloud top for each column (pcols)
    integer,  pointer :: maxg(:)        ! Index of cloud bottom for each column (pcols)
    integer,  pointer :: ideep(:)       ! Gathering array (pcols)
@@ -556,13 +546,10 @@ subroutine aero_convproc_dp_intr( aero_props,  &
    call pbuf_get_field(pbuf, icwmrdp_idx,     icwmrdp)
    call pbuf_get_field(pbuf, dp_frac_idx,     dp_frac)
    call pbuf_get_field(pbuf, fracis_idx,      fracis)
-   call pbuf_get_field(pbuf, zm_mu_idx,       mu)
    call pbuf_get_field(pbuf, zm_eu_idx,       eu)
    call pbuf_get_field(pbuf, zm_du_idx,       du)
-   call pbuf_get_field(pbuf, zm_md_idx,       md)
    call pbuf_get_field(pbuf, zm_ed_idx,       ed)
    call pbuf_get_field(pbuf, zm_dp_idx,       dp)
-   call pbuf_get_field(pbuf, zm_dsubcld_idx,  dsubcld)
    call pbuf_get_field(pbuf, zm_jt_idx,       jt)
    call pbuf_get_field(pbuf, zm_maxg_idx,     maxg)
    call pbuf_get_field(pbuf, zm_ideep_idx,    ideep)

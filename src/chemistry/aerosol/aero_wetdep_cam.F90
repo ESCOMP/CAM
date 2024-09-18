@@ -244,7 +244,10 @@ contains
     nspec_max = maxval(aero_props%nspecies()) + 2
 
     call init_bcscavcoef()
-    call aero_convproc_init(aero_props)
+
+    if (convproc_do_aer) then
+       call aero_convproc_init(aero_props)
+    end if
 
   contains
 
