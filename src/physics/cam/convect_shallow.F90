@@ -482,7 +482,10 @@
 
    type(unicon_out_t) :: unicon_out
 
+   character(len=40) :: scheme_name
    character(len=16) :: macrop_scheme
+   character(len=512):: errmsg
+   integer           :: errflg
    integer :: top_lev
 
 
@@ -899,7 +902,8 @@
          landfracdum(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprdsh(:ncol,:), cld(:ncol,:), ztodt, &
-         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:))
+         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
+         scheme_name, errmsg, errflg)
 
    ! ---------------------------------------------- !
    ! record history variables from zm_conv_evap_run !

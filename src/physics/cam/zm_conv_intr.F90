@@ -488,6 +488,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    logical  :: lq(pcnst)
    character(len=16) :: macrop_scheme
+   character(len=40) :: scheme_name
    integer :: top_lev
 
    !----------------------------------------------------------------------
@@ -573,11 +574,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
-                    rice(:ncol), errmsg, errflg)
-
-
-   lengath = count(ideep > 0)
-   if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
+                    rice(:ncol), lengath, scheme_name, errmsg, errflg)
 
    jctop(:) = real(pver,r8)
    jcbot(:) = 1._r8
@@ -683,7 +680,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
          landfrac(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprd(:ncol,:), cld(:ncol,:), ztodt, &
-         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:))
+         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
+         scheme_name, errmsg, errflg)
 
     evapcdp(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
 
@@ -739,7 +737,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
                    nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:),&
                    pguallu(:ncol,:), pguallv(:ncol,:),  pgdallu(:ncol,:), pgdallv(:ncol,:), &
-                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) )
+                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) ,&
+                   scheme_name, errmsg, errflg)
      call t_stopf ('zm_conv_momtran_run')
 
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
@@ -793,7 +792,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ccpp_const_props, errmsg, errflg)
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ccpp_const_props, &
+                  scheme_name, errmsg, errflg)
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -849,6 +849,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    integer,  pointer :: maxg(:)    ! (pcols)
    integer,  pointer :: ideep(:)   ! (pcols)
 
+   character(len=40)  :: scheme_name
    character(len=512) :: errmsg
    integer            :: errflg
 
@@ -896,7 +897,8 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ccpp_const_props, errmsg, errflg)
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ccpp_const_props, &
+                  scheme_name, errmsg, errflg)
       call t_stopf ('convtran2')
    end if
 
