@@ -3,7 +3,7 @@
    ! --------------------------------------------------------------------- ! 
    ! Purpose:                                                              !
    ! Computes grid-box average liquid (and ice) from stratus and cumulus   !
-   ! Just for the purposes of radiation.                                   !
+   ! These values used by both the radiation and the COSP diagnostics.     !
    !                                                                       ! 
    ! Method:                                                               !
    ! Extract information about deep+shallow liquid and cloud fraction from !
@@ -38,9 +38,10 @@
 ! pbuf indices
 
   integer :: icwmrsh_idx, icwmrdp_idx, fice_idx, sh_frac_idx, dp_frac_idx, &
-             ast_idx, sh_cldliq1_idx, sh_cldice1_idx, rei_idx
+             ast_idx, rei_idx
 
   integer :: ixcldice, ixcldliq
+  integer :: gb_totcldliqmr_idx, gb_totcldicemr_idx
 
 ! Namelist
 integer, parameter :: unset_int = huge(1)
@@ -113,11 +114,10 @@ end subroutine conv_water_readnl
 
   !-----------------------------------------------------------------------
 
-    ! these calls were already done in convect_shallow...so here I add the same fields to the physics buffer with a "1" at the end
-! shallow gbm cloud liquid water (kg/kg)
-    call pbuf_add_field('SH_CLDLIQ1','physpkg',dtype_r8,(/pcols,pver/),sh_cldliq1_idx)  
-! shallow gbm cloud ice water (kg/kg)
-    call pbuf_add_field('SH_CLDICE1','physpkg',dtype_r8,(/pcols,pver/),sh_cldice1_idx)  
+    ! grid box total cloud liquid water mixing ratio (kg/kg)
+    call pbuf_add_field('GB_TOTCLDLIQMR', 'physpkg', dtype_r8, (/pcols,pver/), gb_totcldliqmr_idx)  
+    ! grid box total cloud ice water mixing ratio (kg/kg)
+    call pbuf_add_field('GB_TOTCLDICEMR', 'physpkg', dtype_r8, (/pcols,pver/), gb_totcldicemr_idx)  
 
   end subroutine conv_water_register
 
@@ -168,7 +168,7 @@ end subroutine conv_water_readnl
 
    end subroutine conv_water_init
 
-   subroutine conv_water_4rad(state, pbuf, totg_liq, totg_ice)
+   subroutine conv_water_4rad(state, pbuf)
 
    ! --------------------------------------------------------------------- ! 
    ! Purpose:                                                              !
@@ -202,9 +202,6 @@ end subroutine conv_water_readnl
    type(physics_state), target, intent(in) :: state        ! state variables
    type(physics_buffer_desc),   pointer    :: pbuf(:)
 
-   real(r8), intent(out):: totg_ice(pcols,pver)   ! Total GBA in-cloud ice
-   real(r8), intent(out):: totg_liq(pcols,pver)   ! Total GBA in-cloud liquid
-
    ! --------------- !
    ! Local Workspace !
    ! --------------- !
@@ -222,8 +219,9 @@ end subroutine conv_water_readnl
    real(r8), pointer, dimension(:,:) ::  dp_icwmr ! Deep conv. cloud water
    real(r8), pointer, dimension(:,:) ::  sh_icwmr ! Shallow conv. cloud water
    real(r8), pointer, dimension(:,:) ::  fice     ! Ice partitioning ratio
-   real(r8), pointer, dimension(:,:) ::  sh_cldliq ! shallow convection gbx liq cld mixing ratio for COSP
-   real(r8), pointer, dimension(:,:) ::  sh_cldice ! shallow convection gbx ice cld mixing ratio for COSP
+
+   real(r8), pointer, dimension(:,:) :: totg_ice  ! Grid box total cloud ice mixing ratio
+   real(r8), pointer, dimension(:,:) :: totg_liq  ! Grid box total cloud liquid mixing ratio
 
    real(r8) :: conv_ice(pcols,pver)               ! Convective contributions to IC cloud ice
    real(r8) :: conv_liq(pcols,pver)               ! Convective contributions to IC cloud liquid
@@ -281,6 +279,10 @@ end subroutine conv_water_readnl
 
    itim_old = pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, ast_idx,  ast,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/) ) 
+
+   ! Fields computed below and stored in pbuf.
+   call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)
+   call pbuf_get_field(pbuf, gb_totcldliqmr_idx, totg_liq)
 
    ! --------------------------------------------------------------- !
    ! Loop through grid-boxes and determine:                          !
@@ -406,13 +408,6 @@ end subroutine conv_water_readnl
 
    end do
    end do
-
-!add pbuff calls for COSP
-   call pbuf_get_field(pbuf, sh_cldliq1_idx, sh_cldliq  )
-   call pbuf_get_field(pbuf, sh_cldice1_idx, sh_cldice  )
-
-   sh_cldliq(:ncol,:pver)=sh_icwmr(:ncol,:pver)*(1-fice(:ncol,:pver))*sh_frac(:ncol,:pver)
-   sh_cldice(:ncol,:pver)=sh_icwmr(:ncol,:pver)*fice(:ncol,:pver)*sh_frac(:ncol,:pver)
 
   ! Output convective IC WMRs
    

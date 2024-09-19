@@ -52,9 +52,7 @@ module zm_conv_intr
       zm_ideep_idx,   &
       dp_flxprc_idx, &
       dp_flxsnw_idx, &
-      dp_cldliq_idx, &
       ixorg,       &
-      dp_cldice_idx, &
       dlfzm_idx,     &     ! detrained convective cloud water mixing ratio.
       difzm_idx,     &     ! detrained convective cloud ice mixing ratio.
       dnlfzm_idx,    &     ! detrained convective cloud water num concen.
@@ -134,12 +132,6 @@ subroutine zm_conv_register
 
 ! Flux of snow from deep convection (kg/m2/s)
    call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx)
-
-! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)
-
-! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)
 
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
@@ -459,8 +451,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: evapcdp      ! Evaporation of deep convective precipitation
    real(r8), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
    real(r8), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
-   real(r8), pointer, dimension(:,:) :: dp_cldliq
-   real(r8), pointer, dimension(:,:) :: dp_cldice
    real(r8), pointer :: dlf(:,:)    ! detrained convective cloud water mixing ratio.
    real(r8), pointer :: dif(:,:)    ! detrained convective cloud ice mixing ratio.
    real(r8), pointer :: dnlf(:,:)   ! detrained convective cloud water num concen.
@@ -709,10 +699,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     call pbuf_get_field(pbuf, dp_flxprc_idx, flxprec    )
     call pbuf_get_field(pbuf, dp_flxsnw_idx, flxsnow    )
-    call pbuf_get_field(pbuf, dp_cldliq_idx, dp_cldliq  )
-    call pbuf_get_field(pbuf, dp_cldice_idx, dp_cldice  )
-    dp_cldliq(:ncol,:) = 0._r8
-    dp_cldice(:ncol,:) = 0._r8
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
     flxprec(:,:) = 0._r8
     flxsnow(:,:) = 0._r8
