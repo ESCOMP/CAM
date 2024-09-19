@@ -385,8 +385,7 @@ contains
     real(r8)      :: hstobie_linoz (pcols, pver)
     real(r8)      :: hstobie_tropop(pcols, pver)
 
-    ! These are the "actual" out arguments for tropopause_findWithBackup, as this subroutine
-    ! no longer accepts optional arguments during the CCPP-ization process.
+    ! Output arguments from tropopause_findWithBackup which does not support optional arguments.
     real(r8)      :: tropP_out(pstate%ncol)
     real(r8)      :: tropT_out(pstate%ncol)
     real(r8)      :: tropZ_out(pstate%ncol)
@@ -486,7 +485,7 @@ contains
     integer             :: i
     integer             :: ncol
 
-    ! Dummy out arguments from tropopause_findWithBackup as it does not accept optional arguments.
+    ! Dummy output arguments from tropopause_findWithBackup as it does not accept optional arguments.
     real(r8)      :: tropP_out(pstate%ncol)
     real(r8)      :: tropT_out(pstate%ncol)
     real(r8)      :: tropZ_out(pstate%ncol)
