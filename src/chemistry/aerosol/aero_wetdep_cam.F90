@@ -173,6 +173,9 @@ contains
 
     if (nmodes>0) then
        aero_props => modal_aerosol_properties()
+       if (.not.associated(aero_props)) then
+          call endrun(subrname//' : construction of aero_props modal_aerosol_properties object failed')
+       end if
     else
        call endrun(subrname//' : cannot determine aerosol model')
     endif
