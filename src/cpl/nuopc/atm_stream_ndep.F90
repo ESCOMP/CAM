@@ -26,6 +26,10 @@ module atm_stream_ndep
 
   private :: stream_ndep_check_units   ! Check the units and make sure they can be used
 
+  ! The ndep stream is not needed for aquaplanet or simple model configurations.  It
+  ! is disabled by setting the namelist variable stream_ndep_data_filename to blank.
+  logical, public, protected :: use_ndep_stream = .true.
+
   type(shr_strdata_type) :: sdat_ndep                      ! input data stream
   logical, public        :: stream_ndep_is_initialized = .false.
   character(len=CS)      :: stream_varlist_ndep(2)
@@ -112,6 +116,17 @@ contains
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_last")
     call mpi_bcast(stream_ndep_year_align, 1, mpi_integer, 0, mpicom, ierr)
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_align")
+
+    ! Check whether the stream is being used.
+    if (stream_ndep_data_filename == ' ') then
+       use_ndep_stream = .false.
+       if (masterproc) then
+          write(iulog,'(a)') ' '
+          write(iulog,'(a)') 'NDEP STREAM IS NOT USED.'
+          write(iulog,'(a)') ' '
+       endif
+       return
+    endif
 
     if (masterproc) then
        write(iulog,'(a)'   ) ' '

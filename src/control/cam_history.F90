@@ -182,6 +182,7 @@ module cam_history
   character(len=16)  :: host                ! host name
   character(len=8)   :: inithist = 'YEARLY' ! If set to '6-HOURLY, 'DAILY', 'MONTHLY' or
   ! 'YEARLY' then write IC file
+  logical            :: write_camiop = .false. ! setup to use iop fields if true.
   logical            :: inithist_all = .false. ! Flag to indicate set of fields to be
                                           ! included on IC file
                                           !  .false.  include only required fields
@@ -317,8 +318,9 @@ module cam_history
     module procedure addfld_nd
   end interface
 
-  ! Needed by cam_diagnostics
-  public :: inithist_all
+
+  public :: inithist_all  ! Needed by cam_diagnostics
+  public :: write_camiop  ! Needed by cam_comp
 
   integer :: lcltod_start(ptapes) ! start time of day for local time averaging (sec)
   integer :: lcltod_stop(ptapes)  ! stop time of day for local time averaging, stop > start is wrap around (sec)
@@ -852,25 +854,6 @@ CONTAINS
       end do
     end if
 
-    ! Write out inithist info
-    if (masterproc) then
-      if (inithist == '6-HOURLY' ) then
-        write(iulog,*)'Initial conditions history files will be written 6-hourly.'
-      else if (inithist == 'DAILY' ) then
-        write(iulog,*)'Initial conditions history files will be written daily.'
-      else if (inithist == 'MONTHLY' ) then
-        write(iulog,*)'Initial conditions history files will be written monthly.'
-      else if (inithist == 'YEARLY' ) then
-        write(iulog,*)'Initial conditions history files will be written yearly.'
-      else if (inithist == 'CAMIOP' ) then
-        write(iulog,*)'Initial conditions history files will be written for IOP.'
-      else if (inithist == 'ENDOFRUN' ) then
-        write(iulog,*)'Initial conditions history files will be written at end of run.'
-      else
-        write(iulog,*)'Initial conditions history files will not be created'
-      end if
-    end if
-
     ! Print out column-output information
     do t = 1, size(fincllonlat, 2)
       if (ANY(len_trim(fincllonlat(:,t)) > 0)) then
@@ -916,6 +899,27 @@ CONTAINS
       interpolate_info(t)%interp_nlon = interpolate_nlon(t)
     end do
 
+    ! Write out inithist info
+    if (masterproc) then
+      if (inithist == '6-HOURLY' ) then
+        write(iulog,*)'Initial conditions history files will be written 6-hourly.'
+      else if (inithist == 'DAILY' ) then
+        write(iulog,*)'Initial conditions history files will be written daily.'
+      else if (inithist == 'MONTHLY' ) then
+        write(iulog,*)'Initial conditions history files will be written monthly.'
+      else if (inithist == 'YEARLY' ) then
+        write(iulog,*)'Initial conditions history files will be written yearly.'
+      else if (inithist == 'CAMIOP' ) then
+         write(iulog,*)'Initial conditions history files will be written for IOP.'
+      else if (inithist == 'ENDOFRUN' ) then
+        write(iulog,*)'Initial conditions history files will be written at end of run.'
+      else
+        write(iulog,*)'Initial conditions history files will not be created'
+      end if
+    end if
+    if (inithist == 'CAMIOP') then
+       write_camiop=.true.
+    end if
     ! separate namelist reader for the satellite history file
     call sat_hist_readnl(nlfile, hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape)
 
@@ -4690,7 +4694,6 @@ end subroutine print_active_fldlst
            num_hdims = 2
            do i = 1, num_hdims
              dimindex(i) = header_info(1)%get_hdimid(i)
-             nacsdims(i) = header_info(1)%get_hdimid(i)
            end do
          else if (patch_output) then
            ! All patches for this variable should be on the same grid
@@ -4716,7 +4719,6 @@ end subroutine print_active_fldlst
            num_hdims = header_info(grd)%num_hdims()
            do i = 1, num_hdims
              dimindex(i) = header_info(grd)%get_hdimid(i)
-             nacsdims(i) = header_info(grd)%get_hdimid(i)
            end do
          end if     ! is_satfile
 
@@ -4832,22 +4834,8 @@ end subroutine print_active_fldlst
                   tape(t)%hlist(fld)%field%name)
              call cam_pio_handle_error(ierr,                                     &
                   'h_define: cannot define basename for '//trim(fname_tmp))
-           end if
-
-           if (restart) then
-             ! For restart history files, we need to save accumulation counts
-             fname_tmp = trim(fname_tmp)//'_nacs'
-             if (.not. associated(tape(t)%hlist(fld)%nacs_varid)) then
-               allocate(tape(t)%hlist(fld)%nacs_varid)
-             end if
-             if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
-               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
-                    nacsdims(1:num_hdims), tape(t)%hlist(fld)%nacs_varid)
-             else
-               ! Save just one value representing all chunks
-               call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
-                    tape(t)%hlist(fld)%nacs_varid)
-             end if
+          end if
+          if(restart) then
              ! for standard deviation
              if (associated(tape(t)%hlist(fld)%sbuf)) then
                 fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
@@ -4858,9 +4846,69 @@ end subroutine print_active_fldlst
                 call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_double,      &
                      dimids_tmp(1:fdims), tape(t)%hlist(fld)%sbuf_varid)
              endif
-           end if
-         end do ! Loop over output patches
+          endif
+          end do ! Loop over output patches
        end do   ! Loop over fields
+       if (restart) then
+          do fld = 1, nflds(t)
+             if(is_satfile(t)) then
+                num_hdims=0
+                nfils(t)=1
+             else if (interpolate) then
+                ! Interpolate can't use normal grid code since we are forcing fields
+                ! to use interpolate decomp
+                if (.not. allocated(header_info)) then
+                   ! Safety check
+                   call endrun('h_define: header_info not allocated')
+                end if
+                num_hdims = 2
+                do i = 1, num_hdims
+                   nacsdims(i) = header_info(1)%get_hdimid(i)
+                end do
+             else if (patch_output) then
+                ! All patches for this variable should be on the same grid
+                num_hdims = tape(t)%patches(1)%num_hdims(tape(t)%hlist(fld)%field%decomp_type)
+             else
+                ! Normal grid output
+                ! Find appropriate grid in header_info
+                if (.not. allocated(header_info)) then
+                   ! Safety check
+                   call endrun('h_define: header_info not allocated')
+                end if
+                grd = -1
+                do i = 1, size(header_info)
+                   if (header_info(i)%get_gridid() == tape(t)%hlist(fld)%field%decomp_type) then
+                      grd = i
+                      exit
+                   end if
+                end do
+                if (grd < 0) then
+                   write(errormsg, '(a,i0,2a)') 'grid, ',tape(t)%hlist(fld)%field%decomp_type,', not found for ',trim(fname_tmp)
+                   call endrun('H_DEFINE: '//errormsg)
+                end if
+                num_hdims = header_info(grd)%num_hdims()
+                do i = 1, num_hdims
+                   nacsdims(i) = header_info(grd)%get_hdimid(i)
+                end do
+             end if     ! is_satfile
+
+             fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
+             ! For restart history files, we need to save accumulation counts
+             fname_tmp = trim(fname_tmp)//'_nacs'
+             if (.not. associated(tape(t)%hlist(fld)%nacs_varid)) then
+                allocate(tape(t)%hlist(fld)%nacs_varid)
+             end if
+             if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
+                call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                     nacsdims(1:num_hdims), tape(t)%hlist(fld)%nacs_varid)
+             else
+                ! Save just one value representing all chunks
+                call cam_pio_def_var(tape(t)%Files(f), trim(fname_tmp), pio_int,      &
+                     tape(t)%hlist(fld)%nacs_varid)
+             end if
+
+          end do   ! Loop over fields
+       end if
        !
        deallocate(mdimids)
        ret = pio_enddef(tape(t)%Files(f))

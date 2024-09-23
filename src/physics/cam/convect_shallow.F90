@@ -215,6 +215,7 @@
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CMFSL',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection liquid water static energy flux'  )
   call addfld( 'CMFLQ',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection total water flux'                 )
+  call addfld ('DQP',        (/ 'lev' /),  'A', 'kg/kg/s',  'Specific humidity tendency due to precipitation'           )
   call addfld( 'CBMF',       horiz_only,   'A', 'kg/m2/s',  'Cloud base mass flux'                                      )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
   call addfld( 'CLDBOT',     horiz_only,   'I', '1',        'Vertical index of cloud base'                              )
@@ -249,7 +250,7 @@
       call add_default( 'CMFDICE  ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDT   ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDQ   ', history_budget_histfile_num, ' ' )
-      if( cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') ) then
+      if( cam_physpkg_is('cam4') ) then
          call add_default( 'EVAPQCM  ', history_budget_histfile_num, ' ' )
          call add_default( 'EVAPTCM  ', history_budget_histfile_num, ' ' )
       end if
