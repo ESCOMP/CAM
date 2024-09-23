@@ -393,6 +393,8 @@ contains
     character(len=512) :: errmsg
     integer            :: errflg
 
+    ncol = pstate%ncol
+
     ! Initialize the results to a missing value, so that the algorithms will
     ! attempt to find the tropopause for all of them. Only do this for the active columns.
     tropLev(:ncol) = NOTFOUND
