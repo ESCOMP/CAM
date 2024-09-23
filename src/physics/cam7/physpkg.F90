@@ -1402,7 +1402,8 @@ contains
     use radiation,          only: radiation_tend
     use tropopause,         only: tropopause_output
     use cam_diagnostics,    only: diag_phys_writeout, diag_conv, diag_clip_tend_writeout
-    use aero_model,         only: aero_model_wetdep, wetdep_lq
+    use aero_model,         only: aero_model_wetdep
+    use aero_wetdep_cam,    only: wetdep_lq
     use physics_buffer,     only: col_type_subcol
     use check_energy,       only: check_energy_timestep_init
     use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend

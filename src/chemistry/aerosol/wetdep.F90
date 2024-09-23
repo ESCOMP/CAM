@@ -330,7 +330,7 @@ subroutine wetdepa_v2(                                  &
    !    sol_fact  is used for below cloud scavenging
    !    sol_facti is used for in cloud scavenging
 
-   real(r8), intent(in)  :: sol_fact
+   real(r8), intent(in)  :: sol_fact(pcols,pver)
    integer,  intent(in)  :: ncol
    real(r8), intent(in)  :: scavcoef(pcols,pver) ! Dana and Hales coefficient (/mm) (0.1 if not MODAL_AERO)
    real(r8), intent(out) ::&
@@ -348,7 +348,7 @@ subroutine wetdepa_v2(                                  &
    real(r8), intent(in), optional :: qqcw(pcols,pver)
    real(r8), intent(in), optional :: f_act_conv(pcols,pver)
 
-   real(r8), intent(in), optional :: sol_facti_in   ! solubility factor (frac of aerosol scavenged in cloud)
+   real(r8), intent(in), optional :: sol_facti_in(pcols,pver)   ! solubility factor (frac of aerosol scavenged in cloud)
    real(r8), intent(in), optional :: sol_factic_in(pcols,pver)  ! sol_facti_in for convective clouds
          
 
@@ -405,8 +405,8 @@ subroutine wetdepa_v2(                                  &
    ! For convective cloud, cloudborne aerosol is not treated explicitly,
    !    and sol_factic is 1.0 for both cloudborne and interstitial.
 
-   real(r8) :: sol_facti              ! in cloud fraction of aerosol scavenged
-   real(r8) :: sol_factb              ! below cloud fraction of aerosol scavenged
+   real(r8) :: sol_facti(pcols,pver)  ! in cloud fraction of aerosol scavenged
+   real(r8) :: sol_factb(pcols,pver)  ! below cloud fraction of aerosol scavenged
    real(r8) :: sol_factic(pcols,pver) ! in cloud fraction of aerosol scavenged for convective clouds
 
    real(r8) :: rdeltat
@@ -527,7 +527,7 @@ subroutine wetdepa_v2(                                  &
 
                fracp(i) = max( 0._r8, min(1._r8, fracp(i)) )
 
-               st_scav_ic(i) = sol_facti *fracp(i)*tracer(i,k)*rdeltat
+               st_scav_ic(i) = sol_facti(i,k) *fracp(i)*tracer(i,k)*rdeltat
 
                st_scav_bc(i) = 0._r8
 
@@ -548,7 +548,7 @@ subroutine wetdepa_v2(                                  &
 
                odds(i) = precabc(i)/max(cldvcu(i,k),1.e-5_r8)*scavcoef(i,k)*deltat
                odds(i) = max(min(1._r8,odds(i)),0._r8)
-               conv_scav_bc(i) = sol_factb *cldvcu(i,k)*odds(i)*tracer_mean(i)*rdeltat
+               conv_scav_bc(i) = sol_factb(i,k) *cldvcu(i,k)*odds(i)*tracer_mean(i)*rdeltat
 
 
                ! stratiform scavenging
@@ -557,7 +557,7 @@ subroutine wetdepa_v2(                                  &
 
                odds(i) = precabs(i)/max(cldvst(i,k),1.e-5_r8)*scavcoef(i,k)*deltat
                odds(i) = max(min(1._r8,odds(i)),0._r8)
-               st_scav_bc(i) = sol_factb *cldvst(i,k)*odds(i)*tracer_mean(i)*rdeltat
+               st_scav_bc(i) = sol_factb(i,k) *cldvst(i,k)*odds(i)*tracer_mean(i)*rdeltat
 
             end if
 
@@ -569,7 +569,7 @@ subroutine wetdepa_v2(                                  &
 
             odds(i) = precabc(i)/max(cldvcu(i,k), 1.e-5_r8)*scavcoef(i,k)*deltat
             odds(i) = max( min(1._r8, odds(i)), 0._r8)
-            conv_scav_bc(i) = sol_factb*cldvcu(i,k)*odds(i)*tracer(i,k)*rdeltat
+            conv_scav_bc(i) = sol_factb(i,k)*cldvcu(i,k)*odds(i)*tracer(i,k)*rdeltat
 
             ! stratiform scavenging
 
@@ -581,11 +581,11 @@ subroutine wetdepa_v2(                                  &
             fracp(i) = max( 0._r8, min( 1._r8, fracp(i) ) )
             
             ! assume the corresponding amnt of tracer is removed
-            st_scav_ic(i) = sol_facti*clds(i)*fracp(i)*tracer(i,k)*rdeltat
+            st_scav_ic(i) = sol_facti(i,k)*clds(i)*fracp(i)*tracer(i,k)*rdeltat
 
             odds(i) = precabs(i)/max(cldvst(i,k),1.e-5_r8)*scavcoef(i,k)*deltat
             odds(i) = max(min(1._r8,odds(i)),0._r8)
-            st_scav_bc(i) =sol_factb*(cldvst(i,k)*odds(i)) *tracer(i,k)*rdeltat
+            st_scav_bc(i) =sol_factb(i,k)*(cldvst(i,k)*odds(i)) *tracer(i,k)*rdeltat
 
          end if
 

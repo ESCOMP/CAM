@@ -608,8 +608,9 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
            ($aer_wetdep_list =~ /ncl/i || $aer_wetdep_list =~ /sslt/i)) {
             $prescribe_aerosols = $FALSE;
         }
-
-        add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        if ($chem !~ /_mam/) {
+            add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        }
 
         if (!($chem =~ /_mam/)) {
             if (!defined $nl->get_value('aer_sol_facti')) {
