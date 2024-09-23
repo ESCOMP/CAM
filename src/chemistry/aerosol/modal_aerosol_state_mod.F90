@@ -40,6 +40,8 @@ module modal_aerosol_state_mod
      procedure :: dry_volume
      procedure :: wet_volume
      procedure :: water_volume
+     procedure :: wet_diameter
+     procedure :: convcld_actfrac
 
      final :: destructor
 
@@ -594,5 +596,92 @@ contains
     end where
 
   end function water_volume
+
+  !------------------------------------------------------------------------------
+  ! aerosol wet diameter
+  !------------------------------------------------------------------------------
+  function wet_diameter(self, bin_idx, ncol, nlev) result(diam)
+    class(modal_aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_idx   ! bin number
+    integer, intent(in) :: ncol      ! number of columns
+    integer, intent(in) :: nlev      ! number of levels
+
+    real(r8) :: diam(ncol,nlev)
+
+    real(r8), pointer :: dgnumwet(:,:,:)
+
+    call pbuf_get_field(self%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+
+    diam(:ncol,:nlev) = dgnumwet(:ncol,:nlev,bin_idx)
+
+  end function wet_diameter
+
+  !------------------------------------------------------------------------------
+  ! prescribed aerosol activation fraction for convective cloud
+  !------------------------------------------------------------------------------
+  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
+
+    use modal_aero_data
+
+    class(modal_aerosol_state), intent(in) :: self
+    integer, intent(in) :: ibin   ! bin index
+    integer, intent(in) :: ispc   ! species index
+    integer, intent(in) :: ncol   ! number of columns
+    integer, intent(in) :: nlev   ! number of vertical levels
+
+    real(r8) :: frac(ncol,nlev)
+
+    real(r8) :: f_act_conv_coarse(ncol,nlev)
+    real(r8) :: f_act_conv_coarse_dust, f_act_conv_coarse_nacl
+    real(r8) :: tmpdust, tmpnacl
+    integer :: lcoardust, lcoarnacl
+    integer :: i,k
+
+    f_act_conv_coarse(:,:) = 0.60_r8
+    f_act_conv_coarse_dust = 0.40_r8
+    f_act_conv_coarse_nacl = 0.80_r8
+    if (modeptr_coarse > 0) then
+       lcoardust = lptr_dust_a_amode(modeptr_coarse)
+       lcoarnacl = lptr_nacl_a_amode(modeptr_coarse)
+       if ((lcoardust > 0) .and. (lcoarnacl > 0)) then
+          do k = 1, nlev
+             do i = 1, ncol
+                tmpdust = max( 0.0_r8, self%state%q(i,k,lcoardust) )
+                tmpnacl = max( 0.0_r8, self%state%q(i,k,lcoarnacl) )
+                if ((tmpdust+tmpnacl) > 1.0e-30_r8) then
+                   f_act_conv_coarse(i,k) = (f_act_conv_coarse_dust*tmpdust &
+                        + f_act_conv_coarse_nacl*tmpnacl)/(tmpdust+tmpnacl)
+                end if
+             end do
+          end do
+       end if
+    end if
+
+    if (ibin == modeptr_pcarbon) then
+       frac = 0.0_r8
+    else if ((ibin == modeptr_finedust) .or. (ibin == modeptr_coardust)) then
+       frac = 0.4_r8
+    else
+       frac = 0.8_r8
+    end if
+
+    ! set f_act_conv for interstitial (lphase=1) coarse mode species
+    ! for the convective in-cloud, we conceptually treat the coarse dust and seasalt
+    ! as being externally mixed, and apply f_act_conv = f_act_conv_coarse_dust/nacl to dust/seasalt
+    ! number and sulfate are conceptually partitioned to the dust and seasalt
+    ! on a mass basis, so the f_act_conv for number and sulfate are
+    ! mass-weighted averages of the values used for dust/seasalt
+    if (ibin == modeptr_coarse) then
+       frac = f_act_conv_coarse
+       if (ispc>0) then
+          if (lmassptr_amode(ispc,ibin) == lptr_dust_a_amode(ibin)) then
+             frac = f_act_conv_coarse_dust
+          else if (lmassptr_amode(ispc,ibin) == lptr_nacl_a_amode(ibin)) then
+             frac = f_act_conv_coarse_nacl
+          end if
+       end if
+    end if
+
+  end function convcld_actfrac
 
 end module modal_aerosol_state_mod

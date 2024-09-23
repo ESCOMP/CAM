@@ -453,6 +453,8 @@ subroutine setup_time_invariant(fh_ini)
    type(mpas_pool_type),   pointer :: meshPool
    real(r8), pointer     :: rdzw(:)
    real(r8), allocatable :: dzw(:)
+   integer, pointer :: nCells
+   real(r8), dimension(:), pointer :: lonCell
 
    integer :: k, kk
    integer :: ierr
@@ -473,6 +475,7 @@ subroutine setup_time_invariant(fh_ini)
    call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
    call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
    call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevelsSolve) ! MPAS always solves over the full column
+   call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
 
    ! check that number of vertical layers matches MPAS grid data
    if (plev /= nVertLevelsSolve) then
@@ -481,6 +484,17 @@ subroutine setup_time_invariant(fh_ini)
       call endrun(subname//': ERROR: number of levels in IC file ('//int2str(nVertLevelsSolve)// &
                            ') does not match plev ('//int2str(nVertLevelsSolve)//').')
    end if
+
+   ! Ensure longitudes are within the [0,2*pi) range, and only remap values that
+   ! are outside the range. Some non-simple physics in CAM require this
+   ! longitude range, the MPAS-A dycore does not require any specific range for
+   ! lonCell
+   call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
+   do k=1,nCells
+      if (lonCell(k) < 0._r8 .or. lonCell(k) >= (2._r8 * pi)) then
+         lonCell(k) = lonCell(k) - (2._r8 * pi) * floor(lonCell(k) / (2._r8 * pi))
+      end if
+   end do
 
    ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
    ! Note: This same pair of calls happens a second time later in the initialization of

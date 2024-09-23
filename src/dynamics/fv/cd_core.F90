@@ -251,7 +251,6 @@ subroutine cd_core(grid,   nx,     u,   v,   pt,                  &
    !          with coefficient del2coef (default 3E5)
    !
    ! - ldiv2: 2nd-order divergence damping everywhere and increasing in top layers
-   !          (default cam3.5 setting)
    !
    ! - ldiv4: 4th-order divergence damping everywhere and increasing in top layers
    !
@@ -530,7 +529,6 @@ subroutine cd_core(grid,   nx,     u,   v,   pt,                  &
 
          if (div24del2flag == 2) then
 
-            ! cam3.5 default damping setting
             ldiv2 = .true.
             ldiv4 = .false.
             ldel2 = .false.
@@ -608,7 +606,7 @@ subroutine cd_core(grid,   nx,     u,   v,   pt,                  &
 
                !***********************************************
                !
-               ! cam3 default second-order divergence damping
+               ! second-order divergence damping
                !
                !***********************************************
                press = D0_5 * ( grid%ak(k)+grid%ak(k+1) + &

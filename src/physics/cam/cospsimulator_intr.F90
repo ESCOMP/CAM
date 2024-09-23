@@ -212,8 +212,9 @@ module cospsimulator_intr
                                                 !       chunk (allocatable->1:pcols,begchunk:endchunk)
   ! pbuf indices
   integer :: cld_idx, concld_idx, lsreffrain_idx, lsreffsnow_idx, cvreffliq_idx
-  integer :: cvreffice_idx, dpcldliq_idx, dpcldice_idx
-  integer :: shcldliq1_idx, shcldice1_idx, dpflxprc_idx
+  integer :: cvreffice_idx
+  integer :: gb_totcldliqmr_idx, gb_totcldicemr_idx
+  integer :: dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx
   
@@ -870,10 +871,8 @@ CONTAINS
     lsreffsnow_idx = pbuf_get_index('LS_REFFSNOW')
     cvreffliq_idx  = pbuf_get_index('CV_REFFLIQ')
     cvreffice_idx  = pbuf_get_index('CV_REFFICE')
-    dpcldliq_idx   = pbuf_get_index('DP_CLDLIQ')
-    dpcldice_idx   = pbuf_get_index('DP_CLDICE')
-    shcldliq1_idx  = pbuf_get_index('SH_CLDLIQ1')
-    shcldice1_idx  = pbuf_get_index('SH_CLDICE1')
+    gb_totcldliqmr_idx = pbuf_get_index('GB_TOTCLDLIQMR') ! grid box total cloud liquid water mr (kg/kg)
+    gb_totcldicemr_idx = pbuf_get_index('GB_TOTCLDICEMR') ! grid box total cloud ice water mr (kg/kg)
     dpflxprc_idx   = pbuf_get_index('DP_FLXPRC')
     dpflxsnw_idx   = pbuf_get_index('DP_FLXSNW')
     shflxprc_idx   = pbuf_get_index('SH_FLXPRC', errcode=ierr)
@@ -1205,11 +1204,9 @@ CONTAINS
     real(r8), pointer, dimension(:,:) :: ls_flxprc       ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1) 
     real(r8), pointer, dimension(:,:) :: ls_flxsnw       ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
     
-    !! cloud mixing ratio pointers (note: large-scale in state)
-    real(r8), pointer, dimension(:,:) :: sh_cldliq       ! shallow gbm cloud liquid water (kg/kg)
-    real(r8), pointer, dimension(:,:) :: sh_cldice       ! shallow gbm cloud ice water (kg/kg)
-    real(r8), pointer, dimension(:,:) :: dp_cldliq       ! deep gbm cloud liquid water (kg/kg)
-    real(r8), pointer, dimension(:,:) :: dp_cldice       ! deep gmb cloud ice water (kg/kg)
+    !! grid box total cloud mixing ratio (large-scale + convective)
+    real(r8), pointer, dimension(:,:) :: totg_liq       ! gbm total cloud liquid water (kg/kg)
+    real(r8), pointer, dimension(:,:) :: totg_ice       ! gbm total cloud ice water (kg/kg)
     
     ! Output CAM variables
     ! Multiple "mdims" are collapsed because CAM history buffers only support one mdim.
@@ -1508,11 +1505,9 @@ CONTAINS
     call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq   )
     call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice   )
     
-    !! convective cloud mixing ratios
-    call pbuf_get_field(pbuf, dpcldliq_idx, dp_cldliq  )
-    call pbuf_get_field(pbuf, dpcldice_idx, dp_cldice  )
-    call pbuf_get_field(pbuf, shcldliq1_idx, sh_cldliq  )
-    call pbuf_get_field(pbuf, shcldice1_idx, sh_cldice  )
+    !! grid box total cloud mixing ratios
+    call pbuf_get_field(pbuf, gb_totcldliqmr_idx, totg_liq)
+    call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)
     
     !! precipitation fluxes
     call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc  )
@@ -1616,9 +1611,12 @@ CONTAINS
     
     grpl_ls_interp = 0._r8
     
-    !! CAM5 cloud mixing ratio calculations
-    !! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state, 
-    !! Convective cloud water is NOT part of radiation calculations.
+    ! subroutine subsample_and_optics provides separate arguments to pass
+    ! the large scale and convective cloud condensate.  Below the grid box
+    ! total cloud water mixing ratios are passed in the arrays for the
+    ! large scale contributions and the arrays for the convective
+    ! contributions are set to zero.  This is consistent with the treatment
+    ! of cloud water by the radiation code.
     mr_ccliq = 0._r8
     mr_ccice = 0._r8
     mr_lsliq = 0._r8
@@ -1627,11 +1625,8 @@ CONTAINS
        kk = ktop + k -1
        do i = 1, ncol
           if (cld(i,k) > 0._r8) then
-             !! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
-             mr_ccliq(i,k) = sh_cldliq(i,kk) + dp_cldliq(i,kk)
-             mr_ccice(i,k) = sh_cldice(i,kk) + dp_cldice(i,kk)
-             mr_lsliq(i,k) = state%q(i,kk,ixcldliq)   ! state only includes stratiform (kg/kg)  
-             mr_lsice(i,k) = state%q(i,kk,ixcldice)   ! state only includes stratiform (kg/kg)
+             mr_lsliq(i,k) = totg_liq(i,kk)
+             mr_lsice(i,k) = totg_ice(i,kk)
           end if
        end do
     end do
