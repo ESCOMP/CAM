@@ -198,7 +198,7 @@ contains
 
     do m = 1, aero_props%nbins()
        write(binstr,'(i2.2)') m
-       call addfld('SOLFACTB'//binstr,  (/ 'lev' /), 'A',unit_basename//'/kg ','below cld sol fact')
+       call addfld('SOLFACTB'//binstr,  (/ 'lev' /), 'A', '1', 'below cld sol fact')
 
        do l = 0, aero_props%nmasses(m)
 
