@@ -385,15 +385,12 @@ contains
     real(r8)      :: hstobie_linoz (pcols, pver)
     real(r8)      :: hstobie_tropop(pcols, pver)
 
-    ! Output arguments from tropopause_findWithBackup which does not support optional arguments.
-    real(r8)      :: tropP_out(pstate%ncol)
-    real(r8)      :: tropT_out(pstate%ncol)
-    real(r8)      :: tropZ_out(pstate%ncol)
-
     character(len=512) :: errmsg
     integer            :: errflg
 
-    ncol = pstate%ncol
+    ! Get compatibility variables for CCPP-ized routine
+    ncol   = pstate%ncol
+    calday = get_curr_calday()
 
     ! Initialize the results to a missing value, so that the algorithms will
     ! attempt to find the tropopause for all of them. Only do this for the active columns.
@@ -415,10 +412,6 @@ contains
       backAlg = default_backup
     end if
 
-    ! Get compatibility variables for CCPP-ized routine
-    ncol   = pstate%ncol
-    calday = get_curr_calday()
-
     ! This does not call the tropopause_find_run routine directly, because it
     ! computes multiple needed tropopauses simultaneously. Instead, here we
     ! specify the algorithm needed directly to the algorithm driver routine.
@@ -437,9 +430,9 @@ contains
          tropp_p_loc    = tropp_p_loc(:ncol,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
          tropp_days     = days, &
          tropLev        = tropLev(:ncol), &
-         tropP          = tropP_out, &
-         tropT          = tropT_out, &
-         tropZ          = tropZ_out, &
+         tropP          = tropP, &
+         tropT          = tropT, &
+         tropZ          = tropZ, &
          primary        = primAlg, &
          backup         = backAlg, &
          hstobie_trop   = hstobie_trop(:ncol, :pver), &    ! Only used if TROP_ALG_HYBSTOB
@@ -448,11 +441,6 @@ contains
          errmsg         = errmsg, &
          errflg         = errflg &
     )
-
-    ! Copy to the optional out arguments if present...
-    if (present(tropP)) tropP(:ncol) = tropP_out(:ncol)
-    if (present(tropT)) tropT(:ncol) = tropT_out(:ncol)
-    if (present(tropZ)) tropZ(:ncol) = tropZ_out(:ncol)
 
     ! Output hybridstobie specific fields
     if(primAlg == TROP_ALG_HYBSTOB) then
@@ -487,11 +475,6 @@ contains
     integer             :: i
     integer             :: ncol
 
-    ! Dummy output arguments from tropopause_findWithBackup as it does not accept optional arguments.
-    real(r8)      :: tropP_out(pstate%ncol)
-    real(r8)      :: tropT_out(pstate%ncol)
-    real(r8)      :: tropZ_out(pstate%ncol)
-
     character(len=512) :: errmsg
     integer            :: errflg
 
@@ -516,9 +499,6 @@ contains
          tropp_p_loc    = tropp_p_loc(:ncol,pstate%lchnk,:), &  ! Subset into chunk as the underlying routines are no longer chunkized.
          tropp_days     = days, &
          tropLev        = tropLev(1:ncol), &
-         tropP          = tropP_out, &
-         tropT          = tropT_out, &
-         tropZ          = tropZ_out, &
          primary        = TROP_ALG_CHEMTROP, &
          backup         = TROP_ALG_CLIMATE, &
          errmsg         = errmsg, &
