@@ -80,7 +80,7 @@
 	url = https://github.com/MPAS-Dev/MPAS-Model.git
         fxrequired = AlwaysRequired
         fxsparse = ../.mpas_sparse_checkout
-        fxtag = b8c33daa
+        fxtag = v8.2.1
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
 [submodule "cosp2"]
