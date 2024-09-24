@@ -208,8 +208,8 @@ end function vd_lu_solve
 ! coef_q_diff and coef_q_adv are defined at the level interfaces, while
 ! coef_q and coef_q_weight are grid-cell averages.
 
-function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
-   coef_q_weight, upper_bndry, lower_bndry, l_cond, r_cond)  result(du)
+function fin_vol_solve(dt, p, toSolve, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
+   coef_q_weight, upper_bndry, lower_bndry, l_cond, r_cond)  result(solution)
 
    use linear_1d_operators, only: &
      zero_operator,               &
@@ -237,7 +237,7 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
    ! real(r8), intent(in) :: u(ncols,pver)
    integer,  intent(in)    :: ncols
    integer,  intent(in)    :: pver
-   real(r8), intent(in) :: u(ncols,pver)
+   real(r8), intent(in)    :: toSolve(ncols,pver)
 
    ! Coefficients for diffusion and advection.
    !
@@ -254,7 +254,7 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
    ! Objects representing boundary conditions.
    class(BoundaryCond), intent(in), optional :: l_cond, r_cond
 
-   real(r8) :: du(ncols,pver)
+   real(r8) :: solution(ncols,pver)
 
    ! decomposition.
    type(TriDiagDecomp) :: decomp
@@ -305,17 +305,16 @@ function fin_vol_solve(dt, p, u, ncols, pver, coef_q, coef_q_diff, coef_q_adv, &
 
    ! Decompose
    decomp = TriDiagDecomp(net_operator)
-   du = u
-   call decomp%left_div(du(:ncols, :), l_cond=l_cond)
-   du = du - u
-   ! Ensure local objects are deallocated.
+   solution = toSolve
+
    call net_operator%finalize()
    call add_term%finalize()
-   ! du = u
-   ! call decomp%left_div(du(:ncols, :), l_cond, r_cond)
-   ! call decomp%left_div(du(:ncols, :), l_cond=l_cond)
+
+   call decomp%left_div(solution(:ncols, :), l_cond=l_cond, r_cond=r_cond)
+   !tendency = tendency - toSolve
+
+   ! Ensure local objects are deallocated.
    call decomp%finalize()
-   ! du = u - du
 
 end function fin_vol_solve
 

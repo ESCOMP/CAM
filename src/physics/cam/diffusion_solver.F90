@@ -311,8 +311,8 @@
     logical  :: lqtst(pcols)                             ! Adjust vertical profiles
     real(r8) :: ddse(ncol,pver)                          ! Change in dry static energy [ J/kg ]
     real(r8) :: dttemp(ncol,pver)			               ! change in temporary temperature array
-    real(r8) :: du(ncol,pver)                            ! change in wind
-    real(r8) :: dv(ncol,pver)                            ! change in wind
+    real(r8) :: du(pcols,pver)                            ! change in wind
+    real(r8) :: dv(pcols,pver)                            ! change in wind
 
     ! LU decomposition information.
     type(TriDiagDecomp) :: decomp
@@ -575,14 +575,33 @@
           tau_damp_rate(:,k) = tau_damp_rate(:,k) + dragblj(:ncol,k)
        end do
 
-       du = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
+       !du = 0._r8
+       !dv = 0._r8
+       !du(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
+       !                           coef_q=tau_damp_rate, &
+       !                           coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+       v(:ncol,:) = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
-       dv = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
+       !u(:ncol,:) = u(:ncol,:) + du(:ncol,:)
+       !v(:ncol,:) = v(:ncol,:) + dv(:ncol,:)
+       
+       !decomp = fin_vol_lu_decomp(ztodt, p, &
+       !     coef_q=tau_damp_rate, coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+
+       !call decomp%left_div(u(:ncol,:))
+       !call decomp%left_div(v(:ncol,:))
+       !call decomp%finalize()
+
+
+       !du = 0._r8
+       u(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
-       u(:ncol,:) = u(:ncol,:) + du
-       v(:ncol,:) = v(:ncol,:) + dv
+       !u(:ncol,:) = u(:ncol,:) + du(:ncol,:)
+
+
+
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
        ! have been actually added into the atmosphere at the current time step. !
@@ -747,14 +766,22 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
+         !  decomp = fin_vol_lu_decomp(ztodt, p, &
+         !       coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
+         !       upper_bndry=interface_boundary)
+
           if (.not. use_spcam) then
-           ddse = fin_vol_solve(ztodt, p, dse(:ncol,:), &
-                                      ncol, pver, &
-                                      coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
-                                      upper_bndry=interface_boundary, &
-                                      l_cond=BoundaryData(dse_top(:ncol)))
-           dse(:ncol,:) = dse(:ncol,:) + ddse
+             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), &
+                                  ncol, pver, &
+                                  coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
+                                  upper_bndry=interface_boundary, &
+                                  l_cond=BoundaryData(dse_top(:ncol)))
+             !dse(:ncol,:) = dse(:ncol,:) + ddse
+            ! call decomp%left_div(dse(:ncol,:), &
+            !      l_cond=BoundaryData(dse_top(:ncol)))
           endif
+
+         !  call decomp%finalize()
 
           ! Calculate flux at top interface
 
@@ -763,17 +790,23 @@
           topflx(:ncol) =  - kvh(:ncol,1) * tmpi2(:ncol,1) / (ztodt*gravit) * &
                ( dse(:ncol,1) - dse_top(:ncol) )
 
+         !  decomp = fin_vol_lu_decomp(ztodt, p, &
+         !       coef_q_diff=kvt(:ncol,:)*dpidz_sq, &
+         !       coef_q_weight=cpairv(:ncol,:))
+
           ttemp0 = t(:ncol,:)
           ttemp = ttemp0
 
           ! upper boundary is zero flux for extended model
           if (.not. use_spcam) then
-             dttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
-                                        coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
-                                        coef_q_weight=cpairv(:ncol,:))
-             ttemp = ttemp + dttemp
+             ttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
+                                       coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
+                                       coef_q_weight=cpairv(:ncol,:))
+             !ttemp = ttemp + dttemp
+            !  call decomp%left_div(ttemp)
           end if
 
+         !  call decomp%finalize()
 
           !-------------------------------------
           !  Update dry static energy
@@ -791,15 +824,23 @@
              kv_total(:ncol,:) = kvh(:ncol,:)
           end if
 
+         !  decomp = fin_vol_lu_decomp(ztodt, p, &
+         !       coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
+         !       upper_bndry=interface_boundary)
+
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
-             ddse = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
-                                        coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
-                                        upper_bndry=interface_boundary, &
-                                        l_cond=BoundaryData(dse_top(:ncol)))
-             dse(:ncol,:) = dse(:ncol,:) + ddse
+             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                                       coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
+                                       upper_bndry=interface_boundary, &
+                                       l_cond=BoundaryData(dse_top(:ncol)))
+             !dse(:ncol,:) = dse(:ncol,:) + ddse
+            !  call decomp%left_div(dse(:ncol,:), &
+            !       l_cond=BoundaryData(dse_top(:ncol)))
           end if
+
+         !  call decomp%finalize()
 
           ! Calculate flux at top interface
 
