@@ -93,11 +93,15 @@
 
 [submodule "clubb"]
 	path = src/physics/clubb
-	url = https://github.com/larson-group/clubb_release
-        fxrequired = AlwaysRequired
+#	url = https://github.com/larson-group/clubb_release
+        url = https://github.com/adamrher/clubb_release
+	fxrequired = AlwaysRequired
         fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
-        fxDONOTUSEurl = https://github.com/larson-group/clubb_release
+#       fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
+#	fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf.mf
+	fxtag = 556f574401882accbc431792e09c94fe0e70d233
+#	fxDONOTUSEurl = https://github.com/larson-group/clubb_release
+        fxDONOTUSEurl = https://github.com/adamrher/clubb_release
 
 [submodule "cism"]
 path = components/cism
