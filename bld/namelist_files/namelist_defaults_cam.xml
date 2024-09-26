@@ -2327,6 +2327,7 @@
 <do_clubb_mf_coldpool_init         > .false. </do_clubb_mf_coldpool_init>
 <do_clubb_mf_coldpool_perplume     > .false. </do_clubb_mf_coldpool_perplume>
 <clubb_mf_kseed                    > 1       </clubb_mf_kseed>
+<do_clubb_mf_aloft                 > .false. </do_clubb_mf_aloft>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>

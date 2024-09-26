@@ -2546,7 +2546,8 @@ end subroutine clubb_init_cnst
       pdf_parameter, &
       init_pdf_params_api, &
       init_pdf_implicit_coefs_terms_api, &
-      setup_grid_api
+      setup_grid_api, &
+      ic_K 
 
     use clubb_api_module, only: &
       clubb_fatal_error    ! Error code value to indicate a fatal error
@@ -2718,6 +2719,8 @@ end subroutine clubb_init_cnst
       vpwp_pert_inout,          & ! Perturbed v'w'                            [m^2/s^2]
       khzm_out,                 & ! Eddy diffusivity of heat/moisture on momentum (i.e. interface) levels  [m^2/s]
       khzt_out,                 & ! eddy diffusivity on thermo grids              [m^2/s]
+!+++arh
+      Lscale_out,               &
       qclvar_out,               & ! cloud water variance                          [kg^2/kg^2]
       thlprcp_out,              &
       wprcp_out,                & ! CLUBB output of flux of liquid water                [kg/kg m/s]
@@ -3133,6 +3136,7 @@ end subroutine clubb_init_cnst
 
     ! CFL limiter vars
     real(r8), parameter                  :: cflval = 1._r8
+    integer                              :: trop_mf
     real(r8)                             :: lambda
     real(r8), dimension(state%ncol)      :: cflfac,     max_cfl,        &
                                             th_sfc,     max_cfl_nadv
@@ -4059,6 +4063,7 @@ end subroutine clubb_init_cnst
         edsclr_in(i,k,:)      = 0._r8
         khzm_out(i,k)         = 0._r8
         khzt_out(i,k)         = 0._r8
+        Lscale_out(i,k)       = 0._r8
       end do
     end do
 
@@ -4335,16 +4340,19 @@ end subroutine clubb_init_cnst
         end do
 
         do i=1, ncol
+          ! invert index of tropopause
+          trop_mf = pverp - troplev(i) + 1
+
           call integrate_mf( pverp,                                                                                   & ! input
                              rho_zm(i,:),    dzm(i,:),         zi_g(i,:),       p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
                              rho_zt(i,:),    dzt(i,:),         zt_g(i,:),       p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
                              um_in(i,:),     vm_in(i,:),       thlm_in(i,:),    rtm_in(i,:),     thv_ds_zt(i,:),      & ! input
-                                                               th_zt(i,:),      qv_zt(i,:),      qc_zt(i,:),          & ! input
+                             trop_mf,        wm_zm(i,:),       th_zt(i,:),      qv_zt(i,:),      qc_zt(i,:),          & ! input
                                                                thlm_zm_in(i,:), rtm_zm_in(i,:),  thv_ds_zm(i,:),      & ! input
                                                                th_zm(i,:),      qv_zm(i,:),      qc_zm(i,:),          & ! input
                              ustar2(i),      th_sfc(i),        wpthlp_sfc(i),   wprtp_sfc(i),    pblh(i),             & ! input
                              wpthlp_in(i,:), tke_in(i,:),      tpert(i),        mf_ztopm1(i,:),  rhinv(i),            & ! input                     
-                                             mf_cape_output(i),mf_ddcp(i,:),    mf_cbm1(i),                           & ! output - plume diagnostics
+                             wpthvp_in(i,:), wprtp_in(i,:),    mf_cape_output(i),mf_ddcp(i,:),   mf_cbm1(i),          & ! output - plume diagnostics
                              mf_upa(i,:,:),    mf_dna(i,:,:),                                                         & ! output - plume diagnostics
                              mf_upw(i,:,:),    mf_dnw(i,:,:),                                                         & ! output - plume diagnostics
                              mf_upmf(i,:,:),                                                                          & ! output - plume diagnostics
@@ -4778,7 +4786,8 @@ end subroutine clubb_init_cnst
           qclvar_out, thlprcp_out, &
           wprcp_out, w_up_in_cloud_out, w_down_in_cloud_out,  &
           cloudy_updraft_frac_out, cloudy_downdraft_frac_out, &
-          rcm_in_layer_out, cloud_cover_out, invrs_tau_zm_out )
+          rcm_in_layer_out, cloud_cover_out, invrs_tau_zm_out, &
+          Lscale_out )
 
       ! Note that CLUBB does not produce an error code specific to any column, and
       ! one value only for the entire chunk
@@ -5003,7 +5012,13 @@ end subroutine clubb_init_cnst
         cloud_cover(i,pverp-k+1)  = min(cloud_cover_out(i,k),1._r8)
         zt_out(i,pverp-k+1)       = zt_g(i,k)
         zi_out(i,pverp-k+1)       = zi_g(i,k)
-        khzm(i,pverp-k+1)         = khzm_out(i,k)
+
+        if (do_clubb_mf_addtke) then
+          khzm(i,pverp-k+1)         = khzm_out(i,k) + clubb_params(i,ic_K) * Lscale_out(i,k) * (0.5_r8*s_aww(i,k))**0.5_r8
+        else
+          khzm(i,pverp-k+1)         = khzm_out(i,k)
+        end if
+
         qclvar(i,pverp-k+1)       = min(1._r8,qclvar_out(i,k))
         wm_zt_out(i,pverp-k+1)    = wm_zt(i,k)
         wp2rtp(i,pverp-k+1)       = wp2rtp_inout(i,k)
@@ -5724,7 +5739,8 @@ end subroutine clubb_init_cnst
          deepcu(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
 
          if (do_clubb_mf_rad) then
-           shalcu(i,k) = mf_cloudfrac_output(i,k)
+           ! multiply mf cloud fraction by 10
+           shalcu(i,k) = 10._r8*mf_cloudfrac_output(i,k)
            sh_icwmr(i,k) = mf_qc_output(i,k)
          end if
        

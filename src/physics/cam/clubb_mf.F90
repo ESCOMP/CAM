@@ -67,6 +67,7 @@ module clubb_mf
   logical, protected :: do_clubb_mf_precip = .false.
   logical, protected :: do_clubb_mf_rhtke = .false.
   logical, protected :: do_clubb_mf_cmt = .false.
+  logical, protected :: do_clubb_mf_aloft = .false.
   logical, protected :: do_clubb_mf_coldpool_init = .false.
   logical, protected :: do_clubb_mf_coldpool_perplume = .false.
   logical, protected :: do_clubb_mf_lscale_perplume = .false.
@@ -96,7 +97,7 @@ module clubb_mf
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
                            do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
-                           do_clubb_mf_addtke
+                           do_clubb_mf_addtke, do_clubb_mf_aloft
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -168,6 +169,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_lscale_perplume")
     call mpi_bcast(do_clubb_mf_addtke, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
+    call mpi_bcast(do_clubb_mf_aloft, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aloft")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -180,12 +183,12 @@ module clubb_mf
                            rho_zm,  dzm,     zm,      p_zm,      iexner_zm,         & ! input
                            rho_zt,  dzt,     zt,      p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
-                                             th,      qv,        qc,                & ! input
+                           ktropo,  w,       th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-                           ustar,      ths,  wthl,    wqt,       pblh,              & ! input
+                           ustar,      ths,  wthl_sfc,    wqt_sfc,       pblh,              & ! input
                            wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
-                           mcape,      ddcp, cbm1,                                  & ! output
+                           wpthvp_env, wpqtp_env, mcape,      ddcp, cbm1,                                  & ! output
                            upa,     dna,                                            & ! output
                            upw,     dnw,                                            & ! output
                            upmf,                                                    & ! output
@@ -248,8 +251,9 @@ module clubb_mf
 
      use wv_saturation,      only : qsat
 
-     integer,  intent(in)                :: nz
+     integer,  intent(in)                :: nz, ktropo
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
+                                            w,                    &
                                             thl,    thv,          & ! thermodynamic grid
                                             th,     qv,           & ! thermodynamic grid
                                             qt,     qc,           & ! thermodynamic grid
@@ -262,9 +266,10 @@ module clubb_mf
                                             p_zm,   iexner_zm,    & ! momentum grid
                                             dzm,    rho_zm,       & ! momentum grid
                                             zm,                   & ! momentum grid
-                                            tke,    wpthlp_env      ! momentum grid
+                                            tke,    wpthlp_env,   & ! momentum grid
+                                            wpthvp_env, wpqtp_env
 
-     real(r8), intent(in)                :: wthl,wqt
+     real(r8), intent(in)                :: wthl_sfc,wqt_sfc
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
      real(r8), intent(in)                :: ths,ustar
@@ -350,11 +355,12 @@ module clubb_mf
      integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
-     integer                              :: k,i,kstart,ddtop,kcb
+     integer                              :: k,i,kstart,ddtop,kcb,kpbl,kmid,nbot !+++arh
      integer,  dimension(clubb_mf_nup)    :: ddbot,kcbarr
      real(r8), dimension(clubb_mf_nup)    :: zcb,cpfac
      real(r8)                             :: zcb_unset,                &
-                                             wthv,   ddint,   iddcp,   &
+                                             wthv_sfc, wthv,   wqt,    &
+                                                     ddint,   iddcp,   &
                                              wstar,  qstar,   thvstar, & 
                                              sigmaw, sigmaqt, sigmathv,&
                                              convh,  wmin,    wmax,    & 
@@ -374,7 +380,8 @@ module clubb_mf
                                              lmixn,   srfarea,         & ! momentum grid
                                              srfwqtu, srfwthvu,        &
                                              facqtu,  facthvu,         &
-                                             zsub,    wcb,    rh_L0
+                                             zsub,    wcb,    rh_L0,   &
+                                             dzext !+++arh
 
 !     !
 !     ! cape variables
@@ -475,6 +482,9 @@ module clubb_mf
      !
      ! max limiter on cold pool init effects
      real(r8),parameter                   :: max_cpinit = 0.5_r8
+     !
+     ! to scale surface fluxes
+     logical                              :: aloft = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -604,10 +614,45 @@ module clubb_mf
      zcb       = zcb_unset
 
      ! surface buoyancy flux
-     wthv = wthl+zvir*ths*wqt
+     !wthv = wthl+zvir*ths*wqt
+     wthv_sfc = wthl_sfc+zvir*ths*wqt_sfc
+
+     if (do_clubb_mf_aloft .and. wthv_sfc < 0.01_r8) then
+       aloft = .true.
+
+       kpbl = 1
+       do while (zm(kpbl) < pblh)
+         kpbl = kpbl+1
+       end do
+
+       kmid = 1
+!+++arh
+       !do while (zm(kmid) < 9.E3_r8)
+       do while (p_zm(kmid) > 600.E2_r8)
+         kmid = kmid+1
+       end do
+
+       kstart = maxloc(wpthvp_env(kpbl:kmid),DIM=1)
+       kstart = kstart + kpbl - 1
+
+       wthv = wpthvp_env(kstart)
+       wqt = wpqtp_env(kstart)
+
+       if (kstart == nz) then
+         wthv = 0._r8
+         wqt = 0._r8
+       end if
+
+     else
+       aloft = .false.
+       kstart = 1
+       wthv = wthv_sfc
+       wqt  = wqt_sfc
+     end if
 
      ! if surface buoyancy is positive then do mass-flux
-     if ( wthv > 0._r8 ) then
+     !if ( wthv > 0._r8 ) then
+     if ( wthv > 0._r8 .and. wqt > 0._r8) then
 
        if (do_clubb_mf_mixd) then
          convh = max(cbm1,pblhmin)
@@ -619,7 +664,7 @@ module clubb_mf
        ! Initialize using Deardorff convective velocity scale      ! 
        ! --------------------------------------------------------- !
 
-       wstar = max( wstarmin, (gravit/thv(1)*wthv*convh)**(1._r8/3._r8) )
+       wstar = max( wstarmin, (gravit/thv(kstart)*wthv*convh)**(1._r8/3._r8) )
 
        ! --------------------------------------------------------- !
        ! Compute cold pool feedback parameter                      ! 
@@ -663,17 +708,17 @@ module clubb_mf
          wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
 
-         upw(1,i) = 0.5_r8 * (wlv+wtv)
-         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
+         upw(kstart,i) = 0.5_r8 * (wlv+wtv)
+         upa(kstart,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
                     - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
 
-         upmf(1,i)= rho_zm(1)*upa(1,i)*upw(1,i)
+         !upmf(kstart,i)= rho_zm(kstart)*upa(kstart,i)*upw(kstart,i)
 
-         upu(1,i) = u(1)
-         upv(1,i) = v(1)
+         upu(kstart,i) = u(kstart)
+         upv(kstart,i) = v(kstart)
 
-         upqt(1,i)  = cwqt * upw(1,i) * sigmaqt/sigmaw
-         upthv(1,i) = cwthv * upw(1,i) * sigmathv/sigmaw
+         upqt(kstart,i)  = cwqt * upw(kstart,i) * sigmaqt/sigmaw
+         upthv(kstart,i) = cwthv * upw(kstart,i) * sigmathv/sigmaw
        enddo
 
        facqtu=1._r8
@@ -685,9 +730,9 @@ module clubb_mf
          srfwthvu = 0._r8
          srfarea = 0._r8
          do i=1,clubb_mf_nup
-             srfwqtu=srfwqtu+upqt(1,i)*upw(1,i)*upa(1,i)
-             srfwthvu=srfwthvu+upthv(1,i)*upw(1,i)*upa(1,i)
-             srfarea = srfarea+upa(1,i)
+             srfwqtu=srfwqtu+upqt(kstart,i)*upw(kstart,i)*upa(kstart,i)
+             srfwthvu=srfwthvu+upthv(kstart,i)*upw(kstart,i)*upa(kstart,i)
+             srfarea = srfarea+upa(kstart,i)
          end do
          facqtu=srfarea*wqt/srfwqtu
          facthvu=srfarea*wthv/srfwthvu
@@ -695,31 +740,84 @@ module clubb_mf
 
        do i=1,clubb_mf_nup
 
-         betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
-         betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         !betaqt = (qt(4)-qt(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         !betathl = (thv(4)-thv(2))/(0.5_r8*(dzt(4)+2._r8*dzt(3)+dzt(2)))
+         betaqt = (qt(kstart+3)-qt(kstart+1))/(0.5_r8*(dzt(kstart+3)+2._r8*dzt(kstart+2)+dzt(kstart+1)))
+         betathl = (thv(kstart+3)-thv(kstart+1))/(0.5_r8*(dzt(kstart+3)+2._r8*dzt(kstart+2)+dzt(kstart+1)))
 
-         upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
-         upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
+         !upqt(1,i)= qt(2)-betaqt*0.5_r8*(dzt(2)+dzt(1))+facqtu*upqt(1,i)
+         !upthv(1,i)= thv(2)-betathl*0.5_r8*(dzt(2)+dzt(1))+facthvu*upthv(1,i)
+         if (.not.aloft) then
+           upqt(kstart,i)= qt(kstart+1)-betaqt*0.5_r8*(dzt(kstart+1)+dzt(kstart))+facqtu*upqt(kstart,i)
+           upthv(kstart,i)= thv(kstart+1)-betathl*0.5_r8*(dzt(kstart+1)+dzt(kstart))+facthvu*upthv(kstart,i)
+         else
+           upqt(kstart,i)= qt(kstart)+upqt(kstart,i)
+           upthv(kstart,i)= thv(kstart)+upthv(kstart,i)
+           if (w(kstart) > 0._r8) upw(kstart,i)= w(kstart)+upw(kstart,i)
+         end if
 
-         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
-         upth(1,i)  = upthl(1,i)
+         upthl(kstart,i) = upthv(kstart,i) / (1._r8+zvir*upqt(kstart,i))
+         upth(kstart,i)  = upthl(kstart,i)
+         upmf(kstart,i) = rho_zm(kstart)*upa(kstart,i)*upw(kstart,i)
 
          ! get cloud, lowest momentum level 
          if (do_condensation) then
-           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
+           call condensation_mf(upqt(kstart,i), upthl(kstart,i), p_zm(kstart), iexner_zm(kstart), &
                                 thvn, qcn, thn, qln, qin, qsn, lmixn)
-           upthv(1,i) = thvn
-           upqc(1,i)  = qcn
-           upql(1,i)  = qln
-           upqi(1,i)  = qin
-           upqs(1,i)  = qsn
-           upth(1,i)  = thn
-           if (qcn > 0._r8) zcb(i) = zm(1)
+           upthv(kstart,i) = thvn
+           upqc(kstart,i)  = qcn
+           upql(kstart,i)  = qln
+           upqi(kstart,i)  = qin
+           upqs(kstart,i)  = qsn
+           upth(kstart,i)  = thn
+           if (qcn > 0._r8) zcb(i) = zm(kstart)
          else
            ! assume no cldliq
-           upqc(1,i)  = 0._r8
+           upqc(kstart,i)  = 0._r8
          end if
        end do
+
+       ! if aloft extend the mass flux plume below kstart nbot levels
+       if (aloft) then
+         zsub = zm(kstart)         
+         dzext = 1000._r8
+         !if greater than dzext above the surface
+         if (zsub > dzext) then
+             ! find nbot levs below kstart
+             nbot = 0
+             do k=kstart-1,nz,-1
+               if ((zm(kstart)-zm(k)) < dzext) then
+                 nbot = nbot + 1
+               end if
+             end do
+         else
+           !else set dxext to height above the suface
+           dzext = zm(kstart) - zm(nz)
+           nbot = kstart-nz
+         end if
+
+         zsub = zm(kstart)
+         do i=1,clubb_mf_nup
+           wcb  = upw(kstart,i)
+           do k=kstart-1,kstart-nbot,-1
+             !upw(k,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(k))**clubb_mf_ddexp 
+             upw(k,i) = wcb - (wcb/(dzext**clubb_mf_ddexp))*(zsub - zm(k))**clubb_mf_ddexp
+             upa(k,i) = upa(kstart,i)
+             upmf(k,i) = rho_zm(k)*upa(k,i)*upw(k,i)
+
+             upu(k,i) = upu(kstart,i)
+             upv(k,i) = upv(kstart,i)
+             upqt(k,i) = upqt(kstart,i)
+             upthv(k,i) = upthv(kstart,i)
+             upthl(k,i) = upthl(kstart,i)
+             upth(k,i)  = upth(kstart,i)
+             upqc(k,i)  = upqc(kstart,i)
+             upql(k,i)  = upql(kstart,i)
+             upqi(k,i)  = upqi(kstart,i)
+             upqs(k,i)  = upqs(kstart,i)
+           end do
+         end do
+       end if
 
        do i=1,clubb_mf_nup
          ! --------------------------------------------------------- !
@@ -758,7 +856,7 @@ module clubb_mf
        !                                                           !
        ! --------------------------------------------------------- !
        do i=1,clubb_mf_nup
-         do k=1,nz-1
+         do k=kstart,nz-1
 
            ! get microphysics, autoconversion
            if (do_clubb_mf_precip .and. upqc(k,i) > 0._r8) then
@@ -941,7 +1039,8 @@ module clubb_mf
 
            end do !iter_xc
 
-           if (wn>0._r8) then
+!+++arh - limit convection to within troposphere
+           if (wn>0._r8 .and. (k+1)<ktropo) then
 
              upthv(k+1,i) = thvn
              upthl(k+1,i) = thln
@@ -1342,7 +1441,10 @@ module clubb_mf
 
          aw (k) = awup(k)+ awdn(k)
          aww(k) = awwup(k)+ awwdn(k)
-         awu(k) = awuup(k)+ awudn(k)
+!+++arh
+         !awu(k) = awuup(k)+ awudn(k)
+         if (aloft) awu(k) = 1._r8
+        
          awv(k) = awvup(k)+ awvdn(k)
          sqt(k) = sqtup(k) + sqtdn(k)
          sthl(k)= sthlup(k) + sthldn(k)
@@ -1355,7 +1457,7 @@ module clubb_mf
        do i=1,clubb_mf_nup
          do k=1,nz
            ! return if no convection at k=2
-           if (k == 2 .and. ac(k) == 0._r8) then
+           if (k == 2 .and. ac(k) == 0._r8 .and. .not.aloft) then
              sqt(k) = 0_r8
              sthl(k) = 0._r8
              ztopm1(:) = zm(1)
@@ -1370,6 +1472,14 @@ module clubb_mf
            end if
          end do
        end do
+
+       !subtract init level from ztop for aloft plumes
+       if (aloft) then
+         ztopm1 = ztopm1 - zm(kstart-nbot)
+         do i=1,clubb_mf_nup
+           if (ztopm1(i) < zm(1)) ztopm1(i) = zm(1)
+         end do
+       end if
 
        ! --------------------------------------------------------- !
        ! cloud base / mixing depth calculation                                        ! 
