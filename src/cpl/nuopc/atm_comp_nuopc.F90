@@ -1967,8 +1967,8 @@ contains
     call shr_cal_ymd2date(yy,mm,dd,start_ymd)
 
     call ESMF_TimeGet( nextTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
-   !call ESMF_TimeGet( currTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     call shr_cal_ymd2date(yy,mm,dd,curr_ymd)
 
     ! Open clock info restart dataset
