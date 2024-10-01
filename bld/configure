@@ -1450,9 +1450,9 @@ if ($chem_pkg =~ '_mam3') {
 
 # Customize GEOS-Chem advected species and chemistry CPP definitions
 if ($chem_pkg =~ 'geoschem') {
-    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING ';
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_CESM -DMODEL_GEOSCHEM';
     if ($chem_pkg =~ '_mam4') {
-        $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+        $chem_nadv = 269; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
     }
 }
 # CARMA sectional microphysics
@@ -2219,8 +2219,10 @@ sub write_filepath
         print $fh "$chem_src_dir\n";
     }
 
-    # GEOS-Chem must be prior to Mozart
+    # GEOS-Chem and dependencies; GEOS-Chem must be prior to Mozart
     if ($chem_pkg =~ 'geoschem') {
+	print $fh "$camsrcdir/src/chemistry/cloud_j/src/Core\n";
+	print $fh "$camsrcdir/src/chemistry/hetp/src/Core\n";
 	print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
 	print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
 	print $fh "$chem_src_dir/geoschem_src/Headers\n";

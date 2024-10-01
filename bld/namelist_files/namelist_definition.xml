@@ -5241,12 +5241,23 @@ Default: set by build-namelist for climo cases, otherwise -1 to use model clock.
 
 <!-- GEOS-Chem model -->
 
-<entry id="geoschem_cheminputs" type="char*256" input_pathname="abs" category="geoschem"
+<entry id="geoschem_chem_inputs" type="char*256" input_pathname="abs" category="geoschem"
        group="geoschem_nl" valid_values="" >
-Full pathname to GEOS-Chem chemistry inputs directory
+Full pathname of the GEOS-Chem chemistry inputs directory.
 Default: set by build-namelist.
 </entry>
 
+<entry id="geoschem_aeropt_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the aerosols optical property inputs directory used in GEOS-Chem outside of Cloud-J.
+Default: set by build-namelist.
+</entry>
+
+<entry id="geoschem_photol_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the Cloud-J photolysis inputs directory used in GEOS-Chem.
+Default: set by build-namelist.
+</entry>
 
 <!-- Reference Pressures -->
 
