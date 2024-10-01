@@ -1823,7 +1823,7 @@ contains
     use short_lived_species, only : get_short_lived_species_gc, set_short_lived_species_gc
     use spmd_utils,          only : masterproc
     use time_manager,        only : Get_Curr_Calday, Get_Curr_Date ! For computing SZA
-    use tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
+    use tropopause,          only : Tropopause_findChemTrop
     use wv_saturation,       only : QSat
 #if defined( MODAL_AERO )
     use aero_model,          only : aero_model_gasaerexch ! Aqueous chemistry and aerosol growth
@@ -2588,7 +2588,7 @@ contains
     ENDDO
 
     ! Retrieve tropopause level
-    Trop_Lev = 0.0e+0_r8
+    Trop_Lev = 0
     CALL Tropopause_FindChemTrop(state, Trop_Lev)
     ! Back out the pressure
     Trop_P = 1000.0e+0_r8
