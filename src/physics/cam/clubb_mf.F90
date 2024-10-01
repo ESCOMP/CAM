@@ -628,7 +628,7 @@ module clubb_mf
        kmid = 1
 !+++arh
        !do while (zm(kmid) < 9.E3_r8)
-       do while (p_zm(kmid) > 600.E2_r8)
+       do while (p_zm(kmid) > 500.E2_r8)
          kmid = kmid+1
        end do
 
@@ -711,8 +711,6 @@ module clubb_mf
          upw(kstart,i) = 0.5_r8 * (wlv+wtv)
          upa(kstart,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
                     - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
-
-         !upmf(kstart,i)= rho_zm(kstart)*upa(kstart,i)*upw(kstart,i)
 
          upu(kstart,i) = u(kstart)
          upv(kstart,i) = v(kstart)
@@ -800,7 +798,6 @@ module clubb_mf
          do i=1,clubb_mf_nup
            wcb  = upw(kstart,i)
            do k=kstart-1,kstart-nbot,-1
-             !upw(k,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(k))**clubb_mf_ddexp 
              upw(k,i) = wcb - (wcb/(dzext**clubb_mf_ddexp))*(zsub - zm(k))**clubb_mf_ddexp
              upa(k,i) = upa(kstart,i)
              upmf(k,i) = rho_zm(k)*upa(k,i)*upw(k,i)
@@ -1455,7 +1452,7 @@ module clubb_mf
        ! ztopm1 calculation                                        ! 
        ! --------------------------------------------------------- !
        do i=1,clubb_mf_nup
-         do k=1,nz
+         do k=kstart,nz
            ! return if no convection at k=2
            if (k == 2 .and. ac(k) == 0._r8 .and. .not.aloft) then
              sqt(k) = 0_r8
@@ -1487,7 +1484,7 @@ module clubb_mf
        cbm1 = 0._r8
        do i=1,clubb_mf_nup
          kcbarr(i) = 0
-         do k=1,nz
+         do k=kstart,nz
            if (upqc(k,i) > 0._r8) then
              kcbarr(i) = k
              exit
@@ -1496,7 +1493,7 @@ module clubb_mf
 
          ! find height of dry plumes
          if (kcbarr(i) == 0) then
-           do k=1,nz
+           do k=kstart,nz
              if (upw(k,i) <= 0._r8) then
                kcbarr(i) = k
                exit

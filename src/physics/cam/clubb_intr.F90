@@ -4099,12 +4099,16 @@ end subroutine clubb_init_cnst
 
       kappa_zt(:,:) = 0._r8
       qc_zt(:,:) = 0._r8
+      qv_zt(:,:) = 0._r8
+      th_zt(:,:) = 0._r8
       invrs_exner_zt(:,:) = 0._r8
 
       do k=1,pver
         do i=1,ncol
           kappa_zt(i,k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
           qc_zt(i,k+1) = state1%q(i,pver-k+1,ixcldliq)
+          qv_zt(i,k+1) = state1%q(i,pver-k+1,ixq)
+          th_zt(i,k+1) = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)
           invrs_exner_zt(i,k+1) = inv_exner_clubb(i,pver-k+1)
         end do
       end do
@@ -4112,6 +4116,8 @@ end subroutine clubb_init_cnst
       do i=1,ncol
         kappa_zt(i,1) = kappa_zt(i,2)
         qc_zt(i,1) = qc_zt(i,2)
+        qv_zt(i,1) = qv_zt(i,2)
+        th_zt(i,1) = th_zt(i,2)
         invrs_exner_zt(i,1) = invrs_exner_zt(i,2)
       end do
 
