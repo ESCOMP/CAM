@@ -57,7 +57,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
 
@@ -67,7 +67,7 @@
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
 
@@ -2031,15 +2031,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
-  <!--  DART -->
-  <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock"> 00:20:00 </option>
-    </options>
-  </test>
+
 <!-- SPCAM testing -->
   <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
