@@ -2885,18 +2885,8 @@ CONTAINS
             tape(t)%hlist(ffld+1) = tmp
 
           else if (tape(t)%hlist(ffld)%field%name == tape(t)%hlist(ffld+1)%field%name) then
-            if (tape(t)%hlist(ffld)%avgflag == tape(t)%hlist(ffld+1)%avgflag) then
-              write(errormsg,'(2a,2(a,i3),2a)') &
-                   'FLDLST: Duplicate field with the same averaging flag. Check your fincl list: ', &
-                   trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld, &
-                   ', flag = ', trim(tape(t)%hlist(ffld)%avgflag)
-            else
-              write(errormsg,'(2a,2(a,i3),4a)') &
-                   'FLDLST: Duplicate field with different averaging flags. Place on separate tapes: ', &
-                   trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld, &
-                   ', flag1 = ', trim(tape(t)%hlist(ffld)%avgflag), ', flag2 = ', &
-                   trim(tape(t)%hlist(ffld+1)%avgflag)
-            end if
+            write(errormsg,'(2a,2(a,i3))') 'FLDLST: Duplicate field: ', &
+                 trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld
             call endrun(errormsg)
 
           end if
