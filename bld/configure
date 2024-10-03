@@ -1074,8 +1074,11 @@ my $rad_pkg = 'none';
 if ($phys_pkg =~ m/cam4|spcam_sam1mom/) {
     $rad_pkg = 'camrt';
 }
-elsif ($phys_pkg =~ m/cam5|cam6|cam7|spcam_m2005/) {
+elsif ($phys_pkg =~ m/cam5|cam6|spcam_m2005/) {
     $rad_pkg = 'rrtmg';
+}
+elsif ($phys_pkg =~ m/cam7/) {
+    $rad_pkg = 'rrtmgp';
 }
 # Allow the user to override the default via the commandline.
 my $use_rrtmgp_gpu = 0;
