@@ -2552,6 +2552,7 @@ CONTAINS
     use cam_grid_support, only: cam_grid_num_grids
     use spmd_utils,       only: mpicom
     use dycore,           only: dycore_is
+    use shr_kind_mod,     only: cm => shr_kind_cm
 
     !-----------------------------------------------------------------------
     !
@@ -2567,7 +2568,8 @@ CONTAINS
     integer t, fld                 ! tape, field indices
     integer ffld                   ! index into include, exclude and fprec list
     integer :: i
-    logical :: duplicate_error           ! flag for whether there is an incompatible duplicate found
+    character(len=cm) :: duplicate_error ! string to be populated if an incompatible duplicate is found
+    character(len=cm) :: tempmsg         ! string to be populated if an incompatible duplicate is found
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
     character(len=max_chars) :: errormsg ! error output field
@@ -2730,6 +2732,7 @@ CONTAINS
 
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
+    errormsg = ''
     do t=1,ptapes
       !
       ! Add the field to the tape if specified via namelist (FINCL[1-ptapes]), or if
@@ -2742,11 +2745,13 @@ CONTAINS
       do while(associated(listentry))
         mastername = listentry%field%name
         call list_index (fincl(1,t), mastername, ffld, duplicate_error=duplicate_error)
-        if (duplicate_error) then
-          write(errormsg,'(2a,2(a,i3))') &
-               'FLDLST: Duplicate field with different averaging flags. Place on separate tapes: ', &
-                trim(mastername),', tape = ', t, ', ffld = ', ffld
-          call endrun(trim(errormsg))
+        if (len(trim(duplicate_error)) > 0) then
+          if (len_trim(errormsg) == 0) then
+            write(errormsg,*) &
+              'FLDLST: Found duplicate field(s) with different averaging flags. Place on separate tapes: '
+          end if
+          write(tempmsg, '(2a, i0, a)') trim(duplicate_error), ' (tape ', t, '). '
+          errormsg = trim(errormsg) // trim(tempmsg)
         end if
 
         fieldontape = .false.
@@ -2774,6 +2779,9 @@ CONTAINS
         listentry=>listentry%next_entry
       end do
     end do
+    if (len(errormsg) > 0) then
+       call endrun(trim(errormsg))
+    end if
     !
     ! Determine total number of active history tapes
     !
@@ -3510,7 +3518,7 @@ end subroutine print_active_fldlst
     !
     character(len=*),   intent(in) :: list(pflds) ! input list of names, possibly ":" delimited
     character(len=*),   intent(in) :: name        ! name to be searched for
-    logical, optional, intent(out) :: duplicate_error ! .true. if a duplicate field was found with different flags
+    character(len=*), optional, intent(out) :: duplicate_error ! if present, check the flags and return an error if incompatible
     !
     ! Output arguments
     !
@@ -3525,7 +3533,7 @@ end subroutine print_active_fldlst
 
     index = 0
     if (present(duplicate_error)) then
-       duplicate_error = .false.
+       duplicate_error = ''
     end if
 
     do f=1,pflds
@@ -3539,7 +3547,9 @@ end subroutine print_active_fldlst
           ! This already exists in the field list - check the flag
           flag_comp = getflag(list(f))
           if (trim(flag_comp) /= trim(flag)) then
-            duplicate_error = .true.
+            write(duplicate_error,*) &
+              '"', trim(list(f)), '", "', trim(name), &
+              ':', trim(flag), '"'
             return
           ! No else - if the flags are identical, we're ok to return the first
           !  instance
