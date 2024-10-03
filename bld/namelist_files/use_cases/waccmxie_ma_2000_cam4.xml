@@ -98,7 +98,7 @@
 <fincl1>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
          'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2' 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op',
-	 'Np', 'N2p', 'O2p', 'NOp', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2',
+	 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2',
 	 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
          'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN',
 	 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS', 'U_08_SIN',
