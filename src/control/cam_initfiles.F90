@@ -119,8 +119,9 @@ subroutine cam_initfiles_readnl(nlfile)
          rest_pfile = interpret_filename_spec("rpointer.cam"//trim(inst_suffix)//".%y-%m-%d-%s", prev=.true.)
          inquire(file=trim(rest_pfile),exist=found)
          if(.not. found) then
-            write(iulog, "Warning : rpointer file "//trim(rest_pfile)//" not found.")
+            write(iulog, "INFO : rpointer file "//trim(rest_pfile)//" not found.")
             rest_pfile = "rpointer.cam"//trim(inst_suffix)
+            write(iulog, "  Try looking for "//trim(rest_pfile)//" ...")
             inquire(file=trim(rest_pfile),exist=found)
             if(.not. found) then
                call endrun(sub // ': ERROR: rpointer file: '//trim(rest_pfile) // ' not found')

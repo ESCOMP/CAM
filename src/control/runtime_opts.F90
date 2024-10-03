@@ -109,6 +109,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    logical,          intent(in) :: single_column
    real(r8),         intent(in) :: scmlat
    real(r8),         intent(in) :: scmlon
+
    !---------------------------Local variables-----------------------------
    character(len=*), parameter ::  subname = "read_namelist"
 

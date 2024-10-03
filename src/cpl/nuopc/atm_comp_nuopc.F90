@@ -1985,7 +1985,7 @@ contains
        write(iulog,*) " containing this information"
        write(iulog,*) " writing rpointer file for driver clock info, rpointer.cpl"
        write(iulog,*) " writing restart clock info for driver= "//trim(restart_file)
-       open(newunit=unitn, file='rpointer.cpl', form='FORMATTED')
+       open(newunit=unitn, file=trim(restart_pfile), form='FORMATTED')
        write(unitn,'(a)') trim(restart_file)
        close(unitn)
     endif

@@ -87,7 +87,7 @@ subroutine cam_init(                                             &
    use cam_snapshot_common, only: cam_snapshot_deactivate
    use air_composition,  only: air_composition_init
    use phys_grid_ctem,   only: phys_grid_ctem_reg
-   use filenames,        only: interpret_filename_spec
+
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
    character(len=cl), intent(in) :: ctitle                ! case title
@@ -122,6 +122,7 @@ subroutine cam_init(                                             &
    integer,           intent(in) :: stop_tod              ! Stop time of day (sec)
    integer,           intent(in) :: ref_ymd               ! Reference date (YYYYMMDD)
    integer,           intent(in) :: ref_tod               ! Reference time of day (sec)
+
    type(cam_out_t),   pointer    :: cam_out(:)       ! Output from CAM to surface
    type(cam_in_t) ,   pointer    :: cam_in(:)        ! Merged input state to CAM
 
@@ -151,7 +152,6 @@ subroutine cam_init(                                             &
 
    ! Read CAM namelists.
    filein = "atm_in" // trim(inst_suffix)
-
    call read_namelist(filein, single_column, scmlat, scmlon)
 
    ! Open initial or restart file, and topo file if specified.
