@@ -2,7 +2,7 @@
  rad_data_fdh = .true.
  empty_htapes = .true.
  avgflag_pertape = 'A','I'
- fincl1 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSDSC','FSNR','FLNR',
+ fincl1 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSNR','FLNR',
           'FSNTOA', 'FSUTOA', 'FSNTOAC', 'FSNTC', 'FSDSC', 'FSDS', 'SWCF',
           'QRL', 'FLNS', 'FLDS', 'FLNT', 'LWCF', 'FLUT' ,'FLUTC', 'FLNTC', 
           'FLNSC', 'FLDSC'

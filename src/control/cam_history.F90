@@ -486,10 +486,6 @@ CONTAINS
     !
     do t=1,ptapes
       do fld=1,nflds(t)
-        if (nhtfrq(t) == 1) then
-           ! Override any non-I flags if nhtfrq equals 1
-           tape(t)%hlist(fld)%avgflag = 'I'
-        end if
         if (tape(t)%hlist(fld)%avgflag .ne. 'I') then
            hfile_accum(t) = .true.
         end if
@@ -2570,7 +2566,10 @@ CONTAINS
     !
     integer t, fld                 ! tape, field indices
     integer ffld                   ! index into include, exclude and fprec list
+    integer :: ffld_array(pflds, ptapes)
     integer :: i
+    integer :: duplicate_index           ! iterator for multiple occurrences of the same field
+    integer :: num_fields                ! Number of times field appears in field list
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
     character(len=max_chars) :: errormsg ! error output field
@@ -2645,8 +2644,8 @@ CONTAINS
       add_fincl_idx = fld
       if (fld > 1 .and. interpolate_output(t)) then
          do i = 1, n_vec_comp
-            call list_index(fincl(:,t), vec_comp_names(i), ffld)
-            if (ffld == 0) then
+            call list_index(fincl(:,t), vec_comp_names(i), ffld_array(:,t))
+            if (.not. any(ffld_array(:,t) > 0)) then
 
                ! Add vector component to fincl.  Don't need to check whether its in the master
                ! list since this was done at the time of registering the vector components.
@@ -2744,21 +2743,23 @@ CONTAINS
       listentry => masterlinkedlist
       do while(associated(listentry))
         mastername = listentry%field%name
-        call list_index (fincl(1,t), mastername, ffld)
+        call list_index (fincl(1,t), mastername, ffld_array(:,t))
 
         fieldontape = .false.
-        if (ffld > 0) then
+        if (any(ffld_array(:,t) > 0)) then
           fieldontape = .true.
+          num_fields = count(ffld_array(:,t) > 0)
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ffld)
-          if (ffld == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld_array(:,t))
+          if ((.not. any(ffld_array(:,t) > 0)) .and. listentry%actflag(t)) then
             fieldontape = .true.
+            num_fields = 1
           end if
         end if
         if (fieldontape) then
-          ! The field is active so increment the number fo fields and add
+          ! The field is active so increment the number of fields and add
           ! its decomp type to the list of decomp types on this tape
-          nflds(t) = nflds(t) + 1
+          nflds(t) = nflds(t) + num_fields
           do ffld = 1, size(gridsontape, 1)
             if (listentry%field%decomp_type == gridsontape(ffld, t)) then
               exit
@@ -2821,21 +2822,23 @@ CONTAINS
       do while(associated(listentry))
         mastername = listentry%field%name
 
-        call list_index (fwrtpr(1,t), mastername, ffld)
-        if (ffld > 0) then
-          prec_wrt = getflag(fwrtpr(ffld,t))
+        call list_index (fwrtpr(1,t), mastername, ffld_array(:,t))
+        if (ffld_array(1,t) > 0) then
+           prec_wrt = getflag(fwrtpr(ffld_array(1,t), t))
         else
-          prec_wrt = ' '
+           prec_wrt = ' '
         end if
 
-        call list_index (fincl(1,t), mastername, ffld)
+        call list_index (fincl(1,t), mastername, ffld_array(:,t))
 
-        if (ffld > 0) then
-          avgflag = getflag (fincl(ffld,t))
-          call inifld (t, listentry, avgflag,  prec_wrt)
+        if (any(ffld_array(:,t) > 0)) then
+          do duplicate_index = 1, count(ffld_array(:,t) > 0)
+            avgflag = getflag (fincl(ffld_array(duplicate_index,t),t))
+            call inifld (t, listentry, avgflag,  prec_wrt)
+          end do
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ffld)
-          if (ffld == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld_array(:,t))
+          if (.not. any(ffld_array(:,t) > 0) .and. listentry%actflag(t)) then
             call inifld (t, listentry, ' ', prec_wrt)
           else
             listentry%actflag(t) = .false.
@@ -2882,9 +2885,18 @@ CONTAINS
             tape(t)%hlist(ffld+1) = tmp
 
           else if (tape(t)%hlist(ffld)%field%name == tape(t)%hlist(ffld+1)%field%name) then
-
-            write(errormsg,'(2a,2(a,i3))') 'FLDLST: Duplicate field: ', &
-                 trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld
+            if (tape(t)%hlist(ffld)%avgflag == tape(t)%hlist(ffld+1)%avgflag) then
+              write(errormsg,'(2a,2(a,i3),2a)') &
+                   'FLDLST: Duplicate field with the same averaging flag. Check your fincl list: ', &
+                   trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld, &
+                   ', flag = ', trim(tape(t)%hlist(ffld)%avgflag)
+            else
+              write(errormsg,'(2a,2(a,i3),4a)') &
+                   'FLDLST: Duplicate field with different averaging flags. Place on separate tapes: ', &
+                   trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld, &
+                   ', flag1 = ', trim(tape(t)%hlist(ffld)%avgflag), ', flag2 = ', &
+                   trim(tape(t)%hlist(ffld+1)%avgflag)
+            end if
             call endrun(errormsg)
 
           end if
@@ -3507,18 +3519,20 @@ end subroutine print_active_fldlst
     ! Input arguments
     !
     character(len=*), intent(in) :: list(pflds) ! input list of names, possibly ":" delimited
-    character(len=max_fieldname_len), intent(in) :: name ! name to be searched for
+    character(len=*), intent(in) :: name ! name to be searched for
     !
     ! Output arguments
     !
-    integer, intent(out) :: index               ! index of "name" in "list"
+    integer, intent(out) :: index(:)            ! indices of "name" in "list"
     !
     ! Local workspace
     !
     character(len=fieldname_len) :: listname    ! input name with ":" stripped off.
-    integer f                       ! field index
+    integer :: f                                ! field index
+    integer :: num_found                        ! number of time field appears in list
 
     index = 0
+    num_found = 1
     do f=1,pflds
       !
       ! Only list items
@@ -3526,8 +3540,8 @@ end subroutine print_active_fldlst
       listname = getname (list(f))
       if (listname == ' ') exit
       if (listname == name) then
-        index = f
-        exit
+        index(num_found) = f
+        num_found = num_found + 1
       end if
     end do
 
