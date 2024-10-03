@@ -2779,7 +2779,7 @@ CONTAINS
         listentry=>listentry%next_entry
       end do
     end do
-    if (len(errormsg) > 0) then
+    if (len_trim(errormsg) > 0) then
        call endrun(trim(errormsg))
     end if
     !
