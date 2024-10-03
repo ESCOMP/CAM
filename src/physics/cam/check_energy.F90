@@ -262,7 +262,7 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),&
-         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
+         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol))
     !
     ! Dynamical core total energy
     !
@@ -283,7 +283,7 @@ end subroutine check_energy_get_integrals
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
-           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol))
     else if (vc_dycore == vc_dry_pressure) then
       !
       ! SE specific hydrostatic energy (enthalpy)
@@ -297,16 +297,15 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
            vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
-           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol))
     else
       !
       ! dycore energy is the same as physics
       !
       state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
-      state%tw_ini(1:ncol,dyn_te_idx) = state%tw_ini(1:ncol,phys_te_idx)
     end if
     state%te_cur(:ncol,:) = state%te_ini(:ncol,:)
-    state%tw_cur(:ncol,:) = state%tw_ini(:ncol,:)
+    state%tw_cur(:ncol)   = state%tw_ini(:ncol)
 
 ! zero cummulative boundary fluxes
     tend%te_tnd(:ncol) = 0._r8
@@ -404,7 +403,7 @@ end subroutine check_energy_get_integrals
     do i = 1, ncol
        ! change in static energy and total water
        te_dif(i) = te(i) - state%te_cur(i,phys_te_idx)
-       tw_dif(i) = tw(i) - state%tw_cur(i,phys_te_idx)
+       tw_dif(i) = tw(i) - state%tw_cur(i)
 
        ! expected tendencies from boundary fluxes for last process
        te_tnd(i) = flx_vap(i)*(latvap+latice) - (flx_cnd(i) - flx_ice(i))*1000._r8*latice + flx_sen(i)
@@ -416,7 +415,7 @@ end subroutine check_energy_get_integrals
 
        ! expected new values from previous state plus boundary fluxes
        te_xpd(i) = state%te_cur(i,phys_te_idx) + te_tnd(i)*ztodt
-       tw_xpd(i) = state%tw_cur(i,phys_te_idx) + tw_tnd(i)*ztodt
+       tw_xpd(i) = state%tw_cur(i)             + tw_tnd(i)*ztodt
 
        ! relative error, expected value - input state / previous state
        te_rer(i) = (te_xpd(i) - te(i)) / state%te_cur(i,phys_te_idx)
@@ -424,8 +423,8 @@ end subroutine check_energy_get_integrals
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
-    where (state%tw_cur(:ncol,phys_te_idx) > 0._r8)
-       tw_rer(:ncol) = (tw_xpd(:ncol) - tw(:ncol)) / state%tw_cur(:ncol,1)
+    where (state%tw_cur(:ncol) > 0._r8)
+       tw_rer(:ncol) = (tw_xpd(:ncol) - tw(:ncol)) / state%tw_cur(:ncol)
     end where
 
     ! error checking
@@ -457,7 +456,7 @@ end subroutine check_energy_get_integrals
 
     do i = 1, ncol
       state%te_cur(i,phys_te_idx) = te(i)
-      state%tw_cur(i,phys_te_idx) = tw(i)
+      state%tw_cur(i)             = tw(i)
     end do
 
     !
@@ -480,7 +479,7 @@ end subroutine check_energy_get_integrals
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol))
     else if (vc_dycore == vc_dry_pressure) then
       !
       ! SE specific hydrostatic energy
@@ -500,10 +499,9 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol))
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
-      state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
     end if
   end subroutine check_energy_chng
 

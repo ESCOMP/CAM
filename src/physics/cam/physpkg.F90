@@ -2048,7 +2048,8 @@ contains
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
-    use aero_model,      only: aero_model_wetdep, wetdep_lq
+    use aero_model,      only: aero_model_wetdep
+    use aero_wetdep_cam, only: wetdep_lq
     use carma_intr,      only: carma_wetdep_tend, carma_timestep_tend
     use carma_flags_mod, only: carma_do_detrain, carma_do_cldice, carma_do_cldliq,  carma_do_wetdep
     use radiation,       only: radiation_tend

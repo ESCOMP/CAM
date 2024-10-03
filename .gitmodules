@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag =  atmos_phys0_04_001
+        fxtag = atmos_phys0_05_000
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -51,13 +51,27 @@
 	path = src/chemistry/geoschem/geoschem_src
 	url = https://github.com/geoschem/geos-chem.git
         fxrequired = AlwaysRequired
-        fxtag = 14.1.2
+        fxtag = 14.4.3
         fxDONOTUSEurl = https://github.com/geoschem/geos-chem.git
+
+[submodule "cloud_j"]
+	path = src/chemistry/cloud_j
+	url = https://github.com/geoschem/cloud-j.git
+        fxrequired = AlwaysRequired
+        fxtag = 7.7.3
+        fxDONOTUSEurl = https://github.com/geoschem/cloud-j.git
+
+[submodule "hetp"]
+	path = src/chemistry/hetp
+	url = https://github.com/geoschem/heterogeneous-vectorized-or-parallel.git
+        fxrequired = AlwaysRequired
+        fxtag = geoschem_hetp_1.0
+        fxDONOTUSEurl = https://github.com/geoschem/heterogeneous-vectorized-or-parallel.git
 
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm1_2_1_hemco3_6_3_cesm_rme01
+        fxtag = hemco-cesm2_0_hemco3_9_0
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
@@ -80,7 +94,7 @@
 	url = https://github.com/MPAS-Dev/MPAS-Model.git
         fxrequired = AlwaysRequired
         fxsparse = ../.mpas_sparse_checkout
-        fxtag = b8c33daa
+        fxtag = v8.2.1
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
 [submodule "cosp2"]

@@ -81,7 +81,7 @@ integer :: npbuf_var
 integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
-type (snapshot_type)    ::  state_snapshot(27)
+type (snapshot_type)    ::  state_snapshot(29)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
@@ -266,16 +266,22 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_afte
      'state%zi',        'state_zi',         'm',                'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_ini',    'state_te_ini',     'unset',            horiz_only)
+     'state%te_ini_phys', 'state_te_ini_phys',  'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_cur',    'state_te_cur',     'unset',            horiz_only)
+     'state%te_cur_phys', 'state_te_cur_phys',  'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_ini',    'state_tw_ini',     'unset',            horiz_only)
+     'state%tw_ini', 'state_tw_ini',  'unset',                      horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_cur',    'state_tw_cur',     'unset',            horiz_only)
+     'state%tw_cur', 'state_tw_cur',  'unset',                      horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'state%te_ini_dyn',  'state_te_ini_dyn',   'unset',            horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'state%te_cur_dyn',  'state_te_cur_dyn',   'unset',            horiz_only)
 
 end subroutine cam_state_snapshot_init
 
@@ -734,6 +740,8 @@ end subroutine snapshot_addfld
 
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
+   use physics_types,    only: phys_te_idx, dyn_te_idx
+
    integer,              intent(in)  :: lchnk
    integer,              intent(in)  :: file_num
    type(physics_state),  intent(in)  :: state
@@ -817,17 +825,23 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
       case ('state%zi')
          call outfld(state_snapshot(i)%standard_name, state%zi, pcols, lchnk)
 
-      case ('state%te_ini')
-         call outfld(state_snapshot(i)%standard_name, state%te_ini, pcols, lchnk)
+      case ('state%te_ini_phys')
+         call outfld(state_snapshot(i)%standard_name, state%te_ini(:, phys_te_idx), pcols, lchnk)
 
-      case ('state%te_cur')
-         call outfld(state_snapshot(i)%standard_name, state%te_cur, pcols, lchnk)
+      case ('state%te_cur_phys')
+         call outfld(state_snapshot(i)%standard_name, state%te_cur(:, phys_te_idx), pcols, lchnk)
 
       case ('state%tw_ini')
          call outfld(state_snapshot(i)%standard_name, state%tw_ini, pcols, lchnk)
 
       case ('state%tw_cur')
          call outfld(state_snapshot(i)%standard_name, state%tw_cur, pcols, lchnk)
+
+      case ('state%te_ini_dyn')
+         call outfld(state_snapshot(i)%standard_name, state%te_ini(:, dyn_te_idx), pcols, lchnk)
+
+      case ('state%te_cur_dyn')
+         call outfld(state_snapshot(i)%standard_name, state%te_cur(:, dyn_te_idx), pcols, lchnk)
 
       case default
          call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%ddt_string))

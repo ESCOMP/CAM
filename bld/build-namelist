@@ -608,8 +608,9 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
            ($aer_wetdep_list =~ /ncl/i || $aer_wetdep_list =~ /sslt/i)) {
             $prescribe_aerosols = $FALSE;
         }
-
-        add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        if ($chem !~ /_mam/) {
+            add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        }
 
         if (!($chem =~ /_mam/)) {
             if (!defined $nl->get_value('aer_sol_facti')) {
@@ -2037,10 +2038,13 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
 
 if ($chem =~ /geoschem/) {
 
-    my $val;
+    # Input directories
+    add_default($nl, 'geoschem_chem_inputs');
+    add_default($nl, 'geoschem_aeropt_inputs');
+    add_default($nl, 'geoschem_photol_inputs');
 
     # Species with fixed lower boundary
-    $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
+    my $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
            .",'HCFC22','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
 
     if ($chem_has_ocs) {
