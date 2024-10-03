@@ -2748,9 +2748,9 @@ CONTAINS
         if (len(trim(duplicate_error)) > 0) then
           if (len_trim(errormsg) == 0) then
             write(errormsg,*) &
-              'FLDLST: Found duplicate field(s) with different averaging flags. Place on separate tapes: '
+              'FLDLST: Found duplicate field(s) with different averaging flags. Place in separate fincl lists: '
           end if
-          write(tempmsg, '(2a, i0, a)') trim(duplicate_error), ' (tape ', t, '). '
+          write(tempmsg, '(2a, i0, a)') trim(duplicate_error), ' (fincl', t, '). '
           errormsg = trim(errormsg) // trim(tempmsg)
         end if
 
