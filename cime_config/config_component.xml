@@ -153,7 +153,7 @@
 
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
-      <value compset="_(CAM50|CAM60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
+      <value compset="_(CAM50|CAM60)%(WC|CT|CV|CF)">-age_of_air_trcs</value>
       <value compset="_CAM40%WCCM">-chem waccm_ma</value>
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam5</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam5</value>
@@ -169,7 +169,7 @@
 
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
-      <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
+      <value compset="_CAM\d0%CT.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
       <value compset="_CAM70%LT">-nlev 58 -model_top lt</value>
