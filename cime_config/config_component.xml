@@ -278,8 +278,8 @@
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
-      <value compset="HIST_CAM.*CT1S"   >hist_trop_strat_vbs_cam6</value>
-      <value compset="HIST_CAM.*CT4S"   >hist_trop_strat_ts4_cam7</value>
+      <value compset="HIST.*%CT1S"       >hist_trop_strat_vbs_cam6</value>
+      <value compset="HISTC_CAM7.*CT4S"  >hist_trop_strat_ts4_cam7</value>
       <value compset="HIST_CAM60%.*CT[12]S%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
@@ -437,7 +437,7 @@
       <value compset="^SSP126_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP1-2.6-WACCM_1849-2101_monthly_c191007.nc</value>
       <value compset="^SSP245_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP2-4.5-WACCM_1849-2101_monthly_c191007.nc</value>
       <value compset="^SSP370_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_SSP370_b.e21.BWSSP370cmip6.f09_g17.CMIP6-SSP3-7.0-WACCM.002_1849-2101_monthly_0.9x1.25_c211216.nc</value>
-      <value compset="^HIST_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
+      <value compset="^HIST"   >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
       <value compset="^2000_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
       <value compset="^2010_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
       <value compset="^1850_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</value>
