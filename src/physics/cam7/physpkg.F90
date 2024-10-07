@@ -1056,7 +1056,7 @@ contains
     !-----------------------------------------------------------------------
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy,   only: check_energy_gmean
+    use check_energy_cam, only: check_energy_gmean
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
     use cam_history,    only: outfld, write_camiop
@@ -2517,8 +2517,7 @@ contains
     use convect_deep,    only: convect_deep_tend
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
-    use check_energy_cam,only: check_energy_cam_chng
-    use check_energy,    only: check_energy_fix
+    use check_energy_cam,only: check_energy_cam_chng, check_energy_cam_fix
     use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
@@ -2700,7 +2699,7 @@ contains
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
 
     if (.not.dycore_is('EUL')) then
-       call check_energy_fix(state, ptend, nstep, flx_heat)
+       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )

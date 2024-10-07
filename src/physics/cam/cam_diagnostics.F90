@@ -2019,7 +2019,7 @@ contains
     !
     !---------------------------------------------------------------
 
-    use check_energy,    only: check_energy_get_integrals
+    use check_energy_cam,only: check_energy_get_integrals
     use physconst,       only: cpair
 
     ! Arguments

@@ -1,4 +1,4 @@
-! Shim for CCPP-ized check_energy routines in CAM
+! CAM interface for CCPP-ized check_energy routines in CAM
 module check_energy_cam
   use shr_kind_mod,    only: r8 => shr_kind_r8
   use ppgrid,          only: pcols, pver
@@ -8,8 +8,22 @@ module check_energy_cam
   implicit none
   private
 
-  public :: check_energy_cam_chng      ! check changes in integrals against cumulative boundary fluxes
+  public :: check_energy_cam_chng           ! check changes in integrals against cumulative boundary fluxes
   public :: check_energy_cam_timestep_init  ! timestep initialization of energy integrals and cumulative boundary fluxes
+
+  public :: check_energy_cam_fix            ! add heating rate required for global mean total energy conservation
+
+  ! These subroutines cannot be CCPP-ized and replicated from check_energy
+  public :: check_energy_gmean              ! global means of physics input and output total energy
+  public :: check_energy_get_integrals      ! get energy integrals computed in check_energy_gmean
+
+  ! Module variables used for check_energy_gmean
+  real(r8) :: teout_glob   ! global mean energy of output state
+  real(r8) :: teinp_glob   ! global mean energy of input state
+  real(r8) :: tedif_glob   ! global mean energy difference
+  real(r8) :: psurf_glob   ! global mean surface pressure
+  real(r8) :: ptopb_glob   ! global mean top boundary pressure
+  real(r8) :: heat_glob    ! global mean heating rate
 
 contains
   ! Compute initial values of energy and water integrals,
@@ -215,4 +229,148 @@ contains
     )
 
   end subroutine check_energy_cam_chng
+
+  ! Add heating rate required for global mean total energy conservation
+  subroutine check_energy_cam_fix(state, ptend, nstep, eshflx)
+    use physics_types,    only: physics_ptend, physics_ptend_init
+    use physconst,        only: rga
+
+    ! SCAM support
+    use scamMod,          only: single_column, use_camiop, heat_glob_scm
+
+    ! CCPP-ized subroutine
+    use check_energy_fix, only: check_energy_fix_run
+
+    type(physics_state), intent(in)    :: state
+    type(physics_ptend), intent(out)   :: ptend
+
+    integer , intent(in)  :: nstep          ! time step number
+    real(r8), intent(out) :: eshflx(pcols)  ! effective sensible heat flux
+
+    integer     :: ncol                     ! number of atmospheric columns in chunk
+    integer     :: lchnk                    ! chunk number
+    real(r8)    :: heat_out(pcols)
+
+    lchnk = state%lchnk
+    ncol  = state%ncol
+
+    call physics_ptend_init(ptend, state%psetcols, 'chkenergyfix', ls=.true.)
+
+#if ( defined OFFLINE_DYN )
+    ! disable the energy fix for offline driver
+    heat_glob = 0._r8
+#endif
+
+    ! Special handling of energy fix for SCAM - supplied via CAMIOP - zero's for normal IOPs
+    if (single_column) then
+       if (use_camiop) then
+          heat_glob = heat_glob_scm(1)
+       else
+          heat_glob = 0._r8
+       endif
+    endif
+
+    if (nstep > 0 .and. write_camiop) then
+      heat_out(:ncol) = heat_glob
+      call outfld('heat_glob',  heat_out(:ncol), pcols, lchnk)
+    endif
+
+    ! Call the CCPP-ized subroutine (for non-SCAM)
+    ! to compute the effective sensible heat flux and save to ptend%s
+    call check_energy_fix_run( &
+        ncol      = ncol, &
+        pver      = pver, &
+        pint      = state%pint(:ncol,:), &
+        rga       = rga, &
+        heat_glob = heat_glob. &
+        ptend_s   = ptend%s(:ncol,:), &
+        eshflx    = eshflx(:ncol) &
+    )
+
+  end subroutine check_energy_cam_fix
+
+  ! Compute global mean total energy of physics input and output states
+  ! computed consistently with dynamical core vertical coordinate
+  ! (under hydrostatic assumption)
+  !
+  ! This subroutine cannot use the CCPP-ized equivalent because
+  ! it is dependent on chunks.
+  subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
+    use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
+    use physics_types,   only: dyn_te_idx
+    use cam_history,     only: write_camiop
+    use ppgrid,          only: begchunk, endchunk
+    use spmd_utils,      only: masterproc
+    use cam_logfile,     only: iulog
+    use gmean_mod,       only: gmean
+    use physconst,       only: gravit
+
+    ! To remove, pbuf indices in check_energy
+    use check_energy,    only: teout_idx
+
+    type(physics_state), intent(in), dimension(begchunk:endchunk) :: state
+    type(physics_buffer_desc), pointer                            :: pbuf2d(:,:)
+
+    real(r8), intent(in) :: dtime        ! physics time step
+    integer , intent(in) :: nstep        ! current timestep number
+
+    integer :: ncol                      ! number of active columns
+    integer :: lchnk                     ! chunk index
+
+    real(r8) :: te(pcols,begchunk:endchunk,4)
+                                         ! total energy of input/output states (copy)
+    real(r8) :: te_glob(4)               ! global means of total energy
+    real(r8), pointer :: teout(:)
+
+    ! Copy total energy out of input and output states
+    do lchnk = begchunk, endchunk
+       ncol = state(lchnk)%ncol
+       ! input energy using dynamical core energy formula
+       te(:ncol,lchnk,1) = state(lchnk)%te_ini(:ncol,dyn_te_idx)
+       ! output energy
+       call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk),teout_idx, teout)
+
+       te(:ncol,lchnk,2) = teout(1:ncol)
+       ! surface pressure for heating rate
+       te(:ncol,lchnk,3) = state(lchnk)%pint(:ncol,pver+1)
+       ! model top pressure for heating rate (not constant for z-based vertical coordinate!)
+       te(:ncol,lchnk,4) = state(lchnk)%pint(:ncol,1)
+    end do
+
+    ! Compute global means of input and output energies and of
+    ! surface pressure for heating rate (assume uniform ptop)
+    call gmean(te, te_glob, 4)
+
+    if (begchunk .le. endchunk) then
+       teinp_glob = te_glob(1)
+       teout_glob = te_glob(2)
+       psurf_glob = te_glob(3)
+       ptopb_glob = te_glob(4)
+
+       ! Global mean total energy difference
+       tedif_glob =  teinp_glob - teout_glob
+       heat_glob  = -tedif_glob/dtime * gravit / (psurf_glob - ptopb_glob)
+       if (masterproc) then
+          write(iulog,'(1x,a9,1x,i8,5(1x,e25.17))') "nstep, te", nstep, teinp_glob, teout_glob, &
+               heat_glob, psurf_glob, ptopb_glob
+       end if
+    else
+       heat_glob = 0._r8
+    end if  !  (begchunk .le. endchunk)
+
+  end subroutine check_energy_gmean
+
+  ! Return energy integrals (module variables)
+  subroutine check_energy_get_integrals(tedif_glob_out, heat_glob_out)
+     real(r8), intent(out), optional :: tedif_glob_out
+     real(r8), intent(out), optional :: heat_glob_out
+
+   if ( present(tedif_glob_out) ) then
+      tedif_glob_out = tedif_glob
+   endif
+
+   if ( present(heat_glob_out) ) then
+      heat_glob_out = heat_glob
+   endif
+  end subroutine check_energy_get_integrals
 end module check_energy_cam
