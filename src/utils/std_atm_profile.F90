@@ -52,16 +52,23 @@ real(r8), parameter :: c1 = g0*mw/rg
 CONTAINS
 !=========================================================================================
 
-subroutine std_atm_pres(height, pstd)
+subroutine std_atm_pres(height, pstd, user_specified_ps)
     
    ! arguments
-   real(r8), intent(in)  :: height(:) ! height above sea level in meters
-   real(r8), intent(out) :: pstd(:)   ! std pressure in Pa
+   real(r8),           intent(in)  :: height(:) ! height above sea level in meters
+   real(r8),           intent(out) :: pstd(:)   ! std pressure in Pa
+   real(r8), optional, intent(in)  :: user_specified_ps
     
    integer :: i, ii, k, nlev
    character(len=*), parameter :: routine = 'std_atm_pres'
+   real(r8), allocatable       :: pb_local(:)
    !----------------------------------------------------------------------------
-    
+   allocate(pb_local(size(height)))
+   pb_local = pb
+   if (present(user_specified_ps)) then
+      pb_local(1) = user_specified_ps
+   end if
+
    nlev = size(height)
    do k = 1, nlev
       if (height(k) < 0.0_r8) then
@@ -78,13 +85,13 @@ subroutine std_atm_pres(height, pstd)
       end if
       
       if (lb(ii) /= 0._r8) then
-         pstd(k) = pb(ii) * ( tb(ii) / (tb(ii) + lb(ii)*(height(k) - hb(ii)) ) )**(c1/lb(ii))
+         pstd(k) = pb_local(ii) * ( tb(ii) / (tb(ii) + lb(ii)*(height(k) - hb(ii)) ) )**(c1/lb(ii))
       else
-         pstd(k) = pb(ii) * exp( -c1*(height(k) - hb(ii))/tb(ii) )
+         pstd(k) = pb_local(ii) * exp( -c1*(height(k) - hb(ii))/tb(ii) )
       end if
       
    end do
-
+   deallocate(pb_local)
 end subroutine std_atm_pres
 
 !=========================================================================================

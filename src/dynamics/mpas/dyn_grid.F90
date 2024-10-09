@@ -141,7 +141,7 @@ subroutine dyn_grid_init()
    ierr = pio_get_att(fh_ini, pio_global, 'sphere_radius', sphere_radius)
 
    ! Compute reference pressures from reference heights.
-   call std_atm_pres(zw, pref_edge)
+   call std_atm_pres(zw, pref_edge, user_specified_ps=1.0E5_r8)
    pref_mid = (pref_edge(1:plev) + pref_edge(2:plevp)) * 0.5_r8
 
    num_pr_lev = 0
