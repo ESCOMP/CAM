@@ -50,6 +50,7 @@ contains
 
     real(r8)  :: local_cp_phys(state%psetcols,pver)
     real(r8)  :: local_cp_or_cv_dycore(state%psetcols,pver)
+    real(r8)  :: teout(state%ncol) ! dummy teout argument
     integer   :: lchnk     ! chunk identifier
     integer   :: ncol      ! number of atmospheric columns
     character(len=512) :: errmsg
@@ -91,6 +92,7 @@ contains
         ncol            = ncol, &
         pver            = pver, &
         pcnst           = pcnst, &
+        is_first_timestep = is_first_step(), &
         q               = state%q(1:ncol,1:pver,1:pcnst), &
         pdel            = state%pdel(1:ncol,1:pver), &
         u               = state%u(1:ncol,1:pver), &
@@ -99,8 +101,6 @@ contains
         pintdry         = state%pintdry(1:ncol,1:pver), &
         phis            = state%phis(1:ncol), &
         zm              = state%zm(1:ncol,:), &
-        temp_ini        = state%temp_ini(:ncol,:), &
-        z_ini           = state%z_ini(:ncol,:), &
         cp_phys         = local_cp_phys(1:ncol,:), &
         cp_or_cv_dycore = local_cp_or_cv_dycore(1:ncol,:), &
         te_ini_phys     = state%te_ini(1:ncol,phys_te_idx), &
@@ -111,7 +111,10 @@ contains
         tw_cur          = state%tw_cur(1:ncol),             &
         tend_te_tnd     = tend%te_tnd(1:ncol),              &
         tend_tw_tnd     = tend%tw_tnd(1:ncol),              &
+        temp_ini        = state%temp_ini(:ncol,:), &
+        z_ini           = state%z_ini(:ncol,:), &
         count           = state%count,                      &
+        teout           = teout(1:ncol),                    & ! dummy argument - actual teout written to pbuf directly below
         vc_physics      = vc_physics, &
         vc_dycore       = vc_dycore, &
         errmsg          = errmsg, &
@@ -237,6 +240,8 @@ contains
 
     ! SCAM support
     use scamMod,          only: single_column, use_camiop, heat_glob_scm
+    use cam_history,      only: write_camiop
+    use cam_history,      only: outfld
 
     ! CCPP-ized subroutine
     use check_energy_fix, only: check_energy_fix_run
@@ -282,7 +287,7 @@ contains
         pver      = pver, &
         pint      = state%pint(:ncol,:), &
         rga       = rga, &
-        heat_glob = heat_glob. &
+        heat_glob = heat_glob, &
         ptend_s   = ptend%s(:ncol,:), &
         eshflx    = eshflx(:ncol) &
     )
@@ -298,7 +303,6 @@ contains
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physics_types,   only: dyn_te_idx
-    use cam_history,     only: write_camiop
     use ppgrid,          only: begchunk, endchunk
     use spmd_utils,      only: masterproc
     use cam_logfile,     only: iulog

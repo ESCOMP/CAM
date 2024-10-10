@@ -729,7 +729,7 @@ contains
     use cam_history,       only: outfld
     use time_manager,      only: get_nstep
     use check_energy_cam,  only: check_energy_cam_chng, check_energy_cam_fix
-    use check_energy,      only: check_energy_timestep_init
+    use check_energy_cam,  only: check_energy_cam_timestep_init
     use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend

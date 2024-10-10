@@ -29,7 +29,7 @@ module check_energy
   use physics_types,   only: physics_state
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use cam_logfile,     only: iulog
-  use cam_history,     only: outfld, write_camiop
+  use cam_history,     only: outfld
 
   implicit none
   private
