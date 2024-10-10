@@ -278,7 +278,7 @@
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
-      <value compset="HIST.*%CT1S"       >hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST(C_|E_|_)CAM.*CT1S">hist_trop_strat_vbs_cam6</value>
       <value compset="HISTC_CAM7.*CT4S"  >hist_trop_strat_ts4_cam7</value>
       <value compset="HIST_CAM60%.*CT[12]S%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>

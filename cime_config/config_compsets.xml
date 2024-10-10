@@ -667,7 +667,7 @@
   <entries>
     <entry id="RUN_STARTDATE">
       <values match="last">
-	<value  compset="HIST.*_CAM">1979-01-01</value>
+	<value  compset="HIST(C_|E_|_)CAM">1979-01-01</value>
 	<value  compset="HIST_CAM60%WCTS_CLM50%BGC-CROP">1950-01-01</value>
         <value  compset="HIST_CAM40%WX">2000-01-01</value>
 	<value  compset="HIST_CAM60%WCMD">2005-01-01</value>
