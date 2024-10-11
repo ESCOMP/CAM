@@ -201,12 +201,12 @@ end subroutine check_energy_get_integrals
                        history_waccm_out = history_waccm )
 
 ! register history variables
-    call addfld('TEINP',  horiz_only,  'A', 'J/m2', 'Total energy of physics input')
-    call addfld('TEOUT',  horiz_only,  'A', 'J/m2', 'Total energy of physics output')
-    call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer')
-    call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer')
-    call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core')
-    call addfld('DQCORE', (/ 'lev' /), 'A', 'kg/kg/s' , 'Water vapor tendency due to dynamical core')
+    call addfld('TEINP',  horiz_only,  'A', 'J/m2', 'Total energy of physics input', sampled_on_subcycle=.true.)
+    call addfld('TEOUT',  horiz_only,  'A', 'J/m2', 'Total energy of physics output', sampled_on_subcycle=.true.)
+    call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer', sampled_on_subcycle=.true.)
+    call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer', sampled_on_subcycle=.true.)
+    call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core', sampled_on_subcycle=.true.)
+    call addfld('DQCORE', (/ 'lev' /), 'A', 'kg/kg/s' , 'Water vapor tendency due to dynamical core', sampled_on_subcycle=.true.)
 
     if ( history_budget ) then
        call add_default ('DTCORE', history_budget_histfile_num, ' ')

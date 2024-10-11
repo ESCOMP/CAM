@@ -486,6 +486,12 @@ CONTAINS
     !
     do t=1,ptapes
       do fld=1,nflds(t)
+        if ((.not. tape(t)%hlist(fld)%field%sampled_on_subcycle) .and. nhtfrq(t) == 1) then
+           ! Override accumulate flag to "I" if nhtfrq equals 1 and subcycle
+           ! averaging is not enabled
+           tape(t)%hlist(fld)%avgflag = 'I'
+        end if
+
         if (tape(t)%hlist(fld)%avgflag .ne. 'I') then
            hfile_accum(t) = .true.
         end if
@@ -4022,7 +4028,9 @@ end subroutine print_active_fldlst
             ierr=pio_inq_varid (tape(t)%Files(f),'nscur   ',    tape(t)%nscurid)
             ierr=pio_inq_varid (tape(t)%Files(f),'nsteph  ',    tape(t)%nstephid)
          end if
-         ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         if (f == accumulated_file_index) then
+            ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         end if
          ierr=pio_inq_varid (tape(t)%Files(f),'date_written',  tape(t)%date_writtenid)
          ierr=pio_inq_varid (tape(t)%Files(f),'time_written',  tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
@@ -4321,6 +4329,7 @@ end subroutine print_active_fldlst
                       cam_snapshot_before_num_out = cam_snapshot_before_num,  &
                       cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
+
     if(restart) then
       tape => restarthistory_tape
       if(masterproc) write(iulog,*)'Opening netcdf history restart file ', trim(hrestpath(t))
@@ -4500,13 +4509,14 @@ end subroutine print_active_fldlst
 
        if(.not. is_satfile(t)) then
 
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
-
-         ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
-         str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
+         if (f == accumulated_file_index) then
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
+            ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
+            str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
+         end if
          !
          ! Character
          !
@@ -5843,14 +5853,16 @@ end subroutine print_active_fldlst
                 cycle
              end if
              ! We have two files - one for accumulated and one for instantaneous fields
-             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t)) then
-                ! accumulated tape - time is midpoint of time_bounds
-                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+             if (f == accumulated_file_index) then
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
+                if (.not. restart .and. .not. is_initfile(t)) then
+                   ! accumulated tape - time is midpoint of time_bounds
+                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+                end if
              else
                 ! not an accumulated history tape - time is current time
                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
              end if
-             ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
           end do
           if(.not.restart) beg_time(t) = time  ! update beginning time of next interval
           startc(1) = 1
@@ -5938,7 +5950,7 @@ end subroutine print_active_fldlst
 
   subroutine addfld_1d(fname, vdim_name, avgflag, units, long_name,           &
        gridname, flag_xyfill, sampling_seq, standard_name, fill_value,        &
-       optype, op_f1name, op_f2name)
+       optype, op_f1name, op_f2name, sampled_on_subcycle)
 
     !
     !-----------------------------------------------------------------------
@@ -5970,6 +5982,7 @@ end subroutine print_active_fldlst
     character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' is supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
+    logical,          intent(in), optional :: sampled_on_subcycle   ! If .true., subcycle averaging is enabled
     !
     ! Local workspace
     !
@@ -5988,13 +6001,13 @@ end subroutine print_active_fldlst
     end if
     call addfld(fname, dimnames, avgflag, units, long_name, gridname,         &
          flag_xyfill, sampling_seq, standard_name, fill_value, optype, op_f1name, &
-         op_f2name)
+         op_f2name, sampled_on_subcycle)
 
   end subroutine addfld_1d
 
   subroutine addfld_nd(fname, dimnames, avgflag, units, long_name,            &
        gridname, flag_xyfill, sampling_seq, standard_name, fill_value, optype,    &
-       op_f1name, op_f2name)
+       op_f1name, op_f2name, sampled_on_subcycle)
 
     !
     !-----------------------------------------------------------------------
@@ -6030,6 +6043,7 @@ end subroutine print_active_fldlst
     character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
+    logical,          intent(in), optional :: sampled_on_subcycle   ! If .true., subcycle averaging is enabled
 
     !
     ! Local workspace
@@ -6153,6 +6167,15 @@ end subroutine print_active_fldlst
     else
       listentry%field%fillvalue = fillvalue
     endif
+
+    !
+    ! Whether to allow subcycle averages; default is false
+    !
+    if (present(sampled_on_subcycle)) then
+       listentry%field%sampled_on_subcycle = sampled_on_subcycle
+    else
+       listentry%field%sampled_on_subcycle = .false.
+    end if
 
     !
     ! Process shape
