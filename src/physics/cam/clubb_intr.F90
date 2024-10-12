@@ -2602,10 +2602,10 @@ end subroutine clubb_init_cnst
     !                           MAIN COMPUTATION BEGINS HERE                            !
     !-----------------------------------------------------------------------------------!
 
-    call t_startf("clubb_tend_cam")
 
     nlev = pver + 1 - top_lev
 
+    call t_startf('clubb_tend_cam:NAR')
     rtp2_zt_out = 0._r8
     thl2_zt_out = 0._r8
     wp2_zt_out  = 0._r8
@@ -2781,6 +2781,8 @@ end subroutine clubb_init_cnst
 
     call grid_size(state1, grid_dx, grid_dy)
 
+    call t_stopf('clubb_tend_cam:NAR')
+
     if (clubb_do_icesuper) then
 
       ! -------------------------------------- !
@@ -2801,11 +2803,13 @@ end subroutine clubb_init_cnst
       qitend(:ncol,:)=0._r8
       initend(:ncol,:)=0._r8
 
+      call t_startf('clubb_tend_cam:ice_macro_tend')
       call ice_macro_tend(naai(1:ncol,top_lev:pver), state1%t(1:ncol,top_lev:pver),                       &
                           state1%pmid(1:ncol,top_lev:pver), state1%q(1:ncol,top_lev:pver,1),              &
                           state1%q(1:ncol,top_lev:pver,ixcldice), state1%q(1:ncol,top_lev:pver,ixnumice), &
                           latsub, hdtime, stend(1:ncol,top_lev:pver), qvtend(1:ncol,top_lev:pver),        &
                           qitend(1:ncol,top_lev:pver), initend(1:ncol,top_lev:pver), ncol*(pver-top_lev+1))
+      call t_stopf('clubb_tend_cam:ice_macro_tend')
 
       ! update local copy of state with the tendencies
       ptend_loc%q(:ncol,top_lev:pver,1)=qvtend(:ncol,top_lev:pver)
@@ -2827,6 +2831,7 @@ end subroutine clubb_init_cnst
       call outfld( 'NITENDICE', initend, pcols, lchnk )
 
     endif
+    call t_startf('clubb_tend_cam:NAR')
 
 
     !  Determine CLUBB time step and make it sub-step friendly
@@ -2991,7 +2996,6 @@ end subroutine clubb_init_cnst
       mf_qtflx_output(:,:)     = 0._r8
     end if
 
-    call t_startf("clubb_tend_cam_i_loop")
 
     ! Determine Coriolis force at given latitude. This is never used
     ! when CLUBB is implemented in a host model, therefore just set
@@ -3234,7 +3238,9 @@ end subroutine clubb_init_cnst
     ! Perturbed winds are not used in CAM
     upwp_sfc_pert = 0.0_r8
     vpwp_sfc_pert = 0.0_r8
+    call t_stopf('clubb_tend_cam:NAR')
 
+    call t_startf('clubb_tend_cam:flip-index')
     !  Need to flip arrays around for CLUBB core
     do k=1,nlev+1
       do i=1,ncol
@@ -3448,6 +3454,7 @@ end subroutine clubb_init_cnst
     if (macmic_it==1) vpwp_clubb_gw_mc(:ncol,:) = 0._r8
     if (macmic_it==1) thlp2_clubb_gw_mc(:ncol,:) = 0._r8
     if (macmic_it==1) wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
+    call t_stopf('clubb_tend_cam:flip-index')
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
 
@@ -3461,6 +3468,7 @@ end subroutine clubb_init_cnst
       !###################### CALL MF DIAGNOSTIC PLUMES ######################
       !#######################################################################
       if (do_clubb_mf) then
+        call t_startf('clubb_tend_cam:do_clubb_mf')
 
         do k=2,pverp
           do i=1, ncol
@@ -3511,10 +3519,12 @@ end subroutine clubb_init_cnst
                                ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k-1) * mf_thlflx(i,k-1)))
           end do
         end do
+        call t_stopf('clubb_tend_cam:do_clubb_mf')
 
       end if
 
       !  Advance CLUBB CORE one timestep in the future
+      call t_startf('clubb_tend_cam:advance_clubb_core_api')
       call advance_clubb_core_api( gr, pverp+1-top_lev, ncol, &
           l_implemented, dtime, fcor, sfc_elevation, &
           hydromet_dim, &
@@ -3559,6 +3569,7 @@ end subroutine clubb_init_cnst
           wprcp_out, w_up_in_cloud_out, w_down_in_cloud_out,  &
           cloudy_updraft_frac_out, cloudy_downdraft_frac_out, &
           rcm_in_layer_out, cloud_cover_out, invrs_tau_zm_out )
+      call t_stopf('clubb_tend_cam:advance_clubb_core_api')
 
       ! Note that CLUBB does not produce an error code specific to any column, and
       ! one value only for the entire chunk
@@ -3582,12 +3593,14 @@ end subroutine clubb_init_cnst
           end do
         end do
 
+        call t_startf('clubb_tend_cam:update_xp2_mc_api')
         call update_xp2_mc_api( gr, nlev+1, ncol, dtime, cloud_frac_inout, &
           rcm_inout, rvm_in, thlm_in, wm_zt, &
           exner, pre_in, pdf_params_chnk(lchnk), &
           rtp2_mc_out, thlp2_mc_out, &
           wprtp_mc_out, wpthlp_mc_out, &
           rtpthlp_mc_out)
+        call t_stopf('clubb_tend_cam:update_xp2_mc_api')
 
         do k=1,nlev+1
           do i=1,ncol
@@ -3605,6 +3618,7 @@ end subroutine clubb_init_cnst
 
 
       if (do_cldcool) then
+        call t_startf('clubb_tend_cam:do_cldcool')
 
         rcm_out_zm = zt2zm_api(pverp+1-top_lev, ncol, gr, rcm_inout )
         qrl_zm     = zt2zm_api(pverp+1-top_lev, ncol, gr, qrl_clubb )
@@ -3619,19 +3633,23 @@ end subroutine clubb_init_cnst
           thlp2_in(i,:) = thlp2_in(i,:) + thlp2_rad_out(i,:) * dtime
           thlp2_in(i,:) = max(thl_tol**2,thlp2_in(i,:))
         end do
+        call t_stopf('clubb_tend_cam:do_cldcool')
 
       end if
 
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
       if (stats_metadata%l_stats) then
+        call t_startf('clubb_tend_cam:stats_end_timestep_clubb')
         do i=1, ncol
           call stats_end_timestep_clubb(i, stats_zt(i), stats_zm(i), stats_rad_zt(i), stats_rad_zm(i), stats_sfc(i), &
                                         out_zt, out_zm, out_radzt, out_radzm, out_sfc)
         end do
+        call t_stopf('clubb_tend_cam:stats_end_timestep_clubb')
       end if
 
     enddo  ! end time loop
+    call t_startf('clubb_tend_cam:NAR')
 
     if (clubb_do_adv) then
       if (macmic_it  ==  cld_macmic_num_steps) then
@@ -3657,12 +3675,16 @@ end subroutine clubb_init_cnst
 
       end if
     end if
+    call t_stopf('clubb_tend_cam:NAR')
 
     ! Convert RTP2 and THLP2 to thermo grid for output
+    call t_startf('clubb_tend_cam:NAR')
     rtp2_zt = zm2zt_api( pverp+1-top_lev, ncol, gr, rtp2_in )
     thl2_zt = zm2zt_api( pverp+1-top_lev, ncol, gr, thlp2_in )
     wp2_zt  = zm2zt_api( pverp+1-top_lev, ncol, gr, wp2_in )
+    call t_stopf('clubb_tend_cam:NAR')
 
+    call t_startf('clubb_tend_cam:flip-index')
     !  Arrays need to be "flipped" to CAM grid
     do k=1, nlev+1
       do i=1, ncol
@@ -3722,6 +3744,8 @@ end subroutine clubb_init_cnst
 
       end do
     end do
+    call t_stopf('clubb_tend_cam:flip-index')
+    call t_startf('clubb_tend_cam:NAR')
 
     !  Accumulate vars through macmic subcycle
     upwp_clubb_gw_mc(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)   + upwp(:ncol,:)
@@ -4021,7 +4045,6 @@ end subroutine clubb_init_cnst
       end if
     end do
 
-    call t_stopf("clubb_tend_cam_i_loop")
 
     call outfld('KVH_CLUBB', khzm, pcols, lchnk)
 
@@ -4068,9 +4091,11 @@ end subroutine clubb_init_cnst
     ! then advances it's predictive equations second, this can lead to
     ! RHliq > 1 directly before microphysics is called.  Therefore, we use
     ! ice_macro_tend to enforce RHliq <= 1 everywhere before microphysics is called.
+    call t_stopf('clubb_tend_cam:NAR')
 
     if (clubb_do_liqsupersat) then
 
+      call t_startf('clubb_cam_tend:do_liqsupersat')
       ! -------------------------------------- !
       ! Ice Saturation Adjustment Computation  !
       ! -------------------------------------- !
@@ -4122,7 +4147,9 @@ end subroutine clubb_init_cnst
       end where
 
       call outfld( 'FQTENDICE', fqtend, pcols, lchnk )
+      call t_stopf('clubb_cam_tend:do_liqsupersat')
     end if
+    call t_startf('clubb_tend_cam:NAR')
 
     ! ------------------------------------------------------------ !
     ! The rest of the code deals with diagnosing variables         !
@@ -4547,8 +4574,8 @@ end subroutine clubb_init_cnst
       enddo
 
     endif
-
-    call t_stopf("clubb_tend_cam")
+    call t_stopf('clubb_tend_cam:NAR')
+     
 
     return
 #endif
