@@ -750,7 +750,7 @@ end subroutine crm_init_cnst
    use crmx_crm_module,     only: crm
    use crmx_microphysics,   only: nmicro_fields
    use physconst,           only: latvap
-   use check_energy_cam,    only: check_energy_cam_chng
+   use check_energy,        only: check_energy_cam_chng
    use phys_grid,           only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p
    use modal_aero_calcsize, only: modal_aero_calcsize_sub
    use micro_pumas_utils,      only: size_dist_param_liq, mg_liq_props, mincld, qsmall

@@ -1065,7 +1065,7 @@ contains
     !-----------------------------------------------------------------------
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy_cam, only: check_energy_gmean
+    use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
@@ -1392,7 +1392,7 @@ contains
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
     use check_energy,       only: tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
-    use check_energy_cam,   only: check_energy_cam_chng
+    use check_energy,       only: check_energy_cam_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
@@ -2045,8 +2045,8 @@ contains
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
-    use check_energy_cam,only: check_energy_cam_timestep_init, check_energy_cam_chng
-    use check_energy_cam,only: check_energy_cam_fix
+    use check_energy,    only: check_energy_timestep_init, check_energy_cam_chng
+    use check_energy,    only: check_energy_cam_fix
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
@@ -2257,7 +2257,9 @@ contains
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
     if (.not.dycore_is('EUL')) then
        call check_energy_cam_fix(state, ptend, nstep, flx_heat)
+
        call physics_update(state, ptend, ztodt, tend)
+
        call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
@@ -2632,7 +2634,7 @@ contains
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
-             call check_energy_cam_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
+             call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
           if (trim(cam_take_snapshot_before) == "microp_section") then

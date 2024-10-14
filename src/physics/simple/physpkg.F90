@@ -305,7 +305,7 @@ contains
     !-----------------------------------------------------------------------
     use time_manager,    only: get_nstep
     use cam_diagnostics, only: diag_allocate, diag_physvar_ic
-    use check_energy_cam, only: check_energy_gmean
+    use check_energy,    only: check_energy_gmean
 
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
     !
@@ -503,7 +503,7 @@ contains
     use air_composition, only: cpairv, cp_or_cv_dycore
     use time_manager,    only: get_nstep
     use nudging,         only: Nudge_Model, Nudge_ON, nudging_timestep_tend
-    use check_energy_cam,only: check_energy_cam_chng
+    use check_energy,    only: check_energy_cam_chng
 
     ! Arguments
     !
@@ -728,8 +728,8 @@ contains
     use cam_diagnostics,   only: diag_conv_tend_ini, diag_conv, diag_export
     use cam_history,       only: outfld
     use time_manager,      only: get_nstep
-    use check_energy_cam,  only: check_energy_cam_chng, check_energy_cam_fix
-    use check_energy_cam,  only: check_energy_cam_timestep_init
+    use check_energy,      only: check_energy_cam_chng, check_energy_cam_fix
+    use check_energy,      only: check_energy_timestep_init
     use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend

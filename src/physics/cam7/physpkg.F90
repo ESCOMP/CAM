@@ -1056,7 +1056,7 @@ contains
     !-----------------------------------------------------------------------
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy_cam, only: check_energy_gmean
+    use check_energy,   only: check_energy_gmean
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
     use cam_history,    only: outfld, write_camiop
@@ -1366,7 +1366,7 @@ contains
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o
     use aero_model,         only: aero_model_drydep
-    use check_energy_cam,   only: check_energy_cam_timestep_init, check_energy_cam_chng
+    use check_energy,       only: check_energy_timestep_init, check_energy_cam_chng
     use check_energy,       only: tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
@@ -1775,7 +1775,7 @@ contains
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
-             call check_energy_cam_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
+             call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
           if (trim(cam_take_snapshot_before) == "microp_section") then
@@ -2517,7 +2517,7 @@ contains
     use convect_deep,    only: convect_deep_tend
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
-    use check_energy_cam,only: check_energy_cam_chng, check_energy_cam_fix
+    use check_energy,    only: check_energy_cam_chng, check_energy_cam_fix
     use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is

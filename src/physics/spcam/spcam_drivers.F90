@@ -300,7 +300,7 @@ subroutine tphysbc_spcam (ztodt, state,   &
     use cam_history,     only: outfld
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use time_manager,    only: get_nstep
-    use check_energy_cam,only: check_energy_cam_chng, check_energy_cam_fix
+    use check_energy,    only: check_energy_cam_chng, check_energy_cam_fix
     use check_energy,    only: check_tracers_data, check_tracers_init
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
