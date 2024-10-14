@@ -2841,8 +2841,8 @@ end subroutine clubb_init_cnst
 
     call t_startf('clubb_tend_cam:NAR')
 
-    do i = 1, pcols
-      do k = 1, pverp
+    do k = 1, pverp
+      do i = 1, pcols
         rtp2_zt_out(i,k) = 0._r8
         thl2_zt_out(i,k) = 0._r8
         wp2_zt_out(i,k)  = 0._r8
@@ -2853,9 +2853,79 @@ end subroutine clubb_init_cnst
     end do
 
 
-    do i = 1, pcols
-      do k = 1, pver
+    do k = 1, pver
+      do i = 1, pcols
         temp2d(i,k) = 0._r8
+      end do
+    end do
+
+
+    do k = 1, nzm_clubb
+      do i = 1, ncol
+
+        !  Define forcings from CAM to CLUBB as zero for momentum and thermo,
+        !  forcings already applied through CAM
+        thlm_forcing(i,k) = 0._r8
+        rtm_forcing(i,k) = 0._r8
+        um_forcing(i,k) = 0._r8
+        vm_forcing(i,k) = 0._r8
+
+        rtm_ref(i,k) = 0.0_r8
+        thlm_ref(i,k) = 0.0_r8
+        um_ref(i,k) = 0.0_r8
+        vm_ref(i,k) = 0.0_r8
+        ug(i,k) = 0.0_r8
+        vg(i,k) = 0.0_r8
+
+        ! Perturbed winds are not used in CAM
+        um_pert_inout(i,k)   = 0.0_r8
+        vm_pert_inout(i,k)   = 0.0_r8
+        upwp_pert_inout(i,k) = 0.0_r8
+        vpwp_pert_inout(i,k) = 0.0_r8
+        
+
+        !  Initialize these to prevent crashing behavior
+        wprcp_out(i,k)        = 0._r8
+        rcm_in_layer_out(i,k) = 0._r8
+        cloud_cover_out(i,k)  = 0._r8
+        khzm_out(i,k)         = 0._r8
+        khzt_out(i,k)         = 0._r8
+      end do
+      end do
+
+    do i = 1, ncol
+      ! Perturbed winds are not used in CAM
+      upwp_sfc_pert(i) = 0.0_r8
+      vpwp_sfc_pert(i) = 0.0_r8
+
+      ! higher order scalar stuff, put to zero
+      wpsclrp_sfc(i,sclr) = 0._r8
+    end do
+
+    !  higher order scalar stuff, put to zero
+    do sclr = 1, sclr_dim
+      do k = 1, nzm_clubb
+        do i=1, ncol
+          sclrm(i,k,sclr)           = 0._r8
+          wpsclrp(i,k,sclr)         = 0._r8
+          sclrp2(i,k,sclr)          = 0._r8
+          sclrp3(i,k,sclr)          = 0._r8
+          sclrprtp(i,k,sclr)        = 0._r8
+          sclrpthlp(i,k,sclr)       = 0._r8
+          sclrpthvp_inout(i,k,sclr) = 0._r8
+        end do
+      end do
+    end do
+
+    do ixind=1, hydromet_dim
+      do k=1, nzm_clubb
+        do i=1, ncol
+          hydromet(i,k,ixind)    = 0._r8
+          wphydrometp(i,k,ixind) = 0._r8
+          wp2hmp(i,k,ixind)      = 0._r8
+          rtphmp_zt(i,k,ixind)   = 0._r8
+          thlphmp_zt(i,k,ixind)  = 0._r8
+        end do
       end do
     end do
 
@@ -2877,6 +2947,23 @@ end subroutine clubb_init_cnst
         end do
       end do
     end do
+
+    !  Define surface sources for transported variables for diffusion, will
+    !  be zero as these tendencies are done in vertical_diffusion
+    do edsclr = 1, edsclr_dim
+      do i = 1, ncol
+        wpedsclrp_sfc(i,edsclr) = 0._r8
+      end do
+    end do
+
+    ! need to initialize macmic coupling to zero
+    if (macmic_it==1) then
+        ttend_clubb_mc(:ncol,:) = 0._r8
+        upwp_clubb_gw_mc(:ncol,:) = 0._r8
+        vpwp_clubb_gw_mc(:ncol,:) = 0._r8
+        thlp2_clubb_gw_mc(:ncol,:) = 0._r8
+        wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
+    end if
 
 
     ! Initialize EDMF outputs
@@ -2909,98 +2996,7 @@ end subroutine clubb_init_cnst
         end do 
       end do
     end if
-
-    !  Define surface sources for transported variables for diffusion, will
-    !  be zero as these tendencies are done in vertical_diffusion
-    do edsclr = 1, edsclr_dim
-      do i = 1, ncol
-        wpedsclrp_sfc(i,edsclr) = 0._r8
-      end do
-    end do
-
-
-    !  Define forcings from CAM to CLUBB as zero for momentum and thermo,
-    !  forcings already applied through CAM
-    do k = 1, nzm_clubb
-      do i = 1, ncol
-        thlm_forcing(i,k) = 0._r8
-        rtm_forcing(i,k) = 0._r8
-        um_forcing(i,k) = 0._r8
-        vm_forcing(i,k) = 0._r8
-
-
-        rtm_ref(i,k) = 0.0_r8
-        thlm_ref(i,k) = 0.0_r8
-        um_ref(i,k) = 0.0_r8
-        vm_ref(i,k) = 0.0_r8
-        ug(i,k) = 0.0_r8
-        vg(i,k) = 0.0_r8
-
-        ! Perturbed winds are not used in CAM
-        um_pert_inout(i,k)   = 0.0_r8
-        vm_pert_inout(i,k)   = 0.0_r8
-        upwp_pert_inout(i,k) = 0.0_r8
-        vpwp_pert_inout(i,k) = 0.0_r8
-      end do
-      end do
-
-    do i = 1, ncol
-      ! Perturbed winds are not used in CAM
-      upwp_sfc_pert(i) = 0.0_r8
-      vpwp_sfc_pert(i) = 0.0_r8
-
-      ! higher order scalar stuff, put to zero
-      wpsclrp_sfc(i,sclr) = 0._r8
-    end do
-
-    !  Initialize these to prevent crashing behavior
-    do k=1,nzm_clubb
-      do i=1,ncol
-        wprcp_out(i,k)        = 0._r8
-        rcm_in_layer_out(i,k) = 0._r8
-        cloud_cover_out(i,k)  = 0._r8
-        khzm_out(i,k)         = 0._r8
-        khzt_out(i,k)         = 0._r8
-      end do
-    end do
-
-    !  higher order scalar stuff, put to zero
-    do sclr = 1, sclr_dim
-      do k = 1, nzm_clubb
-        do i=1, ncol
-          sclrm(i,k,sclr)           = 0._r8
-          wpsclrp(i,k,sclr)         = 0._r8
-          sclrp2(i,k,sclr)          = 0._r8
-          sclrp3(i,k,sclr)          = 0._r8
-          sclrprtp(i,k,sclr)        = 0._r8
-          sclrpthlp(i,k,sclr)       = 0._r8
-          sclrpthvp_inout(i,k,sclr) = 0._r8
-        end do
-      end do
-    end do
-
-    do ixind=1, hydromet_dim
-      do k=1, nzm_clubb
-        do i=1, ncol
-          hydromet(i,k,ixind)    = 0._r8
-          wphydrometp(i,k,ixind) = 0._r8
-          wp2hmp(i,k,ixind)      = 0._r8
-          rtphmp_zt(i,k,ixind)   = 0._r8
-          thlphmp_zt(i,k,ixind)  = 0._r8
-        end do
-      end do
-    end do
-
-    ! need to initialize macmic coupling to zero
-    if (macmic_it==1) then
-        ttend_clubb_mc(:ncol,:) = 0._r8
-        upwp_clubb_gw_mc(:ncol,:) = 0._r8
-        vpwp_clubb_gw_mc(:ncol,:) = 0._r8
-        thlp2_clubb_gw_mc(:ncol,:) = 0._r8
-        wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
-    end if
     
-
 
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for
@@ -3090,22 +3086,6 @@ end subroutine clubb_init_cnst
        inv_exner_clubb_surf(i) = 1._r8/((state1%pmid(i,pver)/p0_clubb)**(rairv(i,pver,lchnk)/cpairv(i,pver,lchnk)))
     enddo
 
-    !  At each CLUBB call, initialize mean momentum  and thermo CLUBB state
-    !  from the CAM state
-    do k = 1, pver
-      do i = 1, ncol
-
-        rtm(i,k)  = state1%q(i,k,ixq)+state1%q(i,k,ixcldliq)
-        rvm(i,k)  = state1%q(i,k,ixq)
-        um(i,k)   = state1%u(i,k)
-        vm(i,k)   = state1%v(i,k)
-        thlm(i,k) = ( state1%t(i,k) &
-                      - (latvap/cpairv(i,k,lchnk))*state1%q(i,k,ixcldliq) ) &
-                    * inv_exner_clubb(i,k)
-
-      enddo
-    enddo
-
     if (clubb_do_adv) then
 
       if (macmic_it  ==  1) then
@@ -3151,21 +3131,6 @@ end subroutine clubb_init_cnst
 
     endif
 
-  
-    do i = 1, ncol
-      rtm(i,pverp)  = rtm(i,pver)
-      um(i,pverp)   = state1%u(i,pver)
-      vm(i,pverp)   = state1%v(i,pver)
-      thlm(i,pverp) = thlm(i,pver)
-    end do
-
-    !  Compute virtual potential temperature, which is needed for CLUBB
-    do k = 1, pver
-      do i = 1, ncol
-        thv(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)*(1._r8+zvir*state1%q(i,k,ixq)&
-                   -state1%q(i,k,ixcldliq))
-      enddo
-    enddo
 
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
 
@@ -3175,7 +3140,6 @@ end subroutine clubb_init_cnst
     call tropopause_findChemTrop( state, troplev )
 
 
-
     ! Define the CLUBB momentum grid (in height, units of m)
     do k=1, nzm_clubb
       do i=1, ncol
@@ -3183,33 +3147,43 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    ! Define the CLUBB thermodynamic grid (in units of m)
-    do k=1, nzt_clubb
-      do i=1, ncol
-        zt_g(i,k+1) = state1%zm(i,pver-k+1)-state1%zi(i,pver+1)
-      end do
-    end do
-
-    !  Thermodynamic ghost point is below surface
-    do i=1, ncol
-      zt_g(i,1) = -1._r8*zt_g(i,2)
-    end do
-
     do k=1, pver
       do i=1, ncol
-        dz_g(i,k) = state1%zi(i,k)-state1%zi(i,k+1)  ! compute thickness
-      end do
-    end do
+        
+        !  Compute virtual potential temperature, which is needed for CLUBB
+        thv(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)*(1._r8+zvir*state1%q(i,k,ixq)&
+                   -state1%q(i,k,ixcldliq))
 
-    do i=1, ncol
-      !  Set the elevation of the surface
-      sfc_elevation(i) = state1%zi(i,pver+1)
+        dz_g(i,k) = state1%zi(i,k)-state1%zi(i,k+1)  ! compute thickness
+
+        !  At each CLUBB call, initialize mean momentum  and thermo CLUBB state
+        !  from the CAM state
+        rtm(i,k)  = state1%q(i,k,ixq)+state1%q(i,k,ixcldliq)
+        rvm(i,k)  = state1%q(i,k,ixq)
+        um(i,k)   = state1%u(i,k)
+        vm(i,k)   = state1%v(i,k)
+        thlm(i,k) = ( state1%t(i,k) &
+                      - (latvap/cpairv(i,k,lchnk))*state1%q(i,k,ixcldliq) ) &
+                    * inv_exner_clubb(i,k)
+
+      enddo
+    enddo
+  
+    do i = 1, ncol
+      rtm(i,pverp)  = rtm(i,pver)
+      um(i,pverp)   = state1%u(i,pver)
+      vm(i,pverp)   = state1%v(i,pver)
+      thlm(i,pverp) = thlm(i,pver)
     end do
 
     !  Compute thermodynamic stuff needed for CLUBB on thermo levels.
     !  Inputs for the momentum levels are set below setup_clubb core
     do k = 1, nzt_clubb
       do i = 1, ncol
+
+        ! Define the CLUBB thermodynamic grid (in units of m)
+        zt_g(i,k+1) = state1%zm(i,pver-k+1)-state1%zi(i,pver+1)
+
         ! base state (dry) variables
         rho_ds_zt(i,k+1)       = rga*(state1%pdeldry(i,pver-k+1)/dz_g(i,pver-k+1))
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
@@ -3247,6 +3221,10 @@ end subroutine clubb_init_cnst
       radf(i,1)            = radf(i,2)
       qrl_clubb(i,1)       = qrl_clubb(i,2)
       wm_zt(i,1)           = wm_zt(i,2)
+      zt_g(i,1)            = -1._r8*zt_g(i,2)
+
+      !  Set the elevation of the surface
+      sfc_elevation(i) = state1%zi(i,pverp)
     end do
 
 
@@ -3333,11 +3311,15 @@ end subroutine clubb_init_cnst
     rtpthlp_forcing = zt2zm_api( nzm_clubb, ncol, gr, rtpthlp_mc_zt(1:ncol,:) )
 
     ! Zero out SILHS covariance contribution terms
-    rtp2_mc_zt(:,:) = 0.0_r8
-    thlp2_mc_zt(:,:) = 0.0_r8
-    wprtp_mc_zt(:,:) = 0.0_r8
-    wpthlp_mc_zt(:,:) = 0.0_r8
-    rtpthlp_mc_zt(:,:) = 0.0_r8
+    do k = 1, pverp
+      do i = 1, pcols
+        rtp2_mc_zt(i,k)     = 0.0_r8
+        thlp2_mc_zt(i,k)    = 0.0_r8
+        wprtp_mc_zt(i,k)    = 0.0_r8
+        wpthlp_mc_zt(i,k)   = 0.0_r8
+        rtpthlp_mc_zt(i,k)  = 0.0_r8
+      end do
+    end do
 
 
     !  Compute some inputs from the thermodynamic grid
@@ -3358,6 +3340,7 @@ end subroutine clubb_init_cnst
     ! Implementation after Thomas Toniazzo (NorESM) and Colin Zarzycki (PSU)
     !  Other Surface fluxes provided by host model
     if( (cld_macmic_num_steps > 1) .and. clubb_l_intr_sfc_flux_smooth ) then
+
        ! Adjust surface stresses using winds from the prior macmic iteration
        do i=1,ncol
           ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
@@ -3524,6 +3507,7 @@ end subroutine clubb_init_cnst
 
 
     if (clubb_l_do_expldiff_rtm_thlm) then
+
       do k=1,nzt_clubb
         do i=1, ncol
           edsclr_in(i,k+1,icnt+1) = thlm(i,pver-k+1)
@@ -3757,7 +3741,7 @@ end subroutine clubb_init_cnst
         call endrun(subr//':  Fatal error in CLUBB library')
       end if
 
-      if (do_rainturb) then
+      if ( do_rainturb ) then
 
         do k=1,nzm_clubb
           do i=1,ncol
@@ -3923,39 +3907,6 @@ end subroutine clubb_init_cnst
 
       end do
     end do
-    call t_stopf('clubb_tend_cam:flip-index')
-    call t_startf('clubb_tend_cam:NAR')
-
-    !  Accumulate vars through macmic subcycle
-    upwp_clubb_gw_mc(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)   + upwp(:ncol,:)
-    vpwp_clubb_gw_mc(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)   + vpwp(:ncol,:)
-    thlp2_clubb_gw_mc(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)  + thlp2(:ncol,:)
-    wpthlp_clubb_gw_mc(:ncol,:) = wpthlp_clubb_gw_mc(:ncol,:) + wpthlp(:ncol,:)
-
-    ! And average at last macmic step
-    if (macmic_it == cld_macmic_num_steps) then
-       upwp_clubb_gw(:ncol,:)   = upwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
-       vpwp_clubb_gw(:ncol,:)   = vpwp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
-       thlp2_clubb_gw(:ncol,:)  = thlp2_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
-       wpthlp_clubb_gw(:ncol,:) = wpthlp_clubb_gw_mc(:ncol,:)/REAL(cld_macmic_num_steps,r8)
-    end if
-
-    do k=1, nzm_clubb
-      do i=1, ncol
-
-        mean_rt = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
-                  * pdf_params_chnk(lchnk)%rt_1(i,k) &
-                  + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
-                    * pdf_params_chnk(lchnk)%rt_2(i,k)
-
-        pdfp_rtp2(i,pverp-k+1) = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
-                                 * ( ( pdf_params_chnk(lchnk)%rt_1(i,k) - mean_rt )**2 &
-                                     + pdf_params_chnk(lchnk)%varnce_rt_1(i,k) ) &
-                                 + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
-                                   * ( ( pdf_params_chnk(lchnk)%rt_2(i,k) - mean_rt )**2 &
-                                       + pdf_params_chnk(lchnk)%varnce_rt_2(i,k) )
-      end do
-    end do
 
     do ixind=1,edsclr_dim
       do k=1, nzm_clubb
@@ -3997,9 +3948,50 @@ end subroutine clubb_init_cnst
       end do
     end if
 
-      ! Values to use above top_lev, for variables that have not already been
-      ! set up there. These are mostly fill values that should not actually be
-      ! used in the run, but may end up in diagnostic output.
+    call t_stopf('clubb_tend_cam:flip-index')
+
+
+    call t_startf('clubb_tend_cam:NAR')
+    do k=1, pverp
+      do i=1, ncol
+
+        !  Accumulate vars through macmic subcycle
+        upwp_clubb_gw_mc(i,k)   = upwp_clubb_gw_mc(i,k)   + upwp(i,k)
+        vpwp_clubb_gw_mc(i,k)   = vpwp_clubb_gw_mc(i,k)   + vpwp(i,k)
+        thlp2_clubb_gw_mc(i,k)  = thlp2_clubb_gw_mc(i,k)  + thlp2(i,k)
+        wpthlp_clubb_gw_mc(i,k) = wpthlp_clubb_gw_mc(i,k) + wpthlp(i,k)
+
+        ! And average at last macmic step
+        if (macmic_it == cld_macmic_num_steps) then
+           upwp_clubb_gw(i,k)   = upwp_clubb_gw_mc(i,k)/REAL(cld_macmic_num_steps,r8)
+           vpwp_clubb_gw(i,k)   = vpwp_clubb_gw_mc(i,k)/REAL(cld_macmic_num_steps,r8)
+           thlp2_clubb_gw(i,k)  = thlp2_clubb_gw_mc(i,k)/REAL(cld_macmic_num_steps,r8)
+           wpthlp_clubb_gw(i,k) = wpthlp_clubb_gw_mc(i,k)/REAL(cld_macmic_num_steps,r8)
+        end if
+
+      end do
+    end do
+
+    do k=1, nzm_clubb
+      do i=1, ncol
+
+        mean_rt = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
+                  * pdf_params_chnk(lchnk)%rt_1(i,k) &
+                  + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
+                    * pdf_params_chnk(lchnk)%rt_2(i,k)
+
+        pdfp_rtp2(i,pverp-k+1) = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
+                                 * ( ( pdf_params_chnk(lchnk)%rt_1(i,k) - mean_rt )**2 &
+                                     + pdf_params_chnk(lchnk)%varnce_rt_1(i,k) ) &
+                                 + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
+                                   * ( ( pdf_params_chnk(lchnk)%rt_2(i,k) - mean_rt )**2 &
+                                       + pdf_params_chnk(lchnk)%varnce_rt_2(i,k) )
+      end do
+    end do
+
+    ! Values to use above top_lev, for variables that have not already been
+    ! set up there. These are mostly fill values that should not actually be
+    ! used in the run, but may end up in diagnostic output.
     do k=1, top_lev-1
       do i=1, ncol
         upwp(i,k)         = 0._r8
@@ -4015,22 +4007,26 @@ end subroutine clubb_init_cnst
       end do
     end do
 
+    !  Fill up arrays needed for McICA.  Note we do not want the ghost point,
+    !   thus why the second loop is needed.
+    do i=1, pcols
+      zi_out(i,1) = 0._r8
+    end do
+
     ! enforce zero tracer tendencies above the top_lev level -- no change
     icnt=0
     do ixind=1,pcnst
       if (lq(ixind)) then
         icnt=icnt+1
 
-        do i=1, ncol
-          edsclr_out(i,:top_lev-1,icnt) = state1%q(i,:top_lev-1,ixind)
+        do k=1, top_lev-1
+          do i=1, ncol
+            edsclr_out(i,k,icnt) = state1%q(i,k,ixind)
+          end do
         end do
 
       end if
     end do
-
-    !  Fill up arrays needed for McICA.  Note we do not want the ghost point,
-    !   thus why the second loop is needed.
-    zi_out(:,1) = 0._r8
 
     ! Compute static energy using CLUBB's variables
     do k=1,pver
@@ -4059,16 +4055,23 @@ end subroutine clubb_init_cnst
       call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
     endif
 
+    do i=1, ncol
+      se_a(i) = 0._r8
+      ke_a(i) = 0._r8
+      wv_a(i) = 0._r8
+      wl_a(i) = 0._r8
 
-    ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
-    ! after CLUBB is called.  This is for energy conservation purposes.
-    se_a(:) = 0._r8
-    ke_a(:) = 0._r8
-    wv_a(:) = 0._r8
-    wl_a(:) = 0._r8
+      se_b(i) = 0._r8
+      ke_b(i) = 0._r8
+      wv_b(i) = 0._r8
+      wl_b(i) = 0._r8
+    end do
 
-    do k=1,pver
-      do i=1, ncol
+    ! NO COLLAPSE(2)
+    do i=1, ncol
+      do k=1,pver
+        ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
+        ! after CLUBB is called.  This is for energy conservation purposes.
         se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)*rga
         ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)*rga
         wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)*rga
@@ -4076,14 +4079,10 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    ! Do the same as above, but for before CLUBB was called.
-    se_b(:) = 0._r8
-    ke_b(:) = 0._r8
-    wv_b(:) = 0._r8
-    wl_b(:) = 0._r8
-
-    do k=1, pver
-      do i=1, ncol
+    ! NO COLLAPSE(2)
+    do i=1, ncol
+      do k=1, pver
+        ! Do the same as above, but for before CLUBB was called.
         se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)*rga
         ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)*rga
         wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdeldry(i,k)*rga
@@ -4125,34 +4124,45 @@ end subroutine clubb_init_cnst
 
     !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
     !  for all variables and therefore is never called in this loop
-    rtm_integral_vtend(:) = 0._r8
-    rtm_integral_ltend(:) = 0._r8
-
-    do k=1, pver
-       do i=1, ncol
-
-          ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               / hdtime ! east-west wind
-          ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               / hdtime ! north-south wind
-          ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) / hdtime ! water vapor
-          ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
-          ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
-
-          rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
-          rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
-
-       end do
+    do i=1, ncol
     end do
 
-    rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
-    rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
+    ! NO COLLAPSE(2)
+    do i=1, ncol
+
+      rtm_integral_vtend(i) = 0._r8
+      rtm_integral_ltend(i) = 0._r8
+
+      do k=1, pver
+
+        ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               / hdtime ! east-west wind
+        ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               / hdtime ! north-south wind
+        ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) / hdtime ! water vapor
+        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
+        ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
+
+        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
+        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
+
+      end do
+
+      rtm_integral_ltend(i) = rtm_integral_ltend(i)/gravit
+      rtm_integral_vtend(i) = rtm_integral_vtend(i)/gravit
+
+    end do
 
     ! Accumulate Air Temperature Tendency (TTEND) for Gravity Wave parameterization
-    ttend_clubb_mc(:ncol,:pver) = ttend_clubb_mc(:ncol,:pver) + ptend_loc%s(:ncol,:pver)/cpair
+    do k=1, pver
+      do i=1, ncol
+        ttend_clubb_mc(i,k) = ttend_clubb_mc(i,k) + ptend_loc%s(i,k)/cpair
 
-    ! Average at last macmic step
-    if (macmic_it == cld_macmic_num_steps) then
-       ttend_clubb(:ncol,:)  = ttend_clubb_mc(:ncol,:pver)/REAL(cld_macmic_num_steps,r8)
-    end if
+        ! Average at last macmic step
+        if (macmic_it == cld_macmic_num_steps) then
+           ttend_clubb(i,k)  = ttend_clubb_mc(i,k) / REAL(cld_macmic_num_steps,r8)
+        end if
+
+      end do
+    end do
 
     if (clubb_do_adv) then
       if (macmic_it == cld_macmic_num_steps) then
@@ -4180,6 +4190,12 @@ end subroutine clubb_init_cnst
 
           end do
         end do
+
+        ! Add constant to ghost point so that output is not corrupted
+        wp3(:,pverp)     = wp3(:,pverp)     + wp3_const
+        rtpthlp(:,pverp) = rtpthlp(:,pverp) + rtpthlp_const
+        wpthlp(:,pverp)  = wpthlp(:,pverp)  + wpthlp_const
+        wprtp(:,pverp)   = wprtp(:,pverp)   + wprtp_const
 
       else
 
@@ -4230,16 +4246,6 @@ end subroutine clubb_init_cnst
     eleak(:ncol) = (te_a(:ncol) - te_b(:ncol))/hdtime
     call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
     call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
-
-    ! Add constant to ghost point so that output is not corrupted
-    if (clubb_do_adv) then
-      if (macmic_it == cld_macmic_num_steps) then
-        wp3(:,pverp)     = wp3(:,pverp)     + wp3_const
-        rtpthlp(:,pverp) = rtpthlp(:,pverp) + rtpthlp_const
-        wpthlp(:,pverp)  = wpthlp(:,pverp)  + wpthlp_const
-        wprtp(:,pverp)   = wprtp(:,pverp)   + wprtp_const
-      end if
-    end if
 
     ! ------------------------------------------------- !
     ! End column computation of CLUBB, begin to apply   !
@@ -4391,6 +4397,7 @@ end subroutine clubb_init_cnst
     enddo
 
     det_ice(:ncol) = det_ice(:ncol)/1000._r8  ! divide by density of water
+
 
     ! output moist basis to be consistent with history variable definition
     temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
