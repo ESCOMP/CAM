@@ -801,9 +801,9 @@ end subroutine check_energy_readnl
             local_cp_or_cv_dycore(:ncol,:) = cpair
             scaling_dycore(:ncol,:) = 1.0_r8
         else
-            ! Moist pressure... use phys formula
-            local_cp_or_cv_dycore(:ncol,:) = local_cp_phys(:ncol,:)
-            scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
+            ! Moist pressure... use phys formula, cp_or_cv_dycore is unused. Reset for safety
+            local_cp_or_cv_dycore(:ncol,:) = 0.0_r8
+            scaling_dycore(:ncol,:)  = 0.0_r8
         end if
     endif
 
