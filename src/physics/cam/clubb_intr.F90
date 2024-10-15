@@ -3383,16 +3383,25 @@ end subroutine clubb_init_cnst
     !$acc              vm_ref, ug, vg, grid_dx, grid_dy, &
     !$acc              pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
     !$acc              p_in_Pa, exner, um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
-    !$acc              state1, state1%q, state1%pint, prer_evap ) &
+    !$acc              state1, state1%q, prer_evap ) & 
     !$acc      create( um_in, vm_in, upwp_in, vpwp_in, wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
     !$acc              up2_in, vp2_in, up3_in, vp3_in, wp2_in, wp3_in, rtp2_in, thlp2_in, rtp3_in, &
     !$acc              thlp3_in, thlm_in, rtm_in, rvm_in, wprtp_in, wpthlp_in, rtpthlp_in, cloud_frac_inout, &
     !$acc              rcm_inout, wp2rtp_inout, wp2thlp_inout, uprcp_inout, vprcp_inout, &
     !$acc              rc_coef_inout, wp4_inout, wpup2_inout, wpvp2_inout, wp2up2_inout, wp2vp2_inout, &
     !$acc              ice_supersat_frac_inout, pre_in, kappa_zt, qc_zt, invrs_exner_zt, kappa_zm, p_in_Pa_zm, &
-    !$acc              invrs_exner_zm, edsclr_in, rcm_in_layer_out, cloud_cover_out, zt_g, zi_g, khzm_out, &
-    !$acc              qclvar_out, wm_zt, rtp2_zt, thl2_zt, wp2_zt, w_up_in_cloud_out, cloudy_downdraft_frac_out, &
-    !$acc              w_down_in_cloud_out, invrs_tau_zm_out, khzt_out, thlprcp_out, &
+    !$acc              invrs_exner_zm, &
+    !$acc              qclvar_out, rtp2_zt, thl2_zt, wp2_zt, w_up_in_cloud_out, cloudy_downdraft_frac_out, &
+    !$acc              w_down_in_cloud_out, invrs_tau_zm_out ) &
+    !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
+    !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
+    !$acc              cloud_frac, pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, &
+    !$acc              pdf_zm_mixt_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
+    !$acc              wp2up2, wp2vp2, ice_supersat_frac, rairv, cpairv, inv_exner_clubb, rcm, &
+    !$acc              wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, wm_zt_out, &
+    !$acc              rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wprcp_out, &
+    !$acc              khzt_out, khzm_out, thlprcp_out, rcm_in_layer_out, cloud_cover_out, &
+    !$acc              zi_g, zt_g, &
     !$acc              pdf_params_chnk(lchnk)%w_1, pdf_params_chnk(lchnk)%w_2, &
     !$acc              pdf_params_chnk(lchnk)%varnce_w_1, pdf_params_chnk(lchnk)%varnce_w_2, &
     !$acc              pdf_params_chnk(lchnk)%rt_1, pdf_params_chnk(lchnk)%rt_2, &
@@ -3438,14 +3447,7 @@ end subroutine clubb_init_cnst
     !$acc              pdf_params_zm_chnk(lchnk)%rsatl_2, pdf_params_zm_chnk(lchnk)%rc_1, pdf_params_zm_chnk(lchnk)%rc_2, &
     !$acc              pdf_params_zm_chnk(lchnk)%cloud_frac_1, pdf_params_zm_chnk(lchnk)%cloud_frac_2,  &
     !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 ) &
-    !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
-    !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
-    !$acc              cloud_frac, pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, &
-    !$acc              pdf_zm_mixt_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
-    !$acc              wp2up2, wp2vp2, ice_supersat_frac, rairv, cpairv, inv_exner_clubb, rcm, &
-    !$acc              wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, wm_zt_out, &
-    !$acc              rtp2_zt_out, thl2_zt_out, wp2_zt_out, edsclr_out, pdfp_rtp2, wprcp_out )
+    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
 
     !$acc data if( sclr_dim > 0 ) &
     !$acc      copyin( sclr_tol, sclrm_forcing, wpsclrp_sfc ) &
@@ -3453,7 +3455,7 @@ end subroutine clubb_init_cnst
 
     !$acc data if( edsclr_dim > 0 ) &
     !$acc      copyin( wpedsclrp_sfc, edsclrm_forcing ) &
-    !$acc        copy( edsclr_in )
+    !$acc        copy( edsclr_in, edsclr_out )
 
     !$acc data if( hydromet_dim > 0 ) &
     !$acc      copyin( hydromet, wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt, &
@@ -3817,7 +3819,7 @@ end subroutine clubb_init_cnst
         call t_stopf('clubb_tend_cam:do_cldcool')
 
       end if
-
+ 
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
       if (stats_metadata%l_stats) then
