@@ -2897,9 +2897,6 @@ end subroutine clubb_init_cnst
       ! Perturbed winds are not used in CAM
       upwp_sfc_pert(i) = 0.0_r8
       vpwp_sfc_pert(i) = 0.0_r8
-
-      ! higher order scalar stuff, put to zero
-      wpsclrp_sfc(i,sclr) = 0._r8
     end do
 
     !  higher order scalar stuff, put to zero
@@ -2917,6 +2914,12 @@ end subroutine clubb_init_cnst
       end do
     end do
 
+    do sclr = 1, sclr_dim
+      do i=1, ncol
+        wpsclrp_sfc(i,sclr) = 0._r8
+      end do
+    end do
+
     do ixind=1, hydromet_dim
       do k=1, nzm_clubb
         do i=1, ncol
@@ -2931,7 +2934,7 @@ end subroutine clubb_init_cnst
 
     !  Initialize forcings for transported scalars to zero
     do sclr = 1, sclr_dim
-      do i = 1, pcols
+      do i = 1, ncol
         do k = 1, nzm_clubb
           sclrm_forcing(i,k,sclr)   = 0._r8
           sclrm(i,k,sclr)           = 0._r8
@@ -2940,7 +2943,7 @@ end subroutine clubb_init_cnst
     end do
 
     do edsclr = 1, edsclr_dim
-      do i = 1, pcols
+      do i = 1, ncol
         do k = 1, nzm_clubb
           edsclrm_forcing(i,k,edsclr) = 0._r8
           edsclr_in(i,k,edsclr)       = 0._r8
@@ -3380,11 +3383,11 @@ end subroutine clubb_init_cnst
     !$acc              vm_ref, ug, vg, grid_dx, grid_dy, &
     !$acc              pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
     !$acc              p_in_Pa, exner, um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
-    !$acc             state1, state1%q, state1%pint ) &
+    !$acc              state1, state1%q, state1%pint, prer_evap ) &
     !$acc      create( um_in, vm_in, upwp_in, vpwp_in, wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
     !$acc              up2_in, vp2_in, up3_in, vp3_in, wp2_in, wp3_in, rtp2_in, thlp2_in, rtp3_in, &
     !$acc              thlp3_in, thlm_in, rtm_in, rvm_in, wprtp_in, wpthlp_in, rtpthlp_in, cloud_frac_inout, &
-    !$acc              rcm_inout, pdf_params_zm_chnk, wp2rtp_inout, wp2thlp_inout, uprcp_inout, vprcp_inout, &
+    !$acc              rcm_inout, wp2rtp_inout, wp2thlp_inout, uprcp_inout, vprcp_inout, &
     !$acc              rc_coef_inout, wp4_inout, wpup2_inout, wpvp2_inout, wp2up2_inout, wp2vp2_inout, &
     !$acc              ice_supersat_frac_inout, pre_in, kappa_zt, qc_zt, invrs_exner_zt, kappa_zm, p_in_Pa_zm, &
     !$acc              invrs_exner_zm, edsclr_in, rcm_in_layer_out, cloud_cover_out, zt_g, zi_g, khzm_out, &
