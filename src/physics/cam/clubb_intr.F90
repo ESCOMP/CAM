@@ -2844,8 +2844,101 @@ end subroutine clubb_init_cnst
     ztodtptr(:) = 1.0_r8*hdtime
 
 
+    call t_startf('clubb_tend_cam:acc_copyin')
+    !$acc data copyin( sclr_idx, clubb_params_single_col, grid_dx, grid_dy, rairv, cpairv, radf_clubb, qrl, &
+    !$acc              pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
+    !$acc              state1, state1%q, state1%u, state1%v, state1%t, state1%pmid, &
+    !$acc              state1%zm, state1%zi, state1%pdeldry, state1%pdel, state1%omega, &
+    !$acc              cam_in, cam_in%shf, cam_in%wsx, cam_in%wsy, cam_in%cflx, &
+    !$acc              rrho, prer_evap, rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) & 
+    !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
+    !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
+    !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
+    !$acc              wp2up2, wp2vp2, ice_supersat_frac ) &
+    !$acc     copyout( temp2d, temp2dp, rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wm_zt_out, inv_exner_clubb, &
+    !$acc              rcm, wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, thv, dz_g ) &
+    !$acc      create( upwp_sfc_pert, vpwp_sfc_pert, khzt_out, khzm_out, &
+    !$acc              fcor, um_in, vm_in, upwp_in, vpwp_in, wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
+    !$acc              up2_in, vp2_in, up3_in, vp3_in, wp2_in, wp3_in, rtp2_in, thlp2_in, rtp3_in, &
+    !$acc              thlp3_in, thlm_in, rtm_in, rvm_in, wprtp_in, wpthlp_in, rtpthlp_in, cloud_frac_inout, &
+    !$acc              rcm_inout, wp2rtp_inout, wp2thlp_inout, uprcp_inout, vprcp_inout, &
+    !$acc              rc_coef_inout, wp4_inout, wpup2_inout, wpvp2_inout, wp2up2_inout, wp2vp2_inout, &
+    !$acc              ice_supersat_frac_inout, pre_in, kappa_zt, qc_zt, invrs_exner_zt, kappa_zm, p_in_Pa_zm, &
+    !$acc              invrs_exner_zm, cloud_cover_out, rcm_in_layer_out, wprcp_out, &
+    !$acc              qclvar_out, rtp2_zt, thl2_zt, wp2_zt, w_up_in_cloud_out, cloudy_downdraft_frac_out, &
+    !$acc              w_down_in_cloud_out, invrs_tau_zm_out, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
+    !$acc              thlm_forcing, rtm_forcing, um_forcing, vm_forcing, &
+    !$acc              wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
+    !$acc              rtpthlp_forcing, wm_zm, wm_zt, rho_zm, rho_zt, rho_ds_zm, rho_ds_zt, &
+    !$acc              invrs_rho_ds_zm, invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, &
+    !$acc              radf, wpthlp_sfc, clubb_params, sfc_elevation, wprtp_sfc, upwp_sfc, vpwp_sfc, & 
+    !$acc              rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, p_in_Pa, exner, um_pert_inout, &
+    !$acc              inv_exner_clubb_surf, thlprcp_out, zi_g, zt_g, qrl_clubb, &
+    !$acc              pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, pdf_zm_mixt_frac, &
+    !$acc              pdf_params_chnk(lchnk)%w_1, pdf_params_chnk(lchnk)%w_2, &
+    !$acc              pdf_params_chnk(lchnk)%varnce_w_1, pdf_params_chnk(lchnk)%varnce_w_2, &
+    !$acc              pdf_params_chnk(lchnk)%rt_1, pdf_params_chnk(lchnk)%rt_2, &
+    !$acc              pdf_params_chnk(lchnk)%varnce_rt_1, pdf_params_chnk(lchnk)%varnce_rt_2,  &
+    !$acc              pdf_params_chnk(lchnk)%thl_1, pdf_params_chnk(lchnk)%thl_2, &
+    !$acc              pdf_params_chnk(lchnk)%varnce_thl_1, pdf_params_chnk(lchnk)%varnce_thl_2, &
+    !$acc              pdf_params_chnk(lchnk)%corr_w_rt_1, pdf_params_chnk(lchnk)%corr_w_rt_2,  &
+    !$acc              pdf_params_chnk(lchnk)%corr_w_thl_1, pdf_params_chnk(lchnk)%corr_w_thl_2, &
+    !$acc              pdf_params_chnk(lchnk)%corr_rt_thl_1, pdf_params_chnk(lchnk)%corr_rt_thl_2,&
+    !$acc              pdf_params_chnk(lchnk)%alpha_thl, pdf_params_chnk(lchnk)%alpha_rt, &
+    !$acc              pdf_params_chnk(lchnk)%crt_1, pdf_params_chnk(lchnk)%crt_2, pdf_params_chnk(lchnk)%cthl_1, &
+    !$acc              pdf_params_chnk(lchnk)%cthl_2, pdf_params_chnk(lchnk)%chi_1, &
+    !$acc              pdf_params_chnk(lchnk)%chi_2, pdf_params_chnk(lchnk)%stdev_chi_1, &
+    !$acc              pdf_params_chnk(lchnk)%stdev_chi_2, pdf_params_chnk(lchnk)%stdev_eta_1, &
+    !$acc              pdf_params_chnk(lchnk)%stdev_eta_2, pdf_params_chnk(lchnk)%covar_chi_eta_1, &
+    !$acc              pdf_params_chnk(lchnk)%covar_chi_eta_2, pdf_params_chnk(lchnk)%corr_w_chi_1, &
+    !$acc              pdf_params_chnk(lchnk)%corr_w_chi_2, pdf_params_chnk(lchnk)%corr_w_eta_1, &
+    !$acc              pdf_params_chnk(lchnk)%corr_w_eta_2, pdf_params_chnk(lchnk)%corr_chi_eta_1, &
+    !$acc              pdf_params_chnk(lchnk)%corr_chi_eta_2, pdf_params_chnk(lchnk)%rsatl_1, &
+    !$acc              pdf_params_chnk(lchnk)%rsatl_2, pdf_params_chnk(lchnk)%rc_1, pdf_params_chnk(lchnk)%rc_2, &
+    !$acc              pdf_params_chnk(lchnk)%cloud_frac_1, pdf_params_chnk(lchnk)%cloud_frac_2,  &
+    !$acc              pdf_params_chnk(lchnk)%mixt_frac, pdf_params_chnk(lchnk)%ice_supersat_frac_1, &
+    !$acc              pdf_params_chnk(lchnk)%ice_supersat_frac_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%w_1, pdf_params_zm_chnk(lchnk)%w_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%rt_1, pdf_params_zm_chnk(lchnk)%rt_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%varnce_rt_1, pdf_params_zm_chnk(lchnk)%varnce_rt_2,  &
+    !$acc              pdf_params_zm_chnk(lchnk)%thl_1, pdf_params_zm_chnk(lchnk)%thl_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%varnce_thl_1, pdf_params_zm_chnk(lchnk)%varnce_thl_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_rt_1, pdf_params_zm_chnk(lchnk)%corr_w_rt_2,  &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_thl_1, pdf_params_zm_chnk(lchnk)%corr_w_thl_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_rt_thl_1, pdf_params_zm_chnk(lchnk)%corr_rt_thl_2,&
+    !$acc              pdf_params_zm_chnk(lchnk)%alpha_thl, pdf_params_zm_chnk(lchnk)%alpha_rt, &
+    !$acc              pdf_params_zm_chnk(lchnk)%crt_1, pdf_params_zm_chnk(lchnk)%crt_2, pdf_params_zm_chnk(lchnk)%cthl_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%cthl_2, pdf_params_zm_chnk(lchnk)%chi_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%chi_2, pdf_params_zm_chnk(lchnk)%stdev_chi_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%stdev_chi_2, pdf_params_zm_chnk(lchnk)%stdev_eta_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%stdev_eta_2, pdf_params_zm_chnk(lchnk)%covar_chi_eta_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%covar_chi_eta_2, pdf_params_zm_chnk(lchnk)%corr_w_chi_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_chi_2, pdf_params_zm_chnk(lchnk)%corr_w_eta_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_eta_2, pdf_params_zm_chnk(lchnk)%corr_chi_eta_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%corr_chi_eta_2, pdf_params_zm_chnk(lchnk)%rsatl_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%rsatl_2, pdf_params_zm_chnk(lchnk)%rc_1, pdf_params_zm_chnk(lchnk)%rc_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%cloud_frac_1, pdf_params_zm_chnk(lchnk)%cloud_frac_2,  &
+    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, &
+    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
+
+    !$acc data if( sclr_dim > 0 ) &
+    !$acc      create( wpsclrp_sfc, sclrm_forcing, sclrm, wpsclrp, sclrp2, sclrp3, sclrprtp, sclrpthlp, sclrpthvp_inout) &
+    !$acc      copyin( sclr_tol )
+
+    !$acc data if( edsclr_dim > 0 ) &
+    !$acc      create( wpedsclrp_sfc, edsclrm_forcing, edsclr_in ) &
+    !$acc     copyout( edsclr_out )
+
+    !$acc data if( hydromet_dim > 0 ) &
+    !$acc      create( hydromet, wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt ) &
+    !$acc      copyin( hm_metadata, hm_metadata%l_mix_rat_hm )
+    call t_stopf('clubb_tend_cam:acc_copyin')
+
+
     call t_startf('clubb_tend_cam:NAR')
 
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, pverp
       do i = 1, pcols
         rtp2_zt_out(i,k) = 0._r8
@@ -2858,6 +2951,7 @@ end subroutine clubb_init_cnst
     end do
 
 
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, pver
       do i = 1, pcols
         temp2d(i,k) = 0._r8
@@ -2865,6 +2959,7 @@ end subroutine clubb_init_cnst
     end do
 
 
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
       do i = 1, ncol
 
@@ -2898,6 +2993,7 @@ end subroutine clubb_init_cnst
       end do
       end do
 
+    !$acc parallel loop gang vector default(present)
     do i = 1, ncol
       ! Perturbed winds are not used in CAM
       upwp_sfc_pert(i) = 0.0_r8
@@ -2909,64 +3005,66 @@ end subroutine clubb_init_cnst
       fcor(i) = 0._r8
     end do
 
-    !  higher order scalar stuff, put to zero
-    do sclr = 1, sclr_dim
-      do k = 1, nzm_clubb
-        do i=1, ncol
-          sclrm(i,k,sclr)           = 0._r8
-          wpsclrp(i,k,sclr)         = 0._r8
-          sclrp2(i,k,sclr)          = 0._r8
-          sclrp3(i,k,sclr)          = 0._r8
-          sclrprtp(i,k,sclr)        = 0._r8
-          sclrpthlp(i,k,sclr)       = 0._r8
-          sclrpthvp_inout(i,k,sclr) = 0._r8
-          sclrm_forcing(i,k,sclr)   = 0._r8
-        end do
-      end do
-    end do
-    
-    do sclr = 1, sclr_dim
-      do i=1, ncol
-        wpsclrp_sfc(i,sclr) = 0._r8
-      end do
-    end do
-
-    do ixind=1, hydromet_dim
-      do k=1, nzm_clubb
-        do i=1, ncol
-          hydromet(i,k,ixind)    = 0._r8
-          wphydrometp(i,k,ixind) = 0._r8
-          wp2hmp(i,k,ixind)      = 0._r8
-          rtphmp_zt(i,k,ixind)   = 0._r8
-          thlphmp_zt(i,k,ixind)  = 0._r8
-        end do
-      end do
-    end do
-
-    do edsclr = 1, edsclr_dim
-      do i = 1, ncol
+    if ( sclr_dim > 0 ) then
+      !  higher order scalar stuff, put to zero
+      !$acc parallel loop gang vector collapse(3) default(present)
+      do sclr = 1, sclr_dim
         do k = 1, nzm_clubb
-          edsclrm_forcing(i,k,edsclr) = 0._r8
-          edsclr_in(i,k,edsclr)       = 0._r8
+          do i=1, ncol
+            sclrm(i,k,sclr)           = 0._r8
+            wpsclrp(i,k,sclr)         = 0._r8
+            sclrp2(i,k,sclr)          = 0._r8
+            sclrp3(i,k,sclr)          = 0._r8
+            sclrprtp(i,k,sclr)        = 0._r8
+            sclrpthlp(i,k,sclr)       = 0._r8
+            sclrpthvp_inout(i,k,sclr) = 0._r8
+            sclrm_forcing(i,k,sclr)   = 0._r8
+          end do
         end do
       end do
-    end do
-
-    !  Define surface sources for transported variables for diffusion, will
-    !  be zero as these tendencies are done in vertical_diffusion
-    do edsclr = 1, edsclr_dim
-      do i = 1, ncol
-        wpedsclrp_sfc(i,edsclr) = 0._r8
+      
+      !$acc parallel loop gang vector collapse(2) default(present)
+      do sclr = 1, sclr_dim
+        do i=1, ncol
+          wpsclrp_sfc(i,sclr) = 0._r8
+        end do
       end do
-    end do
+    end if
 
-    ! need to initialize macmic coupling to zero
-    if (macmic_it==1) then
-        ttend_clubb_mc(:ncol,:) = 0._r8
-        upwp_clubb_gw_mc(:ncol,:) = 0._r8
-        vpwp_clubb_gw_mc(:ncol,:) = 0._r8
-        thlp2_clubb_gw_mc(:ncol,:) = 0._r8
-        wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
+    if ( hydromet_dim > 0 ) then
+      !$acc parallel loop gang vector collapse(3) default(present)
+      do ixind=1, hydromet_dim
+        do k=1, nzm_clubb
+          do i=1, ncol
+            hydromet(i,k,ixind)    = 0._r8
+            wphydrometp(i,k,ixind) = 0._r8
+            wp2hmp(i,k,ixind)      = 0._r8
+            rtphmp_zt(i,k,ixind)   = 0._r8
+            thlphmp_zt(i,k,ixind)  = 0._r8
+          end do
+        end do
+      end do
+    end if
+
+    if ( edsclr_dim > 0 ) then
+      !$acc parallel loop gang vector collapse(3) default(present)
+      do edsclr = 1, edsclr_dim
+        do i = 1, ncol
+          do k = 1, nzm_clubb
+            edsclrm_forcing(i,k,edsclr) = 0._r8
+            edsclr_in(i,k,edsclr)       = 0._r8
+          end do
+        end do
+      end do
+
+      !  Define surface sources for transported variables for diffusion, will
+      !  be zero as these tendencies are done in vertical_diffusion
+      !$acc parallel loop gang vector collapse(2) default(present)
+      do edsclr = 1, edsclr_dim
+        do i = 1, ncol
+          wpedsclrp_sfc(i,edsclr) = 0._r8
+        end do
+      end do
     end if
 
 
@@ -3078,11 +3176,11 @@ end subroutine clubb_init_cnst
           do i = 1, ncol
             thlp2(i,k)   = state1%q(i,k,ixthlp2)
             rtp2(i,k)    = state1%q(i,k,ixrtp2)
-            rtpthlp(i,k) = state1%q(i,k,ixrtpthlp) - (rtpthlp_const*apply_const)
-            wpthlp(i,k)  = state1%q(i,k,ixwpthlp) - (wpthlp_const*apply_const)
-            wprtp(i,k)   = state1%q(i,k,ixwprtp) - (wprtp_const*apply_const)
+            rtpthlp(i,k) = state1%q(i,k,ixrtpthlp) - ( rtpthlp_const * apply_const )
+            wpthlp(i,k)  = state1%q(i,k,ixwpthlp) - ( wpthlp_const * apply_const )
+            wprtp(i,k)   = state1%q(i,k,ixwprtp) - ( wprtp_const * apply_const )
             wp2(i,k)     = state1%q(i,k,ixwp2)
-            wp3(i,k)     = state1%q(i,k,ixwp3) - (wp3_const*apply_const)
+            wp3(i,k)     = state1%q(i,k,ixwp3) - ( wp3_const * apply_const )
             up2(i,k)     = state1%q(i,k,ixup2)
             vp2(i,k)     = state1%q(i,k,ixvp2)
           enddo
@@ -3113,102 +3211,6 @@ end subroutine clubb_init_cnst
     endif
 
 
-    call t_startf('clubb_tend_cam:acc_copyin')
-    !$acc data copyin( sclr_idx, clubb_params, &
-    !$acc              fcor, sfc_elevation, thlm_forcing, rtm_forcing, um_forcing, &
-    !$acc              vm_forcing, wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
-    !$acc              rtpthlp_forcing, wm_zm, wm_zt, rho_zm, rho_zt, rho_ds_zm, rho_ds_zt, &
-    !$acc              invrs_rho_ds_zm, invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, &
-    !$acc              radf, wpthlp_sfc, clubb_params_single_col, &
-    !$acc              wprtp_sfc, upwp_sfc, vpwp_sfc, & 
-    !$acc              upwp_sfc_pert, vpwp_sfc_pert, rtm_ref, thlm_ref, um_ref, &
-    !$acc              vm_ref, ug, vg, grid_dx, grid_dy, &
-    !$acc              pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
-    !$acc              p_in_Pa, exner, um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
-    !$acc              state1, state1%q, state1%u, state1%v, state1%t, state1%pmid, &
-    !$acc              state1%zm, state1%zi, state1%pdeldry, state1%pdel, state1%omega, &
-    !$acc              cam_in, cam_in%shf, cam_in%wsx, cam_in%wsy, cam_in%cflx, &
-    !$acc              rrho, prer_evap, inv_exner_clubb_surf, &
-    !$acc              rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) & 
-    !$acc      create( um_in, vm_in, upwp_in, vpwp_in, wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
-    !$acc              up2_in, vp2_in, up3_in, vp3_in, wp2_in, wp3_in, rtp2_in, thlp2_in, rtp3_in, &
-    !$acc              thlp3_in, thlm_in, rtm_in, rvm_in, wprtp_in, wpthlp_in, rtpthlp_in, cloud_frac_inout, &
-    !$acc              rcm_inout, wp2rtp_inout, wp2thlp_inout, uprcp_inout, vprcp_inout, &
-    !$acc              rc_coef_inout, wp4_inout, wpup2_inout, wpvp2_inout, wp2up2_inout, wp2vp2_inout, &
-    !$acc              ice_supersat_frac_inout, pre_in, kappa_zt, qc_zt, invrs_exner_zt, kappa_zm, p_in_Pa_zm, &
-    !$acc              invrs_exner_zm, &
-    !$acc              qclvar_out, rtp2_zt, thl2_zt, wp2_zt, w_up_in_cloud_out, cloudy_downdraft_frac_out, &
-    !$acc              w_down_in_cloud_out, invrs_tau_zm_out ) &
-    !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
-    !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
-    !$acc              cloud_frac, pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, &
-    !$acc              pdf_zm_mixt_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
-    !$acc              wp2up2, wp2vp2, ice_supersat_frac, rairv, cpairv, inv_exner_clubb, rcm, &
-    !$acc              wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, wm_zt_out, &
-    !$acc              rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wprcp_out, &
-    !$acc              khzt_out, khzm_out, thlprcp_out, rcm_in_layer_out, cloud_cover_out, &
-    !$acc              zi_g, zt_g, qrl_clubb, qrl, thv, dz_g, radf_clubb, &
-    !$acc              pdf_params_chnk(lchnk)%w_1, pdf_params_chnk(lchnk)%w_2, &
-    !$acc              pdf_params_chnk(lchnk)%varnce_w_1, pdf_params_chnk(lchnk)%varnce_w_2, &
-    !$acc              pdf_params_chnk(lchnk)%rt_1, pdf_params_chnk(lchnk)%rt_2, &
-    !$acc              pdf_params_chnk(lchnk)%varnce_rt_1, pdf_params_chnk(lchnk)%varnce_rt_2,  &
-    !$acc              pdf_params_chnk(lchnk)%thl_1, pdf_params_chnk(lchnk)%thl_2, &
-    !$acc              pdf_params_chnk(lchnk)%varnce_thl_1, pdf_params_chnk(lchnk)%varnce_thl_2, &
-    !$acc              pdf_params_chnk(lchnk)%corr_w_rt_1, pdf_params_chnk(lchnk)%corr_w_rt_2,  &
-    !$acc              pdf_params_chnk(lchnk)%corr_w_thl_1, pdf_params_chnk(lchnk)%corr_w_thl_2, &
-    !$acc              pdf_params_chnk(lchnk)%corr_rt_thl_1, pdf_params_chnk(lchnk)%corr_rt_thl_2,&
-    !$acc              pdf_params_chnk(lchnk)%alpha_thl, pdf_params_chnk(lchnk)%alpha_rt, &
-    !$acc              pdf_params_chnk(lchnk)%crt_1, pdf_params_chnk(lchnk)%crt_2, pdf_params_chnk(lchnk)%cthl_1, &
-    !$acc              pdf_params_chnk(lchnk)%cthl_2, pdf_params_chnk(lchnk)%chi_1, &
-    !$acc              pdf_params_chnk(lchnk)%chi_2, pdf_params_chnk(lchnk)%stdev_chi_1, &
-    !$acc              pdf_params_chnk(lchnk)%stdev_chi_2, pdf_params_chnk(lchnk)%stdev_eta_1, &
-    !$acc              pdf_params_chnk(lchnk)%stdev_eta_2, pdf_params_chnk(lchnk)%covar_chi_eta_1, &
-    !$acc              pdf_params_chnk(lchnk)%covar_chi_eta_2, pdf_params_chnk(lchnk)%corr_w_chi_1, &
-    !$acc              pdf_params_chnk(lchnk)%corr_w_chi_2, pdf_params_chnk(lchnk)%corr_w_eta_1, &
-    !$acc              pdf_params_chnk(lchnk)%corr_w_eta_2, pdf_params_chnk(lchnk)%corr_chi_eta_1, &
-    !$acc              pdf_params_chnk(lchnk)%corr_chi_eta_2, pdf_params_chnk(lchnk)%rsatl_1, &
-    !$acc              pdf_params_chnk(lchnk)%rsatl_2, pdf_params_chnk(lchnk)%rc_1, pdf_params_chnk(lchnk)%rc_2, &
-    !$acc              pdf_params_chnk(lchnk)%cloud_frac_1, pdf_params_chnk(lchnk)%cloud_frac_2,  &
-    !$acc              pdf_params_chnk(lchnk)%mixt_frac, pdf_params_chnk(lchnk)%ice_supersat_frac_1, &
-    !$acc              pdf_params_chnk(lchnk)%ice_supersat_frac_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%w_1, pdf_params_zm_chnk(lchnk)%w_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%rt_1, pdf_params_zm_chnk(lchnk)%rt_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%varnce_rt_1, pdf_params_zm_chnk(lchnk)%varnce_rt_2,  &
-    !$acc              pdf_params_zm_chnk(lchnk)%thl_1, pdf_params_zm_chnk(lchnk)%thl_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%varnce_thl_1, pdf_params_zm_chnk(lchnk)%varnce_thl_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_rt_1, pdf_params_zm_chnk(lchnk)%corr_w_rt_2,  &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_thl_1, pdf_params_zm_chnk(lchnk)%corr_w_thl_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_rt_thl_1, pdf_params_zm_chnk(lchnk)%corr_rt_thl_2,&
-    !$acc              pdf_params_zm_chnk(lchnk)%alpha_thl, pdf_params_zm_chnk(lchnk)%alpha_rt, &
-    !$acc              pdf_params_zm_chnk(lchnk)%crt_1, pdf_params_zm_chnk(lchnk)%crt_2, pdf_params_zm_chnk(lchnk)%cthl_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%cthl_2, pdf_params_zm_chnk(lchnk)%chi_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%chi_2, pdf_params_zm_chnk(lchnk)%stdev_chi_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%stdev_chi_2, pdf_params_zm_chnk(lchnk)%stdev_eta_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%stdev_eta_2, pdf_params_zm_chnk(lchnk)%covar_chi_eta_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%covar_chi_eta_2, pdf_params_zm_chnk(lchnk)%corr_w_chi_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_chi_2, pdf_params_zm_chnk(lchnk)%corr_w_eta_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_w_eta_2, pdf_params_zm_chnk(lchnk)%corr_chi_eta_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%corr_chi_eta_2, pdf_params_zm_chnk(lchnk)%rsatl_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%rsatl_2, pdf_params_zm_chnk(lchnk)%rc_1, pdf_params_zm_chnk(lchnk)%rc_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%cloud_frac_1, pdf_params_zm_chnk(lchnk)%cloud_frac_2,  &
-    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
-
-    !$acc data if( sclr_dim > 0 ) &
-    !$acc      copyin( sclr_tol, sclrm_forcing, wpsclrp_sfc ) &
-    !$acc        copy( sclrm, wpsclrp, sclrp2, sclrp3, sclrprtp, sclrpthlp, sclrpthvp_inout )
-
-    !$acc data if( edsclr_dim > 0 ) &
-    !$acc      copyin( wpedsclrp_sfc, edsclrm_forcing ) &
-    !$acc        copy( edsclr_in, edsclr_out )
-
-    !$acc data if( hydromet_dim > 0 ) &
-    !$acc      copyin( hydromet, wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt, &
-    !$acc              hm_metadata, hm_metadata%l_mix_rat_hm )
-    call t_stopf('clubb_tend_cam:acc_copyin')
-
-
     ! Define the CLUBB momentum grid (in height, units of m)
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzm_clubb
@@ -3225,7 +3227,7 @@ end subroutine clubb_init_cnst
         !  surface pressure.  CAM's exner (in state) does not.  Therefore, for consistent
         !  treatment with CLUBB code, anytime exner is needed to treat CLUBB variables
         !  (such as thlm), use "inv_exner_clubb" otherwise use the exner in state
-        inv_exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rairv(i,k,lchnk)/cpairv(i,k,lchnk)))
+        inv_exner_clubb(i,k) = 1._r8 / ( ( state1%pmid(i,k) / p0_clubb )**( rairv(i,k,lchnk) / cpairv(i,k,lchnk) ) )
         
         !  Compute virtual potential temperature, which is needed for CLUBB
         thv(i,k) = state1%t(i,k) * inv_exner_clubb(i,k) &
@@ -3254,7 +3256,7 @@ end subroutine clubb_init_cnst
 
       !  Compute exner at the surface for converting the sensible heat fluxes
       !  to a flux of potential temperature for use as clubb's boundary conditions
-      inv_exner_clubb_surf(i) = 1._r8/((state1%pmid(i,pver)/p0_clubb)**(rairv(i,pver,lchnk)/cpairv(i,pver,lchnk)))
+      inv_exner_clubb_surf(i) = 1._r8 / ( ( state1%pmid(i,pver) / p0_clubb )**( rairv(i,pver,lchnk) / cpairv(i,pver,lchnk) ) )
     end do
 
     !  Compute thermodynamic stuff needed for CLUBB on thermo levels.
@@ -3286,7 +3288,7 @@ end subroutine clubb_init_cnst
 
         !  Compute mean w wind on thermo grid, convert from omega to w
         wm_zt(i,k+1) = -1._r8 * ( state1%omega(i,pver-k+1) - state1%omega(i,pver) ) &
-                                / (rho_zt(i,k+1) * gravit)
+                                / ( rho_zt(i,k+1) * gravit )
       end do
     end do
 
@@ -3947,14 +3949,16 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    do ixind=1,edsclr_dim
-      !$acc parallel loop gang vector collapse(2) default(present)
-      do k=1, nzm_clubb
-        do i=1, ncol
-          edsclr_out(i,pverp-k+1,ixind) = edsclr_in(i,k,ixind)
+    if ( edsclr_dim > 0 ) then
+      do ixind=1,edsclr_dim
+        !$acc parallel loop gang vector collapse(2) default(present)
+        do k=1, nzm_clubb
+          do i=1, ncol
+            edsclr_out(i,pverp-k+1,ixind) = edsclr_in(i,k,ixind)
+          end do
         end do
       end do
-    end do
+    end if
 
     if (do_clubb_mf) then
       do k=1, nzm_clubb
@@ -4019,6 +4023,16 @@ end subroutine clubb_init_cnst
 
 
     call t_startf('clubb_tend_cam:NAR')
+
+    ! need to initialize macmic coupling to zero
+    if (macmic_it==1) then
+        ttend_clubb_mc(:ncol,:) = 0._r8
+        upwp_clubb_gw_mc(:ncol,:) = 0._r8
+        vpwp_clubb_gw_mc(:ncol,:) = 0._r8
+        thlp2_clubb_gw_mc(:ncol,:) = 0._r8
+        wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
+    end if
+    
     do k=1, pverp
       do i=1, ncol
 
