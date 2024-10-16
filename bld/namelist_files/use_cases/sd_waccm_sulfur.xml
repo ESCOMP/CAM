@@ -133,7 +133,7 @@
 <met_data_path>atm/cam/met/GEOS5</met_data_path>
 <met_filenames_list>atm/cam/met/GEOS5_filenames_list_c120516.txt</met_filenames_list>
 
-<!-- bnd_topo --->
+<!-- bnd_topo -->
 <bnd_topo>atm/cam/met/USGS-gtopo30_1.9x2.5_phys_geos5_c100929.nc</bnd_topo>
 
 <!-- sim_year used for CLM datasets and SSTs forcings -->

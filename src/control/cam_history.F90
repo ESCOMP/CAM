@@ -486,10 +486,12 @@ CONTAINS
     !
     do t=1,ptapes
       do fld=1,nflds(t)
-        if (nhtfrq(t) == 1) then
-           ! Override any non-I flags if nhtfrq equals 1
+        if ((.not. tape(t)%hlist(fld)%field%sampled_on_subcycle) .and. nhtfrq(t) == 1) then
+           ! Override accumulate flag to "I" if nhtfrq equals 1 and subcycle
+           ! averaging is not enabled
            tape(t)%hlist(fld)%avgflag = 'I'
         end if
+
         if (tape(t)%hlist(fld)%avgflag .ne. 'I') then
            hfile_accum(t) = .true.
         end if
@@ -2556,6 +2558,7 @@ CONTAINS
     use cam_grid_support, only: cam_grid_num_grids
     use spmd_utils,       only: mpicom
     use dycore,           only: dycore_is
+    use shr_kind_mod,     only: cm => shr_kind_cm
 
     !-----------------------------------------------------------------------
     !
@@ -2571,6 +2574,8 @@ CONTAINS
     integer t, fld                 ! tape, field indices
     integer ffld                   ! index into include, exclude and fprec list
     integer :: i
+    character(len=cm) :: duplicate_error ! string to be populated if an incompatible duplicate is found
+    character(len=cm) :: tempmsg         ! string to be populated if an incompatible duplicate is found
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
     character(len=max_chars) :: errormsg ! error output field
@@ -2733,6 +2738,7 @@ CONTAINS
 
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
+    errormsg = ''
     do t=1,ptapes
       !
       ! Add the field to the tape if specified via namelist (FINCL[1-ptapes]), or if
@@ -2744,7 +2750,15 @@ CONTAINS
       listentry => masterlinkedlist
       do while(associated(listentry))
         mastername = listentry%field%name
-        call list_index (fincl(1,t), mastername, ffld)
+        call list_index (fincl(1,t), mastername, ffld, duplicate_error=duplicate_error)
+        if (len(trim(duplicate_error)) > 0) then
+          if (len_trim(errormsg) == 0) then
+            write(errormsg,*) &
+              'FLDLST: Found duplicate field(s) with different averaging flags. Place in separate fincl lists: '
+          end if
+          write(tempmsg, '(2a, i0, a)') trim(duplicate_error), ' (fincl', t, '). '
+          errormsg = trim(errormsg) // trim(tempmsg)
+        end if
 
         fieldontape = .false.
         if (ffld > 0) then
@@ -2756,7 +2770,7 @@ CONTAINS
           end if
         end if
         if (fieldontape) then
-          ! The field is active so increment the number fo fields and add
+          ! The field is active so increment the number of fields and add
           ! its decomp type to the list of decomp types on this tape
           nflds(t) = nflds(t) + 1
           do ffld = 1, size(gridsontape, 1)
@@ -2771,6 +2785,9 @@ CONTAINS
         listentry=>listentry%next_entry
       end do
     end do
+    if (len_trim(errormsg) > 0) then
+       call endrun(trim(errormsg))
+    end if
     !
     ! Determine total number of active history tapes
     !
@@ -2882,7 +2899,6 @@ CONTAINS
             tape(t)%hlist(ffld+1) = tmp
 
           else if (tape(t)%hlist(ffld)%field%name == tape(t)%hlist(ffld+1)%field%name) then
-
             write(errormsg,'(2a,2(a,i3))') 'FLDLST: Duplicate field: ', &
                  trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld
             call endrun(errormsg)
@@ -3502,12 +3518,13 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine list_index (list, name, index)
+  subroutine list_index (list, name, index, duplicate_error)
     !
     ! Input arguments
     !
-    character(len=*), intent(in) :: list(pflds) ! input list of names, possibly ":" delimited
-    character(len=max_fieldname_len), intent(in) :: name ! name to be searched for
+    character(len=*),   intent(in) :: list(pflds) ! input list of names, possibly ":" delimited
+    character(len=*),   intent(in) :: name        ! name to be searched for
+    character(len=*), optional, intent(out) :: duplicate_error ! if present, check the flags and return an error if incompatible
     !
     ! Output arguments
     !
@@ -3516,9 +3533,15 @@ end subroutine print_active_fldlst
     ! Local workspace
     !
     character(len=fieldname_len) :: listname    ! input name with ":" stripped off.
-    integer f                       ! field index
+    character(len=fieldname_len) :: flag        ! accumulate flag for field
+    character(len=fieldname_len) :: flag_comp   ! accumulate flag to compare with previous entry
+    integer :: f                                ! field index
 
     index = 0
+    if (present(duplicate_error)) then
+       duplicate_error = ''
+    end if
+
     do f=1,pflds
       !
       ! Only list items
@@ -3526,8 +3549,21 @@ end subroutine print_active_fldlst
       listname = getname (list(f))
       if (listname == ' ') exit
       if (listname == name) then
-        index = f
-        exit
+        if (index /= 0 .and. present(duplicate_error)) then
+          ! This already exists in the field list - check the flag
+          flag_comp = getflag(list(f))
+          if (trim(flag_comp) /= trim(flag)) then
+            write(duplicate_error,*) &
+              '"', trim(list(f)), '", "', trim(name), &
+              ':', trim(flag), '"'
+            return
+          ! No else - if the flags are identical, we're ok to return the first
+          !  instance
+          end if
+        else
+          index = f
+          flag = getflag(list(f))
+        end if
       end if
     end do
 
@@ -3992,7 +4028,9 @@ end subroutine print_active_fldlst
             ierr=pio_inq_varid (tape(t)%Files(f),'nscur   ',    tape(t)%nscurid)
             ierr=pio_inq_varid (tape(t)%Files(f),'nsteph  ',    tape(t)%nstephid)
          end if
-         ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         if (f == accumulated_file_index) then
+            ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         end if
          ierr=pio_inq_varid (tape(t)%Files(f),'date_written',  tape(t)%date_writtenid)
          ierr=pio_inq_varid (tape(t)%Files(f),'time_written',  tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
@@ -4291,6 +4329,7 @@ end subroutine print_active_fldlst
                       cam_snapshot_before_num_out = cam_snapshot_before_num,  &
                       cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
+
     if(restart) then
       tape => restarthistory_tape
       if(masterproc) write(iulog,*)'Opening netcdf history restart file ', trim(hrestpath(t))
@@ -4470,13 +4509,14 @@ end subroutine print_active_fldlst
 
        if(.not. is_satfile(t)) then
 
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
-
-         ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
-         str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
-         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
+         if (f == accumulated_file_index) then
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
+            ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
+            str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
+         end if
          !
          ! Character
          !
@@ -5813,14 +5853,16 @@ end subroutine print_active_fldlst
                 cycle
              end if
              ! We have two files - one for accumulated and one for instantaneous fields
-             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t)) then
-                ! accumulated tape - time is midpoint of time_bounds
-                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+             if (f == accumulated_file_index) then
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
+                if (.not. restart .and. .not. is_initfile(t)) then
+                   ! accumulated tape - time is midpoint of time_bounds
+                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+                end if
              else
                 ! not an accumulated history tape - time is current time
                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
              end if
-             ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
           end do
           if(.not.restart) beg_time(t) = time  ! update beginning time of next interval
           startc(1) = 1
@@ -5908,7 +5950,7 @@ end subroutine print_active_fldlst
 
   subroutine addfld_1d(fname, vdim_name, avgflag, units, long_name,           &
        gridname, flag_xyfill, sampling_seq, standard_name, fill_value,        &
-       optype, op_f1name, op_f2name)
+       optype, op_f1name, op_f2name, sampled_on_subcycle)
 
     !
     !-----------------------------------------------------------------------
@@ -5940,6 +5982,7 @@ end subroutine print_active_fldlst
     character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' is supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
+    logical,          intent(in), optional :: sampled_on_subcycle   ! If .true., subcycle averaging is enabled
     !
     ! Local workspace
     !
@@ -5958,13 +6001,13 @@ end subroutine print_active_fldlst
     end if
     call addfld(fname, dimnames, avgflag, units, long_name, gridname,         &
          flag_xyfill, sampling_seq, standard_name, fill_value, optype, op_f1name, &
-         op_f2name)
+         op_f2name, sampled_on_subcycle)
 
   end subroutine addfld_1d
 
   subroutine addfld_nd(fname, dimnames, avgflag, units, long_name,            &
        gridname, flag_xyfill, sampling_seq, standard_name, fill_value, optype,    &
-       op_f1name, op_f2name)
+       op_f1name, op_f2name, sampled_on_subcycle)
 
     !
     !-----------------------------------------------------------------------
@@ -6000,6 +6043,7 @@ end subroutine print_active_fldlst
     character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
+    logical,          intent(in), optional :: sampled_on_subcycle   ! If .true., subcycle averaging is enabled
 
     !
     ! Local workspace
@@ -6123,6 +6167,15 @@ end subroutine print_active_fldlst
     else
       listentry%field%fillvalue = fillvalue
     endif
+
+    !
+    ! Whether to allow subcycle averages; default is false
+    !
+    if (present(sampled_on_subcycle)) then
+       listentry%field%sampled_on_subcycle = sampled_on_subcycle
+    else
+       listentry%field%sampled_on_subcycle = .false.
+    end if
 
     !
     ! Process shape

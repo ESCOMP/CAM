@@ -118,6 +118,9 @@ module cam_history_support
     integer :: meridional_complement         ! meridional field id or -1
     integer :: zonal_complement              ! zonal field id or -1
 
+    ! Logical to determine if subcycle averages are allowed
+    logical :: sampled_on_subcycle = .false.
+
     character(len=field_op_len) :: field_op = ''        ! 'sum' or 'dif'
     integer                     :: op_field1_id         ! first field id or -1
     integer                     :: op_field2_id         ! second field id or -1
