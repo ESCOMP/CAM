@@ -3404,11 +3404,11 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
       do i = 1, ncol
-        rtp2_forcing    = rtp2_mc_zt(i,k)
-        thlp2_forcing   = thlp2_mc_zt(i,k)
-        wprtp_forcing   = wprtp_mc_zt(i,k)
-        wpthlp_forcing  = wpthlp_mc_zt(i,k)
-        rtpthlp_forcing = rtpthlp_mc_zt(i,k)
+        rtp2_forcing(i,k)    = rtp2_mc_zt(i,k)
+        thlp2_forcing(i,k)   = thlp2_mc_zt(i,k)
+        wprtp_forcing(i,k)   = wprtp_mc_zt(i,k)
+        wpthlp_forcing(i,k)  = wpthlp_mc_zt(i,k)
+        rtpthlp_forcing(i,k) = rtpthlp_mc_zt(i,k)
       end do
     end do
 
