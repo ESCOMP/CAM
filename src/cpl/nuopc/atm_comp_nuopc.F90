@@ -1296,30 +1296,6 @@ contains
        call ESMF_LogWrite(subname//'setting alarms for' // trim(name), ESMF_LOGMSG_INFO)
 
        !----------------
-       ! Restart alarm
-       !----------------
-       call NUOPC_CompAttributeGet(gcomp, name="restart_option", value=restart_option, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       call NUOPC_CompAttributeGet(gcomp, name="restart_n", value=cvalue, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       read(cvalue,*) restart_n
-
-       call NUOPC_CompAttributeGet(gcomp, name="restart_ymd", value=cvalue, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       read(cvalue,*) restart_ymd
-
-       call alarmInit(mclock, restart_alarm, restart_option, &
-            opt_n   = restart_n,           &
-            opt_ymd = restart_ymd,         &
-            RefTime = mcurrTime,           &
-            alarmname = 'alarm_restart', rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       call ESMF_AlarmSet(restart_alarm, clock=mclock, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       !----------------
        ! Stop alarm
        !----------------
        call NUOPC_CompAttributeGet(gcomp, name="stop_option", value=stop_option, rc=rc)
@@ -1341,6 +1317,30 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        call ESMF_AlarmSet(stop_alarm, clock=mclock, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       !----------------
+       ! Restart alarm
+       !----------------
+       call NUOPC_CompAttributeGet(gcomp, name="restart_option", value=restart_option, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call NUOPC_CompAttributeGet(gcomp, name="restart_n", value=cvalue, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) restart_n
+
+       call NUOPC_CompAttributeGet(gcomp, name="restart_ymd", value=cvalue, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) restart_ymd
+
+       call alarmInit(mclock, restart_alarm, restart_option, &
+            opt_n   = restart_n,           &
+            opt_ymd = restart_ymd,         &
+            RefTime = mcurrTime,           &
+            alarmname = 'alarm_restart', rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call ESMF_AlarmSet(restart_alarm, clock=mclock, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     end if
@@ -1967,8 +1967,8 @@ contains
     call shr_cal_ymd2date(yy,mm,dd,start_ymd)
 
     call ESMF_TimeGet( nextTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
-   !call ESMF_TimeGet( currTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     call shr_cal_ymd2date(yy,mm,dd,curr_ymd)
 
     ! Open clock info restart dataset
@@ -1976,13 +1976,16 @@ contains
          yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
 
     if (masterproc) then
+       restart_pfile = interpret_filename_spec('rpointer.cpl.%y-%m-%d-%s',&
+            yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
+
        write(iulog,*) " In this configuration, there is no mediator"
        write(iulog,*) " Normally, the mediator restart file provides the restart time info"
        write(iulog,*) " In this case, CAM will create the rpointer.cpl and cpl restart file"
        write(iulog,*) " containing this information"
        write(iulog,*) " writing rpointer file for driver clock info, rpointer.cpl"
        write(iulog,*) " writing restart clock info for driver= "//trim(restart_file)
-       open(newunit=unitn, file='rpointer.cpl', form='FORMATTED')
+       open(newunit=unitn, file=trim(restart_pfile), form='FORMATTED')
        write(unitn,'(a)') trim(restart_file)
        close(unitn)
     endif

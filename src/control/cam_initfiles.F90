@@ -42,10 +42,6 @@ character(len=cl) :: cam_branch_file = ' '      ! Filepath of primary restart fi
 
 real(r8), public, protected :: scale_dry_air_mass = 0.0_r8 ! Toggle and target avg air mass for MPAS dycore
 
-! The restart pointer file contains name of most recently written primary restart file.
-! The contents of this file are updated by cam_write_restart as new restart files are written.
-character(len=cl), public, protected :: rest_pfile
-
 ! Filename for initial restart file.
 character(len=cl) :: restart_file = ' '
 
@@ -68,16 +64,20 @@ subroutine cam_initfiles_readnl(nlfile)
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpir8=>mpi_real8, &
                               mpichar=>mpi_character, mpi_logical
    use cam_instance,    only: inst_suffix
-
+   use filenames,       only: interpret_filename_spec
+   
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr
-
    character(len=cl)        :: locfn
    logical                  :: filefound
    integer                  :: xtype
    integer(pio_offset_kind) :: slen
+   logical                  :: found
+
+   ! The restart pointer file contains name of most recently written primary restart file.
+   character(len=cl)       :: rest_pfile
 
    character(len=*), parameter :: sub = 'cam_initfiles_readnl'
 
@@ -112,18 +112,26 @@ subroutine cam_initfiles_readnl(nlfile)
    call mpi_bcast(scale_dry_air_mass, 1, mpir8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: scale_dry_air_mass")
 
-   ! Set pointer file name based on instance suffix
-   rest_pfile = './rpointer.atm' // trim(inst_suffix)
-
    ! Set name of primary restart file
    if (restart_run) then
       ! Read name of restart file from pointer file
       if (masterproc) then
+         rest_pfile = interpret_filename_spec("rpointer.cam"//trim(inst_suffix)//".%y-%m-%d-%s", prev=.true.)
+         inquire(file=trim(rest_pfile),exist=found)
+         if(.not. found) then
+            write(iulog, "INFO : rpointer file "//trim(rest_pfile)//" not found.")
+            rest_pfile = "rpointer.cam"//trim(inst_suffix)
+            write(iulog, "  Try looking for "//trim(rest_pfile)//" ...")
+            inquire(file=trim(rest_pfile),exist=found)
+            if(.not. found) then
+               call endrun(sub // ': ERROR: rpointer file: '//trim(rest_pfile) // ' not found')
+            endif
+         endif
          unitn = getunit()
          call opnfil(rest_pfile, unitn, 'f', status="old")
          read (unitn, '(a)', iostat=ierr) restart_file
          if (ierr /= 0) then
-            call endrun(sub // ': ERROR: reading rpointer file')
+            call endrun(sub // ': ERROR: reading rpointer file: '//trim(rest_pfile))
          end if
          close(unitn)
          call freeunit(unitn)
