@@ -2595,6 +2595,8 @@ end subroutine clubb_init_cnst
  
 #endif
 
+  call t_startf('clubb_tend_cam')
+
   do i = 1, pcols
     det_s(i)   = 0.0_r8
     det_ice(i) = 0.0_r8
@@ -2936,7 +2938,7 @@ end subroutine clubb_init_cnst
     call t_stopf('clubb_tend_cam:acc_copyin')
 
 
-    call t_startf('clubb_tend_cam:NAR')
+    call t_startf('clubb_tend_cam:ACCR')
 
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, pverp
@@ -3067,7 +3069,6 @@ end subroutine clubb_init_cnst
       end do
     end if
 
-
     ! Initialize EDMF outputs
     if (do_clubb_mf) then
       do k = 1, pverp
@@ -3098,8 +3099,6 @@ end subroutine clubb_init_cnst
         end do 
       end do
     end if
-    
-    call t_stopf('clubb_tend_cam:NAR')
 
     if (clubb_do_icesuper) then
 
@@ -3162,8 +3161,6 @@ end subroutine clubb_init_cnst
       call outfld( 'NITENDICE', initend, pcols, lchnk )
 
     endif
-    call t_startf('clubb_tend_cam:NAR')
-
 
     if (clubb_do_adv) then
 
@@ -3209,7 +3206,6 @@ end subroutine clubb_init_cnst
       end do
 
     endif
-
 
     ! Define the CLUBB momentum grid (in height, units of m)
     !$acc parallel loop gang vector collapse(2) default(present)
@@ -3321,7 +3317,6 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-
     ! ------------------------------------------------- !
     ! Begin case specific code for SCAM cases.          !
     ! This section of code block is NOT called in       !
@@ -3381,6 +3376,8 @@ end subroutine clubb_init_cnst
     !                   operators (such as zt2zm_api, etc.) until AFTER the
     !                   call to setup_grid_heights_api.
 
+    call t_stopf('clubb_tend_cam:ACCR')
+    call t_startf('clubb_tend_cam:NAR')
     !$acc update host( zi_g, zt_g, clubb_params, sfc_elevation )
 
     call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,      & ! intent(in)
@@ -3393,15 +3390,21 @@ end subroutine clubb_init_cnst
                                clubb_config_flags%l_prescribed_avg_deltaz,    & ! intent(in)
                                lmin, nu_vert_res_dep, err_code )                ! intent(out)
 
+    if ( err_code == clubb_fatal_error ) then
+      call endrun(subr//':  Fatal error in CLUBB setup_parameters')
+    end if
+
+    call t_stopf('clubb_tend_cam:NAR')
+
+    call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( gr, gr%zm, gr%zt, gr%dzm, gr%dzt, gr%invrs_dzt, gr%invrs_dzm, &
     !$acc              gr%weights_zt2zm, gr%weights_zm2zt, &
     !$acc              nu_vert_res_dep, nu_vert_res_dep%nu2, nu_vert_res_dep%nu9, &
     !$acc              nu_vert_res_dep%nu1, nu_vert_res_dep%nu8, nu_vert_res_dep%nu10, &
     !$acc              nu_vert_res_dep%nu6)
+    call t_stopf('clubb_tend_cam:acc_copyin')
 
-    if ( err_code == clubb_fatal_error ) then
-       call endrun(subr//':  Fatal error in CLUBB setup_parameters')
-    end if
+    call t_startf('clubb_tend_cam:ACCR')
 
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
@@ -3454,6 +3457,8 @@ end subroutine clubb_init_cnst
     !  Other Surface fluxes provided by host model
     if( (cld_macmic_num_steps > 1) .and. clubb_l_intr_sfc_flux_smooth ) then
 
+      call t_stopf('clubb_tend_cam:ACCR')
+      call t_startf('clubb_tend_cam:NAR')
       !$acc update host( state1%u, state1%v, state1%t, state1%pmid, cam_in%wsx, cam_in%wsy, rrho )
 
       ! Adjust surface stresses using winds from the prior macmic iteration
@@ -3469,6 +3474,8 @@ end subroutine clubb_init_cnst
       end do
 
       !$acc update device( upwp_sfc, vpwp_sfc )
+      call t_stopf('clubb_tend_cam:NAR')
+      call t_startf('clubb_tend_cam:ACCR')
 
     else
 
@@ -3479,9 +3486,7 @@ end subroutine clubb_init_cnst
       end do
 
     endif
-    call t_stopf('clubb_tend_cam:NAR')
-
-
+    
     call t_startf('clubb_tend_cam:flip-index')
 
     !  Need to flip arrays around for CLUBB core
@@ -3561,6 +3566,8 @@ end subroutine clubb_init_cnst
       rcm_inout(i,1)  = rcm_inout(i,2)
     end do
 
+    call t_stopf('clubb_tend_cam:flip-index')
+
     ! pressure,exner on momentum grid needed for mass flux calc.
     if (do_clubb_mf) then
 
@@ -3588,7 +3595,6 @@ end subroutine clubb_init_cnst
       end do
 
     end if
-
 
     if (clubb_do_adv) then
       if (macmic_it  ==  1) then
@@ -3637,7 +3643,6 @@ end subroutine clubb_init_cnst
       end if
     end do
 
-
     if (clubb_l_do_expldiff_rtm_thlm) then
 
       !$acc parallel loop gang vector collapse(2) default(present)
@@ -3655,8 +3660,6 @@ end subroutine clubb_init_cnst
       end do
 
     endif
-
-    call t_stopf('clubb_tend_cam:flip-index')
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
 
@@ -3851,7 +3854,6 @@ end subroutine clubb_init_cnst
       end if
 
     enddo  ! end time loop
-    call t_startf('clubb_tend_cam:NAR')
 
     if (clubb_do_adv) then
       if (macmic_it  ==  cld_macmic_num_steps) then
@@ -3877,14 +3879,11 @@ end subroutine clubb_init_cnst
 
       end if
     end if
-    call t_stopf('clubb_tend_cam:NAR')
 
     ! Convert RTP2 and THLP2 to thermo grid for output
-    call t_startf('clubb_tend_cam:NAR')
     rtp2_zt = zm2zt_api( nzm_clubb, ncol, gr, rtp2_in )
     thl2_zt = zm2zt_api( nzm_clubb, ncol, gr, thlp2_in )
     wp2_zt  = zm2zt_api( nzm_clubb, ncol, gr, wp2_in )
-    call t_stopf('clubb_tend_cam:NAR')
 
     call t_startf('clubb_tend_cam:flip-index')
 
@@ -4011,7 +4010,7 @@ end subroutine clubb_init_cnst
     end do
 
     call t_stopf('clubb_tend_cam:flip-index')
-
+    call t_stopf('clubb_tend_cam:ACCR')
 
     call t_startf('clubb_tend_cam:acc_copyout')
     !$acc end data
@@ -4020,7 +4019,6 @@ end subroutine clubb_init_cnst
     !$acc end data
     !$acc end data
     call t_stopf('clubb_tend_cam:acc_copyout')
-
 
     call t_startf('clubb_tend_cam:NAR')
 
@@ -4338,7 +4336,6 @@ end subroutine clubb_init_cnst
     ! then advances it's predictive equations second, this can lead to
     ! RHliq > 1 directly before microphysics is called.  Therefore, we use
     ! ice_macro_tend to enforce RHliq <= 1 everywhere before microphysics is called.
-    call t_stopf('clubb_tend_cam:NAR')
 
     if (clubb_do_liqsupersat) then
 
@@ -4396,7 +4393,6 @@ end subroutine clubb_init_cnst
       call outfld( 'FQTENDICE', fqtend, pcols, lchnk )
       call t_stopf('clubb_cam_tend:do_liqsupersat')
     end if
-    call t_startf('clubb_tend_cam:NAR')
 
     ! ------------------------------------------------------------ !
     ! The rest of the code deals with diagnosing variables         !
@@ -4827,10 +4823,12 @@ end subroutine clubb_init_cnst
 
     endif
     call t_stopf('clubb_tend_cam:NAR')
-     
+#endif
+
+    call t_stopf('clubb_tend_cam')
 
     return
-#endif
+
   end subroutine clubb_tend_cam
 
   subroutine clubb_emissions_cam (state, cam_in, ptend)
