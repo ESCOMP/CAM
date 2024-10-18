@@ -2362,10 +2362,9 @@ end subroutine clubb_init_cnst
 
     ! Variables below are needed to compute energy integrals for conservation
     ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
-    real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
-    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
-    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
-    real(r8) :: eleak(pcols)
+    real(r8) :: te_a, se_a, ke_a, wv_a, wl_a
+    real(r8) :: te_b, se_b, ke_b, wv_b, wl_b
+    real(r8) :: se_dis(pcols), clubb_s(pcols,pver), eleak(pcols)
 
     real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
     real(r8) :: inv_exner_clubb_surf(pcols)      ! Inverse exner function at the surface
@@ -2572,6 +2571,22 @@ end subroutine clubb_init_cnst
 
     real(r8) :: temp2d(pcols,pver), temp2dp(pcols,pverp)  ! temporary array for holding scaled outputs
 
+    real(r8), dimension(pcols,pver) :: &
+      rvmtend_clubb, &
+      rcmtend_clubb, &
+      rimtend_clubb, &
+      stend_clubb, &
+      utend_clubb, &
+      vtend_clubb, &
+      dpdlfliq, &
+      dpdlfice, &
+      dpdlft, &
+      detnliquid
+    
+    real(r8), dimension(pcols,pverp) :: &
+      wprcp_clubb, &
+      wpthvp_clubb
+
     intrinsic :: max
 
     character(len=*), parameter :: subr='clubb_tend_cam'
@@ -2618,6 +2633,8 @@ end subroutine clubb_init_cnst
     !-----------------------------------------------------------------------------------!
     !                           MAIN COMPUTATION BEGINS HERE                            !
     !-----------------------------------------------------------------------------------!
+
+    call t_startf('clubb_tend_cam:NAR')
 
     !  Get indicees for cloud and ice mass and cloud and ice number
     call cnst_get_ind('Q',ixq)
@@ -2745,16 +2762,14 @@ end subroutine clubb_init_cnst
     !  variable mesh grids and lat-lon grids
     call grid_size(state1, grid_dx, grid_dy)
 
-
-
-    !  Determine number of columns and which chunk computation is to be performed on
+    ! Determine number of columns and which chunk computation is to be performed on
     ncol = state%ncol
     lchnk = state%lchnk
 
+    ! Determine number of vertical levels used in clubb, thermo variables are nzt_clubb
+    ! and momentum variables are nzm_clubb
     nzt_clubb = pver + 1 - top_lev
     nzm_clubb = pverp + 1 - top_lev
-
-
 
     ! Allocate pdf_params only if they aren't allocated already.
     if ( .not. allocated(pdf_params_chnk(lchnk)%mixt_frac) ) then
@@ -2766,7 +2781,6 @@ end subroutine clubb_init_cnst
       call init_pdf_implicit_coefs_terms_api( nzm_clubb, ncol, sclr_dim, &
                                               pdf_implicit_coefs_terms_chnk(lchnk) )
     end if
-
 
     !--------------------- Scalar Setting --------------------
 
@@ -2831,34 +2845,34 @@ end subroutine clubb_init_cnst
       apply_const = 0._r8  ! Never want this if CLUBB's moments are not advected
     endif
 
-
     ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
     if (clubb_do_adv .and. (is_first_step() .or. all(wpthlp(1:ncol,1:pver)  ==  0._r8))) then
       apply_const = 0._r8  ! On first time through do not remove constant
                            !  from moments since it has not been added yet
     endif
 
-
     !--------------------- Initializations --------------------
-
 
     !  Set the ztodt timestep in pbuf for SILHS
     ztodtptr(:) = 1.0_r8*hdtime
 
-
+    call t_stopf('clubb_tend_cam:NAR')
     call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( sclr_idx, clubb_params_single_col, grid_dx, grid_dy, rairv, cpairv, radf_clubb, qrl, &
     !$acc              pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
-    !$acc              state1, state1%q, state1%u, state1%v, state1%t, state1%pmid, &
-    !$acc              state1%zm, state1%zi, state1%pdeldry, state1%pdel, state1%omega, &
+    !$acc              state1, state1%q, state1%u, state1%v, state1%t, state1%pmid, state1%s, state1%pint, &
+    !$acc              state1%zm, state1%zi, state1%pdeldry, state1%pdel, state1%omega, state1%phis, &
     !$acc              cam_in, cam_in%shf, cam_in%wsx, cam_in%wsy, cam_in%cflx, &
     !$acc              rrho, prer_evap, rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) & 
     !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
     !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
     !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
+    !$acc              ttend_clubb_mc, upwp_clubb_gw_mc, vpwp_clubb_gw_mc, thlp2_clubb_gw_mc, wpthlp_clubb_gw_mc, &
+    !$acc              ttend_clubb, upwp_clubb_gw, vpwp_clubb_gw, thlp2_clubb_gw, wpthlp_clubb_gw, &
     !$acc              wp2up2, wp2vp2, ice_supersat_frac ) &
     !$acc     copyout( temp2d, temp2dp, rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wm_zt_out, inv_exner_clubb, &
-    !$acc              rcm, wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, thv, dz_g ) &
+    !$acc              rcm, wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, thv, dz_g, &
+    !$acc              clubbtop, se_dis, eleak, clubb_s, wpthvp_clubb, wprcp_clubb ) &
     !$acc      create( upwp_sfc_pert, vpwp_sfc_pert, khzt_out, khzm_out, &
     !$acc              fcor, um_in, vm_in, upwp_in, vpwp_in, wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
     !$acc              up2_in, vp2_in, up3_in, vp3_in, wp2_in, wp3_in, rtp2_in, thlp2_in, rtp3_in, &
@@ -2936,8 +2950,6 @@ end subroutine clubb_init_cnst
     !$acc      create( hydromet, wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt ) &
     !$acc      copyin( hm_metadata, hm_metadata%l_mix_rat_hm )
     call t_stopf('clubb_tend_cam:acc_copyin')
-
-
     call t_startf('clubb_tend_cam:ACCR')
 
     !$acc parallel loop gang vector collapse(2) default(present)
@@ -2952,14 +2964,12 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, pver
       do i = 1, pcols
         temp2d(i,k) = 0._r8
       end do
     end do
-
 
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
@@ -2985,7 +2995,6 @@ end subroutine clubb_init_cnst
         upwp_pert_inout(i,k) = 0.0_r8
         vpwp_pert_inout(i,k) = 0.0_r8
         
-
         !  Initialize these to prevent crashing behavior
         wprcp_out(i,k)        = 0._r8
         rcm_in_layer_out(i,k) = 0._r8
@@ -2993,7 +3002,7 @@ end subroutine clubb_init_cnst
         khzm_out(i,k)         = 0._r8
         khzt_out(i,k)         = 0._r8
       end do
-      end do
+    end do
 
     !$acc parallel loop gang vector default(present)
     do i = 1, ncol
@@ -3065,6 +3074,20 @@ end subroutine clubb_init_cnst
       do edsclr = 1, edsclr_dim
         do i = 1, ncol
           wpedsclrp_sfc(i,edsclr) = 0._r8
+        end do
+      end do
+    end if
+
+    ! need to initialize macmic coupling to zero
+    if ( macmic_it == 1 ) then
+      !$acc parallel loop gang vector collapse(2) default(present)
+      do i = 1, ncol
+        do k = 1, pverp
+          ttend_clubb_mc(i,k) = 0._r8
+          upwp_clubb_gw_mc(i,k) = 0._r8
+          vpwp_clubb_gw_mc(i,k) = 0._r8
+          thlp2_clubb_gw_mc(i,k) = 0._r8
+          wpthlp_clubb_gw_mc(i,k) = 0._r8
         end do
       end do
     end if
@@ -3379,7 +3402,7 @@ end subroutine clubb_init_cnst
     call t_stopf('clubb_tend_cam:ACCR')
     call t_startf('clubb_tend_cam:NAR')
     !$acc update host( zi_g, zt_g, clubb_params, sfc_elevation )
-
+    
     call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,      & ! intent(in)
                          grid_type, zi_g(:,2), zi_g(:,1), zi_g(:,nzm_clubb), & ! intent(in)
                          zi_g, zt_g,                                      & ! intent(in)
@@ -3395,7 +3418,6 @@ end subroutine clubb_init_cnst
     end if
 
     call t_stopf('clubb_tend_cam:NAR')
-
     call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( gr, gr%zm, gr%zt, gr%dzm, gr%dzt, gr%invrs_dzt, gr%invrs_dzm, &
     !$acc              gr%weights_zt2zm, gr%weights_zm2zt, &
@@ -3403,7 +3425,6 @@ end subroutine clubb_init_cnst
     !$acc              nu_vert_res_dep%nu1, nu_vert_res_dep%nu8, nu_vert_res_dep%nu10, &
     !$acc              nu_vert_res_dep%nu6)
     call t_stopf('clubb_tend_cam:acc_copyin')
-
     call t_startf('clubb_tend_cam:ACCR')
 
     !$acc parallel loop gang vector collapse(2) default(present)
@@ -3436,16 +3457,14 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-
-    !  Compute some inputs from the thermodynamic grid
-    !  to the momentum grid
+    ! Compute some inputs from the thermodynamic grid to the momentum grid
     rho_ds_zm       = zt2zm_api( nzm_clubb, ncol, gr, rho_ds_zt )
     rho_zm          = zt2zm_api( nzm_clubb, ncol, gr, rho_zt )
     invrs_rho_ds_zm = zt2zm_api( nzm_clubb, ncol, gr, invrs_rho_ds_zt )
     thv_ds_zm       = zt2zm_api( nzm_clubb, ncol, gr, thv_ds_zt )
     wm_zm           = zt2zm_api( nzm_clubb, ncol, gr, wm_zt )
 
-    !  Surface fluxes provided by host model
+    ! Surface fluxes provided by host model
     !$acc parallel loop gang vector default(present)
     do i=1,ncol
       wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_ds_zm(i,1)) ! Sensible heat flux
@@ -3566,8 +3585,6 @@ end subroutine clubb_init_cnst
       rcm_inout(i,1)  = rcm_inout(i,2)
     end do
 
-    call t_stopf('clubb_tend_cam:flip-index')
-
     ! pressure,exner on momentum grid needed for mass flux calc.
     if (do_clubb_mf) then
 
@@ -3660,6 +3677,8 @@ end subroutine clubb_init_cnst
       end do
 
     endif
+
+    call t_stopf('clubb_tend_cam:flip-index')
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
 
@@ -3821,7 +3840,6 @@ end subroutine clubb_init_cnst
 
       end if
 
-
       if (do_cldcool) then
         call t_startf('clubb_tend_cam:do_cldcool')
 
@@ -3949,8 +3967,8 @@ end subroutine clubb_init_cnst
     end do
 
     if ( edsclr_dim > 0 ) then
+      !$acc parallel loop gang vector collapse(3) default(present)
       do ixind=1,edsclr_dim
-        !$acc parallel loop gang vector collapse(2) default(present)
         do k=1, nzm_clubb
           do i=1, ncol
             edsclr_out(i,pverp-k+1,ixind) = edsclr_in(i,k,ixind)
@@ -4010,27 +4028,8 @@ end subroutine clubb_init_cnst
     end do
 
     call t_stopf('clubb_tend_cam:flip-index')
-    call t_stopf('clubb_tend_cam:ACCR')
-
-    call t_startf('clubb_tend_cam:acc_copyout')
-    !$acc end data
-    !$acc end data
-    !$acc end data
-    !$acc end data
-    !$acc end data
-    call t_stopf('clubb_tend_cam:acc_copyout')
-
-    call t_startf('clubb_tend_cam:NAR')
-
-    ! need to initialize macmic coupling to zero
-    if (macmic_it==1) then
-        ttend_clubb_mc(:ncol,:) = 0._r8
-        upwp_clubb_gw_mc(:ncol,:) = 0._r8
-        vpwp_clubb_gw_mc(:ncol,:) = 0._r8
-        thlp2_clubb_gw_mc(:ncol,:) = 0._r8
-        wpthlp_clubb_gw_mc(:ncol,:) = 0._r8
-    end if
     
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, pverp
       do i=1, ncol
 
@@ -4054,6 +4053,7 @@ end subroutine clubb_init_cnst
     ! Values to use above top_lev, for variables that have not already been
     ! set up there. These are mostly fill values that should not actually be
     ! used in the run, but may end up in diagnostic output.
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, top_lev-1
       do i=1, ncol
         upwp(i,k)         = 0._r8
@@ -4071,6 +4071,7 @@ end subroutine clubb_init_cnst
 
     !  Fill up arrays needed for McICA.  Note we do not want the ghost point,
     !   thus why the second loop is needed.
+    !$acc parallel loop gang vector default(present)
     do i=1, pcols
       zi_out(i,1) = 0._r8
     end do
@@ -4081,6 +4082,7 @@ end subroutine clubb_init_cnst
       if (lq(ixind)) then
         icnt=icnt+1
 
+        !$acc parallel loop gang vector collapse(2) default(present)
         do k=1, top_lev-1
           do i=1, ncol
             edsclr_out(i,k,icnt) = state1%q(i,k,ixind)
@@ -4091,6 +4093,7 @@ end subroutine clubb_init_cnst
     end do
 
     ! Compute static energy using CLUBB's variables
+    !$acc parallel loop gang vector collapse(2) default(present)
     do k=1,pver
       do i=1, ncol
         clubb_s(i,k) = cpairv(i,k,lchnk) * thlm(i,k) / inv_exner_clubb(i,k) &
@@ -4104,66 +4107,59 @@ end subroutine clubb_init_cnst
 
     ! Initialize clubbtop to top_lev, for finding the highlest level CLUBB is
     !  active for informing where to apply the energy fixer.
+    !$acc parallel loop gang vector default(present)
     do i=1, ncol
       clubbtop(i) = top_lev
       do while ((rtp2(i,clubbtop(i)) <= 1.e-15_r8 .and. rcm(i,clubbtop(i))  ==  0._r8) .and. clubbtop(i) <  pver)
-        clubbtop(i) = clubbtop(i) + 1
+       clubbtop(i) = clubbtop(i) + 1
       end do
     end do
-    !
-    ! set pbuf field so that HB scheme is only applied above CLUBB top
-    !
-    if (do_hb_above_clubb) then
-      call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
-    endif
 
+    !$acc parallel loop gang vector default(present)
     do i=1, ncol
-      se_a(i) = 0._r8
-      ke_a(i) = 0._r8
-      wv_a(i) = 0._r8
-      wl_a(i) = 0._r8
 
-      se_b(i) = 0._r8
-      ke_b(i) = 0._r8
-      wv_b(i) = 0._r8
-      wl_b(i) = 0._r8
-    end do
+      se_a = 0._r8
+      ke_a = 0._r8
+      wv_a = 0._r8
+      wl_a = 0._r8
 
-    ! NO COLLAPSE(2)
-    do i=1, ncol
+      se_b = 0._r8
+      ke_b = 0._r8
+      wv_b = 0._r8
+      wl_b = 0._r8
+
       do k=1,pver
         ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
         ! after CLUBB is called.  This is for energy conservation purposes.
-        se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)*rga
-        ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)*rga
-        wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)*rga
-        wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdeldry(i,k)*rga
+        se_a = se_a + clubb_s(i,k)*state1%pdel(i,k)*rga
+        ke_a = ke_a + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)*rga
+        wv_a = wv_a + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)*rga
+        wl_a = wl_a + (rcm(i,k))*state1%pdeldry(i,k)*rga
       end do
-    end do
 
-    ! NO COLLAPSE(2)
-    do i=1, ncol
+      ! Based on these integrals, compute the total energy after CLUBB call
+      te_a = se_a + ke_a + (latvap+latice) * wv_a + latice * wl_a
+
       do k=1, pver
         ! Do the same as above, but for before CLUBB was called.
-        se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)*rga
-        ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)*rga
-        wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdeldry(i,k)*rga
-        wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdeldry(i,k)*rga
+        se_b = se_b + state1%s(i,k)*state1%pdel(i,k)*rga
+        ke_b = ke_b + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)*rga
+        wv_b = wv_b + state1%q(i,k,ixq)*state1%pdeldry(i,k)*rga
+        wl_b = wl_b + state1%q(i,k,ixcldliq)*state1%pdeldry(i,k)*rga
       end do
-    end do
 
-
-    do i=1, ncol
-      ! Based on these integrals, compute the total energy before and after CLUBB call
-      te_a(i) = se_a(i) + ke_a(i) + (latvap+latice) * wv_a(i) + latice * wl_a(i)
-      te_b(i) = se_b(i) + ke_b(i) + (latvap+latice) * wv_b(i) + latice * wl_b(i)
+      ! Based on these integrals, compute the total energy before CLUBB call
+      te_b = se_b + ke_b + (latvap+latice) * wv_b + latice * wl_b
 
       ! Take into account the surface fluxes of heat and moisture
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
-      te_b(i) = te_b(i) + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime
+      te_b = te_b + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
-      se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)))
+      se_dis(i) = ( te_a - te_b ) / ( state1%pint(i,pverp) - state1%pint(i,clubbtop(i)) )
+
+      eleak(i) = ( te_a - te_b ) / hdtime
+
     end do
 
     ! Fix the total energy coming out of CLUBB so it achieves energy conservation.
@@ -4174,14 +4170,39 @@ end subroutine clubb_init_cnst
     ! when using specified dynamics, so allow this to be turned off via a namelist
     ! variable.
     if (clubb_do_energyfix) then
+
+      !$acc parallel loop gang vector default(present)
       do i=1, ncol
+
         do k=clubbtop(i),pver
           clubb_s(i,k) = clubb_s(i,k) - se_dis(i)*gravit
         end do
         ! convert to units of +ve [K]
         se_dis(i) = -1._r8*se_dis(i)*gravit/cpairv(i,pver,lchnk)
+
       end do
+
     endif
+    
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k=1, pverp
+      do i=1, ncol
+        wpthvp_clubb(i,k) = wpthvp(i,k) * cpair
+        wprcp_clubb(i,k)  = wprcp(i,k) * latvap
+      end do
+    end do
+
+    call t_stopf('clubb_tend_cam:ACCR')
+
+    call t_startf('clubb_tend_cam:acc_copyout')
+    !$acc end data
+    !$acc end data
+    !$acc end data
+    !$acc end data
+    !$acc end data
+    call t_stopf('clubb_tend_cam:acc_copyout')
+
+    call t_startf('clubb_tend_cam:NAR')
 
 
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
@@ -4299,35 +4320,26 @@ end subroutine clubb_init_cnst
         end if
       end if
     end do
+    
+    rvmtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    rcmtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    rimtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    stend_clubb(:ncol,:pver) = ptend_loc%s(:ncol,:pver)
+    utend_clubb(:ncol,:pver) = ptend_loc%u(:ncol,:pver)
+    vtend_clubb(:ncol,:pver) = ptend_loc%v(:ncol,:pver)
+    cmeliq(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
 
-
-    call outfld('KVH_CLUBB', khzm, pcols, lchnk)
-
-    eleak(:ncol) = (te_a(:ncol) - te_b(:ncol))/hdtime
-    call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
-    call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
+    !
+    ! set pbuf field so that HB scheme is only applied above CLUBB top
+    !
+    if (do_hb_above_clubb) then
+      call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
+    endif
 
     ! ------------------------------------------------- !
     ! End column computation of CLUBB, begin to apply   !
     ! and compute output, etc                           !
     ! ------------------------------------------------- !
-
-    !  Output CLUBB tendencies (convert dry basis to wet for consistency with  history variable definition)
-    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'RVMTEND_CLUBB', temp2d, pcols, lchnk)
-
-    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'RCMTEND_CLUBB', temp2d, pcols, lchnk)
-
-    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'RIMTEND_CLUBB', temp2d, pcols, lchnk)
-
-    call outfld( 'STEND_CLUBB', ptend_loc%s,pcols, lchnk)
-    call outfld( 'UTEND_CLUBB', ptend_loc%u,pcols, lchnk)
-    call outfld( 'VTEND_CLUBB', ptend_loc%v,pcols, lchnk)
-
-    cmeliq(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'CMELIQ', cmeliq, pcols, lchnk)
 
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
@@ -4419,6 +4431,7 @@ end subroutine clubb_init_cnst
 
     do k=1,pver
       do i=1,ncol
+
         if( state1%t(i,k) > meltpt_temp ) then
           dum1 = 0.0_r8
         elseif ( state1%t(i,k) < dt_low ) then
@@ -4455,19 +4468,10 @@ end subroutine clubb_init_cnst
     enddo
 
     det_ice(:ncol) = det_ice(:ncol)/1000._r8  ! divide by density of water
-
-    ! output moist basis to be consistent with history variable definition
-    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'DPDLFLIQ', temp2d, pcols, lchnk)
-
-    ! output moist basis to be consistent with history variable definition
-    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
-    call outfld( 'DPDLFICE', temp2d, pcols, lchnk)
-
-    temp2d(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpairv(:ncol,:pver, lchnk)
-    call outfld( 'DPDLFT',   temp2d, pcols, lchnk)
-
-    call outfld( 'DETNLIQTND', ptend_loc%q(:,:,ixnumliq),pcols, lchnk )
+    dpdlfliq(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    dpdlfice(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    dpdlft(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpairv(:ncol,:pver, lchnk)
+    detnliquid(:ncol,:pver) = ptend_loc%q(:,:,ixnumliq)
 
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
@@ -4494,11 +4498,20 @@ end subroutine clubb_init_cnst
       relvarmax = 10.0_r8
     endif
 
-    relvar(:,:) = relvarmax  ! default
+    do i = 1, ncol
+      do k = 1, pver
+        relvar(i,k) = relvarmax  ! default
+      end do
+    end do
 
     if (deep_scheme .ne. 'CLUBB_SGS') then
-      where (rcm(:ncol,:pver) /= 0 .and. qclvar(:ncol,:pver) /= 0) &
-          relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2/qclvar(:ncol,:pver)))
+      do i = 1, ncol
+        do k = 1, pver
+          if ( rcm(i,k) /= 0 .and. qclvar(i,k) /= 0 ) then
+            relvar(i,k) = min( relvarmax, max(0.001_r8, rcm(i,k)**2 / qclvar(i,k) ) )
+          end if
+        end do
+      end do
     endif
 
     ! ------------------------------------------------- !
@@ -4705,8 +4718,6 @@ end subroutine clubb_init_cnst
                 ustar2, obklen, kbfs, pblh, dummy2, &
                 state1%zi, cloud_frac(:,1:pver), 1._r8-cam_in%landfrac, dummy3)
 
-    !  Output the PBL depth
-    call outfld('PBLH', pblh, pcols, lchnk)
 
     ! Assign the first pver levels of cloud_frac back to cld
     cld(:,1:pver) = cloud_frac(:,1:pver)
@@ -4714,6 +4725,30 @@ end subroutine clubb_init_cnst
     ! --------------------------------------------------------------------------------- !
     !  END CLOUD FRACTION DIAGNOSIS, begin to store variables back into buffer          !
     ! --------------------------------------------------------------------------------- !
+
+    call outfld( 'DETNLIQTND', detnliquid,pcols, lchnk )
+
+    !  Output CLUBB tendencies (convert dry basis to wet for consistency with  history variable definition)
+    call outfld( 'RVMTEND_CLUBB', rvmtend_clubb, pcols, lchnk)
+    call outfld( 'RCMTEND_CLUBB', rcmtend_clubb, pcols, lchnk)
+    call outfld( 'RIMTEND_CLUBB', rimtend_clubb, pcols, lchnk)
+    call outfld( 'STEND_CLUBB', stend_clubb, pcols, lchnk)
+    call outfld( 'UTEND_CLUBB', utend_clubb, pcols, lchnk)
+    call outfld( 'VTEND_CLUBB', vtend_clubb, pcols, lchnk)
+
+    call outfld( 'CMELIQ', cmeliq, pcols, lchnk)
+
+    ! output moist basis to be consistent with history variable definition
+    call outfld( 'DPDLFLIQ', dpdlfliq, pcols, lchnk)
+    call outfld( 'DPDLFICE', dpdlfice, pcols, lchnk)
+    call outfld( 'DPDLFT',   dpdlft, pcols, lchnk)
+
+    !  Output the PBL depth
+    call outfld('PBLH', pblh, pcols, lchnk)
+
+    call outfld('KVH_CLUBB', khzm, pcols, lchnk)
+    call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
+    call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
 
     !  Output calls of variables goes here
     call outfld( 'RELVAR',           relvar,                pcols, lchnk )
@@ -4731,13 +4766,8 @@ end subroutine clubb_init_cnst
     call outfld( 'RCM_CLUBB',        rcm(:,1:pver),         pcols, lchnk )
     call outfld( 'RTM_CLUBB',        rtm(:,1:pver),         pcols, lchnk )
     call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pcols, lchnk )
-
-    temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
-    call outfld( 'WPRCP_CLUBB',      temp2dp,                 pcols, lchnk )
-
-    temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
-    call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
-
+    call outfld( 'WPRCP_CLUBB',      wprcp_clubb,           pcols, lchnk )
+    call outfld( 'WPTHVP_CLUBB',     wpthvp_clubb,          pcols, lchnk )
     call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(:,1:pver),   pcols, lchnk )
     call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out(:,1:pver),   pcols, lchnk )
     call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out(:,1:pver),    pcols, lchnk )
