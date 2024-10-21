@@ -35,10 +35,10 @@
 
 [submodule "atmos_phys"]
 	path = src/atmos_phys
-	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag =  atmos_phys0_04_001
+	url = https://github.com/mwaxmonsky/atmospheric_physics
+        fxtag =  8b1bd8676e3c7b8fb7547b4df1270320d74f6aab
         fxrequired = AlwaysRequired
-	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
+	fxDONOTUSEurl = https://github.com/mwaxmonsky/atmospheric_physics
 
 [submodule "fv3"]
 	path = src/dynamics/fv3
