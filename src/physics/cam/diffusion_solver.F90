@@ -160,7 +160,7 @@
     use coords_1d, only: Coords1D
     use linear_1d_operators, only : BoundaryType, BoundaryFixedLayer, &
          BoundaryData, BoundaryFlux, TriDiagDecomp
-    use new_decomp,          only : fin_vol_solve
+    use vertical_diffusion_solver,          only : fin_vol_solve
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
     use air_composition,     only: rairv
