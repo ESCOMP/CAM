@@ -160,13 +160,13 @@
     use coords_1d, only: Coords1D
     use linear_1d_operators, only : BoundaryType, BoundaryFixedLayer, &
          BoundaryData, BoundaryFlux, TriDiagDecomp
-    use vertical_diffusion_solver,          only : fin_vol_solve
+    use vdiff_lu_solver,     only : fin_vol_lu_decomp
+    use vertical_diffusion_solver, only : fin_vol_solve
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
     use air_composition,     only: rairv
   
     use phys_control,        only : phys_getopts
-    use vdiff_lu_solver,     only : fin_vol_lu_decomp
  
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
@@ -309,10 +309,6 @@
 
     integer  :: i, k, m                                  ! Longitude, level, constituent indices
     logical  :: lqtst(pcols)                             ! Adjust vertical profiles
-    real(r8) :: ddse(ncol,pver)                          ! Change in dry static energy [ J/kg ]
-    real(r8) :: dttemp(ncol,pver)			               ! change in temporary temperature array
-    real(r8) :: du(pcols,pver)                            ! change in wind
-    real(r8) :: dv(pcols,pver)                            ! change in wind
 
     ! LU decomposition information.
     type(TriDiagDecomp) :: decomp
@@ -575,30 +571,13 @@
           tau_damp_rate(:,k) = tau_damp_rate(:,k) + dragblj(:ncol,k)
        end do
 
-       !du = 0._r8
-       !dv = 0._r8
-       !du(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
-       !                           coef_q=tau_damp_rate, &
-       !                           coef_q_diff=kvm(:ncol,:)*dpidz_sq)
        v(:ncol,:) = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
-       !u(:ncol,:) = u(:ncol,:) + du(:ncol,:)
-       !v(:ncol,:) = v(:ncol,:) + dv(:ncol,:)
-       
-       !decomp = fin_vol_lu_decomp(ztodt, p, &
-       !     coef_q=tau_damp_rate, coef_q_diff=kvm(:ncol,:)*dpidz_sq)
 
-       !call decomp%left_div(u(:ncol,:))
-       !call decomp%left_div(v(:ncol,:))
-       !call decomp%finalize()
-
-
-       !du = 0._r8
        u(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
                                   coef_q=tau_damp_rate, &
                                   coef_q_diff=kvm(:ncol,:)*dpidz_sq)
-       !u(:ncol,:) = u(:ncol,:) + du(:ncol,:)
 
 
 
@@ -790,10 +769,6 @@
           topflx(:ncol) =  - kvh(:ncol,1) * tmpi2(:ncol,1) / (ztodt*gravit) * &
                ( dse(:ncol,1) - dse_top(:ncol) )
 
-         !  decomp = fin_vol_lu_decomp(ztodt, p, &
-         !       coef_q_diff=kvt(:ncol,:)*dpidz_sq, &
-         !       coef_q_weight=cpairv(:ncol,:))
-
           ttemp0 = t(:ncol,:)
           ttemp = ttemp0
 
@@ -802,11 +777,8 @@
              ttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
                                        coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
                                        coef_q_weight=cpairv(:ncol,:))
-             !ttemp = ttemp + dttemp
-            !  call decomp%left_div(ttemp)
           end if
 
-         !  call decomp%finalize()
 
           !-------------------------------------
           !  Update dry static energy
@@ -824,10 +796,6 @@
              kv_total(:ncol,:) = kvh(:ncol,:)
           end if
 
-         !  decomp = fin_vol_lu_decomp(ztodt, p, &
-         !       coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
-         !       upper_bndry=interface_boundary)
-
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
@@ -835,12 +803,7 @@
                                        coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
                                        upper_bndry=interface_boundary, &
                                        l_cond=BoundaryData(dse_top(:ncol)))
-             !dse(:ncol,:) = dse(:ncol,:) + ddse
-            !  call decomp%left_div(dse(:ncol,:), &
-            !       l_cond=BoundaryData(dse_top(:ncol)))
           end if
-
-         !  call decomp%finalize()
 
           ! Calculate flux at top interface
 
