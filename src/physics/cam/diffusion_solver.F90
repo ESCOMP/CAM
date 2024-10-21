@@ -745,9 +745,6 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
-         !  decomp = fin_vol_lu_decomp(ztodt, p, &
-         !       coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
-         !       upper_bndry=interface_boundary)
 
           if (.not. use_spcam) then
              dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), &
@@ -755,12 +752,7 @@
                                   coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
                                   upper_bndry=interface_boundary, &
                                   l_cond=BoundaryData(dse_top(:ncol)))
-             !dse(:ncol,:) = dse(:ncol,:) + ddse
-            ! call decomp%left_div(dse(:ncol,:), &
-            !      l_cond=BoundaryData(dse_top(:ncol)))
           endif
-
-         !  call decomp%finalize()
 
           ! Calculate flux at top interface
 
