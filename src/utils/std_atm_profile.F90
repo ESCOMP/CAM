@@ -54,23 +54,22 @@ CONTAINS
 
 subroutine std_atm_pres(height, pstd, user_specified_ps)
 
-   ! use statements
-   use cam_abortutils, only: handle_allocate_error
-
    ! arguments
    real(r8),           intent(in)  :: height(:) ! height above sea level in meters
    real(r8),           intent(out) :: pstd(:)   ! std pressure in Pa
    real(r8), optional, intent(in)  :: user_specified_ps
 
-   integer :: i, ii, k, nlev
-   integer :: ierr
-   character(len=*), parameter :: routine = 'std_atm_pres'
-   real(r8), allocatable       :: pb_local(:)
-   !----------------------------------------------------------------------------
-   allocate(pb_local(nreg), stat=ierr)
-   call handle_allocate_error(ierr, routine, 'pb_local(nreg)')
+   integer  :: i, ii, k, nlev
+   integer  :: ierr
+   real(r8) :: pb_local(nreg)
 
+   character(len=*), parameter :: routine = 'std_atm_pres'
+   !----------------------------------------------------------------------------
+
+   ! Initialize local standard pressure values array
    pb_local = pb
+
+   ! Set new surface pressure value if provided by the caller
    if (present(user_specified_ps)) then
       pb_local(1) = user_specified_ps
    end if
@@ -97,7 +96,6 @@ subroutine std_atm_pres(height, pstd, user_specified_ps)
       end if
 
    end do
-   deallocate(pb_local)
 end subroutine std_atm_pres
 
 !=========================================================================================
