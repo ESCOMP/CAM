@@ -47,23 +47,29 @@ real(r8), parameter :: rg = 8.3144598_r8 ! universal gas constant (J/mol/K)
 real(r8), parameter :: g0 = 9.80665_r8   ! gravitational acceleration (m/s^2)
 real(r8), parameter :: mw = 0.0289644_r8 ! molar mass of dry air (kg/mol)
 real(r8), parameter :: c1 = g0*mw/rg
-  
+
 !=========================================================================================
 CONTAINS
 !=========================================================================================
 
 subroutine std_atm_pres(height, pstd, user_specified_ps)
-    
+
+   ! use statements
+   use cam_abortutils, only: handle_allocate_error
+
    ! arguments
    real(r8),           intent(in)  :: height(:) ! height above sea level in meters
    real(r8),           intent(out) :: pstd(:)   ! std pressure in Pa
    real(r8), optional, intent(in)  :: user_specified_ps
-    
+
    integer :: i, ii, k, nlev
+   integer :: ierr
    character(len=*), parameter :: routine = 'std_atm_pres'
    real(r8), allocatable       :: pb_local(:)
    !----------------------------------------------------------------------------
-   allocate(pb_local(size(height)))
+   allocate(pb_local(nreg), stat=ierr)
+   call handle_allocate_error(ierr, routine, 'pb_local(nreg)')
+
    pb_local = pb
    if (present(user_specified_ps)) then
       pb_local(1) = user_specified_ps
@@ -83,13 +89,13 @@ subroutine std_atm_pres(height, pstd, user_specified_ps)
             end if
          end do find_region
       end if
-      
+
       if (lb(ii) /= 0._r8) then
          pstd(k) = pb_local(ii) * ( tb(ii) / (tb(ii) + lb(ii)*(height(k) - hb(ii)) ) )**(c1/lb(ii))
       else
          pstd(k) = pb_local(ii) * exp( -c1*(height(k) - hb(ii))/tb(ii) )
       end if
-      
+
    end do
    deallocate(pb_local)
 end subroutine std_atm_pres
@@ -97,19 +103,19 @@ end subroutine std_atm_pres
 !=========================================================================================
 
 subroutine std_atm_height(pstd, height)
-    
+
    ! arguments
    real(r8), intent(in)   :: pstd(:)   ! std pressure in Pa
    real(r8), intent(out)  :: height(:) ! height above sea level in meters
-    
+
    integer :: i, ii, k, nlev
    logical :: found_region
    character(len=*), parameter :: routine = 'std_atm_height'
    !----------------------------------------------------------------------------
-    
+
    nlev = size(height)
    do k = 1, nlev
-      
+
       if (pstd(k) <= pb(nreg)) then
          ii = nreg
       else if (pstd(k) > pb(1)) then
@@ -136,16 +142,16 @@ end subroutine std_atm_height
 !=========================================================================================
 
 subroutine std_atm_temp(height, temp)
-    
+
    ! arguments
    real(r8), intent(in)   :: height(:) ! std pressure in Pa
    real(r8), intent(out)  :: temp(:)   ! temperature
-    
+
    ! local vars
    integer :: i, ii, k, nlev
    character(len=*), parameter :: routine = 'std_atm_temp'
    !----------------------------------------------------------------------------
-    
+
    nlev = size(height)
    do k = 1, nlev
       if (height(k) < 0.0_r8) then
@@ -165,7 +171,7 @@ subroutine std_atm_temp(height, temp)
       else
          temp(k) = tb(ii)
       end if
-      
+
    end do
 
 end subroutine std_atm_temp
