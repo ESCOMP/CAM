@@ -4329,7 +4329,6 @@ end subroutine print_active_fldlst
                       cam_snapshot_before_num_out = cam_snapshot_before_num,  &
                       cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
-
     if(restart) then
       tape => restarthistory_tape
       if(masterproc) write(iulog,*)'Opening netcdf history restart file ', trim(hrestpath(t))
@@ -4509,14 +4508,6 @@ end subroutine print_active_fldlst
 
        if(.not. is_satfile(t)) then
 
-         if (f == accumulated_file_index) then
-            ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
-            ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
-            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
-            str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
-            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
-            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
-         end if
          !
          ! Character
          !
@@ -4564,7 +4555,6 @@ end subroutine print_active_fldlst
             str = 'current seconds of current day'
             ierr=pio_put_att (tape(t)%Files(f), tape(t)%nscurid, 'long_name', trim(str))
          end if
-
 
          if (.not. is_initfile(file_index=t) .and. f == instantaneous_file_index) then
            ! Don't write the GHG/Solar forcing data to the IC file.
@@ -4668,6 +4658,13 @@ end subroutine print_active_fldlst
             ierr=pio_def_var (tape(t)%Files(f),'nsteph  ',pio_int,(/timdim/),tape(t)%nstephid)
             str = 'current timestep'
             ierr=pio_put_att (tape(t)%Files(f), tape(t)%nstephid, 'long_name', trim(str))
+         else if (f == accumulated_file_index) then
+            ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%timeid, 'bounds', 'time_bounds')
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
+            str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
+            ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
          end if
        end if ! .not. is_satfile
 
@@ -5030,6 +5027,7 @@ end subroutine print_active_fldlst
       end do
       deallocate(header_info)
     end if
+
 
     ! Write the mdim variable data
     do f = 1, maxsplitfiles
@@ -5854,11 +5852,14 @@ end subroutine print_active_fldlst
              end if
              ! We have two files - one for accumulated and one for instantaneous fields
              if (f == accumulated_file_index) then
-                ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
                 if (.not. restart .and. .not. is_initfile(t)) then
                    ! accumulated tape - time is midpoint of time_bounds
                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
+                else
+                   ! restart or initfile - time is current time
+                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
                 end if
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
              else
                 ! not an accumulated history tape - time is current time
                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
