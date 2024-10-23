@@ -415,7 +415,8 @@ end subroutine check_energy_readnl
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
                                wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx
     use cam_history,     only: outfld
-    use dyn_tests_utils, only: vc_physics, vc_height, vc_dry_pressure
+    use dyn_tests_utils, only: vc_physics
+    use cam_thermo_formula, only: ENERGY_FORMULA_DYCORE_SE, ENERGY_FORMULA_DYCORE_MPAS
 
     use cam_abortutils,  only: endrun
     use cam_history_support, only: max_fieldname_len
@@ -467,7 +468,7 @@ end subroutine check_energy_readnl
     end if
 
     if (state%psetcols == pcols) then
-      if (vc_loc == vc_height .or. vc_loc == vc_dry_pressure) then
+      if (vc_loc == ENERGY_FORMULA_DYCORE_MPAS .or. vc_loc == ENERGY_FORMULA_DYCORE_SE) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)
@@ -476,7 +477,7 @@ end subroutine check_energy_readnl
       call endrun('tot_energy_phys: energy diagnostics not implemented/tested for subcolumns')
     end if
 
-    if (vc_loc == vc_height .or. vc_loc == vc_dry_pressure) then
+    if (vc_loc == ENERGY_FORMULA_DYCORE_MPAS .or. vc_loc == ENERGY_FORMULA_DYCORE_SE) then
       scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:)!scaling for energy consistency
     else
       scaling(:ncol,:) = 1.0_r8 !internal energy / enthalpy same as CAM physics
@@ -643,7 +644,8 @@ end subroutine check_energy_readnl
   subroutine check_energy_timestep_init(state, tend, pbuf, col_type)
     use physics_buffer,  only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils,  only: endrun
-    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height, vc_dry_pressure
+    use dyn_tests_utils, only: vc_physics, vc_dycore
+    use cam_thermo_formula, only: ENERGY_FORMULA_DYCORE_SE, ENERGY_FORMULA_DYCORE_MPAS
     use physics_types,   only: physics_tend
     use physics_types,   only: phys_te_idx, dyn_te_idx
     use time_manager,    only: is_first_step
@@ -671,7 +673,7 @@ end subroutine check_energy_readnl
 
     ! The code below is split into not-subcolumns and subcolumns code, as there is different handling of the
     ! cp passed into the hydrostatic energy call. CAM-SIMA does not support subcolumns, so we keep this special
-    ! handling inside this shim module. (hplin, 9/9/24)
+    ! handling inside this CAM interface. (hplin, 9/9/24)
     if(state%psetcols == pcols) then
         ! No subcolumns
         local_cp_phys(:ncol,:) = cpairv(:ncol,:,lchnk)
@@ -685,10 +687,10 @@ end subroutine check_energy_readnl
 
         local_cp_phys(1:ncol,:) = cpair
 
-        if (vc_dycore == vc_height) then
+        if (vc_dycore == ENERGY_FORMULA_DYCORE_MPAS) then
             ! MPAS specific hydrostatic energy computation (internal energy)
             local_cp_or_cv_dycore(:ncol,:) = cpair-rair
-        else if(vc_dycore == vc_dry_pressure) then
+        else if(vc_dycore == ENERGY_FORMULA_DYCORE_SE) then
             ! SE specific hydrostatic energy (enthalpy)
             local_cp_or_cv_dycore(:ncol,:) = cpair
         else
@@ -721,12 +723,12 @@ end subroutine check_energy_readnl
         tw_cur          = state%tw_cur(1:ncol),             &
         tend_te_tnd     = tend%te_tnd(1:ncol),              &
         tend_tw_tnd     = tend%tw_tnd(1:ncol),              &
-        temp_ini        = state%temp_ini(:ncol,:), &
-        z_ini           = state%z_ini(:ncol,:), &
+        temp_ini        = state%temp_ini(:ncol,:),          &
+        z_ini           = state%z_ini(:ncol,:),             &
         count           = state%count,                      &
         teout           = teout(1:ncol),                    & ! dummy argument - actual teout written to pbuf directly below
-        vc_physics      = vc_physics, &
-        vc_dycore       = vc_dycore, &
+        energy_formula_physics = vc_physics,                &
+        energy_formula_dycore  = vc_dycore,                 &
         errmsg          = errmsg, &
         errflg          = errflg  &
     )
@@ -741,15 +743,16 @@ end subroutine check_energy_readnl
   ! Check that the energy and water change matches the boundary fluxes
   subroutine check_energy_cam_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
-    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height, vc_dry_pressure
-    use cam_abortutils,  only: endrun
-    use physics_types,   only: phys_te_idx, dyn_te_idx
-    use physics_types,   only: physics_tend
-    use physconst,       only: cpair, rair, latice, latvap
-    use air_composition, only: cpairv, cp_or_cv_dycore
+    use dyn_tests_utils,    only: vc_physics, vc_dycore
+    use cam_thermo_formula, only: ENERGY_FORMULA_DYCORE_SE, ENERGY_FORMULA_DYCORE_MPAS
+    use cam_abortutils,     only: endrun
+    use physics_types,      only: phys_te_idx, dyn_te_idx
+    use physics_types,      only: physics_tend
+    use physconst,          only: cpair, rair, latice, latvap
+    use air_composition,    only: cpairv, cp_or_cv_dycore
 
     ! CCPP-ized subroutine
-    use check_energy_chng, only: check_energy_chng_run
+    use check_energy_chng,  only: check_energy_chng_run
 
     type(physics_state), intent(inout) :: state
     type(physics_tend ), intent(inout) :: tend
@@ -776,9 +779,8 @@ end subroutine check_energy_readnl
         ! No subcolumns
         local_cp_phys(:ncol,:) = cpairv(:ncol,:,lchnk)
 
-        ! Only if vertical coordinate is vc_height or vc_dry_pressure, cp_or_cv_dycore
-        ! is nonzero.
-        if(vc_dycore == vc_height .or. vc_dycore == vc_dry_pressure) then
+        ! Only if using MPAS or SE energy formula cp_or_cv_dycore is nonzero.
+        if(vc_dycore == ENERGY_FORMULA_DYCORE_MPAS .or. vc_dycore == ENERGY_FORMULA_DYCORE_SE) then
             local_cp_or_cv_dycore(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
 
             scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
@@ -792,11 +794,11 @@ end subroutine check_energy_readnl
         local_cp_phys(:,:) = cpair
 
         ! Note: cp_or_cv set above for pressure coordinate
-        if (vc_dycore == vc_height) then
+        if (vc_dycore == ENERGY_FORMULA_DYCORE_MPAS) then
             ! compute cv if vertical coordinate is height: cv = cp - R
             local_cp_or_cv_dycore(:ncol,:) = cpair-rair
             scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
-        else if (vc_dycore == vc_dry_pressure) then
+        else if (vc_dycore == ENERGY_FORMULA_DYCORE_SE) then
             ! SE specific hydrostatic energy
             local_cp_or_cv_dycore(:ncol,:) = cpair
             scaling_dycore(:ncol,:) = 1.0_r8
@@ -832,10 +834,10 @@ end subroutine check_energy_readnl
         z_ini           = state%z_ini(:ncol,:),             &
         count           = state%count,                      &
         ztodt           = ztodt,                            &
-        latice          = latice, &
-        latvap          = latvap, &
-        vc_physics      = vc_physics, &
-        vc_dycore       = vc_dycore,  &
+        latice          = latice,                           &
+        latvap          = latvap,                           &
+        energy_formula_physics = vc_physics,                &
+        energy_formula_dycore  = vc_dycore,                 &
         name            = name,       &
         flx_vap         = flx_vap,    &
         flx_cnd         = flx_cnd,    &
