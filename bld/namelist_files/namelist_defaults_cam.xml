@@ -2548,7 +2548,7 @@
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.5D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >0.75D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" spcam_clubb_sgs="1"                      >1.2D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
