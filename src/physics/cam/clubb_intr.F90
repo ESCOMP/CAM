@@ -2743,7 +2743,7 @@ end subroutine clubb_init_cnst
       call pbuf_get_field(pbuf, naai_idx, naai)
     end if
 
-    !  Initialize physics tendency arrays, copy the state to state1 array to use in this routine
+    !  Initialize physics tendency arrays
     call physics_ptend_init(ptend_all, state%psetcols, 'clubb')
 
     ! Copy the state to state1 array to use in this routine
@@ -2845,7 +2845,7 @@ end subroutine clubb_init_cnst
       apply_const = 0._r8  ! Never want this if CLUBB's moments are not advected
     endif
 
-    ! Initialize the apply_const variable (note special logic is due to eularian backstepping)
+    ! Initialize the apply_const variable (note special logic is due to eulerian backstepping)
     if (clubb_do_adv .and. (is_first_step() .or. all(wpthlp(1:ncol,1:pver)  ==  0._r8))) then
       apply_const = 0._r8  ! On first time through do not remove constant
                            !  from moments since it has not been added yet
@@ -4111,7 +4111,7 @@ end subroutine clubb_init_cnst
     do i=1, ncol
       clubbtop(i) = top_lev
       do while ((rtp2(i,clubbtop(i)) <= 1.e-15_r8 .and. rcm(i,clubbtop(i))  ==  0._r8) .and. clubbtop(i) <  pver)
-       clubbtop(i) = clubbtop(i) + 1
+        clubbtop(i) = clubbtop(i) + 1
       end do
     end do
 
