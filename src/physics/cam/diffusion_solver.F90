@@ -572,12 +572,12 @@
        end do
 
        v(:ncol,:) = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
-                                  coef_q=tau_damp_rate, &
-                                  coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
 
        u(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
-                                  coef_q=tau_damp_rate, &
-                                  coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
 
 
 
@@ -747,10 +747,9 @@
           ! condition is defined directly on the top interface.
 
           if (.not. use_spcam) then
-             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), &
-                                  ncol, pver, &
-                                  coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
-                                  upper_bndry=interface_boundary, &
+             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                                  coef_q_diff=kvh(:ncol,:)*dpidz_sq,          &
+                                  upper_bndry=interface_boundary,             &
                                   l_cond=BoundaryData(dse_top(:ncol)))
           endif
 
@@ -767,8 +766,8 @@
           ! upper boundary is zero flux for extended model
           if (.not. use_spcam) then
              ttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
-                                       coef_q_diff=kvt(:ncol,:)*dpidz_sq,  &
-                                       coef_q_weight=cpairv(:ncol,:))
+                          coef_q_diff=kvt(:ncol,:)*dpidz_sq,    &
+                          coef_q_weight=cpairv(:ncol,:))
           end if
 
 
@@ -792,9 +791,9 @@
           ! condition is defined directly on the top interface.
           if (.not. use_spcam) then
              dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
-                                       coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
-                                       upper_bndry=interface_boundary, &
-                                       l_cond=BoundaryData(dse_top(:ncol)))
+                                 coef_q_diff=kv_total(:ncol,:)*dpidz_sq,      &
+                                 upper_bndry=interface_boundary,              &
+                                 l_cond=BoundaryData(dse_top(:ncol)))
           end if
 
           ! Calculate flux at top interface
