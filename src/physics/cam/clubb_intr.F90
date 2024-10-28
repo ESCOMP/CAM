@@ -58,6 +58,10 @@ module clubb_intr
 
   type (sclr_idx_type) :: &
     sclr_idx
+
+  integer :: &
+    nzm_clubb, &
+    nzt_clubb
 #endif
 
   private
@@ -1509,6 +1513,11 @@ end subroutine clubb_init_cnst
       call endrun('clubb_ini_cam:  CLUBB library core_rknd must match CAM r8 and it does not')
     end if
 
+    ! Determine number of vertical levels used in clubb, thermo variables are nzt_clubb
+    ! and momentum variables are nzm_clubb
+    nzt_clubb = pver  + 1 - top_lev
+    nzm_clubb = pverp + 1 - top_lev
+
     ! Allocate PDF parameters across columns and chunks
     allocate( &
        pdf_params_chnk(begchunk:endchunk),   &
@@ -1746,11 +1755,11 @@ end subroutine clubb_init_cnst
     !  at each time step, which is why dummy arrays are read in here for heights
     !  as they are immediately overwrote.
 !$OMP PARALLEL
-    call check_clubb_settings_api( pverp+1-top_lev, clubb_params_single_col,  & ! Intent(in)
-                                   l_implemented,                    & ! Intent(in)
-                                   l_input_fields,                   & ! Intent(in)
-                                   clubb_config_flags,               & ! intent(in)
-                                   err_code )                          ! Intent(out)
+    call check_clubb_settings_api( nzm_clubb, clubb_params_single_col,  & ! Intent(in)
+                                   l_implemented,                       & ! Intent(in)
+                                   l_input_fields,                      & ! Intent(in)
+                                   clubb_config_flags,                  & ! intent(in)
+                                   err_code )                             ! Intent(out)
 
     if ( err_code == clubb_fatal_error ) then
        call endrun('clubb_ini_cam:  FATAL ERROR CALLING SETUP_CLUBB_CORE')
@@ -1885,7 +1894,7 @@ end subroutine clubb_init_cnst
     if (stats_metadata%l_stats) then
       
       call stats_init_clubb( .true., dum1, dum2, &
-                             pverp+1-top_lev, pverp+1-top_lev, pverp+1-top_lev, dum3, &
+                             nzm_clubb, nzm_clubb, nzm_clubb, dum3, &
                              stats_zt(:), stats_zm(:), stats_sfc(:), &
                              stats_rad_zt(:), stats_rad_zm(:))
 
@@ -2237,7 +2246,7 @@ end subroutine clubb_init_cnst
 
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
-    real(r8), dimension(state%ncol,pverp+1-top_lev) :: &
+    real(r8), dimension(state%ncol,nzm_clubb) :: &
       thlm_forcing,             & ! theta_l forcing (thermodynamic levels)      [K/s]
       rtm_forcing,              & ! r_t forcing (thermodynamic levels)          [(kg/kg)/s]
       um_forcing,               & ! u wind forcing (thermodynamic levels)     	[m/s/s]
@@ -2337,7 +2346,7 @@ end subroutine clubb_init_cnst
 
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
-    real(r8), dimension(state%ncol,pverp+1-top_lev,sclr_dim) :: &
+    real(r8), dimension(state%ncol,nzm_clubb,sclr_dim) :: &
       sclrm_forcing,  & ! Passive scalar forcing              [{units vary}/s]
       sclrm,          & ! Passive scalar mean (thermo. levels)          [units vary]
       sclrp2,         & ! sclr'^2 (momentum levels)                     [{units vary}^2]
@@ -2347,13 +2356,13 @@ end subroutine clubb_init_cnst
       wpsclrp,        & ! w'sclr' (momentum levels)                     [{units vary} m/s]
       sclrpthvp_inout   ! sclr'th_v' (momentum levels)                  [{units vary} (K)]
 
-    real(r8), dimension(state%ncol,pverp+1-top_lev,edsclr_dim) :: &
+    real(r8), dimension(state%ncol,nzm_clubb,edsclr_dim) :: &
       edsclrm_forcing,  & ! Eddy passive scalar forcing         [{units vary}/s]
       edsclr_in           ! Scalars to be diffused through CLUBB 		[units vary]
 
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
-    real(r8), dimension(state%ncol,pverp+1-top_lev,hydromet_dim) :: &
+    real(r8), dimension(state%ncol,nzm_clubb,hydromet_dim) :: &
       hydromet,     &
       wphydrometp,  &
       wp2hmp,       &
@@ -2404,7 +2413,7 @@ end subroutine clubb_init_cnst
     real(r8) :: rrho(pcols)                      ! Inverse of air density                        [1/kg/m^3]
     real(r8) :: kinwat(pcols)                    ! Kinematic water vapor flux                    [m/s]
     real(r8) :: latsub
-    real(r8) :: thlp2_rad_out(pcols,pverp+1-top_lev)
+    real(r8) :: thlp2_rad_out(pcols,nzm_clubb)
     real(r8) :: apply_const, rtm_test
     real(r8) :: dl_rad, di_rad, dt_low
 
@@ -2602,8 +2611,6 @@ end subroutine clubb_init_cnst
       clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
 
     integer :: &
-      nzm_clubb, &
-      nzt_clubb, &
       sclr, &
       edsclr, &
       n
@@ -2765,11 +2772,6 @@ end subroutine clubb_init_cnst
     ! Determine number of columns and which chunk computation is to be performed on
     ncol = state%ncol
     lchnk = state%lchnk
-
-    ! Determine number of vertical levels used in clubb, thermo variables are nzt_clubb
-    ! and momentum variables are nzm_clubb
-    nzt_clubb = pver + 1 - top_lev
-    nzm_clubb = pverp + 1 - top_lev
 
     ! Allocate pdf_params only if they aren't allocated already.
     if ( .not. allocated(pdf_params_chnk(lchnk)%mixt_frac) ) then
@@ -2988,7 +2990,12 @@ end subroutine clubb_init_cnst
         vm_ref(i,k) = 0.0_r8
         ug(i,k) = 0.0_r8
         vg(i,k) = 0.0_r8
+      end do
+    end do
 
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k = 1, nzm_clubb
+      do i = 1, ncol
         ! Perturbed winds are not used in CAM
         um_pert_inout(i,k)   = 0.0_r8
         vm_pert_inout(i,k)   = 0.0_r8
@@ -3275,7 +3282,7 @@ end subroutine clubb_init_cnst
 
       !  Compute exner at the surface for converting the sensible heat fluxes
       !  to a flux of potential temperature for use as clubb's boundary conditions
-      inv_exner_clubb_surf(i) = 1._r8 / ( ( state1%pmid(i,pver) / p0_clubb )**( rairv(i,pver,lchnk) / cpairv(i,pver,lchnk) ) )
+      inv_exner_clubb_surf(i) = inv_exner_clubb(i,pver)
     end do
 
     !  Compute thermodynamic stuff needed for CLUBB on thermo levels.
