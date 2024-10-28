@@ -309,6 +309,7 @@ module cam_history
   !
   character(len=max_string_len) :: rhfilename_spec = '%c.cam.rh%t.%y-%m-%d-%s.nc' ! history restart
   character(len=max_string_len) :: hfilename_spec(ptapes) = (/ (' ', idx=1, ptapes) /) ! filename specifyer
+  logical                       :: default_monthly_filename(ptapes) = .false.
   ! Flag for if there are accumulated fields specified for a given tape
   logical                       :: hfile_accum(ptapes) = .false.
 
@@ -812,6 +813,7 @@ CONTAINS
           if ( nhtfrq(t) == 0 )then
             ! Monthly files
             hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m.nc'
+            default_monthly_filename(t) = .true.
           else
             hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m-%d-%s.nc'
           end if
@@ -880,6 +882,7 @@ CONTAINS
     call mpi_bcast(write_nstep0,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(avgflag_pertape, ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(hfilename_spec, len(hfilename_spec(1))*ptapes, mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(default_monthly_filename, ptapes, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(fincl, len(fincl (1,1))*pflds*ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(fexcl, len(fexcl (1,1))*pflds*ptapes, mpi_character, masterprocid, mpicom, ierr)
 
@@ -5613,6 +5616,7 @@ end subroutine print_active_fldlst
     character(len=max_string_len) :: fname ! Filename
     character(len=max_string_len) :: fname_inst ! Filename for instantaneous tape
     character(len=max_string_len) :: fname_acc ! Filename for accumulated tape
+    character(len=max_string_len) :: inst_filename_spec ! Filename specifier override for monthly inst. files
     logical :: prev              ! Label file with previous date rather than current
     logical :: duplicate         ! Flag for duplicate file name
     integer :: ierr
@@ -5726,7 +5730,14 @@ end subroutine print_active_fldlst
           else
             fname_acc = interpret_filename_spec( hfilename_spec(t), number=(t-1), &
                  prev=prev, flag_spec='a' )
-            fname_inst = interpret_filename_spec( hfilename_spec(t), number=(t-1), &
+            ! If this is a monthly instantaneous file, override to default timestamp
+            !  unless the user input a filename specifier
+            if (default_monthly_filename(t)) then
+               inst_filename_spec = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m-%d-%s.nc'
+            else
+               inst_filename_spec = hfilename_spec(t)
+            end if
+            fname_inst = interpret_filename_spec( inst_filename_spec, number=(t-1), &
                  prev=prev, flag_spec='i' )
           end if
           !
