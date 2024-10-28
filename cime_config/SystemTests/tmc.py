@@ -5,7 +5,7 @@ CAM mass conservation test  This class inherits from SystemTestsCommon
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.system_tests_common import SystemTestsCommon
 from CIME.test_status import *
-from CIME.utils import append_testlog
+from CIME.status import append_testlog
 from CIME.baselines.performance import get_latest_cpl_logs
 import glob, gzip
 
