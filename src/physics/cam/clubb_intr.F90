@@ -5115,7 +5115,8 @@ end function diag_ustar
 
         call addfld( trim(sub), (/ 'ilev' /), 'A', &
                      trim(stats_zt(1)%file%grid_avg_var(i)%units), &
-                     trim(stats_zt(1)%file%grid_avg_var(i)%description) )
+                     trim(stats_zt(1)%file%grid_avg_var(i)%description), &
+                     sampled_on_subcycle=.true. )
     enddo
 
     do i = 1, stats_zm(1)%num_output_fields
@@ -5126,7 +5127,8 @@ end function diag_ustar
 
        call addfld( trim(sub), (/ 'ilev' /), 'A', &
                     trim(stats_zm(1)%file%grid_avg_var(i)%units), &
-                    trim(stats_zm(1)%file%grid_avg_var(i)%description) )
+                    trim(stats_zm(1)%file%grid_avg_var(i)%description), &
+                    sampled_on_subcycle=.true. )
     enddo
 
     if (stats_metadata%l_output_rad_files) then
@@ -5137,7 +5139,8 @@ end function diag_ustar
           if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
           call addfld( trim(sub), (/ 'ilev' /), 'A', &
                        trim(stats_rad_zt(1)%file%grid_avg_var(i)%units), &
-                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%description) )
+                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%description), &
+                       sampled_on_subcycle=.true. )
        enddo
 
        do i = 1, stats_rad_zm(1)%num_output_fields
@@ -5146,7 +5149,8 @@ end function diag_ustar
           if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
           call addfld( trim(sub), (/ 'ilev' /), 'A', &
                        trim(stats_rad_zm(1)%file%grid_avg_var(i)%units), &
-                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%description) )
+                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%description), &
+                       sampled_on_subcycle=.true. )
        enddo
     endif
 
@@ -5156,7 +5160,8 @@ end function diag_ustar
        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
        call addfld( trim(sub), horiz_only, 'A', &
                     trim(stats_sfc(1)%file%grid_avg_var(i)%units), &
-                    trim(stats_sfc(1)%file%grid_avg_var(i)%description) )
+                    trim(stats_sfc(1)%file%grid_avg_var(i)%description), &
+                    sampled_on_subcycle=.true. )
     enddo
 
 
