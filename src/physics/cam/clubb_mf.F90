@@ -1037,7 +1037,8 @@ module clubb_mf
            end do !iter_xc
 
 !+++arh - limit convection to within troposphere
-           if (wn>0._r8 .and. (k+1)<ktropo) then
+           !if (wn>0._r8 .and. (k+1)<ktropo) then
+           if (wn>0._r8) then
 
              upthv(k+1,i) = thvn
              upthl(k+1,i) = thln
@@ -1070,7 +1071,7 @@ module clubb_mf
 
            else
              ! zero out plumes that terminate at k<3
-             if (k<3) then
+             if ((k-kstart+1)<4) then
                supqt(:,i) = 0._r8
                upauto(:,i)= 0._r8
                supthl(:,i)= 0._r8
