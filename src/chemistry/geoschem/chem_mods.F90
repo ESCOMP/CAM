@@ -7,7 +7,7 @@
       implicit none
       save
 
-      INTEGER, PARAMETER   :: nTracersMax = 269    ! = chem_nadv in cam/bld/configure
+      INTEGER, PARAMETER   :: nTracersMax = 312    ! = chem_nadv in cam/bld/configure
       INTEGER              :: nTracers
       REAL(r8)             :: ref_MMR(pcnst)
 
@@ -62,7 +62,7 @@
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 357, & ! number of "gas phase" species (=solsym length)
+                            gas_pcnst = 419, & ! number of "gas phase" species (=solsym length)
                                                ! Includes GC advected species, MAM aerosols,
                                                ! and CO2, and any non-advected species added
                                                ! to solsym within mo_sim_dat.F90.
@@ -81,7 +81,7 @@
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 0, & ! number of tagged reactions (unused in GEOS-Chem)
                             enthalpy_cnt = 0, &
-                            nslvd = 88  ! number of short-lived (non-advected) species minus CO2
+                            nslvd = 107  ! number of short-lived (non-advected) species minus CO2
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
