@@ -5738,7 +5738,7 @@ end subroutine print_active_fldlst
                inst_filename_spec = hfilename_spec(t)
             end if
             fname_inst = interpret_filename_spec( inst_filename_spec, number=(t-1), &
-                 prev=prev, flag_spec='i' )
+                 flag_spec='i' )
           end if
           !
           ! Check that this new filename isn't the same as a previous or current filename
