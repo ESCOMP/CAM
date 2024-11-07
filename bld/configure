@@ -2335,6 +2335,7 @@ sub write_filepath
     # be overridden by modules from directories that occur earlier
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
+    print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
 
     #Add the CCPP'ized subdirectories
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
