@@ -161,6 +161,7 @@
     use linear_1d_operators, only : BoundaryType, BoundaryFixedLayer, &
          BoundaryData, BoundaryFlux, TriDiagDecomp
     use vdiff_lu_solver,     only : fin_vol_lu_decomp
+    use vertical_diffusion_solver, only : fin_vol_solve
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
     use air_composition,     only: rairv
@@ -570,12 +571,15 @@
           tau_damp_rate(:,k) = tau_damp_rate(:,k) + dragblj(:ncol,k)
        end do
 
-       decomp = fin_vol_lu_decomp(ztodt, p, &
-            coef_q=tau_damp_rate, coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+       v(:ncol,:) = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
 
-       call decomp%left_div(u(:ncol,:))
-       call decomp%left_div(v(:ncol,:))
-       call decomp%finalize()
+       u(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+
+
 
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
@@ -741,16 +745,13 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
-               upper_bndry=interface_boundary)
 
           if (.not. use_spcam) then
-           call decomp%left_div(dse(:ncol,:), &
-                l_cond=BoundaryData(dse_top(:ncol)))
+             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                                  coef_q_diff=kvh(:ncol,:)*dpidz_sq,          &
+                                  upper_bndry=interface_boundary,             &
+                                  l_cond=BoundaryData(dse_top(:ncol)))
           endif
-
-          call decomp%finalize()
 
           ! Calculate flux at top interface
 
@@ -759,19 +760,16 @@
           topflx(:ncol) =  - kvh(:ncol,1) * tmpi2(:ncol,1) / (ztodt*gravit) * &
                ( dse(:ncol,1) - dse_top(:ncol) )
 
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kvt(:ncol,:)*dpidz_sq, &
-               coef_q_weight=cpairv(:ncol,:))
-
           ttemp0 = t(:ncol,:)
           ttemp = ttemp0
 
           ! upper boundary is zero flux for extended model
           if (.not. use_spcam) then
-             call decomp%left_div(ttemp)
+             ttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
+                          coef_q_diff=kvt(:ncol,:)*dpidz_sq,    &
+                          coef_q_weight=cpairv(:ncol,:))
           end if
 
-          call decomp%finalize()
 
           !-------------------------------------
           !  Update dry static energy
@@ -791,16 +789,12 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
-               upper_bndry=interface_boundary)
-
           if (.not. use_spcam) then
-             call decomp%left_div(dse(:ncol,:), &
-                  l_cond=BoundaryData(dse_top(:ncol)))
+             dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                                 coef_q_diff=kv_total(:ncol,:)*dpidz_sq,      &
+                                 upper_bndry=interface_boundary,              &
+                                 l_cond=BoundaryData(dse_top(:ncol)))
           end if
-
-          call decomp%finalize()
 
           ! Calculate flux at top interface
 
