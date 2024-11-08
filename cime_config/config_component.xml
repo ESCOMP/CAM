@@ -204,6 +204,7 @@
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
       <value compset="_DOCN%AQP"   >-aquaplanet</value>
+      <value compset="_CAM70.*_SLND_SICE_DOCN%AQP" >-chem none</value>
 
       <!-- PORT -->
       <value compset="%PORT">-offline_drv rad</value>

@@ -16,6 +16,8 @@
 <ch4vmr                   >1.650e-6</ch4vmr>
 <n2ovmr                   >0.306e-6</n2ovmr>
 <co2vmr                   >348.0e-6</co2vmr>
+<f11vmr                   >0.0     </f11vmr>
+<f12vmr                   >0.0     </f12vmr>
 
 <!-- Solar insolation of 1365 -->
 <solar_irrad_data_file    >atm/cam/solar/ape_solar_ave_tsi_1365.nc</solar_irrad_data_file>
@@ -42,7 +44,13 @@
 <ext_frc_specifier        > ""    </ext_frc_specifier>
 <srf_emis_specifier       > ""    </srf_emis_specifier>
 <tracer_cnst_specifier    > ""    </tracer_cnst_specifier>
+<prescribed_aero_file     > ""    </prescribed_aero_file>
+<prescribed_aero_specifier> ""    </prescribed_aero_specifier>
 
 <seasalt_emis_scale       > 0.0   </seasalt_emis_scale>
+
+<!-- Just make the GHGs radiatively active.  CFC concentrations are set to zero above -->
+<rad_climate> 'A:Q:H2O', 'N:O2:O2', 'N:CO2:CO2', 'N:ozone:O3',
+         'N:N2O:N2O', 'N:CH4:CH4', 'N:CFC11:CFC11', 'N:CFC12:CFC12' </rad_climate>
 
 </namelist_defaults>
