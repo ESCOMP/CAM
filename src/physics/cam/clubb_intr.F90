@@ -3817,6 +3817,7 @@ end subroutine clubb_init_cnst
       end if
 
       if ( do_rainturb ) then
+        call t_startf('clubb_tend_cam:do_rainturb')
 
         do k=1,nzm_clubb
           do i=1,ncol
@@ -3824,14 +3825,12 @@ end subroutine clubb_init_cnst
           end do
         end do
 
-        call t_startf('clubb_tend_cam:update_xp2_mc_api')
         call update_xp2_mc_api( gr, nzm_clubb, ncol, dtime, cloud_frac_inout, &
           rcm_inout, rvm_in, thlm_in, wm_zt, &
           exner, pre_in, pdf_params_chnk(lchnk), &
           rtp2_mc_out, thlp2_mc_out, &
           wprtp_mc_out, wpthlp_mc_out, &
           rtpthlp_mc_out)
-        call t_stopf('clubb_tend_cam:update_xp2_mc_api')
 
         do k=1,nzm_clubb
           do i=1,ncol
@@ -3845,6 +3844,7 @@ end subroutine clubb_init_cnst
           end do
         end do
 
+        call t_stopf('clubb_tend_cam:do_rainturb')
       end if
 
       if (do_cldcool) then
