@@ -68,6 +68,7 @@ case $hostname in
     test_file_list="tests_pretag_izumi_${CAM_FC,,}"
     cam_tag=$1_${CAM_FC,,}
     baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
+    chmod_cmd="chmod -R a+r ${baselinedir}"
   ;;
 
   de*)
@@ -78,6 +79,7 @@ case $hostname in
     test_file_list="tests_pretag_derecho_${CAM_FC,,}"
     cam_tag=$1_${CAM_FC,,}
     baselinedir="/glade/campaign/cesm/community/amwg/cam_baselines/$cam_tag"
+    chmod_cmd=""
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
@@ -97,6 +99,7 @@ if [ -n "$CESM_TESTDIR" ]; then
     if [ -d $CESM_TESTDIR/baselines ]; then
       echo "Using cp to archive baselines."
       cp -r $CESM_TESTDIR/baselines/. $root_baselinedir/$cam_tag
+      eval ${chmod_cmd}
     else
       echo "Using bless_test_results to archive baselines."
       ../../cime/CIME/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
