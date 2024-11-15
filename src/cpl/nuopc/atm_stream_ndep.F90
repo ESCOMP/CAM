@@ -118,7 +118,7 @@ contains
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_align")
 
     ! Check whether the stream is being used.
-    if (stream_ndep_data_filename == ' ') then
+    if (stream_ndep_data_filename == ' '.or.stream_ndep_data_filename == 'UNSET') then
        use_ndep_stream = .false.
        if (masterproc) then
           write(iulog,'(a)') ' '
