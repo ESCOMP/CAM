@@ -814,6 +814,7 @@ end subroutine check_energy_readnl
         ncol            = ncol, &
         pver            = pver, &
         pcnst           = pcnst, &
+        iulog           = iulog, &
         q               = state%q(1:ncol,1:pver,1:pcnst), &
         pdel            = state%pdel(1:ncol,1:pver), &
         u               = state%u(1:ncol,1:pver), &
@@ -852,7 +853,7 @@ end subroutine check_energy_readnl
   ! Add heating rate required for global mean total energy conservation
   subroutine check_energy_cam_fix(state, ptend, nstep, eshflx)
     use physics_types,    only: physics_ptend, physics_ptend_init
-    use physconst,        only: rga
+    use physconst,        only: gravit
 
     ! SCAM support
     use scamMod,          only: single_column, use_camiop, heat_glob_scm
@@ -902,7 +903,7 @@ end subroutine check_energy_readnl
         ncol      = ncol, &
         pver      = pver, &
         pint      = state%pint(:ncol,:), &
-        rga       = rga, &
+        gravit    = gravit, &
         heat_glob = heat_glob, &
         ptend_s   = ptend%s(:ncol,:), &
         eshflx    = eshflx(:ncol) &
