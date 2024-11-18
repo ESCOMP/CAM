@@ -755,11 +755,9 @@ if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
    # use solar data file as the default for rrtmg and waccm_ma
    add_default($nl, 'solar_irrad_data_file');
 
-   # This option only used by camrt and rrtmg radiation schemes.
-   # The solar spectral scaling is done internal to RRTMGP code.
-   if ($rad_pkg ne 'rrtmgp') {
-       add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
-   }
+   # The solar spectral scaling is done based on the distribution from
+   # the solar_irrad_data_file.
+   add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
 
 }
 elsif (!$simple_phys) {
