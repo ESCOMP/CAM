@@ -872,7 +872,7 @@ end subroutine check_energy_readnl
     integer     :: ncol                     ! number of atmospheric columns in chunk
     integer     :: lchnk                    ! chunk number
     real(r8)    :: heat_out(pcols)
-    character(len=64) :: dummy_scheme_name  ! dumy scheme name for CCPP-ized scheme
+    character(len=64) :: dummy_scheme_name  ! dummy scheme name for CCPP-ized scheme
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -908,7 +908,7 @@ end subroutine check_energy_readnl
         heat_glob = heat_glob, &
         ptend_s   = ptend%s(:ncol,:), &
         eshflx    = eshflx(:ncol), &
-        scheme_name = dummy_scheme_name
+        scheme_name = dummy_scheme_name &
     )
 
   end subroutine check_energy_cam_fix
