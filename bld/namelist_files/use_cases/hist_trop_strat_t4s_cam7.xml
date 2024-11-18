@@ -29,7 +29,4 @@
 <history_chemspecies_srf>.false.</history_chemspecies_srf>
 <history_clubb>.false.</history_clubb>
 
-<!-- nitrogen deposition to surface models -->
-<!-- <ndep_list>'noy', 'nhx'</ndep_list> -->
-
 </namelist_defaults>
