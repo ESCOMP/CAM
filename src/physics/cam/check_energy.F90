@@ -425,7 +425,7 @@ end subroutine check_energy_readnl
 
     type(physics_state), intent(inout) :: state
     character(len=*),    intent(in)    :: outfld_name_suffix ! suffix for "outfld"
-    integer, optional,   intent(in)    :: vc                 ! vertical coordinate
+    integer, optional,   intent(in)    :: vc                 ! vertical coordinate (controls energy formula to use)
 
 !---------------------------Local storage-------------------------------
     real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
