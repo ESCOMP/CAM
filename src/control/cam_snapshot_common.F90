@@ -848,6 +848,8 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
          call outfld(state_snapshot(i)%standard_name, state%te_cur(:, dyn_te_idx), pcols, lchnk)
 
       case ('air_composition_cp_or_cv_dycore')
+         ! this field is not part of physics state (it is in air_composition)
+         ! but describes the atmospheric thermodynamic state and thus saved within the snapshot
          call outfld(state_snapshot(i)%standard_name, cp_or_cv_dycore(:,:,lchnk), pcols, lchnk)
 
       case default

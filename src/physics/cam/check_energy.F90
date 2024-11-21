@@ -461,6 +461,9 @@ end subroutine check_energy_readnl
     lchnk = state%lchnk
     ncol  = state%ncol
 
+    ! The "vertical coordinate" parameter is equivalent to the dynamical core
+    ! energy formula parameter, which controls the dycore energy formula used
+    ! by get_hydrostatic_energy.
     if (present(vc)) then
       vc_loc = vc
     else
@@ -758,11 +761,11 @@ end subroutine check_energy_readnl
     type(physics_tend ), intent(inout) :: tend
     character*(*),intent(in) :: name               ! parameterization name for fluxes
     integer , intent(in) :: nstep                  ! current timestep number
-    real(r8), intent(in) :: ztodt                  ! 2 delta t (model time increment)
-    real(r8), intent(in) :: flx_vap(:)             ! (pcols) - boundary flux of vapor         (kg/m2/s)
-    real(r8), intent(in) :: flx_cnd(:)             ! (pcols) -boundary flux of liquid+ice    (m/s) (precip?)
-    real(r8), intent(in) :: flx_ice(:)             ! (pcols) -boundary flux of ice           (m/s) (snow?)
-    real(r8), intent(in) :: flx_sen(:)             ! (pcols) -boundary flux of sensible heat (w/m2)
+    real(r8), intent(in) :: ztodt                  ! physics timestep (s)
+    real(r8), intent(in) :: flx_vap(:)             ! (pcols) - boundary flux of vapor (kg/m2/s)
+    real(r8), intent(in) :: flx_cnd(:)             ! (pcols) - boundary flux of lwe liquid+ice (m/s)
+    real(r8), intent(in) :: flx_ice(:)             ! (pcols) - boundary flux of lwe ice (m/s)
+    real(r8), intent(in) :: flx_sen(:)             ! (pcols) - boundary flux of sensible heat (W/m2)
 
     integer :: lchnk                               ! chunk identifier
     integer :: ncol                                ! number of atmospheric columns
@@ -785,7 +788,7 @@ end subroutine check_energy_readnl
 
             scaling_dycore(:ncol,:)  = cpairv(:ncol,:,lchnk)/local_cp_or_cv_dycore(:ncol,:) ! cp/cv scaling
         endif
-    elseif(state%psetcols > pcols) then
+    else if(state%psetcols > pcols) then
         ! Subcolumns
         if(.not. all(cpairv(:,:,:) == cpair)) then
             call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
