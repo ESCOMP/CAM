@@ -127,7 +127,6 @@
   HOCL
   HYAC
   HYDRALD
-  ISOPNO3
   ISOPOOH
   MACR
   MACRN
@@ -172,7 +171,6 @@
   XHO2NO2
   XONIT
   XONITR
-  XISOPNO3
 </list>
 
 </gas_wetdep_list_definition>
