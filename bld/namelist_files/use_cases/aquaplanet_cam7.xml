@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 
-<!-- Do not specify orb_*, co2vmr, ch4 or n2o for aquaplanet runs -->
-
 <namelist_defaults>
+
+<!-- Spun up IC files -->
+<ncdata hgrid="ne3np4"   nlev="58" >atm/cam/inic/se/QPLT_L58_ne3pg3_c241127.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="58" >atm/cam/inic/se/QPLT_L58_ne30pg3_c241127.nc</ncdata>
+
 <!-- make planet orbit circular              -->
 <orb_eccen                >0.</orb_eccen>
 <orb_obliq                >0.</orb_obliq>
@@ -49,7 +52,8 @@
 
 <seasalt_emis_scale       > 0.0   </seasalt_emis_scale>
 
-<!-- Just make the GHGs radiatively active.  CFC concentrations are set to zero above -->
+<!-- Just make the GHGs radiatively active (no aerosols).
+     CFC concentrations are set to zero above -->
 <rad_climate> 'A:Q:H2O', 'N:O2:O2', 'N:CO2:CO2', 'N:ozone:O3',
          'N:N2O:N2O', 'N:CH4:CH4', 'N:CFC11:CFC11', 'N:CFC12:CFC12' </rad_climate>
 
