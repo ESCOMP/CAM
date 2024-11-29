@@ -190,13 +190,22 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC6" grid="ne3pg3_ne3pg3_mg37" name="ERP_D_Ln9" testmods="cam/outfrq9s_rrtmgp">
+  <test compset="QPLT" grid="ne3pg3_ne3pg3_mg37" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
-      <option name="comment" >CAM6 aquaplanet w/ RRTMGP</option>
+      <option name="comment" >CAM7-LT aquaplanet</option>
+    </options>
+  </test>
+  <test compset="QPLT" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq3s_cosp">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >CAM7-LT aquaplanet w/ COSP</option>
     </options>
   </test>
   <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
