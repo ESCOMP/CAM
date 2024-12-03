@@ -31,7 +31,7 @@ module aoa_tracers
   integer, parameter :: ncnst=3  ! number of constituents implemented by this module
 
   ! constituent names
-  character(len=6), parameter :: c_names(ncnst) = (/'AOAMF ', 'HORZ  ', 'VERT  '/)
+  character(len=4), parameter :: c_names(ncnst) = (/'AOA1', 'HORZ', 'VERT'/)
 
   ! constituent source/sink names
   character(len=8), parameter :: src_names(ncnst) = (/'AOAMFSRC', 'HORZSRC ', 'VERTSRC '/)
@@ -132,12 +132,12 @@ contains
     if (.not. aoa_tracers_flag) return
 
     call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa, readiv=aoa_read_from_ic_file, &
-                  longname='mixing ratio LB tracer')
+                  longname='mixing ratio LB tracer', cam_outfld=.false.)
 
     call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,   readiv=aoa_read_from_ic_file, &
-                  longname='horizontal tracer')
+                  longname='horizontal tracer', cam_outfld=.false.)
     call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
-                  longname='vertical tracer')
+                  longname='vertical tracer', cam_outfld=.false.)
 
     ifirst = ixaoa
 
@@ -324,6 +324,8 @@ contains
     real(r8), parameter :: mmr0 = 1.0e-6_r8   ! initial lower boundary mmr
     real(r8), parameter :: per_yr = 0.02_r8   ! fractional increase per year
 
+    real(r8) :: mmr_out(pcols,pver,ncnst)
+
     !------------------------------------------------------------------
 
     teul = .5_r8*dt/(86400._r8 * treldays)   ! 1/2 for the semi-implicit scheme if dt=time step
@@ -370,6 +372,15 @@ contains
     call outfld (src_names(1), ptend%q(:,:,ixaoa),  pcols, lchnk)
     call outfld (src_names(2), ptend%q(:,:,ixht),   pcols, lchnk)
     call outfld (src_names(3), ptend%q(:,:,ixvt),   pcols, lchnk)
+
+    ! output mixing ratios to history
+    mmr_out(:ncol,:,1) = state%q(:ncol,:,ixaoa) + dt*ptend%q(1:ncol,:,ixaoa)
+    mmr_out(:ncol,:,2) = state%q(:ncol,:,ixht)  + dt*ptend%q(1:ncol,:,ixht)
+    mmr_out(:ncol,:,3) = state%q(:ncol,:,ixvt)  + dt*ptend%q(1:ncol,:,ixvt)
+
+    call outfld (c_names(1), mmr_out(:,:,1),  pcols, lchnk)
+    call outfld (c_names(2), mmr_out(:,:,2),  pcols, lchnk)
+    call outfld (c_names(3), mmr_out(:,:,3),  pcols, lchnk)
 
   end subroutine aoa_tracers_timestep_tend
 
