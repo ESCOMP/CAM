@@ -1966,7 +1966,16 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart</option>
+      <option name="comment">FCSD CAM-chem f09 with HEMCO exact restart</option>
+    </options>
+  </test>
+  <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERS_Ln10" testmods="cam/outfrq10s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="camchem_hco"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">FCSD CAM-chem f09 with HEMCO exact restart</option>
     </options>
   </test>
   <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s" supported="false">
@@ -1976,7 +1985,17 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart/PE tests</option>
+      <option name="comment">FCSD CAM-chem f09 with HEMCO exact restart/PE tests</option>
+    </options>
+  </test>
+  <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERP_Ln10" testmods="cam/outfrq10s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="camchem_hco"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">FCSD CAM-chem f09 with HEMCO exact restart/PE tests</option>
     </options>
   </test>
 

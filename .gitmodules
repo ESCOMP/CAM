@@ -71,7 +71,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm2_0_hemco3_9_0
+        fxtag = hemco-cesm2_1_hemco3_9_0
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
