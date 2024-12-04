@@ -34,10 +34,10 @@ module aoa_tracers
   character(len=4), parameter :: c_names(ncnst) = (/'AOA1', 'HORZ', 'VERT'/)
 
   ! constituent source/sink names
-  character(len=8), parameter :: src_names(ncnst) = (/'AOAMFSRC', 'HORZSRC ', 'VERTSRC '/)
+  character(len=7), parameter :: src_names(ncnst) = (/'AOA1SRC', 'HORZSRC', 'VERTSRC'/)
 
   integer :: ifirst = -1 ! global index of first constituent
-  integer :: ixaoa  = -1 ! global index for AOAMFSRC tracer
+  integer :: ixaoa  = -1 ! global index for AOA1SRC tracer
   integer :: ixht   = -1 ! global index for HORZ tracer
   integer :: ixvt   = -1 ! global index for VERT tracer
 
@@ -347,7 +347,7 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! AOAMF
+    ! AOA1
     xmmr = mmr0*(1._r8 + per_yr*years)
     ptend%q(1:ncol,pver,ixaoa) = (xmmr - state%q(1:ncol,pver,ixaoa)) / dt
 
@@ -403,7 +403,7 @@ contains
 
     if (m == ixaoa) then
 
-       ! AOAMF
+       ! AOA1
        q(:,:) = 0.0_r8
 
     else if (m == ixht) then
