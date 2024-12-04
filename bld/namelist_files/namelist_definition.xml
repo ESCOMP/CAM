@@ -4476,6 +4476,20 @@ is not active.
 Default: none
 </entry>
 
+<entry id="carma_sulfnuc_method" type="char*10" category="carma"
+       group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
+ Nucleation methods:
+  ZhaoTurco
+     Zhao and Turco, JAS, V.26, No.5, 1995.
+  Vehkamaki
+     Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
+     C. Timmreck, M. Noppel and A. Laaksonen, 2002,
+     An improved parameterization for sulfuric acid-water nucleation
+     rates for tropospheric and stratospheric conditions,
+     J. Geophys. Res., 107, 4622, doi:10.1029/2002jd002184
+Default: none
+</entry>
+
 <entry id="carma_conmax" type="real" category="carma"
        group="carma_nl" valid_values="" >
 A fraction that scales how tight the convergence criteria are to
