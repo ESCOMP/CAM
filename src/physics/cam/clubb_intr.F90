@@ -13,7 +13,7 @@ module clubb_intr
   !                                                                                                      !
   !---------------------------Code history-------------------------------------------------------------- !
   ! Authors:  P. Bogenschutz, C. Craig, A. Gettelman                                                     !
-  ! Modified by: K Thayer-Calder                                                     !
+  ! Modified by: K Thayer-Calder                                                                         !
   !                                                                                                      !
   !----------------------------------------------------------------------------------------------------- !
 
@@ -25,13 +25,13 @@ module clubb_intr
   use cam_history_support, only: max_fieldname_len
 
   use spmd_utils,          only: masterproc
-  use constituents,        only: pcnst, cnst_add
+  use constituents,        only: pcnst, cnst_add, cnst_ndropmixed
   use pbl_utils,           only: calc_ustar, calc_obklen
   use ref_pres,            only: top_lev => trop_cloud_top_lev
 
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, & 
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
                                  hm_metadata_type, sclr_idx_type
 
@@ -52,7 +52,7 @@ module clubb_intr
                                 stats_sfc(pcols)        ! stats_sfc
   type (hm_metadata_type) :: &
     hm_metadata
-                                
+
   type (stats_metadata_type) :: &
     stats_metadata
 
@@ -95,7 +95,7 @@ module clubb_intr
 
   ! These are zero by default, but will be set by SILHS before they are used by subcolumns
   integer :: &
-      hydromet_dim = 0, & 
+      hydromet_dim = 0, &
       pdf_dim      = 0
 
 
@@ -117,7 +117,7 @@ module clubb_intr
     hm_metadata
 #endif
 #endif
-      
+
   ! ------------ !
   ! Private data !
   ! ------------ !
@@ -340,7 +340,7 @@ module clubb_intr
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
-                                          ! eliminates spurious drying tendencies at model top  
+                                          ! eliminates spurious drying tendencies at model top
     clubb_l_host_applies_sfc_fluxes       ! Whether the host model applies the surface fluxes
 
   logical :: &
@@ -349,12 +349,11 @@ module clubb_intr
 !  Constant parameters
   logical, parameter, private :: &
     l_implemented    = .true.            ! Implemented in a host model (always true)
-    
+
   logical, parameter, private :: &
     apply_to_heat    = .false.           ! Apply WACCM energy fixer to heat or not (.true. = yes (duh))
 
   logical            :: lq(pcnst)
-  logical            :: prog_modal_aero
   logical            :: do_rainturb
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
@@ -1525,8 +1524,7 @@ end subroutine clubb_init_cnst
     ! off of pcnst (the total consituents)
     ! ----------------------------------------------------------------- !
 
-    call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
-                      history_amwg_out=history_amwg, &
+    call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
 
@@ -1542,29 +1540,15 @@ end subroutine clubb_init_cnst
     call cnst_get_ind('CLDLIQ',ixcldliq)
     call cnst_get_ind('CLDICE',ixcldice)
 
-    if (prog_modal_aero) then
-       ! Turn off modal aerosols and decrement edsclr_dim accordingly
-       call rad_cnst_get_info(0, nmodes=nmodes)
-
-       do m = 1, nmodes
-          call rad_cnst_get_mode_num_idx(m, lptr)
-          lq(lptr)=.false.
+    do m = 1, pcnst
+       if (cnst_ndropmixed(m)) then
+          lq(m)=.false.
+          !  Droplet number is transported in dropmixnuc, therefore we
+          !  do NOT want CLUBB to apply transport tendencies to avoid double
+          !  counting.  Else, we apply tendencies.
           edsclr_dim = edsclr_dim-1
-
-          call rad_cnst_get_info(0, m, nspec=nspec)
-          do l = 1, nspec
-             call rad_cnst_get_mam_mmr_idx(m, l, lptr)
-             lq(lptr)=.false.
-             edsclr_dim = edsclr_dim-1
-          end do
-       end do
-
-       !  In addition, if running with MAM, droplet number is transported
-       !  in dropmixnuc, therefore we do NOT want CLUBB to apply transport
-       !  tendencies to avoid double counted.  Else, we apply tendencies.
-       lq(ixnumliq) = .false.
-       edsclr_dim = edsclr_dim-1
-    endif
+       endif
+    enddo
 
     ! ----------------------------------------------------------------- !
     ! Set the debug level.  Level 2 has additional computational expense since
@@ -1733,7 +1717,7 @@ end subroutine clubb_init_cnst
     clubb_params_single_col(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
     clubb_params_single_col(iz_displace) = clubb_z_displace
 
-    ! Override clubb default 
+    ! Override clubb default
     if ( trim(subcol_scheme) == 'SILHS' ) then
       clubb_config_flags%saturation_formula = saturation_flatau
     else
@@ -1742,7 +1726,7 @@ end subroutine clubb_init_cnst
 
     ! Define model constant parameters
     call setup_parameters_model_api( theta0, ts_nudge, clubb_params_single_col(iSkw_max_mag) )
-   
+
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
     !  at each time step, which is why dummy arrays are read in here for heights
@@ -1885,7 +1869,7 @@ end subroutine clubb_init_cnst
     dum3 = 300._r8
 
     if (stats_metadata%l_stats) then
-      
+
       call stats_init_clubb( .true., dum1, dum2, &
                              nlev+1, nlev+1, nlev+1, dum3, &
                              stats_zt(:), stats_zm(:), stats_sfc(:), &
@@ -2591,7 +2575,7 @@ end subroutine clubb_init_cnst
 
     real(r8), dimension(state%ncol,nparams) :: &
       clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
- 
+
 #endif
     det_s(:)   = 0.0_r8
     det_ice(:) = 0.0_r8
@@ -4833,7 +4817,7 @@ end function diag_ustar
 
     !  Set stats_variables variables with inputs from calling subroutine
     stats_metadata%l_stats = l_stats_in
-    
+
     stats_metadata%stats_tsamp = stats_tsamp_in
     stats_metadata%stats_tout  = stats_tout_in
 

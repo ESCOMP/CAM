@@ -67,6 +67,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use mpishorthand
+    use dust_model,      only: dust_readnl
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -112,6 +113,8 @@ contains
     wetdep_list = aer_wetdep_list
     drydep_list = aer_drydep_list
 
+    call dust_readnl(nlfile)
+
   end subroutine aero_model_readnl
 
   !=============================================================================
@@ -136,6 +139,7 @@ contains
     use aer_drydep_mod, only: inidrydep
     use wetdep,         only: wetdep_init
     use mo_setsox,      only: has_sox
+    use mo_setsox,      only: sox_inti
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -146,6 +150,9 @@ contains
     character(len=20) :: dummy
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_dust    ! Output dust
+
+    ! aqueous chem initialization
+    call sox_inti()
 
     call phys_getopts( history_aerosol_out = history_aerosol,&
                        history_dust_out    = history_dust   )
@@ -690,12 +697,13 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
+                  state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
                   dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_total, reff_trop )
 
     use mo_constants, only : pi, avo => avogadro
 
     ! dummy args
+    type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     real(r8), intent(in)    :: mmr(:,:,:)
@@ -985,9 +993,10 @@ contains
   !-------------------------------------------------------------------------
   ! stub
   !-------------------------------------------------------------------------
-  subroutine aero_model_strat_surfarea( ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
+  subroutine aero_model_strat_surfarea( state, ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
 
     ! dummy args
+    type(physics_state), intent(in) :: state           ! Physics state variables
     integer,  intent(in)    :: ncol
     real(r8), intent(in)    :: mmr(:,:,:)
     real(r8), intent(in)    :: pmid(:,:)
@@ -1004,7 +1013,7 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_gasaerexch( loffset, ncol, lchnk, troplev, delt, reaction_rates, &
+  subroutine aero_model_gasaerexch( state, loffset, ncol, lchnk, troplev, delt, reaction_rates, &
                                     tfld, pmid, pdel, mbar, relhum, &
                                     zm,  qh2o, cwat, cldfr, cldnum, &
                                     airdens, invariants, del_h2so4_gasprod,  &
@@ -1018,6 +1027,7 @@ contains
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
+    type(physics_state), intent(in)    :: state    ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1056,7 +1066,8 @@ contains
   ! aqueous chemistry ...
 
     if( has_sox ) then
-       call setsox(   &
+       call setsox( state, &
+            pbuf,     &
             ncol,     &
             lchnk,    &
             loffset,  &

@@ -8,6 +8,7 @@ module sox_cldaero_mod
   use ppgrid,           only : pcols, pver
   use mo_chem_utls,     only : get_spc_ndx
   use cldaero_mod,      only : cldaero_conc_t, cldaero_allocate, cldaero_deallocate
+  use physics_buffer,   only : physics_buffer_desc
 
   implicit none
   private
@@ -22,7 +23,7 @@ module sox_cldaero_mod
   real(r8), parameter :: small_value = 1.e-20_r8
 
 contains
-  
+
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
 
@@ -32,10 +33,10 @@ contains
      id_so4 = get_spc_ndx( 'SO4' )
      id_h2o2 = get_spc_ndx( 'H2O2' )
 
-     if ( id_so2<1 ) then 
+     if ( id_so2<1 ) then
         call endrun('sox_cldaero_init: SO2 is not included in chemistry -- should not invoke sox_cldaero_mod...')
      endif
-   
+
   end subroutine sox_cldaero_init
 
 !----------------------------------------------------------------------------------
@@ -60,13 +61,16 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
-  subroutine sox_cldaero_update( &
-       ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+  subroutine sox_cldaero_update( state, &
+       pbuf, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d )
-    
-    ! args 
-    
+    use physics_types,     only: physics_state
+
+    ! args
+
+    type(physics_state),    intent(in)    :: state     ! Physics state variables
+    type(physics_buffer_desc), pointer :: pbuf(:)
     integer,  intent(in) :: ncol
     integer,  intent(in) :: lchnk ! chunk id
     integer,  intent(in) :: loffset
@@ -74,7 +78,7 @@ contains
     real(r8), intent(in) :: dtime ! time step (sec)
 
     real(r8), intent(in) :: mbar(:,:) ! mean wet atmospheric mass ( amu )
-    real(r8), intent(in) :: pdel(:,:) 
+    real(r8), intent(in) :: pdel(:,:)
     real(r8), intent(in) :: press(:,:)
     real(r8), intent(in) :: tfld(:,:)
 
@@ -106,11 +110,11 @@ contains
     real(r8), intent(out) :: aqso4_o3(:)   ! SO4 aqueous phase chemistry due to O3 (kg/m2)
     real(r8), intent(out), optional :: aqso4_h2o2_3d(:,:)                ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
     real(r8), intent(out), optional :: aqso4_o3_3d(:,:)                  ! SO4 aqueous phase chemistry due to O3 (kg/m2)
-    
+
     ! local vars ...
-    
+
     integer :: k
-    
+
     !==============================================================
     !       ... Update the mixing ratios
     !==============================================================
@@ -120,7 +124,7 @@ contains
           qin(:,k,id_so2) =  MAX( xso2(:,k), small_value )
        endif
        if (id_h2o2>0) then
-          qin(:,k,id_h2o2)=  MAX( xh2o2(:,k), small_value ) 
+          qin(:,k,id_h2o2)=  MAX( xh2o2(:,k), small_value )
        endif
 
        qin(:,k,id_so4) =  MAX( xso4(:,k), small_value )

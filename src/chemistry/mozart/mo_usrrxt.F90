@@ -3,6 +3,7 @@ module mo_usrrxt
   use shr_kind_mod,     only : r8 => shr_kind_r8
   use cam_logfile,      only : iulog
   use ppgrid,           only : pver, pcols
+  use cam_abortutils,   only : endrun
 
   implicit none
 
@@ -593,7 +594,7 @@ contains
 
   end subroutine usrrxt_inti
 
-  subroutine usrrxt( rxt, temp, tempi, tempe, invariants, h2ovmr,  &
+  subroutine usrrxt( state, rxt, temp, tempi, tempe, invariants, h2ovmr,  &
                      pmid, m, sulfate, mmr, relhum, strato_sad, &
                      tropchemlev, dlat, ncol, sad_trop, reff_trop, cwat, mbar, pbuf )
 
@@ -601,10 +602,11 @@ contains
 !        ... set the user specified reaction rates
 !-----------------------------------------------------------------
 
-    use mo_constants,  only : pi, avo => avogadro, boltz_cgs, rgas
-    use chem_mods,     only : nfs, rxntot, gas_pcnst, inv_m_ndx=>indexm
-    use mo_setinv,     only : inv_o2_ndx=>o2_ndx, inv_h2o_ndx=>h2o_ndx
-    use physics_buffer,only : physics_buffer_desc
+    use mo_constants,    only : pi, avo => avogadro, boltz_cgs, rgas
+    use chem_mods,       only : nfs, rxntot, gas_pcnst, inv_m_ndx=>indexm
+    use mo_setinv,       only : inv_o2_ndx=>o2_ndx, inv_h2o_ndx=>h2o_ndx
+    use physics_buffer,  only : physics_buffer_desc
+    use physics_types,   only : physics_state
     use carma_flags_mod, only : carma_hetchem_feedback
     use aero_model,      only : aero_model_surfarea
     use rad_constituents,only : rad_cnst_get_info
@@ -633,6 +635,7 @@ contains
     real(r8), intent(inout) :: rxt(ncol,pver,rxntot)      ! gas phase rates
     real(r8), intent(out)   :: sad_trop(pcols,pver)       ! tropospheric surface area density (cm2/cm3)
     real(r8), intent(out)   :: reff_trop(pcols,pver)      ! tropospheric effective radius (cm)
+    type(physics_state),    intent(in) :: state           ! Physics state variables
     type(physics_buffer_desc), pointer :: pbuf(:)
 
 !-----------------------------------------------------------------
@@ -758,7 +761,7 @@ contains
     real(r8), parameter  :: pH            =  4.5e+00_r8
 
     real(r8), pointer :: sfc(:), dm_aer(:)
-    integer :: ntot_amode
+    integer :: ntot_amode, nbins
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
  !TS2
@@ -767,16 +770,24 @@ contains
     real(r8) ::  nyield
     real(r8) ::  acorr
     real(r8) ::  exp_natom
+    character(len=*), parameter :: subname = 'usrrxt'
 
     ! get info about the modal aerosols
     ! get ntot_amode
     call rad_cnst_get_info(0, nmodes=ntot_amode)
+    call rad_cnst_get_info(0, nbins=nbins)
+
+    if (ntot_amode>0.and.nbins>0) then
+      call endrun(subname // ':: ERROR running with MAM and CARMA simultaneously not supported.')
+    end if
 
     if (ntot_amode>0) then
-       allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
+      allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
+    else if (nbins>0) then
+      allocate(sfc_array(pcols,pver,nbins), dm_array(pcols,pver,nbins) )
     else
-       allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
-    endif
+      allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
+    end if
 
     sfc_array(:,:,:) = 0._r8
     dm_array(:,:,:) = 0._r8
@@ -784,17 +795,18 @@ contains
     reff_trop(:,:) = 0._r8
 
     if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 ) then
-
+! CGB, put back in for old CARMA sulfate model.
 ! sad_trop should be set outside of usrrxt ??
-       if( carma_hetchem_feedback ) then
+      if( carma_hetchem_feedback ) then
           sad_trop(:ncol,:pver)=strato_sad(:ncol,:pver)
-       else
+!        call endrun(subname // ':: ERROR carma_hetchem_feedback namelist variable is obsolete')
+      else
 
-          call aero_model_surfarea( &
-               mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
-               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
+        call aero_model_surfarea( &
+             state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
+             het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
 
-       endif
+      endif
     endif
 
     level_loop : do k = 1,pver
@@ -1997,13 +2009,16 @@ contains
 ! 	... estimate sulfate particles surface area (cm2/cm3) in each grid
 !-------------------------------------------------------------------------
             if ( carma_hetchem_feedback ) then
+! CGB - put it back for old CARMA sulfate model
+!              call endrun(subname // ':: ERROR carma_hetchem_feedback namelist variable is obsolete')
                sur(:ncol) = strato_sad(:ncol,k)
-            else
-               sur(:) = sulfate(:,k)*m(:,k)/avo*wso4 &              ! xform mixing ratio to g/cm3
-                        / amas &                                    ! xform g/cm3 to num particels/cm3
-                        * fare &                                    ! xform num particels/cm3 to cm2/cm3
-                        * xr(:)*xr(:)                               ! humidity factor
+!            else
+!               sur(:) = sulfate(:,k)*m(:,k)/avo*wso4 &              ! xform mixing ratio to g/cm3
+!                        / amas &                                    ! xform g/cm3 to num particles/cm3
+!                        * fare &                                    ! xform num particles/cm3 to cm2/cm3
+!                        * xr(:)*xr(:)                               ! humidity factor
             endif
+            sur(:ncol) = sad_trop(:ncol,k)
 !-----------------------------------------------------------------
 !	... compute the "aerosol" reaction rates
 !-----------------------------------------------------------------
@@ -2020,7 +2035,7 @@ contains
 !       so that velo = 3.75e3*sqrt(T)  (NH3)    gama=0.4
 !--------------------------------------------------------
 !-----------------------------------------------------------------
-!	... use this n2o5 -> 2*hno3 only in tropopause
+!	... use this n2o5 -> 2*hno3 only in troposphere
 !-----------------------------------------------------------------
 	    rxt(:,k,het1_ndx) = rxt(:,k,het1_ndx) &
                                 +.25_r8 * gam1 * sur(:) * 1.40e3_r8 * sqrt( temp(:ncol,k) )

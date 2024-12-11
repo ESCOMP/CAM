@@ -65,6 +65,7 @@ logical           :: history_waccm        = .false.    ! output variables of int
 logical           :: history_waccmx       = .false.    ! output variables of interest for WACCM-X runs
 logical           :: history_chemistry    = .true.     ! output default chemistry-related variables
 logical           :: history_carma        = .false.    ! output default CARMA-related variables
+logical           :: history_carma_srf_flx= .false.    ! output default CARMA-related variables
 logical           :: history_clubb        = .true.     ! output default CLUBB-related variables
 logical           :: history_cesm_forcing = .false.
 logical           :: history_dust         = .false.
@@ -134,7 +135,8 @@ subroutine phys_ctl_readnl(nlfile)
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, srf_flux_avg, &
       use_subcol_microp, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
-      history_waccmx, history_chemistry, history_carma, history_clubb, history_dust, &
+      history_waccmx, history_chemistry, history_carma, history_carma_srf_flx, &
+      history_clubb, history_dust, &
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, use_gw_movmtn_pbl, cld_macmic_num_steps, &
@@ -181,6 +183,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(history_waccmx,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_chemistry,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_carma,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
+   call mpi_bcast(history_carma_srf_flx,       1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_clubb,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_cesm_forcing,        1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_chemspecies_srf,     1,                     mpi_logical,   masterprocid, mpicom, ierr)
@@ -321,7 +324,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                          history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, &
                         history_waccm_out, history_waccmx_out, history_chemistry_out, &
-                        history_carma_out, history_clubb_out, history_dust_out, &
+                        history_carma_out, history_carma_srf_flx_out, history_clubb_out, history_dust_out, &
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
@@ -357,6 +360,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: history_waccmx_out
    logical,           intent(out), optional :: history_chemistry_out
    logical,           intent(out), optional :: history_carma_out
+   logical,           intent(out), optional :: history_carma_srf_flx_out
    logical,           intent(out), optional :: history_clubb_out
    logical,           intent(out), optional :: history_cesm_forcing_out
    logical,           intent(out), optional :: history_chemspecies_srf_out
@@ -400,6 +404,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(history_chemspecies_srf_out) ) history_chemspecies_srf_out = history_chemspecies_srf
    if ( present(history_scwaccm_forcing_out) ) history_scwaccm_forcing_out = history_scwaccm_forcing
    if ( present(history_carma_out       ) ) history_carma_out        = history_carma
+   if ( present(history_carma_srf_flx_out) ) history_carma_srf_flx_out= history_carma_srf_flx
    if ( present(history_clubb_out       ) ) history_clubb_out        = history_clubb
    if ( present(history_dust_out        ) ) history_dust_out         = history_dust
    if ( present(do_clubb_sgs_out        ) ) do_clubb_sgs_out         = do_clubb_sgs

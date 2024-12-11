@@ -16,6 +16,7 @@ module sox_cldaero_mod
   use phys_control,    only : phys_getopts, cam_chempkg_is
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
+  use physics_buffer,  only : physics_buffer_desc
 
   implicit none
   private
@@ -54,13 +55,13 @@ contains
     !
     !   add to history
     !
-  
+
   end subroutine sox_cldaero_init
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
   function sox_cldaero_create_obj(cldfrc, qcw, lwc, cfact, ncol, loffset) result( conc_obj )
-    
+
     real(r8), intent(in) :: cldfrc(:,:)
     real(r8), intent(in) :: qcw(:,:,:)
     real(r8), intent(in) :: lwc(:,:)
@@ -97,7 +98,7 @@ contains
 
     if (mode7) then
 #if ( defined MODAL_AERO_7MODE )
-!put ifdef here so ifort will compile 
+!put ifdef here so ifort will compile
        id_so4_1a = lptr_so4_cw_amode(1) - loffset
        id_so4_2a = lptr_so4_cw_amode(2) - loffset
        id_so4_3a = lptr_so4_cw_amode(4) - loffset
@@ -118,7 +119,7 @@ contains
             + qcw(:ncol,:,id_so4_3a) &
             + qcw(:ncol,:,id_so4_4a) &
             + qcw(:ncol,:,id_so4_5a) &
-            + qcw(:ncol,:,id_so4_6a) 
+            + qcw(:ncol,:,id_so4_6a)
 
        conc_obj%nh4c(:ncol,:) &
             = qcw(:ncol,:,id_nh4_1a) &
@@ -126,7 +127,7 @@ contains
             + qcw(:ncol,:,id_nh4_3a) &
             + qcw(:ncol,:,id_nh4_4a) &
             + qcw(:ncol,:,id_nh4_5a) &
-            + qcw(:ncol,:,id_nh4_6a) 
+            + qcw(:ncol,:,id_nh4_6a)
     else
        id_so4_1a = lptr_so4_cw_amode(1) - loffset
        id_so4_2a = lptr_so4_cw_amode(2) - loffset
@@ -137,7 +138,7 @@ contains
             + qcw(:,:,id_so4_3a)
 
         ! for 3-mode, so4 is assumed to be nh4hso4
-        ! the partial neutralization of so4 is handled by using a 
+        ! the partial neutralization of so4 is handled by using a
         !    -1 charge (instead of -2) in the electro-neutrality equation
        conc_obj%nh4c(:ncol,:) = 0._r8
 
@@ -151,13 +152,17 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
-  subroutine sox_cldaero_update( &
-       ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+  subroutine sox_cldaero_update( state, &
+       pbuf, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
 
-    ! args 
+    use physics_types,     only: physics_state
 
+    ! args
+
+    type(physics_state),    intent(in)    :: state     ! Physics state variables
+    type(physics_buffer_desc), pointer :: pbuf(:)
     integer,  intent(in) :: ncol
     integer,  intent(in) :: lchnk ! chunk id
     integer,  intent(in) :: loffset
@@ -165,7 +170,7 @@ contains
     real(r8), intent(in) :: dtime ! time step (sec)
 
     real(r8), intent(in) :: mbar(:,:) ! mean wet atmospheric mass ( amu )
-    real(r8), intent(in) :: pdel(:,:) 
+    real(r8), intent(in) :: pdel(:,:)
     real(r8), intent(in) :: press(:,:)
     real(r8), intent(in) :: tfld(:,:)
 
@@ -484,7 +489,7 @@ contains
        enddo
     enddo
 
-    if (present(aqso4_h2o2_3d)) then 
+    if (present(aqso4_h2o2_3d)) then
        aqso4_h2o2_3d(:,:) = 0._r8
        do k=1,pver
           do i=1,ncol
