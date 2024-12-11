@@ -37,4 +37,11 @@
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 <csw_time_type>SERIAL</csw_time_type>
 
+<!-- prescribed nitrogen deposition fluxes -->
+<stream_ndep_data_filename>lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
+<stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
+<stream_ndep_year_first>1850</stream_ndep_year_first>
+<stream_ndep_year_last>2015</stream_ndep_year_last>
+<stream_ndep_year_align>1850</stream_ndep_year_align>
+
 </namelist_defaults>

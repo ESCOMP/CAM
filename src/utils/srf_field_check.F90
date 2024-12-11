@@ -29,8 +29,6 @@ module srf_field_check
   public :: set_active_Fall_flxfire
   public :: set_active_Fall_fco2_lnd
   public :: set_active_Faoo_fco2_ocn
-  public :: set_active_Faxa_nhx
-  public :: set_active_Faxa_noy
 
 !===============================================================================
 contains
@@ -75,15 +73,5 @@ contains
     logical, intent(in) :: is_active
     active_Faoo_fco2_ocn = is_active
   end subroutine set_active_Faoo_fco2_ocn
-
-  subroutine set_active_Faxa_nhx(is_active)
-    logical, intent(in) :: is_active
-    active_Faxa_nhx = is_active
-  end subroutine set_active_Faxa_nhx
-
-  subroutine set_active_Faxa_noy(is_active)
-    logical, intent(in) :: is_active
-    active_Faxa_noy = is_active
-  end subroutine set_active_Faxa_noy
 
 end module srf_field_check

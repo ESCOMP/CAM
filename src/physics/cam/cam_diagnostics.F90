@@ -568,6 +568,9 @@ contains
     call addfld('a2x_DSTWET4',  horiz_only, 'A',  'kg/m2/s', 'wetdep of dust (bin4)')
     call addfld('a2x_DSTDRY4',  horiz_only, 'A',  'kg/m2/s', 'drydep of dust (bin4)')
 
+    call addfld('a2x_NOYDEP',  horiz_only, 'A',  'kg/m2/s', 'NOy Deposition Flux')
+    call addfld('a2x_NHXDEP',  horiz_only, 'A',  'kg/m2/s', 'NHx Deposition Flux')
+
     ! defaults
     if (history_amwg) then
       call add_default (cnst_name(1), 1, ' ')
@@ -1901,6 +1904,13 @@ contains
       call outfld('a2x_DSTDRY3',  cam_out%dstdry3,  pcols, lchnk)
       call outfld('a2x_DSTWET4',  cam_out%dstwet4,  pcols, lchnk)
       call outfld('a2x_DSTDRY4',  cam_out%dstdry4,  pcols, lchnk)
+    end if
+
+    if (associated(cam_out%nhx_nitrogen_flx)) then
+       call outfld('a2x_NHXDEP', cam_out%nhx_nitrogen_flx, pcols, lchnk)
+    end if
+    if (associated(cam_out%noy_nitrogen_flx)) then
+       call outfld('a2x_NOYDEP', cam_out%noy_nitrogen_flx, pcols, lchnk)
     end if
 
   end subroutine diag_export
