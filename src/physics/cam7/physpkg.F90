@@ -2164,12 +2164,12 @@ contains
     ! Rayleigh friction calculation
     !===================================================
     call t_startf('rayleigh_friction')
-    if (trim(cam_take_snapshot_before) == "user_set") then
+    if (trim(cam_take_snapshot_before) == "rayleigh_friction_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
             fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
     call rayleigh_friction_tend( ztodt, state, ptend)
-    if ( (trim(cam_take_snapshot_after) == "user_set") .and.      &
+    if ( (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") .and.      &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
@@ -2180,7 +2180,7 @@ contains
       call outfld( 'VTEND_RAYLEIGH', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
-    if (trim(cam_take_snapshot_after) == "user_set") then
+    if (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
             fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
