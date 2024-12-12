@@ -1171,7 +1171,7 @@ contains
     ! optical properties of aerosols outside of Cloud-J.
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_chem_inputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_aeropt_inputs)
+    Input_Opt%AER_OPTICS_DIR       = TRIM(geoschem_aeropt_inputs)
     Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_photol_inputs)
 
     !----------------------------------------------------------
