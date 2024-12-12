@@ -226,11 +226,9 @@ subroutine nucleati(  &
 
          if ( ((tc.le.0.0_r8).and.(tc.ge.-37.0_r8).and.(qc.lt.1.e-12_r8)).or.(tc.le.-37.0_r8)) then
 
-            if ( (soot_num+dst_num) > 0._r8)   then
-               A = -1.4938_r8 * log(soot_num+dst_num) + 12.884_r8
-               B = -10.41_r8  * log(soot_num+dst_num) - 67.69_r8
-               regm = A * log(wbar1) + B
-            end if
+            A = -1.4938_r8 * log(soot_num+dst_num) + 12.884_r8
+            B = -10.41_r8  * log(soot_num+dst_num) - 67.69_r8
+            regm = A * log(wbar1) + B
 
             ! heterogeneous nucleation only
             if (tc .gt. regm .or. so4_num < 1.0e-10_r8) then
@@ -262,11 +260,8 @@ subroutine nucleati(  &
                   nihf = 0._r8
                   n1   = niimm + nidep
 
-                  if ( (soot_num+dst_num) > 0._r8)   then
-                     osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
-                     odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
-                  end if
-
+                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
+                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
                endif
 
             ! homogeneous nucleation only
@@ -327,10 +322,8 @@ subroutine nucleati(  &
                      oso4_num  = nihf
                   endif
 
-                  if ( (soot_num+dst_num) > 0._r8)   then
-                     osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
-                     odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
-                  end if
+                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
+                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
 
                   nihf      = nihf      * fhom * ((regm - tc) / 5._r8)**2
                   oso4_num  = oso4_num  * fhom * ((regm - tc) / 5._r8)**2
@@ -589,3 +582,4 @@ subroutine frachom(Tmean,RHimean,detaT,fhom)
 end subroutine frachom
 
 end module nucleate_ice
+

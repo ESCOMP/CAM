@@ -223,7 +223,7 @@ contains
     real(r8), intent(in) :: dt                     ! time step
 
     type(physics_tend ), intent(inout), optional  :: tend  ! Physics tendencies over timestep
-                                                           ! tend is usually only needed by calls from physpkg.
+    ! tend is usually only needed by calls from physpkg.
 !
 !---------------------------Local storage-------------------------------
     integer :: k,m                                 ! column,level,constituent indices
@@ -1267,10 +1267,10 @@ end subroutine physics_ptend_copy
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
       do k = 1, pver
-
+        
         ! adjusment factor is just change in water vapor
         fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-
+        
         ! adjust constituents to conserve mass in each layer
         do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)

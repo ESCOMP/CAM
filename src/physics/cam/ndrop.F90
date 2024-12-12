@@ -105,7 +105,7 @@ subroutine ndrop_init(aero_props)
 
 
    do m = 1, aero_props%nbins()
-      do l = 0, aero_props%nspecies(m)
+      do l = 0, aero_props%nmasses(m)
 
          mm = aero_props%indexer(m,l)
 
