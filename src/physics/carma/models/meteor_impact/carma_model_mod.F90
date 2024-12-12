@@ -602,10 +602,10 @@ contains
 
     ! NOTE: The dust distribution has not been specified yet, but it should be different
     ! from the soot.
-    real(kind=f), parameter            :: rm_dust    = 0.11     ! dust mean radius (um)
-    real(kind=f), parameter            :: sigma_dust = 1.6      ! dust variance
-    real(kind=f), parameter            :: rm_soot    = 0.11     ! soot mean radius (um)
-    real(kind=f), parameter            :: sigma_soot = 1.6      ! soot variance
+    real(kind=f), parameter            :: rm_dust    = 0.11_r8     ! dust mean radius (um)
+    real(kind=f), parameter            :: sigma_dust = 1.6_r8      ! dust variance
+    real(kind=f), parameter            :: rm_soot    = 0.11_r8     ! soot mean radius (um)
+    real(kind=f), parameter            :: sigma_soot = 1.6_r8      ! soot variance
 
     integer                            :: i
     real(kind=f)                       :: r(NBIN)
@@ -986,4 +986,4 @@ contains
     return
   end subroutine CARMAMODEL_OutputDiagnostics
 
-end module
+end module carma_model_mod

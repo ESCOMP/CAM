@@ -536,4 +536,4 @@ contains
     return
   end subroutine CARMAMODEL_OutputDiagnostics
 
-end module
+end module carma_model_mod

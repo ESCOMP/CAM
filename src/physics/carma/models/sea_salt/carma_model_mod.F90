@@ -449,7 +449,7 @@ contains
       !**********************************
       ! wet sea salt radius at RH = 80%
       !**********************************
-      r80cm   = (c1 *  (r(ibin)) ** c2 / (c3 * r(ibin) ** c4 - log10(0.8)) + (r(ibin))**3) ** (1./3.) ! [cm]
+      r80cm   = (c1 *  (r(ibin)) ** c2 / (c3 * r(ibin) ** c4 - log10(0.8_r8)) + (r(ibin))**3) ** (1._r8/3._r8) ! [cm]
       rdrycm  = r(ibin)  ! [cm]
       r80     = r80cm *1.e4_r8    ! [um]
       rdry    = rdrycm*1.e4_r8  ! [um]
@@ -552,7 +552,7 @@ contains
             !Monahan
             B_mona = (0.38_r8 - log10(r80)) / 0.65_r8
             Monahan = 1.373_r8 * (u10in**3.41_r8) * r80**(-3._r8) * &
-                 (1._r8 + 0.057 *r80**1.05_r8)  * 10._r8 ** (1.19_r8 * exp(-1. * B_mona**2)) ! dF/dr
+                 (1._r8 + 0.057_r8 *r80**1.05_r8)  * 10._r8 ** (1.19_r8 * exp(-1._r8 * B_mona**2)) ! dF/dr
 
             !Smith
             u14 = u10in * (1._r8 + cd_smith**0.5_r8 / xkar * log(14._r8 / 10._r8))  ! 14 meter wind
@@ -846,7 +846,7 @@ contains
     if (present(wbk)) then
       k = wbk
     else
-      k = 0.94*u**0.5_r8            ! follow Grini and Zender, 2004JGR
+      k = 0.94_r8*u**0.5_r8            ! follow Grini and Zender, 2004JGR
 !    k = 2.5_r8                   ! Lansing's estimate
     end if
 
@@ -976,4 +976,4 @@ contains
     return
   end subroutine CARMAMODEL_OutputDiagnostics
 
-end module
+end module carma_model_mod
