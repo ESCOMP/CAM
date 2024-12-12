@@ -322,37 +322,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              111 tmc                                             -->
-  <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D" testmods="cam/ghgrmp_e8">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-      <machine name="izumi" compiler="nag" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="comment" >111 tmc</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              113 tsm, ter, T8                              -->
-  <test compset="QPC4" grid="T5_T5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >113 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              114 tsm, ter, tbr, tbl                             -->
-  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D_Ln18" testmods="cam/co2rmp">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >114 tsm, ter, tbr</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              221 tsm, ter                         -->
   <test compset="QSPCAMS" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
@@ -1138,17 +1107,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              002 tsc                       -->
-  <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-      <machine name="izumi" compiler="gnu" category="test_scam"/>
-    </machines>
-    <options>
-      <option name="comment" >002 tsc</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
   <test compset="QPC6" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
@@ -1159,54 +1117,12 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              sc004 tsc                       -->
-  <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-      <machine name="izumi" compiler="gnu" category="test_scam"/>
-    </machines>
-    <options>
-      <option name="comment" >004 tsc</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
   <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ba">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >cam6 physics with prescribed bulk aerosols</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              003                        -->
-  <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-      <machine name="izumi" compiler="nag" category="test_scam"/>
-    </machines>
-    <options>
-      <option name="comment" >003 tsm</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              150                        -->
-  <test compset="FDABIP04" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >150 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              151                        -->
-  <test compset="FHS94" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >151 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1355,18 +1271,6 @@
       <option name="comment" >Derecho Spectral Element SCAM BFB test with CAM (Intel)</option>
    </options>
   </test>
-<!--              001                        -->
-  <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-      <machine name="derecho" compiler="intel" category="test_scam"/>
-      <machine name="derecho" compiler="intel" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="comment" >001 tsc</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 
   <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERS_Ln9_P288x1" testmods="cam/outfrq9s_mpasa120">
     <machines>
@@ -1416,36 +1320,6 @@
 
 <!--              CAM Simple Models                       -->
 
-  <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prealpha"/>
-    </machines>
-  </test>
-  <test compset="FDABIP04" grid="T85z30_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prebeta"/>
-    </machines>
-  </test>
-  <test compset="FDABIP04" grid="T85z60_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prebeta"/>
-    </machines>
-  </test>
-  <test compset="FHS94" grid="T42_T42_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prealpha"/>
-    </machines>
-  </test>
-  <test compset="FHS94" grid="T85z30_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prebeta"/>
-    </machines>
-  </test>
-  <test compset="FHS94" grid="T85z60_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="prebeta"/>
-    </machines>
-  </test>
   <test compset="FKESSLER" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prealpha"/>
@@ -1459,28 +1333,6 @@
     <options>
       <option name="wallclock">00:40:00</option>
       <option name="queue">premium</option>
-    </options>
-  </test>
-
-<!--              CAM SCAM runs                      -->
-  <test compset="FSCAMARM97" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-      <machine name="derecho" compiler="intel" category="test_scam"/>
-    </machines>
-    <options>
-      <option name="comment" >Eulerian ARM97 IOP SCAM Smoke test</option>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="FSCAMMPACE" grid="T42_T42" name="SMS_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="test_scam"/>
-    </machines>
-    <options>
-      <option name="comment" >pre_alpha Eulerian MPACE IPO SCAM Smoke test</option>
-      <option name="wallclock">00:10:00</option>
     </options>
   </test>
 

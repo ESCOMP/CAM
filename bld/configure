@@ -78,7 +78,7 @@ OPTIONS
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
-     -dyn <name>        Dynamical core option: [eul | fv | se | fv3 | mpas].  Default: fv.
+     -dyn <name>        Dynamical core option: [fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
@@ -123,7 +123,6 @@ OPTIONS
   Options relevent to SCAM mode:
 
      -camiop            Configure CAM to generate an IOP file that can be used to drive SCAM.
-                        This switch only works with the Eulerian dycore.
      -scam <iopname>    Compiles model in single column mode and configures for iop
                         [ arm95 | arm97 | atex | bomex | cgilsS11 | cgilsS12 | cgilsS6 | dycomsRF01 |
                           dycomsRF02 | gateIII | mpace | rico | sparticus | togaII | twp06 | SAS | camfrc ].
@@ -700,14 +699,6 @@ $waccm_phys = $cfg_ref->get('waccm_phys');
 
 if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
-
-# WACCM physics only runs with FV, SE and FV3 dycores
-if ( ($waccm_phys) and ($dyn_pkg eq 'eul') ) {
-    die <<"EOF";
-** ERROR: WACCM physics does not run with the Eulerian spectral dycore.
-EOF
-}
-
 # WACCM includes 4 age of air tracers by default
 if ($chem_pkg =~ /waccm_ma/ or $chem_pkg =~ /waccm_tsmlt/) {
     $cfg_ref->set('age_of_air_trcs', 1);
@@ -1222,10 +1213,10 @@ if (defined $opts{'scam'}) {
 }
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
-# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
-if ($scam eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
+# The only dycore supported in SCAM mode is the Spectral Element
+if ($scam eq 'ON' and !($dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: SCAM mode only works with Eulerian or SE dycores.
+**  ERROR: SCAM mode only works with SE dycore.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1239,10 +1230,10 @@ if (defined $opts{'camiop'}) {
 }
 my $camiop = $cfg_ref->get('camiop') ? "ON" : "OFF";
 
-# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
-if ($camiop eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
+# The only dycore supported in SCAM mode is the Spectral Element
+if ($camiop eq 'ON' and !($dyn_pkg eq 'se')) {
     die <<"EOF";
-**  ERROR: CAMIOP mode only works with the Eulerian or Spectral Element dycores.
+**  ERROR: CAMIOP mode only works with the Spectral Element dycore.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1255,9 +1246,6 @@ if ($print>=2) { print "Produce IOP file for SCAM: $camiop$eol"; }
 my $hgrid;
 if ($dyn_pkg eq 'fv') {
     $hgrid = '1.9x2.5';
-}
-elsif ($dyn_pkg eq 'eul') {
-    $hgrid = '64x128';
 }
 elsif ($dyn_pkg eq 'se') {
     $hgrid = 'ne16np4';
@@ -1934,12 +1922,6 @@ $cfg_cppdefs .= " -DPLEV=$nlev -DPCNST=$nadv -DPCOLS=$pcols -DPSUBCOLS=$psubcols
 # Radiatively active constituent number
 $cfg_cppdefs .= " -DN_RAD_CNST=$max_n_rad_cnst";
 
-# Spectral truncation parameters
-my $trm = $cfg_ref->get('trm');
-my $trn = $cfg_ref->get('trn');
-my $trk = $cfg_ref->get('trk');
-$cfg_cppdefs .= " -DPTRM=$trm -DPTRN=$trn -DPTRK=$trk";
-
 # offline driver for FV dycore
 if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 
@@ -2358,11 +2340,6 @@ sub write_filepath
         print $fh "$camsrcdir/src/utils/pilgrim\n";
     }
 
-    # Advective transport
-    if ($dyn eq 'eul') {
-        print $fh "$camsrcdir/src/advection/slt\n";
-    }
-
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
@@ -2539,9 +2516,9 @@ sub set_horiz_grid
         $hgrid =~ m/C(\d+)/;
         $cfg_ref->set('hgrid', $hgrid);
     }
-    elsif ($dyn_pkg =~ m/^eul$|^fv/) {
+    elsif ($dyn_pkg =~ m/^fv/) {
 
-        # For EUL and FV dycores the parameters are read from an input file,
+        # For FV dycore the parameters are read from an input file,
         # and if no dycore/grid matches are found then issue error message.
 
         my $xml = XML::Lite->new( $hgrid_file );
@@ -2570,26 +2547,7 @@ sub set_horiz_grid
         unless ($found) { die "set_horiz_grid: no match for dycore $dyn_pkg and hgrid $hgrid\n"; }
 
         # Set parameter values -- dycore specific.
-        if ( $dyn_pkg =~ m/eul/ ) {
-            $cfg_ref->set('nlat', $a{'nlat'});
-            $cfg_ref->set('nlon', $a{'nlon'});
-            $cfg_ref->set('trm',  $a{'m'});
-            $cfg_ref->set('trn',  $a{'n'});
-            $cfg_ref->set('trk',  $a{'k'});
-
-            # Override resolution settings to configure for SCAM mode.  The override is needed
-            # because in SCAM mode the -hgrid option is used to specify the resolution of default
-            # datasets from which single data columns are extracted.
-            my $scam = $cfg_ref->get('scam');
-            if ($scam) {
-                $cfg_ref->set('nlat', 1);
-                $cfg_ref->set('nlon', 1);
-                $cfg_ref->set('trm',  1);
-                $cfg_ref->set('trn',  1);
-                $cfg_ref->set('trk',  1);
-            }
-        }
-        elsif ( $dyn_pkg eq 'fv' ) {
+        if ( $dyn_pkg eq 'fv' ) {
             $cfg_ref->set('nlat', $a{'nlat'});
             $cfg_ref->set('nlon', $a{'nlon'});
         }
