@@ -3600,9 +3600,9 @@
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 
 <!-- GEOS-Chem chemistry -->
-<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
-<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05/</geoschem_photol_inputs>
+<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
 <geoschem_aeropt_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS/Aerosol_Optics/v2024-08/</geoschem_aeropt_inputs>
+<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS/CLOUD_J/v2024-09/</geoschem_photol_inputs>
 
 <BC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_BC_2010.nc</BC_GAINS_filename>
 <OC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_OC_2010.nc</OC_GAINS_filename>
