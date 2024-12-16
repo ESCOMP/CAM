@@ -255,7 +255,7 @@ module carma_model_mod
       3.74323598e-08_f, 1.63841034e-09_f, 2.49434956e-09_f, 1.52413800e-08_f, &
       3.35000010e-08_f, 3.43825518e-02_f /)
 
-
+  real(r8), parameter :: onethird = 1._r8/3._r8
 
 contains
 
@@ -1859,11 +1859,11 @@ contains
             do iwave = 1, NWAVE
 
               ! For now just assume BC/OC constant 15%
-              ! rcore = r(ibin)*(0.15**(1./3))
+              ! rcore = r(ibin)*(0.15**onethird)
               ! Using Mie code, consider core/shell ratio
               do icsr = 1, ncsr
                 if (ncsr > 1) then
-                  rcore = r(ibin)*(coreshellratio(icsr)**(1./3))
+                  rcore = r(ibin)*(coreshellratio(icsr)**onethird)
                 else
                   rcore = 0.0_f
                 endif
@@ -2311,11 +2311,11 @@ contains
             do iwave = 1, NWAVE
 
               ! For now just assume BC/OC constant 15%
-              ! rcore = r(ibin)*(0.15**(1./3))
+              ! rcore = r(ibin)*(0.15**onethird)
               ! Using Mie code, consider core/shell ratio
               do icsr = 1, ncsr
                 if (ncsr > 1) then
-                  rcore = r(ibin)*(coreshellratio(icsr)**(1./3))
+                  rcore = r(ibin)*(coreshellratio(icsr)**onethird)
                 else
                   rcore = 0.0_f
                 endif

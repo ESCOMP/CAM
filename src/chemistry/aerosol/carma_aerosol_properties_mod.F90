@@ -716,7 +716,7 @@ contains
     end do
 
     ! specdens kg/m3 to g/cm3, convert from radius to diameter
-    diam = 2._r8*((0.75*mass / pi  / (1.0e-3_r8*rho))**onethird)
+    diam = 2._r8*((0.75_r8*mass / pi  / (1.0e-3_r8*rho))**onethird)
 
   end function scav_diam
 

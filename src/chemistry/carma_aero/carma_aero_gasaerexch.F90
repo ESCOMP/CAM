@@ -777,7 +777,7 @@ subroutine gas_aer_uptkrates( ncol,       loffset,                &
               gasspeed  = 1.470e1_r8 * sqrt(t(i,k))
 !   freepathx2 = 2 * (h2so4 mean free path)  (m)
               freepathx2 = 6.0_r8*gasdiffus/gasspeed
-              dp = wetr(i,k,n) * 1.e-2 ! meters
+              dp = wetr(i,k,n) * 1.e-2_r8 ! meters
               const = tworootpi * num_bin(i,k,n) * 2.0_r8 * dp
               ! gas_conden_rate(Dp) = const *  gasdiffus *  F(Kn,ac)
               !   knudsen number

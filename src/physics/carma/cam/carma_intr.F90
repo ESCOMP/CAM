@@ -3951,8 +3951,8 @@ contains
     end do
 
     ! Convert rwet and rhopwet to mks units
-    rwet(:ncol,:) = rwet(:ncol,:) * 1.e-2 ! cm --> m
-    rhopwet(:ncol,:) = rhopwet(:ncol,:) * 1.e3 ! g/cm3 --> kg/m3
+    rwet(:ncol,:) = rwet(:ncol,:) * 1.e-2_r8 ! cm --> m
+    rhopwet(:ncol,:) = rhopwet(:ncol,:) * 1.e3_r8 ! g/cm3 --> kg/m3
 
     if (rc/=RC_OK) then
        call endrun('carma_get_wet_radius ERROR8: rc = ',rc)
