@@ -72,7 +72,7 @@
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
-  'AOA1', 'AOA2', 'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
+  'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
   'UTGWSPEC', 'VTGWSPEC', 'BUTGWSPEC', 'AODVISstdn', 'AODVISdn', 'KVH_CLUBB', 'KVH', 'TTENDICE', 'QVTENDICE', 'QCTENDICE',
   'NCTENDICE', 'FQTENDICE', 'MASS'
 </fincl1>

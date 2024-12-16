@@ -73,13 +73,20 @@ contains
     !-----------------------------------------------------------------------
     subroutine cam_mpas_init_phase1(mpicom, endrun, logUnits, realkind)
 
+#ifdef MPAS_USE_MPI_F08
+       use mpi_f08, only : mpi_comm_type => mpi_comm
+#endif
        use mpas_domain_routines, only : mpas_allocate_domain
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_kind_types, only : RKIND
 
        ! Dummy argument
+#ifdef MPAS_USE_MPI_F08
+       type(mpi_comm_type), intent(in) :: mpicom
+#else
        integer, intent(in) :: mpicom
+#endif
        procedure(halt_model) :: endrun
        integer, dimension(2), intent(in) :: logUnits
        integer, intent(in) :: realkind
@@ -108,7 +115,7 @@ contains
        !
        ! Initialize MPAS infrastructure (principally, the mpas_dmpar module)
        !
-       call mpas_framework_init_phase1(domain_ptr % dminfo, mpi_comm=mpicom)
+       call mpas_framework_init_phase1(domain_ptr % dminfo, external_comm=mpicom)
 
        call atm_setup_core(corelist)
        call atm_setup_domain(domain_ptr)
@@ -152,6 +159,7 @@ contains
 
        use mpas_framework, only : mpas_framework_init_phase2
        use mpas_timer, only : mpas_timer_start
+       use mpas_stream_inquiry, only : mpas_stream_inquiry_new_streaminfo
 
        type (iosystem_desc_t), pointer :: pio_subsystem
        procedure(halt_model) :: endrun
@@ -181,12 +189,20 @@ contains
 
        call mpas_timer_start('total time')
 
+       ! Since MPAS is being used as a dycore and is not responsible for IO, it's enough to create this
+       ! object without running its init(). Any queries made to it will always return `.false.`
+       domain_ptr % streamInfo => mpas_stream_inquiry_new_streaminfo()
+       if (.not. associated(domain_ptr % streamInfo)) then
+          call endrun(subname//': FATAL: streamInfo instantiation failed for core '//trim(domain_ptr % core % coreName))
+       end if
+
        ierr = domain_ptr % core % define_packages(domain_ptr % packages)
        if ( ierr /= 0 ) then
           call endrun(subname//': FATAL: Package definition failed for core '//trim(domain_ptr % core % coreName))
        end if
 
-       ierr = domain_ptr % core % setup_packages(domain_ptr % configs, domain_ptr % packages, domain_ptr % iocontext)
+       ierr = domain_ptr % core % setup_packages(domain_ptr % configs, domain_ptr % streamInfo, &
+                                                 domain_ptr % packages, domain_ptr % iocontext)
        if ( ierr /= 0 ) then
           call endrun(subname//': FATAL: Package setup failed for core '//trim(domain_ptr % core % coreName))
        end if
@@ -2353,6 +2369,7 @@ contains
        !
        ! Finalize infrastructure
        !
+       deallocate(domain_ptr % streamInfo) ! created by mpas_stream_inquiry_new_streaminfo
 
        ! Print out log stats and close log file
        !   (Do this after timer stats are printed and stream mgr finalized,

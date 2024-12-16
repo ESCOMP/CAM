@@ -25,7 +25,7 @@ module atm_import_export
   use srf_field_check   , only : set_active_Faxa_nhx
   use srf_field_check   , only : set_active_Faxa_noy
   use srf_field_check   , only : active_Faxa_nhx, active_Faxa_noy
-  use atm_stream_ndep   , only : stream_ndep_init, stream_ndep_interp, stream_ndep_is_initialized
+  use atm_stream_ndep   , only : stream_ndep_init, stream_ndep_interp, stream_ndep_is_initialized, use_ndep_stream
 
   implicit none
   private ! except
@@ -199,7 +199,8 @@ contains
        call set_active_Faxa_nhx(.true.)
        call set_active_Faxa_noy(.true.)
     else
-       ! The following is used for reading in stream data
+       ! The following is used for reading in stream data, or for aquaplanet or simple model
+       ! cases where the ndep fluxes are not used.
        call set_active_Faxa_nhx(.false.)
        call set_active_Faxa_noy(.false.)
     end if
@@ -1118,25 +1119,51 @@ contains
        end do
     end if
 
-    ! If ndep fields are not computed in cam and must be obtained from the ndep input stream
     call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
+
+       ! ndep fields not active (i.e., not computed by WACCM).  Either they are not needed,
+       ! or they are obtained from the ndep input stream.
+
+       ! The ndep_stream_nl namelist group is read in stream_ndep_init.  This sets whether
+       ! or not the stream will be used.
        if (.not. stream_ndep_is_initialized) then
           call stream_ndep_init(model_mesh, model_clock, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           stream_ndep_is_initialized = .true.
        end if
-       call stream_ndep_interp(cam_out, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
-       ! expects units of kgN/m2/sec
-       scale_ndep = .001_r8
+
+       if (use_ndep_stream) then
+
+         ! get ndep fluxes from the stream
+         call stream_ndep_interp(cam_out, rc)
+         if (ChkErr(rc,__LINE__,u_FILE_u)) return
+         ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
+         ! expects units of kgN/m2/sec
+         scale_ndep = .001_r8
+
+      else
+
+          ! ndep fluxes not used.  Set to zero.
+          do c = begchunk,endchunk
+             do i = 1,get_ncols_p(c)
+                cam_out(c)%nhx_nitrogen_flx(i) = 0._r8
+                cam_out(c)%noy_nitrogen_flx(i) = 0._r8
+             end do
+          end do
+          scale_ndep = 1._r8
+
+      end if
+
     else
+
        ! If waccm computes ndep, then its in units of kgN/m2/s - and the mediator expects
        ! units of kgN/m2/sec, so the following conversion needs to happen
        scale_ndep = 1._r8
+
     end if
+
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)

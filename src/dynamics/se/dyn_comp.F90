@@ -46,6 +46,9 @@ use se_dyn_time_mod,        only: nsplit
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
+use se_single_column_mod,   only: scm_setinitial
+use scamMod,                only: single_column, readiopdata, use_iop, setiopupdate_init
+use hycoef,                 only: hyai, hybi, ps0
 
 implicit none
 private
@@ -747,8 +750,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_phis(dyn_in)
 
    if (initial_run) then
-     call read_inidat(dyn_in)
-     call clean_iodesc_list()
+      call read_inidat(dyn_in)
+      if (use_iop .and. masterproc) then
+         call setiopupdate_init()
+         call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0 )
+         call scm_setinitial(dyn_in%elem)
+      end if
+      call clean_iodesc_list()
    end if
    !
    ! initialize diffusion in dycore
@@ -990,6 +998,8 @@ subroutine dyn_run(dyn_state)
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
+   use scamMod,          only: single_column, use_3dfrc
+   use se_single_column_mod, only: apply_SC_forcing,ie_scm
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
@@ -1008,6 +1018,7 @@ subroutine dyn_run(dyn_state)
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
    real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
+   integer                                 :: nets_in,nete_in
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -1019,6 +1030,7 @@ subroutine dyn_run(dyn_state)
 
    if (iam >= par%nprocs) return
 
+   if (.not. use_3dfrc ) then
    ldiag = hist_fld_active('ABS_dPSdt')
    if (ldiag) then
       allocate(ps_before(np,np,nelemd))
@@ -1125,8 +1137,15 @@ subroutine dyn_run(dyn_state)
       end if
 
       ! forward-in-time RK, with subcycling
-      call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets, nete, &
-                             tstep, TimeLevel, hvcoord, n, omega_cn)
+      if (single_column) then
+         nets_in=ie_scm
+         nete_in=ie_scm
+      else
+         nets_in=nets
+         nete_in=nete
+      end if
+      call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets_in, nete_in, &
+                             tstep, TimeLevel, hvcoord, n, single_column, omega_cn)
 
       if (ldiag) then
          do ie = nets, nete
@@ -1150,6 +1169,13 @@ subroutine dyn_run(dyn_state)
    if (ldiag) then
       deallocate(ps_before,abs_ps_tend)
    endif
+
+   end if ! not use_3dfrc
+
+   if (single_column) then
+      call apply_SC_forcing(dyn_state%elem,hvcoord,TimeLevel,3,.false.)
+   end if
+
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
@@ -1353,8 +1379,9 @@ subroutine read_inidat(dyn_in)
       allocate(dbuf3(npsq,nlev,nelemd))
 
       ! Check that columns in IC file match grid definition.
-      call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true.)
-
+      if (.not. single_column) then
+         call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true.)
+      end if
       ! Read 2-D field
 
       fieldname  = 'PS'
@@ -1874,10 +1901,14 @@ subroutine set_phis(dyn_in)
 
       ! Set name of grid object which will be used to read data from file
       ! into internal data structure via PIO.
-      if (.not.use_cslam) then
-         grid_name = 'GLL'
+      if (single_column) then
+         grid_name = 'SCM'
       else
-         grid_name = 'physgrid_d'
+         if (fv_nphys == 0) then
+            grid_name = 'GLL'
+         else
+            grid_name = 'physgrid_d'
+         end if
       end if
 
       ! Get number of global columns from the grid object and check that
@@ -1891,7 +1922,7 @@ subroutine set_phis(dyn_in)
          call endrun(sub//': dimension ncol not found in bnd_topo file')
       end if
       ierr = pio_inq_dimlen(fh_topo, ncol_did, ncol_size)
-      if (ncol_size /= dyn_cols) then
+      if (ncol_size /= dyn_cols .and. .not. single_column) then
          if (masterproc) then
             write(iulog,*) sub//': ncol_size=', ncol_size, ' : dyn_cols=', dyn_cols
          end if

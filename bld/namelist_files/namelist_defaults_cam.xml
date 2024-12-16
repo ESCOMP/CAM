@@ -44,12 +44,16 @@
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
-<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam7" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
-<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c230707.nc</ncdata>
-<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c230707.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c240507.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c240507.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c240507.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c240507.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L58_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L58_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L58_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L93_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L93_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -220,6 +224,11 @@
 
 <ncdata dyn="se" hgrid="ne3np4" nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="901" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-09-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="93"             ic_ymd="101" >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
@@ -275,10 +284,14 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120km.waccm_fulltopo_c220818.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
-<ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L58_CFSR_c240814.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L93_CFSR_c240814.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L93_CFSR_c240814.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -317,7 +330,7 @@
 <bnd_topo hgrid="ne60np4"  npg="2">atm/cam/topo/se/ne60pg2_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171014.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="2">atm/cam/topo/se/ne120pg2_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4" npg="2">atm/cam/topo/se/ne240pg2_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171014.nc</bnd_topo>
-
+<bnd_topo hgrid="ne3np4"          >atm/cam/topo/se/ne3np4_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230717.nc</bnd_topo>
 <bnd_topo hgrid="ne3np4"   npg="3">atm/cam/topo/se/ne3pg3_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230209.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
 <bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
@@ -330,8 +343,8 @@
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
-<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
-<bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc</bnd_topo>
+<bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
+<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
@@ -387,19 +400,6 @@
 <frierson_Twidth     phys="grayrad"   > 26.d0     </frierson_Twidth>
 
 <!-- Bulk aerosol physical properties (includes optics) -->
-
-<!-- CAM3 Bulk aerosols.  Optics for CAM-RT -->
-<bam_cam3_sul   rad="camrt">atm/cam/physprops/sul_cam3_c080918.nc</bam_cam3_sul>
-<bam_cam3_dust1 rad="camrt">atm/cam/physprops/dustv1b1_cam3_c080918.nc</bam_cam3_dust1>
-<bam_cam3_dust2 rad="camrt">atm/cam/physprops/dustv1b2_cam3_c080918.nc</bam_cam3_dust2>
-<bam_cam3_dust3 rad="camrt">atm/cam/physprops/dustv1b3_cam3_c080918.nc</bam_cam3_dust3>
-<bam_cam3_dust4 rad="camrt">atm/cam/physprops/dustv1b4_cam3_c080918.nc</bam_cam3_dust4>
-<bam_cam3_bcpho rad="camrt">atm/cam/physprops/bcpho_cam3_c080918.nc</bam_cam3_bcpho>
-<bam_cam3_bcphi rad="camrt">atm/cam/physprops/bcphi_cam3_c080918.nc</bam_cam3_bcphi>
-<bam_cam3_ocpho rad="camrt">atm/cam/physprops/ocpho_cam3_c080918.nc</bam_cam3_ocpho>
-<bam_cam3_ocphi rad="camrt">atm/cam/physprops/ocphi_cam3_c080918.nc</bam_cam3_ocphi>
-<bam_cam3_ssam  rad="camrt">atm/cam/physprops/ssam_cam3_c080918.nc</bam_cam3_ssam>
-<bam_cam3_sscm  rad="camrt">atm/cam/physprops/sscm_cam3_c080918.nc</bam_cam3_sscm>
 
 <!-- CAM-Chem bulk aerosols (different aerosol names used in prescribed and prognostic modes) -->
 <!-- Optics for CAM-RT -->
@@ -1992,6 +1992,8 @@
 <gas_wetdep_method  phys="spcam_m2005"   >OFF</gas_wetdep_method>
 
 <!-- Dry Dep surface data file needed by prognostic MAM on unstructured grid only. -->
+
+<drydep_srf_file hgrid="ne3np4"          >atm/cam/chem/trop_mam/atmsrf_ne3np4_230718.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne3np4"  npg="3" >atm/cam/chem/trop_mam/atmsrf_ne3np4.pg3_221214.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne5np4"   npg="3">atm/cam/chem/trop_mam/atmsrf_ne5pg3_201105.nc</drydep_srf_file>
@@ -2024,7 +2026,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
-<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_c230417.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.3_2023Jan08.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -2536,13 +2538,17 @@
 <dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam6"    ver="chem">0.9D0</dust_emis_fact>
 <dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam7"    ver="chem">0.9D0</dust_emis_fact>
 
+<!-- dust emissions method -->
+<dust_emis_method>Zender_2003</dust_emis_method>
+<zender_soil_erod_source>atm</zender_soil_erod_source>
+
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
 <seasalt_emis_scale                                                      >1.35D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.5D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >0.75D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" spcam_clubb_sgs="1"                      >1.2D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
@@ -2922,7 +2928,6 @@
 <cldsed_ice_stokes_fac hgrid="1.9x2.5"   phys="cam4"      > 0.5D0 </cldsed_ice_stokes_fac>
 
 <!-- FV dycore -->
-<fv_fft_flt phys="cam3"  >0</fv_fft_flt>
 <fv_fft_flt              >1</fv_fft_flt>
 
 <fv_div24del2flag                                       > 2</fv_div24del2flag>
@@ -2975,12 +2980,141 @@
 
 
 <!-- default namelist for SCAM mode -->
-<ncdata             hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
-<iopfile dyn="eul"                                scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
-<mfilt                                            scam="1"  >   1500     </mfilt>
-<nhtfrq                                           scam="1"  >   9        </nhtfrq>
-<scm_use_obs_uv                                   scam="1"  >   .true.   </scm_use_obs_uv>
-<scm_zadv_q                                       scam="1"  >   slt      </scm_zadv_q>
+<nhtfrq                          scam="1"                   > 1         </nhtfrq>
+<mfilt                           scam="1"                   > 10000     </mfilt>
+<scm_use_obs_uv                  scam="1"                   > .true.    </scm_use_obs_uv>
+<scale_dry_air_mass              scam="1"        dyn="se"   > 0.0D0     </scale_dry_air_mass>
+<scm_relaxation                  scam="1"                   > .true.    </scm_relaxation>
+<scm_relax_tau_sec               scam="1"                   > 10800._r8 </scm_relax_tau_sec>
+<scm_relax_fincl   phys="cam6"   scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_fincl   phys="cam5"   scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_fincl   phys="cam_dev"scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_bot_p                 scam="1"                  > 105000.D0  </scm_relax_bot_p>
+<scm_relax_top_p                 scam="1"                  > 200.D0     </scm_relax_top_p>
+<scm_relax_linear                scam="1"                  > .true.     </scm_relax_linear>
+<scm_relax_tau_bot_sec           scam="1"                  > 864000.D0  </scm_relax_tau_bot_sec>
+<scm_relax_tau_top_sec           scam="1"                  > 172800.D0  </scm_relax_tau_top_sec>
+
+
+<!-- IOP SCAM defaults (The Single Column Atmosphere Model Version 6 (SCAM6), J. Adv. Model. Earth Sy., 11, 1381–1401, https://doi.org/10.1029/2018MS001578-->
+
+<!-- IOP ARM95/ARM Southern Great Plains/lat:36/lon:263/Jul 1995/18d/M. Zhang et al. (2016)/Land convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="arm95"     >atm/cam/scam/iop/ARM95_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="arm95"     > 368.9e-6  </co2vmr>
+
+<!-- IOP ARM97/ARM Southern Great Plains/lat:36/lon:263/Jun 1997/30d/M. Zhang et al. (2016) Land convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="arm97"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="arm97"     > 368.9e-6  </co2vmr>
+
+<!-- IOP ATEX/Atlantic Trade Wind Exp/lat:15/lon:345/Feb 1969/2d/Augstein et al. (1973) Shallow cumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="atex"      >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-02-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="atex"      >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-02-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="atex"      >atm/cam/scam/iop/ATEX_48hr_4scam.nc</iopfile>
+
+<!-- IOP BOMEX/Barbados Ocean and Met Exp/lat:15/lon:300/Jun 1969/5d/Holland and Rasmusson (1973) Shallow cumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="bomex"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="bomex"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="bomex"     >atm/cam/scam/iop/BOMEX_5day_4scam.nc</iopfile>
+
+<!-- IOP CGILSS11/CFMIP-GASS SCM/LES Intercomparison/lat:32/lon:231/Jul 1997/30d/M. Zhang et al. (2013) Stratocumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS11"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS11"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS11"  >atm/cam/scam/iop/S11_CTL_MixedLayerInit_reduced.nc</iopfile>
+
+<!-- IOP CGILSS12/CFMIP-GASS SCM/LES Intercomparison/lat:35/lon:235/Jul 1997/30d/M. Zhang et al. (2013) Stratus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS12"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS12"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS12"  >atm/cam/scam/iop/S12_CTL_MixedLayerInit_reduced.nc</iopfile>
+
+<!-- IOP CGILSS6/CFMIP-GASS SCM/LES Intercomparison/lat:17/lon:211/Jul 1997/30d/M. Zhang et al. (2013) Shallow cumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS6"   >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS6"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS6"   >atm/cam/scam/iop/S6_CTL_reduced.nc</iopfile>
+
+<!-- IOP DYCOMSRF01/Dynamics of Marine StratoCu/lat:32/lon:239/Jul 15/2001/2d Stevens et al. (2003) Stratocumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="dycomsRF01">atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="dycomsRF01"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="dycomsRF01">atm/cam/scam/iop/DYCOMSrf01_4day_4scam.nc</iopfile>
+
+<!-- IOP DYCOMSRF02/Dynamics of Marine StratoCu/lat:32/lon:239/Jul 11/2001/2d Stevens et al. (2003) Stratocumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="dycomsRF02">atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="dycomsRF02"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="dycomsRF02">atm/cam/scam/iop/DYCOMSrf02_48hr_4scam.nc</iopfile>
+
+<!-- IOP GATEIII/GARP Atlantic Tropical Experiment Phase III/lat:9/lon:336/Aug 1974/20d/Thompson et al.(1979) Tropical convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="gateiii"   >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-08-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="gateIII"   >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-08-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="gateiii"   >atm/cam/scam/iop/GATEIII_4scam_c170809.nc</iopfile>
+
+<!-- IOP MICRE/Macquarie Island Cloud Radiation Experiment/lat:-56/lon:141/2017/90d/Marchand R. 2020/Marine -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.cam.i.2017-01-01-00000.regrid.ne3np4.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.cam.i.2017-01-01-00000.regrid.Gaus_64x128.nc</ncdata>
+<iopfile                                              scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.macquarie2017.iop.nc</iopfile>
+
+<!-- IOP MPACE/Mixed Phase Arctic Clouds Exp/lat:71/lon:206/Oct 2004/17d/Verlinde et al. (2007)/Arctic -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="mpace"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-10-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="mpace"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-10-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="mpace"     >atm/cam/scam/iop/MPACE_4scam.nc</iopfile>
+<fincl1                                               scam_iop="mpace"     >
+        'CLDST', 'CNVCLD',
+        'ICWMR','ICIMR','FREQL','FREQI','LANDFRAC','CDNUMC','FICE','WSUB','CCN3','ICLDIWP',
+        'CDNUMC', 'AQSNOW',  'WSUB', 'CCN3', 'FREQI', 'FREQL', 'FREQR', 'FREQS', 'CLDLIQ', 'CLDICE',
+        'FSDS', 'FLDS','AREL','AREI','NSNOW','QSNOW','DSNOW',
+        'FLNT','FLNTC','FSNT','FSNTC','FSNS','FSNSC','FLNT','FLNTC','QRS','QRSC','QRL','QRLC',
+        'LWCF','SWCF', 'NCAI', 'NCAL', 'NIHF','NIDEP','NIIMM','NIMEY','ICLDIWP','ICLDTWP', 'CONCLD',
+        'QCSEVAP', 'QISEVAP', 'QVRES', 'CMELIQ', 'CMEIOUT', 'EVAPPREC', 'EVAPSNOW', 'TAQ',
+        'ICLMRCU', 'ICIMRCU' ,'ICWMRSH' ,'ICWMRDP', 'ICLMRTOT' , 'ICIMRTOT' , 'SH_CLD' ,  'DP_CLD',
+        'LIQCLDF','ICECLDF', 'ICWMRST', 'ICIMRST', 'EFFLIQ', 'EFFICE','ADRAIN','ADSNOW','WSUBI',
+        'TGCLDLWP','GCLDLWP'
+</fincl1>
+
+<!-- IOP RICO/Rain and Cumulus over Oceans/lat:18/lon:299/Dec 2004/3d/Rauber et al. (2007)/Shallow cumulus -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="rico"      >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="rico"      >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="rico"      >atm/cam/scam/iop/RICO_3day_4scam.nc</iopfile>
+
+<!-- IOP SAS/The Southeast Atmosphere Study (SAS) campaign/lat:32/lon:272/June 2013/30d/Carlton (2018)/Southeast US Air Chemistry -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="SAS"       >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="SAS"       >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="SAS"       >atm/cam/scam/iop/SAS_ideal_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="SAS"       > 368.9e-6  </co2vmr>
+<use_gw_front                                         scam_iop="SAS"       > .false.   </use_gw_front>
+<scm_backfill_iop_w_init                              scam_iop="SAS"       > .true.    </scm_backfill_iop_w_init>
+
+<!-- IOP SPARTICUS/Small Particles in Cirrus/lat:37/lon:263/Apr 2010/30d/Mace et al. (2009)/Cirrus, convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="sparticus" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-04-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="sparticus" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-04-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="sparticus" >atm/cam/scam/iop/SPARTICUS_4scam.nc</iopfile>
+
+<!-- IOP TOGAII/Tropical Ocean Global Atmosphere IOP2/lat:-2/lon:154/Dec 1992/21d/Webster and Lukas (1992)/Tropical convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="togaII" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-12-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="togaII" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-12-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="togaII" >atm/cam/scam/iop/TOGAII_4scam.nc</iopfile>
+
+<!-- IOP TWP06/Tropical W. Pacific Convection/lat:-12/lon:131/Jan 2006/26d/May et al. (2008)/Tropical convection -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="twp06" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-01-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="twp06" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-01-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="twp06" >atm/cam/scam/iop/TWP06_4scam.nc</iopfile>
+<iradlw                                               scam_iop="twp06" > 1  </iradlw>
+<iradsw                                               scam_iop="twp06" > 1  </iradsw>
+
+<!-- IOP USER/User specified IOP forcing/lat:yy/lon:xx/Date:Any/Length:Any/-These are just defaults and can be updated by the user via cime_config/usermods_dir -->
+<ncdata            hgrid="ne3np4"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata            hgrid="64x128"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="camfrc"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
 
 <!-- Eulerian spectral dycore parameters -->
 
@@ -3562,5 +3696,10 @@
 <!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
 <hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
+
+<!-- GEOS-Chem chemistry -->
+<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
+<geoschem_aeropt_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/FAST_JX/v2024-05/</geoschem_aeropt_inputs>
+<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05/</geoschem_photol_inputs>
 
 </namelist_defaults>

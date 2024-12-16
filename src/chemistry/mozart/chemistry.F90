@@ -422,6 +422,8 @@ end function chem_is
          tracer_srcs_fixed_ymd_out = tracer_srcs_fixed_ymd, &
          tracer_srcs_fixed_tod_out = tracer_srcs_fixed_tod  )
 
+    drydep_srf_file = ' '
+
     if (masterproc) then
        unitn = getunit()
        open( unitn, file=trim(nlfile), status='old' )
@@ -1140,7 +1142,7 @@ end function chem_is_active
     use mo_gas_phase_chemdr, only : gas_phase_chemdr
     use camsrfexch,          only : cam_in_t, cam_out_t
     use perf_mod,            only : t_startf, t_stopf
-    use tropopause,          only : tropopause_findChemTrop, tropopause_find
+    use tropopause,          only : tropopause_findChemTrop, tropopause_find_cam
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed
@@ -1218,11 +1220,15 @@ end function chem_is_active
 !-----------------------------------------------------------------------
 ! get tropopause level
 !-----------------------------------------------------------------------
+    !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+    tropLev(:) = 0
+    tropLevChem(:) = 0
+    !REMOVECAM_END
     if (.not.chem_use_chemtrop) then
-       call tropopause_find(state,tropLev)
+       call tropopause_find_cam(state,tropLev)
        tropLevChem=tropLev
     else
-       call tropopause_find(state,tropLev)
+       call tropopause_find_cam(state,tropLev)
        call tropopause_findChemTrop(state, tropLevChem)
     endif
 

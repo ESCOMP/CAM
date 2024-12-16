@@ -368,7 +368,7 @@ contains
     use time_manager,  only: get_curr_date, get_perp_date, get_curr_calday, &
                              is_perpetual, is_first_step
     use camsrfexch,    only: cam_in_t
-    use tropopause,    only: tropopause_find
+    use tropopause,    only: tropopause_find_cam
     use physconst,     only: gravit
 
     implicit none
@@ -489,7 +489,10 @@ contains
       if ((shortname == "CRDUST") .or. (shortname == "CRSOOT")) then
 
         ! Find the tropopause using the default algorithm backed by the climatology.
-        call tropopause_find(state, tropLev, tropZ=tropZ)
+        !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+        troplev(:) = 0
+        !REMOVECAM_END
+        call tropopause_find_cam(state, tropLev, tropZ=tropZ)
 
         ! Loop over all of the columns.
         do icol = 1, ncol

@@ -39,6 +39,8 @@ module cloud_diagnostics
    integer :: cldtau_idx = -1
    integer :: nmxrgn_idx = -1
    integer :: pmxrgn_idx = -1
+   integer :: gb_totcldliqmr_idx = -1
+   integer :: gb_totcldicemr_idx = -1
 
    ! Index fields for precipitation efficiency.
    integer :: acpr_idx, acgcme_idx, acnum_idx
@@ -103,6 +105,10 @@ contains
     !-----------------------------------------------------------------------
 
     cld_idx    = pbuf_get_index('CLD')
+    ! grid box total cloud liquid water mixing ratio (kg/kg)
+    gb_totcldliqmr_idx = pbuf_get_index('GB_TOTCLDLIQMR')
+    ! grid box total cloud ice water mixing ratio (kg/kg)
+    gb_totcldicemr_idx = pbuf_get_index('GB_TOTCLDICEMR')
 
     call phys_getopts(use_spcam_out=use_spcam)
 
@@ -254,6 +260,9 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     integer,  pointer :: nmxrgn(:)      ! Number of maximally overlapped regions
     real(r8), pointer :: pmxrgn(:,:)    ! Maximum values of pressure for each
 
+    real(r8), pointer :: totg_ice(:,:)  ! grid box total cloud ice mixing ratio
+    real(r8), pointer :: totg_liq(:,:)  ! grid box total cloud liquid mixing ratio
+    
     integer :: itim_old
 
     real(r8) :: cwp   (pcols,pver)      ! in-cloud cloud (total) water path
@@ -305,6 +314,9 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, cld_idx, cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
+    call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)
+    call pbuf_get_field(pbuf, gb_totcldliqmr_idx, totg_liq)
 
     if(two_mom_clouds)then
 
@@ -371,10 +383,9 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
        ! iclwp and iciwp to pass to the radiation.                   !
        ! ----------------------------------------------------------- !
        if( conv_water_in_rad /= 0 ) then
-          allcld_ice(:ncol,:) = 0._r8 ! Grid-avg all cloud liquid
-          allcld_liq(:ncol,:) = 0._r8 ! Grid-avg all cloud ice
-
-          call conv_water_4rad(state, pbuf, allcld_liq, allcld_ice)
+          call conv_water_4rad(state, pbuf)
+          allcld_ice(:ncol,:) = totg_ice(:ncol,:) ! Grid-avg all cloud liquid
+          allcld_liq(:ncol,:) = totg_liq(:ncol,:) ! Grid-avg all cloud ice
        else
           allcld_liq(:ncol,top_lev:pver) = state%q(:ncol,top_lev:pver,ixcldliq)  ! Grid-ave all cloud liquid
           allcld_ice(:ncol,top_lev:pver) = state%q(:ncol,top_lev:pver,ixcldice)  !           "        ice
@@ -419,7 +430,9 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     elseif(one_mom_clouds) then
 
        if (conv_water_in_rad /= 0) then
-          call conv_water_4rad(state, pbuf, allcld_liq, allcld_ice)
+          call conv_water_4rad(state, pbuf)
+          allcld_ice(:ncol,:) = totg_ice(:ncol,:) ! Grid-avg all cloud liquid
+          allcld_liq(:ncol,:) = totg_liq(:ncol,:) ! Grid-avg all cloud ice
        else
           allcld_liq = state%q(:,:,ixcldliq)
           allcld_ice = state%q(:,:,ixcldice)

@@ -81,10 +81,6 @@ def buildcpp(case):
     if nlev:
         config_opts += ["-nlev", nlev]
 
-    # Some settings for single column mode.
-    if pts_mode:
-        config_opts.append("-scam")
-
     if mpilib == 'mpi-serial':
         config_opts.append("-nospmd")
     else:
