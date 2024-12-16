@@ -2493,7 +2493,7 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
             }
         }
     }
-    if ($chem !~ /geoschem/) {
+    if (($chem !~ /geoschem/) and ($chem ne 'none')) {
         add_default($nl, 'srf_emis_specifier', 'val'=>$val);
         unless (defined $nl->get_value('srf_emis_type')) {
             add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
@@ -2515,6 +2515,11 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
     }
     # air craft emissions
     if ($chem !~ /trop_mam/ and $chem !~ /ghg_mam/ and $chem !~ /waccm_sc/) {
+	if ($chem !~ /_noaer/) {
+	    %species = (%species,
+                    'bc_a4_ar_ext_file'  => 'bc_a4',
+                    'num_a4_ar_ext_file' => 'num_a4' );
+	}
         %species = (%species,
                     'no2_ar_ext_file'    => 'NO2',
                     'so2_ar_ext_file'    => 'SO2' );
@@ -2564,7 +2569,7 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
             $first = 0;
         }
     }
-    if ($chem !~ /geoschem/) {
+    if (($chem !~ /geoschem/) and ($chem ne 'none')) {
         add_default($nl, 'ext_frc_specifier', 'val'=>$val);
         unless (defined $nl->get_value('ext_frc_type')) {
             add_default($nl, 'ext_frc_type',      'val'=>"'CYCLICAL'");
