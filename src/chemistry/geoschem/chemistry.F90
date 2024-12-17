@@ -22,7 +22,7 @@ module chemistry
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
 #endif
-  
+
   ! GEOS-Chem derived types
   USE DiagList_Mod,         ONLY : DgnList          ! Diagnostics list object
   use GeosChem_History_Mod, ONLY : HistoryConfigObj ! History diagnostic object
@@ -515,11 +515,11 @@ contains
     CALL cnst_get_ind('Q',     cQ,     abort=.True.)
     CALL cnst_get_ind('H2O',   cH2O,   abort=.True.)
     CALL cnst_get_ind('H2SO4', cH2SO4, abort=.True.)
- 
+
     !------------------------------------------------------------
     ! Get mapping between dry deposition species and species set
     !------------------------------------------------------------
-    
+
     nIgnored = 0
 
     if (debug .and. masterproc) write(iulog,'(a,i4,a)') 'chem_register: looping over gas dry deposition list with ', nddvels, ' species'
@@ -831,7 +831,7 @@ contains
        ! Now go through the KPP mechanism and add any species not
        ! implemented by the tracer list in geoschem_config.yml
        !----------------------------------------------------------
-       
+
        IF ( nSpec > nSlsMax ) THEN
           CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
        ENDIF
@@ -1022,7 +1022,7 @@ contains
     use Time_Mod,              only : Accept_External_Date_Time
     use Ucx_Mod,               only : Init_Ucx
     use Unitconv_Mod,          only : MOLES_SPECIES_PER_MOLES_DRY_AIR
-    use Vdiff_Mod,             only : Max_PblHt_For_Vdiff 
+    use Vdiff_Mod,             only : Max_PblHt_For_Vdiff
 
     TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER, INTENT(INOUT) :: pbuf2d(:,:)
@@ -1143,7 +1143,7 @@ contains
     ! on State_Grid(BEGCHUNK).
     ! To go around this, we define all of GEOS-Chem arrays with
     ! size PCOLS x PVER, which is the largest possible number of
-    ! grid cells. 
+    ! grid cells.
     CALL Init_State_Grid( Input_Opt  = Input_Opt, &
                           State_Grid = maxGrid,   &
                           RC         = RC        )
@@ -1484,7 +1484,7 @@ contains
        ! Init_Drydep
        ! Thibaud M. Fritz - 04 Mar 2020
        !----------------------------------------------------------
-       
+
        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
@@ -1754,7 +1754,7 @@ contains
     use mo_flbc,           only : flbc_chk
     use mo_ghg_chem,       only : ghg_chem_timestep_init
     use physics_buffer,    only : physics_buffer_desc
-    
+
     TYPE(physics_state), INTENT(IN):: phys_state(begchunk:endchunk)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
@@ -2019,7 +2019,7 @@ contains
     REAL(r8)          :: mmr_tend(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: wk_out(state%NCOL)
     LOGICAL           :: Found
-    
+
     CHARACTER(LEN=shr_kind_cl) :: tagName
 
     REAL(r8), PARAMETER   :: zlnd  = 0.01_r8   ! Roughness length for soil [m]
@@ -2364,7 +2364,7 @@ contains
     ENDDO
 
     ! Deal with secondary organic aerosols (SOAs). This mapping is using the
-    ! complex SOA option in GEOS-Chem. 
+    ! complex SOA option in GEOS-Chem.
     ! MAM uses five volatility bins spanning saturation concentrations from 0.01
     ! to 100 ug/m3 (logarithmically). The complex SOA option has four volatility
     ! bins that 0.1 to 100 ug/m3. We lump the lowest two bins in CESM2 to the
@@ -3692,7 +3692,7 @@ contains
     ! Compute the surface flux for the non-local mixing,
     ! (which means getting emissions & drydep from HEMCO)
     ! and store it in State_Chm%Surface_Flux
-    ! 
+    !
     ! For CESM-GC, Surface_Flux will be equal to the opposite of the
     ! dry deposition flux since emissions are loaded externally
     ! ( SurfaceFlux = eflx - dflx = - dflx )
@@ -3739,10 +3739,10 @@ contains
           ! Get the species ID from the drydep ID
           N = State_Chm(BEGCHUNK)%Map_DryDep(ND)
           IF ( N <= 0 ) CYCLE
-   
+
           M = map2GCinv(N)
           IF ( M <= 0 ) CYCLE
-   
+
           cam_in%cflx(1:nY,M) = cam_in%cflx(1:nY,M) &
                               + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
        ENDDO
@@ -3763,7 +3763,7 @@ contains
                             new_units      = KG_SPECIES_PER_M2,  &
                             previous_units = previous_units,     &
                             RC             = RC                    )
- 
+
 
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
@@ -4088,7 +4088,8 @@ contains
     call t_stopf('GEOSChem_MAM_Interfacing')
     call t_startf('GEOSChem_MAM_GasAerExch')
 
-    call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
+    call aero_model_gasaerexch( state, &
+                                loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
                                 lchnk             = LCHNK,                  &
                                 troplev           = Trop_Lev(:),            &
