@@ -3,7 +3,6 @@
 !----------------------------------------------------------------------------------
 module sox_cldaero_mod
 
-  use physics_buffer,  only : physics_buffer_desc, pbuf_get_index, pbuf_get_field, dtype_r8
   use shr_kind_mod,    only : r8 => shr_kind_r8
   use cam_abortutils,  only : endrun
   use ppgrid,          only : pcols, pver
@@ -19,7 +18,6 @@ module sox_cldaero_mod
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
   use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_info_by_bin, rad_cnst_get_bin_props_by_idx
-use spmd_utils,     only: masterproc
 
   implicit none
   private
@@ -168,19 +166,19 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
-  subroutine sox_cldaero_update( state, &
-       pbuf, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+  subroutine sox_cldaero_update(  &
+       state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
 
     use aerosol_properties_mod, only: aero_name_len
-    use physics_types,     only: physics_state
+    use physics_types, only: physics_state
     use carma_intr, only: carma_get_group_by_name, carma_get_dry_radius
 
     ! args
 
-    type(physics_state),    intent(in)    :: state     ! Physics state variables
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    type(physics_state), intent(in) :: state     ! Physics state variables
+
     integer,  intent(in) :: ncol
     integer,  intent(in) :: lchnk ! chunk id
     integer,  intent(in) :: loffset

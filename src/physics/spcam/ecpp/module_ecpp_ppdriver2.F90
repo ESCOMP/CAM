@@ -1151,7 +1151,7 @@ end type ptr2d_t
 	    if (lun60 > 0) write(lun60,93010) &
 		 'calling parampollu_td240clm - i=', i
 !              write (0, *) i, lchnk, 'before parampollu_td240clm', nstep
-	      call parampollu_td240clm( aero_props,                  &
+	      call parampollu_td240clm( state, aero_props,           &
                    nstep, dtstep, nstep_pp, dtstep_pp,               &
                    idiagaa_ecpp, ldiagaa_ecpp,                       &
                    tcen_bar, pcen_bar, rhocen_bar, dzcen,            &

@@ -9,6 +9,7 @@
         use shr_kind_mod,   only : r8 => shr_kind_r8
 
         use modal_aerosol_properties_mod, only: modal_aerosol_properties
+        use physics_types,  only: physics_state
 
 	implicit none
 
@@ -25,7 +26,7 @@
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
-	subroutine parampollu_td240clm( aero_props,               &
+	subroutine parampollu_td240clm( state, aero_props,        &
 		ktau, dtstep, ktau_pp_in, dtstep_pp,              &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
@@ -87,6 +88,7 @@
         use cam_abortutils, only: endrun
 
 !   arguments
+        type(physics_state), intent(in) :: state             ! Physics state variables
         type(modal_aerosol_properties), intent(in) :: aero_props
 	integer, intent(in) ::                  &
 		ktau, ktau_pp_in,           &
@@ -485,7 +487,7 @@ itstep_hybrid_loop:   &
 !
 	ardz_cen_old(:,:,:) = ardz_cen_new(:,:,:)
 
-	call parampollu_tdx_main_integ( aero_props,               &
+	call parampollu_tdx_main_integ( state, aero_props,        &
 		ktau, dtstep, ktau_pp, dtstep_pp,                 &
                 itstep_hybrid, ntstep_hybrid,                     &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
@@ -686,9 +688,8 @@ itstep_hybrid_loop:   &
 	end subroutine parampollu_td240clm
 
 
-
 !-----------------------------------------------------------------------
-	subroutine parampollu_tdx_main_integ( aero_props,         &
+	subroutine parampollu_tdx_main_integ( state, aero_props,  &
 		ktau, dtstep, ktau_pp, dtstep_pp,                 &
                 itstep_hybrid, ntstep_hybrid,                     &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
@@ -748,6 +749,7 @@ itstep_hybrid_loop:   &
 	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message
 
 !   arguments
+        type(physics_state), intent(in) :: state             ! Physics state variables
         type(modal_aerosol_properties), intent(in) :: aero_props
 	integer, intent(in) ::                  &
 		ktau, ktau_pp,              &
@@ -1606,8 +1608,8 @@ vert_topqu_iccy_loop:   &
 
 !   calculate cloud chemistry changes to chem_sub over one time sub-step
         call t_startf('ecpp_cldchem')
-        call parampollu_tdx_cldchem(                     &
-                ktau, dtstep, ktau_pp, itstep_sub, dtstep_sub, &
+        call parampollu_tdx_cldchem( state,                        &
+                ktau, dtstep, ktau_pp, itstep_sub, dtstep_sub,     &
                 itstep_hybrid,                                     &
                 idiagaa_ecpp, ldiagaa_ecpp,                        &
                 tcen_bar, pcen_bar, rhocen_bar, dzcen,             &

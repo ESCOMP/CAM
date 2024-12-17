@@ -1,15 +1,16 @@
 module ecpp_modal_cloudchem
 
 !-----------------------------------------------------------------
-!  Module interface for cloud chemistry used in the ECPP treatment 
+!  Module interface for cloud chemistry used in the ECPP treatment
 ! in the MMF model
-!  Adopted the similar one used in the ECPP 
+!  Adopted the similar one used in the ECPP
 !  for the WRF-chem model written by Dick Easter
 !
 !  Minghuai Wang, 2009-11
 !------------------------------------------------------------------
    use shr_kind_mod, only: r8 => shr_kind_r8
    use cam_abortutils,   only: endrun
+   use physics_types,  only: physics_state
 
    implicit none
 
@@ -19,8 +20,8 @@ contains
 
 !-----------------------------------------------------------------------
 
-subroutine parampollu_tdx_cldchem(               &
-		ktau, dtstep, ktau_pp, itstep_sub, dtstep_sub, &
+subroutine parampollu_tdx_cldchem( state,                          &
+		ktau, dtstep, ktau_pp, itstep_sub, dtstep_sub,     &
                 itstep_hybrid,                                     &
 		idiagaa_ecpp, ldiagaa_ecpp,                        &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,             &
@@ -54,7 +55,7 @@ subroutine parampollu_tdx_cldchem(               &
 !
 ! In the beginning of the subroutine, the vertical coordinate (from bottom to top in ECPP)
 ! is converted into the one used in CAM: from the top to the bottom. And at the end of the
-! subroutine, the vertical coordinate is converted back. 
+! subroutine, the vertical coordinate is converted back.
 !
 !-----------------------------------------------------------------------
 
@@ -86,6 +87,7 @@ subroutine parampollu_tdx_cldchem(               &
 	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message
 
 !   arguments
+        type(physics_state), intent(in) :: state             ! Physics state variables
 	integer, intent(in) ::                  &
 		ktau, ktau_pp, itstep_sub,   &
 		it, jt, kts, ktebnd, ktecen, &
@@ -137,7 +139,7 @@ subroutine parampollu_tdx_cldchem(               &
                 del_cldchem3d                 ! 3D change from aqueous chemistry
 
         real(r8), intent(inout), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp ) :: &
-                del_rename3d                 ! 3D change from modal merging 
+                del_rename3d                 ! 3D change from modal merging
 
         real(r8), intent(inout) :: aqso4_h2o2,            &         ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
                                    aqso4_o3                          ! SO4 aqueous phase chemistry due to O3 (kg/m2)
@@ -166,7 +168,7 @@ subroutine parampollu_tdx_cldchem(               &
 
 
 !   local variables
- 
+
 	integer :: icc, iccpp, iccpp1, iccpp2, ipp
 	integer :: jcls
 	integer :: k, kk, l, km
@@ -216,7 +218,7 @@ subroutine parampollu_tdx_cldchem(               &
         real(r8) :: vmr_full(pcols, pver, gas_pcnst)
 
         real(r8), allocatable :: qsrflx_full(:, :,:), qqcwsrflx_full(:, :,:)
-        integer  :: nsrflx 
+        integer  :: nsrflx
         integer  :: nstep
         integer  :: jsrflx_rename
         integer  :: latndx_full(pcols, pver)
@@ -237,10 +239,10 @@ subroutine parampollu_tdx_cldchem(               &
         nsrflx = 2
         jsrflx_rename = 2
         nstep = get_nstep()
-        
+
 
 !
-! load arrays for interfacing with cloud chemistry subroutine 
+! load arrays for interfacing with cloud chemistry subroutine
 !
 ! use the wrfchem "i" index for the ecpp icc & ipp sub-class indices
 ! use the wrfchem "j" index for the ecpp jcls class index
@@ -263,15 +265,15 @@ subroutine parampollu_tdx_cldchem(               &
         allocate ( chem_tmpc(     1:4,kts:ktecen,1:ncls_use,1:num_chem_ecpp) )
 
        allocate  ( mmr(kts:ktecen,1:gas_pcnst) )
-       allocate  ( vmr(kts:ktecen,1:gas_pcnst) )   
-       allocate  ( mmrcw(kts:ktecen,1:gas_pcnst) ) 
-       allocate  ( vmrcw(kts:ktecen,1:gas_pcnst) )  
+       allocate  ( vmr(kts:ktecen,1:gas_pcnst) )
+       allocate  ( mmrcw(kts:ktecen,1:gas_pcnst) )
+       allocate  ( vmrcw(kts:ktecen,1:gas_pcnst) )
        allocate  ( vmr_sv1(kts:ktecen,1:gas_pcnst) )
        allocate  ( vmrcw_sv1(kts:ktecen,1:gas_pcnst) )
        allocate  ( mbar(kts:ktecen) )
        allocate  ( cldnum(1,kts:ktecen) )
-       allocate  ( vmr_3d(1,kts:ktecen,1:gas_pcnst) )   
-       allocate  ( vmrcw_3d(1,kts:ktecen,1:gas_pcnst) )  
+       allocate  ( vmr_3d(1,kts:ktecen,1:gas_pcnst) )
+       allocate  ( vmrcw_3d(1,kts:ktecen,1:gas_pcnst) )
        allocate  ( mmr_3d(1, kts:ktecen,1:gas_pcnst) )
        allocate  ( mmrcw_3d(1, kts:ktecen, 1:gas_pcnst) )
        allocate  ( mbar_3d(1, kts:ktecen) )
@@ -306,7 +308,7 @@ subroutine parampollu_tdx_cldchem(               &
         chem_tmpc(:,:,:,:) = chem_tmpa(:,:,:,:)
 
 !
-! prepare fields for aqueous chemistry at CAM. 
+! prepare fields for aqueous chemistry at CAM.
 	do kk = kts, ktecen
 	  k = min( kk, ktecen )
 !
@@ -349,7 +351,7 @@ subroutine parampollu_tdx_cldchem(               &
 	    end if
 
 	    if (icc == 2) then
-               if(tmpa > afrac_cut_0p5) then 
+               if(tmpa > afrac_cut_0p5) then
                 cldfra_tmp(iccpp,k,jcls) = 1.0_r8
                end if
             end if
@@ -367,8 +369,8 @@ subroutine parampollu_tdx_cldchem(               &
 	if (cldchem_onoff_ecpp > 0) then
 
        do jcls = 1, ncls_use
-       do icc = 2, 2 !  In clear sky, cloud chemistry and renaming are not called. 
-       do ipp = 1, 2 
+       do icc = 2, 2 !  In clear sky, cloud chemistry and renaming are not called.
+       do ipp = 1, 2
           iccpp = 2*(icc-1) + ipp
           ncol = 1
 
@@ -383,16 +385,16 @@ subroutine parampollu_tdx_cldchem(               &
               lnumcw = numptr_aer(im, in, cw_phase)
               do k=kts, ktecen
                 km=ktecen-k+1
-                cldnum(1,k) = cldnum(1,k)+chem_tmpb(iccpp,km,jcls,lnumcw)           
+                cldnum(1,k) = cldnum(1,k)+chem_tmpb(iccpp,km,jcls,lnumcw)
               end do
             end do
           end do
 
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           !        ... map incoming concentrations to working array
           !   Vertical coordinate is from bottom to top in the ECPP for chem_tempb,
           !     so convert it to from top to the bottom for aqueous chemistry at CAM.
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           mmr(:, :) = 0.0_r8
           mmrcw(:, :) = 0.0_r8
           do m = 1,pcnst
@@ -406,16 +408,16 @@ subroutine parampollu_tdx_cldchem(               &
             end if
           end do
 
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           !        ... Set atmosphere mean mass
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           mmr_3d(1, :, :) = mmr(:, :)
           call set_mean_mass( ncol, mmr_3d, mbar_3d )
           mbar(:) = mbar_3d(1, :)
 
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           !        ... Xform from mmr to vmr
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           vmr_3d(1, :, :) = vmr(:, :)
 	  mmr_3d(1, :, :) = mmr(:, :)
 	  mmrcw_3d(1, :, :) = mmrcw(:, :)
@@ -429,14 +431,14 @@ subroutine parampollu_tdx_cldchem(               &
           vmr(:,:) = vmr_3d(1,:,:)
           vmrcw(:,:) = vmrcw_3d(1,:,:)
 
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           !        ... Set the "invariants"
-          !-----------------------------------------------------------------------  
-          h2ovmr_full(:, :) = 0.0_r8   ! h2ommr is not used in CAM aqueous chemistry, so set it to zero here. 
+          !-----------------------------------------------------------------------
+          h2ovmr_full(:, :) = 0.0_r8   ! h2ommr is not used in CAM aqueous chemistry, so set it to zero here.
           do kk = kts, ktecen
             k = min( kk, ktecen)
-            t_full(:, k) = t_tmp(iccpp, k,jcls)  
-            pmid_full(:, k) = p_tmp(iccpp, k, jcls)  
+            t_full(:, k) = t_tmp(iccpp, k,jcls)
+            pmid_full(:, k) = p_tmp(iccpp, k, jcls)
             do n=1, gas_pcnst
               vmr_full(:, k, n) = vmr(k, n)
             end do
@@ -446,7 +448,8 @@ subroutine parampollu_tdx_cldchem(               &
           !--------------------------------------------------------------------------
           !        ... Aqueous chemistry
           !--------------------------------------------------------------------------
-          call setsox( ncol,   &                   ! ncol
+          call setsox( state, &                    ! phys state
+               ncol,   &                           ! ncol
                jt,  &                              ! lchnk
                imozart-1,&                         ! loffset
                dt_tmp,                  &          ! dtime
@@ -472,7 +475,7 @@ subroutine parampollu_tdx_cldchem(               &
 
           !-----------------------------------------------------------------------
           !         ... Xform from vmr to mmr
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           vmr(:,:)   = vmr_3d(1,:,:)
           vmrcw(:,:) = vmrcw_3d(1,:,:)
           call vmr2mmr( vmr, mmr_3d, mbar, ncol )
@@ -480,11 +483,11 @@ subroutine parampollu_tdx_cldchem(               &
           mmr(:, :) = mmr_3d(1, :, :)
           mmrcw(:, :) = mmrcw_3d(1, :, :)
 
-          !-----------------------------------------------------------------------      
+          !-----------------------------------------------------------------------
           !         ... Form the tendencies
-          !   Vertical coordinate is from top to bottom in the aqueous chemistry at CAM,  
+          !   Vertical coordinate is from top to bottom in the aqueous chemistry at CAM,
           !     so convert it to from bottom to the top in the ECPP for chem_tmpb.
-          !----------------------------------------------------------------------- 
+          !-----------------------------------------------------------------------
           do m = 1,pcnst
              n = map2chm(m)
              if( n > 0 ) then
@@ -506,7 +509,7 @@ subroutine parampollu_tdx_cldchem(               &
               if (tmpa > afrac_cut_0p5) then
                  aqso4_h2o2 = aqso4_h2o2+tmpa * aqso4_h2o2_3dtmp(1, km)*dt_tmp
                  aqso4_o3 = aqso4_o3 + tmpa * aqso4_o3_3dtmp(1, km)*dt_tmp
-              end if 
+              end if
 !
 ! xphlwc_tmp is defined in CAM( top to bottom), and xphlwc3d is defined in ECPP (bottom to top)
               xphlwc3d(k,icc,jcls,ipp) = xphlwc3d(k,icc,jcls,ipp) + xphlwc_tmp(1,km) * tmpa
@@ -521,8 +524,8 @@ subroutine parampollu_tdx_cldchem(               &
               k = min( kk, ktecen)
               pdel_full(:, k) = p_tmp(iccpp, k, jcls)
             end do
-            latndx_full(:,:) = 1 
-            lonndx_full(:,:) = 1 
+            latndx_full(:,:) = 1
+            lonndx_full(:,:) = 1
             qsrflx_full(:,:,:) = 0.0_r8
             qqcwsrflx_full(:,:,:) = 0.0_r8
             dotendrn(:) = .false.
@@ -544,23 +547,23 @@ subroutine parampollu_tdx_cldchem(               &
                                          dqqcwdt,    dqqcwdt_other,    &
                                          is_dorename_atik, dorename_atik, &
                                          jsrflx_rename,  nsrflx,       &
-                                         qsrflx_full,   qqcwsrflx_full         ) 
+                                         qsrflx_full,   qqcwsrflx_full         )
              vmr = vmr + dqdt * dt_tmp
              vmrcw = vmrcw + dqqcwdt * dt_tmp
 
              !-----------------------------------------------------------------------
              !         ... Xform from vmr to mmr
-             !-----------------------------------------------------------------------      
+             !-----------------------------------------------------------------------
              call vmr2mmr( vmr, mmr_3d, mbar, ncol )
              call vmr2mmr( vmrcw, mmrcw_3d, mbar, ncol )
              mmr(:, :) = mmr_3d(1, :, :)
              mmrcw(:, :) = mmrcw_3d(1, :, :)
 
-             !-----------------------------------------------------------------------      
+             !-----------------------------------------------------------------------
              !         ... Form the tendencies
-             !   Vertical coordinate is from top to bottom in the aqueous chemistry at CAM,  
+             !   Vertical coordinate is from top to bottom in the aqueous chemistry at CAM,
              !     so convert it to from bottom to the top in the ECPP for chem_tmpb.
-             !----------------------------------------------------------------------- 
+             !-----------------------------------------------------------------------
              do m = 1,pcnst
                n = map2chm(m)
                if( n > 0 ) then
@@ -599,7 +602,7 @@ subroutine parampollu_tdx_cldchem(               &
 			tmpq = (chem_tmpb(iccpp,k,jcls,l) - chem_tmpa(iccpp,k,jcls,l))
 			tmpy = tmpy + tmpa*tmpq
                         del_cldchem3d(k,icc,jcls,ipp,l)=del_cldchem3d(k,icc,jcls,ipp,l)+tmpa*tmpq
-                    else 
+                    else
                         del_cldchem3d(k,icc,jcls,ipp,l)=del_cldchem3d(k,icc,jcls,ipp,l)+0.0_r8
 		    end if
 
@@ -621,13 +624,13 @@ subroutine parampollu_tdx_cldchem(               &
 	    end do ! k
 
 	    del_chem_clm_cldchem(l) = del_chem_clm_cldchem(l) + tmpx
-            if(rename_onoff_ecpp > 0 )  & 
+            if(rename_onoff_ecpp > 0 )  &
               del_chem_clm_rename(l) = del_chem_clm_rename(l) + tmpx2
 	end do ! l
 
-	end if ! (cldchem_onoff_ecpp > 0) 
+	end if ! (cldchem_onoff_ecpp > 0)
 
-	if ((cldchem_onoff_ecpp > 0)) then 
+	if ((cldchem_onoff_ecpp > 0)) then
 
 	do l = p1st, num_chem_ecpp
 	do k = kts, ktecen
@@ -639,7 +642,7 @@ subroutine parampollu_tdx_cldchem(               &
 
 	    iccpp1 = 2*(icc-1) + 1
 	    iccpp2 = 2*(icc-1) + 2
-            
+
             if(rename_onoff_ecpp > 0 ) then
               if ((tmpa1 > afrac_cut_0p5) .and. (tmpa2 > afrac_cut_0p5)) then
 		tmpb1 = max( 0.0_r8, min( 1.0_r8, (tmpa1/(tmpa1+tmpa2)) ) )
@@ -678,14 +681,14 @@ subroutine parampollu_tdx_cldchem(               &
 	end do ! k
 	end do ! l
 
-	end if ! ((cldchem_onoff_ecpp > 0)) 
+	end if ! ((cldchem_onoff_ecpp > 0))
 
 
 	deallocate ( p_tmp, t_tmp, rho_tmp, alt_tmp, &
 	             cldfra_tmp, &
 	             qlsink_tmp, &
 	             precr_tmp, precs_tmp, precg_tmp, preci_tmp )
-	deallocate ( chem_tmpa, chem_tmpb, chem_tmpc) 
+	deallocate ( chem_tmpa, chem_tmpb, chem_tmpc)
         deallocate ( mmr, mmrcw, vmr, vmrcw, vmr_sv1, vmrcw_sv1, &
                     mbar, cldnum, mmr_3d, mmrcw_3d, mbar_3d,  &
                     qsrflx_full, qqcwsrflx_full)

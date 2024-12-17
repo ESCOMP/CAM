@@ -16,7 +16,6 @@ module sox_cldaero_mod
   use phys_control,    only : phys_getopts, cam_chempkg_is
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
-  use physics_buffer,  only : physics_buffer_desc
 
   implicit none
   private
@@ -152,17 +151,17 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
-  subroutine sox_cldaero_update( state, &
-       pbuf, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+  subroutine sox_cldaero_update( &
+       state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
 
-    use physics_types,     only: physics_state
+    use physics_types, only: physics_state
 
     ! args
 
-    type(physics_state),    intent(in)    :: state     ! Physics state variables
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    type(physics_state), intent(in) :: state     ! Physics state variables
+
     integer,  intent(in) :: ncol
     integer,  intent(in) :: lchnk ! chunk id
     integer,  intent(in) :: loffset
@@ -236,7 +235,7 @@ contains
 
     ! Avoid double counting in-cloud sulfur oxidation when running with
     ! GEOS-Chem. If running with GEOS-Chem then sulfur oxidation
-    ! is performed internally to GEOS-Chem. Here, we just return to the 
+    ! is performed internally to GEOS-Chem. Here, we just return to the
     ! parent routine and thus we do not apply tendencies calculated by MAM.
     if ( cam_chempkg_is('geoschem_mam4') ) return
 
