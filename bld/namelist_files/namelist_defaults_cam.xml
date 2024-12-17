@@ -2994,9 +2994,6 @@
 <fv_nsplit hgrid="0.9x1.25" waccm_phys="1">16</fv_nsplit>
 <fv_nsplit hgrid="0.47x0.63"    waccmx="1">32</fv_nsplit>
 
-<fv_nspltvrm hgrid="1.9x2.5" waccm_phys="1" aquaplanet="1">4</fv_nspltvrm>
-<fv_nspltrac hgrid="1.9x2.5" waccm_phys="1" aquaplanet="1">4</fv_nspltrac>
-
 <fv_del2coef                >3.e+5</fv_del2coef>
 
 <fv_filtcw                  >0</fv_filtcw>

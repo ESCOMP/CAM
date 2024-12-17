@@ -2285,7 +2285,7 @@ if ($chem eq 'trop_mam3') {
 if ($phys =~ /cam6/ or $phys =~ /cam7/) {
 
     # OASISS (ocean) DMS emissions
-    if (!$aqua_mode and !$scam) {
+    if (!$aqua_mode and !$scam and chem_has_species($cfg, 'DMS')) {
         my $rel_filepath = get_default_value('dms_ocn_emis_file');
         my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
         my $val = quote_string("DMS -> ". $abs_filepath);
