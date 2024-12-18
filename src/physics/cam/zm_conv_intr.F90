@@ -344,13 +344,16 @@ subroutine zm_conv_init(pref_edge)
     end if
 
     no_deep_pbl = phys_deepconv_pbl()
-!CACNOTE - Need to check errflg and report errors
     call zm_convr_init(plev, plevp, cpair, epsilo, gravit, latvap, tmelt, rair, &
                   pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin,  &
                   no_deep_pbl, zmconv_tiedke_add, &
                   zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
                   masterproc, iulog, errmsg, errflg)
+
+      if (errflg /= 0) then
+         call endrun('From zm_convr_init:'  // errmsg)
+      end if
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
@@ -377,6 +380,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use constituents,  only: pcnst, cnst_get_ind, cnst_is_convtran1
    use check_energy,  only: check_energy_chng
    use physconst,     only: gravit, latice, latvap, tmelt, cpwv, cpliq, rh2o
+   use phys_grid,     only: get_rlat_all_p, get_rlon_all_p
 
    use phys_control,  only: cam_physpkg_is
    use ccpp_constituent_prop_mod, only: ccpp_const_props
@@ -456,6 +460,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    real(r8) :: pcont(pcols), pconb(pcols), freqzm(pcols)
 
+   real(r8) :: lat_all(pcols), long_all(pcols)
+
    ! history output fields
    real(r8) :: cape(pcols)        ! w  convective available potential energy.
    real(r8) :: mu_out(pcols,pver)
@@ -482,6 +488,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    logical  :: lq(pcnst)
    character(len=16) :: macrop_scheme
    character(len=40) :: scheme_name
+   character(len=40) :: str
    integer :: top_lev
 
    !----------------------------------------------------------------------
@@ -557,9 +564,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ideep(:) = 0._r8
 !REMOVECAM_END
 
-!CACNOTE - Need to check errflg and report errors
+
+   call get_rlat_all_p(lchnk, ncol, lat_all)
+   call get_rlon_all_p(lchnk, ncol, long_all)
+
    call zm_convr_run(ncol, pver, &
                     pverp, gravit, latice, cpwv, cpliq, rh2o,  &
+                    lat_all, long_all, &
                     state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
@@ -569,6 +580,11 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
                     rice(:ncol), lengath, scheme_name, errmsg, errflg)
+
+   if (errflg /= 0) then
+     write(str,*) 'From zm_convr_run: at chunk',lchnk
+     call endrun(str // errmsg)
+   end if
 
    jctop(:) = real(pver,r8)
    jcbot(:) = 1._r8
@@ -878,13 +894,17 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    ptend%q(:,:,:) = 0._r8
 !REMOVECAM_END
 
-!CACNOTE - Need to check errflg and report errors
       call zm_conv_convtran_run (ncol, pver,          &
                   ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
                   nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ccpp_const_props, &
                   scheme_name, errmsg, errflg)
+
+      if (errflg /= 0) then
+         call endrun('From zm_conv_convtran_run:'  // errmsg)
+      end if
+
       call t_stopf ('convtran2')
    end if
 
