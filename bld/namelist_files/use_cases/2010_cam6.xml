@@ -83,4 +83,8 @@
 <flbc_type>      'CYCLICAL'                          </flbc_type>
 <flbc_cycle_yr>  2010                                </flbc_cycle_yr>
 
+<stream_ndep_year_first>2010</stream_ndep_year_first>
+<stream_ndep_year_last>2010</stream_ndep_year_last>
+<stream_ndep_year_align>1</stream_ndep_year_align>
+
 </namelist_defaults>

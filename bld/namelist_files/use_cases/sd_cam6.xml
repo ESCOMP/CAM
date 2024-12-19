@@ -28,12 +28,16 @@
 
   <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
   <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
-  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file> 
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
   <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
 
   <scenario_ghg            >    'CHEM_LBC_FILE'   </scenario_ghg>
   <flbc_file>atm/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc</flbc_file>
   <flbc_type>'SERIAL'</flbc_type>
   <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
+
+  <stream_ndep_year_first>1850</stream_ndep_year_first>
+  <stream_ndep_year_last>2015</stream_ndep_year_last>
+  <stream_ndep_year_align>1850</stream_ndep_year_align>
 
 </namelist_defaults>

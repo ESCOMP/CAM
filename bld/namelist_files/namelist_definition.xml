@@ -7609,6 +7609,12 @@ Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
 Default: FALSE
 </entry>
 
+<entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
+       group="ndep_inparm" valid_values="" >
+List of nitrogen deposition fluxes to be sent from CAM to surface models.
+Default: set by build-namelist.
+</entry>
+
 <entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Year first to use in nitrogen deposition stream data.

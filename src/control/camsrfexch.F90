@@ -9,7 +9,7 @@ module camsrfexch
   use constituents,    only: pcnst
   use ppgrid,          only: pcols, begchunk, endchunk
   use phys_grid,       only: get_ncols_p, phys_grid_initialized
-  use infnan,          only: nan, posinf, assignment(=)
+  use infnan,          only: posinf, assignment(=)
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
   use srf_field_check, only: active_Sl_ram1, active_Sl_fv, active_Sl_soilw,                &
@@ -329,11 +329,11 @@ CONTAINS
 
           allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
           if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
-          cam_out(c)%nhx_nitrogen_flx(:) = nan
+          cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
 
           allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
           if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
-          cam_out(c)%noy_nitrogen_flx(:) = nan
+          cam_out(c)%noy_nitrogen_flx(:) = 0._r8
 
        endif
 
