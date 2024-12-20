@@ -111,9 +111,10 @@ module gw_drag
   real(r8) :: effgw_beres_sh = unset_r8
 
 
-  ! JULIO - Please put in appropriate comment
-  logical :: use_gw_rdg_resid = false
-  read(r8) :: effgw_rdg_resid = unset_r8
+  ! Parameters controlling isotropic residual
+  ! orographic GW.
+  logical :: use_gw_rdg_resid = .false.
+  real(r8) :: effgw_rdg_resid = unset_r8
 
   ! Horzontal wavelengths [m].
   real(r8), parameter :: wavelength_mid = 1.e5_r8
@@ -2331,6 +2332,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                 &
         nm, ni, rhoi, kvtt, q, dse,               &
         effgw_rdg_beta, effgw_rdg_beta_max,       &
+        effgw_rdg_resid, use_gw_rdg_resid,        &
         hwdth, clngt, gbxar, mxdis, angll, anixy, &
         isovar, isowgt,                           &
         rdg_beta_cd_llb, trpd_leewv_rdg_beta,     &
@@ -2362,6 +2364,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                      &
         nm, ni, rhoi, kvtt, q, dse,                    &
         effgw_rdg_gamma, effgw_rdg_gamma_max,          &
+        effgw_rdg_resid, use_gw_rdg_resid,             &
         hwdthg, clngtg, gbxar, mxdisg, angllg, anixyg, &
         isovar, isowgt,                                &
         rdg_gamma_cd_llb, trpd_leewv_rdg_gamma,        &
@@ -2403,6 +2406,7 @@ subroutine gw_rdg_calc( &
    u, v, t, p, piln, zm, zi, &
    nm, ni, rhoi, kvtt, q, dse, &
    effgw_rdg, effgw_rdg_max, &
+   effgw_rdg_resid, luse_gw_rdg_resid, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
    isovar, isowgt, &
@@ -2436,6 +2440,8 @@ subroutine gw_rdg_calc( &
 
    real(r8),         intent(in) :: effgw_rdg       ! Tendency efficiency.
    real(r8),         intent(in) :: effgw_rdg_max
+   real(r8),         intent(in) :: effgw_rdg_resid  ! Tendency efficiency.
+   logical,          intent(in) :: luse_gw_rdg_resid ! On-Off switch 
    real(r8),         intent(in) :: hwdth(ncol,prdg) ! width of ridges.
    real(r8),         intent(in) :: clngt(ncol,prdg) ! length of ridges.
    real(r8),         intent(in) :: gbxar(ncol)      ! gridbox area
@@ -2666,10 +2672,11 @@ subroutine gw_rdg_calc( &
 
    end do ! end of loop over multiple ridges
 
+   if (luse_gw_rdg_resid == .true.) then
    ! Add additional GW from residual variance. Assumed isotropic
       !kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
       kwvrdg  = 0.001_r8 / ( 100._r8 )
-      effgw   = 1.0_r8 * isowgt
+      effgw   = effgw_rdg_resid * isowgt    !1.0_r8 * isowgt
       tauoro = 0._r8
 
       call gw_rdg_resid_src(ncol, band_oro, p, &
@@ -2716,7 +2723,8 @@ subroutine gw_rdg_calc( &
       call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
       call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
       call outfld('SRC_LEVEL_RESID'//trim(type),      1._r8*src_level ,         ncol, lchnk)
-   ! end of residual variance calc
+      ! end of residual variance calc
+   end if
 
    ! Calculate energy change for output to CAM's energy checker.
    call energy_change(dt, p, u, v, ptend%u(:ncol,:), &

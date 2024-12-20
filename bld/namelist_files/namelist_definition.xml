@@ -1339,7 +1339,7 @@ Default: .false.
 </entry>
 
 <entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
-       group="phys_ctl_nl" valid_values="" >
+       group="gw_drag_nl" valid_values="" >
 JULIO - need to add comment
 Default: .false.
 </entry>
