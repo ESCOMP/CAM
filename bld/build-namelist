@@ -509,8 +509,17 @@ if ($phys_mode_flags > 1) {
 my $simple_phys = 0;
 if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
+# If running either a simple physics or an aquaplanet configuration, the nitrogen
+# deposition data is not used.  These files are set in buildnml and can't be overridden
+# via user_nl_cam.  So provide an override here.
+if ($simple_phys or $aqua_mode) {
+    $nl->set_variable_value('ndep_stream_nl', 'stream_ndep_data_filename', '" "');
+    $nl->set_variable_value('ndep_stream_nl', 'stream_ndep_mesh_filename', '" "');
+}
+
 # Single column mode
 my $scam = $cfg->get('scam');
+my $scam_iop = $cfg->get('scam_iop');
 
 # Coupling interval
 # The default is for CAM to couple to the surface components every CAM timestep.
@@ -569,6 +578,14 @@ if ($cfg->get('debug')) {
 my $prescribe_aerosols = $TRUE;
 if ($simple_phys) {$prescribe_aerosols = $FALSE;}
 
+# CTSM Dust emissions scheme
+my $soil_erod_atm = $FALSE;
+add_default($nl, 'dust_emis_method');
+if ( $nl->get_value('dust_emis_method') =~ /Zender/ ) {
+    add_default($nl, 'zender_soil_erod_source');
+    if ($nl->get_value('zender_soil_erod_source') =~ /atm/) {$soil_erod_atm = $TRUE;}
+}
+
 # Chemistry deposition lists
 if ( ($chem ne 'none') or ( $prog_species ) ){
     my $chem_proc_src = $cfg->get('chem_proc_src');
@@ -591,8 +608,9 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
            ($aer_wetdep_list =~ /ncl/i || $aer_wetdep_list =~ /sslt/i)) {
             $prescribe_aerosols = $FALSE;
         }
-
-        add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        if ($chem !~ /_mam/) {
+            add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
+        }
 
         if (!($chem =~ /_mam/)) {
             if (!defined $nl->get_value('aer_sol_facti')) {
@@ -615,11 +633,17 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
 }
 if ($chem) {
-    # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
-    # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
-        add_default($nl, 'drydep_srf_file');
+
+    # drydep_srf_file is not needed for simple physics or aquaplanet
+    if ( !($simple_phys or $aqua_mode) ) {
+
+        # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
+        # structured grids can do interpolation on the fly.
+        if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
+            add_default($nl, 'drydep_srf_file');
+        }
     }
+
     add_default($nl, 'dep_data_file');
 }
 
@@ -741,7 +765,7 @@ if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
 elsif (!$simple_phys) {
 
    if ($chem eq 'none' and !($prog_species =~ /SO4/) ) { # Spectral solar data is needed for photolysis
-      # this preserves the default cam3 and cam4 configurations which do not have chemistry
+      # this preserves the default cam4 configuration which does not have chemistry
       unless (defined $nl->get_value('solar_irrad_data_file')) {
         add_default($nl, 'solar_const');
       }
@@ -820,16 +844,7 @@ if ($test_tracer_num > 0) {
 
 if ($cfg->get('age_of_air_trcs')) { add_default($nl, 'aoa_tracers_flag', 'val'=>'.true.'); }
 
-# If phys option is "cam3" then turn on the CAM3 prescribed ozone and aerosols
-if ($phys eq 'cam3' and !$aqua_mode) {
-    add_default($nl, 'cam3_ozone_data_on', 'val'=>'.true.');
-    add_default($nl, 'cam3_aero_data_on', 'val'=>'.true.');
-}
-
 # Defaults for radiatively active constituents
-
-my $cam3_ozone_data = $FALSE;
-my $cam3_aero_data = $FALSE;
 
 my $moz_ozone_data = $FALSE;
 if (!$rad_prog_ozone) {
@@ -839,24 +854,6 @@ if (!$rad_prog_ozone) {
 my $moz_aero_data = $FALSE;
 if (!($rad_prog_ocarb) or !($rad_prog_bcarb) or !($rad_prog_sulf) or !($rad_prog_dust) or !($rad_prog_sslt)){
     $moz_aero_data = $TRUE;
-}
-
-# CAM3 prescribed ozone only by request
-if (defined $nl->get_value('cam3_ozone_data_on') and
-    $nl->get_value('cam3_ozone_data_on') =~ /$TRUE/io) {
-    add_default($nl, 'bndtvo');
-    $cam3_ozone_data = $TRUE;
-    $moz_ozone_data = $FALSE;
-}
-
-# CAM3 prescribed aerosols only by request
-if (defined $nl->get_value('cam3_aero_data_on') and
-    $nl->get_value('cam3_aero_data_on') =~ /$TRUE/io) {
-
-    # CAM3 aerosol mass climatology dataset (horizontal resolution dependent)
-    add_default($nl, 'bndtvaer');
-    $cam3_aero_data = $TRUE;
-    $moz_aero_data = $FALSE;
 }
 
 if ($chem_rad_passive or $aqua_mode) {
@@ -907,8 +904,6 @@ if ($rad_prog_ozone) {
         add_default($nl, 'prescribed_ozone_type');
         add_default($nl, 'prescribed_ozone_cycle_yr');
     }
-} elsif ($cam3_ozone_data =~ /$TRUE/io) {
-    $radval .= ",'N:O3:O3'";
 } else {
     die "ERROR: can not set ozone rad_climate specification\n";
 }
@@ -1095,9 +1090,6 @@ if ($aer_model eq 'mam' ) {
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "sulf");
     push(@aerosources, "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_sul" );
-    push(@aerosources, "N:" );
   } else {
     die "ERROR: can not set sulf rad_climate specification\n";
   }
@@ -1107,9 +1099,6 @@ if ($aer_model eq 'mam' ) {
     push(@aerosources, "A:", "A:", "A:", "A:" );
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "dust1", "dust2", "dust3", "dust4");
-    push(@aerosources, "N:", "N:", "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_dust1", "cam3_dust2", "cam3_dust3", "cam3_dust4" );
     push(@aerosources, "N:", "N:", "N:", "N:" );
   } else {
     die "ERROR: can not set dust rad_climate specification\n";
@@ -1121,9 +1110,6 @@ if ($aer_model eq 'mam' ) {
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "bcar1", "bcar2");
     push(@aerosources, "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_bcpho", "cam3_bcphi");
-    push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set black carbon rad_climate specification\n";
   }
@@ -1133,9 +1119,6 @@ if ($aer_model eq 'mam' ) {
     push(@aerosources, "A:", "A:" );
   } elsif ($moz_aero_data =~ /$TRUE/io) {
     push(@aero_names, "ocar1", "ocar2");
-    push(@aerosources, "N:", "N:" );
-  } elsif ($cam3_aero_data =~ /$TRUE/io) {
-    push(@aero_names, "cam3_ocpho", "cam3_ocphi");
     push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set organic carbon rad_climate specification\n";
@@ -1157,9 +1140,6 @@ if ($aer_model eq 'mam' ) {
         push(@aero_names, "SSLTA", "SSLTC");
         push(@aerosources, "N:", "N:");
     }
-  } elsif ($cam3_aero_data =~ /$TRUE/io ) {
-    push(@aero_names, "cam3_ssam", "cam3_sscm");
-    push(@aerosources, "N:", "N:" );
   } else {
     die "ERROR: can not set sslt rad_climate specification\n";
   }
@@ -1180,7 +1160,7 @@ if ( $prescribed_aero_model ne 'none' ) {
 
   # Prescribed aerosol deposition fluxes.
   # Not needed if in aquaplanet mode.
-  if ( (($moz_aero_data =~ /$TRUE/io) or ($cam3_aero_data =~ /$TRUE/io)) and !$aqua_mode ) {
+  if ( $moz_aero_data =~ /$TRUE/io and !$aqua_mode ) {
       # If user has not set aerodep_flx_file, then use defaults
       unless (defined $nl->get_value('aerodep_flx_file')) {
           my @settings = ('aerodep_flx_datapath', 'aerodep_flx_file', 'aerodep_flx_type',
@@ -1786,7 +1766,7 @@ if ( $prog_species ) {
       add_default($nl, 'ghg_chem', 'val'=>".true.");
       add_default($nl, 'bndtvg');
     }
-    if ( $prog_species =~ /DST/ )  {
+    if ( $prog_species =~ /DST/ and $soil_erod_atm =~ /$TRUE/)  {
       add_default($nl, 'soil_erod_file' );
     }
 
@@ -2058,10 +2038,13 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
 
 if ($chem =~ /geoschem/) {
 
-    my $val;
+    # Input directories
+    add_default($nl, 'geoschem_chem_inputs');
+    add_default($nl, 'geoschem_aeropt_inputs');
+    add_default($nl, 'geoschem_photol_inputs');
 
     # Species with fixed lower boundary
-    $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
+    my $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
            .",'HCFC22','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
 
     if ($chem_has_ocs) {
@@ -2076,9 +2059,11 @@ if ($chem =~ /geoschem/) {
         add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
     }
 
-    my @files;
     # Datasets
-    @files = ( 'soil_erod_file', 'flbc_file' );
+    my @files = ( 'flbc_file' );
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2117,11 +2102,14 @@ if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
     my @files;
     # Datasets
     if ($chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
-       @files = ( 'soil_erod_file', 'flbc_file',
+       @files = ( 'flbc_file',
                   'xs_coef_file','xs_short_file','xs_long_file', 'rsf_file' );
     } else {
-       @files = ( 'soil_erod_file', 'flbc_file',
+       @files = ( 'flbc_file',
                   'xs_coef_file','xs_short_file','xs_long_file', 'rsf_file', 'exo_coldens_file', 'sulf_file' );
+    }
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
     }
     foreach my $file (@files) {
         add_default($nl, $file);
@@ -2220,8 +2208,10 @@ if ($chem eq 'trop_mam3') {
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ( 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2306,14 +2296,8 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
      # for troposphere gas-phase chemistry
     if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/) {
         %species = (%species,
-                    'BENZENE_an_srf_file' => 'BENZENE',
-                    'BENZENE_bb_srf_file' => 'BENZENE',
                     'BIGALK_an_srf_file' => 'BIGALK',
                     'BIGALK_bb_srf_file' => 'BIGALK',
-                    'BIGENE_an_srf_file' => 'BIGENE',
-                    'BIGENE_bb_srf_file' => 'BIGENE',
-                    'C2H2_an_srf_file' => 'C2H2',
-                    'C2H2_bb_srf_file' => 'C2H2',
                     'C2H4_an_srf_file' => 'C2H4',
                     'C2H4_bb_srf_file' => 'C2H4',
                     'C2H4_ot_srf_file' => 'C2H4',
@@ -2330,8 +2314,6 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'C3H8_ot_srf_file' => 'C3H8',
                     'CH3CHO_an_srf_file' => 'CH3CHO',
                     'CH3CHO_bb_srf_file' => 'CH3CHO',
-                    'CH3CN_an_srf_file' => 'CH3CN',
-                    'CH3CN_bb_srf_file' => 'CH3CN',
                     'CH3COCH3_an_srf_file' => 'CH3COCH3',
                     'CH3COCH3_bb_srf_file' => 'CH3COCH3',
                     'CH3COCHO_bb_srf_file' => 'CH3COCHO',
@@ -2340,25 +2322,39 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'CH3OH_an_srf_file' => 'CH3OH',
                     'CH3OH_bb_srf_file' => 'CH3OH',
                     'GLYALD_bb_srf_file' => 'GLYALD',
+                    'ISOP_bb_srf_file' => 'ISOP',
+                    'NH3_an_srf_file' => 'NH3',
+                    'NH3_bb_srf_file' => 'NH3',
+                    'NH3_ot_srf_file' => 'NH3',
+                    'E90_srf_file' => 'E90' );
+        if ($chem !~ /_ts4/) {
+	    %species = (%species,
+                    'BENZENE_an_srf_file' => 'BENZENE',
+                    'BENZENE_bb_srf_file' => 'BENZENE',
+                    'BIGENE_an_srf_file' => 'BIGENE',
+                    'BIGENE_bb_srf_file' => 'BIGENE',
+                    'C2H2_an_srf_file' => 'C2H2',
+                    'C2H2_bb_srf_file' => 'C2H2',
+                    'CH3CN_an_srf_file' => 'CH3CN',
+                    'CH3CN_bb_srf_file' => 'CH3CN',
                     'HCN_an_srf_file' => 'HCN',
                     'HCN_bb_srf_file' => 'HCN',
                     'HCOOH_an_srf_file' => 'HCOOH',
                     'HCOOH_bb_srf_file' => 'HCOOH',
-                    'ISOP_bb_srf_file' => 'ISOP',
                     'MEK_an_srf_file' => 'MEK',
                     'MEK_bb_srf_file' => 'MEK',
-                    'NH3_an_srf_file' => 'NH3',
-                    'NH3_bb_srf_file' => 'NH3',
-                    'NH3_ot_srf_file' => 'NH3',
                     'TOLUENE_an_srf_file' => 'TOLUENE',
                     'TOLUENE_bb_srf_file' => 'TOLUENE',
                     'XYLENES_an_srf_file' => 'XYLENES',
-                    'XYLENES_bb_srf_file' => 'XYLENES',
-                    'E90_srf_file' => 'E90' );
+                    'XYLENES_bb_srf_file' => 'XYLENES' ) ;
+        }
         if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'APIN') ;
-        } else {
+        } elsif ($chem =~ /_ts4/) {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'TERP') ;
+	} else {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'MTERP' );
         }
@@ -2380,7 +2376,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'IVOC_bb_srf_file' => 'IVOCbb',
                     'SVOC_an_srf_file' => 'SVOCff',
                     'SVOC_bb_srf_file' => 'SVOCbb' );
-        } else {
+        } elsif ($chem !~ /_ts4/) {
             %species = (%species,
                     'IVOC_an_srf_file' => 'IVOC',
                     'IVOC_bb_srf_file' => 'IVOC',
@@ -2405,7 +2401,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4'or $chem eq 'ghg_mam4') {
+    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4' or  $chem =~ /_ts4/) {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
 	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
         my %soae_fctrs = ('BENZENE_an_srf_file' => '2.5592D0',
@@ -2510,7 +2506,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # MEGAN emissions
-    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode and !$scam){
+    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode){
         my $val = "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
                 . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
                 . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
@@ -2615,6 +2611,38 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
+    if ($chem =~ /trop_strat_mam5_ts4/) {
+        my $val = "'ISOP = isoprene',"
+                . "'TERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a +',"
+                . "' myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a +',"
+                . "' terpinene_g + terpinolene + phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone +',"
+                . "' jasmone + verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene +',"
+                . "' farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b +',"
+                . "' bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a +',"
+                . "' cubebene_a + cubebene_b + elemene_b + farnescene_b + germacrene_B + germacrene_D + gurjunene_b +',"
+                . "' humulene_a + humulene_g + isolongifolene + longifolene + longipinene + muurolene_a + muurolene_g +',"
+                . "' selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT +',"
+                . "' cedrol + decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane +',"
+                . "' hexanal + hexanol_1 + pentanal + heptanone', 'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone', 'CH3CHO = acetaldehyde', 'C2H5OH = ethanol',"
+                . "'CH2O = formaldehyde', 'CH3COOH = acetic_acid', 'CO = carbon_monoxide',"
+                . "'C2H6 = ethane', 'C2H4 = ethene', 'C3H8 = propane', 'C3H6 = propene',"
+                . "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
+                . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
+                . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
+                . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
+                . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene) + ',"
+                . "' 12.3942*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
+                . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b +',"
+                . "' germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene +',"
+                . "' longifolene + longipinene + muurolene_a + muurolene_g + selinene_b + selinene_d +',"
+                . "' nerolidol_c + nerolidol_t)'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
     if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
         my $val = "'ISOP = isoprene',"
                 . "'APIN = pinene_a + myrtenal',"
@@ -2687,8 +2715,10 @@ if (($chem eq 'trop_mam4') or ($chem eq 'waccm_sc_mam4') or ($chem eq 'ghg_mam4'
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2776,8 +2806,10 @@ if ($chem eq 'trop_mam7') {
     add_default($nl, 'flbc_list', 'val'=>"' '");
 
     # Datasets
-    my @files = ('soil_erod_file',
-                 'xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    my @files = ('xs_long_file', 'rsf_file', 'exo_coldens_file' );
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
+    }
     foreach my $file (@files) {
         add_default($nl, $file);
     }
@@ -2836,8 +2868,10 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
                  'depvel_lnd_file',
-                 'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file',
-                 'soil_erod_file' );
+                 'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file' );
+    if ($soil_erod_atm =~ /$TRUE/) {
+        @files = ( @files, 'soil_erod_file' );
+    }
 
     if (!$waccmx) { @files = (@files, 'tgcm_ubc_file', 'snoe_ubc_file' ); }
 
@@ -3082,6 +3116,7 @@ if ($waccmx) {
   add_default($nl,'ionos_xport_nsplit');
   add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
   add_default($nl,'oplus_ring_polar_filter');
+  add_default($nl,'rxn_rate_sums');
 }
 
 # Chemistry options
@@ -3148,9 +3183,10 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
 
 # Deep convection scheme
 add_default($nl, 'deep_scheme');
+my $deep_scheme = $nl->get_value('deep_scheme');
 
 # Aerosol convective processes
-if (($phys =~ /cam6/ or $phys =~ /cam7/) and $nl->get_value('deep_scheme') =~ /ZM/) {
+if (($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
@@ -3158,7 +3194,7 @@ if (($phys =~ /cam6/ or $phys =~ /cam7/) and $nl->get_value('deep_scheme') =~ /Z
 }
 
 # cam7 specific namelists
-if ($phys =~ /cam7/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+if ($phys =~ /cam7/ and $deep_scheme =~ /ZM/) {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
 } else {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
@@ -3674,19 +3710,15 @@ if ($cfg->get('microphys') eq 'rk') {
 }
 
 # Dust emissions tuning factor
-# If dust is prognostic ==> supply the tuning factor
-if ( length($nl->get_value('soil_erod_file'))>0 ) {
-    # check whether turbulent mountain stress parameterization is on
-    if ($nl->get_value('do_tms') =~ /$TRUE/io) {
-        add_default($nl, 'dust_emis_fact', 'tms'=>'1');
+# check whether turbulent mountain stress parameterization is on
+if ($nl->get_value('do_tms') =~ /$TRUE/io) {
+    add_default($nl, 'dust_emis_fact', 'tms'=>'1');
+} else {
+    if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
+        add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
     }
     else {
-        if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
-            add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
-        }
-        else {
-            add_default($nl, 'dust_emis_fact');
-        }
+        add_default($nl, 'dust_emis_fact');
     }
 }
 if (chem_has_species($cfg, 'NO')) {
@@ -3752,12 +3784,13 @@ if (!$simple_phys) {
     add_default($nl, 'gw_rdg_do_divstream'       , 'val'=>'.true.');
 }
 
+my $use_gw_convect_dp = '.false.';
 if ($waccm_phys or
     (!$simple_phys and $cfg->get('model_top') eq 'mt')) {
     # Spectral gravity waves are part of WACCM physics, and also drive the
     # QBO in the high vertical resolution configuration.
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    $use_gw_convect_dp = '.true.';
     my $hdepth_scaling = '0.25D0' ;
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
@@ -3779,12 +3812,16 @@ if ($waccm_phys or
 } elsif ($phys =~ /cam7/) {
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    $use_gw_convect_dp = '.true.';
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
-    add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
 }
+# Check if deep convection scheme used.  If not set use_gw_convect_dp=.false.
+if ($deep_scheme =~ /off/) {
+    $use_gw_convect_dp = '.false.';
+}
+add_default($nl, 'use_gw_convect_dp', 'val'=>$use_gw_convect_dp);
 
 # We need a lot of logic to use these below, so make flags for them.
 my $do_gw_oro        = ($nl->get_value('use_gw_oro')        =~ /$TRUE/io);
@@ -3799,10 +3836,6 @@ my $do_gw_rdg_resid  = ($nl->get_value('use_gw_rdg_resid')  =~ /$TRUE/io);
 
 my $do_divstream        = ($nl->get_value('gw_rdg_do_divstream')  =~ /$TRUE/io);
 
-if (!$simple_phys) {
-    # GW option used only for backwards compatibility with CAM3.
-    add_default($nl, 'fcrit2', 'val'=>'1.0');
-}
 # Mid-scale wavelength settings.
 if ($do_gw_front or $do_gw_convect_dp or $do_gw_convect_sh) {
     add_default($nl, 'pgwv');
@@ -4055,6 +4088,30 @@ if ($dyn eq 'sld') {
 # Single column model
 if ($cfg->get('scam')) {
     add_default($nl, 'iopfile');
+    add_default($nl, 'nhtfrq');
+    add_default($nl, 'mfilt');
+    add_default($nl, 'scm_use_obs_uv');
+    add_default($nl, 'scale_dry_air_mass');
+    add_default($nl, 'scm_relaxation');
+    add_default($nl, 'scm_relax_bot_p');
+    add_default($nl, 'scm_relax_top_p');
+    add_default($nl, 'scm_relax_linear');
+    add_default($nl, 'scm_relax_tau_bot_sec');
+    add_default($nl, 'scm_relax_tau_top_sec');
+    if ($chem =~ /_mam/) {
+	add_default($nl, 'scm_relax_fincl');
+    }
+    if ($scam_iop) {
+	add_default($nl, 'iopfile');
+    }
+    if ($scam_iop eq 'SAS') {
+	add_default($nl, 'use_gw_front');
+	add_default($nl, 'scm_backfill_iop_w_init');
+    }
+    if ($scam_iop eq 'twp06') {
+        add_default($nl, 'iradsw');
+        add_default($nl, 'iradlw');
+    }
 }
 
 # CAM generates IOP file for SCAM
@@ -4376,7 +4433,7 @@ my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl dust_emis_inparm);
 
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);

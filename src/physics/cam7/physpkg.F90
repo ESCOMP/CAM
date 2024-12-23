@@ -32,6 +32,7 @@ module physpkg
   use camsrfexch,      only: cam_export
 
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
+  use modal_aero_calcsize,    only: modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
   implicit none
@@ -93,6 +94,8 @@ module physpkg
   integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
   integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid
+  integer ::  psl_idx            = 0
+
 !=======================================================================
 contains
 !=======================================================================
@@ -761,7 +764,7 @@ contains
     use clubb_intr,         only: clubb_ini_cam
     use tropopause,         only: tropopause_init
     use solar_data,         only: solar_data_init
-    use dadadj_cam,         only: dadadj_init
+    use dadadj_cam,         only: dadadj_cam_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
@@ -887,7 +890,7 @@ contains
        endif
     endif
 
-    call cloud_diagnostics_init()
+    call cloud_diagnostics_init(pbuf2d)
 
     call radheat_init(pref_mid)
 
@@ -920,7 +923,7 @@ contains
     call metdata_phys_init()
 #endif
     call tropopause_init()
-    call dadadj_init()
+    call dadadj_cam_init()
 
     prec_dp_idx  = pbuf_get_index('PREC_DP')
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
@@ -1036,6 +1039,8 @@ contains
     dtcore_idx = pbuf_get_index('DTCORE')
     dqcore_idx = pbuf_get_index('DQCORE')
 
+    psl_idx = pbuf_get_index('PSL')
+
   end subroutine phys_init
 
   !
@@ -1054,9 +1059,7 @@ contains
     use check_energy,   only: check_energy_gmean
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
-#if (defined BFB_CAM_SCAM_IOP )
-    use cam_history,    only: outfld
-#endif
+    use cam_history,    only: outfld, write_camiop
     use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1124,11 +1127,11 @@ contains
     !-----------------------------------------------------------------------
     !
 
-#if (defined BFB_CAM_SCAM_IOP )
-    do c=begchunk, endchunk
-      call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
-    end do
-#endif
+    if (write_camiop) then
+       do c=begchunk, endchunk
+          call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
+       end do
+    end if
 
     call t_barrierf('sync_bc_physics', mpicom)
     call t_startf ('bc_physics')
@@ -1400,6 +1403,7 @@ contains
     use tropopause,         only: tropopause_output
     use cam_diagnostics,    only: diag_phys_writeout, diag_conv, diag_clip_tend_writeout
     use aero_model,         only: aero_model_wetdep
+    use aero_wetdep_cam,    only: wetdep_lq
     use physics_buffer,     only: col_type_subcol
     use check_energy,       only: check_energy_timestep_init
     use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend
@@ -1921,10 +1925,22 @@ contains
        !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
-       call t_startf('bc_aerosols')
-       if (clim_modal_aero .and. .not. prog_modal_aero) then
-          call modal_aero_calcsize_diag(state, pbuf)
-          call modal_aero_wateruptake_dr(state, pbuf)
+       call t_startf('aerosol_wet_processes')
+       if (clim_modal_aero) then
+          if (prog_modal_aero) then
+             call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
+             ! Do calculations of mode radius and water uptake if:
+             ! 1) modal aerosols are affecting the climate, or
+             ! 2) prognostic modal aerosols are enabled
+             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf)
+             ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
+             ! modes is done in conjunction with the dry radius calculation
+             call modal_aero_wateruptake_dr(state, pbuf)
+             call physics_update(state, ptend, ztodt, tend)
+          else
+             call modal_aero_calcsize_diag(state, pbuf)
+             call modal_aero_wateruptake_dr(state, pbuf)
+          endif
        endif
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
@@ -1966,7 +1982,7 @@ contains
        ! check tracer integrals
        call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
 
-       call t_stopf('bc_aerosols')
+       call t_stopf('aerosol_wet_processes')
 
    endif
 
@@ -2039,7 +2055,7 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call aoa_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)
+    call aoa_tracers_timestep_tend(state, ptend, ztodt)
     if ( (trim(cam_take_snapshot_after) == "aoa_tracers_timestep_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
@@ -2491,7 +2507,9 @@ contains
     use physics_types,   only: physics_update, &
                                physics_state_check, &
                                dyn_te_idx
-    use cam_diagnostics, only: diag_conv_tend_ini, diag_conv, diag_export, diag_state_b4_phys_write
+    use physconst,       only: rair, gravit
+    use cam_diagnostics, only: diag_conv_tend_ini, diag_export, diag_state_b4_phys_write
+    use cam_diagnostic_utils, only: cpslec
     use cam_history,     only: outfld
     use constituents,    only: qmin
     use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
@@ -2599,6 +2617,8 @@ contains
     real(r8) :: flx_heat(pcols)
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
+
+    real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
     logical   :: lq(pcnst)
 
@@ -2877,6 +2897,8 @@ contains
 
     ! Save atmospheric fields to force surface models
     call t_startf('cam_export')
+    call pbuf_get_field(pbuf, psl_idx, psl)
+    call cpslec(ncol, state%pmid, state%phis, state%ps, state%t, psl, gravit, rair)
     call cam_export (state,cam_out,pbuf)
     call t_stopf('cam_export')
 

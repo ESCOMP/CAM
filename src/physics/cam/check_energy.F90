@@ -31,6 +31,8 @@ module check_energy
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
   use cam_logfile,     only: iulog
+  use scamMod,         only: single_column, use_camiop, heat_glob_scm
+  use cam_history,     only: outfld, write_camiop
 
   implicit none
   private
@@ -260,7 +262,7 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),&
-         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
+         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol))
     !
     ! Dynamical core total energy
     !
@@ -281,7 +283,7 @@ end subroutine check_energy_get_integrals
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
-           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol))
     else if (vc_dycore == vc_dry_pressure) then
       !
       ! SE specific hydrostatic energy (enthalpy)
@@ -295,16 +297,15 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
            vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
-           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol))
     else
       !
       ! dycore energy is the same as physics
       !
       state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
-      state%tw_ini(1:ncol,dyn_te_idx) = state%tw_ini(1:ncol,phys_te_idx)
     end if
     state%te_cur(:ncol,:) = state%te_ini(:ncol,:)
-    state%tw_cur(:ncol,:) = state%tw_ini(:ncol,:)
+    state%tw_cur(:ncol)   = state%tw_ini(:ncol)
 
 ! zero cummulative boundary fluxes
     tend%te_tnd(:ncol) = 0._r8
@@ -402,7 +403,7 @@ end subroutine check_energy_get_integrals
     do i = 1, ncol
        ! change in static energy and total water
        te_dif(i) = te(i) - state%te_cur(i,phys_te_idx)
-       tw_dif(i) = tw(i) - state%tw_cur(i,phys_te_idx)
+       tw_dif(i) = tw(i) - state%tw_cur(i)
 
        ! expected tendencies from boundary fluxes for last process
        te_tnd(i) = flx_vap(i)*(latvap+latice) - (flx_cnd(i) - flx_ice(i))*1000._r8*latice + flx_sen(i)
@@ -414,7 +415,7 @@ end subroutine check_energy_get_integrals
 
        ! expected new values from previous state plus boundary fluxes
        te_xpd(i) = state%te_cur(i,phys_te_idx) + te_tnd(i)*ztodt
-       tw_xpd(i) = state%tw_cur(i,phys_te_idx) + tw_tnd(i)*ztodt
+       tw_xpd(i) = state%tw_cur(i)             + tw_tnd(i)*ztodt
 
        ! relative error, expected value - input state / previous state
        te_rer(i) = (te_xpd(i) - te(i)) / state%te_cur(i,phys_te_idx)
@@ -422,8 +423,8 @@ end subroutine check_energy_get_integrals
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
-    where (state%tw_cur(:ncol,phys_te_idx) > 0._r8)
-       tw_rer(:ncol) = (tw_xpd(:ncol) - tw(:ncol)) / state%tw_cur(:ncol,1)
+    where (state%tw_cur(:ncol) > 0._r8)
+       tw_rer(:ncol) = (tw_xpd(:ncol) - tw(:ncol)) / state%tw_cur(:ncol)
     end where
 
     ! error checking
@@ -455,7 +456,7 @@ end subroutine check_energy_get_integrals
 
     do i = 1, ncol
       state%te_cur(i,phys_te_idx) = te(i)
-      state%tw_cur(i,phys_te_idx) = tw(i)
+      state%tw_cur(i)             = tw(i)
     end do
 
     !
@@ -478,29 +479,29 @@ end subroutine check_energy_get_integrals
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol))
     else if (vc_dycore == vc_dry_pressure) then
       !
       ! SE specific hydrostatic energy
       !
       if (state%psetcols == pcols) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
+        scaling(:ncol,:)  = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair
+        scaling(:ncol,:)  = 1.0_r8
       endif
       !
       ! enthalpy scaling for energy consistency
       !
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       temp(1:ncol,:)   = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol))
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
-      state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
     end if
   end subroutine check_energy_chng
 
@@ -509,6 +510,7 @@ end subroutine check_energy_get_integrals
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physics_types,   only: dyn_te_idx
+    use cam_history,     only: write_camiop
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -587,8 +589,11 @@ end subroutine check_energy_get_integrals
 !---------------------------Local storage-------------------------------
     integer  :: i                        ! column
     integer  :: ncol                     ! number of atmospheric columns in chunk
+    integer  :: lchnk                    ! chunk number
+    real(r8) :: heat_out(pcols)
 !-----------------------------------------------------------------------
-    ncol = state%ncol
+    lchnk = state%lchnk
+    ncol  = state%ncol
 
     call physics_ptend_init(ptend, state%psetcols, 'chkenergyfix', ls=.true.)
 
@@ -596,8 +601,21 @@ end subroutine check_energy_get_integrals
     ! disable the energy fix for offline driver
     heat_glob = 0._r8
 #endif
-! add (-) global mean total energy difference as heating
+
+    ! Special handling of energy fix for SCAM - supplied via CAMIOP - zero's for normal IOPs
+    if (single_column) then
+       if ( use_camiop) then
+          heat_glob = heat_glob_scm(1)
+       else
+          heat_glob = 0._r8
+       endif
+    endif
     ptend%s(:ncol,:pver) = heat_glob
+
+    if (nstep > 0 .and. write_camiop) then
+      heat_out(:ncol) = heat_glob
+      call outfld('heat_glob',  heat_out(:ncol), pcols, lchnk)
+    endif
 
 ! compute effective sensible heat flux
     do i = 1, ncol
@@ -942,10 +960,10 @@ end subroutine check_energy_get_integrals
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    
+
     mr_cnst = rga*rearth**3
     mo_cnst = rga*omega*rearth**4
-    
+
     mr = 0.0_r8
     mo = 0.0_r8
     do k = 1, pver
@@ -953,12 +971,12 @@ end subroutine check_energy_get_integrals
           cos_lat = cos(state%lat(i))
           mr_tmp = mr_cnst*state%u(i,k)*state%pdel(i,k)*cos_lat
           mo_tmp = mo_cnst*state%pdel(i,k)*cos_lat**2
-          
+
           mr(i) = mr(i) + mr_tmp
           mo(i) = mo(i) + mo_tmp
        end do
     end do
-    
+
     call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
     call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 

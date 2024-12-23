@@ -1,0 +1,9 @@
+dust_emis_method = 'Leung_2023'
+
+fincl2 = 'dst_a1SF', 'dst_a2SF', 'dst_a3SF'
+
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+write_nstep0=.true.
+inithist='ENDOFRUN'

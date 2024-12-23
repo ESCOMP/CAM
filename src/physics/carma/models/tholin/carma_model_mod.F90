@@ -293,7 +293,6 @@ contains
     use time_manager,  only: get_curr_date, get_perp_date, get_curr_calday, &
                              is_perpetual, is_first_step
     use camsrfexch,    only: cam_in_t
-    use tropopause,    only: tropopause_find
     use physconst,     only: gravit
     
     implicit none

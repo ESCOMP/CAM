@@ -741,7 +741,7 @@ subroutine radiation_tend( &
                                  num_rrtmg_levs
 
    use interpolate_data,   only: vertinterp
-   use tropopause,         only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,         only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
 
    use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps
 
@@ -958,7 +958,11 @@ subroutine radiation_tend( &
 
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-      call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      p_trop(:) = 0._r8
+      !REMOVECAM_END
+      call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
 
    ! Get time of next radiation calculation - albedos will need to be
