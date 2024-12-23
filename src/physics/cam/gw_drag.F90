@@ -812,6 +812,12 @@ subroutine gw_init()
           'Ridge based momentum flux profile')
      call register_vector_field('TAUARDGBETAX','TAUARDGBETAY')
 
+     call addfld('TAURESIDBETAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('TAURESIDBETAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call register_vector_field('TAURESIDBETAX','TAURESIDBETAY')
+
      if (history_waccm) then
         call add_default('TAUARDGBETAX', 1, ' ')
         call add_default('TAUARDGBETAY  ', 1, ' ')
@@ -2672,6 +2678,9 @@ subroutine gw_rdg_calc( &
 
    end do ! end of loop over multiple ridges
 
+   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
+   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
+
    if (luse_gw_rdg_resid == .true.) then
    ! Add additional GW from residual variance. Assumed isotropic
       !kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
@@ -2720,6 +2729,9 @@ subroutine gw_rdg_calc( &
       call outfld('TAUDIAG_RESID', tau_diag,  ncol, lchnk)
       call outfld('TAUORO_RESID', tauoro ,  ncol, lchnk)
       call outfld('TAURESID'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'X', taurx,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'Y', taury,  ncol, lchnk)
+
       call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
       call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
       call outfld('SRC_LEVEL_RESID'//trim(type),      1._r8*src_level ,         ncol, lchnk)
@@ -2731,8 +2743,6 @@ subroutine gw_rdg_calc( &
           ptend%v(:ncol,:), ptend%s(:ncol,:), de)
    flx_heat(:ncol) = de
 
-   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
-   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
 
    if (trim(type) == 'BETA') then
       fname(1) = 'TAUGWX'
