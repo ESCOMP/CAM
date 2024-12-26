@@ -1906,13 +1906,6 @@ contains
       call outfld('a2x_DSTDRY4',  cam_out%dstdry4,  pcols, lchnk)
     end if
 
-    if (associated(cam_out%nhx_nitrogen_flx)) then
-       call outfld('a2x_NHXDEP', cam_out%nhx_nitrogen_flx, pcols, lchnk)
-    end if
-    if (associated(cam_out%noy_nitrogen_flx)) then
-       call outfld('a2x_NOYDEP', cam_out%noy_nitrogen_flx, pcols, lchnk)
-    end if
-
   end subroutine diag_export
 
 !#######################################################################
