@@ -923,7 +923,6 @@ contains
     integer           :: ncols      ! Number of columns
     integer           :: nstep
     logical           :: exists
-    real(r8)          :: scale_ndep
     ! 2d pointers
     real(r8), pointer :: fldptr_ndep(:,:)
     real(r8), pointer :: fldptr_bcph(:,:)  , fldptr_ocph(:,:)
@@ -1121,6 +1120,7 @@ contains
        end if
 
        if (ndep_stream_active.or.chem_has_ndep_flx) then
+
           ! Nitrogen dep fluxes are  obtained from the ndep input stream if input data is available
           ! otherwise computed by chemistry
           if (ndep_stream_active) then
@@ -1128,23 +1128,14 @@ contains
              ! get ndep fluxes from the stream
              call stream_ndep_interp(cam_out, rc)
              if (ChkErr(rc,__LINE__,u_FILE_u)) return
-             ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
-             ! expects units of kgN/m2/sec
-             scale_ndep = .001_r8
-
-          else if (chem_has_ndep_flx) then
-
-             ! Assume chemistry computes ndep fluxes, then its in units of kgN/m2/s - and the mediator expects
-             ! units of kgN/m2/sec, so the following conversion needs to happen
-             scale_ndep = 1._r8
 
           end if
 
           g = 1
           do c = begchunk,endchunk
              do i = 1,get_ncols_p(c)
-                fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
-                fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+                fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
+                fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
                 g = g + 1
              end do
           end do

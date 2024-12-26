@@ -246,6 +246,11 @@ contains
     integer :: mcdate  ! Current model date (yyyymmdd)
     real(r8), pointer :: dataptr1d_nhx(:)
     real(r8), pointer :: dataptr1d_noy(:)
+
+    ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
+    ! expects units of kgN/m2/sec
+    real(r8), parameter :: scale_ndep = .001_r8
+
     !-----------------------------------------------------------------------
 
     ! Advance sdat stream
@@ -269,8 +274,8 @@ contains
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
-          cam_out(c)%nhx_nitrogen_flx(i) = dataptr1d_nhx(g)
-          cam_out(c)%noy_nitrogen_flx(i) = dataptr1d_noy(g)
+          cam_out(c)%nhx_nitrogen_flx(i) = dataptr1d_nhx(g) * scale_ndep
+          cam_out(c)%noy_nitrogen_flx(i) = dataptr1d_noy(g) * scale_ndep
           g = g + 1
        end do
     end do
