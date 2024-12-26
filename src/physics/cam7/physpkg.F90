@@ -2470,6 +2470,14 @@ contains
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
+    ! output these here -- after updates by chem_timestep_tend or export_fields within the current time step
+    if (associated(cam_out%nhx_nitrogen_flx)) then
+       call outfld('a2x_NHXDEP', cam_out%nhx_nitrogen_flx, pcols, lchnk)
+    end if
+    if (associated(cam_out%noy_nitrogen_flx)) then
+       call outfld('a2x_NOYDEP', cam_out%noy_nitrogen_flx, pcols, lchnk)
+    end if
+
   end subroutine tphysac
 
   subroutine tphysbc (ztodt, state,  &
