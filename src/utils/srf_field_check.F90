@@ -17,10 +17,6 @@ module srf_field_check
   logical, public, protected :: active_Fall_fco2_lnd = .false.
   logical, public, protected :: active_Faoo_fco2_ocn = .false.
 
-  ! output from atm
-  logical, public, protected :: active_Faxa_nhx = .false.
-  logical, public, protected :: active_Faxa_noy = .false.
-
   public :: set_active_Sl_ram1
   public :: set_active_Sl_fv
   public :: set_active_Sl_soilw
