@@ -298,7 +298,7 @@ module cam_history_support
     character(len=28)     :: gridname = ''
     integer               :: grid_id  = -1
     ! gridtype = 1      equally spaced, including poles (FV scalars output grid)
-    ! gridtype = 2      Gauss grid (CAM Eulerian)
+    ! gridtype = 2      Gauss grid (not implemented)
     ! gridtype = 3      equally spaced, no poles (FV staggered velocity)
     integer               :: interp_gridtype = interp_gridtype_equal_poles
     ! interpolate_type = 0: native high order interpolation
