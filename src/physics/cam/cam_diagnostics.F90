@@ -221,9 +221,7 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if (.not.dycore_is('EUL')) then
-      call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
-    end if
+    call addfld ('TFIX',    horiz_only,  'A', 'K/s',          'T fixer (T equivalent of Energy correction)')
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
 
     ! outfld calls in diag_phys_tend_writeout
@@ -365,9 +363,7 @@ contains
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
       call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if (.not.dycore_is('EUL')) then
-        call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
-      end if
+      call add_default ('TFIX    '  , history_budget_histfile_num, ' ')
     end if
 
     if (history_waccm) then
@@ -2057,14 +2053,10 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (.not.dycore_is('EUL')) then
-      call check_energy_get_integrals( heat_glob_out=heat_glob )
-      ftem2(:ncol)  = heat_glob/cpair
-      call outfld('TFIX', ftem2, pcols, lchnk   )
-      ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver) - heat_glob/cpair
-    else
-      ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver)
-    end if
+    call check_energy_get_integrals( heat_glob_out=heat_glob )
+    ftem2(:ncol)  = heat_glob/cpair
+    call outfld('TFIX', ftem2, pcols, lchnk   )
+    ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver) - heat_glob/cpair
     call outfld('PTTEND',ftem3, pcols, lchnk )
     ftem3(:ncol,:pver)  = tend%dudt(:ncol,:pver)
     call outfld('UTEND_PHYSTOT',ftem3, pcols, lchnk )

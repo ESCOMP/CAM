@@ -132,7 +132,7 @@ contains
            latidx, lonidx)
       if (present(dimnames)) then
         if (trim(dimnames(1)) == 'lon') then
-          start(1) = lonidx ! First dim always lon for Eulerian dycore
+          start(1) = lonidx
           ! This could be generalized -- for now, stick with single column
           kount(1) = 1
         else
