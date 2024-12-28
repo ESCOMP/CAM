@@ -1109,6 +1109,8 @@ contains
     call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+    fldptr_ndep(:,:) = 0._r8
+
     if (.not. (simple_phys .or. aqua_planet)) then
 
        ! The ndep_stream_nl namelist group is read in stream_ndep_init.  This sets whether
@@ -1139,10 +1141,6 @@ contains
                 g = g + 1
              end do
           end do
-
-       else
-
-          fldptr_ndep(:,:) = 0._r8
 
        end if
 
