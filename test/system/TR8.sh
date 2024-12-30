@@ -96,8 +96,6 @@ fi
 #Check other
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/advection
-rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/control
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/utils
@@ -105,8 +103,6 @@ rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/advection
-rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/control
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/utils
