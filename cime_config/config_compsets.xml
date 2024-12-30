@@ -13,8 +13,8 @@
     TIME_ATM[%phys]_LND[%phys]_ICE[%phys]_OCN[%phys]_ROF[%phys]_GLC[%phys]_WAV[%phys][_BGC%phys]
     Where for the CAM specific compsets below the following is supported
     TIME = Time period (e.g. 2000, HIST, RCP8...)
-    ATM  = [CAM40, CAM50, CAM60]
-    LND  = [CLM45, CLM50, SLND]
+    ATM  = [CAM40, CAM50, CAM60, CAM70]
+    LND  = [CLM45, CLM50, CLM60, SLND]
     ICE  = [CICE, DICE, SICE]
     OCN  = [DOCN, ,AQUAP, SOCN]
     ROF  = [RTM, SROF]
@@ -35,15 +35,6 @@
     Each compset node can also have the following attributes
       - grid  (optional regular expression match for grid to work with the compset)
   </help>
-
-  <!-- ****************************** -->
-  <!-- CAM nuopc testing -->
-  <!-- ****************************** -->
-
-  <compset>
-    <alias>F2000Nuopc</alias>
-    <lname>2000_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset>
 
   <!-- ****************************** -->
   <!-- CAM science supported compsets -->
@@ -275,16 +266,6 @@
   </compset>
 
   <compset>
-    <alias>QSPCAMS</alias>
-    <lname>2000_CAM%SPCAMS_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QPSPCAMM</alias>
-    <lname>2000_CAM%SPCAMM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPC6</alias>
     <lname>2000_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
@@ -351,16 +332,6 @@
   </compset>
 
   <compset>
-    <alias>FSPCAMM</alias>
-    <lname>2000_CAM%SPCAMM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FSPCAMS</alias>
-    <lname>2000_CAM%SPCAMS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>FHIST_BDRD</alias>
     <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_BGC%BDRD</lname>
   </compset>
@@ -389,19 +360,6 @@
   <!-- ****************************** -->
   <!-- CAM untested compsets -->
   <!-- ****************************** -->
-
-  <!-- spcam untested compsets -->
-
-  <compset>
-    <alias>FSPCAMCLBS</alias>
-    <lname>2000_CAM%SPCAMCLBS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FSPCAMCLBM</alias>
-    <lname>2000_CAM%SPCAMCLBM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
 
   <!-- cam-chem untested compsets -->
 
@@ -775,76 +733,6 @@
 	<value  compset="%NUDG">GREGORIAN</value>
  	<value  compset="HIST_CAM\d0%WX">GREGORIAN</value>
      </values>
-    </entry>
-
-    <entry id="NTHRDS_ATM">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_CPL">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ESP">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_GLC">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ICE">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_LND">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_OCN">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ROF">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_WAV">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ESP">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
     </entry>
 
   <!-- single column compset must have pts_mode set to true -->
