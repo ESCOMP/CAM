@@ -151,7 +151,7 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.55
+fxtag = cime6.1.56
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
