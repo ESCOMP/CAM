@@ -31,7 +31,7 @@ module clubb_intr
 
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, & 
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
                                  hm_metadata_type, sclr_idx_type
 
@@ -52,7 +52,7 @@ module clubb_intr
                                 stats_sfc(pcols)        ! stats_sfc
   type (hm_metadata_type) :: &
     hm_metadata
-                                
+
   type (stats_metadata_type) :: &
     stats_metadata
 
@@ -60,8 +60,8 @@ module clubb_intr
     sclr_idx
 
   integer :: &
-    nzm_clubb, &
-    nzt_clubb
+    nzm_clubb, &  !Number of vertical levels used by CLUBB momentum variables
+    nzt_clubb     !Number of vertical levels used by CLUBB thermodynamic variables
 #endif
 
   private
@@ -99,7 +99,7 @@ module clubb_intr
 
   ! These are zero by default, but will be set by SILHS before they are used by subcolumns
   integer :: &
-      hydromet_dim = 0, & 
+      hydromet_dim = 0, &
       pdf_dim      = 0
 
 
@@ -121,7 +121,7 @@ module clubb_intr
     hm_metadata
 #endif
 #endif
-      
+
   ! ------------ !
   ! Private data !
   ! ------------ !
@@ -344,7 +344,7 @@ module clubb_intr
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
-                                          ! eliminates spurious drying tendencies at model top  
+                                          ! eliminates spurious drying tendencies at model top
     clubb_l_host_applies_sfc_fluxes       ! Whether the host model applies the surface fluxes
 
   logical :: &
@@ -353,7 +353,7 @@ module clubb_intr
 !  Constant parameters
   logical, parameter, private :: &
     l_implemented    = .true.            ! Implemented in a host model (always true)
-    
+
   logical, parameter, private :: &
     apply_to_heat    = .false.           ! Apply WACCM energy fixer to heat or not (.true. = yes (duh))
 
@@ -1740,7 +1740,7 @@ end subroutine clubb_init_cnst
     clubb_params_single_col(iwpxp_Ri_exp) = clubb_wpxp_Ri_exp
     clubb_params_single_col(iz_displace) = clubb_z_displace
 
-    ! Override clubb default 
+    ! Override clubb default
     if ( trim(subcol_scheme) == 'SILHS' ) then
       clubb_config_flags%saturation_formula = saturation_flatau
     else
@@ -1749,7 +1749,7 @@ end subroutine clubb_init_cnst
 
     ! Define model constant parameters
     call setup_parameters_model_api( theta0, ts_nudge, clubb_params_single_col(iSkw_max_mag) )
-   
+
     !  Set up CLUBB core.  Note that some of these inputs are overwritten
     !  when clubb_tend_cam is called.  The reason is that heights can change
     !  at each time step, which is why dummy arrays are read in here for heights
@@ -1892,7 +1892,7 @@ end subroutine clubb_init_cnst
     dum3 = 300._r8
 
     if (stats_metadata%l_stats) then
-      
+
       call stats_init_clubb( .true., dum1, dum2, &
                              nzm_clubb, nzm_clubb, nzm_clubb, dum3, &
                              stats_zt(:), stats_zm(:), stats_sfc(:), &
@@ -2591,7 +2591,7 @@ end subroutine clubb_init_cnst
       dpdlfice, &
       dpdlft, &
       detnliquid
-    
+
     real(r8), dimension(pcols,pverp) :: &
       wprcp_clubb, &
       wpthvp_clubb
@@ -2614,7 +2614,7 @@ end subroutine clubb_init_cnst
       sclr, &
       edsclr, &
       n
- 
+
 #endif
 
   call t_startf('clubb_tend_cam')
@@ -2763,7 +2763,7 @@ end subroutine clubb_init_cnst
     if (clubb_do_liqsupersat) then
       call pbuf_get_field(pbuf, npccn_idx, npccn)
     endif
-    
+
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for
     !  variable mesh grids and lat-lon grids
@@ -2865,7 +2865,7 @@ end subroutine clubb_init_cnst
     !$acc              state1, state1%q, state1%u, state1%v, state1%t, state1%pmid, state1%s, state1%pint, &
     !$acc              state1%zm, state1%zi, state1%pdeldry, state1%pdel, state1%omega, state1%phis, &
     !$acc              cam_in, cam_in%shf, cam_in%wsx, cam_in%wsy, cam_in%cflx, &
-    !$acc              rrho, prer_evap, rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) & 
+    !$acc              rrho, prer_evap, rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) &
     !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
     !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
     !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
@@ -2889,7 +2889,7 @@ end subroutine clubb_init_cnst
     !$acc              wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
     !$acc              rtpthlp_forcing, wm_zm, wm_zt, rho_zm, rho_zt, rho_ds_zm, rho_ds_zt, &
     !$acc              invrs_rho_ds_zm, invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, &
-    !$acc              radf, wpthlp_sfc, clubb_params, sfc_elevation, wprtp_sfc, upwp_sfc, vpwp_sfc, & 
+    !$acc              radf, wpthlp_sfc, clubb_params, sfc_elevation, wprtp_sfc, upwp_sfc, vpwp_sfc, &
     !$acc              rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, p_in_Pa, exner, um_pert_inout, &
     !$acc              inv_exner_clubb_surf, thlprcp_out, zi_g, zt_g, qrl_clubb, &
     !$acc              pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, pdf_zm_mixt_frac, &
@@ -3001,7 +3001,7 @@ end subroutine clubb_init_cnst
         vm_pert_inout(i,k)   = 0.0_r8
         upwp_pert_inout(i,k) = 0.0_r8
         vpwp_pert_inout(i,k) = 0.0_r8
-        
+
         !  Initialize these to prevent crashing behavior
         wprcp_out(i,k)        = 0._r8
         rcm_in_layer_out(i,k) = 0._r8
@@ -3040,7 +3040,7 @@ end subroutine clubb_init_cnst
           end do
         end do
       end do
-      
+
       !$acc parallel loop gang vector collapse(2) default(present)
       do sclr = 1, sclr_dim
         do i=1, ncol
@@ -3126,7 +3126,7 @@ end subroutine clubb_init_cnst
           s_awv_output(i,k)        = 0._r8
           mf_thlflx_output(i,k)    = 0._r8
           mf_qtflx_output(i,k)     = 0._r8
-        end do 
+        end do
       end do
     end if
 
@@ -3254,7 +3254,7 @@ end subroutine clubb_init_cnst
         !  treatment with CLUBB code, anytime exner is needed to treat CLUBB variables
         !  (such as thlm), use "inv_exner_clubb" otherwise use the exner in state
         inv_exner_clubb(i,k) = 1._r8 / ( ( state1%pmid(i,k) / p0_clubb )**( rairv(i,k,lchnk) / cpairv(i,k,lchnk) ) )
-        
+
         !  Compute virtual potential temperature, which is needed for CLUBB
         thv(i,k) = state1%t(i,k) * inv_exner_clubb(i,k) &
                    * ( 1._r8 + zvir * state1%q(i,k,ixq) - state1%q(i,k,ixcldliq) )
@@ -3272,7 +3272,7 @@ end subroutine clubb_init_cnst
 
       enddo
     enddo
-  
+
     !$acc parallel loop gang vector default(present)
     do i = 1, ncol
       rtm(i,pverp)  = rtm(i,pver)
@@ -3409,7 +3409,7 @@ end subroutine clubb_init_cnst
     call t_stopf('clubb_tend_cam:ACCR')
     call t_startf('clubb_tend_cam:NAR')
     !$acc update host( zi_g, zt_g, clubb_params, sfc_elevation )
-    
+
     call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,      & ! intent(in)
                          grid_type, zi_g(:,2), zi_g(:,1), zi_g(:,nzm_clubb), & ! intent(in)
                          zi_g, zt_g,                                      & ! intent(in)
@@ -3512,14 +3512,14 @@ end subroutine clubb_init_cnst
       end do
 
     endif
-    
+
     call t_startf('clubb_tend_cam:flip-index')
 
     !  Need to flip arrays around for CLUBB core
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
       do i = 1, ncol
-        
+
         um_in(i,k)      = um(i,pverp-k+1)
         vm_in(i,k)      = vm(i,pverp-k+1)
         upwp_in(i,k)    = upwp(i,pverp-k+1)
@@ -3866,7 +3866,7 @@ end subroutine clubb_init_cnst
         call t_stopf('clubb_tend_cam:do_cldcool')
 
       end if
- 
+
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
       if (stats_metadata%l_stats) then
@@ -4035,7 +4035,7 @@ end subroutine clubb_init_cnst
     end do
 
     call t_stopf('clubb_tend_cam:flip-index')
-    
+
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, pverp
       do i=1, ncol
@@ -4190,7 +4190,7 @@ end subroutine clubb_init_cnst
       end do
 
     endif
-    
+
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, pverp
       do i=1, ncol
@@ -4327,7 +4327,7 @@ end subroutine clubb_init_cnst
         end if
       end if
     end do
-    
+
     rvmtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
     rcmtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
     rimtend_clubb(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
@@ -5147,7 +5147,7 @@ end function diag_ustar
 
     !  Set stats_variables variables with inputs from calling subroutine
     stats_metadata%l_stats = l_stats_in
-    
+
     stats_metadata%stats_tsamp = stats_tsamp_in
     stats_metadata%stats_tout  = stats_tout_in
 
