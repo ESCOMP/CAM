@@ -112,7 +112,7 @@ subroutine ndrop_bam_init
       if (trim(aername(iaer)) == 'SULFATE') idxsul   = iaer
 
       ! aerosol number concentration
-      call addfld(trim(aername(iaer))//'_m3', (/ 'lev' /), 'A', 'm-3', 'aerosol number concentration')
+      call addfld(trim(aername(iaer))//'_m3', (/ 'lev' /), 'A', 'm-3', 'aerosol number concentration', sampled_on_subcycle=.true.)
 
    end do
 
@@ -129,12 +129,12 @@ subroutine ndrop_bam_init
       end if
    end if
 
-   call addfld ('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%')
-   call addfld ('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%')
-   call addfld ('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%')
-   call addfld ('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%')
-   call addfld ('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%')
-   call addfld ('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%')
+   call addfld ('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
+   call addfld ('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
+   call addfld ('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
+   call addfld ('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
+   call addfld ('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
+   call addfld ('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
 
    if (history_amwg) then
       call add_default('CCN3', 1, ' ')
