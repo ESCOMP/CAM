@@ -877,6 +877,9 @@ end subroutine check_energy_readnl
     real(r8)    :: heat_out(pcols)
     character(len=64) :: dummy_scheme_name  ! dummy scheme name for CCPP-ized scheme
 
+    integer            :: errflg
+    character(len=512) :: errmsg
+
     lchnk = state%lchnk
     ncol  = state%ncol
 
@@ -904,14 +907,16 @@ end subroutine check_energy_readnl
     ! Call the CCPP-ized subroutine (for non-SCAM)
     ! to compute the effective sensible heat flux and save to ptend%s
     call check_energy_fix_run( &
-        ncol      = ncol, &
-        pver      = pver, &
-        pint      = state%pint(:ncol,:), &
-        gravit    = gravit, &
-        heat_glob = heat_glob, &
-        ptend_s   = ptend%s(:ncol,:), &
-        eshflx    = eshflx(:ncol), &
-        scheme_name = dummy_scheme_name &
+        ncol        = ncol, &
+        pver        = pver, &
+        pint        = state%pint(:ncol,:), &
+        gravit      = gravit, &
+        heat_glob   = heat_glob, &
+        ptend_s     = ptend%s(:ncol,:), &
+        eshflx      = eshflx(:ncol), &
+        scheme_name = dummy_scheme_name, &
+        errmsg      = errmsg, &
+        errflg      = errflg  &
     )
 
   end subroutine check_energy_cam_fix
