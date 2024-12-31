@@ -81,7 +81,7 @@ integer :: npbuf_var
 integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
-type (snapshot_type)    ::  state_snapshot(29)
+type (snapshot_type)    ::  state_snapshot(30)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
@@ -282,6 +282,9 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_afte
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_cur_dyn',  'state_te_cur_dyn',   'unset',            horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'air_composition_cp_or_cv_dycore',  'cp_or_cv_dycore',   'J kg-1 K-1',  'lev')
 
 end subroutine cam_state_snapshot_init
 
@@ -741,6 +744,7 @@ end subroutine snapshot_addfld
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
    use physics_types,    only: phys_te_idx, dyn_te_idx
+   use air_composition,  only: cp_or_cv_dycore
 
    integer,              intent(in)  :: lchnk
    integer,              intent(in)  :: file_num
@@ -842,6 +846,11 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
       case ('state%te_cur_dyn')
          call outfld(state_snapshot(i)%standard_name, state%te_cur(:, dyn_te_idx), pcols, lchnk)
+
+      case ('air_composition_cp_or_cv_dycore')
+         ! this field is not part of physics state (it is in air_composition)
+         ! but describes the atmospheric thermodynamic state and thus saved within the snapshot
+         call outfld(state_snapshot(i)%standard_name, cp_or_cv_dycore(:,:,lchnk), pcols, lchnk)
 
       case default
          call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%ddt_string))
