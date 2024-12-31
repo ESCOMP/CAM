@@ -3581,16 +3581,14 @@ Default: 10
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+Default: 'ZM' unless using 'UNICON' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
-SPCAM has two different microphysics schemes: SPCAM_m2005 (Morrison et al 2005),
-SPCAM_sam1mom (Khairoutinov 2003)
 Default: set by build-namelist (depends on value set in configure).
 </entry>
 
@@ -3610,14 +3608,12 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
  'UNICON' which doesn't distinquish shallow and deep.
- 'SPCAM_m2005' for SPCAM double moment
- 'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -5323,7 +5319,7 @@ Default: 0
 </entry>
 
 <entry id="eddy_scheme" type="char*16" category="pbl"
-       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS,SPCAM_sam1mom,SPCAM_m2005" >
+       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS" >
 Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
@@ -6142,7 +6138,7 @@ Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
   OFF --> wet deposition is turned off
-Default: NEU except for SPCAM runs
+Default: NEU
 </entry>
 
 <entry id="gas_wetdep_list" type="char*16(1000)" category="cam_chem"
