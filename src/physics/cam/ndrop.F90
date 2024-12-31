@@ -135,10 +135,10 @@ subroutine ndrop_init(aero_props)
 
          ! Add tendency fields to the history only when prognostic MAM is enabled.
          long_name = trim(tmpname) // ' dropmixnuc mixnuc column tendency'
-         call addfld(fieldname(mm),    horiz_only, 'A', unit, long_name)
+         call addfld(fieldname(mm),    horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
 
          long_name = trim(tmpname_cw) // ' dropmixnuc mixnuc column tendency'
-         call addfld(fieldname_cw(mm), horiz_only, 'A', unit, long_name)
+         call addfld(fieldname_cw(mm), horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
 
          if (history_aerosol) then
             call add_default(fieldname(mm), 1, ' ')
@@ -148,19 +148,19 @@ subroutine ndrop_init(aero_props)
       end do
    end do
 
-   call addfld('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%')
-   call addfld('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%')
-   call addfld('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%')
-   call addfld('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%')
-   call addfld('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%')
-   call addfld('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%')
+   call addfld('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
+   call addfld('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
+   call addfld('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
+   call addfld('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
+   call addfld('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
+   call addfld('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
 
 
-   call addfld('WTKE',     (/ 'lev' /), 'A', 'm/s', 'Standard deviation of updraft velocity')
-   call addfld('NDROPMIX', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number mixing')
-   call addfld('NDROPSRC', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number source')
-   call addfld('NDROPSNK', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number loss by microphysics')
-   call addfld('NDROPCOL', horiz_only,  'A', '#/m2', 'Column droplet number')
+   call addfld('WTKE',     (/ 'lev' /), 'A', 'm/s', 'Standard deviation of updraft velocity', sampled_on_subcycle=.true.)
+   call addfld('NDROPMIX', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number mixing', sampled_on_subcycle=.true.)
+   call addfld('NDROPSRC', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number source', sampled_on_subcycle=.true.)
+   call addfld('NDROPSNK', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number loss by microphysics', sampled_on_subcycle=.true.)
+   call addfld('NDROPCOL', horiz_only,  'A', '#/m2', 'Column droplet number', sampled_on_subcycle=.true.)
 
    ! set the add_default fields
    if (history_amwg) then
