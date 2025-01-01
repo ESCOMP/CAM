@@ -5,6 +5,8 @@
 <!-- Spun up IC files -->
 <ncdata hgrid="ne3np4"   nlev="58" >atm/cam/inic/se/QPLT_L58_ne3pg3_c241127.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="58" >atm/cam/inic/se/QPLT_L58_ne30pg3_c241127.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93" >atm/cam/inic/se/QPMT_L93_ne3pg3_c241223.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="93" >atm/cam/inic/se/QPMT_L93_ne30pg3_c241223.nc</ncdata>
 
 <!-- make planet orbit circular              -->
 <orb_eccen                >0.</orb_eccen>
