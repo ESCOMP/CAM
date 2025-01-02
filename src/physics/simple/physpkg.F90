@@ -211,6 +211,7 @@ contains
     use constituents,       only: cnst_get_ind
 
 
+    use constituents,    only: cnst_get_ind
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
 
     ! Input/output arguments

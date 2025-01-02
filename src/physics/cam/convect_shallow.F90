@@ -291,7 +291,7 @@
          write(iulog,*) 'MFINTI: Convection will be capped at intfc ', limcnv, ' which is ', pref_edge(limcnv), ' pascals'
      end if
 
-     call mfinti( rair, cpair, gravit, latvap, rhoh2o, limcnv) ! Get args from inti.F90
+     call mfinti( rair, cpair, gravit, latvap, rhoh2o, pref_edge) ! Get args from inti.F90
 
   case('UW') ! Park and Bretherton shallow convection scheme
 
@@ -363,7 +363,7 @@
    use camsrfexch,      only : cam_in_t
 
    use constituents,    only : pcnst, cnst_get_ind, cnst_get_type_byind
-   use hk_conv,         only : cmfmca
+   use hk_conv,         only : cmfmca_cam
    use uwshcu,          only : compute_uwshcu_inv
    use unicon_cam,      only : unicon_out_t, unicon_cam_tend
 
@@ -417,7 +417,7 @@
    real(r8) :: tpert(pcols)                                              ! PBL perturbation theta
 
    real(r8), pointer   :: pblh(:)                                        ! PBL height [ m ]
-   real(r8), pointer   :: qpert(:,:)                                     ! PBL perturbation specific humidity
+   real(r8), pointer   :: qpert(:)                                       ! PBL perturbation specific humidity
 
    ! Temperature tendency from shallow convection (pbuf pointer).
    real(r8), pointer, dimension(:,:) :: ttend_sh
@@ -573,9 +573,8 @@
       call physics_ptend_init( ptend_loc, state%psetcols, 'cmfmca', ls=.true., lq=lq  ) ! Initialize local ptend type
 
       call pbuf_get_field(pbuf, qpert_idx, qpert)
-      qpert(:ncol,2:pcnst) = 0._r8
 
-      call cmfmca( lchnk        ,  ncol         ,                                               &
+      call cmfmca_cam( lchnk        ,  ncol         ,                                               &
                    nstep        ,  ztodt        ,  state%pmid ,  state%pdel  ,                  &
                    state%rpdel  ,  state%zm     ,  tpert      ,  qpert       ,  state%phis  ,   &
                    pblh         ,  state%t      ,  state%q    ,  ptend_loc%s ,  ptend_loc%q ,   &

@@ -466,18 +466,12 @@ contains
     qpert_idx = pbuf_get_index( 'qpert',ierr)
     if (qpert_idx > 0) then
        call infld(fieldname, fh_ini, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
-            tptr, found, gridname='physgrid')
+            tptr(:,:), found, gridname='physgrid')
        if(.not. found) then
-          tptr=0_r8
+          tptr(:,:) = 0._r8
           if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
        end if
-
-       allocate(tptr3d_2(pcols,pcnst,begchunk:endchunk))
-       tptr3d_2 = 0_r8
-       tptr3d_2(:,1,:) = tptr(:,:)
-
-       call pbuf_set_field(pbuf2d, qpert_idx, tptr3d_2)
-       deallocate(tptr3d_2)
+       call pbuf_set_field(pbuf2d, qpert_idx, tptr)
     end if
 
     fieldname='CUSH'
