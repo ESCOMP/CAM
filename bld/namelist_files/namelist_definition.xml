@@ -4480,7 +4480,10 @@ Default: none
        group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
  Nucleation methods:
   ZhaoTurco
-     Zhao and Turco, JAS, V.26, No.5, 1995.
+      Zhao, J. and Turco, R.,
+      Nucleation simulations in the wake of a jet aircraft in stratospheric flight,
+      J. Aerosol Sci., 26, 779-795, 1995,
+      https://doi.org/10.1016/0021-8502(95)00010-A
   Vehkamaki
      Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
      C. Timmreck, M. Noppel and A. Laaksonen, 2002,
