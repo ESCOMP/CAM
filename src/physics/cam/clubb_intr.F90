@@ -2118,6 +2118,7 @@ end subroutine clubb_init_cnst
     use cam_logfile,    only: iulog
     use tropopause,     only: tropopause_findChemTrop
     use time_manager,   only: get_nstep, is_first_restart_step
+    use perf_mod,       only: t_startf, t_stopf
 
 #ifdef CLUBB_SGS
     use hb_diff,                   only: pblintd
@@ -2152,8 +2153,6 @@ end subroutine clubb_init_cnst
 
     use macrop_driver,             only: liquid_macro_tend
     use clubb_mf,                  only: integrate_mf
-
-    use perf_mod
 
 #endif
 
@@ -2192,12 +2191,14 @@ end subroutine clubb_init_cnst
     !                   Local Variables                    !
     ! ---------------------------------------------------- !
 
+    integer :: i !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
+
 #ifdef CLUBB_SGS
 
     type(physics_state) :: state1                ! Local copy of state variable
     type(physics_ptend) :: ptend_loc             ! Local tendency from processes, added up to return as ptend_all
 
-    integer :: i, j,  k, t, ixind, nadv
+    integer :: j, k, t, ixind, nadv
     integer :: ixcldice, ixcldliq, ixnumliq, ixnumice, ixq
     integer :: itim_old
     integer :: ncol, lchnk                       ! # of columns, and chunk identifier
@@ -4478,7 +4479,7 @@ end subroutine clubb_init_cnst
     dpdlfliq(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
     dpdlfice(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
     dpdlft(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpairv(:ncol,:pver, lchnk)
-    detnliquid(:ncol,:pver) = ptend_loc%q(:,:,ixnumliq)
+    detnliquid(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixnumliq)
 
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
