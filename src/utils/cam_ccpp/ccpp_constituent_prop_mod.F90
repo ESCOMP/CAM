@@ -271,7 +271,7 @@ subroutine ccpp_const_props_init(ix_qv)
     end do
 
     ! Set "std_name" property:
-    call ccpp_const_props(ix_qv)%set_standard_name('water_vapor_wrt_moist_air_and_condensed_water')
+    call ccpp_const_props(ix_qv)%set_standard_name('water_vapor_mixing_ratio_wrt_moist_air_and_condensed_water')
 
 end subroutine ccpp_const_props_init
 
