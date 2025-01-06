@@ -228,23 +228,23 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
             wactfac_hnames(cnt) = trim(tmpstr)//'_wactfac'
 
             call addfld(tot_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'total '//trim(tmpstr)//' number density' )
+                 'total '//trim(tmpstr)//' number density', sampled_on_subcycle=.true.)
             call addfld(cld_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'cloud borne '//trim(tmpstr)//' number density' )
+                 'cloud borne '//trim(tmpstr)//' number density', sampled_on_subcycle=.true.)
             call addfld(cldfn_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'cloud borne '//trim(tmpstr)//' number density derived from fn' )
+                 'cloud borne '//trim(tmpstr)//' number density derived from fn', sampled_on_subcycle=.true.)
             call addfld(amb_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'ambient '//trim(tmpstr)//' number density' )
+                 'ambient '//trim(tmpstr)//' number density', sampled_on_subcycle=.true.)
             call addfld(coated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'coated '//trim(tmpstr)//' number density' )
+                 'coated '//trim(tmpstr)//' number density', sampled_on_subcycle=.true.)
             call addfld(uncoated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'uncoated '//trim(tmpstr)//' number density' )
+                 'uncoated '//trim(tmpstr)//' number density', sampled_on_subcycle=.true.)
             call addfld(coated_frac_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'coated '//trim(tmpstr)//' fraction' )
+                 'coated '//trim(tmpstr)//' fraction', sampled_on_subcycle=.true.)
             call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'm', &
-                 'ambient '//trim(tmpstr)//' radius' )
+                 'ambient '//trim(tmpstr)//' radius', sampled_on_subcycle=.true.)
             call addfld(wactfac_hnames(cnt),(/ 'lev' /), 'A', ' ', &
-                 trim(tmpstr)//' water activity mass factor' )
+                 trim(tmpstr)//' water activity mass factor', sampled_on_subcycle=.true.)
 
          end if
       end do
@@ -261,49 +261,49 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
    ! pbuf fields used by hetfrz_classnuc
    ast_idx      = pbuf_get_index('AST')
 
-   call addfld('FRZIMM', (/ 'lev' /), 'A', ' ', 'immersion  freezing')
-   call addfld('FRZCNT', (/ 'lev' /), 'A', ' ', 'contact    freezing')
-   call addfld('FRZDEP', (/ 'lev' /), 'A', ' ', 'deposition freezing')
-   call addfld('FREQIMM', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of immersion  freezing')
-   call addfld('FREQCNT', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of contact    freezing')
-   call addfld('FREQDEP', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of deposition freezing')
-   call addfld('FREQMIX', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of mixed-phase clouds' )
+   call addfld('FRZIMM', (/ 'lev' /), 'A', ' ', 'immersion  freezing', sampled_on_subcycle=.true.)
+   call addfld('FRZCNT', (/ 'lev' /), 'A', ' ', 'contact    freezing', sampled_on_subcycle=.true.)
+   call addfld('FRZDEP', (/ 'lev' /), 'A', ' ', 'deposition freezing', sampled_on_subcycle=.true.)
+   call addfld('FREQIMM', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of immersion  freezing', sampled_on_subcycle=.true.)
+   call addfld('FREQCNT', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of contact    freezing', sampled_on_subcycle=.true.)
+   call addfld('FREQDEP', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of deposition freezing', sampled_on_subcycle=.true.)
+   call addfld('FREQMIX', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of mixed-phase clouds' , sampled_on_subcycle=.true.)
 
-   call addfld('DSTFREZIMM', (/ 'lev' /), 'A', 'm-3s-1', 'dust immersion  freezing rate')
-   call addfld('DSTFREZCNT', (/ 'lev' /), 'A', 'm-3s-1', 'dust contact    freezing rate')
-   call addfld('DSTFREZDEP', (/ 'lev' /), 'A', 'm-3s-1', 'dust deposition freezing rate')
+   call addfld('DSTFREZIMM', (/ 'lev' /), 'A', 'm-3s-1', 'dust immersion  freezing rate', sampled_on_subcycle=.true.)
+   call addfld('DSTFREZCNT', (/ 'lev' /), 'A', 'm-3s-1', 'dust contact    freezing rate', sampled_on_subcycle=.true.)
+   call addfld('DSTFREZDEP', (/ 'lev' /), 'A', 'm-3s-1', 'dust deposition freezing rate', sampled_on_subcycle=.true.)
 
-   call addfld('BCFREZIMM', (/ 'lev' /), 'A', 'm-3s-1', 'bc immersion  freezing rate')
-   call addfld('BCFREZCNT', (/ 'lev' /), 'A', 'm-3s-1', 'bc contact    freezing rate')
-   call addfld('BCFREZDEP', (/ 'lev' /), 'A', 'm-3s-1', 'bc deposition freezing rate')
+   call addfld('BCFREZIMM', (/ 'lev' /), 'A', 'm-3s-1', 'bc immersion  freezing rate', sampled_on_subcycle=.true.)
+   call addfld('BCFREZCNT', (/ 'lev' /), 'A', 'm-3s-1', 'bc contact    freezing rate', sampled_on_subcycle=.true.)
+   call addfld('BCFREZDEP', (/ 'lev' /), 'A', 'm-3s-1', 'bc deposition freezing rate', sampled_on_subcycle=.true.)
 
    call addfld('NIMIX_IMM', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to het immersion freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to het immersion freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('NIMIX_CNT', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to het contact freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to het contact freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('NIMIX_DEP', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to het deposition freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to het deposition freezing in Mixed Clouds', sampled_on_subcycle=.true.)
 
    call addfld('DSTNIDEP', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to dst dep freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to dst dep freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('DSTNICNT', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to dst cnt freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to dst cnt freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('DSTNIIMM', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to dst imm freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to dst imm freezing in Mixed Clouds', sampled_on_subcycle=.true.)
 
    call addfld('BCNIDEP', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to bc dep freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to bc dep freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('BCNICNT', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to bc cnt freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to bc cnt freezing in Mixed Clouds', sampled_on_subcycle=.true.)
    call addfld('BCNIIMM', (/ 'lev' /), 'A', '#/m3', &
-               'Activated Ice Number Concentration due to bc imm freezing in Mixed Clouds')
+               'Activated Ice Number Concentration due to bc imm freezing in Mixed Clouds', sampled_on_subcycle=.true.)
 
    call addfld('NUMICE10s', (/ 'lev' /), 'A', '#/m3', &
-               'Ice Number Concentration due to het freezing in Mixed Clouds during 10-s period')
+               'Ice Number Concentration due to het freezing in Mixed Clouds during 10-s period', sampled_on_subcycle=.true.)
    call addfld('NUMIMM10sDST', (/ 'lev' /), 'A', '#/m3', &
-               'Ice Number Concentration due to imm freezing by dst in Mixed Clouds during 10-s period')
+               'Ice Number Concentration due to imm freezing by dst in Mixed Clouds during 10-s period', sampled_on_subcycle=.true.)
    call addfld('NUMIMM10sBC', (/ 'lev' /), 'A', '#/m3', &
-               'Ice Number Concentration due to imm freezing by bc in Mixed Clouds during 10-s period')
+               'Ice Number Concentration due to imm freezing by bc in Mixed Clouds during 10-s period', sampled_on_subcycle=.true.)
 
    if (hist_hetfrz_classnuc) then
 
