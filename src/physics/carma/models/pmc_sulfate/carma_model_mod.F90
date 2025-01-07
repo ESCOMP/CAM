@@ -223,7 +223,7 @@ contains
           ! Read in the tables.
           call wrap_inq_varid(fid, 'wavelength', wave_vid)
           call wrap_get_var_realx(fid, wave_vid, warren_wave)
-          warren_wave = warren_wave * 1e-4          ! um -> cm
+          warren_wave = warren_wave * 1e-4_r8          ! um -> cm
   
           call wrap_inq_varid(fid, 'm_real', real_vid)
           call wrap_get_var_realx(fid, real_vid, warren_real)
@@ -617,7 +617,7 @@ contains
                 end if
               end do
 
-              if (abs((state%lat(icol) / DEG2RAD) - 90.0) <= 0.00001_r8) then
+              if (abs((state%lat(icol) / DEG2RAD) - 90.0_r8) <= 0.00001_r8) then
                  rfScale(icol) = carma_escale_grf(carma_escale_nLats, doy)
               end if
               
@@ -753,7 +753,7 @@ contains
         carma_emis_ilev_max = carma_emis_nLevs
 
         do ilev = 1, carma_emis_nLevs
-          if (carma_emis_rate(ilev) <= 0.0) then
+          if (carma_emis_rate(ilev) <= 0.0_r8) then
             carma_emis_ilev_min  = ilev + 1
           else
             exit  
@@ -761,7 +761,7 @@ contains
         end do
 
         do ilev = carma_emis_nLevs, 1, -1
-          if (carma_emis_rate(ilev) <= 0.0) then
+          if (carma_emis_rate(ilev) <= 0.0_r8) then
             carma_emis_ilev_max  = ilev - 1
           else
             exit  
@@ -953,4 +953,4 @@ contains
     return
   end subroutine CARMA_WetDeposition 
 
-end module
+end module carma_model_mod

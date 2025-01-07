@@ -393,7 +393,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use time_manager,  only: get_nstep, is_first_step
    use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
    use constituents,  only: pcnst, cnst_get_ind, cnst_is_convtran1
-   use check_energy,  only: check_energy_chng
    use physconst,     only: gravit, latice, latvap, tmelt, cpwv, cpliq, rh2o
 
    use phys_control,  only: cam_physpkg_is
