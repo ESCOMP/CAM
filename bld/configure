@@ -2349,6 +2349,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/zhang_mcfarlane\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
 
     # Dynamics package and test utilities

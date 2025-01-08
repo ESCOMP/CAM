@@ -86,7 +86,7 @@ contains
 
     use cam_abortutils,  only: endrun
     use namelist_utils,  only: find_group_name
-    use spmd_utils,      only: mpicom, masterprocid, mpi_real8, mpi_integer, mpi_logical, mpi_character
+    use spmd_utils,      only: mpicom, masterprocid, mpi_real8, mpi_integer, mpi_logical, mpi_character, mpi_success
     use carma_model_flags_mod, only: carma_model_readnl
 
     ! args
@@ -96,6 +96,7 @@ contains
     ! local vars
 
     integer :: unitn, ierr, i
+    character(len=*), parameter :: prefix = 'carma_readnl: '
 
     ! read namelist for CARMA
     namelist /carma_nl/ &
@@ -115,8 +116,6 @@ contains
       carma_rad_feedback, &
       carma_do_explised, &
       carma_do_incloud, &
-      carma_do_budget_diags, &
-      carma_do_package_diags, &
       carma_do_grow, &
       carma_do_optics, &
       carma_do_partialinit, &
@@ -154,58 +153,104 @@ contains
        if (ierr == 0) then
           read(unitn, carma_nl, iostat=ierr)
           if (ierr /= 0) then
-             call endrun('carma_readnl: ERROR reading namelist')
+             call endrun(prefix//'ERROR reading namelist')
           end if
        end if
        close(unitn)
     end if
 
     call mpi_bcast (carma_flag,            1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_flag')
     call mpi_bcast (carma_do_aerosol,      1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_aerosol')
     call mpi_bcast (carma_do_coremasscheck,1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_coremasscheck')
     call mpi_bcast (carma_do_cldliq,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_cldliq')
     call mpi_bcast (carma_do_cldice,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_cldice')
     call mpi_bcast (carma_do_clearsky,     1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_clearsky')
     call mpi_bcast (carma_do_cloudborne,   1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_cloudborne')
     call mpi_bcast (carma_do_coag,         1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_coag')
     call mpi_bcast (carma_do_detrain,      1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_detrain')
     call mpi_bcast (carma_do_drydep,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_drydep')
     call mpi_bcast (carma_do_emission,     1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_emission')
     call mpi_bcast (carma_do_fixedinit,    1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_fixedinit')
     call mpi_bcast (carma_hetchem_feedback,1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_hetchem_feedback')
     call mpi_bcast (carma_rad_feedback,    1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_rad_feedback')
     call mpi_bcast (carma_do_explised,     1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_explised')
     call mpi_bcast (carma_do_budget_diags, 1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_budget_diags')
     call mpi_bcast (carma_do_package_diags,1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_package_diags')
     call mpi_bcast (carma_do_incloud,      1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_incloud')
     call mpi_bcast (carma_do_grow,         1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_grow')
     call mpi_bcast (carma_do_optics,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_optics')
     call mpi_bcast (carma_do_partialinit,  1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_partialinit')
     call mpi_bcast (carma_do_pheat,        1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_pheat')
     call mpi_bcast (carma_do_pheatatm,     1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_pheatatm')
     call mpi_bcast (carma_do_substep,      1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_substep')
     call mpi_bcast (carma_do_thermo,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_thermo')
     call mpi_bcast (carma_do_wetdep,       1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_wetdep')
     call mpi_bcast (carma_do_vdiff,        1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_vdiff')
     call mpi_bcast (carma_do_vtran,        1 ,mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_do_vtran')
     call mpi_bcast (carma_diags_file,      1 ,mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_diags_file')
     call mpi_bcast (carma_maxsubsteps,     1 ,mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_maxsubsteps')
     call mpi_bcast (carma_minsubsteps,     1 ,mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_minsubsteps')
     call mpi_bcast (carma_maxretries,      1 ,mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_maxretries')
     call mpi_bcast (carma_conmax,          1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_conmax')
     call mpi_bcast (carma_dgc_threshold,   1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_dgc_threshold')
     call mpi_bcast (carma_ds_threshold,    1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_ds_threshold')
     call mpi_bcast (carma_dt_threshold,    1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_dt_threshold')
     call mpi_bcast (carma_tstick,          1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_tstick')
     call mpi_bcast (carma_gsticki,         1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_gsticki')
     call mpi_bcast (carma_gstickl,         1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_gstickl')
     call mpi_bcast (carma_cstick,          1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_cstick')
     call mpi_bcast (carma_rhcrit,          1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_rhcrit')
     call mpi_bcast (carma_vf_const,        1 ,mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_vf_const')
     call mpi_bcast (carma_model, len(carma_model), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_model')
     call mpi_bcast (carma_sulfnuc_method, len(carma_sulfnuc_method), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_sulfnuc_method')
     call mpibcast  (carma_diags_packages, len(carma_diags_packages(1))*carma_maxdiags, mpi_character, 0, mpicom)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_diags_packages')
     call mpibcast  (carma_debug_packages, len(carma_debug_packages(1))*carma_maxdiags, mpi_character, 0, mpicom)
+    if (ierr/=mpi_success) call endrun(prefix//'mpi_bcast error : carma_debug_packages')
 
     carma_ndiagpkgs = 0
     do i = 1, carma_maxdiags

@@ -1084,7 +1084,6 @@ contains
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
-
     !
     ! Input arguments
     !
@@ -1141,6 +1140,7 @@ contains
 #ifdef TRACER_CHECK
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
+
 
     !-----------------------------------------------------------------------
     ! Tendency physics before flux coupler invocation
@@ -1401,8 +1401,9 @@ contains
                                   carma_output_cloudborne_diagnostics, carma_calculate_cloudborne_diagnostics, &
                                   MAXCLDAERDIAG
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
-    use check_energy,       only: check_energy_chng, tot_energy_phys
+    use check_energy,       only: tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
+    use check_energy,       only: check_energy_cam_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
@@ -1485,8 +1486,6 @@ contains
     real(r8)   :: old_cflux(pcols,pcnst)  !! cam_in%clfux from before the timestep_tend
     logical    :: lq_none(pcnst)  !! Used to initialize null ptend for chem_emissions
 
-
-
     !-----------------------------------------------------------------------
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -1537,7 +1536,6 @@ contains
     ! Add a diagnostic term for the aerosol emissions coupled from the surface.
     lq_none(:) = .false.
     call physics_ptend_init(ptend,state%psetcols, 'surf_emissions', lq=lq_none)
-
 
     ! emissions of aerosols and gas-phase chemistry constituents at surface
 
@@ -1657,7 +1655,7 @@ contains
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
        end if
-       call check_energy_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
+       call check_energy_cam_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
        call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &
             cam_in%cflx)
     end if
@@ -1724,9 +1722,9 @@ contains
     call t_stopf('rayleigh_friction')
 
     if (do_clubb_sgs) then
-      call check_energy_chng(state, tend, "vdiff", nstep, ztodt, zero, zero, zero, zero)
+      call check_energy_cam_chng(state, tend, "vdiff", nstep, ztodt, zero, zero, zero, zero)
     else
-      call check_energy_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
+      call check_energy_cam_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
            zero, cam_in%shf)
     endif
 
@@ -1775,7 +1773,7 @@ contains
      call carma_output_cloudborne_diagnostics(state, pbuf, "CRTEND", ztodt, aerclddiag)
      call physics_update(state, ptend, ztodt, tend)
 
-     call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, zero, zero, zero)
+     call check_energy_cam_chng(state, tend, "carma_tend", nstep, ztodt, zero, zero, zero, zero)
      call t_stopf('carma_timestep_tend')
    end if
 
@@ -1815,7 +1813,7 @@ contains
     end if
 
     ! Check energy integrals
-    call check_energy_chng(state, tend, "gwdrag", nstep, ztodt, zero, &
+    call check_energy_cam_chng(state, tend, "gwdrag", nstep, ztodt, zero, &
          zero, zero, flx_heat)
     call t_stopf('gw_tend')
 
@@ -1845,7 +1843,7 @@ contains
     end if
 
     ! Check energy integrals
-    call check_energy_chng(state, tend, "qborelax", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "qborelax", nstep, ztodt, zero, zero, zero, zero)
 
     ! Lunar tides
     call lunar_tides_tend( state, ptend )
@@ -1857,7 +1855,7 @@ contains
     end if
     call physics_update(state, ptend, ztodt, tend)
     ! Check energy integrals
-    call check_energy_chng(state, tend, "lunar_tides", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "lunar_tides", nstep, ztodt, zero, zero, zero, zero)
 
     ! Ion drag calculation
     call t_startf ( 'iondrag' )
@@ -1907,14 +1905,13 @@ contains
     endif
 
     ! Check energy integrals
-    call check_energy_chng(state, tend, "iondrag", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "iondrag", nstep, ztodt, zero, zero, zero, zero)
 
     call t_stopf  ( 'iondrag' )
 
     ! Update Nudging values, if needed
     !----------------------------------
     if((Nudge_Model).and.(Nudge_ON)) then
-
       call nudging_timestep_tend(state,ptend)
       if ( ptend%lu ) then
         call outfld( 'UTEND_NDG', ptend%u, pcols, lchnk)
@@ -1922,9 +1919,8 @@ contains
       if ( ptend%lv ) then
         call outfld( 'VTEND_NDG', ptend%v, pcols, lchnk)
       end if
-
       call physics_update(state,ptend,ztodt,tend)
-      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+      call check_energy_cam_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
     endif
 
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -2102,7 +2098,8 @@ contains
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
-    use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
+    use check_energy,    only: check_energy_timestep_init, check_energy_cam_chng
+    use check_energy,    only: check_energy_cam_fix
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
@@ -2321,11 +2318,11 @@ contains
     call tot_energy_phys(state, 'phBF')
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
     if (.not.dycore_is('EUL')) then
-
-       call check_energy_fix(state, ptend, nstep, flx_heat)
+       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
 
        call physics_update(state, ptend, ztodt, tend)
-       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+
+       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
     call tot_energy_phys(state, 'phBP')
@@ -2370,9 +2367,7 @@ contains
 
     call t_stopf('energy_fixer')
 
-
     call surface_emissions_set( lchnk, ncol, pbuf )
-
     call elevated_emissions_set( lchnk, ncol, pbuf )
 
     !
@@ -2459,7 +2454,7 @@ contains
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
     snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
-    call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
+    call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
     !
@@ -2504,7 +2499,7 @@ contains
     end if
 
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
-    call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
+    call check_energy_cam_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
 
     call check_tracers_chng(state, tracerint, "convect_shallow", nstep, ztodt, zero_tracers)
 
@@ -2540,9 +2535,9 @@ contains
        ! Before the detrainment, the reserved condensate is all liquid, but if CARMA is doing
        ! detrainment, then the reserved condensate is snow.
        if (carma_do_detrain) then
-          call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str+rliq, snow_str+rliq, zero)
+          call check_energy_cam_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str+rliq, snow_str+rliq, zero)
        else
-          call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
+          call check_energy_cam_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
        end if
     end if
 
@@ -2564,7 +2559,7 @@ contains
             cam_in%ts,      cam_in%sst,        zdu)
 
        call physics_update(state, ptend, ztodt, tend)
-       call check_energy_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
+       call check_energy_cam_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
 
        call t_stopf('rk_stratiform_tend')
 
@@ -2636,7 +2631,7 @@ contains
                      flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
-             call check_energy_chng(state, tend, "macrop_tend", nstep, ztodt, &
+             call check_energy_cam_chng(state, tend, "macrop_tend", nstep, ztodt, &
                   zero, flx_cnd(:ncol)/cld_macmic_num_steps, &
                   det_ice(:ncol)/cld_macmic_num_steps, &
                   flx_heat(:ncol)/cld_macmic_num_steps)
@@ -2687,7 +2682,7 @@ contains
              end if
 
              ! Use actual qflux (not lhf/latvap) for consistency with surface fluxes and revised code
-             call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
+             call check_energy_cam_chng(state, tend, "clubb_tend", nstep, ztodt, &
                 cam_in%cflx(:ncol,1)/cld_macmic_num_steps, &
                 flx_cnd(:ncol)/cld_macmic_num_steps, &
                 det_ice(:ncol)/cld_macmic_num_steps, &
@@ -2791,7 +2786,7 @@ contains
                    flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
-             call check_energy_chng(state_sc, tend_sc, "microp_tend_subcol", &
+             call check_energy_cam_chng(state_sc, tend_sc, "microp_tend_subcol", &
                   nstep, ztodt, zero_sc, &
                   prec_str_sc(:state_sc%ncol)/cld_macmic_num_steps, &
                   snow_str_sc(:state_sc%ncol)/cld_macmic_num_steps, zero_sc)
@@ -2829,7 +2824,7 @@ contains
                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
-          call check_energy_chng(state, tend, "microp_tend", nstep, ztodt, &
+          call check_energy_cam_chng(state, tend, "microp_tend", nstep, ztodt, &
                zero, prec_str(:ncol)/cld_macmic_num_steps, &
                snow_str(:ncol)/cld_macmic_num_steps, zero)
 
@@ -2991,7 +2986,7 @@ contains
                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
-    call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
+    call check_energy_cam_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
 
     call t_stopf('radiation')
 

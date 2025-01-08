@@ -9,24 +9,36 @@
 !! @version July 2009
 module carma_intr
 
-  use carma_precision_mod
-  use carma_enums_mod
-  use carma_constants_mod, only : GRAV, REARTH, WTMOL_AIR, WTMOL_H2O, R_AIR, CP, RKAPPA, &
-                                  MAXCLDAERDIAG
-  use carma_types_mod
-  use carma_flags_mod
-  use carma_model_mod
-  use carmaelement_mod
-  use carmagas_mod
-  use carmagroup_mod
-  use carmasolute_mod
-  use carmastate_mod
-  use carma_mod
+  use carma_precision_mod, only: f
+  use carma_enums_mod, only: I_OPTICS_FIXED, I_OPTICS_MIXED_CORESHELL, I_OPTICS_MIXED_VOLUME, &
+       I_OPTICS_MIXED_MAXWELL, I_OPTICS_SULFATE, I_CNSTTYPE_PROGNOSTIC, I_HYBRID, RC_OK, RC_ERROR, &
+       I_WTPCT_H2SO4, I_PETTERS
+  use carma_constants_mod, only : GRAV, REARTH, WTMOL_AIR, WTMOL_H2O, R_AIR, CP, RKAPPA, NWAVE, &
+       CARMA_NAME_LEN, CARMA_SHORT_NAME_LEN, PI, CAM_FILL, RGAS, RM2CGS, RAD2DEG, CLDFRC_INCLOUD, MAXCLDAERDIAG
+  use carma_types_mod, only : carma_type, carmastate_type
+  use carma_flags_mod, only : carma_flag, carma_do_fixedinit, carma_model, carma_do_wetdep, carma_do_emission, &
+       carma_do_pheat, carma_do_substep, carma_do_thermo, carma_do_cldice, carma_diags_file, &
+       carma_do_grow, carma_ndebugpkgs, carma_conmax, carma_cstick, carma_tstick, carma_vf_const, carma_sulfnuc_method, &
+       carma_rhcrit, carma_rad_feedback, carma_minsubsteps, carma_maxsubsteps, carma_gstickl, carma_gsticki, &
+       carma_maxretries, carma_dt_threshold, carma_ds_threshold, carma_do_vtran, carma_do_vdiff, carma_do_pheatatm, &
+       carma_do_partialinit, carma_do_optics, carma_do_incloud, carma_do_explised, carma_do_drydep, carma_do_detrain, &
+       carma_do_coremasscheck, carma_do_coag, carma_do_clearsky, carma_do_cldliq, carma_do_aerosol, carma_dgc_threshold, &
+       carma_diags_packages, carma_ndiagpkgs
+  use carma_model_mod, only : NGAS, NBIN, NELEM, NGROUP, NMIE_WTP, NREFIDX, MIE_RH, NMIE_RH, NSOLUTE
+  use carma_model_mod, only : mie_rh, mie_wtp, is_convtran1, CARMAMODEL_DiagnoseBulk, CARMAMODEL_DiagnoseBins, &
+       CARMAMODEL_Detrain, CARMAMODEL_OutputDiagnostics, CARMAMODEL_CreateOpticsFile, CARMAMODEL_WetDeposition, &
+       CARMAMODEL_EmitParticle, CARMAMODEL_InitializeParticle, CARMAMODEL_DefineModel, CARMAMODEL_InitializeModel, &
+       CARMAMODEL_OutputBudgetDiagnostics, CARMAMODEL_OutputCloudborneDiagnostics, CARMAMODEL_CalculateCloudborneDiagnostics
+  use carmaelement_mod, only : CARMAELEMENT_Get
+  use carmagas_mod, only : CARMAGAS_Get
+  use carmagroup_mod, only : CARMAGROUP_Get
+  use carmastate_mod, only : CARMASTATE_CreateFromReference, CARMASTATE_SetGas, CARMASTATE_Step, CARMASTATE_GetBin, &
+       CARMASTATE_GetGas, CARMASTATE_GetState, CARMASTATE_Get, CARMASTATE_Create, CARMASTATE_SetBin, CARMASTATE_Destroy
+  use carma_mod, only : CARMA_Get, CARMA_Create, CARMA_Initialize, CARMA_Destroy
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use spmd_utils,     only: masterproc, mpicom
-  use shr_reprosum_mod, only : shr_reprosum_calc
-  use ppgrid,         only: pcols, pver, pverp, begchunk,endchunk
+  use ppgrid,         only: pcols, pver, pverp
   use ref_pres,       only: pref_mid, pref_edge, pref_mid_norm, psurf_ref
   use physics_types,  only: physics_state, physics_ptend, physics_ptend_init, &
                             set_dry_to_wet, physics_state_copy
@@ -37,7 +49,7 @@ module carma_intr
   use physics_buffer, only: physics_buffer_desc, pbuf_add_field, pbuf_old_tim_idx, &
                             pbuf_get_index, pbuf_get_field, dtype_r8, pbuf_set_field
   use pio,            only: var_desc_t
-
+  use radconstants,   only: nlwbands, nswbands
   use wv_sat_methods, only: wv_sat_qsat_water
 
   implicit none
@@ -68,7 +80,6 @@ module carma_intr
   public :: carma_restart_init
   public :: carma_restart_write
   public :: carma_restart_read
-
 
   ! Microphysics info from CAM state
   !
@@ -216,7 +227,7 @@ contains
   !! @author Chuck Bardeen
   !! @version May-2009
   subroutine carma_register
-    use radconstants,    only : nlwbands, get_sw_spectral_boundaries, get_lw_spectral_boundaries
+    use radconstants,    only : get_sw_spectral_boundaries, get_lw_spectral_boundaries
     use cam_logfile,     only : iulog
     use cam_control_mod, only : initial_run
     use physconst,    only: gravit, p_rearth=>rearth, mwdry, mwh2o
@@ -1798,7 +1809,6 @@ contains
     return
   end subroutine carma_output_budget_diagnostics
 
-
   !! Outputs tracer tendencies and diagnositc fields to the history files.
   !! All the columns in the chunk should be output at the same time.
   !!
@@ -2378,7 +2388,6 @@ contains
   !! code, so ideally a routine would exist in that module that could create a file
   !! with the proper format. Since that doesn't exist, we do it all here.
   subroutine CARMA_CreateOpticsFile_Fixed(carma, igroup, rc)
-    use radconstants, only : nswbands, nlwbands
     use wrap_nf
     use wetr, only         : getwetr
 
@@ -2722,7 +2731,6 @@ contains
   !! code to include the impact of CARMA particles in the radiative transfer
   !! calculation.
   subroutine CARMA_CreateOpticsFile_Sulfate(carma, igroup, rc)
-    use radconstants, only : nswbands, nlwbands
     use wrap_nf
     use wetr, only         : getwetr
 
@@ -2749,7 +2757,7 @@ contains
     integer                             :: rhdim, lwdim, swdim, wtpdim
     integer                             :: rhvar, lwvar, swvar, wtp_var
     integer                             :: rwetvar
-    integer				                      :: abs_lw_wtp_var, qabs_lw_wtp_var
+    integer                             :: abs_lw_wtp_var, qabs_lw_wtp_var
     integer                             :: ext_sw_wtp_var, ssa_sw_wtp_var, asm_sw_wtp_var, qext_sw_wtp_var
     integer                             :: omdim, andim, namedim
     integer                             :: omvar, anvar, namevar
@@ -3244,8 +3252,6 @@ contains
     endif
 
   end subroutine CARMA_restart_read
-
-
 
   !! Get the mixing ratio for the specified element and bin.
   !!

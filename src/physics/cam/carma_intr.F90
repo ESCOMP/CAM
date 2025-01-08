@@ -45,10 +45,10 @@ module carma_intr
   public carma_output_cloudborne_diagnostics ! output model specific budget diagnostics for cloudborne aerosols
   public carma_output_budget_diagnostics ! calculate and output model specific aerosol budget terms
   public carma_wetdep_tend              ! calculate tendency from wet deposition
+
   public :: carma_restart_init
   public :: carma_restart_write
   public :: carma_restart_read
-
 
   public carma_get_bin
   public carma_get_bin_cld
@@ -177,7 +177,6 @@ contains
     return
   end subroutine carma_init_cnst
 
-
   subroutine carma_calculate_cloudborne_diagnostics(state, pbuf, aerclddiag)
 
     implicit none
@@ -218,7 +217,6 @@ contains
 
     return
   end subroutine carma_output_budget_diagnostics
-
 
   subroutine carma_emission_tend(state, ptend, cam_in, dt, pbuf)
     use camsrfexch,       only: cam_in_t

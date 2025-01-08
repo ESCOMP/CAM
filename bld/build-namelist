@@ -1609,7 +1609,7 @@ elsif ($carma =~ /trop_strat/) {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if (($phys =~ /cam6/ or $phys =~ /cam7/) and $chem =~ /_mam/ and $carma eq 'none') {
+if (($phys =~ /cam6/ or $phys =~ /cam7/) and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1650,7 +1650,7 @@ if (defined $nl->get_value('prescribed_strataero_3modes')) {
 
 # determine if prescribed stratospheric aerosol data is needed
 if ( ($het_chem) || ($nl->get_value('prescribed_strataero_feedback') =~ /$TRUE/io ) ){
-    if ( ($carma ne 'sulfate') && !($carma =~ /trop_strat/) &&
+    if ( !($carma =~ /trop_strat/) &&
          !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
 
         unless (defined $nl->get_value('prescribed_strataero_type')) {
