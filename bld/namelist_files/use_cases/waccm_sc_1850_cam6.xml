@@ -88,11 +88,7 @@
  'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
 </fexcl1>
 
-<!-- prescribed nitrogen deposition fluxes -->
-<stream_ndep_data_filename>lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</stream_ndep_data_filename>
-<stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
-<stream_ndep_year_first>1850</stream_ndep_year_first>
-<stream_ndep_year_last>1850</stream_ndep_year_last>
-<stream_ndep_year_align>1</stream_ndep_year_align>
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850</sim_year>
 
 </namelist_defaults>

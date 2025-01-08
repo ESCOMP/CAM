@@ -31,8 +31,6 @@
 
 <prescribed_strataero_type>SERIAL</prescribed_strataero_type>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- History Files -->
 
 <mfilt>           1,30,365,240,240,480,365,73,30  </mfilt>

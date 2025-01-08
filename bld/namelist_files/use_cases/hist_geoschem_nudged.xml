@@ -31,8 +31,6 @@
 
 <prescribed_strataero_type>SERIAL</prescribed_strataero_type>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- nudging. this section is added over hist_geoschem.xml to match hist_trop_strat_nudged_cam6.xml -->
 
 <Nudge_Model>.true.</Nudge_Model>

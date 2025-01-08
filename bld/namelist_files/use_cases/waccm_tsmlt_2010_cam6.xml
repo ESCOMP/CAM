@@ -142,8 +142,6 @@
   'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc'
 </srf_emis_specifier>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- History Files -->
 
 <mfilt>           1,    5,  20,  40, 120, 240, 365,  73, 365   </mfilt>

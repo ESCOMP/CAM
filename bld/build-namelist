@@ -509,19 +509,6 @@ if ($phys_mode_flags > 1) {
 my $simple_phys = 0;
 if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
-# Setup default ndep streams only if not simple_phys or aqua_mode and
-# the chemistry cannot produce the nitrogen depostion fluxes
-if (!($simple_phys or $aqua_mode)) {
-  my $chem_nitrodep = chem_has_species($cfg, 'NO') and chem_has_species($cfg, 'NH3');
-  if (!$chem_nitrodep) {
-    add_default($nl, 'stream_ndep_data_filename');
-    add_default($nl, 'stream_ndep_mesh_filename');
-    add_default($nl, 'stream_ndep_year_first');
-    add_default($nl, 'stream_ndep_year_last');
-    add_default($nl, 'stream_ndep_year_align');
-  }
-}
-
 # Single column mode
 my $scam = $cfg->get('scam');
 my $scam_iop = $cfg->get('scam_iop');
@@ -708,6 +695,19 @@ if (defined $nl->get_value('sim_year')) {
 my $sim_year_start = $sim_year;
 if ($sim_year =~ /(\d+)-(\d+)/) {
     $sim_year_start = $1;
+}
+
+# Setup default ndep streams only if not simple_phys or aqua_mode and
+# the chemistry cannot produce the nitrogen depostion fluxes
+if (!($simple_phys or $aqua_mode)) {
+  my $chem_nitrodep = chem_has_species($cfg, 'NO') and chem_has_species($cfg, 'NH3');
+  if (!$chem_nitrodep) {
+    add_default($nl, 'stream_ndep_mesh_filename');
+    add_default($nl, 'stream_ndep_data_filename', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_first', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_last', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_align', 'sim_year'=>$sim_year);
+  }
 }
 
 # Topography
