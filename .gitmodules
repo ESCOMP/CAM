@@ -186,7 +186,7 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm_cice6_5_0_12
+fxtag = cesm3_cice6_6_0_6
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
