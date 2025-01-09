@@ -8763,7 +8763,7 @@ Default: "."
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
-       group="camexp" valid_values="1850,2000,1850-2000">
+       group="camexp" valid_values="1850,2000,2010,1850-2000,1850-2015">
 This varible is only used internally by build-namelist to determine
 appropriate defaults for climatological or transient forcing datasets.
 Default: set by build-namelist.
