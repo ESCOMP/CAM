@@ -3568,7 +3568,7 @@
 <!-- HEMCO: Harmonized Emissions Component -->
 <use_hemco>.false.</use_hemco>
 <hemco_data_root>atm/cam/geoschem/emis/ExtData/HEMCO</hemco_data_root>
-<hemco_config_file>atm/cam/geoschem/emis/HEMCO_Config.CC.CEDS_AEIC19.NEx.c241122.rc</hemco_config_file>
+<hemco_config_file>atm/cam/hemco/HEMCO_Config.CC.CEDS_AEIC19.NEx.c241122.rc</hemco_config_file>
 <hemco_diagn_file>atm/cam/geoschem/emis/HEMCO_Diagn.3_5_0.c230307.rc</hemco_diagn_file>
 <hemco_emission_year>-1</hemco_emission_year>
 
