@@ -782,12 +782,12 @@ contains
     end if
 
     if (ntot_amode>0) then
-      allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
+       allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
     else if (nbins>0) then
-      allocate(sfc_array(pcols,pver,nbins), dm_array(pcols,pver,nbins) )
+       allocate(sfc_array(pcols,pver,nbins), dm_array(pcols,pver,nbins) )
     else
-      allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
-    end if
+       allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
+    endif
 
     sfc_array(:,:,:) = 0._r8
     dm_array(:,:,:) = 0._r8
@@ -795,18 +795,17 @@ contains
     reff_trop(:,:) = 0._r8
 
     if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 ) then
-! CGB, put back in for old CARMA sulfate model.
+
 ! sad_trop should be set outside of usrrxt ??
-      if( carma_hetchem_feedback ) then
+       if( carma_hetchem_feedback ) then
           sad_trop(:ncol,:pver)=strato_sad(:ncol,:pver)
-!        call endrun(subname // ':: ERROR carma_hetchem_feedback namelist variable is obsolete')
-      else
+       else
 
-        call aero_model_surfarea( &
-             state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
-             het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
+          call aero_model_surfarea( &
+               state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
+               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
 
-      endif
+       endif
     endif
 
     level_loop : do k = 1,pver
@@ -2009,16 +2008,13 @@ contains
 ! 	... estimate sulfate particles surface area (cm2/cm3) in each grid
 !-------------------------------------------------------------------------
             if ( carma_hetchem_feedback ) then
-! CGB - put it back for old CARMA sulfate model
-!              call endrun(subname // ':: ERROR carma_hetchem_feedback namelist variable is obsolete')
                sur(:ncol) = strato_sad(:ncol,k)
-!            else
-!               sur(:) = sulfate(:,k)*m(:,k)/avo*wso4 &              ! xform mixing ratio to g/cm3
-!                        / amas &                                    ! xform g/cm3 to num particles/cm3
-!                        * fare &                                    ! xform num particles/cm3 to cm2/cm3
-!                        * xr(:)*xr(:)                               ! humidity factor
+            else
+               sur(:) = sulfate(:,k)*m(:,k)/avo*wso4 &              ! xform mixing ratio to g/cm3
+                        / amas &                                    ! xform g/cm3 to num particles/cm3
+                        * fare &                                    ! xform num particles/cm3 to cm2/cm3
+                        * xr(:)*xr(:)                               ! humidity factor
             endif
-            sur(:ncol) = sad_trop(:ncol,k)
 !-----------------------------------------------------------------
 !	... compute the "aerosol" reaction rates
 !-----------------------------------------------------------------
@@ -2048,7 +2044,7 @@ contains
 !-----------------------------------------------------------------
       if( usr_CO_OH_b_ndx > 0 .and. usr_CO_OH_ndx < 0 ) then
          usr_CO_OH_ndx = usr_CO_OH_b_ndx
-      end if 
+      end if
       if( usr_CO_OH_ndx > 0 ) then
          if( usr_COhc_OH_ndx > 0 ) then
             rxt(:ncol,:,usr_COhc_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
