@@ -6,6 +6,9 @@ module gravity_waves_sources
   use hybrid_mod,     only: hybrid_t
   use shr_kind_mod,   only: r8 => shr_kind_r8
 
+  !++ jtb (added for now, while debugging)
+  use cam_logfile,            only: iulog
+
   implicit none
   private
   save
@@ -18,6 +21,7 @@ module gravity_waves_sources
   public  :: gws_src_fnct
   public  :: gws_init
   private :: compute_frontogenesis
+  private :: compute_vorticity_4gw
 
   type (EdgeBuffer_t) :: edge3
   type (derivative_t)   :: deriv
@@ -45,7 +49,7 @@ CONTAINS
 
   end subroutine gws_init
 
-  subroutine gws_src_fnct(elem, tl, tlq, frontgf, frontga,nphys)
+  subroutine gws_src_fnct(elem, tl, tlq, frontgf, frontga, vort4gw, nphys)
     use derivative_mod, only  : derivinit
     use dimensions_mod, only  : npsq, nelemd
     use dof_mod, only         : UniquePoints
@@ -60,11 +64,21 @@ CONTAINS
     real (kind=r8), intent(out) :: frontgf(nphys*nphys,pver,nelemd)
     real (kind=r8), intent(out) :: frontga(nphys*nphys,pver,nelemd)
 
+    !++jtb (12/31/24)
+    real (kind=r8), intent(out) :: vort4gw(nphys*nphys,pver,nelemd)
+    !!real (kind=r8) :: vort4gw(nphys*nphys,pver,nelemd)
+
+
     ! Local variables
     type (hybrid_t) :: hybrid
     integer :: nets, nete, ithr, ncols, ie
     real(kind=r8), allocatable  ::  frontgf_thr(:,:,:,:)
     real(kind=r8), allocatable  ::  frontga_thr(:,:,:,:)
+    
+    !++jtb (12/31/24)
+    real(kind=r8), allocatable  ::  vort4gw_thr(:,:,:,:)
+
+    
 
     ! This does not need to be a thread private data-structure
     call derivinit(deriv)
@@ -75,25 +89,114 @@ CONTAINS
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
     allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
+    !++jtb (12/31/24)
+    allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete))
+    
     call compute_frontogenesis(frontgf_thr,frontga_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
+    call compute_vorticity_4gw(vort4gw_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
+    
     if (fv_nphys>0) then
       do ie=nets,nete
         frontgf(:,:,ie) = RESHAPE(frontgf_thr(:,:,:,ie),(/nphys*nphys,nlev/))
         frontga(:,:,ie) = RESHAPE(frontga_thr(:,:,:,ie),(/nphys*nphys,nlev/))
+        !++jtb (12/31/24)
+        vort4gw(:,:,ie) = RESHAPE(vort4gw_thr(:,:,:,ie),(/nphys*nphys,nlev/))
       end do
     else
       do ie=nets,nete
         ncols = elem(ie)%idxP%NumUniquePts
         call UniquePoints(elem(ie)%idxP, nlev, frontgf_thr(:,:,:,ie), frontgf(1:ncols,:,ie))
         call UniquePoints(elem(ie)%idxP, nlev, frontga_thr(:,:,:,ie), frontga(1:ncols,:,ie))
+        !++jtb (12/31/24)
+        call UniquePoints(elem(ie)%idxP, nlev, vort4gw_thr(:,:,:,ie), vort4gw(1:ncols,:,ie))
       end do
     end if
     deallocate(frontga_thr)
     deallocate(frontgf_thr)
+    !++ jtb 12/31/24
+    deallocate(vort4gw_thr)
+    
     !!$OMP END PARALLEL
 
   end subroutine gws_src_fnct
 
+  !++jtb (12/31/24)
+  subroutine compute_vorticity_4gw(vort4gw,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! compute vorticity for use in gw params 
+  !   F = ( curl ) [U,V]
+  !
+  ! Original by Peter Lauritzen, Julio Bacmeister*, Dec 2024
+  ! Patterned on 'compute_frontogenesis'
+  !
+  ! * corresponding/blame-able  
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    use derivative_mod, only: vorticity_sphere
+    use edge_mod,       only: edgevpack, edgevunpack
+    use bndry_mod,      only: bndry_exchange
+    use dyn_grid,       only: hvcoord
+    use dimensions_mod, only: fv_nphys,ntrac
+    use fvm_mapping,    only: dyn2phys_vector,dyn2phys
+
+    type(hybrid_t),     intent(in)            :: hybrid
+    type(element_t),    intent(inout), target :: elem(:)
+    type(derivative_t), intent(in)            :: ederiv
+    integer,            intent(in)            :: nets,nete,nphys
+    integer,            intent(in)            :: tl,tlq
+    real(r8),           intent(out)           :: vort4gw(nphys,nphys,nlev,nets:nete)
+  
+    ! local
+    real(r8) :: area_inv(fv_nphys,fv_nphys), tmp(np,np)
+    !!real(r8) :: vort_tmp(fv_nphys*fv_nphys,nlev)
+    real(r8) :: vort_gll(np,np,nlev,nets:nete)
+    integer  :: k,kptr,i,j,ie,component,h,nq,m_cnst,n0
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! First calculate vorticity on GLL grid
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! set timelevel=1 fro velocities
+    n0=1
+    do ie=nets,nete
+       do k=1,nlev
+          call vorticity_sphere(elem(ie)%state%v(:,:,:,k,n0),ederiv,elem(ie),vort_gll(:,:,k,ie))
+       end do
+       do k=1,nlev
+          vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)
+       end do
+       ! pack ++jtb no idea what these routines are doing
+       call edgeVpack(edge3, vort_gll(:,:,:,ie),nlev,0,ie)
+    enddo
+    call bndry_exchange(hybrid,edge3,location='compute_vorticity_4gw')
+    do ie=nets,nete
+       call edgeVunpack(edge3, vort_gll(:,:,:,ie),nlev,0,ie)
+       ! apply inverse mass matrix,
+       do k=1,nlev
+          vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%rspheremp(:,:)
+       end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! Now regrid from GLL to PhysGrid if necessary
+       ! otherwise just return vorticity on GLL grid
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       if (fv_nphys>0) then
+          tmp = 1.0_r8
+          area_inv = dyn2phys(tmp,elem(ie)%metdet)
+          area_inv = 1.0_r8/area_inv
+          !!! vort_tmp(:,:) = dyn2phys(vort_gll(:,:,:,ie),elem(ie)) !peter replace with scalar mapping !++jtb: Think I did that ...
+          do k=1,nlev
+             vort4gw(:,:,k,ie) = dyn2phys( vort_gll(:,:,k,ie) , elem(ie)%metdet , area_inv )
+          end do
+       else
+          do k=1,nlev
+             vort4gw(:,:,k,ie) = vort_gll(:,:,k,ie)
+          end do
+       end if
+    enddo
+
+
+  end subroutine compute_vorticity_4gw
+
+    
   subroutine compute_frontogenesis(frontgf,frontga,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute frontogenesis function F
@@ -170,6 +273,8 @@ CONTAINS
       enddo
       ! pack
       call edgeVpack(edge3, frontgf_gll(:,:,:,ie),nlev,0,ie)
+      !++jtb:
+      !    Why are dims 2*nlev,nlev,  not 2*nlev,2*nlev, or nlev,nlev, ????
       call edgeVpack(edge3, gradth(:,:,:,:,ie),2*nlev,nlev,ie)
     enddo
     call bndry_exchange(hybrid,edge3,location='compute_frontogenesis')

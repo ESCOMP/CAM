@@ -79,6 +79,8 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
+!++jtb
+integer, public    :: vort4gw_idx      = -1
 
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -571,6 +573,8 @@ subroutine dyn_register()
          frontgf_idx)
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/),       &
          frontga_idx)
+      call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols,pver/),       &
+         vort4gw_idx)
    end if
 
 end subroutine dyn_register

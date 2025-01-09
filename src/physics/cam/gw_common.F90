@@ -132,7 +132,10 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   ! Simple assignments.
   band%ngwv = ngwv
   band%dc = dc
-  band%fcrit2 = fcrit2
+  !++jtb (12/24/2024)
+  ! This nonsesnse needs to be straightened out
+  ! For now just ensure fcrit is always set to 1
+  band%fcrit2 = 1.0_r8 ! fcrit2
 
   ! Uniform phase speed reference grid.
   allocate(band%cref(-ngwv:ngwv))

@@ -161,6 +161,9 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
+  !++jtb
+  integer :: vort4gw_idx  = -1
+  
   integer :: sgh_idx      = -1
 
   ! From CLUBB
@@ -367,10 +370,12 @@ subroutine gw_drag_readnl(nlfile)
   call mpi_bcast(effgw_rdg_resid, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_resid")
 
+  !++ jtb (12/24/2024)
+  ! This is confusing. Not sure when if ever this was needed.
   ! Check if fcrit2 was set.
-  call shr_assert(fcrit2 /= unset_r8, &
-       "gw_drag_readnl: fcrit2 must be set via the namelist."// &
-       errMsg(__FILE__, __LINE__))
+  !call shr_assert(fcrit2 /= unset_r8, &
+  !     "gw_drag_readnl: fcrit2 must be set via the namelist."// &
+  !     errMsg(__FILE__, __LINE__))
 
   ! Check if pgwv was set.
   call shr_assert(pgwv >= 0, &
@@ -911,6 +916,7 @@ subroutine gw_init()
 
      frontgf_idx = pbuf_get_index('FRONTGF')
      frontga_idx = pbuf_get_index('FRONTGA')
+     vort4gw_idx = pbuf_get_index('VORT4GW')
 
      call shr_assert(unset_r8 /= frontgfc, &
           "gw_init: Frontogenesis enabled, but frontgfc was &
@@ -935,6 +941,8 @@ subroutine gw_init()
           'Frontogenesis function at gws src level')
      call addfld ('FRONTGFA', (/ 'lev' /), 'A', 'K^2/M^2/S', &
           'Frontogenesis function at gws src level')
+     call addfld ('VORT4GW', (/ 'lev' /), 'A', '1/S', &
+          'Vorticity')
 
      if (history_waccm) then
         call add_default('FRONTGF', 1, ' ')
@@ -1596,6 +1604,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Frontogenesis
   real(r8), pointer :: frontgf(:,:)
   real(r8), pointer :: frontga(:,:)
+  !++jtb 12/31/24
+  real(r8), pointer :: vort4gw(:,:)
 
   ! Temperature change due to deep convection.
   real(r8), pointer :: ttend_dp(:,:)
@@ -1785,11 +1795,17 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
 
+     !++jtb 01/03/25
+     !   Vorticity from SE dycore. This needs to be either
+     !   generalized to other dycores or protected with some
+     !   endrun if dycore != SE
+     call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
+
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
      effgw = 1._r8
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
-          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:)  , &
+          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
           zm, alpha_gw_movmtn, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           phase_speeds, hdepth)
@@ -1848,6 +1864,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
+
+     !++jtb 01/03/25 (see comment above)
+     call outfld ('VORT4GW', vort4gw, pcols, lchnk)
 
      !Deallocate variables that are no longer used:
      deallocate(tau, gwut, phase_speeds)
