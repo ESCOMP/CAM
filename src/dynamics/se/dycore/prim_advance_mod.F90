@@ -924,7 +924,7 @@ contains
             enddo
           enddo
         enddo
-        if (molecular_diff.ne.1) then
+        if (molecular_diff>0) then
           !
           ! no frictional heating for artificial sponge
           !
