@@ -14,9 +14,9 @@
 
 [submodule "pumas"]
 	path = src/physics/pumas
-	url = https://github.com/ESCOMP/PUMAS
+	url = https://github.com/nusbaume/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.36
+        fxtag = c5a15a3
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]

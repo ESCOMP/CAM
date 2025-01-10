@@ -864,7 +864,7 @@ end subroutine micro_pumas_cam_init_cnst
 subroutine micro_pumas_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
-   use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
+   use micro_pumas_ccpp, only: micro_pumas_ccpp_init
    use stochastic_tau_cam, only:  stochastic_tau_init_cam
    use stochastic_emulated_cam, only:  stochastic_emulated_init_cam
 
@@ -877,15 +877,15 @@ subroutine micro_pumas_cam_init(pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    integer :: m, mm
-   logical :: history_amwg         ! output the variables used by the AMWG diag package
-   logical :: history_budget       ! Output tendencies and state variables for CAM4
-                                   ! temperature, water vapor, cloud ice and cloud
-                                   ! liquid budgets.
+   logical :: history_amwg          ! output the variables used by the AMWG diag package
+   logical :: history_budget        ! Output tendencies and state variables for CAM4
+                                    ! temperature, water vapor, cloud ice and cloud
+                                    ! liquid budgets.
    logical :: use_subcol_microp
    logical :: do_clubb_sgs
-   integer :: budget_histfile      ! output history file number for budget fields
+   integer :: budget_histfile       ! output history file number for budget fields
    integer :: ierr
-   character(128) :: errstring     ! return status (non-blank for error return)
+   character(len=512) :: errstring  ! return status (non-blank for error return)
 
    character(len=cl) :: stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
                                        stochastic_emulated_filename_output_scale
@@ -926,27 +926,30 @@ subroutine micro_pumas_cam_init(pbuf2d)
                                        stochastic_emulated_filename_output_scale)
    end if
 
-   call micro_mg_init3_0( &
-           r8, gravit, rair, rh2o, cpair, &
-           tmelt, latvap, latice, rhmini, &
-           micro_mg_dcs,                  &
-           micro_mg_do_hail,micro_mg_do_graupel, &
-           microp_uniform, do_cldice, use_hetfrz_classnuc, &
-           micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
-           micro_mg_accre_enhan_fact , &
-           micro_mg_autocon_fact , micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
-           micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
-           micro_mg_iaccr_factor, micro_mg_max_nicons, &
-           allow_sed_supersat, micro_mg_warm_rain, &
-           micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
-           micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-           micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_precip_fall_corr,&
-           micro_mg_accre_sees_auto, micro_mg_implicit_fall, &
-           micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
-           micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
-           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, &
-           stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
-           stochastic_emulated_filename_output_scale, iulog, errstring)
+   call  micro_pumas_ccpp_init(gravit, rair, rh2o, cpair, tmelt, latvap, latice,     &
+                               rhmini, iulog, micro_mg_do_hail, micro_mg_do_graupel, &
+                               microp_uniform, do_cldice, use_hetfrz_classnuc,       &
+                               allow_sed_supersat, micro_mg_evap_sed_off,            &
+                               micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers,   &
+                               micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs,     &
+                               micro_mg_rainfreeze_ifs, micro_mg_ifs_sed,            &
+                               micro_mg_precip_fall_corr, micro_mg_accre_sees_auto,  &
+                               micro_mg_implicit_fall, micro_mg_nccons,              &
+                               micro_mg_nicons, micro_mg_ngcons, micro_mg_nrcons,    &
+                               micro_mg_nscons, micro_mg_precip_frac_method,         &
+                               micro_mg_warm_rain,                                   &
+                               stochastic_emulated_filename_quantile,                &
+                               stochastic_emulated_filename_input_scale,             &
+                               stochastic_emulated_filename_output_scale,            &
+                               micro_mg_dcs,                                         &
+                               micro_mg_berg_eff_factor, micro_mg_accre_enhan_fact,  &
+                               micro_mg_autocon_fact, micro_mg_autocon_nd_exp,       &
+                               micro_mg_autocon_lwp_exp, micro_mg_homog_size,        &
+                               micro_mg_vtrmi_factor,    micro_mg_vtrms_factor,      &
+                               micro_mg_effi_factor,     micro_mg_iaccr_factor,      &
+                               micro_mg_max_nicons, micro_mg_ncnst,                  &
+                               micro_mg_ninst, micro_mg_ngnst, micro_mg_nrnst,       &
+                               micro_mg_nsnst, errstring, ierr)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
@@ -1666,7 +1669,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: cld(:,:)          ! Total cloud fraction
    real(r8), pointer :: concld(:,:)       ! Convective cloud fraction
    real(r8), pointer :: prec_dp(:)        ! Deep Convective precip
-   real(r8), pointer :: prec_sh(:)        ! Shallow Convective precip    
+   real(r8), pointer :: prec_sh(:)        ! Shallow Convective precip
 
    real(r8), pointer :: iciwpst(:,:)      ! Stratiform in-cloud ice water path for radiation
    real(r8), pointer :: iclwpst(:,:)      ! Stratiform in-cloud liquid water path for radiation
@@ -1996,7 +1999,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    else
       precc(:ncol) = 0._r8
    end if
- 
+
    if (.not. do_cldice) then
       ! If we are NOT prognosing ice and snow tendencies, then get them from the Pbuf
       call pbuf_get_field(pbuf, tnd_qsnow_idx,   tnd_qsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
@@ -2175,10 +2178,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
    call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle
    !            then cast back to angle (radians)
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
 
    zen_angle(:) = 0.0_r8
    rlats(:) = 0.0_r8
@@ -2292,7 +2295,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Zero out diagnostic rainbow arrays
    rbfreq = 0._r8
-   rbfrac = 0._r8 
+   rbfrac = 0._r8
 
    ! Zero out values above top_lev before passing into _tend for some pbuf variables that are inputs
    naai(:ncol,:top_lev-1) = 0._r8
@@ -3189,7 +3192,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !-----------------------------------------------------------------------
 ! Diagnostic Rainbow Calculation. Seriously.
 !-----------------------------------------------------------------------
-      
+
    do i = 1, ngrdcol
 
       top_idx = pver
@@ -3197,14 +3200,14 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       frlow  = 0._r8
       cldmx  = 0._r8
       cldtot  = maxval(ast(i,top_lev:))
-      
+
 ! Find levels in surface layer
       do k = top_lev, pver
-         if (state%pmid(i,k) > rb_pmin) then     
+         if (state%pmid(i,k) > rb_pmin) then
             top_idx = min(k,top_idx)
-         end if 
-      end do 
-            
+         end if
+      end do
+
 !For all fractional precip calculated below, use maximum in surface layer.
 !For convective precip, base on convective cloud area
       convmx = maxval(concld(i,top_idx:))
@@ -3220,27 +3223,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !      (rval = true  if any sig precip)
 
       rval = ((precc(i) > rb_rcmin) .or. (rmax > rb_rmin))
-      
+
 !Now can find conditions for a rainbow:
 ! Maximum cloud cover (CLDTOT) < 0.5
 ! 48 < SZA < 90
 ! freqr (below rb_pmin) > 0.25
-! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s 
-      
-      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then  
+! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s
 
-!Rainbow 'probability' (area) derived from solid angle theory 
+      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then
+
+!Rainbow 'probability' (area) derived from solid angle theory
 !as the fraction of the hemisphere for a spherical cap with angle phi=sza-48.
 ! This is only valid between 48 < sza < 90 (controlled for above).
 
           rbfrac(i) =  max(0._r8,(1._r8-COS((sza(i)-48._r8)*deg2rad))/2._r8) * frlow
-          rbfreq(i) =  1.0_r8 
-      end if 
+          rbfreq(i) =  1.0_r8
+      end if
 
    end do                    ! end column loop for rainbows
 
    call outfld('RBFRAC',   rbfrac,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)   
+   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
 
    ! --------------------- !

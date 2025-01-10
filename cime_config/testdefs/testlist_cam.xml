@@ -1898,6 +1898,7 @@
   <test compset="FLTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="debug_JN"/>  <!--REMOVE!!!! -JN -->
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
