@@ -24,16 +24,16 @@ module carma_model_flags_mod
   !
   ! Create a public definition of any new namelist variables that you wish to have,
   ! and default them to an inital value.
-  real(r8), public               :: carma_emis_dust  = 0._r8    !! Total dust emission for the event (kg)
-  real(r8), public               :: carma_emis_soot  = 0._r8    !! Total soot emission for the event (kg)
-  integer, public                :: carma_emis_startdate = 1    !! start year and day of year (yyyyddd)
-  integer, public                :: carma_emis_stopdate = 1     !! stop year and day of year (yyyyddd)
-  integer, public                :: carma_emis_starttime = 0    !! start time of day (s)
-  integer, public                :: carma_emis_stoptime = 0     !! stop time of day (s)
-  real(r8), public               :: carma_emis_minlat = -90.    !! minimum latitude
-  real(r8), public               :: carma_emis_maxlat = 90.     !! maximum latitude
-  real(r8), public               :: carma_emis_minlon = 0.      !! minimum longitude
-  real(r8), public               :: carma_emis_maxlon = 360.    !! maximum longitude
+  real(r8), public               :: carma_emis_dust  = 0._r8     !! Total dust emission for the event (kg)
+  real(r8), public               :: carma_emis_soot  = 0._r8     !! Total soot emission for the event (kg)
+  integer, public                :: carma_emis_startdate = 1     !! start year and day of year (yyyyddd)
+  integer, public                :: carma_emis_stopdate = 1      !! stop year and day of year (yyyyddd)
+  integer, public                :: carma_emis_starttime = 0     !! start time of day (s)
+  integer, public                :: carma_emis_stoptime = 0      !! stop time of day (s)
+  real(r8), public               :: carma_emis_minlat = -90._r8  !! minimum latitude
+  real(r8), public               :: carma_emis_maxlat = 90._r8   !! maximum latitude
+  real(r8), public               :: carma_emis_minlon = 0._r8    !! minimum longitude
+  real(r8), public               :: carma_emis_maxlon = 360._r8  !! maximum longitude
   logical, public                :: carma_fractal_soot = .false. !! fractal Soot
 
 contains
