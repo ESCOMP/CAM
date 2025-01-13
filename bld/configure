@@ -2343,6 +2343,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
