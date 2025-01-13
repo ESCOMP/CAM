@@ -61,6 +61,7 @@ module restart_physics
     use cam_pio_utils,       only: cam_pio_def_dim
     use subcol_utils,        only: is_subcol_on
     use subcol,              only: subcol_init_restart
+    use carma_intr,          only: carma_restart_init
 
     type(file_desc_t), intent(inout) :: file
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -134,6 +135,8 @@ module restart_physics
       call subcol_init_restart(file, hdimids)
     end if
 
+    call carma_restart_init(file)
+
   end subroutine init_restart_physics
 
   subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d)
@@ -157,6 +160,7 @@ module restart_physics
       use pio,                 only: pio_write_darray
       use subcol_utils,        only: is_subcol_on
       use subcol,              only: subcol_write_restart
+      use carma_intr,          only: carma_restart_write
       !
       ! Input arguments
       !
@@ -329,6 +333,7 @@ module restart_physics
       call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
 
       call radiation_write_restart(file)
+      call carma_restart_write(file)
 
     end subroutine write_restart_physics
 
@@ -352,6 +357,7 @@ module restart_physics
      use subcol_utils,        only: is_subcol_on
      use subcol,              only: subcol_read_restart
      use pio,                 only: pio_read_darray
+     use carma_intr,          only: carma_restart_read
      !
      ! Arguments
      !
@@ -589,6 +595,7 @@ module restart_physics
      deallocate(tmpfield2)
 
      call radiation_read_restart(file)
+     call carma_restart_read(file)
 
    end subroutine read_restart_physics
 

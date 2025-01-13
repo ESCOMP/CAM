@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+<ncdata hgrid="1.9x2.5" nlev="32">atm/cam/inic/fv/FCARMAnudged_f19_carmats3128_spinup01.cam.i.1991-01-01_c241023.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32">atm/cam/inic/fv/FCARMA2000climo_f09_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+
+<lght_no_prd_factor hgrid="1.9x2.5">4.5D0</lght_no_prd_factor>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- Lower Boundary -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+
+<!-- CARMA Dust Emissions Tuning Factor -->
+<carma_dustemisfactor hgrid="1.9x2.5" >0.4D-9</carma_dustemisfactor>
+<carma_dustemisfactor hgrid="0.9x1.25">0.5D-9</carma_dustemisfactor>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- History specifiers -->
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_carma_srf_flx>.true.</history_carma_srf_flx>
+
+<fincl1>
+         'EXTINCT', 'EXTINCTUV', 'EXTINCTNIR','ABSORB', 'AODVIS', 'AODABS','SAD_STRAT','SAD_SULFC','SAD_LNAT','SAD_ICE',
+         'O3','CO','OH','NO2','SSAVIS','AODNIR','AODVISst','AODNIRst','AODUVst',,'TMSO2','TMH2SO4','TMOCS',
+         'TMPRSULF01','TMPRSULF02','TMPRSULF03','TMPRSULF04','TMPRSULF05','TMPRSULF06','TMPRSULF07','TMPRSULF08','TMPRSULF09','TMPRSULF10',
+         'TMPRSULF11','TMPRSULF12','TMPRSULF13','TMPRSULF14','TMPRSULF15','TMPRSULF16','TMPRSULF17','TMPRSULF18','TMPRSULF19','TMPRSULF20',
+         'TMMXOC01','TMMXOC02','TMMXOC03','TMMXOC04','TMMXOC05','TMMXOC06','TMMXOC07','TMMXOC08','TMMXOC09','TMMXOC10',
+         'TMMXOC11','TMMXOC12','TMMXOC13','TMMXOC14','TMMXOC15','TMMXOC16','TMMXOC17','TMMXOC18','TMMXOC19','TMMXOC20',
+         'TMMXBC01','TMMXBC02','TMMXBC03','TMMXBC04','TMMXBC05','TMMXBC06','TMMXBC07','TMMXBC08','TMMXBC09','TMMXBC10',
+         'TMMXBC11','TMMXBC12','TMMXBC13','TMMXBC14','TMMXBC15','TMMXBC16','TMMXBC17','TMMXBC18','TMMXBC19','TMMXBC20',
+         'TMMXDUST01','TMMXDUST02','TMMXDUST03','TMMXDUST04','TMMXDUST05','TMMXDUST06','TMMXDUST07','TMMXDUST08','TMMXDUST09','TMMXDUST10',
+         'TMMXDUST11','TMMXDUST12','TMMXDUST13','TMMXDUST14','TMMXDUST15','TMMXDUST16','TMMXDUST17','TMMXDUST18','TMMXDUST19','TMMXDUST20',
+         'TMMXSALT01','TMMXSALT02','TMMXSALT03','TMMXSALT04','TMMXSALT05','TMMXSALT06','TMMXSALT07','TMMXSALT08','TMMXSALT09','TMMXSALT10',
+         'TMMXSALT11','TMMXSALT12','TMMXSALT13','TMMXSALT14','TMMXSALT15','TMMXSALT16','TMMXSALT17','TMMXSALT18','TMMXSALT19','TMMXSALT20'
+</fincl1>
+
+<sim_year>1850-2000</sim_year>
+
+</namelist_defaults>

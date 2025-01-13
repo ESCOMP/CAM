@@ -73,10 +73,10 @@ subroutine ndrop_bam_init
 
   use phys_control, only: phys_getopts
 
-   !----------------------------------------------------------------------- 
-   ! 
+   !-----------------------------------------------------------------------
+   !
    ! Initialize constants for droplet activation by bulk aerosols
-   ! 
+   !
    !-----------------------------------------------------------------------
 
    integer  :: l, m, iaer
@@ -91,6 +91,8 @@ subroutine ndrop_bam_init
    ! by using routines from the rad_constituents module.
 
    call rad_cnst_get_info(0, naero=naer_all)
+   if (.not. naer_all>0) return
+
    allocate( &
       aername(naer_all),        &
       dryrad_aer(naer_all),     &
@@ -172,7 +174,7 @@ subroutine ndrop_bam_init
 
       ! Skip aerosols that don't have a dispersion defined.
       if (dispersion_aer(m) == 0._r8) cycle
-      
+
       alogsig(m)     = log(dispersion_aer(m))
       exp45logsig(m) = exp(4.5_r8*alogsig(m)*alogsig(m))
       argfactor(m)   = 2._r8/(3._r8*sqrt(2._r8)*alogsig(m))
@@ -266,7 +268,11 @@ subroutine ndrop_bam_run( &
    integer  :: m
    !-------------------------------------------------------------------------------
 
+   nact = 0._r8
+
+   if (.not. naer_all>0) return
    maxmodes = naer_all
+
    allocate( &
       volc(maxmodes),       &
       eta(maxmodes),        &
@@ -279,8 +285,6 @@ subroutine ndrop_bam_run( &
       write(iulog,*)'ndrop_bam_run: maxmodes,pmode=',maxmodes,pmode
       call endrun('ndrop_bam_run')
    endif
-
-   nact = 0._r8
 
    if (nmode .eq. 1  .and.  na(1) .lt. 1.e-20_r8) return
 
@@ -316,7 +320,7 @@ subroutine ndrop_bam_run( &
          smc(m) = smcrit(m) ! only for prescribed size dist
 
          if (hygro_aer(m) > 1.e-10_r8) then   ! loop only if variable size dist
-            smc(m) = 2._r8*aten*sqrt(aten/(27._r8*hygro_aer(m)*amcubeloc(m))) 
+            smc(m) = 2._r8*aten*sqrt(aten/(27._r8*hygro_aer(m)*amcubeloc(m)))
          else
             smc(m) = 100._r8
          endif
@@ -388,6 +392,8 @@ subroutine ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
    real(r8) :: ccn(pcols,pver,psat)  ! number conc of aerosols activated at supersat
    !-------------------------------------------------------------------------------
 
+   if (.not. naer_all>0) return
+
    ccn(:ncol,:,:) = 0._r8
 
    do k = top_lev, pver
@@ -397,7 +403,7 @@ subroutine ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
          if (m == idxsul) then
             ! Lohmann treatment for sulfate has variable size distribution
             do i = 1, ncol
-               if (naer2(i,k,m) > 0._r8) then 
+               if (naer2(i,k,m) > 0._r8) then
                   amcubesulfate(i) = amcubefactor(m)*maerosol(i,k,m)/(naer2(i,k,m))
                   smcritsulfate(i) = smcritfactor(m)/sqrt(amcubesulfate(i))
                else
@@ -489,9 +495,9 @@ subroutine maxsat(zeta, eta, nmode, smc, smax)
          sum=1.e20_r8
       endif
    enddo
-   
+
    smax=1._r8/sqrt(sum)
-   
+
 end subroutine maxsat
 
 !===============================================================================

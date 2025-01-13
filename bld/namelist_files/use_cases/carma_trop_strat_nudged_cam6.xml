@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+<ncdata hgrid="1.9x2.5" nlev="32">atm/cam/inic/fv/FCARMAnudged_f19_carmats3128_spinup01.cam.i.1991-01-01_c241023.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32">atm/cam/inic/fv/FCARMA2000climo_f09_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+
+<lght_no_prd_factor hgrid="1.9x2.5">4.5D0</lght_no_prd_factor>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- Ocean emissions -->
+<bubble_mediated_transfer>.FALSE.</bubble_mediated_transfer>
+<ocean_salinity_file>atm/cam/chem/ocnexch/SSS_recooked_0-360_c171120.nc</ocean_salinity_file>
+<csw_specifier> 'DMS -> $INPUTDATA_ROOT/atm/cam/chem/ocnexch/Csw_DMS_Lana2011_f09f09_1750_2100_20200717a.nc' </csw_specifier>
+<csw_time_type>SERIAL</csw_time_type>
+
+<!-- Lower Boundary -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+
+<!-- CARMA Dust Emissions Tuning Factor -->
+<carma_dustemisfactor hgrid="1.9x2.5" >0.4D-9</carma_dustemisfactor>
+<carma_dustemisfactor hgrid="0.9x1.25">0.5D-9</carma_dustemisfactor>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- History specifiers -->
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_carma_srf_flx>.true.</history_carma_srf_flx>
+
+<fincl1>
+         'EXTINCT', 'EXTINCTUV', 'EXTINCTNIR','ABSORB', 'AODVIS', 'AODABS','SAD_STRAT','SAD_SULFC','SAD_LNAT','SAD_ICE',
+         'O3','CO','OH','NO2','SSAVIS','AODNIR','AODVISst','AODNIRst','AODUVst',,'TMSO2','TMH2SO4','TMOCS',
+         'TMPRSULF01','TMPRSULF02','TMPRSULF03','TMPRSULF04','TMPRSULF05','TMPRSULF06','TMPRSULF07','TMPRSULF08','TMPRSULF09','TMPRSULF10',
+         'TMPRSULF11','TMPRSULF12','TMPRSULF13','TMPRSULF14','TMPRSULF15','TMPRSULF16','TMPRSULF17','TMPRSULF18','TMPRSULF19','TMPRSULF20',
+         'TMMXOC01','TMMXOC02','TMMXOC03','TMMXOC04','TMMXOC05','TMMXOC06','TMMXOC07','TMMXOC08','TMMXOC09','TMMXOC10',
+         'TMMXOC11','TMMXOC12','TMMXOC13','TMMXOC14','TMMXOC15','TMMXOC16','TMMXOC17','TMMXOC18','TMMXOC19','TMMXOC20',
+         'TMMXBC01','TMMXBC02','TMMXBC03','TMMXBC04','TMMXBC05','TMMXBC06','TMMXBC07','TMMXBC08','TMMXBC09','TMMXBC10',
+         'TMMXBC11','TMMXBC12','TMMXBC13','TMMXBC14','TMMXBC15','TMMXBC16','TMMXBC17','TMMXBC18','TMMXBC19','TMMXBC20',
+         'TMMXDUST01','TMMXDUST02','TMMXDUST03','TMMXDUST04','TMMXDUST05','TMMXDUST06','TMMXDUST07','TMMXDUST08','TMMXDUST09','TMMXDUST10',
+         'TMMXDUST11','TMMXDUST12','TMMXDUST13','TMMXDUST14','TMMXDUST15','TMMXDUST16','TMMXDUST17','TMMXDUST18','TMMXDUST19','TMMXDUST20',
+         'TMMXSALT01','TMMXSALT02','TMMXSALT03','TMMXSALT04','TMMXSALT05','TMMXSALT06','TMMXSALT07','TMMXSALT08','TMMXSALT09','TMMXSALT10',
+         'TMMXSALT11','TMMXSALT12','TMMXSALT13','TMMXSALT14','TMMXSALT15','TMMXSALT16','TMMXSALT17','TMMXSALT18','TMMXSALT19','TMMXSALT20'
+</fincl1>
+
+<!-- nudging -->
+
+<Nudge_Model>.true.</Nudge_Model>
+<Nudge_Path hgrid="1.9x2.5"  nlev="32">'atm/cam/met/nudging/MERRA2_fv19_32L/'</Nudge_Path>
+<Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4"  nlev="32">'atm/cam/met/nudging/MERRA2_ne30_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4" npg="3" nlev="32">'atm/cam/met/nudging/MERRA2_ne30pg3_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne0np4CONUS.ne30x8" nlev="32">'atm/cam/met/nudging/MERRA2_ne0CONUS30x8_L32/'</Nudge_Path>
+<Nudge_File_Template hgrid="1.9x2.5"  nlev="32">'%y/MERRA2_fv19.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="0.9x1.25" nlev="32">'%y/MERRA2_fv09.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne30np4"  nlev="32">'%y/MERRA2_ne30np4_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne30np4" npg="3" nlev="32">'%y/MERRA2_ne30pg3_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne0np4CONUS.ne30x8" nlev="32">'%y/MERRA2_ne0CONUS30x8_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_Force_Opt>0</Nudge_Force_Opt>
+<Nudge_TimeScale_Opt>0</Nudge_TimeScale_Opt>
+<Nudge_Times_Per_Day>8</Nudge_Times_Per_Day>
+<Model_Times_Per_Day>48</Model_Times_Per_Day>
+<Model_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">384</Model_Times_Per_Day>
+<Nudge_Uprof>1</Nudge_Uprof>
+<Nudge_Ucoef>0.25</Nudge_Ucoef>
+<Nudge_Vprof>1</Nudge_Vprof>
+<Nudge_Vcoef>0.25</Nudge_Vcoef>
+<Nudge_Tprof>1</Nudge_Tprof>
+<Nudge_Tcoef>0.25</Nudge_Tcoef>
+<Nudge_Qprof>0</Nudge_Qprof>
+<Nudge_Qcoef>0.00</Nudge_Qcoef>
+<Nudge_PSprof>0</Nudge_PSprof>
+<Nudge_PScoef>0.00</Nudge_PScoef>
+<Nudge_Beg_Year>1990</Nudge_Beg_Year>
+<Nudge_Beg_Year hgrid="ne0np4CONUS.ne30x8">2013</Nudge_Beg_Year>
+<Nudge_Beg_Month>1</Nudge_Beg_Month>
+<Nudge_Beg_Day>1</Nudge_Beg_Day>
+<Nudge_End_Year>2020</Nudge_End_Year>
+<Nudge_End_Month>12</Nudge_End_Month>
+<Nudge_End_Day>31</Nudge_End_Day>
+<Nudge_Hwin_lat0>0.0</Nudge_Hwin_lat0>
+<Nudge_Hwin_lat0 hgrid="ne0np4CONUS.ne30x8">37.</Nudge_Hwin_lat0>
+<Nudge_Hwin_latWidth>9999.</Nudge_Hwin_latWidth>
+<Nudge_Hwin_latWidth hgrid="ne0np4CONUS.ne30x8">56.</Nudge_Hwin_latWidth>
+<Nudge_Hwin_latDelta>1.</Nudge_Hwin_latDelta>
+<Nudge_Hwin_latDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_latDelta>
+<Nudge_Hwin_lon0>180.</Nudge_Hwin_lon0>
+<Nudge_Hwin_lon0 hgrid="ne0np4CONUS.ne30x8">264.</Nudge_Hwin_lon0>
+<Nudge_Hwin_lonWidth>9999.</Nudge_Hwin_lonWidth>
+<Nudge_Hwin_lonWidth hgrid="ne0np4CONUS.ne30x8">94.</Nudge_Hwin_lonWidth>
+<Nudge_Hwin_lonDelta>1.</Nudge_Hwin_lonDelta>
+<Nudge_Hwin_lonDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_lonDelta>
+<Nudge_Hwin_Invert>.false.</Nudge_Hwin_Invert>
+<Nudge_Hwin_Invert hgrid="ne0np4CONUS.ne30x8">.true.</Nudge_Hwin_Invert>
+<Nudge_Vwin_Hindex>33.</Nudge_Vwin_Hindex>
+<Nudge_Vwin_Hdelta>0.001</Nudge_Vwin_Hdelta>
+<Nudge_Vwin_Lindex>0.</Nudge_Vwin_Lindex>
+<Nudge_Vwin_Ldelta>0.1</Nudge_Vwin_Ldelta>
+<Nudge_Vwin_Invert>.false.</Nudge_Vwin_Invert>
+
+<sim_year>1850-2000</sim_year>
+
+</namelist_defaults>
