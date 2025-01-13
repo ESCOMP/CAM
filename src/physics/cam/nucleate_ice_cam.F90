@@ -607,12 +607,18 @@ subroutine nucleate_ice_cam_calc( &
 
    else
       ! for bulk model
-      dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
-                            + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
-      sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
-      soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      if (idxdst1 > 0 .and. idxdst2 > 0 .and. idxdst3 > 0 .and. idxdst4 > 0) then
+         dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
+                                 + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
+      end if
+      if (idxsul > 0) then
+         sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
+      end if
+      if (idxbcphi > 0) then
+         soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      end if
    endif
 
    kloop: do k = top_lev, pver

@@ -2882,8 +2882,10 @@ contains
       ! Run wet deposition routines to intialize aerosols
       !===================================================
 
-      call modal_aero_calcsize_diag(state, pbuf)
-      call modal_aero_wateruptake_dr(state, pbuf)
+      if (clim_modal_aero) then
+         call modal_aero_calcsize_diag(state, pbuf)
+         call modal_aero_wateruptake_dr(state, pbuf)
+      end if
 
       !===================================================
       ! Radiation computations
