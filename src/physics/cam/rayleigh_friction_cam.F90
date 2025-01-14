@@ -128,8 +128,6 @@ subroutine rayleigh_friction_tendO(                                     &
 
    call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
 
-   if (otau0 .eq. 0._r8) return
-
    ncol  = state%ncol
 
    call rayleigh_friction_run(ncol, pver, ztodt, state%u, state%v, ptend%u, ptend%v, ptend%s, errmsg, errflg)
