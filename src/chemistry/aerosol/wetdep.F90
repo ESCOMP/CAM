@@ -645,6 +645,7 @@ subroutine wetdepa_v2(                                  &
 
       end do ! End of i = 1, ncol
 
+#ifdef DEBUG
       found = .false.
       do i = 1,ncol
          if (dblchek(i) < -1.e-10_r8) then
@@ -657,6 +658,7 @@ subroutine wetdepa_v2(                                  &
       if (found) then
          call endrun('wetdapa_v2: negative values found')
       end if
+#endif
 
    end do ! End of k = 1, pver
 
@@ -962,6 +964,7 @@ end subroutine wetdepa_v2
 
          end do
 
+#ifdef DEBUG
          found = .false.
          do i = 1,ncol
             if (dblchek(i) < -1.e-10_r8) then
@@ -974,6 +977,7 @@ end subroutine wetdepa_v2
          if (found) then
             call endrun('wetdapa_v1: negative values found')
          end if
+#endif
 
       end do
 
