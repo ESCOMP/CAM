@@ -459,6 +459,18 @@
     <lname>HISTC_CAM70%MT%CT1S_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
+    <alias>FWt0maHISTC</alias>
+    <lname>HISTC_CAM70%HT%CT0MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FWt1maHISTC</alias>
+    <lname>HISTC_CAM70%HT%CT1MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FWt4maHISTC</alias>
+    <lname>HISTC_CAM70%HT%CT4MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>FHISTC_MTt4s</alias>
     <lname>HISTC_CAM70%MT%CT4S_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
