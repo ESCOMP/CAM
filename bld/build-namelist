@@ -1273,6 +1273,7 @@ if ($carma ne 'none') {
   add_default($nl, 'carma_model',       'val'=>$carma);
   add_default($nl, 'carma_flag',        'val'=>'.true.');
   add_default($nl, 'history_carma',     'val'=>'.true.');
+  add_default($nl, 'carma_sulfnuc_method','val'=>'ZhaoTurco');
 }
 if ($carma eq 'bc_strat') {
   add_default($nl, 'carma_do_drydep',   'val'=>'.true.');
@@ -1592,7 +1593,7 @@ if (defined $nl->get_value('prescribed_strataero_3modes')) {
 
 # determine if prescribed stratospheric aerosol data is needed
 if ( ($het_chem) || ($nl->get_value('prescribed_strataero_feedback') =~ /$TRUE/io ) ){
-    if ( ($carma ne 'sulfate') && !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
+    if ( !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
 
         unless (defined $nl->get_value('prescribed_strataero_type')) {
             add_default($nl, 'prescribed_strataero_type','val'=>'CYCLICAL');

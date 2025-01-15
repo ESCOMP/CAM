@@ -334,10 +334,10 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    end if
 
-   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation')
+   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation', sampled_on_subcycle=.true.)
 
-   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity'                   )
-   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice'           )
+   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity',            sampled_on_subcycle=.true.)
+   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice',    sampled_on_subcycle=.true.)
 
    if (history_amwg) then
       call add_default ('WSUB     ', 1, ' ')
@@ -756,7 +756,7 @@ subroutine microp_aero_run ( &
       do k = top_lev, pver
          do i = 1, ncol
 
-            if (state1%q(i,k,cldliq_idx) >= qsmall) then
+            if (naer_all > 0 .and. state1%q(i,k,cldliq_idx) >= qsmall) then
 
                ! get droplet activation rate
 
