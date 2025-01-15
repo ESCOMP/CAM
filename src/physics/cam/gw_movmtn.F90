@@ -465,7 +465,7 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   real(r8) :: scale_factor 
   integer  :: k, nlayers
 
-  steering_level = pverx - 10 !++ ????? 
+  steering_level = pverx - 20 !++ ????? 
   scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB 
   !-----------------------------------
   ! Simple average over layers.

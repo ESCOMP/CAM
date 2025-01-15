@@ -23,7 +23,7 @@ module gravity_waves_sources
   private :: compute_frontogenesis
   private :: compute_vorticity_4gw
 
-  type (EdgeBuffer_t) :: edge3
+  type (EdgeBuffer_t) :: edge3,edge1
   type (derivative_t)   :: deriv
   real(r8) :: psurf_ref
 
@@ -44,6 +44,7 @@ CONTAINS
 
     ! Set up variables similar to dyn_comp and prim_driver_mod initializations
     call initEdgeBuffer(par, edge3, elem, 3*nlev,nthreads=1)
+    call initEdgeBuffer(par, edge1, elem, nlev,nthreads=1)
 
     psurf_ref = hypi(plev+1)
 
@@ -66,7 +67,7 @@ CONTAINS
 
     !++jtb (12/31/24)
     real (kind=r8), intent(out) :: vort4gw(nphys*nphys,pver,nelemd)
-    !!real (kind=r8) :: vort4gw(nphys*nphys,pver,nelemd)
+    !!real (kind=r8) :: vort4gw(nphys*nphys,pver,nelemd) phl remove
 
 
     ! Local variables
@@ -164,11 +165,11 @@ CONTAINS
           vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)
        end do
        ! pack ++jtb no idea what these routines are doing
-       call edgeVpack(edge3, vort_gll(:,:,:,ie),nlev,0,ie)
+       call edgeVpack(edge1, vort_gll(:,:,:,ie),nlev,0,ie)
     enddo
-    call bndry_exchange(hybrid,edge3,location='compute_vorticity_4gw')
+    call bndry_exchange(hybrid,edge1,location='compute_vorticity_4gw')
     do ie=nets,nete
-       call edgeVunpack(edge3, vort_gll(:,:,:,ie),nlev,0,ie)
+       call edgeVunpack(edge1, vort_gll(:,:,:,ie),nlev,0,ie)
        ! apply inverse mass matrix,
        do k=1,nlev
           vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%rspheremp(:,:)

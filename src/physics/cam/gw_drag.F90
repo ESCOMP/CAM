@@ -1534,7 +1534,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_front,        only: gw_cm_src
   use gw_convect,      only: gw_beres_src
   use gw_movmtn,       only: gw_movmtn_src
-
+  use dycore,          only: dycore_is
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
@@ -1799,7 +1799,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !   Vorticity from SE dycore. This needs to be either
      !   generalized to other dycores or protected with some
      !   endrun if dycore != SE
-     call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
+     if (dycore_is('SE')) then
+        call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
+     else
+        call endrun( 'gw_drag: vort4gw only with SE')
+     end if
 
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
