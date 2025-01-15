@@ -232,9 +232,9 @@ contains
     call register_vector_field('UTEND_TOT','VTEND_TOT')
 
     ! Debugging negative water output fields
-    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp')
-    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp')
-    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp')
+    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
 
     call addfld ('Z3',         (/ 'lev' /), 'A', 'm',         'Geopotential Height (above sea level)')
     call addfld ('Z1000',      horiz_only,  'A', 'm',         'Geopotential Z at 1000 mbar pressure surface')
@@ -253,6 +253,7 @@ contains
     call addfld ('OMEGAV',     (/ 'lev' /), 'A', 'm Pa/s2 ',  'Vertical flux of meridional momentum' )
     call addfld ('OMGAOMGA',   (/ 'lev' /), 'A', 'Pa2/s2',    'Vertical flux of vertical momentum' )
 
+    call addfld ('UT',         (/ 'lev' /), 'A', 'K m/s   ',  'Zonal heat transport')
     call addfld ('UU',         (/ 'lev' /), 'A', 'm2/s2',     'Zonal velocity squared' )
     call addfld ('WSPEED',     (/ 'lev' /), 'X', 'm/s',       'Horizontal total wind speed maximum' )
     call addfld ('WSPDSRFMX',  horiz_only,  'X', 'm/s',       'Horizontal total wind speed maximum at surface layer midpoint' )
@@ -339,6 +340,7 @@ contains
       call add_default ('VT      ', 1, ' ')
       call add_default ('VU      ', 1, ' ')
       call add_default ('VV      ', 1, ' ')
+      call add_default ('UT      ', 1, ' ')
       call add_default ('UU      ', 1, ' ')
       call add_default ('OMEGAT  ', 1, ' ')
       call add_default ('OMEGAU  ', 1, ' ')
@@ -438,6 +440,7 @@ contains
 
     ! outfld calls in diag_phys_writeout
     call addfld ('OMEGAQ',     (/ 'lev' /), 'A', 'kgPa/kgs', 'Vertical water transport' )
+    call addfld ('UQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Zonal water transport')
     call addfld ('VQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Meridional water transport')
     call addfld ('QQ',         (/ 'lev' /), 'A', 'kg2/kg2',   'Eddy moisture variance')
 
@@ -611,6 +614,7 @@ contains
    end if
 
     if (history_eddy) then
+      call add_default ('UQ      ', 1, ' ')
       call add_default ('VQ      ', 1, ' ')
     endif
 
@@ -1017,6 +1021,9 @@ contains
     !
     ! zonal advection
     !
+    ftem(:ncol,:) = state%u(:ncol,:)*state%t(:ncol,:)
+    call outfld ('UT      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%u(:ncol,:)**2
     call outfld ('UU      ',ftem    ,pcols   ,lchnk     )
 
@@ -1281,9 +1288,10 @@ contains
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
     call outfld('PDEL',    state%pdel,    pcols, lchnk)
 
-    !
-    ! Meridional advection fields
-    !
+
+    ftem(:ncol,:) = state%u(:ncol,:)*state%q(:ncol,:,ixq)
+    call outfld ('UQ      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%v(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld ('VQ      ',ftem    ,pcols   ,lchnk     )
 

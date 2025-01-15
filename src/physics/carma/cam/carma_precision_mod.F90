@@ -35,4 +35,4 @@ module carma_precision_mod
 	!!  Define smallest possible number such that ONE + ALMOST_ZERO > ONE
 	real(kind=f), parameter :: ALMOST_ZERO = epsilon( ONE )
 	real(kind=f), parameter :: ALMOST_ONE  = ONE - ALMOST_ZERO
-end module
+end module carma_precision_mod

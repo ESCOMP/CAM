@@ -22,12 +22,12 @@ module carma_intr
 
 
   implicit none
-  
+
   private
   save
 
   ! Public interfaces
-  
+
   ! CAM Physics Interface
   public carma_register                 ! register consituents
   public carma_is_active                ! retrns true if this package is active (microphysics = .true.)
@@ -38,11 +38,11 @@ module carma_intr
   public carma_timestep_init            ! initialize timestep dependent variables
   public carma_timestep_tend            ! interface to tendency computation
   public carma_accumulate_stats         ! collect stats from all MPI tasks
-  
+
   ! Other Microphysics
   public carma_emission_tend            ! calculate tendency from emission source function
   public carma_wetdep_tend              ! calculate tendency from wet deposition
-  
+
 contains
 
 
@@ -55,40 +55,41 @@ contains
 
   function carma_is_active()
     implicit none
-  
+
     logical :: carma_is_active
-  
+
     carma_is_active = .false.
-    
+
     return
   end function carma_is_active
 
 
   function carma_implements_cnst(name)
     implicit none
-    
+
     character(len=*), intent(in) :: name   !! constituent name
     logical :: carma_implements_cnst       ! return value
 
     carma_implements_cnst = .false.
-    
+
     return
   end function carma_implements_cnst
-  
 
-  subroutine carma_init
+
+  subroutine carma_init(pbuf2d)
     implicit none
-    
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+
     return
   end subroutine carma_init
 
 
   subroutine carma_final
     implicit none
-        
+
     return
   end subroutine carma_final
-  
+
 
   subroutine carma_timestep_init
     implicit none
@@ -103,7 +104,7 @@ contains
     use time_manager,     only: get_nstep, get_step_size, is_first_step
     use camsrfexch,       only: cam_in_t, cam_out_t
     use scamMod,          only: single_column
- 
+
     implicit none
 
     type(physics_state), intent(inout) :: state                 !! physics state variables
@@ -114,13 +115,13 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)               !! physics buffer
     real(r8), intent(in), optional     :: dlf(pcols,pver)       !! Detraining cld H20 from convection (kg/kg/s)
     real(r8), intent(inout), optional  :: rliq(pcols)           !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(out), optional    :: prec_str(pcols)       !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(out), optional    :: prec_str(pcols)       !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(out), optional    :: snow_str(pcols)       !! [Total] sfc flux of snow from stratiform   (m/s)
     real(r8), intent(out), optional    :: prec_sed(pcols)       !! total precip from cloud sedimentation (m/s)
     real(r8), intent(out), optional    :: snow_sed(pcols)       !! snow from cloud ice sedimentation (m/s)
     real(r8), intent(in), optional     :: ustar(pcols)          !! friction velocity (m/s)
     real(r8), intent(in), optional     :: obklen(pcols)         !! Obukhov length [ m ]
-    
+
     call physics_ptend_init(ptend,state%psetcols,'none') !Initialize an empty ptend for use with physics_update
 
     if (present(prec_str))  prec_str(:)    = 0._r8
@@ -140,27 +141,28 @@ contains
     real(r8),         intent(in)  :: lonvals(:) !! lon in degrees (ncol)
     logical,          intent(in)  :: mask(:)    !! Only initialize where .true.
     real(r8),         intent(out) :: q(:,:)     !! mass mixing ratio
-    
+
     if (name == "carma") then
       q = 0._r8
-    end if 
-    
+    end if
+
     return
   end subroutine carma_init_cnst
 
 
-  subroutine carma_emission_tend(state, ptend, cam_in, dt)
+  subroutine carma_emission_tend(state, ptend, cam_in, dt, pbuf)
     use camsrfexch,       only: cam_in_t
 
     implicit none
-    
+
     type(physics_state), intent(in )    :: state                !! physics state
     type(physics_ptend), intent(inout)  :: ptend                !! physics state tendencies
     type(cam_in_t),      intent(inout)  :: cam_in               !! surface inputs
     real(r8),            intent(in)     :: dt                   !! time step (s)
+    type(physics_buffer_desc), pointer  :: pbuf(:)              !! physics buffer
 
     return
-  end subroutine carma_emission_tend 
+  end subroutine carma_emission_tend
 
 
   subroutine carma_wetdep_tend(state, ptend, dt,  pbuf, dlf, cam_out)

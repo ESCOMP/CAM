@@ -204,6 +204,7 @@
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
       <value compset="_DOCN%AQP"   >-aquaplanet</value>
+      <value compset="_CAM70.*_SLND_SICE_DOCN%AQP" >-chem none</value>
 
       <!-- PORT -->
       <value compset="%PORT">-offline_drv rad</value>
@@ -255,6 +256,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
+      <value compset="2000_CAM70.*_SLND_SICE_DOCN%AQP" >aquaplanet_cam7</value>
       <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
