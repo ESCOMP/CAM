@@ -161,4 +161,6 @@
 'so4_a3',
 </fincl1>
 
+<sim_year>1850-2015</sim_year>
+
 </namelist_defaults>
