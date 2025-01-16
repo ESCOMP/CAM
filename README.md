@@ -34,6 +34,7 @@ $CESMDIR/cime/scripts/create_newcase --compset FKESSLER  --res ne16_g37 --compil
 cd FKESSLER_StormSPEED.01
 ./xmlchange CAM_TARGET=theta-l
 ./xmlchange STOP_OPTION=ndays,STOP_N=12,RESUBMIT=0
+./xmlchange PROJECT=none
 ./xmlchange JOB_WALLCLOCK_TIME=24:00:00
 ./xmlchange DOUT_S='FALSE'
 ./xmlchange BFBFLAG=TRUE
