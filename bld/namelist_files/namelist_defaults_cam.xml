@@ -690,13 +690,13 @@
 <flbc_file chem="ghg_mam4">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
-<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C384" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C192" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C96" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C48" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C24" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C384" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C192" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C96" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C48" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C24" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
 
 <ac_CO2_emis hgrid="0.9x1.25">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
 <ac_CO2_emis hgrid="1.9x2.5" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
