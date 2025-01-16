@@ -16,7 +16,7 @@
 	path = src/physics/pumas
 	url = https://github.com/nusbaume/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = c5a15a3
+        fxtag = 7cde106
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]
