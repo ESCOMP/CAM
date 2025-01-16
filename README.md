@@ -26,7 +26,7 @@ setenv GCC_ROOT "/project/amp/jet/install_izumi/spack/opt/spack/linux-almalinux8
 setenv USER_SLIBS "$Kokkos_ROOT/lib64/libkokkoscontainers.so.3.0.0 $Kokkos_ROOT/lib64/libkokkoscore.so.3.0.0 $GCC_ROOT/lib64/libstdc++.so.6.0.28"
 setenv LD_LIBRARY_PATH "${LD_LIBRARY_PATH}:${Kokkos_ROOT}/lib64:${GCC_ROOT}/lib64"
 ```
-To configure, build, and run a Kessler Simple physics test using the theta-l dycore target.
+To configure, build, and run a Kessler Simple physics test on Izumi using the theta-l dycore target.
 
 ```
 set CESMDIR=full_path_to_StormSPEED_sandbox_cloned_above
