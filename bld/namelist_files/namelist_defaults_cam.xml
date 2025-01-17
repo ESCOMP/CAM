@@ -235,8 +235,6 @@
 <ncdata dyn="se" hgrid="ne120np4" nlev="30"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="58"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="93"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L93_01_02_01_c240518.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne5np4_L32_c170517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne16np4_L32_c170509.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne30np4_L32_c170509.nc</ncdata>
@@ -656,13 +654,13 @@
 <flbc_file chem="ghg_mam4">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
-<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C384" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C192" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C96" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C48" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
-<co2flux_fuel_file hgrid="C24" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C384" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C192" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C96" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C48" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C24" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
 
 <ac_CO2_emis hgrid="0.9x1.25">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
 <ac_CO2_emis hgrid="1.9x2.5" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
@@ -1999,6 +1997,25 @@
 <soil_erod_file phys="cam5"  >atm/cam/dst/dst_source2x2_cam5.4_c150327.nc</soil_erod_file>
 <soil_erod_file phys="cam4"  >atm/cam/dst/dst_source2x2tuned-cam4-06132012.nc</soil_erod_file>
 <soil_erod_file phys="cam4" hgrid="0.9x1.25">atm/cam/dst/dst_source1x1tuned-cam4-06202012.nc</soil_erod_file>
+
+<!-- nitrogen deposition to surface models -->
+<stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
+
+<stream_ndep_data_filename >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
+<stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</stream_ndep_data_filename>
+
+<stream_ndep_year_first >2000</stream_ndep_year_first>
+<stream_ndep_year_first sim_year="1850">1850</stream_ndep_year_first>
+<stream_ndep_year_first sim_year="1850-2015">1850</stream_ndep_year_first>
+<stream_ndep_year_first sim_year="2010">2010</stream_ndep_year_first>
+
+<stream_ndep_year_last >2000</stream_ndep_year_last>
+<stream_ndep_year_last sim_year="1850">1850</stream_ndep_year_last>
+<stream_ndep_year_last sim_year="1850-2015">2015</stream_ndep_year_last>
+<stream_ndep_year_last sim_year="2010">2010</stream_ndep_year_last>
+
+<stream_ndep_year_align >1</stream_ndep_year_align>
+<stream_ndep_year_align sim_year="1850-2015">1850</stream_ndep_year_align>
 
 <!-- Turbulent Mountain Stress -->
 <do_tms                                                     > .false. </do_tms>

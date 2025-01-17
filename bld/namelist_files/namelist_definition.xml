@@ -4375,6 +4375,23 @@ is not active.
 Default: none
 </entry>
 
+<entry id="carma_sulfnuc_method" type="char*10" category="carma"
+       group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
+ Nucleation methods:
+  ZhaoTurco
+      Zhao, J. and Turco, R.,
+      Nucleation simulations in the wake of a jet aircraft in stratospheric flight,
+      J. Aerosol Sci., 26, 779-795, 1995,
+      https://doi.org/10.1016/0021-8502(95)00010-A
+  Vehkamaki
+     Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
+     C. Timmreck, M. Noppel and A. Laaksonen, 2002,
+     An improved parameterization for sulfuric acid-water nucleation
+     rates for tropospheric and stratospheric conditions,
+     J. Geophys. Res., 107, 4622, doi:10.1029/2002jd002184
+Default: none
+</entry>
+
 <entry id="carma_conmax" type="real" category="carma"
        group="carma_nl" valid_values="" >
 A fraction that scales how tight the convergence criteria are to
@@ -7508,40 +7525,29 @@ Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
 Default: FALSE
 </entry>
 
-<entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
-       group="ndep_inparm" valid_values="" >
-List of nitrogen deposition fluxes to be sent from CAM to surface models.
-Default: set by build-namelist.
-</entry>
-
 <entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Year first to use in nitrogen deposition stream data. Set by case xml variable
-CAM_STREAM_NDEP_YEAR_FIRST
+Year first to use in nitrogen deposition stream data.
 </entry>
 
 <entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Year last to use in nitrogen deposition stream data.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
 </entry>
 
 <entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+Model year to align with stream_ndep_year_first.
 </entry>
 
 <entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP stream data filename.
-Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+Nitrogen deposition stream data filename.
 </entry>
 
 <entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP mesh file corresponding to sream_ndep_data_filename.
-Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+Grid mesh file corresponding to stream_ndep_data_filename.
 </entry>
 
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
@@ -8673,7 +8679,7 @@ Default: "."
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
-       group="camexp" valid_values="1850,2000,1850-2000">
+       group="camexp" valid_values="1850,2000,2010,1850-2000,1850-2015">
 This varible is only used internally by build-namelist to determine
 appropriate defaults for climatological or transient forcing datasets.
 Default: set by build-namelist.
