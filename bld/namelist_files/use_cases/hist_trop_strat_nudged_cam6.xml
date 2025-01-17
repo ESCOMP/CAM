@@ -127,8 +127,6 @@
          'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc'
 </srf_emis_specifier>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- nudging -->
 <Nudge_Model>.true.</Nudge_Model>
 <Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
