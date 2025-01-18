@@ -37,7 +37,7 @@ module nlte_lw
   logical :: nlte_use_aliarms = .false.
   integer :: nlte_aliarms_every_X = 0
 
-  logical :: nlte_use_extco2 = .true.
+  logical :: nlte_use_extco2 = .false.
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -181,9 +181,10 @@ contains
 ! Initialize ALI-ARMS parameterization
     if (nlte_use_aliarms) then
        call nlte_aliarms_init (max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
-    else if (nlte_use_extco2) then
-       call nlte_extco2_init(max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
+!!$    else if (nlte_use_extco2) then
+!!$       call nlte_extco2_init(max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
     end if
+       call nlte_extco2_init(max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
 
 ! Initialize waccm forcing data
     if (use_waccm_forcing) then
@@ -293,8 +294,6 @@ contains
 
     integer :: k
     integer :: nstep
-    real(r8) :: pres(pcols,pver)
-    real(r8) :: surf_temp(pcols,pver)
     real(r8) :: co2cooling(pcols,pver)
 
 !------------------------------------------------------------------------
@@ -359,16 +358,13 @@ contains
 
        call t_stopf('nlte_aliarms_calc')
 
-    else if (nlte_use_extco2) then
-
-       pres(:ncol,:) = state%pmid(:ncol,:) * 1.e-2_r8 ! Pa --> hPa
-       surf_temp(:ncol,:) = -1.e3_r8
-       call nlte_extco2_hrate(lchnk, ncol, state%t, pres, xco2mmr, xn2mmr, xommr, xo2mmr, &
-            surf_temp, co2cooling)
-
-       qrlf(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+    !else if (nlte_use_extco2) then
     else
+       call nlte_extco2_hrate(lchnk, ncol, state%t, state%pmid, xco2mmr, xn2mmr, xommr, xo2mmr, co2cooling)
 
+       !qrlf(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+
+    !else
        qrlf(:ncol,:) = qrlfomichev(:ncol,:)
     end if
 
