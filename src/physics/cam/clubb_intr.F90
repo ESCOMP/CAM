@@ -2875,7 +2875,8 @@ end subroutine clubb_init_cnst
     !$acc              ttend_clubb, upwp_clubb_gw, vpwp_clubb_gw, thlp2_clubb_gw, wpthlp_clubb_gw, &
     !$acc              wp2up2, wp2vp2, ice_supersat_frac, &
     !$acc              pdf_params_zm_chnk(lchnk)%w_1, pdf_params_zm_chnk(lchnk)%w_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2 ) &
+    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac ) &
     !$acc     copyout( temp2d, temp2dp, rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wm_zt_out, inv_exner_clubb, &
     !$acc              rcm, wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, thv, dz_g, &
     !$acc              clubbtop, se_dis, eleak, clubb_s, wpthvp_clubb, wprcp_clubb ) &
@@ -2938,8 +2939,7 @@ end subroutine clubb_init_cnst
     !$acc              pdf_params_zm_chnk(lchnk)%corr_chi_eta_2, pdf_params_zm_chnk(lchnk)%rsatl_1, &
     !$acc              pdf_params_zm_chnk(lchnk)%rsatl_2, pdf_params_zm_chnk(lchnk)%rc_1, pdf_params_zm_chnk(lchnk)%rc_2, &
     !$acc              pdf_params_zm_chnk(lchnk)%cloud_frac_1, pdf_params_zm_chnk(lchnk)%cloud_frac_2,  &
-    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
+    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
 
     !$acc data if( sclr_dim > 0 ) &
     !$acc      create( wpsclrp_sfc, sclrm_forcing, sclrm, wpsclrp, sclrp2, sclrp3, sclrprtp, sclrpthlp, sclrpthvp_inout) &
