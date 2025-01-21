@@ -5069,11 +5069,11 @@ sub check_input_files {
                         }
                     }
                 }
-                # Look for values that begin with 'X:name:name2' where X is one of [AMN]
+                # Look for values that begin with 'X:name:name2' where X is one of [ABMN]
                 # Extract name and filename
                 elsif ($spec =~ m/^\s*[ABMN]:(\w+) # name of species preceded by optional whitespace and X:
-                                  :               # : separator
-                                  (\S+)           # name2
+                                  :                # : separator
+                                  (\S+)            # name2
                                  /xo) {
                     my $name  = $1;
                     my $name2 = $2;
