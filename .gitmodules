@@ -35,10 +35,10 @@
 
 [submodule "atmos_phys"]
 	path = src/atmos_phys
-	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_07_001
+	url = https://github.com/mwaxmonsky/atmospheric_physics
+        fxtag = 71f5e041ee84a8a981a764064961b660789442ef
         fxrequired = AlwaysRequired
-	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
+	fxDONOTUSEurl = https://github.com/mwaxmonsky/atmospheric_physics
 
 [submodule "fv3"]
 	path = src/dynamics/fv3
@@ -151,7 +151,7 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.56
+fxtag = ef81824baa69947354f807e83924daf756e12937
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
