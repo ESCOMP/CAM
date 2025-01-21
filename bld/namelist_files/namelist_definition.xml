@@ -4647,8 +4647,8 @@ Default: NONE
 
 <entry id="carma_diags_file" type="integer" category="carma"
        group="carma_nl" valid_values="" >
-When > 0, indicates the history file to be used by default for
-diagnostic output. A value of 1 indicated the h0 file.
+When > 0, indicates the history file to be used by default for diagnostic output.
+A value of 1 indicates the h0 file. When 0 no diagnostics are output.
 Default: 0
 </entry>
 
