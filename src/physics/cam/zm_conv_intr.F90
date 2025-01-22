@@ -152,7 +152,6 @@ subroutine zm_conv_readnl(nlfile)
 
    use spmd_utils,      only: mpicom, masterproc, masterprocid, mpi_real8, mpi_integer, mpi_logical
    use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -168,8 +167,7 @@ subroutine zm_conv_readnl(nlfile)
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
+      open( newunit=unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'zmconv_nl', status=ierr)
       if (ierr == 0) then
          read(unitn, zmconv_nl, iostat=ierr)
@@ -178,7 +176,6 @@ subroutine zm_conv_readnl(nlfile)
          end if
       end if
       close(unitn)
-      call freeunit(unitn)
 
    end if
 
