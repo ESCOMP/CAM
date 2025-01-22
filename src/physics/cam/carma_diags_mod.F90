@@ -53,19 +53,24 @@ contains
 
     integer :: ierr
 
-    if (carma_do_package_diags) then
-       allocate(newobj,stat=ierr)
-       if( ierr /= 0 ) then
-          nullify(newobj)
-          return
-       end if
-    else
+    allocate(newobj,stat=ierr)
+    if( ierr /= 0 ) then
        nullify(newobj)
        return
     end if
 
-    allocate(newobj%aerclddiag(pcols,MAXCLDAERDIAG))
-    allocate(newobj%old_cflux(pcols,pcnst))
+    if (.not.carma_do_package_diags) return
+
+    allocate(newobj%aerclddiag(pcols,MAXCLDAERDIAG),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(newobj%old_cflux(pcols,pcnst),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
 
   end function constructor
 

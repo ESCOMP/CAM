@@ -1483,9 +1483,13 @@ contains
 
     ! For aerosol budget diagnostics
     type(carma_diags_t), pointer :: carma_diags_obj
-    carma_diags_obj => carma_diags_t()
 
     !-----------------------------------------------------------------------
+    carma_diags_obj => carma_diags_t()
+    if (.not.associated(carma_diags_obj)) then
+       call endrun('tphysac: carma_diags_obj allocation failed')
+    end if
+
     lchnk = state%lchnk
     ncol  = state%ncol
 
@@ -2230,9 +2234,12 @@ contains
     ! For aerosol budget diagnostics
     character(len=16) :: pname      !! package name
     type(carma_diags_t), pointer :: carma_diags_obj
-    carma_diags_obj => carma_diags_t()
 
     !-----------------------------------------------------------------------
+    carma_diags_obj => carma_diags_t()
+    if (.not.associated(carma_diags_obj)) then
+       call endrun('tphysbc: carma_diags_obj allocation failed')
+    end if
 
     call t_startf('bc_init')
 
