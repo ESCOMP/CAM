@@ -19,6 +19,7 @@ module gravity_waves_sources
   !!   for use by WACCM (via dp_coupling)
 
   public  :: gws_src_fnct
+  public  :: gws_src_vort
   public  :: gws_init
   private :: compute_frontogenesis
   private :: compute_vorticity_4gw
@@ -50,7 +51,7 @@ CONTAINS
 
   end subroutine gws_init
 
-  subroutine gws_src_fnct(elem, tl, tlq, frontgf, frontga, vort4gw, nphys)
+  subroutine gws_src_fnct(elem, tl, tlq, frontgf, frontga, nphys)
     use derivative_mod, only  : derivinit
     use dimensions_mod, only  : npsq, nelemd
     use dof_mod, only         : UniquePoints
@@ -65,20 +66,12 @@ CONTAINS
     real (kind=r8), intent(out) :: frontgf(nphys*nphys,pver,nelemd)
     real (kind=r8), intent(out) :: frontga(nphys*nphys,pver,nelemd)
 
-    !++jtb (12/31/24)
-    real (kind=r8), intent(out) :: vort4gw(nphys*nphys,pver,nelemd)
-    !!real (kind=r8) :: vort4gw(nphys*nphys,pver,nelemd) phl remove
-
 
     ! Local variables
     type (hybrid_t) :: hybrid
     integer :: nets, nete, ithr, ncols, ie
     real(kind=r8), allocatable  ::  frontgf_thr(:,:,:,:)
     real(kind=r8), allocatable  ::  frontga_thr(:,:,:,:)
-    
-    !++jtb (12/31/24)
-    real(kind=r8), allocatable  ::  vort4gw_thr(:,:,:,:)
-
     
 
     ! This does not need to be a thread private data-structure
@@ -90,37 +83,85 @@ CONTAINS
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
     allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
-    !++jtb (12/31/24)
-    allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete))
     
     call compute_frontogenesis(frontgf_thr,frontga_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
-    call compute_vorticity_4gw(vort4gw_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
     
     if (fv_nphys>0) then
       do ie=nets,nete
         frontgf(:,:,ie) = RESHAPE(frontgf_thr(:,:,:,ie),(/nphys*nphys,nlev/))
         frontga(:,:,ie) = RESHAPE(frontga_thr(:,:,:,ie),(/nphys*nphys,nlev/))
-        !++jtb (12/31/24)
-        vort4gw(:,:,ie) = RESHAPE(vort4gw_thr(:,:,:,ie),(/nphys*nphys,nlev/))
       end do
     else
       do ie=nets,nete
         ncols = elem(ie)%idxP%NumUniquePts
         call UniquePoints(elem(ie)%idxP, nlev, frontgf_thr(:,:,:,ie), frontgf(1:ncols,:,ie))
         call UniquePoints(elem(ie)%idxP, nlev, frontga_thr(:,:,:,ie), frontga(1:ncols,:,ie))
-        !++jtb (12/31/24)
-        call UniquePoints(elem(ie)%idxP, nlev, vort4gw_thr(:,:,:,ie), vort4gw(1:ncols,:,ie))
       end do
     end if
     deallocate(frontga_thr)
     deallocate(frontgf_thr)
-    !++ jtb 12/31/24
-    deallocate(vort4gw_thr)
     
     !!$OMP END PARALLEL
 
   end subroutine gws_src_fnct
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !+++ jtb (01/20/24)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  subroutine gws_src_vort(elem, tl, tlq, vort4gw, nphys)
+    use derivative_mod, only  : derivinit
+    use dimensions_mod, only  : npsq, nelemd
+    use dof_mod, only         : UniquePoints
+    use hybrid_mod, only      : config_thread_region, get_loop_ranges
+    use parallel_mod, only    : par
+    use ppgrid, only          : pver
+    use thread_mod, only      : horz_num_threads
+    use dimensions_mod, only  : fv_nphys
+    implicit none
+    type (element_t), intent(inout), dimension(:) :: elem
+    integer, intent(in)          :: tl, nphys, tlq
+
+    !
+    real (kind=r8), intent(out) :: vort4gw(nphys*nphys,pver,nelemd)
+
+    ! Local variables
+    type (hybrid_t) :: hybrid
+    integer :: nets, nete, ithr, ncols, ie
+
+    !
+    real(kind=r8), allocatable  ::  vort4gw_thr(:,:,:,:)
+
+    ! This does not need to be a thread private data-structure
+    call derivinit(deriv)
+    !!$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,frontgf_thr,frontga_thr)
+!    hybrid = config_thread_region(par,'horizontal')
+    hybrid = config_thread_region(par,'serial')
+    call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
+
+    allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete))
+    
+    call compute_vorticity_4gw(vort4gw_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
+    
+    if (fv_nphys>0) then
+      do ie=nets,nete
+        vort4gw(:,:,ie) = RESHAPE(vort4gw_thr(:,:,:,ie),(/nphys*nphys,nlev/))
+      end do
+    else
+      do ie=nets,nete
+        ncols = elem(ie)%idxP%NumUniquePts
+        call UniquePoints(elem(ie)%idxP, nlev, vort4gw_thr(:,:,:,ie), vort4gw(1:ncols,:,ie))
+      end do
+    end if
+    deallocate(vort4gw_thr)
+    
+    !!$OMP END PARALLEL
+
+  end subroutine gws_src_vort
+
+
+
+
+  
   !++jtb (12/31/24)
   subroutine compute_vorticity_4gw(vort4gw,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

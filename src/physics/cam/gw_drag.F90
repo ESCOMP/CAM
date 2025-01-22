@@ -109,7 +109,8 @@ module gw_drag
   real(r8) :: effgw_beres_dp = unset_r8
   ! Beres (shallow convection).
   real(r8) :: effgw_beres_sh = unset_r8
-
+  ! PBL moving mtn
+  real(r8) :: effgw_movmtn_pbl = unset_r8
 
   ! Parameters controlling isotropic residual
   ! orographic GW.
@@ -257,7 +258,7 @@ subroutine gw_drag_readnl(nlfile)
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
        gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
-       effgw_rdg_resid
+       effgw_rdg_resid, effgw_movmtn_pbl
 
   !----------------------------------------------------------------------
 
@@ -363,6 +364,8 @@ subroutine gw_drag_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: front_gaussian_width")
 
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
+  call mpi_bcast(effgw_movmtn_pbl, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
 
   call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -916,7 +919,6 @@ subroutine gw_init()
 
      frontgf_idx = pbuf_get_index('FRONTGF')
      frontga_idx = pbuf_get_index('FRONTGA')
-     vort4gw_idx = pbuf_get_index('VORT4GW')
 
      call shr_assert(unset_r8 /= frontgfc, &
           "gw_init: Frontogenesis enabled, but frontgfc was &
@@ -941,14 +943,20 @@ subroutine gw_init()
           'Frontogenesis function at gws src level')
      call addfld ('FRONTGFA', (/ 'lev' /), 'A', 'K^2/M^2/S', &
           'Frontogenesis function at gws src level')
-     call addfld ('VORT4GW', (/ 'lev' /), 'A', '1/S', &
-          'Vorticity')
 
      if (history_waccm) then
         call add_default('FRONTGF', 1, ' ')
         call add_default('FRONTGFA', 1, ' ')
      end if
 
+  end if
+  
+  if (use_gw_movmtn_pbl) then
+
+     vort4gw_idx = pbuf_get_index('VORT4GW')
+
+     call addfld ('VORT4GW', (/ 'lev' /), 'A', '1/S', &
+          'Vorticity')
   end if
 
   if (use_gw_front) then
@@ -1807,7 +1815,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
-     effgw = 1._r8
+     effgw = effgw_movmtn_pbl !1._r8
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
           u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
           zm, alpha_gw_movmtn, src_level, tend_level, &

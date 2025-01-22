@@ -49,7 +49,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
    ! dry air mass.
 
-   use gravity_waves_sources,  only: gws_src_fnct
+   use gravity_waves_sources,  only: gws_src_fnct,gws_src_vort
    use dyn_comp,               only: frontgf_idx, frontga_idx, vort4gw_idx
    use phys_control,           only: use_gw_front, use_gw_front_igw,  use_gw_movmtn_pbl
    use hycoef,                 only: hyai, ps0
@@ -155,10 +155,13 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       if (ierr /= 0) call endrun("dp_coupling: Allocate of vort4gw failed.")
    end if
 
-   !++jtb 01/14/25
+   !++jtb 01/20/25
    if (iam < par%nprocs) then
-      if (use_gw_front .or. use_gw_front_igw .or. use_gw_movmtn_pbl ) then
-         call gws_src_fnct(elem, tl_f, tl_qdp_np0, frontgf, frontga, vort4gw, nphys)
+      if (use_gw_front .or. use_gw_front_igw ) then
+         call gws_src_fnct(elem, tl_f, tl_qdp_np0, frontgf, frontga, nphys)
+      end if
+      if (use_gw_movmtn_pbl ) then
+         call gws_src_vort(elem, tl_f, tl_qdp_np0, vort4gw, nphys)
       end if
 
       if (fv_nphys > 0) then
@@ -280,7 +283,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       end do
    end do
    if (use_gw_front .or. use_gw_front_igw) then
-      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, pbuf_chnk, pbuf_frontgf, pbuf_frontga, pbuf_vort4gw)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
@@ -296,9 +299,9 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       deallocate(frontgf_phys)
       deallocate(frontga_phys)
    end if
-   !++jtb 01/14/25
+   !++jtb 01/20/25
    if (use_gw_movmtn_pbl) then
-      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, pbuf_chnk, pbuf_frontgf, pbuf_frontga, pbuf_vort4gw)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, pbuf_chnk, pbuf_vort4gw)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)

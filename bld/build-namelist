@@ -3888,6 +3888,7 @@ if ($do_gw_convect_sh) {
 if ($do_gw_movmtn_pbl) {
     add_default($nl, 'gw_drag_file_mm');
     add_default($nl, 'alpha_gw_movmtn');
+    add_default($nl, 'effgw_movmtn_pbl');
 }
 
 if ($do_gw_rdg_beta) {
@@ -3908,7 +3909,7 @@ if ($do_gw_rdg_beta) {
 }
 
 if ($do_gw_rdg_resid) {
-    add_default($nl, 'effgw_rdg_resid');
+    add_default($nl, 'effgw_rdg_resid',      'val'=>'1.0D0');
 }
 
 if ($do_gw_rdg_gamma) {

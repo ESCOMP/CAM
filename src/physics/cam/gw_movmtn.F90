@@ -138,12 +138,12 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Index for ground based phase speed bin
   real(r8) :: c0(ncol,-band%ngwv:band%ngwv)
   integer :: c_idx(ncol,-band%ngwv:band%ngwv)
-  ! GW Flux source from ShCu/PBL
+  ! GW Flux source
   real(r8) :: xpwp_src(ncol)
-  ! Gw Flux source from vorticity
-  real(r8) :: vort_src(ncol)
   ! Manual steering level set
-  integer :: Steer_k, Steer_k_vort
+  integer :: Steer_k, Launch_k
+  ! Set source (1=vorticity, 2=PBL mom fluxes)
+  integer :: source_type
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -153,18 +153,22 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   q0 = 0.0_r8
   tau0 = 0.0_r8
 
-  !----------------------------------------------------------------------
-  ! Calculate flux source from ShCu/PBL and set Steering level
-  !----------------------------------------------------------------------
-  ! call shcu_flux_src( xpwp_shcu, ncol, pver+1, alpha_gw_movmtn, xpwp_src, Steer_k )
- 
-  !----------------------------------------------------------------------
-  ! Calculate flux source from vorticity
-  !----------------------------------------------------------------------
-  call vorticity_flux_src( vorticity, ncol, pver , alpha_gw_movmtn, xpwp_src, Steer_k )
- 
+  source_type=1
+  if ( source_type==1 ) then
+     !----------------------------------------------------------------------
+     ! Calculate flux source from vorticity
+     !----------------------------------------------------------------------
+     call vorticity_flux_src( vorticity, ncol, pver , alpha_gw_movmtn, xpwp_src, Steer_k, Launch_k )
+  end if
+  if ( source_type==2 ) then
+     !----------------------------------------------------------------------
+     ! Calculate flux source from ShCu/PBL and set Steering level
+     !----------------------------------------------------------------------
+     call shcu_flux_src( xpwp_shcu, ncol, pver+1, alpha_gw_movmtn, xpwp_src, Steer_k, Launch_k )
+  end if
+  
   !------------------------------------------------------------------------
-  ! Determine wind and unit vectors approximately at the source (steering level), then
+  ! Determine wind and unit vectors at the steering level) then
   ! project winds.
   !------------------------------------------------------------------------
 
@@ -216,7 +220,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
 
   if (use_gw_movmtn_pbl) then
      boti=pver
-     topi=Steer_k-10 !++ tuning test 01/05/25
+     topi=Launch_k ! set in source subr 
   else
     do k = pver, 1, -1 !start at surface
        do i = 1, ncol
@@ -426,18 +430,19 @@ pure function index_of_nearest(x, grid) result(idx)
 end function index_of_nearest
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, steering_level ) !! result(xpwp_src)
+subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, steering_level, launch_level ) !! result(xpwp_src)
   !!! use gw_common, only: pver
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
 
   real(r8), intent(out) :: xpwp_src(ncol)
-  integer,  intent(out) :: steering_level
+  integer,  intent(out) :: steering_level, launch_level
 
   integer :: k, nlayers
 
   steering_level = (pverx-1) - 5 !++ tuning test 12/30/24
+  launch_level   = steering_level -10 !++ tuning test 01/05/25
 
   !-----------------------------------
   ! Simple average over layers.
@@ -453,19 +458,21 @@ subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, st
 end subroutine shcu_flux_src
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_src, steering_level ) !! result(xpwp_src)
+subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_src, steering_level, launch_level ) !! result(xpwp_src)
   !!! use gw_common, only: pver
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: vorticity (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
 
   real(r8), intent(out) :: vort_src(ncol)
-  integer,  intent(out) :: steering_level
+  integer,  intent(out) :: steering_level, launch_level
 
   real(r8) :: scale_factor 
   integer  :: k, nlayers
 
-  steering_level = pverx - 20 !++ ????? 
+  steering_level = pverx - 20 !++ ?????
+  launch_level   = steering_level -10 !++ tuning test 01/05/25
+
   scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB 
   !-----------------------------------
   ! Simple average over layers.
