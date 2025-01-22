@@ -10,10 +10,10 @@
 !! the initial conditions of the particles. Each realization of CARMA
 !! microphysics has its own version of this file.
 !!
-!! This file is a simple test case involving one group of dust particles and
-!! 8 size bins. Optical properties are calculated, assuming a constant refractive
-!! index of (1.55, 4e-3). The particles are not subject to particle swelling, but
-!! do coagulate.
+!! This file is a simple test case involving two groups: sulfate condensation nuclei
+!! and ice particles. The sulfates are prescribed and the ice is prognostics. This
+!! test exercises the nucleation and growth code. THe particles are sedimented, but
+!! do not coagulate.
 !!
 !! @version May-2009
 !! @author  Chuck Bardeen
@@ -43,14 +43,19 @@ module carma_model_mod
   private
 
   ! Declare the public methods.
-  public CARMA_DefineModel
-  public CARMA_Detrain
-  public CARMA_DiagnoseBins
-  public CARMA_DiagnoseBulk
-  public CARMA_EmitParticle
-  public CARMA_InitializeModel
-  public CARMA_InitializeParticle
-  public CARMA_WetDeposition
+  public CARMAMODEL_CalculateCloudborneDiagnostics
+  public CARMAMODEL_CreateOpticsFile
+  public CARMAMODEL_DefineModel
+  public CARMAMODEL_Detrain
+  public CARMAMODEL_DiagnoseBins
+  public CARMAMODEL_DiagnoseBulk
+  public CARMAMODEL_EmitParticle
+  public CARMAMODEL_InitializeModel
+  public CARMAMODEL_InitializeParticle
+  public CARMAMODEL_OutputBudgetDiagnostics
+  public CARMAMODEL_OutputCloudborneDiagnostics
+  public CARMAMODEL_OutputDiagnostics
+  public CARMAMODEL_WetDeposition
 
   ! Declare public constants
   integer, public, parameter      :: NGROUP   = 2               !! Number of particle groups
@@ -62,6 +67,10 @@ module carma_model_mod
   ! These need to be defined, but are only used when the particles are radiatively active.
   integer, public, parameter      :: NMIE_RH  = 8               !! Number of relative humidities for mie calculations
   real(kind=f), public            :: mie_rh(NMIE_RH)
+
+  integer, public, parameter      :: NMIE_WTP = 0              !! Number of weight percents for mie calculations
+  real(kind=f), public            :: mie_wtp(NMIE_WTP)
+  integer, public, parameter      :: NREFIDX = 1               !! Number of refractive indices per element
 
   ! Defines whether the groups should undergo deep convection in phase 1 or phase 2.
   ! Water vapor and cloud particles are convected in phase 1, while all other constituents
@@ -93,7 +102,7 @@ contains
   !!
   !!  @version May-2009
   !!  @author  Chuck Bardeen
-  subroutine CARMA_DefineModel(carma, rc)
+  subroutine CARMAMODEL_DefineModel(carma, rc)
     type(carma_type), intent(inout)    :: carma     !! the carma object
     integer, intent(out)               :: rc        !! return code, negative indicates failure
 
@@ -118,11 +127,11 @@ contains
     call CARMAGROUP_Create(carma, I_GRP_CRCN, "Sulfate CN", rmin_cn, 4.0_f, I_SPHERE, 1._f, .false., &
                            rc, shortname="CRCN", cnsttype=I_CNSTTYPE_DIAGNOSTIC, &
                            do_vtran=.false.)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGROUP_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAGROUP_Create failed.')
 
     call CARMAGROUP_Create(carma, I_GRP_CRICE, "Ice", rmin_ice, 2.8_f, I_HEXAGON, 1._f / 6._f, .true., &
                            rc, shortname="CRICE", ifallrtn=I_FALLRTN_STD_SHAPE)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGROUP_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAGROUP_Create failed.')
 
 
 
@@ -132,30 +141,30 @@ contains
     ! should be 6 characters or less and without spaces.
     call CARMAELEMENT_Create(carma, I_ELEM_CRCN, I_GRP_CRCN, "Sulfate CN", RHO_CN, &
          I_INVOLATILE, I_H2SO4, rc, shortname="CRCN", isolute=I_SOL_CRH2SO4)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAElement_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAElement_Create failed.')
 
     call CARMAELEMENT_Create(carma, I_ELEM_CRICE, I_GRP_CRICE, "Ice", RHO_I, &
          I_VOLATILE, I_ICE, rc, shortname="CRICE")
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAElement_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAElement_Create failed.')
 
     call CARMAELEMENT_Create(carma, I_ELEM_CRCORE, I_GRP_CRICE, "Core Mass", RHO_CN, &
          I_COREMASS, I_H2SO4, rc, shortname="CRCORE", isolute=1)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAElement_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAElement_Create failed.')
 
 
     ! Define the Solutes
     call CARMASOLUTE_Create(carma, I_SOL_CRH2SO4, "Sulfuric Acid", 2, 98._f, 1.38_f, rc, shortname="CRH2SO4")
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMASOLUTE_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMASOLUTE_Create failed.')
 
 
     ! Define the Gases
     call CARMAGAS_Create(carma, I_GAS_H2O, "Water Vapor", WTMOL_H2O, I_VAPRTN_H2O_MURPHY2005, I_GCOMP_H2O, rc, shortname="Q")
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMAGAS_Create failed.')
 
 
     ! Define the Processes
     call CARMA_AddGrowth(carma, I_ELEM_CRICE, I_GAS_H2O, rc)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMA_AddGrowth failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMA_AddGrowth failed.')
 
     ! NOTE: For now, assume the latent heat for nucleation is the latent of of fusion of
     ! water, using the CAM constant (scaled from J/kg to erg/g).
@@ -165,10 +174,10 @@ contains
     ! the gas associated with nucleation is accounted for.
     call CARMA_AddNucleation(carma, I_ELEM_CRCN, I_ELEM_CRCORE, &
          I_AERFREEZE + I_AF_KOOP_2000, 0._f, rc, igas=I_GAS_H2O, ievp2elem=I_ELEM_CRCN)
-    if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMA_AddNucleation failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DefineModel::CARMA_AddNucleation failed.')
 
     return
-  end subroutine CARMA_DefineModel
+  end subroutine CARMAMODEL_DefineModel
 
 
   !! Defines all the CARMA components (groups, elements, solutes and gases) and process
@@ -178,7 +187,7 @@ contains
   !!  @author  Chuck Bardeen
   !!
   !!  @see CARMASTATE_SetDetrain
-  subroutine CARMA_Detrain(carma, cstate, cam_in, dlf, state, icol, dt, rc, rliq, prec_str, snow_str, &
+  subroutine CARMAMODEL_Detrain(carma, cstate, cam_in, dlf, state, icol, dt, rc, rliq, prec_str, snow_str, &
       tnd_qsnow, tnd_nsnow)
     use camsrfexch,         only: cam_in_t
     use physconst,          only: latice, latvap, cpair
@@ -203,14 +212,14 @@ contains
     rc = RC_OK
 
     return
-  end subroutine CARMA_Detrain
+  end subroutine CARMAMODEL_Detrain
 
 
   !! For diagnostic groups, sets up up the CARMA bins based upon the CAM state.
   !!
   !!  @version July-2009
   !!  @author  Chuck Bardeen
-  subroutine CARMA_DiagnoseBins(carma, cstate, state, pbuf, icol, dt, rc, rliq, prec_str, snow_str)
+  subroutine CARMAMODEL_DiagnoseBins(carma, cstate, state, pbuf, icol, dt, rc, rliq, prec_str, snow_str)
     use time_manager,     only: is_first_step
 
     implicit none
@@ -249,7 +258,7 @@ contains
 
     ! Get the air density.
     call CARMASTATE_GetState(cstate, rc, rhoa_wet=rhoa_wet)
-    if (rc < RC_OK) call endrun('CARMA_DiagnoseBins::CARMASTATE_GetState failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DiagnoseBins::CARMASTATE_GetState failed.')
 
     ! Use a fixed sulfate size distribution. By doing this as a diagnostic group,
     ! the constituents for the sulfate bins do not need to be advected, which
@@ -258,7 +267,7 @@ contains
     ielem  = 1
 
     call CARMAGROUP_Get(carma, igroup, rc, r=r, dr=dr, rmass=rmass)
-    if (rc < RC_OK) call endrun('CARMA_DiagnoseBins::CARMAGROUP_Get failed.')
+    if (rc < RC_OK) call endrun('CARMAMODEL_DiagnoseBins::CARMAGROUP_Get failed.')
 
     arg1(:) = n * dr(:) / (sqrt(2._f*PI) * r(:) * log(rsig))
     arg2(:) = -((log(r(:)) - log(r0))**2) / (2._f*(log(rsig))**2)
@@ -268,18 +277,18 @@ contains
     do ibin = 1, NBIN
       mmr(ibin, :) = rhop(ibin) / rhoa_wet(:)
       call CARMASTATE_SetBin(cstate, ielem, ibin, mmr(ibin, :), rc)
-      if (rc < RC_OK) call endrun('CARMA_DiagnoseBins::CARMAGROUP_SetBin failed.')
+      if (rc < RC_OK) call endrun('CARMAMODEL_DiagnoseBins::CARMAGROUP_SetBin failed.')
     end do
 
     return
-  end subroutine CARMA_DiagnoseBins
+  end subroutine CARMAMODEL_DiagnoseBins
 
 
   !! For diagnostic groups, determines the tendencies on the CAM state from the CARMA bins.
   !!
   !!  @version July-2009
   !!  @author  Chuck Bardeen
-  subroutine CARMA_DiagnoseBulk(carma, cstate, cam_out, state, pbuf, ptend, icol, dt, rc, rliq, prec_str, snow_str, &
+  subroutine CARMAMODEL_DiagnoseBulk(carma, cstate, cam_out, state, pbuf, ptend, icol, dt, rc, rliq, prec_str, snow_str, &
     prec_sed, snow_sed, tnd_qsnow, tnd_nsnow, re_ice)
     use camsrfexch,       only: cam_out_t
 
@@ -310,7 +319,7 @@ contains
     ! code to determine the bulk mass from the CARMA state.
 
     return
-  end subroutine CARMA_DiagnoseBulk
+  end subroutine CARMAMODEL_DiagnoseBulk
 
 
   !! Calculates the emissions for CARMA aerosol particles. By default, there is no
@@ -319,7 +328,7 @@ contains
   !!
   !! @author  Chuck Bardeen
   !! @version May-2009
-  subroutine CARMA_EmitParticle(carma, ielem, ibin, icnst, dt, state, cam_in, tendency, surfaceFlux, rc)
+  subroutine CARMAMODEL_EmitParticle(carma, ielem, ibin, icnst, dt, state, cam_in, tendency, surfaceFlux, pbuf, rc)
     use shr_kind_mod,  only: r8 => shr_kind_r8
     use ppgrid,        only: pcols, pver
     use physics_types, only: physics_state
@@ -338,6 +347,7 @@ contains
     type(cam_in_t), intent(in)         :: cam_in                !! surface inputs
     real(r8), intent(out)              :: tendency(pcols, pver) !! constituent tendency (kg/kg/s)
     real(r8), intent(out)              :: surfaceFlux(pcols)    !! constituent surface flux (kg/m^2/s)
+    type(physics_buffer_desc), pointer :: pbuf(:)               !! physics buffer
     integer, intent(out)               :: rc                    !! return code, negative indicates failure
 
     integer      :: ncol                    ! number of columns in chunk
@@ -370,7 +380,7 @@ contains
     tendency(:ncol, :pver) = 0.0_r8
 
     return
-  end subroutine CARMA_EmitParticle
+  end subroutine CARMAMODEL_EmitParticle
 
 
   !! Allows the model to perform its own initialization in addition to what is done
@@ -381,13 +391,14 @@ contains
   !!
   !! @author  Chuck Bardeen
   !! @version May-2009
-  subroutine CARMA_InitializeModel(carma, lq_carma, rc)
+  subroutine CARMAMODEL_InitializeModel(carma, lq_carma, pbuf2d, rc)
     use constituents, only : pcnst
     implicit none
 
     type(carma_type), intent(in)       :: carma                 !! the carma object
     logical, intent(inout)             :: lq_carma(pcnst)       !! flags to indicate whether the constituent
                                                                 !! could have a CARMA tendency
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     integer, intent(out)               :: rc                    !! return code, negative indicates failure
 
     ! Default return code.
@@ -396,7 +407,7 @@ contains
     ! Add initialization here.
 
     return
-  end subroutine CARMA_InitializeModel
+  end subroutine CARMAMODEL_InitializeModel
 
 
   !! Sets the initial condition for CARMA aerosol particles. By default, there are no
@@ -408,7 +419,7 @@ contains
   !!
   !! @author  Chuck Bardeen
   !! @version May-2009
-  subroutine CARMA_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
+  subroutine CARMAMODEL_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
     use shr_kind_mod,   only: r8 => shr_kind_r8
     use pmgrid,         only: plev
 
@@ -431,31 +442,65 @@ contains
     ! Put a horizontally uniform layer of the smallest bin size
     ! in the model.
     if (ibin == 1) then
-      if (ielem == I_ELEM_CRICE) then
-        where(mask)
-           q(:, plev/4)   = 100e-7_r8    ! 1/4
-        end where
-      end if
-      if (ielem == I_ELEM_CRCORE) then
-        where(mask)
-           q(:, plev/4)   = 100e-9_r8    ! 1/4
-        end where
-      end if
+      where(mask)
+!        q(:, 1)        = 100e-9_r8    ! top
+        q(:, plev/4)   = 100e-9_r8    ! 1/4
 !        q(:, plev/2)   = 100e-9_r8    ! middle
 !        q(:, 3*plev/4) = 100e-9_r8    ! 3/4
 !        q(:, plev-1)   = 100e-9_r8    ! bottom
+      end where
     end if
 
     return
-  end subroutine CARMA_InitializeParticle
+  end subroutine CARMAMODEL_InitializeParticle
 
+  !! This routine is an extension of CARMA_CreateOpticsFile() that allows for
+  !! model specific tables to be created in addition to the model independent
+  !! methods that are in carma_intr.F90.
+  !!
+  !! The opticsType that is specified for the group determines how the optical
+  !! properties will be generated for that group. Each group can use a different
+  !! optics method if needed. Refractive indices need for these calculation are
+  !! are specified in the group's elements rather than at the group level. This
+  !! allows various mixing approaches to be used to determine the refractive index
+  !! for the particle as a whole. If the refractive index for water is needed,
+  !! it is specific the the CARMAGAS object for H2O.
+  subroutine CARMAMODEL_CreateOpticsFile(carma, igroup, opticsType, rc)
+
+    implicit none
+
+    type(carma_type), intent(inout)     :: carma         !! the carma object
+    integer, intent(in)                 :: igroup        !! group identifier
+    integer, intent(in)                 :: opticsType    !! optics type (see I_OPTICS_... in carma_enums.F90)
+    integer, intent(out)                :: rc            !! return code, negative indicates failure
+
+    ! Local variables
+    logical                             :: do_mie
+    integer                             :: cnsttype               ! constituent type
+
+    ! Assume success.
+    rc = 0
+
+    ! What type of calculation is needed for this group?
+    !
+    ! NOTE: Some of these calculations generate optical properties as single mass
+    ! coefficients, while others are lookup tables designed around multiple
+    ! dimensions.
+    select case (opticsType)
+
+      case default
+        call endrun('carma_CreateOpticsFile:: Unknown optics type.')
+    end select
+
+    return
+  end subroutine CARMAMODEL_CreateOpticsFile
 
   !!  Called after wet deposition has been performed. Allows the specific model to add
   !!  wet deposition of CARMA aerosols to the aerosols being communicated to the surface.
   !!
   !!  @version July-2011
   !!  @author  Chuck Bardeen
-  subroutine CARMA_WetDeposition(carma, ielem, ibin, sflx, cam_out, state, rc)
+  subroutine CARMAMODEL_WetDeposition(carma, ielem, ibin, sflx, cam_out, state, rc)
     use camsrfexch,       only: cam_out_t
 
     implicit none
@@ -474,6 +519,94 @@ contains
     rc = RC_OK
 
     return
-  end subroutine CARMA_WetDeposition
+  end subroutine CARMAMODEL_WetDeposition
 
-end module
+
+  !! Called at the end of the timestep after all the columns have been processed to
+  !! to allow additional diagnostics that have been stored in pbuf to be output.
+  !!
+  !! Stub version
+  subroutine CARMAMODEL_CalculateCloudborneDiagnostics(carma, state, pbuf, aerclddiag, rc)
+
+    type(carma_type), intent(in)         :: carma        !! the carma object
+    type(physics_state), intent(in)      :: state        !! Physics state variables - before pname
+    type(physics_buffer_desc), pointer, intent(in)   :: pbuf(:)      !! physics buffer
+    real(r8), intent(out)                :: aerclddiag(pcols,MAXCLDAERDIAG) !! the total cloudborne aerosols, supports up to MAXCLDAERDIAG different values
+    integer, intent(out)                 :: rc           !! return code, negative indicates failure
+
+    ! Default return code.
+    rc = RC_OK
+
+    return
+  end subroutine CARMAMODEL_CalculateCloudborneDiagnostics
+
+  !! Called at the end of the timestep after all the columns have been processed to
+  !! to allow additional diagnostics that have been stored in pbuf to be output.
+  !!
+  !! Stub version
+  subroutine CARMAMODEL_OutputBudgetDiagnostics(carma, icnst4elem, icnst4gas, state, ptend, old_cflux, cflux, dt, pname, rc)
+    use cam_history,  only: outfld
+    use constituents, only: pcnst, cnst_get_ind
+
+    type(carma_type), intent(in)         :: carma        !! the carma object
+    integer, intent(in)                  :: icnst4elem(NELEM, NBIN) !! constituent index for a carma element
+    integer, intent(in)                  :: icnst4gas(NGAS)         !! constituent index for a carma gas
+    type(physics_state), intent(in)      :: state        !! Physics state variables - before pname
+    type(physics_ptend), intent(in)      :: ptend        !! indivdual parameterization tendencies
+    real(r8)                             :: old_cflux(pcols,pcnst)  !! cam_in%clfux from before the timestep_tend
+    real(r8)                             :: cflux(pcols,pcnst)  !! cam_in%clfux from after the timestep_tend
+    real(r8), intent(in)                 :: dt           !! timestep (s)
+    character(*), intent(in)             :: pname        !! short name of the physics package
+    integer, intent(out)                 :: rc           !! return code, negative indicates failure
+
+    ! Default return code.
+    rc = RC_OK
+
+    return
+  end subroutine CARMAMODEL_OutputBudgetDiagnostics
+
+  !! Called at the end of the timestep after all the columns have been processed to
+  !! to allow additional diagnostics that have been stored in pbuf to be output.
+  !!
+  !! Stub version
+  subroutine CARMAMODEL_OutputCloudborneDiagnostics(carma, state, pbuf, dt, pname, oldaerclddiag, rc)
+    use cam_history, only: outfld
+
+    type(carma_type), intent(in)         :: carma        !! the carma object
+    type(physics_state), intent(in)      :: state        !! Physics state variables - before CARMA
+    type(physics_buffer_desc), pointer, intent(in)   :: pbuf(:)      !! physics buffer
+    real(r8), intent(in)                 :: dt           !! timestep (s)
+    character(*), intent(in)             :: pname        !! short name of the physics package
+    real(r8), intent(in )                :: oldaerclddiag(pcols,MAXCLDAERDIAG) !! the before timestep cloudborne aerosol diags
+    integer, intent(out)                 :: rc           !! return code, negative indicates failure
+
+    ! Default return code.
+    rc = RC_OK
+
+    return
+  end subroutine CARMAMODEL_OutputCloudborneDiagnostics
+
+  !! Called at the end of the timestep after all the columns have been processed to
+  !! to allow additional diagnostics that have been stored in pbuf to be output.
+  !!
+  !! Stub version
+  subroutine CARMAMODEL_OutputDiagnostics(carma, icnst4elem, state, ptend, pbuf, cam_in, rc)
+    use cam_history,   only: outfld
+    use constituents,  only: cnst_get_ind
+    use camsrfexch,    only: cam_in_t
+
+    type(carma_type), intent(in)         :: carma        !! the carma object
+    integer, intent(in)                  :: icnst4elem(NELEM, NBIN) !! constituent index for a carma element
+    type(physics_state), intent(in)      :: state        !! Physics state variables - before CARMA
+    type(physics_ptend), intent(in)      :: ptend        !! indivdual parameterization tendencies
+    type(physics_buffer_desc), pointer, intent(in)   :: pbuf(:)  !! physics buffer
+    type(cam_in_t), intent(in)           :: cam_in       !! surface inputs
+    integer, intent(out)                 :: rc           !! return code, negative indicates failure
+
+    ! Default return code.
+    rc = RC_OK
+
+    return
+  end subroutine CARMAMODEL_OutputDiagnostics
+
+end module carma_model_mod
