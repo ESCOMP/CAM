@@ -1026,11 +1026,12 @@ subroutine vertical_diffusion_tend( &
 
      ! The diag_TKE scheme does not calculate the Monin-Obukhov length, which is used in dry deposition calculations.
      ! Use the routines from pbl_utils to accomplish this. Assumes ustar and rrho have been set.
-   !   call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
-   !   call calc_obklen(ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
-   !        cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol), &
-   !        khfs(:ncol),    kqfs(:ncol), kbfs(:ncol),   obklen(:ncol))
+      thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
 
+      khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
+      kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))
+      kbfs  (:ncol) = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+      obklen(:ncol) = calc_obukhov_length(thvs(:ncol), ustar(:ncol), gravit, karman, kbfs(:ncol))
 
   case ( 'HB', 'HBR', 'SPCAM_sam1mom' )
 
