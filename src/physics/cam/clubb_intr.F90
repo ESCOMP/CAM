@@ -20,13 +20,14 @@ module clubb_intr
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len
 
   use spmd_utils,          only: masterproc
   use constituents,        only: pcnst, cnst_add
-  use pbl_utils,           only: calc_ustar, calc_obklen
+  use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_rrho, &
+                                 calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, calc_obukhov_length
   use ref_pres,            only: top_lev => trop_cloud_top_lev
 
 #ifdef CLUBB_SGS
@@ -3493,8 +3494,8 @@ end subroutine clubb_init_cnst
         ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
         if (ubar <  0.25_r8) ubar = 0.25_r8
 
-        call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
-              rrho(i), ustar )
+        rrho(i) = calc_rrho(rair, state1%t(i,pver), state1%pmid(i,pver))
+        ustar   = calc_friction_velocity(cam_in%wsx(i), cam_in%wsy(i), rrho(i))
 
         upwp_sfc(i) = -state1%u(i,pver)*ustar**2/ubar
         vpwp_sfc(i) = -state1%v(i,pver)*ustar**2/ubar
@@ -4708,13 +4709,13 @@ end subroutine clubb_init_cnst
     enddo
 
     ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    rrho(1:ncol) = (rga)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver))
-    call calc_ustar( ncol, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver), cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), &
-                    rrho(1:ncol), ustar2(1:ncol))
+    rrho   (1:ncol) = (rga)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver))
+    ustar2 (1:ncol) = calc_friction_velocity(cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), rrho(1:ncol))
     ! use correct qflux from coupler
-    call calc_obklen( ncol, th(1:ncol,pver), thv(1:ncol,pver), cam_in%cflx(1:ncol,1), cam_in%shf(1:ncol), &
-                      rrho(1:ncol), ustar2(1:ncol), kinheat(1:ncol), kinwat(1:ncol), kbfs(1:ncol), &
-                      obklen(1:ncol))
+    kinheat(1:ncol) = calc_kinematic_heat_flux(cam_in%shf(1:ncol), rrho(1:ncol), cpair)
+    kinwat (1:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(1:ncol,1), rrho(1:ncol))
+    kbfs   (1:ncol) = calc_kinematic_buoyancy_flux(kinheat(1:ncol), zvir, th(1:ncol,pver), kinwat(1:ncol))
+    obklen (1:ncol) = calc_obukhov_length(thv(1:ncol,pver), ustar2(1:ncol), gravit, karman, kbfs(1:ncol))
 
     dummy2(:) = 0._r8
     dummy3(:) = 0._r8

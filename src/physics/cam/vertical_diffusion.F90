@@ -727,7 +727,9 @@ subroutine vertical_diffusion_tend( &
   use constituents,       only : cnst_get_type_byind, cnst_name, &
        cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx
   use physconst,          only : pi
-  use pbl_utils,          only : virtem, calc_obklen, calc_ustar
+  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_rrho, calc_friction_velocity, &
+                                  calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, &
+                                  calc_obukhov_length
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
@@ -1024,10 +1026,10 @@ subroutine vertical_diffusion_tend( &
 
      ! The diag_TKE scheme does not calculate the Monin-Obukhov length, which is used in dry deposition calculations.
      ! Use the routines from pbl_utils to accomplish this. Assumes ustar and rrho have been set.
-     call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
-     call calc_obklen(ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
-          cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol), &
-          khfs(:ncol),    kqfs(:ncol), kbfs(:ncol),   obklen(:ncol))
+   !   call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
+   !   call calc_obklen(ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
+   !        cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol), &
+   !        khfs(:ncol),    kqfs(:ncol), kbfs(:ncol),   obklen(:ncol))
 
 
   case ( 'HB', 'HBR', 'SPCAM_sam1mom' )
@@ -1080,14 +1082,14 @@ subroutine vertical_diffusion_tend( &
       ! is only handling other things, e.g. some boundary conditions, tms,
       ! and molecular diffusion.
 
-      call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
+      thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
+      rrho  (:ncol) = calc_rrho(rair, state%t(:ncol,pver), state%pmid(:ncol,pver))
+      ustar (:ncol) = calc_friction_velocity(cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol))
+      khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
+      kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))
+      kbfs  (:ncol) = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+      obklen(:ncol) = calc_obukhov_length(thvs(:ncol), ustar(:ncol), gravit, karman, kbfs(:ncol))
 
-      call calc_ustar( ncol, state%t(:ncol,pver), state%pmid(:ncol,pver), &
-           cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol), ustar(:ncol))
-      ! Use actual qflux, not lhf/latvap as was done previously
-      call calc_obklen( ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
-           cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol),  &
-           khfs(:ncol), kqfs(:ncol), kbfs(:ncol), obklen(:ncol))
       ! These tendencies all applied elsewhere.
       kvm = 0._r8
       kvh = 0._r8
