@@ -509,7 +509,6 @@ subroutine nucleate_ice_cam_calc( &
 
    itim_old = pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, aist_idx, aist, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-   !icecldf(:ncol,:pver) = ast(:ncol,:pver)
    icecldf(:ncol,:pver) = aist(:ncol,:pver)
 
    ! naai and naai_hom are the outputs from this parameterization
