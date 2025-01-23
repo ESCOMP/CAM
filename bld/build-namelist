@@ -3889,6 +3889,7 @@ if ($do_gw_movmtn_pbl) {
     add_default($nl, 'gw_drag_file_mm');
     add_default($nl, 'alpha_gw_movmtn');
     add_default($nl, 'effgw_movmtn_pbl');
+    add_default($nl, 'movmtn_source');
 }
 
 if ($do_gw_rdg_beta) {

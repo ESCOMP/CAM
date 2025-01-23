@@ -898,6 +898,7 @@
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
 <alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
 <effgw_movmtn_pbl                       > 1.0d0   </effgw_movmtn_pbl>
+<movmtn_source                          > 1       </movmtn_source>
 
 
 <!-- Dry Convective Adjustment options -->

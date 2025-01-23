@@ -111,6 +111,7 @@ module gw_drag
   real(r8) :: effgw_beres_sh = unset_r8
   ! PBL moving mtn
   real(r8) :: effgw_movmtn_pbl = unset_r8
+  integer  :: movmtn_source = -1
 
   ! Parameters controlling isotropic residual
   ! orographic GW.
@@ -258,7 +259,7 @@ subroutine gw_drag_readnl(nlfile)
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
        gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
-       effgw_rdg_resid, effgw_movmtn_pbl
+       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source
 
   !----------------------------------------------------------------------
 
@@ -366,7 +367,9 @@ subroutine gw_drag_readnl(nlfile)
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
   call mpi_bcast(effgw_movmtn_pbl, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_movmtn_pbl")
+  call mpi_bcast(movmtn_source, 1, mpi_integer, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_source")
 
   call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_resid")
@@ -1818,7 +1821,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      effgw = effgw_movmtn_pbl !1._r8
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
           u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
-          zm, alpha_gw_movmtn, src_level, tend_level, &
+          zm, alpha_gw_movmtn, movmtn_source, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           phase_speeds, hdepth)
      !-------------------------------------------------------------

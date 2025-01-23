@@ -1444,6 +1444,12 @@ Efficiency scaling factor associated with residual non-ridge topo
 Default: set by build-namelist.
 </entry>
 
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
+</entry>
+
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Drag coefficient for obstacles in low-level flow.

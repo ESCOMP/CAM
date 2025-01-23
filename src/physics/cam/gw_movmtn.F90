@@ -36,7 +36,7 @@ contains
 
 subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      netdt, netdt_shcu, xpwp_shcu, vorticity, &
-     zm, alpha_gw_movmtn, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     zm, alpha_gw_movmtn, movmtn_source, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth)
 !-----------------------------------------------------------------------
 ! Flexible driver for gravity wave source from obstacle effects produced
@@ -71,6 +71,8 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8), intent(in) :: zm(ncol,pver)
   ! tunable parameter controlling proportion of PBL momentum flux emitted as GW
   real(r8), intent(in) :: alpha_gw_movmtn
+  ! code for source of gw: 1=vorticity, 2=upwp
+  integer, intent(in) :: movmtn_source
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -153,7 +155,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   q0 = 0.0_r8
   tau0 = 0.0_r8
 
-  source_type=1
+  source_type=movmtn_source
   if ( source_type==1 ) then
      !----------------------------------------------------------------------
      ! Calculate flux source from vorticity
