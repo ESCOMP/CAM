@@ -424,16 +424,16 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   !                       May.    2008.                                 !
   !-------------------------------------------------------------------- !
 
-  use diffusion_solver, only: compute_vdiff
-  use cam_history,      only: outfld
-  use phys_debug_util,  only: phys_debug_col
-  use air_composition,  only: cpairv
+  use diffusion_solver,     only: compute_vdiff
+  use cam_history,          only: outfld
+  use phys_debug_util,      only: phys_debug_col
+  use air_composition,      only: cpairv
   use atmos_phys_pbl_utils, only: austausch_atm, calc_rrho, calc_friction_velocity
-  use error_messages,   only: handle_errmsg
-  use coords_1d,        only: Coords1D
-  use wv_saturation,    only: qsat
-  use eddy_diff,        only: trbintd, caleddy
-  use physics_buffer,   only: pbuf_get_field
+  use error_messages,       only: handle_errmsg
+  use coords_1d,            only: Coords1D
+  use wv_saturation,        only: qsat
+  use eddy_diff,            only: trbintd, caleddy
+  use physics_buffer,       only: pbuf_get_field
 
   ! --------------- !
   ! Input Variables !
