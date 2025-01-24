@@ -333,9 +333,9 @@ end subroutine init_hb_diff
     !
     kvf(:ncol,:) = 0.0_r8
     do k = ntop_turb, nbot_turb - 1
-      do i = 1, ncol
-        kvf(i,k+1) = austausch_atm_free(ml2(k), ri(i, k), s2(i, k))
-      end do
+       do i = 1, ncol
+          kvf(i,k+1) = austausch_atm_free(ml2(k), ri(i, k), s2(i, k))
+       end do
     end do
 
     kvq(:ncol,:) = kvf(:ncol,:)
