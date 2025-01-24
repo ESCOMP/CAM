@@ -707,34 +707,34 @@ subroutine vertical_diffusion_tend( &
   !---------------------------------------------------- !
   ! This is an interface routine for vertical diffusion !
   !---------------------------------------------------- !
-  use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
-  use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
-  use physics_types,      only : set_dry_to_wet, set_wet_to_dry
+  use physics_buffer,       only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
+  use physics_types,        only : physics_state, physics_ptend, physics_ptend_init
+  use physics_types,        only : set_dry_to_wet, set_wet_to_dry
 
-  use camsrfexch,         only : cam_in_t
-  use cam_history,        only : outfld
+  use camsrfexch,           only : cam_in_t
+  use cam_history,          only : outfld
 
-  use trb_mtn_stress_cam, only : trb_mtn_stress_tend
-  use beljaars_drag_cam,  only : beljaars_drag_tend
-  use eddy_diff_cam,      only : eddy_diff_tend
-  use hb_diff,            only : compute_hb_diff, compute_hb_free_atm_diff
-  use wv_saturation,      only : qsat
-  use molec_diff,         only : compute_molec_diff, vd_lu_qdecomp
-  use constituents,       only : qmincg, qmin, cnst_type
-  use diffusion_solver,   only : compute_vdiff, any, operator(.not.)
-  use air_composition,    only : cpairv, rairv !Needed for calculation of upward H flux
-  use time_manager,       only : get_nstep
-  use constituents,       only : cnst_get_type_byind, cnst_name, &
-       cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx
-  use physconst,          only : pi
-  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_rrho, calc_friction_velocity, &
+  use trb_mtn_stress_cam,   only : trb_mtn_stress_tend
+  use beljaars_drag_cam,    only : beljaars_drag_tend
+  use eddy_diff_cam,        only : eddy_diff_tend
+  use hb_diff,              only : compute_hb_diff, compute_hb_free_atm_diff
+  use wv_saturation,        only : qsat
+  use molec_diff,           only : compute_molec_diff, vd_lu_qdecomp
+  use constituents,         only : qmincg, qmin, cnst_type
+  use diffusion_solver,     only : compute_vdiff, any, operator(.not.)
+  use air_composition,      only : cpairv, rairv !Needed for calculation of upward H flux
+  use time_manager,         only : get_nstep
+  use constituents,         only : cnst_get_type_byind, cnst_name, &
+                                   cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx
+  use physconst,            only : pi
+  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_rrho, calc_friction_velocity,                             &
                                   calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, &
                                   calc_obukhov_length
-  use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
-  use upper_bc,           only : ubc_get_flxs
-  use coords_1d,          only : Coords1D
-  use phys_control,       only : cam_physpkg_is
-  use ref_pres,           only : ptop_ref
+  use upper_bc,             only : ubc_get_vals, ubc_fixed_temp
+  use upper_bc,             only : ubc_get_flxs
+  use coords_1d,            only : Coords1D
+  use phys_control,         only : cam_physpkg_is
+  use ref_pres,             only : ptop_ref
 
   ! --------------- !
   ! Input Arguments !

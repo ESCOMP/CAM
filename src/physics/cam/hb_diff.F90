@@ -150,7 +150,9 @@ end subroutine init_hb_diff
     ! 
     !-----------------------------------------------------------------------
 
-    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length, austausch_atm, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux
+    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,               &
+                                    austausch_atm, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
     !------------------------------Arguments--------------------------------
@@ -270,7 +272,9 @@ end subroutine init_hb_diff
     !
     !-----------------------------------------------------------------------
 
-    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length, austausch_atm_free, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux
+    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,                    &
+                                    austausch_atm_free, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
     !------------------------------Arguments--------------------------------
