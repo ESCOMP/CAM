@@ -235,11 +235,11 @@ end subroutine init_hb_diff
     ! Get atmosphere exchange coefficients
     !
     kvf(:ncol,:) = 0.0_r8
-   do k = ntop_turb, nbot_turb-1
-     do i = 1, ncol
-       kvf(i,k+1) = austausch_atm(ml2(k), ri(i, k), s2(i, k))
-     end do
-   end do
+    do k = ntop_turb, nbot_turb-1
+       do i = 1, ncol
+          kvf(i,k+1) = austausch_atm(ml2(k), ri(i, k), s2(i, k))
+       end do
+    end do
 
     ! 
     ! Get pbl exchange coefficients
