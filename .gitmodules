@@ -9,7 +9,7 @@
 	path = src/physics/carma/base
 	url = https://github.com/ESCOMP/CARMA_base.git
         fxrequired = AlwaysRequired
-        fxtag = carma4_01
+        fxtag = carma4_09
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
 [submodule "pumas"]
@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_06_000
+        fxtag = atmos_phys0_07_001
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -151,28 +151,28 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.41
+fxtag = cime6.1.56
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
 [submodule "cmeps"]
 path = components/cmeps
 url = https://github.com/ESCOMP/CMEPS.git
-fxtag = cmeps1.0.22
+fxtag = cmeps1.0.32
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
 [submodule "cdeps"]
 path = components/cdeps
 url = https://github.com/ESCOMP/CDEPS.git
-fxtag = cdeps1.0.53
+fxtag = cdeps1.0.61
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
 [submodule "share"]
 path = share
 url = https://github.com/ESCOMP/CESM_share
-fxtag = share1.1.2
+fxtag = share1.1.6
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_share
 
@@ -186,14 +186,14 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm_cice6_5_0_12
+fxtag = cesm3_cice6_6_0_6
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
 [submodule "clm"]
 path = components/clm
 url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.3.002
+fxtag = ctsm5.3.016
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 

@@ -506,7 +506,7 @@ contains
     use air_composition, only: cpairv, cp_or_cv_dycore
     use time_manager,    only: get_nstep
     use nudging,         only: Nudge_Model, Nudge_ON, nudging_timestep_tend
-    use check_energy,    only: check_energy_chng
+    use check_energy,    only: check_energy_cam_chng
 
     ! Arguments
     !
@@ -598,7 +598,7 @@ contains
     if (Nudge_Model .and. Nudge_ON) then
       call nudging_timestep_tend(state,ptend)
       call physics_update(state, ptend, ztodt, tend)
-      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+      call check_energy_cam_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
     endif
 
     call tot_energy_phys(state, 'phAP')
@@ -731,7 +731,8 @@ contains
     use cam_diagnostics,   only: diag_conv_tend_ini, diag_conv, diag_export
     use cam_history,       only: outfld
     use time_manager,      only: get_nstep
-    use check_energy,      only: check_energy_chng, check_energy_fix, check_energy_timestep_init
+    use check_energy,      only: check_energy_cam_chng, check_energy_cam_fix
+    use check_energy,      only: check_energy_timestep_init
     use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend
@@ -834,9 +835,9 @@ contains
     call t_startf('energy_fixer')
 
     if (adiabatic .and. (.not. dycore_is('EUL'))) then
-      call check_energy_fix(state, ptend, nstep, flx_heat)
+      call check_energy_cam_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
-      call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+      call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
 
@@ -971,7 +972,7 @@ contains
     ! surface flux is computed and supplied as an argument to
     ! check_energy_chng to account for how the simplified physics forcings are
     ! changing the total exnergy.
-    call check_energy_chng(state, tend, "tphysidl", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "tphysidl", nstep, ztodt, zero, zero, zero, zero)
 
     if (chem_is_active()) then
       call t_startf('simple_chem')

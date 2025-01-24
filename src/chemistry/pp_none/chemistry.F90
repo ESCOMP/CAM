@@ -7,7 +7,7 @@ module chemistry
   use shr_kind_mod,        only: r8 => shr_kind_r8
   use physics_types,       only: physics_state, physics_ptend
   use ppgrid,              only: begchunk, endchunk, pcols
-  
+
 
   implicit none
   private
@@ -27,9 +27,10 @@ module chemistry
   public :: chem_write_restart
   public :: chem_read_restart
   public :: chem_init_restart
-  public :: chem_readnl                    ! read chem namelist 
+  public :: chem_readnl                    ! read chem namelist
   public :: chem_reset_fluxes
   public :: chem_emissions
+  public :: chem_has_ndep_flx
 
   interface chem_write_restart
      module procedure chem_write_restart_bin
@@ -39,6 +40,8 @@ module chemistry
      module procedure chem_read_restart_bin
      module procedure chem_read_restart_pio
   end interface
+
+  logical, parameter :: chem_has_ndep_flx = .false.
 
   ! Private data
 
@@ -61,10 +64,10 @@ contains
 
   subroutine chem_register
     use aero_model, only : aero_model_register
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: register advected constituents for parameterized greenhouse gas chemistry
-    ! 
+    !
     !-----------------------------------------------------------------------
 
    ! for prescribed aerosols
@@ -95,12 +98,12 @@ contains
 !================================================================================================
 
   function chem_implements_cnst(name)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: return true if specified constituent is implemented by this package
-    ! 
+    !
     ! Author: B. Eaton
-    ! 
+    !
     !-----------------------------------------------------------------------
     implicit none
     !-----------------------------Arguments---------------------------------
@@ -115,11 +118,11 @@ contains
 !===============================================================================
 
   subroutine chem_init(phys_state, pbuf2d)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: initialize parameterized greenhouse gas chemistry
     !          (declare history variables)
-    ! 
+    !
     !-----------------------------------------------------------------------
     use physics_buffer, only : physics_buffer_desc
     use aero_model,     only : aero_model_init
@@ -138,7 +141,7 @@ contains
     use physics_buffer, only : physics_buffer_desc
     use time_manager, only: get_curr_date, get_perp_date, get_curr_calday, &
          is_perpetual
-    type(physics_state), intent(in):: phys_state(begchunk:endchunk)                 
+    type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
@@ -162,7 +165,7 @@ contains
     type(cam_out_t),     intent(in)    :: cam_out
     type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), optional,  intent(out)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
-    
+
     return
   end subroutine chem_timestep_tend
 
@@ -215,7 +218,7 @@ contains
   end subroutine chem_init_restart
 !================================================================================
   subroutine chem_reset_fluxes( fptr, cam_in )
-    use camsrfexch,          only : cam_in_t     
+    use camsrfexch,          only : cam_in_t
 
     real(r8), pointer             :: fptr(:,:)        ! pointer into    array data
     type(cam_in_t), intent(inout) :: cam_in(begchunk:endchunk)
@@ -223,7 +226,7 @@ contains
   end subroutine chem_reset_fluxes
 !================================================================================
   subroutine chem_emissions( state, cam_in, pbuf )
-    use camsrfexch,       only: cam_in_t     
+    use camsrfexch,       only: cam_in_t
     use physics_buffer,   only: physics_buffer_desc
 
     ! Arguments:
