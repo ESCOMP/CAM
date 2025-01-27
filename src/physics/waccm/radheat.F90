@@ -46,6 +46,7 @@ module radheat
   logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Fomichev scheme
   logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS for the cooling rate calculation
   integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
+  logical :: nlte_use_extco2 = .false. ! If true, use the extended CO2 scheme of Lopez-Puertas et al. 2024
 
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
@@ -87,7 +88,8 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X, &
+                          nlte_use_extco2
 
     if (masterproc) then
        unitn = getunit()
@@ -112,6 +114,9 @@ contains
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
     call mpi_bcast (nlte_aliarms_every_X, 1, mpi_integer, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_aliarms_every_X")
+
+    call mpi_bcast (nlte_use_extco2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_extco2")
 
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
@@ -243,7 +248,8 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms, &
+                      nlte_aliarms_every_X, nlte_use_extco2)
     endif
 
 ! Add history variables to master field list

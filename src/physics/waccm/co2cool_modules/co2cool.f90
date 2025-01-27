@@ -319,7 +319,7 @@ use coedat
                        co2vmr_x(n_lev_csi) / co2profs(i_co2ref,n_lev_csi)
    hb(n_lev_csi) = co2vmr_x(n_lev_csi)/molmass(n_lev_csi) ! need hb at lev n_lev_csi
    do ilev=n_lev_csi-1,n_lev_rf-1,-1
-!      g_grav(ilev)  = 9.81_dp  ! to be pretabulated -- use lev dependent g_grav from coedat ??
+      g_grav(ilev)  = 9.81_dp  ! to be pretabulated -- use lev dependent g_grav from coedat ??
       kost    = -Nave1 / g_grav(ilev)
       hb(ilev) = co2vmr_x(ilev)/molmass(ilev)
       co2col(ilev) = 0.5_db*(hb(ilev+1) + hb(ilev)) * (pres_x(ilev+1) - &
