@@ -339,7 +339,7 @@
       </pes>
     </mach>
     <mach name="derecho">
-      <pes pesize="any" compset="_CAM\d0%WX">
+      <pes pesize="any" compset="_CAM\d0%WX|_CAM70%HT|_CAM70%XT">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-4</ntasks_atm>
@@ -397,7 +397,7 @@
       </pes>
     </mach>
     <mach name="derecho">
-      <pes pesize="any" compset="_CAM\d0%WX">
+      <pes pesize="any" compset="_CAM\d0%WX|_CAM70%HT|_CAM70%XT">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-16</ntasks_atm>
