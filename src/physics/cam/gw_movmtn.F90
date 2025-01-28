@@ -36,7 +36,8 @@ contains
 
 subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      netdt, netdt_shcu, xpwp_shcu, vorticity, &
-     zm, alpha_gw_movmtn, movmtn_source, src_level, tend_level, tau, ubm, ubi, xv, yv, &
+     zm, alpha_gw_movmtn, movmtn_source, ksteer_in, klaunch_in, &
+     src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth)
 !-----------------------------------------------------------------------
 ! Flexible driver for gravity wave source from obstacle effects produced
@@ -73,6 +74,8 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8), intent(in) :: alpha_gw_movmtn
   ! code for source of gw: 1=vorticity, 2=upwp
   integer, intent(in) :: movmtn_source
+  ! Steering level and launch level inputs
+  integer, intent(in) :: ksteer_in, klaunch_in
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -143,7 +146,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! GW Flux source
   real(r8) :: xpwp_src(ncol)
   ! Manual steering level set
-  integer :: Steer_k, Launch_k
+  integer :: Steer_k(ncol), Launch_k(ncol)
   ! Set source (1=vorticity, 2=PBL mom fluxes)
   integer :: source_type
 
@@ -168,16 +171,26 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      !----------------------------------------------------------------------
      call shcu_flux_src( xpwp_shcu, ncol, pver+1, alpha_gw_movmtn, xpwp_src, Steer_k, Launch_k )
   end if
+
+  !-------------------------------------------------
+  ! Override steering and launch levels if inputs>0
+  !-------------------------------------------------
+  if (klaunch_in > 0) then
+     Launch_k(:ncol) = klaunch_in
+  end if
+  if (ksteer_in > 0) then
+     Steer_k(:ncol) = ksteer_in
+  end if
   
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors at the steering level) then
   ! project winds.
   !------------------------------------------------------------------------
-
-  usteer = u(:,Steer_k)  !
-  vsteer = v(:,Steer_k)
-  steer_level = real(Steer_k,r8)
-
+  do i=1,ncol
+     usteer(i) = u(i, Steer_k(i) )  !
+     vsteer(i) = v(i, Steer_k(i) )
+     steer_level(i) = real(Steer_k(i),r8)
+  end do
   ! all GW calculations on a plane, which in our case is the wind at source level -> ubi is wind in this plane
   ! Get the unit vector components and magnitude at the source level.
   call get_unit_vector(usteer, vsteer, xv_steer, yv_steer, umag_steer)
@@ -439,12 +452,12 @@ subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, st
   real(r8), intent(in) :: alpha_gw_movmtn
 
   real(r8), intent(out) :: xpwp_src(ncol)
-  integer,  intent(out) :: steering_level, launch_level
+  integer,  intent(out) :: steering_level(ncol), launch_level(ncol)
 
   integer :: k, nlayers
 
-  steering_level = (pverx-1) - 5 !++ tuning test 12/30/24
-  launch_level   = steering_level -10 !++ tuning test 01/05/25
+  steering_level(:ncol) = (pverx-1) - 5 !++ tuning test 12/30/24
+  launch_level(:ncol)   = steering_level -10 !++ tuning test 01/05/25
 
   !-----------------------------------
   ! Simple average over layers.
@@ -467,13 +480,13 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   real(r8), intent(in) :: alpha_gw_movmtn
 
   real(r8), intent(out) :: vort_src(ncol)
-  integer,  intent(out) :: steering_level, launch_level
+  integer,  intent(out) :: steering_level(ncol), launch_level(ncol)
 
   real(r8) :: scale_factor 
   integer  :: k, nlayers
 
-  steering_level = pverx - 20 !++ ?????
-  launch_level   = steering_level -10 !++ tuning test 01/05/25
+  steering_level(:ncol) = pverx - 20 !++ ?????
+  launch_level(:ncol)   = steering_level -10 !++ tuning test 01/05/25
 
   scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB 
   !-----------------------------------

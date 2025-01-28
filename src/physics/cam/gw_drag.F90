@@ -111,7 +111,11 @@ module gw_drag
   real(r8) :: effgw_beres_sh = unset_r8
   ! PBL moving mtn
   real(r8) :: effgw_movmtn_pbl = unset_r8
-  integer  :: movmtn_source = -1
+  integer  :: movmtn_source  = -1
+  integer  :: movmtn_ksteer  = -1
+  integer  :: movmtn_klaunch = -1
+  real(r8) :: movmtn_psteer  = unset_r8 ! 65000.0_r8
+  real(r8) :: movmtn_plaunch = unset_r8 ! 32500.0_r8
 
   ! Parameters controlling isotropic residual
   ! orographic GW.
@@ -259,7 +263,8 @@ subroutine gw_drag_readnl(nlfile)
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
        gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
-       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source
+       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
+       movmtn_plaunch
 
   !----------------------------------------------------------------------
 
@@ -370,6 +375,10 @@ subroutine gw_drag_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_movmtn_pbl")
   call mpi_bcast(movmtn_source, 1, mpi_integer, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_source")
+  call mpi_bcast(movmtn_psteer, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_psteer")
+  call mpi_bcast(movmtn_plaunch, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_plaunch")
 
   call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_resid")
@@ -954,6 +963,29 @@ subroutine gw_init()
 
   end if
   
+  if (use_gw_movmtn_pbl) then
+     do k = 1, pver
+        ! Find steering level
+        if ( (pref_edge(k+1) >= movmtn_psteer).and.(pref_edge(k) < movmtn_psteer) ) then
+           movmtn_ksteer = k
+        end if
+     end do
+     do k = 1, pver
+        ! Find launch level
+        if ( (pref_edge(k+1) >= movmtn_plaunch).and.(pref_edge(k) < movmtn_plaunch ) ) then
+           movmtn_klaunch = k
+        end if
+     end do
+
+     if (masterproc) then
+        write (iulog,*) 'MOVMTN K_STEER      =', movmtn_ksteer
+        write (iulog,*) 'MOVMTN K_LAUNCH     =', movmtn_klaunch
+        write (iulog,*) 'K_STEER hardw       =', pver - 20 !++ ?????
+        write (iulog,*) 'K_LAUNCH hardw      =', pver - 20 - 10 !++ ?????        
+        write(iulog,*) ' '
+     end if
+
+  end if
   if (use_gw_movmtn_pbl) then
 
      vort4gw_idx = pbuf_get_index('VORT4GW')
@@ -1821,7 +1853,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      effgw = effgw_movmtn_pbl !1._r8
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
           u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
-          zm, alpha_gw_movmtn, movmtn_source, src_level, tend_level, &
+          zm, alpha_gw_movmtn, movmtn_source, movmtn_ksteer, movmtn_klaunch, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           phase_speeds, hdepth)
      !-------------------------------------------------------------

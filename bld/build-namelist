@@ -3890,6 +3890,8 @@ if ($do_gw_movmtn_pbl) {
     add_default($nl, 'alpha_gw_movmtn');
     add_default($nl, 'effgw_movmtn_pbl');
     add_default($nl, 'movmtn_source');
+    add_default($nl, 'movmtn_psteer');
+    add_default($nl, 'movmtn_plaunch');
 }
 
 if ($do_gw_rdg_beta) {
