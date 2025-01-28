@@ -11,7 +11,6 @@ module hb_diff
   ! Private methods:
   !       trbintd         initializes time dependent variables
   !       pblintd         initializes time dependent variables that depend pbl depth
-  !       austausch_atm   computes free atmosphere exchange coefficients
   !       austausch_pbl   computes pbl exchange coefficients
   !
   !---------------------------Code history--------------------------------
@@ -151,7 +150,7 @@ end subroutine init_hb_diff
     !-----------------------------------------------------------------------
 
     use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,               &
-                                    austausch_atm, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_eddy_flux_coefficient, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
                                     calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
@@ -239,7 +238,7 @@ end subroutine init_hb_diff
     kvf(:ncol,:) = 0.0_r8
     do k = ntop_turb, nbot_turb-1
        do i = 1, ncol
-          kvf(i,k+1) = austausch_atm(ml2(k), ri(i, k), s2(i, k))
+          kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
        end do
     end do
 
@@ -273,7 +272,7 @@ end subroutine init_hb_diff
     !-----------------------------------------------------------------------
 
     use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,                    &
-                                    austausch_atm_free, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_free_atm_eddy_flux_coefficient, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
                                     calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
@@ -338,7 +337,7 @@ end subroutine init_hb_diff
     kvf(:ncol,:) = 0.0_r8
     do k = ntop_turb, nbot_turb - 1
        do i = 1, ncol
-          kvf(i,k+1) = austausch_atm_free(ml2(k), ri(i, k), s2(i, k))
+          kvf(i,k+1) = calc_free_atm_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
        end do
     end do
 

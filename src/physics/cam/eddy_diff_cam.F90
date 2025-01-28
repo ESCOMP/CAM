@@ -428,7 +428,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   use cam_history,          only: outfld
   use phys_debug_util,      only: phys_debug_col
   use air_composition,      only: cpairv
-  use atmos_phys_pbl_utils, only: austausch_atm, calc_rrho, calc_friction_velocity
+  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_rrho, calc_friction_velocity
   use error_messages,       only: handle_errmsg
   use coords_1d,            only: Coords1D
   use wv_saturation,        only: qsat
@@ -698,7 +698,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
         kvf(:ncol,:) = 0.0_r8
         do k = ntop_eddy, nbot_eddy-1
            do i = 1, ncol
-              kvf(i,k+1) = austausch_atm(ml2(k), ri(i, k), s2(i, k))
+              kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
            end do
         end do
      else
