@@ -169,7 +169,7 @@ module gw_drag
   integer :: frontga_idx  = -1
   !
   integer :: vort4gw_idx  = -1
-  
+
   integer :: sgh_idx      = -1
 
   ! From CLUBB
@@ -956,7 +956,7 @@ subroutine gw_init()
      end if
 
   end if
-  
+
   if (use_gw_movmtn_pbl) then
      do k = 1, pver
         ! Find steering level
@@ -975,7 +975,7 @@ subroutine gw_init()
         write (iulog,*) 'MOVMTN K_STEER      =', movmtn_ksteer
         write (iulog,*) 'MOVMTN K_LAUNCH     =', movmtn_klaunch
         write (iulog,*) 'K_STEER hardw       =', pver - 20 !++ ?????
-        write (iulog,*) 'K_LAUNCH hardw      =', pver - 20 - 10 !++ ?????        
+        write (iulog,*) 'K_LAUNCH hardw      =', pver - 20 - 10 !++ ?????
         write(iulog,*) ' '
      end if
 
@@ -1831,15 +1831,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
-
-     !   Vorticity from SE dycore. This needs to be either
-     !   generalized to other dycores or protected with some
-     !   endrun if dycore != SE
-     if (dycore_is('SE')) then
-        call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
-     else
-        call endrun( 'gw_drag: vort4gw only with SE')
-     end if
+     call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
 
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
@@ -2511,7 +2503,7 @@ subroutine gw_rdg_calc( &
    real(r8),         intent(in) :: effgw_rdg       ! Tendency efficiency.
    real(r8),         intent(in) :: effgw_rdg_max
    real(r8),         intent(in) :: effgw_rdg_resid  ! Tendency efficiency.
-   logical,          intent(in) :: luse_gw_rdg_resid ! On-Off switch 
+   logical,          intent(in) :: luse_gw_rdg_resid ! On-Off switch
    real(r8),         intent(in) :: hwdth(ncol,prdg) ! width of ridges.
    real(r8),         intent(in) :: clngt(ncol,prdg) ! length of ridges.
    real(r8),         intent(in) :: gbxar(ncol)      ! gridbox area

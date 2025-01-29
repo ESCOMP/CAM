@@ -79,7 +79,6 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
-!++jtb
 integer, public    :: vort4gw_idx      = -1
 
 interface read_dyn_var
@@ -881,7 +880,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
       !$OMP END PARALLEL
-      !++jtb 01/14/25
       if (use_gw_front .or. use_gw_front_igw .or. use_gw_movmtn_pbl) call gws_init(elem)
    end if  ! iam < par%nprocs
 

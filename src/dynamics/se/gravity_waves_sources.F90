@@ -70,7 +70,7 @@ CONTAINS
     integer :: nets, nete, ithr, ncols, ie
     real(kind=r8), allocatable  ::  frontgf_thr(:,:,:,:)
     real(kind=r8), allocatable  ::  frontga_thr(:,:,:,:)
-    
+
 
     ! This does not need to be a thread private data-structure
     call derivinit(deriv)
@@ -81,9 +81,9 @@ CONTAINS
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
     allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
-    
+
     call compute_frontogenesis(frontgf_thr,frontga_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
-    
+
     if (fv_nphys>0) then
       do ie=nets,nete
         frontgf(:,:,ie) = RESHAPE(frontgf_thr(:,:,:,ie),(/nphys*nphys,nlev/))
@@ -98,7 +98,7 @@ CONTAINS
     end if
     deallocate(frontga_thr)
     deallocate(frontgf_thr)
-    
+
     !!$OMP END PARALLEL
 
   end subroutine gws_src_fnct
@@ -134,9 +134,9 @@ CONTAINS
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
     allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete))
-    
+
     call compute_vorticity_4gw(vort4gw_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
-    
+
     if (fv_nphys>0) then
       do ie=nets,nete
         vort4gw(:,:,ie) = RESHAPE(vort4gw_thr(:,:,:,ie),(/nphys*nphys,nlev/))
@@ -148,20 +148,20 @@ CONTAINS
       end do
     end if
     deallocate(vort4gw_thr)
-    
+
     !!$OMP END PARALLEL
 
   end subroutine gws_src_vort
 
   subroutine compute_vorticity_4gw(vort4gw,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! compute vorticity for use in gw params 
+  ! compute vorticity for use in gw params
   !   F = ( curl ) [U,V]
   !
   ! Original by Peter Lauritzen, Julio Bacmeister*, Dec 2024
   ! Patterned on 'compute_frontogenesis'
   !
-  ! * corresponding/blame-able  
+  ! * corresponding/blame-able
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     use derivative_mod, only: vorticity_sphere
     use edge_mod,       only: edgevpack, edgevunpack
@@ -176,10 +176,9 @@ CONTAINS
     integer,            intent(in)            :: nets,nete,nphys
     integer,            intent(in)            :: tl,tlq
     real(r8),           intent(out)           :: vort4gw(nphys,nphys,nlev,nets:nete)
-  
+
     ! local
     real(r8) :: area_inv(fv_nphys,fv_nphys), tmp(np,np)
-    !!real(r8) :: vort_tmp(fv_nphys*fv_nphys,nlev)
     real(r8) :: vort_gll(np,np,nlev,nets:nete)
     integer  :: k,kptr,i,j,ie,component,h,nq,m_cnst,n0
 
@@ -195,7 +194,7 @@ CONTAINS
        do k=1,nlev
           vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)
        end do
-       ! pack 
+       ! pack
        call edgeVpack(edge1, vort_gll(:,:,:,ie),nlev,0,ie)
     enddo
     call bndry_exchange(hybrid,edge1,location='compute_vorticity_4gw')
@@ -214,7 +213,6 @@ CONTAINS
           tmp = 1.0_r8
           area_inv = dyn2phys(tmp,elem(ie)%metdet)
           area_inv = 1.0_r8/area_inv
-          !!! vort_tmp(:,:) = dyn2phys(vort_gll(:,:,:,ie),elem(ie)) !peter replace with scalar mapping !++jtb: Think I did that ...
           do k=1,nlev
              vort4gw(:,:,k,ie) = dyn2phys( vort_gll(:,:,k,ie) , elem(ie)%metdet , area_inv )
           end do
@@ -228,7 +226,7 @@ CONTAINS
 
   end subroutine compute_vorticity_4gw
 
-    
+
   subroutine compute_frontogenesis(frontgf,frontga,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute frontogenesis function F

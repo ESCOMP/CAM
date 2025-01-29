@@ -3772,6 +3772,14 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
     }
 
+    my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
+    if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
+         if ( ! ($dyn =~ /se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
+
+         }
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');

@@ -85,16 +85,14 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    real (kind=r8),  allocatable :: frontgf_phys(:,:,:)
    real (kind=r8),  allocatable :: frontga_phys(:,:,:)
 
-   !++jtb 01/14/25
    ! Vorticity
    real (kind=r8),  allocatable :: vort4gw(:,:,:)      ! temp arrays to hold vorticity
    real (kind=r8),  allocatable :: vort4gw_phys(:,:,:)
 
-   
+
                                                         ! Pointers to pbuf
    real (kind=r8),  pointer     :: pbuf_frontgf(:,:)
    real (kind=r8),  pointer     :: pbuf_frontga(:,:)
-   !++jtb 12/31/24
    real (kind=r8),  pointer     :: pbuf_vort4gw(:,:)
 
    integer                      :: ncols, ierr
@@ -119,10 +117,9 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    nullify(pbuf_chnk)
    nullify(pbuf_frontgf)
    nullify(pbuf_frontga)
-   !++jtb
    nullify(pbuf_vort4gw)
 
-   
+
 
    if (fv_nphys > 0) then
       nphys = fv_nphys
@@ -150,12 +147,10 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       if (ierr /= 0) call endrun("dp_coupling: Allocate of frontga failed.")
    end if
    if (use_gw_movmtn_pbl) then
-      !++jtb 01/14/25
       allocate(vort4gw(nphys_pts,pver,nelemd), stat=ierr)
       if (ierr /= 0) call endrun("dp_coupling: Allocate of vort4gw failed.")
    end if
 
-   !++jtb 01/20/25
    if (iam < par%nprocs) then
       if (use_gw_front .or. use_gw_front_igw ) then
          call gws_src_fnct(elem, tl_f, tl_qdp_np0, frontgf, frontga, nphys)
@@ -228,7 +223,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
          frontga(:,:,:) = 0._r8
       end if
       if (use_gw_movmtn_pbl) then
-         !++jtb 01/14/25
          vort4gw(:,:,:) = 0._r8
       end if
 
@@ -250,7 +244,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       allocate(frontga_phys(pcols, pver, begchunk:endchunk))
    end if
    if (use_gw_movmtn_pbl) then
-      !++jtb 01/14/25
       allocate(vort4gw_phys(pcols, pver, begchunk:endchunk))
    end if
    !$omp parallel do num_threads(max_num_threads) private (col_ind, lchnk, icol, ie, blk_ind, ilyr, m)
@@ -271,7 +264,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
             frontga_phys(icol, ilyr, lchnk) = frontga(blk_ind(1), ilyr, ie)
          end if
          if (use_gw_movmtn_pbl) then
-            !++jtb 01/14/25
             vort4gw_phys(icol, ilyr, lchnk) = vort4gw(blk_ind(1), ilyr, ie)
          end if
       end do
@@ -299,7 +291,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       deallocate(frontgf_phys)
       deallocate(frontga_phys)
    end if
-   !++jtb 01/20/25
    if (use_gw_movmtn_pbl) then
       !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, pbuf_chnk, pbuf_vort4gw)
       do lchnk = begchunk, endchunk
@@ -312,7 +303,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
             end do
          end do
       end do
-      !++jtb 01/14/25
       deallocate(vort4gw_phys)
    end if
 
