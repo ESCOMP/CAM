@@ -3912,7 +3912,7 @@ if ($do_gw_rdg_beta) {
 }
 
 if ($do_gw_rdg_resid) {
-    add_default($nl, 'effgw_rdg_resid',      'val'=>'1.0D0');
+    add_default($nl, 'effgw_rdg_resid' );
 }
 
 if ($do_gw_rdg_gamma) {

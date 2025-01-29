@@ -164,8 +164,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      ! Calculate flux source from vorticity
      !----------------------------------------------------------------------
      call vorticity_flux_src( vorticity, ncol, pver , alpha_gw_movmtn, xpwp_src, Steer_k, Launch_k )
-  end if
-  if ( source_type==2 ) then
+  else if ( source_type==2 ) then
      !----------------------------------------------------------------------
      ! Calculate flux source from ShCu/PBL and set Steering level
      !----------------------------------------------------------------------
@@ -446,7 +445,6 @@ end function index_of_nearest
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, steering_level, launch_level ) !! result(xpwp_src)
-  !!! use gw_common, only: pver
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
@@ -474,7 +472,6 @@ end subroutine shcu_flux_src
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_src, steering_level, launch_level ) !! result(xpwp_src)
-  !!! use gw_common, only: pver
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: vorticity (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
@@ -485,8 +482,8 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   real(r8) :: scale_factor 
   integer  :: k, nlayers
 
-  steering_level(:ncol) = pverx - 20 !++ ?????
-  launch_level(:ncol)   = steering_level -10 !++ tuning test 01/05/25
+  steering_level(:ncol) = pverx - 20 
+  launch_level(:ncol)   = steering_level -10 
 
   scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB 
   !-----------------------------------

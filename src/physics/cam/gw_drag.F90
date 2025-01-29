@@ -167,7 +167,7 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
-  !++jtb
+  !
   integer :: vort4gw_idx  = -1
   
   integer :: sgh_idx      = -1
@@ -385,12 +385,6 @@ subroutine gw_drag_readnl(nlfile)
   call mpi_bcast(effgw_rdg_resid, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_resid")
 
-  !++ jtb (12/24/2024)
-  ! This is confusing. Not sure when if ever this was needed.
-  ! Check if fcrit2 was set.
-  !call shr_assert(fcrit2 /= unset_r8, &
-  !     "gw_drag_readnl: fcrit2 must be set via the namelist."// &
-  !     errMsg(__FILE__, __LINE__))
 
   ! Check if pgwv was set.
   call shr_assert(pgwv >= 0, &
@@ -1647,7 +1641,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Frontogenesis
   real(r8), pointer :: frontgf(:,:)
   real(r8), pointer :: frontga(:,:)
-  !++jtb 12/31/24
+  ! Vorticity source
   real(r8), pointer :: vort4gw(:,:)
 
   ! Temperature change due to deep convection.
@@ -1838,7 +1832,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
 
-     !++jtb 01/03/25
      !   Vorticity from SE dycore. This needs to be either
      !   generalized to other dycores or protected with some
      !   endrun if dycore != SE
@@ -1911,8 +1904,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
-
-     !++jtb 01/03/25 (see comment above)
      call outfld ('VORT4GW', vort4gw, pcols, lchnk)
 
      !Deallocate variables that are no longer used:
@@ -2756,7 +2747,6 @@ subroutine gw_rdg_calc( &
 
    if (luse_gw_rdg_resid == .true.) then
    ! Add additional GW from residual variance. Assumed isotropic
-      !kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
       kwvrdg  = 0.001_r8 / ( 100._r8 )
       effgw   = effgw_rdg_resid * isowgt    !1.0_r8 * isowgt
       tauoro = 0._r8

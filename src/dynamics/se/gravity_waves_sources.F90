@@ -5,8 +5,6 @@ module gravity_waves_sources
   use element_mod,    only: element_t
   use hybrid_mod,     only: hybrid_t
   use shr_kind_mod,   only: r8 => shr_kind_r8
-
-  !++ jtb (added for now, while debugging)
   use cam_logfile,            only: iulog
 
   implicit none
@@ -106,8 +104,6 @@ CONTAINS
   end subroutine gws_src_fnct
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !+++ jtb (01/20/24)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine gws_src_vort(elem, tl, tlq, vort4gw, nphys)
     use derivative_mod, only  : derivinit
     use dimensions_mod, only  : npsq, nelemd
@@ -133,8 +129,7 @@ CONTAINS
 
     ! This does not need to be a thread private data-structure
     call derivinit(deriv)
-    !!$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,frontgf_thr,frontga_thr)
-!    hybrid = config_thread_region(par,'horizontal')
+    !!$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,vort4gw_thr)
     hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
@@ -158,11 +153,6 @@ CONTAINS
 
   end subroutine gws_src_vort
 
-
-
-
-  
-  !++jtb (12/31/24)
   subroutine compute_vorticity_4gw(vort4gw,tl,tlq,elem,ederiv,hybrid,nets,nete,nphys)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute vorticity for use in gw params 
@@ -205,7 +195,7 @@ CONTAINS
        do k=1,nlev
           vort_gll(:,:,k,ie) = vort_gll(:,:,k,ie)*elem(ie)%spheremp(:,:)
        end do
-       ! pack ++jtb no idea what these routines are doing
+       ! pack 
        call edgeVpack(edge1, vort_gll(:,:,:,ie),nlev,0,ie)
     enddo
     call bndry_exchange(hybrid,edge1,location='compute_vorticity_4gw')
@@ -315,8 +305,6 @@ CONTAINS
       enddo
       ! pack
       call edgeVpack(edge3, frontgf_gll(:,:,:,ie),nlev,0,ie)
-      !++jtb:
-      !    Why are dims 2*nlev,nlev,  not 2*nlev,2*nlev, or nlev,nlev, ????
       call edgeVpack(edge3, gradth(:,:,:,:,ie),2*nlev,nlev,ie)
     enddo
     call bndry_exchange(hybrid,edge3,location='compute_frontogenesis')

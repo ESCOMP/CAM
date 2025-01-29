@@ -827,6 +827,8 @@
 
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
 
+<effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
+
 <effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
