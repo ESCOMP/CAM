@@ -2737,7 +2737,7 @@ subroutine gw_rdg_calc( &
    call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
    call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
 
-   if (luse_gw_rdg_resid == .true.) then
+   if (luse_gw_rdg_resid) then
    ! Add additional GW from residual variance. Assumed isotropic
       kwvrdg  = 0.001_r8 / ( 100._r8 )
       effgw   = effgw_rdg_resid * isowgt    !1.0_r8 * isowgt
