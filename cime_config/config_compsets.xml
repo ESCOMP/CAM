@@ -471,6 +471,10 @@
     <lname>HIST_CAM70%HT%CT4MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
+    <alias>FHIST_WXma</alias>
+    <lname>HIST_CAM70%XT%CT0MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>FHIST_MTt4s</alias>
     <lname>HIST_CAM70%MT%CT4S_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
@@ -781,6 +785,7 @@
     <entry id="ATM_NCPL">
       <values match="first">
         <value compset="_CAM\d0%WX">288</value>
+	<value compset="CAM70%XT">288</value>
       </values>
     </entry>
 

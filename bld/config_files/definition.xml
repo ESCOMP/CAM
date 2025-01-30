@@ -46,11 +46,12 @@ Switch to turn on analytic initial conditions for the dynamics state:
   0 => no
   1 => yes.
 </entry>
-<entry id="model_top" valid_values="none,lt,mt,ht" value="none">
+<entry id="model_top" valid_values="none,lt,mt,ht,xt" value="none">
 Model top specifier - set by compset definition
   lt: ~ 40 km top
   mt: ~ 80 km top
   ht: ~ 140 km top
+  xt: ~ 500 km top
 </entry>
 <entry id="waccmx" valid_values="0,1" value="0">
 Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
