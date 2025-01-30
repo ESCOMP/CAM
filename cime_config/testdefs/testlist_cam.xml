@@ -134,7 +134,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="f19_f19" name="SMS_Ln9" testmods="cam/silhs">
+  <test compset="F2000climo" grid="f19_f19_mg17" name="SMS_Ln9" testmods="cam/silhs">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="cam_silhs"/>
@@ -199,7 +199,7 @@
       <option name="comment" >CAM7-LT aquaplanet</option>
     </options>
   </test>
-  <test compset="QPLT" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq3s_cosp">
+  <test compset="QPLT" grid="ne30pg3_t232" name="ERP_D_Ln9" testmods="cam/outfrq3s_cosp">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
@@ -218,7 +218,7 @@
       <option name="comment" >CAM7-MT aquaplanet</option>
     </options>
   </test>
-  <test compset="QPMT" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPMT" grid="ne30pg3_t232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
@@ -1886,7 +1886,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FLTHIST" grid="ne30pg3_t232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
@@ -1895,7 +1895,7 @@
       <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
-  <test compset="FLTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FLTHIST" grid="ne30pg3_t232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1904,7 +1904,7 @@
       <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
-  <test compset="FLTHIST" grid="ne3pg3_ne3pg3_mg37" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FLTHIST" grid="ne3pg3_t232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
@@ -1913,7 +1913,7 @@
       <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
-  <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FMTHIST" grid="ne30pg3_t232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1922,7 +1922,7 @@
       <option name="comment">CAM7 mid top ~80 km</option>
     </options>
   </test>
-  <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FMTHIST" grid="ne30pg3_t232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
@@ -2376,7 +2376,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FHISTC_MTt1s" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s_Leung_dust">
+  <test compset="FHISTC_MTt1s" grid="ne30pg3_t232" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s_Leung_dust">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="camchem"/>
@@ -2386,7 +2386,7 @@
       <option name="comment" >Low-top CAM-Chem with MAM5 aerosols and cam7 physics</option>
     </options>
   </test>
-  <test compset="FHISTC_MTt1s" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_MTt1s" grid="ne30pg3_t232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="camchem"/>
     </machines>
@@ -2395,7 +2395,7 @@
       <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam7 physics</option>
     </options>
   </test>
-  <test compset="FHISTC_MTt4s" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_MTt4s" grid="ne30pg3_t232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="camchem"/>
     </machines>
@@ -2404,7 +2404,7 @@
       <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
     </options>
   </test>
-  <test compset="FHISTC_MTt4s" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ld3" testmods="cam/outfrq1d_aoa">
+  <test compset="FHISTC_MTt4s" grid="ne30pg3_t232" name="ERP_Ld3" testmods="cam/outfrq1d_aoa">
     <machines>
       <machine name="derecho" compiler="intel" category="camchem"/>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
