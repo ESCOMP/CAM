@@ -685,10 +685,13 @@ subroutine gw_init()
 
      call infld('ISOVAR', fh_topo, dim1name, dim2name, 1, pcols, &
                          begchunk, endchunk, rdg_isovar, found, gridname='physgrid')
-     if (.not. found) call endrun(sub//': ERROR: ISOVAR not found on topo file')
+!     if (.not. found) call endrun(sub//': ERROR: ISOVAR not found on topo file')
+     ! ++jtb - Temporary fix until topo files contain this variable
+     if (.not. found) rdg_isovar(:,:) = 0._r8
 
      call infld('ISOWGT', fh_topo, dim1name, dim2name, 1, pcols, &
                          begchunk, endchunk, rdg_isowgt, found, gridname='physgrid')
+!     if (.not. found) call endrun(sub//': ERROR: ISOWGT not found on topo file')
      ! ++jtb - Temporary fix until topo files contain this variable
      if (.not. found) rdg_isowgt(:,:) = 0._r8
 
