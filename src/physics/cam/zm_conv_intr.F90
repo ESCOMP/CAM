@@ -598,10 +598,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       freqzm(ideep(i)) = 1.0_r8
    end do
    call outfld('FREQZM  ',freqzm          ,pcols   ,lchnk   )
-!
-! Convert mass flux from reported mb/s to kg/m^2/s
-!
-   mcon(:ncol,:pverp) = mcon(:ncol,:pverp) * 100._r8/gravit
+
    mconzm(:ncol,:pverp) = mcon(:ncol,:pverp)
 
    call outfld('CMFMC_DP', mconzm, pcols, lchnk)
