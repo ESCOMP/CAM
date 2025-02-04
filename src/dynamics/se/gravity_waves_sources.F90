@@ -186,7 +186,7 @@ CONTAINS
     ! First calculate vorticity on GLL grid
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! set timelevel=1 fro velocities
-    n0=1
+    n0=tl
     do ie=nets,nete
        do k=1,nlev
           call vorticity_sphere(elem(ie)%state%v(:,:,:,k,n0),ederiv,elem(ie),vort_gll(:,:,k,ie))
