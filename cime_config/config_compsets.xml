@@ -292,6 +292,16 @@
   </compset>
 
   <compset>
+    <alias>QPLT</alias>
+    <lname>2000_CAM70%LT_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPMT</alias>
+    <lname>2000_CAM70%MT_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>QPC2000climo</alias>
     <lname>2000_CAM60%CT1S_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>

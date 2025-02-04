@@ -619,8 +619,10 @@ subroutine vertical_diffusion_init(pbuf2d)
   endif
 
   if (history_eddy) then
-     call add_default( 'UFLX    ', 1, ' ' )
-     call add_default( 'VFLX    ', 1, ' ' )
+     if (.not. do_pbl_diags) then
+        call add_default( 'UFLX    ', 1, ' ' )
+        call add_default( 'VFLX    ', 1, ' ' )
+     end if
   endif
 
   if( history_budget ) then
