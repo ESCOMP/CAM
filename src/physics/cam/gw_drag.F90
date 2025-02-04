@@ -114,8 +114,8 @@ module gw_drag
   integer  :: movmtn_source  = -1
   integer  :: movmtn_ksteer  = -1
   integer  :: movmtn_klaunch = -1
-  real(r8) :: movmtn_psteer  = unset_r8 ! 65000.0_r8
-  real(r8) :: movmtn_plaunch = unset_r8 ! 32500.0_r8
+  real(r8) :: movmtn_psteer  = unset_r8
+  real(r8) :: movmtn_plaunch = unset_r8
 
   ! Parameters controlling isotropic residual
   ! orographic GW.
@@ -167,7 +167,7 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
-  !
+   
   integer :: vort4gw_idx  = -1
 
   integer :: sgh_idx      = -1
@@ -988,7 +988,7 @@ subroutine gw_init()
 
      vort4gw_idx = pbuf_get_index('VORT4GW')
 
-     call addfld ('VORT4GW', (/ 'lev' /), 'A', '1/S', &
+     call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
           'Vorticity')
   end if
 
@@ -1839,7 +1839,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
-     effgw = effgw_movmtn_pbl !1._r8
+     effgw = effgw_movmtn_pbl
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
           u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
           zm, alpha_gw_movmtn, movmtn_source, movmtn_ksteer, movmtn_klaunch, src_level, tend_level, &
