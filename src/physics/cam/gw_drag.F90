@@ -2744,7 +2744,7 @@ subroutine gw_rdg_calc( &
    if (luse_gw_rdg_resid) then
    ! Add additional GW from residual variance. Assumed isotropic
       kwvrdg  = 0.001_r8 / ( 100._r8 )
-      effgw   = effgw_rdg_resid * isowgt    !1.0_r8 * isowgt
+      effgw   = effgw_rdg_resid * isowgt
       tauoro = 0._r8
 
       call gw_rdg_resid_src(ncol, band_oro, p, &
@@ -2793,7 +2793,7 @@ subroutine gw_rdg_calc( &
 
       call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
       call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
-      call outfld('SRC_LEVEL_RESID'//trim(type),      1._r8*src_level ,         ncol, lchnk)
+      call outfld('SRC_LEVEL_RESID'//trim(type),      real(src_level, r8) ,         ncol, lchnk)
       ! end of residual variance calc
    end if
 

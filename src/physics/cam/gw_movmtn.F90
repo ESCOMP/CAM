@@ -41,7 +41,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      c, hdepth)
 !-----------------------------------------------------------------------
 ! Flexible driver for gravity wave source from obstacle effects produced
-! by internal circulations 
+! by internal circulations
 !-----------------------------------------------------------------------
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, pver, qbo_hdepth_scaling
@@ -180,13 +180,13 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   if (ksteer_in > 0) then
      Steer_k(:ncol) = ksteer_in
   end if
-  
+
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors at the steering level) then
   ! project winds.
   !------------------------------------------------------------------------
   do i=1,ncol
-     usteer(i) = u(i, Steer_k(i) )  !
+     usteer(i) = u(i, Steer_k(i) )
      vsteer(i) = v(i, Steer_k(i) )
      steer_level(i) = real(Steer_k(i),r8)
   end do
@@ -234,7 +234,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
 
   if (use_gw_movmtn_pbl) then
      boti=pver
-     topi=Launch_k ! set in source subr 
+     topi=Launch_k ! set in source subr
   else
     do k = pver, 1, -1 !start at surface
        do i = 1, ncol
@@ -444,7 +444,7 @@ pure function index_of_nearest(x, grid) result(idx)
 end function index_of_nearest
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, steering_level, launch_level ) !! result(xpwp_src)
+subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, steering_level, launch_level )
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: xpwp_shcu (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
@@ -471,7 +471,7 @@ subroutine shcu_flux_src (xpwp_shcu , ncol, pverx, alpha_gw_movmtn, xpwp_src, st
 end subroutine shcu_flux_src
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_src, steering_level, launch_level ) !! result(xpwp_src)
+subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_src, steering_level, launch_level )
   integer, intent(in) :: ncol,pverx
   real(r8), intent(in) :: vorticity (ncol,pverx)
   real(r8), intent(in) :: alpha_gw_movmtn
@@ -479,13 +479,13 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   real(r8), intent(out) :: vort_src(ncol)
   integer,  intent(out) :: steering_level(ncol), launch_level(ncol)
 
-  real(r8) :: scale_factor 
+  real(r8) :: scale_factor
   integer  :: k, nlayers
 
-  steering_level(:ncol) = pverx - 20 
-  launch_level(:ncol)   = steering_level -10 
+  steering_level(:ncol) = pverx - 20
+  launch_level(:ncol)   = steering_level -10
 
-  scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB 
+  scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB
   !-----------------------------------
   ! Simple average over layers.
   ! Probably can do better
@@ -495,7 +495,7 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   do k = 0, nlayers-1
      vort_src(:) = vort_src(:) + scale_factor * abs( vorticity(:,pverx-k) )
   end do
-  vort_src(:) = alpha_gw_movmtn * vort_src(:)/(1.0_r8*nlayers)
+  vort_src(:) = alpha_gw_movmtn * vort_src(:)/nlayers
 
 end subroutine vorticity_flux_src
 

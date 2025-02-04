@@ -5,7 +5,6 @@ module gravity_waves_sources
   use element_mod,    only: element_t
   use hybrid_mod,     only: hybrid_t
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use cam_logfile,            only: iulog
 
   implicit none
   private
@@ -51,13 +50,15 @@ CONTAINS
 
   subroutine gws_src_fnct(elem, tl, tlq, frontgf, frontga, nphys)
     use derivative_mod, only  : derivinit
-    use dimensions_mod, only  : npsq, nelemd
+    use dimensions_mod, only  : nelemd
     use dof_mod, only         : UniquePoints
     use hybrid_mod, only      : config_thread_region, get_loop_ranges
     use parallel_mod, only    : par
     use ppgrid, only          : pver
     use thread_mod, only      : horz_num_threads
     use dimensions_mod, only  : fv_nphys
+    use cam_abortutils, only  : handle_allocate_error
+
     implicit none
     type (element_t), intent(inout), dimension(:) :: elem
     integer, intent(in)          :: tl, nphys, tlq
@@ -75,12 +76,15 @@ CONTAINS
     ! This does not need to be a thread private data-structure
     call derivinit(deriv)
     !!$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,frontgf_thr,frontga_thr)
-!    hybrid = config_thread_region(par,'horizontal')
     hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
+    call handle_allocate_error(ierr, 'gws_src_fnct', 'frontgf_thr')
+
     allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
+    call handle_allocate_error(ierr, 'gws_src_fnct', 'frontga_thr')
+
 
     call compute_frontogenesis(frontgf_thr,frontga_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
 
@@ -106,13 +110,15 @@ CONTAINS
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine gws_src_vort(elem, tl, tlq, vort4gw, nphys)
     use derivative_mod, only  : derivinit
-    use dimensions_mod, only  : npsq, nelemd
+    use dimensions_mod, only  : nelemd
     use dof_mod, only         : UniquePoints
     use hybrid_mod, only      : config_thread_region, get_loop_ranges
     use parallel_mod, only    : par
     use ppgrid, only          : pver
     use thread_mod, only      : horz_num_threads
     use dimensions_mod, only  : fv_nphys
+    use cam_abortutils, only  : handle_allocate_error
+
     implicit none
     type (element_t), intent(inout), dimension(:) :: elem
     integer, intent(in)          :: tl, nphys, tlq
@@ -133,7 +139,8 @@ CONTAINS
     hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
-    allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete))
+    allocate(vort4gw_thr(nphys,nphys,nlev,nets:nete), stat=ierr)
+    call handle_allocate_error(ierr, 'gws_src_vort', 'vort4gw_thr')
 
     call compute_vorticity_4gw(vort4gw_thr,tl,tlq,elem,deriv,hybrid,nets,nete,nphys)
 
@@ -166,9 +173,8 @@ CONTAINS
     use derivative_mod, only: vorticity_sphere
     use edge_mod,       only: edgevpack, edgevunpack
     use bndry_mod,      only: bndry_exchange
-    use dyn_grid,       only: hvcoord
-    use dimensions_mod, only: fv_nphys,ntrac
-    use fvm_mapping,    only: dyn2phys_vector,dyn2phys
+    use dimensions_mod, only: fv_nphys
+    use fvm_mapping,    only: dyn2phys
 
     type(hybrid_t),     intent(in)            :: hybrid
     type(element_t),    intent(inout), target :: elem(:)

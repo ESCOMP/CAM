@@ -1325,7 +1325,7 @@ Default: .false.
 
 <entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
-Whether or not to enable gravity waves from residual(non-ridge)
+Whether or not to enable gravity waves from residual (non-ridge)
 orography
 Default: set by build-namelist.
 </entry>
