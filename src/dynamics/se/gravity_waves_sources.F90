@@ -68,7 +68,7 @@ CONTAINS
 
     ! Local variables
     type (hybrid_t) :: hybrid
-    integer :: nets, nete, ithr, ncols, ie
+    integer :: nets, nete, ithr, ncols, ie, ierr
     real(kind=r8), allocatable  ::  frontgf_thr(:,:,:,:)
     real(kind=r8), allocatable  ::  frontga_thr(:,:,:,:)
 
@@ -79,10 +79,10 @@ CONTAINS
     hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
-    allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
+    allocate(frontgf_thr(nphys,nphys,nlev,nets:nete), stat=ierr)
     call handle_allocate_error(ierr, 'gws_src_fnct', 'frontgf_thr')
 
-    allocate(frontga_thr(nphys,nphys,nlev,nets:nete))
+    allocate(frontga_thr(nphys,nphys,nlev,nets:nete), stat=ierr)
     call handle_allocate_error(ierr, 'gws_src_fnct', 'frontga_thr')
 
 
@@ -128,7 +128,7 @@ CONTAINS
 
     ! Local variables
     type (hybrid_t) :: hybrid
-    integer :: nets, nete, ithr, ncols, ie
+    integer :: nets, nete, ithr, ncols, ie, ierr
 
     !
     real(kind=r8), allocatable  ::  vort4gw_thr(:,:,:,:)
