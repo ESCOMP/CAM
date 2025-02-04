@@ -755,7 +755,7 @@
 <efield_hflux_file >atm/waccm/efld/coeff_hflux.dat</efield_hflux_file>
 
 <!-- International Geomagnetic Reference Field coefficients -->
-<igrf_geomag_coefs_file>atm/waccm/geomag/igrf_ceofs_c160412.nc</igrf_geomag_coefs_file>
+<igrf_geomag_coefs_file>atm/waccm/geomag/IGRF14_coeffs_c250130.nc</igrf_geomag_coefs_file>
 
 <!-- Waccm aurora and euv parameters -->
 <photon_file    >atm/waccm/phot/photon_c130710.dat</photon_file>
@@ -3314,12 +3314,16 @@
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0"               > 9 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0"               > 8 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0" model_top="none"> 9 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0" model_top="none"> 8 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="mt"                          > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4" model_top="ht"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4" model_top="xt"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
@@ -3329,6 +3333,7 @@
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                          > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge se_refined_mesh="1"                       > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"            > 40 </se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -3363,6 +3368,8 @@
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0"> 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+<se_sponge_del4_lev model_top="ht"> 30 </se_sponge_del4_lev>
+<se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
 
@@ -3376,10 +3383,14 @@
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccmx="1"                    >  5  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  2  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  4  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="ht"                >  2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="xt"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4"                                >  2  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" model_top="none"> 4  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="ht"                >  4  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="xt"                >  5  </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>

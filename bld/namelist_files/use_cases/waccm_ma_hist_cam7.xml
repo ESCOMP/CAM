@@ -17,6 +17,8 @@
 <!--Species IC -->
 <ncdata dyn="se" hgrid="ne30np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne30pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne16pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne30pg3_spinup03.cam.i.1980-01-01-00000_c250201.nc</ncdata>
+<ncdata dyn="se" hgrid="ne16np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne16pg3_spinup02.cam.i.1980-01-01-00000_c250201.nc</ncdata>
 
 <!-- topography -->
 <bnd_topo dyn="se" hgrid="ne16np4" npg="3">atm/cam/topo/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
