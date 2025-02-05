@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_parms_data_file>
+
+<!--Species IC -->
+<ncdata dyn="se" hgrid="ne30np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne30pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
+<ncdata dyn="se" hgrid="ne16np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne16pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne30pg3_spinup03.cam.i.1980-01-01-00000_c250201.nc</ncdata>
+<ncdata dyn="se" hgrid="ne16np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne16pg3_spinup02.cam.i.1980-01-01-00000_c250201.nc</ncdata>
+
+<!-- topography -->
+<bnd_topo dyn="se" hgrid="ne16np4" npg="3">atm/cam/topo/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
+<bnd_topo dyn="se" hgrid="ne30np4" npg="3">atm/cam/topo/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc</bnd_topo>
+
+<!-- LBC, UBC Files -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- Upper Boundary -->
+<tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1850-2100_c100204.nc</tgcm_ubc_file>
+<tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
+
+<!-- upper atmos forcings -->
+<waccm_forcing_type>INTERP_MISSING_MONTHS</waccm_forcing_type>
+<waccm_forcing_file>SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc</waccm_forcing_file>
+<waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+
+<!-- ozone data -->
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'       </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                              </prescribed_ozone_name>
+<prescribed_ozone_type    >   SERIAL                                                                            </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                       </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
+<prescribed_strataero_type        >   SERIAL                                                                       </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'  </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   INTERP_MISSING_MONTHS                                         </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                            </tracer_cnst_filelist>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- History Streams -->
+
+<mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
+
+<history_cesm_forcing>.true.</history_cesm_forcing>
+<history_scwaccm_forcing>.true. </history_scwaccm_forcing>
+<history_waccm>.true.</history_waccm>
+<history_amwg>.true.</history_amwg>
+<history_carma>.false.</history_carma>
+<history_clubb>.false.</history_clubb>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_aerosol>.false.</history_aerosol>
+<history_aero_optics>.false.</history_aero_optics>
+
+</namelist_defaults>
