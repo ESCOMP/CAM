@@ -1441,19 +1441,19 @@ Default: set by build-namelist.
 
 <entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
-Efficiency scaling factor associated with residual non-ridge topo
+Efficiency scaling factor for moving mountain source
 Default: set by build-namelist.
 </entry>
 
 <entry id="movmtn_psteer" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
-Global steering level (Pa) for moving mtns. If neg do something else
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
 Default: set by build-namelist.
 </entry>
 
 <entry id="movmtn_plaunch" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
-Global launch level (Pa) for moving mtns. If neg do something else
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
 Default: set by build-namelist.
 </entry>
 

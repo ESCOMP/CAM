@@ -837,10 +837,6 @@
 <effgw_rdg_beta_max model_top="lt" >0.5D0</effgw_rdg_beta_max>
 <effgw_rdg_beta_max model_top="mt" >0.5D0</effgw_rdg_beta_max>
 
-<effgw_rdg_beta_max                >JULIO</effgw_rdg_beta_max>
-<effgw_rdg_beta_max model_top="lt" >JULIO</effgw_rdg_beta_max>
-<effgw_rdg_beta_max model_top="mt" >JULIO</effgw_rdg_beta_max>
-
 <!-- setting for gravity waves from shallow convection. -->
 <effgw_beres_sh>0.03D0</effgw_beres_sh>
 

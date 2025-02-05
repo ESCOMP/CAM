@@ -167,7 +167,7 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
-   
+
   integer :: vort4gw_idx  = -1
 
   integer :: sgh_idx      = -1
@@ -778,7 +778,7 @@ subroutine gw_init()
      call addfld('RHOIEGW',  (/ 'ilev' /) , 'I'  ,'kg/m^3' ,  &
           'interface density in GW code ' )
      call addfld('PINTEGW',  (/ 'ilev' /) , 'I'  ,'Pa' ,  &
-          'interface density in GW code ' )
+          'interface air pressure in GW code ' )
 
      call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
@@ -798,7 +798,7 @@ subroutine gw_init()
      call addfld('SRC_LEVEL_RESIDBETA',  horiz_only , 'I'  ,'1' ,  &
           'src level index for ridge residual         ' )
      call addfld('TAUORO_RESID',  horiz_only , 'I'  ,'N m-2' ,  &
-          'Surface mom flux from ridge reisdual       ' )
+          'Surface momentum flux from ridge residual       ' )
      call addfld('TAUDIAG_RESID' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
 
@@ -974,14 +974,6 @@ subroutine gw_init()
            movmtn_klaunch = k
         end if
      end do
-
-     if (masterproc) then
-        write (iulog,*) 'MOVMTN K_STEER      =', movmtn_ksteer
-        write (iulog,*) 'MOVMTN K_LAUNCH     =', movmtn_klaunch
-        write (iulog,*) 'K_STEER hardw       =', pver - 20 !++ ?????
-        write (iulog,*) 'K_LAUNCH hardw      =', pver - 20 - 10 !++ ?????
-        write(iulog,*) ' '
-     end if
 
   end if
   if (use_gw_movmtn_pbl) then

@@ -349,6 +349,7 @@ subroutine gw_rdg_resid_src(ncol, band, p, &
 
 
   ! Determine the orographic c=0 source term following McFarlane (1987).
+  ! (DOI: https://doi.org/10.1175/1520-0469(1987)044<1775:TEOOEG>2.0.CO;2)
   ! Set the source top interface index to pver, if the orographic term is
   ! zero.
   do i = 1, ncol
