@@ -120,7 +120,7 @@ CONTAINS
     use cam_abortutils, only  : handle_allocate_error
 
     implicit none
-    type (element_t), intent(inout), dimension(:) :: elem
+    type (element_t), intent(in), dimension(:) :: elem
     integer, intent(in)          :: tl, nphys, tlq
 
     !
@@ -177,7 +177,7 @@ CONTAINS
     use fvm_mapping,    only: dyn2phys
 
     type(hybrid_t),     intent(in)            :: hybrid
-    type(element_t),    intent(inout), target :: elem(:)
+    type(element_t),    intent(in)            :: elem(:)
     type(derivative_t), intent(in)            :: ederiv
     integer,            intent(in)            :: nets,nete,nphys
     integer,            intent(in)            :: tl,tlq
