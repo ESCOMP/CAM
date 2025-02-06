@@ -179,7 +179,7 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
      do i = 1, ncol
         if (topi(i) == 0) then
                 ! First spot where heating rate is positive.
-              if ((netdt(i,k) > 0.0_r8) .AND. (zm(i,k) <= 20000._r8)) topi(i) = k
+              if ((netdt(i,k) > 0.0_r8) .AND. (zm(i,k) <= 20000._r8)) topi(i) = k-1
         end if
      end do
      ! When all done, exit
@@ -286,7 +286,7 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0_r8
- 
+
         tau(i,:,topi(i)+1) = tau0
 
      end if ! heating depth above min and not at the pole
