@@ -24,15 +24,15 @@ module coedat
   use constants, only : n_lev_mx, n_co2prof, n_lev_cm, n_Lesc, n_alpha
   implicit none
 
-  real(dp),dimension(n_co2prof,n_alpha)           :: alpha
-  real(dp),dimension(n_co2prof,n_lev_mx)          :: co2profs ! CO2 reference profiles (mol/mol)
-  real(dp),dimension(n_co2prof         )          :: co2mean  ! CO2 mean below x = 10.25
-  real(dp),dimension(n_Lesc)                      :: uco2     ! logarithm of CO2 column in cm-2
-  real(db),dimension(n_lev_mx)                    :: g_grav   ! Earth's gravity
-  real(db),dimension(n_lev_mx)                    :: co2col_ovh  ! CO2 column overhead above a given level
-  real(dp),dimension(n_co2prof,n_Lesc)            :: Lesc     ! The escape probability function
-  real(dp),dimension(n_co2prof,n_lev_cm,n_lev_cm) :: acoef, bcoef ! a and b coefficients (matrices) for LTE cooling (Eq. 3)
-  real(dp),dimension(n_co2prof,n_lev_cm)          :: asurf, bsurf ! a and b coefficient (vectors) for the surface flux (Eq. 4)
+  real(dp),protected,dimension(n_co2prof,n_alpha)           :: alpha
+  real(dp),protected,dimension(n_co2prof,n_lev_mx)          :: co2profs ! CO2 reference profiles (mol/mol)
+  real(dp),protected,dimension(n_co2prof         )          :: co2mean  ! CO2 mean below x = 10.25
+  real(dp),protected,dimension(n_Lesc)                      :: uco2     ! logarithm of CO2 column in cm-2
+  real(db),protected,dimension(n_lev_mx)                    :: g_grav   ! Earth's gravity
+  real(db),protected,dimension(n_lev_mx)                    :: co2col_ovh  ! CO2 column overhead above a given level
+  real(dp),protected,dimension(n_co2prof,n_Lesc)            :: Lesc     ! The escape probability function
+  real(dp),protected,dimension(n_co2prof,n_lev_cm,n_lev_cm) :: acoef, bcoef ! a and b coefficients (matrices) for LTE cooling (Eq. 3)
+  real(dp),protected,dimension(n_co2prof,n_lev_cm)          :: asurf, bsurf ! a and b coefficient (vectors) for the surface flux (Eq. 4)
 
   private
   public :: alpha, co2profs, uco2, Lesc, asurf, bsurf, acoef, bcoef, g_grav, &
