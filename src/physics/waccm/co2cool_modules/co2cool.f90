@@ -201,11 +201,12 @@ use constants
 use coedat
 
    implicit NONE
+
+   integer,  intent(IN)    :: n_inlev, n_lev, min_lev, grd_lev
    real(dp), dimension(n_inlev), intent(IN) :: temp, co2vmr, ovmr, &
                                                o2vmr, n2vmr, xatm
    real(db),dimension(n_lev), intent(IN)   :: xref
    real(dp), intent(IN)    :: surf_temp
-   integer,  intent(IN)    :: n_inlev, n_lev, min_lev, grd_lev
 
    real(db),dimension(n_alpha)           :: alphaf
    real(db),dimension(n_Lesc)            :: Lescf
