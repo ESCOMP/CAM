@@ -1552,7 +1552,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use physics_types,   only: physics_state_copy
   use constituents,    only: cnst_type
   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
   use camsrfexch,      only: cam_in_t
@@ -1736,9 +1736,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Make local copy of input state.
   call physics_state_copy(state, state1)
-
-  ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state1, convert_cnst_type='dry')
 
   lchnk = state1%lchnk
   ncol  = state1%ncol
