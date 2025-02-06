@@ -25,10 +25,6 @@
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
-<!-- Upper Boundary -->
-<tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1850-2100_c100204.nc</tgcm_ubc_file>
-<tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
-
 <!-- upper atmos forcings -->
 <waccm_forcing_type>INTERP_MISSING_MONTHS</waccm_forcing_type>
 <waccm_forcing_file>SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc</waccm_forcing_file>
@@ -53,6 +49,9 @@
 <tracer_cnst_type     >   INTERP_MISSING_MONTHS                                         </tracer_cnst_type>
 <tracer_cnst_filelist >   ''                                                            </tracer_cnst_filelist>
 
+<!-- Emissions -->
+<csw_time_type>SERIAL</csw_time_type>
+
 <!-- External forcing -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
 
@@ -75,5 +74,9 @@
 <history_chemspecies_srf>.false.</history_chemspecies_srf>
 <history_aerosol>.false.</history_aerosol>
 <history_aero_optics>.false.</history_aero_optics>
+
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<sim_year>1850-2015</sim_year>
 
 </namelist_defaults>

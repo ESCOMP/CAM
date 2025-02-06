@@ -2825,12 +2825,13 @@ if ($chem eq 'trop_mam7') {
 }
 
 my $waccmx = $cfg->get('waccmx');
+my $model_top = $cfg->get('model_top');
 
 # set maximum solar zenith angle for photolysis
 my $maxzen = 0.0;
 if ($waccmx){
     $maxzen = 116.;
-} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
+} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_" or $model_top eq "ht") {
     $maxzen = 97.01;
 } elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart" or $chem =~ "ghg_mam") {
     $maxzen = 88.85;
@@ -2843,7 +2844,7 @@ if ($maxzen>0.0) {
 my $ubc_ver;
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) and !$waccmx) {
     $ubc_ver = 'waccmchem';
-} elsif ($chem =~ /waccm_sc/) {
+} elsif ($chem =~ /waccm_sc/ or ($model_top eq "ht" and $chem =~ /ghg_mam/)) {
     $ubc_ver = 'waccmsc';
 }
 if (defined $ubc_ver) {

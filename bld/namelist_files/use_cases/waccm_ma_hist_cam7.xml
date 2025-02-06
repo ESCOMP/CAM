@@ -36,7 +36,8 @@
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1850-2100_c100204.nc</tgcm_ubc_file>
 <tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
 
-<!-- emissions -->
+<!-- Emissions -->
+<csw_time_type>SERIAL</csw_time_type>
 
 <!-- External forcing -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
@@ -60,5 +61,7 @@
 <history_chemspecies_srf>.false.</history_chemspecies_srf>
 <history_aerosol>.false.</history_aerosol>
 <history_aero_optics>.false.</history_aero_optics>
+
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
 
 </namelist_defaults>
