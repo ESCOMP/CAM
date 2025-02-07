@@ -332,7 +332,7 @@
 <bnd_topo hgrid="ne3np4"   npg="3">atm/cam/topo/se/ne3pg3_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230209.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
 <bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117.nc</bnd_topo>
+<bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4" npg="3">atm/cam/topo/se/ne240pg3_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171015.nc</bnd_topo>
@@ -823,6 +823,8 @@
 <effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 
+<effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
+
 <effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
@@ -889,6 +891,11 @@
 <gw_rdg_orostratmin                     > 0.002d0</gw_rdg_orostratmin>
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
 <alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
+<effgw_movmtn_pbl                       > 1.0d0   </effgw_movmtn_pbl>
+<movmtn_psteer                          > 65000.0d0  </movmtn_psteer>
+<movmtn_plaunch                         > 32500.0d0  </movmtn_plaunch>
+<movmtn_source                          > 1       </movmtn_source>
+
 
 <!-- Dry Convective Adjustment options -->
 <dadadj_niter>15</dadadj_niter>
