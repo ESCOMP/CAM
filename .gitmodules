@@ -130,7 +130,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/RTM
 [submodule "mosart"]
 path = components/mosart
 url = https://github.com/ESCOMP/MOSART
-fxtag = mosart1.1.06
+fxtag = mosart1.1.07
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/MOSART
 
@@ -144,7 +144,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.15
+fxtag = ccs_config_cesm1.0.19
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
@@ -193,7 +193,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 [submodule "clm"]
 path = components/clm
 url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.3.016
+fxtag = ctsm5.3.017
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
@@ -203,3 +203,11 @@ url = https://github.com/ESCOMP/FMS_interface
 fxtag = fi_240828
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
+
+[submodule "tools/CUPiD"]
+	path = tools/CUPiD
+	url = https://github.com/NCAR/CUPiD.git
+fxtag = v0.1.4
+fxrequired = ToplevelRequired
+fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
+
