@@ -59,7 +59,7 @@ contains
    !------
 
    subroutine ccp_set_standard_name(this, std_name, errcode, errmsg)
-      ! Return this constituent's standard name
+      ! Set this constituent's standard name
 
       ! Dummy arguments
       class(ccpp_constituent_prop_ptr_t),   intent(inout)  :: this

@@ -116,8 +116,6 @@ OPTIONS
                         The user does not need to set this if one of the waccm chemistry options
                         is chosen.
      -waccmx            Build CAM/WACCM with WACCM upper Thermosphere/Ionosphere extended package
-     -zmconv_org        Include parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
-                        on Mapes and Neale (2011)
 
 
   Options relevent to SCAM mode:
@@ -317,7 +315,6 @@ GetOptions(
     "version"                   => \$opts{'version'},
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
-    "zmconv_org"                => \$opts{'zmconv_org'},
 )  or usage();
 
 # Give usage message.
@@ -940,16 +937,6 @@ my $clubb_do_adv = $cfg_ref->get('clubb_do_adv');
 if ($print>=2) { print "clubb_do_adv: $clubb_do_adv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# ZM convective organization
-
-if (defined $opts{'zmconv_org'}) {
-    $cfg_ref->set('zmconv_org', $opts{'zmconv_org'});
-}
-
-my $zmconv_org = $cfg_ref->get('zmconv_org');
-if ($print>=2) { print "zmconv_org: $zmconv_org$eol"; }
-
-#-----------------------------------------------------------------------------------------------
 # Macro-physics package
 
 # Set default
@@ -1567,11 +1554,6 @@ else {
         elsif ($microphys_pkg =~/^mg3/) {
             $nadv += 10;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 10$eol"; }
-        }
-
-        if ($zmconv_org == 1 ) {
-          $nadv += 1;
-            if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
         }
 
         if ($clubb_do_adv) {

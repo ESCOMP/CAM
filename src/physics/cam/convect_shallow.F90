@@ -20,7 +20,6 @@
    use phys_control,      only : phys_getopts
    use cloud_fraction_fice,  only: cloud_fraction_fice_run
    use ref_pres,          only: trop_cloud_top_lev
-   use phys_control,      only:  phys_getopts
 
    implicit none
    private

@@ -138,7 +138,7 @@ subroutine zm_conv_register
    call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
    call pbuf_add_field('SNOW_DP',    'physpkg',dtype_r8,(/pcols/),     snow_dp_idx)
 
-   ! detrained convective cloud water mixing ratio.
+   ! convective mass fluxes
    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
    ! detrained convective cloud ice mixing ratio.
    call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
@@ -578,7 +578,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     rice(:ncol), lengath, scheme_name, errmsg, errflg)
 
    if (errflg /= 0) then
-     write(str,*) 'From zm_convr_run: at chunk',lchnk
+     write(str,*) 'From zm_convr_run: at chunk ',lchnk, ' : '
      call endrun(str // errmsg)
    end if
 
@@ -737,7 +737,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
                    nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:),&
                    pguallu(:ncol,:), pguallv(:ncol,:),  pgdallu(:ncol,:), pgdallv(:ncol,:), &
-                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) ,&
+                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:), &
                    scheme_name, errmsg, errflg)
      call t_stopf ('zm_conv_momtran_run')
 
