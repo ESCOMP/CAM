@@ -38,8 +38,6 @@
 
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- History Files -->
 
 <mfilt>           1,    5,  20,  40, 120, 240, 365,  73, 365   </mfilt>

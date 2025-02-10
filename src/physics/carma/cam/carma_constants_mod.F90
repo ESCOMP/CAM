@@ -119,9 +119,9 @@ module carma_constants_mod
   !! NWAVE should be the total number of bands CAM supports.
   integer, public, parameter      :: NWAVE           = nlwbands+nswbands ! Number of wavelength bands
 
-
-
-
+  !! The maximum number of diagnostic values that can be returned by
+  !! CARMA_CalculateCloudborneDiagnostics
+  integer, public, parameter      :: MAXCLDAERDIAG = 16
 
   !! These are constants per CARMA's definition, but are set dynamically in CAM and thus
   !! can not be set as constants. They must be initialized as variables in carma_init.
@@ -147,5 +147,4 @@ module carma_constants_mod
   !! Define ratio of gas constant for dry air and specific heat
   real(kind=f)            :: RKAPPA
 
-
-end module
+end module carma_constants_mod

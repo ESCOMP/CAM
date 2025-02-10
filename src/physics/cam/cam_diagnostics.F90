@@ -253,6 +253,7 @@ contains
     call addfld ('OMEGAV',     (/ 'lev' /), 'A', 'm Pa/s2 ',  'Vertical flux of meridional momentum' )
     call addfld ('OMGAOMGA',   (/ 'lev' /), 'A', 'Pa2/s2',    'Vertical flux of vertical momentum' )
 
+    call addfld ('UT',         (/ 'lev' /), 'A', 'K m/s   ',  'Zonal heat transport')
     call addfld ('UU',         (/ 'lev' /), 'A', 'm2/s2',     'Zonal velocity squared' )
     call addfld ('WSPEED',     (/ 'lev' /), 'X', 'm/s',       'Horizontal total wind speed maximum' )
     call addfld ('WSPDSRFMX',  horiz_only,  'X', 'm/s',       'Horizontal total wind speed maximum at surface layer midpoint' )
@@ -339,6 +340,7 @@ contains
       call add_default ('VT      ', 1, ' ')
       call add_default ('VU      ', 1, ' ')
       call add_default ('VV      ', 1, ' ')
+      call add_default ('UT      ', 1, ' ')
       call add_default ('UU      ', 1, ' ')
       call add_default ('OMEGAT  ', 1, ' ')
       call add_default ('OMEGAU  ', 1, ' ')
@@ -438,6 +440,7 @@ contains
 
     ! outfld calls in diag_phys_writeout
     call addfld ('OMEGAQ',     (/ 'lev' /), 'A', 'kgPa/kgs', 'Vertical water transport' )
+    call addfld ('UQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Zonal water transport')
     call addfld ('VQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Meridional water transport')
     call addfld ('QQ',         (/ 'lev' /), 'A', 'kg2/kg2',   'Eddy moisture variance')
 
@@ -568,6 +571,9 @@ contains
     call addfld('a2x_DSTWET4',  horiz_only, 'A',  'kg/m2/s', 'wetdep of dust (bin4)')
     call addfld('a2x_DSTDRY4',  horiz_only, 'A',  'kg/m2/s', 'drydep of dust (bin4)')
 
+    call addfld('a2x_NOYDEP',  horiz_only, 'A',  'kgN/m2/s', 'NOy Deposition Flux')
+    call addfld('a2x_NHXDEP',  horiz_only, 'A',  'kgN/m2/s', 'NHx Deposition Flux')
+
     ! defaults
     if (history_amwg) then
       call add_default (cnst_name(1), 1, ' ')
@@ -611,6 +617,7 @@ contains
    end if
 
     if (history_eddy) then
+      call add_default ('UQ      ', 1, ' ')
       call add_default ('VQ      ', 1, ' ')
     endif
 
@@ -1017,6 +1024,9 @@ contains
     !
     ! zonal advection
     !
+    ftem(:ncol,:) = state%u(:ncol,:)*state%t(:ncol,:)
+    call outfld ('UT      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%u(:ncol,:)**2
     call outfld ('UU      ',ftem    ,pcols   ,lchnk     )
 
@@ -1281,9 +1291,10 @@ contains
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
     call outfld('PDEL',    state%pdel,    pcols, lchnk)
 
-    !
-    ! Meridional advection fields
-    !
+
+    ftem(:ncol,:) = state%u(:ncol,:)*state%q(:ncol,:,ixq)
+    call outfld ('UQ      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%v(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld ('VQ      ',ftem    ,pcols   ,lchnk     )
 

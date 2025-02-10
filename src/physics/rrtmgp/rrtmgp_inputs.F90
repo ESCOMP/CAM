@@ -178,8 +178,6 @@ subroutine rrtmgp_set_state( &
    tref_max = kdist_sw%get_temp_max()
    t_rad = merge(t_rad, tref_min, t_rad > tref_min)
    t_rad = merge(t_rad, tref_max, t_rad < tref_max)
-   t_sfc = merge(t_sfc, tref_min, t_sfc > tref_min)
-   t_sfc = merge(t_sfc, tref_max, t_sfc < tref_max)
 
    ! Construct arrays containing only daylight columns
    do i = 1, nday
