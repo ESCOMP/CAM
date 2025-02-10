@@ -6,6 +6,8 @@ module radconstants
 use shr_kind_mod,         only: r8 => shr_kind_r8
 use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
 use cam_abortutils,       only: endrun
+use radiation_utils,      only: get_sw_spectral_boundaries_ccpp
+use radiation_utils,      only: get_lw_spectral_boundaries_ccpp
 
 implicit none
 private
@@ -24,7 +26,7 @@ real(r8), target :: wavenumber_high_shortwave(nswbands)
 real(r8), target :: wavenumber_low_longwave(nlwbands)
 real(r8), target :: wavenumber_high_longwave(nlwbands)
 
-logical :: wavenumber_boundaries_set = .false.
+logical :: wavenumber_boundaries_set = .true.
 
 integer, public, protected :: nswgpts  ! number of SW g-points
 integer, public, protected :: nlwgpts  ! number of LW g-points
@@ -131,41 +133,24 @@ end subroutine set_wavenumber_bands
 
 !=========================================================================================
 
-subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
+ subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
    ! provide spectral boundaries of each shortwave band
 
-   real(r8),    intent(out) :: low_boundaries(nswbands), high_boundaries(nswbands)
+   real(r8), dimension(:), intent(out) :: low_boundaries
+   real(r8), dimension(:), intent(out) :: high_boundaries
    character(*), intent(in) :: units ! requested units
 
-   character(len=*), parameter :: sub = 'get_sw_spectral_boundaries'
+   character(len=512) :: errmsg
+   integer :: errflg
    !----------------------------------------------------------------------------
 
-   if (.not. wavenumber_boundaries_set) then
-      call endrun(sub//': ERROR, wavenumber boundaries not set. ')
+   call get_sw_spectral_boundaries_ccpp(low_boundaries, high_boundaries, units, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(errmsg)
    end if
 
-   select case (units)
-   case ('inv_cm','cm^-1','cm-1')
-      low_boundaries = wavenumber_low_shortwave
-      high_boundaries = wavenumber_high_shortwave
-   case('m','meter','meters')
-      low_boundaries = 1.e-2_r8/wavenumber_high_shortwave
-      high_boundaries = 1.e-2_r8/wavenumber_low_shortwave
-   case('nm','nanometer','nanometers')
-      low_boundaries = 1.e7_r8/wavenumber_high_shortwave
-      high_boundaries = 1.e7_r8/wavenumber_low_shortwave
-   case('um','micrometer','micrometers','micron','microns')
-      low_boundaries = 1.e4_r8/wavenumber_high_shortwave
-      high_boundaries = 1.e4_r8/wavenumber_low_shortwave
-   case('cm','centimeter','centimeters')
-      low_boundaries  = 1._r8/wavenumber_high_shortwave
-      high_boundaries = 1._r8/wavenumber_low_shortwave
-   case default
-      call endrun(sub//': ERROR, requested spectral units not recognized: '//units)
-   end select
-
-end subroutine get_sw_spectral_boundaries
+ end subroutine get_sw_spectral_boundaries
 
 !=========================================================================================
 
@@ -176,35 +161,17 @@ subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
    real(r8), intent(out) :: low_boundaries(nlwbands), high_boundaries(nlwbands)
    character(*), intent(in) :: units ! requested units
 
-   character(len=*), parameter :: sub = 'get_lw_spectral_boundaries'
+   character(len=512) :: errmsg
+   integer :: errflg
    !----------------------------------------------------------------------------
 
-   if (.not. wavenumber_boundaries_set) then
-      call endrun(sub//': ERROR, wavenumber boundaries not set. ')
+   call get_lw_spectral_boundaries_ccpp(low_boundaries, high_boundaries, units, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(errmsg)
    end if
 
-   select case (units)
-   case ('inv_cm','cm^-1','cm-1')
-      low_boundaries  = wavenumber_low_longwave
-      high_boundaries = wavenumber_high_longwave
-   case('m','meter','meters')
-      low_boundaries  = 1.e-2_r8/wavenumber_high_longwave
-      high_boundaries = 1.e-2_r8/wavenumber_low_longwave
-   case('nm','nanometer','nanometers')
-      low_boundaries  = 1.e7_r8/wavenumber_high_longwave
-      high_boundaries = 1.e7_r8/wavenumber_low_longwave
-   case('um','micrometer','micrometers','micron','microns')
-      low_boundaries  = 1.e4_r8/wavenumber_high_longwave
-      high_boundaries = 1.e4_r8/wavenumber_low_longwave
-   case('cm','centimeter','centimeters')
-      low_boundaries  = 1._r8/wavenumber_high_longwave
-      high_boundaries = 1._r8/wavenumber_low_longwave
-   case default
-      call endrun(sub//': ERROR, requested spectral units not recognized: '//units)
-   end select
-
 end subroutine get_lw_spectral_boundaries
-
+  
 !=========================================================================================
 
 integer function rad_gas_index(gasname)

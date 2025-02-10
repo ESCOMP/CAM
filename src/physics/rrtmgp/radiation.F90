@@ -15,7 +15,7 @@ use phys_control,        only: phys_getopts
 use physics_buffer,      only: physics_buffer_desc, pbuf_add_field, dtype_r8, pbuf_get_index, &
                                pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
 use camsrfexch,          only: cam_out_t, cam_in_t
-use physconst,           only: cappa, cpair, gravit
+use physconst,           only: cappa, cpair, gravit, stebol
 use solar_irrad_data,    only: sol_tsi
 
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
@@ -23,10 +23,8 @@ use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, 
 
 use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_gas, rad_cnst_out
 
-use rrtmgp_inputs,       only: rrtmgp_inputs_init
-
-use radconstants,        only: nradgas, gasnamelength, gaslist, nswbands, nlwbands, &
-                               nswgpts, set_wavenumber_bands
+use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
+                               gaslist
 
 use cloud_rad_props,     only: cloud_rad_props_init
 
@@ -151,6 +149,15 @@ logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
 logical :: graupel_in_rad   = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
+! Gathered indices of day and night columns 
+!  chunk_column_index = IdxDay(daylight_column_index)
+integer :: nday           ! Number of daylight columns
+integer :: nnite          ! Number of night columns
+integer :: idxday(pcols) = 0  ! chunk indices of daylight columns
+integer :: idxnite(pcols)= 0 ! chunk indices of night columns
+real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
+real(r8) :: eccf            ! Earth orbit eccentricity factor
+
 ! active_calls is set by a rad_constituents method after parsing namelist input
 ! for the rad_climate and rad_diag_N entries.
 logical :: active_calls(0:N_DIAG)
@@ -180,6 +187,8 @@ real(r8) :: rad_uniform_angle = -99._r8
 
 ! Number of layers in radiation calculations.
 integer :: nlay
+! Number of interfaces in radiation calculations.
+integer :: nlayp
 
 ! Number of CAM layers in radiation calculations.  Is either equal to nlay, or is
 ! 1 less than nlay if "extra layer" is used in the radiation calculations.
@@ -199,6 +208,24 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
                    ! to CAM's top layer or interface.
                    ! Note: for CAM's top to bottom indexing, the index of a given layer
                    ! (midpoint) and the upper interface of that layer, are the same.
+
+integer :: nlwgpts
+integer :: nswgpts
+
+! Band indices for bands containing specific wavelengths
+integer :: idx_sw_diag
+integer :: idx_nir_diag
+integer :: idx_uv_diag
+integer :: idx_sw_cloudsim
+integer :: idx_lw_diag
+integer :: idx_lw_cloudsim
+
+real(r8) :: sw_low_bounds(nswbands)
+real(r8) :: sw_high_bounds(nswbands)
+
+! Flag to perform shortwave or longwave on current timestep
+logical :: dosw
+logical :: dolw
 
 ! Gas optics objects contain the data read from the coefficients files.
 type(ty_gas_optics_rrtmgp) :: kdist_sw
@@ -420,6 +447,8 @@ end function radiation_nextsw_cday
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
+   use rrtmgp_inputs, only: rrtmgp_inputs_init
+   use rrtmgp_inputs_cam, only: rrtmgp_inputs_cam_init
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -428,11 +457,15 @@ subroutine radiation_init(pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    ! local variables
-   character(len=128) :: errmsg
+   character(len=512) :: errmsg
 
    ! names of gases that are available in the model 
    ! -- needed for the kdist initialization routines 
    type(ty_gas_concs) :: available_gases
+
+   real(r8) :: sw_low_bounds(nswbands)
+   real(r8) :: lw_low_bounds(nswbands)
+   real(r8) :: qrl_unused(1,1)
 
    integer :: i, icall
    integer :: nstep                       ! current timestep number
@@ -442,41 +475,12 @@ subroutine radiation_init(pbuf2d)
                                           ! temperature, water vapor, cloud ice and cloud
                                           ! liquid budgets.
    integer :: history_budget_histfile_num ! history file number for budget fields
-   integer :: ierr, istat
+   integer :: ierr, istat, errflg
 
    integer :: dtime
 
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
-   
-   ! Number of layers in radiation calculation is capped by the number of
-   ! pressure interfaces below 1 Pa.  When the entire model atmosphere is
-   ! below 1 Pa then an extra layer is added to the top of the model for
-   ! the purpose of the radiation calculation.
-
-   nlay = count( pref_edge(:) > 1._r8 ) ! pascals (0.01 mbar)
-
-   if (nlay == pverp) then
-      ! Top model interface is below 1 Pa.  RRTMGP is active in all model layers plus
-      ! 1 extra layer between model top and 1 Pa.
-      ktopcam = 1
-      ktoprad = 2
-      nlaycam = pver
-   else if (nlay == (pverp-1)) then
-      ! Special case nlay == (pverp-1) -- topmost interface outside bounds (CAM MT config), treat as if it is ok.
-      ktopcam = 1
-      ktoprad = 2
-      nlaycam = pver
-      nlay = nlay+1 ! reassign the value so later code understands to treat this case like nlay==pverp
-      write(iulog,*) 'RADIATION_INIT: Special case of 1 model interface at p < 1Pa. Top layer will be INCLUDED in radiation calculation.'
-      write(iulog,*) 'RADIATION_INIT: nlay = ',nlay, ' same as pverp: ',nlay==pverp
-   else
-      ! nlay < pverp.  nlay layers are used in radiation calcs, and they are
-      ! all CAM layers.
-      ktopcam = pver - nlay + 1
-      ktoprad = 1
-      nlaycam = nlay
-   end if
    
    ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
    ! work with CAM's uppercase names, but other objects that get input from the gas
@@ -492,12 +496,30 @@ subroutine radiation_init(pbuf2d)
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
    call coefs_init(coefs_lw_file, available_gases, kdist_lw)
 
-   ! Set the sw/lw band boundaries in radconstants.  Also sets
-   ! indicies of specific bands for diagnostic output and COSP input.
-   call set_wavenumber_bands(kdist_sw, kdist_lw)
-
-   ! The spectral band boundaries need to be set before this init is called.
-   call rrtmgp_inputs_init(ktopcam, ktoprad)
+   ! Set up inputs to RRTMGP
+   call rrtmgp_inputs_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
+                   pref_edge, nlay, pver, pverp, kdist_sw, kdist_lw, qrl_unused, is_first_step(), use_rad_dt_cosz, &
+                   get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(),       &
+                   nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,          &
+                   idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,          &
+                   nextsw_cday, get_curr_calday(), errmsg, errflg)
+   write(iulog,*) 'peverwhee - after init'
+   write(iulog,*) ktopcam
+   write(iulog,*) ktoprad
+   write(iulog,*) sw_low_bounds
+   write(iulog,*) sw_high_bounds
+   write(iulog,*) nswbands
+   write(iulog,*) idx_sw_diag
+   write(iulog,*) idx_nir_diag
+   write(iulog,*) idx_uv_diag
+   write(iulog,*) idx_sw_cloudsim
+   write(iulog,*) idx_lw_diag
+   write(iulog,*) idx_lw_cloudsim
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
+   call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
+           idx_lw_cloudsim)
 
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
@@ -836,9 +858,11 @@ subroutine radiation_tend( &
    use cam_control_mod,    only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,        only: shr_orb_decl, shr_orb_cosz
 
-   use rrtmgp_inputs,      only: rrtmgp_set_state, rrtmgp_set_gases_lw, rrtmgp_set_cloud_lw, &
+   use rrtmgp_inputs,      only: rrtmgp_inputs_timestep_init, rrtmgp_inputs_run
+
+   use rrtmgp_inputs_cam,  only: rrtmgp_set_gases_lw, rrtmgp_set_cloud_lw, &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
-                                 rrtmgp_set_aer_sw
+                                 rrtmgp_set_aer_sw, rrtmgp_set_state
 
    ! RRTMGP drivers for flux calculations.
    use mo_rte_lw,          only: rte_lw
@@ -880,13 +904,6 @@ subroutine radiation_tend( &
    real(r8) :: clat(pcols)     ! current latitudes(radians)
    real(r8) :: clon(pcols)     ! current longitudes(radians)
    real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
-
-   ! Gathered indices of day and night columns 
-   !  chunk_column_index = IdxDay(daylight_column_index)
-   integer :: Nday           ! Number of daylight columns
-   integer :: Nnite          ! Number of night columns
-   integer :: IdxDay(pcols)  ! chunk indices of daylight columns
-   integer :: IdxNite(pcols) ! chunk indices of night columns
 
    integer :: itim_old
 
@@ -986,6 +1003,7 @@ subroutine radiation_tend( &
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
 
    character(len=128) :: errmsg
+   integer            :: errflg
    character(len=*), parameter :: sub = 'radiation_tend'
    !--------------------------------------------------------------------------------------
 
@@ -1025,17 +1043,25 @@ subroutine radiation_tend( &
    end if
 
    ! Gather night/day column indices.
-   Nday = 0
-   Nnite = 0
+   nday = 0
+   nnite = 0
+   idxday = 0
+   idxnite = 0
    do i = 1, ncol
       if ( coszrs(i) > 0.0_r8 ) then
-         Nday = Nday + 1
-         IdxDay(Nday) = i
+         nday = nday + 1
+         idxday(nday) = i
+         write(iulog,*) 'peverwhee - adding new daylight point'
       else
-         Nnite = Nnite + 1
-         IdxNite(Nnite) = i
+         nnite = nnite + 1
+         idxnite(nnite) = i
       end if
    end do
+   !call rrtmgp_inputs_timestep_init(coszrs, get_nstep(), iradsw, iradlw, irad_always, &
+   !        ncol, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
+   !if (errflg /= 0) then
+   !   call endrun(sub//': '//errmsg)
+   !end if
 
    ! Associate pointers to physics buffer fields
    itim_old = pbuf_old_tim_idx()
@@ -1103,18 +1129,55 @@ subroutine radiation_tend( &
          stat=istat)
       call handle_allocate_error(istat, sub, 't_sfc,..,alb_dif')
 
+      if (masterproc) then
+         write(iulog,*) 'peverwhee - set state inputs'
+         write(iulog,*) nday
+         write(iulog,*) nlay
+         write(iulog,*) idxday
+         write(iulog,*) coszrs
+      end if
+
+
       ! Prepares state variables, daylit columns, albedos for RRTMGP
-      call rrtmgp_set_state( &
-         state, cam_in, ncol, nlay, nday,             &
-         idxday, coszrs, kdist_sw, t_sfc, emis_sfc,   &
-         t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
-         pint_day, coszrs_day, alb_dir, alb_dif)
+      ! Also calculates modified cloud fraction
+      !call rrtmgp_inputs_run(dosw, dolw, state%pmid, state%pint, state%t, &
+      !            nday, idxday, cldfprime, coszrs, kdist_sw, t_sfc,       &
+      !            emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
+      !            pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup, stebol,  &
+      !            ncol, ktopcam, ktoprad, nswbands, cam_in%asdir, cam_in%asdif, &
+      !            sw_low_bounds, sw_high_bounds, cam_in%aldir, cam_in%aldif, nlay,     &
+      !            pverp, pver, cld, cldfsnow, cldfgrau, graupel_in_rad,   &
+      !            gasnamelength, gaslist, gas_concs_lw, aer_lw, atm_optics_lw, &
+      !            kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
+      !            errmsg, errflg)
+
+       ! Prepares state variables, daylit columns, albedos for RRTMGP
+       ! rrtmgp_pre
+       call rrtmgp_set_state( &
+          state, cam_in, ncol, nlay, nday,             &
+          idxday, coszrs, kdist_sw, t_sfc, emis_sfc,   &
+          t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
+          pint_day, coszrs_day, alb_dir, alb_dif)
+
+      write(iulog,*) 'peverwhee - after set state'
+      write(iulog,*) t_sfc(1)
+      write(iulog,*) emis_sfc(1,1)
+      write(iulog,*) t_rad(1,1)
+      write(iulog,*) pmid_rad(1,1)
+      write(iulog,*) pint_rad(1,1)
+      write(iulog,*) t_day(1,1)
+      write(iulog,*) pmid_day(1,1)
+      write(iulog,*) pint_day(1,1)
+      write(iulog,*) coszrs_day(1)
+      write(iulog,*) alb_dir(1,1)
+      write(iulog,*) alb_dir(1,1)
 
       ! Output the mass per layer, and total column burdens for gas and aerosol
       ! constituents in the climate list.
       call rad_cnst_out(0, state, pbuf)
 
       ! Modified cloud fraction accounts for radiatively active snow and/or graupel
+      ! rrtmgp_pre
       call modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
 
       !========================!
@@ -1125,7 +1188,7 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_set_cloud_sw( &
-            state, pbuf, nlay, nday, idxday,                              &
+            state, pbuf, nlay, nday, idxday, ktoprad, ktopcam,            &
             nnite, idxnite, pmid_day, cld, cldfsnow,                      &
             cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw,      &
             rd%tot_cld_vistau, rd%tot_icld_vistau, rd%liq_icld_vistau,    &
@@ -1164,7 +1227,7 @@ subroutine radiation_tend( &
                   ! Set gas volume mixing ratios for this call in gas_concs_sw.
                   call rrtmgp_set_gases_sw( &
                      icall, state, pbuf, nlay, nday, &
-                     idxday, gas_concs_sw)
+                     idxday, ktoprad, ktopcam, gas_concs_sw)
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
@@ -1183,7 +1246,7 @@ subroutine radiation_tend( &
                ! This call made even when no daylight columns because it does some
                ! diagnostic aerosol output.
                call rrtmgp_set_aer_sw( &
-                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
+                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw, ktoprad, ktopcam)
                   
                if (nday > 0) then
 
@@ -1237,7 +1300,7 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_set_cloud_lw( &
-            state, pbuf, ncol, nlay, nlaycam, &
+            state, pbuf, ncol, nlay, nlaycam, ktoprad, ktopcam, &
             cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
             kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
 
@@ -1259,7 +1322,7 @@ subroutine radiation_tend( &
             if (active_calls(icall)) then
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw.
-               call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw)
+               call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw, ktoprad, ktopcam)
 
                ! Compute the gas optics and Planck sources.
                errmsg = kdist_lw%gas_optics( &
@@ -1268,7 +1331,7 @@ subroutine radiation_tend( &
                call stop_on_err(errmsg, sub, 'kdist_lw%gas_optics')
 
                ! Set LW aerosol optical properties in the aer_lw object.
-               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw, ktoprad, ktopcam)
                
                ! Increment the gas optics by the aerosol optics.
                errmsg = aer_lw%increment(atm_optics_lw)
