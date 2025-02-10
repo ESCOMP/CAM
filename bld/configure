@@ -2344,7 +2344,6 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
 
-    print $fh "$camsrcdir/src/atmos_phys/schemes/to_be_ccppized\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
 
     # Dynamics package and test utilities
