@@ -571,6 +571,9 @@ contains
     call addfld('a2x_DSTWET4',  horiz_only, 'A',  'kg/m2/s', 'wetdep of dust (bin4)')
     call addfld('a2x_DSTDRY4',  horiz_only, 'A',  'kg/m2/s', 'drydep of dust (bin4)')
 
+    call addfld('a2x_NOYDEP',  horiz_only, 'A',  'kgN/m2/s', 'NOy Deposition Flux')
+    call addfld('a2x_NHXDEP',  horiz_only, 'A',  'kgN/m2/s', 'NHx Deposition Flux')
+
     ! defaults
     if (history_amwg) then
       call add_default (cnst_name(1), 1, ' ')

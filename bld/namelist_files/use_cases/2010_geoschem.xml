@@ -34,7 +34,6 @@
 
 <!-- The below lines are not commented out in 2010_trop_strat_vbs_cam6.xml (*=many pointers) -->
 <!-- <prescribed_strataero_cycle_yr>2010</prescribed_strataero_cycle_yr> -->
-<!-- <ndep_list>'noy', 'nhx'</ndep_list>-->
 
 <!-- History Files -->
 
@@ -165,5 +164,7 @@
 'so4_a2',
 'so4_a3',
 </fincl1>
+
+<sim_year>2010</sim_year>
 
 </namelist_defaults>
