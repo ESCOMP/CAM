@@ -332,7 +332,7 @@
 <bnd_topo hgrid="ne3np4"   npg="3">atm/cam/topo/se/ne3pg3_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230209.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
 <bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117.nc</bnd_topo>
+<bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4" npg="3">atm/cam/topo/se/ne240pg3_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171015.nc</bnd_topo>
@@ -827,6 +827,8 @@
 
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
 
+<effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
+
 <effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
@@ -893,6 +895,11 @@
 <gw_rdg_orostratmin                     > 0.002d0</gw_rdg_orostratmin>
 <gw_rdg_orom2min                        > 0.1d0  </gw_rdg_orom2min>
 <alpha_gw_movmtn                        > 0.01d0  </alpha_gw_movmtn>
+<effgw_movmtn_pbl                       > 1.0d0   </effgw_movmtn_pbl>
+<movmtn_psteer                          > 65000.0d0  </movmtn_psteer>
+<movmtn_plaunch                         > 32500.0d0  </movmtn_plaunch>
+<movmtn_source                          > 1       </movmtn_source>
+
 
 <!-- Dry Convective Adjustment options -->
 <dadadj_niter>15</dadadj_niter>
@@ -2157,7 +2164,7 @@
 <clubb_C7 phys="cam7"                             > 0.1     </clubb_C7>
 <clubb_C7b                                        > 0.5     </clubb_C7b>
 <clubb_C8                                         > 4.2     </clubb_C8>
-<clubb_C8 phys="cam7"                             > 4.25    </clubb_C8>
+<clubb_C8 phys="cam7"                             > 4.5     </clubb_C8>
 <clubb_C8b                                        > 0.0     </clubb_C8b>
 <clubb_C_invrs_tau_bkgnd                          > 1.0     </clubb_C_invrs_tau_bkgnd>
 <clubb_C_invrs_tau_sfc                            > 0.1     </clubb_C_invrs_tau_sfc>
@@ -2214,7 +2221,7 @@
 <clubb_l_intr_sfc_flux_smooth phys="cam7"         > .true.  </clubb_l_intr_sfc_flux_smooth>
 <clubb_l_lmm_stepping                             > .false. </clubb_l_lmm_stepping>
 <clubb_l_lscale_plume_centered                    > .false. </clubb_l_lscale_plume_centered>
-<clubb_l_min_wp2_from_corr_wx                     > .true.  </clubb_l_min_wp2_from_corr_wx>
+<clubb_l_min_wp2_from_corr_wx                     > .false.  </clubb_l_min_wp2_from_corr_wx>
 <clubb_l_min_xp2_from_corr_wx                     > .true.  </clubb_l_min_xp2_from_corr_wx>
 <clubb_l_mono_flux_lim_rtm                        > .true.  </clubb_l_mono_flux_lim_rtm>
 <clubb_l_mono_flux_lim_spikefix                   > .true.  </clubb_l_mono_flux_lim_spikefix>
@@ -2509,54 +2516,56 @@
 <dust_emis_fact          hgrid="0.47x0.63" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam5"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"                  >0.35D0</dust_emis_fact>
-<dust_emis_fact                            phys="cam7"                  >1.30D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam7"                  >2.30D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"      silhs="1"   >0.30D0</dust_emis_fact>
-<dust_emis_fact                            phys="cam7"      silhs="1"   >0.30D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam7"      silhs="1"   >2.30D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.47x0.63" phys="cam6"                  >0.45D0</dust_emis_fact>
-<dust_emis_fact          hgrid="0.47x0.63" phys="cam7"                  >0.45D0</dust_emis_fact>
+<dust_emis_fact          hgrid="0.47x0.63" phys="cam7"                  >2.30D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam6"                  >0.45D0</dust_emis_fact>
-<dust_emis_fact          hgrid="0.23x0.31" phys="cam7"                  >0.45D0</dust_emis_fact>
+<dust_emis_fact          hgrid="0.23x0.31" phys="cam7"                  >2.30D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
 
 <dust_emis_fact dyn="se"                   phys="cam5"                    >0.55D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam6"                    >0.70D0</dust_emis_fact>
-<dust_emis_fact dyn="se"                   phys="cam7"                    >1.30D0</dust_emis_fact>
+<dust_emis_fact dyn="se"                   phys="cam7"                    >2.30D0</dust_emis_fact>
+<dust_emis_fact dyn="mpas"                 phys="cam7"                    >2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_vbs">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_vbs">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_ts1">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_tst">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_tst">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_tst">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_vbs">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_vbs">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_ts1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_ts1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_ts1">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_tst">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_tst">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_tst">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             waccm_phys="1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             waccm_phys="1">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    waccm_phys="1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    waccm_phys="1">2.30D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam6"                    >0.70D0</dust_emis_fact>
-<dust_emis_fact dyn="fv"                   phys="cam7"                    >0.70D0</dust_emis_fact>
+<dust_emis_fact dyn="fv"                   phys="cam7"                    >2.300D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="spcam_m2005" spcam_clubb_sgs="1">0.13D0</dust_emis_fact>
 
 <dust_emis_fact hgrid="1.9x2.5"                   phys="cam6"    ver="chem">0.26D0</dust_emis_fact>
-<dust_emis_fact hgrid="1.9x2.5"                   phys="cam7"    ver="chem">0.26D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"                   phys="cam7"    ver="chem">2.30D0</dust_emis_fact>
 <dust_emis_fact hgrid="0.9x1.25"                  phys="cam6"    ver="chem">0.7D0</dust_emis_fact>
-<dust_emis_fact hgrid="0.9x1.25"                  phys="cam7"    ver="chem">0.7D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.9x1.25"                  phys="cam7"    ver="chem">2.30D0</dust_emis_fact>
 <dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam6"    ver="chem">0.24D0</dust_emis_fact>
-<dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam7"    ver="chem">0.24D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam7"    ver="chem">2.30D0</dust_emis_fact>
 <dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam6"    ver="chem">0.9D0</dust_emis_fact>
-<dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam7"    ver="chem">0.9D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam7"    ver="chem">2.30D0</dust_emis_fact>
 
 <!-- dust emissions method -->
-<dust_emis_method>Zender_2003</dust_emis_method>
+<dust_emis_method>              Zender_2003</dust_emis_method>
+<dust_emis_method phys="cam7" >  Leung_2023</dust_emis_method>
 <zender_soil_erod_source>atm</zender_soil_erod_source>
 
 <!-- seasalt emission tuning factor -->
@@ -2565,7 +2574,7 @@
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >0.75D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.50D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" spcam_clubb_sgs="1"                      >1.2D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>

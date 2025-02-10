@@ -19,6 +19,7 @@ save
 ! Public interface
 public :: gw_rdg_readnl
 public :: gw_rdg_src
+public :: gw_rdg_resid_src
 public :: gw_rdg_belowpeak
 public :: gw_rdg_break_trap
 public :: gw_rdg_do_vdiff
@@ -51,7 +52,7 @@ real(r8), protected :: C_BetaMax_SM
 
 
 
-! NOTE: Critical inverse Froude number Fr_c is 
+! NOTE: Critical inverse Froude number Fr_c is
 ! 1./(SQRT(2.)~0.707 in SM2000
 ! (should be <= 1)
 real(r8), protected :: Fr_c
@@ -92,10 +93,10 @@ subroutine gw_rdg_readnl(nlfile)
   logical ::  gw_rdg_do_divstream, gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
               gw_rdg_do_backward_compat
 
-  
+
   real(r8) :: gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
               gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
-              gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min 
+              gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min
 
   namelist /gw_rdg_nl/ gw_rdg_do_divstream, gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
                        gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
@@ -119,7 +120,7 @@ subroutine gw_rdg_readnl(nlfile)
      call freeunit(unitn)
 
      ! Set the local variables
-     do_divstream        = gw_rdg_do_divstream 
+     do_divstream        = gw_rdg_do_divstream
      C_BetaMax_DS        = gw_rdg_C_BetaMax_DS
      C_GammaMax          = gw_rdg_C_GammaMax
      Frx0                = gw_rdg_Frx0
@@ -175,9 +176,213 @@ subroutine gw_rdg_readnl(nlfile)
 end subroutine gw_rdg_readnl
 
 
+!==========================================================================
+subroutine gw_rdg_resid_src(ncol, band, p, &
+     u, v, t, mxdis, kwvrdg, zi, nm, &
+     src_level, tend_level, tau, ubm, ubi, xv, yv,  &
+     ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, c, tauoro )
+  use gw_common, only: rair, GWBand
+  use gw_utils, only:  dot_2d, midpoint_interp, get_unit_vector
+  !-----------------------------------------------------------------------
+  ! Orographic source for multiple gravity wave drag parameterization.
+  !
+  ! The stress is returned for a single wave with c=0, over orography.
+  ! For points where the orographic variance is small (including ocean),
+  ! the returned stress is zero.
+  !------------------------------Arguments--------------------------------
+  ! Column dimension.
+  integer, intent(in) :: ncol
+
+  ! Band to emit orographic waves in.
+  ! Regardless, we will only ever emit into l = 0.
+  type(GWBand), intent(in) :: band
+  ! Pressure coordinates.
+  type(Coords1D), intent(in) :: p
+
+
+  ! Midpoint zonal/meridional winds. ( m s-1)
+  real(r8), intent(in) :: u(ncol,pver), v(ncol,pver)
+  ! Midpoint temperatures. (K)
+  real(r8), intent(in) :: t(ncol,pver)
+  ! Height estimate for ridge (m) [anisotropic orography].
+  real(r8), intent(in) :: mxdis(ncol)
+  ! horiz wavenumber [anisotropic orography].
+  real(r8), intent(in) :: kwvrdg(ncol)
+  ! Interface altitudes above ground (m).
+  real(r8), intent(in) :: zi(ncol,pver+1)
+  ! Midpoint Brunt-Vaisalla frequencies (s-1).
+  real(r8), intent(in) :: nm(ncol,pver)
+
+  ! Indices of top gravity wave source level and lowest level where wind
+  ! tendencies are allowed.
+  integer, intent(out) :: src_level(ncol)
+  integer, intent(out) :: tend_level(ncol)
+
+  ! Averages over source region.
+  real(r8), intent(out) :: nsrc(ncol) ! B-V frequency.
+  real(r8), intent(out) :: rsrc(ncol) ! Density.
+  real(r8), intent(out) :: usrc(ncol) ! Zonal wind.
+  real(r8), intent(out) :: vsrc(ncol) ! Meridional wind.
+  real(r8), intent(out) :: ubmsrc(ncol) ! On-obstacle wind.
+  ! normalized wavenumber
+  real(r8), intent(out) :: m2src(ncol)
+
+
+  ! Wave Reynolds stress.
+  real(r8), intent(out) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  ! Projection of wind at midpoints and interfaces.
+  real(r8), intent(out) :: ubm(ncol,pver), ubi(ncol,pver+1)
+  ! Unit vectors of source wind (zonal and meridional components).
+  real(r8), intent(out) :: xv(ncol), yv(ncol)
+  ! Phase speeds.
+  real(r8), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
+  ! source level mom. flux
+  real(r8), intent(out) :: tauoro(ncol)
+
+  !---------------------------Local Storage-------------------------------
+  ! Column and level indices.
+  integer :: i, k
+
+  ! Surface streamline displacement height (2*sgh).
+  real(r8) :: hdsp(ncol)
+
+  ! Difference in interface pressure across source region.
+  real(r8) :: dpsrc(ncol)
+  ! Thickness of downslope wind region.
+  real(r8) :: ddw(ncol)
+  ! Thickness of linear wave region.
+  real(r8) :: dwv(ncol)
+  ! Wind speed in source region.
+  real(r8) :: wmsrc(ncol)
+
+  real(r8) :: ragl(ncol)
+  real(r8) :: Fcrit_res,sghmax
+
+!--------------------------------------------------------------------------
+! Check that ngwav is equal to zero, otherwise end the job
+!--------------------------------------------------------------------------
+  if (band%ngwv /= 0) call endrun(' gw_rdg_src :: ERROR - band%ngwv must be zero and it is not')
+
+!--------------------------------------------------------------------------
+! Average the basic state variables for the wave source over the depth of
+! the orographic standard deviation. Here we assume that the appropiate
+! values of wind, stability, etc. for determining the wave source are
+! averages over the depth of the atmosphere penterated by the typical
+! mountain.
+! Reduces to the bottom midpoint values when mxdis=0, such as over ocean.
+!--------------------------------------------------------------------------
+
+  Fcrit_res = 1.0_r8
+  hdsp      = mxdis ! no longer multipied by 2
+  where(hdsp < 10._r8)
+     hdsp = 0._r8
+  end where
+
+  src_level = pver+1
+
+  tau(:,0,:) = 0.0_r8
+
+  ! Find depth of "source layer" for mountain waves
+  ! i.e., between ground and mountain top
+  do k = pver, 1, -1
+     do i = 1, ncol
+        ! Need to have h >= z(k+1) here or code will bomb when h=0.
+        if ( (hdsp(i) >= zi(i,k+1)) .and. (hdsp(i) < zi(i,k))   ) then
+           src_level(i) = k
+        end if
+     end do
+  end do
+
+  rsrc = 0._r8
+  usrc = 0._r8
+  vsrc = 0._r8
+  nsrc = 0._r8
+  do i = 1, ncol
+      do k = pver, src_level(i), -1
+           rsrc(i) = rsrc(i) + p%mid(i,k) / (rair*t(i,k))* p%del(i,k)
+           usrc(i) = usrc(i) + u(i,k) * p%del(i,k)
+           vsrc(i) = vsrc(i) + v(i,k) * p%del(i,k)
+           nsrc(i) = nsrc(i) + nm(i,k)* p%del(i,k)
+     end do
+  end do
+
+
+  do i = 1, ncol
+     dpsrc(i) = p%ifc(i,pver+1) - p%ifc(i,src_level(i))
+  end do
+
+  rsrc = rsrc / dpsrc
+  usrc = usrc / dpsrc
+  vsrc = vsrc / dpsrc
+  nsrc = nsrc / dpsrc
+
+  ! Get the unit vector components and magnitude at the surface.
+  call get_unit_vector(usrc, vsrc, xv, yv, wmsrc )
+
+  ubmsrc = wmsrc
+
+  ! Project the local wind at midpoints onto the source wind.
+  do k = 1, pver
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+  end do
+
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+
+  ubi(:,2:pver) = midpoint_interp(ubm)
+
+  ! The minimum stratification allowing GW behavior
+  ! should really depend on horizontal scale since
+  !
+  !      m^2 ~ (N/U)^2 - k^2
+  !
+
+  m2src = ( (nsrc/(ubmsrc+0.01_r8))**2 - kwvrdg**2 ) /((nsrc/(ubmsrc+0.01_r8))**2)
+
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+  ubi(:,2:pver) = midpoint_interp(ubm)
+  ubi(:,pver+1) = ubm(:,pver)
+
+
+
+  ! Determine the orographic c=0 source term following McFarlane (1987).
+  ! (DOI: https://doi.org/10.1175/1520-0469(1987)044<1775:TEOOEG>2.0.CO;2)
+  ! Set the source top interface index to pver, if the orographic term is
+  ! zero.
+  do i = 1, ncol
+     if ( ( src_level(i) > 0 ) .and. ( m2src(i) > orom2min ) ) then
+        sghmax = Fcrit_res * (ubmsrc(i) / nsrc(i))**2
+        tauoro(i) = 0.5_r8 * kwvrdg(i) * min(hdsp(i)**2, sghmax) * &
+             rsrc(i) * nsrc(i) * ubmsrc(i)
+     else
+        tauoro(i) = 0._r8
+     end if
+  end do
+
+  do i = 1, ncol
+     do k=src_level(i),pver+1
+        tau(i,0,k) = tauoro(i)
+     end do
+  end do
+
+
+  ! Allow wind tendencies all the way to the model bottom.
+  tend_level = pver
+
+  ! No spectrum; phase speed is just 0.
+  c = 0._r8
+
+end subroutine gw_rdg_resid_src
+
+
+!==========================================================================
+
 subroutine gw_rdg_src(ncol, band, p, &
      u, v, t, mxdis, angxy, anixy, kwvrdg, iso, zi, nm, &
-     src_level, tend_level, bwv_level ,tlb_level , tau, ubm, ubi, xv, yv,  & 
+     src_level, tend_level, bwv_level ,tlb_level , tau, ubm, ubi, xv, yv,  &
      ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
   use gw_common, only: rair, GWBand
   use gw_utils, only:  dot_2d, midpoint_interp
@@ -264,8 +469,8 @@ subroutine gw_rdg_src(ncol, band, p, &
   ! Wind speed in source region.
   real(r8) :: wmsrc(ncol)
 
-  real(r8) :: ragl(ncol) 
-  
+  real(r8) :: ragl(ncol)
+
 !--------------------------------------------------------------------------
 ! Check that ngwav is equal to zero, otherwise end the job
 !--------------------------------------------------------------------------
@@ -293,13 +498,13 @@ subroutine gw_rdg_src(ncol, band, p, &
      do i = 1, ncol
         ! Need to have h >= z(k+1) here or code will bomb when h=0.
         if ( (hdsp(i) >= zi(i,k+1)) .and. (hdsp(i) < zi(i,k))   ) then
-           src_level(i) = k  
+           src_level(i) = k
         end if
      end do
   end do
 
   rsrc = 0._r8
-  usrc = 0._r8 
+  usrc = 0._r8
   vsrc = 0._r8
   nsrc = 0._r8
   do i = 1, ncol
@@ -329,7 +534,7 @@ subroutine gw_rdg_src(ncol, band, p, &
 
   ragl = angxy * pii/180._r8
 
-  ! protect from wierd "bad" angles 
+  ! protect from wierd "bad" angles
   ! that may occur if hdsp is zero
   where( hdsp <= orohmin )
      ragl = 0._r8
@@ -341,7 +546,7 @@ subroutine gw_rdg_src(ncol, band, p, &
 
   ! Kluge in possible "isotropic" obstacle.
   where( ( iso == 1 ) .and. (wmsrc > orovmin) )
-       xv = usrc/wmsrc    
+       xv = usrc/wmsrc
        yv = vsrc/wmsrc
   end where
 
@@ -357,7 +562,7 @@ subroutine gw_rdg_src(ncol, band, p, &
      ubm(:,k) = sign( ubmsrc*0._r8+1._r8 , ubmsrc ) *  ubm(:,k)
   end do
 
-                  ! Sean says just use 1._r8 as 
+                  ! Sean says just use 1._r8 as
                   ! first argument
   xv  = sign( ubmsrc*0._r8+1._r8 , ubmsrc ) *  xv
   yv  = sign( ubmsrc*0._r8+1._r8 , ubmsrc ) *  yv
@@ -366,7 +571,7 @@ subroutine gw_rdg_src(ncol, band, p, &
   ! against zero
   ubmsrc = abs(ubmsrc)
   ubmsrc = max( 0.01_r8 , ubmsrc )
-  
+
 
   ! The minimum stratification allowing GW behavior
   ! should really depend on horizontal scale since
@@ -374,9 +579,9 @@ subroutine gw_rdg_src(ncol, band, p, &
   !      m^2 ~ (N/U)^2 - k^2
   !
   ! Should also think about parameterizing
-  ! trapped lee-waves.  
+  ! trapped lee-waves.
 
-  
+
   ! This needs to be made constistent with later
   ! treatment of nonhydrostatic effects.
   m2src = ( (nsrc/(ubmsrc+0.01_r8))**2 - kwvrdg**2 ) /((nsrc/(ubmsrc+0.01_r8))**2)
@@ -387,9 +592,9 @@ subroutine gw_rdg_src(ncol, band, p, &
   ! will modified later if wave breaking or trapping are
   ! diagnosed
   !
-  !                                            ^ 
+  !                                            ^
   !                                            | *** linear propagation ***
-  !  (H) -------- mountain top -------------   | *** or wave breaking  ****     
+  !  (H) -------- mountain top -------------   | *** or wave breaking  ****
   !                                            | *** regimes  *************
   ! (BWV)------ bottom of linear waves ----    |
   !                    :                       |
@@ -397,7 +602,7 @@ subroutine gw_rdg_src(ncol, band, p, &
   !                    :                       |
   ! (TLB)--- top of flow diversion layer---    '
   !                   :
-  !        **** flow diversion *****  
+  !        **** flow diversion *****
   !                    :
   !============================================
 
@@ -406,17 +611,17 @@ subroutine gw_rdg_src(ncol, band, p, &
   !--------------------------------------------
   ! High-drag downslope wind regime exists
   ! between bottom of linear waves and top of
-  ! flow diversion. Linear waves can only 
+  ! flow diversion. Linear waves can only
   ! attain vertical displacment of f1*U/N. So,
   ! bottom of linear waves is given by
   !
-  !        BWV = H - Fr1*U/N 
+  !        BWV = H - Fr1*U/N
   !
-  ! Downslope wind layer begins at BWV and 
+  ! Downslope wind layer begins at BWV and
   ! extends below it until some maximum high
   ! drag obstacle height Fr2*U/N is attained
   ! (where Fr2 >= f1).  Below downslope wind
-  ! there is flow diversion, so top of 
+  ! there is flow diversion, so top of
   ! diversion layer (TLB) is equivalent to
   ! bottom of downslope wind layer and is;
   !
@@ -431,27 +636,27 @@ subroutine gw_rdg_src(ncol, band, p, &
 
   if ( do_divstream ) then
      !------------------------------------------------
-     ! Calculate Fr2(Frx) for DS2017   
+     ! Calculate Fr2(Frx) for DS2017
      !------------------------------------------------
      where(Frx <= Frx0)
           Fr2(:) = Fr1(:) + Fr1(:)* C_GammaMax * anixy(:)
      elsewhere((Frx > Frx0).and.(Frx <= Frx1) )
           Fr2(:) = Fr1(:) + Fr1(:)* C_GammaMax * anixy(:) &
-                   * (Frx1 - Frx(:))/(Frx1-Frx0)    
-     elsewhere(Frx > Frx1) 
+                   * (Frx1 - Frx(:))/(Frx1-Frx0)
+     elsewhere(Frx > Frx1)
           Fr2(:)=Fr1(:)
      endwhere
   else
-  !------------------------------------------   
+  !------------------------------------------
   ! Regime distinctions entirely carried by
   ! amplification of taudsw (next subr)
   !------------------------------------------
      Fr2(:)=Fr1(:)
-  end if   
+  end if
 
 
-  
-  where( m2src > orom2min ) 
+
+  where( m2src > orom2min )
      ddw  = Fr2 * ( abs(ubmsrc) )/nsrc
   elsewhere
      ddw  = 0._r8
@@ -475,7 +680,7 @@ subroutine gw_rdg_src(ncol, band, p, &
 
   ! Find *BOTTOM* of linear wave layer (BWV)
   !where ( nsrc > orostratmin )
-  where( m2src > orom2min ) 
+  where( m2src > orom2min )
       dwv  = Fr1 * ( abs(ubmsrc) )/nsrc
   elsewhere
      dwv  = -9.999e9_r8 ! if weak strat - no waves
@@ -507,7 +712,7 @@ subroutine gw_rdg_src(ncol, band, p, &
   ! No spectrum; phase speed is just 0.
   c = 0._r8
 
-  where( m2src < orom2min ) 
+  where( m2src < orom2min )
      tlb = mxdis
      tlb_level = src_level
   endwhere
@@ -520,8 +725,8 @@ end subroutine gw_rdg_src
 
 subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
      t, mxdis, anixy, kwvrdg, zi, nm, ni, rhoi, &
-     src_level , tau,  & 
-     ubmsrc, nsrc, rsrc, m2src,tlb,bwv,Fr1,Fr2,Frx, & 
+     src_level , tau,  &
+     ubmsrc, nsrc, rsrc, m2src,tlb,bwv,Fr1,Fr2,Frx, &
      tauoro,taudsw, hdspwv,hdspdw  )
 
   use gw_common, only: GWBand
@@ -604,16 +809,16 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   end do
 
   do i = 1, ncol
-     if ( m2src(i) > orom2min )   then 
+     if ( m2src(i) > orom2min )   then
         hdspwv(i) = min( mxdis(i) , Fr1(i) * ubsrcx(i) / nsrc(i) )
      else
         hdspwv(i) = 0._r8
      end if
   end do
-  
+
   if (do_divstream) then
      do i = 1, ncol
-        if ( m2src(i) > orom2min )   then 
+        if ( m2src(i) > orom2min )   then
            hdspdw(i) = min( mxdis(i) , Fr2(i) * ubsrcx(i) / nsrc(i) )
         else
            hdspdw(i) = 0._r8
@@ -622,8 +827,8 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   else
      do i = 1, ncol
         ! Needed only to mark where a DSW occurs
-        if ( m2src(i) > orom2min )   then 
-           hdspdw(i) = mxdis(i) 
+        if ( m2src(i) > orom2min )   then
+           hdspdw(i) = mxdis(i)
         else
            hdspdw(i) = 0._r8
         end if
@@ -637,14 +842,14 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   ! Determine the orographic c=0 source term following McFarlane (1987).
   ! Set the source top interface index to pver, if the orographic term is
   ! zero.
-  ! 
+  !
   ! This formula is basically from
   !
   !      tau(src) = rho * u' * w'
-  ! where 
+  ! where
   !      u' ~ N*h'  and w' ~ U*h'/b  (b="breite")
   !
-  ! and 1/b has been replaced with k (kwvrdg) 
+  ! and 1/b has been replaced with k (kwvrdg)
   !
   do i = 1, ncol
      if ( ( src_level(i) > 0 ) .and. ( m2src(i) > orom2min ) ) then
@@ -680,7 +885,7 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   ! Amplify DSW between Frx=1. and Frx=Frx1
      do i = 1,ncol
         dswamp=0._r8
-        BetaMax   = C_BetaMax_DS * anixy(i)      
+        BetaMax   = C_BetaMax_DS * anixy(i)
         if ( (Frx(i)>1._r8).and.(Frx(i)<=Frx1)) then
            dswamp = (Frx(i)-1._r8)*(Frx1-Frx(i))/(0.25_r8*(Frx1-1._r8)**2)
         end if
@@ -691,30 +896,30 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   ! Scinocca&McFarlane
   !--------------------
      do i = 1, ncol
-        BetaMax   = C_BetaMax_SM * anixy(i)      
+        BetaMax   = C_BetaMax_SM * anixy(i)
         if ( (Frx(i) >=1._r8) .and. (Frx(i) < 1.5_r8) ) then
            dswamp = 2._r8 * BetaMax * (Frx(i) -1._r8)
         else if ( ( Frx(i) >= 1.5_r8 ) .and. (Frx(i) < 3._r8 ) ) then
-           dswamp = ( 1._r8 + BetaMax - (0.666_r8**2) ) * ( 0.666_r8*(3._r8 - Frx(i) ))**2  & 
+           dswamp = ( 1._r8 + BetaMax - (0.666_r8**2) ) * ( 0.666_r8*(3._r8 - Frx(i) ))**2  &
                       + ( 1._r8 / Frx(i) )**2  -1._r8
         else
-           dswamp    = 0._r8      
+           dswamp    = 0._r8
         end if
         if ( (Frx(i) >=1._r8) .and. (Frx(i) < 3._r8) ) then
           taudsw(i) = (1._r8 + dswamp )*taulin(i) - tauoro(i)
         else
-          taudsw(i) = 0._r8   
+          taudsw(i) = 0._r8
         endif
         ! This code defines "taudsw" as SUM of freely-propagating
         ! DSW enhancement. Different than in SM2000
-        taudsw(i) = taudsw(i) + tauoro(i) 
+        taudsw(i) = taudsw(i) + tauoro(i)
      end do
  !----------------------------------------------------
   end if
 
-  
+
   do i = 1, ncol
-     if ( m2src(i) > orom2min )   then 
+     if ( m2src(i) > orom2min )   then
         where ( ( zi(i,:) < mxdis(i) ) .and. ( zi(i,:) >= bwv(i) ) )
              tau(i,0,:) =  tauoro(i)
         else where ( ( zi(i,:) < bwv(i) ) .and. ( zi(i,:) >= tlb(i) ) )
@@ -728,7 +933,7 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
              tau(i,0,:) =  taudsw(i) +  &
                            Coeff_LB(i) * kwvrdg(i) * rsrc(i) * 0.5_r8 * (ubsrcx(i)**2) * ( tlb(i) - zi(i,:) )
         endwhere
- 
+
         if (do_smooth_regimes) then
         !  This blocks accounts for case where both mxdis and tlb fall
         !  between adjacent edges
@@ -739,7 +944,7 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
                  tau(i,0,k) = tauoro(i)
               end if
            end do
-        end if 
+        end if
 
      else     !----------------------------------------------
              ! This block allows low-level dynamics to occur
@@ -758,11 +963,11 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
      k=src_level(i)
      if ( ni(i,k) > orostratmin ) then
          tausat    =  (Fr_c**2) * kwvrdg(i) * rhoi(i,k) * ubsrcx(i)**3 / &
-              (1._r8*ni(i,k)) 
+              (1._r8*ni(i,k))
      else
          tausat = 0._r8
-     endif 
-     tau(i,0,src_level(i)) = min( tauoro(i), tausat ) 
+     endif
+     tau(i,0,src_level(i)) = min( tauoro(i), tausat )
   end do
 
 
@@ -770,18 +975,18 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   ! Final clean-up. Do nothing if obstacle less than orohmin
   do i = 1, ncol
      if ( mxdis(i) < orohmin ) then
-        tau(i,0,:) = 0._r8 
+        tau(i,0,:) = 0._r8
         tauoro(i)  = 0._r8
         taudsw(i)  = 0._r8
-     endif 
+     endif
   end do
 
-          ! Disable vertical propagation if Scorer param is 
+          ! Disable vertical propagation if Scorer param is
           ! too small.
   do i = 1, ncol
      if ( m2src(i) <= orom2min ) then
         src_level(i)=1
-     endif 
+     endif
   end do
 
 
@@ -790,10 +995,10 @@ end subroutine gw_rdg_belowpeak
 
 !==========================================================================
 subroutine gw_rdg_break_trap(ncol, band, &
-     zi, nm, ni, ubm, ubi, rhoi, kwvrdg, bwv, tlb, wbr, & 
-     src_level, tlb_level, & 
+     zi, nm, ni, ubm, ubi, rhoi, kwvrdg, bwv, tlb, wbr, &
+     src_level, tlb_level, &
      hdspwv, hdspdw, mxdis, &
-     tauoro, taudsw,  tau, & 
+     tauoro, taudsw,  tau, &
      ldo_trapped_waves, wdth_kwv_scale_in )
   use gw_common, only: GWBand
   !-----------------------------------------------------------------------
@@ -893,7 +1098,7 @@ subroutine gw_rdg_break_trap(ncol, band, &
      endwhere
   end do
 
-  ! Take square root of m**2 and 
+  ! Take square root of m**2 and
   ! do vertical integral to find
   ! WKB phase.
   !-----------------------------
@@ -901,8 +1106,8 @@ subroutine gw_rdg_break_trap(ncol, band, &
   phswkb(:,:)=0
   do k=pver,1,-1
      where( zi(:,k) > tlb(:) )
-        delz(:) = min( zi(:,k)-zi(:,k+1) , zi(:,k)-tlb(:) ) 
-        phswkb(:,k) = phswkb(:,k+1) + m2(:,k)*delz(:) 
+        delz(:) = min( zi(:,k)-zi(:,k+1) , zi(:,k)-tlb(:) )
+        phswkb(:,k) = phswkb(:,k+1) + m2(:,k)*delz(:)
      endwhere
   end do
 
@@ -913,9 +1118,9 @@ subroutine gw_rdg_break_trap(ncol, band, &
   wbrx(:)=0._r8
   if (do_smooth_regimes) then
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) & 
+     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) &
             .and.(hdspdw(:)>hdspwv(:)) )
-        wbr(:)  = zi(:,k)  
+        wbr(:)  = zi(:,k)
         ! Extrapolation to make regime
         ! transitions smoother
         wbrx(:) = zi(:,k)   - ( phswkb(:,k) -  1.5_r8*pii ) &
@@ -925,7 +1130,7 @@ subroutine gw_rdg_break_trap(ncol, band, &
      end do
   else
      do k=pver,1,-1
-     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) & 
+     where( (phswkb(:,k+1)<1.5_r8*pii).and.(phswkb(:,k)>=1.5_r8*pii) &
             .and.(hdspdw(:)>hdspwv(:)) )
         wbr(:)  = zi(:,k)
         src_level(:) = k
@@ -936,12 +1141,12 @@ subroutine gw_rdg_break_trap(ncol, band, &
   ! Adjust tauoro at new source levels if needed.
   ! This is problematic if Fr_c<1.0. Not sure why.
   !----------------------------------------------------------
-  if (do_adjust_tauoro) then 
+  if (do_adjust_tauoro) then
      do i = 1,ncol
         if (wbr(i) > 0._r8 ) then
-            tausat(i) = (Fr_c**2) * kwvrdg(i)  * rhoi( i, src_level(i) ) & 
+            tausat(i) = (Fr_c**2) * kwvrdg(i)  * rhoi( i, src_level(i) ) &
                       * abs(ubi(i , src_level(i) ))**3  &
-                      / ni( i , src_level(i) ) 
+                      / ni( i , src_level(i) )
             tauoro(i) = min( tauoro(i), tausat(i) )
         end if
      end do
@@ -954,9 +1159,9 @@ subroutine gw_rdg_break_trap(ncol, band, &
            tau(i,0,k) =  tauoro(i) + (taudsw(i)-tauoro(i)) * &
                           ( wbrx(i) - zi(i,k) ) / &
                           ( wbrx(i) - tlb(i)  )
-           tau(i,0,k) = max( tau(i,0,k), tauoro(i) ) 
+           tau(i,0,k) = max( tau(i,0,k), tauoro(i) )
         endif
-     end do   
+     end do
      end do
   else
   ! Following is for backwards B4B compatibility with earlier versions
@@ -969,7 +1174,7 @@ subroutine gw_rdg_break_trap(ncol, band, &
                             ( wbr(i) - zi(i,k) ) / &
                             ( wbr(i) - tlb(i)  )
            endif
-        end do   
+        end do
         end do
      else
         do i = 1, ncol
@@ -979,13 +1184,13 @@ subroutine gw_rdg_break_trap(ncol, band, &
                             ( wbr(i) - zi(i,k) ) / &
                             ( wbr(i) - tlb(i)  )
            endif
-        end do   
+        end do
         end do
      end if
   end if
-  
-  if (lldo_trapped_waves) then 
-     
+
+  if (lldo_trapped_waves) then
+
   ! Identify top edge of layer in which Scorer param drops below 0
   ! - approximately the "turning level"
   !----------------------------------------------------------

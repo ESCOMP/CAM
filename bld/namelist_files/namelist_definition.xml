@@ -1323,6 +1323,13 @@ Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
 </entry>
 
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to enable gravity waves from residual (non-ridge)
+orography
+Default: set by build-namelist.
+</entry>
+
 <entry id="pgwv" type="integer" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Gravity wave spectrum dimension (wave numbers are from -pgwv to pgwv).
@@ -1424,6 +1431,36 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0
+</entry>
+
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor associated with residual non-ridge topo
+Default: set by build-namelist.
+</entry>
+
+<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor for moving mountain source
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_psteer" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_plaunch" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
 </entry>
 
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
