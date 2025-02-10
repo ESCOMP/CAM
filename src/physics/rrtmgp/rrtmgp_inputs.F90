@@ -68,7 +68,7 @@ module rrtmgp_inputs
                    timestep_size, nstep, iradsw, dt_avg, irad_always, is_first_restart_step,             &
                    nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,      &
                    idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,      &
-                   nextsw_cday, current_cal_day, errmsg, errflg)
+                   nextsw_cday, current_cal_day, band2gpt_sw, errmsg, errflg)
 
      ! Inputs
      integer,                       intent(in) :: nswbands
@@ -104,6 +104,7 @@ module rrtmgp_inputs
      integer,                       intent(out) :: idx_lw_cloudsim
      integer,                       intent(out) :: nswgpts
      integer,                       intent(out) :: nlwgpts
+     integer, dimension(:,:),       intent(out) :: band2gpt_sw
      real(kind_phys),               intent(out) :: nextsw_cday
      real(kind_phys), dimension(:), intent(out) :: sw_low_bounds
      real(kind_phys), dimension(:), intent(out) :: sw_high_bounds
@@ -164,7 +165,7 @@ module rrtmgp_inputs
      call set_wavenumber_bands(kdist_sw, kdist_lw, nswbands, nlwbands, idx_sw_diag, idx_nir_diag, &
                  idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts,    &
                  wavenumber_low_shortwave, wavenumber_high_shortwave, wavenumber_low_longwave,    &
-                 wavenumber_high_longwave, errmsg, errflg)
+                 wavenumber_high_longwave, band2gpt_sw, errmsg, errflg)
      if (errflg /= 0) then
         return
      end if
@@ -522,7 +523,7 @@ module rrtmgp_inputs
   subroutine set_wavenumber_bands(kdist_sw, kdist_lw, nswbands, nlwbands, idx_sw_diag, idx_nir_diag, &
                   idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts,      &
                   wavenumber_low_shortwave, wavenumber_high_shortwave, wavenumber_low_longwave,      &
-                  wavenumber_high_longwave, errmsg, errflg)
+                  wavenumber_high_longwave, band2gpt_sw, errmsg, errflg)
    ! Set the low and high limits of the wavenumber grid for sw and lw.
    ! Values come from RRTMGP coefficients datasets, and are stored in the
    ! kdist objects.
@@ -543,6 +544,7 @@ module rrtmgp_inputs
    integer,                   intent(out) :: idx_lw_cloudsim
    integer,                   intent(out) :: nswgpts
    integer,                   intent(out) :: nlwgpts
+   integer, dimension(:,:),   intent(out) :: band2gpt_sw
    real(kind_phys), dimension(:), intent(out) :: wavenumber_low_shortwave
    real(kind_phys), dimension(:), intent(out) :: wavenumber_high_shortwave
    real(kind_phys), dimension(:), intent(out) :: wavenumber_low_longwave
@@ -587,6 +589,9 @@ module rrtmgp_inputs
    values = kdist_sw%get_band_lims_wavenumber()
    wavenumber_low_shortwave = values(1,:)
    wavenumber_high_shortwave = values(2,:)
+
+   ! First and last g-point for each SW band:
+   band2gpt_sw = kdist_sw%get_band_lims_gpoint()
 
    ! Indices into specific bands
    call get_band_index_by_value('sw', 500.0_kind_phys, 'nm', nswbands, &

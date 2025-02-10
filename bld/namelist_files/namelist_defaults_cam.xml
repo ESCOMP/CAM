@@ -2214,7 +2214,7 @@
 <clubb_l_intr_sfc_flux_smooth phys="cam7"         > .true.  </clubb_l_intr_sfc_flux_smooth>
 <clubb_l_lmm_stepping                             > .false. </clubb_l_lmm_stepping>
 <clubb_l_lscale_plume_centered                    > .false. </clubb_l_lscale_plume_centered>
-<clubb_l_min_wp2_from_corr_wx                     > .true.  </clubb_l_min_wp2_from_corr_wx>
+<clubb_l_min_wp2_from_corr_wx                     > .false.  </clubb_l_min_wp2_from_corr_wx>
 <clubb_l_min_xp2_from_corr_wx                     > .true.  </clubb_l_min_xp2_from_corr_wx>
 <clubb_l_mono_flux_lim_rtm                        > .true.  </clubb_l_mono_flux_lim_rtm>
 <clubb_l_mono_flux_lim_spikefix                   > .true.  </clubb_l_mono_flux_lim_spikefix>

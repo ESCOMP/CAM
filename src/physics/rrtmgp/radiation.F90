@@ -16,7 +16,6 @@ use physics_buffer,      only: physics_buffer_desc, pbuf_add_field, dtype_r8, pb
                                pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair, gravit, stebol
-use solar_irrad_data,    only: sol_tsi
 
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
@@ -25,6 +24,7 @@ use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_gas,
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist
+use rad_solar_var,       only: rad_solar_var_init, get_variability
 
 use cloud_rad_props,     only: cloud_rad_props_init
 
@@ -157,6 +157,8 @@ integer :: idxday(pcols) = 0  ! chunk indices of daylight columns
 integer :: idxnite(pcols)= 0 ! chunk indices of night columns
 real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 real(r8) :: eccf            ! Earth orbit eccentricity factor
+
+integer :: band2gpt_sw(2,nswbands)
 
 ! active_calls is set by a rad_constituents method after parsing namelist input
 ! for the rad_climate and rad_diag_N entries.
@@ -502,7 +504,7 @@ subroutine radiation_init(pbuf2d)
                    get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(),       &
                    nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,          &
                    idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,          &
-                   nextsw_cday, get_curr_calday(), errmsg, errflg)
+                   nextsw_cday, get_curr_calday(), band2gpt_sw, errmsg, errflg)
    write(iulog,*) 'peverwhee - after init'
    write(iulog,*) ktopcam
    write(iulog,*) ktoprad
@@ -520,6 +522,8 @@ subroutine radiation_init(pbuf2d)
    end if
    call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
            idx_lw_cloudsim)
+
+   call rad_solar_var_init()
 
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
@@ -954,8 +958,8 @@ subroutine radiation_tend( &
 
    ! TOA solar flux on RRTMGP g-points
    real(r8), allocatable :: toa_flux(:,:)
-   ! TSI from RRTMGP data (from sum over g-point representation)
-   real(r8) :: tsi_ref
+   ! Scale factors based on spectral distribution from input irradiance dataset
+   real(r8), allocatable :: sfac(:,:)
    
    ! Planck sources for LW.
    type(ty_source_func_lw) :: sources_lw
@@ -1123,6 +1127,7 @@ subroutine radiation_tend( &
 
       allocate( &
          t_sfc(ncol), emis_sfc(nlwbands,ncol), toa_flux(nday,nswgpts),     &
+         sfac(nday,nswgpts),                                               &
          t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),     &
          t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),     &
          coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday), &
@@ -1237,8 +1242,8 @@ subroutine radiation_tend( &
                   call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
 
                   ! Scale the solar source
-                  tsi_ref = sum(toa_flux(1,:))
-                  toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
+                  call get_variability(toa_flux, sfac, band2gpt_sw)
+                  toa_flux = toa_flux * sfac * eccf
 
                end if
 
@@ -1366,7 +1371,7 @@ subroutine radiation_tend( &
       end if  ! if (dolw)
 
       deallocate( &
-         t_sfc, emis_sfc, toa_flux, t_rad, pmid_rad, pint_rad,  &
+         t_sfc, emis_sfc, toa_flux, sfac, t_rad, pmid_rad, pint_rad,  &
          t_day, pmid_day, pint_day, coszrs_day, alb_dir, alb_dif)
 
       !================!
