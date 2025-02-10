@@ -138,9 +138,9 @@ subroutine zm_conv_register
    call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
    call pbuf_add_field('SNOW_DP',    'physpkg',dtype_r8,(/pcols/),     snow_dp_idx)
 
-   ! convective mass fluxes
+   ! detrained convective cloud water mixing ratio.
    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
-   ! detrained convective cloud ice mixing ratio.
+   ! convective mass fluxes
    call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
 
 
