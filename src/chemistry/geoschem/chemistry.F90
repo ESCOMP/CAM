@@ -1019,6 +1019,7 @@ contains
     use Photolysis_Mod,        only : Init_Photolysis
     use PhysConstants,         only : PI, PI_180, Re
     use Pressure_Mod,          only : Accept_External_ApBp
+    use precision_mod,         only : MISSING_DBLE, f8
     use State_Chm_Mod,         only : Ind_
     use State_Grid_Mod,        only : Init_State_Grid, Cleanup_State_Grid
     use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
@@ -1464,6 +1465,17 @@ contains
           State_Chm(I)%Species(N)%Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
        ENDDO
 
+       ! Kludge: Replace State_Chm initialization in GC_Init_Extra
+       ! since it is only ran for BEGCHUNK below.
+       ! This will set the proper tolerances for KPP species.
+       WHERE( State_Chm(I)%KPP_AbsTol == MISSING_DBLE )
+          State_Chm(I)%KPP_AbsTol = 1.0e-2_f8
+       ENDWHERE
+
+       WHERE( State_Chm(I)%KPP_RelTol == MISSING_DBLE )
+          State_Chm(I)%KPP_RelTol = 0.5e-2_f8
+       ENDWHERE
+
     ENDDO
     Input_Opt%amIRoot = MasterProc
 
@@ -1479,6 +1491,46 @@ contains
         ErrMsg = 'Error encountered in "GC_Init_Extra"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    ! Kludge: Copy initialized fields in phot container in State_Chm
+    ! to other chunks because they are being read in GC_Init_Extra -> init_aerosol -> ...
+    DO I = BEGCHUNK, ENDCHUNK
+        IF(I .ne. BEGCHUNK) THEN
+            ! Set in RD_AOD
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+            State_Chm(I)%Phot%RHAA = State_Chm(BEGCHUNK)%Phot%RHAA
+            State_Chm(I)%Phot%RDAA = State_Chm(BEGCHUNK)%Phot%RDAA
+            State_Chm(I)%Phot%RWAA = State_Chm(BEGCHUNK)%Phot%RWAA
+            State_Chm(I)%Phot%SGAA = State_Chm(BEGCHUNK)%Phot%SGAA
+            State_Chm(I)%Phot%REAA = State_Chm(BEGCHUNK)%Phot%REAA
+            State_Chm(I)%Phot%NRLAA = State_Chm(BEGCHUNK)%Phot%NRLAA
+            State_Chm(I)%Phot%NCMAA = State_Chm(BEGCHUNK)%Phot%NCMAA
+            State_Chm(I)%Phot%QQAA = State_Chm(BEGCHUNK)%Phot%QQAA
+            State_Chm(I)%Phot%ALPHAA = State_Chm(BEGCHUNK)%Phot%ALPHAA
+            State_Chm(I)%Phot%SSAA = State_Chm(BEGCHUNK)%Phot%SSAA
+            State_Chm(I)%Phot%ASYMAA = State_Chm(BEGCHUNK)%Phot%ASYMAA
+            State_Chm(I)%Phot%PHAA = State_Chm(BEGCHUNK)%Phot%PHAA
+
+            ! This is a scalar -- very important for later calculations...
+            State_Chm(I)%Phot%IWV1000 = State_Chm(BEGCHUNK)%Phot%IWV1000
+
+            ! Set in CALC_AOD
+            State_Chm(I)%Phot%IWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IWVREQUIRED
+            State_Chm(I)%Phot%IRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IRTWVREQUIRED
+            State_Chm(I)%Phot%IWVSELECT = State_Chm(BEGCHUNK)%Phot%IWVSELECT
+            State_Chm(I)%Phot%IRTWVSELECT = State_Chm(BEGCHUNK)%Phot%IRTWVSELECT
+            State_Chm(I)%Phot%ACOEF_WV = State_Chm(BEGCHUNK)%Phot%ACOEF_WV
+            State_Chm(I)%Phot%BCOEF_WV = State_Chm(BEGCHUNK)%Phot%BCOEF_WV
+            State_Chm(I)%Phot%CCOEF_WV = State_Chm(BEGCHUNK)%Phot%CCOEF_WV
+            State_Chm(I)%Phot%ACOEF_RTWV = State_Chm(BEGCHUNK)%Phot%ACOEF_RTWV
+            State_Chm(I)%Phot%BCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%BCOEF_RTWV
+            State_Chm(I)%Phot%CCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%CCOEF_RTWV
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+
+            State_Chm(I)%Phot%NWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NWVREQUIRED
+            State_Chm(I)%Phot%NRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NRTWVREQUIRED
+        ENDIF
+    ENDDO
 
     IF ( Input_Opt%LDryD ) THEN
        !----------------------------------------------------------
