@@ -205,8 +205,8 @@ fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
 
 [submodule "tools/CUPiD"]
-	path = tools/CUPiD
-	url = https://github.com/NCAR/CUPiD.git
+path = tools/CUPiD
+url = https://github.com/NCAR/CUPiD.git
 fxtag = v0.1.4
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
