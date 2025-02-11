@@ -83,10 +83,6 @@ Switch to turn on UNICON package: 0 => off, 1 => on
 <entry id="clubb_do_adv" valid_values="0,1" value="0">
 Switch to turn on/off advecting CLUBB moments: 0 => no, 1 => yes
 </entry>
-<entry id="zmconv_org" valid_values="0,1" value="0">
-Switch to turn on/off parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
-on Mapes and Neale (2011): 0 => no, 1 => yes
-</entry>
 <entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
 PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
  (Holtslag, Boville, and Rasch), clubb_sgs, spcam_sam1om, spcam_m2005, none.
