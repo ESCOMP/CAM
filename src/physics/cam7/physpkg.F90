@@ -1550,6 +1550,7 @@ contains
     ifld = pbuf_get_index('AST')
     call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
+    call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
 
