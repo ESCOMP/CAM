@@ -71,7 +71,7 @@ contains
    subroutine mfinti (rair    ,cpair   ,gravit  ,latvap  ,rhowtr,pref_edge )
       use spmd_utils, only: masterproc
       use cmfmca,     only: cmfmca_init
-      use ppgrid,     only: pver
+      use ppgrid,     only: pver, pcols
 
       real(r8), intent(in) :: rair              ! gas constant for dry air
       real(r8), intent(in) :: cpair             ! specific heat of dry air
@@ -82,6 +82,11 @@ contains
 
       character(len=512)   :: errmsg
       integer              :: errflg
+
+      ! dummy parameters output from CCPPized scheme.
+      ! the dimensions do not matter as the whole array is assigned zero
+      logical              :: dummy_use_shfrc
+      real(r8)             :: dummy_shfrc_out(pcols, pver)
 
       ! Initialize free parameters for moist convective mass flux procedure
       ! cmftau - characteristic adjustment time scale
@@ -103,6 +108,8 @@ contains
          latvap = latvap, &
          rhoh2o_in = rhowtr, &
          pref_edge = pref_edge, &
+         use_shfrc = dummy_use_shfrc, &
+         shfrc = dummy_shfrc_out, &
          errmsg = errmsg, &
          errflg = errflg &
       )
