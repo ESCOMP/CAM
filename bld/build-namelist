@@ -3658,7 +3658,6 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_c0_ocn');
     add_default($nl, 'zmconv_ke');
     add_default($nl, 'zmconv_ke_lnd');
-    add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_num_cin');
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
