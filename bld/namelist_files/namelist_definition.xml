@@ -1323,6 +1323,13 @@ Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
 </entry>
 
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to enable gravity waves from residual (non-ridge)
+orography
+Default: set by build-namelist.
+</entry>
+
 <entry id="pgwv" type="integer" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Gravity wave spectrum dimension (wave numbers are from -pgwv to pgwv).
@@ -1424,6 +1431,36 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0
+</entry>
+
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor associated with residual non-ridge topo
+Default: set by build-namelist.
+</entry>
+
+<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor for moving mountain source
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_psteer" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_plaunch" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
 </entry>
 
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
@@ -3257,13 +3294,6 @@ Tunable evaporation efficiency in ZM deep convection scheme.
 Default: set by build-namelist
 </entry>
 
-<entry id="zmconv_org" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Include organization parameterization in ZM.   This value is set to true automatically
-if -zmconv_org is set in configure.
-Default: .false., unless -zmconv_org set in configure
-</entry>
-
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
@@ -4469,6 +4499,23 @@ Default: 10
        group="carma_nl" valid_values="" >
 The name of the active CARMA microphysics model or none when CARMA
 is not active.
+Default: none
+</entry>
+
+<entry id="carma_sulfnuc_method" type="char*10" category="carma"
+       group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
+ Nucleation methods:
+  ZhaoTurco
+      Zhao, J. and Turco, R.,
+      Nucleation simulations in the wake of a jet aircraft in stratospheric flight,
+      J. Aerosol Sci., 26, 779-795, 1995,
+      https://doi.org/10.1016/0021-8502(95)00010-A
+  Vehkamaki
+     Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
+     C. Timmreck, M. Noppel and A. Laaksonen, 2002,
+     An improved parameterization for sulfuric acid-water nucleation
+     rates for tropospheric and stratospheric conditions,
+     J. Geophys. Res., 107, 4622, doi:10.1029/2002jd002184
 Default: none
 </entry>
 
@@ -7605,40 +7652,29 @@ Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
 Default: FALSE
 </entry>
 
-<entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
-       group="ndep_inparm" valid_values="" >
-List of nitrogen deposition fluxes to be sent from CAM to surface models.
-Default: set by build-namelist.
-</entry>
-
 <entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Year first to use in nitrogen deposition stream data. Set by case xml variable
-CAM_STREAM_NDEP_YEAR_FIRST
+Year first to use in nitrogen deposition stream data.
 </entry>
 
 <entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Year last to use in nitrogen deposition stream data.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
 </entry>
 
 <entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+Model year to align with stream_ndep_year_first.
 </entry>
 
 <entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP stream data filename.
-Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+Nitrogen deposition stream data filename.
 </entry>
 
 <entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP mesh file corresponding to sream_ndep_data_filename.
-Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+Grid mesh file corresponding to stream_ndep_data_filename.
 </entry>
 
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
@@ -8770,7 +8806,7 @@ Default: "."
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
-       group="camexp" valid_values="1850,2000,1850-2000">
+       group="camexp" valid_values="1850,2000,2010,1850-2000,1850-2015">
 This varible is only used internally by build-namelist to determine
 appropriate defaults for climatological or transient forcing datasets.
 Default: set by build-namelist.

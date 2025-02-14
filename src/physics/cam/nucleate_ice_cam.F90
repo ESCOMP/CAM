@@ -69,7 +69,7 @@ integer :: &
    naai_hom_idx = -1
 
 integer :: &
-   ast_idx   = -1
+   aist_idx = -1
 
 integer :: &
     qsatfac_idx = -1
@@ -360,7 +360,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
         mincld)
 
    ! get indices for fields in the physics buffer
-   ast_idx = pbuf_get_index('AST')
+   aist_idx = pbuf_get_index('AIST')
 
 end subroutine nucleate_ice_cam_init
 
@@ -400,8 +400,7 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), pointer :: pmid(:,:)       ! pressure at layer midpoints (pa)
 
    real(r8), pointer :: aer_mmr(:,:)    ! aerosol mass mixing ratio
-
-   real(r8), pointer :: ast(:,:)
+   real(r8), pointer :: aist(:,:)
    real(r8) :: icecldf(pcols,pver)  ! ice cloud fraction
    real(r8), pointer :: qsatfac(:,:)      ! Subgrid cloud water saturation scaling factor.
 
@@ -509,9 +508,8 @@ subroutine nucleate_ice_cam_calc( &
    end if
 
    itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
-   icecldf(:ncol,:pver) = ast(:ncol,:pver)
+   call pbuf_get_field(pbuf, aist_idx, aist, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   icecldf(:ncol,:pver) = aist(:ncol,:pver)
 
    ! naai and naai_hom are the outputs from this parameterization
    call pbuf_get_field(pbuf, naai_idx, naai)
@@ -607,12 +605,18 @@ subroutine nucleate_ice_cam_calc( &
 
    else
       ! for bulk model
-      dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
-                            + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
-      sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
-      soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      if (idxdst1 > 0 .and. idxdst2 > 0 .and. idxdst3 > 0 .and. idxdst4 > 0) then
+         dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
+                                 + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
+      end if
+      if (idxsul > 0) then
+         sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
+      end if
+      if (idxbcphi > 0) then
+         soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      end if
    endif
 
    kloop: do k = top_lev, pver

@@ -102,6 +102,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use cam_budget,          only: cam_budget_readnl
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
    use mo_lightning,        only: lightning_readnl
+   use atm_stream_ndep,     only: stream_ndep_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -205,6 +206,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call hemco_readnl(nlfilename)
    call cam_budget_readnl(nlfilename)
    call phys_grid_ctem_readnl(nlfilename)
+   call stream_ndep_readnl(nlfilename)
 
 end subroutine read_namelist
 

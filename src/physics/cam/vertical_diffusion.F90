@@ -619,8 +619,10 @@ subroutine vertical_diffusion_init(pbuf2d)
   endif
 
   if (history_eddy) then
-     call add_default( 'UFLX    ', 1, ' ' )
-     call add_default( 'VFLX    ', 1, ' ' )
+     if (.not. do_pbl_diags) then
+        call add_default( 'UFLX    ', 1, ' ' )
+        call add_default( 'VFLX    ', 1, ' ' )
+     end if
   endif
 
   if( history_budget ) then
@@ -707,7 +709,6 @@ subroutine vertical_diffusion_tend( &
   !---------------------------------------------------- !
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
-  use physics_types,      only : set_dry_to_wet, set_wet_to_dry
 
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
@@ -901,9 +902,6 @@ subroutine vertical_diffusion_tend( &
   ! ----------------------- !
   ! Main Computation Begins !
   ! ----------------------- !
-
-  ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state, convert_cnst_type='dry')
 
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
@@ -1373,8 +1371,6 @@ subroutine vertical_diffusion_tend( &
         ptend%q(:ncol,:pver,m) = ptend%q(:ncol,:pver,m)*state%pdel(:ncol,:pver)/state%pdeldry(:ncol,:pver)
      endif
   end do
-  ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt

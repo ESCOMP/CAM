@@ -132,7 +132,9 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   ! Simple assignments.
   band%ngwv = ngwv
   band%dc = dc
-  band%fcrit2 = fcrit2
+
+  ! For now just ensure fcrit is always set to 1
+  band%fcrit2 = 1.0_r8 ! fcrit2
 
   ! Uniform phase speed reference grid.
   allocate(band%cref(-ngwv:ngwv))
@@ -147,7 +149,7 @@ end function new_GWBand
 !==========================================================================
 
 subroutine gw_common_init(pver_in, &
-     tau_0_ubc_in, ktop_in, gravit_in, rair_in, alpha_in, & 
+     tau_0_ubc_in, ktop_in, gravit_in, rair_in, alpha_in, &
      prndl_in, qbo_hdepth_scaling_in, errstring)
 
   integer,  intent(in) :: pver_in
@@ -356,8 +358,8 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   real(r8), intent(in), optional :: &
        kwvrdg(ncol)
 
-  ! Factor for saturation calculation. Here backwards 
-  ! compatibility. I believe it should be 1.0 (jtb). 
+  ! Factor for saturation calculation. Here backwards
+  ! compatibility. I believe it should be 1.0 (jtb).
   ! Looks like it has been 2.0 for a while in CAM.
   real(r8), intent(in), optional :: &
        satfac_in
@@ -425,7 +427,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
       lapply_effgw = .TRUE.
   endif
 
-  
+
   ! Lowest levels that loops need to iterate over.
   kbot_tend = maxval(tend_level)
   kbot_src = maxval(src_level)
@@ -457,9 +459,9 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-  ! do k = kbot_src-1, ktop, -1 !++jtb I think this is right 
-  do k = kbot_src, ktop, -1  !++ but this is in model now 
-     
+  ! do k = kbot_src-1, ktop, -1 !++jtb I think this is right
+  do k = kbot_src, ktop, -1  !++ but this is in model now
+
      ! Determine the diffusivity for each column.
 
      d = dback + kvtt(:,k)
@@ -552,8 +554,8 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
 
   ! Write out pre-adjustment tau profile for diagnostc purposes.
   ! Current implementation only makes sense for orographic waves.
-  ! Fix later. 
-  if (PRESENT(tau_diag)) then 
+  ! Fix later.
+  if (PRESENT(tau_diag)) then
      tau_diag(:,:) = tau(:,0,:)
   end if
 
@@ -592,11 +594,11 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ubtl = min(ubtl, umcfac * abs(c(:,l)-ubm(:,k)) / dt)
 
         if (.not. lapply_effgw) ubtl = min(ubtl, tndmax)
-        
+
         where (k <= tend_level)
 
            ! Save tendency for each wave (for later computation of kzz).
-           ! sign function returns magnitude of ubtl with sign of c-ubm 
+           ! sign function returns magnitude of ubtl with sign of c-ubm
            ! Renders ubt/ubm check for mountain waves unecessary
            gwut(:,k,l) = sign(ubtl, c(:,l)-ubm(:,k))
            ubt(:,k) = ubt(:,k) + gwut(:,k,l)
@@ -620,7 +622,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
      else
         ubt_lim_ratio = 1._r8
      end if
-     
+
      do l = -band%ngwv, band%ngwv
         gwut(:,k,l) = ubt_lim_ratio*gwut(:,k,l)
         ! Redetermine the effective stress on the interface below from the
@@ -634,11 +636,11 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         !--------------------------------------------------
         where( abs(gwut(:,k,l)) < 1.e-15_r8 )
            gwut(:,k,l) = 0._r8
-        endwhere   
+        endwhere
 
         where (k <= tend_level)
-           tau(:,l,k+1) = tau(:,l,k) + & 
-                abs(gwut(:,k,l)) * p%del(:,k) / gravit 
+           tau(:,l,k+1) = tau(:,l,k) + &
+                abs(gwut(:,k,l)) * p%del(:,k) / gravit
         end where
      end do
 
@@ -866,7 +868,7 @@ subroutine momentum_fixer(tend_level, p, um_flux, vm_flux, utgw, vtgw)
         vtgw(:,k) = vtgw(:,k) + dv
      end where
   end do
-  
+
 end subroutine momentum_fixer
 
 !==========================================================================
