@@ -87,19 +87,17 @@ contains
       ! the dimensions do not matter as the whole array is assigned zero
       logical              :: dummy_use_shfrc
       real(r8)             :: dummy_shfrc_out(pcols, pver)
+      integer              :: dummy_top_lev_out
 
       ! Initialize free parameters for moist convective mass flux procedure
       ! cmftau - characteristic adjustment time scale
       ! c0     - rain water autoconversion coeff (1/m)
-
-      if (masterproc) then
-         write(iulog,*) 'tuning parameters hk_conv: cmftau',cmftau
-         write(iulog,*) 'tuning parameters hk_conv: c0',c0
-      endif
-
+      !
       ! call CCPPized subroutine
       call cmfmca_init( &
          pver = pver, &
+         amIRoot = masterproc, &
+         iulog = iulog, &
          cmftau_in = cmftau, &
          c0_in = c0, &
          rair = rair, &
@@ -110,6 +108,7 @@ contains
          pref_edge = pref_edge, &
          use_shfrc = dummy_use_shfrc, &
          shfrc = dummy_shfrc_out, &
+         top_lev = dummy_top_lev_out, &
          errmsg = errmsg, &
          errflg = errflg &
       )

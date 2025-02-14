@@ -163,7 +163,6 @@
   real(r8),                  intent(in) :: pref_edge(plevp)  ! Reference pressures at interfaces
   type(physics_buffer_desc), pointer    :: pbuf2d(:,:)
 
-  integer limcnv                                   ! Top interface level limit for convection
   integer k
   character(len=16)          :: eddy_scheme
 
@@ -272,24 +271,6 @@
      qpert_idx = pbuf_get_index('qpert')
 
      if( masterproc ) write(iulog,*) 'convect_shallow_init: Hack shallow convection'
-   ! Limit shallow convection to regions below 40 mb
-   ! Note this calculation is repeated in the deep convection interface
-     if( pref_edge(1) >= 4.e3_r8 ) then
-         limcnv = 1
-     else
-         do k = 1, plev
-            if( pref_edge(k) < 4.e3_r8 .and. pref_edge(k+1) >= 4.e3_r8 ) then
-                limcnv = k
-                goto 10
-            end if
-         end do
-         limcnv = plevp
-     end if
-10   continue
-
-     if( masterproc ) then
-         write(iulog,*) 'MFINTI: Convection will be capped at intfc ', limcnv, ' which is ', pref_edge(limcnv), ' pascals'
-     end if
 
      call mfinti( rair, cpair, gravit, latvap, rhoh2o, pref_edge) ! Get args from inti.F90
 
