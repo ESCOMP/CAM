@@ -334,7 +334,7 @@ end subroutine conv_water_readnl
 
           ! Select radiation constants (effective radii) for emissivity averaging.
             
-            if( microp_scheme == 'RK' .or. microp_scheme == 'SPCAM_sam1mom') then
+            if( microp_scheme == 'RK') then
                kabsi = 0.005_r8 + 1._r8/rei(i,k)
             else
                kabsi = 0.005_r8 + 1._r8/min(max(13._r8,rei(i,k)),130._r8)

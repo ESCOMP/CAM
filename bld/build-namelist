@@ -3686,7 +3686,7 @@ if ($cfg->get('microphys') eq 'rk') {
 }
 
 # Eddy Diffusivity Adjustments
-if ($cfg->get('pbl') eq "uw" or $cfg->get('pbl') eq "spcam_m2005") {
+if ($cfg->get('pbl') eq "uw") {
     add_default($nl, 'kv_top_pressure');
     add_default($nl, 'kv_top_scale');
     add_default($nl, 'kv_freetrop_scale');
@@ -4367,11 +4367,6 @@ if ($offline_drv ne 'stub') {
         add_default($nl, 'iradsw', 'val'=>'1');
         add_default($nl, 'iradlw', 'val'=>'1');
     }
-}
-
-if ($phys eq 'spcam_sam1mom' or $phys eq 'spcam_m2005') {
-    add_default($nl, 'iradsw', 'val'=>'1');
-    add_default($nl, 'iradlw', 'val'=>'1');
 }
 
 #-----------------------------------------------------------------------------------------------

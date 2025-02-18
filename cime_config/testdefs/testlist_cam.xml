@@ -381,26 +381,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              221 tsm, ter                         -->
-  <test compset="QSPCAMS" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >221 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              222 tsm, ter                         -->
-  <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >222 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              311                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_eoyttrac">
     <machines>
@@ -2165,70 +2145,6 @@
     </machines>
   </test>
 
-<!-- SPCAM testing -->
-  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMCLBM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="fv3_cam"/>
-    </machines>
-  </test>
-  <test compset="FSPCAMCLBS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="fv3_cam"/>
-    </machines>
-  </test>
-  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="test_spcam"/>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="test_spcam"/>
-      <machine name="derecho" compiler="intel" category="prebeta"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMM" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="test_spcam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMCLBM" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="intel" category="test_spcam"/>
-    </machines>
-  </test>
-  <test compset="FSPCAMCLBS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="intel" category="test_spcam"/>
-    </machines>
-  </test>
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--              FV3CAM COMPSETS for testing only            -->
 <!--                    (unsupported)                         -->
