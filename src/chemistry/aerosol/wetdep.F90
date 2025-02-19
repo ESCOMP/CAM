@@ -646,8 +646,10 @@ subroutine wetdepa_v2(                                  &
       end do ! End of i = 1, ncol
 
 #ifdef DEBUG
+      ! only check in debug mode which aborts when larger negative values are found
       found = .false.
       do i = 1,ncol
+         ! catch the larger negative values, ignore insignificant small negaive values
          if (dblchek(i) < -1.e-10_r8) then
             found = .true.
             write(iulog,*) ' wetdapa_v2: negative value ', i, k, tracer(i,k), &
@@ -965,8 +967,10 @@ end subroutine wetdepa_v2
          end do
 
 #ifdef DEBUG
+         ! only check in debug mode which aborts when larger negative values are found
          found = .false.
          do i = 1,ncol
+            ! catch the larger negative values, ignore insignificant small negaive values
             if (dblchek(i) < -1.e-10_r8) then
                found = .true.
                write(iulog,*) ' wetdapa_v1: negative value ', i, k, tracer(i,k), &

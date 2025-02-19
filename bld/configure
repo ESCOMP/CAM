@@ -98,26 +98,18 @@ OPTIONS
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
      -phys <name>       Physics option [cam4 | cam5 | cam6 | cam7 |
-                                        held_suarez | adiabatic | kessler | tj2016 | grayrad
-                                        spcam_sam1mom | spcam_m2005].  Default: cam6
+                                        held_suarez | adiabatic | kessler | tj2016 | grayrad].
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
-     -spcam_clubb_sgs   Turn on the SPCAM version of CLUBB
-     -spcam_nx <n>      SPCAM x-grid. - defaults to 4 (note the CRM requires spcam_nx to be greater than or equal to 4)
-     -spcam_ny <n>      SPCAM y-grid. - defaults to 1
-     -spcam_dx <n>      SPCAM horizontal grid spacing.
-     -spcam_dt <n>      SPCAM timestep.
      -unicon            Switch to turn on the UNICON scheme. Default: off.
      -usr_mech_infile   Path and file name of the user supplied chemistry mechanism file.
      -waccm_phys        Switch enables the use of WACCM physics in any chemistry configuration.
                         The user does not need to set this if one of the waccm chemistry options
                         is chosen.
      -waccmx            Build CAM/WACCM with WACCM upper Thermosphere/Ionosphere extended package
-     -zmconv_org        Include parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
-                        on Mapes and Neale (2011)
 
 
   Options relevent to SCAM mode:
@@ -255,7 +247,6 @@ GetOptions(
     "cosp_libdir=s"             => \$opts{'cosp_libdir'},
     "cppdefs=s"                 => \$opts{'cppdefs'},
     "cpl=s"                     => \$opts{'cpl'},
-    "spcam_clubb_sgs"           => \$opts{'spcam_clubb_sgs'},
     "debug"                     => \$opts{'debug'},
     "dyn=s"                     => \$opts{'dyn'},
     "edit_chem_mech"            => \$opts{'edit_chem_mech'},
@@ -304,10 +295,6 @@ GetOptions(
     "silhs"                     => \$opts{'silhs'},
     "s|silent"                  => \$opts{'silent'},
     "smp!"                      => \$opts{'smp'},
-    "spcam_nx=s"                => \$opts{'spcam_nx'},
-    "spcam_ny=s"                => \$opts{'spcam_ny'},
-    "spcam_dx=s"                => \$opts{'spcam_dx'},
-    "spcam_dt=s"                => \$opts{'spcam_dt'},
     "spmd!"                     => \$opts{'spmd'},
     "target_os=s"               => \$opts{'target_os'},
     "unicon"                    => \$opts{'unicon'},
@@ -317,7 +304,6 @@ GetOptions(
     "version"                   => \$opts{'version'},
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
-    "zmconv_org"                => \$opts{'zmconv_org'},
 )  or usage();
 
 # Give usage message.
@@ -568,10 +554,10 @@ if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$|^grayrad$/) {
 my $chem_pkg = 'not_set';
 
 # defaults based on physics package
-if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
+if ($simple_phys or $phys_pkg =~ m/^cam[34]$/) {
     $chem_pkg = 'none';
 }
-elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
+elsif ($phys_pkg eq 'cam5') {
     $chem_pkg = 'trop_mam3';
 }
 elsif ($phys_pkg eq 'cam6') {
@@ -602,7 +588,7 @@ if (defined $opts{'chem'}) {
                 "                 -chem can only be set to 'none' or 'terminator'.\n";
         }
     }
-    elsif ($phys_pkg =~ m/^cam4$|^spcam_sam1mom$/) {
+    elsif ($phys_pkg =~ m/cam4/) {
         # The modal aerosols are not valid with cam4 physics
         if ($chem_pkg =~ /_mam/) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
@@ -768,46 +754,6 @@ my $co2_cycle = $cfg_ref->get('co2_cycle');
 if ($co2_cycle and $print>=2) { print "co2_cycle option: ON$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# Superparameterization mode (SPCAM)
-#
-# These values all default to 1 unless specified by the user during configure
-
-if ($phys_pkg eq 'spcam_sam1mom' or $phys_pkg eq 'spcam_m2005') {
-
-    if ($smp eq 'ON') {
-        die "ERROR: SPCAM may not be used with threading $eol";
-    }
-
-   if ($print>=2) {print "Configure CAM for SPCAM (superparameterization) mode: $phys_pkg.$eol"; }
-
-   if (defined $opts{'spcam_nx'}) {
-       $cfg_ref->set('spcam_nx', $opts{'spcam_nx'});
-       my $spcam_nx = $cfg_ref->get('spcam_nx');
-       if ($spcam_nx < 4) {
-          die "configure ERROR: spcam_nx must be greater than or equal to 4\n";
-       }
-       if ($print>=2) {print "spcam_nx= $spcam_nx $eol"; }
-   }
-   if (defined $opts{'spcam_ny'}) {
-       $cfg_ref->set('spcam_ny', $opts{'spcam_ny'});
-       my $spcam_ny = $cfg_ref->get('spcam_ny');
-       if ($print>=2) {print "spcam_ny= $spcam_ny $eol"; }
-   }
-   if (defined $opts{'spcam_dx'}) {
-       $cfg_ref->set('spcam_dx', $opts{'spcam_dx'});
-       my $spcam_dx = $cfg_ref->get('spcam_dx');
-       if ($print>=2) {print "spcam_nx= $spcam_dx $eol"; }
-   }
-   if (defined $opts{'spcam_dt'}) {
-       $cfg_ref->set('spcam_dt', $opts{'spcam_dt'});
-       my $spcam_dt = $cfg_ref->get('spcam_dt');
-       if ($print>=2) {print "spcam_nt= $spcam_dt $eol"; }
-   }
-
-}
-
-
-#-----------------------------------------------------------------------------------------------
 # Micro-physics package
 
 # Set default
@@ -823,12 +769,6 @@ elsif ($phys_pkg eq 'cam6') {
 }
 elsif ($phys_pkg eq 'cam7') {
     $microphys_pkg = 'mg3';
-}
-elsif ($phys_pkg eq 'spcam_sam1mom') {
-    $microphys_pkg = 'spcam_sam1mom';
-}
-elsif ($phys_pkg eq 'spcam_m2005') {
-    $microphys_pkg = 'spcam_m2005';
 }
 
 # Allow the user to override the default via the commandline.
@@ -920,14 +860,6 @@ $cfg_ref->set('silhs', $silhs);
 if ($print>=2) { print "silhs: $silhs$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# SPCAM version of CLUBB
-if (defined $opts{'spcam_clubb_sgs'}) {
-    $cfg_ref->set('spcam_clubb_sgs', $opts{'spcam_clubb_sgs'});
-}
-my $spcam_clubb_sgs = $cfg_ref->get('spcam_clubb_sgs');
-
-
-#-----------------------------------------------------------------------------------------------
 # Break apart CLUBB options into separate fields
 
 if (defined $opts{'clubb_opts'}) {
@@ -938,16 +870,6 @@ if (defined $opts{'clubb_opts'}) {
 }
 my $clubb_do_adv = $cfg_ref->get('clubb_do_adv');
 if ($print>=2) { print "clubb_do_adv: $clubb_do_adv$eol"; }
-
-#-----------------------------------------------------------------------------------------------
-# ZM convective organization
-
-if (defined $opts{'zmconv_org'}) {
-    $cfg_ref->set('zmconv_org', $opts{'zmconv_org'});
-}
-
-my $zmconv_org = $cfg_ref->get('zmconv_org');
-if ($print>=2) { print "zmconv_org: $zmconv_org$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Macro-physics package
@@ -968,18 +890,12 @@ elsif ($phys_pkg =~ /cam6/) {
         $macrophys_pkg = 'park';
     }
 }
-elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/) {
     $macrophys_pkg = 'clubb_sgs';
-}
-elsif ($phys_pkg eq 'spcam_sam1mom') {
-    $macrophys_pkg = 'spcam_sam1mom';
-}
-elsif ($phys_pkg eq 'spcam_m2005') {
-    $macrophys_pkg = 'spcam_m2005';
 }
 
 # user overrides
-if ($clubb_sgs or $spcam_clubb_sgs) {
+if ($clubb_sgs) {
   $macrophys_pkg = 'clubb_sgs';
 }
 
@@ -1011,14 +927,8 @@ elsif ($phys_pkg =~ /cam6/) {
         $pbl_pkg = 'uw';
     }
 }
-elsif ($phys_pkg =~ /cam7/ and $clubb_sgs) {
+elsif ($phys_pkg =~ /cam7/) {
     $pbl_pkg = 'clubb_sgs';
-}
-elsif ($phys_pkg eq 'spcam_sam1mom') {
-    $pbl_pkg = 'spcam_sam1mom';
-}
-elsif ($phys_pkg eq 'spcam_m2005') {
-    $pbl_pkg = 'spcam_m2005';
 }
 
 # Allow the user to override the default via the commandline.
@@ -1071,10 +981,10 @@ if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
 
 # Set default
 my $rad_pkg = 'none';
-if ($phys_pkg =~ m/cam4|spcam_sam1mom/) {
+if ($phys_pkg =~ m/cam4/) {
     $rad_pkg = 'camrt';
 }
-elsif ($phys_pkg =~ m/cam5|cam6|spcam_m2005/) {
+elsif ($phys_pkg =~ m/cam5|cam6/) {
     $rad_pkg = 'rrtmg';
 }
 elsif ($phys_pkg =~ m/cam7/) {
@@ -1128,31 +1038,6 @@ if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam
 }
 
 if ($cosp and $print>=2) { print "COSP simulator enabled$eol"; }
-
-#-----------------------------------------------------------------------------------------------
-# Checks for SPCAM compatability
-
-if ($phys_pkg eq 'spcam_sam1mom') {
-   if ($rad_pkg ne 'camrt') {
-        die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
-            "                 with sam1mom -- it should be camrt\n";
-  }
-   if ($chem_pkg ne 'none') {
-        die "configure ERROR: chemistry package: $chem_pkg is not compatible\n".
-            "                 with sam1mom -- it should be none\n";
-  }
-}
-
-if ($phys_pkg eq 'spcam_m2005') {
-   if ($rad_pkg !~ m/rrtmg/) {
-        die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
-            "                 with m2005 -- it should be rrtmg\n";
-  }
-   if ($chem_pkg ne 'trop_mam3') {
-        die "configure ERROR: chemistry package: $chem_pkg is not compatible\n".
-            "                 with m2005 -- it should be trop_mam3\n";
-  }
-}
 
 #-----------------------------------------------------------------------------------------------
 # offline unit driver
@@ -1362,10 +1247,10 @@ elsif ($phys_pkg eq 'cam7') {
 elsif ($phys_pkg eq 'cam6') {
     $nlev = 32;
 }
-elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
+elsif ($phys_pkg eq 'cam5') {
     $nlev = 30;
 }
-elsif ($phys_pkg eq 'cam4' or $phys_pkg eq 'spcam_sam1mom') {
+elsif ($phys_pkg eq 'cam4') {
     $nlev = 26;
 }
 else {
@@ -1389,10 +1274,6 @@ EOF
 $cfg_ref->set('nlev', $nlev);
 
 if ($print>=2) { print "Number of vertical levels: $nlev$eol"; }
-
-if ($phys_pkg eq 'spcam_sam1mom' or $phys_pkg eq 'spcam_m2005') {
-   $cfg_ref->set('spcam_nz', $nlev-2);
-}
 
 #------------------------------------------------------------------------------------------------
 # chemistry preprocessor....
@@ -1552,11 +1433,11 @@ else {
     unless ($simple_phys) {
 
         # Microphysics parameterization
-        if ($microphys_pkg eq 'rk' or $microphys_pkg eq 'spcam_sam1mom') {
+        if ($microphys_pkg eq 'rk') {
             $nadv += 2;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 2$eol"; }
         }
-        elsif ($microphys_pkg =~ /^mg1/ or $microphys_pkg eq 'spcam_m2005') {
+        elsif ($microphys_pkg =~ /^mg1/) {
             $nadv += 4;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 4$eol"; }
         }
@@ -1567,11 +1448,6 @@ else {
         elsif ($microphys_pkg =~/^mg3/) {
             $nadv += 10;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 10$eol"; }
-        }
-
-        if ($zmconv_org == 1 ) {
-          $nadv += 1;
-            if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
         }
 
         if ($clubb_do_adv) {
@@ -1860,28 +1736,6 @@ my $cfg_cppdefs = ' ';
 
 # Building for perturbation growth tests
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
-
-# Building for superparameterization
-my $spcam_clubb_sgs = $cfg_ref->get('spcam_clubb_sgs');
-my $spcam_nx        = $cfg_ref->get('spcam_nx');
-my $spcam_ny        = $cfg_ref->get('spcam_ny');
-my $spcam_nz        = $cfg_ref->get('spcam_nz');
-my $spcam_dx        = $cfg_ref->get('spcam_dx');
-my $spcam_dt        = $cfg_ref->get('spcam_dt');
-
-my $yes3Dval        = 1;  # default to 3D for spcam
-if ($spcam_ny eq 1) {$yes3Dval = 0;}  #Turn off if not using 3D
-
-if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
-    $cfg_cppdefs .= " -DSPCAM_NX=$spcam_nx -DSPCAM_NY=$spcam_ny -DSPCAM_NZ=$spcam_nz -DSPCAM_DX=$spcam_dx -DSPCAM_DT=$spcam_dt -DYES3DVAL=$yes3Dval -DCRM ";
-    if ( $spcam_clubb_sgs == 1 )    {
-        $cfg_cppdefs .= "-DSPCAM_CLUBB_SGS -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp -DCLUBB_SAM";  ## -DNO_LAPACK_ISNAN";
-    }
-}
-
-if ($phys_pkg eq 'spcam_m2005') {$cfg_cppdefs .= " -DECPP -Dm2005";}
-
-if ($phys_pkg eq 'spcam_sam1mom') {$cfg_cppdefs .= "  -Dsam1mom";}
 
 # Configure CAM to produce IOP files for SCAM
 if ($camiop eq 'ON') { $cfg_cppdefs .= " -DBFB_CAM_SCAM_IOP"; }
@@ -2307,29 +2161,6 @@ sub write_filepath
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
     }
 
-    # Superparameterization
-    if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
-        print $fh "$camsrcdir/src/physics/spcam\n";
-        print $fh "$camsrcdir/src/physics/spcam/crm\n";
-
-        # add additional directories for sam6.10.4
-        print $fh "$camsrcdir/src/physics/spcam/crm/ADV_MPDATA\n";
-        if ($phys_pkg eq 'spcam_sam1mom') {
-           print $fh "$camsrcdir/src/physics/spcam/crm/MICRO_SAM1MOM\n";
-        }
-        if ($phys_pkg eq 'spcam_m2005') {
-              print $fh "$camsrcdir/src/physics/spcam/crm/MICRO_M2005\n";
-              print $fh "$camsrcdir/src/physics/spcam/ecpp\n";
-        }
-        if ( $spcam_clubb_sgs == 1 ) {
-           print $fh "$camsrcdir/src/physics/spcam/crm/CLUBB\n";
-           print $fh "$camsrcdir/src/physics/spcam/crm/SGS_CLUBBkvhkvm\n"
-        }
-        else {
-           print $fh "$camsrcdir/src/physics/spcam/crm/SGS_TKE\n";
-        }
-    }
-
     # This directory contains much of the code for physics packages,
     # as well as the cam specific interface modules that may need to
     # be overridden by modules from directories that occur earlier
@@ -2343,6 +2174,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+
+    print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
