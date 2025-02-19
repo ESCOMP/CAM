@@ -1222,6 +1222,13 @@ Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
 </entry>
 
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to enable gravity waves from residual (non-ridge)
+orography
+Default: set by build-namelist.
+</entry>
+
 <entry id="pgwv" type="integer" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Gravity wave spectrum dimension (wave numbers are from -pgwv to pgwv).
@@ -1323,6 +1330,36 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Max efficiency associated with anisotropic OGW.
 Default: 1.0
+</entry>
+
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor associated with residual non-ridge topo
+Default: set by build-namelist.
+</entry>
+
+<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor for moving mountain source
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_psteer" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_plaunch" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
 </entry>
 
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
@@ -3156,13 +3193,6 @@ Tunable evaporation efficiency in ZM deep convection scheme.
 Default: set by build-namelist
 </entry>
 
-<entry id="zmconv_org" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Include organization parameterization in ZM.   This value is set to true automatically
-if -zmconv_org is set in configure.
-Default: .false., unless -zmconv_org set in configure
-</entry>
-
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
@@ -3480,16 +3510,14 @@ Default: 10
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+Default: 'ZM' unless using 'UNICON' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
-SPCAM has two different microphysics schemes: SPCAM_m2005 (Morrison et al 2005),
-SPCAM_sam1mom (Khairoutinov 2003)
 Default: set by build-namelist (depends on value set in configure).
 </entry>
 
@@ -3509,14 +3537,12 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
  'UNICON' which doesn't distinquish shallow and deep.
- 'SPCAM_m2005' for SPCAM double moment
- 'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -5239,7 +5265,7 @@ Default: 0
 </entry>
 
 <entry id="eddy_scheme" type="char*16" category="pbl"
-       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS,SPCAM_sam1mom,SPCAM_m2005" >
+       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS" >
 Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
@@ -6058,7 +6084,7 @@ Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
   OFF --> wet deposition is turned off
-Default: NEU except for SPCAM runs
+Default: NEU
 </entry>
 
 <entry id="gas_wetdep_list" type="char*16(1000)" category="cam_chem"

@@ -57,19 +57,19 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="phys" valid_values="cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
-Physics package: cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
+<entry id="phys" valid_values="cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad" value="">
+Physics package: cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad.
 </entry>
 <entry id="hemco" valid_values="0,1" value="0">
 Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.
 </entry>
-<entry id="microphys" valid_values="rk,mg1,mg2,mg3,pumas,spcam_m2005,spcam_sam1mom,none" value="">
+<entry id="microphys" valid_values="rk,mg1,mg2,mg3,pumas,none" value="">
 Microphysics package: rk (Rasch and Kristjansson), mg1 (Morrison and
 Gettelman two moment scheme CAM5.1), mg2 (Morrison and Gettelman second
-version CAM6), mg3 (MG scheme 3rd version, graupel), PUMAS, SPCAM_m2005, SPCAM_sam1mom.
+version CAM6), mg3 (MG scheme 3rd version, graupel), PUMAS.
 </entry>
-<entry id="macrophys" valid_values="rk,park,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
-Macrophysics package: RK, Park, CLUBB_SGS, SPCAM_sam1mom, SPCAM_m2005.
+<entry id="macrophys" valid_values="rk,park,clubb_sgs,none" value="">
+Macrophysics package: RK, Park, CLUBB_SGS.
 </entry>
 <entry id="clubb_sgs" valid_values="0,1" value="0">
 Switch to turn on CLUBB_SGS package: 0 => no, 1 => yes
@@ -83,13 +83,9 @@ Switch to turn on UNICON package: 0 => off, 1 => on
 <entry id="clubb_do_adv" valid_values="0,1" value="0">
 Switch to turn on/off advecting CLUBB moments: 0 => no, 1 => yes
 </entry>
-<entry id="zmconv_org" valid_values="0,1" value="0">
-Switch to turn on/off parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
-on Mapes and Neale (2011): 0 => no, 1 => yes
-</entry>
-<entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
+<entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,none" value="">
 PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
- (Holtslag, Boville, and Rasch), clubb_sgs, spcam_sam1om, spcam_m2005, none.
+ (Holtslag, Boville, and Rasch), clubb_sgs, none.
 </entry>
 <entry id="rad" valid_values="rrtmgp,rrtmg,camrt,none" value="">
 Radiative transfer calculation:
@@ -304,24 +300,6 @@ in Perl's $OSNAME variable.  This parameter allows the user to override
 that setting to allow for cross-compilation, and for instances where the
 $OSNAME value is too generic.  For example, currently on both cray-xt and
 bluegene systems $OSNAME has the value "linux".
-</entry>
-<entry id="spcam_clubb_sgs" valid_values="0,1" value="0">
-Switch to turn on SPCAM version of CLUBB_SGS package: 0 => no, 1 => yes
-</entry>
-<entry id="spcam_nx" value="4">
-SPCAM number of grid points in x
-</entry>
-<entry id="spcam_ny" value="1">
-SPCAM number of grid points in y
-</entry>
-<entry id="spcam_nz" value="1">
-SPCAM number of grid points in z
-</entry>
-<entry id="spcam_dx" value="1">
-SPCAM horizontal grid spacing, m
-</entry>
-<entry id="spcam_dt" value="1">
-SPCAM time step, s
 </entry>
 
 </config_definition>
