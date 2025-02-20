@@ -72,7 +72,7 @@ subroutine mcica_subcol_lw( &
    integer :: i, isubcol, k, n
 
    real(r8), parameter :: cldmin = 1.0e-80_r8  ! min cloud fraction
-   real(r8) :: cldf(ncol,pver)      ! cloud fraction clipped to cldmin
+   real(r8) :: cldf(ncol,nver)      ! cloud fraction clipped to cldmin
 
    type(ShrKissRandGen) :: kiss_gen  ! KISS RNG object
    integer  :: kiss_seed(ncol,4)
@@ -84,8 +84,7 @@ subroutine mcica_subcol_lw( &
    !------------------------------------------------------------------------------------------
 
    ! clip cloud fraction
-   cldf(:,1:pver-nver) = 0._r8
-   cldf(:,pver-nver+1:pver) = cldfrac(:ncol,:nver)
+   cldf(:,:) = cldfrac(:ncol,:)
    where (cldf(:,:) < cldmin)
       cldf(:,:) = 0._r8
    end where

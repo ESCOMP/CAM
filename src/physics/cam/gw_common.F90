@@ -855,11 +855,7 @@ subroutine momentum_fixer(tend_level, p, um_flux, vm_flux, utgw, vtgw)
 
   ! Total mass from ground to source level: rho*dz = dp/gravit
   do i = 1, size(tend_level)
-     if (tend_level(i)<pver) then
-        rdm(i) = gravit/(p%ifc(i,pver+1)-p%ifc(i,tend_level(i)+1))
-     else
-        rdm(i) = 0.0_r8
-     end if
+     rdm(i) = gravit/(p%ifc(i,pver+1)-p%ifc(i,tend_level(i)+1))
   end do
 
   ! Average velocity changes.
@@ -927,11 +923,7 @@ subroutine energy_fixer(tend_level, p, de, ttgw)
   real(r8) :: de_dm(size(tend_level))
 
   do i = 1, size(tend_level)
-     if (tend_level(i)<pver) then
-        de_dm(i) = -de(i)*gravit/(p%ifc(i,pver+1)-p%ifc(i,tend_level(i)+1))
-     else
-        de_dm(i) = 0.0_r8
-     end if
+     de_dm(i) = -de(i)*gravit/(p%ifc(i,pver+1)-p%ifc(i,tend_level(i)+1))
   end do
 
   ! Subtract net gain/loss of total energy below tend_level.
