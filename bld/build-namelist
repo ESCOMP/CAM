@@ -4079,27 +4079,6 @@ if ( $dyn eq 'fv3') {
 
 }
 
-# EUL dycore
-if ($dyn eq 'eul') {
-    add_default($nl, 'eul_dif2_coef');
-    add_default($nl, 'eul_hdif_order');
-    add_default($nl, 'eul_hdif_kmnhdn');
-    add_default($nl, 'eul_hdif_coef');
-    add_default($nl, 'eul_divdampn');
-    add_default($nl, 'eul_tfilt_eps');
-    add_default($nl, 'eul_kmxhdc');
-    add_default($nl, 'eul_nsplit');
-}
-
-# SLD dycore
-if ($dyn eq 'sld') {
-    add_default($nl, 'sld_dif2_coef');
-    add_default($nl, 'sld_dif4_coef');
-    add_default($nl, 'sld_divdampn');
-    add_default($nl, 'sld_tfilt_eps');
-    add_default($nl, 'sld_kmxhdc');
-}
-
 # Single column model
 if ($cfg->get('scam')) {
     add_default($nl, 'iopfile');

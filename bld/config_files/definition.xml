@@ -26,8 +26,8 @@ Switch specifies whether CAM is being built by the CCSM sequential scripts.  0 =
 <entry id="cpl" valid_values="mct,nuopc" value="mct" >
 Coupling framework: mct or nuopc.  Default: mct.
 </entry>
-<entry id="dyn" valid_values="eul,fv,fv3,se,mpas" value="">
-Dynamics package: eul, fv, fv3, se, or mpas.
+<entry id="dyn" valid_values="fv,fv3,se,mpas" value="">
+Dynamics package: fv, fv3, se, or mpas.
 </entry>
 <entry id="waccm_phys" valid_values="0,1" value="0">
 Switch to turn on waccm physics: 0 => no, 1 => yes.
@@ -144,15 +144,15 @@ Modifications that allow perturbation growth testing: 0=off, 1=on.
 </entry>
 <entry id="scam" valid_values="0,1" value="0">
 Configure CAM for single column mode and specify an IOP: 0=no, 1=yes.
-This option only supported for the Eulerian and SE dycores.
+This option only supported for the SE dycore.
 </entry>
 <entry id="scam_iop" valid_values="arm95,arm97,atex,bomex,cgilss11,cgilss12,cgilss6,dycomsrf01,dycomsrf02,gateiii,mpace,rico,sas,sparticus,togaii,twp06,camfrc,none" value="none">
 Single column IOP
-Supported for Eulerian and SE dycores.
+Only supported for SE dycore.
 </entry>
 <entry id="camiop" valid_values="0,1" value="0">
 Configure CAM to generate an IOP file that can be used to drive SCAM: 0=no, 1=yes.
-Supported for Eulerian and SE dycores.
+Only supported for SE dycore.
 </entry>
 <entry id="hgrid" value="">
 Horizontal grid specifier.  The recognized values depend on
@@ -190,15 +190,6 @@ Switch on (off) age of air tracers: 0=off, 1=on.
 <entry id="max_n_rad_cnst" value="30">
 Maximum number of constituents that are radiatively active or in any one
 diagnostic list.
-</entry>
-<entry id="trm" value="1">
-Maximum Fourier wavenumber.
-</entry>
-<entry id="trn" value="1">
-Highest degree of the Legendre polynomials for m=0.
-</entry>
-<entry id="trk" value="1">
-Highest degree of the associated Legendre polynomials.
 </entry>
 <entry id="pcols" value="16">
 Maximum number of columns in a chunk (physics data structure).

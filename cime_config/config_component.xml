@@ -12,7 +12,7 @@
     <desc atm="CAM60[%1PCT][%4xCO2][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
     <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -73,7 +73,6 @@
     ===============
    -->
     <desc option="ADIAB"        >CAM dry adiabatic configurarion (no physics forcing):</desc>
-    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
     <desc option="GRAYRAD"      >CAM moist simple model (Frierson, 2006):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
@@ -107,10 +106,9 @@
 
   <entry id="CAM_DYCORE">
     <type>char</type>
-    <valid_values>eul,fv,fv3,se,mpas</valid_values>
+    <valid_values>fv,fv3,se,mpas</valid_values>
     <default_value>fv</default_value>
     <values match="last">
-      <value grid="a%T[1-9]" >eul</value>
       <value grid="a%ne[0-9]">se</value>
       <value grid="a%C[0-9]" >fv3</value>
       <value grid="a%mpasa[0-9]">mpas</value>
@@ -187,7 +185,6 @@
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
-      <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
@@ -308,7 +305,6 @@
       <value compset="_CAM60%.*CT2S%SDYN" >sd_trop_strat2_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
-      <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%GRAYRAD"       >dctest_frierson</value>

@@ -2708,12 +2708,10 @@ contains
     call tot_energy_phys(state, 'phBF')
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
 
-    if (.not.dycore_is('EUL')) then
-       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
-       call physics_update(state, ptend, ztodt, tend)
-       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
-       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
-    end if
+    call check_energy_cam_fix(state, ptend, nstep, flx_heat)
+    call physics_update(state, ptend, ztodt, tend)
+    call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+    call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
 
     call tot_energy_phys(state, 'phBP')
     call tot_energy_phys(state, 'dyBP',vc=vc_dycore)

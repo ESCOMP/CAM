@@ -485,7 +485,7 @@ subroutine vorticity_flux_src (vorticity , ncol, pverx, alpha_gw_movmtn, vort_sr
   steering_level(:ncol) = pverx - 20
   launch_level(:ncol)   = steering_level -10
 
-  scale_factor   = 1.e4 ! scales vorticity amp to u'w' in CLUBB
+  scale_factor   = 1.e4_r8 ! scales vorticity amp to u'w' in CLUBB
   !-----------------------------------
   ! Simple average over layers.
   ! Probably can do better

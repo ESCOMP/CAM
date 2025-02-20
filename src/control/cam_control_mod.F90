@@ -149,7 +149,7 @@ subroutine cam_ctrl_set_physics_type(phys_package)
   if (masterproc) then
     if (adiabatic) then
       write(iulog,*) 'Run model ADIABATICALLY (i.e. no physics)'
-      write(iulog,*) '  Global energy fixer is on for non-Eulerian dycores.'
+      write(iulog,*) '  Global energy fixer is on.'
     else if (ideal_phys) then
       write(iulog,*) 'Run model with Held-Suarez physics forcing'
     else if (kessler_phys) then

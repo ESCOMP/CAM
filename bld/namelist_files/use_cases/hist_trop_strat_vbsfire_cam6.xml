@@ -61,7 +61,7 @@
       'IVOC = 0.033*C2H4 + 0.035*C2H6 + 0.049*C3H6 + 0.052*C3H8 + 0.066*BIGENE +  0.068*BIGALK + 0.068*CH3COCH3 + 0.085*MEK + 0.052*CH3CHO + 0.035*CH2O + 0.108*TOLUENE + 0.092*BENZENE + 0.125*XYLENE'
 </fire_emis_specifier>
 <fire_emis_elevated>.false.</fire_emis_elevated>
-<fire_emis_factors_file>lnd/clm2/firedata/fire_emission_factors_78PFTs_c20220111.nc</fire_emis_factors_file>
+<fire_emis_factors_file>lnd/clm2/firedata/fire_emission_factors_78PFTs_c20240624.nc</fire_emis_factors_file>
 
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
 
