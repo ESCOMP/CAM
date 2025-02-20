@@ -1289,8 +1289,9 @@ end subroutine physics_ptend_copy
         state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
       end do
     else
-      call dme_adjust_run (state%ncol, pver, pcnst, state%ps, state%pint, state%pdel, state%lnpint, state%rpdel, &
-         ccpp_const_props, state%q, qini, liqini, iceini, errmsg, errflg)
+      call dme_adjust_run (state%ncol, pver, pcnst, state%ps(:ncol), state%pint(:ncol,:), state%pdel(:ncol,:), &
+                           state%lnpint(:ncol,:), state%rpdel(:ncol,:), &
+                           ccpp_const_props, state%q(:ncol,:,:), qini(:ncol,:), liqini(:ncol,:), iceini(:ncol,:), errmsg, errflg)
       if (errflg /= 0) then
          call endrun('physics_dme_adjust: '//errmsg)
       end if
