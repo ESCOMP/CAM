@@ -49,21 +49,6 @@ def buildcpp(case):
         atm_grid = match.groups()[0]
         nlev = match.groups()[1]
 
-    # The following translations are hard-wired to support the differences
-    # between how the CESM scripts specify the grid and how it is specified
-    # by CAM's build and run system.
-
-    if atm_grid == 'T5':
-        atm_grid = '8x16'
-    if atm_grid == 'T31':
-        atm_grid = '48x96'
-    if atm_grid == 'T42':
-        atm_grid = '64x128'
-    if atm_grid == 'T85':
-        atm_grid = '128x256'
-    if atm_grid == 'T341':
-        atm_grid = '512x1024'
-
     # Need to relax this error tolerance for the SE variable resolution grids
     if atm_grid[0:3] == 'ne0':
         case.set_value("EPS_AAREA", "1.0e-04")
@@ -80,10 +65,6 @@ def buildcpp(case):
 
     if nlev:
         config_opts += ["-nlev", nlev]
-
-    # Some settings for single column mode.
-    if pts_mode:
-        config_opts.append("-scam")
 
     if mpilib == 'mpi-serial':
         config_opts.append("-nospmd")

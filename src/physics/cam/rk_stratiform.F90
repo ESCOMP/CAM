@@ -3,7 +3,7 @@ module rk_stratiform
 !-------------------------------------------------------------------------------------------------------
 !
 ! Provides the CAM interface to the Rasch and Kristjansson (RK)
-! prognostic cloud microphysics, and the cam3/4 macrophysics.
+! prognostic cloud microphysics, and the cam4 macrophysics.
 !
 !-------------------------------------------------------------------------------------------------------
 
@@ -356,7 +356,7 @@ subroutine rk_stratiform_init()
       call add_default ('EVAPPREC ', history_budget_histfile_num, ' ')
       call add_default ('CMELIQ   ', history_budget_histfile_num, ' ')
 
-      if( cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') ) then
+      if( cam_physpkg_is('cam4') ) then
 
          call add_default ('ZMDLF    ', history_budget_histfile_num, ' ')
          call add_default ('CME      ', history_budget_histfile_num, ' ')
@@ -427,7 +427,8 @@ subroutine rk_stratiform_tend( &
    !                                                         !
    !-------------------------------------------------------- !
 
-   use cloud_fraction,   only: cldfrc, cldfrc_fice
+   use cloud_fraction,   only: cldfrc
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
    use physics_types,    only: physics_state, physics_ptend
    use physics_types,    only: physics_ptend_init, physics_update
    use physics_types,    only: physics_ptend_sum,  physics_state_copy
@@ -438,9 +439,9 @@ subroutine rk_stratiform_tend( &
    use cldwat,           only: pcond
    use pkg_cldoptics,    only: cldefr
    use phys_control,     only: cam_physpkg_is
-   use tropopause,       only: tropopause_find, TROP_ALG_TWMO, TROP_ALG_CLIMATE
+   use tropopause,       only: tropopause_find_cam
    use phys_grid,        only: get_rlat_all_p
-   use physconst,        only: pi
+   use physconst,        only: pi, tmelt
 
    ! Arguments
    type(physics_state), intent(in)    :: state       ! State variables
@@ -577,6 +578,9 @@ subroutine rk_stratiform_tend( &
    real(r8) :: dlat(pcols)
    real(r8), parameter :: rad2deg = 180._r8/pi
 
+   integer  :: top_lev
+
+
    ! ======================================================================
 
    lchnk = state%lchnk
@@ -626,7 +630,10 @@ subroutine rk_stratiform_tend( &
    end if
 
    if ( do_psrhmin ) then
-      call tropopause_find(state, troplev, primary=TROP_ALG_TWMO, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      !REMOVECAM_END
+      call tropopause_find_cam(state, troplev)
       call get_rlat_all_p(lchnk,ncol,rlat)
       dlat(:ncol) = rlat(:ncol)*rad2deg
    endif
@@ -809,7 +816,9 @@ subroutine rk_stratiform_tend( &
    fice(:,:) = 0._r8
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
-   call cldfrc_fice(ncol, state1%t(1:ncol,:), fice(1:ncol,:), fsnow(1:ncol,:))
+   top_lev = 1
+   call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
+
 
    ! Perform repartitioning of stratiform condensate.
    ! Corresponding heating tendency will be added later.
@@ -954,20 +963,16 @@ subroutine rk_stratiform_tend( &
    call physics_ptend_sum( ptend_loc, ptend_all, ncol )
    call physics_update( state1, ptend_loc, dtime )
 
-   if (.not. cam_physpkg_is('cam3')) then
-
-      call t_startf("cldfrc")
-      call cldfrc( lchnk, ncol, pbuf,                                  &
-                   state1%pmid, state1%t, state1%q(:,:,1), state1%omega, state1%phis, &
-                   shfrc, use_shfrc,                                                  &
-                   cld, rhcloud, clc, state1%pdel,                                    &
-                   cmfmc, cmfmc_sh, landfrac, snowh, concld, cldst,                   &
-                   ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
-                   state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
-                   relhum, 0 )
-      call t_stopf("cldfrc")
-
-   endif
+   call t_startf("cldfrc")
+   call cldfrc( lchnk, ncol, pbuf,                                  &
+                state1%pmid, state1%t, state1%q(:,:,1), state1%omega, state1%phis, &
+                shfrc, use_shfrc,                                                  &
+                cld, rhcloud, clc, state1%pdel,                                    &
+                cmfmc, cmfmc_sh, landfrac, snowh, concld, cldst,                   &
+                ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
+                state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
+                relhum, 0 )
+   call t_stopf("cldfrc")
 
    call outfld( 'CONCLD  ', concld, pcols, lchnk )
    call outfld( 'CLDST   ', cldst,  pcols, lchnk )

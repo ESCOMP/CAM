@@ -14,10 +14,12 @@
    use physconst,         only : cpair, zvir
    use ppgrid,            only : pver, pcols, pverp
    use zm_conv_evap,      only : zm_conv_evap_run
-   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd,  zmconv_org
+   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog
    use phys_control,      only : phys_getopts
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
+   use ref_pres,          only: trop_cloud_top_lev
 
    implicit none
    private
@@ -87,9 +89,6 @@
   use unicon_cam,     only: unicon_cam_register
 
   call phys_getopts( shallow_scheme_out = shallow_scheme, microp_scheme_out = microp_scheme)
-
-  ! SPCAM registers its own fields
-  if (shallow_scheme == 'SPCAM') return
 
   call pbuf_add_field('ICWMRSH',    'physpkg' ,dtype_r8,(/pcols,pver/),       icwmrsh_idx )
   call pbuf_add_field('RPRDSH',     'physpkg' ,dtype_r8,(/pcols,pver/),       rprdsh_idx )
@@ -165,9 +164,6 @@
   integer k
   character(len=16)          :: eddy_scheme
 
-  ! SPCAM does its own convection
-  if (shallow_scheme == 'SPCAM') return
-
   ! ------------------------------------------------- !
   ! Variables for detailed abalysis of UW-ShCu scheme !
   ! ------------------------------------------------- !
@@ -215,6 +211,7 @@
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CMFSL',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection liquid water static energy flux'  )
   call addfld( 'CMFLQ',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection total water flux'                 )
+  call addfld ('DQP',        (/ 'lev' /),  'A', 'kg/kg/s',  'Specific humidity tendency due to precipitation'           )
   call addfld( 'CBMF',       horiz_only,   'A', 'kg/m2/s',  'Cloud base mass flux'                                      )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
   call addfld( 'CLDBOT',     horiz_only,   'I', '1',        'Vertical index of cloud base'                              )
@@ -249,7 +246,7 @@
       call add_default( 'CMFDICE  ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDT   ', history_budget_histfile_num, ' ' )
       call add_default( 'CMFDQ   ', history_budget_histfile_num, ' ' )
-      if( cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') ) then
+      if( cam_physpkg_is('cam4') ) then
          call add_default( 'EVAPQCM  ', history_budget_histfile_num, ' ' )
          call add_default( 'EVAPTCM  ', history_budget_histfile_num, ' ' )
       end if
@@ -472,9 +469,20 @@
    real(r8), pointer, dimension(:,:) :: cmfmc2              ! (pcols,pverp) Updraft mass flux by shallow convection [ kg/s/m2 ]
    real(r8), pointer, dimension(:,:) :: sh_e_ed_ratio       ! (pcols,pver) fer/(fer+fdr) from uwschu
 
+   real(r8), dimension(pcols,pver) :: fsnow_conv
+   real(r8), dimension(pcols,pver) :: fice
+
    logical                           :: lq(pcnst)
 
    type(unicon_out_t) :: unicon_out
+
+   character(len=40) :: scheme_name
+   character(len=16) :: macrop_scheme
+   character(len=512):: errmsg
+   integer           :: errflg
+   integer :: top_lev
+
+
 
    ! ----------------------- !
    ! Main Computation Begins !
@@ -871,16 +879,25 @@
     tend_s_snwprd(:,:) = 0._r8
     tend_s_snwevmlt(:,:) = 0._r8
     snow(:) = 0._r8
+    fice(:,:) = 0._r8
+    fsnow_conv(:,:) = 0._r8
     !REMOVECAM_END
+
+    top_lev = 1
+    call phys_getopts (macrop_scheme_out  = macrop_scheme)
+    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+
+    call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:))
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
-         cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
+         cpair, zmconv_ke, zmconv_ke_lnd, &
          state1%t(:ncol,:),state1%pmid(:ncol,:),state1%pdel(:ncol,:),state1%q(:ncol,:pver,1), &
          landfracdum(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprdsh(:ncol,:), cld(:ncol,:), ztodt, &
-         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
+         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
+         scheme_name, errmsg, errflg)
 
    ! ---------------------------------------------- !
    ! record history variables from zm_conv_evap_run !

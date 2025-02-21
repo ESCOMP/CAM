@@ -109,6 +109,18 @@ module gw_drag
   real(r8) :: effgw_beres_dp = unset_r8
   ! Beres (shallow convection).
   real(r8) :: effgw_beres_sh = unset_r8
+  ! PBL moving mtn
+  real(r8) :: effgw_movmtn_pbl = unset_r8
+  integer  :: movmtn_source  = -1
+  integer  :: movmtn_ksteer  = -1
+  integer  :: movmtn_klaunch = -1
+  real(r8) :: movmtn_psteer  = unset_r8
+  real(r8) :: movmtn_plaunch = unset_r8
+
+  ! Parameters controlling isotropic residual
+  ! orographic GW.
+  logical :: use_gw_rdg_resid = .false.
+  real(r8) :: effgw_rdg_resid = unset_r8
 
   ! Horzontal wavelengths [m].
   real(r8), parameter :: wavelength_mid = 1.e5_r8
@@ -155,6 +167,9 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
+
+  integer :: vort4gw_idx  = -1
+
   integer :: sgh_idx      = -1
 
   ! From CLUBB
@@ -168,7 +183,9 @@ module gw_drag
   integer, parameter :: prdg = 16
 
   real(r8), allocatable, dimension(:,:), target :: &
-     rdg_gbxar
+     rdg_gbxar, &
+     rdg_isovar, &
+     rdg_isowgt
 
      ! Meso Beta
   real(r8), allocatable, dimension(:,:,:), target :: &
@@ -235,14 +252,9 @@ subroutine gw_drag_readnl(nlfile)
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  ! fcrit2 for the mid-scale waves has been made a namelist variable to
-  ! facilitate backwards compatibility with the CAM3 version of this
-  ! parameterization.  In CAM3, fcrit2=0.5.
-  real(r8) :: fcrit2 = unset_r8   ! critical froude number squared
-
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
-       fcrit2, frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
+       frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
        taubgnd_igw, gw_polar_taper, &
        use_gw_rdg_beta, n_rdg_beta, effgw_rdg_beta, effgw_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
@@ -250,7 +262,10 @@ subroutine gw_drag_readnl(nlfile)
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
-       gw_top_taper, front_gaussian_width, alpha_gw_movmtn
+       gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
+       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
+       movmtn_plaunch
+
   !----------------------------------------------------------------------
 
   if (use_simple_phys) return
@@ -320,8 +335,6 @@ subroutine gw_drag_readnl(nlfile)
 
   call mpi_bcast(gw_oro_south_fac, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_oro_south_fac")
-  call mpi_bcast(fcrit2, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: fcrit2")
   call mpi_bcast(frontgfc, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frontgfc")
   call mpi_bcast(taubgnd, 1, mpi_real8, mstrid, mpicom, ierr)
@@ -358,11 +371,20 @@ subroutine gw_drag_readnl(nlfile)
 
   call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
+  call mpi_bcast(effgw_movmtn_pbl, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_movmtn_pbl")
+  call mpi_bcast(movmtn_source, 1, mpi_integer, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_source")
+  call mpi_bcast(movmtn_psteer, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_psteer")
+  call mpi_bcast(movmtn_plaunch, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_plaunch")
 
-  ! Check if fcrit2 was set.
-  call shr_assert(fcrit2 /= unset_r8, &
-       "gw_drag_readnl: fcrit2 must be set via the namelist."// &
-       errMsg(__FILE__, __LINE__))
+  call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_resid")
+  call mpi_bcast(effgw_rdg_resid, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_resid")
+
 
   ! Check if pgwv was set.
   call shr_assert(pgwv >= 0, &
@@ -375,7 +397,7 @@ subroutine gw_drag_readnl(nlfile)
        "gw_drag_readnl: gw_dc must be set via the namelist."// &
        errMsg(__FILE__, __LINE__))
 
-  band_oro = GWBand(0, gw_dc, fcrit2, wavelength_mid)
+  band_oro = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
   band_mid = GWBand(pgwv, gw_dc, 1.0_r8, wavelength_mid)
   band_long = GWBand(pgwv_long, gw_dc_long, 1.0_r8, wavelength_long)
   band_movmtn = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
@@ -648,6 +670,8 @@ subroutine gw_init()
      ! Get beta ridge data
      allocate( &
         rdg_gbxar(pcols,begchunk:endchunk),      &
+        rdg_isovar(pcols,begchunk:endchunk),     &
+        rdg_isowgt(pcols,begchunk:endchunk),     &
         rdg_hwdth(pcols,prdg,begchunk:endchunk), &
         rdg_clngt(pcols,prdg,begchunk:endchunk), &
         rdg_mxdis(pcols,prdg,begchunk:endchunk), &
@@ -658,6 +682,18 @@ subroutine gw_init()
                          begchunk, endchunk, rdg_gbxar, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: GBXAR not found on topo file')
      rdg_gbxar = rdg_gbxar * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
+
+     call infld('ISOVAR', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isovar, found, gridname='physgrid')
+!     if (.not. found) call endrun(sub//': ERROR: ISOVAR not found on topo file')
+     ! ++jtb - Temporary fix until topo files contain this variable
+     if (.not. found) rdg_isovar(:,:) = 0._r8
+
+     call infld('ISOWGT', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isowgt, found, gridname='physgrid')
+!     if (.not. found) call endrun(sub//': ERROR: ISOWGT not found on topo file')
+     ! ++jtb - Temporary fix until topo files contain this variable
+     if (.not. found) rdg_isowgt(:,:) = 0._r8
 
      call infld('HWDTH', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_hwdth, found, gridname='physgrid')
@@ -734,14 +770,38 @@ subroutine gw_init()
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
 
+
+     call addfld('NIEGW',  (/ 'ilev' /) , 'I'  ,'1/s' ,  &
+          'interface BV freq in GW code ' )
+     call addfld('NMEGW',  (/ 'lev' /) , 'I'  ,'1/s' ,  &
+          'midlayer BV freq in GW code ' )
+     call addfld('RHOIEGW',  (/ 'ilev' /) , 'I'  ,'kg/m^3' ,  &
+          'interface density in GW code ' )
+     call addfld('PINTEGW',  (/ 'ilev' /) , 'I'  ,'Pa' ,  &
+          'interface air pressure in GW code ' )
+
      call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
      call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
+     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'m s-1' ,  &
           'On-ridge wind profile           ' )
-     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-1' , &
+     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-2' , &
           'On-ridge wind tendency from ridge 1     ')
+
+     call addfld('TAURESIDBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('UBMRESIDBETA',  (/ 'lev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile           ' )
+     call addfld('UBIRESIDBETA',  (/ 'ilev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile (interface)          ' )
+     call addfld('SRC_LEVEL_RESIDBETA',  horiz_only , 'I'  ,'1' ,  &
+          'src level index for ridge residual         ' )
+     call addfld('TAUORO_RESID',  horiz_only , 'I'  ,'N m-2' ,  &
+          'Surface momentum flux from ridge residual       ' )
+     call addfld('TAUDIAG_RESID' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+
 
      do i = 1, 6
         write(cn, '(i1)') i
@@ -762,6 +822,12 @@ subroutine gw_init()
      call addfld('TAUARDGBETAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
      call register_vector_field('TAUARDGBETAX','TAUARDGBETAY')
+
+     call addfld('TAURESIDBETAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('TAURESIDBETAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call register_vector_field('TAURESIDBETAX','TAURESIDBETAY')
 
      if (history_waccm) then
         call add_default('TAUARDGBETAX', 1, ' ')
@@ -893,6 +959,29 @@ subroutine gw_init()
         call add_default('FRONTGFA', 1, ' ')
      end if
 
+  end if
+
+  if (use_gw_movmtn_pbl) then
+     do k = 1, pver
+        ! Find steering level
+        if ( (pref_edge(k+1) >= movmtn_psteer).and.(pref_edge(k) < movmtn_psteer) ) then
+           movmtn_ksteer = k
+        end if
+     end do
+     do k = 1, pver
+        ! Find launch level
+        if ( (pref_edge(k+1) >= movmtn_plaunch).and.(pref_edge(k) < movmtn_plaunch ) ) then
+           movmtn_klaunch = k
+        end if
+     end do
+
+  end if
+  if (use_gw_movmtn_pbl) then
+
+     vort4gw_idx = pbuf_get_index('VORT4GW')
+
+     call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
+          'Vorticity')
   end if
 
   if (use_gw_front) then
@@ -1463,7 +1552,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use physics_types,   only: physics_state_copy
   use constituents,    only: cnst_type
   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
   use camsrfexch,      only: cam_in_t
@@ -1478,7 +1567,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_front,        only: gw_cm_src
   use gw_convect,      only: gw_beres_src
   use gw_movmtn,       only: gw_movmtn_src
-
+  use dycore,          only: dycore_is
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
@@ -1548,6 +1637,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Frontogenesis
   real(r8), pointer :: frontgf(:,:)
   real(r8), pointer :: frontga(:,:)
+  ! Vorticity source
+  real(r8), pointer :: vort4gw(:,:)
 
   ! Temperature change due to deep convection.
   real(r8), pointer :: ttend_dp(:,:)
@@ -1580,6 +1671,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), pointer :: angll(:,:)
   ! anisotropy of ridges.
   real(r8), pointer :: anixy(:,:)
+  ! sqrt(residual variance) not repr by ridges (assumed isotropic).
+  real(r8), pointer :: isovar(:)
+  ! area fraction of res variance
+  real(r8), pointer :: isowgt(:)
+
+
 
      ! Gamma ridges
   ! width of ridges.
@@ -1639,9 +1736,6 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Make local copy of input state.
   call physics_state_copy(state, state1)
-
-  ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state1, convert_cnst_type='dry')
 
   lchnk = state1%lchnk
   ncol  = state1%ncol
@@ -1716,7 +1810,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call alloc_err(istat,'gw_tend','phase_speeds',ncol*band_movmtn%ngwv**2+1)
 
      ! Set up heating
-     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     if (ttend_dp_idx > 0) then
+        call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     else
+        allocate(ttend_dp(pcols,pver), stat=istat)
+        call alloc_err(istat, 'gw_tend', 'ttend_dp', pcols*pver)
+        ttend_dp = 0.0_r8
+     end if
 
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
@@ -1724,13 +1824,14 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+     call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
 
      xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
 
-     effgw = 1._r8
+     effgw = effgw_movmtn_pbl
      call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
-          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:)  , &
-          zm, alpha_gw_movmtn, src_level, tend_level, &
+          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
+          zm, alpha_gw_movmtn, movmtn_source, movmtn_ksteer, movmtn_klaunch, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           phase_speeds, hdepth)
      !-------------------------------------------------------------
@@ -1788,8 +1889,17 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
      call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
      call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
+     call outfld ('VORT4GW', vort4gw, pcols, lchnk)
 
+     !Deallocate variables that are no longer used:
      deallocate(tau, gwut, phase_speeds)
+
+     !Deallocate/nullify ttend_dp if not a pbuf variable:
+     if (ttend_dp_idx <= 0) then
+       deallocate(ttend_dp)
+       nullify(ttend_dp)
+     end if
+
   end if
 
   if (use_gw_convect_dp) then
@@ -2257,6 +2367,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      mxdis => rdg_mxdis(:ncol,:,lchnk)
      angll => rdg_angll(:ncol,:,lchnk)
      anixy => rdg_anixy(:ncol,:,lchnk)
+     isovar => rdg_isovar(:ncol,lchnk)
+     isowgt => rdg_isowgt(:ncol,lchnk)
 
      where(mxdis < 0._r8)
         mxdis = 0._r8
@@ -2275,7 +2387,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                 &
         nm, ni, rhoi, kvtt, q, dse,               &
         effgw_rdg_beta, effgw_rdg_beta_max,       &
+        effgw_rdg_resid, use_gw_rdg_resid,        &
         hwdth, clngt, gbxar, mxdis, angll, anixy, &
+        isovar, isowgt,                           &
         rdg_beta_cd_llb, trpd_leewv_rdg_beta,     &
         ptend, flx_heat)
 
@@ -2305,7 +2419,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                      &
         nm, ni, rhoi, kvtt, q, dse,                    &
         effgw_rdg_gamma, effgw_rdg_gamma_max,          &
+        effgw_rdg_resid, use_gw_rdg_resid,             &
         hwdthg, clngtg, gbxar, mxdisg, angllg, anixyg, &
+        isovar, isowgt,                                &
         rdg_gamma_cd_llb, trpd_leewv_rdg_gamma,        &
         ptend, flx_heat)
 
@@ -2345,13 +2461,15 @@ subroutine gw_rdg_calc( &
    u, v, t, p, piln, zm, zi, &
    nm, ni, rhoi, kvtt, q, dse, &
    effgw_rdg, effgw_rdg_max, &
+   effgw_rdg_resid, luse_gw_rdg_resid, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
+   isovar, isowgt, &
    rdg_cd_llb, trpd_leewv, &
    ptend, flx_heat)
 
    use coords_1d,  only: Coords1D
-   use gw_rdg,     only: gw_rdg_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
+   use gw_rdg,     only: gw_rdg_src, gw_rdg_resid_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
    use gw_common,  only: gw_drag_prof, energy_change
 
    character(len=5), intent(in) :: type         ! BETA or GAMMA
@@ -2377,6 +2495,8 @@ subroutine gw_rdg_calc( &
 
    real(r8),         intent(in) :: effgw_rdg       ! Tendency efficiency.
    real(r8),         intent(in) :: effgw_rdg_max
+   real(r8),         intent(in) :: effgw_rdg_resid  ! Tendency efficiency.
+   logical,          intent(in) :: luse_gw_rdg_resid ! On-Off switch
    real(r8),         intent(in) :: hwdth(ncol,prdg) ! width of ridges.
    real(r8),         intent(in) :: clngt(ncol,prdg) ! length of ridges.
    real(r8),         intent(in) :: gbxar(ncol)      ! gridbox area
@@ -2384,6 +2504,9 @@ subroutine gw_rdg_calc( &
    real(r8),         intent(in) :: mxdis(ncol,prdg) ! Height estimate for ridge (m).
    real(r8),         intent(in) :: angll(ncol,prdg) ! orientation of ridges.
    real(r8),         intent(in) :: anixy(ncol,prdg) ! Anisotropy parameter.
+
+   real(r8),         intent(in) :: isovar(ncol)     ! sqrt of residual variance
+   real(r8),         intent(in) :: isowgt(ncol)     ! area frac of residual variance
 
    real(r8),         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
    logical,          intent(in) :: trpd_leewv
@@ -2604,13 +2727,70 @@ subroutine gw_rdg_calc( &
 
    end do ! end of loop over multiple ridges
 
+   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
+   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
+
+   if (luse_gw_rdg_resid) then
+   ! Add additional GW from residual variance. Assumed isotropic
+      kwvrdg  = 0.001_r8 / ( 100._r8 )
+      effgw   = effgw_rdg_resid * isowgt
+      tauoro = 0._r8
+
+      call gw_rdg_resid_src(ncol, band_oro, p, &
+         u, v, t, isovar, kwvrdg, zi, nm, &
+         src_level, tend_level, tau, ubm, ubi, xv, yv,  &
+         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, phase_speeds, tauoro )
+
+      call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
+         t, vramp,    &
+         piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
+         effgw, phase_speeds, kvtt, q, dse, tau, utgw, vtgw, &
+         ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
+         kwvrdg=kwvrdg, &
+         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
+
+      ! Add the tendencies from isotropic residual to the totals.
+      do k = 1, pver
+         ! diagnostics
+         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
+         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
+         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
+         ! physics tendencies
+         ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
+         ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
+         ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
+      end do
+
+      do m = 1, pcnst
+         do k = 1, pver
+            ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
+         end do
+      end do
+
+      do k = 1, pver+1
+         taurx0(:,k) =  tau(:,0,k)*xv
+         taury0(:,k) =  tau(:,0,k)*yv
+         taurx(:,k)  =  taurx(:,k) + taurx0(:,k)
+         taury(:,k)  =  taury(:,k) + taury0(:,k)
+      end do
+
+      call outfld('TAUDIAG_RESID', tau_diag,  ncol, lchnk)
+      call outfld('TAUORO_RESID', tauoro ,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'X', taurx,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'Y', taury,  ncol, lchnk)
+
+      call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
+      call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
+      call outfld('SRC_LEVEL_RESID'//trim(type),      real(src_level, r8) ,         ncol, lchnk)
+      ! end of residual variance calc
+   end if
+
    ! Calculate energy change for output to CAM's energy checker.
    call energy_change(dt, p, u, v, ptend%u(:ncol,:), &
           ptend%v(:ncol,:), ptend%s(:ncol,:), de)
    flx_heat(:ncol) = de
 
-   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
-   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
 
    if (trim(type) == 'BETA') then
       fname(1) = 'TAUGWX'

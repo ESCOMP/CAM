@@ -265,7 +265,7 @@ begin
 
   if(ftype .eq. "CAM") then
  
-    ; Standard CAM Eulerian or FV file
+    ; Standard CAM FV file
 
     file_dim_names                   = getvardims     (data)
 

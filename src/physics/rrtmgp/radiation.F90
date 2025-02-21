@@ -16,7 +16,6 @@ use physics_buffer,      only: physics_buffer_desc, pbuf_add_field, dtype_r8, pb
                                pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair, gravit
-use solar_irrad_data,    only: sol_tsi
 
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
@@ -27,6 +26,7 @@ use rrtmgp_inputs,       only: rrtmgp_inputs_init
 
 use radconstants,        only: nradgas, gasnamelength, gaslist, nswbands, nlwbands, &
                                nswgpts, set_wavenumber_bands
+use rad_solar_var,       only: rad_solar_var_init, get_variability
 
 use cloud_rad_props,     only: cloud_rad_props_init
 
@@ -495,6 +495,7 @@ subroutine radiation_init(pbuf2d)
    ! Set the sw/lw band boundaries in radconstants.  Also sets
    ! indicies of specific bands for diagnostic output and COSP input.
    call set_wavenumber_bands(kdist_sw, kdist_lw)
+   call rad_solar_var_init()
 
    ! The spectral band boundaries need to be set before this init is called.
    call rrtmgp_inputs_init(ktopcam, ktoprad)
@@ -849,7 +850,7 @@ subroutine radiation_tend( &
    use radiation_data,     only: rad_data_write
 
    use interpolate_data,   only: vertinterp
-   use tropopause,         only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,         only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps
 
 
@@ -937,8 +938,8 @@ subroutine radiation_tend( &
 
    ! TOA solar flux on RRTMGP g-points
    real(r8), allocatable :: toa_flux(:,:)
-   ! TSI from RRTMGP data (from sum over g-point representation)
-   real(r8) :: tsi_ref
+   ! Scale factors based on spectral distribution from input irradiance dataset
+   real(r8), allocatable :: sfac(:,:)
    
    ! Planck sources for LW.
    type(ty_source_func_lw) :: sources_lw
@@ -1081,7 +1082,11 @@ subroutine radiation_tend( &
 
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-      call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, &
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      p_trop(:) = 0._r8
+      !REMOVECAM_END
+      call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, &
                            backup=TROP_ALG_CLIMATE)
    end if
 
@@ -1093,6 +1098,7 @@ subroutine radiation_tend( &
 
       allocate( &
          t_sfc(ncol), emis_sfc(nlwbands,ncol), toa_flux(nday,nswgpts),     &
+         sfac(nday,nswgpts),                                               &
          t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),     &
          t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),     &
          coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday), &
@@ -1170,8 +1176,8 @@ subroutine radiation_tend( &
                   call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
 
                   ! Scale the solar source
-                  tsi_ref = sum(toa_flux(1,:))
-                  toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
+                  call get_variability(toa_flux, sfac)
+                  toa_flux = toa_flux * sfac * eccf
 
                end if
 
@@ -1299,7 +1305,7 @@ subroutine radiation_tend( &
       end if  ! if (dolw)
 
       deallocate( &
-         t_sfc, emis_sfc, toa_flux, t_rad, pmid_rad, pint_rad,  &
+         t_sfc, emis_sfc, toa_flux, sfac, t_rad, pmid_rad, pint_rad,  &
          t_day, pmid_day, pint_day, coszrs_day, alb_dir, alb_dif)
 
       !================!

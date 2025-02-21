@@ -85,8 +85,6 @@ logical           :: offline_driver       = .false.    ! true => offline driver 
 
 logical, public, protected :: use_simple_phys = .false. ! true => simple physics configuration
 
-logical :: use_spcam       ! true => use super parameterized CAM
-
 logical :: prog_modal_aero ! determines whether prognostic modal aerosols are present in the run.
 
 ! Option to use heterogeneous freezing
@@ -206,9 +204,6 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(do_hb_above_clubb,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_hemco,                   1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
-   use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
-                      .or. cam_physpkg_is('spcam_m2005'))
-
    call cam_ctrl_set_physics_type(cam_physpkg)
 
    ! Error checking:
@@ -231,13 +226,13 @@ subroutine phys_ctl_readnl(nlfile)
    endif
 
    ! Add a check to make sure CLUBB and MG are used together
-   if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
+   if ( do_clubb_sgs .and.  microp_scheme .ne. 'MG') then
       write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
       call endrun('CLUBB and microphysics schemes incompatible')
    endif
 
    ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB_SGS if do_clubb_sgs is true
-   if (do_clubb_sgs .and. .not. use_spcam) then
+   if (do_clubb_sgs) then
       if (eddy_scheme .ne. 'CLUBB_SGS' .or. macrop_scheme .ne. 'CLUBB_SGS' .or. shallow_scheme .ne. 'CLUBB_SGS') then
          write(iulog,*)'eddy_scheme, macrop_scheme and shallow_scheme must all be CLUBB_SGS.  Quiting'
          call endrun('CLUBB and eddy, macrop or shallow schemes incompatible')
@@ -249,11 +244,6 @@ subroutine phys_ctl_readnl(nlfile)
       if (eddy_scheme /= 'CLUBB_SGS' .or. macrop_scheme /= 'CLUBB_SGS' .or. shallow_scheme /= 'CLUBB_SGS') then
          write(iulog,*) 'cam7 is only compatible with CLUBB.  Quitting'
          call endrun('cam7 is only compatible with eddy, macrop, and shallow schemes = CLUBB_SGS')
-      end if
-      ! Add a check to make sure SPCAM is not used
-      if (use_spcam) then
-         write(iulog,*)'SPCAM not compatible with cam7 physics.  Quitting'
-         call endrun('SPCAM and cam7 incompatible')
       end if
       ! Add check to make sure we are not trying to use `camrt`
       if (trim(radiation_scheme) == 'camrt') then
@@ -324,7 +314,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         history_carma_out, history_clubb_out, history_dust_out, &
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
-                        do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
+                        do_clubb_sgs_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
                         cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out, do_hb_above_clubb_out)
 !-----------------------------------------------------------------------
@@ -334,7 +324,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
-!	   SPCAM_microp_scheme_out : SPCAM microphysics scheme
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
@@ -344,7 +333,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
    logical,           intent(out), optional :: use_subcol_microp_out
-   logical,           intent(out), optional :: use_spcam_out
    logical,           intent(out), optional :: atm_dep_flux_out
    logical,           intent(out), optional :: history_amwg_out
    logical,           intent(out), optional :: history_vdiag_out
@@ -382,7 +370,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
    if ( present(use_subcol_microp_out   ) ) use_subcol_microp_out    = use_subcol_microp
-   if ( present(use_spcam_out           ) ) use_spcam_out            = use_spcam
 
    if ( present(macrop_scheme_out       ) ) macrop_scheme_out        = macrop_scheme
    if ( present(atm_dep_flux_out        ) ) atm_dep_flux_out         = atm_dep_flux

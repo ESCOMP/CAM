@@ -476,20 +476,6 @@
        Default: none
        </entry>
 
-<!-- Aerosols: Data (CAM version) -->
-
-<entry id="bndtvaer" type="char*256" input_pathname="abs" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Full pathname of time-variant boundary dataset for aerosol masses.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_aero_data_on" type="logical" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Add CAM3 prescribed aerosols to the physics buffer.
-Default: FALSE
-</entry>
-
 <!-- Physics grid decomp including physics dynamics coupling methods -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
@@ -685,8 +671,7 @@ Default: 0
 
 <entry id="fv_fft_flt" type="integer"  category="dyn_fv"
        group="dyn_fv_inparm" valid_values="0,1" >
-1 for FFT filter always, 0 for combined algebraic/FFT filter.  The value 0
-is used for CAM3, otherwise it is using the value 1.
+1 for FFT filter always, 0 for combined algebraic/FFT filter.
 Default: set by build-namelist
 </entry>
 
@@ -1199,107 +1184,6 @@ If true nudge atmospheric temperature (T) from the meteorology.
 Default: true
 </entry>
 
-<!-- Dynamics: Eulerian Spectral -->
-
-<entry id="eul_dif2_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-del^2 horizontal diffusion coefficient.  This is used above the Nth order
-diffusion.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_hdif_order" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Order (N) of horizontal diffusion operator used below the sponge layers.
-N must be a positive multiple of 2.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_kmnhdn" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-The order N horizontal diffusion operator will be used in and below the
-layer specified by this variable.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Nth order horizontal diffusion coefficient.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_divdampn" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of days (from timestep 0) to run divergence damper. Use only if spectral
-model becomes dynamicallly unstable during initialization. Suggested value:
-2. (Value must be &gt;= 0.)  Default: 0.
-</entry>
-
-<entry id="eul_tfilt_eps" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Time filter coefficient.  Default: 0.06
-</entry>
-
-<entry id="eul_kmxhdc" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of levels over which to apply Courant limiter, starting at top of
-model.
-Default: 5
-</entry>
-
-<entry id="eul_nsplit" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-Number of dynamics timesteps per physics timestep. If zero, a best-estimate
-will be automatically calculated.
-Default: 1
-</entry>
-
-<!-- MPI configuration for global spectral dycores (EUL and SLD) -->
-
-<entry id="dyn_allgather" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics gather option.
-   0: use mpi_allgatherv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_alltoall" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics transpose option.
-   0: use mpi_alltoallv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_equi_by_col" type="logical"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Flag indicating whether to assign latitudes to equidistribute columns or
-latitudes. This only matters when using a reduced grid.
-Default: TRUE
-</entry>
-
-<entry id="dyn_npes" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Number of processes assigned to dynamics (SE, EUL and SLD dycores).
-Default: Total number of processes assigned to job.
-</entry>
-
-<entry id="dyn_npes_stride" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Stride for dynamics processes (EUL and SLD dycores).
-E.g., if stride=2, assign every second process to the dynamics.
-Default: 1
-</entry>
-
 <!-- Gravity Wave Drag -->
 
 <entry id="use_gw_oro" type="logical" category="gw_drag"
@@ -1336,6 +1220,13 @@ Default: .false.
        group="phys_ctl_nl" valid_values="" >
 Whether or not to enable gravity waves from PBL moving mountains source.
 Default: .false.
+</entry>
+
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to enable gravity waves from residual (non-ridge)
+orography
+Default: set by build-namelist.
 </entry>
 
 <entry id="pgwv" type="integer" category="gw_drag"
@@ -1441,6 +1332,36 @@ Max efficiency associated with anisotropic OGW.
 Default: 1.0
 </entry>
 
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor associated with residual non-ridge topo
+Default: set by build-namelist.
+</entry>
+
+<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor for moving mountain source
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_psteer" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_plaunch" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
+</entry>
+
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Drag coefficient for obstacles in low-level flow.
@@ -1492,12 +1413,6 @@ Default: set by build-namelist
 <entry id="bnd_rdggm" type="char*256" input_pathname="abs" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Full pathname of boundary dataset for meso-gamma ridges.
-Default: set by build-namelist.
-</entry>
-
-<entry id="fcrit2" type="real"  category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Critical Froude number squared (used only for orographic waves).
 Default: set by build-namelist.
 </entry>
 
@@ -3278,13 +3193,6 @@ Tunable evaporation efficiency in ZM deep convection scheme.
 Default: set by build-namelist
 </entry>
 
-<entry id="zmconv_org" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Include organization parameterization in ZM.   This value is set to true automatically
-if -zmconv_org is set in configure.
-Default: .false., unless -zmconv_org set in configure
-</entry>
-
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
@@ -3602,16 +3510,14 @@ Default: 10
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+Default: 'ZM' unless using 'UNICON' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
-SPCAM has two different microphysics schemes: SPCAM_m2005 (Morrison et al 2005),
-SPCAM_sam1mom (Khairoutinov 2003)
 Default: set by build-namelist (depends on value set in configure).
 </entry>
 
@@ -3631,14 +3537,12 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
  'UNICON' which doesn't distinquish shallow and deep.
- 'SPCAM_m2005' for SPCAM double moment
- 'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -4497,6 +4401,23 @@ is not active.
 Default: none
 </entry>
 
+<entry id="carma_sulfnuc_method" type="char*10" category="carma"
+       group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
+ Nucleation methods:
+  ZhaoTurco
+      Zhao, J. and Turco, R.,
+      Nucleation simulations in the wake of a jet aircraft in stratospheric flight,
+      J. Aerosol Sci., 26, 779-795, 1995,
+      https://doi.org/10.1016/0021-8502(95)00010-A
+  Vehkamaki
+     Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
+     C. Timmreck, M. Noppel and A. Laaksonen, 2002,
+     An improved parameterization for sulfuric acid-water nucleation
+     rates for tropospheric and stratospheric conditions,
+     J. Geophys. Res., 107, 4622, doi:10.1029/2002jd002184
+Default: none
+</entry>
+
 <entry id="carma_conmax" type="real" category="carma"
        group="carma_nl" valid_values="" >
 A fraction that scales how tight the convergence criteria are to
@@ -4913,30 +4834,6 @@ Specifies the name of the sea salt emission parameterization.
 Default: Gong
 </entry>
 
-
-=======
-<!-- Ozone: Data (original CAM version) -->
-
-<entry id="bndtvo" type="char*256" input_pathname="abs" category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Full pathname of time-variant ozone mixing ratio boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_ozone_data_on" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Add CAM3 prescribed ozone to the physics buffer.
-Default: FALSE
-</entry>
-
-<entry id="ozncyc" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Flag for yearly cycling of ozone data. If set to FALSE, a multi-year
-dataset is assumed, otherwise a single-year dataset is assumed, and ozone
-will be cycled over the 12 monthly averages in the file.
-Default: TRUE
-</entry>
-
 <!-- Performance Tuning and Profiling -->
 
 <entry id="papi_ctr1_str" type="char*16"  category="performance"
@@ -5070,7 +4967,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5286,12 +5183,23 @@ Default: set by build-namelist for climo cases, otherwise -1 to use model clock.
 
 <!-- GEOS-Chem model -->
 
-<entry id="geoschem_cheminputs" type="char*256" input_pathname="abs" category="geoschem"
+<entry id="geoschem_chem_inputs" type="char*256" input_pathname="abs" category="geoschem"
        group="geoschem_nl" valid_values="" >
-Full pathname to GEOS-Chem chemistry inputs directory
+Full pathname of the GEOS-Chem chemistry inputs directory.
 Default: set by build-namelist.
 </entry>
 
+<entry id="geoschem_aeropt_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the aerosols optical property inputs directory used in GEOS-Chem outside of Cloud-J.
+Default: set by build-namelist.
+</entry>
+
+<entry id="geoschem_photol_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the Cloud-J photolysis inputs directory used in GEOS-Chem.
+Default: set by build-namelist.
+</entry>
 
 <!-- Reference Pressures -->
 
@@ -5357,7 +5265,7 @@ Default: 0
 </entry>
 
 <entry id="eddy_scheme" type="char*16" category="pbl"
-       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS,SPCAM_sam1mom,SPCAM_m2005" >
+       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS" >
 Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
@@ -6002,6 +5910,12 @@ Use the SCAM-IOP specified observed water vapor at each time step instead of for
 Default: FALSE
 </entry>
 
+<entry id="scm_use_3dfrc" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use the SCAM-IOP 3d forcing if true, use combination of dycore vertical advection and iop horiz advection if false
+Default:False
+</entry>
+
 <entry id="scm_force_latlon" type="logical" category="scam"
        group="scam_nl" valid_values="">
 Force scam to use the lat lon fields specified in the scam namelist not what is closest to IOP avail lat lon
@@ -6170,7 +6084,7 @@ Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
   OFF --> wet deposition is turned off
-Default: NEU except for SPCAM runs
+Default: NEU
 </entry>
 
 <entry id="gas_wetdep_list" type="char*16(1000)" category="cam_chem"
@@ -6277,19 +6191,19 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factb_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for below cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factic_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_facti_cloud_borne" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of cloud-borne modal aerosols.
 Default: set by build-namelist.
 </entry>
@@ -7637,40 +7551,29 @@ Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
 Default: FALSE
 </entry>
 
-<entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
-       group="ndep_inparm" valid_values="" >
-List of nitrogen deposition fluxes to be sent from CAM to surface models.
-Default: set by build-namelist.
-</entry>
-
 <entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Year first to use in nitrogen deposition stream data. Set by case xml variable
-CAM_STREAM_NDEP_YEAR_FIRST
+Year first to use in nitrogen deposition stream data.
 </entry>
 
 <entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Year last to use in nitrogen deposition stream data.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
 </entry>
 
 <entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+Model year to align with stream_ndep_year_first.
 </entry>
 
 <entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP stream data filename.
-Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+Nitrogen deposition stream data filename.
 </entry>
 
 <entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP mesh file corresponding to sream_ndep_data_filename.
-Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+Grid mesh file corresponding to stream_ndep_data_filename.
 </entry>
 
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
@@ -7696,6 +7599,21 @@ Default: .false.
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
 Default: set by build-namelist.
+</entry>
+
+<entry id="dust_emis_method" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="Zender_2003,Leung_2023" >
+Which dust emission method is going to be used.
+Either the Zender 2003 scheme or the Leung 2023 scheme.
+Default: Zender_2003
+</entry>
+
+<entry id="zender_soil_erod_source" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="none,lnd,atm" >
+Option only applying for the Zender_2003 method for whether the soil erodibility
+file is handled in the active LAND model or in the ATM model.
+(only used when dust_emis_method is Zender_2003)
+Default: atm
 </entry>
 
 <!-- Ozone namelist variables shared between CAM and driver -->
@@ -8787,7 +8705,7 @@ Default: "."
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
-       group="camexp" valid_values="1850,2000,1850-2000">
+       group="camexp" valid_values="1850,2000,2010,1850-2000,1850-2015">
 This varible is only used internally by build-namelist to determine
 appropriate defaults for climatological or transient forcing datasets.
 Default: set by build-namelist.
@@ -9519,38 +9437,6 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
-</entry>
-
-<!-- ndep stream forcing -->
-
-<!-- ========================================================================================  -->
-<!-- ndepdyn streams namelist                                                                  -->
-<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
-<!-- ========================================================================================  -->
-
-<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream meshfile for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-First year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Last year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>

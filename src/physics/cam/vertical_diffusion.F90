@@ -105,7 +105,6 @@ type(vdiff_selector) :: fieldlist_dry                ! Logical switches for dry 
 type(vdiff_selector) :: fieldlist_molec              ! Logical switches for molecular diffusion
 integer              :: tke_idx, kvh_idx, kvm_idx    ! TKE and eddy diffusivity indices for fields in the physics buffer
 integer              :: kvt_idx                      ! Index for kinematic molecular conductivity
-integer              :: turbtype_idx, smaw_idx       ! Turbulence type and instability functions
 integer              :: tauresx_idx, tauresy_idx     ! Redisual stress for implicit surface stress
 
 character(len=fieldname_len) :: vdiffnam(pcnst)      ! Names of vertical diffusion tendencies
@@ -196,7 +195,7 @@ subroutine vd_readnl(nlfile)
   ! Beljaars reads its own namelist.
   call beljaars_drag_readnl(nlfile)
 
-  if (eddy_scheme == 'diag_TKE' .or. eddy_scheme == 'SPCAM_m2005' ) call eddy_diff_readnl(nlfile)
+  if (eddy_scheme == 'diag_TKE') call eddy_diff_readnl(nlfile)
 
 end subroutine vd_readnl
 
@@ -228,8 +227,6 @@ subroutine vd_register()
   call pbuf_add_field('kvm',      'global', dtype_r8, (/pcols, pverp/), kvm_idx )
   call pbuf_add_field('pblh',     'global', dtype_r8, (/pcols/),        pblh_idx)
   call pbuf_add_field('tke',      'global', dtype_r8, (/pcols, pverp/), tke_idx)
-  call pbuf_add_field('turbtype', 'global', dtype_i4, (/pcols, pverp/), turbtype_idx)
-  call pbuf_add_field('smaw',     'global', dtype_r8, (/pcols, pverp/), smaw_idx)
 
   call pbuf_add_field('tauresx',  'global', dtype_r8, (/pcols/),        tauresx_idx)
   call pbuf_add_field('tauresy',  'global', dtype_r8, (/pcols/),        tauresy_idx)
@@ -243,7 +240,7 @@ subroutine vd_register()
   end if
 
   ! diag_TKE fields
-  if (eddy_scheme == 'diag_TKE' .or. eddy_scheme == 'SPCAM_m2005') then
+  if (eddy_scheme == 'diag_TKE') then
      call eddy_diff_register()
   end if
 
@@ -436,11 +433,11 @@ subroutine vertical_diffusion_init(pbuf2d)
   call phys_getopts(do_hb_above_clubb_out=do_hb_above_clubb)
 
   select case ( eddy_scheme )
-  case ( 'diag_TKE', 'SPCAM_m2005' )
+  case ( 'diag_TKE' )
      if( masterproc ) write(iulog,*) &
           'vertical_diffusion_init: eddy_diffusivity scheme: UW Moist Turbulence Scheme by Bretherton and Park'
      call eddy_diff_init(pbuf2d, ntop_eddy, nbot_eddy)
-  case ( 'HB', 'HBR', 'SPCAM_sam1mom')
+  case ( 'HB', 'HBR')
      if( masterproc ) write(iulog,*) 'vertical_diffusion_init: eddy_diffusivity scheme:  Holtslag and Boville'
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, &
           karman, eddy_scheme)
@@ -622,8 +619,10 @@ subroutine vertical_diffusion_init(pbuf2d)
   endif
 
   if (history_eddy) then
-     call add_default( 'UFLX    ', 1, ' ' )
-     call add_default( 'VFLX    ', 1, ' ' )
+     if (.not. do_pbl_diags) then
+        call add_default( 'UFLX    ', 1, ' ' )
+        call add_default( 'VFLX    ', 1, ' ' )
+     end if
   endif
 
   if( history_budget ) then
@@ -665,8 +664,6 @@ subroutine vertical_diffusion_init(pbuf2d)
   ! Initialization of some pbuf fields
   if (is_first_step()) then
      ! Initialization of pbuf fields tke, kvh, kvm are done in phys_inidat
-     call pbuf_set_field(pbuf2d, turbtype_idx, 0    )
-     call pbuf_set_field(pbuf2d, smaw_idx,     0.0_r8)
      call pbuf_set_field(pbuf2d, tauresx_idx,  0.0_r8)
      call pbuf_set_field(pbuf2d, tauresy_idx,  0.0_r8)
      if (trim(shallow_scheme) == 'UNICON') then
@@ -712,7 +709,6 @@ subroutine vertical_diffusion_tend( &
   !---------------------------------------------------- !
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
-  use physics_types,      only : set_dry_to_wet, set_wet_to_dry
 
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
@@ -773,9 +769,6 @@ subroutine vertical_diffusion_tend( &
 
   real(r8) :: dtk(pcols,pver)                                     ! T tendency from KE dissipation
   real(r8), pointer   :: tke(:,:)                                 ! Turbulent kinetic energy [ m2/s2 ]
-  integer(i4),pointer :: turbtype(:,:)                            ! Turbulent interface types [ no unit ]
-  real(r8), pointer   :: smaw(:,:)                                ! Normalized Galperin instability function
-  ! ( 0<= <=4.964 and 1 at neutral )
 
   real(r8), pointer   :: qtl_flx(:,:)                             ! overbar(w'qtl') where qtl = qv + ql
   real(r8), pointer   :: qti_flx(:,:)                             ! overbar(w'qti') where qti = qv + qi
@@ -910,9 +903,6 @@ subroutine vertical_diffusion_tend( &
   ! Main Computation Begins !
   ! ----------------------- !
 
-  ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state, convert_cnst_type='dry')
-
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
   ncol   = state%ncol
@@ -922,7 +912,6 @@ subroutine vertical_diffusion_tend( &
   call pbuf_get_field(pbuf, tpert_idx,    tpert)
   call pbuf_get_field(pbuf, qpert_idx,    qpert)
   call pbuf_get_field(pbuf, pblh_idx,     pblh)
-  call pbuf_get_field(pbuf, turbtype_idx, turbtype)
 
   ! Interpolate temperature to interfaces.
   do k = 2, pver
@@ -1015,20 +1004,19 @@ subroutine vertical_diffusion_tend( &
   !----------------------------------------------------------------------- !
   call pbuf_get_field(pbuf, kvm_idx,  kvm_in)
   call pbuf_get_field(pbuf, kvh_idx,  kvh_in)
-  call pbuf_get_field(pbuf, smaw_idx, smaw)
   call pbuf_get_field(pbuf, tke_idx,  tke)
 
   ! Get potential temperature.
   th(:ncol,:pver) = state%t(:ncol,:pver) * state%exner(:ncol,:pver)
 
   select case (eddy_scheme)
-  case ( 'diag_TKE', 'SPCAM_m2005' )
+  case ( 'diag_TKE' )
 
      call eddy_diff_tend(state, pbuf, cam_in, &
           ztodt, p, tint, rhoi, cldn, wstarent, &
           kvm_in, kvh_in, ksrftms, dragblj, tauresx, tauresy, &
           rrho, ustar, pblh, kvm, kvh, kvq, cgh, cgs, tpert, qpert, &
-          tke, sprod, sfi, turbtype, smaw)
+          tke, sprod, sfi)
 
      ! The diag_TKE scheme does not calculate the Monin-Obukhov length, which is used in dry deposition calculations.
      ! Use the routines from pbl_utils to accomplish this. Assumes ustar and rrho have been set.
@@ -1038,7 +1026,7 @@ subroutine vertical_diffusion_tend( &
           khfs(:ncol),    kqfs(:ncol), kbfs(:ncol),   obklen(:ncol))
 
 
-  case ( 'HB', 'HBR', 'SPCAM_sam1mom' )
+  case ( 'HB', 'HBR' )
 
      ! Modification : We may need to use 'taux' instead of 'tautotx' here, for
      !                consistency with the previous HB scheme.
@@ -1383,8 +1371,6 @@ subroutine vertical_diffusion_tend( &
         ptend%q(:ncol,:pver,m) = ptend%q(:ncol,:pver,m)*state%pdel(:ncol,:pver)/state%pdeldry(:ncol,:pver)
      endif
   end do
-  ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt
@@ -1403,7 +1389,7 @@ subroutine vertical_diffusion_tend( &
   !                                                              !
   ! ------------------------------------------------------------ !
 
-    if( (eddy_scheme .eq. 'diag_TKE' .or. eddy_scheme .eq. 'SPCAM_m2005') .and. do_pseudocon_diff ) then
+    if( eddy_scheme .eq. 'diag_TKE' .and. do_pseudocon_diff ) then
 
      ptend%q(:ncol,:pver,1) = qtten(:ncol,:pver)
      ptend%s(:ncol,:pver)   = slten(:ncol,:pver)

@@ -87,7 +87,6 @@
 
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
-    difzm_idx  = -1,    & ! ZM detrained convective cloud ice mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
     dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
 
@@ -237,53 +236,53 @@ end subroutine macrop_driver_readnl
         use_shfrc = .false.
     endif
 
-    call addfld ('DPDLFLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from deep convection'       )
-    call addfld ('DPDLFICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained ice from deep convection'                )
-    call addfld ('SHDLFLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from shallow convection'    )
-    call addfld ('SHDLFICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained ice from shallow convection'             )
-    call addfld ('DPDLFT',    (/ 'lev' /), 'A', 'K/s',      'T-tendency due to deep convective detrainment'     )
-    call addfld ('SHDLFT',    (/ 'lev' /), 'A', 'K/s',      'T-tendency due to shallow convective detrainment'  )
+    call addfld ('DPDLFLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from deep convection',       sampled_on_subcycle=.true.)
+    call addfld ('DPDLFICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained ice from deep convection',                sampled_on_subcycle=.true.)
+    call addfld ('SHDLFLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from shallow convection',    sampled_on_subcycle=.true.)
+    call addfld ('SHDLFICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained ice from shallow convection',             sampled_on_subcycle=.true.)
+    call addfld ('DPDLFT',    (/ 'lev' /), 'A', 'K/s',      'T-tendency due to deep convective detrainment',     sampled_on_subcycle=.true.)
+    call addfld ('SHDLFT',    (/ 'lev' /), 'A', 'K/s',      'T-tendency due to shallow convective detrainment',  sampled_on_subcycle=.true.)
 
-    call addfld ('ZMDLF',     (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from ZM convection'         )
+    call addfld ('ZMDLF',     (/ 'lev' /), 'A', 'kg/kg/s',  'Detrained liquid water from ZM convection',         sampled_on_subcycle=.true.)
 
-    call addfld ('MACPDT',    (/ 'lev' /), 'A', 'W/kg',     'Heating tendency - Revised  macrophysics'          )
-    call addfld ('MACPDQ',    (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency - Revised macrophysics'                 )
-    call addfld ('MACPDLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ tendency - Revised macrophysics'            )
-    call addfld ('MACPDICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE tendency - Revised macrophysics'            )
+    call addfld ('MACPDT',    (/ 'lev' /), 'A', 'W/kg',     'Heating tendency - Revised  macrophysics',          sampled_on_subcycle=.true.)
+    call addfld ('MACPDQ',    (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency - Revised macrophysics',                 sampled_on_subcycle=.true.)
+    call addfld ('MACPDLIQ',  (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ tendency - Revised macrophysics',            sampled_on_subcycle=.true.)
+    call addfld ('MACPDICE',  (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE tendency - Revised macrophysics',            sampled_on_subcycle=.true.)
 
     call addfld ('CLDVAPADJ', (/ 'lev' /), 'A', 'kg/kg/s',  &
-         'Q tendency associated with liq/ice adjustment - Revised macrophysics'                                 )
-    call addfld ('CLDLIQADJ', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ adjustment tendency - Revised macrophysics' )
-    call addfld ('CLDICEADJ', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE adjustment tendency - Revised macrophysics' )
+         'Q tendency associated with liq/ice adjustment - Revised macrophysics',                                 sampled_on_subcycle=.true.)
+    call addfld ('CLDLIQADJ', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ adjustment tendency - Revised macrophysics', sampled_on_subcycle=.true.)
+    call addfld ('CLDICEADJ', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE adjustment tendency - Revised macrophysics', sampled_on_subcycle=.true.)
     call addfld ('CLDLIQDET', (/ 'lev' /), 'A', 'kg/kg/s',  &
-         'Detrainment of conv cld liq into envrionment  - Revised macrophysics'                                 )
+         'Detrainment of conv cld liq into envrionment  - Revised macrophysics',                                 sampled_on_subcycle=.true.)
     call addfld ('CLDICEDET', (/ 'lev' /), 'A', 'kg/kg/s',  &
-         'Detrainment of conv cld ice into envrionment  - Revised macrophysics'                                 )
-    call addfld ('CLDLIQLIM', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ limiting tendency - Revised macrophysics'   )
-    call addfld ('CLDICELIM', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE limiting tendency - Revised macrophysics'   )
+         'Detrainment of conv cld ice into envrionment  - Revised macrophysics',                                 sampled_on_subcycle=.true.)
+    call addfld ('CLDLIQLIM', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ limiting tendency - Revised macrophysics',   sampled_on_subcycle=.true.)
+    call addfld ('CLDICELIM', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE limiting tendency - Revised macrophysics',   sampled_on_subcycle=.true.)
 
-    call addfld ('AST',       (/ 'lev' /), 'A', '1',        'Stratus cloud fraction'                            )
-    call addfld ('LIQCLDF',   (/ 'lev' /), 'A', '1',        'Stratus Liquid cloud fraction'                     )
-    call addfld ('ICECLDF',   (/ 'lev' /), 'A', '1',        'Stratus ICE cloud fraction'                        )
+    call addfld ('AST',       (/ 'lev' /), 'A', '1',        'Stratus cloud fraction',                            sampled_on_subcycle=.true.)
+    call addfld ('LIQCLDF',   (/ 'lev' /), 'A', '1',        'Stratus Liquid cloud fraction',                     sampled_on_subcycle=.true.)
+    call addfld ('ICECLDF',   (/ 'lev' /), 'A', '1',        'Stratus ICE cloud fraction',                        sampled_on_subcycle=.true.)
 
-    call addfld ('CLDST',     (/ 'lev' /), 'A', 'fraction', 'Stratus cloud fraction'                            )
-    call addfld ('CONCLD',    (/ 'lev' /), 'A', 'fraction', 'Convective cloud cover'                            )
+    call addfld ('CLDST',     (/ 'lev' /), 'A', 'fraction', 'Stratus cloud fraction',                            sampled_on_subcycle=.true.)
+    call addfld ('CONCLD',    (/ 'lev' /), 'A', 'fraction', 'Convective cloud cover',                            sampled_on_subcycle=.true.)
 
-    call addfld ('CLR_LIQ',   (/ 'lev' /), 'A', 'fraction', 'Clear sky fraction for liquid stratus'             )
-    call addfld ('CLR_ICE',   (/ 'lev' /), 'A', 'fraction', 'Clear sky fraction for ice stratus'                )
+    call addfld ('CLR_LIQ',   (/ 'lev' /), 'A', 'fraction', 'Clear sky fraction for liquid stratus',             sampled_on_subcycle=.true.)
+    call addfld ('CLR_ICE',   (/ 'lev' /), 'A', 'fraction', 'Clear sky fraction for ice stratus',                sampled_on_subcycle=.true.)
 
-    call addfld ('CLDLIQSTR', (/ 'lev' /), 'A', 'kg/kg',    'Stratiform CLDLIQ'                                 )
-    call addfld ('CLDICESTR', (/ 'lev' /), 'A', 'kg/kg',    'Stratiform CLDICE'                                 )
-    call addfld ('CLDLIQCON', (/ 'lev' /), 'A', 'kg/kg',    'Convective CLDLIQ'                                 )
-    call addfld ('CLDICECON', (/ 'lev' /), 'A', 'kg/kg',    'Convective CLDICE'                                 )
+    call addfld ('CLDLIQSTR', (/ 'lev' /), 'A', 'kg/kg',    'Stratiform CLDLIQ',                                 sampled_on_subcycle=.true.)
+    call addfld ('CLDICESTR', (/ 'lev' /), 'A', 'kg/kg',    'Stratiform CLDICE',                                 sampled_on_subcycle=.true.)
+    call addfld ('CLDLIQCON', (/ 'lev' /), 'A', 'kg/kg',    'Convective CLDLIQ',                                 sampled_on_subcycle=.true.)
+    call addfld ('CLDICECON', (/ 'lev' /), 'A', 'kg/kg',    'Convective CLDICE',                                 sampled_on_subcycle=.true.)
 
-    call addfld ('CLDSICE',   (/ 'lev' /), 'A', 'kg/kg',    'CloudSat equivalent ice mass mixing ratio'         )
-    call addfld ('CMELIQ',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of cond-evap of liq within the cloud'         )
+    call addfld ('CLDSICE',   (/ 'lev' /), 'A', 'kg/kg',    'CloudSat equivalent ice mass mixing ratio',         sampled_on_subcycle=.true.)
+    call addfld ('CMELIQ',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of cond-evap of liq within the cloud',         sampled_on_subcycle=.true.)
 
-    call addfld ('TTENDICE',  (/ 'lev' /), 'A', 'K/s',      'T tendency from Ice Saturation Adjustment'         )
-    call addfld ('QVTENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency from Ice Saturation Adjustment'         )
-    call addfld ('QITENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE tendency from Ice Saturation Adjustment'    )
-    call addfld ('NITENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'NUMICE tendency from Ice Saturation Adjustment'    )
+    call addfld ('TTENDICE',  (/ 'lev' /), 'A', 'K/s',      'T tendency from Ice Saturation Adjustment',         sampled_on_subcycle=.true.)
+    call addfld ('QVTENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency from Ice Saturation Adjustment',         sampled_on_subcycle=.true.)
+    call addfld ('QITENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE tendency from Ice Saturation Adjustment',    sampled_on_subcycle=.true.)
+    call addfld ('NITENDICE', (/ 'lev' /), 'A', 'kg/kg/s',  'NUMICE tendency from Ice Saturation Adjustment',    sampled_on_subcycle=.true.)
     if ( history_budget ) then
 
           call add_default ('DPDLFLIQ ', history_budget_histfile_num, ' ')
@@ -395,7 +394,8 @@ end subroutine macrop_driver_readnl
   !                                                         !
   !-------------------------------------------------------- !
 
-  use cloud_fraction,   only: cldfrc, cldfrc_fice
+  use cloud_fraction,   only: cldfrc
+  use cloud_fraction_fice,  only: cloud_fraction_fice_run
   use physics_types,    only: physics_state, physics_ptend
   use physics_types,    only: physics_ptend_init, physics_update
   use physics_types,    only: physics_ptend_sum,  physics_state_copy
@@ -486,7 +486,6 @@ end subroutine macrop_driver_readnl
 
   ! ZM microphysics
   real(r8), pointer :: dlfzm(:,:)  ! ZM detrained convective cloud water mixing ratio.
-  real(r8), pointer :: difzm(:,:)  ! ZM detrained convective cloud ice mixing ratio.
   real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
   real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
@@ -872,8 +871,8 @@ end subroutine macrop_driver_readnl
    fice(:,:) = 0._r8
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
-   call cldfrc_fice( ncol, state_loc%t(:ncol,:), fice(:ncol,:), fsnow(:ncol,:) )
 
+   call cloud_fraction_fice_run(ncol, state_loc%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
 
    lq(:)        = .FALSE.
 

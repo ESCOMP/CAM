@@ -4,8 +4,6 @@
 
 <!-- Settings in this file were adapted from 2010_trop_strat_vbs_cam6.xml -->
 
-<geoschem_cheminputs>atm/cam/geoschem/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
-
 <ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
@@ -36,7 +34,6 @@
 
 <!-- The below lines are not commented out in 2010_trop_strat_vbs_cam6.xml (*=many pointers) -->
 <!-- <prescribed_strataero_cycle_yr>2010</prescribed_strataero_cycle_yr> -->
-<!-- <ndep_list>'noy', 'nhx'</ndep_list>-->
 
 <!-- History Files -->
 
@@ -167,5 +164,7 @@
 'so4_a2',
 'so4_a3',
 </fincl1>
+
+<sim_year>2010</sim_year>
 
 </namelist_defaults>

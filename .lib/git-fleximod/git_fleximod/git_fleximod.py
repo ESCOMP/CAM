@@ -124,8 +124,8 @@ def submodule_sparse_checkout(root_dir, name, url, path, sparsefile, tag="master
     # set the repository remote
 
     logger.info("Setting remote origin in {}/{}".format(root_dir, path))
-    status = sprepo_git.git_operation("remote", "-v")
-    if url not in status:
+    _, remotelist = sprepo_git.git_operation("remote", "-v")
+    if url not in remotelist:
         sprepo_git.git_operation("remote", "add", "origin", url)
 
     topgit = os.path.join(gitroot, ".git")
@@ -181,6 +181,8 @@ def init_submodule_from_gitmodules(gitmodules, name, root_dir, logger):
     url = gitmodules.get(name, "url")
     assert path and url, f"Malformed .gitmodules file {path} {url}"
     tag = gitmodules.get(name, "fxtag")
+    if not tag:
+        tag = gitmodules.get(name, "hash")
     fxurl = gitmodules.get(name, "fxDONOTUSEurl")
     fxsparse = gitmodules.get(name, "fxsparse")
     fxrequired = gitmodules.get(name, "fxrequired")
@@ -195,24 +197,25 @@ def submodules_status(gitmodules, root_dir, toplevel=False, depth=0):
         submod = init_submodule_from_gitmodules(gitmodules, name, root_dir, logger)
             
         result,n,l,t = submod.status()
-        testfails += t
-        localmods += l
-        needsupdate += n
         if toplevel or not submod.toplevel():
             print(wrapper.fill(result))
-        subdir = os.path.join(root_dir, submod.path)
-        if os.path.exists(os.path.join(subdir, ".gitmodules")):
-            submod = GitModules(logger, confpath=subdir)
-            t,l,n = submodules_status(submod, subdir, depth=depth+1)
             testfails += t
             localmods += l
             needsupdate += n
+        subdir = os.path.join(root_dir, submod.path)
+        if os.path.exists(os.path.join(subdir, ".gitmodules")):
+            gsubmod = GitModules(logger, confpath=subdir)
+            t,l,n = submodules_status(gsubmod, subdir, depth=depth+1)
+            if toplevel or not submod.toplevel():
+                testfails += t
+                localmods += l
+                needsupdate += n
             
     return testfails, localmods, needsupdate
 
 def git_toplevelroot(root_dir, logger):
     rgit = GitInterface(root_dir, logger)
-    superroot = rgit.git_operation("rev-parse", "--show-superproject-working-tree")
+    _, superroot = rgit.git_operation("rev-parse", "--show-superproject-working-tree")
     return superroot
 
 def submodules_update(gitmodules, root_dir, requiredlist, force):
@@ -249,7 +252,6 @@ def submodules_update(gitmodules, root_dir, requiredlist, force):
                 newrequiredlist = ["AlwaysRequired"]
                 if optional:
                     newrequiredlist.append("AlwaysOptional")
-
                 submodules_update(gitsubmodules, repodir, newrequiredlist, force=force)
 
 def local_mods_output():
@@ -341,7 +343,7 @@ def main():
         excludelist=excludelist,
     )
     if not gitmodules.sections():
-        sys.exit("No submodule components found")
+        sys.exit(f"No submodule components found, root_dir={root_dir}")
     retval = 0
     if action == "update":
         submodules_update(gitmodules, root_dir, fxrequired, force)

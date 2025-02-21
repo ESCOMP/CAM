@@ -41,8 +41,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use phys_control,        only: phys_ctl_readnl
    use wv_saturation,       only: wv_sat_readnl
    use ref_pres,            only: ref_pres_readnl
-   use cam3_aero_data,      only: cam3_aero_data_readnl
-   use cam3_ozone_data,     only: cam3_ozone_data_readnl
    use dadadj_cam,          only: dadadj_readnl
    use macrop_driver,       only: macrop_driver_readnl
    use microp_driver,       only: microp_driver_readnl
@@ -104,6 +102,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use cam_budget,          only: cam_budget_readnl
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
    use mo_lightning,        only: lightning_readnl
+   use atm_stream_ndep,     only: stream_ndep_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -143,8 +142,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call phys_ctl_readnl(nlfilename)
    call wv_sat_readnl(nlfilename)
    call ref_pres_readnl(nlfilename)
-   call cam3_aero_data_readnl(nlfilename)
-   call cam3_ozone_data_readnl(nlfilename)
    call dadadj_readnl(nlfilename)
    call macrop_driver_readnl(nlfilename)
    call microp_driver_readnl(nlfilename)
@@ -209,6 +206,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call hemco_readnl(nlfilename)
    call cam_budget_readnl(nlfilename)
    call phys_grid_ctem_readnl(nlfilename)
+   call stream_ndep_readnl(nlfilename)
 
 end subroutine read_namelist
 
