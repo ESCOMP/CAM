@@ -70,7 +70,7 @@ contains
 
    subroutine mfinti (rair    ,cpair   ,gravit  ,latvap  ,rhowtr,pref_edge )
       use spmd_utils, only: masterproc
-      use cmfmca,     only: cmfmca_init
+      use hack_convect_shallow,     only: hack_convect_shallow_init
       use ppgrid,     only: pver, pcols
 
       real(r8), intent(in) :: rair              ! gas constant for dry air
@@ -94,7 +94,7 @@ contains
       ! c0     - rain water autoconversion coeff (1/m)
       !
       ! call CCPPized subroutine
-      call cmfmca_init( &
+      call hack_convect_shallow_init( &
          pver = pver, &
          amIRoot = masterproc, &
          iulog = iulog, &
@@ -125,7 +125,7 @@ contains
       use constituents,              only: pcnst
       use ccpp_constituent_prop_mod, only: ccpp_const_props
 
-      use cmfmca, only: cmfmca_run
+      use hack_convect_shallow, only: hack_convect_shallow_run
       !
       ! Input arguments
       !
@@ -170,6 +170,10 @@ contains
       character(len=64) :: dummy_scheme_name  ! dummy scheme name for CCPP-ized scheme
       real(r8) :: flx_cnd(pcols) ! dummy flx_cnd for CCPP-ized scheme (actual check_energy flux computed in convect_shallow)
 
+      ! integer output arguments for CCPP-ized scheme to be later converted to real
+      integer :: cnt_out(ncol)
+      integer :: cnb_out(ncol)
+
       errmsg = ''
       errflg = 0
 
@@ -188,7 +192,7 @@ contains
       rliq(:) = 0.0_r8
 
       ! Call the CCPPized subroutine with subsetting to ncol
-      call cmfmca_run( &
+      call hack_convect_shallow_run( &
          ncol = ncol, &
          pver = pver, &
          pcnst = pcnst, &
@@ -216,8 +220,8 @@ contains
          cmfsl = cmfsl(:ncol,:), &
          cmflq = cmflq(:ncol,:), &
          precc = precc(:ncol), &
-         cnt_sh = cnt(:ncol), &
-         cnb_sh = cnb(:ncol), &
+         cnt_sh = cnt_out(:ncol), &
+         cnb_sh = cnb_out(:ncol), &
          icwmr = icwmr(:ncol,:), &
          rliq_sh = rliq(:ncol), &
          scheme_name = dummy_scheme_name, &
@@ -225,6 +229,10 @@ contains
          errmsg = errmsg, &
          errflg = errflg &
       )
+
+      ! convert back to real for diagnostics
+      cnt(:ncol) = real(cnt_out(:ncol), r8)
+      cnb(:ncol) = real(cnb_out(:ncol), r8)
    end subroutine cmfmca_cam
 
 end module hk_conv

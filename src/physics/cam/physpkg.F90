@@ -2407,6 +2407,10 @@ contains
        dlf(:,:) = 0._r8
     end if
 
+    ! Zero-initialize subroutine-level variables for snapshot
+    dlf2(:,:) = 0._r8
+    rliq2(:) = 0._r8
+
     if (trim(cam_take_snapshot_before) == "convect_shallow_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
            flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
