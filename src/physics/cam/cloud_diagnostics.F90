@@ -30,7 +30,7 @@ module cloud_diagnostics
    integer :: dei_idx, mu_idx, lambda_idx, iciwp_idx, iclwp_idx, cld_idx  ! index into pbuf for cloud fields
    integer :: ixcldice, ixcldliq, rei_idx, rel_idx
 
-   logical :: do_cld_diag, mg_clouds, rk_clouds, camrt_rad, spcam_m2005_clouds, spcam_sam1mom_clouds
+   logical :: do_cld_diag, camrt_rad
    logical :: one_mom_clouds, two_mom_clouds
 
    integer :: cicewp_idx = -1
@@ -45,8 +45,6 @@ module cloud_diagnostics
    ! Index fields for precipitation efficiency.
    integer :: acpr_idx, acgcme_idx, acnum_idx
 
-   logical           :: use_spcam
-
 contains
 
 !===============================================================================
@@ -59,12 +57,8 @@ contains
 
     call phys_getopts(radiation_scheme_out=rad_pkg,microp_scheme_out=microp_pgk)
     camrt_rad            = rad_pkg .eq. 'camrt'
-    rk_clouds            = microp_pgk == 'RK'
-    mg_clouds            = microp_pgk == 'MG'
-    spcam_m2005_clouds   = microp_pgk == 'SPCAM_m2005'
-    spcam_sam1mom_clouds = microp_pgk == 'SPCAM_sam1mom'
-    one_mom_clouds       = (rk_clouds .or. spcam_sam1mom_clouds)
-    two_mom_clouds       = (mg_clouds .or. spcam_m2005_clouds)
+    one_mom_clouds       = microp_pgk == 'RK'
+    two_mom_clouds       = microp_pgk == 'MG'
 
     if (one_mom_clouds) then
        call pbuf_add_field('CLDEMIS','physpkg', dtype_r8,(/pcols,pver/), cldemis_idx)
@@ -110,8 +104,6 @@ contains
     ! grid box total cloud ice water mixing ratio (kg/kg)
     gb_totcldicemr_idx = pbuf_get_index('GB_TOTCLDICEMR')
 
-    call phys_getopts(use_spcam_out=use_spcam)
-
     if (two_mom_clouds) then
 
        ! initialize to zero
@@ -152,10 +144,10 @@ contains
 
     if (.not.do_cld_diag) return
 
-    if (rk_clouds) then
+    if (one_mom_clouds) then
        wpunits = 'gram/m2'
        sampling_seq='rad_lwsw'
-    else if (two_mom_clouds .or. spcam_sam1mom_clouds) then
+    else if (two_mom_clouds) then
        wpunits = 'kg/m2'
        sampling_seq=''
     end if
@@ -206,7 +198,7 @@ contains
        call add_default ('TGCLDLWP', 1, ' ')
        call add_default ('TGCLDIWP', 1, ' ')
        call add_default ('TGCLDCWP', 1, ' ')
-       if(rk_clouds) then
+       if(one_mom_clouds) then
           if (camrt_rad) then
              call add_default ('EMIS', 1, ' ')
           else
@@ -452,12 +444,10 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 ! Determine parameters for maximum/random overlap
     call cldovrlap(lchnk, ncol, state%pint, cld, nmxrgn, pmxrgn)
 
-    if(.not. use_spcam) then ! in spcam, these diagnostics are calcluated in crm_physics.F90
-! Cloud cover diagnostics (done in radiation_tend for camrt)
+    ! Cloud cover diagnostics (done in radiation_tend for camrt)
     if (.not.camrt_rad) then
        call cloud_cover_diags_out(lchnk, ncol, cld, state%pmid, nmxrgn, pmxrgn )
     endif
-    end if
 
     tgicewp(:ncol) = 0._r8
     tgliqwp(:ncol) = 0._r8
@@ -503,15 +493,12 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
     endif
 
-    if (.not. use_spcam) then
-       ! for spcam, these are diagnostics in crm_physics.F90
-       call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
-       call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
-       call outfld('TGCLDLWP',tgliqwp, pcols,lchnk)
-       call outfld('TGCLDIWP',tgicewp, pcols,lchnk)
-       call outfld('ICLDTWP' ,cwp    , pcols,lchnk)
-       call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
-    endif
+    call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
+    call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
+    call outfld('TGCLDLWP',tgliqwp, pcols,lchnk)
+    call outfld('TGCLDIWP',tgicewp, pcols,lchnk)
+    call outfld('ICLDTWP' ,cwp    , pcols,lchnk)
+    call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
 
 ! Compute total preciptable water in column (in mm)
     tpw(:ncol) = 0.0_r8

@@ -49,8 +49,6 @@ CONTAINS
          else
             outgrid = 'physgrid'
          end if
-      else if (dycore_is('EUL')) then
-         outgrid = 'gauss_grid'
       else
          outgrid = 'unknown'
       end if
@@ -139,9 +137,7 @@ CONTAINS
 
     if (dycore_is('SE')) then
        outgrid = 'GLL'
-    else if (dycore_is('EUL')) then
-       outgrid = 'gauss_grid'
-    else if (dycore_is('EUL')) then
+    else
        outgrid = 'unknown'
     end if
 

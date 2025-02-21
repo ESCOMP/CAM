@@ -616,7 +616,7 @@ contains
          to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
     if (moist_physics) then
-      ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
+      ! Scale dry mass and energy
       call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
       call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
       tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
@@ -834,7 +834,7 @@ contains
 
     call t_startf('energy_fixer')
 
-    if (adiabatic .and. (.not. dycore_is('EUL'))) then
+    if (adiabatic) then
       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)

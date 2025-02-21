@@ -49,10 +49,12 @@ module cam_mpas_subdriver
     ! This interface should be compatible with CAM's endrun routine
     !
     abstract interface
-       subroutine halt_model(mesg, ierr)
+       subroutine halt_model(mesg, ierr, line, file)
            use shr_kind_mod, only : shr_kind_in
            character(len=*), intent(in), optional :: mesg
            integer(kind=shr_kind_in), intent(in), optional :: ierr
+           integer(kind=shr_kind_in), intent(in), optional :: line
+           character(len=*), intent(in), optional :: file
        end subroutine halt_model
     end interface
 

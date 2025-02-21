@@ -89,7 +89,7 @@ module interpolate_mod
 
   ! store the  lat-lon grid
   ! gridtype = 1       equally spaced, including poles (FV scalars output grid)
-  ! gridtype = 2       Gauss grid (CAM Eulerian)
+  ! gridtype = 2       Gauss grid
   ! gridtype = 3       equally spaced, no poles (FV staggered velocity)
   ! Seven possible history files, last one is inithist and should be native grid
   integer :: nlat,nlon
