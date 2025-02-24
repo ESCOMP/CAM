@@ -726,7 +726,7 @@ subroutine vertical_diffusion_tend( &
   use constituents,         only : cnst_get_type_byind, cnst_name, &
                                    cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx
   use physconst,            only : pi
-  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_rrho, calc_friction_velocity,                             &
+  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_ideal_gas_rrho, calc_friction_velocity,                             &
                                   calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, &
                                   calc_obukhov_length
   use upper_bc,             only : ubc_get_vals, ubc_fixed_temp
@@ -1080,7 +1080,7 @@ subroutine vertical_diffusion_tend( &
       ! and molecular diffusion.
 
       thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
-      rrho  (:ncol) = calc_rrho(rair, state%t(:ncol,pver), state%pmid(:ncol,pver))
+      rrho  (:ncol) = calc_ideal_gas_rrho(rair, state%t(:ncol,pver), state%pmid(:ncol,pver))
       ustar (:ncol) = calc_friction_velocity(cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol))
       khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
       kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))

@@ -150,7 +150,7 @@ end subroutine init_hb_diff
     !-----------------------------------------------------------------------
 
     use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,               &
-                                    calc_eddy_flux_coefficient, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
                                     calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
@@ -214,7 +214,7 @@ end subroutine init_hb_diff
     thv(:ncol,ntop_turb:) = calc_virtual_temperature(th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), zvir)
 
     ! Compute ustar, Obukhov length, and kinematic surface fluxes.
-    rrho(:ncol)   = calc_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
+    rrho(:ncol)   = calc_ideal_gas_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
     ustar(:ncol)  = calc_friction_velocity(taux(:ncol),tauy(:ncol), rrho(:ncol))
     khfs(:ncol)   = calc_kinematic_heat_flux(shflx(:ncol), rrho(:ncol), cpair)
     kqfs(:ncol)   = calc_kinematic_water_vapor_flux(qflx(:ncol), rrho(:ncol))
@@ -272,7 +272,7 @@ end subroutine init_hb_diff
     !-----------------------------------------------------------------------
 
     use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,                    &
-                                    calc_free_atm_eddy_flux_coefficient, calc_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_free_atm_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
                                     calc_kinematic_buoyancy_flux
     use physconst,            only: zvir, rair, gravit, karman
 
@@ -321,7 +321,7 @@ end subroutine init_hb_diff
     thv(:ncol,ntop_turb:) = calc_virtual_temperature(th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), zvir)
 
     ! Compute ustar, Obukhov length, and kinematic surface fluxes.
-    rrho(:ncol)   = calc_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
+    rrho(:ncol)   = calc_ideal_gas_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
     ustar(:ncol)  = calc_friction_velocity(taux(:ncol),tauy(:ncol), rrho(:ncol))
     khfs(:ncol)   = calc_kinematic_heat_flux(shflx(:ncol), rrho(:ncol), cpair)
     kqfs(:ncol)   = calc_kinematic_water_vapor_flux(qflx(:ncol), rrho(:ncol))

@@ -428,7 +428,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   use cam_history,          only: outfld
   use phys_debug_util,      only: phys_debug_col
   use air_composition,      only: cpairv
-  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_rrho, calc_friction_velocity
+  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_friction_velocity
   use error_messages,       only: handle_errmsg
   use coords_1d,            only: Coords1D
   use wv_saturation,        only: qsat
@@ -670,7 +670,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
      ! I am using updated wind, here.
 
      ! Compute ustar
-     rrho(:ncol)   = calc_rrho(rair, tfd(:ncol,pver), pmid(:ncol,pver))
+     rrho(:ncol)   = calc_ideal_gas_rrho(rair, tfd(:ncol,pver), pmid(:ncol,pver))
      ustar(:ncol)  = calc_friction_velocity(taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
                                             tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
                                             rrho(:ncol))

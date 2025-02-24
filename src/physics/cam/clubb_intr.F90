@@ -26,7 +26,7 @@ module clubb_intr
 
   use spmd_utils,          only: masterproc
   use constituents,        only: pcnst, cnst_add
-  use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_rrho, &
+  use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_ideal_gas_rrho, &
                                  calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, calc_obukhov_length
   use ref_pres,            only: top_lev => trop_cloud_top_lev
 
@@ -3492,7 +3492,7 @@ end subroutine clubb_init_cnst
         ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
         if (ubar <  0.25_r8) ubar = 0.25_r8
 
-        rrho(i) = calc_rrho(rair, state1%t(i,pver), state1%pmid(i,pver))
+        rrho(i) = calc_ideal_gas_rrho(rair, state1%t(i,pver), state1%pmid(i,pver))
         ustar   = calc_friction_velocity(cam_in%wsx(i), cam_in%wsy(i), rrho(i))
 
         upwp_sfc(i) = -state1%u(i,pver)*ustar**2/ubar
@@ -4707,7 +4707,7 @@ end subroutine clubb_init_cnst
     enddo
 
     ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    rrho   (1:ncol) = calc_rrho(rair, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver))
+    rrho   (1:ncol) = calc_ideal_gas_rrho(rair, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver))
     ustar2 (1:ncol) = calc_friction_velocity(cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), rrho(1:ncol))
     ! use correct qflux from coupler
     kinheat(1:ncol) = calc_kinematic_heat_flux(cam_in%shf(1:ncol), rrho(1:ncol), cpair)
