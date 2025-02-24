@@ -155,7 +155,6 @@ contains
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
-    use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
     use hemco_interface,    only: HCOI_Chunk_Init
     use upper_bc,           only: ubc_fixed_conc
@@ -308,9 +307,6 @@ contains
 
        !  shallow convection
        call convect_shallow_register
-
-
-       call spcam_register
 
        ! radiation
        call radiation_register
@@ -731,6 +727,7 @@ contains
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
     use convect_shallow,    only: convect_shallow_init
+    use constituents,       only: cnst_get_ind
     use cam_diagnostics,    only: diag_init
     use gw_drag,            only: gw_init
     use radheat,            only: radheat_init
@@ -742,7 +739,6 @@ contains
     use microp_aero,        only: microp_aero_init
     use macrop_driver,      only: macrop_driver_init
     use conv_water,         only: conv_water_init
-    use spcam_drivers,      only: spcam_init
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
     use rayleigh_friction,  only: rayleigh_friction_init
@@ -786,7 +782,7 @@ contains
 
     ! local variables
     integer :: lchnk
-    integer :: ierr
+    integer :: ierr, ixq
 
     logical :: history_budget              ! output tendencies and state variables for
                                            ! temperature, water vapor, cloud
@@ -908,15 +904,10 @@ contains
        call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
-    elseif( microp_scheme == 'SPCAM_m2005') then
-       call conv_water_init
     end if
-
 
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d)
-
-    call spcam_init(pbuf2d)
 
     call qbo_init
 
@@ -964,7 +955,8 @@ contains
 
     ! Initialize CAM CCPP constituent properties array
     ! for use in CCPP-ized physics schemes:
-    call ccpp_const_props_init()
+    call cnst_get_ind('Q', ixq)
+    call ccpp_const_props_init(ixq)
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
@@ -1065,7 +1057,6 @@ contains
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
-    use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
     use cam_history,    only: outfld, write_camiop
@@ -1092,7 +1083,6 @@ contains
     !
     integer :: c                                 ! indices
     integer :: nstep                             ! current timestep number
-    logical :: use_spcam
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
     call t_startf ('physpkg_st1')
@@ -1146,8 +1136,6 @@ contains
     call t_startf ('bc_physics')
     call t_adj_detailf(+1)
 
-    call phys_getopts( use_spcam_out = use_spcam)
-
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
     do c=begchunk, endchunk
       !
@@ -1159,16 +1147,8 @@ contains
       call diag_physvar_ic ( c,  phys_buffer_chunk, cam_out(c), cam_in(c) )
       call t_stopf ('diag_physvar_ic')
 
-      if (use_spcam) then
-        call tphysbc_spcam (ztodt, phys_state(c),     &
-             phys_tend(c), phys_buffer_chunk, &
-             cam_out(c), cam_in(c) )
-      else
-        call tphysbc (ztodt, phys_state(c),           &
-             phys_tend(c), phys_buffer_chunk, &
-             cam_out(c), cam_in(c) )
-      end if
-
+      call tphysbc(ztodt, phys_state(c), phys_tend(c), phys_buffer_chunk, &
+                   cam_out(c), cam_in(c) )
     end do
 
     call t_adj_detailf(-1)
@@ -2261,14 +2241,12 @@ contains
 
     call tot_energy_phys(state, 'phBF')
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
-    if (.not.dycore_is('EUL')) then
-       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
 
-       call physics_update(state, ptend, ztodt, tend)
+    call check_energy_cam_fix(state, ptend, nstep, flx_heat)
+    call physics_update(state, ptend, ztodt, tend)
+    call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+    call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
 
-       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
-       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
-    end if
     call tot_energy_phys(state, 'phBP')
     call tot_energy_phys(state, 'dyBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.

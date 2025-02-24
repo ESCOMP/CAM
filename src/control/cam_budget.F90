@@ -98,7 +98,7 @@ CONTAINS
     ! Write out thermo_budget options
     if (masterproc) then
        if (thermo_budget_history) then
-          if (dycore_is('EUL').or.dycore_is('FV').or.dycore_is('FV3')) then
+          if (dycore_is('FV') .or. dycore_is('FV3')) then
              call endrun(subname//'ERROR thermodynamic budgets not implemented for this dycore')
           else
              write(iulog,*)'Thermo budgets will be written to the log file and diagnostics saved to history file:',&
