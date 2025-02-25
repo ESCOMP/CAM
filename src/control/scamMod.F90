@@ -290,7 +290,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
   if( single_column ) then
      if( npes>1) call endrun('SCAM_READNL: SCAM doesnt support using more than 1 pe.')
 
-     if ( .not. (dycore_is('EUL') .or. dycore_is('SE')) .or. plon /= 1 .or. plat /=1 ) then
+     if ( .not. dycore_is('SE') .or. plon /= 1 .or. plat /=1 ) then
         call endrun('SCAM_SETOPTS: must compile model for SCAM mode when namelist parameter single_column is .true.')
      endif
 

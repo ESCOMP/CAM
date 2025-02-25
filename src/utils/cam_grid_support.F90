@@ -1658,8 +1658,6 @@ contains
        select case(trim(cam_grids(gridind)%name))
        case('GLL')
           wtname='area_weight_gll'
-       case('EUL')
-          wtname='gw'
        case('FV')
           wtname='gw'
        case('INI')
@@ -3690,7 +3688,6 @@ contains
           if ( (abs(lat - latmin) <= maxangle) .and.                          &
                (abs(lon - lonmin) <= maxangle)) then
             ! maxangle could be pi but why waste all those trig functions?
-            ! XXgoldyXX: What should we use for maxangle given coarse Eul grids?
             if ((lat == latmin) .and. (lon == lonmin)) then
               dist = 0.0_r8
             else

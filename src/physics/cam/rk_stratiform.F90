@@ -427,7 +427,8 @@ subroutine rk_stratiform_tend( &
    !                                                         !
    !-------------------------------------------------------- !
 
-   use cloud_fraction,   only: cldfrc, cldfrc_fice
+   use cloud_fraction,   only: cldfrc
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
    use physics_types,    only: physics_state, physics_ptend
    use physics_types,    only: physics_ptend_init, physics_update
    use physics_types,    only: physics_ptend_sum,  physics_state_copy
@@ -440,7 +441,7 @@ subroutine rk_stratiform_tend( &
    use phys_control,     only: cam_physpkg_is
    use tropopause,       only: tropopause_find_cam
    use phys_grid,        only: get_rlat_all_p
-   use physconst,        only: pi
+   use physconst,        only: pi, tmelt
 
    ! Arguments
    type(physics_state), intent(in)    :: state       ! State variables
@@ -576,6 +577,9 @@ subroutine rk_stratiform_tend( &
    real(r8) :: rlat(pcols)
    real(r8) :: dlat(pcols)
    real(r8), parameter :: rad2deg = 180._r8/pi
+
+   integer  :: top_lev
+
 
    ! ======================================================================
 
@@ -812,7 +816,9 @@ subroutine rk_stratiform_tend( &
    fice(:,:) = 0._r8
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
-   call cldfrc_fice(ncol, state1%t(1:ncol,:), fice(1:ncol,:), fsnow(1:ncol,:))
+   top_lev = 1
+   call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
+
 
    ! Perform repartitioning of stratiform condensate.
    ! Corresponding heating tendency will be added later.
