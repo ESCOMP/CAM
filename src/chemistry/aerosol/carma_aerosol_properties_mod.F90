@@ -118,7 +118,7 @@ contains
        nmasses(m) = nspecies(m)
     end do
 
-    alogsig(:) = log(2._r8)  !!!! ???? IS THIS RIGHT ???? !!!
+    alogsig(:) = log(2._r8)
     f1 = 1._r8
     f2 = 1._r8
 
@@ -142,9 +142,21 @@ contains
 
     ibl = -1
 
-    allocate(imx_num_bl(nbins))
-    allocate(imx_mmr_bl(nbins))
-    allocate(imx_bl(nbins))
+    allocate(imx_num_bl(nbins),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(imx_mmr_bl(nbins),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
+    allocate(imx_bl(nbins),stat=ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
 
     imx = 0
     imx_mmr = 0
@@ -170,9 +182,9 @@ contains
           else
              spectype = 'other'
           end if
+
           ! identification is required for pure and mixed aerosols, mixed aeroosols are moved to
           ! larger bin, pure aerosols are moved to mixed sulfate
-
 
           if (index(bin_name,'MXAER')>0 .and. index(bin_name_l,'MXAER')>0) then
              ! for mixed aerosols
@@ -196,7 +208,7 @@ contains
           end if ! MXAER
 
           if (index(bin_name,'PRSUL')>0 .and. index(bin_name_l,'PRSUL')>0) then
-             ! assuming  PRSULF and  MXSULF have the same number of bins
+             ! pure sulfate bins
              if (trim(spectype) == 'sulfate') then
                 ipr = ipr +1
                 ibl(ii) = imx_bl(ipr)
