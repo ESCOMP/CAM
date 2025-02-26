@@ -9,9 +9,6 @@ module sox_cldaero_mod
   use mo_chem_utls,    only : get_spc_ndx
   use cldaero_mod,     only : cldaero_conc_t, cldaero_allocate, cldaero_deallocate
   use cam_logfile,     only : iulog
-  !st use modal_aero_data, only : ntot_amode, modeptr_accum, lptr_so4_cw_amode, lptr_msa_cw_amode
-  !st use modal_aero_data, only : numptrcw_amode, lptr_nh4_cw_amode
-  !st use modal_aero_data, only : cnst_name_cw, specmw_so4_amode
   use chem_mods,       only : adv_mass
   use physconst,       only : gravit
   use phys_control,    only : phys_getopts
@@ -47,7 +44,7 @@ contains
 
   subroutine sox_cldaero_init
 
-    integer :: l, m, mm, ii
+    integer :: l, m, ii
     logical :: history_aerosol      ! Output the MAM aerosol tendencies
 
     id_msa = get_spc_ndx( 'MSA' )
@@ -67,7 +64,7 @@ contains
     !
 
     ! get info about the modal aerosols
-   ! get nbins
+    ! get nbins
 
     call rad_cnst_get_info( 0, nbins=nbins)
 
@@ -114,13 +111,12 @@ contains
     integer,  intent(in) :: loffset
 
     real(r8) :: so4mmr(pcols,pver)
-    real(r8) :: nitmmr(pcols,pver)
 
     type(cldaero_conc_t), pointer :: conc_obj
 
     character(len=32) :: spectype
 
-    integer :: l,n,m
+    integer :: l,m
     integer :: i,k,mm
 
     ! local indexing for bins
@@ -225,22 +221,19 @@ contains
     real(r8) :: dryr_n(nbins,ncol,pver)   ! CARMA dry radius in cm
     real(r8) :: dqdt_aqso4(ncol,pver,ncnst_tot), &
          dqdt_aqh2so4(ncol,pver,ncnst_tot), &
-         dqdt_aqhprxn(ncol,pver), dqdt_aqo3rxn(ncol,pver), &
-         sflx(1:ncol)
+         dqdt_aqhprxn(ncol,pver), dqdt_aqo3rxn(ncol,pver)
 
-    real(r8) :: faqgain_msa(nbins), faqgain_so4(nbins)
+    real(r8) :: faqgain_so4(nbins)
     real(r8) :: wt_mass(nbins)
 
     real(r8) :: delso4_o3rxn, &
          dso4dt_aqrxn, dso4dt_hprxn, &
-         dso4dt_gasuptk, dmsadt_gasuptk, &
-         dmsadt_gasuptk_tomsa, dmsadt_gasuptk_toso4, &
+         dso4dt_gasuptk, dmsadt_gasuptk_toso4, &
          dqdt_aq, dqdt_wr, dqdt
 
-    real(r8) :: fwetrem, sumf, uptkrate
-    real(r8) :: delnh3, delnh4
+    real(r8) :: fwetrem, uptkrate
 
-    integer :: l, n, m, mm
+    integer :: l, n, mm
     integer :: ntot_msa_c
 
     integer :: i,k
@@ -296,17 +289,11 @@ contains
     lev_loop: do k = 1,pver
        col_loop: do i = 1,ncol
           cloud: if (cldfrc(i,k) >= 1.0e-5_r8) then
-             xl = xlwc(i,k) ! / cldfrc(i,k)
+             xl = xlwc(i,k)
 
-             IF (XL .ge. 1.e-8_r8) THEN !! WHEN CLOUD IS PRESENTED
+             if (xl .ge. 1.e-8_r8) then !! when cloud is present
 
                 delso4_o3rxn = xso4(i,k) - xso4_init(i,k)
-                !write(iulog,*) 'delso4_o3rxn ', delso4_o3rxn
-
-                !st if (id_nh3>0) then
-                !st    delnh3 = nh3g(i,k) - xnh3(i,k)
-                !st   delnh4 = - delnh3
-                !st endif
 
                 ! the factors are proportional to the activated particle MR for each
                 ! bin, which is the MR of cloud drops "associated with" the mode
@@ -333,27 +320,14 @@ contains
                    end if
                 end do
 
-                ! at this point (sumf <= 0.0) only when all the faqgain_msa are zero
                 uptkrate = cldaero_uptakerate( xl, cldnum(i,k), cfact(i,k), cldfrc(i,k), tfld(i,k),  press(i,k) )
                 ! average uptake rate over dtime
                 uptkrate = (1.0_r8 - exp(-min(100._r8,dtime*uptkrate))) / dtime
 
-                ! dso4dt_gasuptk = so4_c tendency from h2so4 gas uptake (mol/mol/s)
-                ! dmsadt_gasuptk = msa_c tendency from msa gas uptake (mol/mol/s)
                 dso4dt_gasuptk = xh2so4(i,k) * uptkrate
-                !if (id_msa > 0) then
-                !   dmsadt_gasuptk = xmsa(i,k) * uptkrate
-                !else
-                !   dmsadt_gasuptk = 0.0_r8
-                !end if
-!
+
                 ! if no modes have msa aerosol, then "rename" scavenged msa gas to so4
                 dmsadt_gasuptk_toso4 = 0.0_r8
-                !st dmsadt_gasuptk_tomsa = dmsadt_gasuptk
-                !st if (ntot_msa_c == 0) then
-                !st    dmsadt_gasuptk_tomsa = 0.0_r8
-                !st    dmsadt_gasuptk_toso4 = dmsadt_gasuptk
-                !st end if
 
                 !-----------------------------------------------------------------------
                 ! now compute TMR tendencies
@@ -400,13 +374,7 @@ contains
                 ! Need to multiply both these parts by cldfrc
 
                 ! h2so4 (g) & msa (g)
-
-                !H2SO4 not updated in Pengfei's model
-                !st TEST with H2SO4 uptake
                 qin(i,k,id_h2so4) = qin(i,k,id_h2so4) - dso4dt_gasuptk * dtime * cldfrc(i,k)
-                !qin(i,k,id_h2so4) =  MAX( qin(i,k,id_h2so4),  small_value )
-
-                !st if (id_msa > 0) qin(i,k,id_msa) = qin(i,k,id_msa) - dmsadt_gasuptk * dtime * cldfrc(i,k)
 
                 ! so2 -- the first order loss rate for so2 is frso2_c*clwlrat(i,k)
                 ! fwetrem = max( 0.0_r8, (1.0_r8-exp(-min(100._r8,dtime*frso2_c*clwlrat(i,k)))) )
@@ -430,19 +398,11 @@ contains
                 qin(i,k,id_h2o2) = qin(i,k,id_h2o2) + dqdt * dtime
                 qin(i,k,id_h2o2) =  MAX( qin(i,k,id_h2o2),    small_value )
 
-                ! NH3
-                !st if (id_nh3>0) then
-                !st    dqdt_aq = delnh3/dtime*cldfrc(i,k)
-                !st    dqdt = dqdt_aq
-                !st    qin(i,k,id_nh3) = qin(i,k,id_nh3) + dqdt * dtime
-                !st endif
-
                 ! for SO4 from H2O2/O3 budgets
                 dqdt_aqhprxn(i,k) = dso4dt_hprxn*cldfrc(i,k)
                 dqdt_aqo3rxn(i,k) = (dso4dt_aqrxn - dso4dt_hprxn)*cldfrc(i,k)
 
-
-            ENDIF !! WHEN CLOUD IS PRESENTED
+            endif !! when cloud is present
           endif cloud
        enddo col_loop
     enddo lev_loop

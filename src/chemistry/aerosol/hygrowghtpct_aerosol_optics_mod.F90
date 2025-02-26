@@ -135,7 +135,6 @@ contains
        pabs(icol) = min(pext(icol),pabs(icol))
 
        palb(icol) = 1._r8-pabs(icol)/max(pext(icol),1.e-40_r8)
-       palb(icol) = 1._r8-pabs(icol)/max(pext(icol),1.e-40_r8)
 
     end do
 

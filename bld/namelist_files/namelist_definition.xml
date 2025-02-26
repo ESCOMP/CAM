@@ -4967,7 +4967,7 @@ for the trop_strat CARMA model.
 Valid options are:
 
  Yu2015 -- method used in Yu et. al, 2015
- Specified -- {{ hilight }}emissions_specifier{{ closehilight }} method which places emissons in physcis buffer
+ Specified -- {{ hilight }}emissions_specifier{{ closehilight }} method which places emissions in physcis buffer
 
 Default: Yu2015
 </entry>
@@ -4979,7 +4979,7 @@ for the trop_strat CARMA model.
 
 Valid options are:
 
- Specified -- {{ hilight }}elev_emis_specifier{{ closehilight }} method which places emissons in physcis buffer
+ Specified -- {{ hilight }}elev_emis_specifier{{ closehilight }} method which places emissions in physcis buffer
 
 Default: NONE
 </entry>
@@ -4990,10 +4990,10 @@ List of full pathnames of surface emission datasets.
 
 Elevated emission data added to physcis buffer read from a set of netcdf file.
 Each tracer species emissions is read from its own file as directed by the
-namelist variable {{ hilight }}elve_emis_specifier{{ closehilight }}.  The
+namelist variable {{ hilight }}elev_emis_specifier{{ closehilight }}.  The
 {{ hilight }}emissions_specifier{{ closehilight }} variable tells the model
 which species have emissions and the file path for the corresponding species.
-That is, the {{ hilight }}elve_emis_specifier{{ closehilight }} variable is
+That is, the {{ hilight }}elev_emis_specifier{{ closehilight }} variable is
 set something like:
 
  elev_emis_specifier = 'SO4 -> /path/emis.SO4.nc',

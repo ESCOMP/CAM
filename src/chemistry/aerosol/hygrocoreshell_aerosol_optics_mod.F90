@@ -201,8 +201,8 @@ contains
     integer, intent(in) :: iwav        ! wave length index
     real(r8),intent(out) :: pext(ncol) ! parameterized specific extinction (m2/kg)
     real(r8),intent(out) :: pabs(ncol) ! parameterized specific absorption (m2/kg)
-    real(r8),intent(out) :: palb(ncol) ! parameterized asymmetry factor
-    real(r8),intent(out) :: pasm(ncol) ! parameterized single scattering albedo
+    real(r8),intent(out) :: palb(ncol) ! parameterized single scattering albedo
+    real(r8),intent(out) :: pasm(ncol) ! parameterized asymmetry factor
 
     integer :: icol
 
@@ -227,7 +227,6 @@ contains
        pabs(icol) = max(0._r8,pabs(icol))
        pabs(icol) = min(pext(icol),pabs(icol))
 
-       palb(icol) = 1._r8-pabs(icol)/max(pext(icol),1.e-40_r8)
        palb(icol) = 1._r8-pabs(icol)/max(pext(icol),1.e-40_r8)
 
     end do
