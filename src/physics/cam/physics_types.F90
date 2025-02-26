@@ -32,7 +32,6 @@ module physics_types
   public physics_ptend_init
   public physics_state_set_grid
   public physics_dme_adjust  ! adjust dry mass and energy for change in water
-                             ! cannot be applied to eul or sld dycores
   public physics_state_copy  ! copy a physics_state object
   public physics_ptend_copy  ! copy a physics_ptend object
   public physics_ptend_sum   ! accumulate physics_ptend objects
@@ -1211,9 +1210,6 @@ end subroutine physics_ptend_copy
     !         interfaces and midpoints to the surface pressure. The result is no longer in
     !         the original hybrid coordinate.
     !
-    !         This procedure cannot be applied to the "eul" or "sld" dycores because they
-    !         require the hybrid coordinate.
-    !
     ! Author: Byron Boville
 
     ! !REVISION HISTORY:
@@ -1269,7 +1265,7 @@ end subroutine physics_ptend_copy
     state%ps(:ncol) = state%pint(:ncol,1)
 
     !
-    ! original code for backwards compatability with FV and EUL
+    ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
       do k = 1, pver

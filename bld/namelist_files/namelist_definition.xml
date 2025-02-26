@@ -1184,107 +1184,6 @@ If true nudge atmospheric temperature (T) from the meteorology.
 Default: true
 </entry>
 
-<!-- Dynamics: Eulerian Spectral -->
-
-<entry id="eul_dif2_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-del^2 horizontal diffusion coefficient.  This is used above the Nth order
-diffusion.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_hdif_order" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Order (N) of horizontal diffusion operator used below the sponge layers.
-N must be a positive multiple of 2.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_kmnhdn" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-The order N horizontal diffusion operator will be used in and below the
-layer specified by this variable.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Nth order horizontal diffusion coefficient.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_divdampn" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of days (from timestep 0) to run divergence damper. Use only if spectral
-model becomes dynamicallly unstable during initialization. Suggested value:
-2. (Value must be &gt;= 0.)  Default: 0.
-</entry>
-
-<entry id="eul_tfilt_eps" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Time filter coefficient.  Default: 0.06
-</entry>
-
-<entry id="eul_kmxhdc" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of levels over which to apply Courant limiter, starting at top of
-model.
-Default: 5
-</entry>
-
-<entry id="eul_nsplit" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-Number of dynamics timesteps per physics timestep. If zero, a best-estimate
-will be automatically calculated.
-Default: 1
-</entry>
-
-<!-- MPI configuration for global spectral dycores (EUL and SLD) -->
-
-<entry id="dyn_allgather" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics gather option.
-   0: use mpi_allgatherv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_alltoall" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics transpose option.
-   0: use mpi_alltoallv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_equi_by_col" type="logical"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Flag indicating whether to assign latitudes to equidistribute columns or
-latitudes. This only matters when using a reduced grid.
-Default: TRUE
-</entry>
-
-<entry id="dyn_npes" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Number of processes assigned to dynamics (SE, EUL and SLD dycores).
-Default: Total number of processes assigned to job.
-</entry>
-
-<entry id="dyn_npes_stride" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Stride for dynamics processes (EUL and SLD dycores).
-E.g., if stride=2, assign every second process to the dynamics.
-Default: 1
-</entry>
-
 <!-- Gravity Wave Drag -->
 
 <entry id="use_gw_oro" type="logical" category="gw_drag"
@@ -3611,16 +3510,14 @@ Default: 10
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+Default: 'ZM' unless using 'UNICON' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
-SPCAM has two different microphysics schemes: SPCAM_m2005 (Morrison et al 2005),
-SPCAM_sam1mom (Khairoutinov 2003)
 Default: set by build-namelist (depends on value set in configure).
 </entry>
 
@@ -3640,14 +3537,12 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
  'UNICON' which doesn't distinquish shallow and deep.
- 'SPCAM_m2005' for SPCAM double moment
- 'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -5370,7 +5265,7 @@ Default: 0
 </entry>
 
 <entry id="eddy_scheme" type="char*16" category="pbl"
-       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS,SPCAM_sam1mom,SPCAM_m2005" >
+       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS" >
 Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
@@ -6189,7 +6084,7 @@ Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
   OFF --> wet deposition is turned off
-Default: NEU except for SPCAM runs
+Default: NEU
 </entry>
 
 <entry id="gas_wetdep_list" type="char*16(1000)" category="cam_chem"

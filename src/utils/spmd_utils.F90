@@ -69,8 +69,8 @@ module spmd_utils
 !-----------------------------------------------------------------------
 ! Public interfaces ----------------------------------------------------
 !-----------------------------------------------------------------------
-   public pair      ! $$$here...  originally from eul|sld/spmd_dyn
-   public ceil2     ! $$$here...  originally from eul|sld/spmd_dyn
+   public pair
+   public ceil2
    public spmdinit
    public spmd_utils_readnl
 #if ( defined SPMD )
