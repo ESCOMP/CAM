@@ -348,7 +348,7 @@ subroutine zm_conv_init(pref_edge)
                   pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin,  &
                   no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_parcel_hscale, zmconv_tau, &
                   masterproc, iulog, errmsg, errflg)
 
       if (errflg /= 0) then
