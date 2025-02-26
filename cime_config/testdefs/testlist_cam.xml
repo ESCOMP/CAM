@@ -1404,6 +1404,15 @@
     </options>
   </test>
 
+  <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa480_pertlim">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:45:00</option>
+    </options>
+  </test>
+
   <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
