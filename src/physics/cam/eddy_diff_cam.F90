@@ -424,16 +424,16 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   !                       May.    2008.                                 !
   !-------------------------------------------------------------------- !
 
-  use diffusion_solver, only: compute_vdiff
-  use cam_history,      only: outfld
-  use phys_debug_util,  only: phys_debug_col
-  use air_composition,  only: cpairv
-  use pbl_utils,        only: calc_ustar, austausch_atm
-  use error_messages,   only: handle_errmsg
-  use coords_1d,        only: Coords1D
-  use wv_saturation,    only: qsat
-  use eddy_diff,        only: trbintd, caleddy
-  use physics_buffer,   only: pbuf_get_field
+  use diffusion_solver,     only: compute_vdiff
+  use cam_history,          only: outfld
+  use phys_debug_util,      only: phys_debug_col
+  use air_composition,      only: cpairv
+  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_friction_velocity
+  use error_messages,       only: handle_errmsg
+  use coords_1d,            only: Coords1D
+  use wv_saturation,        only: qsat
+  use eddy_diff,            only: trbintd, caleddy
+  use physics_buffer,       only: pbuf_get_field
 
   ! --------------- !
   ! Input Variables !
@@ -670,10 +670,11 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
      ! I am using updated wind, here.
 
      ! Compute ustar
-     call calc_ustar( ncol, tfd(:ncol,pver), pmid(:ncol,pver), &
-                      taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
-                      tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
-                      rrho(:ncol), ustar(:ncol))
+     rrho(:ncol)   = calc_ideal_gas_rrho(rair, tfd(:ncol,pver), pmid(:ncol,pver))
+     ustar(:ncol)  = calc_friction_velocity(taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
+                                            tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
+                                            rrho(:ncol))
+
      minpblh(:ncol) = 100.0_r8 * ustar(:ncol)   ! By construction, 'minpblh' is larger than 1 [m] when 'ustar_min = 0.01'.
 
      ! Calculate (qt,sl,n2,s2,ri) from a given set of (t,qv,ql,qi,u,v)
@@ -694,8 +695,12 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
 
      ! Get free atmosphere exchange coefficients. This 'kvf' is not used in UW moist PBL scheme
      if (use_kvf) then
-        call austausch_atm(pcols, ncol, pver, ntop_eddy, nbot_eddy, &
-             ml2, ri, s2, kvf )
+        kvf(:ncol,:) = 0.0_r8
+        do k = ntop_eddy, nbot_eddy-1
+           do i = 1, ncol
+              kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
+           end do
+        end do
      else
         kvf = 0._r8
      end if
