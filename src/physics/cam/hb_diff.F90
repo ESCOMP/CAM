@@ -11,7 +11,6 @@ module hb_diff
   ! Private methods:
   !       trbintd         initializes time dependent variables
   !       pblintd         initializes time dependent variables that depend pbl depth
-  !       austausch_atm   computes free atmosphere exchange coefficients
   !       austausch_pbl   computes pbl exchange coefficients
   !
   !---------------------------Code history--------------------------------
@@ -150,13 +149,16 @@ end subroutine init_hb_diff
     ! 
     !-----------------------------------------------------------------------
 
-    use pbl_utils, only: virtem, calc_ustar, calc_obklen, austausch_atm
+    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,               &
+                                    calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_kinematic_buoyancy_flux
+    use physconst,            only: zvir, rair, gravit, karman
 
     !------------------------------Arguments--------------------------------
     !
     ! Input arguments
     !
-    integer, intent(in) :: ncol                       ! number of atmospheric columns
+    integer, intent(in)   :: ncol                     ! number of atmospheric columns
 
     real(r8), intent(in)  :: th(pcols,pver)           ! potential temperature [K]
     real(r8), intent(in)  :: t(pcols,pver)            ! temperature (used for density)
@@ -203,20 +205,22 @@ end subroutine init_hb_diff
     real(r8) :: n2(pcols,pver)          ! brunt vaisaila frequency
     real(r8) :: bge(pcols)              ! buoyancy gradient enhancment
     integer  :: ktopbl(pcols)           ! index of first midpoint inside pbl
+    integer  :: i,k
     !
     ! Initialize time dependent variables that do not depend on pbl height
     !
 
     ! virtual temperature
-    call virtem(ncol, (pver-ntop_turb+1), th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), thv(:ncol,ntop_turb:))
+    thv(:ncol,ntop_turb:) = calc_virtual_temperature(th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), zvir)
 
     ! Compute ustar, Obukhov length, and kinematic surface fluxes.
-    call calc_ustar(ncol, t(:ncol,pver),pmid(:ncol,pver),taux(:ncol),tauy(:ncol), &
-         rrho(:ncol),ustar(:ncol))
-    call calc_obklen(ncol, th(:ncol,pver), thv(:ncol,pver), qflx(:ncol),  &
-                     shflx(:ncol),   rrho(:ncol),     ustar(:ncol), &
-                     khfs(:ncol),    kqfs(:ncol),     kbfs(:ncol),  &
-                     obklen(:ncol))
+    rrho(:ncol)   = calc_ideal_gas_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
+    ustar(:ncol)  = calc_friction_velocity(taux(:ncol),tauy(:ncol), rrho(:ncol))
+    khfs(:ncol)   = calc_kinematic_heat_flux(shflx(:ncol), rrho(:ncol), cpair)
+    kqfs(:ncol)   = calc_kinematic_water_vapor_flux(qflx(:ncol), rrho(:ncol))
+    kbfs(:ncol)   = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+    obklen(:ncol) = calc_obukhov_length(thv(:ncol,pver), ustar(:ncol), gravit, karman, kbfs(:ncol))
+
     ! Calculate s2, n2, and Richardson number.
     call trbintd(ncol    ,                            &
          thv     ,z       ,u       ,v       , &
@@ -229,10 +233,15 @@ end subroutine init_hb_diff
          ustar   ,obklen  ,kbfs    ,pblh    ,wstar   , &
          zi      ,cldn    ,ocnfrac ,bge     )
     !
-    ! Get free atmosphere exchange coefficients
+    ! Get atmosphere exchange coefficients
     !
-    call austausch_atm(pcols, ncol, pver, ntop_turb, nbot_turb, &
-         ml2, ri, s2, kvf)
+    kvf(:ncol,:) = 0.0_r8
+    do k = ntop_turb, nbot_turb-1
+       do i = 1, ncol
+          kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
+       end do
+    end do
+
     ! 
     ! Get pbl exchange coefficients
     !
@@ -262,7 +271,10 @@ end subroutine init_hb_diff
     !
     !-----------------------------------------------------------------------
 
-    use pbl_utils, only: virtem, calc_ustar, calc_obklen, austausch_atm_free
+    use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_friction_velocity, calc_obukhov_length,                    &
+                                    calc_free_atm_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, &
+                                    calc_kinematic_buoyancy_flux
+    use physconst,            only: zvir, rair, gravit, karman
 
     !------------------------------Arguments--------------------------------
     !
@@ -303,17 +315,18 @@ end subroutine init_hb_diff
     real(r8) :: kvf(pcols,pverp)        ! free atmospheric eddy diffsvty [m2/s]
     real(r8) :: s2(pcols,pver)          ! shear squared
     real(r8) :: n2(pcols,pver)          ! brunt vaisaila frequency
+    integer  :: i, k
 
     ! virtual potential temperature
-    call virtem(ncol, (pver-ntop_turb+1), th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), thv(:ncol,ntop_turb:))
+    thv(:ncol,ntop_turb:) = calc_virtual_temperature(th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), zvir)
 
     ! Compute ustar, Obukhov length, and kinematic surface fluxes.
-    call calc_ustar(ncol, t(:ncol,pver),pmid(:ncol,pver),taux(:ncol),tauy(:ncol), &
-         rrho(:ncol),ustar(:ncol))
-    call calc_obklen(ncol, th(:ncol,pver), thv(:ncol,pver), qflx(:ncol),  &
-                     shflx(:ncol),   rrho(:ncol),     ustar(:ncol), &
-                     khfs(:ncol),    kqfs(:ncol),     kbfs(:ncol),  &
-                     obklen(:ncol))
+    rrho(:ncol)   = calc_ideal_gas_rrho(rair, t(:ncol,pver), pmid(:ncol,pver))
+    ustar(:ncol)  = calc_friction_velocity(taux(:ncol),tauy(:ncol), rrho(:ncol))
+    khfs(:ncol)   = calc_kinematic_heat_flux(shflx(:ncol), rrho(:ncol), cpair)
+    kqfs(:ncol)   = calc_kinematic_water_vapor_flux(qflx(:ncol), rrho(:ncol))
+    kbfs(:ncol)   = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+    obklen(:ncol) = calc_obukhov_length(thv(:ncol,pver), ustar(:ncol), gravit, karman, kbfs(:ncol))
     ! Calculate s2, n2, and Richardson number.
     call trbintd(ncol    ,                            &
          thv     ,z       ,u       ,v       , &
@@ -321,8 +334,12 @@ end subroutine init_hb_diff
     !
     ! Get free atmosphere exchange coefficients
     !
-    call austausch_atm_free(pcols, ncol, pver, ntop_turb, nbot_turb, &
-         ml2, ri, s2, kvf)
+    kvf(:ncol,:) = 0.0_r8
+    do k = ntop_turb, nbot_turb - 1
+       do i = 1, ncol
+          kvf(i,k+1) = calc_free_atm_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
+       end do
+    end do
 
     kvq(:ncol,:) = kvf(:ncol,:)
     kvm(:ncol,:) = kvf(:ncol,:)
