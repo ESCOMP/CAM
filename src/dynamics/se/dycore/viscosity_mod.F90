@@ -79,7 +79,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   real (kind=r8), dimension(np,np,nlevp) :: T_i
 
 
-  real (kind=r8) :: nu_ratio1, nu_ratio2, dp_thresh
+  real (kind=r8) :: nu_ratio1, nu_ratio2
   logical var_coef1
 
   kblk = kend - kbeg + 1
@@ -89,7 +89,6 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   !so tensor is only used on second call to laplace_sphere_wk
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
-  dp_thresh=.025_r8  ! tunable coefficient
   do ie=nets,nete
 !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend

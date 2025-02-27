@@ -396,7 +396,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
    if (hist_fld_active('dp_ref_gll')) then
      do ie = 1, nelemd
-       call get_dp_ref(hyai, hybi, ps0, elem(ie)%state%phis(:,:), dp_ref(:,:,:), ps_ref(:,:))
+       call get_dp_ref(hyai,hybi,ps0,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
          do j = 1, np
             do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
@@ -420,8 +420,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (hist_fld_active('PS_gll')) then
      allocate(fld_2d(np,np))
      do ie = 1, nelemd
-       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
-            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
          do j = 1, np
             do i = 1, np
               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)

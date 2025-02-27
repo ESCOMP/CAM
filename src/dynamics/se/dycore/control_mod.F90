@@ -17,7 +17,7 @@ module control_mod
   integer, public  :: ftype = 2                               ! Forcing Type
   integer, public  :: ftype_conserve = 1  !conserve momentum (dp*u)
   integer, public  :: dribble_in_rsplit_loop = 0
-  integer, public  :: statediag_numtrac = 3          
+  integer, public  :: statediag_numtrac = 3
 
   integer, public :: qsplit = 1           ! ratio of dynamics tsteps to tracer tsteps
   integer, public :: rsplit =-1           ! for vertically lagrangian dynamics, apply remap

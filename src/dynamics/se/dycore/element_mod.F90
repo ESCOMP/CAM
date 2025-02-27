@@ -53,21 +53,6 @@ module element_mod
     real (kind=r8) :: FM(np,np,2,nlev)                         ! momentum forcing
     real (kind=r8), allocatable :: FDP(:,:,:)                  ! save full updated dp right after physics
     real (kind=r8) :: FT(np,np,nlev)                           ! temperature forcing
-    real (kind=r8) :: etadot_prescribed(np,np,nlevp)           ! prescribed vertical tendency
-    real (kind=r8) :: u_met(np,np,nlev)                        ! zonal component of prescribed meteorology winds
-    real (kind=r8) :: dudt_met(np,np,nlev)                     ! rate of change of zonal component of prescribed meteorology winds
-    real (kind=r8) :: v_met(np,np,nlev)                        ! meridional component of prescribed meteorology winds
-    real (kind=r8) :: dvdt_met(np,np,nlev)                     ! rate of change of meridional component of prescribed meteorology winds
-    real (kind=r8) :: T_met(np,np,nlev)                        ! prescribed meteorology temperature
-    real (kind=r8) :: dTdt_met(np,np,nlev)                     ! rate of change of prescribed meteorology temperature
-    real (kind=r8) :: ps_met(np,np)                            ! surface pressure of prescribed meteorology
-    real (kind=r8) :: dpsdt_met(np,np)                         ! rate of change of surface pressure of prescribed meteorology
-    real (kind=r8) :: nudge_factor(np,np,nlev)                 ! nudging factor (prescribed)
-    real (kind=r8) :: Utnd(npsq,nlev)                          ! accumulated U tendency due to nudging towards prescribed met
-    real (kind=r8) :: Vtnd(npsq,nlev)                          ! accumulated V tendency due to nudging towards prescribed met
-    real (kind=r8) :: Ttnd(npsq,nlev)                          ! accumulated T tendency due to nudging towards prescribed met
-
-    real (kind=r8) :: pecnd(np,np,nlev)                        ! pressure perturbation from condensate
 
     ! reference profiles
     real (kind=r8) :: T_ref(np,np,nlev)                        ! reference temperature

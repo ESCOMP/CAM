@@ -1,7 +1,7 @@
 module prim_init
 
   use shr_kind_mod,   only: r8=>shr_kind_r8
-  use dimensions_mod, only: nc, use_cslam
+  use dimensions_mod, only: nc
   use reduction_mod,  only: reductionbuffer_ordered_1d_t
   use quadrature_mod, only: quadrature_t, gausslobatto
 
@@ -348,25 +348,9 @@ contains
       elem(ie)%derived%FQ=0.0_r8
       elem(ie)%derived%FT=0.0_r8
       elem(ie)%derived%FDP=0.0_r8
-      elem(ie)%derived%pecnd=0.0_r8
 
       elem(ie)%derived%Omega=0
       elem(ie)%state%dp3d=0
-
-      elem(ie)%derived%etadot_prescribed = nan
-      elem(ie)%derived%u_met = nan
-      elem(ie)%derived%v_met = nan
-      elem(ie)%derived%dudt_met = nan
-      elem(ie)%derived%dvdt_met = nan
-      elem(ie)%derived%T_met = nan
-      elem(ie)%derived%dTdt_met = nan
-      elem(ie)%derived%ps_met = nan
-      elem(ie)%derived%dpsdt_met = nan
-      elem(ie)%derived%nudge_factor = nan
-
-      elem(ie)%derived%Utnd=0._r8
-      elem(ie)%derived%Vtnd=0._r8
-      elem(ie)%derived%Ttnd=0._r8
     end do
 
     ! ==========================================================
