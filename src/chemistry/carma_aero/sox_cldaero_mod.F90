@@ -383,7 +383,6 @@ contains
                 dqdt_wr = -fwetrem*xso2(i,k)/dtime*cldfrc(i,k)
                 dqdt_aq = -dso4dt_aqrxn*cldfrc(i,k)
                 dqdt = dqdt_aq + dqdt_wr
-                dqdt = dqdt_aq
                 qin(i,k,id_so2) = qin(i,k,id_so2) + dqdt * dtime
                 qin(i,k,id_so2) =  MAX( qin(i,k,id_so2),    small_value )
 
@@ -394,7 +393,6 @@ contains
                 dqdt_wr = -fwetrem*xh2o2(i,k)/dtime*cldfrc(i,k)
                 dqdt_aq = -dso4dt_hprxn*cldfrc(i,k)
                 dqdt = dqdt_aq + dqdt_wr
-                dqdt = dqdt_aq
                 qin(i,k,id_h2o2) = qin(i,k,id_h2o2) + dqdt * dtime
                 qin(i,k,id_h2o2) =  MAX( qin(i,k,id_h2o2),    small_value )
 
