@@ -1260,10 +1260,6 @@ end subroutine physics_ptend_copy
     lchnk = state%lchnk
     ncol  = state%ncol
 
-!    ! adjust dry mass in each layer back to input value, while conserving
-!    ! constituents, momentum, and total energy
-!    state%ps(:ncol) = state%pint(:ncol,1)
-
     !
     ! original code for backwards compatability with FV
     !
