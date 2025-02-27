@@ -31,16 +31,11 @@ logical :: wavenumber_boundaries_set = .true.
 ! First and last g-point for each band.
 integer, public, protected :: band2gpt_sw(2,nswbands)
 
-integer, public, protected :: nswgpts  ! number of SW g-points
-integer, public, protected :: nlwgpts  ! number of LW g-points
-
 ! These are indices to specific bands for diagnostic output and COSP input.
 integer, public, protected :: idx_sw_diag = -1     ! band contains 500-nm wave
 integer, public, protected :: idx_nir_diag = -1    ! band contains 1000-nm wave
 integer, public, protected :: idx_uv_diag = -1     ! band contains 400-nm wave
 integer, public, protected :: idx_lw_diag = -1     ! band contains 1000 cm-1 wave (H20 window)
-integer, public, protected :: idx_sw_cloudsim = -1 ! band contains 670-nm wave (for COSP)
-integer, public, protected :: idx_lw_cloudsim = -1 ! band contains 10.5 micron wave (for COSP)
 
 ! GASES TREATED BY RADIATION (line spectra)
 ! These names are recognized by RRTMGP.  They are in the coefficients files as
@@ -55,7 +50,7 @@ character(len=gasnamelength), public, parameter :: gaslist(nradgas) &
 real(r8), public, parameter :: minmmr(nradgas) = epsilon(1._r8)
 
 public :: &
-   set_wavenumber_bands,       &
+   radconstants_init,          &
    get_sw_spectral_boundaries, &
    get_lw_spectral_boundaries, &
    get_band_index_by_value,    &
@@ -64,79 +59,18 @@ public :: &
 !=========================================================================================
 contains
 !=========================================================================================
+subroutine radconstants_init(idx_sw_diag_in, idx_nir_diag_in, idx_uv_diag_in, idx_lw_diag_in)
+   integer, intent(in) :: idx_sw_diag_in
+   integer, intent(in) :: idx_nir_diag_in
+   integer, intent(in) :: idx_uv_diag_in
+   integer, intent(in) :: idx_lw_diag_in
 
-subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
+   idx_sw_diag = idx_sw_diag_in
+   idx_nir_diag = idx_nir_diag_in
+   idx_uv_diag = idx_uv_diag_in
+   idx_lw_diag = idx_lw_diag_in
 
-   ! Set the low and high limits of the wavenumber grid for sw and lw.
-   ! Values come from RRTMGP coefficients datasets, and are stored in the
-   ! kdist objects.
-   !
-   ! Set band indices for bands containing specific wavelengths.
-
-   ! Arguments
-   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw
-   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_lw
-
-   ! Local variables
-   integer :: istat
-   real(r8), allocatable :: values(:,:)
-
-   character(len=128) :: errmsg
-   character(len=*), parameter :: sub = 'set_wavenumber_bands'
-   !----------------------------------------------------------------------------
-
-   ! Check that number of sw/lw bands in gas optics files matches the parameters.
-   if (kdist_sw%get_nband() /= nswbands) then
-      write(errmsg,'(a,i4,a,i4)') 'number of sw bands in file, ', kdist_sw%get_nband(), &
-         ", doesn't match parameter nswbands= ", nswbands
-      call endrun(sub//': ERROR: '//trim(errmsg))
-   end if
-   if (kdist_lw%get_nband() /= nlwbands) then
-      write(errmsg,'(a,i4,a,i4)') 'number of lw bands in file, ', kdist_lw%get_nband(), &
-         ", doesn't match parameter nlwbands= ", nlwbands
-      call endrun(sub//': ERROR: '//trim(errmsg))
-   end if
-
-   nswgpts = kdist_sw%get_ngpt()
-   nlwgpts = kdist_lw%get_ngpt()
-
-   ! SW band bounds in cm^-1
-   allocate( values(2,nswbands), stat=istat )
-   if (istat/=0) then
-      call endrun(sub//': ERROR allocating array: values(2,nswbands)')
-   end if
-   values = kdist_sw%get_band_lims_wavenumber()
-   wavenumber_low_shortwave = values(1,:)
-   wavenumber_high_shortwave = values(2,:)
-
-   ! First and last g-point for each SW band:
-   band2gpt_sw = kdist_sw%get_band_lims_gpoint()
-
-   ! Indices into specific bands
-   idx_sw_diag     = get_band_index_by_value('sw', 500.0_r8, 'nm')
-   idx_nir_diag    = get_band_index_by_value('sw', 1000.0_r8, 'nm')
-   idx_uv_diag     = get_band_index_by_value('sw', 400._r8, 'nm')
-   idx_sw_cloudsim = get_band_index_by_value('sw', 0.67_r8, 'micron')
-
-   deallocate(values)
-
-   ! LW band bounds in cm^-1
-   allocate( values(2,nlwbands), stat=istat )
-   if (istat/=0) then
-      call endrun(sub//': ERROR allocating array: values(2,nlwbands)')
-   end if
-   values = kdist_lw%get_band_lims_wavenumber()
-   wavenumber_low_longwave = values(1,:)
-   wavenumber_high_longwave = values(2,:)
-
-   ! Indices into specific bands
-   idx_lw_diag     = get_band_index_by_value('lw', 1000.0_r8, 'cm^-1')
-   idx_lw_cloudsim = get_band_index_by_value('lw', 10.5_r8, 'micron')
-
-   wavenumber_boundaries_set = .true.
-
-end subroutine set_wavenumber_bands
-
+end subroutine radconstants_init
 !=========================================================================================
 
  subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)

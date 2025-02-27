@@ -17,7 +17,7 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc
 use camsrfexch,       only: cam_in_t
 
-use radconstants,     only: nradgas, gaslist, nswbands, nlwbands, nswgpts, nlwgpts
+use radconstants,     only: nradgas, gaslist, nswbands, nlwbands
 
 use rad_constituents, only: rad_cnst_get_gas
 
@@ -45,7 +45,6 @@ private
 save
 
 public :: &
-   rrtmgp_set_state, &
    rrtmgp_inputs_cam_init, &
    rrtmgp_set_gases_lw, &
    rrtmgp_set_gases_sw, &
@@ -108,187 +107,8 @@ subroutine rrtmgp_inputs_cam_init(ktcam, ktrad, idx_sw_diag_in, idx_nir_diag_in,
 
    ! Initialize the module data containing the SW band boundaries.
    call get_sw_spectral_boundaries_ccpp(sw_low_bounds, sw_high_bounds, 'cm^-1', errmsg, errflg)
-   write(iulog,*) 'peverwhee - after cam init'
-   write(iulog,*) ktopcam
-   write(iulog,*) ktoprad
-   write(iulog,*) sw_low_bounds
-   write(iulog,*) sw_high_bounds
-   write(iulog,*) nswbands
-   write(iulog,*) idx_sw_diag
-   write(iulog,*) idx_nir_diag
-   write(iulog,*) idx_uv_diag
-   write(iulog,*) idx_sw_cloudsim
-   write(iulog,*) idx_lw_diag
-   write(iulog,*) idx_lw_cloudsim
 
 end subroutine rrtmgp_inputs_cam_init
-
-!=========================================================================================
-
-subroutine rrtmgp_set_state( &
-   state, cam_in, ncol, nlay, nday,           &
-   idxday, coszrs, kdist_sw, t_sfc, emis_sfc,  &
-   t_rad, pmid_rad, pint_rad, t_day, pmid_day, &
-   pint_day, coszrs_day, alb_dir, alb_dif) 
-
-   ! arguments
-   type(physics_state),         intent(in) :: state     ! CAM physics state
-   type(cam_in_t),              intent(in) :: cam_in    ! CAM import state
-   integer,                     intent(in) :: ncol      ! # cols in CAM chunk
-   integer,                     intent(in) :: nlay      ! # layers in rrtmgp grid
-   integer,                     intent(in) :: nday      ! # daylight columns
-   integer,                     intent(in) :: idxday(:) ! chunk indicies of daylight columns
-   real(r8),                    intent(in) :: coszrs(:) ! cosine of solar zenith angle
-   class(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw  ! spectral information
-
-   real(r8), intent(out) :: t_sfc(ncol)              ! surface temperature [K] 
-   real(r8), intent(out) :: emis_sfc(nlwbands,ncol)  ! emissivity at surface []
-   real(r8), intent(out) :: t_rad(ncol,nlay)         ! layer midpoint temperatures [K]
-   real(r8), intent(out) :: pmid_rad(ncol,nlay)      ! layer midpoint pressures [Pa]
-   real(r8), intent(out) :: pint_rad(ncol,nlay+1)    ! layer interface pressures [Pa]
-   real(r8), intent(out) :: t_day(nday,nlay)         ! layer midpoint temperatures [K]
-   real(r8), intent(out) :: pmid_day(nday,nlay)      ! layer midpoint pressure [Pa]
-   real(r8), intent(out) :: pint_day(nday,nlay+1)    ! layer interface pressures [Pa]
-   real(r8), intent(out) :: coszrs_day(nday)         ! cosine of solar zenith angle
-   real(r8), intent(out) :: alb_dir(nswbands,nday)   ! surface albedo, direct radiation
-   real(r8), intent(out) :: alb_dif(nswbands,nday)   ! surface albedo, diffuse radiation
-
-   ! local variables
-   integer :: i, k, iband
-
-   real(r8) :: tref_min, tref_max
-
-   character(len=*), parameter :: sub='rrtmgp_set_state'
-   character(len=512) :: errmsg
-   !--------------------------------------------------------------------------------
-
-   t_sfc = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))  ! Surface temp set based on longwave up flux.
-
-   ! Set surface emissivity to 1.0.
-   ! The land model *does* have its own surface emissivity, but is not spectrally resolved.
-   ! The LW upward flux is calculated with that land emissivity, and the "radiative temperature"
-   ! t_sfc is derived from that flux. We assume, therefore, that the emissivity is unity
-   ! to be consistent with t_sfc.
-   emis_sfc(:,:) = 1._r8
-
-   ! Level ordering is the same for both CAM and RRTMGP (top to bottom)
-   t_rad(:,ktoprad:) = state%t(:ncol,ktopcam:)
-   pmid_rad(:,ktoprad:) = state%pmid(:ncol,ktopcam:)
-   pint_rad(:,ktoprad:) = state%pint(:ncol,ktopcam:)
-
-   ! Add extra layer values if needed.
-   if (nlay == pverp) then
-      t_rad(:,1) = state%t(:ncol,1)
-      ! The top reference pressure from the RRTMGP coefficients datasets is 1.005183574463 Pa
-      ! Set the top of the extra layer just below that.
-      pint_rad(:,1) = 1.01_r8
-
-      ! next interface down in LT will always be > 1Pa
-      ! but in MT we apply adjustment to have it be 1.02 Pa if it was too high
-      where (pint_rad(:,2) <= pint_rad(:,1)) pint_rad(:,2) = pint_rad(:,1)+0.01_r8
-      
-      ! set the highest pmid (in the "extra layer") to the midpoint (guarantees > 1Pa) 
-      pmid_rad(:,1)   = pint_rad(:,1) + 0.5_r8 * (pint_rad(:,2) - pint_rad(:,1))
-      
-      ! For case of CAM MT, also ensure pint_rad(:,2) > pint_rad(:,1) & pmid_rad(:,2) > max(pmid_rad(:,1), min_pressure)
-      where (pmid_rad(:,2) <= kdist_sw%get_press_min()) pmid_rad(:,2) = pint_rad(:,2) + 0.01_r8
-   else
-      ! nlay < pverp, thus the 1 Pa level is within a CAM layer.  Assuming the top interface of
-      ! this layer is at a pressure < 1 Pa, we need to adjust the top of this layer so that it
-      ! is within the valid pressure range of RRTMGP (otherwise RRTMGP issues an error).  Then
-      ! set the midpoint pressure halfway between the interfaces.
-      pint_rad(:,1) = 1.01_r8
-      pmid_rad(:,1) = 0.5_r8 * (pint_rad(:,1) + pint_rad(:,2))
-   end if
-
-   ! Limit temperatures to be within the limits of RRTMGP validity.
-   tref_min = kdist_sw%get_temp_min()
-   tref_max = kdist_sw%get_temp_max()
-   t_rad = merge(t_rad, tref_min, t_rad > tref_min)
-   t_rad = merge(t_rad, tref_max, t_rad < tref_max)
-   t_sfc = merge(t_sfc, tref_min, t_sfc > tref_min)
-   t_sfc = merge(t_sfc, tref_max, t_sfc < tref_max)
-
-   ! Construct arrays containing only daylight columns
-   do i = 1, nday
-      t_day(i,:)    = t_rad(idxday(i),:)
-      pmid_day(i,:) = pmid_rad(idxday(i),:)
-      pint_day(i,:) = pint_rad(idxday(i),:)
-      coszrs_day(i) = coszrs(idxday(i))
-   end do
- 
-   ! Assign albedos to the daylight columns (from E3SM implementation)
-   ! Albedos are imported from the surface models as broadband (visible, and near-IR),
-   ! and we need to map these to appropriate narrower bands used in RRTMGP. Bands
-   ! are categorized broadly as "visible/UV" or "infrared" based on wavenumber.
-   ! Loop over bands, and determine for each band whether it is broadly in the
-   ! visible or infrared part of the spectrum based on a dividing line of
-   ! 0.7 micron, or 14286 cm^-1
-   do iband = 1,nswbands
-      if (is_visible(sw_low_bounds(iband)) .and. &
-         is_visible(sw_high_bounds(iband))) then
-
-         ! Entire band is in the visible
-         do i = 1, nday
-            alb_dir(iband,i) = cam_in%asdir(idxday(i))
-            alb_dif(iband,i) = cam_in%asdif(idxday(i))
-         end do
-
-      else if (.not.is_visible(sw_low_bounds(iband)) .and. &
-               .not.is_visible(sw_high_bounds(iband))) then
-         ! Entire band is in the longwave (near-infrared)
-         do i = 1, nday
-            alb_dir(iband,i) = cam_in%aldir(idxday(i))
-            alb_dif(iband,i) = cam_in%aldif(idxday(i))
-         end do
-      else
-         ! Band straddles the visible to near-infrared transition, so we take
-         ! the albedo to be the average of the visible and near-infrared
-         ! broadband albedos
-         do i = 1, nday
-            alb_dir(iband,i) = 0.5_r8 * (cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
-            alb_dif(iband,i) = 0.5_r8 * (cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
-         end do
-      end if
-   end do
-
-   ! Strictly enforce albedo bounds
-   where (alb_dir < 0)
-       alb_dir = 0.0_r8
-   end where
-   where (alb_dir > 1)
-       alb_dir = 1.0_r8
-   end where
-   where (alb_dif < 0)
-       alb_dif = 0.0_r8
-   end where
-   where (alb_dif > 1)
-       alb_dif = 1.0_r8
-   end where
-
-end subroutine rrtmgp_set_state
-
-!=========================================================================================
-
-pure logical function is_visible(wavenumber)
-
-   ! Wavenumber is in the visible if it is above the visible threshold
-   ! wavenumber, and in the infrared if it is below the threshold
-   ! This function doesn't distinquish between visible and UV.
-
-   ! wavenumber in inverse cm (cm^-1)
-   real(r8), intent(in) :: wavenumber
-
-   ! Set threshold between visible and infrared to 0.7 micron, or 14286 cm^-1
-   real(r8), parameter :: visible_wavenumber_threshold = 14286._r8  ! cm^-1
-
-   if (wavenumber > visible_wavenumber_threshold) then
-      is_visible = .true.
-   else
-      is_visible = .false.
-   end if
-
-end function is_visible
 
 !=========================================================================================
 
@@ -337,7 +157,7 @@ end function get_molar_mass_ratio
 
 !=========================================================================================
 
-subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, gas_concs, ktoprad, ktopcam, idxday)
+subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, gas_concs, idxday)
 
    ! Set volume mixing ratio in gas_concs object.
    ! The gas_concs%set_vmr method copies data into internally allocated storage.
@@ -348,8 +168,6 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    type(physics_buffer_desc),   pointer    :: pbuf(:)
    integer,                     intent(in) :: nlay           ! number of layers in radiation calculation
    integer,                     intent(in) :: numactivecols  ! number of columns, ncol for LW, nday for SW
-   integer,                     intent(in) :: ktoprad
-   integer,                     intent(in) :: ktopcam
 
    type(ty_gas_concs),       intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
 
@@ -446,7 +264,7 @@ end subroutine rad_gas_get_vmr
 
 !==================================================================================================
 
-subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs, ktoprad, ktopcam)
+subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs)
 
    ! Set gas vmr for the gases in the radconstants module's gaslist.
 
@@ -461,8 +279,6 @@ subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs, ktoprad, kto
    type(physics_buffer_desc),   pointer       :: pbuf(:)
    integer,                     intent(in)    :: nlay
    type(ty_gas_concs),          intent(inout) :: gas_concs
-   integer,                     intent(in)    :: ktoprad
-   integer,                     intent(in)    :: ktopcam
 
    ! local variables
    integer :: i, ncol
@@ -471,7 +287,7 @@ subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs, ktoprad, kto
 
    ncol = state%ncol
    do i = 1, nradgas
-      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, ncol, gas_concs, ktoprad, ktopcam)
+      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, ncol, gas_concs)
    end do
 end subroutine rrtmgp_set_gases_lw
 
@@ -479,7 +295,7 @@ end subroutine rrtmgp_set_gases_lw
 
 subroutine rrtmgp_set_gases_sw( &
    icall, state, pbuf, nlay, nday, &
-   idxday, ktoprad, ktopcam, gas_concs)
+   idxday, gas_concs)
 
    ! Return gas_concs with gas volume mixing ratio on DAYLIT columns.
    ! Set all gases in radconstants gaslist.
@@ -491,8 +307,6 @@ subroutine rrtmgp_set_gases_sw( &
    integer,                     intent(in)    :: nlay
    integer,                     intent(in)    :: nday
    integer,                     intent(in)    :: idxday(:)
-   integer,                     intent(in)    :: ktoprad
-   integer,                     intent(in)    :: ktopcam
    type(ty_gas_concs),          intent(inout) :: gas_concs
 
    ! local variables
@@ -502,7 +316,7 @@ subroutine rrtmgp_set_gases_sw( &
 
    ! use the optional argument idxday to specify which columns are sunlit
     do i = 1,nradgas
-      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, nday, gas_concs, ktoprad, ktopcam, idxday=idxday)
+      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, nday, gas_concs, idxday=idxday)
    end do
 
 end subroutine rrtmgp_set_gases_sw
@@ -510,7 +324,7 @@ end subroutine rrtmgp_set_gases_sw
 !==================================================================================================
 
 subroutine rrtmgp_set_cloud_lw( &
-   state, pbuf, ncol, nlay, nlaycam, ktoprad, ktopcam, &
+   state, pbuf, ncol, nlay, nlaycam, nlwgpts, &
    cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
    kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
 
@@ -524,8 +338,7 @@ subroutine rrtmgp_set_cloud_lw( &
    integer,  intent(in) :: ncol           ! number of columns in CAM chunk
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
    integer,  intent(in) :: nlaycam        ! number of CAM layers in radiation calculation
-   integer,  intent(in) :: ktoprad
-   integer,  intent(in) :: ktopcam
+   integer,  intent(in) :: nlwgpts
    real(r8), pointer    :: cld(:,:)       ! cloud fraction (liq+ice)
    real(r8), pointer    :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
    real(r8), pointer    :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
@@ -647,7 +460,7 @@ end subroutine rrtmgp_set_cloud_lw
 !==================================================================================================
 
 subroutine rrtmgp_set_cloud_sw( &
-   state, pbuf, nlay, nday, idxday, ktoprad, ktopcam, &
+   state, pbuf, nlay, nday, idxday, nswgpts, &
    nnite, idxnite, pmid, cld, cldfsnow, &
    cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw, &
    tot_cld_vistau, tot_icld_vistau, liq_icld_vistau, ice_icld_vistau, snow_icld_vistau, &
@@ -663,10 +476,9 @@ subroutine rrtmgp_set_cloud_sw( &
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
    integer,  intent(in) :: nday           ! number of daylight columns
    integer,  intent(in) :: idxday(pcols)  ! indices of daylight columns in the chunk
+   integer,  intent(in) :: nswgpts
    integer,  intent(in) :: nnite          ! number of night columns
    integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
-   integer,  intent(in) :: ktoprad
-   integer,  intent(in) :: ktopcam
 
    real(r8), intent(in) :: pmid(nday,nlay)! pressure at layer midpoints (Pa) used to seed RNG.
 
@@ -927,7 +739,7 @@ end subroutine rrtmgp_set_cloud_sw
 
 !==================================================================================================
 
-subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw, ktoprad, ktopcam)
+subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
 
    ! Load LW aerosol optical properties into the RRTMGP object.
 
@@ -935,8 +747,6 @@ subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw, ktoprad, ktopcam)
    integer,                     intent(in) :: icall
    type(physics_state), target, intent(in) :: state
    type(physics_buffer_desc),   pointer    :: pbuf(:)
-   integer,  intent(in) :: ktoprad
-   integer,  intent(in) :: ktopcam
 
    type(ty_optical_props_1scl), intent(inout) :: aer_lw
 
@@ -970,7 +780,7 @@ end subroutine rrtmgp_set_aer_lw
 !==================================================================================================
 
 subroutine rrtmgp_set_aer_sw( &
-   icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw, ktoprad, ktopcam)
+   icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
 
    ! Load SW aerosol optical properties into the RRTMGP object.
 
@@ -982,8 +792,6 @@ subroutine rrtmgp_set_aer_sw( &
    integer,  intent(in) :: idxday(:)
    integer,  intent(in) :: nnite          ! number of night columns
    integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
-   integer,  intent(in) :: ktoprad
-   integer,  intent(in) :: ktopcam
 
    type(ty_optical_props_2str), intent(inout) :: aer_sw
 

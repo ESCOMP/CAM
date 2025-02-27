@@ -23,7 +23,7 @@ use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, 
 use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_gas, rad_cnst_out
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
-                               gaslist
+                               gaslist, radconstants_init
 use rad_solar_var,       only: rad_solar_var_init, get_variability
 
 use cloud_rad_props,     only: cloud_rad_props_init
@@ -153,8 +153,8 @@ logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_unifo
 !  chunk_column_index = IdxDay(daylight_column_index)
 integer :: nday           ! Number of daylight columns
 integer :: nnite          ! Number of night columns
-integer :: idxday(pcols) = 0  ! chunk indices of daylight columns
-integer :: idxnite(pcols)= 0 ! chunk indices of night columns
+integer :: idxday(pcols)   ! chunk indices of daylight columns
+integer :: idxnite(pcols) ! chunk indices of night columns
 real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 real(r8) :: eccf            ! Earth orbit eccentricity factor
 
@@ -465,8 +465,6 @@ subroutine radiation_init(pbuf2d)
    ! -- needed for the kdist initialization routines 
    type(ty_gas_concs) :: available_gases
 
-   real(r8) :: sw_low_bounds(nswbands)
-   real(r8) :: lw_low_bounds(nswbands)
    real(r8) :: qrl_unused(1,1)
 
    integer :: i, icall
@@ -505,25 +503,14 @@ subroutine radiation_init(pbuf2d)
                    nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,          &
                    idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,          &
                    nextsw_cday, get_curr_calday(), band2gpt_sw, errmsg, errflg)
-   write(iulog,*) 'peverwhee - after init'
-   write(iulog,*) ktopcam
-   write(iulog,*) ktoprad
-   write(iulog,*) sw_low_bounds
-   write(iulog,*) sw_high_bounds
-   write(iulog,*) nswbands
-   write(iulog,*) idx_sw_diag
-   write(iulog,*) idx_nir_diag
-   write(iulog,*) idx_uv_diag
-   write(iulog,*) idx_sw_cloudsim
-   write(iulog,*) idx_lw_diag
-   write(iulog,*) idx_lw_cloudsim
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
+
+
    call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
            idx_lw_cloudsim)
 
-   call rad_solar_var_init()
+   call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
+
+   call rad_solar_var_init(nswbands)
 
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
@@ -862,7 +849,8 @@ subroutine radiation_tend( &
    use cam_control_mod,    only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,        only: shr_orb_decl, shr_orb_cosz
 
-   use rrtmgp_inputs,      only: rrtmgp_inputs_timestep_init, rrtmgp_inputs_run
+   use rrtmgp_inputs,      only: rrtmgp_inputs_run
+   use rrtmgp_pre,         only: rrtmgp_pre_run
 
    use rrtmgp_inputs_cam,  only: rrtmgp_set_gases_lw, rrtmgp_set_cloud_lw, &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
@@ -1023,9 +1011,6 @@ subroutine radiation_tend( &
       write_output = .true.
    end if
 
-   dosw = radiation_do('sw', get_nstep())      ! do shortwave radiation calc this timestep?
-   dolw = radiation_do('lw', get_nstep())      ! do longwave radiation calc this timestep?
-
    ! Cosine solar zenith angle for current time step
    calday = get_curr_calday()
    call get_rlat_all_p(lchnk, ncol, clat)
@@ -1046,26 +1031,11 @@ subroutine radiation_tend( &
       end do
    end if
 
-   ! Gather night/day column indices.
-   nday = 0
-   nnite = 0
-   idxday = 0
-   idxnite = 0
-   do i = 1, ncol
-      if ( coszrs(i) > 0.0_r8 ) then
-         nday = nday + 1
-         idxday(nday) = i
-         write(iulog,*) 'peverwhee - adding new daylight point'
-      else
-         nnite = nnite + 1
-         idxnite(nnite) = i
-      end if
-   end do
-   !call rrtmgp_inputs_timestep_init(coszrs, get_nstep(), iradsw, iradlw, irad_always, &
-   !        ncol, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
-   !if (errflg /= 0) then
-   !   call endrun(sub//': '//errmsg)
-   !end if
+   call rrtmgp_pre_run(coszrs, get_nstep(), iradsw, iradlw, irad_always, &
+           ncol, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    ! Associate pointers to physics buffer fields
    itim_old = pbuf_old_tim_idx()
@@ -1134,56 +1104,26 @@ subroutine radiation_tend( &
          stat=istat)
       call handle_allocate_error(istat, sub, 't_sfc,..,alb_dif')
 
-      if (masterproc) then
-         write(iulog,*) 'peverwhee - set state inputs'
-         write(iulog,*) nday
-         write(iulog,*) nlay
-         write(iulog,*) idxday
-         write(iulog,*) coszrs
-      end if
-
-
       ! Prepares state variables, daylit columns, albedos for RRTMGP
       ! Also calculates modified cloud fraction
-      !call rrtmgp_inputs_run(dosw, dolw, state%pmid, state%pint, state%t, &
-      !            nday, idxday, cldfprime, coszrs, kdist_sw, t_sfc,       &
-      !            emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
-      !            pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup, stebol,  &
-      !            ncol, ktopcam, ktoprad, nswbands, cam_in%asdir, cam_in%asdif, &
-      !            sw_low_bounds, sw_high_bounds, cam_in%aldir, cam_in%aldif, nlay,     &
-      !            pverp, pver, cld, cldfsnow, cldfgrau, graupel_in_rad,   &
-      !            gasnamelength, gaslist, gas_concs_lw, aer_lw, atm_optics_lw, &
-      !            kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
-      !            errmsg, errflg)
-
-       ! Prepares state variables, daylit columns, albedos for RRTMGP
-       ! rrtmgp_pre
-       call rrtmgp_set_state( &
-          state, cam_in, ncol, nlay, nday,             &
-          idxday, coszrs, kdist_sw, t_sfc, emis_sfc,   &
-          t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
-          pint_day, coszrs_day, alb_dir, alb_dif)
-
-      write(iulog,*) 'peverwhee - after set state'
-      write(iulog,*) t_sfc(1)
-      write(iulog,*) emis_sfc(1,1)
-      write(iulog,*) t_rad(1,1)
-      write(iulog,*) pmid_rad(1,1)
-      write(iulog,*) pint_rad(1,1)
-      write(iulog,*) t_day(1,1)
-      write(iulog,*) pmid_day(1,1)
-      write(iulog,*) pint_day(1,1)
-      write(iulog,*) coszrs_day(1)
-      write(iulog,*) alb_dir(1,1)
-      write(iulog,*) alb_dir(1,1)
+      call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
+                  state%pmid, state%pint, state%t, &
+                  nday, idxday, cldfprime, coszrs, kdist_sw, t_sfc,       &
+                  emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
+                  pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup, stebol,  &
+                  ncol, ktopcam, ktoprad, nswbands, cam_in%asdir, cam_in%asdif, &
+                  sw_low_bounds, sw_high_bounds, cam_in%aldir, cam_in%aldif, nlay,     &
+                  pverp, pver, cld, cldfsnow, cldfgrau, graupel_in_rad,   &
+                  gasnamelength, gaslist, gas_concs_lw, aer_lw, atm_optics_lw, &
+                  kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
+                  errmsg, errflg)
+      if (errflg /= 0) then
+         call endrun(sub//': '//errmsg)
+      end if
 
       ! Output the mass per layer, and total column burdens for gas and aerosol
       ! constituents in the climate list.
       call rad_cnst_out(0, state, pbuf)
-
-      ! Modified cloud fraction accounts for radiatively active snow and/or graupel
-      ! rrtmgp_pre
-      call modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
 
       !========================!
       ! SHORTWAVE calculations !
@@ -1193,7 +1133,7 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_set_cloud_sw( &
-            state, pbuf, nlay, nday, idxday, ktoprad, ktopcam,            &
+            state, pbuf, nlay, nday, idxday, nswgpts,            &
             nnite, idxnite, pmid_day, cld, cldfsnow,                      &
             cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw,      &
             rd%tot_cld_vistau, rd%tot_icld_vistau, rd%liq_icld_vistau,    &
@@ -1202,25 +1142,6 @@ subroutine radiation_tend( &
 
          if (write_output) then
             call radiation_output_cld(lchnk, rd)
-         end if
-
-         ! If no daylight columns, can't create empty RRTMGP objects
-         if (nday > 0) then
-
-            ! Initialize object for gas concentrations.
-            errmsg = gas_concs_sw%init(gaslist_lc)
-            call stop_on_err(errmsg, sub, 'gas_concs_sw%init')
-
-            ! Initialize object for combined gas + aerosol + cloud optics.
-            ! Allocates arrays for properties represented on g-points.
-            errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
-            call stop_on_err(errmsg, sub, 'atm_optics_sw%alloc_2str')
-
-            ! Initialize object for SW aerosol optics.  Allocates arrays 
-            ! for properties represented by band.
-            errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
-            call stop_on_err(errmsg, sub, 'aer_sw%alloc_2str')
-
          end if
 
          ! The climate (icall==0) calculation must occur last.
@@ -1232,7 +1153,7 @@ subroutine radiation_tend( &
                   ! Set gas volume mixing ratios for this call in gas_concs_sw.
                   call rrtmgp_set_gases_sw( &
                      icall, state, pbuf, nlay, nday, &
-                     idxday, ktoprad, ktopcam, gas_concs_sw)
+                     idxday, gas_concs_sw)
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
@@ -1242,7 +1163,7 @@ subroutine radiation_tend( &
                   call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
 
                   ! Scale the solar source
-                  call get_variability(toa_flux, sfac, band2gpt_sw)
+                  call get_variability(toa_flux, sfac, band2gpt_sw, nswbands)
                   toa_flux = toa_flux * sfac * eccf
 
                end if
@@ -1251,7 +1172,7 @@ subroutine radiation_tend( &
                ! This call made even when no daylight columns because it does some
                ! diagnostic aerosol output.
                call rrtmgp_set_aer_sw( &
-                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw, ktoprad, ktopcam)
+                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
                   
                if (nday > 0) then
 
@@ -1299,27 +1220,11 @@ subroutine radiation_tend( &
 
       if (dolw) then
 
-         ! Initialize object for Planck sources.
-         errmsg = sources_lw%alloc(ncol, nlay, kdist_lw)
-         call stop_on_err(errmsg, sub, 'sources_lw%alloc')
-
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_set_cloud_lw( &
-            state, pbuf, ncol, nlay, nlaycam, ktoprad, ktopcam, &
+            state, pbuf, ncol, nlay, nlaycam, nlwgpts, &
             cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
             kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
-
-         ! Initialize object for gas concentrations
-         errmsg = gas_concs_lw%init(gaslist_lc)
-         call stop_on_err(errmsg, sub, 'gas_concs_lw%init')
-
-         ! Initialize object for combined gas + aerosol + cloud optics.
-         errmsg = atm_optics_lw%alloc_1scl(ncol, nlay, kdist_lw)
-         call stop_on_err(errmsg, sub, 'atm_optics_lw%alloc_1scl')
-
-         ! Initialize object for LW aerosol optics.
-         errmsg = aer_lw%alloc_1scl(ncol, nlay, kdist_lw%get_band_lims_wavenumber())
-         call stop_on_err(errmsg, sub, 'aer_lw%alloc_1scl')
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
@@ -1327,7 +1232,7 @@ subroutine radiation_tend( &
             if (active_calls(icall)) then
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw.
-               call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw, ktoprad, ktopcam)
+               call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw)
 
                ! Compute the gas optics and Planck sources.
                errmsg = kdist_lw%gas_optics( &
@@ -1336,7 +1241,7 @@ subroutine radiation_tend( &
                call stop_on_err(errmsg, sub, 'kdist_lw%gas_optics')
 
                ! Set LW aerosol optical properties in the aer_lw object.
-               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw, ktoprad, ktopcam)
+               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
                
                ! Increment the gas optics by the aerosol optics.
                errmsg = aer_lw%increment(atm_optics_lw)
@@ -2508,47 +2413,6 @@ subroutine free_fluxes(fluxes)
    end select
 
 end subroutine free_fluxes
-
-!=========================================================================================
-
-subroutine modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
-
-   ! Compute modified cloud fraction, cldfprime.
-   ! 1. initialize as cld
-   ! 2. modify for snow if cldfsnow is available. use max(cld, cldfsnow)
-   ! 3. modify for graupel if cldfgrau is available and graupel_in_rad is true.
-   !    use max(cldfprime, cldfgrau)
-
-   ! Arguments
-   integer,  intent(in)  :: ncol
-   real(r8), pointer     :: cld(:,:)       ! cloud fraction
-   real(r8), pointer     :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
-   real(r8), pointer     :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
-   real(r8), intent(out) :: cldfprime(:,:) ! modified cloud fraction
-
-   ! Local variables
-   integer :: i, k
-   !----------------------------------------------------------------------------
-
-   if (associated(cldfsnow)) then
-      do k = 1, pver
-         do i = 1, ncol
-            cldfprime(i,k) = max(cld(i,k), cldfsnow(i,k))
-         end do
-      end do
-   else
-      cldfprime(:ncol,:) = cld(:ncol,:)
-   end if
-
-   if (associated(cldfgrau) .and. graupel_in_rad) then
-      do k = 1, pver
-         do i = 1, ncol
-            cldfprime(i,k) = max(cldfprime(i,k), cldfgrau(i,k))
-         end do
-      end do
-   end if
-
-end subroutine modified_cloud_fraction
 
 !=========================================================================================
 

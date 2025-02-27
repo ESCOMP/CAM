@@ -6,60 +6,15 @@ module rrtmgp_inputs
  use mo_source_functions,   only: ty_source_func_lw
  use string_utils,          only: to_lower
  use radiation_utils,       only: radiation_utils_init, get_sw_spectral_boundaries_ccpp
+ use cam_logfile, only: iulog
 
  implicit none
  private
 
- public :: rrtmgp_inputs_register
- public :: rrtmgp_inputs_timestep_init
  public :: rrtmgp_inputs_init
  public :: rrtmgp_inputs_run
 
  contains
-!> \section arg_table_rrtmgp_inputs_register Argument Table
-!! \htmlinclude rrtmgp_inputs_register.html
-!!
-  subroutine rrtmgp_inputs_register(gaslist, nradgas, gasnamelength, errmsg, errflg)
-!     use ccpp_constituent_prop_mod, only: ccpp_constituent_properties_t
-     ! Inputs
-     character(len=*), intent(in)  :: gaslist(:)
-     integer,          intent(in)  :: nradgas
-     integer,          intent(in)  :: gasnamelength
-     ! Outputs
- !    type(ccpp_constituent_properties_t), allocatable, intent(out) :: const_props(:)
-     character(len=*), intent(out) :: errmsg
-     integer,          intent(out) :: errflg
-
-     ! Local variables
-     integer :: gas_index
-     real(kind_phys) :: minmmr
-
-     ! Set error variables
-     errflg = 0
-     errmsg = ''
-     ! Set minimum mass mixing ratio supported by radiation implementation
-     minmmr = epsilon(1._kind_phys)
-     ! Register all gases in gaslist
-     ! peverwhee - compare vs rad_constituents!
-  !   do gas_index = 1, ndradgas
-  !      call const_props(gas_index)%instantiate(          &
-  !             std_name = gaslist(gas_index),             &
-  !             long_name = gaslist(gas_index),            &
-  !             units = 'kg-1',                            &
-  !             vertical_dim = 'vertical_layer_dimension', &
-  !             min_value = minmmr,                        &
-  !             advected = .false.,                        &
-  !             water_species = .false.,                   &
-  !             mixing_ratio_type = 'dry',                 &
-  !             errcode = errflg,                          &
-  !             errmsg = errmsg)
-  !      if (errflg /= 0) then
-  !         return
-  !      end if
-   !  end do
-
-
-  end subroutine rrtmgp_inputs_register
 !> \section arg_table_rrtmgp_inputs_init Argument Table
 !! \htmlinclude rrtmgp_inputs_init.html
 !!
@@ -205,62 +160,11 @@ module rrtmgp_inputs
 
   end subroutine rrtmgp_inputs_init
 
-!> \section arg_table_rrtmgp_inputs_timestep_init Argument Table
-!! \htmlinclude rrtmgp_inputs_timestep_init.html
-!!
-  subroutine rrtmgp_inputs_timestep_init(coszrs, nstep, iradsw, iradlw, irad_always, &
-                  ncol, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
-     use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
-     real(kind_phys), dimension(:), intent(in) :: coszrs
-     integer,            intent(in) :: nstep
-     integer,            intent(in) :: iradsw
-     integer,            intent(in) :: iradlw
-     integer,            intent(in) :: irad_always
-     integer,            intent(in) :: ncol
-     integer,           intent(out) :: nday
-     integer,           intent(out) :: nnite
-     integer, dimension(:), intent(out) :: idxday
-     integer, dimension(:), intent(out) :: idxnite
-     logical,               intent(out) :: dosw
-     logical,               intent(out) :: dolw
-     character(len=*),  intent(out) :: errmsg
-     integer,           intent(out) :: errflg
-
-     ! Local variables
-     integer :: idx
-
-     ! Set error variables
-     errflg = 0
-     errmsg = ''
-
-     ! Gather night/day column indices.
-     nday = 0
-     nnite = 0
-     do idx = 1, ncol
-        if ( coszrs(idx) > 0.0_kind_phys ) then
-           nday = nday + 1
-           idxday(nday) = idx
-        else
-           nnite = nnite + 1
-           idxnite(nnite) = idx
-        end if
-     end do
-
-     ! Determine if we're going to do longwave and/or shortwave this timestep
-     dosw = nstep == 0  .or.  iradsw == 1                     &
-                       .or. (mod(nstep-1,iradsw) == 0  .and.  nstep /= 1)   &
-                       .or. nstep <= irad_always 
-
-     dolw = nstep == 0  .or.  iradlw == 1                     &
-                       .or. (mod(nstep-1,iradlw) == 0  .and.  nstep /= 1)   &
-                       .or. nstep <= irad_always
-
- end subroutine rrtmgp_inputs_timestep_init
-
 !> \section arg_table_rrtmgp_inputs_run Argument Table
 !! \htmlinclude rrtmgp_inputs_run.html
 !!
-  subroutine rrtmgp_inputs_run(dosw, dolw, pmid, pint, t, nday, idxday, cldfprime, &
+  subroutine rrtmgp_inputs_run(dosw, dolw, snow_associated, graupel_associated, &
+                  pmid, pint, t, nday, idxday, cldfprime, &
                   coszrs, kdist_sw, t_sfc, emis_sfc, t_rad, pmid_rad,     &
                   pint_rad, t_day, pmid_day, pint_day, coszrs_day,        &
                   alb_dir, alb_dif, lwup, stebol, ncol, ktopcam, ktoprad, &
@@ -283,6 +187,8 @@ module rrtmgp_inputs
      integer, intent(in) :: nday
      logical, intent(in) :: dosw
      logical, intent(in) :: dolw
+     logical, intent(in) :: snow_associated
+     logical, intent(in) :: graupel_associated
      integer, dimension(:), intent(in)           :: idxday
      real(kind_phys), dimension(:,:), intent(in) :: pmid
      real(kind_phys), dimension(:,:), intent(in) :: pint
@@ -385,8 +291,6 @@ module rrtmgp_inputs
      tref_max = kdist_sw%get_temp_max()
      t_rad = merge(t_rad, tref_min, t_rad > tref_min)
      t_rad = merge(t_rad, tref_max, t_rad < tref_max)
-     t_sfc = merge(t_sfc, tref_min, t_sfc > tref_min)
-     t_sfc = merge(t_sfc, tref_max, t_sfc < tref_max)
 
      ! Construct arrays containing only daylight columns
      do idx = 1, nday
@@ -395,7 +299,6 @@ module rrtmgp_inputs
         pint_day(idx,:) = pint_rad(idxday(idx),:)
         coszrs_day(idx) = coszrs(idxday(idx))
      end do
-
      ! Assign albedos to the daylight columns (from E3SM implementation)
      ! Albedos are imported from the surface models as broadband (visible, and near-IR),
      ! and we need to map these to appropriate narrower bands used in RRTMGP. Bands
@@ -430,6 +333,19 @@ module rrtmgp_inputs
            end do
         end if
      end do
+     ! Strictly enforce albedo bounds
+     where (alb_dir < 0)
+        alb_dir = 0.0_kind_phys
+     end where
+     where (alb_dir > 1)
+        alb_dir = 1.0_kind_phys
+     end where
+     where (alb_dif < 0)
+        alb_dif = 0.0_kind_phys
+     end where
+     where (alb_dif > 1)
+        alb_dif = 1.0_kind_phys
+     end where
 
      ! modified cloud fraction
      ! Compute modified cloud fraction, cldfprime.
@@ -437,13 +353,17 @@ module rrtmgp_inputs
      ! 2. modify for snow. use max(cld, cldfsnow)
      ! 3. modify for graupel if graupel_in_rad is true.
      !    use max(cldfprime, cldfgrau)
-     do kdx = 1, pver
-        do idx = 1, ncol
-           cldfprime(idx,kdx) = max(cld(idx,kdx), cldfsnow(idx,kdx))
+     if (snow_associated) then
+        do kdx = 1, pver
+           do idx = 1, ncol
+              cldfprime(idx,kdx) = max(cld(idx,kdx), cldfsnow(idx,kdx))
+           end do
         end do
-     end do
+     else
+        cldfprime(:ncol,:) = cld(:ncol,:)
+     end if
 
-     if (graupel_in_rad) then
+     if (graupel_associated .and. graupel_in_rad) then
         do kdx = 1, pver
            do idx = 1, ncol
               cldfprime(idx,kdx) = max(cldfprime(idx,kdx), cldfgrau(idx,kdx))
@@ -513,7 +433,6 @@ module rrtmgp_inputs
            return
         end if
      end if
-
 
   end subroutine rrtmgp_inputs_run
 
