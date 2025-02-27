@@ -271,7 +271,6 @@ contains
 
     call carma_aero_gasaerexch_init
 
-    ! add plus one to include number, total mmr and nspec
     nspec_max = maxval(nspec)
 
     ncnst_tot = nspec(1)
