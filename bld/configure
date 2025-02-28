@@ -1211,6 +1211,7 @@ $cfg_ref->set('model_top', $model_top);
 
 # user override
 if (defined $opts{'model_top'} and $opts{'model_top'} ne 'none') {
+    $model_top = lc($opts{'model_top'});
     if ($phys_pkg eq 'cam7') {
         $cfg_ref->set('model_top', $opts{'model_top'});
     } else {
@@ -1224,10 +1225,21 @@ if ($print>=2) { print "model_top: $model_top$eol"; }
 my $nlev = 0;
 
 # Defaults
-if ($waccmx) {
+if ($phys_pkg eq 'cam7') {
+    if ($model_top eq 'lt') {
+        $nlev = 58;
+    } elsif ($model_top eq 'mt') {
+        $nlev = 93;
+    } elsif ($model_top eq 'ht') {
+        $nlev = 135;
+    } elsif ($model_top eq 'xt') {
+        $nlev = 189;
+    } else {
+        $nlev = 32;  # this is for some old cam_dev tests
+    }
+}
+elsif ($waccmx) {
     if ($phys_pkg eq 'cam6') {
-        $nlev = 130;
-    } elsif ($phys_pkg eq 'cam7') {
         $nlev = 130;
     } else {
         $nlev = 126;
@@ -1241,9 +1253,6 @@ elsif ($chem_pkg =~ /waccm_/) {
         $nlev = 70;
     }
 }
-elsif ($phys_pkg eq 'cam7') {
-    $nlev = 32;
-}
 elsif ($phys_pkg eq 'cam6') {
     $nlev = 32;
 }
@@ -1254,9 +1263,9 @@ elsif ($phys_pkg eq 'cam4') {
     $nlev = 26;
 }
 else {
-    # This will be used for Held-Suarez and other 'simple' physics
-    # We may change this to 32 once IC files are available.
-    $nlev = 30;
+    # Simple models use cam7-lt vertical grid.
+    # $nlev = 58; # - ERROR: No default value found for ncdata
+    $nlev = 30; # bit-for-bit baselines for now
 }
 
 # user override
