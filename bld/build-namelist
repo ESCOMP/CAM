@@ -3658,7 +3658,6 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_c0_ocn');
     add_default($nl, 'zmconv_ke');
     add_default($nl, 'zmconv_ke_lnd');
-    add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_num_cin');
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
@@ -3687,7 +3686,7 @@ if ($cfg->get('microphys') eq 'rk') {
 }
 
 # Eddy Diffusivity Adjustments
-if ($cfg->get('pbl') eq "uw" or $cfg->get('pbl') eq "spcam_m2005") {
+if ($cfg->get('pbl') eq "uw") {
     add_default($nl, 'kv_top_pressure');
     add_default($nl, 'kv_top_scale');
     add_default($nl, 'kv_freetrop_scale');
@@ -3775,6 +3774,14 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
     }
 
+    my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
+    if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
+         if ( ! ($dyn =~ /se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
+
+         }
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
@@ -3836,6 +3843,7 @@ my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
 my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
+my $do_gw_rdg_resid  = ($nl->get_value('use_gw_rdg_resid')  =~ /$TRUE/io);
 
 my $do_divstream        = ($nl->get_value('gw_rdg_do_divstream')  =~ /$TRUE/io);
 
@@ -3890,6 +3898,10 @@ if ($do_gw_convect_sh) {
 if ($do_gw_movmtn_pbl) {
     add_default($nl, 'gw_drag_file_mm');
     add_default($nl, 'alpha_gw_movmtn');
+    add_default($nl, 'effgw_movmtn_pbl');
+    add_default($nl, 'movmtn_source');
+    add_default($nl, 'movmtn_psteer');
+    add_default($nl, 'movmtn_plaunch');
 }
 
 if ($do_gw_rdg_beta) {
@@ -3907,6 +3919,10 @@ if ($do_gw_rdg_beta) {
     add_default($nl, 'gw_prndl',      'val'=>'0.5D0');
 } elsif (!$simple_phys) {
     add_default($nl, 'gw_prndl');
+}
+
+if ($do_gw_rdg_resid) {
+    add_default($nl, 'effgw_rdg_resid' );
 }
 
 if ($do_gw_rdg_gamma) {
@@ -4061,27 +4077,6 @@ if ( $dyn eq 'fv3') {
 	add_default($nl, 'fv3_layout', 'val'=>$layout);
     }
 
-}
-
-# EUL dycore
-if ($dyn eq 'eul') {
-    add_default($nl, 'eul_dif2_coef');
-    add_default($nl, 'eul_hdif_order');
-    add_default($nl, 'eul_hdif_kmnhdn');
-    add_default($nl, 'eul_hdif_coef');
-    add_default($nl, 'eul_divdampn');
-    add_default($nl, 'eul_tfilt_eps');
-    add_default($nl, 'eul_kmxhdc');
-    add_default($nl, 'eul_nsplit');
-}
-
-# SLD dycore
-if ($dyn eq 'sld') {
-    add_default($nl, 'sld_dif2_coef');
-    add_default($nl, 'sld_dif4_coef');
-    add_default($nl, 'sld_divdampn');
-    add_default($nl, 'sld_tfilt_eps');
-    add_default($nl, 'sld_kmxhdc');
 }
 
 # Single column model
@@ -4351,11 +4346,6 @@ if ($offline_drv ne 'stub') {
         add_default($nl, 'iradsw', 'val'=>'1');
         add_default($nl, 'iradlw', 'val'=>'1');
     }
-}
-
-if ($phys eq 'spcam_sam1mom' or $phys eq 'spcam_m2005') {
-    add_default($nl, 'iradsw', 'val'=>'1');
-    add_default($nl, 'iradlw', 'val'=>'1');
 }
 
 #-----------------------------------------------------------------------------------------------
