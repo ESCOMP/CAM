@@ -384,7 +384,7 @@ contains
 
     do k = 1,nlev
        do i = 1,ncol
-          diamdry = rdry(i,k) * 2.e4_r8 * 1.e6_r8 ! diameter in microns (from radius in m)
+          diamdry = rdry(i,k) * 2._r8 * 1.e6_r8 ! diameter in microns (from radius in m)
           if (diamdry >= 0.1_r8) then ! size threashold
              wght(i,k) = 1._r8
           end if
@@ -506,8 +506,9 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    real(r8)                          :: radwet(pcols,pver)   !! wet radius (m)
-    real(r8)                          :: rhowet(pcols,pver)   !! wet density (kg/m3)
+    real(r8) :: radwet(pcols,pver)   ! wet radius (m)
+    real(r8) :: rhowet(pcols,pver)   ! wet density (kg/m3)
+    real(r8) :: nmr(pcols,pver)      ! number mixing ratio (#/kg)
 
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
@@ -524,8 +525,9 @@ contains
     vol = 0._r8
 
     call carma_get_wet_radius(self%state, igroup, ibin, radwet, rhowet, rc)
+    call carma_get_number(self%state, igroup, ibin, nmr, rc)
 
-    vol(:ncol,:) = four_thirds_pi * (radwet(:ncol,:)**3) ! ???? units = m3/kg ????
+    vol(:ncol,:) = four_thirds_pi * (radwet(:ncol,:)**3) * nmr(:ncol,:) ! units = m3/kg
 
   end function wet_volume
 
