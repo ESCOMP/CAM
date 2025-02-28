@@ -191,7 +191,7 @@ subroutine vd_readnl(nlfile)
   ! Beljaars reads its own namelist.
   call beljaars_drag_readnl(nlfile)
 
-  if (eddy_scheme == 'diag_TKE' .or. eddy_scheme == 'SPCAM_m2005' ) call eddy_diff_readnl(nlfile)
+  if (eddy_scheme == 'diag_TKE') call eddy_diff_readnl(nlfile)
 
 end subroutine vd_readnl
 
@@ -236,7 +236,7 @@ subroutine vd_register()
   end if
 
   ! diag_TKE fields
-  if (eddy_scheme == 'diag_TKE' .or. eddy_scheme == 'SPCAM_m2005') then
+  if (eddy_scheme == 'diag_TKE') then
      call eddy_diff_register()
   end if
 
@@ -394,11 +394,11 @@ subroutine vertical_diffusion_init(pbuf2d)
   call phys_getopts(do_hb_above_clubb_out=do_hb_above_clubb)
 
   select case ( eddy_scheme )
-  case ( 'diag_TKE', 'SPCAM_m2005' )
+  case ( 'diag_TKE' )
      if( masterproc ) write(iulog,*) &
           'vertical_diffusion_init: eddy_diffusivity scheme: UW Moist Turbulence Scheme by Bretherton and Park'
      call eddy_diff_init(pbuf2d, ntop_eddy, nbot_eddy)
-  case ( 'HB', 'HBR', 'SPCAM_sam1mom')
+  case ( 'HB', 'HBR')
      if( masterproc ) write(iulog,*) 'vertical_diffusion_init: eddy_diffusivity scheme:  Holtslag and Boville'
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, &
           karman, eddy_scheme)
@@ -574,8 +574,10 @@ subroutine vertical_diffusion_init(pbuf2d)
   endif
 
   if (history_eddy) then
-     call add_default( 'UFLX    ', 1, ' ' )
-     call add_default( 'VFLX    ', 1, ' ' )
+     if (.not. do_pbl_diags) then
+        call add_default( 'UFLX    ', 1, ' ' )
+        call add_default( 'VFLX    ', 1, ' ' )
+     end if
   endif
 
   if( history_budget ) then
@@ -662,30 +664,31 @@ subroutine vertical_diffusion_tend( &
   !---------------------------------------------------- !
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
-  use physics_types,      only : set_dry_to_wet, set_wet_to_dry
 
-  use camsrfexch,         only : cam_in_t
-  use cam_history,        only : outfld
+  use camsrfexch,           only : cam_in_t
+  use cam_history,          only : outfld
 
-  use trb_mtn_stress_cam, only : trb_mtn_stress_tend
-  use beljaars_drag_cam,  only : beljaars_drag_tend
-  use eddy_diff_cam,      only : eddy_diff_tend
-  use hb_diff,            only : compute_hb_diff, compute_hb_free_atm_diff
-  use wv_saturation,      only : qsat
-  use molec_diff,         only : compute_molec_diff, vd_lu_qdecomp
-  use constituents,       only : qmincg, qmin, cnst_type
-  use diffusion_solver,   only : compute_vdiff, any, operator(.not.)
-  use air_composition,    only : cpairv, rairv !Needed for calculation of upward H flux
-  use time_manager,       only : get_nstep
-  use constituents,       only : cnst_get_type_byind, cnst_name, &
-                                 cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx, cnst_ndropmixed
-  use physconst,          only : pi
-  use pbl_utils,          only : virtem, calc_obklen, calc_ustar
-  use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
-  use upper_bc,           only : ubc_get_flxs
-  use coords_1d,          only : Coords1D
-  use phys_control,       only : cam_physpkg_is
-  use ref_pres,           only : ptop_ref
+  use trb_mtn_stress_cam,   only : trb_mtn_stress_tend
+  use beljaars_drag_cam,    only : beljaars_drag_tend
+  use eddy_diff_cam,        only : eddy_diff_tend
+  use hb_diff,              only : compute_hb_diff, compute_hb_free_atm_diff
+  use wv_saturation,        only : qsat
+  use molec_diff,           only : compute_molec_diff, vd_lu_qdecomp
+  use constituents,         only : qmincg, qmin, cnst_type
+  use diffusion_solver,     only : compute_vdiff, any, operator(.not.)
+  use air_composition,      only : cpairv, rairv !Needed for calculation of upward H flux
+  use time_manager,         only : get_nstep
+  use constituents,         only : cnst_get_type_byind, cnst_name, &
+                                   cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx, cnst_ndropmixed
+  use physconst,            only : pi
+  use atmos_phys_pbl_utils, only: calc_virtual_temperature, calc_ideal_gas_rrho, calc_friction_velocity,                             &
+                                  calc_kinematic_heat_flux, calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, &
+                                  calc_obukhov_length
+  use upper_bc,             only : ubc_get_vals, ubc_fixed_temp
+  use upper_bc,             only : ubc_get_flxs
+  use coords_1d,            only : Coords1D
+  use phys_control,         only : cam_physpkg_is
+  use ref_pres,             only : ptop_ref
 
   ! --------------- !
   ! Input Arguments !
@@ -857,9 +860,6 @@ subroutine vertical_diffusion_tend( &
   ! Main Computation Begins !
   ! ----------------------- !
 
-  ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state, convert_cnst_type='dry')
-
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
   ncol   = state%ncol
@@ -967,7 +967,7 @@ subroutine vertical_diffusion_tend( &
   th(:ncol,:pver) = state%t(:ncol,:pver) * state%exner(:ncol,:pver)
 
   select case (eddy_scheme)
-  case ( 'diag_TKE', 'SPCAM_m2005' )
+  case ( 'diag_TKE' )
 
      call eddy_diff_tend(state, pbuf, cam_in, &
           ztodt, p, tint, rhoi, cldn, wstarent, &
@@ -977,13 +977,14 @@ subroutine vertical_diffusion_tend( &
 
      ! The diag_TKE scheme does not calculate the Monin-Obukhov length, which is used in dry deposition calculations.
      ! Use the routines from pbl_utils to accomplish this. Assumes ustar and rrho have been set.
-     call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
-     call calc_obklen(ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
-          cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol), &
-          khfs(:ncol),    kqfs(:ncol), kbfs(:ncol),   obklen(:ncol))
+      thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
 
+      khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
+      kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))
+      kbfs  (:ncol) = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+      obklen(:ncol) = calc_obukhov_length(thvs(:ncol), ustar(:ncol), gravit, karman, kbfs(:ncol))
 
-  case ( 'HB', 'HBR', 'SPCAM_sam1mom' )
+  case ( 'HB', 'HBR' )
 
      ! Modification : We may need to use 'taux' instead of 'tautotx' here, for
      !                consistency with the previous HB scheme.
@@ -1033,14 +1034,14 @@ subroutine vertical_diffusion_tend( &
       ! is only handling other things, e.g. some boundary conditions, tms,
       ! and molecular diffusion.
 
-      call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
+      thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
+      rrho  (:ncol) = calc_ideal_gas_rrho(rair, state%t(:ncol,pver), state%pmid(:ncol,pver))
+      ustar (:ncol) = calc_friction_velocity(cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol))
+      khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
+      kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))
+      kbfs  (:ncol) = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
+      obklen(:ncol) = calc_obukhov_length(thvs(:ncol), ustar(:ncol), gravit, karman, kbfs(:ncol))
 
-      call calc_ustar( ncol, state%t(:ncol,pver), state%pmid(:ncol,pver), &
-           cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol), ustar(:ncol))
-      ! Use actual qflux, not lhf/latvap as was done previously
-      call calc_obklen( ncol, th(:ncol,pver), thvs(:ncol), cam_in%cflx(:ncol,1), &
-           cam_in%shf(:ncol), rrho(:ncol), ustar(:ncol),  &
-           khfs(:ncol), kqfs(:ncol), kbfs(:ncol), obklen(:ncol))
       ! These tendencies all applied elsewhere.
       kvm = 0._r8
       kvh = 0._r8
@@ -1325,8 +1326,6 @@ subroutine vertical_diffusion_tend( &
         ptend%q(:ncol,:pver,m) = ptend%q(:ncol,:pver,m)*state%pdel(:ncol,:pver)/state%pdeldry(:ncol,:pver)
      endif
   end do
-  ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state, convert_cnst_type='dry')
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt
@@ -1345,7 +1344,7 @@ subroutine vertical_diffusion_tend( &
   !                                                              !
   ! ------------------------------------------------------------ !
 
-    if( (eddy_scheme .eq. 'diag_TKE' .or. eddy_scheme .eq. 'SPCAM_m2005') .and. do_pseudocon_diff ) then
+    if( eddy_scheme .eq. 'diag_TKE' .and. do_pseudocon_diff ) then
 
      ptend%q(:ncol,:pver,1) = qtten(:ncol,:pver)
      ptend%s(:ncol,:pver)   = slten(:ncol,:pver)

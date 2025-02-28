@@ -59,6 +59,7 @@ module chemistry
   public :: chem_readnl                    ! read chem namelist
   public :: chem_emissions
   public :: chem_timestep_init
+  public :: chem_has_ndep_flx
 
   !
   ! Private routines:
@@ -166,6 +167,8 @@ module chemistry
   ! For dry deposition
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 
+  ! for nitrogen deposition fluxes to surface models
+  logical, parameter :: chem_has_ndep_flx = .false.
 
 contains
 

@@ -87,7 +87,6 @@
 
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
-    difzm_idx  = -1,    & ! ZM detrained convective cloud ice mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
     dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
 
@@ -395,7 +394,8 @@ end subroutine macrop_driver_readnl
   !                                                         !
   !-------------------------------------------------------- !
 
-  use cloud_fraction,   only: cldfrc, cldfrc_fice
+  use cloud_fraction,   only: cldfrc
+  use cloud_fraction_fice,  only: cloud_fraction_fice_run
   use physics_types,    only: physics_state, physics_ptend
   use physics_types,    only: physics_ptend_init, physics_update
   use physics_types,    only: physics_ptend_sum,  physics_state_copy
@@ -486,7 +486,6 @@ end subroutine macrop_driver_readnl
 
   ! ZM microphysics
   real(r8), pointer :: dlfzm(:,:)  ! ZM detrained convective cloud water mixing ratio.
-  real(r8), pointer :: difzm(:,:)  ! ZM detrained convective cloud ice mixing ratio.
   real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
   real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
@@ -872,8 +871,8 @@ end subroutine macrop_driver_readnl
    fice(:,:) = 0._r8
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
-   call cldfrc_fice( ncol, state_loc%t(:ncol,:), fice(:ncol,:), fsnow(:ncol,:) )
 
+   call cloud_fraction_fice_run(ncol, state_loc%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
 
    lq(:)        = .FALSE.
 

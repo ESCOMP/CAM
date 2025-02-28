@@ -749,7 +749,6 @@ contains
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
     use rayleigh_friction,  only: rayleigh_friction_init
-    use pbl_utils,          only: pbl_utils_init
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
     use phys_debug,         only: phys_debug_state_init
@@ -792,6 +791,7 @@ contains
     ! local variables
     integer :: lchnk
     integer :: ierr
+    integer :: ixq
 
     logical :: history_budget              ! output tendencies and state variables for
                                            ! temperature, water vapor, cloud
@@ -888,7 +888,6 @@ contains
 
     call rayleigh_friction_init()
 
-    call pbl_utils_init(gravit, karman, cpair, rair, zvir)
     call vertical_diffusion_init(pbuf2d)
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
@@ -964,7 +963,8 @@ contains
 
     ! Initialize CAM CCPP constituent properties array
     ! for use in CCPP-ized physics schemes:
-    call ccpp_const_props_init()
+    call cnst_get_ind('Q', ixq)
+    call ccpp_const_props_init(ixq)
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
@@ -2479,6 +2479,14 @@ contains
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
+    ! output these here -- after updates by chem_timestep_tend or export_fields within the current time step
+    if (associated(cam_out%nhx_nitrogen_flx)) then
+       call outfld('a2x_NHXDEP', cam_out%nhx_nitrogen_flx, pcols, lchnk)
+    end if
+    if (associated(cam_out%noy_nitrogen_flx)) then
+       call outfld('a2x_NOYDEP', cam_out%noy_nitrogen_flx, pcols, lchnk)
+    end if
+
   end subroutine tphysac
 
   subroutine tphysbc (ztodt, state,  &
@@ -2709,12 +2717,10 @@ contains
     call tot_energy_phys(state, 'phBF')
     call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
 
-    if (.not.dycore_is('EUL')) then
-       call check_energy_cam_fix(state, ptend, nstep, flx_heat)
-       call physics_update(state, ptend, ztodt, tend)
-       call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
-       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
-    end if
+    call check_energy_cam_fix(state, ptend, nstep, flx_heat)
+    call physics_update(state, ptend, ztodt, tend)
+    call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+    call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
 
     call tot_energy_phys(state, 'phBP')
     call tot_energy_phys(state, 'dyBP',vc=vc_dycore)
@@ -2897,8 +2903,10 @@ contains
       ! Run wet deposition routines to intialize aerosols
       !===================================================
 
-      call modal_aero_calcsize_diag(state, pbuf)
-      call modal_aero_wateruptake_dr(state, pbuf)
+      if (clim_modal_aero) then
+         call modal_aero_calcsize_diag(state, pbuf)
+         call modal_aero_wateruptake_dr(state, pbuf)
+      end if
 
       !===================================================
       ! Radiation computations

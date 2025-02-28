@@ -1015,7 +1015,6 @@ contains
     real(r8), pointer :: fldcw(:,:)
     real(r8), pointer :: sulfeq(:,:,:)
 
-    logical :: is_spcam_m2005
 !
 ! ... initialize nh3
 !
@@ -1023,7 +1022,6 @@ contains
       nh3_beg = vmr(1:ncol,:,nh3_ndx)
     end if
 !
-    is_spcam_m2005   = cam_physpkg_is('spcam_m2005')
 
     call pbuf_get_field(pbuf, dgnum_idx,      dgnum)
     call pbuf_get_field(pbuf, dgnumwet_idx,   dgnumwet )
@@ -1055,14 +1053,13 @@ contains
 !
     call qqcw2vmr( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
 
-    if (.not. is_spcam_m2005) then  ! regular CAM
-      dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
-      dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
+    dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
+    dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
 
     ! aqueous chemistry ...
 
-      if( has_sox ) then
-         call setsox( state, &
+    if( has_sox ) then
+       call setsox( state, &
               ncol,     &
               lchnk,    &
               loffset,  &
@@ -1085,21 +1082,21 @@ contains
               aqso4_o3  &
               )
 
-         do n = 1, ntot_amode
-            l = lptr_so4_cw_amode(n)
-            if (l > 0) then
-               call outfld( trim(cnst_name_cw(l))//'AQSO4',   aqso4(:ncol,n),   ncol, lchnk)
-               call outfld( trim(cnst_name_cw(l))//'AQH2SO4', aqh2so4(:ncol,n), ncol, lchnk)
-            end if
-         end do
+       do n = 1, ntot_amode
+          l = lptr_so4_cw_amode(n)
+          if (l > 0) then
+             call outfld( trim(cnst_name_cw(l))//'AQSO4',   aqso4(:ncol,n),   ncol, lchnk)
+             call outfld( trim(cnst_name_cw(l))//'AQH2SO4', aqh2so4(:ncol,n), ncol, lchnk)
+          end if
+       end do
 
-         call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk)
-         call outfld( 'AQSO4_O3',   aqso4_o3(:ncol),   ncol, lchnk)
-         call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
+       call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk)
+       call outfld( 'AQSO4_O3',   aqso4_o3(:ncol),   ncol, lchnk)
+       call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
 
-      endif
+    endif
 
-!   Tendency due to aqueous chemistry
+    ! Tendency due to aqueous chemistry
     dvmrdt = (vmr - dvmrdt) / delt
     dvmrcwdt = (vmrcw - dvmrcwdt) / delt
     do m = 1, gas_pcnst
@@ -1110,15 +1107,6 @@ contains
       name = 'AQ_'//trim(solsym(m))
       call outfld( name, wrk(:ncol), ncol, lchnk )
     enddo
-
-   else if (is_spcam_m2005) then  ! SPCAM ECPP
-! when ECPP is used, aqueous chemistry is done in ECPP,
-! and not updated here.
-! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
-!
-      dvmrdt = 0.0_r8
-      dvmrcwdt = 0.0_r8
-   endif
 
 ! do gas-aerosol exchange (h2so4, msa, nh3 condensation)
 

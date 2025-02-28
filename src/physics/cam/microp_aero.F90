@@ -780,7 +780,7 @@ subroutine microp_aero_run ( &
       do k = top_lev, pver
          do i = 1, ncol
 
-            if (state1%q(i,k,cldliq_idx) >= qsmall) then
+            if (naer_all > 0 .and. state1%q(i,k,cldliq_idx) >= qsmall) then
 
                ! get droplet activation rate
 

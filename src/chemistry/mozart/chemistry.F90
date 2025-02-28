@@ -24,6 +24,7 @@ module chemistry
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
   use phys_control,     only : use_hemco   ! HEMCO switch logical
+  use mo_chm_diags,     only : chem_has_ndep_flx => chm_prod_ndep_flx
 
   implicit none
   private
@@ -46,6 +47,7 @@ module chemistry
   public :: chem_read_restart
   public :: chem_init_restart
   public :: chem_emissions
+  public :: chem_has_ndep_flx
 
   integer, public :: imozart = -1       ! index of 1st constituent
 
@@ -1148,6 +1150,7 @@ end function chem_is_active
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed
     use short_lived_species, only : short_lived_species_writeic
+    use atm_stream_ndep,     only : ndep_stream_active
 
     implicit none
 
@@ -1266,11 +1269,13 @@ end function chem_is_active
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
                           nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf )
-    if (associated(cam_out%nhx_nitrogen_flx)) then
-       cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
-    endif
-    if (associated(cam_out%noy_nitrogen_flx)) then
-       cam_out%noy_nitrogen_flx(:ncol) = noy_nitrogen_flx(:ncol)
+    if (.not.ndep_stream_active) then
+       if (associated(cam_out%nhx_nitrogen_flx)) then
+          cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
+       endif
+       if (associated(cam_out%noy_nitrogen_flx)) then
+          cam_out%noy_nitrogen_flx(:ncol) = noy_nitrogen_flx(:ncol)
+       endif
     endif
 
     call t_stopf( 'chemdr' )

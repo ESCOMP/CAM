@@ -1,6 +1,6 @@
 dust_emis_method = 'Leung_2023'
 
-fincl2 = 'dst_a1SF', 'dst_a2SF', 'dst_a3SF'
+fincl2 = 'dst_a1SF', 'dst_a2SF', 'dst_a3SF',  'a2x_NHXDEP','a2x_NOYDEP'
 
 mfilt=1,1,1,1,1,1
 ndens=1,1,1,1,1,1
