@@ -17,8 +17,7 @@
 <ncdata dyn="se" hgrid="ne16np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne16pg3_spinup02.cam.i.1980-01-01-00000_c250201.nc</ncdata>
 
 <!-- topography -->
-<bnd_topo dyn="se" hgrid="ne16np4" npg="3">atm/cam/topo/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
-<bnd_topo dyn="se" hgrid="ne30np4" npg="3">atm/cam/topo/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc</bnd_topo>
+<bnd_topo dyn="se" hgrid="ne16np4" npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
