@@ -77,7 +77,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use aircraft_emit,       only: aircraft_emit_readnl
    use cospsimulator_intr,  only: cospsimulator_intr_readnl
    use vertical_diffusion,  only: vd_readnl
-   use rayleigh_friction,   only: rayleigh_friction_readnl
+   use rayleigh_friction_cam, only: rayleigh_friction_readnl
 
    use cam_diagnostics,     only: diag_readnl
    use radheat,             only: radheat_readnl
