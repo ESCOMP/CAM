@@ -599,6 +599,10 @@ end subroutine macrop_driver_readnl
   ! CloudSat equivalent ice mass mixing ratio (kg/kg)
   real(r8) :: cldsice(pcols,pver)
 
+  ! For CCPPized schemes
+  character(len=512)   :: errmsg
+  integer              :: errflg
+
   ! ======================================================================
 
   lchnk = state%lchnk
@@ -872,7 +876,7 @@ end subroutine macrop_driver_readnl
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
 
-   call cloud_fraction_fice_run(ncol, state_loc%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
+   call cloud_fraction_fice_run(ncol, state_loc%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:), errmsg, errflg)
 
    lq(:)        = .FALSE.
 
