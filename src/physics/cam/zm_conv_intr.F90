@@ -74,7 +74,8 @@ module zm_conv_intr
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
    real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
-   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcel pbl calculation
+   logical  :: zmconv_parcel_pbl = .false.           ! switch for parcel pbl calculation
+   real(r8) :: zmconv_parcel_hscale = unset_r8       ! Fraction of PBL depth over which to mix initial parcel
    real(r8) :: zmconv_tau = unset_r8          ! Timescale for convection
 
 
@@ -163,7 +164,7 @@ subroutine zm_conv_readnl(nlfile)
                         zmconv_ke, zmconv_ke_lnd,  &
                         zmconv_momcu, zmconv_momcd, &
                         zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
-                        zmconv_parcel_pbl, zmconv_tau
+                        zmconv_parcel_pbl,  zmconv_parcel_hscale, zmconv_tau
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -202,6 +203,8 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
    call mpi_bcast(zmconv_parcel_pbl,        1, mpi_logical, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_pbl")
+   call mpi_bcast(zmconv_parcel_hscale,      1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_hscale")
    call mpi_bcast(zmconv_tau,               1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tau")
 
@@ -345,7 +348,7 @@ subroutine zm_conv_init(pref_edge)
                   pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin,  &
                   no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_parcel_hscale, zmconv_tau, &
                   masterproc, iulog, errmsg, errflg)
 
       if (errflg /= 0) then
