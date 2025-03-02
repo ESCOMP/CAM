@@ -317,7 +317,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 
-   else
+   else if (.not.clim_carma_aero) then
 
       ! Props needed for BAM number concentration calcs.
 
@@ -865,7 +865,7 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !bulk aerosol ccn concentration (modal does it in ndrop, from dropmixnuc)
 
-   if (.not. clim_modal_aero) then
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero)) then
 
       ! ccn concentration as diagnostic
       call ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
