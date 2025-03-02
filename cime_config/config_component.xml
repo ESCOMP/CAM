@@ -9,7 +9,7 @@
     ===============
    -->
     <desc atm="CAM70[%LT][%MT][%CT1S][%CT4S]"                                                                                                                                                                                                                                                                                                                                            >CAM cam7 physics:</desc>
-    <desc atm="CAM60[%1PCT][%4xCO2][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CARMATS][%CARMAWM][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
     <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
@@ -133,6 +133,8 @@
       <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
+      <value compset="CAM60%CARMATS">-chem trop_strat_noaero -carma trop_strat_soa5</value>
+      <value compset="CAM60%CARMAWM">-chem waccm_ma_noaero -carma trop_strat_soa1</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
       <value compset="CAM60%CT2S">-chem trop_strat_mam5_ts2</value>
       <value compset="CAM.*%CT4S">-chem trop_strat_mam5_ts4</value>
@@ -143,7 +145,7 @@
 
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
-      <value compset="_(CAM50|CAM60)%(WC|CT|CV|CF)">-age_of_air_trcs</value>
+      <value compset="_(CAM50|CAM60)%(WC|CT|CV|CF|CARMA)">-age_of_air_trcs</value>
       <value compset="_CAM40%WCCM">-chem waccm_ma</value>
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam5</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam5</value>
@@ -160,6 +162,7 @@
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
       <value compset="_CAM\d0%CT.*%SDYN">-nlev 56</value>
+      <value compset="_CAM\d0%CARMATS.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
       <value compset="_CAM70%LT">-nlev 58 -model_top lt</value>
@@ -235,6 +238,7 @@
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%.*CT1S" >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%CARMATS">carma_trop_strat_cam6</value>
       <value compset="2000_CAM60%GEOSCHEM">2000_geoschem</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
@@ -273,6 +277,10 @@
       <value compset="HIST[CE]?_CAM7.*CT4S"  >hist_trop_strat_t4s_cam7</value>
       <value compset="1850[CE]?_CAM7.*CT4S"  >1850_trop_strat_t4s_cam7</value>
       <value compset="HIST_CAM60%.*CT[12]S%NUDG">hist_trop_strat_nudged_cam6</value>
+      <value compset="HIST_CAM60%CARMATS">carma_trop_strat_hist_cam6</value>
+      <value compset="HIST_CAM60%CARMATS%NUDG">carma_trop_strat_nudged_cam6</value>
+      <value compset="HIST_CAM60%CARMAWM">carma_waccm_ma_hist_cam6</value>
+      <value compset="HIST_CAM60%CARMAWM%NUDG">carma_waccm_ma_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
       <value compset="HIST_CAM60%GEOSCHEM">hist_geoschem</value>
@@ -303,6 +311,7 @@
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
       <value compset="_CAM60%.*CT1S%SDYN" >sd_trop_strat_vbs_cam6</value>
       <value compset="_CAM60%.*CT2S%SDYN" >sd_trop_strat2_cam6</value>
+      <value compset="_CAM60%CARMATS%SDYN">carma_trop_strat_sd_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
       <value compset="CAM%HS94"          >held_suarez_1994</value>

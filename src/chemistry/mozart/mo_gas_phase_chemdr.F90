@@ -25,6 +25,7 @@ module mo_gas_phase_chemdr
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
   integer :: ndx_h2so4
+  integer :: jno2_pbuf_ndx=-1, jno2_rxt_ndx=-1
 !
 ! CCMI
 !
@@ -181,6 +182,8 @@ contains
        call add_default ('SAD_AERO',8,' ')
     endif
     call addfld( 'REFF_AERO',  (/ 'lev' /), 'I', 'cm',      'aerosol effective radius' )
+    call addfld( 'REFF_TROP',  (/ 'lev' /), 'I', 'cm',      'tropospheric aerosol effective radius' )
+    call addfld( 'REFF_STRAT', (/ 'lev' /), 'I', 'cm',      'stratospheric aerosol effective radius' )
     call addfld( 'SULF_TROP',  (/ 'lev' /), 'I', 'mol/mol', 'tropospheric aerosol SAD' )
     call addfld( 'QDSETT',     (/ 'lev' /), 'I', '/s',      'water vapor settling delta' )
     call addfld( 'QDCHEM',     (/ 'lev' /), 'I', '/s',      'water vapor chemistry delta')
@@ -211,10 +214,14 @@ contains
     ndx_cldtop = pbuf_get_index('CLDTOP')
 
     sad_pbf_ndx= pbuf_get_index('VOLC_SAD',errcode=err) ! prescribed  strat aerosols (volcanic)
-    if (.not.sad_pbf_ndx>0) sad_pbf_ndx = pbuf_get_index('SADSULF',errcode=err) ! CARMA's version of strat aerosols
 
     ele_temp_ndx = pbuf_get_index('TElec',errcode=err)! electron temperature index
     ion_temp_ndx = pbuf_get_index('TIon',errcode=err) ! ion temperature index
+
+    jno2_pbuf_ndx = pbuf_get_index('JNO2',errcode=err)
+    if (jno2_pbuf_ndx>0) then
+       jno2_rxt_ndx = get_rxt_ndx('jno2')
+    end if
 
     ! diagnostics for stratospheric heterogeneous reactions
     call addfld( 'GAMMA_HET1', (/ 'lev' /), 'I', '1', 'Reaction Probability' )
@@ -251,7 +258,7 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine gas_phase_chemdr(lchnk, ncol, imozart, q, &
+  subroutine gas_phase_chemdr(state, lchnk, ncol, imozart, q, &
                               phis, zm, zi, calday, &
                               tfld, pmid, pdel, pint, rpdel, rpdeldry, &
                               cldw, troplev, troplevchem, &
@@ -305,6 +312,7 @@ contains
     use perf_mod,          only : t_startf, t_stopf
     use gas_wetdep_opts,   only : gas_wetdep_method
     use physics_buffer,    only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_types,     only : physics_state
     use infnan,            only : nan, assignment(=)
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
@@ -362,6 +370,7 @@ contains
     real(r8), intent(out) :: noy_nitrogen_flx(pcols)
     logical,        intent(in)    :: use_hemco                      ! use Harmonized Emissions Component (HEMCO)
 
+    type(physics_state),    intent(in) :: state     ! Physics state variables
     type(physics_buffer_desc), pointer :: pbuf(:)
 
     !-----------------------------------------------------------------------
@@ -472,6 +481,7 @@ contains
 
     real(r8) :: o3s_loss(ncol,pver)
     real(r8), pointer :: srf_ozone_fld(:)
+    real(r8), pointer :: jno2_fld_ptr(:,:)
 
     if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
        call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
@@ -496,6 +506,10 @@ contains
     call pbuf_get_field(pbuf, ndx_cmfdqr,     cmfdqr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )
+
+    if (jno2_pbuf_ndx>0.and.jno2_rxt_ndx>0) then
+       call pbuf_get_field(pbuf, jno2_pbuf_ndx, jno2_fld_ptr)
+    end if
 
     reff_strat(:,:) = 0._r8
 
@@ -630,7 +644,7 @@ contains
        strato_sad(:,:) = 0._r8
 
        ! Prognostic modal stratospheric sulfate: compute dry strato_sad
-       call aero_model_strat_surfarea( ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
+       call aero_model_strat_surfarea( state, ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
 
     endif
 
@@ -767,7 +781,7 @@ contains
 
     cwat(:ncol,:pver) = cldw(:ncol,:pver)
 
-    call usrrxt( reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
+    call usrrxt( state, reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
                  pmid, invariants(:,:,indexm), sulfate, mmr, relhum, strato_sad, &
                  troplevchem, dlats, ncol, sad_trop, reff, cwat, mbar, pbuf )
 
@@ -778,6 +792,8 @@ contains
     call outfld( 'SAD_AERO', sad_trop(:ncol,:), ncol, lchnk )
 
     ! Add trop/strat components of effective radius for output
+    call outfld( 'REFF_TROP', reff(:ncol,:), ncol, lchnk )
+    call outfld( 'REFF_STRAT', reff_strat(:ncol,:), ncol, lchnk )
     reff(:ncol,:)=reff(:ncol,:)+reff_strat(:ncol,:)
     call outfld( 'REFF_AERO', reff(:ncol,:), ncol, lchnk )
 
@@ -821,6 +837,10 @@ contains
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )
     enddo
+
+    if (jno2_pbuf_ndx>0.and.jno2_rxt_ndx>0) then
+       jno2_fld_ptr(:ncol,:) = reaction_rates(:ncol,:,jno2_rxt_ndx)
+    endif
 
     !-----------------------------------------------------------------------
     !     	... Adjust the photodissociation rates
@@ -954,7 +974,7 @@ contains
 ! Aerosol processes ...
 !
 
-    call aero_model_gasaerexch( imozart-1, ncol, lchnk, troplevchem, delt, reaction_rates, &
+    call aero_model_gasaerexch( state, imozart-1, ncol, lchnk, troplevchem, delt, reaction_rates, &
                                 tfld, pmid, pdel, mbar, relhum, &
                                 zm,  qh2o, cwat, cldfr, ncldwtr, &
                                 invariants(:,:,indexm), invariants, del_h2so4_gasprod,  &

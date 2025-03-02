@@ -236,7 +236,7 @@ module cam_history
   !  User definable constants for hash and overflow tables.
   !  Define size of primary hash table (specified as 2**size).
   !
-  integer, parameter :: tbl_hash_pri_sz_lg2 = 16
+  integer, parameter :: tbl_hash_pri_sz_lg2 = 20
   !
   !  Define size of overflow hash table % of primary hash table.
   !
