@@ -5006,28 +5006,6 @@ Dust erosion factor file.
 Default: set by build-namelist.
 </entry>
 
-<!-- Ozone: Data (original CAM version) -->
-
-<entry id="bndtvo" type="char*256" input_pathname="abs" category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Full pathname of time-variant ozone mixing ratio boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_ozone_data_on" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Add CAM3 prescribed ozone to the physics buffer.
-Default: FALSE
-</entry>
-
-<entry id="ozncyc" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Flag for yearly cycling of ozone data. If set to FALSE, a multi-year
-dataset is assumed, otherwise a single-year dataset is assumed, and ozone
-will be cycled over the 12 monthly averages in the file.
-Default: TRUE
-</entry>
-
 <!-- Performance Tuning and Profiling -->
 
 <entry id="papi_ctr1_str" type="char*16"  category="performance"
