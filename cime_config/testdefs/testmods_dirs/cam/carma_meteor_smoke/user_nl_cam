@@ -7,3 +7,4 @@ history_carma=.true.
 carma_do_fixedinit=.false.
 solar_data_type='FIXED'
 solar_data_ymd=20000101
+
