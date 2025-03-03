@@ -51,6 +51,7 @@ module aerosol_state_mod
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
      procedure(aero_hygroscopicity), deferred :: hygroscopicity
      procedure(aero_water_uptake), deferred :: water_uptake
+     procedure(aero_wgtpct), deferred :: wgtpct
      procedure :: refractive_index_sw
      procedure :: refractive_index_lw
      procedure(aero_volume), deferred :: dry_volume
@@ -222,15 +223,15 @@ module aerosol_state_mod
      ! returns hygroscopicity for a given radiation diagnostic list number and
      ! bin number
      !------------------------------------------------------------------------------
-     function aero_hygroscopicity(self, list_ndx, bin_ndx) result(kappa)
+     subroutine aero_hygroscopicity(self, list_ndx, bin_ndx, kappa)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
        integer, intent(in) :: bin_ndx      ! bin number
 
-       real(r8), pointer :: kappa(:,:)     ! hygroscopicity (ncol,nlev)
+       real(r8), intent(out) :: kappa(:,:)              ! hygroscopicity (ncol,nlev)
 
-     end function aero_hygroscopicity
+     end subroutine aero_hygroscopicity
 
      !------------------------------------------------------------------------------
      ! returns aerosol wet diameter and aerosol water concentration for a given
@@ -249,6 +250,17 @@ module aerosol_state_mod
        real(r8),intent(out) :: qaerwat(ncol,nlev)  ! aerosol water concentration (g/g)
 
      end subroutine aero_water_uptake
+
+     !------------------------------------------------------------------------------
+     ! aerosol weight precent of H2SO4/H2O solution
+     !------------------------------------------------------------------------------
+     function aero_wgtpct(self, ncol, nlev) result(wtp)
+       import :: aerosol_state, r8
+       class(aerosol_state), intent(in) :: self
+       integer, intent(in) ::  ncol,nlev
+       real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+
+     end function aero_wgtpct
 
      !------------------------------------------------------------------------------
      ! aerosol volume interface

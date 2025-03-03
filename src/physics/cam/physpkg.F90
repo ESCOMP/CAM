@@ -38,6 +38,8 @@ module physpkg
   use modal_aero_calcsize,    only: modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
+  use carma_diags_mod, only: carma_diags_t
+
   implicit none
   private
   save
@@ -158,6 +160,8 @@ contains
     use offline_driver,     only: offline_driver_reg
     use hemco_interface,    only: HCOI_Chunk_Init
     use upper_bc,           only: ubc_fixed_conc
+    use surface_emissions_mod, only: surface_emissions_reg
+    use elevated_emissions_mod, only: elevated_emissions_reg
 
     !---------------------------Local variables-----------------------------
     !
@@ -267,6 +271,9 @@ contains
           call modal_aero_calcsize_reg()
           call modal_aero_wateruptake_reg()
        endif
+
+       call surface_emissions_reg()
+       call elevated_emissions_reg()
 
        ! register chemical constituents including aerosols ...
        call chem_register()
@@ -769,6 +776,8 @@ contains
     use phys_control,       only: phys_getopts
     use phys_grid_ctem,     only: phys_grid_ctem_init
     use cam_budget,         only: cam_budget_init
+    use surface_emissions_mod, only: surface_emissions_init
+    use elevated_emissions_mod, only: elevated_emissions_init
 
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
 
@@ -851,6 +860,8 @@ contains
 
     ! initialize carma
     call carma_init(pbuf2d)
+    call surface_emissions_init(pbuf2d)
+    call elevated_emissions_init(pbuf2d)
 
     ! Prognostic chemistry.
     call chem_init(phys_state,pbuf2d)
@@ -1448,7 +1459,15 @@ contains
     real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
 
+    ! For aerosol budget diagnostics
+    type(carma_diags_t), pointer :: carma_diags_obj
+
     !-----------------------------------------------------------------------
+    carma_diags_obj => carma_diags_t()
+    if (.not.associated(carma_diags_obj)) then
+       call endrun('tphysac: carma_diags_obj allocation failed')
+    end if
+
     lchnk = state%lchnk
     ncol  = state%ncol
 
@@ -1501,7 +1520,13 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
     end if
+
+    call carma_diags_obj%update(cam_in, state, pbuf)
+
     call chem_emissions( state, cam_in, pbuf )
+
+    call carma_diags_obj%output(state, ptend, cam_in, "CHEMEMIS", ztodt, pbuf)
+
     if (trim(cam_take_snapshot_after) == "chem_emissions") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
@@ -1509,7 +1534,9 @@ contains
 
     if (carma_do_emission) then
        ! carma emissions
-       call carma_emission_tend (state, ptend, cam_in, ztodt, pbuf)
+       call carma_diags_obj%update(cam_in, state, pbuf)
+       call carma_emission_tend(state, ptend, cam_in, ztodt, pbuf)
+       call carma_diags_obj%output(state, ptend, cam_in, "CREMIS", ztodt, pbuf)
        call physics_update(state, ptend, ztodt, tend)
     end if
 
@@ -1580,6 +1607,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
        end if
 
+       call carma_diags_obj%update(cam_in, state, pbuf)
+
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o=fh2o)
 
@@ -1588,6 +1617,9 @@ contains
             (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
           call cam_snapshot_ptend_outfld(ptend, lchnk)
        end if
+
+       call carma_diags_obj%output(state, ptend, cam_in, "CHEM", ztodt, pbuf)
+
        call physics_update(state, ptend, ztodt, tend)
 
        if (trim(cam_take_snapshot_after) == "chem_timestep_tend") then
@@ -1612,6 +1644,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
     end if
 
+    call carma_diags_obj%update(cam_in, state, pbuf)
+
     call vertical_diffusion_tend (ztodt ,state , cam_in, &
          surfric  ,obklen   ,ptend    ,ast    ,pbuf )
 
@@ -1632,6 +1666,9 @@ contains
     if ( ptend%lv ) then
       call outfld( 'VTEND_VDIFF', ptend%v, pcols, lchnk)
     end if
+
+    call carma_diags_obj%output(state, ptend, cam_in, "VDIF", ztodt, pbuf)
+
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "vertical_diffusion_section") then
@@ -1672,11 +1709,14 @@ contains
                     fh2o, surfric, obklen, flx_heat)
     end if
 
+    call carma_diags_obj%update(cam_in, state, pbuf)
+
     call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
     if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+    call carma_diags_obj%output(state, ptend, cam_in, "DRYDEPA", ztodt, pbuf)
     call physics_update(state, ptend, ztodt, tend)
 
    if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
@@ -1695,7 +1735,9 @@ contains
    ! can be added to for CARMA aerosols.
    if (carma_do_aerosol) then
      call t_startf('carma_timestep_tend')
+     call carma_diags_obj%update(cam_in, state, pbuf)
      call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, obklen=obklen, ustar=surfric)
+     call carma_diags_obj%output(state, ptend, cam_in, "CRTEND", ztodt, pbuf)
      call physics_update(state, ptend, ztodt, tend)
 
      call check_energy_cam_chng(state, tend, "carma_tend", nstep, ztodt, zero, zero, zero, zero)
@@ -1967,6 +2009,12 @@ contains
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
+    ! clean CARMA diagnostics object
+    if (associated(carma_diags_obj)) then
+       deallocate(carma_diags_obj)
+       nullify(carma_diags_obj)
+    end if
+
     ! output these here -- after updates by chem_timestep_tend or export_fields within the current time step
     if (associated(cam_out%nhx_nitrogen_flx)) then
        call outfld('a2x_NHXDEP', cam_out%nhx_nitrogen_flx, pcols, lchnk)
@@ -2060,6 +2108,8 @@ contains
     use cam_snapshot_common, only: cam_snapshot_ptend_outfld
     use ssatcontrail,       only: ssatcontrail_d0
     use dyn_tests_utils, only: vc_dycore
+    use surface_emissions_mod,only: surface_emissions_set
+    use elevated_emissions_mod,only: elevated_emissions_set
 
     ! Arguments
 
@@ -2167,7 +2217,15 @@ contains
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
 
+    ! For aerosol budget diagnostics
+    character(len=16) :: pname      !! package name
+    type(carma_diags_t), pointer :: carma_diags_obj
+
     !-----------------------------------------------------------------------
+    carma_diags_obj => carma_diags_t()
+    if (.not.associated(carma_diags_obj)) then
+       call endrun('tphysbc: carma_diags_obj allocation failed')
+    end if
 
     call t_startf('bc_init')
 
@@ -2288,6 +2346,10 @@ contains
     end if
 
     call t_stopf('energy_fixer')
+
+    call surface_emissions_set( lchnk, ncol, pbuf )
+    call elevated_emissions_set( lchnk, ncol, pbuf )
+
     !
     !===================================================
     ! Dry adjustment
@@ -2397,6 +2459,8 @@ contains
          state      , ptend  ,  pbuf, cam_in)
     call t_stopf ('convect_shallow_tend')
 
+    call physics_update(state, ptend, ztodt, tend)
+
     if ( (trim(cam_take_snapshot_after) == "convect_shallow_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
@@ -2440,8 +2504,10 @@ contains
     call t_startf('carma_timestep_tend')
 
     if (carma_do_cldice .or. carma_do_cldliq) then
+       call carma_diags_obj%update(cam_in, state, pbuf)
        call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, dlf=dlf, rliq=rliq, &
             prec_str=prec_str, snow_str=snow_str, prec_sed=prec_sed_carma, snow_sed=snow_sed_carma)
+       call carma_diags_obj%output(state, ptend, cam_in, "CRTEND", ztodt, pbuf)
        call physics_update(state, ptend, ztodt, tend)
 
        ! Before the detrainment, the reserved condensate is all liquid, but if CARMA is doing
@@ -2626,6 +2692,8 @@ contains
                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
+          call carma_diags_obj%update(cam_in, state, pbuf)
+
           call t_startf('microp_aero_run')
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
@@ -2705,6 +2773,11 @@ contains
           ! combine aero and micro tendencies for the grid
           call physics_ptend_sum(ptend_aero, ptend, ncol)
           call physics_ptend_dealloc(ptend_aero)
+
+          ! These need to be reported before the scaling as they are based
+          ! on the substep size not ztodt.
+          write(pname, '(A, I2.2)') "MICROP", macmic_it
+          call carma_diags_obj%output(state, ptend, cam_in, pname, ztodt/cld_macmic_num_steps, pbuf)
 
           ! Have to scale and apply for full timestep to get tend right
           ! (see above note for macrophysics).
@@ -2790,11 +2863,14 @@ contains
                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
+       call carma_diags_obj%update(cam_in, state, pbuf)
+
        call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
        if ( (trim(cam_take_snapshot_after) == "aero_model_wetdep") .and.      &
             (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
           call cam_snapshot_ptend_outfld(ptend, lchnk)
        end if
+       call carma_diags_obj%output(state, ptend, cam_in, "WETDEPA", ztodt, pbuf)
        call physics_update(state, ptend, ztodt, tend)
 
        if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
@@ -2809,7 +2885,9 @@ contains
           ! fields have already been set for CAM aerosols and cam_out can be added
           ! to for CARMA aerosols.
           call t_startf ('carma_wetdep_tend')
+          call carma_diags_obj%update(cam_in, state, pbuf)
           call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+          call carma_diags_obj%output(state, ptend, cam_in, "WETDEPC", ztodt, pbuf)
           call physics_update(state, ptend, ztodt, tend)
           call t_stopf ('carma_wetdep_tend')
        end if
@@ -2895,6 +2973,12 @@ contains
     call diag_export(cam_out)
     call t_stopf('diag_export')
 
+    ! clean CARMA diagnostics object
+    if (associated(carma_diags_obj)) then
+       deallocate(carma_diags_obj)
+       nullify(carma_diags_obj)
+    end if
+
   end subroutine tphysbc
 
 subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
@@ -2932,6 +3016,8 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use nudging,             only: Nudge_Model, nudging_timestep_init
   use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_timestep_init
   use phys_grid_ctem,      only: phys_grid_ctem_diags
+  use surface_emissions_mod,only: surface_emissions_adv
+  use elevated_emissions_mod,only: elevated_emissions_adv
 
   implicit none
 
@@ -2952,6 +3038,8 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 
   ! Chemistry surface values
   call chem_surfvals_set()
+  call surface_emissions_adv(pbuf2d, phys_state)
+  call elevated_emissions_adv(pbuf2d, phys_state)
 
   ! Solar irradiance
   call solar_data_advance()

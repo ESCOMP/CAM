@@ -4091,7 +4091,8 @@ contains
     call t_stopf('GEOSChem_MAM_Interfacing')
     call t_startf('GEOSChem_MAM_GasAerExch')
 
-    call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
+    call aero_model_gasaerexch( state, &
+                                loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
                                 lchnk             = LCHNK,                  &
                                 troplev           = Trop_Lev(:),            &
