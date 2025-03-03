@@ -9,9 +9,9 @@ module hk_conv
    private
    save
 
-   public :: hkconv_readnl
-   public :: mfinti
-   public :: cmfmca_cam
+   public :: hkconv_readnl ! Read hkconv_nl namelist
+   public :: mfinti        ! Initialization of data for Hack shallow convection
+   public :: cmfmca_cam    ! CAM wrapper for Hack shallow convection
 
    !
    ! Private data used for Hack shallow convection
