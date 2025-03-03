@@ -29,7 +29,6 @@ contains
    subroutine hkconv_readnl(nlfile)
 
       use namelist_utils,  only: find_group_name
-      use units,           only: getunit, freeunit
       use mpishorthand
 
       character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -42,8 +41,7 @@ contains
       !-----------------------------------------------------------------------------
 
       if (masterproc) then
-         unitn = getunit()
-         open( unitn, file=trim(nlfile), status='old' )
+         open( newunit=unitn, file=trim(nlfile), status='old' )
          call find_group_name(unitn, 'hkconv_nl', status=ierr)
          if (ierr == 0) then
             read(unitn, hkconv_nl, iostat=ierr)
@@ -52,7 +50,6 @@ contains
             end if
          end if
          close(unitn)
-         call freeunit(unitn)
 
          ! set local variables
          cmftau = hkconv_cmftau
@@ -133,13 +130,13 @@ contains
       integer, intent(in) :: ncol                 ! number of atmospheric columns
       integer, intent(in) :: nstep                ! current time step index
 
-      real(r8), intent(in) :: ztodt               ! 2 delta-t (seconds)
+      real(r8), intent(in) :: ztodt               ! physics timestep (seconds)
       real(r8), intent(in) :: pmid(pcols,pver)    ! pressure
       real(r8), intent(in) :: pdel(pcols,pver)    ! delta-p
-      real(r8), intent(in) :: pmiddry(pcols,pver)    ! pressure
-      real(r8), intent(in) :: pdeldry(pcols,pver)    ! delta-p
+      real(r8), intent(in) :: pmiddry(pcols,pver)    ! dry air pressure
+      real(r8), intent(in) :: pdeldry(pcols,pver)    ! dry air delta-p
       real(r8), intent(in) :: rpdel(pcols,pver)   ! 1./pdel
-      real(r8), intent(in) :: rpdeldry(pcols,pver)   ! 1./pdel
+      real(r8), intent(in) :: rpdeldry(pcols,pver)   ! 1./pdeldry
       real(r8), intent(in) :: zm(pcols,pver)      ! height abv sfc at midpoints
       real(r8), intent(in) :: tpert(pcols)        ! PBL perturbation theta
       real(r8), intent(in) :: qpert(pcols)        ! PBL perturbation specific humidity

@@ -668,7 +668,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     top_lev = 1
     call phys_getopts (macrop_scheme_out  = macrop_scheme)
-    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
 
     call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:), errmsg, errflg)
 

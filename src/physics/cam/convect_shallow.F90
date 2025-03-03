@@ -865,7 +865,7 @@
 
     top_lev = 1
     call phys_getopts (macrop_scheme_out  = macrop_scheme)
-    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
 
     call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:), errmsg, errflg)
 
