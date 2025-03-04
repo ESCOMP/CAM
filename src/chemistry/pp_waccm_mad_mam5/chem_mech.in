@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: MAM_MAM5
-* Tag database identifier : MZ369_MAD_MAM4_20250225
+* User-given Tag Description: MAD_MAM5
+* Tag database identifier : MZ373_MAD_MAM4_20250304
 * Tag created by : jz
 * Tag created from branch : MAD_MAM4
-* Tag created on : 2025-02-25 15:40:51.647783-07
+* Tag created on : 2025-03-04 10:51:57.706966-07
 * Comments for this tag follow:
-*     jz : 2025-02-25 : MAM5, also added 5 nitrogen reactions
+*     jz : 2025-03-04 : odd-nitrogen reaction update
 
       SPECIES
 
@@ -827,7 +827,6 @@
 [agn2d]                N2D  -> N                                                ; 1.06e-05 
 [HO2NO2_OH]            HO2NO2 + OH  -> H2O + NO2 + O2                           ; 4.5e-13, 610 
 [N2D_NO,cph=543.13]    N2D + NO  -> N2 + O                                      ; 7e-11 
-[N2D_O2,cph=177.51]    N2D + O2  -> NO + O1D                                    ; 5e-12 
 [N_NO,cph=313.75]      N + NO  -> N2 + O                                        ; 2.1e-11, 100 
 [N_NO2a]               N + NO2  -> N2O + O                                      ; 2.9e-12, 220 
 [N_NO2b]               N + NO2  -> 2*NO                                         ; 1.45e-12, 220 

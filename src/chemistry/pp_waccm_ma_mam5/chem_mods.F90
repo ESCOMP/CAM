@@ -6,16 +6,16 @@
       implicit none
       save
       integer, parameter :: phtcnt = 91, & ! number of photolysis reactions
-                            rxntot = 311, & ! number of total reactions
-                            gascnt = 220, & ! number of gas phase reactions
+                            rxntot = 314, & ! number of total reactions
+                            gascnt = 223, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 103, & ! number of "gas phase" species
+                            gas_pcnst = 102, & ! number of "gas phase" species
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 959, & ! number of non-zero matrix entries
-                            extcnt = 24, & ! number of species with external forcing
-                            clscnt1 = 1, & ! number of species in explicit class
+                            extcnt = 22, & ! number of species with external forcing
+                            clscnt1 = 0, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
                             clscnt4 = 102, & ! number of species in implicit class
@@ -23,8 +23,8 @@
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
-                            rxt_tag_cnt = 311, &
-                            enthalpy_cnt = 54, &
+                            rxt_tag_cnt = 314, &
+                            enthalpy_cnt = 56, &
                             nslvd = 14
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0

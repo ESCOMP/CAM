@@ -31,6 +31,9 @@ module mo_usrrxt
   integer :: usr_DMS_OH_ndx
   integer :: usr_HO2_aer_ndx
   integer :: usr_GLYOXAL_aer_ndx
+  integer :: usr_N_O2_ndx
+  integer :: usr_N2D_O2_ndx
+  integer :: usr_N2D_e_ndx
 
   integer :: tag_NO2_NO3_ndx
   integer :: tag_NO2_OH_ndx
@@ -272,6 +275,9 @@ contains
     usr_MPAN_M_ndx       = get_rxt_ndx( 'usr_MPAN_M' )
     usr_XOOH_OH_ndx      = get_rxt_ndx( 'usr_XOOH_OH' )
     usr_SO2_OH_ndx       = get_rxt_ndx( 'usr_SO2_OH' )
+    usr_N_O2_ndx         = get_rxt_ndx( 'usr_N_O2' )
+    usr_N2D_O2_ndx       = get_rxt_ndx( 'usr_N2D_O2' )
+    usr_N2D_e_ndx        = get_rxt_ndx( 'usr_N2D_e' )
     usr_DMS_OH_ndx       = get_rxt_ndx( 'usr_DMS_OH' )
     usr_HO2_aer_ndx      = get_rxt_ndx( 'usr_HO2_aer' )
     usr_GLYOXAL_aer_ndx  = get_rxt_ndx( 'usr_GLYOXAL_aer' )
@@ -568,7 +574,7 @@ contains
        write(iulog,'(10i5)') usr_O_O2_ndx,usr_HO2_HO2_ndx,tag_NO2_NO3_ndx,usr_N2O5_M_ndx,tag_NO2_OH_ndx,usr_HNO3_OH_ndx &
                             ,tag_NO2_HO2_ndx,usr_HO2NO2_M_ndx,usr_N2O5_aer_ndx,usr_NO3_aer_ndx,usr_NO2_aer_ndx &
                             ,usr_CO_OH_b_ndx,tag_C2H4_OH_ndx,tag_C3H6_OH_ndx,tag_CH3CO3_NO2_ndx,usr_PAN_M_ndx,usr_CH3COCH3_OH_ndx &
-                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
+                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_N2D_O2_ndx,usr_N2D_e_ndx,usr_N_O2_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
                             ,usr_GLYOXAL_aer_ndx,usr_ISOPNITA_aer_ndx,usr_ISOPNITB_aer_ndx,usr_ONITR_aer_ndx,usr_HONITR_aer_ndx &
                             ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx,usr_ISOPZD1O2_ndx &
                             ,usr_ISOPZD4O2_ndx,usr_ISOPFDN_aer_ndx,usr_ISOPFNP_aer_ndx,usr_ISOPN2B_aer_ndx,usr_ISOPN1D_aer_ndx &
@@ -1081,6 +1087,28 @@ contains
           rxt(:,k,usr_CH3COCH3_OH_ndx) = 3.82e-11_r8 * exp_fac(:) + 1.33e-13_r8
        end if
 
+!-----------------------------------------------------------------
+!       ... N + O2 -> NO + O  Abel Fernandez, A. Goumri, and Arthur Fontijn; 1998
+!-----------------------------------------------------------------
+       if( usr_N_O2_ndx > 0 ) then
+          call comp_exp( exp_fac, -2557._r8*tinv, ncol )
+          rxt(:,k,usr_N_O2_ndx) = 2.0e-18_r8 * temp(:ncol,k)**2.15_r8 * exp_fac(:)
+       end if
+       
+!-----------------------------------------------------------------
+!       ... N2D + O2 -> NO + O  Duff, J.W., H. Dothe, and R. D. Sharma, 2003
+!-----------------------------------------------------------------
+       if( usr_N2D_O2_ndx > 0 ) then
+          rxt(:,k,usr_N2D_O2_ndx) = 6.2e-12_r8 * temp(:ncol,k)/300.0_r8
+       end if
+
+!-----------------------------------------------------------------
+!       ... N2D + e -> N + e  Roble, 1995
+!-----------------------------------------------------------------
+       if( usr_N2D_e_ndx > 0 ) then
+          rxt(:,k,usr_N2D_e_ndx) = 3.6e-10_r8 * sqrt(tempe(:ncol,k)/300.0_r8)
+       end if
+       
 !-----------------------------------------------------------------
 !       ... DMS + OH  --> .5 * SO2
 !       JPL15-10 (use [O2] = 0.21*[M])

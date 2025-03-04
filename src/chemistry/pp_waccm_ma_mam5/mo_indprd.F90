@@ -17,16 +17,11 @@
       real(r8), intent(in) :: extfrc(chnkpnts,extcnt)
       real(r8), intent(inout) :: prod(chnkpnts,nprod)
 !--------------------------------------------------------------------
-! ... "independent" production for Explicit species
-!--------------------------------------------------------------------
-      if( class == 1 ) then
-         prod(:,1) = 0._r8
-!--------------------------------------------------------------------
 ! ... "independent" production for Implicit species
 !--------------------------------------------------------------------
-      else if( class == 4 ) then
-         prod(:,1) = + extfrc(:,16)
-         prod(:,2) = + extfrc(:,3)
+      if( class == 4 ) then
+         prod(:,1) = + extfrc(:,2)
+         prod(:,2) = + extfrc(:,12)
          prod(:,97) = 0._r8
          prod(:,45) = 0._r8
          prod(:,101) = 0._r8
@@ -55,11 +50,11 @@
          prod(:,91) = 0._r8
          prod(:,75) = 0._r8
          prod(:,4) = 0._r8
-         prod(:,72) = + extfrc(:,12)
+         prod(:,72) = + extfrc(:,1)
          prod(:,61) = 0._r8
          prod(:,41) = 0._r8
          prod(:,43) = 0._r8
-         prod(:,51) = + extfrc(:,2)
+         prod(:,51) = + extfrc(:,5)
          prod(:,5) = 0._r8
          prod(:,6) = 0._r8
          prod(:,7) = 0._r8
@@ -80,53 +75,53 @@
          prod(:,68) = 0._r8
          prod(:,70) = 0._r8
          prod(:,78) = (rxt(:,64) +.800_r8*rxt(:,66) +.800_r8*rxt(:,68) +rxt(:,70)) &
-                  + extfrc(:,17)
+                  + extfrc(:,20)
          prod(:,46) = 0._r8
          prod(:,50) = 0._r8
          prod(:,8) = 0._r8
          prod(:,9) = 0._r8
          prod(:,10) = 0._r8
-         prod(:,95) = + extfrc(:,13)
+         prod(:,95) = + extfrc(:,3)
          prod(:,92) = + extfrc(:,14)
          prod(:,90) = 0._r8
-         prod(:,11) = + extfrc(:,4)
-         prod(:,12) = + extfrc(:,5)
+         prod(:,11) = + extfrc(:,6)
+         prod(:,12) = + extfrc(:,7)
          prod(:,13) = 0._r8
-         prod(:,14) = + extfrc(:,6)
-         prod(:,15) = + extfrc(:,7)
+         prod(:,14) = + extfrc(:,10)
+         prod(:,15) = 0._r8
          prod(:,93) = 0._r8
          prod(:,87) = 0._r8
          prod(:,88) = 0._r8
          prod(:,52) = 0._r8
          prod(:,53) = 0._r8
-         prod(:,16) = + extfrc(:,8)
-         prod(:,17) = + extfrc(:,9)
+         prod(:,16) = + extfrc(:,4)
+         prod(:,17) = + extfrc(:,11)
          prod(:,66) = 0._r8
          prod(:,18) = 0._r8
          prod(:,83) = 0._r8
-         prod(:,74) = + extfrc(:,15)
+         prod(:,74) = + extfrc(:,13)
          prod(:,47) = 0._r8
-         prod(:,19) = + extfrc(:,10)
-         prod(:,20) = + extfrc(:,1)
+         prod(:,19) = + extfrc(:,8)
+         prod(:,20) = + extfrc(:,9)
          prod(:,21) = 0._r8
-         prod(:,22) = + extfrc(:,11)
+         prod(:,22) = 0._r8
          prod(:,23) = 0._r8
          prod(:,24) = 0._r8
          prod(:,25) = 0._r8
          prod(:,76) = (rxt(:,63) +rxt(:,64) +rxt(:,65) +rxt(:,67) +rxt(:,69) + &
-                 rxt(:,70)) + extfrc(:,21)
+                 rxt(:,70)) + extfrc(:,22)
          prod(:,89) = 0._r8
          prod(:,77) = (rxt(:,65) +1.200_r8*rxt(:,66) +1.200_r8*rxt(:,68) +rxt(:,69)) &
                   + extfrc(:,18)
-         prod(:,64) = (rxt(:,63) +rxt(:,67)) + extfrc(:,19)
+         prod(:,64) = (rxt(:,63) +rxt(:,67)) + extfrc(:,16)
          prod(:,67) = 0._r8
-         prod(:,71) = (rxt(:,64) +rxt(:,65) +rxt(:,69) +rxt(:,70)) + extfrc(:,22)
+         prod(:,71) = (rxt(:,64) +rxt(:,65) +rxt(:,69) +rxt(:,70)) + extfrc(:,17)
          prod(:,94) = 0._r8
          prod(:,39) = 0._r8
          prod(:,40) = 0._r8
-         prod(:,79) = + extfrc(:,23)
-         prod(:,98) = + extfrc(:,24)
-         prod(:,80) = + extfrc(:,20)
+         prod(:,79) = + extfrc(:,15)
+         prod(:,98) = + extfrc(:,21)
+         prod(:,80) = + extfrc(:,19)
          prod(:,60) = 0._r8
          prod(:,59) = 0._r8
          prod(:,102) = 0._r8
