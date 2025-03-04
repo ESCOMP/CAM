@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: TSMLT1.2-MAM5-extendedVBS
-* Tag database identifier : MZ325_TSMLT1_fullVBS_20221223
-* Tag created by : lke
+* User-given Tag Description: TSMLT1_vbsext_mam5
+* Tag database identifier : MZ368_TSMLT1_fullVBS_20250225
+* Tag created by : jz
 * Tag created from branch : TSMLT1-fullVBS
-* Tag created on : 2022-12-22 17:04:17.603803-07
+* Tag created on : 2025-02-25 13:46:31.889221-07
 * Comments for this tag follow:
-*     lke : 2022-12-22 : TSMLT1.2, updated to JPL19; MAM5; VBS-SOA for sectors
+*     jz : 2025-02-25 : added 5 nitrogen reactions, 3 of them are user reactions
 
       SPECIES
 
@@ -16,9 +16,7 @@
  bc_a1 -> C,
  bc_a4 -> C,
  BCARY -> C15H24,
- BCARYO2VBS -> C15H25O3,
  BENZENE -> C6H6,
- BENZO2VBS -> C6H7O5,
  BENZOOH -> C6H8O5,
  BEPOMUC -> C6H6O3,
  BIGALD -> C5H6O2,
@@ -114,19 +112,15 @@
  ISOPNITB -> C5H9NO4,
  ISOPNO3 -> CH2CHCCH3OOCH2ONO2,
  ISOPNOOH -> C5H9NO5,
- ISOPO2VBS -> C5H9O3,
  ISOPOOH -> HOCH2COOHCH3CHCH2,
  IVOCbb -> C13H28,
- IVOCbbO2VBS -> C13H29O3,
  IVOCff -> C13H28,
- IVOCffO2VBS -> C13H29O3,
  MACR -> CH2CCH3CHO,
  MACROOH -> CH3COCHOOHCH2OH,
  MEK -> C4H8O,
  MEKOOH -> C4H8O3,
  MPAN -> CH2CCH3CO3NO2,
  MTERP -> C10H16,
- MTERPO2VBS -> C10H17O3,
  MVK -> CH2CHCOCH3,
  N,
  N2O,
@@ -162,6 +156,8 @@
  PHENO -> C6H5O,
  PHENOL -> C6H5OH,
  PHENOOH -> C6H8O6,
+ pom_a1 -> C,
+ pom_a4 -> C,
  pombb1_a1 -> C,
  pombb1_a4 -> C,
  pomff1_a1 -> C,
@@ -233,18 +229,18 @@
  TERPROD2 -> C9H14O2,
  TOLOOH -> C7H10O5,
  TOLUENE -> C7H8,
- TOLUO2VBS -> C7H9O5,
  XOOH -> HOCH2COOHCH3CHOHCHO,
  XYLENES -> C8H10,
  XYLENOOH -> C8H12O5,
- XYLEO2VBS -> C8H11O5,
  XYLOL -> C8H10O,
  XYLOLOOH -> C8H12O6,
  NHDEP -> N,
  NDEP -> N,
  ACBZO2 -> C7H5O3,
  ALKO2 -> C5H11O2,
+ BCARYO2VBS -> C15H25O3,
  BENZO2 -> C6H7O5,
+ BENZO2VBS -> C6H7O5,
  BZOO -> C7H7O2,
  C2H5O2,
  C3H7O2,
@@ -260,11 +256,15 @@
  HOCH2OO,
  ISOPAO2 -> HOC5H8O2,
  ISOPBO2 -> HOC5H8O2,
+ ISOPO2VBS -> C5H9O3,
+ IVOCbbO2VBS -> C13H29O3,
+ IVOCffO2VBS -> C13H29O3,
  MACRO2 -> CH3COCHO2CH2OH,
  MALO2 -> C4H3O4,
  MCO3 -> CH2CCH3CO3,
  MDIALO2 -> C4H5O4,
  MEKO2 -> C4H7O3,
+ MTERPO2VBS -> C10H17O3,
  N2D -> N,
  N2p -> N2,
  NOp -> NO,
@@ -282,8 +282,10 @@
  TERP2O2 -> C10H15O4,
  TERPO2 -> C10H17O3,
  TOLO2 -> C7H9O5,
+ TOLUO2VBS -> C7H9O5,
  XO2 -> HOCH2COOCH3CHOHCHO,
  XYLENO2 -> C8H11O5,
+ XYLEO2VBS -> C8H11O5,
  XYLOLO2 -> C8H11O6,
  H2O
 
@@ -302,7 +304,9 @@
       Not-Transported
  ACBZO2,
  ALKO2,
+ BCARYO2VBS,
  BENZO2,
+ BENZO2VBS,
  BZOO,
  C2H5O2,
  C3H7O2,
@@ -318,11 +322,15 @@
  HOCH2OO,
  ISOPAO2,
  ISOPBO2,
+ ISOPO2VBS,
+ IVOCbbO2VBS,
+ IVOCffO2VBS,
  MACRO2,
  MALO2,
  MCO3,
  MDIALO2,
  MEKO2,
+ MTERPO2VBS,
  N2D,
  N2p,
  NOp,
@@ -340,8 +348,10 @@
  TERP2O2,
  TERPO2,
  TOLO2,
+ TOLUO2VBS,
  XO2,
  XYLENO2,
+ XYLEO2VBS,
  XYLOLO2
       End Not-Transported
 
@@ -361,9 +371,7 @@
  bc_a1
  bc_a4
  BCARY
- BCARYO2VBS
  BENZENE
- BENZO2VBS
  BENZOOH
  BEPOMUC
  BIGALD
@@ -459,19 +467,15 @@
  ISOPNITB
  ISOPNO3
  ISOPNOOH
- ISOPO2VBS
  ISOPOOH
  IVOCbb
- IVOCbbO2VBS
  IVOCff
- IVOCffO2VBS
  MACR
  MACROOH
  MEK
  MEKOOH
  MPAN
  MTERP
- MTERPO2VBS
  MVK
  N
  N2O
@@ -507,6 +511,8 @@
  PHENO
  PHENOL
  PHENOOH
+ pom_a1
+ pom_a4
  pombb1_a1
  pombb1_a4
  pomff1_a1
@@ -578,16 +584,16 @@
  TERPROD2
  TOLOOH
  TOLUENE
- TOLUO2VBS
  XOOH
  XYLENES
  XYLENOOH
- XYLEO2VBS
  XYLOL
  XYLOLOOH
  ACBZO2
  ALKO2
+ BCARYO2VBS
  BENZO2
+ BENZO2VBS
  BZOO
  C2H5O2
  C3H7O2
@@ -603,11 +609,15 @@
  HOCH2OO
  ISOPAO2
  ISOPBO2
+ ISOPO2VBS
+ IVOCbbO2VBS
+ IVOCffO2VBS
  MACRO2
  MALO2
  MCO3
  MDIALO2
  MEKO2
+ MTERPO2VBS
  N2D
  N2p
  NOp
@@ -625,8 +635,10 @@
  TERP2O2
  TERPO2
  TOLO2
+ TOLUO2VBS
  XO2
  XYLENO2
+ XYLEO2VBS
  XYLOLO2
  H2O
       End Implicit
@@ -875,14 +887,14 @@
 *********************************
 *** odd-nitrogen
 *********************************
+[agn2d]                N2D  -> N                                                ; 1.06e-05 
 [HO2NO2_OH]            HO2NO2 + OH  -> H2O + NO2 + O2                           ; 4.5e-13, 610 
+[N2D_NO,cph=543.13]    N2D + NO  -> N2 + O                                      ; 7e-11 
 [N2D_O,cph=229.61]     N2D + O  -> N + O                                        ; 7e-13 
-[N2D_O2,cph=177.51]    N2D + O2  -> NO + O1D                                    ; 5e-12 
 [N_NO,cph=313.75]      N + NO  -> N2 + O                                        ; 2.1e-11, 100 
 [N_NO2a]               N + NO2  -> N2O + O                                      ; 2.9e-12, 220 
 [N_NO2b]               N + NO2  -> 2*NO                                         ; 1.45e-12, 220 
 [N_NO2c]               N + NO2  -> N2 + O2                                      ; 1.45e-12, 220 
-[N_O2,cph=133.75]      N + O2  -> NO + O                                        ; 3.3e-12, -3150 
 [NO2_O,cph=193.02]     NO2 + O  -> NO + O2                                      ; 5.1e-12, 210 
 [NO2_O3]               NO2 + O3  -> NO3 + O2                                    ; 1.2e-13, -2450 
 [NO2_O_M]              NO2 + O + M  -> NO3 + M                                  ; 2.5e-31, 1.8, 2.2e-11, 0.7, 0.6 
@@ -901,7 +913,10 @@
 [tag_NO2_OH]           NO2 + OH + M  -> HNO3 + M                                ; 1.8e-30, 3, 2.8e-11, 0, 0.6 
 [usr_HNO3_OH]          HNO3 + OH  -> NO3 + H2O                                   
 [usr_HO2NO2_M]         HO2NO2 + M  -> HO2 + NO2 + M                              
+[usr_N2D_e,cph=229.61] N2D + e  -> N + e                                         
+[usr_N2D_O2,cph=177.51] N2D + O2  -> NO + O1D                                    
 [usr_N2O5_M]           N2O5 + M  -> NO2 + NO3 + M                                
+[usr_N_O2,cph=133.75]  N + O2  -> NO + O                                         
 *********************************
 *** odd-chlorine
 *********************************
@@ -1057,9 +1072,9 @@
 *********************************
 [C3H6_NO3]             C3H6 + NO3  -> NOA                                       ; 4.6e-13, -1156 
 [C3H6_O3]              C3H6 + O3  -> 0.5*CH2O + 0.12*HCOOH + 0.12*CH3COOH + 0.5*CH3CHO + 0.56*CO + 0.28*CH3O2 + 0.1*CH4 + 0.2*CO2 + 0.28*HO2 + 0.36*OH ; 6.5e-15, -1900 
-[C3H7O2_CH3O2]         C3H7O2 + CH3O2  -> CH2O + HO2 + 0.82*CH3COCH3            ; 3.75e-13, -40 
-[C3H7O2_HO2]           C3H7O2 + HO2  -> C3H7OOH + O2                            ; 7.5e-13, 700 
-[C3H7O2_NO]            C3H7O2 + NO  -> 0.82*CH3COCH3 + NO2 + HO2 + 0.27*CH3CHO  ; 4.2e-12, 180 
+[C3H7O2_CH3O2]         C3H7O2 + CH3O2  -> CH2O + HO2 + 0.82*CH3COCH3            ; 1e-13, 557 
+[C3H7O2_HO2]           C3H7O2 + HO2  -> C3H7OOH + O2                            ; 1.41e-13, 1300 
+[C3H7O2_NO]            C3H7O2 + NO  -> 0.82*CH3COCH3 + NO2 + HO2 + 0.27*CH3CHO  ; 2.7e-12, 360 
 [C3H7OOH_OH]           C3H7OOH + OH  -> H2O + C3H7O2                            ; 3.8e-12, 200 
 [C3H8_OH]              C3H8 + OH  -> C3H7O2 + H2O                               ; 9.19e-12, -630 
 [CH3COCHO_NO3]         CH3COCHO + NO3  -> HNO3 + CO + CH3CO3                    ; 1.4e-12, -1860 
@@ -1103,7 +1118,7 @@
 [MEKO2_NO]             MEKO2 + NO  -> CH3CO3 + CH3CHO + NO2                     ; 4.2e-12, 180 
 [MEK_OH]               MEK + OH  -> MEKO2                                       ; 2.3e-12, -170 
 [MEKOOH_OH]            MEKOOH + OH  -> MEKO2                                    ; 3.8e-12, 200 
-[MPAN_OH_M]            MPAN + OH + M  -> 0.5*HYAC + 0.5*NO3 + 0.5*CH2O + 0.5*HO2 + 0.5*CO2 + M + 0.5*NDEP ; 8e-27, 3.5, 3e-11, 0, 0.5 
+[MPAN_OH_M]            MPAN + OH + M  -> 0.5*HYAC + 0.5*NO3 + 0.5*CH2O + 0.5*HO2 + 0.5*CO2 + 0.5*NDEP + M ; 8e-27, 3.5, 3e-11, 0, 0.5 
 [MVK_O3]               MVK + O3  -> 0.6*CH2O + 0.56*CO + 0.1*CH3CHO + 0.1*CO2 + 0.28*CH3CO3 + 0.5*CH3COCHO + 0.28*HO2 + 0.36*OH + 0.12*HCOOH ; 8.5e-16, -1520 
 [MVK_OH]               MVK + OH  -> MACRO2                                      ; 4.13e-12, 452 
 [tag_MCO3_NO2]         MCO3 + NO2 + M  -> MPAN + M                              ; 9.7e-29, 5.6, 9.3e-12, 1.5, 0.6 
@@ -1111,7 +1126,7 @@
 *********************************
 *** C5
 *********************************
-[ALKNIT_OH]            ALKNIT + OH  -> 0.4*CH2O + 0.8*CH3CHO + 0.8*CH3COCH3 + NO2 ; 1.6e-12 
+[ALKNIT_OH]            ALKNIT + OH  -> 0.4*CH2O + 0.8*CH3CHO + 0.8*CH3COCH3 + NO2 ; 2.2e-12 
 [ALKO2_HO2]            ALKO2 + HO2  -> ALKOOH                                   ; 7.5e-13, 700 
 [ALKO2_NO]             ALKO2 + NO  -> 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK + NO2 ; 6.7e-12 
 [ALKO2_NOb]            ALKO2 + NO  -> ALKNIT                                    ; 5.4e-14, 870 
@@ -1345,32 +1360,30 @@
 
       Ext Forcing
  CO <- dataset 
- bc_a4 <- dataset 
+ pombb1_a4 <- dataset 
+ SO2 <- dataset 
+ NO2 <- dataset 
+ bc_a1 <- dataset 
+ NO <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
- num_a4 <- dataset 
- num_a5 <- dataset
- pombb1_a1 <- dataset 
- pombb1_a4 <- dataset 
- pomff1_a1 <- dataset 
- pomff1_a4 <- dataset 
- NO <- dataset 
- NO2 <- dataset 
- SO2 <- dataset 
- SVOCbb <- dataset 
- SVOCff <- dataset
  so4_a1 <- dataset 
  so4_a2 <- dataset 
- so4_a5 <- dataset
- bc_a1 <- dataset 
- e 
- N 
- N2D 
- OH 
+ pombb1_a1 <- dataset 
+ pomff1_a1 <- dataset 
+ num_a4 <- dataset 
+ pomff1_a4 <- dataset 
+ bc_a4 <- dataset 
+ SVOCbb <- dataset 
+ SVOCff <- dataset 
  Op 
- AOA_NH 
  N2p 
  Np 
+ N2D 
+ e 
+ AOA_NH 
+ N 
+ OH 
       End Ext Forcing
 
       End Chemistry
