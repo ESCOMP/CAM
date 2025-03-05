@@ -3,7 +3,7 @@
 ./xmlchange ROOTPE='0'
 ./xmlchange ROF_NCPL=`./xmlquery --value ATM_NCPL`
 ./xmlchange GLC_NCPL=`./xmlquery --value ATM_NCPL`
-./xmlchange CAM_CONFIG_OPTS=' -microphys mg3 -rad rrtmg -pcols 760 ' --append
+./xmlchange CAM_CONFIG_OPTS=' -microphys mg3 -rad rrtmgp_gpu -pcols 760 ' --append
 ./xmlchange TIMER_DETAIL='6'
 ./xmlchange TIMER_LEVEL='999'
 ./xmlchange GPU_TYPE=a100
