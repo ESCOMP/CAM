@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+<ncdata hgrid="1.9x2.5" nlev="32">atm/cam/inic/fv/FCARMAnudged_f19_carmats3128_spinup01.cam.i.1991-01-01_c241023.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="32" aquaplanet="1">atm/cam/inic/fv/QPCARMATS_f19_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32">atm/cam/inic/fv/FCARMA2000climo_f09_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+
+<lght_no_prd_factor hgrid="1.9x2.5">4.5D0</lght_no_prd_factor>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_irrad_data_file>
+<solar_data_ymd>20000101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<!-- Lower Boundary -->
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+
+<!-- CARMA Dust Emissions Tuning Factor -->
+<carma_dustemisfactor hgrid="1.9x2.5" >0.4D-9</carma_dustemisfactor>
+<carma_dustemisfactor hgrid="0.9x1.25">0.5D-9</carma_dustemisfactor>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- History specifiers -->
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_carma_srf_flx>.true.</history_carma_srf_flx>
+
+<fincl1>
+         'EXTINCT', 'EXTINCTUV', 'EXTINCTNIR','ABSORB', 'AODVIS', 'AODABS','SAD_STRAT','SAD_SULFC','SAD_LNAT','SAD_ICE',
+         'O3','CO','OH','NO2','SSAVIS','AODNIR','AODVISst','AODNIRst','AODUVst',,'TMSO2','TMH2SO4','TMOCS',
+         'TMPRSULF01','TMPRSULF02','TMPRSULF03','TMPRSULF04','TMPRSULF05','TMPRSULF06','TMPRSULF07','TMPRSULF08','TMPRSULF09','TMPRSULF10',
+         'TMPRSULF11','TMPRSULF12','TMPRSULF13','TMPRSULF14','TMPRSULF15','TMPRSULF16','TMPRSULF17','TMPRSULF18','TMPRSULF19','TMPRSULF20',
+         'TMMXOC01','TMMXOC02','TMMXOC03','TMMXOC04','TMMXOC05','TMMXOC06','TMMXOC07','TMMXOC08','TMMXOC09','TMMXOC10',
+         'TMMXOC11','TMMXOC12','TMMXOC13','TMMXOC14','TMMXOC15','TMMXOC16','TMMXOC17','TMMXOC18','TMMXOC19','TMMXOC20',
+         'TMMXBC01','TMMXBC02','TMMXBC03','TMMXBC04','TMMXBC05','TMMXBC06','TMMXBC07','TMMXBC08','TMMXBC09','TMMXBC10',
+         'TMMXBC11','TMMXBC12','TMMXBC13','TMMXBC14','TMMXBC15','TMMXBC16','TMMXBC17','TMMXBC18','TMMXBC19','TMMXBC20',
+         'TMMXDUST01','TMMXDUST02','TMMXDUST03','TMMXDUST04','TMMXDUST05','TMMXDUST06','TMMXDUST07','TMMXDUST08','TMMXDUST09','TMMXDUST10',
+         'TMMXDUST11','TMMXDUST12','TMMXDUST13','TMMXDUST14','TMMXDUST15','TMMXDUST16','TMMXDUST17','TMMXDUST18','TMMXDUST19','TMMXDUST20',
+         'TMMXSALT01','TMMXSALT02','TMMXSALT03','TMMXSALT04','TMMXSALT05','TMMXSALT06','TMMXSALT07','TMMXSALT08','TMMXSALT09','TMMXSALT10',
+         'TMMXSALT11','TMMXSALT12','TMMXSALT13','TMMXSALT14','TMMXSALT15','TMMXSALT16','TMMXSALT17','TMMXSALT18','TMMXSALT19','TMMXSALT20'
+</fincl1>
+
+<!-- emissions -->
+
+<ext_frc_type>CYCLICAL</ext_frc_type>
+<ext_frc_cycle_yr>2000</ext_frc_cycle_yr>
+<ext_frc_specifier>
+  'NO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NO2_aircraft_vertical_2000climo_0.9x1.25_c20170322.nc',
+  'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+  'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_aircraft_vertical_2000climo_0.9x1.25_c20170322.nc',
+</ext_frc_specifier>
+
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
+<srf_emis_specifier>
+  'BENZENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'BENZENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'BIGALK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BIGALK_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'BIGALK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BIGALK_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'BIGENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BIGENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'BIGENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BIGENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H2_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C2H2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H2_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C2H4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H4_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H5OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H5OH_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C2H5OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H5OH_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H6_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C2H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H6_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C2H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C2H6_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C3H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H6_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C3H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H6_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C3H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H6_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C3H8 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H8_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'C3H8 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H8_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'C3H8 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_C3H8_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH2O -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH2O_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH2O -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH2O_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3CHO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3CHO_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH3CHO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3CHO_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3CN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3CN_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH3CN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3CN_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3COCH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3COCH3_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH3COCH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3COCH3_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3COCHO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3COCHO_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3COOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3COOH_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH3COOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3COOH_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CH3OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3OH_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'CH3OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CH3OH_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CO_anthro_surface_2000climo_0.9x1.25_c20180504.nc',
+  'CO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CO_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'CO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_CO_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'E90 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions_E90global_surface_1750-2100_0.9x1.25_c20170322.nc',
+  'GLYALD -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_GLYALD_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'HCN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_HCN_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'HCN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_HCN_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'HCOOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_HCOOH_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'HCOOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_HCOOH_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'ISOP -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_ISOP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'IVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'IVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'MEK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_MEK_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'MEK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_MEK_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'MTERP -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_MTERP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'NH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NH3_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'NH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NH3_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'NH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NH3_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'NO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NO_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'NO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NO_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'NO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_NO_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'SVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'SVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'TOLUENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'TOLUENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'XYLENES -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+  'XYLENES -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+  'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_other_surface_2000climo_0.9x1.25_c20170322.nc',
+  'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_anthro-ag-ship-res_surface_2000climo_0.9x1.25_c20170616.nc',
+  'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_anthro-ene_surface_2000climo_0.9x1.25_c20170616.nc',
+  'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+</srf_emis_specifier>
+
+<sim_year>2000</sim_year>
+
+</namelist_defaults>

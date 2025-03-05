@@ -16,7 +16,7 @@ use shr_const_mod,  only: pi => shr_const_pi
 use time_manager,   only: get_curr_date, get_curr_calday
 use phys_grid,      only: get_rlat_all_p, get_rlon_all_p
 use orbit,          only: zenith
-      
+
 use physics_types,  only: physics_state, physics_ptend, &
                           physics_ptend_init, physics_state_copy, &
                           physics_update, physics_state_dealloc, &
@@ -541,12 +541,14 @@ end subroutine micro_pumas_cam_readnl
 !================================================================================================
 
 subroutine micro_pumas_cam_register
+   use carma_flags_mod, only: carma_model
 
    ! Register microphysics constituents and fields in the physics buffer.
    !-----------------------------------------------------------------------
 
    logical :: prog_modal_aero
    logical :: use_subcol_microp  ! If true, then are using subcolumns in microphysics
+   logical :: ndropmixed  ! If true, then vertically mixed by ndrop routine
 
    call phys_getopts(use_subcol_microp_out    = use_subcol_microp, &
                      prog_modal_aero_out      = prog_modal_aero)
@@ -558,7 +560,12 @@ subroutine micro_pumas_cam_register
    call cnst_add(cnst_names(2), mwh2o, cpair, 0._r8, ixcldice, &
       longname='Grid box averaged cloud ice amount', is_convtran1=.true.)
 
-   call cnst_add(cnst_names(3), mwh2o, cpair, 0._r8, ixnumliq, &
+   !  Droplet number is transported in dropmixnuc, therefore we
+   !  do NOT want CLUBB to apply transport tendencies to avoid double
+   !  counting.
+   ndropmixed = prog_modal_aero.or.(carma_model(:10)=='trop_strat')
+
+   call cnst_add(cnst_names(3), mwh2o, cpair, 0._r8, ixnumliq, ndropmixed=ndropmixed, &
       longname='Grid box averaged cloud liquid number', is_convtran1=.true.)
    call cnst_add(cnst_names(4), mwh2o, cpair, 0._r8, ixnumice, &
       longname='Grid box averaged cloud ice number', is_convtran1=.true.)
@@ -1027,7 +1034,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('RBFRAC',  horiz_only, 'A', 'Fraction',  'Fraction of sky covered by a potential rainbow', sampled_on_subcycle=.true.)
    call addfld ('RBFREQ',  horiz_only, 'A', 'Frequency',  'Potential rainbow frequency', sampled_on_subcycle=.true.)
    call addfld( 'rbSZA', horiz_only, 'I', 'degrees', 'solar zenith angle', sampled_on_subcycle=.true.)
-      
+
    ! History variables for CAM5 microphysics
    call addfld ('MPDT',       (/ 'lev' /), 'A', 'W/kg',     'Heating tendency - Morrison microphysics', sampled_on_subcycle=.true.)
    call addfld ('MPDQ',       (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency - Morrison microphysics',       sampled_on_subcycle=.true.)
@@ -1615,7 +1622,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: cld(:,:)          ! Total cloud fraction
    real(r8), pointer :: concld(:,:)       ! Convective cloud fraction
    real(r8), pointer :: prec_dp(:)      ! Deep Convective precip
-   real(r8), pointer :: prec_sh(:)      ! Shallow Convective precip    
+   real(r8), pointer :: prec_sh(:)      ! Shallow Convective precip
 
    real(r8), pointer :: iciwpst(:,:) ! Stratiform in-cloud ice water path for radiation
    real(r8), pointer :: iclwpst(:,:)      ! Stratiform in-cloud liquid water path for radiation
@@ -1875,7 +1882,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: cldtot
    real(r8) :: rmax
    logical :: rval
-      
+
    !-------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -1935,7 +1942,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    else
       precc(:ncol) = 0._r8
    end if
-        
+
    if (.not. do_cldice) then
       ! If we are NOT prognosing ice and snow tendencies, then get them from the Pbuf
       call pbuf_get_field(pbuf, tnd_qsnow_idx,   tnd_qsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
@@ -2108,10 +2115,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
    call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle
    !            then cast back to angle (radians)
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
    zen_angle(:) = 0.0_r8
    rlats(:) = 0.0_r8
    rlons(:) = 0.0_r8
@@ -2127,7 +2134,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    sza(:) = zen_angle(:) * rad2deg
    call outfld( 'rbSZA',   sza,    ncol, lchnk )
-      
+
    !-------------------------------------------------------------------------------------
    ! Microphysics assumes 'liquid stratus frac = ice stratus frac
    !                      = max( liquid stratus frac, ice stratus frac )'.
@@ -2226,7 +2233,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Zero out diagnostic rainbow arrays
    rbfreq = 0._r8
-   rbfrac = 0._r8   
+   rbfrac = 0._r8
 
    ! Zero out values above top_lev before passing into _tend for some pbuf variables that are inputs
    naai(:ncol,:top_lev-1) = 0._r8
@@ -3229,14 +3236,14 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       frlow  = 0._r8
       cldmx  = 0._r8
       cldtot  = maxval(ast(i,top_lev:))
-      
+
 ! Find levels in surface layer
       do k = top_lev, pver
-         if (state%pmid(i,k) > rb_pmin) then     
+         if (state%pmid(i,k) > rb_pmin) then
             top_idx = min(k,top_idx)
-         end if 
-      end do 
-            
+         end if
+      end do
+
 !For all fractional precip calculated below, use maximum in surface layer.
 !For convective precip, base on convective cloud area
       convmx = maxval(concld(i,top_idx:))
@@ -3252,27 +3259,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !      (rval = true  if any sig precip)
 
       rval = ((precc(i) > rb_rcmin) .or. (rmax > rb_rmin))
-      
+
 !Now can find conditions for a rainbow:
 ! Maximum cloud cover (CLDTOT) < 0.5
 ! 48 < SZA < 90
 ! freqr (below rb_pmin) > 0.25
-! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s 
+! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s
 
-      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then  
+      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then
 
-!Rainbow 'probability' (area) derived from solid angle theory 
+!Rainbow 'probability' (area) derived from solid angle theory
 !as the fraction of the hemisphere for a spherical cap with angle phi=sza-48.
 ! This is only valid between 48 < sza < 90 (controlled for above).
 
           rbfrac(i) =  max(0._r8,(1._r8-COS((sza(i)-48._r8)*deg2rad))/2._r8) * frlow
-          rbfreq(i) =  1.0_r8 
-      end if 
+          rbfreq(i) =  1.0_r8
+      end if
 
    end do                    ! end column loop for rainbows
 
    call outfld('RBFRAC',   rbfrac,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)   
+   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    ! --------------------- !
    ! History Output Fields !
