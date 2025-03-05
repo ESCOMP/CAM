@@ -13,7 +13,7 @@ module clubb_intr
   !                                                                                                      !
   !---------------------------Code history-------------------------------------------------------------- !
   ! Authors:  P. Bogenschutz, C. Craig, A. Gettelman                                                     !
-  ! Modified by: K Thayer-Calder                                                     !
+  ! Modified by: K Thayer-Calder                                                                         !
   !                                                                                                      !
   !----------------------------------------------------------------------------------------------------- !
 
@@ -25,7 +25,7 @@ module clubb_intr
   use cam_history_support, only: max_fieldname_len
 
   use spmd_utils,          only: masterproc
-  use constituents,        only: pcnst, cnst_add
+  use constituents,        only: pcnst, cnst_add, cnst_ndropmixed
   use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_ideal_gas_rrho, &
                                  calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, calc_obukhov_length
   use ref_pres,            only: top_lev => trop_cloud_top_lev
@@ -359,7 +359,6 @@ module clubb_intr
     apply_to_heat    = .false.           ! Apply WACCM energy fixer to heat or not (.true. = yes (duh))
 
   logical            :: lq(pcnst)
-  logical            :: prog_modal_aero
   logical            :: do_rainturb
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
@@ -1532,8 +1531,7 @@ end subroutine clubb_init_cnst
     ! off of pcnst (the total consituents)
     ! ----------------------------------------------------------------- !
 
-    call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
-                      history_amwg_out=history_amwg, &
+    call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
 
@@ -1549,29 +1547,15 @@ end subroutine clubb_init_cnst
     call cnst_get_ind('CLDLIQ',ixcldliq)
     call cnst_get_ind('CLDICE',ixcldice)
 
-    if (prog_modal_aero) then
-       ! Turn off modal aerosols and decrement edsclr_dim accordingly
-       call rad_cnst_get_info(0, nmodes=nmodes)
-
-       do m = 1, nmodes
-          call rad_cnst_get_mode_num_idx(m, lptr)
-          lq(lptr)=.false.
+    do m = 1, pcnst
+       if (cnst_ndropmixed(m)) then
+          lq(m)=.false.
+          !  Droplet number is transported in dropmixnuc, therefore we
+          !  do NOT want CLUBB to apply transport tendencies to avoid double
+          !  counting.  Else, we apply tendencies.
           edsclr_dim = edsclr_dim-1
-
-          call rad_cnst_get_info(0, m, nspec=nspec)
-          do l = 1, nspec
-             call rad_cnst_get_mam_mmr_idx(m, l, lptr)
-             lq(lptr)=.false.
-             edsclr_dim = edsclr_dim-1
-          end do
-       end do
-
-       !  In addition, if running with MAM, droplet number is transported
-       !  in dropmixnuc, therefore we do NOT want CLUBB to apply transport
-       !  tendencies to avoid double counted.  Else, we apply tendencies.
-       lq(ixnumliq) = .false.
-       edsclr_dim = edsclr_dim-1
-    endif
+       endif
+    enddo
 
     ! ----------------------------------------------------------------- !
     ! Set the debug level.  Level 2 has additional computational expense since
