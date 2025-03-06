@@ -1536,6 +1536,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: degrau(:,:)       ! Graupel effective diameter (m)
    real(r8), pointer :: bergstot(:,:)     ! Conversion of cloud water to snow from bergeron
 
+   !These variables need to be extracted from the
+   !proc_rates DDT in order for the subcolumn averaging
+   !routine to work properly when writing out diagnostic
+   !fields.
    real(r8) :: evapsnow_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: bergstot_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: qcrestot_sc(state%psetcols,pver-top_lev+1)
@@ -1707,7 +1711,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: cld(:,:)          ! Total cloud fraction
    real(r8), pointer :: concld(:,:)       ! Convective cloud fraction
    real(r8), pointer :: prec_dp(:)        ! Deep Convective precip
-   real(r8), pointer :: prec_sh(:)        ! Shallow Convective precip    
+   real(r8), pointer :: prec_sh(:)        ! Shallow Convective precip
 
    real(r8), pointer :: iciwpst(:,:)      ! Stratiform in-cloud ice water path for radiation
    real(r8), pointer :: iclwpst(:,:)      ! Stratiform in-cloud liquid water path for radiation
@@ -2037,7 +2041,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    else
       precc(:ncol) = 0._r8
    end if
- 
+
    if (.not. do_cldice) then
       ! If we are NOT prognosing ice and snow tendencies, then get them from the Pbuf
       call pbuf_get_field(pbuf, tnd_qsnow_idx,   tnd_qsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
@@ -2261,10 +2265,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
    call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle
    !            then cast back to angle (radians)
-   !-----------------------------------------------------------------------    
+   !-----------------------------------------------------------------------
 
    zen_angle(:) = 0.0_r8
    rlats(:) = 0.0_r8
@@ -2378,7 +2382,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Zero out diagnostic rainbow arrays
    rbfreq = 0._r8
-   rbfrac = 0._r8 
+   rbfrac = 0._r8
 
    ! Zero out values above top_lev before passing into _tend for some pbuf variables that are inputs
    naai(:ncol,:top_lev-1) = 0._r8
@@ -3321,7 +3325,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !-----------------------------------------------------------------------
 ! Diagnostic Rainbow Calculation. Seriously.
 !-----------------------------------------------------------------------
-      
+
    do i = 1, ngrdcol
 
       top_idx = pver
@@ -3329,14 +3333,14 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       frlow  = 0._r8
       cldmx  = 0._r8
       cldtot  = maxval(ast(i,top_lev:))
-      
+
 ! Find levels in surface layer
       do k = top_lev, pver
-         if (state%pmid(i,k) > rb_pmin) then     
+         if (state%pmid(i,k) > rb_pmin) then
             top_idx = min(k,top_idx)
-         end if 
-      end do 
-            
+         end if
+      end do
+
 !For all fractional precip calculated below, use maximum in surface layer.
 !For convective precip, base on convective cloud area
       convmx = maxval(concld(i,top_idx:))
@@ -3352,27 +3356,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 !      (rval = true  if any sig precip)
 
       rval = ((precc(i) > rb_rcmin) .or. (rmax > rb_rmin))
-      
+
 !Now can find conditions for a rainbow:
 ! Maximum cloud cover (CLDTOT) < 0.5
 ! 48 < SZA < 90
 ! freqr (below rb_pmin) > 0.25
-! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s 
-      
-      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then  
+! Some rain (liquid > 1.e-6 kg/kg, convective precip > 1.e-7 m/s
 
-!Rainbow 'probability' (area) derived from solid angle theory 
+      if ((cldtot < 0.5_r8) .and. (sza(i) > 48._r8) .and. (sza(i) < 90._r8) .and. rval) then
+
+!Rainbow 'probability' (area) derived from solid angle theory
 !as the fraction of the hemisphere for a spherical cap with angle phi=sza-48.
 ! This is only valid between 48 < sza < 90 (controlled for above).
 
           rbfrac(i) =  max(0._r8,(1._r8-COS((sza(i)-48._r8)*deg2rad))/2._r8) * frlow
-          rbfreq(i) =  1.0_r8 
-      end if 
+          rbfreq(i) =  1.0_r8
+      end if
 
    end do                    ! end column loop for rainbows
 
    call outfld('RBFRAC',   rbfrac,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)   
+   call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
 
    ! --------------------- !
