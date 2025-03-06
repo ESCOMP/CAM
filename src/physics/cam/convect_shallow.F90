@@ -14,10 +14,12 @@
    use physconst,         only : cpair, zvir
    use ppgrid,            only : pver, pcols, pverp
    use zm_conv_evap,      only : zm_conv_evap_run
-   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd,  zmconv_org
+   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog
    use phys_control,      only : phys_getopts
+   use cloud_fraction_fice,  only: cloud_fraction_fice_run
+   use ref_pres,          only: trop_cloud_top_lev
 
    implicit none
    private
@@ -87,9 +89,6 @@
   use unicon_cam,     only: unicon_cam_register
 
   call phys_getopts( shallow_scheme_out = shallow_scheme, microp_scheme_out = microp_scheme)
-
-  ! SPCAM registers its own fields
-  if (shallow_scheme == 'SPCAM') return
 
   call pbuf_add_field('ICWMRSH',    'physpkg' ,dtype_r8,(/pcols,pver/),       icwmrsh_idx )
   call pbuf_add_field('RPRDSH',     'physpkg' ,dtype_r8,(/pcols,pver/),       rprdsh_idx )
@@ -161,12 +160,8 @@
   real(r8),                  intent(in) :: pref_edge(plevp)  ! Reference pressures at interfaces
   type(physics_buffer_desc), pointer    :: pbuf2d(:,:)
 
-  integer limcnv                                   ! Top interface level limit for convection
   integer k
   character(len=16)          :: eddy_scheme
-
-  ! SPCAM does its own convection
-  if (shallow_scheme == 'SPCAM') return
 
   ! ------------------------------------------------- !
   ! Variables for detailed abalysis of UW-ShCu scheme !
@@ -270,26 +265,8 @@
      qpert_idx = pbuf_get_index('qpert')
 
      if( masterproc ) write(iulog,*) 'convect_shallow_init: Hack shallow convection'
-   ! Limit shallow convection to regions below 40 mb
-   ! Note this calculation is repeated in the deep convection interface
-     if( pref_edge(1) >= 4.e3_r8 ) then
-         limcnv = 1
-     else
-         do k = 1, plev
-            if( pref_edge(k) < 4.e3_r8 .and. pref_edge(k+1) >= 4.e3_r8 ) then
-                limcnv = k
-                goto 10
-            end if
-         end do
-         limcnv = plevp
-     end if
-10   continue
 
-     if( masterproc ) then
-         write(iulog,*) 'MFINTI: Convection will be capped at intfc ', limcnv, ' which is ', pref_edge(limcnv), ' pascals'
-     end if
-
-     call mfinti( rair, cpair, gravit, latvap, rhoh2o, limcnv) ! Get args from inti.F90
+     call mfinti( rair, cpair, gravit, latvap, rhoh2o, pref_edge) ! Get args from inti.F90
 
   case('UW') ! Park and Bretherton shallow convection scheme
 
@@ -361,7 +338,7 @@
    use camsrfexch,      only : cam_in_t
 
    use constituents,    only : pcnst, cnst_get_ind, cnst_get_type_byind
-   use hk_conv,         only : cmfmca
+   use hk_conv,         only : cmfmca_cam
    use uwshcu,          only : compute_uwshcu_inv
    use unicon_cam,      only : unicon_out_t, unicon_cam_tend
 
@@ -415,7 +392,7 @@
    real(r8) :: tpert(pcols)                                              ! PBL perturbation theta
 
    real(r8), pointer   :: pblh(:)                                        ! PBL height [ m ]
-   real(r8), pointer   :: qpert(:,:)                                     ! PBL perturbation specific humidity
+   real(r8), pointer   :: qpert(:)                                       ! PBL perturbation specific humidity
 
    ! Temperature tendency from shallow convection (pbuf pointer).
    real(r8), pointer, dimension(:,:) :: ttend_sh
@@ -473,9 +450,20 @@
    real(r8), pointer, dimension(:,:) :: cmfmc2              ! (pcols,pverp) Updraft mass flux by shallow convection [ kg/s/m2 ]
    real(r8), pointer, dimension(:,:) :: sh_e_ed_ratio       ! (pcols,pver) fer/(fer+fdr) from uwschu
 
+   real(r8), dimension(pcols,pver) :: fsnow_conv
+   real(r8), dimension(pcols,pver) :: fice
+
    logical                           :: lq(pcnst)
 
    type(unicon_out_t) :: unicon_out
+
+   character(len=40) :: scheme_name
+   character(len=16) :: macrop_scheme
+   character(len=512):: errmsg
+   integer           :: errflg
+   integer :: top_lev
+
+
 
    ! ----------------------- !
    ! Main Computation Begins !
@@ -560,9 +548,8 @@
       call physics_ptend_init( ptend_loc, state%psetcols, 'cmfmca', ls=.true., lq=lq  ) ! Initialize local ptend type
 
       call pbuf_get_field(pbuf, qpert_idx, qpert)
-      qpert(:ncol,2:pcnst) = 0._r8
 
-      call cmfmca( lchnk        ,  ncol         ,                                               &
+      call cmfmca_cam( lchnk        ,  ncol         ,                                               &
                    nstep        ,  ztodt        ,  state%pmid ,  state%pdel  ,                  &
                    state%rpdel  ,  state%zm     ,  tpert      ,  qpert       ,  state%phis  ,   &
                    pblh         ,  state%t      ,  state%q    ,  ptend_loc%s ,  ptend_loc%q ,   &
@@ -872,16 +859,25 @@
     tend_s_snwprd(:,:) = 0._r8
     tend_s_snwevmlt(:,:) = 0._r8
     snow(:) = 0._r8
+    fice(:,:) = 0._r8
+    fsnow_conv(:,:) = 0._r8
     !REMOVECAM_END
+
+    top_lev = 1
+    call phys_getopts (macrop_scheme_out  = macrop_scheme)
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
+
+    call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:), errmsg, errflg)
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
-         cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
+         cpair, zmconv_ke, zmconv_ke_lnd, &
          state1%t(:ncol,:),state1%pmid(:ncol,:),state1%pdel(:ncol,:),state1%q(:ncol,:pver,1), &
          landfracdum(:ncol), &
          ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
          rprdsh(:ncol,:), cld(:ncol,:), ztodt, &
-         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
+         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), fsnow_conv(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:),&
+         scheme_name, errmsg, errflg)
 
    ! ---------------------------------------------- !
    ! record history variables from zm_conv_evap_run !

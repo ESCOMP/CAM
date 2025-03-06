@@ -2493,7 +2493,7 @@ begin
                                                                ; extracted
   field@horz_interp           = new( (/field_dim/), string )   ; flag to indicate which type of horizontal interpolation to use
   field@vert_interp           = new( (/field_dim/), string )   ; flag to indicate which type of vertical   interpolation to use
-  field@spec_trunc            = new( (/field_dim/), integer)   ; Spectral truncation to use (if Eulerian dycore)
+  field@spec_trunc            = new( (/field_dim/), integer)   ; Spectral truncation to use (if Gaussian grid)
   field@bin_factor            = new( (/field_dim/), double )   ; bin factor to use if horizontal interpolation is "binning"
                                                                ; (typical value:  1.)
   field@processed             = new( (/field_dim/), logical)   ; Set to False until field is processed
@@ -2738,24 +2738,12 @@ begin
 ;-------------------------
 
   if(field@plevo .gt. 0) then
-    if(field@dycore .eq. "eul") then
-      filedimdef(cdf,(/"lat"      ,"lon"      ,"lev"      ,"ilev"      ,"time","scalar"/),\
-                     (/field@plato,field@plono,field@plevo,field@plevo+1,1     ,1       /),\
-                     (/False      ,False      , False     , False      , True , False  /) )
-    end if
-
     if(field@dycore .eq. "fv") then
       filedimdef(cdf,(/"lat"      ,"lon"      ,"slat"       ,"slon"     ,"lev"      ,"ilev"      ,"time","scalar"/),\
                      (/field@plato,field@plono,field@plato-1,field@plono,field@plevo,field@plevo+1,1     ,1       /),\
                      (/False      ,False      ,False        ,False      , False     , False      , True , False  /) )
     end if
   else
-    if(field@dycore .eq. "eul") then
-      filedimdef(cdf,(/"lat"      ,"lon"      ,"time","scalar"/),\
-                     (/field@plato,field@plono,1     ,1       /),\
-                     (/False      ,False      , True , False  /) )
-    end if
-
     if(field@dycore .eq. "fv") then
       filedimdef(cdf,(/"lat"      ,"lon"      ,"slat"       ,"slon"     ,"time","scalar"/),\
                      (/field@plato,field@plono,field@plato-1,field@plono,1     ,1       /),\
@@ -2876,89 +2864,6 @@ begin
 ;--------------------------------------------------
 ; Define dycore-specific parameters and coordinates
 ;--------------------------------------------------
-
-;---------
-; Eulerian
-;---------
-
-  if(field@dycore .eq. "eul") then
-
-    filevardef (cdf,"lat","double",(/"lat"/))
-     cdf->lat@long_name     = "latitude"
-     cdf->lat@units         = "degrees_north"
-
-    filevardef (cdf,"lon","double",(/"lon"/))
-     cdf->lon@long_name     = "longitude"
-     cdf->lon@units         = "degrees_east"
-
-    filevardef (cdf,"ntrm","integer",(/"scalar"/))
-     cdf->ntrm@long_name    = "spectral truncation parameter M"
-
-    filevardef (cdf,"ntrn","integer",(/"scalar"/))
-     cdf->ntrn@long_name    = "spectral truncation parameter N"
-
-    filevardef (cdf,"ntrk","integer",(/"scalar"/))
-     cdf->ntrk@long_name    = "spectral truncation parameter K"
-
-    filevardef (cdf,"gw","double",(/"lat"/))
-     cdf->gw@long_name      = "gauss weights"
-
-;-----------------------
-; Pre-set some variables
-;-----------------------
-
-    del_lon      = (360./field@plono)
-
-    cdf->lon     = ispan(0,field@plono-1,1)*del_lon
-    gau_info     = gaus(field@plato/2)
-    cdf->lat     = gau_info(:,0)
-    cdf->gw      = gau_info(:,1)
-
-    cdf->ntrm    = field@ptrmo
-    cdf->ntrn    = field@ptrno
-    cdf->ntrk    = field@ptrko
-
-    field@lat    = cdf->lat
-    field@lon    = cdf->lon
-
-;---------------------------------------------------
-; Define field variables, dimensions, and attributes
-;---------------------------------------------------
-
-    time_dim = "time"
-    lev_dim  = "lev"
-    count    = 0
-    do i = 0,nfields-1
-
-      if(field@loutput(i)) then
-        count = count + 1
-     
-        print ("   Declare space for output field:  "+field(i)+ \
-               " (field "+count+" of "+nfields_out+")")
-
-        lat_dim  = "lat"
-        lon_dim  = "lon"
-
-        if(field@dimensions(i) .eq. "2D") then
-          filevardef (cdf,field(i),field@precision,(/time_dim,lat_dim,lon_dim/))
-        end if
-        if(field@dimensions(i) .eq. "3D") then
-          filevardef (cdf,field(i),field@precision,(/time_dim,lev_dim,lat_dim,lon_dim /))
-        end if
-
-        cdf->$field(i)$@long_name           =       field@long_name   (i)
-        cdf->$field(i)$@units               =       field@units       (i)
-        cdf->$field(i)$@source_file         = fname(field@source_file (i))
-        cdf->$field(i)$@source_field_name   =       field@source_field(i)
-        cdf->$field(i)$@horz_interp_flag    =       field@horz_interp (i)
-        if(field@dimensions(i) .eq. "3D") then
-          cdf->$field(i)$@vert_interp_flag  =       field@vert_interp (i)
-        end if
-      end if
-
-    end do
-
-  end if
 
 ;---
 ; FV

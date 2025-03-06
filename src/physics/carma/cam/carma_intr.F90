@@ -11,9 +11,10 @@ module carma_intr
 
   use carma_precision_mod, only: f
   use carma_enums_mod, only: I_OPTICS_FIXED, I_OPTICS_MIXED_CORESHELL, I_OPTICS_MIXED_VOLUME, &
-       I_OPTICS_MIXED_MAXWELL, I_OPTICS_SULFATE, I_CNSTTYPE_PROGNOSTIC, I_HYBRID
+       I_OPTICS_MIXED_MAXWELL, I_OPTICS_SULFATE, I_CNSTTYPE_PROGNOSTIC, I_HYBRID, RC_OK, RC_ERROR, &
+       I_WTPCT_H2SO4, I_PETTERS
   use carma_constants_mod, only : GRAV, REARTH, WTMOL_AIR, WTMOL_H2O, R_AIR, CP, RKAPPA, NWAVE, &
-       CARMA_NAME_LEN, CARMA_SHORT_NAME_LEN, PI, CAM_FILL, RGAS, RM2CGS, RAD2DEG, CLDFRC_INCLOUD
+       CARMA_NAME_LEN, CARMA_SHORT_NAME_LEN, PI, CAM_FILL, RGAS, RM2CGS, RAD2DEG, CLDFRC_INCLOUD, MAXCLDAERDIAG
   use carma_types_mod, only : carma_type, carmastate_type
   use carma_flags_mod, only : carma_flag, carma_do_fixedinit, carma_model, carma_do_wetdep, carma_do_emission, &
        carma_do_pheat, carma_do_substep, carma_do_thermo, carma_do_cldice, carma_diags_file, &
@@ -21,12 +22,13 @@ module carma_intr
        carma_rhcrit, carma_rad_feedback, carma_minsubsteps, carma_maxsubsteps, carma_gstickl, carma_gsticki, &
        carma_maxretries, carma_dt_threshold, carma_ds_threshold, carma_do_vtran, carma_do_vdiff, carma_do_pheatatm, &
        carma_do_partialinit, carma_do_optics, carma_do_incloud, carma_do_explised, carma_do_drydep, carma_do_detrain, &
-       carma_do_coremasscheck, carma_do_coag, carma_do_clearsky, carma_do_cldliq, carma_do_aerosol, carma_dgc_threshold
-
+       carma_do_coremasscheck, carma_do_coag, carma_do_clearsky, carma_do_cldliq, carma_do_aerosol, carma_dgc_threshold, &
+       carma_diags_packages, carma_ndiagpkgs
   use carma_model_mod, only : NGAS, NBIN, NELEM, NGROUP, NMIE_WTP, NREFIDX, MIE_RH, NMIE_RH, NSOLUTE
   use carma_model_mod, only : mie_rh, mie_wtp, is_convtran1, CARMAMODEL_DiagnoseBulk, CARMAMODEL_DiagnoseBins, &
        CARMAMODEL_Detrain, CARMAMODEL_OutputDiagnostics, CARMAMODEL_CreateOpticsFile, CARMAMODEL_WetDeposition, &
-       CARMAMODEL_EmitParticle, CARMAMODEL_InitializeParticle, CARMAMODEL_DefineModel, CARMAMODEL_InitializeModel
+       CARMAMODEL_EmitParticle, CARMAMODEL_InitializeParticle, CARMAMODEL_DefineModel, CARMAMODEL_InitializeModel, &
+       CARMAMODEL_OutputBudgetDiagnostics, CARMAMODEL_OutputCloudborneDiagnostics, CARMAMODEL_CalculateCloudborneDiagnostics
   use carmaelement_mod, only : CARMAELEMENT_Get
   use carmagas_mod, only : CARMAGAS_Get
   use carmagroup_mod, only : CARMAGROUP_Get
@@ -48,6 +50,7 @@ module carma_intr
                             pbuf_get_index, pbuf_get_field, dtype_r8, pbuf_set_field
   use pio,            only: var_desc_t
   use radconstants,   only: nlwbands, nswbands
+  use wv_sat_methods, only: wv_sat_qsat_water
 
   implicit none
 
@@ -70,10 +73,41 @@ module carma_intr
 
   ! Other Microphysics
   public carma_emission_tend            ! calculate tendency from emission source function
+  public carma_calculate_cloudborne_diagnostics ! calculate model specific budget diagnostics for cloudborne aerosols
+  public carma_output_cloudborne_diagnostics ! output model specific budget diagnostics for cloudborne aerosols
+  public carma_output_budget_diagnostics ! calculate and output model specific aerosol budget terms
   public carma_wetdep_tend              ! calculate tendency from wet deposition
   public :: carma_restart_init
   public :: carma_restart_write
   public :: carma_restart_read
+
+  ! Microphysics info from CAM state
+  !
+  ! NOTE: These calls can be used in CAM when the CAM state is available, but the CARMASTATE
+  ! is not available. These will return the instantaneous values instead of relying on
+  ! pbuf fields that might be from the previous timestep.
+  public carma_get_bin
+  public carma_get_bin_cld
+  public carma_get_dry_radius
+  public carma_get_elem_for_group
+  public carma_get_group_by_name
+  public carma_get_kappa
+  public carma_get_number
+  public carma_get_number_cld
+  public carma_get_total_mmr
+  public carma_get_total_mmr_cld
+  public carma_get_wet_radius
+  public carma_get_bin_rmass
+  public carma_set_bin
+  public carma_get_sad
+  public :: carma_get_wght_pct
+  public :: carma_effecitive_radius
+
+  ! NOTE: This is required by physpkg.F90, since the carma_intr.F90 stub in physics/cam
+  ! does not have access to carma_constant.F90, but needs to also provide a defintion
+  ! for MAXCLDAERDIAG. Thus the definition of this variable needs to come from
+  ! carma_intr.F90.
+  public :: MAXCLDAERDIAG
 
   ! Private data
 
@@ -124,7 +158,7 @@ module carma_intr
 
   ! Defaults not in the namelist
   character(len=10), parameter   :: carma_mixtype     = 'wet'     ! mixing ratio type for CARMA constituents
-  integer                        :: LUNOPRT           = -1        ! lun for output
+  integer                        :: LUNOPRT           = 6         ! lun for output
 
   ! Constituent Mappings
   integer                        :: icnst4elem(NELEM, NBIN)       ! constituent index for a carma element
@@ -219,6 +253,7 @@ contains
     real(r8)          :: wtmol                    ! gas molecular weight
     integer           :: cnsttype                 ! constituent type
     integer           :: maxbin                   ! last prognostic bin
+    logical           :: ndropmixed               ! tracer is vertically mixed in ndrop
 
     character(len=16) :: radiation_scheme         ! CAM's radiation package.
 
@@ -355,6 +390,8 @@ contains
                           tstick        = carma_tstick)
     if (rc < 0) call endrun('carma_register::CARMA_Initialize failed.')
 
+    ndropmixed = carma_model(:10)=='trop_strat'
+
     ! The elements and gases from CARMA need to be added as constituents in
     ! CAM (if they don't already exist). For the elements, each radius bin
     ! needs to be its own constiuent in CAM.
@@ -393,7 +430,8 @@ contains
             ! doesn't make sense for particles. The CAM solvers are unstable if the
             ! mass provided is large.
             call cnst_add(c_name, WTMOL_AIR, cpair, 0._r8, icnst4elem(ielem, ibin), &
-              longname=c_longname, mixtype=carma_mixtype, is_convtran1=is_convtran1(igroup))
+              longname=c_longname, mixtype=carma_mixtype, is_convtran1=is_convtran1(igroup), &
+              ndropmixed=ndropmixed )
           end if
         end if
       end do
@@ -545,6 +583,7 @@ contains
 
     logical                    :: history_carma
     logical                    :: history_carma_srf_flx
+    integer :: astat
 
 1   format(a6,4x,a11,4x,a11,4x,a11)
 2   format(i6,4x,3(1pe11.3,4x))
@@ -552,8 +591,7 @@ contains
     ! Initialize the return code.
     rc = 0
 
-    call phys_getopts(history_carma_out=history_carma)
-    history_carma_srf_flx = .false.
+    call phys_getopts(history_carma_out=history_carma, history_carma_srf_flx_out=history_carma_srf_flx)
 
     ! Set names of constituent sources and declare them as history variables; howver,
     ! only prognostic variables have.
@@ -1671,6 +1709,106 @@ contains
     return
   end subroutine carma_init_cnst
 
+  !! Calculate amounts of cloudborne aerosols for use in budget diagnostics. This should
+  !! be called before the timestep, and the results passed to CARMA_output_cloudborne_diagnostics()
+  !! after the timestep to calculate the tendencies and write them out the the history files.
+  !!
+  !! NOTE: The exact fields that are calculated are determined by the particular CARMA model.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version January-2023
+  subroutine carma_calculate_cloudborne_diagnostics(state, pbuf, aerclddiag)
+
+    implicit none
+
+    type(physics_state), intent(in)    :: state          !! Physics state variables - before CARMA
+    type(physics_buffer_desc), pointer :: pbuf(:)        !! physics buffer
+    real(r8), intent(out)              :: aerclddiag(pcols, MAXCLDAERDIAG)  !! previous cloudborne diagnostics
+
+    integer            :: rc
+
+    call CARMAMODEL_CalculateCloudborneDiagnostics(carma, state, pbuf, aerclddiag, rc)
+
+    return
+  end subroutine carma_calculate_cloudborne_diagnostics
+
+
+  !! Output cloudborne aerosol budget tendencies to the history files for physics packages
+  !! other than CARMA that may be affecting the CARMA aerosols. Since cloudborne aerosols
+  !! are not in the physics_state, you must call CARMA_calculate_cloudborne_diagnostics()
+  !! before the timestep tend to capture the prior state. This call will calculate the
+  !! final state and output the difference as a tendency. This may be useful for
+  !! debugging and for calculating aerosol budgets.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version January-2023
+  subroutine carma_output_cloudborne_diagnostics(state, pbuf, pname, dt, oldaerclddiag)
+
+    implicit none
+
+    type(physics_state), intent(in)    :: state          !! Physics state variables - before CARMA
+    type(physics_buffer_desc), pointer :: pbuf(:)        !! physics buffer
+    character(*), intent(in)           :: pname          !! short name of the physics package
+    real(r8), intent(in)               :: dt             !! timestep (s)
+    real(r8), intent(in)               :: oldaerclddiag(pcols, MAXCLDAERDIAG)  !! previous cloudborne diagnostics
+
+    integer            :: rc
+    integer            :: i
+
+    ! Check to make sure the the package is in the packages list.
+    do i = 1, carma_ndiagpkgs
+      if (trim(carma_diags_packages(i)) .eq. trim(pname)) then
+
+        ! Allow models to output their own diagnostics related to aerosol
+        ! budgets related to physics packages other than CARMA
+        call CARMAMODEL_OutputCloudborneDiagnostics(carma, state, pbuf, dt, pname, oldaerclddiag, rc)
+        exit
+      end if
+    end do
+
+    return
+  end subroutine carma_output_cloudborne_diagnostics
+
+
+
+  !! Output budget tendencies to the history files for physics packages
+  !! other than CARMA that may be affecting the CARMA aerosols. This can be
+  !! called for any physics package that is using ptend to modify the CARMA
+  !! aerosol, and may be useful for debugging and for calculating aerosol budgets.
+  !!
+  !! All the columns in the chunk should be output at the same time.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version January-2023
+  subroutine carma_output_budget_diagnostics(state, ptend, old_cflux, cflux, dt, pname)
+
+    implicit none
+
+    type(physics_state), intent(in)    :: state          !! Physics state variables - before CARMA
+    type(physics_ptend), intent(in)    :: ptend          !! indivdual parameterization tendencies
+    real(r8)                           :: old_cflux(pcols,pcnst)  !! cam_in%clfux from before the timestep_tend
+    real(r8)                           :: cflux(pcols,pcnst)  !! cam_in%clfux from after the timestep_tend
+    real(r8), intent(in)               :: dt             !! timestep (s)
+    character(*), intent(in)           :: pname          !! short name of the physics package
+
+    integer            :: rc
+
+    integer            :: i
+
+    ! Check to make sure the the package is in the packages list.
+    do i = 1, carma_ndiagpkgs
+      if (trim(carma_diags_packages(i)) .eq. trim(pname)) then
+
+        ! Allow models to output their own diagnostics related to aerosol
+        ! budgets related to physics packages other than CARMA
+        call CARMAMODEL_OutputBudgetDiagnostics(carma, icnst4elem, icnst4gas, state, ptend, old_cflux, cflux, dt, pname, rc)
+        exit
+      end if
+    end do
+
+    return
+  end subroutine carma_output_budget_diagnostics
+
   !! Outputs tracer tendencies and diagnositc fields to the history files.
   !! All the columns in the chunk should be output at the same time.
   !!
@@ -2250,7 +2388,6 @@ contains
   !! code, so ideally a routine would exist in that module that could create a file
   !! with the proper format. Since that doesn't exist, we do it all here.
   subroutine CARMA_CreateOpticsFile_Fixed(carma, igroup, rc)
-    use radconstants, only : nswbands, nlwbands
     use wrap_nf
     use wetr, only         : getwetr
 
@@ -2594,7 +2731,6 @@ contains
   !! code to include the impact of CARMA particles in the radiative transfer
   !! calculation.
   subroutine CARMA_CreateOpticsFile_Sulfate(carma, igroup, rc)
-    use radconstants, only : nswbands, nlwbands
     use wrap_nf
     use wetr, only         : getwetr
 
@@ -3116,5 +3252,863 @@ contains
     endif
 
   end subroutine CARMA_restart_read
+
+  !! Get the mixing ratio for the specified element and bin.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_bin(state, ielem, ibin, mmr, rc)
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: ielem                 !! element index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: mmr(pcols,pver)       !! mass mixing ratio (kg/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    integer                           :: ncol
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((ielem < 1) .or. (ielem .gt. NELEM)) then
+      write(LUNOPRT, *) 'carma_get_bin:: ERROR - Invalid element id, ', ielem
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_bin:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Get the element from the physics state
+    mmr(:ncol, :) = state%q(:ncol, :, icnst4elem(ielem, ibin))
+
+    return
+  end subroutine
+
+  !! Get the mixing ratio for the specified element and bin.
+  subroutine carma_get_bin_cld(pbuf, ielem, ibin, ncol, nlev, mmr, rc)
+    type(physics_buffer_desc), pointer :: pbuf(:)               !! physics buffer
+    integer, intent(in)               :: ielem                 !! element index
+    integer, intent(in)               :: ibin                  !! bin index
+    integer, intent(in)               :: ncol,nlev                  !! dimensions
+    real(r8), intent(out)             :: mmr(:,:)       !! mass mixing ratio (kg/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8), pointer :: mmr_ptr(:,:)
+    character(len=8)  :: shortname ! short (CAM) name
+    character(len=16) :: c_name
+    integer :: idx
+
+    ! default return code
+    rc = RC_OK
+
+    call CARMAELEMENT_Get(carma, ielem, rc, shortname=shortname)
+
+    write(c_name, '(A, I2.2)') trim(shortname), ibin
+
+    idx = pbuf_get_index('CLD'//trim(c_name))
+    call pbuf_get_field(pbuf, idx, mmr_ptr)
+
+    mmr(:ncol,:nlev) = mmr_ptr(:ncol,:nlev)
+
+  end subroutine carma_get_bin_cld
+
+  !! Determine the dry radius and dry density for the particular bin.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_dry_radius(state, igroup, ibin, rdry, rhopdry, rc)
+
+    implicit none
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: rdry(:,:)             !! dry radius (m)
+    real(r8), intent(out)             :: rhopdry(:,:)          !! dry density (kg/m3)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: rhoelem(NBIN)         ! element density (g/cm3)
+    real(r8)                          :: totvol(pcols,pver)    ! total volume (m3/kg)
+    real(r8)                          :: totmmr(pcols,pver)    ! total mmr (kg/kg)
+    real(r8)                          :: mmr(pcols, pver)      ! mass mixing ratio (kg/kg)
+    real(r8)                          :: nmr(pcols, pver)      ! number mixing ratio (#/kg)
+    integer                           :: nelems                ! number of elements in group
+    integer                           :: ielems(NELEM)         ! element indexes for group
+    integer                           :: ncol
+    integer                           :: i
+    integer                           :: ielem
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_dry_radius:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_dry_radius:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Iterate over all of the composition and determine the dry volume and dry radius.
+    call carma_get_elem_for_group(igroup, nelems, ielems, rc)
+    if (rc < 0) return
+
+    totvol(:ncol, :) = 0._r8
+    totmmr(:ncol, :) = 0._r8
+    rhopdry(:ncol, :)= 0._r8
+    rdry(:ncol, :)   = 0._r8
+
+    do i = 1, nelems
+      ielem = ielems(i)
+
+      call CARMAELEMENT_Get(carma, ielem, rc, rho=rhoelem)
+      if (rc < 0) return
+
+      call carma_get_bin(state, ielem, ibin, mmr, rc)
+      if (rc < 0) return
+
+      totmmr(:ncol, :) = totmmr(:ncol, :) + mmr(:ncol, :)
+      totvol(:ncol, :) = totvol(:ncol, :) + mmr(:ncol, :) / (rhoelem(ibin) / 1.e3_r8 * 1.e6_r8)
+    end do
+
+    ! Add checks for totvol = 0 and nmr = 0
+    where(totvol(:ncol, :)>0._r8)
+       rhopdry(:ncol, :) = totmmr(:ncol, :) / totvol(:ncol, :)
+    end where
+
+    call carma_get_number(state, igroup, ibin, nmr, rc)
+    if (rc < 0) return
+
+    where(nmr(:ncol, :)>0._r8)
+       rdry(:ncol, :) = ((3._r8 * totvol(:ncol, :) / nmr(:ncol, :)) / (4._r8 * PI)) ** (1._r8 / 3._r8)
+       !rdry(:ncol, :) = ((three_o_fourpi* totvol(:ncol, :) / nmr(:ncol, :))) ** onethird
+    end where
+
+    return
+  end subroutine carma_get_dry_radius
+
+
+  !! Get the number of elements and list of element ids for a group. This includes
+  !! the concentration elements and the core masses.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_elem_for_group(igroup, nelems, ielems, rc)
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(out)              :: nelems                !! number of elements in group
+    integer, intent(out)              :: ielems(NELEM)         !! indexes of elements in group
+    integer, intent(out)              :: rc                    !! return code
+
+    integer                           :: ienconc
+    integer                           :: ncore
+    integer                           :: icorelem(NELEM)
+
+    ! default return code
+    rc = RC_OK
+
+    ! Check the group range.
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_elem_for_group:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    call CARMAGROUP_Get(carma, igroup, rc, ienconc=ienconc, ncore=ncore, icorelem=icorelem)
+
+    nelems = ncore + 1
+    ielems(1) = ienconc
+
+    if (ncore .gt. 0) then
+      ielems(2:ncore+1) = icorelem(1:ncore)
+    end if
+
+    return
+  end subroutine
+
+
+  !! Get the CARMA group id a group name.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_group_by_name(shortname, igroup, rc)
+    character(len=*), intent(in)       :: shortname             !! the group short name
+    integer, intent(out)               :: igroup                !! group index
+    integer, intent(out)               :: rc                    !! return code
+
+    integer                            :: i
+    character(len=32)                  :: name
+
+    ! default return code
+    rc = RC_OK
+
+    igroup = -1
+
+    ! Check the short names of each group for one that matches
+    do i = 1, NGROUP
+      call CARMAGROUP_Get(carma, i, rc, shortname=name)
+
+      if (trim(shortname) .eq. trim(name)) then
+        igroup = i
+        exit
+      end if
+    end do
+
+    if (igroup .eq. -1) then
+      write(LUNOPRT, *) 'carma_get_group_by_name:: ERROR - group not found, ', shortname
+      rc = RC_ERROR
+      return
+    end if
+
+    return
+  end subroutine
+
+
+  !! Get the CARMA group id and bin id from a compound name xxxxxxnn, where xxxxxx is the
+  !! name of the group and nn is the two digit bin number.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_group_and_bin_by_name(shortname, igroup, ibin, rc)
+    character(len=*), intent(out)      :: shortname             !! the group short name
+    integer, intent(out)               :: igroup                !! group index
+    integer, intent(out)               :: ibin                  !! bin index
+    integer, intent(out)               :: rc                    !! return code
+
+    integer                            :: i
+    character(len=32)                  :: name
+    character(len=32)                  :: groupname
+    character(len=32)                  :: binname
+
+    ! default return code
+    rc = RC_OK
+
+    igroup = -1
+    ibin = -1
+
+    if (len(shortname) <= 2) then
+      write(LUNOPRT, *) 'carma_get_group_and_bin_by_name:: ERROR - Illegal shortname,  ' // shortname
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Check the short names of each group for one that matches
+    groupname = shortname(:len(shortname)-2)
+    binname = shortname(len(shortname)-2:)
+
+    call carma_get_group_by_name(groupname, igroup, rc)
+    if (rc < 0) return
+
+    read(binname, *) ibin
+
+    return
+  end subroutine
+
+
+  !! Determine a mass weighted kappa for the entire particle.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_kappa(state, igroup, ibin, kappa, rc)
+
+    implicit none
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: kappa(:,:)     !! kappa value for the entire particle
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: totmmr(pcols,pver)    ! total mmr (kg/kg)
+    real(r8)                          :: mmr(pcols,pver)       ! element mmr (kg/kg)
+    real(r8)                          :: kappaelem             ! element kappa
+    integer                           :: ncol
+    integer                           :: nelems
+    integer                           :: ielems(NELEM)
+    integer                           :: i
+    integer                           :: ielem
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_kappa:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (igroup .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_kappa:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Iterate over all of the composition and determine the total mass.
+    call carma_get_elem_for_group(igroup, nelems, ielems, rc)
+    if (rc < 0) return
+
+    totmmr(:ncol, :) = 0._r8
+    kappa(:ncol, :) = 0._r8
+
+    do i = 1, nelems
+      ielem = ielems(i)
+
+      call carma_get_bin(state, ielem, ibin, mmr, rc)
+      if (rc < 0) return
+
+      call CARMAELEMENT_Get(carma, ielem, rc, kappa=kappaelem)
+
+      kappa(:ncol, :) = kappa(:ncol, :) + mmr(:ncol, :) * kappaelem
+      totmmr(:ncol, :) = totmmr(:ncol, :) + mmr(:ncol, :)
+    end do
+
+    ! Figure out the average kappa.q
+    where (totmmr(:ncol,:) .gt. 0._r8)
+      kappa(:ncol,:) = kappa(:ncol,:) / totmmr(:ncol,:)
+    end where
+
+    return
+  end subroutine
+
+
+  !! Get the number mixing ratio for the group. This is the number of particles per
+  !! density of air.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_number(state, igroup, ibin, nmr, rc)
+
+    implicit none
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: nmr(pcols,pver)       !! number mixing ratio (#/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: rmass(carma%f_NBIN)   ! the bin mass (g)
+    real(r8)                          :: totmmr(pcols,pver)    ! total mmr (kg/kg)
+    integer                           :: ncol
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_number:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (igroup .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_number:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Get the mass in each bin
+    call CARMAGROUP_Get(carma, igroup, rc, rmass=rmass)
+    if (rc < 0) return
+
+    ! Get the total mmr in the bin
+    call carma_get_total_mmr(state, igroup, ibin, totmmr, rc)
+    if (rc < 0) return
+
+    ! Get the mmr is the total mass divided by rmass, but need to convert rmass
+    ! to kg.
+    nmr(:ncol, :) = totmmr(:ncol, :) / (rmass(ibin) / 1.e3_r8)
+
+    return
+  end subroutine carma_get_number
+
+  subroutine carma_get_number_cld(pbuf, igroup, ibin, ncol, nlev, nmr, rc)
+
+    implicit none
+
+    type(physics_buffer_desc),pointer :: pbuf(:)               !! physics buffer
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    integer, intent(in)               :: ncol,nlev             !! dimensions
+    real(r8), intent(out)             :: nmr(pcols,pver)       !! number mixing ratio (#/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: rmass(carma%f_NBIN)   ! the bin mass (g)
+    real(r8)                          :: totmmr(pcols,pver)    ! total mmr (kg/kg)
+
+    ! default return code
+    rc = RC_OK
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_number:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (igroup .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_number:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Get the mass in each bin
+    call CARMAGROUP_Get(carma, igroup, rc, rmass=rmass)
+    if (rc < 0) return
+
+    ! Get the total mmr in the bin
+    call carma_get_total_mmr_cld(pbuf, igroup, ibin, ncol, nlev, totmmr, rc)
+    if (rc < 0) return
+
+    ! Get the mmr is the total mass divided by rmass, but need to convert rmass
+    ! to kg.
+    nmr(:ncol, :) = totmmr(:ncol, :) / (rmass(ibin) / 1.e3_r8)
+
+    return
+  end subroutine carma_get_number_cld
+
+
+  !! Get the mixing ratio for the group. This is the total of all the elements that
+  !! make up the group.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_total_mmr(state, igroup, ibin, totmmr, rc)
+
+    implicit none
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: totmmr(pcols,pver)    !! total mmr (kg/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: mmr(pcols, pver)      ! mmr (kg/kg)
+    integer                           :: i
+    integer                           :: nelems
+    integer                           :: ielems(NELEM)
+    integer                           :: ielem
+    integer                           :: ncol
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Iterate over all of the composition and determine the total mass.
+    call carma_get_elem_for_group(igroup, nelems, ielems, rc)
+    if (rc < 0) return
+
+    totmmr(:ncol, :) = 0._r8
+
+    do i = 1, nelems
+      ielem = ielems(i)
+
+      call carma_get_bin(state, ielem, ibin, mmr, rc)
+      if (rc < 0) return
+
+      totmmr(:ncol, :) = totmmr(:ncol, :) + mmr(:ncol, :)
+    end do
+
+    return
+  end subroutine carma_get_total_mmr
+
+  subroutine carma_get_total_mmr_cld(pbuf, igroup, ibin, ncol, nlev, totmmr, rc)
+
+    type(physics_buffer_desc),pointer :: pbuf(:)               !! physics buffer
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    integer, intent(in)               :: ncol,nlev             !! dimensions
+    real(r8), intent(out)             :: totmmr(pcols,pver)    !! total mmr (kg/kg)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: mmr(pcols, pver)      ! mmr (kg/kg)
+    integer                           :: i
+    integer                           :: nelems
+    integer                           :: ielems(NELEM)
+    integer                           :: ielem
+
+    ! default return code
+    rc = RC_OK
+
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Iterate over all of the composition and determine the total mass.
+    call carma_get_elem_for_group(igroup, nelems, ielems, rc)
+    if (rc < 0) return
+
+    totmmr(:ncol, :) = 0._r8
+
+    do i = 1, nelems
+      ielem = ielems(i)
+
+      call carma_get_bin_cld(pbuf, ielem, ibin, ncol, nlev, mmr, rc)
+      if (rc < 0) return
+
+      totmmr(:ncol, :) = totmmr(:ncol, :) + mmr(:ncol, :)
+    end do
+
+  end subroutine carma_get_total_mmr_cld
+
+  subroutine carma_get_sad(state, igroup, ibin, sad, rc)
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: sad(pcols,pver)       !! surface area dens (cm2/cm3)
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8) :: nmr(pcols,pver)       !! number mixing ratio (#/kg)
+    real(r8) :: rwet(pcols,pver)      !! wet radius (m)
+    real(r8) :: rhopwet(pcols,pver)   !! wet density (kg/m3)
+    real(r8) :: rhoa(pcols,pver)      !! air density (kg/m3)
+    real(r8) :: ndens(pcols,pver)     !! number density (#/m3)
+
+    integer :: ncol
+
+    rc = RC_OK
+
+    call carma_get_wet_radius(state, igroup, ibin, rwet, rhopwet, rc)
+    call carma_get_number(state, igroup, ibin, nmr, rc)
+
+    ncol = state%ncol
+
+    rhoa(:ncol,:) = (state%pmid(:ncol,:) * 10._r8) / (R_AIR * state%t(:ncol,:)) / 1.e3_r8 * 1.e6_r8 ! air density (kg/m3)
+
+    ndens(:ncol,:) = nmr(:ncol,:) * rhoa(:ncol,:) ! #/m3
+
+    sad(:ncol,:) = 4.0_r8 * PI * ndens(:ncol,:) * (rwet(:ncol,:)**2) * 1.e-2_r8 ! cm2/cm3
+
+  end subroutine carma_get_sad
+
+
+  !! Find the wet radius and wet density for the group and bin specified.
+  !!
+  !! NOTE: Groups can be configured with different methods to determine the wet
+  !! radius, so multiple methods need to be supported and code from rhopart and
+  !! wetr need to be included in this routine.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_get_wet_radius(state, igroup, ibin, rwet, rhopwet, rc)
+    use wetr, only: getwetr
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8), intent(out)             :: rwet(pcols,pver)      !! wet radius (m)
+    real(r8), intent(out)             :: rhopwet(pcols,pver)   !! wet density (kg/m3)
+    integer, intent(inout)            :: rc                    !! return code
+
+    real(r8)                          :: rdry(pcols,pver)      !! dry radius (m)
+    real(r8)                          :: rhopdry(pcols,pver)   !! dry density (kg/m3)
+    real(r8)                          :: rhoa(pcols,pver)      !! air density (kg/m3)
+    real(r8)                          :: kappa(pcols,pver)     !! dry radius (m)
+    real(r8)                          :: es                    !! saturation vapor pressure
+    real(r8)                          :: qs                    !! saturation specific humidity
+    real(r8)                          :: relhum                !! relative humidity
+    real(r8)                          :: wvpres                !! water eq. vaper pressure (dynes/cm2)
+    real(r8)                          :: watcon                !! water concentration (g/cm3)
+    real(r8)                          :: dryden                !! dry density (g/cm3)
+    real(r8)                          :: dryrad                !! dry radius (cm)
+    integer                           :: icol
+    integer                           :: iz
+    integer                           :: ncol
+    integer                           :: iq
+    integer                           :: irhswell
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the group and bin ranges
+    if ((igroup < 1) .or. (igroup .gt. NGROUP)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid group id, ', igroup
+      rc = RC_ERROR
+      !return
+    end if
+    if (rc/=RC_OK) then
+       call endrun('carma_get_wet_radius ERROR1: rc = ',rc)
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_get_total_mmr:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      !return
+    end if
+    if (rc/=RC_OK) then
+       call endrun('carma_get_wet_radius ERROR2: rc = ',rc)
+    end if
+
+    ! Get the constiuent index for water vapor (Q)
+    call cnst_get_ind("Q", iq)
+
+    ! The wet radius can be configured differently for each group, so we
+    ! need to use getwetr to handle those differences. This requires repeating
+    ! some code that is in rhopart to use getwetr properly. There may be a
+    ! better way to do this, but for now we will duplicate the code.
+    call carma_get_dry_radius(state, igroup, ibin, rdry, rhopdry, rc)
+    !if (rc < 0) return
+    if (rc/=RC_OK) then
+       call endrun('carma_get_wet_radius ERROR3: rc = ',rc)
+    end if
+
+    ! Calculate the dry air density at each level, using the ideal gas law.
+    rhoa(:ncol, :) = (state%pmid(:ncol, :) * 10._r8) / (R_AIR * state%t(:ncol, :)) / 1.e3_r8 * 1.e6_r8
+
+    call CARMAGROUP_Get(carma, igroup, rc, irhswell=irhswell)
+    !if (rc < 0) return
+    if (rc/=RC_OK) then
+       call endrun('carma_get_wet_radius ERROR4: rc = ',rc)
+    end if
+
+    do icol = 1, ncol
+       do iz = 1, pver
+          if (rdry(icol, iz)>0._r8) then
+             ! Get relative humidity and vapor pressure
+             call wv_sat_qsat_water(state%t(icol,iz), state%pmid(icol,iz), es, qs)
+
+             ! NOTE: getwetr is in cgs units, so some conversions are needed from the
+             ! mks values
+             wvpres = es * 10._r8 ! dynes/cm2
+             relhum = state%q(icol,iz,iq) / qs
+             watcon = state%q(icol,iz,iq) * rhoa(icol, iz) * 1.e-3_r8 ! g/cm3
+             dryden = rhopdry(icol,iz) * 1.e-3_r8  ! g/cm3
+             dryrad = rdry(icol,iz) * 1.e2_r8 ! cm
+
+             ! If humidity affects the particle, then determine the equilbirium
+             ! radius and density based upon the relative humidity.
+             !
+             if (irhswell == I_WTPCT_H2SO4) then
+
+                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
+                             h2o_mass=watcon, h2o_vp=wvpres, temp=state%t(icol,iz))
+                if (rc/=RC_OK) then
+                   call endrun('carma_get_wet_radius ERROR5: rc = ',rc) ! <======
+                end if
+
+             else if (irhswell == I_PETTERS) then
+
+                call carma_get_kappa(state, igroup, ibin, kappa, rc)
+                if (rc/=RC_OK) then
+                   call endrun('carma_get_wet_radius carma_get_kappa ERROR: rc = ',rc)
+                end if
+
+                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
+                             h2o_mass=watcon, h2o_vp=wvpres, temp=state%t(icol,iz), kappa=kappa(icol,iz))
+                if (rc/=RC_OK) then
+                   call endrun('carma_get_wet_radius ERROR6: rc = ',rc)
+                end if
+
+             else ! I_GERBER and I_FITZGERALD
+
+                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc )
+                if (rc/=RC_OK) then
+                   call endrun('carma_get_wet_radius ERROR7: rc = ',rc)
+                end if
+
+             end if
+          else
+             rhopwet(icol,iz) = 0._r8
+             rwet(icol, iz) = 0._r8
+          end if
+       end do
+    end do
+
+    ! Convert rwet and rhopwet to mks units
+    rwet(:ncol,:) = rwet(:ncol,:) * 1.e-2_r8 ! cm --> m
+    rhopwet(:ncol,:) = rhopwet(:ncol,:) * 1.e3_r8 ! g/cm3 --> kg/m3
+
+    if (rc/=RC_OK) then
+       call endrun('carma_get_wet_radius ERROR8: rc = ',rc)
+    end if
+
+    return
+  end subroutine
+
+
+  !! Provides the tendency (in kg/kg/s) required to change the element and bin from
+  !! the current state to the desired mmr.
+  !!
+  !! NOTE: The caller needs to make sure that the lq flags are set in ptend for the
+  !! particular tracer. Perhaps we need a routine that will set lq to true for all
+  !! the fields that could be set by CARMA to be used by the caller of this routine.
+  !!
+  !! @author  Chuck Bardeen
+  !! @version Aug 2023
+  subroutine carma_set_bin(state, ielem, ibin, mmr, dt, ptend, rc)
+
+    implicit none
+
+    type(physics_state), intent(in)    :: state                 !! physics state variables
+    integer, intent(in)                :: ielem                 !! element index
+    integer, intent(in)                :: ibin                  !! bin index
+    real(r8), intent(in)               :: mmr(pcols,pver)       !! mass mixing ratio (kg/kg)
+    integer                            :: dt                    !! timestep size (sec)
+    type(physics_ptend), intent(inout) :: ptend                 !! constituent tendencies
+    integer, intent(out)               :: rc                    !! return code
+
+    integer                            :: ncol
+    integer                            :: icnst
+
+    ! default return code
+    rc = RC_OK
+
+    ncol = state%ncol
+
+    ! Check the element and bin ranges
+    if ((ielem < 1) .or. (ielem .gt. NELEM)) then
+      write(LUNOPRT, *) 'carma_set_bin:: ERROR - Invalid element id, ', ielem
+      rc = RC_ERROR
+      return
+    end if
+
+    if ((ibin < 1) .or. (ibin .gt. NBIN)) then
+      write(LUNOPRT, *) 'carma_set_binr:: ERROR - Invalid bin id, ', ibin
+      rc = RC_ERROR
+      return
+    end if
+
+    ! Determine the tendency needed to make state into mmr for this tracer.
+    icnst = icnst4elem(ielem, ibin)
+    ptend%q(:ncol, :, icnst) = (mmr(:ncol, :) - state%q(:ncol, :, icnst)) / dt
+
+    return
+  end subroutine
+
+  subroutine carma_get_bin_rmass(igroup, ibin, mass, rc)
+
+    integer, intent(in)               :: igroup                !! group index
+    integer, intent(in)               :: ibin                  !! bin index
+    real(r8),intent(out)              :: mass ! grams ???
+    integer, intent(out)              :: rc                    !! return code
+
+    real(r8)                          :: rmass(carma%f_NBIN)   ! the bin mass (g)
+
+    ! default return code
+    rc = RC_OK
+    rmass = rmass
+
+    call CARMAGROUP_Get(carma, igroup, rc, rmass=rmass) ! rmass in g
+    if (rc /= RC_OK) return
+
+    mass = rmass(ibin)*1.e-03_r8 ! convert to kg
+
+  end subroutine carma_get_bin_rmass
+
+  function carma_get_wght_pct(ncol,nlev,state) result(wtpct)
+    use sulfate_utils, only: wtpct_tabaz
+
+    integer, intent(in) ::  ncol,nlev
+    type(physics_state), intent(in) :: state          !! Physics state variables - before CARMA
+
+    real(r8) :: wtpct(ncol,nlev)
+
+    integer :: rc !! return code
+    real(r8) :: pvapl, es, qs, gc_cgs, rhoa
+    integer :: icol, ilev
+
+    rc = RC_OK
+
+    do ilev = 1,nlev
+       do icol = 1,ncol
+          ! Get relative humidity and vapor pressure
+
+          call wv_sat_qsat_water(state%t(icol,ilev), state%pmid(icol,ilev), es, qs) ! es = Saturation vapor pressure in Pa
+
+          pvapl = es * 10._r8 ! Pa -> dynes/cm2
+
+          rhoa = (state%pmid(icol,ilev) * 10._r8) / (R_AIR * state%t(icol,ilev))  ! grams/cm3
+
+          gc_cgs = state%q(icol,ilev,icnst4gas(carma%f_igash2o)) * rhoa  ! h2o grams/cm3
+
+          wtpct(icol,ilev) = wtpct_tabaz(carma, state%t(icol,ilev), gc_cgs, pvapl, rc)
+
+          if (rc/=RC_OK) then
+             call endrun('carma_get_wght_pct: rc = ',rc)
+          end if
+       end do
+    end do
+
+  end function carma_get_wght_pct
+
+  function carma_effecitive_radius(state) result(rad)
+
+    type(physics_state), intent(in)   :: state                 !! physics state variables
+    real(r8) :: rad(pcols,pver) ! effective radius (cm)
+
+    integer :: igroup, ibin, rc, ncol
+    real(r8) :: rwet(pcols,pver)     !! wet radius (m)
+    real(r8) :: rho(pcols,pver)      !!  density (kg/m3)
+    real(r8) :: nmr(pcols,pver)      !! num/kg
+    real(r8) :: rtmp3(pcols,pver)
+    real(r8) :: rtmp2(pcols,pver)
+
+    rc = RC_OK
+
+    rtmp2(:,:) = 0.0_r8
+    rtmp3(:,:) = 0.0_r8
+
+    ncol = state%ncol
+
+    do igroup = 1, NGROUP
+       do ibin = 1, NBIN
+
+          call carma_get_number(state, igroup, ibin, nmr, rc)
+          call carma_get_wet_radius(state, igroup, ibin, rwet, rho, rc)
+          if (rc/=RC_OK) then
+             call endrun('carma_effecitive_radius -- carma_get_wet_radius ERROR: rc = ',rc)
+          end if
+
+          rtmp3(:ncol,:) = rtmp3(:ncol,:) + nmr(:ncol,:)*(rwet(:ncol,:)**3)
+          rtmp2(:ncol,:) = rtmp2(:ncol,:) + nmr(:ncol,:)*(rwet(:ncol,:)**2)
+
+       end do
+    end do
+
+    rad(:ncol,:) = (rtmp3(:ncol,:)/rtmp2(:ncol,:))*100._r8 ! cm
+
+  end function carma_effecitive_radius
 
 end module carma_intr

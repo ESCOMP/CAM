@@ -852,7 +852,7 @@ subroutine radiation_tend( &
    ! This is used by the chemistry.
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
 
-   ! This is used for the energy checker and the Eulerian dycore.
+   ! This is used for the energy checker.
    real(r8), pointer :: fsns(:)  ! Surface solar absorbed flux
    real(r8), pointer :: fsnt(:)  ! Net column abs solar flux at model top
    real(r8), pointer :: flns(:)  ! Srf longwave cooling (up-down) flux
