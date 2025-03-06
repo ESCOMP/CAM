@@ -1,9 +1,12 @@
 module radiation_utils
   use ccpp_kinds,       only: kind_phys
+  use interpolate_data, only: interp_type, lininterp_init, lininterp, &
+                              extrap_method_bndry
 
   public :: radiation_utils_init
   public :: get_sw_spectral_boundaries_ccpp
   public :: get_lw_spectral_boundaries_ccpp
+  public :: get_mu_lambda_weights_ccpp
 
   real(kind_phys), allocatable :: wavenumber_low_shortwave(:)
   real(kind_phys), allocatable :: wavenumber_high_shortwave(:)
@@ -151,6 +154,46 @@ subroutine get_lw_spectral_boundaries_ccpp(low_boundaries, high_boundaries, unit
    end select
 
 end subroutine get_lw_spectral_boundaries_ccpp
-  
+
+!=========================================================================================
+
+subroutine get_mu_lambda_weights_ccpp(nmu, nlambda, g_mu, g_lambda, lamc, pgam, &
+                mu_wgts, lambda_wgts, errmsg, errflg)
+  integer,         intent(in) :: nmu
+  integer,         intent(in) :: nlambda
+  real(kind_phys), intent(in) :: g_mu(:)
+  real(kind_phys), intent(in) :: g_lambda(:,:)
+  real(kind_phys), intent(in) :: lamc   ! prognosed value of lambda for cloud
+  real(kind_phys), intent(in) :: pgam   ! prognosed value of mu for cloud
+  ! Output interpolation weights. Caller is responsible for freeing these.
+  type(interp_type), intent(out) :: mu_wgts
+  type(interp_type), intent(out) :: lambda_wgts
+  character(len=*),  intent(out) :: errmsg
+  integer,           intent(out) :: errflg
+
+  integer :: ilambda
+  real(kind_phys) :: g_lambda_interp(nlambda)
+
+  ! Set error variables
+  errmsg = ''
+  errflg = 0
+
+  ! Make interpolation weights for mu.
+  ! (Put pgam in a temporary array for this purpose.)
+  call lininterp_init(g_mu, nmu, [pgam], 1, extrap_method_bndry, mu_wgts)
+
+  ! Use mu weights to interpolate to a row in the lambda table.
+  do ilambda = 1, nlambda
+     call lininterp(g_lambda(:,ilambda), nmu, &
+          g_lambda_interp(ilambda:ilambda), 1, mu_wgts)
+  end do
+
+  ! Make interpolation weights for lambda.
+  call lininterp_init(g_lambda_interp, nlambda, [lamc], 1, &
+       extrap_method_bndry, lambda_wgts)
+
+end subroutine get_mu_lambda_weights_ccpp
+
+!=========================================================================================
 
 end module radiation_utils
