@@ -190,7 +190,7 @@ contains
       dst_fluxes = 0._r8
 
       do ibin = 1,aero_props%nbins()
-         do ispec = 0,aero_props%nmasses(ibin)
+         do ispec = 0,aero_props%nspecies(ibin)
             if (ispec==0) then
                call aero_props%num_names(ibin, specname, name_c)
             else

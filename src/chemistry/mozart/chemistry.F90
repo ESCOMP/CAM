@@ -189,6 +189,7 @@ end function chem_is
     logical :: cam_outfld
     character(len=128) :: mixtype
     character(len=128) :: molectype
+    logical :: ndropmixed
     integer :: islvd
 
 !-----------------------------------------------------------------------
@@ -240,10 +241,15 @@ end function chem_is
        ic_from_cam2  = .true.
        has_fixed_ubc = ubc_fixed_conc(solsym(m))
        has_fixed_ubflx = .false.
+       ndropmixed = .false.
        lng_name      = trim( solsym(m) )
        molectype = 'minor'
 
        qmin = 1.e-36_r8
+
+       if ( index(lng_name,'_a')>0 ) then ! modal aerosol species undergoes ndrop activation mixing
+          ndropmixed = .true.
+       endif
 
        if ( lng_name(1:5) .eq. 'num_a' ) then ! aerosol number density
           qmin = 1.e-5_r8
@@ -298,7 +304,8 @@ end function chem_is
           short_lived_map(islvd) = m
        else
           call cnst_add( solsym(m), adv_mass(m), cptmp, qmin, n, readiv=ic_from_cam2, cam_outfld=cam_outfld, &
-                         mixtype=mixtype, molectype=molectype, fixed_ubc=has_fixed_ubc, fixed_ubflx=has_fixed_ubflx, &
+                         mixtype=mixtype, molectype=molectype, ndropmixed=ndropmixed, &
+                         fixed_ubc=has_fixed_ubc, fixed_ubflx=has_fixed_ubflx, &
                          longname=trim(lng_name) )
 
           if( imozart == -1 ) then
@@ -336,7 +343,6 @@ end function chem_is
     use tracer_cnst,      only: tracer_cnst_defaultopts, tracer_cnst_setopts
     use tracer_srcs,      only: tracer_srcs_defaultopts, tracer_srcs_setopts
     use aero_model,       only: aero_model_readnl
-    use dust_model,       only: dust_readnl
     use gas_wetdep_opts,  only: gas_wetdep_readnl
     use mo_drydep,        only: drydep_srf_file
     use mo_sulf,          only: sulf_readnl
@@ -545,7 +551,6 @@ end function chem_is
         tracer_srcs_fixed_tod_in = tracer_srcs_fixed_tod )
 
    call aero_model_readnl(nlfile)
-   call dust_readnl(nlfile)
 !
    call gas_wetdep_readnl(nlfile)
    call gcr_ionization_readnl(nlfile)
@@ -641,7 +646,6 @@ end function chem_is_active
     use mo_chem_utls,        only : get_spc_ndx
     use cam_abortutils,      only : endrun
     use aero_model,          only : aero_model_init
-    use mo_setsox,           only : sox_inti
     use constituents,        only : sflxnam
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
@@ -676,9 +680,6 @@ end function chem_is_active
                        history_budget_out = history_budget , &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        history_cesm_forcing_out = history_cesm_forcing )
-
-    ! aqueous chem initialization
-    call sox_inti()
 
     ! Initialize aerosols
     call aero_model_init( pbuf2d )
@@ -1260,7 +1261,7 @@ end function chem_is_active
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
 
-    call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
+    call gas_phase_chemdr(state,lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &

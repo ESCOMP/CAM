@@ -4440,6 +4440,13 @@ allowed per substep.
 Default: 0.
 </entry>
 
+<entry id="carma_do_coremasscheck" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that do coremasscheck after certain subroutines
+and abort the model if the check not pass.
+Default: FALSE
+</entry>
+
 <entry id="carma_do_aerosol" type="logical" category="carma"
        group="carma_nl" valid_values="" >
 Flag indicating that the CARMA model is an aerosol model, and
@@ -4467,6 +4474,14 @@ Flag indicating that CARMA should do clear sky calculations for
 particles that are not part of a cloud in addition to doing a
 separate calculation for incloud particles. Only valid when
 carma_do_incloud is true.
+Default: FALSE
+</entry>
+
+<entry id="carma_do_cloudborne" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating whether CARMA aerosol should be allowed to become
+cloudborne. It is actually CAM and not CARMA that moves aerosol
+between cloudborne and interstitial.
 Default: FALSE
 </entry>
 
@@ -4531,6 +4546,41 @@ Default: FALSE
 Flag indicating that the condensational growth process is enabled for
 CARMA particles.
 Default: FALSE
+</entry>
+
+<entry id="carma_do_budget_diags" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that model specific budget diagnostics should be
+generated.
+Default: FALSE
+</entry>
+
+<entry id="carma_do_package_diags" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that model specific budget diagnostics should be
+generated per physics package for the packages listed in
+carma_diag_packages.
+Default: FALSE
+</entry>
+
+<entry id="carma_diags_packages" type="char*12(100)" category="carma"
+       group="carma_nl" valid_values="" >
+List of physics packages for which diagnostic output is desired.
+Default: NONE
+</entry>
+
+<entry id="carma_debug_packages" type="char*32(100)" category="carma"
+       group="carma_nl" valid_values="" >
+List of physics packages for which debug output from the local carma
+state checker is desired.
+Default: NONE
+</entry>
+
+<entry id="carma_diags_file" type="integer" category="carma"
+       group="carma_nl" valid_values="" >
+When > 0, indicates the history file to be used by default for diagnostic output.
+A value of 1 indicates the h0 file. When 0 no diagnostics are output.
+Default: 0
 </entry>
 
 <entry id="carma_rad_feedback" type="logical" category="carma"
@@ -4634,14 +4684,6 @@ Default: 8
 Specifies the maximum number of substeps that could be used for the
 first guess when condensational growth requires substepping.
 Default: 1
-</entry>
-
-<entry id="carma_reftfile" type="char*256" category="carma"
-       group="carma_nl" valid_values="" >
-Specifies the name of the reference temperature file that will be
-used (and created if necessary)  for initialization of CARMA to a
-fixed temperature profile.
-Default: carma_reft.nc
 </entry>
 
 <entry id="carma_cstick" type="real" category="carma"
@@ -4825,6 +4867,13 @@ the dust model.
 Default: set by build-namelist.
 </entry>
 
+<entry id="carma_dustemisfactor" type="real" category="carma"
+       group="carma_model_nl" valid_values="" >
+CARMA dust emissions scaling factor
+Default: 0.5e-9_r8
+</entry>
+
+
 
 <!-- CARMA model - sea salt -->
 
@@ -4838,6 +4887,129 @@ Default: FALSE
        group="carma_model_nl" valid_values="" >
 Specifies the name of the sea salt emission parameterization.
 Default: Gong
+</entry>
+
+<!-- CARMA model - aerosol -->
+<entry id="carma_BCOCemissions" type="char*32" category="carma_model"
+       group="carma_model_nl" valid_values="Yu2015,Specified" >
+Specifies the input method of black and organic carbon aerosol emissions
+for the trop_strat CARMA model.
+
+Valid options are:
+
+ Yu2015 -- method used in Yu et. al, 2015
+ Specified -- {{ hilight }}emissions_specifier{{ closehilight }} method which places emissions in physcis buffer
+
+Default: Yu2015
+</entry>
+
+<entry id="carma_SO4elevemis" type="char*32" category="carma_model"
+       group="carma_model_nl" valid_values="NONE,Specified" >
+Specifies the input method of sulfate emissions
+for the trop_strat CARMA model.
+
+Valid options are:
+
+ Specified -- {{ hilight }}elev_emis_specifier{{ closehilight }} method which places emissions in physcis buffer
+
+Default: NONE
+</entry>
+
+<entry id="elev_emis_specifier" type="char*256(50)" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+List of full pathnames of surface emission datasets.
+
+Elevated emission data added to physcis buffer read from a set of netcdf file.
+Each tracer species emissions is read from its own file as directed by the
+namelist variable {{ hilight }}elev_emis_specifier{{ closehilight }}.  The
+{{ hilight }}emissions_specifier{{ closehilight }} variable tells the model
+which species have emissions and the file path for the corresponding species.
+That is, the {{ hilight }}elev_emis_specifier{{ closehilight }} variable is
+set something like:
+
+ elev_emis_specifier = 'SO4 -> /path/emis.SO4.nc',
+                       'OC -> /path/emis.OC.nc', etc...
+
+Each emission file can have more than one source.  When the emission are
+read in the sources are summed to give a total emission field for the
+corresponding species.  The emission can be read in as time series of data,
+cycle over a given year, or be fixed to a given date.
+
+Default: set by build-namelist.
+</entry>
+
+<entry id="elev_emis_type" type="char*32" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation of emission datasets specified.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+by {{ hilight }}elev_emis_specifier{{ closehilight }}.
+Default: 'CYCLICAL'
+</entry>
+
+<entry id="elev_emis_cycle_yr" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The  cycle year of the elevated emissions data
+if {{ hilight }}elev_emis_type{{ closehilight }}  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="elev_emis_fixed_ymd" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The date at which the elevated emissions are fixed
+if {{ hilight }}elev_emis_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="elev_emis_fixed_tod" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}elev_emis_fixed_ymd{{ closehilight }}
+at which the elevated emissions are fixed
+if {{ hilight }}elev_emis_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+<entry id="BC_GAINS_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC GAINS file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_GAINS_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC GAINS file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="BC_ship_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC ship file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_ship_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC ship file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="BC_GFEDv3_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC GFEDv3 file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_GFEDv3_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC GFEDv3 file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="Chlorophy11_file" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+Dust erosion factor file.
+Default: set by build-namelist.
 </entry>
 
 <!-- Performance Tuning and Profiling -->
@@ -5425,7 +5597,13 @@ Default: .true.
 <entry id="history_carma" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
 Switch for diagnostics specific to the current CARMA model.
-Default: .true.
+Default: .false.
+</entry>
+
+<entry id="history_carma_srf_flx" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostics specific to the current CARMA model.
+Default: .false.
 </entry>
 
 <entry id="history_clubb" type="logical"  category="diagnostics"
@@ -5596,6 +5774,13 @@ Default: FALSE
 <entry id="mode_defs" type="char*256(120)"  category="radiation"
        group="rad_cnst_nl" valid_values="" >
 Definitions for the aerosol modes that may be used in the rad_climate and
+rad_diag_* variables.
+Default: set by build-namelist
+</entry>
+
+<entry id="bin_defs" type="char*256(640)"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+Definitions for the aerosol bins that may be used in the rad_climate and
 rad_diag_* variables.
 Default: set by build-namelist
 </entry>
@@ -7095,6 +7280,60 @@ cycle over a given year, or be fixed to a given date.
 Default: set by build-namelist.
 </entry>
 
+<entry id="emissions_specifier" type="char*256(50)" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+List of full pathnames of surface emission datasets.
+
+Surface emission data added to physcis buffer read from a set of netcdf file.
+Each tracer species emissions is read from its own file as directed by the
+namelist variable {{ hilight }}emissions_specifier{{ closehilight }}.  The
+{{ hilight }}emissions_specifier{{ closehilight }} variable tells the model
+which species have emissions and the file path for the corresponding species.
+That is, the {{ hilight }}emissions_specifier{{ closehilight }} variable is
+set something like:
+
+ emissions_specifier = 'BC -> /path/emis.BC.nc',
+                       'OC -> /path/emis.OC.nc', etc...
+
+Each emission file can have more than one source.  When the emission are
+read in the sources are summed to give a total emission field for the
+corresponding species.  The emission can be read in as time series of data,
+cycle over a given year, or be fixed to a given date.
+
+Default: set by build-namelist.
+</entry>
+
+<entry id="emissions_type" type="char*32" category="cam_chem"
+       group="surface_emissions_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation of emission datasets specified.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+by {{ hilight }}emissions_specifier{{ closehilight }}.
+Default: 'CYCLICAL'
+</entry>
+
+<entry id="emissions_cycle_yr" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The  cycle year of the surface emissions data
+if {{ hilight }}emissions_type{{ closehilight }}  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="emissions_fixed_ymd" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The date at which the surface emissions are fixed
+if {{ hilight }}emissions_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="emissions_fixed_tod" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}emissions_fixed_ymd{{ closehilight }}
+at which the surface emissions are fixed
+if {{ hilight }}emissions_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
+</entry>
 
 <entry id="sulf_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="sulf_nl" valid_values="" >
