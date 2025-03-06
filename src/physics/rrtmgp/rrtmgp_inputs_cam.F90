@@ -325,7 +325,7 @@ end subroutine rrtmgp_set_gases_sw
 
 subroutine rrtmgp_set_cloud_lw( &
    state, pbuf, ncol, nlay, nlaycam, nlwgpts, &
-   cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
+   cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, tauc, cldf, &
    kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
 
    ! Compute combined cloud optical properties.
@@ -343,10 +343,12 @@ subroutine rrtmgp_set_cloud_lw( &
    real(r8), pointer    :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
    real(r8), pointer    :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
    real(r8), intent(in) :: cldfprime(pcols,pver) ! combined cloud fraction
+   real(r8), intent(in) :: tauc(:,:,:)
+   real(r8), intent(in) :: cldf(:,:)
 
    logical,                     intent(in)  :: graupel_in_rad ! use graupel in radiation code
    class(ty_gas_optics_rrtmgp), intent(in)  :: kdist_lw
-   type(ty_optical_props_1scl), intent(out) :: cloud_lw
+   type(ty_optical_props_1scl), intent(inout) :: cloud_lw
 
    ! Diagnostic outputs
    real(r8), intent(out) :: cld_lw_abs_cloudsim(pcols,pver) ! in-cloud liq+ice optical depth (for COSP)
@@ -366,16 +368,16 @@ subroutine rrtmgp_set_cloud_lw( &
    real(r8) :: c_cld_lw_abs(nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
    ! Arrays for converting from CAM chunks to RRTMGP inputs.
-   real(r8) :: cldf(ncol,nlaycam)
-   real(r8) :: tauc(nlwbands,ncol,nlaycam)
-   real(r8) :: taucmcl(nlwgpts,ncol,nlaycam)
+!   real(r8) :: cldf(ncol,nlaycam)
+!   real(r8) :: tauc(nlwbands,ncol,nlaycam)
+   real(r8) :: taucmcl(nlwgpts,ncol,nlay)
 
    character(len=128) :: errmsg
    character(len=*), parameter :: sub = 'rrtmgp_set_cloud_lw'
    !--------------------------------------------------------------------------------
 
    ! Combine the cloud optical properties.  These calculations are done on CAM "chunks".
-
+#if 0
    ! gammadist liquid optics
    call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
    ! Mitchell ice optics
@@ -429,20 +431,21 @@ subroutine rrtmgp_set_cloud_lw( &
 
    ! Enforce tauc >= 0.
    tauc = merge(tauc, 0.0_r8, tauc > 0.0_r8)
+#endif
    
    ! MCICA uses spectral data (on bands) to construct subcolumns (one per g-point)
    call mcica_subcol_lw( &
       kdist_lw, nlwbands, nlwgpts, ncol, nlaycam, &
       nlwgpts, state%pmid, cldf, tauc, taucmcl    )
 
-   errmsg =cloud_lw%alloc_1scl(ncol, nlay, kdist_lw)
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: cloud_lw%alloc_1scalar: '//trim(errmsg))
-   end if
+!   errmsg =cloud_lw%alloc_1scl(ncol, nlay, kdist_lw)
+!   if (len_trim(errmsg) > 0) then
+!      call endrun(sub//': ERROR: cloud_lw%alloc_1scalar: '//trim(errmsg))
+!   end if
 
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there.
-   cloud_lw%tau = 0.0_r8
+!   cloud_lw%tau = 0.0_r8
 
    ! Set the properties on g-points.
    do i = 1, nlwgpts

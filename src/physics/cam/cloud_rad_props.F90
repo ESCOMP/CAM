@@ -37,6 +37,7 @@ public :: &
    get_snow_optics_sw,            &
    snow_cloud_get_rad_props_lw,   &
    get_grau_optics_sw,            &
+   get_mu_lambda_weights,         &
    grau_cloud_get_rad_props_lw
 
 
@@ -83,6 +84,7 @@ subroutine cloud_rad_props_init()
    use spmd_utils,     only: masterproc
    use ioFileMod,      only: getfil
    use error_messages, only: handle_ncerr
+   use rrtmgp_lw_cloud_optics, only: rrtmgp_lw_cloud_optics_init
 #if ( defined SPMD )
    use mpishorthand
 #endif
@@ -103,6 +105,7 @@ subroutine cloud_rad_props_init()
 
    integer :: err
    character(len=*), parameter :: sub = 'cloud_rad_props_init'
+   character(len=512) :: errmsg
 
    liquidfile = liqopticsfile
    icefile = iceopticsfile
@@ -278,6 +281,13 @@ subroutine cloud_rad_props_init()
    call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
 #endif
 
+   ! Initialize ccpp modules
+   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
+                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
+                  g_d_eff, tiny, errmsg, err)
+   if (err /= 0) then
+      call endrun(sub//': rrtmgp_lw_cloud_optics_init failed: '//errmsg)
+   end if
    return
 
 end subroutine cloud_rad_props_init
@@ -728,28 +738,21 @@ end subroutine gam_liquid_sw
 !==============================================================================
 
 subroutine get_mu_lambda_weights(lamc, pgam, mu_wgts, lambda_wgts)
+  use radiation_utils, only: get_mu_lambda_weights_ccpp
   real(r8), intent(in) :: lamc   ! prognosed value of lambda for cloud
   real(r8), intent(in) :: pgam   ! prognosed value of mu for cloud
   ! Output interpolation weights. Caller is responsible for freeing these.
   type(interp_type), intent(out) :: mu_wgts
   type(interp_type), intent(out) :: lambda_wgts
 
-  integer :: ilambda
-  real(r8) :: g_lambda_interp(nlambda)
+  character(len=512) :: errmsg
+  integer            :: errflg
 
-  ! Make interpolation weights for mu.
-  ! (Put pgam in a temporary array for this purpose.)
-  call lininterp_init(g_mu, nmu, [pgam], 1, extrap_method_bndry, mu_wgts)
-
-  ! Use mu weights to interpolate to a row in the lambda table.
-  do ilambda = 1, nlambda
-     call lininterp(g_lambda(:,ilambda), nmu, &
-          g_lambda_interp(ilambda:ilambda), 1, mu_wgts)
-  end do
-
-  ! Make interpolation weights for lambda.
-  call lininterp_init(g_lambda_interp, nlambda, [lamc], 1, &
-       extrap_method_bndry, lambda_wgts)
+  call get_mu_lambda_weights_ccpp(nmu, nlambda, g_mu, g_lambda, lamc, pgam, mu_wgts, &
+          lambda_wgts, errmsg, errflg)
+  if (errflg /= 0) then
+     call endrun('get_mu_lambda_weights: ERROR message: '//errmsg)
+  end if
 
 end subroutine get_mu_lambda_weights
 

@@ -56,6 +56,7 @@ use mo_fluxes_byband,      only: ty_fluxes_byband
 use string_utils,        only: to_lower
 use cam_abortutils,      only: endrun, handle_allocate_error
 use cam_logfile,         only: iulog
+use rrtmgp_pre,          only: radiation_do_ccpp
 
 
 implicit none
@@ -64,8 +65,8 @@ save
 
 public :: &
    radiation_readnl,         &! read namelist variables
-   radiation_register,       &! registers radiation physics buffer fields
    radiation_do,             &! query which radiation calcs are done this timestep
+   radiation_register,       &! registers radiation physics buffer fields
    radiation_init,           &! initialization
    radiation_define_restart, &! define variables for restart
    radiation_write_restart,  &! write variables to restart
@@ -179,6 +180,15 @@ integer :: flnt_idx     = 0
 integer :: cld_idx      = 0 
 integer :: cldfsnow_idx = 0 
 integer :: cldfgrau_idx = 0    
+integer :: dei_idx
+integer :: mu_idx
+integer :: lambda_idx
+integer :: iciwp_idx
+integer :: iclwp_idx
+integer :: des_idx
+integer :: icswp_idx
+integer :: icgrauwp_idx
+integer :: degrau_idx
 
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ',&
                                       '_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
@@ -372,79 +382,31 @@ end subroutine radiation_register
 
 !================================================================================================
 
-function radiation_do(op, timestep)
+function radiation_do(op)
 
    ! Return true if the specified operation is done this timestep.
 
    character(len=*), intent(in) :: op             ! name of operation
-   integer, intent(in), optional:: timestep
    logical                      :: radiation_do   ! return value
 
    ! Local variables
    integer :: nstep             ! current timestep number
+   integer :: errcode
+   character(len=512) :: errmsg
    !-----------------------------------------------------------------------
 
-   if (present(timestep)) then
-      nstep = timestep
-   else
-      nstep = get_nstep()
-   end if
+   nstep = get_nstep()
 
    select case (op)
       case ('sw') ! do a shortwave heating calc this timestep?
-         radiation_do = nstep == 0  .or.  iradsw == 1                     &
-                     .or. (mod(nstep-1,iradsw) == 0  .and.  nstep /= 1)   &
-                     .or. nstep <= irad_always
+         call radiation_do_ccpp(op, nstep, iradsw, irad_always, radiation_do, errmsg, errcode)
       case ('lw') ! do a longwave heating calc this timestep?
-         radiation_do = nstep == 0  .or.  iradlw == 1                     &
-                     .or. (mod(nstep-1,iradlw) == 0  .and.  nstep /= 1)   &
-                     .or. nstep <= irad_always
+         call radiation_do_ccpp(op, nstep, iradlw, irad_always, radiation_do, errmsg, errcode)
       case default
          call endrun('radiation_do: unknown operation:'//op)
    end select
 
 end function radiation_do
-
-!================================================================================================
-
-real(r8) function radiation_nextsw_cday()
-  
-   ! If a SW radiation calculation will be done on the next time-step, then return
-   ! the calendar day of that time-step.  Otherwise return -1.0
-
-   ! Local variables
-   integer :: nstep      ! timestep counter
-   logical :: dosw       ! true => do shosrtwave calc   
-   integer :: offset     ! offset for calendar day calculation
-   integer :: dtime      ! integer timestep size
-   real(r8):: caldayp1   ! calendar day of next time-step
-
-   !-----------------------------------------------------------------------
-
-   radiation_nextsw_cday = -1._r8
-   dosw   = .false.
-   nstep  = get_nstep()
-   dtime  = get_step_size()
-   offset = 0
-   do while (.not. dosw)
-      nstep = nstep + 1
-      offset = offset + dtime
-      if (radiation_do('sw', nstep)) then
-         radiation_nextsw_cday = get_curr_calday(offset=offset)
-         dosw = .true.
-      end if
-   end do
-   if(radiation_nextsw_cday == -1._r8) then
-      call endrun('error in radiation_nextsw_cday')
-   end if
-   
-   ! determine if next radiation time-step not equal to next time-step
-   if (get_nstep() >= 1) then
-      caldayp1 = get_curr_calday(offset=int(dtime))
-      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
-   end if    
-
-end function radiation_nextsw_cday
 
 !================================================================================================
 
@@ -527,15 +489,15 @@ subroutine radiation_init(pbuf2d)
 
    ! Set the radiation timestep for cosz calculations if requested using
    ! the adjusted iradsw value from radiation
-   if (use_rad_dt_cosz)  then
-      dtime  = get_step_size()
-      dt_avg = iradsw*dtime
-   end if
+   !if (use_rad_dt_cosz)  then
+   !   dtime  = get_step_size()
+   !   dt_avg = iradsw*dtime
+   !end if
 
    ! Surface components to get radiation computed today
-   if (.not. is_first_restart_step()) then
-      nextsw_cday = get_curr_calday()
-   end if
+   !if (.not. is_first_restart_step()) then
+   !   nextsw_cday = get_curr_calday()
+   !end if
 
    call phys_getopts(history_amwg_out   = history_amwg,    &
                      history_vdiag_out  = history_vdiag,   &
@@ -544,10 +506,10 @@ subroutine radiation_init(pbuf2d)
 
    ! "irad_always" is number of time steps to execute radiation continuously from
    ! start of initial OR restart run
-   nstep = get_nstep()
-   if (irad_always > 0) then
-      irad_always = irad_always + nstep
-   end if
+   !nstep = get_nstep()
+   !if (irad_always > 0) then
+   !   irad_always = irad_always + nstep
+   !end if
 
    if (docosp) call cospsimulator_intr_init()
 
@@ -851,10 +813,13 @@ subroutine radiation_tend( &
 
    use rrtmgp_inputs,      only: rrtmgp_inputs_run
    use rrtmgp_pre,         only: rrtmgp_pre_run
+   use rrtmgp_lw_initialize_fluxes, only: rrtmgp_lw_initialize_fluxes_run
+   use rrtmgp_lw_cloud_optics,      only: rrtmgp_lw_cloud_optics_run
+   use rrtmgp_lw_mcica_subcol_gen,  only: rrtmgp_lw_mcica_subcol_gen_run
 
-   use rrtmgp_inputs_cam,  only: rrtmgp_set_gases_lw, rrtmgp_set_cloud_lw, &
+   use rrtmgp_inputs_cam,  only: rrtmgp_set_gases_lw, &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
-                                 rrtmgp_set_aer_sw, rrtmgp_set_state
+                                 rrtmgp_set_aer_sw
 
    ! RRTMGP drivers for flux calculations.
    use mo_rte_lw,          only: rte_lw
@@ -911,6 +876,16 @@ subroutine radiation_tend( &
    real(r8), pointer :: flns(:)  ! Srf longwave cooling (up-down) flux
    real(r8), pointer :: flnt(:)  ! Net outgoing lw flux at model top
 
+   real(r8), pointer :: dei(:,:)
+   real(r8), pointer :: mu(:,:)
+   real(r8), pointer :: lambda(:,:)
+   real(r8), pointer :: iciwp(:,:)
+   real(r8), pointer :: iclwp(:,:)
+   real(r8), pointer :: des(:,:)
+   real(r8), pointer :: icswp(:,:)
+   real(r8), pointer :: icgrauwp(:,:)
+   real(r8), pointer :: degrau(:,:)
+
    real(r8), pointer, dimension(:,:,:) :: su => NULL()  ! shortwave spectral flux up
    real(r8), pointer, dimension(:,:,:) :: sd => NULL()  ! shortwave spectral flux down
    real(r8), pointer, dimension(:,:,:) :: lu => NULL()  ! longwave  spectral flux up
@@ -932,6 +907,8 @@ subroutine radiation_tend( &
    real(r8), allocatable :: coszrs_day(:)
    real(r8), allocatable :: alb_dir(:,:)
    real(r8), allocatable :: alb_dif(:,:)
+   real(r8), allocatable :: tauc(:,:,:)
+   real(r8), allocatable :: cldf(:,:)
 
    ! in-cloud optical depths for COSP
    real(r8) :: cld_tau_cloudsim(pcols,pver)    ! liq + ice
@@ -943,6 +920,8 @@ subroutine radiation_tend( &
 
    ! Set vertical indexing in RRTMGP to be the same as CAM (top to bottom).
    logical, parameter :: top_at_1 = .true.
+
+   logical :: do_graupel, do_snow
 
    ! TOA solar flux on RRTMGP g-points
    real(r8), allocatable :: toa_flux(:,:)
@@ -995,7 +974,7 @@ subroutine radiation_tend( &
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
 
    character(len=128) :: errmsg
-   integer            :: errflg
+   integer            :: errflg, err
    character(len=*), parameter :: sub = 'radiation_tend'
    !--------------------------------------------------------------------------------------
 
@@ -1031,8 +1010,8 @@ subroutine radiation_tend( &
       end do
    end if
 
-   call rrtmgp_pre_run(coszrs, get_nstep(), iradsw, iradlw, irad_always, &
-           ncol, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
+   call rrtmgp_pre_run(coszrs, get_nstep(), get_step_size(), iradsw, iradlw, irad_always, &
+           ncol, nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1069,8 +1048,11 @@ subroutine radiation_tend( &
    ! Allocate the flux arrays and init to zero.
    call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fsw, do_direct=.true.)
    call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fswc, do_direct=.true.)
-   call initialize_rrtmgp_fluxes(ncol, nlay+1, nlwbands, flw)
-   call initialize_rrtmgp_fluxes(ncol, nlay+1, nlwbands, flwc)
+   call rrtmgp_lw_initialize_fluxes_run(ncol, nlay, nlwbands, spectralflux, flw, flwc, &
+                  errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    !  For CRM, make cloud equal to input observations:
    if (scm_crm_mode .and. have_cld) then
@@ -1089,10 +1071,6 @@ subroutine radiation_tend( &
                            backup=TROP_ALG_CLIMATE)
    end if
 
-   ! Get time of next radiation calculation - albedos will need to be
-   ! calculated by each surface model at this time
-   nextsw_cday = radiation_nextsw_cday()
-
    if (dosw .or. dolw) then
 
       allocate( &
@@ -1101,7 +1079,7 @@ subroutine radiation_tend( &
          t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),     &
          t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),     &
          coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday), &
-         stat=istat)
+         cldf(ncol,nlaycam), tauc(nlwbands,ncol,nlaycam), stat=istat)
       call handle_allocate_error(istat, sub, 't_sfc,..,alb_dif')
 
       ! Prepares state variables, daylit columns, albedos for RRTMGP
@@ -1220,11 +1198,47 @@ subroutine radiation_tend( &
 
       if (dolw) then
 
+         ! Grab additional pbuf fields for LW cloud optics
+         dei_idx = pbuf_get_index('DEI',errcode=err)
+         mu_idx  = pbuf_get_index('MU',errcode=err)
+         lambda_idx = pbuf_get_index('LAMBDAC',errcode=err)
+         iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
+         iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
+         des_idx    = pbuf_get_index('DES',errcode=err)
+         icswp_idx  = pbuf_get_index('ICSWP',errcode=err)
+         icgrauwp_idx  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
+         degrau_idx    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
+         call pbuf_get_field(pbuf, lambda_idx,  lambda)
+         call pbuf_get_field(pbuf, mu_idx,      mu)
+         call pbuf_get_field(pbuf, iclwp_idx,   iclwp)
+         call pbuf_get_field(pbuf, iciwp_idx, iciwp)
+         call pbuf_get_field(pbuf, dei_idx,   dei)
+         call pbuf_get_field(pbuf, icswp_idx, icswp)
+         call pbuf_get_field(pbuf, des_idx,   des)
+         if (icgrauwp_idx > 0) then
+            call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp)
+         end if
+         if (degrau_idx > 0) then
+            call pbuf_get_field(pbuf, degrau_idx,   degrau)
+         end if
+         do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau))
+         do_snow = associated(cldfsnow)
          ! Set cloud optical properties in cloud_lw object.
-         call rrtmgp_set_cloud_lw( &
-            state, pbuf, ncol, nlay, nlaycam, nlwgpts, &
-            cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
-            kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
+         call rrtmgp_lw_cloud_optics_run(ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau,       &
+             cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lambda, mu, iclwp, iciwp,  &
+             dei, icswp, des, icgrauwp, degrau, nlwbands, do_snow, &
+             do_graupel, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, pver, ktopcam, &
+             grau_lw_abs_cloudsim, idx_lw_cloudsim, tauc, cldf, errmsg, errflg)
+
+         if (errflg /= 0) then
+            call endrun(sub//': '//errmsg)
+         end if
+         call rrtmgp_lw_mcica_subcol_gen_run(ktoprad, &
+                 kdist_lw, nlwbands, nlwgpts, ncol, pver, nlaycam, nlwgpts, &
+                 state%pmid, cldf, tauc, cloud_lw, errmsg, errflg )
+         if (errflg /= 0) then
+            call endrun(sub//': '//errmsg)
+         end if
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
