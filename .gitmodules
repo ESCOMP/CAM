@@ -9,7 +9,7 @@
 	path = src/physics/carma/base
 	url = https://github.com/ESCOMP/CARMA_base.git
         fxrequired = AlwaysRequired
-        fxtag = carma4_01
+        fxtag = carma4_09
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
 [submodule "pumas"]
@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_06_000
+        fxtag = atmos_phys0_07_001
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -144,14 +144,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.8
+fxtag = ccs_config_cesm1.0.21 
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.49
+fxtag = cime6.1.56
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
@@ -186,7 +186,7 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm_cice6_5_0_12
+fxtag = cesm3_cice6_6_0_6
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
