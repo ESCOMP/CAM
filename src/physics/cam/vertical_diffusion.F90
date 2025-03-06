@@ -228,7 +228,7 @@ subroutine vd_register()
   call pbuf_add_field('tauresy',  'global', dtype_r8, (/pcols/),        tauresy_idx)
 
   call pbuf_add_field('tpert', 'global', dtype_r8, (/pcols/),                       tpert_idx)
-  call pbuf_add_field('qpert', 'global', dtype_r8, (/pcols,pcnst/),                 qpert_idx)
+  call pbuf_add_field('qpert', 'global', dtype_r8, (/pcols/),                       qpert_idx)
 
   if (trim(shallow_scheme) == 'UNICON') then
      call pbuf_add_field('qtl_flx',  'global', dtype_r8, (/pcols, pverp/), qtl_flx_idx)

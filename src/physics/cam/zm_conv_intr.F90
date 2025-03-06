@@ -598,10 +598,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       freqzm(ideep(i)) = 1.0_r8
    end do
    call outfld('FREQZM  ',freqzm          ,pcols   ,lchnk   )
-!
-! Convert mass flux from reported mb/s to kg/m^2/s
-!
-   mcon(:ncol,:pverp) = mcon(:ncol,:pverp) * 100._r8/gravit
+
    mconzm(:ncol,:pverp) = mcon(:ncol,:pverp)
 
    call outfld('CMFMC_DP', mconzm, pcols, lchnk)
@@ -671,9 +668,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     top_lev = 1
     call phys_getopts (macrop_scheme_out  = macrop_scheme)
-    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
 
-    call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:))
+    call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:), errmsg, errflg)
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &

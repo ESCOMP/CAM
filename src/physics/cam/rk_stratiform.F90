@@ -580,6 +580,9 @@ subroutine rk_stratiform_tend( &
 
    integer  :: top_lev
 
+   character(len=512)   :: errmsg
+   integer              :: errflg
+
 
    ! ======================================================================
 
@@ -817,7 +820,7 @@ subroutine rk_stratiform_tend( &
    fsnow(:,:) = 0._r8
 !REMOVECAM_END
    top_lev = 1
-   call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:))
+   call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow(:ncol,:), errmsg, errflg)
 
 
    ! Perform repartitioning of stratiform condensate.
