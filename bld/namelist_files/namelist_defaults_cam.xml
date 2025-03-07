@@ -163,7 +163,7 @@
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne30np4"   nlev="130" waccmx="1"               >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne30np4" npg="3" nlev="130" waccmx="1"         >atm/waccm/ic/waccmx_ne30pg3_c231005.nc</ncdata>
+<ncdata dyn="se"  hgrid="ne30np4" npg="3" nlev="130" waccmx="1"         >atm/waccm/ic/waccmx_ne30pg3_L130_c250307.nc</ncdata>
 
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c200625.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c200625.nc</ncdata>
@@ -699,7 +699,7 @@
 <efield_hflux_file >atm/waccm/efld/coeff_hflux.dat</efield_hflux_file>
 
 <!-- International Geomagnetic Reference Field coefficients -->
-<igrf_geomag_coefs_file>atm/waccm/geomag/igrf_ceofs_c160412.nc</igrf_geomag_coefs_file>
+<igrf_geomag_coefs_file>atm/waccm/geomag/IGRF14_coeffs_c250130.nc</igrf_geomag_coefs_file>
 
 <!-- Waccm aurora and euv parameters -->
 <photon_file    >atm/waccm/phot/photon_c130710.dat</photon_file>
@@ -3131,6 +3131,7 @@
 
 <se_dribble_in_rsplit_loop                                           >    0</se_dribble_in_rsplit_loop>
 <se_dribble_in_rsplit_loop  hgrid="ne16np4" waccm_phys="1" waccmx="0">    1</se_dribble_in_rsplit_loop>
+<se_dribble_in_rsplit_loop  hgrid="ne30np4" waccm_phys="1" waccmx="1">    1</se_dribble_in_rsplit_loop>
 
 <se_ftype> 2 </se_ftype>
 
@@ -3145,6 +3146,7 @@
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0"               > 8 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="mt"                          > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1"               > 5 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
 
@@ -3153,6 +3155,7 @@
 <se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"> 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"> 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                                > 20 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1"                > 60 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                          > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge se_refined_mesh="1"                       > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 4  </se_hypervis_subcycle_sponge>
@@ -3190,8 +3193,10 @@
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0"> 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+<se_sponge_del4_lev waccm_phys="1"> 30 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
+<se_qsplit hgrid="ne30np4"  waccm_phys="1"  waccmx="1"> 2 </se_qsplit>
 
 <se_refined_mesh > .false. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4CONUS.ne30x8" > .true. </se_refined_mesh>
@@ -3206,6 +3211,7 @@
 <se_nsplit hgrid="ne16np4"  waccmx="1"                    >  5  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  2  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  4  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"  waccmx="1"    >  4  </se_nsplit>
 <se_nsplit hgrid="ne30np4"                                >  2  </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
@@ -3213,7 +3219,7 @@
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
-<se_rsplit waccmx="1"                               > 4 </se_rsplit>
+<se_rsplit waccmx="1"                               > 3 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
