@@ -3224,6 +3224,12 @@ Turn on ZM deep convection initial parcel properties as a function of a well mix
 Default: .false.
 </entry>
 
+<entry id="zmconv_parcel_hscale" type="real" category="conv"
+       group="zmconv_nl" valid_values="" >
+ The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction). 
+Default: 0.5
+</entry>
+
 <entry id="zmconv_tau" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
 Convective adjustment timescale in units of (s)

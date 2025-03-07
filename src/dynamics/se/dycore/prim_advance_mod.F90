@@ -1439,7 +1439,7 @@ contains
 
   subroutine tot_energy_dyn(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,nc,use_cslam,qsize
-    use physconst,              only: rga, cpair, rearth, omega
+    use physconst,              only: rga, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld
     use cam_history_support,    only: max_fieldname_len

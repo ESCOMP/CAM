@@ -3738,6 +3738,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_tiedke_add');
     add_default($nl, 'zmconv_capelmt');
     add_default($nl, 'zmconv_tau');
+    add_default($nl, 'zmconv_parcel_hscale');
 }
 
 # moist convection rainwater coefficients
