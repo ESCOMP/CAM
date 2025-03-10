@@ -664,11 +664,9 @@
    ! Calculate fractional occurance of shallow convection    !
    ! --------------------------------------------------------!
 
- ! Modification : I should check whether below computation of freqsh is correct.
-
    freqsh(:) = 0._r8
    do i = 1, ncol
-      if( maxval(cmfmc2(i,:pver)) <= 0._r8 ) then
+      if (maxval(cmfmc2(i,:pver)) > 0._r8) then
           freqsh(i) = 1._r8
       end if
    end do
