@@ -1545,6 +1545,68 @@ elsif ($carma eq 'tholin') {
   add_default($nl, 'carma_emis_total',  'val'=>'1e5');
   add_default($nl, 'carma_emis_file');
 }
+elsif ($carma =~ /trop_strat/) {
+  add_default($nl, 'carma_do_fixedinit','val'=>'.false.');
+  add_default($nl, 'carma_do_partialinit','val'=>'.false.');
+  add_default($nl, 'carma_do_drydep',   'val'=>'.true.');
+  add_default($nl, 'carma_do_optics',   'val'=>'.false.');
+  add_default($nl, 'carma_do_vtran',    'val'=>'.true.');
+  add_default($nl, 'carma_do_wetdep',   'val'=>'.false.');
+  add_default($nl, 'carma_soilerosion_file');
+  add_default($nl, 'carma_fields',      'val'=>'Sl_soilw');
+  add_default($nl, 'carma_do_vdiff',    'val'=>'.true.');
+  add_default($nl, 'carma_do_WeibullK', 'val'=>'.false.');
+  add_default($nl, 'carma_seasalt_emis','val'=>'Gong');
+  add_default($nl, 'carma_do_coag',     'val'=>'.true.');
+  add_default($nl, 'carma_do_grow',     'val'=>'.true.');
+  add_default($nl, 'carma_do_substep',  'val'=>'.true.');
+  add_default($nl, 'carma_do_thermo',   'val'=>'.false.');
+  add_default($nl, 'carma_seasalt_emis','val'=>'Gong');
+  add_default($nl, 'carma_maxretries',  'val'=>'20');
+  add_default($nl, 'carma_maxsubsteps', 'val'=>'2');
+  add_default($nl, 'carma_dt_threshold','val'=>'2.0');
+  add_default($nl, 'carma_hetchem_feedback','val'=>'.false.');
+  add_default($nl, 'bin_defs');
+  add_default($nl, 'rad_climate');
+  add_default($nl, 'carma_do_emission', 'val'=>'.true.');
+  add_default($nl, 'water_refindex_file');
+  add_default($nl, 'carma_do_cloudborne', 'val'=>'.true.');
+
+  # emissions
+  add_default($nl, 'carma_BCOCemissions','val'=>'Specified');
+  my $carma_BCOCemis = $nl->get_value('carma_BCOCemissions');
+  $carma_BCOCemis =~ s/['"]//g; # strip quotes "'
+  if ($carma_BCOCemis eq 'Specified') {
+    my %verhash; # = ('ver'=>'cam6');
+    if ( $sim_year == '2000' ) {
+      %verhash = ('ver'=>'2000cam6');
+      add_default($nl, 'emissions_type', 'val'=>'CYCLICAL');
+      add_default($nl, 'emissions_cycle_yr', 'val'=>'2000');
+    } else {
+      %verhash = ('ver'=>'cam6');
+      add_default($nl, 'emissions_type', 'val'=>'INTERP_MISSING_MONTHS');
+    }
+    my %species = ('bc_a4_an_srf_file'  => 'BC',
+                   'bc_a4_bb_srf_file'  => 'BC',
+                   'pom_a4_an_srf_file' => 'OC',
+                   'pom_a4_bb_srf_file' => 'OC' );
+    my $first = 1; my $pre = ""; my $val = "";
+    foreach my $id (sort keys %species) {
+      my $rel_filepath = get_default_value($id, \%verhash);
+      my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+      $val .= $pre . quote_string("$species{$id} -> " . $abs_filepath);
+      if ($first) { $pre = ","; $first = 0; }
+    }
+    add_default($nl, 'emissions_specifier', 'val'=>$val);
+  } else {
+    add_default($nl, 'BC_GAINS_filename');
+    add_default($nl, 'OC_GAINS_filename');
+    add_default($nl, 'BC_ship_filename');
+    add_default($nl, 'OC_ship_filename');
+    add_default($nl, 'BC_GFEDv3_filename');
+    add_default($nl, 'OC_GFEDv3_filename');
+  }
+}
 
 # Stratospheric sulfur aerosols
 
@@ -1591,7 +1653,8 @@ if (defined $nl->get_value('prescribed_strataero_3modes')) {
 
 # determine if prescribed stratospheric aerosol data is needed
 if ( ($het_chem) || ($nl->get_value('prescribed_strataero_feedback') =~ /$TRUE/io ) ){
-    if ( !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
+    if ( !($carma =~ /trop_strat/) &&
+         !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
 
         unless (defined $nl->get_value('prescribed_strataero_type')) {
             add_default($nl, 'prescribed_strataero_type','val'=>'CYCLICAL');
@@ -2222,10 +2285,10 @@ if ($chem eq 'trop_mam3') {
 }
 
 # CMIP6 emissions
-if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam7/)) {
+if ($phys =~ /cam6/ or $phys =~ /cam7/) {
 
     # OASISS (ocean) DMS emissions
-    if (!$aqua_mode and !$scam) {
+    if (!$aqua_mode and !$scam and chem_has_species($cfg, 'DMS')) {
         my $rel_filepath = get_default_value('dms_ocn_emis_file');
         my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
         my $val = quote_string("DMS -> ". $abs_filepath);
@@ -2243,37 +2306,40 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         }
     }
 
-    my %species;
+    my %species = ('dms_bb_srf_file'     => 'DMS',
+                   'so2_ag_sh_file'      => 'SO2',
+                   'so2_an_srf_file'     => 'SO2',
+                   'so2_bb_srf_file'     => 'SO2');
 
-    # Surface emission datasets:
-    %species = ('dms_bb_srf_file'     => 'DMS',
-                'so2_ag_sh_file'      => 'SO2',
-                'so2_an_srf_file'     => 'SO2',
-                'so2_bb_srf_file'     => 'SO2',
-                'so4_a1_an_srf_file'  => 'so4_a1',
-                'so4_a1_bb_srf_file'  => 'so4_a1',
-                'so4_a2_an_srf_file'  => 'so4_a2',
-                'num_a1_sh_srf_file'  => 'num_a1',
-                'num_a1_bb_srf_file'  => 'num_a1',
-                'num_a2_an_srf_file'  => 'num_a2',
-                'bc_a4_an_srf_file'   => 'bc_a4',
-                'bc_a4_bb_srf_file'   => 'bc_a4',
-                'num_a4_bc_srf_file'  => 'num_a4',
-                'num_a4_oc_srf_file'  => 'num_a4',
-                'num_a4_bb_srf_file'  => 'num_a4',
-                'num_pom_bb_srf_file' => 'num_a4' );
-    if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+    if ($chem =~ /_mam4/ or $chem =~ /_mam5/) {
+
+      # Surface emission datasets:
       %species = (%species,
-                'dms_ot_srf_file'     => 'DMS' );
-    }
-    if ($chem =~ /_vbsext/) {
-      %species = (%species,
-                'pom_a4_an_srf_file'  => 'pomff1_a4',
-                'pom_a4_bb_srf_file'  => 'pombb1_a4' );
-    } else {
-      %species = (%species,
-                'pom_a4_an_srf_file'  => 'pom_a4',
-                'pom_a4_bb_srf_file'  => 'pom_a4' );
+                  'so4_a1_an_srf_file'  => 'so4_a1',
+                  'so4_a1_bb_srf_file'  => 'so4_a1',
+                  'so4_a2_an_srf_file'  => 'so4_a2',
+                  'num_a1_sh_srf_file'  => 'num_a1',
+                  'num_a1_bb_srf_file'  => 'num_a1',
+                  'num_a2_an_srf_file'  => 'num_a2',
+                  'bc_a4_an_srf_file'   => 'bc_a4',
+                  'bc_a4_bb_srf_file'   => 'bc_a4',
+                  'num_a4_bc_srf_file'  => 'num_a4',
+                  'num_a4_oc_srf_file'  => 'num_a4',
+                  'num_a4_bb_srf_file'  => 'num_a4',
+                  'num_pom_bb_srf_file' => 'num_a4' );
+      if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+        %species = (%species,
+                    'dms_ot_srf_file'     => 'DMS' );
+      }
+      if ($chem =~ /_vbsext/) {
+        %species = (%species,
+                    'pom_a4_an_srf_file'  => 'pomff1_a4',
+                    'pom_a4_bb_srf_file'  => 'pombb1_a4' );
+      } else {
+        %species = (%species,
+                    'pom_a4_an_srf_file'  => 'pom_a4',
+                  'pom_a4_bb_srf_file'  => 'pom_a4' );
+      }
     }
 
     # for old simple SOA schemes (without SOAE)
@@ -2433,7 +2499,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             }
         }
     }
-    if ($chem !~ /geoschem/) {
+    if (($chem !~ /geoschem/) and ($chem ne 'none')) {
         add_default($nl, 'srf_emis_specifier', 'val'=>$val);
         unless (defined $nl->get_value('srf_emis_type')) {
             add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
@@ -2442,20 +2508,25 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # Vertical emission datasets:
-    %species = ('so2_cv_ext_file'    => 'SO2',
-                'so4_a1_an_ext_file' => 'so4_a1',
-                'so4_a1_cv_ext_file' => 'so4_a1',
-                'so4_a2_cv_ext_file' => 'so4_a2',
-                'num_a1_an_ext_file' => 'num_a1',
-                'num_a1_cv_ext_file' => 'num_a1',
-                'num_a2_cv_ext_file' => 'num_a2',
+    %species = ('so2_cv_ext_file'    => 'SO2');
+    if ($chem =~ /_mam4/ or $chem =~ /_mam5/) {
+            %species = (%species,
+                        'so4_a1_an_ext_file' => 'so4_a1',
+                        'so4_a1_cv_ext_file' => 'so4_a1',
+                        'so4_a2_cv_ext_file' => 'so4_a2',
+                        'num_a1_an_ext_file' => 'num_a1',
+                        'num_a1_cv_ext_file' => 'num_a1',
+                        'num_a2_cv_ext_file' => 'num_a2',
         );
-
+    }
     # air craft emissions
     if ($chem !~ /trop_mam/ and $chem !~ /ghg_mam/ and $chem !~ /waccm_sc/) {
-        %species = (%species,
+	if ($chem !~ /_noaer/) {
+	    %species = (%species,
                     'bc_a4_ar_ext_file'  => 'bc_a4',
-                    'num_a4_ar_ext_file' => 'num_a4',
+                    'num_a4_ar_ext_file' => 'num_a4' );
+	}
+        %species = (%species,
                     'no2_ar_ext_file'    => 'NO2',
                     'so2_ar_ext_file'    => 'SO2' );
     } elsif ($chem =~ /ghg_mam/) {
@@ -2466,8 +2537,8 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # for transient cases include volcanic emissions
-    if ( ($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) and
-         (defined $nl->get_value('ext_frc_type')) ) {
+    if ( (($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) or ($carma eq 'trop_strat'))
+         and (defined $nl->get_value('ext_frc_type')) ) {
       if ( $nl->get_value('ext_frc_type') !~ /CYCLICAL/ ) {
         my $hgrid = $cfg->get('hgrid');
         if ($hgrid =~ /1.9x2.5/) {
@@ -2504,7 +2575,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-    if ($chem !~ /geoschem/) {
+    if (($chem !~ /geoschem/) and ($chem ne 'none')) {
         add_default($nl, 'ext_frc_specifier', 'val'=>$val);
         unless (defined $nl->get_value('ext_frc_type')) {
             add_default($nl, 'ext_frc_type',      'val'=>"'CYCLICAL'");
@@ -2529,7 +2600,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/) {
+    if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /trop_strat_noaero/ or $chem =~ /waccm_tsmlt/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene +'"
                 . "' fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g +'"
@@ -3314,7 +3385,7 @@ add_default($nl, 'microp_aero_wsubi_min');
 
 # Ice nucleation options
 if (!$simple_phys) {
-    if ($chem =~ /_mam/) {
+    if ($chem =~ /_mam/ or $carma =~ /trop_strat/) {
         add_default($nl, 'use_hetfrz_classnuc');
     } else {
         add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
@@ -3581,6 +3652,10 @@ if ($chem =~ /_mam/) {
     add_default($nl, 'sol_factb_interstitial');
     add_default($nl, 'sol_factic_interstitial');
 }
+if ($carma =~ /trop_strat/) {
+    add_default($nl, 'sol_facti_cloud_borne');
+    add_default($nl, 'sol_factic_interstitial');
+}
 
 # Turbulent Mountain Stress
 my $do_tms;
@@ -3667,6 +3742,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_tiedke_add');
     add_default($nl, 'zmconv_capelmt');
     add_default($nl, 'zmconv_tau');
+    add_default($nl, 'zmconv_parcel_hscale');
 }
 
 # moist convection rainwater coefficients
@@ -4081,27 +4157,6 @@ if ( $dyn eq 'fv3') {
 	add_default($nl, 'fv3_layout', 'val'=>$layout);
     }
 
-}
-
-# EUL dycore
-if ($dyn eq 'eul') {
-    add_default($nl, 'eul_dif2_coef');
-    add_default($nl, 'eul_hdif_order');
-    add_default($nl, 'eul_hdif_kmnhdn');
-    add_default($nl, 'eul_hdif_coef');
-    add_default($nl, 'eul_divdampn');
-    add_default($nl, 'eul_tfilt_eps');
-    add_default($nl, 'eul_kmxhdc');
-    add_default($nl, 'eul_nsplit');
-}
-
-# SLD dycore
-if ($dyn eq 'sld') {
-    add_default($nl, 'sld_dif2_coef');
-    add_default($nl, 'sld_dif4_coef');
-    add_default($nl, 'sld_divdampn');
-    add_default($nl, 'sld_tfilt_eps');
-    add_default($nl, 'sld_kmxhdc');
 }
 
 # Single column model
@@ -4952,7 +5007,7 @@ sub check_input_files {
     my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
                   rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
                   rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
-                  rad_diag_10 srf_emis_specifier mode_defs);
+                  rad_diag_10 srf_emis_specifier mode_defs bin_defs);
 
     foreach my $var (@vars) {
 
@@ -5012,11 +5067,11 @@ sub check_input_files {
                         }
                     }
                 }
-                # Look for values that begin with 'X:name:name2' where X is one of [AMN]
+                # Look for values that begin with 'X:name:name2' where X is one of [ABMN]
                 # Extract name and filename
-                elsif ($spec =~ m/^\s*[AMN]:(\w+) # name of species preceded by optional whitespace and X:
-                                  :               # : separator
-                                  (\S+)           # name2
+                elsif ($spec =~ m/^\s*[ABMN]:(\w+) # name of species preceded by optional whitespace and X:
+                                  :                # : separator
+                                  (\S+)            # name2
                                  /xo) {
                     my $name  = $1;
                     my $name2 = $2;
@@ -5047,9 +5102,14 @@ sub check_input_files {
                         my @flds = split /:/, $name2;
                         if (scalar(@flds) >= 4) {
 
+                            my $file;
                             if ($flds[3] =~ m:^[/\$]:) {
-
-                                my $file = $flds[3];
+                                $file = $flds[3];
+                            }
+                            elsif ($flds[4] =~ m:^[/\$]:) {
+                                $file = $flds[4];
+                            }
+                            if (defined $file) {
                                 if ($inputdata_rootdir) {
                                     print $fh "$var for $name = $file\n";
                                 }

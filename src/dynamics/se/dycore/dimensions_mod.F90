@@ -71,9 +71,6 @@ module dimensions_mod
   real(r8), public :: kmcnd_ref(PLEV)        !reference profiles for molecular diffusion  
   real(r8), public :: rho_ref(PLEV)          !reference profiles for rho
   real(r8), public :: km_sponge_factor(PLEV) !scaling for molecular diffusion (when used as sponge)
-  real(r8), public :: kmvisi_ref(PLEV+1)        !reference profiles for molecular diffusion 
-  real(r8), public :: kmcndi_ref(PLEV+1)        !reference profiles for molecular diffusion  
-
 
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 
