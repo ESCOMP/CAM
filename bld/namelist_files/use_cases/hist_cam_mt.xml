@@ -37,4 +37,7 @@
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 <csw_time_type>SERIAL</csw_time_type>
 
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850-2015</sim_year>
+
 </namelist_defaults>

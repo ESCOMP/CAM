@@ -54,7 +54,8 @@ subroutine aer_rad_props_init()
    logical                    :: history_aero_optics  ! Output aerosol optics diagnostics
    logical                    :: history_dust         ! Output dust diagnostics
    logical                    :: prog_modal_aero      ! Prognostic modal aerosols present
-   integer                    :: nmodes          ! number of aerosol modes
+   integer                    :: nmodes               ! number of aerosol modes
+   integer                    :: nbins                ! number of aerosol bins
 
    !----------------------------------------------------------------------------
 
@@ -79,7 +80,7 @@ subroutine aer_rad_props_init()
 
    ! get names of bulk aerosols
    allocate(aernames(numaerosols))
-   call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes)
+   call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes, nbins=nbins)
 
    ! diagnostic output for bulk aerosols
    ! create outfld names for visible OD
@@ -103,8 +104,8 @@ subroutine aer_rad_props_init()
       end do
     endif
 
-    if (nmodes > 0) then
-       call aerosol_optics_cam_init()
+    if (nmodes>0 .or. nbins>0) then
+      call aerosol_optics_cam_init()
     end if
 
    deallocate(aernames)
@@ -178,6 +179,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    integer  :: numaerosols     ! number of bulk aerosols in climate/diagnostic list
    integer  :: nmodes          ! number of aerosol modes in climate/diagnostic list
+   integer  :: nbins           ! number of aerosol bins in climate/diagnostic list
    integer  :: iaerosol        ! index into bulk aerosol list
 
    character(len=ot_length) :: opticstype       ! hygro or nonhygro
@@ -216,10 +218,10 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    wrh(1:ncol,1:pver) = rhtrunc(1:ncol,1:pver) * nrh - krh(1:ncol,1:pver)       ! (-) weighting on left side values
 
    ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes)
+   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
-   ! Contributions from modal aerosols.
-   if (nmodes > 0) then
+   ! Contributions from modal and bin aerosols.
+   if (nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, &
                                  tau, tau_w, tau_w_g, tau_w_f)
    else
@@ -336,6 +338,7 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    integer :: ncol        ! number of columns
    integer :: numaerosols ! number of bulk aerosols in climate/diagnostic list
    integer :: nmodes      ! number of aerosol modes in climate/diagnostic list
+   integer :: nbins       ! number of aerosol bins in climate/diagnostic list
    integer :: iaerosol    ! index into bulk aerosol list
    character(len=ot_length) :: opticstype       ! hygro or nonhygro
 
@@ -372,10 +375,10 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    ncol = state%ncol
 
    ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes)
+   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
-   ! Contributions from modal aerosols.
-   if (nmodes > 0) then
+   ! Contributions from modal and sectional aerosols.
+   if (nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
    else
       odap_aer = 0._r8

@@ -569,6 +569,7 @@ end subroutine micro_pumas_cam_readnl
 subroutine micro_pumas_cam_register
    use cam_history_support, only: add_vert_coord, hist_dimension_values
    use cam_abortutils,      only: handle_allocate_error
+   use carma_flags_mod,     only: carma_model
 
    ! Register microphysics constituents and fields in the physics buffer.
    !-----------------------------------------------------------------------
@@ -594,6 +595,7 @@ subroutine micro_pumas_cam_register
       longname='Grid box averaged cloud ice amount', is_convtran1=.true.)
 
    call cnst_add(cnst_names(3), mwh2o, cpair, 0._r8, ixnumliq, &
+      ndropmixed=prog_modal_aero.or.carma_model(:10)=='trop_strat', &
       longname='Grid box averaged cloud liquid number', is_convtran1=.true.)
    call cnst_add(cnst_names(4), mwh2o, cpair, 0._r8, ixnumice, &
       longname='Grid box averaged cloud ice number', is_convtran1=.true.)
@@ -1539,6 +1541,51 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: degrau(:,:)       ! Graupel effective diameter (m)
    real(r8), pointer :: bergstot(:,:)     ! Conversion of cloud water to snow from bergeron
 
+   !These variables need to be extracted from the
+   !proc_rates DDT in order for the subcolumn averaging
+   !routine to work properly when writing out diagnostic
+   !fields.
+   real(r8) :: evapsnow_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: bergstot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qcrestot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: melttot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: mnuccctot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: mnuccttot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: bergtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: homotot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: msacwitot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: psacwstot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: cmeitot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qirestot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: prcitot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: praitot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: pratot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: prctot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qcsedten_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qisedten_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: vtrmc_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: vtrmi_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qcsevap_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qisevap_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qrsedten_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qssedten_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: umr_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: ums_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: psacrtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: pracgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: psacwgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: pgsacwtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: pgracstot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: prdgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qmultgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: qmultrgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: npracgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: nscngtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: ngracstot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: nmultgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: nmultrgtot_sc(state%psetcols,pver-top_lev+1)
+   real(r8) :: npsacwgtot_sc(state%psetcols,pver-top_lev+1)
+
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
 
@@ -2038,6 +2085,51 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
     preci  = 0._r8
     prect  = 0._r8
 
+   ! initialize subcolumn variables
+   if (use_subcol_microp) then
+      evapsnow_sc = 0.0_r8
+      bergstot_sc = 0.0_r8
+      qcrestot_sc = 0.0_r8
+      melttot_sc = 0.0_r8
+      mnuccctot_sc = 0.0_r8
+      mnuccttot_sc = 0.0_r8
+      bergtot_sc = 0.0_r8
+      homotot_sc = 0.0_r8
+      msacwitot_sc = 0.0_r8
+      psacwstot_sc = 0.0_r8
+      cmeitot_sc = 0.0_r8
+      qirestot_sc = 0.0_r8
+      prcitot_sc = 0.0_r8
+      praitot_sc = 0.0_r8
+      pratot_sc = 0.0_r8
+      prctot_sc = 0.0_r8
+      qcsedten_sc = 0.0_r8
+      qisedten_sc = 0.0_r8
+      vtrmc_sc = 0.0_r8
+      vtrmi_sc = 0.0_r8
+      qcsevap_sc = 0.0_r8
+      qisevap_sc = 0.0_r8
+      qrsedten_sc = 0.0_r8
+      qssedten_sc = 0.0_r8
+      umr_sc = 0.0_r8
+      ums_sc = 0.0_r8
+      if (micro_mg_version > 2) then
+         psacrtot_sc = 0.0_r8
+         pracgtot_sc = 0.0_r8
+         psacwgtot_sc = 0.0_r8
+         pgsacwtot_sc = 0.0_r8
+         pgracstot_sc = 0.0_r8
+         prdgtot_sc = 0.0_r8
+         qmultgtot_sc = 0.0_r8
+         qmultrgtot_sc = 0.0_r8
+         npracgtot_sc = 0.0_r8
+         nscngtot_sc = 0.0_r8
+         ngracstot_sc = 0.0_r8
+         nmultgtot_sc = 0.0_r8
+         nmultrgtot_sc = 0.0_r8
+         npsacwgtot_sc = 0.0_r8
+      end if
+   end if
 
    !-----------------------
    ! These physics buffer fields are calculated and set in this parameterization
@@ -2689,8 +2781,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(qme,       ngrdcol, lchnk, qme_grid)
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
-      call subcol_field_avg(proc_rates%evapsnow,  ngrdcol, lchnk, evpsnow_st_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%bergstot,    ngrdcol, lchnk, bergso_grid(:,top_lev:))
+
+      evapsnow_sc(:ncol,:) = proc_rates%evapsnow(:ncol,1:nlev)
+      call subcol_field_avg(evapsnow_sc,  ngrdcol, lchnk, evpsnow_st_grid(:,top_lev:))
+      bergstot_sc(:ncol,:) = proc_rates%bergstot(:ncol,1:nlev)
+      call subcol_field_avg(bergstot_sc,    ngrdcol, lchnk, bergso_grid(:,top_lev:))
 
       call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
@@ -2700,18 +2795,32 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(nsout,     ngrdcol, lchnk, nsout_grid)
       call subcol_field_avg(nrout,     ngrdcol, lchnk, nrout_grid)
       call subcol_field_avg(cld,       ngrdcol, lchnk, cld_grid)
-      call subcol_field_avg(proc_rates%qcrestot,    ngrdcol, lchnk, qcreso_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%melttot,     ngrdcol, lchnk, melto_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%mnuccctot,   ngrdcol, lchnk, mnuccco_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%mnuccttot,   ngrdcol, lchnk, mnuccto_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%bergtot,     ngrdcol, lchnk, bergo_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%homotot,     ngrdcol, lchnk, homoo_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%msacwitot,   ngrdcol, lchnk, msacwio_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%psacwstot,   ngrdcol, lchnk, psacwso_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeiout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%qirestot,    ngrdcol, lchnk, qireso_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%prcitot,     ngrdcol, lchnk, prcio_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%praitot,     ngrdcol, lchnk, praio_grid(:,top_lev:))
+
+      qcrestot_sc(:ncol,:) = proc_rates%qcrestot(:ncol,1:nlev)
+      call subcol_field_avg(qcrestot_sc,    ngrdcol, lchnk, qcreso_grid(:,top_lev:))
+      melttot_sc(:ncol,:) = proc_rates%melttot(:ncol,1:nlev)
+      call subcol_field_avg(melttot_sc,     ngrdcol, lchnk, melto_grid(:,top_lev:))
+      mnuccctot_sc(:ncol,:) = proc_rates%mnuccctot(:ncol,1:nlev)
+      call subcol_field_avg(mnuccctot_sc,   ngrdcol, lchnk, mnuccco_grid(:,top_lev:))
+      mnuccttot_sc(:ncol,:) = proc_rates%mnuccttot(:ncol,1:nlev)
+      call subcol_field_avg(mnuccttot_sc,   ngrdcol, lchnk, mnuccto_grid(:,top_lev:))
+      bergtot_sc(:ncol,:) = proc_rates%bergtot(:ncol,1:nlev)
+      call subcol_field_avg(bergtot_sc,     ngrdcol, lchnk, bergo_grid(:,top_lev:))
+      homotot_sc(:ncol,:) = proc_rates%homotot(:ncol,1:nlev)
+      call subcol_field_avg(homotot_sc,     ngrdcol, lchnk, homoo_grid(:,top_lev:))
+      msacwitot_sc(:ncol,:) = proc_rates%msacwitot(:ncol,1:nlev)
+      call subcol_field_avg(msacwitot_sc,   ngrdcol, lchnk, msacwio_grid(:,top_lev:))
+      psacwstot_sc(:ncol,:) = proc_rates%psacwstot(:ncol,1:nlev)
+      call subcol_field_avg(psacwstot_sc,   ngrdcol, lchnk, psacwso_grid(:,top_lev:))
+      cmeitot_sc(:ncol,:) = proc_rates%cmeitot(:ncol,1:nlev)
+      call subcol_field_avg(cmeitot_sc,   ngrdcol, lchnk, cmeiout_grid(:,top_lev:))
+      qirestot_sc(:ncol,:) = proc_rates%qirestot(:ncol,1:nlev)
+      call subcol_field_avg(qirestot_sc,    ngrdcol, lchnk, qireso_grid(:,top_lev:))
+      prcitot_sc(:ncol,:) = proc_rates%prcitot(:ncol,1:nlev)
+      call subcol_field_avg(prcitot_sc,     ngrdcol, lchnk, prcio_grid(:,top_lev:))
+      praitot_sc(:ncol,:) = proc_rates%praitot(:ncol,1:nlev)
+      call subcol_field_avg(praitot_sc,     ngrdcol, lchnk, praio_grid(:,top_lev:))
+
       call subcol_field_avg(icwmrst,   ngrdcol, lchnk, icwmrst_grid)
       call subcol_field_avg(icimrst,   ngrdcol, lchnk, icimrst_grid)
       call subcol_field_avg(liqcldf,   ngrdcol, lchnk, liqcldf_grid)
@@ -2719,18 +2828,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(icwnc,     ngrdcol, lchnk, icwnc_grid)
       call subcol_field_avg(icinc,     ngrdcol, lchnk, icinc_grid)
       call subcol_field_avg(state_loc%pdel,            ngrdcol, lchnk, pdel_grid)
-      call subcol_field_avg(proc_rates%pratot,      ngrdcol, lchnk, prao_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%prctot,      ngrdcol, lchnk, prco_grid(:,top_lev:))
+
+      pratot_sc(:ncol,:) = proc_rates%pratot(:ncol,1:nlev)
+      call subcol_field_avg(pratot_sc,      ngrdcol, lchnk, prao_grid(:,top_lev:))
+      prctot_sc(:ncol,:) = proc_rates%prctot(:ncol,1:nlev)
+      call subcol_field_avg(prctot_sc,      ngrdcol, lchnk, prco_grid(:,top_lev:))
 
       call subcol_field_avg(state_loc%q(:,:,ixnumliq), ngrdcol, lchnk, nc_grid(:,top_lev:))
       call subcol_field_avg(state_loc%q(:,:,ixnumice), ngrdcol, lchnk, ni_grid(:,top_lev:))
 
-      call subcol_field_avg(proc_rates%qcsedten,  ngrdcol, lchnk, qcsedtenout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%qisedten,  ngrdcol, lchnk, qisedtenout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%vtrmc,     ngrdcol, lchnk, vtrmcout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%vtrmi,     ngrdcol, lchnk, vtrmiout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%qcsevap,  ngrdcol, lchnk, qcsevapout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%qisevap,  ngrdcol, lchnk, qisevapout_grid(:,top_lev:))
+      qcsedten_sc(:ncol,:) = proc_rates%qcsedten(:ncol,1:nlev)
+      call subcol_field_avg(qcsedten_sc,  ngrdcol, lchnk, qcsedtenout_grid(:,top_lev:))
+      qisedten_sc(:ncol,:) = proc_rates%qisedten(:ncol,1:nlev)
+      call subcol_field_avg(qisedten_sc,  ngrdcol, lchnk, qisedtenout_grid(:,top_lev:))
+      vtrmc_sc(:ncol,:) = proc_rates%vtrmc(:ncol,1:nlev)
+      call subcol_field_avg(vtrmc_sc,     ngrdcol, lchnk, vtrmcout_grid(:,top_lev:))
+      vtrmi_sc(:ncol,:) = proc_rates%vtrmi(:ncol,1:nlev)
+      call subcol_field_avg(vtrmi_sc,     ngrdcol, lchnk, vtrmiout_grid(:,top_lev:))
+      qcsevap_sc(:ncol,:) = proc_rates%qcsevap(:ncol,1:nlev)
+      call subcol_field_avg(qcsevap_sc,  ngrdcol, lchnk, qcsevapout_grid(:,top_lev:))
+      qisevap_sc(:ncol,:) = proc_rates%qisevap(:ncol,1:nlev)
+      call subcol_field_avg(qisevap_sc,  ngrdcol, lchnk, qisevapout_grid(:,top_lev:))
 
       call subcol_field_avg(cldmax,    ngrdcol, lchnk, cldmax_grid)
 
@@ -2738,28 +2856,48 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(state_loc%q(:,:,ixnumrain), ngrdcol, lchnk, nr_grid)
       call subcol_field_avg(state_loc%q(:,:,ixsnow),    ngrdcol, lchnk, qs_grid)
       call subcol_field_avg(state_loc%q(:,:,ixnumsnow), ngrdcol, lchnk, ns_grid)
-      call subcol_field_avg(proc_rates%qrsedten,  ngrdcol, lchnk, qrsedtenout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%qssedten,  ngrdcol, lchnk, qssedtenout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%umr,       ngrdcol, lchnk, umrout_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%ums,       ngrdcol, lchnk, umsout_grid(:,top_lev:))
+
+      qrsedten_sc(:ncol,:) = proc_rates%qrsedten(:ncol,1:nlev)
+      call subcol_field_avg(qrsedten_sc,  ngrdcol, lchnk, qrsedtenout_grid(:,top_lev:))
+      qssedten_sc(:ncol,:) = proc_rates%qssedten(:ncol,1:nlev)
+      call subcol_field_avg(qssedten_sc,  ngrdcol, lchnk, qssedtenout_grid(:,top_lev:))
+      umr_sc(:ncol,:) = proc_rates%umr(:ncol,1:nlev)
+      call subcol_field_avg(umr_sc,       ngrdcol, lchnk, umrout_grid(:,top_lev:))
+      ums_sc(:ncol,:) = proc_rates%ums(:ncol,1:nlev)
+      call subcol_field_avg(ums_sc,       ngrdcol, lchnk, umsout_grid(:,top_lev:))
 
       if (micro_mg_version > 2) then
             call subcol_field_avg(state_loc%q(:,:,ixgraupel),    ngrdcol, lchnk, qg_grid)
             call subcol_field_avg(state_loc%q(:,:,ixnumgraupel), ngrdcol, lchnk, ng_grid)
-            call subcol_field_avg(proc_rates%psacrtot,       ngrdcol, lchnk, psacro_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%pracgtot,       ngrdcol, lchnk, pracgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%psacwgtot,      ngrdcol, lchnk, psacwgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%pgsacwtot,      ngrdcol, lchnk, pgsacwo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%pgracstot,      ngrdcol, lchnk, pgracso_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%prdgtot,        ngrdcol, lchnk, prdgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%qmultgtot,      ngrdcol, lchnk, qmultgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%qmultrgtot,     ngrdcol, lchnk, qmultrgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%npracgtot,      ngrdcol, lchnk, npracgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%nscngtot,       ngrdcol, lchnk, nscngo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%ngracstot,      ngrdcol, lchnk, ngracso_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%nmultgtot,      ngrdcol, lchnk, nmultgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%nmultrgtot,     ngrdcol, lchnk, nmultrgo_grid(:,top_lev:))
-            call subcol_field_avg(proc_rates%npsacwgtot,     ngrdcol, lchnk, npsacwgo_grid(:,top_lev:))
+
+            psacrtot_sc(:ncol,:) = proc_rates%psacrtot(:ncol,1:nlev)
+            call subcol_field_avg(psacrtot_sc,       ngrdcol, lchnk, psacro_grid(:,top_lev:))
+            pracgtot_sc(:ncol,:) = proc_rates%pracgtot(:ncol,1:nlev)
+            call subcol_field_avg(pracgtot_sc,       ngrdcol, lchnk, pracgo_grid(:,top_lev:))
+            psacwgtot_sc(:ncol,:) = proc_rates%psacwgtot(:ncol,1:nlev)
+            call subcol_field_avg(psacwgtot_sc,      ngrdcol, lchnk, psacwgo_grid(:,top_lev:))
+            pgsacwtot_sc(:ncol,:) = proc_rates%pgsacwtot(:ncol,1:nlev)
+            call subcol_field_avg(pgsacwtot_sc,      ngrdcol, lchnk, pgsacwo_grid(:,top_lev:))
+            pgracstot_sc(:ncol,:) = proc_rates%pgracstot(:ncol,1:nlev)
+            call subcol_field_avg(pgracstot_sc,      ngrdcol, lchnk, pgracso_grid(:,top_lev:))
+            prdgtot_sc(:ncol,:) = proc_rates%prdgtot(:ncol,1:nlev)
+            call subcol_field_avg(prdgtot_sc,        ngrdcol, lchnk, prdgo_grid(:,top_lev:))
+            qmultgtot_sc(:ncol,:) = proc_rates%qmultgtot(:ncol,1:nlev)
+            call subcol_field_avg(qmultgtot_sc,      ngrdcol, lchnk, qmultgo_grid(:,top_lev:))
+            qmultrgtot_sc(:ncol,:) = proc_rates%qmultrgtot(:ncol,1:nlev)
+            call subcol_field_avg(qmultrgtot_sc,     ngrdcol, lchnk, qmultrgo_grid(:,top_lev:))
+            npracgtot_sc(:ncol,:) = proc_rates%npracgtot(:ncol,1:nlev)
+            call subcol_field_avg(npracgtot_sc,      ngrdcol, lchnk, npracgo_grid(:,top_lev:))
+            nscngtot_sc(:ncol,:) = proc_rates%nscngtot(:ncol,1:nlev)
+            call subcol_field_avg(nscngtot_sc,       ngrdcol, lchnk, nscngo_grid(:,top_lev:))
+            ngracstot_sc(:ncol,:) = proc_rates%ngracstot(:ncol,1:nlev)
+            call subcol_field_avg(ngracstot_sc,      ngrdcol, lchnk, ngracso_grid(:,top_lev:))
+            nmultgtot_sc(:ncol,:) = proc_rates%nmultgtot(:ncol,1:nlev)
+            call subcol_field_avg(nmultgtot_sc,      ngrdcol, lchnk, nmultgo_grid(:,top_lev:))
+            nmultrgtot_sc(:ncol,:) = proc_rates%nmultrgtot(:ncol,1:nlev)
+            call subcol_field_avg(nmultrgtot_sc,     ngrdcol, lchnk, nmultrgo_grid(:,top_lev:))
+            npsacwgtot_sc(:ncol,:) = proc_rates%npsacwgtot(:ncol,1:nlev)
+            call subcol_field_avg(npsacwgtot_sc,     ngrdcol, lchnk, npsacwgo_grid(:,top_lev:))
       end if
 
    else

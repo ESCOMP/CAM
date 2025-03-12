@@ -118,7 +118,7 @@ contains
 
           !note that optical properties for ice valid only
           !in range of 13 > rei > 130 micron (Ebert and Curry 92)
-    	  if ( microp_scheme == 'RK' .or. microp_scheme == 'SPCAM_sam1mom') then
+    	  if ( microp_scheme == 'RK') then
              kabsi = 0.005_r8 + 1._r8/rei(i,k)
           else
              kabsi = 0.005_r8 + 1._r8/min(max(13._r8,rei(i,k)),130._r8)

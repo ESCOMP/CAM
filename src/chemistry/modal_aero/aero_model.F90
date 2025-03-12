@@ -111,6 +111,7 @@ contains
     use units,           only: getunit, freeunit
     use mpishorthand
     use aero_wetdep_cam, only: aero_wetdep_readnl
+    use dust_model,      only: dust_readnl
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -151,6 +152,7 @@ contains
     drydep_list = aer_drydep_list
 
     call aero_wetdep_readnl(nlfile)
+    call dust_readnl(nlfile)
 
   end subroutine aero_model_readnl
 
@@ -177,6 +179,7 @@ contains
     use seasalt_model,   only: seasalt_init, seasalt_names, seasalt_active,seasalt_nbin
     use aer_drydep_mod,  only: inidrydep
     use aero_wetdep_cam, only: aero_wetdep_init
+    use mo_setsox,       only: sox_inti
 
     use modal_aero_calcsize,   only: modal_aero_calcsize_init
     use modal_aero_coag,       only: modal_aero_coag_init
@@ -208,6 +211,9 @@ contains
     character(len=32) :: spec_type
     character(len=32) :: mode_type
     integer :: nspec
+
+    ! aqueous chem initialization
+    call sox_inti()
 
     dgnum_idx       = pbuf_get_index('DGNUM')
     dgnumwet_idx    = pbuf_get_index('DGNUMWET')
@@ -862,10 +868,11 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  mmr, radmean, relhum, pmid, temp, strato_sad, sulfate, rho, ltrop, &
+                  state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate, rho, ltrop, &
                   dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop )
 
     ! dummy args
+    type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     real(r8), intent(in)    :: mmr(:,:,:)
@@ -909,9 +916,10 @@ contains
   ! provides WET stratospheric aerosol surface area info for modal aerosols
   ! if modal_strat_sulfate = TRUE -- called from mo_gas_phase_chemdr
   !-------------------------------------------------------------------------
-  subroutine aero_model_strat_surfarea( ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
+  subroutine aero_model_strat_surfarea( state, ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
 
     ! dummy args
+    type(physics_state), intent(in) :: state           ! Physics state variables
     integer,  intent(in)    :: ncol
     real(r8), intent(in)    :: mmr(:,:,:)
     real(r8), intent(in)    :: pmid(:,:)
@@ -941,7 +949,7 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_gasaerexch( loffset, ncol, lchnk, troplev, delt, reaction_rates, &
+  subroutine aero_model_gasaerexch( state, loffset, ncol, lchnk, troplev, delt, reaction_rates, &
                                     tfld, pmid, pdel, mbar, relhum, &
                                     zm,  qh2o, cwat, cldfr, cldnum, &
                                     airdens, invariants, del_h2so4_gasprod,  &
@@ -956,6 +964,7 @@ contains
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
+    type(physics_state), intent(in)    :: state    ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1006,7 +1015,6 @@ contains
     real(r8), pointer :: fldcw(:,:)
     real(r8), pointer :: sulfeq(:,:,:)
 
-    logical :: is_spcam_m2005
 !
 ! ... initialize nh3
 !
@@ -1014,7 +1022,6 @@ contains
       nh3_beg = vmr(1:ncol,:,nh3_ndx)
     end if
 !
-    is_spcam_m2005   = cam_physpkg_is('spcam_m2005')
 
     call pbuf_get_field(pbuf, dgnum_idx,      dgnum)
     call pbuf_get_field(pbuf, dgnumwet_idx,   dgnumwet )
@@ -1046,14 +1053,13 @@ contains
 !
     call qqcw2vmr( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
 
-    if (.not. is_spcam_m2005) then  ! regular CAM
-      dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
-      dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
+    dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
+    dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
 
     ! aqueous chemistry ...
 
-      if( has_sox ) then
-         call setsox(   &
+    if( has_sox ) then
+       call setsox( state, &
               ncol,     &
               lchnk,    &
               loffset,  &
@@ -1076,21 +1082,21 @@ contains
               aqso4_o3  &
               )
 
-         do n = 1, ntot_amode
-            l = lptr_so4_cw_amode(n)
-            if (l > 0) then
-               call outfld( trim(cnst_name_cw(l))//'AQSO4',   aqso4(:ncol,n),   ncol, lchnk)
-               call outfld( trim(cnst_name_cw(l))//'AQH2SO4', aqh2so4(:ncol,n), ncol, lchnk)
-            end if
-         end do
+       do n = 1, ntot_amode
+          l = lptr_so4_cw_amode(n)
+          if (l > 0) then
+             call outfld( trim(cnst_name_cw(l))//'AQSO4',   aqso4(:ncol,n),   ncol, lchnk)
+             call outfld( trim(cnst_name_cw(l))//'AQH2SO4', aqh2so4(:ncol,n), ncol, lchnk)
+          end if
+       end do
 
-         call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk)
-         call outfld( 'AQSO4_O3',   aqso4_o3(:ncol),   ncol, lchnk)
-         call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
+       call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk)
+       call outfld( 'AQSO4_O3',   aqso4_o3(:ncol),   ncol, lchnk)
+       call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
 
-      endif
+    endif
 
-!   Tendency due to aqueous chemistry
+    ! Tendency due to aqueous chemistry
     dvmrdt = (vmr - dvmrdt) / delt
     dvmrcwdt = (vmrcw - dvmrcwdt) / delt
     do m = 1, gas_pcnst
@@ -1101,15 +1107,6 @@ contains
       name = 'AQ_'//trim(solsym(m))
       call outfld( name, wrk(:ncol), ncol, lchnk )
     enddo
-
-   else if (is_spcam_m2005) then  ! SPCAM ECPP
-! when ECPP is used, aqueous chemistry is done in ECPP,
-! and not updated here.
-! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
-!
-      dvmrdt = 0.0_r8
-      dvmrcwdt = 0.0_r8
-   endif
 
 ! do gas-aerosol exchange (h2so4, msa, nh3 condensation)
 

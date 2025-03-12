@@ -13,8 +13,8 @@
     TIME_ATM[%phys]_LND[%phys]_ICE[%phys]_OCN[%phys]_ROF[%phys]_GLC[%phys]_WAV[%phys][_BGC%phys]
     Where for the CAM specific compsets below the following is supported
     TIME = Time period (e.g. 2000, HIST, RCP8...)
-    ATM  = [CAM40, CAM50, CAM60]
-    LND  = [CLM45, CLM50, SLND]
+    ATM  = [CAM40, CAM50, CAM60, CAM70]
+    LND  = [CLM45, CLM50, CLM60, SLND]
     ICE  = [CICE, DICE, SICE]
     OCN  = [DOCN, ,AQUAP, SOCN]
     ROF  = [RTM, SROF]
@@ -35,15 +35,6 @@
     Each compset node can also have the following attributes
       - grid  (optional regular expression match for grid to work with the compset)
   </help>
-
-  <!-- ****************************** -->
-  <!-- CAM nuopc testing -->
-  <!-- ****************************** -->
-
-  <compset>
-    <alias>F2000Nuopc</alias>
-    <lname>2000_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset>
 
   <!-- ****************************** -->
   <!-- CAM science supported compsets -->
@@ -90,19 +81,8 @@
   <!-- CAM simpler model compsets -->
 
   <compset>
-    <alias>FDABIP04</alias>
-    <lname>2000_CAM%DABIP04_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42z30_T42_mg17"/>
-    <science_support grid="T85z30_T85_mg17"/>
-    <science_support grid="T85z60_T85_mg17"/>
-  </compset>
-
-  <compset>
     <alias>FHS94</alias>
     <lname>2000_CAM%HS94_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42z30_T42_mg17"/>
-    <science_support grid="T85z30_T85_mg17"/>
-    <science_support grid="T85z60_T85_mg17"/>
   </compset>
 
   <compset>
@@ -123,103 +103,86 @@
   <compset>
     <alias>FSCAMARM95</alias>
     <lname>2000_CAM60%FSCAMARM95_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMARM97</alias>
     <lname>2000_CAM60%SCAMARM97_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMATEX</alias>
     <lname>2000_CAM60%SCAMATEX_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMBOMEX</alias>
     <lname>2000_CAM60%SCAMBOMEX_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMCGILSS11</alias>
     <lname>2000_CAM60%SCAMCGILSS11_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
       <alias>FSCAMCGILSS12</alias>
     <lname>2000_CAM60%SCAMCGILSS12_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMCGILSS6</alias>
     <lname>2000_CAM60%SCAMCGILSS6_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMDYCOMSRF01</alias>
     <lname>2000_CAM60%SCAMDYCOMSRF01_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMDYCOMSRF02</alias>
     <lname>2000_CAM60%SCAMDYCOMSRF02_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMGATE3</alias>
     <lname>2000_CAM60%SCAMGATE3_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMMPACE</alias>
     <lname>2000_CAM60%SCAMMPACE_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMRICO</alias>
     <lname>2000_CAM60%SCAMRICO_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMSPARTICUS</alias>
     <lname>2000_CAM60%SCAMSPARTICUS_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMTOGA2</alias>
     <lname>2000_CAM60%SCAMTOGA2_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMTWP06</alias>
     <lname>2000_CAM60%SCAMTWP06_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FSCAMCAMFRC</alias>
     <lname>2000_CAM60%SCAMCAMFRC_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
     <alias>FCSCAM</alias>
     <lname>2000_CAM60%SCAM%CT1S_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>
@@ -272,16 +235,6 @@
   <compset>
     <alias>QPC6HIST</alias>
     <lname>HIST_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QSPCAMS</alias>
-    <lname>2000_CAM%SPCAMS_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QPSPCAMM</alias>
-    <lname>2000_CAM%SPCAMM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -361,16 +314,6 @@
   </compset>
 
   <compset>
-    <alias>FSPCAMM</alias>
-    <lname>2000_CAM%SPCAMM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FSPCAMS</alias>
-    <lname>2000_CAM%SPCAMS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>FHIST_BDRD</alias>
     <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_BGC%BDRD</lname>
   </compset>
@@ -400,19 +343,6 @@
   <!-- CAM untested compsets -->
   <!-- ****************************** -->
 
-  <!-- spcam untested compsets -->
-
-  <compset>
-    <alias>FSPCAMCLBS</alias>
-    <lname>2000_CAM%SPCAMCLBS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FSPCAMCLBM</alias>
-    <lname>2000_CAM%SPCAMCLBM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-
   <!-- cam-chem untested compsets -->
 
   <compset>
@@ -426,6 +356,42 @@
   <compset>
     <alias>FC2000climo_GC</alias>
     <lname>2000_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FCARMA2000climo</alias>
+    <lname>2000_CAM60%CARMATS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPCARMATS</alias>
+    <lname>2000_CAM60%CARMATS_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>QPCARMAWM</alias>
+    <lname>2000_CAM60%CARMAWM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FCARMAHIST</alias>
+    <lname>HIST_CAM60%CARMATS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FCARMAnudged</alias>
+    <lname>HIST_CAM60%CARMATS%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FCARMASD</alias>
+    <lname>HIST_CAM60%CARMATS%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FWmaCARMAHIST</alias>
+    <lname>HIST_CAM60%CARMAWM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FWmaCARMAnudged</alias>
+    <lname>HIST_CAM60%CARMAWM%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -689,9 +655,11 @@
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>
 	<value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
+ 	<value  compset="_CAM.*%NUDG"                   >2010-01-01</value>
+ 	<value  compset="CAM60%CARMA.*%NUDG"            >1990-01-01</value>
  	<value  compset="_CAM.*%SDYN"                   >2005-01-01</value>
  	<value  compset="_CAM.*%SDYN" grid="a%0.47x0.63">2010-01-01</value>
-	<value  compset="_CAM60%(WCCM|WCTS|WXIE).*%SDYN">1980-01-01</value>
+	<value  compset="_CAM60%(CARMA|WCCM|WCTS|WXIE).*%SDYN">1980-01-01</value>
  	<value  compset="_CAM40%WX.*%SDYN">2000-01-01</value>
         <value  compset="2000_CAM60%GEOSCHEM">2000-01-01</value>
         <value  compset="2010_CAM60%GEOSCHEM">2010-01-01</value>
@@ -785,76 +753,6 @@
 	<value  compset="%NUDG">GREGORIAN</value>
  	<value  compset="HIST_CAM\d0%WX">GREGORIAN</value>
      </values>
-    </entry>
-
-    <entry id="NTHRDS_ATM">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_CPL">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ESP">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_GLC">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ICE">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_LND">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_OCN">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ROF">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_WAV">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ESP">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
     </entry>
 
   <!-- single column compset must have pts_mode set to true -->

@@ -5,7 +5,7 @@ module cloud_fraction
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use ppgrid,         only: pcols, pver, pverp
-  use ref_pres,       only: pref_mid 
+  use ref_pres,       only: pref_mid
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
@@ -22,7 +22,6 @@ module cloud_fraction
      cldfrc_init,      &! Inititialization of cloud_fraction run-time parameters
      cldfrc_getparams, &! public access of tuning parameters
      cldfrc,           &! Computation of cloud fraction
-     cldfrc_fice,      &! Calculate fraction of condensate in ice phase (radiation partitioning)
      dp1,              &! parameter for deep convection cloud fraction needed in clubb_intr
      dp2               ! parameter for deep convection cloud fraction needed in clubb_intr
 
@@ -32,9 +31,9 @@ module cloud_fraction
   ! Top level
   integer :: top_lev = 1
 
-  ! Physics buffer indices 
-  integer :: sh_frac_idx   = 0  
-  integer :: dp_frac_idx   = 0 
+  ! Physics buffer indices
+  integer :: sh_frac_idx   = 0
+  integer :: dp_frac_idx   = 0
 
   ! Namelist variables
   logical  :: cldfrc_freeze_dry           ! switch for Vavrus correction
@@ -154,8 +153,8 @@ subroutine cldfrc_register
 
    !-----------------------------------------------------------------------
 
-   call pbuf_add_field('SH_FRAC', 'physpkg', dtype_r8, (/pcols,pver/), sh_frac_idx) 
-   call pbuf_add_field('DP_FRAC', 'physpkg', dtype_r8, (/pcols,pver/), dp_frac_idx) 
+   call pbuf_add_field('SH_FRAC', 'physpkg', dtype_r8, (/pcols,pver/), sh_frac_idx)
+   call pbuf_add_field('DP_FRAC', 'physpkg', dtype_r8, (/pcols,pver/), dp_frac_idx)
 
 end subroutine cldfrc_register
 
@@ -205,20 +204,19 @@ subroutine cldfrc_init
                      macrop_scheme_out  = macrop_scheme  )
 
    ! Limit CAM5 cloud physics to below top cloud level.
-   if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+   if ( .not. macrop_scheme == "rk") top_lev = trop_cloud_top_lev
 
    ! Turn off inversion_cld if any UW PBL scheme is being used
-   if ( (eddy_scheme .eq. 'diag_TKE' ) .or. (shallow_scheme .eq.  'UW' ) .or.&
-        (shallow_scheme .eq. 'SPCAM_m2005') ) then
+   if ( eddy_scheme .eq. 'diag_TKE'  .or.  shallow_scheme .eq. 'UW' ) then
       inversion_cld_off = .true.
    else
       inversion_cld_off = .false.
    endif
 
-   if ( masterproc ) then 
+   if ( masterproc ) then
       write(iulog,*)'tuning parameters cldfrc_init: inversion_cld_off',inversion_cld_off
       write(iulog,*)'tuning parameters cldfrc_init: dp1',dp1,'dp2',dp2,'sh1',sh1,'sh2',sh2
-      if (shallow_scheme .ne. 'UW' .or. shallow_scheme .eq. 'SPCAM_m2005' ) then
+      if (shallow_scheme .ne. 'UW') then
          write(iulog,*)'tuning parameters cldfrc_init: rhminl',rhminl,'rhminl_adj_land',rhminl_adj_land, &
                        'rhminh',rhminh,'premit',premit,'premib',premib
          write(iulog,*)'tuning parameters cldfrc_init: iceopt',iceopt,'icecrit',icecrit
@@ -249,38 +247,38 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
        cmfmc   ,cmfmc2  ,landfrac,snowh   ,concld  ,cldst   , &
        ts      ,sst     ,ps      ,zdu     ,ocnfrac ,&
        rhu00   ,cldice  ,icecldf ,liqcldf ,relhum  ,dindex )
-    !----------------------------------------------------------------------- 
-    ! 
-    ! Purpose: 
-    ! Compute cloud fraction 
-    ! 
-    ! 
-    ! Method: 
+    !-----------------------------------------------------------------------
+    !
+    ! Purpose:
+    ! Compute cloud fraction
+    !
+    !
+    ! Method:
     ! This calculate cloud fraction using a relative humidity threshold
-    ! The threshold depends upon pressure, and upon the presence or absence 
-    ! of convection as defined by a reasonably large vertical mass flux 
+    ! The threshold depends upon pressure, and upon the presence or absence
+    ! of convection as defined by a reasonably large vertical mass flux
     ! entering that layer from below.
-    ! 
+    !
     ! Author: Many. Last modified by Jim McCaa
-    ! 
+    !
     !-----------------------------------------------------------------------
     use cam_history,   only: outfld
     use physconst,     only: cappa, gravit, rair, tmelt
     use wv_saturation, only: qsat, qsat_water, svp_ice_vect
     use phys_grid,     only: get_rlat_all_p, get_rlon_all_p
 
-   
+
 !RBN - Need this to write shallow,deep fraction to phys buffer.
 !PJR - we should probably make seperate modules for determining convective
 !      clouds and make this one just responsible for relative humidity clouds
-    
+
     use physics_buffer, only: physics_buffer_desc, pbuf_get_field
 
     ! Arguments
     integer, intent(in) :: lchnk                  ! chunk identifier
     integer, intent(in) :: ncol                   ! number of atmospheric columns
     integer, intent(in) :: dindex                 ! 0 or 1 to perturb rh
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), intent(in) :: pmid(pcols,pver)      ! midpoint pressures
     real(r8), intent(in) :: temp(pcols,pver)      ! temperature
@@ -307,7 +305,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     real(r8), intent(out) :: clc(pcols)            ! column convective cloud amount
     real(r8), intent(out) :: cldst(pcols,pver)     ! cloud fraction
     real(r8), intent(out) :: rhu00(pcols,pver)     ! RH threshold for cloud
-    real(r8), intent(out) :: relhum(pcols,pver)    ! RH 
+    real(r8), intent(out) :: relhum(pcols,pver)    ! RH
     real(r8), intent(out) :: icecldf(pcols,pver)   ! ice cloud fraction
     real(r8), intent(out) :: liqcldf(pcols,pver)   ! liquid cloud fraction (combined into cloud)
 
@@ -376,7 +374,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! The idea is that the RH limits for condensation are strict only for
     ! water saturation
     !
-    ! Ice clouds are formed by explicit parameterization of ice nucleation. 
+    ! Ice clouds are formed by explicit parameterization of ice nucleation.
     ! Closure for ice cloud fraction is done on available cloud ice, such that
     ! the in-cloud ice content matches an empirical fit
     ! thus, icecldf = min(cldice/icicval,1) where icicval = f(temp,cldice,numice)
@@ -385,17 +383,17 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! No dA/dt term for ice?
     !
     ! There are three co-existing cloud types: convective, inversion related low-level
-    ! stratocumulus, and layered cloud (based on relative humidity).  Layered and 
-    ! stratocumulus clouds do not compete with convective cloud for which one creates 
-    ! the most cloud.  They contribute collectively to the total grid-box average cloud 
-    ! amount.  This is reflected in the way in which the total cloud amount is evaluated 
+    ! stratocumulus, and layered cloud (based on relative humidity).  Layered and
+    ! stratocumulus clouds do not compete with convective cloud for which one creates
+    ! the most cloud.  They contribute collectively to the total grid-box average cloud
+    ! amount.  This is reflected in the way in which the total cloud amount is evaluated
     ! (a sum as opposed to a logical "or" operation)
     !
     !==================================================================================
     ! set defaults for rhu00
     rhu00(:,:) = 2.0_r8
     ! define rh perturbation in order to estimate rhdfda
-    rhpert = 0.01_r8 
+    rhpert = 0.01_r8
 
     !set Wang and Sassen IWC paramters
     a=26.87_r8
@@ -460,7 +458,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
 
     !
     ! Estimate of local convective cloud cover based on convective mass flux
-    ! Modify local large-scale relative humidity to account for presence of 
+    ! Modify local large-scale relative humidity to account for presence of
     ! convective cloud when evaluating relative humidity based layered cloud amount
     !
     concld(:ncol,top_lev:pver) = 0.0_r8
@@ -468,7 +466,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! cloud mass flux in SI units of kg/m2/s; should produce typical numbers of 20%
     ! shallow and deep convective cloudiness are evaluated separately (since processes
     ! are evaluated separately) and summed
-    !   
+    !
 #ifndef PERGRO
     do k=top_lev,pver
        do i=1,ncol
@@ -488,7 +486,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     !          ****** Compute layer cloudiness ******
     !
     !====================================================================
-    ! Begin the evaluation of layered cloud amount based on (modified) RH 
+    ! Begin the evaluation of layered cloud amount based on (modified) RH
     !====================================================================
     !
     numkcld = pver
@@ -517,7 +515,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
              ! SJV: decrease cloud amount if very low water vapor content
              ! (thus very cold): "freeze dry"
              if (cldfrc_freeze_dry) then
-                rhcloud(i,k) = rhcloud(i,k)*max(0.15_r8,min(1.0_r8,q(i,k)/0.0030_r8)) 
+                rhcloud(i,k) = rhcloud(i,k)*max(0.15_r8,min(1.0_r8,q(i,k)/0.0030_r8))
              endif
 
           else if ( pmid(i,k).lt.premit ) then
@@ -537,7 +535,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
              !       linear rh threshold transition between thresholds for low & high cloud
              !
              rhwght = (premib-(max(pmid(i,k),premit)))/(premib-premit)
-             
+
              if (land(i) .and. (snowh(i) <= 0.000001_r8)) then
                 rhlim = rhminh*rhwght + (rhminl - rhminl_adj_land)*(1.0_r8-rhwght)
              else
@@ -591,7 +589,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
 
                 !--------ICE CLOUD OPTION 3--------Wood & Field 2000 (JAS)
                 ! eq 6: cloud fraction = 1 - exp (-K * qc/qsati)
-        
+
                 icecldf(i,k)=1._r8 - exp(-Kc*cldice(i,k)/(qs(i,k)*(esi(i,k)/esl(i,k))))
                 icecldf(i,k)=max(0._r8,min(icecldf(i,k),1._r8))
              else
@@ -634,7 +632,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
              cloud(i,k) = rhcloud(i,k)
           end if
        end do
-    end do 
+    end do
     !
     ! Add in the marine strat
     ! MARINE STRATUS SHOULD BE A SPECIAL CASE OF LAYERED CLOUD
@@ -644,20 +642,20 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     !===================================================================================
     !
     !  SOME OBSERVATIONS ABOUT THE FOLLOWING SECTION OF CODE (missed in earlier look)
-    !  K700 IS SET AS A CONSTANT BASED ON HYBRID COORDINATE: IT DOES NOT DEPEND ON 
-    !  LOCAL PRESSURE; THERE IS NO PRESSURE RAMP => LOOKS LEVEL DEPENDENT AND 
+    !  K700 IS SET AS A CONSTANT BASED ON HYBRID COORDINATE: IT DOES NOT DEPEND ON
+    !  LOCAL PRESSURE; THERE IS NO PRESSURE RAMP => LOOKS LEVEL DEPENDENT AND
     !  DISCONTINUOUS IN SPACE (I.E., STRATUS WILL END SUDDENLY WITH NO TRANSITION)
     !
     !  IT APPEARS THAT STRAT IS EVALUATED ACCORDING TO KLEIN AND HARTMANN; HOWEVER,
     !  THE ACTUAL STRATUS AMOUNT (CLDST) APPEARS TO DEPEND DIRECTLY ON THE RH BELOW
-    !  THE STRONGEST PART OF THE LOW LEVEL INVERSION.  
+    !  THE STRONGEST PART OF THE LOW LEVEL INVERSION.
     !PJR answers: 1) the rh limitation is a physical/mathematical limitation
     !             cant have more cloud than there is RH
     !             allowed the cloud to exist two layers below the inversion
     !             because the numerics frequently make 50% relative humidity
     !             in level below the inversion which would allow no cloud
     !             2) since  the cloud is only allowed over ocean, it should
-    !             be very insensitive to surface pressure (except due to 
+    !             be very insensitive to surface pressure (except due to
     !             spectral ringing, which also causes so many other problems
     !             I didnt worry about it.
     !
@@ -737,78 +735,5 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
   end subroutine cldfrc
 
 !================================================================================================
-
-  subroutine cldfrc_fice(ncol, t, fice, fsnow)
-!
-! Compute the fraction of the total cloud water which is in ice phase.
-! The fraction depends on temperature only. 
-! This is the form that was used for radiation, the code came from cldefr originally
-! 
-! Author: B. A. Boville Sept 10, 2002
-!  modified: PJR 3/13/03 (added fsnow to ascribe snow production for convection )
-!-----------------------------------------------------------------------
-    use physconst, only: tmelt
-
-! Arguments
-    integer,  intent(in)  :: ncol                 ! number of active columns
-    real(r8), intent(in)  :: t(:,:)        ! temperature
-
-    real(r8), intent(out) :: fice(:,:)     ! Fractional ice content within cloud
-    real(r8), intent(out) :: fsnow(:,:)    ! Fractional snow content for convection
-
-! Local variables
-    real(r8) :: tmax_fice                         ! max temperature for cloud ice formation
-    real(r8) :: tmin_fice                         ! min temperature for cloud ice formation
-    real(r8) :: tmax_fsnow                        ! max temperature for transition to convective snow
-    real(r8) :: tmin_fsnow                        ! min temperature for transition to convective snow
-
-    integer :: i,k                                ! loop indexes
-
-!-----------------------------------------------------------------------
-
-    tmax_fice = tmelt - 10._r8        ! max temperature for cloud ice formation
-    tmin_fice = tmax_fice - 30._r8    ! min temperature for cloud ice formation
-    tmax_fsnow = tmelt                ! max temperature for transition to convective snow
-    tmin_fsnow = tmelt - 5._r8        ! min temperature for transition to convective snow
-
-    fice(:,:top_lev-1) = 0._r8
-    fsnow(:,:top_lev-1) = 0._r8
-
-! Define fractional amount of cloud that is ice
-    do k=top_lev,pver
-       do i=1,ncol
-
-! If warmer than tmax then water phase
-          if (t(i,k) > tmax_fice) then
-             fice(i,k) = 0.0_r8
-
-! If colder than tmin then ice phase
-          else if (t(i,k) < tmin_fice) then
-             fice(i,k) = 1.0_r8
-
-! Otherwise mixed phase, with ice fraction decreasing linearly from tmin to tmax
-          else 
-             fice(i,k) =(tmax_fice - t(i,k)) / (tmax_fice - tmin_fice)
-          end if
-
-! snow fraction partitioning
-
-! If warmer than tmax then water phase
-          if (t(i,k) > tmax_fsnow) then
-             fsnow(i,k) = 0.0_r8
-
-! If colder than tmin then ice phase
-          else if (t(i,k) < tmin_fsnow) then
-             fsnow(i,k) = 1.0_r8
-
-! Otherwise mixed phase, with ice fraction decreasing linearly from tmin to tmax
-          else 
-             fsnow(i,k) =(tmax_fsnow - t(i,k)) / (tmax_fsnow - tmin_fsnow)
-          end if
-
-       end do
-    end do
-
-  end subroutine cldfrc_fice
 
 end module cloud_fraction

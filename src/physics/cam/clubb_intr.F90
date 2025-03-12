@@ -13,20 +13,21 @@ module clubb_intr
   !                                                                                                      !
   !---------------------------Code history-------------------------------------------------------------- !
   ! Authors:  P. Bogenschutz, C. Craig, A. Gettelman                                                     !
-  ! Modified by: K Thayer-Calder                                                     !
+  ! Modified by: K Thayer-Calder                                                                         !
   !                                                                                                      !
   !----------------------------------------------------------------------------------------------------- !
 
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len
 
   use spmd_utils,          only: masterproc
-  use constituents,        only: pcnst, cnst_add
-  use pbl_utils,           only: calc_ustar, calc_obklen
+  use constituents,        only: pcnst, cnst_add, cnst_ndropmixed
+  use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_ideal_gas_rrho, &
+                                 calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, calc_obukhov_length
   use ref_pres,            only: top_lev => trop_cloud_top_lev
 
 #ifdef CLUBB_SGS
@@ -358,7 +359,6 @@ module clubb_intr
     apply_to_heat    = .false.           ! Apply WACCM energy fixer to heat or not (.true. = yes (duh))
 
   logical            :: lq(pcnst)
-  logical            :: prog_modal_aero
   logical            :: do_rainturb
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
@@ -478,7 +478,6 @@ module clubb_intr
 
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
-    difzm_idx  = -1,    & ! ZM detrained convective cloud ice mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
     dnifzm_idx = -1       ! ZM detrained convective cloud ice num concen.
 
@@ -1532,8 +1531,7 @@ end subroutine clubb_init_cnst
     ! off of pcnst (the total consituents)
     ! ----------------------------------------------------------------- !
 
-    call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
-                      history_amwg_out=history_amwg, &
+    call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
 
@@ -1549,29 +1547,15 @@ end subroutine clubb_init_cnst
     call cnst_get_ind('CLDLIQ',ixcldliq)
     call cnst_get_ind('CLDICE',ixcldice)
 
-    if (prog_modal_aero) then
-       ! Turn off modal aerosols and decrement edsclr_dim accordingly
-       call rad_cnst_get_info(0, nmodes=nmodes)
-
-       do m = 1, nmodes
-          call rad_cnst_get_mode_num_idx(m, lptr)
-          lq(lptr)=.false.
+    do m = 1, pcnst
+       if (cnst_ndropmixed(m)) then
+          lq(m)=.false.
+          !  Droplet number is transported in dropmixnuc, therefore we
+          !  do NOT want CLUBB to apply transport tendencies to avoid double
+          !  counting.  Else, we apply tendencies.
           edsclr_dim = edsclr_dim-1
-
-          call rad_cnst_get_info(0, m, nspec=nspec)
-          do l = 1, nspec
-             call rad_cnst_get_mam_mmr_idx(m, l, lptr)
-             lq(lptr)=.false.
-             edsclr_dim = edsclr_dim-1
-          end do
-       end do
-
-       !  In addition, if running with MAM, droplet number is transported
-       !  in dropmixnuc, therefore we do NOT want CLUBB to apply transport
-       !  tendencies to avoid double counted.  Else, we apply tendencies.
-       lq(ixnumliq) = .false.
-       edsclr_dim = edsclr_dim-1
-    endif
+       endif
+    enddo
 
     ! ----------------------------------------------------------------- !
     ! Set the debug level.  Level 2 has additional computational expense since
@@ -2525,7 +2509,6 @@ end subroutine clubb_init_cnst
 
     ! ZM microphysics
     real(r8), pointer :: dlfzm(:,:)  ! ZM detrained convective cloud water mixing ratio.
-    real(r8), pointer :: difzm(:,:)  ! ZM detrained convective cloud ice mixing ratio.
     real(r8), pointer :: dnlfzm(:,:) ! ZM detrained convective cloud water num concen.
     real(r8), pointer :: dnifzm(:,:) ! ZM detrained convective cloud ice num concen.
 
@@ -2869,10 +2852,14 @@ end subroutine clubb_init_cnst
     !$acc              rrho, prer_evap, rtp2_mc_zt, thlp2_mc_zt, wprtp_mc_zt, wpthlp_mc_zt, rtpthlp_mc_zt ) &
     !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
     !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
+    !$acc              pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, pdf_zm_mixt_frac, &
     !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
     !$acc              ttend_clubb_mc, upwp_clubb_gw_mc, vpwp_clubb_gw_mc, thlp2_clubb_gw_mc, wpthlp_clubb_gw_mc, &
     !$acc              ttend_clubb, upwp_clubb_gw, vpwp_clubb_gw, thlp2_clubb_gw, wpthlp_clubb_gw, &
-    !$acc              wp2up2, wp2vp2, ice_supersat_frac ) &
+    !$acc              wp2up2, wp2vp2, ice_supersat_frac, &
+    !$acc              pdf_params_zm_chnk(lchnk)%w_1, pdf_params_zm_chnk(lchnk)%w_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2, &
+    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac ) &
     !$acc     copyout( temp2d, temp2dp, rtp2_zt_out, thl2_zt_out, wp2_zt_out, pdfp_rtp2, wm_zt_out, inv_exner_clubb, &
     !$acc              rcm, wprcp, rcm_in_layer, cloud_cover, zt_out, zi_out, khzm, qclvar, thv, dz_g, &
     !$acc              clubbtop, se_dis, eleak, clubb_s, wpthvp_clubb, wprcp_clubb ) &
@@ -2893,7 +2880,6 @@ end subroutine clubb_init_cnst
     !$acc              radf, wpthlp_sfc, clubb_params, sfc_elevation, wprtp_sfc, upwp_sfc, vpwp_sfc, &
     !$acc              rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, p_in_Pa, exner, um_pert_inout, &
     !$acc              inv_exner_clubb_surf, thlprcp_out, zi_g, zt_g, qrl_clubb, &
-    !$acc              pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, pdf_zm_mixt_frac, &
     !$acc              pdf_params_chnk(lchnk)%w_1, pdf_params_chnk(lchnk)%w_2, &
     !$acc              pdf_params_chnk(lchnk)%varnce_w_1, pdf_params_chnk(lchnk)%varnce_w_2, &
     !$acc              pdf_params_chnk(lchnk)%rt_1, pdf_params_chnk(lchnk)%rt_2, &
@@ -2917,8 +2903,6 @@ end subroutine clubb_init_cnst
     !$acc              pdf_params_chnk(lchnk)%cloud_frac_1, pdf_params_chnk(lchnk)%cloud_frac_2,  &
     !$acc              pdf_params_chnk(lchnk)%mixt_frac, pdf_params_chnk(lchnk)%ice_supersat_frac_1, &
     !$acc              pdf_params_chnk(lchnk)%ice_supersat_frac_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%w_1, pdf_params_zm_chnk(lchnk)%w_2, &
-    !$acc              pdf_params_zm_chnk(lchnk)%varnce_w_1, pdf_params_zm_chnk(lchnk)%varnce_w_2, &
     !$acc              pdf_params_zm_chnk(lchnk)%rt_1, pdf_params_zm_chnk(lchnk)%rt_2, &
     !$acc              pdf_params_zm_chnk(lchnk)%varnce_rt_1, pdf_params_zm_chnk(lchnk)%varnce_rt_2,  &
     !$acc              pdf_params_zm_chnk(lchnk)%thl_1, pdf_params_zm_chnk(lchnk)%thl_2, &
@@ -2938,8 +2922,7 @@ end subroutine clubb_init_cnst
     !$acc              pdf_params_zm_chnk(lchnk)%corr_chi_eta_2, pdf_params_zm_chnk(lchnk)%rsatl_1, &
     !$acc              pdf_params_zm_chnk(lchnk)%rsatl_2, pdf_params_zm_chnk(lchnk)%rc_1, pdf_params_zm_chnk(lchnk)%rc_2, &
     !$acc              pdf_params_zm_chnk(lchnk)%cloud_frac_1, pdf_params_zm_chnk(lchnk)%cloud_frac_2,  &
-    !$acc              pdf_params_zm_chnk(lchnk)%mixt_frac, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, &
-    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
+    !$acc              pdf_params_zm_chnk(lchnk)%ice_supersat_frac_1, pdf_params_zm_chnk(lchnk)%ice_supersat_frac_2 )
 
     !$acc data if( sclr_dim > 0 ) &
     !$acc      create( wpsclrp_sfc, sclrm_forcing, sclrm, wpsclrp, sclrp2, sclrp3, sclrprtp, sclrpthlp, sclrpthvp_inout) &
@@ -3493,8 +3476,8 @@ end subroutine clubb_init_cnst
         ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
         if (ubar <  0.25_r8) ubar = 0.25_r8
 
-        call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
-              rrho(i), ustar )
+        rrho(i) = calc_ideal_gas_rrho(rair, state1%t(i,pver), state1%pmid(i,pver))
+        ustar   = calc_friction_velocity(cam_in%wsx(i), cam_in%wsy(i), rrho(i))
 
         upwp_sfc(i) = -state1%u(i,pver)*ustar**2/ubar
         vpwp_sfc(i) = -state1%v(i,pver)*ustar**2/ubar
@@ -4700,21 +4683,21 @@ end subroutine clubb_init_cnst
     ! --------------------------------------------------------------------------------- !
     do i=1,ncol
       do k=1,pver
-         !use local exner since state%exner is not a proper exner
-         th(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)
+         !subroutine pblind expects "Stull" definition of Exner
+         th(i,k) = state1%t(i,k)*state1%exner(i,k)
          !thv should have condensate loading to be consistent with earlier def's in this module
          thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq) - state1%q(i,k,ixcldliq))
       enddo
     enddo
 
     ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    rrho(1:ncol) = (rga)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver))
-    call calc_ustar( ncol, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver), cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), &
-                    rrho(1:ncol), ustar2(1:ncol))
+    rrho   (1:ncol) = calc_ideal_gas_rrho(rair, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver))
+    ustar2 (1:ncol) = calc_friction_velocity(cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), rrho(1:ncol))
     ! use correct qflux from coupler
-    call calc_obklen( ncol, th(1:ncol,pver), thv(1:ncol,pver), cam_in%cflx(1:ncol,1), cam_in%shf(1:ncol), &
-                      rrho(1:ncol), ustar2(1:ncol), kinheat(1:ncol), kinwat(1:ncol), kbfs(1:ncol), &
-                      obklen(1:ncol))
+    kinheat(1:ncol) = calc_kinematic_heat_flux(cam_in%shf(1:ncol), rrho(1:ncol), cpair)
+    kinwat (1:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(1:ncol,1), rrho(1:ncol))
+    kbfs   (1:ncol) = calc_kinematic_buoyancy_flux(kinheat(1:ncol), zvir, th(1:ncol,pver), kinwat(1:ncol))
+    obklen (1:ncol) = calc_obukhov_length(thv(1:ncol,pver), ustar2(1:ncol), gravit, karman, kbfs(1:ncol))
 
     dummy2(:) = 0._r8
     dummy3(:) = 0._r8
