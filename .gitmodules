@@ -143,10 +143,10 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 
 [submodule "ccs_config"]
 path = ccs_config
-url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.28
+url = https://github.com/jedwards4b/ccs_config_cesm.git
+fxtag = back_out_ifx
 fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
+fxDONOTUSEurl = https://github.com/jedwards4b/ccs_config_cesm.git
 
 [submodule "cime"]
 path = cime
@@ -186,7 +186,7 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm3_cice6_6_0_6
+fxtag = cesm3_cice6_6_0_8
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
