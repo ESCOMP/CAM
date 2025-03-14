@@ -13,10 +13,10 @@
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
 [submodule "pumas"]
-	path = src/physics/pumas
-	url = https://github.com/nusbaume/PUMAS
+        path = src/physics/pumas
+        url =  https://github.com/ESCOMP/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = 7cde106
+        fxtag = pumas_cam-release_v1.38
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]
