@@ -769,8 +769,8 @@
 <!-- gravity wave settings -->
 
 <effgw_beres_dp                                               >0.7D0</effgw_beres_dp>
-<effgw_beres_dp model_top="lt"                                >0.30D0</effgw_beres_dp>
-<effgw_beres_dp model_top="mt"                                >0.70D0</effgw_beres_dp>
+<effgw_beres_dp model_top="lt"                                >0.15D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"                                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>

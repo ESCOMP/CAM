@@ -3847,7 +3847,15 @@ if (!$simple_phys) {
     }
 
     if ($phys =~ /cam7/) {
-       add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+	#
+	# moving mountains only supported by SE dycore
+	# (since vorticity needs to be passed to physics in dp_coupling)
+	#
+	if ( $dyn =~ /se/ ) {
+	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+	} else {
+	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.false.');
+	}
     }
 
     my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
@@ -3878,7 +3886,12 @@ if ($waccm_phys or
     # QBO in the high vertical resolution configuration.
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
+    #WACCM value
     my $hdepth_scaling = '0.25D0' ;
+    #MT value
+    if ($cfg->get('model_top') eq 'mt') {
+	$hdepth_scaling = '0.32D0';
+    }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
 	my $nlon = $cfg->get('nlon');
@@ -3900,7 +3913,7 @@ if ($waccm_phys or
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
-    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.32D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }
