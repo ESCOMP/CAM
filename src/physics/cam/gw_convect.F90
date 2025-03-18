@@ -190,7 +190,6 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
   hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
 
   ! J. Richter: this is an effective reduction of the GW phase speeds (needed to drive the QBO)
-  ! hdepth = hdepth*qbo_hdepth_scaling
   hdepth = max(1000._r8, hdepth*qbo_hdepth_scaling)
   hd_idx = index_of_nearest(hdepth, desc%hd)
 
