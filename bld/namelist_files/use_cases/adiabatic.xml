@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd> 10101 </start_ymd>
+
+<!-- Force PHIS to be set to zero -->
+<use_topo_file>.false.</use_topo_file>
+
+<analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>
+
+</namelist_defaults>

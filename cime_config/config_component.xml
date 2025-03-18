@@ -202,7 +202,7 @@
       <value compset="_CAM.*%SCAMCAMFRC">-scam camfrc</value>
 
       <!-- Simple models -->
-      <value compset="_CAM%ADIAB">-phys adiabatic</value>
+      <value compset="_CAM%ADIAB">-phys adiabatic -analytic_ic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
@@ -332,6 +332,7 @@
       <value compset="_CAM60%CARMATS%SDYN">carma_trop_strat_sd_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
+      <value compset="CAM%ADIAB"         >adiabatic</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%GRAYRAD"       >dctest_frierson</value>

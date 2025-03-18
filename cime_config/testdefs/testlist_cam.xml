@@ -463,16 +463,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              339 tsm ter tbl                        -->
-  <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/terminator">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >339 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              368                         -->
   <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
@@ -1012,73 +1002,13 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-<!--              700                         -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_bwic">
+
+  <test compset="FADIAB" grid="ne3pg3_ne3pg3_mt232" name="ERS_D_Ln9_P1x1" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >700 tsm, ter, tbr</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              702                        -->
-  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_bwic">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >702 tsm, ter, tbr</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              704 tsm  ter tbl                       -->
-  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >704 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              705 tsm                        -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="SMS_D_Ln9_P1x1" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >705 tsm</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              705 teq                        -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >705 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              706  tsm teq                      -->
-  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >706 tsm, teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              707  tsm teq                      -->
-  <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >707 tsm, ter</option>
+      <option name="comment" >Adiabatic, analytic ICs</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1324,16 +1254,6 @@
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
-    </options>
-  </test>
-<!--              730                        -->
-  <test compset="FADIAB" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/terminator">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >730 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
     </options>
   </test>
 <!--              735                        -->
@@ -2781,22 +2701,6 @@
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
-  </test>
-
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-  </test>
-
-
-  <test compset="FADIAB" grid="ne0TESTONLYne5x4_ne0TESTONLYne5x4_mg37" name="ERS_Ln9" testmods="cam/outfrq3s_refined" supported="false">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                -->
