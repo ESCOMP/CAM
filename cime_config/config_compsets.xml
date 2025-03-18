@@ -424,6 +424,26 @@
     <lname>HISTC_CAM70%MT%CT4S_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
+    <alias>FHISTC_WAsc</alias>
+    <lname>HISTC_CAM70%WA%CSO_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FHISTC_WAma</alias>
+    <lname>HISTC_CAM70%WA%CT0MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FHISTC_WAt1ma</alias>
+    <lname>HISTC_CAM70%WA%CT1MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FHISTC_WAt4ma</alias>
+    <lname>HISTC_CAM70%WA%CT4MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FHISTC_WXma</alias>
+    <lname>HISTC_CAM70%WX%CT0MA_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>FCvbsxHIST</alias>
     <lname>HIST_CAM60%CVBSX_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
