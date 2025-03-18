@@ -20,14 +20,15 @@
 ! ... "independent" production for Explicit species
 !--------------------------------------------------------------------
       if( class == 1 ) then
-         prod(:,1) =rxt(:,383)*y(:,111)*y(:,95) +rxt(:,386)*y(:,96)
-         prod(:,2) =.500_r8*rxt(:,336)*y(:,111)*y(:,87)
+         prod(:,1) =rxt(:,387)*y(:,111)*y(:,95) +rxt(:,390)*y(:,96)
+         prod(:,2) = (.500_r8*rxt(:,340)*y(:,87) +.600_r8*rxt(:,360)*y(:,112)) &
+                 *y(:,111) +rxt(:,359)*y(:,112)*y(:,99)
 !--------------------------------------------------------------------
 ! ... "independent" production for Implicit species
 !--------------------------------------------------------------------
       else if( class == 4 ) then
          prod(:,1) = 0._r8
-         prod(:,2) = + extfrc(:,6)
+         prod(:,2) = + extfrc(:,4)
          prod(:,29) = 0._r8
          prod(:,131) = 0._r8
          prod(:,49) = 0._r8
@@ -73,7 +74,7 @@
          prod(:,134) = 0._r8
          prod(:,111) = 0._r8
          prod(:,4) = 0._r8
-         prod(:,118) = + extfrc(:,10)
+         prod(:,118) = + extfrc(:,1)
          prod(:,127) = 0._r8
          prod(:,48) = 0._r8
          prod(:,51) = 0._r8
@@ -123,15 +124,15 @@
          prod(:,10) = 0._r8
          prod(:,30) = 0._r8
          prod(:,11) = 0._r8
-         prod(:,146) = + extfrc(:,12)
-         prod(:,135) = + extfrc(:,11)
+         prod(:,146) = + extfrc(:,7)
+         prod(:,135) = + extfrc(:,6)
          prod(:,141) = 0._r8
          prod(:,67) = 0._r8
-         prod(:,12) = + extfrc(:,1)
-         prod(:,13) = + extfrc(:,2)
+         prod(:,12) = + extfrc(:,8)
+         prod(:,13) = + extfrc(:,9)
          prod(:,14) = 0._r8
-         prod(:,15) = + extfrc(:,5)
-         prod(:,16) = + extfrc(:,8)
+         prod(:,15) = + extfrc(:,13)
+         prod(:,16) = + extfrc(:,12)
          prod(:,145) = 0._r8
          prod(:,132) = 0._r8
          prod(:,138) = 0._r8
@@ -142,19 +143,19 @@
          prod(:,79) = 0._r8
          prod(:,96) = 0._r8
          prod(:,17) = 0._r8
-         prod(:,18) = + extfrc(:,7)
+         prod(:,18) = + extfrc(:,2)
          prod(:,81) = 0._r8
          prod(:,113) = 0._r8
          prod(:,70) = 0._r8
          prod(:,90) = 0._r8
          prod(:,19) = 0._r8
          prod(:,129) = 0._r8
-         prod(:,109) = + extfrc(:,13)
+         prod(:,109) = + extfrc(:,5)
          prod(:,55) = 0._r8
-         prod(:,20) = + extfrc(:,3)
-         prod(:,21) = + extfrc(:,4)
+         prod(:,20) = + extfrc(:,10)
+         prod(:,21) = + extfrc(:,11)
          prod(:,22) = 0._r8
-         prod(:,23) = + extfrc(:,9)
+         prod(:,23) = + extfrc(:,3)
          prod(:,24) = 0._r8
          prod(:,25) = 0._r8
          prod(:,26) = 0._r8
