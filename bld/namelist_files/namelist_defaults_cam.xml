@@ -72,6 +72,16 @@
 <ncdata dyn="fv"  hgrid="4x5"       nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami_0000-01-01_4x5_L30_c090108.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami_0000-01-01_10x15_L30_c081013.nc</ncdata>
 
+<ncdata dyn="fv"  hgrid="10x15"     nlev="32"                 carma="trop_strat_soa5">atm/cam/inic/fv/carma_trop_strat_2000_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
+<ncdata dyn="fv"  hgrid="10x15"     nlev="32"  aquaplanet="1" carma="trop_strat_soa5">atm/cam/inic/fv/aqua_carma_trop_strat_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
+
+<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="32"  aquaplanet="1" carma="trop_strat_soa5">atm/cam/inic/fv/QPCARMATS_f19_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+
+<ncdata dyn="fv"  hgrid="10x15"     nlev="70"  aquaplanet="1" carma="trop_strat_soa1">atm/waccm/ic/aqua_carma_waccm_0002-01-01_10x15_L70_c220325.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"                 carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f19_carmats038_spinupl03.cam.i.1980-01-01_c241025.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" carma="trop_strat_soa1">atm/cam/inic/fv/aqua_carma_waccm_0002-01-01_1.9x2.5_L70_c220809.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="70"                 carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f09_spinup01.cam.i.1980-01-01-00000_c220128.nc</ncdata>
+
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
@@ -579,6 +589,8 @@
 <carma_escale_file      carma="pmc_sulfate">atm/waccm/emis/smoke_grf_frentzke.nc</carma_escale_file>
 <carma_mice_file        carma="pmc_sulfate">atm/cam/physprops/mice_warren2008.nc</carma_mice_file>
 <carma_soilerosion_file carma="cirrus_dust">atm/cam/dst/soil_erosion_factor_1x1_c120907.nc</carma_soilerosion_file>
+<carma_soilerosion_file carma="trop_strat_soa1">atm/cam/dst/soil_erosion_factor_1x1_c120907.nc</carma_soilerosion_file>
+<carma_soilerosion_file carma="trop_strat_soa5">atm/cam/dst/soil_erosion_factor_1x1_c120907.nc</carma_soilerosion_file>
 <carma_soilerosion_file carma="dust">atm/cam/dst/soil_erosion_factor_1x1_c120907.nc</carma_soilerosion_file>
 <carma_emis_file        carma="tholin">atm/waccm/emis/early_earth_haze.nc</carma_emis_file>
 
@@ -755,21 +767,21 @@
 <pgwv waccmx="1">18</pgwv>
 
 <!-- gravity wave settings -->
-<effgw_beres_dp>0.7D0</effgw_beres_dp>
-<effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
+
+<effgw_beres_dp                                               >0.7D0</effgw_beres_dp>
 <effgw_beres_dp model_top="lt"                                >0.30D0</effgw_beres_dp>
 <effgw_beres_dp model_top="mt"                                >0.70D0</effgw_beres_dp>
+<effgw_beres_dp model_top="ht" phys="cam7"                    >0.25D0</effgw_beres_dp>
+<effgw_beres_dp model_top="xt" phys="cam7"                    >0.25D0</effgw_beres_dp>
+<effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.5D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="110"     >0.7D0</effgw_beres_dp>
-<effgw_beres_dp chem="geoschem_mam4" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
-<effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
-<effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="ne30np4"                >0.5D0</effgw_beres_dp>
+<effgw_beres_dp chem="geoschem_mam4" hgrid="0.9x1.25"         >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
-
-<effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
+<effgw_beres_dp carma="trop_strat_soa1" hgrid="0.9x1.25"      >0.5D0</effgw_beres_dp>
+<effgw_beres_dp carma="trop_strat_soa5" hgrid="0.9x1.25"      >0.5D0</effgw_beres_dp>
 
 <effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
 
@@ -797,25 +809,34 @@
 <gw_prndl     chem="trop_strat_mam5_vbsext">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
+<gw_oro_south_fac         model_top="ht">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbs">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbsext">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam5_vbs">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam5_vbsext">2.d0   </gw_oro_south_fac>
+<gw_oro_south_fac carma="trop_strat_soa1">2.D0</gw_oro_south_fac>
+<gw_oro_south_fac carma="trop_strat_soa5">2.D0</gw_oro_south_fac>
 <gw_lndscl_sgh                          >.true. </gw_lndscl_sgh>
 <gw_lndscl_sgh            waccm_phys="1">.false.</gw_lndscl_sgh>
+<gw_lndscl_sgh            model_top="ht">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbs">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbsext">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam5_vbs">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam5_vbsext">.false.</gw_lndscl_sgh>
+<gw_lndscl_sgh carma="trop_strat_soa1">.false.</gw_lndscl_sgh>
+<gw_lndscl_sgh carma="trop_strat_soa5">.false.</gw_lndscl_sgh>
 <gw_limit_tau_without_eff               >.false.</gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff waccm_phys="1">.true. </gw_limit_tau_without_eff>
+<gw_limit_tau_without_eff model_top="ht">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="geoschem_mam4">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
+<gw_limit_tau_without_eff carma="trop_strat_soa1">.true. </gw_limit_tau_without_eff>
+<gw_limit_tau_without_eff carma="trop_strat_soa5">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                          >.true. </gw_apply_tndmax>
 <gw_apply_tndmax chem="geoschem_mam4"     >.false.</gw_apply_tndmax>
 <gw_apply_tndmax phys="cam7"              >.false.</gw_apply_tndmax>
@@ -824,6 +845,8 @@
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam5_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam5_vbsext">.false.</gw_apply_tndmax>
+<gw_apply_tndmax carma="trop_strat_soa1">.false.</gw_apply_tndmax>
+<gw_apply_tndmax carma="trop_strat_soa5">.false.</gw_apply_tndmax>
 
 <!-- gravity wave drag options -->
 <gw_rdg_do_divstream                    >.true.  </gw_rdg_do_divstream>
@@ -1025,6 +1048,11 @@
 <soag_an_srf_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SOAGx1.5_anthro_surface_1750-2015_0.9x1.25_c20170608.nc</soag_an_srf_file>
 <soag_bg_srf_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SOAGx1.5_biogenic_surface_1750-2015_0.9x1.25_c20170322.nc</soag_bg_srf_file>
 <soag_bb_srf_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SOAGx1.5_bb_surface_1750-2015_0.9x1.25_c20170322.nc</soag_bb_srf_file>
+
+<bc_a4_an_srf_file   ver="2000cam6">atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc</bc_a4_an_srf_file>
+<bc_a4_bb_srf_file   ver="2000cam6">atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc</bc_a4_bb_srf_file>
+<pom_a4_an_srf_file  ver="2000cam6">atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_pom_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc</pom_a4_an_srf_file>
+<pom_a4_bb_srf_file  ver="2000cam6">atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_pom_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc</pom_a4_bb_srf_file>
 
 <BENZENE_an_srf_file  ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_BENZENE_anthro_surface_1750-2015_0.9x1.25_c20170608.nc</BENZENE_an_srf_file>
 <BENZENE_bb_srf_file  ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_BENZENE_bb_surface_1750-2015_0.9x1.25_c20170322.nc</BENZENE_bb_srf_file>
@@ -2821,6 +2849,7 @@
 <zmconv_tau                                                           > 3600.0    </zmconv_tau>
 
 <zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
+<zmconv_parcel_hscale                                                 >  0.5    </zmconv_parcel_hscale>
 
 <!-- Cloud sedimentation -->
 
@@ -3131,7 +3160,7 @@
 
 <se_dribble_in_rsplit_loop                                           >    0</se_dribble_in_rsplit_loop>
 <se_dribble_in_rsplit_loop  hgrid="ne16np4" waccm_phys="1" waccmx="0">    1</se_dribble_in_rsplit_loop>
-<se_dribble_in_rsplit_loop  hgrid="ne30np4" waccm_phys="1" waccmx="1">    1</se_dribble_in_rsplit_loop>
+<se_dribble_in_rsplit_loop  hgrid="ne16np4" model_top="ht">               1</se_dribble_in_rsplit_loop>
 
 <se_ftype> 2 </se_ftype>
 
@@ -3142,23 +3171,30 @@
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0"               > 9 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0"               > 8 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0" model_top="none"> 9 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0" model_top="none"> 8 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1" model_top="none"> 5 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="mt"                          > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1"               > 5 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4" model_top="ht"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4" model_top="xt"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"> 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"> 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                                > 20 </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1"                > 60 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1" model_top="none"> 60 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                          > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge se_refined_mesh="1"                       > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne16np4" model_top="ht"            > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="ht"            > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"            > 40 </se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -3173,10 +3209,12 @@
 
 <se_nu>-1</se_nu>
 <se_nu hgrid="ne16np4" waccm_phys="1" waccmx="0">6.e15</se_nu>
+<se_nu hgrid="ne16np4" model_top="ht"           >6.e15</se_nu>
 <se_nu waccmx="1">5.e15</se_nu>
 
 <se_nu_div> -1 </se_nu_div>
 <se_nu_div hgrid="ne16np4" waccm_phys="1" waccmx="0">6.e15</se_nu_div>
+<se_nu_div hgrid="ne16np4" model_top="ht"           >6.e15</se_nu_div>
 <se_nu_div waccmx="1"> 10.e15 </se_nu_div>
 
 <se_nu_p>-1 </se_nu_p>
@@ -3184,6 +3222,7 @@
 <se_nu_top                                   > 1.25e5 </se_nu_top>
 <se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>
 <se_nu_top model_top="mt"                    > 1.0e6 </se_nu_top>
+<se_nu_top model_top="ht"                    > 1.0e6 </se_nu_top>
 <se_nu_top waccm_phys="1"                    > 1.0e6 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
@@ -3192,11 +3231,14 @@
 <se_sponge_del4_nu_fac    > -1 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0"> 7.5 </se_sponge_del4_nu_div_fac>
+<se_sponge_del4_nu_div_fac model_top="ht"                           > 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1"> 30 </se_sponge_del4_lev>
+<se_sponge_del4_lev model_top="ht"> 30 </se_sponge_del4_lev>
+<se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
-<se_qsplit hgrid="ne30np4"  waccm_phys="1"  waccmx="1"> 2 </se_qsplit>
+<se_qsplit hgrid="ne30np4" waccm_phys="1" waccmx="1" model_top="none"> 2 </se_qsplit>
 
 <se_refined_mesh > .false. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4CONUS.ne30x8" > .true. </se_refined_mesh>
@@ -3208,18 +3250,23 @@
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccmx="1"                    >  5  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  2  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  4  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"  waccmx="1"    >  4  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="ht"                >  2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="xt"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4" waccm_phys="1" waccmx="1" model_top="none">  4  </se_nsplit>
 <se_nsplit hgrid="ne30np4"                                >  2  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" model_top="none"> 4  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="ht"                >  4  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="xt"                >  5  </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
-<se_rsplit waccmx="1"                               > 3 </se_rsplit>
+<se_rsplit model_top="ht"                           > 2 </se_rsplit>
+<se_rsplit waccmx="1"                               > 4 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
@@ -3554,5 +3601,546 @@
 <geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
 <geoschem_aeropt_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/FAST_JX/v2024-05/</geoschem_aeropt_inputs>
 <geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05/</geoschem_photol_inputs>
+
+<BC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_BC_2010.nc</BC_GAINS_filename>
+<OC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_OC_2010.nc</OC_GAINS_filename>
+<BC_ship_filename  >atm/cam/chem/carma/data/IPCC_BC_ships_2010_0.5x0.5.nc</BC_ship_filename>
+<OC_ship_filename  >atm/cam/chem/carma/data/IPCC_OC_ships_2010_0.5x0.5.nc</OC_ship_filename>
+<BC_GFEDv3_filename>atm/cam/chem/carma/data/GFEDv3_BC_2010.nc</BC_GFEDv3_filename>
+<OC_GFEDv3_filename>atm/cam/chem/carma/data/GFEDv3_OC_2010.nc</OC_GFEDv3_filename>
+
+<bin_defs carma="trop_strat_soa1">
+  'MXAER01:=',  'N:NBMXAER01:N:CLDNBMXAER01:num:+',
+                'A:MXSULF01:N:CLDMXSULF01:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC01:N:CLDMXOC01:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA01:N:CLDMXSOA01:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC01:N:CLDMXBC01:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST01:N:CLDMXDUST01:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT01:N:CLDMXSALT01:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER02:=', 'N:NBMXAER02:N:CLDNBMXAER02:num:+',
+                'A:MXSULF02:N:CLDMXSULF02:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC02:N:CLDMXOC02:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA02:N:CLDMXSOA02:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC02:N:CLDMXBC02:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST02:N:CLDMXDUST02:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT02:N:CLDMXSALT02:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER03:=', 'N:NBMXAER03:N:CLDNBMXAER03:num:+',
+                'A:MXSULF03:N:CLDMXSULF03:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC03:N:CLDMXOC03:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA03:N:CLDMXSOA03:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC03:N:CLDMXBC03:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST03:N:CLDMXDUST03:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT03:N:CLDMXSALT03:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER04:=', 'N:NBMXAER04:N:CLDNBMXAER04:num:+',
+                'A:MXSULF04:N:CLDMXSULF04:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC04:N:CLDMXOC04:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA04:N:CLDMXSOA04:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC04:N:CLDMXBC04:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST04:N:CLDMXDUST04:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT04:N:CLDMXSALT04:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER05:=', 'N:NBMXAER05:N:CLDNBMXAER05:num:+',
+                'A:MXSULF05:N:CLDMXSULF05:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC05:N:CLDMXOC05:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA05:N:CLDMXSOA05:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC05:N:CLDMXBC05:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST05:N:CLDMXDUST05:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT05:N:CLDMXSALT05:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER06:=', 'N:NBMXAER06:N:CLDNBMXAER06:num:+',
+                'A:MXSULF06:N:CLDMXSULF06:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC06:N:CLDMXOC06:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA06:N:CLDMXSOA06:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC06:N:CLDMXBC06:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST06:N:CLDMXDUST06:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT06:N:CLDMXSALT06:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER07:=', 'N:NBMXAER07:N:CLDNBMXAER07:num:+',
+                'A:MXSULF07:N:CLDMXSULF07:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC07:N:CLDMXOC07:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA07:N:CLDMXSOA07:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC07:N:CLDMXBC07:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST07:N:CLDMXDUST07:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT07:N:CLDMXSALT07:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER08:=', 'N:NBMXAER08:N:CLDNBMXAER08:num:+',
+                'A:MXSULF08:N:CLDMXSULF08:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC08:N:CLDMXOC08:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA08:N:CLDMXSOA08:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC08:N:CLDMXBC08:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST08:N:CLDMXDUST08:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT08:N:CLDMXSALT08:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER09:=', 'N:NBMXAER09:N:CLDNBMXAER09:num:+',
+                'A:MXSULF09:N:CLDMXSULF09:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC09:N:CLDMXOC09:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA09:N:CLDMXSOA09:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC09:N:CLDMXBC09:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST09:N:CLDMXDUST09:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT09:N:CLDMXSALT09:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER10:=', 'N:NBMXAER10:N:CLDNBMXAER10:num:+',
+                'A:MXSULF10:N:CLDMXSULF10:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC10:N:CLDMXOC10:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA10:N:CLDMXSOA10:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC10:N:CLDMXBC10:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST10:N:CLDMXDUST10:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT10:N:CLDMXSALT10:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER11:=', 'N:NBMXAER11:N:CLDNBMXAER11:num:+',
+                'A:MXSULF11:N:CLDMXSULF11:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC11:N:CLDMXOC11:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA11:N:CLDMXSOA11:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC11:N:CLDMXBC11:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST11:N:CLDMXDUST11:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT11:N:CLDMXSALT11:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER12:=', 'N:NBMXAER12:N:CLDNBMXAER12:num:+',
+                'A:MXSULF12:N:CLDMXSULF12:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC12:N:CLDMXOC12:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA12:N:CLDMXSOA12:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC12:N:CLDMXBC12:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST12:N:CLDMXDUST12:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT12:N:CLDMXSALT12:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER13:=', 'N:NBMXAER13:N:CLDNBMXAER13:num:+',
+                'A:MXSULF13:N:CLDMXSULF13:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC13:N:CLDMXOC13:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA13:N:CLDMXSOA13:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC13:N:CLDMXBC13:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST13:N:CLDMXDUST13:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT13:N:CLDMXSALT13:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER14:=', 'N:NBMXAER14:N:CLDNBMXAER14:num:+',
+                'A:MXSULF14:N:CLDMXSULF14:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC14:N:CLDMXOC14:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA14:N:CLDMXSOA14:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC14:N:CLDMXBC14:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST14:N:CLDMXDUST14:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT14:N:CLDMXSALT14:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER15:=', 'N:NBMXAER15:N:CLDNBMXAER15:num:+',
+                'A:MXSULF15:N:CLDMXSULF15:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC15:N:CLDMXOC15:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA15:N:CLDMXSOA15:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC15:N:CLDMXBC15:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST15:N:CLDMXDUST15:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT15:N:CLDMXSALT15:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER16:=', 'N:NBMXAER16:N:CLDNBMXAER16:num:+',
+                'A:MXSULF16:N:CLDMXSULF16:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC16:N:CLDMXOC16:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA16:N:CLDMXSOA16:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC16:N:CLDMXBC16:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST16:N:CLDMXDUST16:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT16:N:CLDMXSALT16:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER17:=', 'N:NBMXAER17:N:CLDNBMXAER17:num:+',
+                'A:MXSULF17:N:CLDMXSULF17:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC17:N:CLDMXOC17:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA17:N:CLDMXSOA17:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC17:N:CLDMXBC17:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST17:N:CLDMXDUST17:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT17:N:CLDMXSALT17:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER18:=', 'N:NBMXAER18:N:CLDNBMXAER18:num:+',
+                'A:MXSULF18:N:CLDMXSULF18:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC18:N:CLDMXOC18:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA18:N:CLDMXSOA18:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC18:N:CLDMXBC18:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST18:N:CLDMXDUST18:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT18:N:CLDMXSALT18:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER19:=', 'N:NBMXAER19:N:CLDNBMXAER19:num:+',
+                'A:MXSULF19:N:CLDMXSULF19:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC19:N:CLDMXOC19:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA19:N:CLDMXSOA19:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC19:N:CLDMXBC19:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST19:N:CLDMXDUST19:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT19:N:CLDMXSALT19:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER20:=', 'N:NBMXAER20:N:CLDNBMXAER20:num:+',
+                'A:MXSULF20:N:CLDMXSULF20:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC20:N:CLDMXOC20:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA20:N:CLDMXSOA20:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC20:N:CLDMXBC20:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST20:N:CLDMXDUST20:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT20:N:CLDMXSALT20:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'PRSUL01:=', 'N:NBPRSUL01:N:CLDNBPRSUL01:num:+',
+                'A:PRSULF01:N:CLDPRSULF01:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL02:=', 'N:NBPRSUL02:N:CLDNBPRSUL02:num:+',
+                'A:PRSULF02:N:CLDPRSULF02:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL03:=', 'N:NBPRSUL03:N:CLDNBPRSUL03:num:+',
+                'A:PRSULF03:N:CLDPRSULF03:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL04:=', 'N:NBPRSUL04:N:CLDNBPRSUL04:num:+',
+                'A:PRSULF04:N:CLDPRSULF04:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL05:=', 'N:NBPRSUL05:N:CLDNBPRSUL05:num:+',
+                'A:PRSULF05:N:CLDPRSULF05:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL06:=', 'N:NBPRSUL06:N:CLDNBPRSUL06:num:+',
+                'A:PRSULF06:N:CLDPRSULF06:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL07:=', 'N:NBPRSUL07:N:CLDNBPRSUL07:num:+',
+                'A:PRSULF07:N:CLDPRSULF07:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL08:=', 'N:NBPRSUL08:N:CLDNBPRSUL08:num:+',
+                'A:PRSULF08:N:CLDPRSULF08:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL09:=', 'N:NBPRSUL09:N:CLDNBPRSUL09:num:+',
+                'A:PRSULF09:N:CLDPRSULF09:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL10:=', 'N:NBPRSUL10:N:CLDNBPRSUL10:num:+',
+                'A:PRSULF10:N:CLDPRSULF10:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL11:=', 'N:NBPRSUL11:N:CLDNBPRSUL11:num:+',
+                'A:PRSULF11:N:CLDPRSULF11:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL12:=', 'N:NBPRSUL12:N:CLDNBPRSUL12:num:+',
+                'A:PRSULF12:N:CLDPRSULF12:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL13:=', 'N:NBPRSUL13:N:CLDNBPRSUL13:num:+',
+                'A:PRSULF13:N:CLDPRSULF13:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL14:=', 'N:NBPRSUL14:N:CLDNBPRSUL14:num:+',
+                'A:PRSULF14:N:CLDPRSULF14:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL15:=', 'N:NBPRSUL15:N:CLDNBPRSUL15:num:+',
+                'A:PRSULF15:N:CLDPRSULF15:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL16:=', 'N:NBPRSUL16:N:CLDNBPRSUL16:num:+',
+                'A:PRSULF16:N:CLDPRSULF16:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL17:=', 'N:NBPRSUL17:N:CLDNBPRSUL17:num:+',
+                'A:PRSULF17:N:CLDPRSULF17:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL18:=', 'N:NBPRSUL18:N:CLDNBPRSUL18:num:+',
+                'A:PRSULF18:N:CLDPRSULF18:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL19:=', 'N:NBPRSUL19:N:CLDNBPRSUL19:num:+',
+                'A:PRSULF19:N:CLDPRSULF19:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL20:=', 'N:NBPRSUL20:N:CLDNBPRSUL20:num:+',
+                'A:PRSULF20:N:CLDPRSULF20:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc'
+</bin_defs>
+
+<bin_defs carma="trop_strat_soa5">
+   'MXAER01:=', 'N:NBMXAER01:N:CLDNBMXAER01:num:+',
+                'A:MXSULF01:N:CLDMXSULF01:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC01:N:CLDMXOC01:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA101:N:CLDMXSOA101:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA201:N:CLDMXSOA201:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA301:N:CLDMXSOA301:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA401:N:CLDMXSOA401:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA501:N:CLDMXSOA501:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC01:N:CLDMXBC01:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST01:N:CLDMXDUST01:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT01:N:CLDMXSALT01:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER02:=', 'N:NBMXAER02:N:CLDNBMXAER02:num:+',
+                'A:MXSULF02:N:CLDMXSULF02:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC02:N:CLDMXOC02:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA102:N:CLDMXSOA102:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA202:N:CLDMXSOA202:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA302:N:CLDMXSOA302:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA402:N:CLDMXSOA402:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA502:N:CLDMXSOA502:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC02:N:CLDMXBC02:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST02:N:CLDMXDUST02:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT02:N:CLDMXSALT02:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER03:=', 'N:NBMXAER03:N:CLDNBMXAER03:num:+',
+                'A:MXSULF03:N:CLDMXSULF03:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC03:N:CLDMXOC03:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA103:N:CLDMXSOA103:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA203:N:CLDMXSOA203:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA303:N:CLDMXSOA303:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA403:N:CLDMXSOA403:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA503:N:CLDMXSOA503:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC03:N:CLDMXBC03:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST03:N:CLDMXDUST03:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT03:N:CLDMXSALT03:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER04:=', 'N:NBMXAER04:N:CLDNBMXAER04:num:+',
+                'A:MXSULF04:N:CLDMXSULF04:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC04:N:CLDMXOC04:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA104:N:CLDMXSOA104:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA204:N:CLDMXSOA204:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA304:N:CLDMXSOA304:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA404:N:CLDMXSOA404:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA504:N:CLDMXSOA504:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC04:N:CLDMXBC04:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST04:N:CLDMXDUST04:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT04:N:CLDMXSALT04:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER05:=', 'N:NBMXAER05:N:CLDNBMXAER05:num:+',
+                'A:MXSULF05:N:CLDMXSULF05:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC05:N:CLDMXOC05:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA105:N:CLDMXSOA105:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA205:N:CLDMXSOA205:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA305:N:CLDMXSOA305:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA405:N:CLDMXSOA405:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA505:N:CLDMXSOA505:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC05:N:CLDMXBC05:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST05:N:CLDMXDUST05:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT05:N:CLDMXSALT05:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER06:=', 'N:NBMXAER06:N:CLDNBMXAER06:num:+',
+                'A:MXSULF06:N:CLDMXSULF06:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC06:N:CLDMXOC06:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA106:N:CLDMXSOA106:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA206:N:CLDMXSOA206:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA306:N:CLDMXSOA306:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA406:N:CLDMXSOA406:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA506:N:CLDMXSOA506:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC06:N:CLDMXBC06:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST06:N:CLDMXDUST06:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT06:N:CLDMXSALT06:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER07:=', 'N:NBMXAER07:N:CLDNBMXAER07:num:+',
+                'A:MXSULF07:N:CLDMXSULF07:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC07:N:CLDMXOC07:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA107:N:CLDMXSOA107:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA207:N:CLDMXSOA207:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA307:N:CLDMXSOA307:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA407:N:CLDMXSOA407:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA507:N:CLDMXSOA507:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC07:N:CLDMXBC07:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST07:N:CLDMXDUST07:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT07:N:CLDMXSALT07:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER08:=', 'N:NBMXAER08:N:CLDNBMXAER08:num:+',
+                'A:MXSULF08:N:CLDMXSULF08:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC08:N:CLDMXOC08:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA108:N:CLDMXSOA108:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA208:N:CLDMXSOA208:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA308:N:CLDMXSOA308:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA408:N:CLDMXSOA408:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA508:N:CLDMXSOA508:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC08:N:CLDMXBC08:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST08:N:CLDMXDUST08:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT08:N:CLDMXSALT08:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER09:=', 'N:NBMXAER09:N:CLDNBMXAER09:num:+',
+                'A:MXSULF09:N:CLDMXSULF09:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC09:N:CLDMXOC09:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA109:N:CLDMXSOA109:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA209:N:CLDMXSOA209:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA309:N:CLDMXSOA309:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA409:N:CLDMXSOA409:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA509:N:CLDMXSOA509:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC09:N:CLDMXBC09:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST09:N:CLDMXDUST09:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT09:N:CLDMXSALT09:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER10:=', 'N:NBMXAER10:N:CLDNBMXAER10:num:+',
+                'A:MXSULF10:N:CLDMXSULF10:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC10:N:CLDMXOC10:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA110:N:CLDMXSOA110:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA210:N:CLDMXSOA210:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA310:N:CLDMXSOA310:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA410:N:CLDMXSOA410:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA510:N:CLDMXSOA510:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC10:N:CLDMXBC10:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST10:N:CLDMXDUST10:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT10:N:CLDMXSALT10:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER11:=', 'N:NBMXAER11:N:CLDNBMXAER11:num:+',
+                'A:MXSULF11:N:CLDMXSULF11:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC11:N:CLDMXOC11:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA111:N:CLDMXSOA111:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA211:N:CLDMXSOA211:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA311:N:CLDMXSOA311:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA411:N:CLDMXSOA411:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA511:N:CLDMXSOA511:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC11:N:CLDMXBC11:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST11:N:CLDMXDUST11:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT11:N:CLDMXSALT11:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER12:=', 'N:NBMXAER12:N:CLDNBMXAER12:num:+',
+                'A:MXSULF12:N:CLDMXSULF12:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC12:N:CLDMXOC12:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA112:N:CLDMXSOA112:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA212:N:CLDMXSOA212:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA312:N:CLDMXSOA312:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA412:N:CLDMXSOA412:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA512:N:CLDMXSOA512:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC12:N:CLDMXBC12:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST12:N:CLDMXDUST12:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT12:N:CLDMXSALT12:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER13:=', 'N:NBMXAER13:N:CLDNBMXAER13:num:+',
+                'A:MXSULF13:N:CLDMXSULF13:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC13:N:CLDMXOC13:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA113:N:CLDMXSOA113:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA213:N:CLDMXSOA213:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA313:N:CLDMXSOA313:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA413:N:CLDMXSOA413:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA513:N:CLDMXSOA513:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC13:N:CLDMXBC13:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST13:N:CLDMXDUST13:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT13:N:CLDMXSALT13:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER14:=', 'N:NBMXAER14:N:CLDNBMXAER14:num:+',
+                'A:MXSULF14:N:CLDMXSULF14:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC14:N:CLDMXOC14:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA114:N:CLDMXSOA114:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA214:N:CLDMXSOA214:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA314:N:CLDMXSOA314:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA414:N:CLDMXSOA414:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA514:N:CLDMXSOA514:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC14:N:CLDMXBC14:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST14:N:CLDMXDUST14:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT14:N:CLDMXSALT14:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER15:=', 'N:NBMXAER15:N:CLDNBMXAER15:num:+',
+                'A:MXSULF15:N:CLDMXSULF15:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC15:N:CLDMXOC15:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA115:N:CLDMXSOA115:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA215:N:CLDMXSOA215:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA315:N:CLDMXSOA315:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA415:N:CLDMXSOA415:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA515:N:CLDMXSOA515:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC15:N:CLDMXBC15:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST15:N:CLDMXDUST15:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT15:N:CLDMXSALT15:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER16:=', 'N:NBMXAER16:N:CLDNBMXAER16:num:+',
+                'A:MXSULF16:N:CLDMXSULF16:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC16:N:CLDMXOC16:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA116:N:CLDMXSOA116:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA216:N:CLDMXSOA216:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA316:N:CLDMXSOA316:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA416:N:CLDMXSOA416:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA516:N:CLDMXSOA516:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC16:N:CLDMXBC16:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST16:N:CLDMXDUST16:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT16:N:CLDMXSALT16:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER17:=', 'N:NBMXAER17:N:CLDNBMXAER17:num:+',
+                'A:MXSULF17:N:CLDMXSULF17:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC17:N:CLDMXOC17:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA117:N:CLDMXSOA117:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA217:N:CLDMXSOA217:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA317:N:CLDMXSOA317:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA417:N:CLDMXSOA417:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA517:N:CLDMXSOA517:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC17:N:CLDMXBC17:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST17:N:CLDMXDUST17:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT17:N:CLDMXSALT17:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER18:=', 'N:NBMXAER18:N:CLDNBMXAER18:num:+',
+                'A:MXSULF18:N:CLDMXSULF18:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC18:N:CLDMXOC18:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA118:N:CLDMXSOA118:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA218:N:CLDMXSOA218:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA318:N:CLDMXSOA318:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA418:N:CLDMXSOA418:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA518:N:CLDMXSOA518:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC18:N:CLDMXBC18:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST18:N:CLDMXDUST18:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT18:N:CLDMXSALT18:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER19:=', 'N:NBMXAER19:N:CLDNBMXAER19:num:+',
+                'A:MXSULF19:N:CLDMXSULF19:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC19:N:CLDMXOC19:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA119:N:CLDMXSOA119:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA219:N:CLDMXSOA219:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA319:N:CLDMXSOA319:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA419:N:CLDMXSOA419:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA519:N:CLDMXSOA519:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC19:N:CLDMXBC19:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST19:N:CLDMXDUST19:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT19:N:CLDMXSALT19:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'MXAER20:=', 'N:NBMXAER20:N:CLDNBMXAER20:num:+',
+                'A:MXSULF20:N:CLDMXSULF20:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc:+',
+                'A:MXOC20:N:CLDMXOC20:p-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/ocphi_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA120:N:CLDMXSOA120:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA220:N:CLDMXSOA220:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA320:N:CLDMXSOA320:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA420:N:CLDMXSOA420:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXSOA520:N:CLDMXSOA520:s-organic:shell:$INPUTDATA_ROOT/atm/cam/physprops/soa_rrtmg_carma_c100508.nc:+',
+                'A:MXBC20:N:CLDMXBC20:black-c:core:$INPUTDATA_ROOT/atm/cam/physprops/bcpho_rrtmg_carma_c100508.nc:+',
+                'A:MXDUST20:N:CLDMXDUST20:dust:core:$INPUTDATA_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_carma_c141106.nc:+',
+                'A:MXSALT20:N:CLDMXSALT20:seasalt:shell:$INPUTDATA_ROOT/atm/cam/physprops/ssam_rrtmg_carma_c100508.nc',
+   'PRSUL01:=', 'N:NBPRSUL01:N:CLDNBPRSUL01:num:+',
+                'A:PRSULF01:N:CLDPRSULF01:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL02:=', 'N:NBPRSUL02:N:CLDNBPRSUL02:num:+',
+                'A:PRSULF02:N:CLDPRSULF02:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL03:=', 'N:NBPRSUL03:N:CLDNBPRSUL03:num:+',
+                'A:PRSULF03:N:CLDPRSULF03:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL04:=', 'N:NBPRSUL04:N:CLDNBPRSUL04:num:+',
+                'A:PRSULF04:N:CLDPRSULF04:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL05:=', 'N:NBPRSUL05:N:CLDNBPRSUL05:num:+',
+                'A:PRSULF05:N:CLDPRSULF05:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL06:=', 'N:NBPRSUL06:N:CLDNBPRSUL06:num:+',
+                'A:PRSULF06:N:CLDPRSULF06:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL07:=', 'N:NBPRSUL07:N:CLDNBPRSUL07:num:+',
+                'A:PRSULF07:N:CLDPRSULF07:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL08:=', 'N:NBPRSUL08:N:CLDNBPRSUL08:num:+',
+                'A:PRSULF08:N:CLDPRSULF08:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL09:=', 'N:NBPRSUL09:N:CLDNBPRSUL09:num:+',
+                'A:PRSULF09:N:CLDPRSULF09:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL10:=', 'N:NBPRSUL10:N:CLDNBPRSUL10:num:+',
+                'A:PRSULF10:N:CLDPRSULF10:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL11:=', 'N:NBPRSUL11:N:CLDNBPRSUL11:num:+',
+                'A:PRSULF11:N:CLDPRSULF11:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL12:=', 'N:NBPRSUL12:N:CLDNBPRSUL12:num:+',
+                'A:PRSULF12:N:CLDPRSULF12:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL13:=', 'N:NBPRSUL13:N:CLDNBPRSUL13:num:+',
+                'A:PRSULF13:N:CLDPRSULF13:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL14:=', 'N:NBPRSUL14:N:CLDNBPRSUL14:num:+',
+                'A:PRSULF14:N:CLDPRSULF14:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL15:=', 'N:NBPRSUL15:N:CLDNBPRSUL15:num:+',
+                'A:PRSULF15:N:CLDPRSULF15:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL16:=', 'N:NBPRSUL16:N:CLDNBPRSUL16:num:+',
+                'A:PRSULF16:N:CLDPRSULF16:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL17:=', 'N:NBPRSUL17:N:CLDNBPRSUL17:num:+',
+                'A:PRSULF17:N:CLDPRSULF17:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL18:=', 'N:NBPRSUL18:N:CLDNBPRSUL18:num:+',
+                'A:PRSULF18:N:CLDPRSULF18:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL19:=', 'N:NBPRSUL19:N:CLDNBPRSUL19:num:+',
+                'A:PRSULF19:N:CLDPRSULF19:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc',
+   'PRSUL20:=', 'N:NBPRSUL20:N:CLDNBPRSUL20:num:+',
+                'A:PRSULF20:N:CLDPRSULF20:sulfate:shell:$INPUTDATA_ROOT/atm/cam/physprops/sulfate_rrtmg_carma_c080918.nc'
+</bin_defs>
+
+<rad_climate carma="trop_strat_soa1">
+    'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'A:O3:O3', 'A:N2O:N2O', 'A:CH4:CH4','N:CFC11:CFC11', 'N:CFC12:CFC12',
+    'B:MXAER01:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX01_rrtmg.nc',
+    'B:MXAER02:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX02_rrtmg.nc',
+    'B:MXAER03:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX03_rrtmg.nc',
+    'B:MXAER04:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX04_rrtmg.nc',
+    'B:MXAER05:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX05_rrtmg.nc',
+    'B:MXAER06:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX06_rrtmg.nc',
+    'B:MXAER07:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX07_rrtmg.nc',
+    'B:MXAER08:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX08_rrtmg.nc',
+    'B:MXAER09:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX09_rrtmg.nc',
+    'B:MXAER10:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX10_rrtmg.nc',
+    'B:MXAER11:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX11_rrtmg.nc',
+    'B:MXAER12:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX12_rrtmg.nc',
+    'B:MXAER13:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX13_rrtmg.nc',
+    'B:MXAER14:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX14_rrtmg.nc',
+    'B:MXAER15:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX15_rrtmg.nc',
+    'B:MXAER16:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX16_rrtmg.nc',
+    'B:MXAER17:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX17_rrtmg.nc',
+    'B:MXAER18:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX18_rrtmg.nc',
+    'B:MXAER19:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX19_rrtmg.nc',
+    'B:MXAER20:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX20_rrtmg.nc',
+    'B:PRSUL01:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF01_rrtmg.nc',
+    'B:PRSUL02:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF02_rrtmg.nc',
+    'B:PRSUL03:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF03_rrtmg.nc',
+    'B:PRSUL04:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF04_rrtmg.nc',
+    'B:PRSUL05:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF05_rrtmg.nc',
+    'B:PRSUL06:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF06_rrtmg.nc',
+    'B:PRSUL07:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF07_rrtmg.nc',
+    'B:PRSUL08:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF08_rrtmg.nc',
+    'B:PRSUL09:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF09_rrtmg.nc',
+    'B:PRSUL10:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF10_rrtmg.nc',
+    'B:PRSUL11:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF11_rrtmg.nc',
+    'B:PRSUL12:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF12_rrtmg.nc',
+    'B:PRSUL13:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF13_rrtmg.nc',
+    'B:PRSUL14:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF14_rrtmg.nc',
+    'B:PRSUL15:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF15_rrtmg.nc',
+    'B:PRSUL16:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF16_rrtmg.nc',
+    'B:PRSUL17:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF17_rrtmg.nc',
+    'B:PRSUL18:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF18_rrtmg.nc',
+    'B:PRSUL19:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF19_rrtmg.nc',
+    'B:PRSUL20:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF20_rrtmg.nc'
+</rad_climate>
+
+<rad_climate carma="trop_strat_soa5">
+    'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'A:O3:O3', 'A:N2O:N2O', 'A:CH4:CH4','N:CFC11:CFC11', 'N:CFC12:CFC12',
+    'B:MXAER01:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX01_rrtmg.nc',
+    'B:MXAER02:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX02_rrtmg.nc',
+    'B:MXAER03:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX03_rrtmg.nc',
+    'B:MXAER04:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX04_rrtmg.nc',
+    'B:MXAER05:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX05_rrtmg.nc',
+    'B:MXAER06:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX06_rrtmg.nc',
+    'B:MXAER07:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX07_rrtmg.nc',
+    'B:MXAER08:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX08_rrtmg.nc',
+    'B:MXAER09:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX09_rrtmg.nc',
+    'B:MXAER10:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX10_rrtmg.nc',
+    'B:MXAER11:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX11_rrtmg.nc',
+    'B:MXAER12:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX12_rrtmg.nc',
+    'B:MXAER13:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX13_rrtmg.nc',
+    'B:MXAER14:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX14_rrtmg.nc',
+    'B:MXAER15:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX15_rrtmg.nc',
+    'B:MXAER16:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX16_rrtmg.nc',
+    'B:MXAER17:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX17_rrtmg.nc',
+    'B:MXAER18:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX18_rrtmg.nc',
+    'B:MXAER19:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX19_rrtmg.nc',
+    'B:MXAER20:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX20_rrtmg.nc',
+    'B:PRSUL01:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF01_rrtmg.nc',
+    'B:PRSUL02:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF02_rrtmg.nc',
+    'B:PRSUL03:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF03_rrtmg.nc',
+    'B:PRSUL04:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF04_rrtmg.nc',
+    'B:PRSUL05:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF05_rrtmg.nc',
+    'B:PRSUL06:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF06_rrtmg.nc',
+    'B:PRSUL07:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF07_rrtmg.nc',
+    'B:PRSUL08:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF08_rrtmg.nc',
+    'B:PRSUL09:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF09_rrtmg.nc',
+    'B:PRSUL10:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF10_rrtmg.nc',
+    'B:PRSUL11:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF11_rrtmg.nc',
+    'B:PRSUL12:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF12_rrtmg.nc',
+    'B:PRSUL13:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF13_rrtmg.nc',
+    'B:PRSUL14:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF14_rrtmg.nc',
+    'B:PRSUL15:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF15_rrtmg.nc',
+    'B:PRSUL16:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF16_rrtmg.nc',
+    'B:PRSUL17:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF17_rrtmg.nc',
+    'B:PRSUL18:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF18_rrtmg.nc',
+    'B:PRSUL19:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF19_rrtmg.nc',
+    'B:PRSUL20:$INPUTDATA_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_SULF20_rrtmg.nc'
+</rad_climate>
 
 </namelist_defaults>

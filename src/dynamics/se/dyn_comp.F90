@@ -1997,7 +1997,7 @@ subroutine set_phis(dyn_in)
                               PHIS_OUT=phis_tmp, mask=pmask(:))
       deallocate(glob_ind)
 
-   end if
+    end if
 
    deallocate(pmask)
 
