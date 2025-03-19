@@ -544,7 +544,6 @@
 [HO2NO2_OH]            HO2NO2 + OH  -> H2O + NO2 + O2                           ; 4.5e-13, 610
 [N2D_NO,cph=543.13]    N2D + NO  -> N2 + O                                      ; 7e-11
 [N2D_O,cph=229.61]     N2D + O  -> N + O                                        ; 7e-13
-[N2D_O2,cph=177.51]    N2D + O2  -> NO + O1D                                    ; 5e-12
 [N_NO,cph=313.75]      N + NO  -> N2 + O                                        ; 2.1e-11, 100
 [N_NO2a]               N + NO2  -> N2O + O                                      ; 2.9e-12, 220
 [N_NO2b]               N + NO2  -> 2*NO                                         ; 1.45e-12, 220
