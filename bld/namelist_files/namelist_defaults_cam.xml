@@ -3252,7 +3252,7 @@
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  model_top="ht"                >  2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="ht"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  model_top="xt"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4" waccm_phys="1" waccmx="1" model_top="none">  4  </se_nsplit>
 <se_nsplit hgrid="ne30np4"                                >  2  </se_nsplit>
