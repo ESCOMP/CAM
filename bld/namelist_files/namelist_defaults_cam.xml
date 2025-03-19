@@ -257,7 +257,6 @@
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"           ic_ymd="101">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70"           ic_ymd="101">atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3" chem="waccm_sc_mam4">atm/waccm/ic/FWsc2000climo_ne30pg3_L70_0002-01-01_c221103.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000.ne30pg3_ne30pg3_nlev70_c230906.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
 
