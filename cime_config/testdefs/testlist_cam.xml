@@ -1290,7 +1290,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FHISTC_WXma" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_WXma" grid="ne30pg3_ne30pg3_mg17" name="ERS_Lh3" testmods="cam/outfrq3h">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="waccmx"/>

@@ -169,7 +169,7 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne5np4"    nlev="126" waccmx="1"               >atm/waccm/ic/waccmx_aqua_ne5np4_126L_c210304.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1"               >atm/waccm/ic/waccmx_ne16np4_126L_c200108.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne16np4"   nlev="130" waccmx="1"               >atm/waccm/ic/fx2000_phys-ionos-cpl_ne16_spinup03.cam.i.0002-01-01-00000_c201005.nc</ncdata>
+<ncdata dyn="se"  hgrid="ne16np4"   nlev="130" waccmx="1"               >atm/waccm/ic/waccmx_ne16pg3_L130_c250318.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne30np4"   nlev="130" waccmx="1"               >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
@@ -305,7 +305,7 @@
 <bnd_topo hgrid="ne3np4"          >atm/cam/topo/se/ne3np4_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230717.nc</bnd_topo>
 <bnd_topo hgrid="ne3np4"   npg="3">atm/cam/topo/se/ne3pg3_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230209.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
-<bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
+<bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
 <bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
@@ -3171,6 +3171,7 @@
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1"            model_top="none"> 10 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0" model_top="none"> 9 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0" model_top="none"> 8 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1" model_top="none"> 5 </se_hypervis_subcycle>
@@ -3250,7 +3251,7 @@
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  model_top="ht"                >  2  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  model_top="xt"                >  3  </se_nsplit>
@@ -3267,6 +3268,7 @@
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
 <se_rsplit model_top="ht"                           > 2 </se_rsplit>
 <se_rsplit waccmx="1"                               > 4 </se_rsplit>
+<se_rsplit hgrid="ne16np4" waccmx="1" model_top="none"> 2 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
