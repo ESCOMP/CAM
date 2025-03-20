@@ -870,6 +870,7 @@ subroutine rk_stratiform_cam_tend( &
    ! write out convective cloud fraction diagnostic.
    call outfld( 'SH_CLD  ', shallowcu   , pcols, lchnk )
    call outfld( 'DP_CLD  ', deepcu      , pcols, lchnk )
+   call outfld( 'CONCLD  ', concld      , pcols, lchnk )
 
    ! Stratus ('ast' = max(alst,aist)) and total cloud fraction ('cld = ast + concld')
    ! will be computed using this updated 'concld' in the stratiform macrophysics
@@ -1066,8 +1067,8 @@ subroutine rk_stratiform_cam_tend( &
       qtend           = qtend(:ncol,:),        &
       qn              = state1%q(:ncol,:,1),   & ! assumes wv is at 1
       ltend           = ltend(:ncol,:),        &
-      cldice          = state1%q(:ncol,:pver,ixcldice), &
-      cldliq          = state1%q(:ncol,:pver,ixcldliq), &
+      cldice          = state1%q(:ncol,:pver,ixcldice), & ! for bit-for-bit, use values pre-repartitioning.
+      cldliq          = state1%q(:ncol,:pver,ixcldliq), & ! for bit-for-bit, use values pre-repartitioning.
       !cwat            = totcw(:ncol,:),        &
       omega           = state1%omega(:ncol,:), &
       cldn            = cld(:ncol,:),          &
@@ -1140,8 +1141,25 @@ subroutine rk_stratiform_cam_tend( &
    call outfld( 'REPARTICE', ptend_loc%q(:,:,ixcldice), pcols, lchnk )
    call outfld( 'REPARTLIQ', ptend_loc%q(:,:,ixcldliq), pcols, lchnk )
 
+   ! note: to restore old way of calculating repartht
+   ! because apparently it causes errors greater than roundoff when accumulated
+   ! in certain compsets of the CAM regression tests.
+   ! in any case, I do not believe this is a good representation. It sets repartht
+   ! to an intermediate value with the wrong units...
+   ! repartht(:ncol,:pver)  = state1%q(:ncol,:pver,ixcldice)
+   ! still bit differences:
+   ! repartht(:ncol,:pver)  = (latice/dtime) * state1%q(:ncol,:pver,ixcldice)
+   ! // note
+
    call physics_ptend_sum( ptend_loc, ptend_all, ncol )
    call physics_update( state1, ptend_loc, dtime )
+
+   ! note: second part of restoring old way of calculating repartht
+   ! ...then does the difference here to determine repartition heating
+   ! repartht(:ncol,:pver) = (latice/dtime) * ( state1%q(:ncol,:pver,ixcldice) - repartht(:ncol,:pver) )
+   ! still bit differences if we switch to maintain proper units:
+   ! repartht(:ncol,:pver) = (latice/dtime) * state1%q(:ncol,:pver,ixcldice) - repartht(:ncol,:pver)
+
 
    !-------------------------------------------------------
    ! APPLY Stratiform Macro-Microphysical Tendencies
@@ -1190,6 +1208,11 @@ subroutine rk_stratiform_cam_tend( &
       errflg          = errflg)
 
    ! Record history variables
+   call outfld( 'CME'     , qme,         pcols, lchnk )
+   call outfld( 'PRODPREC' , prain,       pcols, lchnk )
+   call outfld( 'EVAPPREC' , nevapr,      pcols, lchnk )
+   call outfld( 'EVAPSNOW' , evapsnow,    pcols, lchnk )
+
    call outfld( 'FWAUT'   , fwaut,       pcols, lchnk )
    call outfld( 'FSAUT'   , fsaut,       pcols, lchnk )
    call outfld( 'FRACW'   , fracw,       pcols, lchnk )
@@ -1294,7 +1317,6 @@ subroutine rk_stratiform_cam_tend( &
       errflg = errflg)
    call t_stopf("cldfrc")
 
-   call outfld( 'CONCLD  ', concld, pcols, lchnk )
    call outfld( 'CLDST   ', cldst,  pcols, lchnk )
 
    do k = 1, pver
@@ -1310,10 +1332,6 @@ subroutine rk_stratiform_cam_tend( &
    call outfld( 'LWC'      , lwc,         pcols, lchnk )
    call outfld( 'ICIMR'    , icimr,       pcols, lchnk )
    call outfld( 'ICWMR'    , icwmr,       pcols, lchnk )
-   call outfld( 'CME'      , qme,         pcols, lchnk )
-   call outfld( 'PRODPREC' , prain,       pcols, lchnk )
-   call outfld( 'EVAPPREC' , nevapr,      pcols, lchnk )
-   call outfld( 'EVAPSNOW' , evapsnow,    pcols, lchnk )
 
    call t_stopf('stratiform_microphys')
 

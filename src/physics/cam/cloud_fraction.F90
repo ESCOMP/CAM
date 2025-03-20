@@ -220,16 +220,6 @@ subroutine cldfrc_init
       inversion_cld_off = .false.
    endif
 
-   if ( masterproc ) then
-      write(iulog,*)'tuning parameters cldfrc_init: inversion_cld_off',inversion_cld_off
-      write(iulog,*)'tuning parameters cldfrc_init: dp1',dp1,'dp2',dp2,'sh1',sh1,'sh2',sh2
-      if (shallow_scheme .ne. 'UW') then
-         write(iulog,*)'tuning parameters cldfrc_init: rhminl',rhminl,'rhminl_adj_land',rhminl_adj_land, &
-                       'rhminh',rhminh,'premit',premit,'premib',premib
-         write(iulog,*)'tuning parameters cldfrc_init: iceopt',iceopt,'icecrit',icecrit
-      endif
-   endif
-
    if (pref_mid(top_lev) > 7.e4_r8) &
         call endrun ('cldfrc_init: model levels bracketing 700 mb not found')
 
