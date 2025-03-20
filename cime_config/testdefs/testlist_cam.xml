@@ -1686,9 +1686,9 @@
       <option name="comment">CAM7 mid top ~80 km</option>
     </options>
   </test>
-  <test compset="QPC7" grid="ne3pg2_ne3pg2_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC7" grid="ne30pg2_ne30pg2_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
