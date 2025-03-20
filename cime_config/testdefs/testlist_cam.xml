@@ -1003,15 +1003,6 @@
     </options>
   </test>
 
-  <test compset="FADIAB" grid="ne3pg3_ne3pg3_mt232" name="ERS_D_Ln9_P1x1" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >Adiabatic, analytic ICs</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              711    ter                    -->
   <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_ttrac">
     <machines>
@@ -1326,6 +1317,16 @@
 
 <!--              CAM Simple Models                       -->
 
+  <test compset="FADIAB" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9_P1x1" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >Adiabatic, analytic ICs</option>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
   <test compset="FHS94" grid="mpasa480_mpasa480_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
@@ -1335,7 +1336,7 @@
     </options>
   </test>
 
-  <test compset="FKESSLER" grid="ne3pg3_ne3pg3_mt232" name="ERS_D_Ln27" testmods="cam/outfrq9s">
+  <test compset="FKESSLER" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln27" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -1344,18 +1345,18 @@
     </options>
   </test>
 
-  <test compset="FTJ16" grid="ne3pg3_ne3pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FTJ16" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="intel" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
 
-  <test compset="FGRAYRAD" grid="ne3pg3_ne3pg3_mt232" name="ERS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FGRAYRAD" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="intel" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -1679,6 +1680,15 @@
   <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">CAM7 mid top ~80 km</option>
+    </options>
+  </test>
+  <test compset="FHISTC_MTso" grid="ne3pg2_ne3pg2_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
