@@ -675,7 +675,7 @@ subroutine rk_stratiform_cam_tend( &
       call tropopause_find_cam(state, troplev)
    endif
 
-   ! rlat, dlat required for CCPPized scheme
+   ! dlat required for CCPPized scheme
    call get_rlat_all_p(lchnk,ncol,rlat)
    dlat(:ncol) = rlat(:ncol)*rad2deg
 
@@ -1057,7 +1057,6 @@ subroutine rk_stratiform_cam_tend( &
       latice          = latice,                &
       cpair           = cpair,                 &
       dlat            = dlat(:ncol),           &
-      rlat            = rlat(:ncol),           &
       pmid            = state1%pmid(:ncol,:),  &
       pdel            = state1%pdel(:ncol,:),  &
       zi              = state1%zi(:ncol,:),    &
