@@ -5,7 +5,6 @@ inithist='ENDOFRUN'
 pbuf_global_allocate=.false.
 history_carma=.true.
 carma_do_fixedinit=.false.
-carma_reftfile="camrun.cam.r.carma_reft.nc"
 solar_data_type='FIXED'
 solar_data_ymd=20000101
 

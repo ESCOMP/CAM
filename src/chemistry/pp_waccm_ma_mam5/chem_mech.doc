@@ -72,37 +72,38 @@
       ( 69)  O               
       ( 70)  O2              
       ( 71)  O3              
-      ( 72)  OCLO               (OClO)
-      ( 73)  OCS                (OCS)
-      ( 74)  pom_a1             (C)
-      ( 75)  pom_a4             (C)
-      ( 76)  S                  (S)
-      ( 77)  SF6             
-      ( 78)  SO                 (SO)
-      ( 79)  SO2             
-      ( 80)  SO3                (SO3)
-      ( 81)  so4_a1             (NH4HSO4)
-      ( 82)  so4_a2             (NH4HSO4)
-      ( 83)  so4_a3             (NH4HSO4)
-      ( 84)  so4_a5             (NH4HSO4)
-      ( 85)  soa_a1             (C)
-      ( 86)  soa_a2             (C)
-      ( 87)  SOAG               (C)
-      ( 88)  e                  (E)
-      ( 89)  HO2             
-      ( 90)  N2D                (N)
-      ( 91)  N2p                (N2)
-      ( 92)  NOp                (NO)
-      ( 93)  Np                 (N)
-      ( 94)  O1D                (O)
-      ( 95)  O2_1D              (O2)
-      ( 96)  O2_1S              (O2)
-      ( 97)  O2p                (O2)
-      ( 98)  OH              
-      ( 99)  Op                 (O)
-      (100)  Op2D               (O)
-      (101)  Op2P               (O)
-      (102)  H2O             
+      ( 72)  O3S                (O3)
+      ( 73)  OCLO               (OClO)
+      ( 74)  OCS                (OCS)
+      ( 75)  pom_a1             (C)
+      ( 76)  pom_a4             (C)
+      ( 77)  S                  (S)
+      ( 78)  SF6             
+      ( 79)  SO                 (SO)
+      ( 80)  SO2             
+      ( 81)  SO3                (SO3)
+      ( 82)  so4_a1             (NH4HSO4)
+      ( 83)  so4_a2             (NH4HSO4)
+      ( 84)  so4_a3             (NH4HSO4)
+      ( 85)  so4_a5             (NH4HSO4)
+      ( 86)  soa_a1             (C)
+      ( 87)  soa_a2             (C)
+      ( 88)  SOAG               (C)
+      ( 89)  e                  (E)
+      ( 90)  HO2             
+      ( 91)  N2D                (N)
+      ( 92)  N2p                (N2)
+      ( 93)  NOp                (NO)
+      ( 94)  Np                 (N)
+      ( 95)  O1D                (O)
+      ( 96)  O2_1D              (O2)
+      ( 97)  O2_1S              (O2)
+      ( 98)  O2p                (O2)
+      ( 99)  OH              
+      (100)  Op                 (O)
+      (101)  Op2D               (O)
+      (102)  Op2P               (O)
+      (103)  H2O             
   
   
      Invariant species
@@ -116,6 +117,9 @@
   
 Class List
 ==========
+ Explicit  
+ --------
+      (  1)  O3S             
   
  Implicit  
  --------
@@ -762,6 +766,7 @@ Extraneous prod/loss species
     d(O3)/dt = r19*M*O*O2                                                                                               
                 - j7*O3  - j8*O3  - r8*O1D*O3  - r17*O*O3  - r27*HO2*O3  - r28*H*O3  - r33*OH*O3  - r46*NO2*O3          
                 - r54*NO*O3  - r70*CL*O3  - r102*BR*O3  - r161*S*O3  - r167*SO*O3                                       
+    d(O3S)/dt = 0                                                                                                       
     d(OCLO)/dt = r74*CLO*CLO  + r104*BRO*CLO                                                                            
                   - j59*OCLO  - r168*SO*OCLO                                                                            
     d(OCS)/dt =  - j88*OCS  - r157*O*OCS  - r158*OH*OCS                                                                 

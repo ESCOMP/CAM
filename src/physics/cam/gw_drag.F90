@@ -28,6 +28,8 @@ module gw_drag
   use cam_history,    only: outfld
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
+  use error_messages, only: alloc_err
+
 
   use ref_pres,       only: do_molec_diff, nbot_molec, press_lim_idx
   use physconst,      only: cpair
@@ -35,10 +37,11 @@ module gw_drag
   ! These are the actual switches for different gravity wave sources.
   use phys_control,   only: use_gw_oro, use_gw_front, use_gw_front_igw, &
                             use_gw_convect_dp, use_gw_convect_sh,       &
-                            use_simple_phys
+                            use_simple_phys, use_gw_movmtn_pbl
 
   use gw_common,      only: GWBand
   use gw_convect,     only: BeresSourceDesc
+  use gw_movmtn,      only: MovMtnSourceDesc
   use gw_front,       only: CMSourceDesc
 
 ! Typical module header
@@ -64,6 +67,8 @@ module gw_drag
   type(GWBand) :: band_mid
   ! Long scale waves for IGWs.
   type(GWBand) :: band_long
+  ! Medium scale waves for moving mountain
+  type(GWBand) :: band_movmtn
 
   ! Top level for gravity waves.
   integer, parameter :: ktop = 1
@@ -72,7 +77,7 @@ module gw_drag
 
   ! Factor for SH orographic waves.
   real(r8) :: gw_oro_south_fac = 1._r8
-  
+
   ! Frontogenesis function critical threshold.
   real(r8) :: frontgfc = unset_r8
 
@@ -104,6 +109,18 @@ module gw_drag
   real(r8) :: effgw_beres_dp = unset_r8
   ! Beres (shallow convection).
   real(r8) :: effgw_beres_sh = unset_r8
+  ! PBL moving mtn
+  real(r8) :: effgw_movmtn_pbl = unset_r8
+  integer  :: movmtn_source  = -1
+  integer  :: movmtn_ksteer  = -1
+  integer  :: movmtn_klaunch = -1
+  real(r8) :: movmtn_psteer  = unset_r8
+  real(r8) :: movmtn_plaunch = unset_r8
+
+  ! Parameters controlling isotropic residual
+  ! orographic GW.
+  logical :: use_gw_rdg_resid = .false.
+  real(r8) :: effgw_rdg_resid = unset_r8
 
   ! Horzontal wavelengths [m].
   real(r8), parameter :: wavelength_mid = 1.e5_r8
@@ -129,15 +146,16 @@ module gw_drag
   logical :: gw_apply_tndmax = .true.
 
   ! Files to read Beres source spectra from.
-  character(len=256) :: gw_drag_file = ""
-  character(len=256) :: gw_drag_file_sh = ""
+  character(len=cl) :: gw_drag_file = ""
+  character(len=cl) :: gw_drag_file_sh = ""
+  character(len=cl) :: gw_drag_file_mm = ""
 
   ! Beres settings and table.
   type(BeresSourceDesc) :: beres_dp_desc
   type(BeresSourceDesc) :: beres_sh_desc
 
-  ! Width of gaussian used to create frontogenesis tau profile [m/s].
-  real(r8), parameter :: front_gaussian_width = 30._r8
+  ! Moving mountain settings and table.
+  type(MovMtnSourceDesc) :: movmtn_desc
 
   ! Frontogenesis wave settings.
   type(CMSourceDesc) :: cm_desc
@@ -149,13 +167,25 @@ module gw_drag
   integer :: ttend_sh_idx = -1
   integer :: frontgf_idx  = -1
   integer :: frontga_idx  = -1
+
+  integer :: vort4gw_idx  = -1
+
   integer :: sgh_idx      = -1
+
+  ! From CLUBB
+  integer :: ttend_clubb_idx  = -1
+  integer :: upwp_clubb_gw_idx   = -1
+  integer :: vpwp_clubb_gw_idx   = -1
+  integer :: thlp2_clubb_gw_idx  = -1
+  integer :: wpthlp_clubb_gw_idx  = -1
 
   ! anisotropic ridge fields
   integer, parameter :: prdg = 16
 
   real(r8), allocatable, dimension(:,:), target :: &
-     rdg_gbxar
+     rdg_gbxar, &
+     rdg_isovar, &
+     rdg_isowgt
 
      ! Meso Beta
   real(r8), allocatable, dimension(:,:,:), target :: &
@@ -183,11 +213,16 @@ module gw_drag
   character(len=1), parameter :: beres_dp_pf = "B"
   character(len=1), parameter :: beres_sh_pf = "S"
 
-  ! namelist 
+  ! namelist
   logical          :: history_amwg                   ! output the variables used by the AMWG diag package
   logical  :: gw_lndscl_sgh = .true. ! scale SGH by land frac
   real(r8) :: gw_prndl = 0.25_r8
   real(r8) :: gw_qbo_hdepth_scaling = 1._r8 ! heating depth scaling factor
+
+  ! Width of gaussian used to create frontogenesis tau profile [m s-1].
+  real(r8) :: front_gaussian_width = -huge(1._r8)
+
+  real(r8) :: alpha_gw_movmtn
 
   logical :: gw_top_taper=.false.
   real(r8), pointer :: vramp(:)=>null()
@@ -217,14 +252,9 @@ subroutine gw_drag_readnl(nlfile)
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  ! fcrit2 for the mid-scale waves has been made a namelist variable to
-  ! facilitate backwards compatibility with the CAM3 version of this
-  ! parameterization.  In CAM3, fcrit2=0.5.
-  real(r8) :: fcrit2 = unset_r8   ! critical froude number squared
-
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
-       fcrit2, frontgfc, gw_drag_file, gw_drag_file_sh, taubgnd, &
+       frontgfc, gw_drag_file, gw_drag_file_sh, gw_drag_file_mm, taubgnd, &
        taubgnd_igw, gw_polar_taper, &
        use_gw_rdg_beta, n_rdg_beta, effgw_rdg_beta, effgw_rdg_beta_max, &
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
@@ -232,7 +262,10 @@ subroutine gw_drag_readnl(nlfile)
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
-       gw_top_taper
+       gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
+       effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
+       movmtn_plaunch
+
   !----------------------------------------------------------------------
 
   if (use_simple_phys) return
@@ -302,8 +335,6 @@ subroutine gw_drag_readnl(nlfile)
 
   call mpi_bcast(gw_oro_south_fac, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_oro_south_fac")
-  call mpi_bcast(fcrit2, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: fcrit2")
   call mpi_bcast(frontgfc, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frontgfc")
   call mpi_bcast(taubgnd, 1, mpi_real8, mstrid, mpicom, ierr)
@@ -332,12 +363,28 @@ subroutine gw_drag_readnl(nlfile)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file")
   call mpi_bcast(gw_drag_file_sh, len(gw_drag_file_sh), mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file_sh")
+  call mpi_bcast(gw_drag_file_mm, len(gw_drag_file_mm), mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file_mm")
 
+  call mpi_bcast(front_gaussian_width, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: front_gaussian_width")
 
-  ! Check if fcrit2 was set.
-  call shr_assert(fcrit2 /= unset_r8, &
-       "gw_drag_readnl: fcrit2 must be set via the namelist."// &
-       errMsg(__FILE__, __LINE__))
+  call mpi_bcast(alpha_gw_movmtn, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: alpha_gw_movmtn")
+  call mpi_bcast(effgw_movmtn_pbl, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_movmtn_pbl")
+  call mpi_bcast(movmtn_source, 1, mpi_integer, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_source")
+  call mpi_bcast(movmtn_psteer, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_psteer")
+  call mpi_bcast(movmtn_plaunch, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: movmtn_plaunch")
+
+  call mpi_bcast(use_gw_rdg_resid, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_gw_rdg_resid")
+  call mpi_bcast(effgw_rdg_resid, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: effgw_rdg_resid")
+
 
   ! Check if pgwv was set.
   call shr_assert(pgwv >= 0, &
@@ -350,9 +397,10 @@ subroutine gw_drag_readnl(nlfile)
        "gw_drag_readnl: gw_dc must be set via the namelist."// &
        errMsg(__FILE__, __LINE__))
 
-  band_oro = GWBand(0, gw_dc, fcrit2, wavelength_mid)
+  band_oro = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
   band_mid = GWBand(pgwv, gw_dc, 1.0_r8, wavelength_mid)
   band_long = GWBand(pgwv_long, gw_dc_long, 1.0_r8, wavelength_long)
+  band_movmtn = GWBand(0, gw_dc, 1.0_r8, wavelength_mid)
 
   if (use_gw_rdg_gamma .or. use_gw_rdg_beta) then
      call gw_rdg_readnl(nlfile)
@@ -379,7 +427,7 @@ subroutine gw_init()
 
   ! temporary for restart with ridge scheme
   use cam_initfiles,    only: bnd_topo
-  
+
   use cam_pio_utils,    only: cam_pio_openfile
   use cam_grid_support, only: cam_grid_check, cam_grid_id
   use cam_grid_support, only: cam_grid_get_dim_names
@@ -466,14 +514,14 @@ subroutine gw_init()
   integer            :: grid_id
   character(len=8)   :: dim1name, dim2name
   logical            :: found
-  character(len=256) :: bnd_rdggm_loc   ! filepath of topo file on local disk
+  character(len=cl) :: bnd_rdggm_loc   ! filepath of topo file on local disk
 
   ! Allow reporting of error messages.
   character(len=128) :: errstring
   character(len=*), parameter :: sub = 'gw_init'
 
   ! temporary workaround for restart w/ ridge scheme
-  character(len=256) :: bnd_topo_loc   ! filepath of topo file on local disk
+  character(len=cl) :: bnd_topo_loc   ! filepath of topo file on local disk
 
   integer :: botndx,topndx
 
@@ -504,7 +552,7 @@ subroutine gw_init()
   end if
 
   ! pre-calculated newtonian damping:
-  !     * convert to 1/s
+  !     * convert to s-1
   !     * ensure it is not smaller than 1e-6
   !     * convert palph from hpa to pa
 
@@ -539,7 +587,7 @@ subroutine gw_init()
 
   ! Initialize subordinate modules.
   call gw_common_init(pver,&
-       tau_0_ubc, ktop, gravit, rair, alpha, gw_prndl, & 
+       tau_0_ubc, ktop, gravit, rair, alpha, gw_prndl, &
        gw_qbo_hdepth_scaling, errstring )
   call shr_assert(trim(errstring) == "", "gw_common_init: "//errstring// &
        errMsg(__FILE__, __LINE__))
@@ -547,32 +595,32 @@ subroutine gw_init()
   if ( use_gw_oro ) then
 
      if (effgw_oro == unset_r8) then
-        call endrun("gw_drag_init: Orographic gravity waves enabled, &
+        call endrun("gw_init: Orographic gravity waves enabled, &
              &but effgw_oro was not set.")
      end if
   end if
-     
+
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
 
      sgh_idx = pbuf_get_index('SGH')
 
      ! Declare history variables for orographic term
-     call addfld ('TAUAORO',    (/ 'ilev' /), 'I','N/m2',  &
+     call addfld ('TAUAORO',    (/ 'ilev' /), 'I','N m-2',  &
           'Total stress from original OGW scheme')
-     call addfld ('TTGWORO',    (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWORO',    (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave drag')
-     call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave, diffusion.')
-     call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K/s',  &
+     call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K s-1',  &
           'T tendency - orographic gravity wave, breaking KE.')
-     call addfld ('UTGWORO',    (/ 'lev' /), 'A','m/s2', &
+     call addfld ('UTGWORO',    (/ 'lev' /), 'A','m s-2', &
           'U tendency - orographic gravity wave drag')
-     call addfld ('VTGWORO',    (/ 'lev' /), 'A','m/s2', &
+     call addfld ('VTGWORO',    (/ 'lev' /), 'A','m s-2', &
           'V tendency - orographic gravity wave drag')
      call register_vector_field('UTGWORO', 'VTGWORO')
-     call addfld ('TAUGWX',     horiz_only,  'A','N/m2', &
+     call addfld ('TAUGWX',     horiz_only,  'A','N m-2', &
           'Zonal gravity wave surface stress')
-     call addfld ('TAUGWY',     horiz_only,  'A','N/m2', &
+     call addfld ('TAUGWY',     horiz_only,  'A','N m-2', &
           'Meridional gravity wave surface stress')
      call register_vector_field('TAUGWX', 'TAUGWY')
 
@@ -611,7 +659,7 @@ subroutine gw_init()
 
         ! Try to open topo file here.  This workaround will not be needed
         ! once the refactored initialization sequence is on trunk.
-        
+
         allocate(fh_topo)
         ! Error exit is from getfil if file not found.
         call getfil(bnd_topo, bnd_topo_loc)
@@ -622,17 +670,31 @@ subroutine gw_init()
      ! Get beta ridge data
      allocate( &
         rdg_gbxar(pcols,begchunk:endchunk),      &
+        rdg_isovar(pcols,begchunk:endchunk),     &
+        rdg_isowgt(pcols,begchunk:endchunk),     &
         rdg_hwdth(pcols,prdg,begchunk:endchunk), &
         rdg_clngt(pcols,prdg,begchunk:endchunk), &
         rdg_mxdis(pcols,prdg,begchunk:endchunk), &
         rdg_anixy(pcols,prdg,begchunk:endchunk), &
         rdg_angll(pcols,prdg,begchunk:endchunk)  )
-   
+
      call infld('GBXAR', fh_topo, dim1name, dim2name, 1, pcols, &
                          begchunk, endchunk, rdg_gbxar, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: GBXAR not found on topo file')
      rdg_gbxar = rdg_gbxar * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
- 
+
+     call infld('ISOVAR', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isovar, found, gridname='physgrid')
+!     if (.not. found) call endrun(sub//': ERROR: ISOVAR not found on topo file')
+     ! ++jtb - Temporary fix until topo files contain this variable
+     if (.not. found) rdg_isovar(:,:) = 0._r8
+
+     call infld('ISOWGT', fh_topo, dim1name, dim2name, 1, pcols, &
+                         begchunk, endchunk, rdg_isowgt, found, gridname='physgrid')
+!     if (.not. found) call endrun(sub//': ERROR: ISOWGT not found on topo file')
+     ! ++jtb - Temporary fix until topo files contain this variable
+     if (.not. found) rdg_isowgt(:,:) = 0._r8
+
      call infld('HWDTH', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_hwdth, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: HWDTH not found on topo file')
@@ -696,9 +758,9 @@ subroutine gw_init()
      call addfld ('Frx_DIAG',     horiz_only,  'I','1', &
           'Obstacle Froude Number')
 
-     call addfld('UEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
+     call addfld('UEGW',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
           'Zonal wind profile-entry to GW ' )
-     call addfld('VEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
+     call addfld('VEGW',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
           'Merdional wind profile-entry to GW ' )
      call register_vector_field('UEGW','VEGW')
      call addfld('TEGW',  (/ 'lev' /) , 'A'  ,'K' ,  &
@@ -707,35 +769,65 @@ subroutine gw_init()
           'interface geopotential heights in GW code ' )
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
- 
-     call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+
+
+     call addfld('NIEGW',  (/ 'ilev' /) , 'I'  ,'1/s' ,  &
+          'interface BV freq in GW code ' )
+     call addfld('NMEGW',  (/ 'lev' /) , 'I'  ,'1/s' ,  &
+          'midlayer BV freq in GW code ' )
+     call addfld('RHOIEGW',  (/ 'ilev' /) , 'I'  ,'kg/m^3' ,  &
+          'interface density in GW code ' )
+     call addfld('PINTEGW',  (/ 'ilev' /) , 'I'  ,'Pa' ,  &
+          'interface air pressure in GW code ' )
+
+     call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
+     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'m s-1' ,  &
           'On-ridge wind profile           ' )
-     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m/s' , &
+     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-2' , &
           'On-ridge wind tendency from ridge 1     ')
+
+     call addfld('TAURESIDBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('UBMRESIDBETA',  (/ 'lev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile           ' )
+     call addfld('UBIRESIDBETA',  (/ 'ilev' /) , 'I'  ,'m s-1' ,  &
+          'On-ridge wind profile (interface)          ' )
+     call addfld('SRC_LEVEL_RESIDBETA',  horiz_only , 'I'  ,'1' ,  &
+          'src level index for ridge residual         ' )
+     call addfld('TAUORO_RESID',  horiz_only , 'I'  ,'N m-2' ,  &
+          'Surface momentum flux from ridge residual       ' )
+     call addfld('TAUDIAG_RESID' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+
 
      do i = 1, 6
         write(cn, '(i1)') i
-        call addfld('TAU'//cn//'RDGBETAY' , (/ 'ilev' /), 'I', 'N/m2', &
+        call addfld('TAU'//cn//'RDGBETAY' , (/ 'ilev' /), 'I', 'N m-2', &
           'Ridge based momentum flux profile')
-        call addfld('TAU'//cn//'RDGBETAX' , (/ 'ilev' /), 'I', 'N/m2', &
+        call addfld('TAU'//cn//'RDGBETAX' , (/ 'ilev' /), 'I', 'N m-2', &
           'Ridge based momentum flux profile')
         call register_vector_field('TAU'//cn//'RDGBETAX','TAU'//cn//'RDGBETAY')
-        call addfld('UT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
+        call addfld('UT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm s-1', &
           'U wind tendency from ridge '//cn)
-        call addfld('VT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
+        call addfld('VT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm s-1', &
           'V wind tendency from ridge '//cn)
         call register_vector_field('UT'//cn//'RDGBETA','VT'//cn//'RDGBETA')
      end do
 
-     call addfld('TAUARDGBETAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld('TAUARDGBETAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld('TAUARDGBETAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld('TAUARDGBETAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
      call register_vector_field('TAUARDGBETAX','TAUARDGBETAY')
+
+     call addfld('TAURESIDBETAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call addfld('TAURESIDBETAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
+          'Ridge based momentum flux profile')
+     call register_vector_field('TAURESIDBETAX','TAURESIDBETAY')
 
      if (history_waccm) then
         call add_default('TAUARDGBETAX', 1, ' ')
@@ -749,7 +841,7 @@ subroutine gw_init()
      if (effgw_rdg_gamma == unset_r8) then
         call endrun(sub//": ERROR: Anisotropic OGW enabled, but effgw_rdg_gamma was not set.")
      end if
-     
+
      call getfil(bnd_rdggm, bnd_rdggm_loc, iflag=1, lexist=found)
      if (found) then
         call cam_pio_openfile(fh_rdggm, bnd_rdggm_loc, PIO_NOWRITE)
@@ -793,42 +885,42 @@ subroutine gw_init()
      call infld('ANGLL', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_angllg, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: ANGLL not found on bnd_rdggm')
- 
+
      call pio_closefile(fh_rdggm)
 
-     call addfld ('TAU1RDGGAMMAM' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld ('TAU1RDGGAMMAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld ('UBM1GAMMA',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
+     call addfld ('UBM1GAMMA',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
           'On-ridge wind profile           ' )
-     call addfld ('UBT1RDGGAMMA' , (/ 'lev' /) , 'I'  ,'m/s' , &
+     call addfld ('UBT1RDGGAMMA' , (/ 'lev' /) , 'I'  ,'m s-1' , &
           'On-ridge wind tendency from ridge 1     ')
 
      do i = 1, 6
         write(cn, '(i1)') i
-        call addfld('TAU'//cn//'RDGGAMMAY', (/ 'ilev' /), 'I', 'N/m2', &
+        call addfld('TAU'//cn//'RDGGAMMAY', (/ 'ilev' /), 'I', 'N m-2', &
           'Ridge based momentum flux profile')
-        call addfld('TAU'//cn//'RDGGAMMAX', (/ 'ilev' /), 'I', 'N/m2', &
+        call addfld('TAU'//cn//'RDGGAMMAX', (/ 'ilev' /), 'I', 'N m-2', &
           'Ridge based momentum flux profile')
-        call addfld('UT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm/s', &
+        call addfld('UT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm s-1', &
           'U wind tendency from ridge '//cn)
-        call addfld('VT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm/s', &
+        call addfld('VT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm s-1', &
           'V wind tendency from ridge '//cn)
         call register_vector_field('UT'//cn//'RDGGAMMA','VT'//cn//'RDGGAMMA')
      end do
 
-     call addfld ('TAUARDGGAMMAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld ('TAUARDGGAMMAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
-     call addfld ('TAUARDGGAMMAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+     call addfld ('TAUARDGGAMMAX' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
      call register_vector_field('TAUARDGGAMMAX','TAUARDGGAMMAY')
-     call addfld ('TAURDGGMX',     horiz_only,  'A','N/m2', &
+     call addfld ('TAURDGGMX',     horiz_only,  'A','N m-2', &
           'Zonal gravity wave surface stress')
-     call addfld ('TAURDGGMY',     horiz_only,  'A','N/m2', &
+     call addfld ('TAURDGGMY',     horiz_only,  'A','N m-2', &
           'Meridional gravity wave surface stress')
      call register_vector_field('TAURDGGMX','TAURDGGMY')
-     call addfld ('UTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
+     call addfld ('UTRDGGM' , (/ 'lev' /) , 'I'  ,'m s-1' , &
           'U wind tendency from ridge 6     ')
-     call addfld ('VTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
+     call addfld ('VTRDGGM' , (/ 'lev' /) , 'I'  ,'m s-1' , &
           'V wind tendency from ridge 6     ')
      call register_vector_field('UTRDGGM','VTRDGGM')
   end if
@@ -839,7 +931,7 @@ subroutine gw_init()
      frontga_idx = pbuf_get_index('FRONTGA')
 
      call shr_assert(unset_r8 /= frontgfc, &
-          "gw_drag_init: Frontogenesis enabled, but frontgfc was &
+          "gw_init: Frontogenesis enabled, but frontgfc was &
           & not set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -869,10 +961,33 @@ subroutine gw_init()
 
   end if
 
+  if (use_gw_movmtn_pbl) then
+     do k = 1, pver
+        ! Find steering level
+        if ( (pref_edge(k+1) >= movmtn_psteer).and.(pref_edge(k) < movmtn_psteer) ) then
+           movmtn_ksteer = k
+        end if
+     end do
+     do k = 1, pver
+        ! Find launch level
+        if ( (pref_edge(k+1) >= movmtn_plaunch).and.(pref_edge(k) < movmtn_plaunch ) ) then
+           movmtn_klaunch = k
+        end if
+     end do
+
+  end if
+  if (use_gw_movmtn_pbl) then
+
+     vort4gw_idx = pbuf_get_index('VORT4GW')
+
+     call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
+          'Vorticity')
+  end if
+
   if (use_gw_front) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm, taubgnd ]), &
-          "gw_drag_init: Frontogenesis mid-scale waves enabled, but not &
+          "gw_init: Frontogenesis mid-scale waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -894,7 +1009,7 @@ subroutine gw_init()
   if (use_gw_front_igw) then
 
      call shr_assert(all(unset_r8 /= [ effgw_cm_igw, taubgnd_igw ]), &
-          "gw_drag_init: Frontogenesis inertial waves enabled, but not &
+          "gw_init: Frontogenesis inertial waves enabled, but not &
           &all required namelist variables were set!"// &
           errMsg(__FILE__, __LINE__))
 
@@ -910,6 +1025,87 @@ subroutine gw_init()
      ! Output for gravity waves from frontogenesis.
      call gw_spec_addflds(prefix=cm_igw_pf, scheme="C&M IGW", &
           band=band_long, history_defaults=history_waccm)
+
+  end if
+
+  ! ========= Moving Mountain initialization! ==========================
+  if (use_gw_movmtn_pbl) then
+
+     ! get pbuf indices for CLUBB couplings
+     ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
+     thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
+     upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
+     vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
+     wpthlp_clubb_gw_idx  = pbuf_get_index('WPTHLP_CLUBB_GW')
+
+     if (masterproc) then
+        write (iulog,*) 'Moving Mountain development code call init_movmtn'
+     end if
+
+
+     ! Confirm moving mountain file is enabled
+     call shr_assert(trim(gw_drag_file_mm) /= "", &
+          "gw_init: No gw_drag_file provided for DP GW moving mountain lookup &
+          &table. Set this via namelist."// &
+          errMsg(__FILE__, __LINE__))
+
+     call gw_init_movmtn(gw_drag_file_mm, band_movmtn, movmtn_desc)
+
+     do k = 0, pver
+        ! 950 hPa index
+        if (pref_edge(k+1) < 95000._r8) movmtn_desc%k = k+1
+     end do
+
+    ! Don't use deep convection heating depths below this limit.
+     movmtn_desc%min_hdepth = 1._r8
+     if (masterproc) then
+        write (iulog,*) 'Moving mountain deep level =',movmtn_desc%k
+     end if
+
+     call addfld ('GWUT_MOVMTN',(/ 'lev' /), 'I','m s-2', &
+          'Mov Mtn dragforce - ubm component')
+     call addfld ('UTGW_MOVMTN',(/ 'lev' /), 'I','m s-2', &
+          'Mov Mtn dragforce - u component')
+     call addfld ('VTGW_MOVMTN',(/ 'lev' /), 'I','m s-2', &
+          'Mov Mtn dragforce - v component')
+     call addfld('TAU_MOVMTN', (/ 'ilev' /), 'I', 'N m-2', &
+          'Moving Mountain momentum flux profile')
+     call addfld('U_MOVMTN_IN', (/ 'lev' /), 'I', 'm s-1', &
+          'Moving Mountain - midpoint zonal input wind')
+     call addfld('V_MOVMTN_IN', (/ 'lev' /), 'I', 'm s-1', &
+          'Moving Mountain - midpoint meridional input wind')
+     call addfld('UBI_MOVMTN', (/ 'ilev' /), 'I', 'm s-1', &
+          'Moving Mountain - interface wind in direction of wave')
+     call addfld('UBM_MOVMTN', (/ 'lev' /), 'I', 'm s-1', &
+          'Moving Mountain - midpoint wind in direction of wave')
+     call addfld ('HDEPTH_MOVMTN',horiz_only,'I','km', &
+          'Heating Depth')
+     call addfld ('UCELL_MOVMTN',horiz_only,'I','m s-1', &
+          'Gravity Wave Moving Mountain - Source-level X-wind')
+     call addfld ('VCELL_MOVMTN',horiz_only,'I','m s-1', &
+          'Gravity Wave Moving Mountain - Source-level Y-wind')
+     call addfld ('CS_MOVMTN',horiz_only,'I','m s-1', &
+          'Gravity Wave Moving Mountain - phase speed in direction of wave')
+     call addfld ('STEER_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'Gravity Wave Moving Mountain - steering level for movmtn GW')
+     call addfld ('SRC_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'Gravity Wave Moving Mountain - launch level for movmtn GW')
+     call addfld ('TND_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'Gravity Wave Moving Mountain - tendency lowest level for movmtn GW')
+     call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K s-1', &
+          'Gravity Wave Moving Mountain - Net heating rate')
+     call addfld ('TTEND_CLUBB',(/ 'lev' /),'A','K s-1', &
+          'Gravity Wave Moving Mountain - CLUBB Net heating rate')
+     call addfld ('THLP2_CLUBB_GW',(/ 'ilev' /),'A','K+2', &
+          'Gravity Wave Moving Mountain - THLP variance from CLUBB to GW')
+     call addfld ('WPTHLP_CLUBB_GW',(/ 'ilev' /),'A','Km s-2', &
+          'Gravity Wave Moving Mountain - WPTHLP from CLUBB to GW')
+     call addfld ('UPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'Gravity Wave Moving Mountain - X-momflux from CLUBB to GW')
+     call addfld ('VPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'Gravity Wave Moving Mountain - Y-momflux from CLUBB to GW')
+     call addfld ('XPWP_SRC_MOVMTN',horiz_only,'I','m+2 s-2', &
+          'Gravity Wave Moving Mountain - flux source for moving mtn')
 
   end if
 
@@ -936,7 +1132,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file) /= "", &
-          "gw_drag_init: No gw_drag_file provided for Beres deep &
+          "gw_init: No gw_drag_file provided for Beres deep &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -946,9 +1142,9 @@ subroutine gw_init()
      call gw_spec_addflds(prefix=beres_dp_pf, scheme="Beres (deep)", &
           band=band_mid, history_defaults=history_waccm)
 
-     call addfld ('NETDT',(/ 'lev' /), 'A','K/s', &
+     call addfld ('NETDT',(/ 'lev' /), 'A','K s-1', &
           'Net heating rate')
-     call addfld ('MAXQ0',horiz_only  ,  'A','K/day', &
+     call addfld ('MAXQ0',horiz_only  ,  'A','K day-1', &
           'Max column heating rate')
      call addfld ('HDEPTH',horiz_only,    'A','km', &
           'Heating Depth')
@@ -983,7 +1179,7 @@ subroutine gw_init()
      ! Read Beres file.
 
      call shr_assert(trim(gw_drag_file_sh) /= "", &
-          "gw_drag_init: No gw_drag_file_sh provided for Beres shallow &
+          "gw_init: No gw_drag_file_sh provided for Beres shallow &
           &scheme. Set this via namelist."// &
           errMsg(__FILE__, __LINE__))
 
@@ -993,9 +1189,9 @@ subroutine gw_init()
      call gw_spec_addflds(prefix=beres_sh_pf, scheme="Beres (shallow)", &
           band=band_mid, history_defaults=history_waccm)
 
-     call addfld ('SNETDT',(/ 'lev' /), 'A','K/s', &
+     call addfld ('SNETDT',(/ 'lev' /), 'A','K s-1', &
           'Net heating rate')
-     call addfld ('SMAXQ0',horiz_only  ,  'A','K/day', &
+     call addfld ('SMAXQ0',horiz_only  ,  'A','K day-1', &
           'Max column heating rate')
      call addfld ('SHDEPTH',horiz_only,    'A','km', &
           'Heating Depth')
@@ -1015,14 +1211,14 @@ subroutine gw_init()
      call add_default('EKGW', 1, ' ')
   end if
 
-  call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
+  call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', &
        'Total U tendency due to gravity wave drag')
-  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
+  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', &
        'Total V tendency due to gravity wave drag')
   call register_vector_field('UTGW_TOTAL', 'VTGW_TOTAL')
 
   ! Total temperature tendency output.
-  call addfld ('TTGW', (/ 'lev' /), 'A', 'K/s',  &
+  call addfld ('TTGW', (/ 'lev' /), 'A', 'K s-1',  &
        'T tendency - gravity wave drag')
 
   ! Water budget terms.
@@ -1087,9 +1283,9 @@ subroutine gw_init_beres(file_name, band, desc)
   integer :: ngwv_file
 
   ! Full path to gw_drag_file.
-  character(len=256) :: file_path
+  character(len=cl) :: file_path
 
-  character(len=256) :: msg
+  character(len=cl) :: msg
 
   !----------------------------------------------------------------------
   ! read in look-up table for source spectra
@@ -1115,8 +1311,8 @@ subroutine gw_init_beres(file_name, band, desc)
   ngwv_file = (ngwv_file-1)/2
 
   call shr_assert(ngwv_file >= band%ngwv, &
-       "gw_beres_init: PS in lookup table file does not cover the whole &
-       &spectrum implied by the model's ngwv.")
+       "gw_init_beres: PhaseSpeed in lookup table file does not cover the whole &
+       &spectrum implied by the model's ngwv. ")
 
   ! Allocate hd and get data.
 
@@ -1177,6 +1373,134 @@ subroutine gw_init_beres(file_name, band, desc)
 
 end subroutine gw_init_beres
 
+!==============================================================
+subroutine gw_init_movmtn(file_name, band, desc)
+
+  use ioFileMod, only: getfil
+  use pio, only: file_desc_t, pio_nowrite, pio_inq_varid, pio_get_var, &
+       pio_closefile
+  use cam_pio_utils, only: cam_pio_openfile
+
+  character(len=*), intent(in) :: file_name
+  type(GWBand), intent(in) :: band
+
+  type(MovMtnSourceDesc), intent(inout) :: desc
+
+  type(file_desc_t) :: gw_file_desc
+
+  ! PIO variable ids and error code.
+  integer :: mfccid, uhid, hdid, stat
+
+  ! Number of wavenumbers in the input file.
+  integer :: ngwv_file
+
+  ! Full path to gw_drag_file.
+  character(len=cl) :: file_path
+
+  character(len=cl) :: msg
+
+  !----------------------------------------------------------------------
+  ! read in look-up table for source spectra
+  !-----------------------------------------------------------------------
+
+  call getfil(file_name, file_path)
+
+  call cam_pio_openfile(gw_file_desc, file_path, pio_nowrite)
+
+  ! Get HD (heating depth) dimension.
+
+  desc%maxh = 15 !get_pio_dimlen(gw_file_desc, "HD", file_path)
+
+  ! Get MW (mean wind) dimension.
+
+ desc%maxuh = 241 ! get_pio_dimlen(gw_file_desc, "MW", file_path)
+
+  ! Get PS (phase speed) dimension.
+
+  ngwv_file = 0 !get_pio_dimlen(gw_file_desc, "PS", file_path)
+
+  ! Number in each direction is half of total (and minus phase speed of 0).
+  desc%maxuh = (desc%maxuh-1)/2
+  ngwv_file = (ngwv_file-1)/2
+
+  call shr_assert(ngwv_file >= band%ngwv, &
+       "gw_movmtn_init: PhaseSpeed in lookup table inconsistent with moving mountain")
+
+  ! Allocate hd and get data.
+
+  allocate(desc%hd(desc%maxh), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (hd): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  stat = pio_inq_varid(gw_file_desc,'HDEPTH',hdid)
+
+  call handle_pio_error(stat, &
+       'Error finding HD in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, hdid, start=[1], count=[desc%maxh], &
+       ival=desc%hd)
+
+  call handle_pio_error(stat, &
+       'Error reading HD from: '//trim(file_path))
+
+  ! While not currently documented in the file, it uses kilometers. Convert
+  ! to meters.
+  desc%hd = desc%hd*1000._r8
+
+ ! Allocate wind and get data.
+
+  allocate(desc%uh(desc%maxuh), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (uh): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  stat = pio_inq_varid(gw_file_desc,'UARR',uhid)
+
+  call handle_pio_error(stat, &
+       'Error finding UH in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, uhid, start=[1], count=[desc%maxuh], &
+       ival=desc%uh)
+
+  call handle_pio_error(stat, &
+       'Error reading UH from: '//trim(file_path))
+
+  ! Allocate mfcc. "desc%maxh" and "desc%maxuh" are from the file, but the
+  ! model determines wavenumber dimension.
+
+  allocate(desc%mfcc(desc%maxh,-desc%maxuh:desc%maxuh,&
+       -band%ngwv:band%ngwv), stat=stat, errmsg=msg)
+
+  call shr_assert(stat == 0, &
+       "gw_init_movmtn: Allocation error (mfcc): "//msg// &
+       errMsg(__FILE__, __LINE__))
+
+  ! Get mfcc data.
+
+  stat = pio_inq_varid(gw_file_desc,'NEWMF',mfccid)
+
+  call handle_pio_error(stat, &
+       'Error finding mfcc in: '//trim(file_path))
+
+  stat = pio_get_var(gw_file_desc, mfccid, &
+       start=[1,1], count=shape(desc%mfcc), &
+       ival=desc%mfcc)
+
+  call handle_pio_error(stat, &
+       'Error reading mfcc from: '//trim(file_path))
+
+  call pio_closefile(gw_file_desc)
+
+  if (masterproc) then
+
+     write(iulog,*) "Read in Mov Mountain source file."
+
+  endif
+
+end subroutine gw_init_movmtn
 !==========================================================================
 
 ! Utility to reduce the repetitiveness of reads during initialization.
@@ -1228,7 +1552,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use physics_types,   only: physics_state_copy
   use constituents,    only: cnst_type
   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
   use camsrfexch,      only: cam_in_t
@@ -1242,7 +1566,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_oro,          only: gw_oro_src
   use gw_front,        only: gw_cm_src
   use gw_convect,      only: gw_beres_src
-
+  use gw_movmtn,       only: gw_movmtn_src
+  use dycore,          only: dycore_is
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
@@ -1258,6 +1583,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
+  integer :: istat
 
   integer :: i, k                   ! loop indices
 
@@ -1292,7 +1618,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: dttke(state%ncol,pver)
 
   ! Wave phase speeds for each column
-  real(r8), allocatable :: c(:,:)
+  real(r8), allocatable :: phase_speeds(:,:)
 
   ! Efficiency for a gravity wave source.
   real(r8) :: effgw(state%ncol)
@@ -1311,11 +1637,22 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Frontogenesis
   real(r8), pointer :: frontgf(:,:)
   real(r8), pointer :: frontga(:,:)
+  ! Vorticity source
+  real(r8), pointer :: vort4gw(:,:)
 
   ! Temperature change due to deep convection.
   real(r8), pointer :: ttend_dp(:,:)
   ! Temperature change due to shallow convection.
   real(r8), pointer :: ttend_sh(:,:)
+
+  !  New couplings from CLUBB
+  real(r8), pointer :: ttend_clubb(:,:)
+  real(r8), pointer :: thlp2_clubb_gw(:,:)
+  real(r8), pointer :: wpthlp_clubb_gw(:,:)
+  real(r8), pointer :: upwp_clubb_gw(:,:)
+  real(r8), pointer :: vpwp_clubb_gw(:,:)
+  real(r8) :: xpwp_clubb(state%ncol,pver+1)
+
 
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
@@ -1334,6 +1671,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), pointer :: angll(:,:)
   ! anisotropy of ridges.
   real(r8), pointer :: anixy(:,:)
+  ! sqrt(residual variance) not repr by ridges (assumed isotropic).
+  real(r8), pointer :: isovar(:)
+  ! area fraction of res variance
+  real(r8), pointer :: isowgt(:)
+
+
 
      ! Gamma ridges
   ! width of ridges.
@@ -1365,7 +1708,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), parameter :: degree2radian = pi/180._r8
   real(r8), parameter :: al0 = 82.5_r8 * degree2radian
   real(r8), parameter :: dlat0 = 5.0_r8 * degree2radian
-  
+
   ! effective gw diffusivity at interfaces needed for output
   real(r8) :: egwdffi(state%ncol,pver+1)
   ! sum from the two types of spectral GW
@@ -1388,13 +1731,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
+
   !------------------------------------------------------------------------
 
   ! Make local copy of input state.
   call physics_state_copy(state, state1)
-
-  ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state1)
 
   lchnk = state1%lchnk
   ncol  = state1%ncol
@@ -1451,16 +1792,128 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Totals that accumulate over different sources.
   egwdffi_tot = 0._r8
   flx_heat = 0._r8
-  
+
+  if (use_gw_movmtn_pbl) then
+     !------------------------------------------------------------------
+     !Convective moving mountain gravity waves (Beres scheme).
+     !------------------------------------------------------------------
+
+     call outfld('U_MOVMTN_IN', u, ncol, lchnk)
+     call outfld('V_MOVMTN_IN', v, ncol, lchnk)
+
+     ! Allocate wavenumber fields.
+     allocate(tau(ncol,-band_movmtn%ngwv:band_movmtn%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_movmtn%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,-band_movmtn%ngwv:band_movmtn%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*band_movmtn%ngwv**2+1)
+     allocate(phase_speeds(ncol,-band_movmtn%ngwv:band_movmtn%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','phase_speeds',ncol*band_movmtn%ngwv**2+1)
+
+     ! Set up heating
+     if (ttend_dp_idx > 0) then
+        call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+     else
+        allocate(ttend_dp(pcols,pver), stat=istat)
+        call alloc_err(istat, 'gw_tend', 'ttend_dp', pcols*pver)
+        ttend_dp = 0.0_r8
+     end if
+
+     !   New couplings from CLUBB
+     call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
+     call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
+     call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
+     call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
+     call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+     call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
+
+     xpwp_clubb(:ncol,:) = sqrt( upwp_clubb_gw(:ncol,:)**2 + vpwp_clubb_gw(:ncol,:)**2 )
+
+     effgw = effgw_movmtn_pbl
+     call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
+          u, v, ttend_dp(:ncol,:), ttend_clubb(:ncol,:), xpwp_clubb(:ncol,:), vort4gw(:ncol,:), &
+          zm, alpha_gw_movmtn, movmtn_source, movmtn_ksteer, movmtn_klaunch, src_level, tend_level, &
+          tau, ubm, ubi, xv, yv, &
+          phase_speeds, hdepth)
+     !-------------------------------------------------------------
+     ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
+     ! and unit vector components describing direction of wavevector
+     ! and application of wave-drag force. I believe correct setting
+     ! for c is c=0, since it is incorporated in ubm and (xv,yv)
+     !--------------------------------------------------------------
+
+     call outfld('SRC_LEVEL_MOVMTN', real(src_level,r8), ncol, lchnk)
+     call outfld('TND_LEVEL_MOVMTN', real(tend_level,r8), ncol, lchnk)
+     call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
+     call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
+
+     call gw_drag_prof(ncol, band_movmtn, p, src_level, tend_level, dt, &
+          t, vramp,    &
+          piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
+          effgw,   phase_speeds,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
+          lapply_effgw_in=gw_apply_tndmax )
+
+     ! Project stress into directional components.
+     taucd = calc_taucd(ncol, band_movmtn%ngwv, tend_level, tau, phase_speeds, xv, yv, ubi)
+
+     !  add the diffusion coefficients
+     do k = 1, pver+1
+        egwdffi_tot(:,k) = egwdffi_tot(:,k) + egwdffi(:,k)
+     end do
+
+     ! Store constituents tendencies
+     do m=1, pcnst
+        do k = 1, pver
+           ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
+        end do
+     end do
+
+      ! Add the momentum tendencies to the output tendency arrays.
+     do k = 1, pver
+        ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
+        ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
+     end do
+
+     do k = 1, pver
+        ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
+     end do
+
+     call outfld('TAU_MOVMTN', tau(:,0,:), ncol, lchnk)
+     call outfld('GWUT_MOVMTN', gwut(:,:,0), ncol, lchnk)
+     call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
+     call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
+     call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
+     call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
+     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
+     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
+     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
+     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
+     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
+     call outfld ('VORT4GW', vort4gw, pcols, lchnk)
+
+     !Deallocate variables that are no longer used:
+     deallocate(tau, gwut, phase_speeds)
+
+     !Deallocate/nullify ttend_dp if not a pbuf variable:
+     if (ttend_dp_idx <= 0) then
+       deallocate(ttend_dp)
+       nullify(ttend_dp)
+     end if
+
+  end if
+
   if (use_gw_convect_dp) then
      !------------------------------------------------------------------
      ! Convective gravity waves (Beres scheme, deep).
      !------------------------------------------------------------------
 
      ! Allocate wavenumber fields.
-     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1))
-     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv))
-     allocate(c(ncol,-band_mid%ngwv:band_mid%ngwv))
+     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_mid%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*(band_mid%ngwv**2+1))
+     allocate(phase_speeds(ncol,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_mid%ngwv**2+1))
 
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
@@ -1476,18 +1929,18 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, band_mid, beres_dp_desc, &
           u, v, ttend_dp(:ncol,:), zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, hdepth, maxq0)
+          ubm, ubi, xv, yv, phase_speeds, hdepth, maxq0)
 
      ! Solve for the drag profile with Beres source spectrum.
      call gw_drag_prof(ncol, band_mid, p, src_level, tend_level, dt, &
           t, vramp,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          effgw,   phase_speeds,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
           lapply_effgw_in=gw_apply_tndmax)
 
      ! Project stress into directional components.
-     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, c, xv, yv, ubi)
+     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, phase_speeds, xv, yv, ubi)
 
      !  add the diffusion coefficients
      do k = 1, pver+1
@@ -1524,7 +1977,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Change ttgw to a temperature tendency before outputing it.
      ttgw = ttgw / cpair
-     call gw_spec_outflds(beres_dp_pf, lchnk, ncol, band_mid, c, u, v, &
+     call gw_spec_outflds(beres_dp_pf, lchnk, ncol, band_mid, phase_speeds, u, v, &
           xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
           taucd)
 
@@ -1533,7 +1986,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('HDEPTH', hdepth/1000._r8, ncol, lchnk)
      call outfld('MAXQ0', maxq0, ncol, lchnk)
 
-     deallocate(tau, gwut, c)
+     deallocate(tau, gwut, phase_speeds)
 
   end if
 
@@ -1543,9 +1996,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !------------------------------------------------------------------
 
      ! Allocate wavenumber fields.
-     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1))
-     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv))
-     allocate(c(ncol,-band_mid%ngwv:band_mid%ngwv))
+     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_mid%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*(band_mid%ngwv**2+1))
+     allocate(phase_speeds(ncol,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','phase_speeds',ncol*(band_mid%ngwv**2+1))
 
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_sh_idx, ttend_sh)
@@ -1561,18 +2017,18 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Determine wave sources for Beres shallow scheme
      call gw_beres_src(ncol, band_mid, beres_sh_desc, &
           u, v, ttend_sh(:ncol,:), zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, hdepth, maxq0)
+          ubm, ubi, xv, yv, phase_speeds, hdepth, maxq0)
 
      ! Solve for the drag profile with Beres source spectrum.
      call gw_drag_prof(ncol, band_mid, p, src_level, tend_level,  dt, &
           t, vramp,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          effgw,   phase_speeds,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
           lapply_effgw_in=gw_apply_tndmax)
 
      ! Project stress into directional components.
-     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, c, xv, yv, ubi)
+     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, phase_speeds, xv, yv, ubi)
 
      !  add the diffusion coefficients
      do k = 1, pver+1
@@ -1605,7 +2061,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Change ttgw to a temperature tendency before outputing it.
      ttgw = ttgw / cpair
-     call gw_spec_outflds(beres_sh_pf, lchnk, ncol, band_mid, c, u, v, &
+     call gw_spec_outflds(beres_sh_pf, lchnk, ncol, band_mid, phase_speeds, u, v, &
           xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
           taucd)
 
@@ -1614,7 +2070,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld ('SHDEPTH', hdepth/1000._r8, ncol, lchnk)
      call outfld ('SMAXQ0', maxq0, ncol, lchnk)
 
-     deallocate(tau, gwut, c)
+     deallocate(tau, gwut, phase_speeds)
 
   end if
 
@@ -1634,9 +2090,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !------------------------------------------------------------------
 
      ! Allocate wavenumber fields.
-     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1))
-     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv))
-     allocate(c(ncol,-band_mid%ngwv:band_mid%ngwv))
+     allocate(tau(ncol,-band_mid%ngwv:band_mid%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_mid%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*(band_mid%ngwv**2+1))
+     allocate(phase_speeds(ncol,-band_mid%ngwv:band_mid%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_mid%ngwv**2+1))
 
      ! Efficiency of gravity wave momentum transfer.
      effgw = effgw_cm
@@ -1646,18 +2105,18 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Determine the wave source for C&M background spectrum
      call gw_cm_src(ncol, band_mid, cm_desc, u, v, frontgf(:ncol,:), &
-          src_level, tend_level, tau, ubm, ubi, xv, yv, c)
+          src_level, tend_level, tau, ubm, ubi, xv, yv, phase_speeds)
 
      ! Solve for the drag profile with C&M source spectrum.
      call gw_drag_prof(ncol, band_mid, p, src_level, tend_level,  dt, &
           t, vramp,   &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          effgw,   phase_speeds,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
           lapply_effgw_in=gw_apply_tndmax)
 
      ! Project stress into directional components.
-     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, c, xv, yv, ubi)
+     taucd = calc_taucd(ncol, band_mid%ngwv, tend_level, tau, phase_speeds, xv, yv, ubi)
 
      !  add the diffusion coefficients
      do k = 1, pver+1
@@ -1694,11 +2153,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Change ttgw to a temperature tendency before outputing it.
      ttgw = ttgw / cpair
-     call gw_spec_outflds(cm_pf, lchnk, ncol, band_mid, c, u, v, &
+     call gw_spec_outflds(cm_pf, lchnk, ncol, band_mid, phase_speeds, u, v, &
           xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
           taucd)
 
-     deallocate(tau, gwut, c)
+     deallocate(tau, gwut, phase_speeds)
 
   end if
 
@@ -1708,10 +2167,14 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !------------------------------------------------------------------
 
      ! Allocate wavenumber fields.
-     allocate(tau(ncol,-band_long%ngwv:band_long%ngwv,pver+1))
-     allocate(gwut(ncol,pver,-band_long%ngwv:band_long%ngwv))
-     allocate(c(ncol,-band_long%ngwv:band_long%ngwv))
-     allocate(ro_adjust(ncol,-band_long%ngwv:band_long%ngwv,pver+1))
+     allocate(tau(ncol,-band_long%ngwv:band_long%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_long%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,-band_long%ngwv:band_long%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*(band_long%ngwv**2+1))
+     allocate(phase_speeds(ncol,-band_long%ngwv:band_long%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','phase_speeds',ncol*(band_long%ngwv**2+1))
+     allocate(ro_adjust(ncol,-band_long%ngwv:band_long%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','ro_adjust',ncol*(band_long%ngwv**2+1)*(pver+1))
 
      ! Efficiency of gravity wave momentum transfer.
      effgw = effgw_cm_igw
@@ -1730,21 +2193,21 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Determine the wave source for C&M background spectrum
      call gw_cm_src(ncol, band_long, cm_igw_desc, u, v, frontgf(:ncol,:), &
-          src_level, tend_level, tau, ubm, ubi, xv, yv, c)
+          src_level, tend_level, tau, ubm, ubi, xv, yv, phase_speeds)
 
-     call adjust_inertial(band_long, tend_level, u_coriolis, c, ubi, &
+     call adjust_inertial(band_long, tend_level, u_coriolis, phase_speeds, ubi, &
           tau, ro_adjust)
 
      ! Solve for the drag profile with C&M source spectrum.
      call gw_drag_prof(ncol, band_long, p, src_level, tend_level,  dt, &
           t, vramp,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          effgw,   phase_speeds,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke, ro_adjust=ro_adjust, &
           lapply_effgw_in=gw_apply_tndmax)
 
      ! Project stress into directional components.
-     taucd = calc_taucd(ncol, band_long%ngwv, tend_level, tau, c, xv, yv, ubi)
+     taucd = calc_taucd(ncol, band_long%ngwv, tend_level, tau, phase_speeds, xv, yv, ubi)
 
      !  add the diffusion coefficients
      do k = 1, pver+1
@@ -1781,11 +2244,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Change ttgw to a temperature tendency before outputing it.
      ttgw = ttgw / cpair
-     call gw_spec_outflds(cm_igw_pf, lchnk, ncol, band_long, c, u, v, &
+     call gw_spec_outflds(cm_igw_pf, lchnk, ncol, band_long, phase_speeds, u, v, &
           xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
           taucd)
 
-     deallocate(tau, gwut, c, ro_adjust)
+     deallocate(tau, gwut, phase_speeds, ro_adjust)
 
   end if
 
@@ -1795,14 +2258,17 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !---------------------------------------------------------------------
 
      ! Allocate wavenumber fields.
-     allocate(tau(ncol,band_oro%ngwv:band_oro%ngwv,pver+1))
-     allocate(gwut(ncol,pver,band_oro%ngwv:band_oro%ngwv))
-     allocate(c(ncol,band_oro%ngwv:band_oro%ngwv))
+     allocate(tau(ncol,band_oro%ngwv:band_oro%ngwv,pver+1),stat=istat)
+     call alloc_err(istat,'gw_tend','tau',ncol*(band_oro%ngwv**2+1)*(pver+1))
+     allocate(gwut(ncol,pver,band_oro%ngwv:band_oro%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','gwut',ncol*pver*(band_oro%ngwv**2+1))
+     allocate(phase_speeds(ncol,band_oro%ngwv:band_oro%ngwv),stat=istat)
+     call alloc_err(istat,'gw_tend','phase_speeds',ncol*(band_oro%ngwv**2+1))
 
      ! Efficiency of gravity wave momentum transfer.
      ! Take into account that wave sources are only over land.
      call pbuf_get_field(pbuf, sgh_idx, sgh)
- 
+
      if (gw_lndscl_sgh) then
         where (cam_in%landfrac(:ncol) >= epsilon(1._r8))
            effgw = effgw_oro * cam_in%landfrac(:ncol)
@@ -1815,14 +2281,14 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         ! Determine the orographic wave source
         call gw_oro_src(ncol, band_oro, p, &
            u, v, t, sgh_scaled, zm, nm, &
-           src_level, tend_level, tau, ubm, ubi, xv, yv, c)
+           src_level, tend_level, tau, ubm, ubi, xv, yv, phase_speeds)
      else
         effgw = effgw_oro
 
         ! Determine the orographic wave source
         call gw_oro_src(ncol, band_oro, p, &
              u, v, t, sgh(:ncol), zm, nm, &
-             src_level, tend_level, tau, ubm, ubi, xv, yv, c)
+             src_level, tend_level, tau, ubm, ubi, xv, yv, phase_speeds)
      endif
      do i = 1, ncol
         if (state1%lat(i) < 0._r8) then
@@ -1834,7 +2300,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call gw_drag_prof(ncol, band_oro, p, src_level, tend_level,   dt,   &
           t, vramp,   &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          effgw,c,          kvtt, q,  dse,  tau,  utgw,  vtgw, &
+          effgw, phase_speeds, kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
           lapply_effgw_in=gw_apply_tndmax)
 
@@ -1883,7 +2349,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('TAUGWX', tau0x, ncol, lchnk)
      call outfld('TAUGWY', tau0y, ncol, lchnk)
 
-     deallocate(tau, gwut, c)
+     deallocate(tau, gwut, phase_speeds)
 
   end if
 
@@ -1901,6 +2367,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      mxdis => rdg_mxdis(:ncol,:,lchnk)
      angll => rdg_angll(:ncol,:,lchnk)
      anixy => rdg_anixy(:ncol,:,lchnk)
+     isovar => rdg_isovar(:ncol,lchnk)
+     isowgt => rdg_isowgt(:ncol,lchnk)
 
      where(mxdis < 0._r8)
         mxdis = 0._r8
@@ -1919,7 +2387,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                 &
         nm, ni, rhoi, kvtt, q, dse,               &
         effgw_rdg_beta, effgw_rdg_beta_max,       &
+        effgw_rdg_resid, use_gw_rdg_resid,        &
         hwdth, clngt, gbxar, mxdis, angll, anixy, &
+        isovar, isowgt,                           &
         rdg_beta_cd_llb, trpd_leewv_rdg_beta,     &
         ptend, flx_heat)
 
@@ -1949,7 +2419,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         u, v, t, p, piln, zm, zi,                      &
         nm, ni, rhoi, kvtt, q, dse,                    &
         effgw_rdg_gamma, effgw_rdg_gamma_max,          &
+        effgw_rdg_resid, use_gw_rdg_resid,             &
         hwdthg, clngtg, gbxar, mxdisg, angllg, anixyg, &
+        isovar, isowgt,                                &
         rdg_gamma_cd_llb, trpd_leewv_rdg_gamma,        &
         ptend, flx_heat)
 
@@ -1969,7 +2441,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Write totals to history file.
   call outfld('EKGW', egwdffi_tot , ncol, lchnk)
   call outfld('TTGW', ptend%s/cpairv(:,:,lchnk),  pcols, lchnk)
- 
+
   call outfld('UTGW_TOTAL', ptend%u, pcols, lchnk)
   call outfld('VTGW_TOTAL', ptend%v, pcols, lchnk)
 
@@ -1989,13 +2461,15 @@ subroutine gw_rdg_calc( &
    u, v, t, p, piln, zm, zi, &
    nm, ni, rhoi, kvtt, q, dse, &
    effgw_rdg, effgw_rdg_max, &
+   effgw_rdg_resid, luse_gw_rdg_resid, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
+   isovar, isowgt, &
    rdg_cd_llb, trpd_leewv, &
    ptend, flx_heat)
 
    use coords_1d,  only: Coords1D
-   use gw_rdg,     only: gw_rdg_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
+   use gw_rdg,     only: gw_rdg_src, gw_rdg_resid_src, gw_rdg_belowpeak, gw_rdg_break_trap, gw_rdg_do_vdiff
    use gw_common,  only: gw_drag_prof, energy_change
 
    character(len=5), intent(in) :: type         ! BETA or GAMMA
@@ -2021,6 +2495,8 @@ subroutine gw_rdg_calc( &
 
    real(r8),         intent(in) :: effgw_rdg       ! Tendency efficiency.
    real(r8),         intent(in) :: effgw_rdg_max
+   real(r8),         intent(in) :: effgw_rdg_resid  ! Tendency efficiency.
+   logical,          intent(in) :: luse_gw_rdg_resid ! On-Off switch
    real(r8),         intent(in) :: hwdth(ncol,prdg) ! width of ridges.
    real(r8),         intent(in) :: clngt(ncol,prdg) ! length of ridges.
    real(r8),         intent(in) :: gbxar(ncol)      ! gridbox area
@@ -2028,6 +2504,9 @@ subroutine gw_rdg_calc( &
    real(r8),         intent(in) :: mxdis(ncol,prdg) ! Height estimate for ridge (m).
    real(r8),         intent(in) :: angll(ncol,prdg) ! orientation of ridges.
    real(r8),         intent(in) :: anixy(ncol,prdg) ! Anisotropy parameter.
+
+   real(r8),         intent(in) :: isovar(ncol)     ! sqrt of residual variance
+   real(r8),         intent(in) :: isowgt(ncol)     ! area frac of residual variance
 
    real(r8),         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
    logical,          intent(in) :: trpd_leewv
@@ -2038,13 +2517,13 @@ subroutine gw_rdg_calc( &
 
    !---------------------------Local storage-------------------------------
 
-   integer :: k, m, nn
+   integer :: k, m, nn, istat
 
    real(r8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
    ! gravity wave wind tendency for each wave
    real(r8), allocatable :: gwut(:,:,:)
    ! Wave phase speeds for each column
-   real(r8), allocatable :: c(:,:)
+   real(r8), allocatable :: phase_speeds(:,:)
 
    ! Isotropic source flag [anisotropic orography].
    integer  :: isoflag(ncol)
@@ -2137,13 +2616,16 @@ subroutine gw_rdg_calc( &
    !----------------------------------------------------------------------------
 
    ! Allocate wavenumber fields.
-   allocate(tau(ncol,band_oro%ngwv:band_oro%ngwv,pver+1))
-   allocate(gwut(ncol,pver,band_oro%ngwv:band_oro%ngwv))
-   allocate(c(ncol,band_oro%ngwv:band_oro%ngwv))
+   allocate(tau(ncol,band_oro%ngwv:band_oro%ngwv,pver+1),stat=istat)
+   call alloc_err(istat,'gw_rdg_calc','tau',ncol*(band_oro%ngwv**2+1)*(pver+1))
+   allocate(gwut(ncol,pver,band_oro%ngwv:band_oro%ngwv),stat=istat)
+   call alloc_err(istat,'rdg_calc','gwut',ncol*pver*(band_oro%ngwv**2+1))
+   allocate(phase_speeds(ncol,band_oro%ngwv:band_oro%ngwv),stat=istat)
+   call alloc_err(istat,'rdg_calc','phase_speeds',ncol*(band_oro%ngwv**2+1))
 
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
-   taury = 0._r8 
+   taury = 0._r8
    ttrdg = 0._r8
    utrdg = 0._r8
    vtrdg = 0._r8
@@ -2151,36 +2633,36 @@ subroutine gw_rdg_calc( &
 
    do nn = 1, n_rdg
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
-      isoflag = 0   
+      isoflag = 0
       effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
       effgw   = min( effgw_rdg_max , effgw )
 
       call gw_rdg_src(ncol, band_oro, p, &
          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg, isoflag, zi, nm, &
-         src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  & 
-         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
+         src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  &
+         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, phase_speeds)
 
       call gw_rdg_belowpeak(ncol, band_oro, rdg_cd_llb, &
-         t, mxdis(:,nn), anixy(:,nn), kwvrdg, & 
+         t, mxdis(:,nn), anixy(:,nn), kwvrdg, &
          zi, nm, ni, rhoi, &
-         src_level, tau, & 
-         ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, & 
+         src_level, tau, &
+         ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, &
          tauoro, taudsw, hdspwv, hdspdw)
 
 
       call gw_rdg_break_trap(ncol, band_oro, &
-         zi, nm, ni, ubm, ubi, rhoi, kwvrdg , bwv, tlb, wbr, & 
-         src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), & 
-         tauoro, taudsw, tau, & 
+         zi, nm, ni, ubm, ubi, rhoi, kwvrdg , bwv, tlb, wbr, &
+         src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), &
+         tauoro, taudsw, tau, &
          ldo_trapped_waves=trpd_leewv)
 
-     
+
       call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
          t, vramp,    &
          piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
-         effgw, c, kvtt, q, dse, tau, utgw, vtgw, &
+         effgw, phase_speeds, kvtt, q, dse, tau, utgw, vtgw, &
          ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
-         kwvrdg=kwvrdg, & 
+         kwvrdg=kwvrdg, &
          satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
 
       ! Add the tendencies from each ridge to the totals.
@@ -2245,13 +2727,70 @@ subroutine gw_rdg_calc( &
 
    end do ! end of loop over multiple ridges
 
+   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
+   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
+
+   if (luse_gw_rdg_resid) then
+   ! Add additional GW from residual variance. Assumed isotropic
+      kwvrdg  = 0.001_r8 / ( 100._r8 )
+      effgw   = effgw_rdg_resid * isowgt
+      tauoro = 0._r8
+
+      call gw_rdg_resid_src(ncol, band_oro, p, &
+         u, v, t, isovar, kwvrdg, zi, nm, &
+         src_level, tend_level, tau, ubm, ubi, xv, yv,  &
+         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, phase_speeds, tauoro )
+
+      call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
+         t, vramp,    &
+         piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
+         effgw, phase_speeds, kvtt, q, dse, tau, utgw, vtgw, &
+         ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
+         kwvrdg=kwvrdg, &
+         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
+
+      ! Add the tendencies from isotropic residual to the totals.
+      do k = 1, pver
+         ! diagnostics
+         utrdg(:,k) = utrdg(:,k) + utgw(:,k)
+         vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
+         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
+         ! physics tendencies
+         ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
+         ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
+         ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
+      end do
+
+      do m = 1, pcnst
+         do k = 1, pver
+            ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
+         end do
+      end do
+
+      do k = 1, pver+1
+         taurx0(:,k) =  tau(:,0,k)*xv
+         taury0(:,k) =  tau(:,0,k)*yv
+         taurx(:,k)  =  taurx(:,k) + taurx0(:,k)
+         taury(:,k)  =  taury(:,k) + taury0(:,k)
+      end do
+
+      call outfld('TAUDIAG_RESID', tau_diag,  ncol, lchnk)
+      call outfld('TAUORO_RESID', tauoro ,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'X', taurx,  ncol, lchnk)
+      call outfld('TAURESID'//trim(type)//'Y', taury,  ncol, lchnk)
+
+      call outfld('UBMRESID'//trim(type),      ubm,         ncol, lchnk)
+      call outfld('UBIRESID'//trim(type),      ubi,         ncol, lchnk)
+      call outfld('SRC_LEVEL_RESID'//trim(type),      real(src_level, r8) ,         ncol, lchnk)
+      ! end of residual variance calc
+   end if
+
    ! Calculate energy change for output to CAM's energy checker.
    call energy_change(dt, p, u, v, ptend%u(:ncol,:), &
           ptend%v(:ncol,:), ptend%s(:ncol,:), de)
    flx_heat(:ncol) = de
 
-   call outfld('TAUARDG'//trim(type)//'X', taurx,  ncol, lchnk)
-   call outfld('TAUARDG'//trim(type)//'Y', taury,  ncol, lchnk)
 
    if (trim(type) == 'BETA') then
       fname(1) = 'TAUGWX'
@@ -2274,7 +2813,7 @@ subroutine gw_rdg_calc( &
    call outfld(fname(4), vtrdg,  ncol, lchnk)
    call outfld('TTGWORO', ttrdg / cpair,  ncol, lchnk)
 
-   deallocate(tau, gwut, c)
+   deallocate(tau, gwut, phase_speeds)
 
 end subroutine gw_rdg_calc
 
@@ -2308,25 +2847,25 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
   !-----------------------------------------------------------------------
 
   ! Overall wind tendencies.
-  call addfld (trim(prefix)//'UTGWSPEC',(/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTGWSPEC',(/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency - gravity wave spectrum')
-  call addfld (trim(prefix)//'VTGWSPEC',(/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'VTGWSPEC',(/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' V tendency - gravity wave spectrum')
   call register_vector_field(trim(prefix)//'UTGWSPEC',trim(prefix)//'VTGWSPEC')
 
-  call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' T tendency - gravity wave spectrum')
 
   ! Wind tendencies broken across five spectral bins.
-  call addfld (trim(prefix)//'UTEND1',  (/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTEND1',  (/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency   c < -40')
-  call addfld (trim(prefix)//'UTEND2',  (/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTEND2',  (/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency  -40 < c < -15')
-  call addfld (trim(prefix)//'UTEND3',  (/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTEND3',  (/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency  -15 < c <  15')
-  call addfld (trim(prefix)//'UTEND4',  (/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTEND4',  (/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency   15 < c <  40')
-  call addfld (trim(prefix)//'UTEND5',  (/ 'lev' /), 'A','m/s2', &
+  call addfld (trim(prefix)//'UTEND5',  (/ 'lev' /), 'A','m s-2', &
        trim(scheme)//' U tendency   40 < c ')
 
   ! Reynold's stress toward each cardinal direction, and net zonal stress.
@@ -2352,9 +2891,9 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
        trim(scheme)//' Southward MF')
 
   ! Temperature tendency terms.
-  call addfld (trim(prefix)//'TTGWSDF' , (/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSDF' , (/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' t tendency - diffusion term')
-  call addfld (trim(prefix)//'TTGWSKE' , (/ 'lev' /), 'A','K/s', &
+  call addfld (trim(prefix)//'TTGWSKE' , (/ 'lev' /), 'A','K s-1', &
        trim(scheme)//' t tendency - kinetic energy conversion term')
 
   ! Gravity wave source spectra by wave number.
@@ -2364,7 +2903,7 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
 
      dumc1x = tau_fld_name(l, prefix, x_not_y=.true.)
      dumc1y = tau_fld_name(l, prefix, x_not_y=.false.)
-     dumc2 = trim(scheme)//" tau at c= "//trim(fnum)//" m/s"
+     dumc2 = trim(scheme)//" tau at c= "//trim(fnum)//" m s-1"
      call addfld (trim(dumc1x),(/ 'lev' /), 'A','Pa',dumc2)
      call addfld (trim(dumc1y),(/ 'lev' /), 'A','Pa',dumc2)
 
@@ -2386,7 +2925,7 @@ end subroutine gw_spec_addflds
 !==========================================================================
 
 ! Outputs for spectral waves.
-subroutine gw_spec_outflds(prefix, lchnk, ncol, band, c, u, v, xv, yv, &
+subroutine gw_spec_outflds(prefix, lchnk, ncol, band, phase_speeds, u, v, xv, yv, &
      gwut, dttdf, dttke, tau, utgw, vtgw, ttgw, taucd)
 
   use gw_common, only: west, east, south, north
@@ -2399,7 +2938,7 @@ subroutine gw_spec_outflds(prefix, lchnk, ncol, band, c, u, v, xv, yv, &
   ! Wave speeds.
   type(GWBand), intent(in) :: band
   ! Wave phase speeds for each column.
-  real(r8), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  real(r8), intent(in) :: phase_speeds(ncol,-band%ngwv:band%ngwv)
   ! Winds at cell midpoints.
   real(r8), intent(in) :: u(ncol,pver)
   real(r8), intent(in) :: v(ncol,pver)
@@ -2451,7 +2990,7 @@ subroutine gw_spec_outflds(prefix, lchnk, ncol, band, c, u, v, xv, yv, &
   utb = 0._r8
 
   ! Find which output bin the phase speed corresponds to.
-  ix = find_bin(c)
+  ix = find_bin(phase_speeds)
 
   ! Put the wind tendency in that bin.
   do l = -band%ngwv, band%ngwv
@@ -2485,12 +3024,12 @@ subroutine gw_spec_outflds(prefix, lchnk, ncol, band, c, u, v, xv, yv, &
   taux = 0._r8
   tauy = 0._r8
 
-  ! Project c, and convert each component to a wavenumber index.
+  ! Project phase_speeds, and convert each component to a wavenumber index.
   ! These are mappings from the wavenumber index of tau to those of taux
   ! and tauy, respectively.
   do l=-band%ngwv,band%ngwv
-     ix(:,l) = c_to_l(c(:,l)*xv)
-     iy(:,l) = c_to_l(c(:,l)*yv)
+     ix(:,l) = c_to_l(phase_speeds(:,l)*xv)
+     iy(:,l) = c_to_l(phase_speeds(:,l)*yv)
   end do
 
   ! Find projection of tau.

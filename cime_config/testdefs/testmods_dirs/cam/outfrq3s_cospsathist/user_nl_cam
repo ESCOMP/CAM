@@ -1,6 +1,7 @@
  ndens=1,1,1,1,1,1
  nhtfrq=3,3,3,3,-2,3
  mfilt=1,1,1,1,1,1
+ write_nstep0=.true.
  sathist_track_infile='$DIN_LOC_ROOT/atm/cam/sat/satellite_profilelist_20020125_20101030_c110204_noleap.nc'
  sathist_fincl = 'Q','T','PS','U','V','FV'
  fincl3 = 'Q','T','PS','FV','UWzm:I'

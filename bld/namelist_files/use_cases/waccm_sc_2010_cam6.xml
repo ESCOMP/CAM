@@ -21,8 +21,8 @@
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- upper atmos forcings -->
-<waccm_forcing_type>FIXED</waccm_forcing_type>
-<waccm_forcing_fixed_ymd>20100101</waccm_forcing_fixed_ymd>
+<waccm_forcing_type>CYCLICAL</waccm_forcing_type>
+<waccm_forcing_cycle_yr>2010</waccm_forcing_cycle_yr>
 <waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
 <waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
 
@@ -84,18 +84,18 @@
          'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_anthro-ag-ship_surface_2010climo_0.9x1.25_c20180918.nc',
          'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_bb_surface_2010climo_0.9x1.25_c20180918.nc',
          'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  4.4323D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_BENZENE_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  4.4323D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_BENZENE_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  1.2021D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_ISOP_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  6.6625D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_MTERP_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  9.9042D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_TOLUENE_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  9.9042D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_TOLUENE_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  8.3792D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_XYLENES_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  8.3792D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_XYLENES_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  8.6865D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_IVOC_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE ->  8.6865D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_IVOC_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SVOC_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
-	 'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SVOC_bb_surface_2010climo_0.9x1.25_c20180918.nc'
+	 'SOAE ->  2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_BENZENE_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_BENZENE_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  0.5954D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_ISOP_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  5.1004D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_MTERP_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_TOLUENE_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_TOLUENE_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_XYLENES_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_XYLENES_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_IVOC_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE ->  8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_IVOC_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SVOC_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+	 'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SVOC_bb_surface_2010climo_0.9x1.25_c20180918.nc'
 </srf_emis_specifier>
 
 <csw_time_type>CYCLICAL</csw_time_type>
@@ -110,7 +110,7 @@
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
-  'AOA1', 'AOA2', 'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
+  'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
   'UTGWSPEC', 'VTGWSPEC', 'BUTGWSPEC', 'AODVISstdn', 'AODVISdn', 'KVH_CLUBB', 'KVH', 'TTENDICE', 'QVTENDICE', 'QCTENDICE',
   'NCTENDICE', 'FQTENDICE', 'MASS'
 </fincl1>

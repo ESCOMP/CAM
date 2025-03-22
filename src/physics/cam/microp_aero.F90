@@ -42,7 +42,7 @@ use ndrop,            only: ndrop_init, dropmixnuc
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
-                               hetfrz_classnuc_cam_save_cbaero, hetfrz_classnuc_cam_calc
+                               hetfrz_classnuc_cam_calc
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
@@ -50,9 +50,11 @@ use cam_abortutils,       only: endrun
 
 use aerosol_properties_mod, only: aerosol_properties
 use modal_aerosol_properties_mod, only: modal_aerosol_properties
+use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
 use aerosol_state_mod, only: aerosol_state
 use modal_aerosol_state_mod, only: modal_aerosol_state
+use carma_aerosol_state_mod, only: carma_aerosol_state
 
 implicit none
 private
@@ -79,7 +81,8 @@ real(r8) :: bulk_scale    ! prescribed aerosol bulk sulfur scale factor
 real(r8) :: npccn_scale   ! scaling for activated number
 real(r8) :: wsub_scale    ! scaling for sub-grid vertical velocity (liquid)
 real(r8) :: wsubi_scale   ! scaling for sub-grid vertical velocity (ice)
-real(r8) :: wsub_min      ! minimum sub-grid vertical velocity (liquid)
+real(r8) :: wsub_min      ! minimum sub-grid vertical velocity (liquid) before scale factor
+real(r8) :: wsub_min_asf  ! minimum sub-grid vertical velocity (liquid) after scale factor
 real(r8) :: wsubi_min     ! minimum sub-grid vertical velocity (ice)
 
 ! smallest mixing ratio considered in microphysics
@@ -109,6 +112,9 @@ integer :: idxsul   = -1 ! index in aerosol list for sulfate
 integer :: idxdst2  = -1 ! index in aerosol list for dust2
 integer :: idxdst3  = -1 ! index in aerosol list for dust3
 integer :: idxdst4  = -1 ! index in aerosol list for dust4
+
+! carma aerosols
+logical :: clim_carma_aero
 
 ! modal aerosols
 logical :: clim_modal_aero
@@ -178,6 +184,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    ! local variables
    integer  :: iaer, ierr
    integer  :: m, n, nmodes, nspec
+   integer :: nbins
 
    character(len=32) :: str32
    character(len=*), parameter :: routine = 'microp_aero_init'
@@ -211,22 +218,25 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
    ! The modal aerosols can be either prognostic or prescribed.
-   call rad_cnst_get_info(0, nmodes=nmodes)
+   call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
    clim_modal_aero = (nmodes > 0)
+   clim_carma_aero = (nbins> 0)
 
    ast_idx = pbuf_get_index('AST')
 
-   if (clim_modal_aero) then
-
+   if (clim_modal_aero .or. clim_carma_aero) then
       cldo_idx = pbuf_get_index('CLDO')
-      dgnumwet_idx = pbuf_get_index('DGNUMWET')
-
-      aero_props_obj => modal_aerosol_properties()
-      if (.not.associated(aero_props_obj)) then
-         call endrun('ma_convproc_init: construction of modal_aerosol_properties object failed')
+      if (clim_modal_aero) then
+         aero_props_obj => modal_aerosol_properties()
+      else if (clim_carma_aero) then
+         aero_props_obj => carma_aerosol_properties()
       end if
       call ndrop_init(aero_props_obj)
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+   end if
+
+   if (clim_modal_aero) then
+
+      dgnumwet_idx = pbuf_get_index('DGNUMWET')
 
       allocate(aero_state(begchunk:endchunk))
       do c = begchunk,endchunk
@@ -307,7 +317,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 
-   else
+   else if (.not.clim_carma_aero) then
 
       ! Props needed for BAM number concentration calcs.
 
@@ -329,20 +339,30 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       end do
 
       call ndrop_bam_init()
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
 
    end if
 
-   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation')
+   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation', sampled_on_subcycle=.true.)
 
-   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity'                   )
-   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice'           )
+   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity',            sampled_on_subcycle=.true.)
+   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice',    sampled_on_subcycle=.true.)
 
    if (history_amwg) then
       call add_default ('WSUB     ', 1, ' ')
    end if
 
-   call hetfrz_classnuc_cam_init(mincld)
+   if (associated(aero_props_obj)) then
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+   else
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
+   end if
+   if (use_hetfrz_classnuc) then
+      if (associated(aero_props_obj)) then
+         call hetfrz_classnuc_cam_init(mincld, aero_props_obj)
+      else
+         call endrun(routine//': cannot use hetfrz_classnuc without prognostic aerosols')
+      endif
+   endif
 
 end subroutine microp_aero_init
 
@@ -399,20 +419,20 @@ subroutine microp_aero_readnl(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = unset_r8 ! prescribed aerosol bulk sulfur scale factor
+   real(r8) :: microp_aero_bulk_scale = unset_r8   ! prescribed aerosol bulk sulfur scale factor
    real(r8) :: microp_aero_npccn_scale = unset_r8  ! prescribed aerosol bulk sulfur scale factor
-   real(r8) :: microp_aero_wsub_scale = unset_r8  ! subgrid vertical velocity (liquid) scale factor
+   real(r8) :: microp_aero_wsub_scale = unset_r8   ! subgrid vertical velocity (liquid) scale factor
    real(r8) :: microp_aero_wsubi_scale = unset_r8  ! subgrid vertical velocity (ice) scale factor
-   real(r8) :: microp_aero_wsub_min = unset_r8  ! subgrid vertical velocity (liquid) minimum
-   real(r8) :: microp_aero_wsubi_min = unset_r8  ! subgrid vertical velocity (ice) minimum
-
+   real(r8) :: microp_aero_wsub_min = unset_r8     ! subgrid vertical velocity (liquid) minimum (before scale factor)
+   real(r8) :: microp_aero_wsub_min_asf = unset_r8 ! subgrid vertical velocity (liquid) minimum (after scale factor)
+   real(r8) :: microp_aero_wsubi_min = unset_r8    ! subgrid vertical velocity (ice) minimum
 
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'microp_aero_readnl'
 
    namelist /microp_aero_nl/ microp_aero_bulk_scale, microp_aero_npccn_scale, microp_aero_wsub_min, &
-                             microp_aero_wsubi_min, microp_aero_wsub_scale, microp_aero_wsubi_scale
+                             microp_aero_wsubi_min, microp_aero_wsub_scale, microp_aero_wsubi_scale, microp_aero_wsub_min_asf
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -440,6 +460,8 @@ subroutine microp_aero_readnl(nlfile)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_scale")
    call mpi_bcast(microp_aero_wsub_min, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_min")
+   call mpi_bcast(microp_aero_wsub_min_asf, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_min_asf")
    call mpi_bcast(microp_aero_wsubi_min, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_min")
 
@@ -449,6 +471,7 @@ subroutine microp_aero_readnl(nlfile)
    wsub_scale = microp_aero_wsub_scale
    wsubi_scale = microp_aero_wsubi_scale
    wsub_min = microp_aero_wsub_min
+   wsub_min_asf = microp_aero_wsub_min_asf
    wsubi_min = microp_aero_wsubi_min
 
    if(bulk_scale == unset_r8) call endrun(subname//": FATAL: bulk_scale is not set")
@@ -456,6 +479,7 @@ subroutine microp_aero_readnl(nlfile)
    if(wsub_scale == unset_r8) call endrun(subname//": FATAL: wsub_scale is not set")
    if(wsubi_scale == unset_r8) call endrun(subname//": FATAL: wsubi_scale is not set")
    if(wsub_min == unset_r8) call endrun(subname//": FATAL: wsub_min is not set")
+   if(wsub_min_asf == unset_r8) call endrun(subname//": FATAL: wsub_min_asf is not set")
    if(wsubi_min == unset_r8) call endrun(subname//": FATAL: wsubi_min is not set")
 
    call nucleate_ice_cam_readnl(nlfile)
@@ -553,17 +577,28 @@ subroutine microp_aero_run ( &
 
    call physics_ptend_init(ptend_all, state%psetcols, 'microp_aero')
 
+   ! create the aerosol state object
    if (clim_modal_aero) then
-      ! create an aerosol state object specifically for cam state1
       aero_state1_obj => modal_aerosol_state( state1, pbuf )
       if (.not.associated(aero_state1_obj)) then
          call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
       end if
+   else if (clim_carma_aero) then
+      aero_state1_obj => carma_aerosol_state( state1, pbuf )
+      if (.not.associated(aero_state1_obj)) then
+         call endrun('microp_aero_run: construction of aero_state1_obj carma_aerosol_state object failed')
+      end if
+   end if
+
+   if (clim_modal_aero.or.clim_carma_aero) then
 
       itim_old = pbuf_old_tim_idx()
 
       call pbuf_get_field(pbuf, ast_idx,  cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
       call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   end if
+
+   if (clim_modal_aero) then
       call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet)
    end if
 
@@ -577,11 +612,6 @@ subroutine microp_aero_run ( &
    rndst(1:ncol,1:pver,2) = rn_dst2
    rndst(1:ncol,1:pver,3) = rn_dst3
    rndst(1:ncol,1:pver,4) = rn_dst4
-
-   ! save copy of cloud borne aerosols for use in heterogeneous freezing
-   if (use_hetfrz_classnuc) then
-      call hetfrz_classnuc_cam_save_cbaero(state1, pbuf)
-   end if
 
    ! initialize time-varying parameters
    do k = top_lev, pver
@@ -697,9 +727,9 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Droplet Activation
 
-   if (clim_modal_aero) then
+   if (clim_modal_aero .or. clim_carma_aero) then
 
-      ! for modal aerosol
+      ! for modal or carma aerosol
 
       ! partition cloud fraction into liquid water part
       lcldn = 0._r8
@@ -727,18 +757,14 @@ subroutine microp_aero_run ( &
       ! liquid clouds. This is the same behavior as CAM5.
       if (use_preexisting_ice) then
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, &
+              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
               cldn, cldo, cldliqf, nctend_mixnuc, factnum)
       else
          cldliqf = 1._r8
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, &
+              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
               lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
-
-      ! destroy the aerosol state object
-      deallocate(aero_state1_obj)
-      nullify(aero_state1_obj)
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
@@ -754,7 +780,7 @@ subroutine microp_aero_run ( &
       do k = top_lev, pver
          do i = 1, ncol
 
-            if (state1%q(i,k,cldliq_idx) >= qsmall) then
+            if (naer_all > 0 .and. state1%q(i,k,cldliq_idx) >= qsmall) then
 
                ! get droplet activation rate
 
@@ -839,7 +865,7 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !bulk aerosol ccn concentration (modal does it in ndrop, from dropmixnuc)
 
-   if (.not. clim_modal_aero) then
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero)) then
 
       ! ccn concentration as diagnostic
       call ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
@@ -853,15 +879,21 @@ subroutine microp_aero_run ( &
    ! heterogeneous freezing
    if (use_hetfrz_classnuc) then
 
-      call hetfrz_classnuc_cam_calc(state1, deltatin, factnum, pbuf)
+      call hetfrz_classnuc_cam_calc(aero_props_obj, aero_state1_obj, state1, deltatin, factnum, pbuf)
 
    end if
 
-   if (clim_modal_aero) then
+   if (clim_modal_aero.or.clim_carma_aero) then
       deallocate(factnum)
    end if
 
-end subroutine microp_aero_run
+   if (associated(aero_state1_obj)) then
+      ! destroy the aerosol state object
+      deallocate(aero_state1_obj)
+      nullify(aero_state1_obj)
+   endif
+
+ end subroutine microp_aero_run
 
 !=========================================================================================
 

@@ -3,6 +3,7 @@ module atm_import_export
   use NUOPC             , only : NUOPC_CompAttributeGet, NUOPC_Advertise, NUOPC_IsConnected
   use NUOPC_Model       , only : NUOPC_ModelGet
   use ESMF              , only : ESMF_GridComp, ESMF_State, ESMF_Mesh, ESMF_StateGet, ESMF_Field
+  use ESMF              , only : ESMF_Clock
   use ESMF              , only : ESMF_KIND_R8, ESMF_SUCCESS, ESMF_MAXSTR, ESMF_LOGMSG_INFO
   use ESMF              , only : ESMF_LogWrite, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
   use ESMF              , only : ESMF_STATEITEM_NOTFOUND, ESMF_StateItem_Flag
@@ -21,8 +22,10 @@ module atm_import_export
   use srf_field_check   , only : set_active_Fall_flxfire
   use srf_field_check   , only : set_active_Fall_fco2_lnd
   use srf_field_check   , only : set_active_Faoo_fco2_ocn
-  use srf_field_check   , only : set_active_Faxa_nhx
-  use srf_field_check   , only : set_active_Faxa_noy
+  use atm_stream_ndep   , only : stream_ndep_init, stream_ndep_interp, stream_ndep_is_initialized
+  use atm_stream_ndep   , only : ndep_stream_active
+  use chemistry         , only : chem_has_ndep_flx
+  use cam_control_mod   , only : aqua_planet, simple_phys
 
   implicit none
   private ! except
@@ -57,7 +60,7 @@ module atm_import_export
   integer                :: drydep_nflds = -huge(1) ! number of dry deposition velocity fields lnd-> atm
   integer                :: megan_nflds = -huge(1)  ! number of MEGAN voc fields from lnd-> atm
   integer                :: emis_nflds = -huge(1)   ! number of fire emission fields from lnd-> atm
-  integer, public        :: ndep_nflds = -huge(1)   ! number  of nitrogen deposition fields from atm->lnd/ocn
+  logical                :: atm_provides_lightning = .false. ! cld to grnd lightning flash freq (min-1)
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = __FILE__
@@ -75,19 +78,22 @@ contains
     use shr_megan_mod     , only : shr_megan_readnl
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
     use shr_carma_mod     , only : shr_carma_readnl
-    use shr_ndep_mod      , only : shr_ndep_readnl
+    use shr_lightning_coupling_mod, only : shr_lightning_coupling_readnl
 
     character(len=*), parameter :: nl_file_name = 'drv_flds_in'
 
     ! read mediator fields options
-    call shr_ndep_readnl(nl_file_name, ndep_nflds)
     call shr_drydep_readnl(nl_file_name, drydep_nflds)
     call shr_megan_readnl(nl_file_name, megan_nflds)
     call shr_fire_emis_readnl(nl_file_name, emis_nflds)
     call shr_carma_readnl(nl_file_name, carma_fields)
+    call shr_lightning_coupling_readnl(nl_file_name, atm_provides_lightning)
 
   end subroutine read_surface_fields_namelists
 
+  !-----------------------------------------------------------
+  ! advertise fields
+  !-----------------------------------------------------------
   subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     ! input/output variables
@@ -100,7 +106,6 @@ contains
     type(ESMF_State)       :: exportState
     character(ESMF_MAXSTR) :: stdname
     character(ESMF_MAXSTR) :: cvalue
-    character(len=2)       :: nec_str
     integer                :: n, num
     logical                :: flds_co2a      ! use case
     logical                :: flds_co2b      ! use case
@@ -186,11 +191,13 @@ contains
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_co2diag' )
     end if
 
-    ! from atm - nitrogen deposition
-    if (ndep_nflds > 0) then
-       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=ndep_nflds)
-       call set_active_Faxa_nhx(.true.)
-       call set_active_Faxa_noy(.true.)
+    ! Nitrogen deposition fluxes
+    ! Assume that 2 fields are always sent as part of Faxa_ndep
+    call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=2)
+
+    ! lightning flash freq
+    if (atm_provides_lightning) then
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lightning')
     end if
 
     ! Now advertise above export fields
@@ -225,7 +232,10 @@ contains
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Si_snowh'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ssq'    )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_re'     )
+    call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ustar'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_u10'    )
+    call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ugustOut')
+    call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_u10withGust')
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_taux' )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_tauy' )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_lat'  )
@@ -748,6 +758,30 @@ contains
        end do
     end if
 
+    call state_getfldptr(importState,  'So_ugustOut', fldptr=fldptr1d, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             cam_in(c)%ugustOut(i) = fldptr1d(g)
+             g = g + 1
+          end do
+       end do
+    end if
+
+    call state_getfldptr(importState,  'So_u10withGust', fldptr=fldptr1d, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             cam_in(c)%u10withGusts(i) = fldptr1d(g)
+             g = g + 1
+          end do
+       end do
+    end if
+
     ! bgc scenarios
     call state_getfldptr(importState,  'Fall_fco2_lnd', fldptr=fldptr1d, exists=exists_fco2_lnd, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -858,7 +892,7 @@ contains
 
   !===============================================================================
 
-  subroutine export_fields( gcomp, cam_out, rc)
+  subroutine export_fields( gcomp, model_mesh, model_clock, cam_out, rc)
 
     ! -----------------------------------------------------
     ! Set field pointers in export set
@@ -876,12 +910,15 @@ contains
     !-------------------------------
 
     ! input/output variables
-    type(ESMF_GridComp)           :: gcomp
-    type(cam_out_t) , intent(in)  :: cam_out(begchunk:endchunk)
-    integer         , intent(out) :: rc
+    type(ESMF_GridComp)              :: gcomp
+    type(ESMF_Mesh) , intent(in)     :: model_mesh
+    type(ESMF_Clock), intent(in)     :: model_clock
+    type(cam_out_t) , intent(inout)  :: cam_out(begchunk:endchunk)
+    integer         , intent(out)    :: rc
 
     ! local variables
     type(ESMF_State)  :: exportState
+    type(ESMF_Clock)  :: clock
     integer           :: i,m,c,n,g  ! indices
     integer           :: ncols      ! Number of columns
     integer           :: nstep
@@ -903,6 +940,7 @@ contains
     real(r8), pointer :: fldptr_ptem(:)    , fldptr_pslv(:)
     real(r8), pointer :: fldptr_co2prog(:) , fldptr_co2diag(:)
     real(r8), pointer :: fldptr_ozone(:)
+    real(r8), pointer :: fldptr_lght(:)
     character(len=*), parameter :: subname='(atm_import_export:export_fields)'
     !---------------------------------------------------------------------------
 
@@ -1032,6 +1070,18 @@ contains
        end do
     end if
 
+    call state_getfldptr(exportState, 'Sa_lightning', fldptr=fldptr_lght, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             fldptr_lght(g) = cam_out(c)%lightning_flash_freq(i) ! cloud-to-ground lightning flash frequency (/min)
+             g = g + 1
+          end do
+       end do
+    end if
+
     call state_getfldptr(exportState, 'Sa_co2prog', fldptr=fldptr_co2prog, exists=exists, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (exists) then
@@ -1056,18 +1106,44 @@ contains
        end do
     end if
 
-    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, exists=exists, rc=rc)
+    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (exists) then
-       ! (1) => nhx, (2) => noy
-       g = 1
-       do c = begchunk,endchunk
-          do i = 1,get_ncols_p(c)
-             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
-             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
-             g = g + 1
+
+    fldptr_ndep(:,:) = 0._r8
+
+    if (.not. (simple_phys .or. aqua_planet)) then
+
+       ! The ndep_stream_nl namelist group is read in stream_ndep_init.  This sets whether
+       ! or not the stream will be used.
+       if (.not. stream_ndep_is_initialized) then
+          call stream_ndep_init(model_mesh, model_clock, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          stream_ndep_is_initialized = .true.
+       end if
+
+       if (ndep_stream_active.or.chem_has_ndep_flx) then
+
+          ! Nitrogen dep fluxes are  obtained from the ndep input stream if input data is available
+          ! otherwise computed by chemistry
+          if (ndep_stream_active) then
+
+             ! get ndep fluxes from the stream
+             call stream_ndep_interp(cam_out, rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+          end if
+
+          g = 1
+          do c = begchunk,endchunk
+             do i = 1,get_ncols_p(c)
+                fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
+                fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
+                g = g + 1
+             end do
           end do
-       end do
+
+       end if
+
     end if
 
   end subroutine export_fields

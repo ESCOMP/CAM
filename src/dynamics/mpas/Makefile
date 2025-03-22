@@ -1,10 +1,13 @@
-CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELIST_SUFFIX=atmosphere -DMPAS_CAM_DYCORE -DMPAS_NO_ESMF_INIT
+GIT_VERSION=$(shell git -C "$(MPAS_SRC_ROOT)/dycore" describe --always --dirty --tags || echo "N/A" )
+CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_CAM_DYCORE -DMPAS_PIO_SUPPORT -DMPAS_NO_ESMF_INIT -DMPAS_GIT_VERSION="$(GIT_VERSION)" -DMPAS_BUILD_TARGET="N/A" -DMPAS_NAMELIST_SUFFIX="atmosphere"
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
 endif
 ifeq ($(strip $(COMP_INTERFACE)),nuopc)
   CPPFLAGS += -DMPAS_EXTERNAL_ESMF_LIB
 endif
+# Uncomment next line to enable MPAS to use mpi_f08 module
+#CPPFLAGS += -DMPAS_USE_MPI_F08
 
 REGISTRY_FILE := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/Registry.xml
 
@@ -18,6 +21,7 @@ INTERFACE_OBJS = \
 	mpas_atm_core_interface.o \
 	mpas_atm_dimensions.o \
 	mpas_atm_threading.o \
+	mpas_atm_halos.o \
 	cam_mpas_subdriver.o
 
 DYN_OBJS = \
@@ -31,10 +35,11 @@ DIAG_OBJS = \
 
 DIAGNOSTICS = \
 	mpas_atm_diagnostic_template.o \
-	isobaric_diagnostics.o \
-	convective_diagnostics.o \
-	pv_diagnostics.o \
-	soundings.o
+	mpas_isobaric_diagnostics.o \
+	mpas_cloud_diagnostics.o \
+	mpas_convective_diagnostics.o \
+	mpas_pv_diagnostics.o \
+	mpas_soundings.o
 
 REG_OBJS = \
 	parse.o \
@@ -78,6 +83,8 @@ FRAME_OBJS = \
 	mpas_io_streams.o \
 	mpas_bootstrapping.o \
 	mpas_io_units.o \
+	mpas_stream_inquiry.o \
+	stream_inquiry.o \
 	mpas_stream_manager.o \
 	mpas_stream_list.o \
 	mpas_forcing.o \
@@ -90,7 +97,10 @@ FRAME_OBJS = \
 	mpas_pool_routines.o \
 	xml_stream_parser.o \
 	regex_matching.o \
-	mpas_log.o
+	mpas_log.o \
+	mpas_halo.o \
+	mpas_string_utils.o
+
 
 UTIL_OBJS = \
 	ezxml.o
@@ -129,7 +139,8 @@ mpas_framework.o: mpas_dmpar.o \
                   mpas_io_units.o \
                   mpas_block_decomp.o \
                   mpas_stream_manager.o \
-                  mpas_c_interfacing.o
+                  mpas_c_interfacing.o \
+                  mpas_halo.o
 
 mpas_abort.o: mpas_kind_types.o mpas_io_units.o mpas_threading.o
 
@@ -155,7 +166,7 @@ mpas_dmpar.o: mpas_sort.o mpas_kind_types.o mpas_derived_types.o mpas_hash.o mpa
 
 mpas_sort.o: mpas_kind_types.o mpas_log.o
 
-mpas_timekeeping.o: mpas_kind_types.o mpas_derived_types.o mpas_dmpar.o mpas_threading.o mpas_log.o
+mpas_timekeeping.o: mpas_string_utils.o mpas_kind_types.o mpas_derived_types.o mpas_dmpar.o mpas_threading.o mpas_log.o
 
 mpas_timer.o: mpas_kind_types.o mpas_dmpar.o mpas_threading.o mpas_log.o
 
@@ -173,12 +184,15 @@ mpas_io_units.o: mpas_kind_types.o
 
 mpas_threading.o: mpas_kind_types.o
 
+mpas_stream_inquiry.o: mpas_derived_types.o mpas_log.o mpas_c_interfacing.o stream_inquiry.o
+
 mpas_stream_list.o: mpas_derived_types.o mpas_kind_types.o mpas_io_streams.o mpas_timekeeping.o regex_matching.o mpas_log.o
 
 mpas_stream_manager.o: mpas_io_streams.o mpas_timekeeping.o mpas_derived_types.o mpas_kind_types.o mpas_c_interfacing.o mpas_stream_list.o mpas_dmpar.o mpas_io.o mpas_threading.o mpas_log.o
 
 mpas_forcing.o: mpas_derived_types.o mpas_timekeeping.o mpas_stream_manager.o mpas_log.o mpas_io_units.o
 
+mpas_halo.o: mpas_derived_types.o mpas_pool_routines.o mpas_log.o
 
 #
 # Operator dependencies
@@ -219,7 +233,7 @@ streams_gen: $(STREAMS_GEN_OBJS) ezxml.o
 #
 incs: $(REGISTRY_FILE)
 	( cpp -P -traditional $(CPPFLAGS) -I$(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/diagnostics $(REGISTRY_FILE) > Registry_processed.xml )
-	( ./registry Registry_processed.xml )
+	( ./registry Registry_processed.xml $(CPPFLAGS) )
 
 #
 # Dycore
@@ -234,9 +248,10 @@ mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o mpas_atm_bound
 #
 mpas_atm_diagnostics_manager.o: mpas_atm_diagnostics_utils.o $(DIAGNOSTICS)
 
-convective_diagnostics.o: mpas_atm_diagnostics_utils.o
-isobaric_diagnostics.o: mpas_atm_diagnostics_utils.o
-pv_diagnostics.o: mpas_atm_diagnostics_utils.o
+mpas_cloud_diagnostics.o: mpas_atm_diagnostics_utils.o
+mpas_convective_diagnostics.o: mpas_atm_diagnostics_utils.o
+mpas_isobaric_diagnostics.o: mpas_atm_diagnostics_utils.o
+mpas_pv_diagnostics.o: mpas_atm_diagnostics_utils.o
 
 
 #
@@ -244,7 +259,7 @@ pv_diagnostics.o: mpas_atm_diagnostics_utils.o
 #
 mpas_atm_core_interface.o: mpas_atm_core.o incs
 
-mpas_atm_core.o: mpas_atm_threading.o mpas_atm_time_integration.o mpas_atm_diagnostics_manager.o
+mpas_atm_core.o: mpas_atm_threading.o mpas_atm_time_integration.o mpas_atm_diagnostics_manager.o mpas_atm_halos.o
 
 cam_mpas_subdriver.o: mpas_atm_core_interface.o mpas_derived_types.o mpas_framework.o mpas_domain_routines.o mpas_pool_routines.o
 

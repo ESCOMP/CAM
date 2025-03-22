@@ -1,18 +1,21 @@
 module ref_pres
 !--------------------------------------------------------------------------
-! 
+!
 ! Provides access to reference pressures for use by the physics
 ! parameterizations.  The pressures are provided by the dynamical core
 ! since it determines the grid used by the physics.
-! 
+!
 ! Note that the init method for this module is called before the init
 ! method in physpkg; therefore, most physics modules can use these
 ! reference pressures during their init phases.
-! 
+!
 !--------------------------------------------------------------------------
 
-use shr_kind_mod, only: r8=>shr_kind_r8
-use ppgrid,       only: pver, pverp
+use shr_kind_mod,        only: r8=>shr_kind_r8
+use ppgrid,              only: pver, pverp
+use cam_history_support, only: add_vert_coord
+use cam_logfile,         only: iulog
+use error_messages,      only: alloc_err
 
 implicit none
 public
@@ -25,7 +28,7 @@ real(r8), protected :: pref_mid_norm(pver)  ! Layer midpoints normalized by
                                             ! surface pressure ('eta' coordinate)
 
 real(r8), protected :: ptop_ref             ! Top of model
-real(r8), protected :: psurf_ref            ! Surface pressure
+real(r8), protected :: psurf_ref            ! reference pressure
 
 ! Number of top levels using pure pressure representation
 integer, protected :: num_pr_lev
@@ -48,6 +51,11 @@ real(r8), protected :: molec_diff_bot_press = 50._r8
 ! Flag for molecular diffusion, and molecular diffusion level index.
 logical, protected :: do_molec_diff = .false.
 integer, protected :: nbot_molec = 0
+
+! Data for the trop_pref coordinate.  It is the target of a pointer in a hist_coord_t
+! object in the cam_history_support module.  It is associated by the call to add_vert_coord.
+real(r8), private, allocatable, target :: trop_pref(:)
+real(r8), private, allocatable, target :: trop_prefi(:)
 
 !====================================================================================
 contains
@@ -111,6 +119,11 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
    real(r8), intent(in) :: pref_edge_in(:) ! reference pressure at layer edges (Pa)
    real(r8), intent(in) :: pref_mid_in(:)  ! reference pressure at layer midpoints (Pa)
    integer,  intent(in) :: num_pr_lev_in   ! number of top levels using pure pressure representation
+
+   ! local variables
+   integer :: nlev
+   integer :: istat
+   character(len=*), parameter :: sub = 'ref_pres_init'
    !---------------------------------------------------------------------------
 
    pref_edge = pref_edge_in
@@ -136,6 +149,24 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
       nbot_molec = press_lim_idx(molec_diff_bot_press, &
          top=.false.)
    end if
+
+   ! Add vertical coordinates to history file for use with outputs that are only
+   ! computed in the subdomain bounded by the top of troposphere clouds.
+   nlev = pver - trop_cloud_top_lev + 1
+
+   allocate(trop_pref(nlev), stat=istat)
+   call alloc_err(istat, sub, 'trop_pref', nlev)
+   trop_pref  = pref_mid(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
+
+   call add_vert_coord('trop_pref', nlev, 'troposphere reference pressures', &
+      'hPa', trop_pref, positive='down')
+
+   allocate(trop_prefi(nlev+1), stat=istat)
+   call alloc_err(istat, sub, 'trop_prefi', nlev+1)
+   trop_prefi = pref_edge(trop_cloud_top_lev:)*0.01_r8 ! convert Pa to hPa
+
+   call add_vert_coord('trop_prefi', nlev+1, 'troposphere reference pressures (interfaces)', &
+      'hPa', trop_prefi, positive='down')
 
 end subroutine ref_pres_init
 

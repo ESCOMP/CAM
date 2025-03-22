@@ -135,10 +135,10 @@ subroutine ndrop_init(aero_props)
 
          ! Add tendency fields to the history only when prognostic MAM is enabled.
          long_name = trim(tmpname) // ' dropmixnuc mixnuc column tendency'
-         call addfld(fieldname(mm),    horiz_only, 'A', unit, long_name)
+         call addfld(fieldname(mm),    horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
 
          long_name = trim(tmpname_cw) // ' dropmixnuc mixnuc column tendency'
-         call addfld(fieldname_cw(mm), horiz_only, 'A', unit, long_name)
+         call addfld(fieldname_cw(mm), horiz_only, 'A', unit, long_name, sampled_on_subcycle=.true.)
 
          if (history_aerosol) then
             call add_default(fieldname(mm), 1, ' ')
@@ -148,19 +148,19 @@ subroutine ndrop_init(aero_props)
       end do
    end do
 
-   call addfld('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%')
-   call addfld('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%')
-   call addfld('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%')
-   call addfld('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%')
-   call addfld('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%')
-   call addfld('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%')
+   call addfld('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
+   call addfld('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
+   call addfld('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
+   call addfld('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
+   call addfld('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
+   call addfld('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
 
 
-   call addfld('WTKE',     (/ 'lev' /), 'A', 'm/s', 'Standard deviation of updraft velocity')
-   call addfld('NDROPMIX', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number mixing')
-   call addfld('NDROPSRC', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number source')
-   call addfld('NDROPSNK', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number loss by microphysics')
-   call addfld('NDROPCOL', horiz_only,  'A', '#/m2', 'Column droplet number')
+   call addfld('WTKE',     (/ 'lev' /), 'A', 'm/s', 'Standard deviation of updraft velocity', sampled_on_subcycle=.true.)
+   call addfld('NDROPMIX', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number mixing', sampled_on_subcycle=.true.)
+   call addfld('NDROPSRC', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number source', sampled_on_subcycle=.true.)
+   call addfld('NDROPSNK', (/ 'lev' /), 'A', '#/kg/s', 'Droplet number loss by microphysics', sampled_on_subcycle=.true.)
+   call addfld('NDROPCOL', horiz_only,  'A', '#/m2', 'Column droplet number', sampled_on_subcycle=.true.)
 
    ! set the add_default fields
    if (history_amwg) then
@@ -172,8 +172,8 @@ end subroutine ndrop_init
 !===============================================================================
 
 subroutine dropmixnuc( aero_props, aero_state, &
-   state, ptend, dtmicro, pbuf, wsub, &
-   cldn, cldo, cldliqf, tendnd, factnum, from_spcam)
+   state, ptend, dtmicro, pbuf, wsub, wmixmin, &
+   cldn, cldo, cldliqf, tendnd, factnum)
 
    ! vertical diffusion and nucleation of cloud droplets
    ! assume cloud presence controlled by cloud fraction
@@ -183,6 +183,7 @@ subroutine dropmixnuc( aero_props, aero_state, &
    type(physics_state), target, intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
    real(r8),                    intent(in)    :: dtmicro     ! time step for microphysics (s)
+   real(r8),                    intent(in)    :: wmixmin     ! minimum turbulence vertical velocity (m/s)
 
    type(physics_buffer_desc), pointer :: pbuf(:)
 
@@ -194,7 +195,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
    real(r8), intent(in) :: cldn(pcols,pver)    ! cloud fraction
    real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
    real(r8), intent(in) :: cldliqf(pcols,pver) ! liquid cloud fraction (liquid / (liquid + ice))
-   logical,  intent(in),optional :: from_spcam ! value insignificant - if variable present, is called from spcam
 
    ! output arguments
    real(r8), intent(out) :: tendnd(pcols,pver) ! change in droplet number concentration (#/kg/s)
@@ -221,9 +221,7 @@ subroutine dropmixnuc( aero_props, aero_state, &
    real(r8) :: raertend(pver)  ! tendency of aerosol mass, number mixing ratios
    real(r8) :: qqcwtend(pver)  ! tendency of cloudborne aerosol mass, number mixing ratios
 
-
    real(r8), parameter :: zkmin = 0.01_r8, zkmax = 100._r8
-   real(r8), parameter :: wmixmin = 0.1_r8        ! minimum turbulence vertical velocity (m/s)
    integer  :: i, k, l, m, mm, n
    integer  :: km1, kp1
    integer  :: nnew, nsav, ntemp
@@ -312,7 +310,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
    real(r8) :: zerogas(pver)
    character*200 fieldnamegas
 
-   logical  :: called_from_spcam
    integer :: errnum
    character(len=shr_kind_cs) :: errstr
    !-------------------------------------------------------------------------------
@@ -374,14 +371,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
    ! Init pointers to mode number and specie mass mixing ratios in
    ! intersitial and cloud borne phases.
    call aero_state%get_states( aero_props, raer, qqcw )
-
-   called_from_spcam = (present(from_spcam))
-
-   if (called_from_spcam) then
-      rgas  => state%q
-      allocate(rgascol(pver, pcnst, 2))
-      allocate(coltendgas(pcols))
-   endif
 
    factnum = 0._r8
    wtke = 0._r8
@@ -451,30 +440,11 @@ subroutine dropmixnuc( aero_props, aero_state, &
          raercol(top_lev:pver,mm,nsav)    = raer(mm)%fld(i,top_lev:pver)
       end do
 
-      if (called_from_spcam) then
-      !
-      ! In the MMF model, turbulent mixing for tracer species are turned off.
-      ! So the turbulent for gas species mixing are added here.
-      ! (Previously, it had the turbulent mixing for aerosol species)
-      !
-         do m=1, pcnst
-            if (cnst_species_class(m) == cnst_spec_class_gas) rgascol(:,m,nsav) = rgas(i,:,m)
-         end do
-
-      endif
-
       ! droplet nucleation/aerosol activation
 
       ! tau_cld_regenerate = time scale for regeneration of cloudy air
       !    by (horizontal) exchange with clear air
       tau_cld_regenerate = 3600.0_r8 * 3.0_r8
-
-      if (called_from_spcam) then
-      ! when this is called  in the MMF part, no cloud regeneration and decay.
-      ! set the time scale be very long so that no cloud regeneration.
-           tau_cld_regenerate = 3600.0_r8 * 24.0_r8 * 365.0_r8
-      endif
-
 
       ! k-loop for growing/shrinking cloud calcs .............................
       ! grow_shrink_main_k_loop: &
@@ -920,21 +890,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
             end do
          end do
 
-         if (called_from_spcam) then
-         !
-         ! turbulent mixing for gas species .
-         !
-               do m=1, pcnst
-                  if (cnst_species_class(m) == cnst_spec_class_gas) then
-                    flxconv = 0.0_r8
-                    zerogas(:) = 0.0_r8
-                    call explmix(rgascol(1,m,nnew),zerogas,ekkp,ekkm,overlapp,overlapm,  &
-                                 rgascol(1,m,nsav),zero, flxconv, pver,dtmix,&
-                                   .true., zerogas)
-                  end if
-               end do
-         endif
-
       end do ! old_cloud_nsubmix_loop
 
       ! evaporate particles again if no cloud (either ice or liquid)
@@ -993,18 +948,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
          end do
       end do
 
-      if (called_from_spcam) then
-      !
-      ! Gas tendency
-      !
-           do m=1, pcnst
-              if (cnst_species_class(m) == cnst_spec_class_gas) then
-                ptend%lq(m) = .true.
-                ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
-              end if
-           end do
-      endif
-
    end do  ! overall_main_i_loop
    ! end of main loop over i/longitude ....................................
 
@@ -1012,11 +955,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
    call outfld('NDROPSRC', nsource,  pcols, lchnk)
    call outfld('NDROPMIX', ndropmix, pcols, lchnk)
    call outfld('WTKE    ', wtke,     pcols, lchnk)
-
-   if(called_from_spcam) then
-        call outfld('SPLCLOUD  ', cldn    , pcols, lchnk   )
-        call outfld('SPKVH     ', kvh     , pcols, lchnk   )
-   endif
 
    call ccncalc(aero_state, aero_props, state, cs, ccn)
    do l = 1, psat
@@ -1031,22 +969,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
          call outfld(fieldname_cw(mm), coltend_cw(:,mm), pcols, lchnk)
       end do
    end do
-
-   if(called_from_spcam) then
-   !
-   ! output column-integrated Gas tendency (this should be zero)
-   !
-        do m=1, pcnst
-            if (cnst_species_class(m) == cnst_spec_class_gas) then
-              do i=1, ncol
-                 coltendgas(i) = sum( pdel(i,:)*ptend%q(i,:,m) )/gravit
-              end do
-              fieldnamegas = trim(cnst_name(m)) // '_mixnuc1sp'
-              call outfld( trim(fieldnamegas), coltendgas, pcols, lchnk)
-            end if
-        end do
-        deallocate(rgascol, coltendgas)
-   end if
 
    deallocate( &
       nact,       &

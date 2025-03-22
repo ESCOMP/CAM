@@ -1,7 +1,7 @@
 module stepon
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use spmd_utils,     only: iam, mpicom
+use spmd_utils,     only: iam, mpicom, masterproc
 use ppgrid,         only: begchunk, endchunk
 
 use physics_types,  only: physics_state, physics_tend
@@ -11,11 +11,18 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use dimensions_mod, only: nelemd
+use dimensions_mod, only: np, npsq, nlev, nelemd
 
 use aerosol_properties_mod, only: aerosol_properties
 use aerosol_state_mod,      only: aerosol_state
 use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+use scamMod,                only: use_iop, doiopupdate, single_column, &
+                                  setiopupdate, readiopdata
+use se_single_column_mod,   only: scm_setfield, iop_broadcast
+use dyn_grid,               only: hvcoord
+use time_manager,           only: get_step_size, is_first_restart_step
+use cam_history,            only: outfld, write_camiop, addfld, add_default, horiz_only
+use cam_history,            only: write_inithist, hist_fld_active, fieldname_len
 
 implicit none
 private
@@ -29,6 +36,7 @@ public stepon_final
 
 class(aerosol_properties), pointer :: aero_props_obj => null()
 logical :: aerosols_transported = .false.
+logical :: iop_update_phase1
 
 !=========================================================================================
 contains
@@ -36,7 +44,6 @@ contains
 
 subroutine stepon_init(dyn_in, dyn_out )
 
-   use cam_history,    only: addfld, add_default, horiz_only
    use constituents,   only: pcnst, cnst_name, cnst_longname
    use dimensions_mod, only: fv_nphys, cnst_name_gll, cnst_longname_gll, qsize
 
@@ -95,11 +102,10 @@ end subroutine stepon_init
 subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
                         pbuf2d, dyn_in, dyn_out )
 
-   use time_manager,   only: get_step_size
    use dp_coupling,    only: d_p_coupling
    use physics_buffer, only: physics_buffer_desc
 
-   use time_mod,       only: tstep                    ! dynamics timestep
+   use se_dyn_time_mod,only: tstep                    ! dynamics timestep
 
    real(r8),             intent(out)   :: dtime_out   ! Time-step
    type(physics_state),  intent(inout) :: phys_state(begchunk:endchunk)
@@ -122,6 +128,31 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
       ! write diagnostic fields on gll grid and initial file
       call diag_dynvar_ic(dyn_out%elem, dyn_out%fvm)
    end if
+
+   ! Determine whether it is time for an IOP update;
+   ! doiopupdate set to true if model time step > next available IOP
+
+
+   if (use_iop .and. masterproc) then
+       call setiopupdate
+   end if
+
+   if (single_column) then
+
+     ! If first restart step then ensure that IOP data is read
+     if (is_first_restart_step()) then
+        if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+        call iop_broadcast()
+     endif
+
+     iop_update_phase1 = .true.
+     if ((is_first_restart_step() .or. doiopupdate) .and. masterproc) then
+        call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+     endif
+     call iop_broadcast()
+
+     call scm_setfield(dyn_out%elem,iop_update_phase1)
+   endif
 
    call t_barrierf('sync_d_p_coupling', mpicom)
    call t_startf('d_p_coupling')
@@ -152,9 +183,9 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    use dp_coupling,            only: p_d_coupling
    use dyn_grid,               only: TimeLevel
 
-   use time_mod,               only: TimeLevel_Qdp
+   use se_dyn_time_mod,        only: TimeLevel_Qdp
    use control_mod,            only: qsplit
-   use prim_advance_mod,       only: calc_tot_energy_dynamics
+   use prim_advance_mod,       only: tot_energy_dyn
 
 
    ! arguments
@@ -194,7 +225,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    call t_stopf('p_d_coupling')
 
    if (iam < par%nprocs) then
-      call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
+      call tot_energy_dyn(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
    end if
 
 end subroutine stepon_run2
@@ -205,10 +236,12 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    use camsrfexch,     only: cam_out_t
    use dyn_comp,       only: dyn_run
-   use advect_tend,    only: compute_adv_tends_xyz
+   use advect_tend,    only: compute_adv_tends_xyz, compute_write_iop_fields
    use dyn_grid,       only: TimeLevel
-   use time_mod,       only: TimeLevel_Qdp
+   use se_dyn_time_mod,only: TimeLevel_Qdp
    use control_mod,    only: qsplit
+   use constituents,   only: pcnst, cnst_name
+
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -219,10 +252,21 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    integer :: tl_f, tl_fQdp
    !--------------------------------------------------------------------------------------
 
+   if (single_column) then
+      ! Update IOP properties e.g. omega, divT, divQ
+      iop_update_phase1 = .false.
+      if (doiopupdate) then
+         if (masterproc) call readiopdata( hvcoord%hyam, hvcoord%hybm, hvcoord%hyai, hvcoord%hybi, hvcoord%ps0  )
+         call iop_broadcast()
+         call scm_setfield(dyn_out%elem,iop_update_phase1)
+      endif
+   endif
+
    call t_startf('comp_adv_tends1')
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
 
    call t_barrierf('sync_dyn_run', mpicom)
@@ -234,6 +278,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends2')
 
 end subroutine stepon_run3
@@ -251,10 +296,9 @@ end subroutine stepon_final
 
 subroutine diag_dynvar_ic(elem, fvm)
    use constituents,           only: cnst_type
-   use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
    use dyn_grid,               only: TimeLevel
 
-   use time_mod,               only: TimeLevel_Qdp   !  dynamics typestep
+   use se_dyn_time_mod,        only: TimeLevel_Qdp   !  dynamics typestep
    use control_mod,            only: qsplit
    use hybrid_mod,             only: config_thread_region, get_loop_ranges
    use hybrid_mod,             only: hybrid_t
@@ -282,9 +326,11 @@ subroutine diag_dynvar_ic(elem, fvm)
    real(r8), allocatable :: ftmp(:,:,:)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
    real(r8), allocatable :: fld_2d(:,:)
-   logical,  allocatable :: llimiter(:)
+   logical               :: llimiter(1)
    real(r8)              :: qtmp(np,np,nlev), dp_ref(np,np,nlev), ps_ref(np,np)
    real(r8), allocatable :: factor_array(:,:,:)
+   integer               :: astat
+   character(len=*), parameter :: prefix = 'diag_dynvar_ic: '
    !----------------------------------------------------------------------------
 
    tl_f = timelevel%n0
@@ -350,7 +396,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
    if (hist_fld_active('dp_ref_gll')) then
      do ie = 1, nelemd
-       call get_dp_ref(hyai, hybi, ps0, elem(ie)%state%phis(:,:), dp_ref(:,:,:), ps_ref(:,:))
+       call get_dp_ref(hyai,hybi,ps0,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
          do j = 1, np
             do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
@@ -374,8 +420,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (hist_fld_active('PS_gll')) then
      allocate(fld_2d(np,np))
      do ie = 1, nelemd
-       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
-            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
          do j = 1, np
             do i = 1, np
               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
@@ -393,19 +439,28 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))
-     do ie = 1, nelemd
-       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
-            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
-       do j = 1, np
-         do i = 1, np
-           ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+      allocate(fld_2d(np,np))
+      do ie = 1, nelemd
+         call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+              elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+         do j = 1, np
+            do i = 1, np
+               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+            end do
          end do
-       end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
-     end do
-     deallocate(fld_2d)
-      if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
+         call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
+      end do
+      deallocate(fld_2d)
+   endif
+
+   deallocate(ftmp)
+
+   if (write_inithist()) then
+
+      if (fv_nphys < 1) then
+         allocate(factor_array(np,np,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+      endif
 
       do ie = 1, nelemd
          call outfld('T&IC', RESHAPE(elem(ie)%state%T(:,:,:,tl_f),   (/npsq,nlev/)), npsq, ie)
@@ -414,7 +469,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
          if (fv_nphys < 1) then
             call get_sum_species(elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
-               thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
+                 thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
                if (cnst_type(m_cnst) == 'wet') then
@@ -436,40 +491,43 @@ subroutine diag_dynvar_ic(elem, fvm)
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
-         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac,nets:nete))
-         allocate(fld_gll(np,np,nlev,ntrac,nets:nete))
-         allocate(llimiter(ntrac))
-         allocate(factor_array(nc,nc,nlev))
+         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_fvm failed")
+         allocate(fld_gll(np,np,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_gll failed")
+         allocate(factor_array(nc,nc,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+
          llimiter = .true.
-         do ie = nets, nete
-           call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
-           factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
-           do m_cnst = 1, ntrac
-             if (cnst_type(m_cnst) == 'wet') then
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
-             else
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
-             end if
-           end do
-         end do
 
-         call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, ntrac, fvm(nets:nete), llimiter)
+         do m_cnst = 1, ntrac
+            do ie = nets, nete
 
-         do ie = nets, nete
-            do m_cnst = 1, ntrac
+               call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+               factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
+
+               if (cnst_type(m_cnst) == 'wet') then
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
+               else
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+               end if
+            end do
+
+            call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, fvm(nets:nete), llimiter)
+
+            do ie = nets, nete
                call outfld(trim(cnst_name(m_cnst))//'&IC', &
-                    RESHAPE(fld_gll(:,:,:,m_cnst,ie), (/npsq,nlev/)), npsq, ie)
+                    RESHAPE(fld_gll(:,:,:,:,ie), (/npsq,nlev/)), npsq, ie)
             end do
          end do
 
          deallocate(fld_fvm)
          deallocate(fld_gll)
-         deallocate(llimiter)
       end if
-      deallocate(factor_array)
-   end if  ! if (write_inithist)
 
-   deallocate(ftmp)
+      deallocate(factor_array)
+
+   end if  ! if (write_inithist)
 
 end subroutine diag_dynvar_ic
 

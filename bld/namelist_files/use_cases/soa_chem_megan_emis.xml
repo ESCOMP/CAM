@@ -63,7 +63,7 @@
 <gas_wetdep_method>NEU</gas_wetdep_method>
 
 <fincl1>
-  'AEROD_v', 'AOA1', 'AOA2', 'CH2O', 'CH3O2', 'CH3OOH', 'CH4', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLOUD',
+  'AEROD_v', 'CH2O', 'CH3O2', 'CH3OOH', 'CH4', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLOUD',
   'CO', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC', 'FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 'H', 'H2', 'H2O2', 'HNO3_GAS',
   'HNO3_STS', 'HNO3_NAT', 'HNO3', 'HO2', 'HO2NO2', 'LANDFRAC', 'LHFLX', 'N2O', 'N2O5', 'NO', 'NO2', 'NO3', 'O', 'O1D',
   'O3', 'OCNFRAC', 'OH', 'OMEGA', 'PHIS', 'PRECC', 'PRECL', 'PS', 'Q', 'QRL', 'QRS', 'RELHUM', 'SHFLX', 'SOLIN', 'SWCF',

@@ -111,6 +111,7 @@ contains
   end subroutine hbuf_accum_add
 
   !#######################################################################
+
   subroutine hbuf_accum_variance (hbuf, sbuf, field, nacs, dimind, idim, flag_xyfill, fillvalue)
     !
     !-----------------------------------------------------------------------

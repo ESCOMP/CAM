@@ -46,8 +46,6 @@
 <srf_emis_type>CYCLICAL</srf_emis_type>
 <srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- History Streams -->
 
 <mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
@@ -55,7 +53,7 @@
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
-  'AOA1', 'AOA2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD',
+  'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD',
   'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC',
   'FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 'HORZ', 'LANDFRAC', 'LHFLX', 'OCNFRAC',
   'OH', 'OMEGA', 'PHIS', 'PRECC', 'PRECL', 'PS', 'QFLX', 'QRL', 'QRLNLTE',

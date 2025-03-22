@@ -2,13 +2,15 @@
 
 <namelist_defaults>
 
-
-<tracer_cnst_cycle_yr>   2000                                                           </tracer_cnst_cycle_yr>
-<tracer_cnst_datapath>   atm/cam/ozone                                                  </tracer_cnst_datapath>
-<tracer_cnst_file>       tracer_cnst_CAM6chem_2000climo_3D_monthly_c171004.nc           </tracer_cnst_file>
-<tracer_cnst_filelist>   ''                                                             </tracer_cnst_filelist>
-<tracer_cnst_specifier>  'O3','OH','NO3','HO2'                                          </tracer_cnst_specifier>
-<tracer_cnst_type>       'CYCLICAL'                                                     </tracer_cnst_type>
+<tracer_cnst_datapath  chem="trop_mam4">atm/cam/ozone                                             </tracer_cnst_datapath>
+<tracer_cnst_file      chem="trop_mam4">tracer_cnst_CAM6chem_2000climo_3D_monthly_c171004.nc      </tracer_cnst_file>
+<tracer_cnst_specifier chem="trop_mam4">'O3','OH','NO3','HO2'                                     </tracer_cnst_specifier>
+<tracer_cnst_datapath  chem="ghg_mam4" >atm/cam/tracer_cnst                                       </tracer_cnst_datapath>
+<tracer_cnst_file      chem="ghg_mam4" >tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc</tracer_cnst_file>
+<tracer_cnst_specifier chem="ghg_mam4" >'O3','OH','NO3','HO2','HALONS'                            </tracer_cnst_specifier>
+<tracer_cnst_cycle_yr                  >2000                                                      </tracer_cnst_cycle_yr>
+<tracer_cnst_type                      >CYCLICAL                                                  </tracer_cnst_type>
+<tracer_cnst_filelist                  >''                                                        </tracer_cnst_filelist>
 
 <prescribed_ozone_cycle_yr>   2000                                                           </prescribed_ozone_cycle_yr>
 <prescribed_ozone_datapath>   atm/cam/ozone                                                  </prescribed_ozone_datapath>
@@ -61,19 +63,22 @@
     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_anthro-ag-ship_surface_2000climo_0.9x1.25_c20170616.nc',
     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_bb_surface_2000climo_0.9x1.25_c20170322.nc',
     'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a2_anthro-res_surface_2000climo_0.9x1.25_c20170616.nc',
-    'SOAE -> 4.4323D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
-    'SOAE -> 4.4323D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 1.2021D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_ISOP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 6.6625D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_MTERP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 9.9042D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
-    'SOAE -> 9.9042D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 8.3792D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
-    'SOAE -> 8.3792D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 8.6865D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
-    'SOAE -> 8.6865D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc',
-    'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
-    'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc'
+    'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+    'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_BENZENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 0.5954D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_ISOP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 5.1004D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_MTERP_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+    'SOAE -> 8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_TOLUENE_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+    'SOAE -> 6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_XYLENES_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+    'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+    'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+    'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc'
 </srf_emis_specifier>
+
+<!-- HEMCO emissions -->
+<hemco_emission_year>2000</hemco_emission_year>
 
 <flbc_file>      'atm/waccm/lb/LBC_2000climo_CMIP6_0p5degLat_c180227.nc' </flbc_file>
 <flbc_list>      'CO2','CH4','N2O','CFC11eq','CFC12' </flbc_list>

@@ -18,12 +18,11 @@ module prim_advection_mod
 !
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nlev, np, qsize, nc
-  use physconst,              only: cpair
   use derivative_mod,         only: derivative_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use hybvcoord_mod,          only: hvcoord_t
-  use time_mod,               only: TimeLevel_t, TimeLevel_Qdp
+  use se_dyn_time_mod,        only: TimeLevel_t, TimeLevel_Qdp
   use control_mod,            only: nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
   use edge_mod,               only: edgevpack, edgevunpack, initedgebuffer, initedgesbuffer
 
@@ -45,7 +44,7 @@ module prim_advection_mod
   public :: prim_advec_tracers_fvm
   public :: vertical_remap
 
-  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax, edgeAdv1,  edgeveloc
+  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax, edgeveloc
 
   integer,parameter :: DSSeta = 1
   integer,parameter :: DSSomega = 2
@@ -63,7 +62,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only: nlev, qsize, nelemd,ntrac
+    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam
     use parallel_mod,   only: parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -80,7 +79,7 @@ contains
     !
     ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
     !
-    if (ntrac>0) then
+    if (use_cslam) then
        advec_remap_num_threads = 1
     else
        advec_remap_num_threads = tracer_num_threads
@@ -89,17 +88,17 @@ contains
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
-    call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
-                         nthreads=horz_num_threads*advec_remap_num_threads)
-    call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
-                         nthreads=horz_num_threads*advec_remap_num_threads)
-    ! This is a different type of buffer pointer allocation
-    ! used for determine the minimum and maximum value from
-    ! neighboring  elements
-    call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
-                        nthreads=horz_num_threads*advec_remap_num_threads)
-
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+    if (.not.use_cslam) then
+      call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
+           nthreads=horz_num_threads*advec_remap_num_threads)
+      call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
+           nthreads=horz_num_threads*advec_remap_num_threads)
+      ! This is a different type of buffer pointer allocation
+      ! used for determine the minimum and maximum value from
+      ! neighboring  elements
+      call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
+           nthreads=horz_num_threads*advec_remap_num_threads)
+    end if
     call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
 
 
@@ -948,8 +947,8 @@ contains
     use vertremap_mod,          only: remap1
     use hybrid_mod,             only: hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only: fvm_struct
-    use dimensions_mod,         only: ntrac
-    use dimensions_mod,         only: lcp_moist, kord_tr,kord_tr_cslam
+    use dimensions_mod,         only: use_cslam, ntrac
+    use dimensions_mod,         only: kord_tr,kord_tr_cslam
     use cam_logfile,            only: iulog
     use physconst,              only: pi
     use air_composition,        only: thermodynamic_active_species_idx_dycore
@@ -965,7 +964,7 @@ contains
     type (hvcoord_t) :: hvcoord
     integer          :: ie,i,j,k,np1,nets,nete,np1_qdp,q, m_cnst
     real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_dry,dp_star_dry
-    real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
+    real (kind=r8), dimension(np,np,nlev)  :: enthalpy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
     integer :: region_num_threads,qbeg,qend,kord_uvT(1)
@@ -980,22 +979,20 @@ contains
       ! prepare for mapping of temperature
       !
       if (vert_remap_uvTq_alg>-20) then
-        if (lcp_moist) then
-          !
-          ! compute internal energy on Lagrangian levels
-          ! (do it here since qdp is overwritten by remap1)
-          !
-          call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
-               elem(ie)%state%t(:,:,:,np1), elem(ie)%state%dp3d(:,:,:,np1), internal_energy_star,     &
-               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        end if
+        !
+        ! compute enthalpy on Lagrangian levels
+        ! (do it here since qdp is overwritten by remap1)
+        !
+        call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
+             elem(ie)%state%t(:,:,:,np1), elem(ie)%state%dp3d(:,:,:,np1), enthalpy_star,     &
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       else
         !
         ! map Tv over log(p) following FV and FV3
         !
-        call get_virtual_temp(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), internal_energy_star, &
+        call get_virtual_temp(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), enthalpy_star, &
              dp_dry=elem(ie)%state%dp3d(:,:,:,np1), active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
+        enthalpy_star = enthalpy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
       ! update final psdry
@@ -1048,34 +1045,28 @@ contains
       !
       if (vert_remap_uvTq_alg>-20) then
         !
-        ! remap internal energy and back out temperature
+        ! remap enthalpy energy and back out temperature
         !
-        if (lcp_moist) then
-          call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.,kord_uvT)
-          !
-          ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
-          !
-          ttmp(:,:,:,1) = 1.0_r8
-          call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp),   &
-               ttmp(:,:,:,1), dp_dry,ttmp(:,:,:,2), &
-               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
-        else
-          internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
-          call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.,kord_uvT)
-          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/dp_moist
-        end if
+        call remap1(enthalpy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.,kord_uvT)
+        !
+        ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
+        !
+        ttmp(:,:,:,1) = 1.0_r8
+        call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp),   &
+             ttmp(:,:,:,1), dp_dry,ttmp(:,:,:,2), &
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        elem(ie)%state%t(:,:,:,np1)=enthalpy_star/ttmp(:,:,:,2)
       else
         !
         ! map Tv over log(p); following FV and FV3
         !
-        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.,kord_uvT)
+        call remap1(enthalpy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.,kord_uvT)
         call get_virtual_temp(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), ttmp(:,:,:,1), &
              dp_dry=dp_dry, active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         !
         ! convert new Tv to T
         !
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,1)
+        elem(ie)%state%t(:,:,:,np1)=enthalpy_star/ttmp(:,:,:,1)
       end if
       !
       ! remap velocity components
@@ -1084,7 +1075,7 @@ contains
       call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
     enddo
 
-    if (ntrac>0) then
+    if (use_cslam) then
       !
       ! vertical remapping of CSLAM tracers
       !

@@ -67,6 +67,7 @@ module physconst
 
    real(r8), public, parameter :: c0          = 2.99792458e8_r8      ! Speed of light in a vacuum (m s-1)
    real(r8), public, parameter :: planck      = 6.6260755e-34_r8     ! Planck's constant (J.s)
+   real(r8), public, parameter :: amu         = 1.66053886e-27_r8    ! Atomic Mass Unit (kg)
 
    ! Molecular weights (g mol-1)
    real(r8), public, parameter :: mwco2       =  44._r8             ! molecular weight co2

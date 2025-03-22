@@ -5,4 +5,4 @@ inithist='ENDOFRUN'
 phys_grid_ctem_nfreq=-2
 phys_grid_ctem_zm_nbas=120
 phys_grid_ctem_za_nlat=90
-fincl3 = 'VTHzaphys','WTHzaphys','UVzaphys','UWzaphys'
+fincl3 = 'Uzm','Vzm','Wzm','THzm', 'VTHzm','WTHzm','UVzm','UWzm'

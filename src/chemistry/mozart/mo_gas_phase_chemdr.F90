@@ -25,6 +25,7 @@ module mo_gas_phase_chemdr
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
   integer :: ndx_h2so4
+  integer :: jno2_pbuf_ndx=-1, jno2_rxt_ndx=-1
 !
 ! CCMI
 !
@@ -47,6 +48,10 @@ module mo_gas_phase_chemdr
 
   logical :: convproc_do_aer
   integer :: ele_temp_ndx, ion_temp_ndx
+
+  ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
+  integer :: hco_jno2_idx, hco_joh_idx
+  integer :: rxt_jno2_idx, rxt_joh_idx
 
 contains
 
@@ -177,6 +182,8 @@ contains
        call add_default ('SAD_AERO',8,' ')
     endif
     call addfld( 'REFF_AERO',  (/ 'lev' /), 'I', 'cm',      'aerosol effective radius' )
+    call addfld( 'REFF_TROP',  (/ 'lev' /), 'I', 'cm',      'tropospheric aerosol effective radius' )
+    call addfld( 'REFF_STRAT', (/ 'lev' /), 'I', 'cm',      'stratospheric aerosol effective radius' )
     call addfld( 'SULF_TROP',  (/ 'lev' /), 'I', 'mol/mol', 'tropospheric aerosol SAD' )
     call addfld( 'QDSETT',     (/ 'lev' /), 'I', '/s',      'water vapor settling delta' )
     call addfld( 'QDCHEM',     (/ 'lev' /), 'I', '/s',      'water vapor chemistry delta')
@@ -207,10 +214,14 @@ contains
     ndx_cldtop = pbuf_get_index('CLDTOP')
 
     sad_pbf_ndx= pbuf_get_index('VOLC_SAD',errcode=err) ! prescribed  strat aerosols (volcanic)
-    if (.not.sad_pbf_ndx>0) sad_pbf_ndx = pbuf_get_index('SADSULF',errcode=err) ! CARMA's version of strat aerosols
 
     ele_temp_ndx = pbuf_get_index('TElec',errcode=err)! electron temperature index
     ion_temp_ndx = pbuf_get_index('TIon',errcode=err) ! ion temperature index
+
+    jno2_pbuf_ndx = pbuf_get_index('JNO2',errcode=err)
+    if (jno2_pbuf_ndx>0) then
+       jno2_rxt_ndx = get_rxt_ndx('jno2')
+    end if
 
     ! diagnostics for stratospheric heterogeneous reactions
     call addfld( 'GAMMA_HET1', (/ 'lev' /), 'I', '1', 'Reaction Probability' )
@@ -225,20 +236,38 @@ contains
 
     call chem_prod_loss_diags_init
 
+    ! diagnostics for HEMCO ParaNOx extension
+    hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2',errcode=err)
+    hco_joh_idx  = pbuf_get_index('HCO_IN_JOH',errcode=err)
+
+    !-------------------------- HEMCO_CESM ---------------------------------
+    !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
+    !    jo3_b            (  8)   O3 + hv ->  O + O2
+    !    jno2             ( 16)   NO2 + hv ->  NO + O
+    !
+    ! The reactions jo2 and jo3_b exist in the mechanisms that would use
+    ! the ParaNOx ship plume extension. If they do not exist, then the indices
+    ! would not be found and the HCO_IN_JNO2 and HCO_IN_JOH fields would not
+    ! be zero and the extension would have no effect.
+    !-----------------------------------------------------------------------
+    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
+    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
+
   end subroutine gas_phase_chemdr_inti
 
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine gas_phase_chemdr(lchnk, ncol, imozart, q, &
+  subroutine gas_phase_chemdr(state, lchnk, ncol, imozart, q, &
                               phis, zm, zi, calday, &
-                              tfld, pmid, pdel, pint,  &
+                              tfld, pmid, pdel, pint, rpdel, rpdeldry, &
                               cldw, troplev, troplevchem, &
                               ncldwtr, ufld, vfld,  &
                               delt, ps, &
                               fsds, ts, asdir, ocnfrac, icefrac, &
                               precc, precl, snowhland, ghg_chem, latmapback, &
-                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
+                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, &
+                              use_hemco, qtend, pbuf)
 
     !-----------------------------------------------------------------------
     !     ... Chem_solver advances the volumetric mixing ratio
@@ -246,8 +275,9 @@ contains
     !         ebi, hov, fully implicit, and/or rodas algorithms.
     !-----------------------------------------------------------------------
 
+    use phys_control,      only : cam_physpkg_is
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
-    use physconst,         only : rga
+    use physconst,         only : rga, gravit
     use mo_photo,          only : set_ub_col, setcol, table_photo
     use mo_exp_sol,        only : exp_sol
     use mo_imp_sol,        only : imp_sol
@@ -268,7 +298,7 @@ contains
     use mo_mean_mass,      only : set_mean_mass
     use cam_history,       only : outfld
     use wv_saturation,     only : qsat
-    use constituents,      only : cnst_mw
+    use constituents,      only : cnst_mw, cnst_type
     use mo_ghg_chem,       only : ghg_chem_set_rates, ghg_chem_set_flbc
     use mo_sad,            only : sad_strat_calc
     use charge_neutrality, only : charge_balance
@@ -282,10 +312,12 @@ contains
     use perf_mod,          only : t_startf, t_stopf
     use gas_wetdep_opts,   only : gas_wetdep_method
     use physics_buffer,    only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_types,     only : physics_state
     use infnan,            only : nan, assignment(=)
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
+
 !
 ! for aqueous chemistry and aerosol growth
 !
@@ -306,6 +338,8 @@ contains
     real(r8),target,intent(in)    :: tfld(pcols,pver)               ! midpoint temperature (K)
     real(r8),       intent(in)    :: pmid(pcols,pver)               ! midpoint pressures (Pa)
     real(r8),       intent(in)    :: pdel(pcols,pver)               ! pressure delta about midpoints (Pa)
+    real(r8),       intent(in)    :: rpdel(pcols,pver)              ! reciprocal pressure delta about midpoints (Pa)
+    real(r8),       intent(in)    :: rpdeldry(pcols,pver)           ! reciprocal dry pressure delta about midpoints (Pa)
     real(r8),       intent(in)    :: ufld(pcols,pver)               ! zonal velocity (m/s)
     real(r8),       intent(in)    :: vfld(pcols,pver)               ! meridional velocity (m/s)
     real(r8),       intent(in)    :: cldw(pcols,pver)               ! cloud water (kg/kg)
@@ -334,7 +368,9 @@ contains
     real(r8),       intent(in)    :: wetdepflx(pcols,pcnst)         ! wet deposition flux (kg/m^2/s)
     real(r8), intent(out) :: nhx_nitrogen_flx(pcols)
     real(r8), intent(out) :: noy_nitrogen_flx(pcols)
+    logical,        intent(in)    :: use_hemco                      ! use Harmonized Emissions Component (HEMCO)
 
+    type(physics_state),    intent(in) :: state     ! Physics state variables
     type(physics_buffer_desc), pointer :: pbuf(:)
 
     !-----------------------------------------------------------------------
@@ -418,6 +454,9 @@ contains
     real(r8) :: del_h2so4_gasprod(ncol,pver)
     real(r8) :: vmr0(ncol,pver,gas_pcnst)
 
+  ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
+    real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
+
 !
 ! CCMI
 !
@@ -442,6 +481,7 @@ contains
 
     real(r8) :: o3s_loss(ncol,pver)
     real(r8), pointer :: srf_ozone_fld(:)
+    real(r8), pointer :: jno2_fld_ptr(:,:)
 
     if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
        call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
@@ -466,6 +506,10 @@ contains
     call pbuf_get_field(pbuf, ndx_cmfdqr,     cmfdqr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/), kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )
+
+    if (jno2_pbuf_ndx>0.and.jno2_rxt_ndx>0) then
+       call pbuf_get_field(pbuf, jno2_pbuf_ndx, jno2_fld_ptr)
+    end if
 
     reff_strat(:,:) = 0._r8
 
@@ -600,7 +644,7 @@ contains
        strato_sad(:,:) = 0._r8
 
        ! Prognostic modal stratospheric sulfate: compute dry strato_sad
-       call aero_model_strat_surfarea( ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
+       call aero_model_strat_surfarea( state, ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
 
     endif
 
@@ -737,7 +781,7 @@ contains
 
     cwat(:ncol,:pver) = cldw(:ncol,:pver)
 
-    call usrrxt( reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
+    call usrrxt( state, reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
                  pmid, invariants(:,:,indexm), sulfate, mmr, relhum, strato_sad, &
                  troplevchem, dlats, ncol, sad_trop, reff, cwat, mbar, pbuf )
 
@@ -748,6 +792,8 @@ contains
     call outfld( 'SAD_AERO', sad_trop(:ncol,:), ncol, lchnk )
 
     ! Add trop/strat components of effective radius for output
+    call outfld( 'REFF_TROP', reff(:ncol,:), ncol, lchnk )
+    call outfld( 'REFF_STRAT', reff_strat(:ncol,:), ncol, lchnk )
     reff(:ncol,:)=reff(:ncol,:)+reff_strat(:ncol,:)
     call outfld( 'REFF_AERO', reff(:ncol,:), ncol, lchnk )
 
@@ -792,10 +838,34 @@ contains
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )
     enddo
 
+    if (jno2_pbuf_ndx>0.and.jno2_rxt_ndx>0) then
+       jno2_fld_ptr(:ncol,:) = reaction_rates(:ncol,:,jno2_rxt_ndx)
+    endif
+
     !-----------------------------------------------------------------------
     !     	... Adjust the photodissociation rates
     !-----------------------------------------------------------------------
     call phtadj( reaction_rates, invariants, invariants(:,:,indexm), ncol,pver )
+
+    if ( use_hemco ) then
+       !-------------------------- HEMCO_CESM ---------------------------------
+       !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
+       !    jo3_b            (  8)   O3 + hv ->  O + O2
+       !    jno2             ( 16)   NO2 + hv ->  NO + O
+       !-----------------------------------------------------------------------
+       ! get the rxn rate [1/s] and write to pbuf
+       if(rxt_jno2_idx > 0 .and. hco_jno2_idx > 0) then
+         call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
+         ! this is already in chunk, write /pcols/ at surface
+         hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_jno2_idx)
+       endif
+
+       if(rxt_joh_idx > 0 .and. hco_joh_idx > 0) then
+         call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
+         ! this is already in chunk, write /pcols/ at surface
+         hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)
+       endif
+    endif
 
     !-----------------------------------------------------------------------
     !        ... Compute the extraneous frcing at time = t(n+1)
@@ -904,7 +974,7 @@ contains
 ! Aerosol processes ...
 !
 
-    call aero_model_gasaerexch( imozart-1, ncol, lchnk, troplevchem, delt, reaction_rates, &
+    call aero_model_gasaerexch( state, imozart-1, ncol, lchnk, troplevchem, delt, reaction_rates, &
                                 tfld, pmid, pdel, mbar, relhum, &
                                 zm,  qh2o, cwat, cldfr, ncldwtr, &
                                 invariants(:,:,indexm), invariants, del_h2so4_gasprod,  &
@@ -1022,7 +1092,17 @@ contains
     do m = 1,pcnst
        n = map2chm( m )
        if ( n > 0 ) then
-         cflx(:ncol,m)      = cflx(:ncol,m) - sflx(:ncol,n)
+         if (cam_physpkg_is("cam7")) then
+           ! apply to qtend array
+           if (cnst_type(m).eq.'dry') then
+             qtend(:ncol,pver,m) = qtend(:ncol,pver,m) - sflx(:ncol,n)*rpdeldry(:ncol,pver)*gravit
+           else
+             qtend(:ncol,pver,m) = qtend(:ncol,pver,m) - sflx(:ncol,n)*rpdel(:ncol,pver)*gravit
+           end if
+         else
+           ! apply to emissions array
+           cflx(:ncol,m) = cflx(:ncol,m) - sflx(:ncol,n)
+         end if
          drydepflx(:ncol,m) = sflx(:ncol,n)
          wetdepflx_diag(:ncol,n) = wetdepflx(:ncol,m)
        endif

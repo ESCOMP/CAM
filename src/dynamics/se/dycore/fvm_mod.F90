@@ -26,6 +26,7 @@ module fvm_mod
 
   type (EdgeBuffer_t) :: edgeveloc
   type (EdgeBuffer_t), public  :: ghostBufQnhc_s
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_t1
   type (EdgeBuffer_t), public  :: ghostBufQnhc_vh
   type (EdgeBuffer_t), public  :: ghostBufQnhc_h
   type (EdgeBuffer_t), public  :: ghostBufQ1_h
@@ -35,6 +36,7 @@ module fvm_mod
   type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h
   type (EdgeBuffer_t), public  :: ghostBufFluxJet_h
   type (EdgeBuffer_t), public  :: ghostBufPG_s
+  type (EdgeBuffer_t), public  :: ghostBuf_cslam2gll
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -290,14 +292,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
+    use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr, use_cslam
     use dimensions_mod,         only: large_Courant_incr
     use dimensions_mod,         only: kmin_jet,kmax_jet
 
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
     !
-    if (ntrac>0) then
+    if (use_cslam) then
       if (par%masterproc) then
         write(iulog,*) "                                           "
         write(iulog,*) "|-----------------------------------------|"
@@ -305,7 +307,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "|-----------------------------------------|"
         write(iulog,*) "                                           "
       end if
-      if (ntrac>0) then
+      if (use_cslam) then
         if (par%masterproc) then
           write(iulog,*) "Running consistent SE-CSLAM, Lauritzen et al. (2017, MWR)."
           write(iulog,*) "CSLAM = Conservative Semi-LAgrangian Multi-tracer scheme"
@@ -487,6 +489,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! changes the values for reverse
 
     call initghostbuffer(hybrid%par,ghostBufQnhc_s,elem,nlev*(ntrac+1),nhc,nc,nthreads=1)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_t1,elem,nlev, nhc,nc,nthreads=1)
     call initghostbuffer(hybrid%par,ghostBufQnhc_h,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufQnhc_vh,elem,nlev*(ntrac+1),nhc,nc,nthreads=vert_num_threads*horz_num_threads)
     klev = kmax_jet-kmin_jet+1
@@ -494,13 +497,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     call initghostbuffer(hybrid%par,ghostBufQ1_vh,elem,klev*(ntrac+1),1,nc,nthreads=vert_num_threads*horz_num_threads)
 !    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufFlux_vh,elem,4*nlev,nhe,nc,nthreads=vert_num_threads*horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBuf_cslam2gll,elem,nlev*thermodynamic_active_species_num,nhc,nc,nthreads=1)
     !
     ! preallocate buffers for physics-dynamics coupling
     !
     if (fv_nphys.ne.nc) then
        call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
     else
-       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(3+thermodynamic_active_species_num),nhc_phys,fv_nphys,nthreads=1)
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*3,nhc_phys,fv_nphys,nthreads=1)
     end if
 
     if (fvm_supercycling.ne.fvm_supercycling_jet) then
@@ -517,8 +521,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
   subroutine fvm_init3(elem,fvm,hybrid,nets,nete,irecons)
     use control_mod     ,       only: neast, nwest, seast, swest
     use fvm_analytic_mod,       only: compute_reconstruct_matrix
-    use dimensions_mod  ,       only: fv_nphys
-    use dimensions_mod,         only: nlev, nc, nhe, nlev, ntrac, ntrac_d,nhc
+    use dimensions_mod  ,       only: fv_nphys, use_cslam
+    use dimensions_mod,         only: nlev, nc, nhe, nlev, nhc
     use coordinate_systems_mod, only: cartesian2D_t,cartesian3D_t
     use coordinate_systems_mod, only: cubedsphere2cart, cart2cubedsphere
     implicit none
@@ -536,7 +540,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     type (cartesian2D_t)                :: gnom
     type(cartesian3D_t)                 :: tmpcart3d
 
-    if (ntrac>0.and.nc.ne.fv_nphys) then
+    if (use_cslam.and.nc.ne.fv_nphys) then
       !
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
@@ -728,7 +732,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use control_mod, only : neast, nwest, seast, swest
     use coordinate_systems_mod, only : cubedsphere2cart, cart2cubedsphere
     use dimensions_mod, only: fv_nphys, nhe_phys,nhc_phys
-    use dimensions_mod, only: ntrac_d
     use cube_mod       ,only: dmap
     use control_mod    ,only: cubed_sphere_map
     use fvm_analytic_mod, only: compute_reconstruct_matrix

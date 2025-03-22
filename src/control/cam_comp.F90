@@ -16,9 +16,7 @@ use shr_sys_mod,       only: shr_sys_flush
 use spmd_utils,        only: masterproc, mpicom
 use cam_control_mod,   only: cam_ctrl_init, cam_ctrl_set_orbit
 use runtime_opts,      only: read_namelist
-use time_manager,      only: timemgr_init, get_step_size, &
-                             get_nstep, is_first_step, is_first_restart_step
-
+use time_manager,      only: timemgr_init, get_nstep
 use camsrfexch,        only: cam_out_t, cam_in_t
 use ppgrid,            only: begchunk, endchunk
 use physics_types,     only: physics_state, physics_tend
@@ -72,7 +70,6 @@ subroutine cam_init(                                             &
    !
    !-----------------------------------------------------------------------
 
-   use history_defaults, only: bldfld
    use cam_initfiles,    only: cam_initfiles_open
    use dyn_grid,         only: dyn_grid_init
    use phys_grid,        only: phys_grid_init
@@ -83,15 +80,12 @@ subroutine cam_init(                                             &
    use stepon,           only: stepon_init
    use ionosphere_interface, only: ionosphere_init
    use camsrfexch,       only: hub2atm_alloc, atm2hub_alloc
-   use cam_history,      only: intht
-   use history_scam,     only: scm_intht
+   use cam_history,      only: intht, write_camiop
+   use history_scam,     only: scm_intht, initialize_iop_history
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot_common, only: cam_snapshot_deactivate
    use air_composition,  only: air_composition_init
-#if (defined BFB_CAM_SCAM_IOP)
-   use history_defaults, only: initialize_iop_history
-#endif
    use phys_grid_ctem,   only: phys_grid_ctem_reg
 
    ! Arguments
@@ -195,14 +189,11 @@ subroutine cam_init(                                             &
 
       call cam_read_restart(cam_in, cam_out, dyn_in, dyn_out, pbuf2d, stop_ymd, stop_tod)
 
-#if (defined BFB_CAM_SCAM_IOP)
-      call initialize_iop_history()
-#endif
    end if
 
-   call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
+   if (write_camiop) call initialize_iop_history()
 
-   call bldfld ()       ! master field list (if branch, only does hash tables)
+   call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
    call stepon_init(dyn_in, dyn_out)
 
@@ -361,7 +352,8 @@ subroutine cam_run4( cam_out, cam_in, rstwr, nlend, &
 !           file output.
 !
 !-----------------------------------------------------------------------
-   use cam_history,      only: wshist, wrapup
+   use dycore_budget,    only: print_budget
+   use cam_history,      only: wshist, wrapup, hstwr
    use cam_restart,      only: cam_write_restart
    use qneg_module,      only: qneg_print_summary
    use time_manager,     only: is_last_step
@@ -403,6 +395,8 @@ subroutine cam_run4( cam_out, cam_in, rstwr, nlend, &
    call t_stopf  ('cam_run4_wrapup')
 
    call qneg_print_summary(is_last_step())
+
+   call print_budget(hstwr)
 
    call shr_sys_flush(iulog)
 

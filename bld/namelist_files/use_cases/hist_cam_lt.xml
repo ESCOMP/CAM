@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- LBC Files -->
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_type>'SERIAL'</flbc_type>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- Low top upper boundary conditions -->
+<ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
+<ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.1849-2014_c240604.nc</ubc_file_path>
+<ubc_file_input_type>'SERIAL'</ubc_file_input_type>
+
+<!-- ozone data -->
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'       </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                              </prescribed_ozone_name>
+<prescribed_ozone_type    >   SERIAL                                                                            </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                       </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
+<prescribed_strataero_type        >   SERIAL                                                                       </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'  </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   INTERP_MISSING_MONTHS                                         </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                            </tracer_cnst_filelist>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+<csw_time_type>SERIAL</csw_time_type>
+
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850-2015</sim_year>
+
+</namelist_defaults>

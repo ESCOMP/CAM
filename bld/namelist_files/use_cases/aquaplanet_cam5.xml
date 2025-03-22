@@ -18,9 +18,7 @@
 <co2vmr                   >348.0e-6</co2vmr>
 
 <!-- Solar insolation of 1365 -->
-<solar_irrad_data_file          >atm/cam/solar/ape_solar_ave_tsi_1365.nc</solar_irrad_data_file>
-<solar_htng_spctrl_scl    >.true.</solar_htng_spctrl_scl>
-/
+<solar_irrad_data_file    >atm/cam/solar/ape_solar_ave_tsi_1365.nc</solar_irrad_data_file>
 
 <!-- zonally symmetric ozone file -->
 <prescribed_ozone_file    >apeozone_cam3_5_54.nc</prescribed_ozone_file>
@@ -28,10 +26,6 @@
 <prescribed_ozone_name    >OZONE</prescribed_ozone_name>
 <prescribed_ozone_type    >CYCLICAL</prescribed_ozone_type>
 <prescribed_ozone_cycle_yr>1990</prescribed_ozone_cycle_yr>
-
-<!-- Set Aquaplanet to True -->
-<aqua_planet              >.true. </aqua_planet>
-
 
 <!-- Revised physics constants for ape experiments -->
 <sday                     >86164.10063718943</sday>
@@ -50,4 +44,3 @@
 <tracer_cnst_specifier    > ""    </tracer_cnst_specifier>
 
 </namelist_defaults>
-
