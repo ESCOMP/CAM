@@ -438,7 +438,7 @@ contains
         enddo const_water_loop
     endif
 
-    if (ptend%ls .or. ptend%lq(1)) then
+    if (derive_new_geopotential) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
             state%t     , state%q(:,:,:), rairv_loc(:,:), gravit  , zvirv              , &
