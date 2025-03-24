@@ -211,7 +211,7 @@ contains
     use scamMod,         only: scm_crm_mode, single_column
     use phys_control,    only: phys_getopts
     use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
-    use air_composition, only: dry_air_species_num
+    use air_composition, only: dry_air_species_num, thermodynamic_active_species_idx
     use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -231,6 +231,7 @@ contains
     integer :: ixnumsnow, ixnumrain
     integer :: ncol                                ! number of columns
     integer :: ixh, ixh2    ! constituent indices for H, H2
+    logical :: derive_new_geopotential             ! derive new geopotential fields?
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
@@ -419,7 +420,23 @@ contains
        end do
     end if
 
-    ! Derive new geopotential fields if heating or water tendency not 0.
+    ! Derive new geopotential fields if heating or water species tendency not 0.
+    derive_new_geopotential = .false.
+    if(ptend%ls) then
+        ! Heating tendency not 0
+        derive_new_geopotential = .true.
+    else
+        ! Check all constituents with tendencies and if any of these are water species
+        const_water_loop: do m = 1, pcnst
+            if(ptend%lq(m)) then
+                ! is water species?
+                if(any(thermodynamic_active_species_idx(dry_air_species_num+1:) == m)) then
+                    derive_new_geopotential = .true.
+                    exit const_water_loop
+                endif
+            endif
+        enddo const_water_loop
+    endif
 
     if (ptend%ls .or. ptend%lq(1)) then
        call geopotential_t  (                                                                    &
