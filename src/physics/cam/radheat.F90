@@ -82,6 +82,7 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
 #if ( defined OFFLINE_DYN )
    use metdata, only: met_rlx, met_srf_feedback
 #endif
+   use calculate_net_heating, only: calculate_net_heating_run
 !-----------------------------------------------------------------------
 ! Compute net radiative heating from qrs and qrl, and the associated net
 ! boundary flux.
@@ -91,7 +92,7 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
    type(physics_state), intent(in)  :: state             ! Physics state variables
 
    type(physics_buffer_desc), pointer :: pbuf(:)
-   type(physics_ptend), intent(out) :: ptend             ! indivdual parameterization tendencie
+   type(physics_ptend), intent(out) :: ptend             ! individual parameterization tendencies
    real(r8),            intent(in)  :: qrl(pcols,pver)   ! longwave heating
    real(r8),            intent(in)  :: qrs(pcols,pver)   ! shortwave heating
    real(r8),            intent(in)  :: fsns(pcols)       ! Surface solar absorbed flux
@@ -105,7 +106,13 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
 ! Local variables
    integer :: i, k
    integer :: ncol
+   character(len=512) :: errmsg
+   integer            :: errflg
 !-----------------------------------------------------------------------
+
+   ! Set error variables
+   errmsg = ''
+   errflg = 0
 
    ncol = state%ncol
 
@@ -118,13 +125,12 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
        ptend%s(:ncol,k) = (qrs(:ncol,k) + qrl(:ncol,k))
      endif
    enddo
+   call calculate_net_heating_run(ncol, ptend%s, qrl, qrs, fsns, fsnt, flns, flnt, &
+                .true., net_flx, errmsg, errflg)
 #else
-   ptend%s(:ncol,:) = (qrs(:ncol,:) + qrl(:ncol,:))
+   call calculate_net_heating_run(ncol, ptend%s, qrl, qrs, fsns, fsnt, flns, flnt, &
+                .false., net_flx, errmsg, errflg)
 #endif
-
-   do i = 1, ncol
-      net_flx(i) = fsnt(i) - fsns(i) - flnt(i) + flns(i)
-   end do
 
 end subroutine radheat_tend
 

@@ -1,4 +1,5 @@
 module radiation_utils
+  ! PEVERWHEE - this should go in schemes/rrtmgp/utils
   use ccpp_kinds,       only: kind_phys
   use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                               extrap_method_bndry

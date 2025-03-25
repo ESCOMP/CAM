@@ -816,8 +816,13 @@ subroutine radiation_tend( &
    use rrtmgp_lw_initialize_fluxes, only: rrtmgp_lw_initialize_fluxes_run
    use rrtmgp_lw_cloud_optics,      only: rrtmgp_lw_cloud_optics_run
    use rrtmgp_lw_mcica_subcol_gen,  only: rrtmgp_lw_mcica_subcol_gen_run
+   use rrtmgp_lw_gas_optics_pre,    only: rrtmgp_lw_gas_optics_pre_run
+   use rrtmgp_lw_gas_optics,        only: rrtmgp_lw_gas_optics_run
+   use rrtmgp_lw_main,              only: rrtmgp_lw_main_run
+   use rrtmgp_dry_static_energy_tendency, only: rrtmgp_dry_static_energy_tendency_run
+   use rrtmgp_post,                 only: rrtmgp_post_run
 
-   use rrtmgp_inputs_cam,  only: rrtmgp_set_gases_lw, &
+   use rrtmgp_inputs_cam,  only: rrtmgp_get_gas_mmrs, &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
                                  rrtmgp_set_aer_sw
 
@@ -850,7 +855,7 @@ subroutine radiation_tend( &
                                    ! if the argument is not present
    logical  :: write_output
   
-   integer  :: i, k, istat
+   integer  :: i, k, gas_idx, istat
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
    integer  :: icall           ! loop index for climate/diagnostic radiation calls
@@ -910,6 +915,8 @@ subroutine radiation_tend( &
    real(r8), allocatable :: tauc(:,:,:)
    real(r8), allocatable :: cldf(:,:)
 
+   real(r8), allocatable :: gas_mmrs(:,:,:)
+
    ! in-cloud optical depths for COSP
    real(r8) :: cld_tau_cloudsim(pcols,pver)    ! liq + ice
    real(r8) :: snow_tau_cloudsim(pcols,pver)   ! snow
@@ -966,6 +973,10 @@ subroutine radiation_tend( &
    real(r8) :: fnl(pcols,pverp)     ! net longwave flux
    real(r8) :: fcnl(pcols,pverp)    ! net clear-sky longwave flux
 
+   ! Unused variables for rte_lw
+   real(r8) :: fluxlwup_jac(1,1)
+   real(r8) :: lw_ds(1,1)
+
    ! for COSP
    real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity
    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
@@ -1011,7 +1022,8 @@ subroutine radiation_tend( &
    end if
 
    call rrtmgp_pre_run(coszrs, get_nstep(), get_step_size(), iradsw, iradlw, irad_always, &
-           ncol, nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
+           ncol, nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands,   &
+           nswbands, spectralflux, fsw, fswc, flw, flwc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1045,15 +1057,6 @@ subroutine radiation_tend( &
       call pbuf_get_field(pbuf, ld_idx, ld)
    end if
 
-   ! Allocate the flux arrays and init to zero.
-   call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fsw, do_direct=.true.)
-   call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fswc, do_direct=.true.)
-   call rrtmgp_lw_initialize_fluxes_run(ncol, nlay, nlwbands, spectralflux, flw, flwc, &
-                  errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
-
    !  For CRM, make cloud equal to input observations:
    if (scm_crm_mode .and. have_cld) then
       do k = 1, pver
@@ -1081,6 +1084,10 @@ subroutine radiation_tend( &
          coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday), &
          cldf(ncol,nlaycam), tauc(nlwbands,ncol,nlaycam), stat=istat)
       call handle_allocate_error(istat, sub, 't_sfc,..,alb_dif')
+      allocate(gas_mmrs(ncol, pver, nradgas), stat=istat, errmsg=errmsg)
+      if (errflg /= 0) then
+         call handle_allocate_error(istat, sub, 'gas_mmrs, message: '//errmsg)
+      end if
 
       ! Prepares state variables, daylit columns, albedos for RRTMGP
       ! Also calculates modified cloud fraction
@@ -1185,11 +1192,6 @@ subroutine radiation_tend( &
 
             end if ! (active_calls(icall))
          end do    ! loop over diagnostic calcs (icall)
-         
-      else
-         ! SW calc not done.  pbuf carries Q*dp across timesteps.
-         ! Convert to Q before calling radheat_tend.
-         qrs(:ncol,:) = qrs(:ncol,:) / state%pdel(:ncol,:)
       end if  ! if (dosw)
 
       !=======================!
@@ -1245,34 +1247,35 @@ subroutine radiation_tend( &
 
             if (active_calls(icall)) then
 
-               ! Set gas volume mixing ratios for this call in gas_concs_lw.
-               call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw)
+               ! Grab the gas mass mixing ratios from rad_constituents
+               call rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
+
+               ! Set gas volume mixing ratios for this call in gas_concs_lw
+               call rrtmgp_lw_gas_optics_pre_run(icall, gas_mmrs, state%pmid, state%pint, nlay, ncol, gaslist, idxday, &
+                  pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
+               if (errflg /= 0) then
+                  call endrun(sub//': '//errmsg)
+               end if
 
                ! Compute the gas optics and Planck sources.
-               errmsg = kdist_lw%gas_optics( &
-                  pmid_rad, pint_rad, t_rad, t_sfc, gas_concs_lw, &
-                  atm_optics_lw, sources_lw)
-               call stop_on_err(errmsg, sub, 'kdist_lw%gas_optics')
+               call rrtmgp_lw_gas_optics_run(dolw, 1, ncol, ncol, pmid_rad, pint_rad, t_rad,  &
+                  t_sfc, gas_concs_lw, atm_optics_lw, sources_lw, t_rad, .false., kdist_lw, errmsg, &
+                  errflg)
+               if (errflg /= 0) then
+                  call endrun(sub//': '//errmsg)
+               end if
 
                ! Set LW aerosol optical properties in the aer_lw object.
                call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+
+               call rrtmgp_lw_main_run(dolw, dolw, .true., .false., .false., &
+                                 0, ncol, 1, ncol, atm_optics_lw, &
+                                 cloud_lw, top_at_1, sources_lw, emis_sfc, kdist_lw, &
+                                 aer_lw, fluxlwup_jac, lw_ds, flwc, flw, errmsg, errflg)
+               if (errflg /= 0) then
+                  call endrun(sub//': '//errmsg)
+               end if
                
-               ! Increment the gas optics by the aerosol optics.
-               errmsg = aer_lw%increment(atm_optics_lw)
-               call stop_on_err(errmsg, sub, 'aer_lw%increment')
-
-               ! Compute clear-sky LW fluxes
-               errmsg = rte_lw(atm_optics_lw, top_at_1, sources_lw, emis_sfc, flwc)
-               call stop_on_err(errmsg, sub, 'clear-sky rte_lw')
-
-               ! Increment the gas+aerosol optics by the cloud optics.
-               errmsg = cloud_lw%increment(atm_optics_lw)
-               call stop_on_err(errmsg, sub, 'cloud_lw%increment')
-
-               ! Compute all-sky LW fluxes
-               errmsg = rte_lw(atm_optics_lw, top_at_1, sources_lw, emis_sfc, flw)
-               call stop_on_err(errmsg, sub, 'all-sky rte_lw')
-
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
                call set_lw_diags()
 
@@ -1282,11 +1285,6 @@ subroutine radiation_tend( &
 
             end if ! (active_calls(icall))
          end do    ! loop over diagnostic calcs (icall)
-
-      else
-         ! LW calc not done.  pbuf carries Q*dp across timesteps.
-         ! Convert to Q before calling radheat_tend.
-        qrl(:ncol,:) = qrl(:ncol,:) / state%pdel(:ncol,:)
       end if  ! if (dolw)
 
       deallocate( &
@@ -1341,15 +1339,14 @@ subroutine radiation_tend( &
             cosp_cnt(lchnk) = 0
          end if
       end if   ! docosp
-      
-   else
-      ! Radiative flux calculations not done.  The quantity Q*dp is carried by the
-      ! physics buffer across timesteps.  It must be converted to Q (dry static energy
-      ! tendency) before being passed to radheat_tend.
-      qrs(:ncol,:) = qrs(:ncol,:) / state%pdel(:ncol,:)
-      qrl(:ncol,:) = qrl(:ncol,:) / state%pdel(:ncol,:)
-
    end if   ! if (dosw .or. dolw) then
+
+   ! Calculate dry static energy if LW calc wasn't done; needed before calling radheat_run
+   call rrtmgp_dry_static_energy_tendency_run(ncol, state%pdel, (.not. dosw), (.not. dolw), &
+             qrs, qrl, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    ! Output for PORT: Parallel Offline Radiative Transport
    call rad_data_write(pbuf, state, cam_in, coszrs)
@@ -1370,25 +1367,15 @@ subroutine radiation_tend( &
       call outfld('HR', ftem, pcols, lchnk)
    end if
 
-   ! The radiative heating rates are carried in the physics buffer across timesteps
-   ! as Q*dp (for energy conservation).
-   qrs(:ncol,:) = qrs(:ncol,:) * state%pdel(:ncol,:)
-   qrl(:ncol,:) = qrl(:ncol,:) * state%pdel(:ncol,:)
-
    if (.not. present(rd_out)) then
       deallocate(rd)
    end if
-   call free_optics_sw(atm_optics_sw)
-   call free_optics_sw(cloud_sw)
-   call free_optics_sw(aer_sw)
-   call free_fluxes(fsw)
-   call free_fluxes(fswc)
 
-   call sources_lw%finalize()
-   call free_optics_lw(cloud_lw)
-   call free_optics_lw(aer_lw)
-   call free_fluxes(flw)
-   call free_fluxes(flwc)
+   call rrtmgp_post_run(ncol, qrs, qrl, state%pdel, atm_optics_sw, cloud_sw, aer_sw, &
+                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, errmsg, errflg)
+   if (errflg /= 0) then
+     call endrun(sub//': '//errmsg)
+   end if
 
    !-------------------------------------------------------------------------------
    contains
@@ -1751,6 +1738,7 @@ end subroutine radiation_output_lw
 !===============================================================================
 
 subroutine coefs_init(coefs_file, available_gases, kdist)
+   use rrtmgp_lw_gas_optics_data, only: rrtmgp_lw_gas_optics_data_init
 
    ! Read data from coefficients file.  Initialize the kdist object.
    ! available_gases object provides the gas names that CAM provides.
@@ -1758,7 +1746,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! arguments
    character(len=*),                  intent(in)  :: coefs_file
    class(ty_gas_concs),               intent(in)  :: available_gases
-   class(ty_gas_optics_rrtmgp),       intent(out) :: kdist
+   class(ty_gas_optics_rrtmgp),       intent(inout) :: kdist
 
    ! local variables
    type(file_desc_t) :: fh    ! pio file handle
@@ -1823,6 +1811,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
               fit_coeffs
 
    character(len=128) :: error_msg
+   character(len=512) :: errmsg
    character(len=*), parameter :: sub = 'coefs_init'
    !----------------------------------------------------------------------------
 
@@ -2230,22 +2219,19 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
 
    if (allocated(totplnk) .and. allocated(planck_frac)) then
-      error_msg = kdist%load( &
-         available_gases, gas_names, key_species,              &
-         band2gpt, band_lims_wavenum,                          &
-         press_ref, press_ref_trop, temp_ref,                  &
-         temp_ref_p, temp_ref_t, vmr_ref,                      &
-         kmajor, kminor_lower, kminor_upper,                   &
-         gas_minor, identifier_minor,                          &
-         minor_gases_lower, minor_gases_upper,                 &
-         minor_limits_gpt_lower, minor_limits_gpt_upper,       &
-         minor_scales_with_density_lower,                      &
-         minor_scales_with_density_upper,                      &
-         scaling_gas_lower, scaling_gas_upper,                 &
-         scale_by_complement_lower, scale_by_complement_upper, &
-         kminor_start_lower, kminor_start_upper,               &
-         totplnk, planck_frac, rayl_lower, rayl_upper,         &
-         optimal_angle_fit)
+      call rrtmgp_lw_gas_optics_data_init(kdist, available_gases, gas_names,           &
+                  key_species, band2gpt, band_lims_wavenum, press_ref, press_ref_trop, &
+                  temp_ref, temp_ref_p, temp_ref_t, vmr_ref, kmajor, kminor_lower,     &
+                  kminor_upper, gas_minor, identifier_minor, minor_gases_lower,        &
+                  minor_gases_upper, minor_limits_gpt_lower, minor_limits_gpt_upper,   &
+                  minor_scales_with_density_lower, minor_scales_with_density_upper,    &
+                  scaling_gas_lower, scaling_gas_upper, scale_by_complement_lower,     &
+                  scale_by_complement_upper, kminor_start_lower, kminor_start_upper,   &
+                  totplnk, planck_frac, rayl_lower, rayl_upper, optimal_angle_fit,     &
+                  errmsg, ierr)
+      if (ierr /= 0) then
+         call endrun(sub//': ERROR message: '//errmsg)
+      end if
    else if (allocated(solar_src_quiet)) then
       error_msg = kdist%load( &
          available_gases, gas_names, key_species,               &

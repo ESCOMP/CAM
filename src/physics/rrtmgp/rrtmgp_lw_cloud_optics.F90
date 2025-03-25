@@ -9,9 +9,6 @@
 !! cloud types visible to RRTMGP.
 module rrtmgp_lw_cloud_optics
   use machine,                  only: kind_phys
-  use mo_rte_kind,              only: wl
-!  use mo_cloud_optics,          only: ty_cloud_optics
-!  use rrtmgp_lw_gas_optics,     only: lw_gas_props
   use interpolate_data,         only: interp_type, lininterp_init, &
                                       lininterp, extrap_method_bndry, &
                                       lininterp_finish
@@ -170,7 +167,7 @@ contains
     real(kind_phys) :: grau_lw_abs(nlwbands, ncol, pver)  ! graupel absorption optics depth (LW)
     real(kind_phys) :: c_cld_lw_abs(nlwbands, ncol, pver) ! combined cloud absorption optics depth (LW)
 
-    character(len=*), parameter :: sub = 'rrtmgp_set_cloud_lw'
+    character(len=*), parameter :: sub = 'rrtmgp_lw_cloud_optics_run'
     !--------------------------------------------------------------------------------
 
     ! Combine the cloud optical properties.

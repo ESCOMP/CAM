@@ -6,7 +6,6 @@ module rrtmgp_inputs
  use mo_source_functions,   only: ty_source_func_lw
  use string_utils,          only: to_lower
  use radiation_utils,       only: radiation_utils_init, get_sw_spectral_boundaries_ccpp
- use cam_logfile, only: iulog
 
  implicit none
  private

@@ -1,6 +1,7 @@
 module rrtmgp_pre
  use ccpp_kinds, only: kind_phys
- use cam_logfile, only: iulog
+ use mo_fluxes,        only: ty_fluxes_broadband
+ use mo_fluxes_byband, only: ty_fluxes_byband
 
  public :: rrtmgp_pre_run
  public :: radiation_do_ccpp
@@ -11,25 +12,36 @@ CONTAINS
 !! \htmlinclude rrtmgp_pre_run.html
 !!
   subroutine rrtmgp_pre_run(coszrs, nstep, dtime, iradsw, iradlw, irad_always, ncol, &
-                  nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, errmsg, errflg)
+                  nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands, &
+                  nswbands, spectralflux, fsw, fswc, flw, flwc, errmsg, errflg)
      use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
      use time_manager,         only: get_curr_calday
+     ! Inputs
      real(kind_phys), dimension(:), intent(in) :: coszrs
-     integer,            intent(in) :: dtime
-     integer,            intent(in) :: nstep
-     integer,            intent(in) :: iradsw
-     integer,            intent(in) :: iradlw
-     integer,            intent(in) :: irad_always
-     integer,            intent(in) :: ncol
-     integer,           intent(out) :: nday
-     integer,           intent(out) :: nnite
-     real(kind_phys),   intent(out) :: nextsw_cday
-     integer, dimension(:), intent(out) :: idxday
-     integer, dimension(:), intent(out) :: idxnite
-     logical,               intent(out) :: dosw
-     logical,               intent(out) :: dolw
-     character(len=*),  intent(out) :: errmsg
-     integer,           intent(out) :: errflg
+     integer,                       intent(in) :: dtime
+     integer,                       intent(in) :: nstep
+     integer,                       intent(in) :: iradsw
+     integer,                       intent(in) :: iradlw
+     integer,                       intent(in) :: irad_always
+     integer,                       intent(in) :: ncol
+     integer,                       intent(in) :: nlay
+     integer,                       intent(in) :: nlwbands
+     integer,                       intent(in) :: nswbands
+     logical,                       intent(in) :: spectralflux
+     ! Outputs
+     class(ty_fluxes_broadband),   intent(out) :: fswc
+     class(ty_fluxes_broadband),   intent(out) :: fsw
+     class(ty_fluxes_broadband),   intent(out) :: flwc
+     class(ty_fluxes_broadband),   intent(out) :: flw
+     integer,                      intent(out) :: nday
+     integer,                      intent(out) :: nnite
+     real(kind_phys),              intent(out) :: nextsw_cday
+     integer, dimension(:),        intent(out) :: idxday
+     integer, dimension(:),        intent(out) :: idxnite
+     logical,                      intent(out) :: dosw
+     logical,                      intent(out) :: dolw
+     character(len=*),             intent(out) :: errmsg
+     integer,                      intent(out) :: errflg
 
      ! Local variables
      integer :: idx
@@ -93,6 +105,25 @@ CONTAINS
         caldayp1 = get_curr_calday(offset=int(dtime))
         if (caldayp1 /= nextsw_cday) nextsw_cday = -1._kind_phys
      end if
+
+     ! Allocate the flux arrays and init to zero.
+     call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, nswbands, spectralflux, fsw, errmsg, errflg, do_direct=.true.)
+     if (errflg /= 0) then
+        return
+     end if
+     call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, nswbands, spectralflux, fswc, errmsg, errflg, do_direct=.true.)
+     if (errflg /= 0) then
+        return
+     end if
+     call initialize_rrtmgp_fluxes(ncol, nlay+1, nlwbands, nswbands, spectralflux, flw, errmsg, errflg)
+     if (errflg /= 0) then
+        return
+     end if
+     call initialize_rrtmgp_fluxes(ncol, nlay+1, nlwbands, nswbands, spectralflux, flwc, errmsg, errflg)
+     if (errflg /= 0) then
+        return
+     end if
+
   end subroutine rrtmgp_pre_run
 
 !================================================================================================
@@ -130,5 +161,126 @@ subroutine radiation_do_ccpp(op, nstep, irad, irad_always, radiation_do, errmsg,
    end select
 
 end subroutine radiation_do_ccpp
+
+!=========================================================================================
+
+subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, nswbands, spectralflux, fluxes, errmsg, errflg, do_direct)
+
+   ! Allocate flux arrays and set values to zero.
+
+   ! Arguments
+   integer,                    intent(in)    :: ncol, nlevels, nbands, nswbands
+   logical,                    intent(in)    :: spectralflux
+   class(ty_fluxes_broadband), intent(inout) :: fluxes
+   logical, optional,          intent(in)    :: do_direct
+   character(len=*),           intent(out)   :: errmsg
+   integer,                    intent(out)   :: errflg
+
+   ! Local variables
+   logical :: do_direct_local
+   character(len=256) :: alloc_errmsg
+   character(len=*), parameter :: sub = 'initialize_rrtmgp_fluxes'
+   !----------------------------------------------------------------------------
+
+   if (present(do_direct)) then
+      do_direct_local = .true.
+   else
+      do_direct_local = .false.
+   end if
+
+   ! Broadband fluxes
+   allocate(fluxes%flux_up(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
+   if (errflg /= 0) then
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_up". Message: ', &
+              alloc_errmsg
+      return
+   end if
+   allocate(fluxes%flux_dn(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
+   if (errflg /= 0) then
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn". Message: ', &
+              alloc_errmsg
+      return
+   end if
+   allocate(fluxes%flux_net(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
+   if (errflg /= 0) then
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_net". Message: ', &
+              alloc_errmsg
+      return
+   end if
+   if (do_direct_local) then
+      allocate(fluxes%flux_dn_dir(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
+      if (errflg /= 0) then
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn_dir". Message: ', &
+                 alloc_errmsg
+         return
+      end if
+   end if
+
+   select type (fluxes)
+   type is (ty_fluxes_byband)
+      ! Fluxes by band always needed for SW.  Only allocate for LW
+      ! when spectralflux is true.
+      if (nbands == nswbands .or. spectralflux) then
+         allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
+         if (errflg /= 0) then
+            write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_up". Message: ', &
+                   alloc_errmsg
+            return
+         end if
+         allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
+         if (errflg /= 0) then
+            write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_dn". Message: ', &
+                    alloc_errmsg
+            return
+         end if
+         allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
+         if (errflg /= 0) then
+            write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_net". Message: ', &
+                    alloc_errmsg
+            return
+         end if
+         if (do_direct_local) then
+            allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
+            if (errflg /= 0) then
+               write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_dn_dir". Message: ', &
+                       alloc_errmsg
+               return
+            end if
+         end if
+      end if
+   end select
+
+   ! Initialize
+   call reset_fluxes(fluxes)
+
+end subroutine initialize_rrtmgp_fluxes
+
+!=========================================================================================
+
+subroutine reset_fluxes(fluxes)
+
+   ! Reset flux arrays to zero.
+
+   class(ty_fluxes_broadband), intent(inout) :: fluxes
+   !----------------------------------------------------------------------------
+
+   ! Reset broadband fluxes
+   fluxes%flux_up(:,:) = 0._kind_phys
+   fluxes%flux_dn(:,:) = 0._kind_phys
+   fluxes%flux_net(:,:) = 0._kind_phys
+   if (associated(fluxes%flux_dn_dir)) fluxes%flux_dn_dir(:,:) = 0._kind_phys
+
+   select type (fluxes)
+   type is (ty_fluxes_byband)
+      ! Reset band-by-band fluxes
+      if (associated(fluxes%bnd_flux_up)) fluxes%bnd_flux_up(:,:,:) = 0._kind_phys
+      if (associated(fluxes%bnd_flux_dn)) fluxes%bnd_flux_dn(:,:,:) = 0._kind_phys
+      if (associated(fluxes%bnd_flux_net)) fluxes%bnd_flux_net(:,:,:) = 0._kind_phys
+      if (associated(fluxes%bnd_flux_dn_dir)) fluxes%bnd_flux_dn_dir(:,:,:) = 0._kind_phys
+   end select
+
+end subroutine reset_fluxes
+
+!=========================================================================================
 
 end module rrtmgp_pre
