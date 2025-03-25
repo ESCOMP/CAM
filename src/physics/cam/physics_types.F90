@@ -211,7 +211,7 @@ contains
     use scamMod,         only: scm_crm_mode, single_column
     use phys_control,    only: phys_getopts
     use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
-    use air_composition, only: dry_air_species_num, thermodynamic_active_species_idx
+    use air_composition, only: dry_air_species_num, thermodynamic_active_species_num, thermodynamic_active_species_idx
     use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -426,14 +426,12 @@ contains
         ! Heating tendency not 0
         derive_new_geopotential = .true.
     else
-        ! Check all constituents with tendencies and if any of these are water species
-        const_water_loop: do m = 1, pcnst
-            if(ptend%lq(m)) then
-                ! is water species?
-                if(any(thermodynamic_active_species_idx(dry_air_species_num+1:) == m)) then
-                    derive_new_geopotential = .true.
-                    exit const_water_loop
-                endif
+        ! Check all water species and if there are nonzero tendencies
+        const_water_loop: do m = dry_air_species_num + 1, thermodynamic_active_species_num
+            if(ptend%lq(thermodynamic_active_species_idx(m))) then
+                ! does water species have tendency?
+                derive_new_geopotential = .true.
+                exit const_water_loop
             endif
         enddo const_water_loop
     endif
