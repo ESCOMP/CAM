@@ -1247,6 +1247,8 @@ end subroutine physics_ptend_copy
     real(r8),allocatable :: cpairv_loc(:,:)
     integer :: m_cnst
 
+    logical :: is_dycore_moist
+
     character(len=512)   :: errmsg
     integer              :: errflg
 
@@ -1285,9 +1287,11 @@ end subroutine physics_ptend_copy
         state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
       end do
     else
+      is_dycore_moist = .true.
       call dme_adjust_run (state%ncol, pver, pcnst, state%ps(:ncol), state%pint(:ncol,:), state%pdel(:ncol,:), &
                            state%lnpint(:ncol,:), state%rpdel(:ncol,:), &
-                           ccpp_const_props, state%q(:ncol,:,:), qini(:ncol,:), liqini(:ncol,:), iceini(:ncol,:), errmsg, errflg)
+                           ccpp_const_props, state%q(:ncol,:,:), qini(:ncol,:), liqini(:ncol,:), iceini(:ncol,:), &
+                           is_dycore_moist, errmsg, errflg)
       if (errflg /= 0) then
          call endrun('physics_dme_adjust: '//errmsg)
       end if
