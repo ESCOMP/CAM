@@ -4,10 +4,9 @@
 !> This module contains an init routine to initialize the gas optics object
 !>  with data read in from file on the host side
 module rrtmgp_lw_gas_optics_data
-  use machine,               only: kind_phys
-  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
-  use mo_gas_concentrations, only: ty_gas_concs  
-!  use radiation_tools,       only: check_error_msg
+  use machine,                 only: kind_phys
+  use ccpp_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp_ccpp
+  use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
 
   implicit none
 
@@ -28,7 +27,7 @@ contains
                   errmsg, errflg)
 
     ! Inputs
-    class(ty_gas_concs),                 intent(in) :: available_gases
+    class(ty_gas_concs_ccpp),            intent(in) :: available_gases
     character(len=*),      dimension(:), intent(in) :: gas_names
     character(len=*),      dimension(:), intent(in) :: gas_minor
     character(len=*),      dimension(:), intent(in) :: identifier_minor
@@ -63,7 +62,7 @@ contains
     real(kind_phys),                     intent(in) :: temp_ref_t
  
     ! Outputs
-    class(ty_gas_optics_rrtmgp), intent(inout) :: kdist  !< RRTMGP gas optics object
+    class(ty_gas_optics_rrtmgp_ccpp), intent(inout) :: kdist  !< RRTMGP gas optics object
     character(len=*), intent(out) :: errmsg              !< CCPP error message
     integer,          intent(out) :: errflg              !< CCPP error code
 
@@ -73,7 +72,7 @@ contains
 
     ! Initialize the gas optics object with data.
     errmsg = kdist%load( &
-         available_gases, gas_names, key_species,              &
+         available_gases%gas_concs, gas_names, key_species,    &
          band2gpt, band_lims_wavenum,                          &
          press_ref, press_ref_trop, temp_ref,                  &
          temp_ref_p, temp_ref_t, vmr_ref,                      &

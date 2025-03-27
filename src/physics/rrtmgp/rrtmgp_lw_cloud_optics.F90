@@ -13,8 +13,8 @@ module rrtmgp_lw_cloud_optics
                                       lininterp, extrap_method_bndry, &
                                       lininterp_finish
   use radiation_utils,          only: get_mu_lambda_weights_ccpp
-  use mo_gas_optics_rrtmgp,     only: ty_gas_optics_rrtmgp 
-  use mo_optical_props,         only: ty_optical_props_1scl
+  use ccpp_gas_optics_rrtmgp,   only: ty_gas_optics_rrtmgp_ccpp
+  use ccpp_optical_props,       only: ty_optical_props_1scl_ccpp
 
   implicit none
   public :: rrtmgp_lw_cloud_optics_run
@@ -144,10 +144,10 @@ contains
     logical,                           intent(in) :: graupel_in_rad
     logical,                           intent(in) :: do_snow
     logical,                           intent(in) :: do_graupel
-    class(ty_gas_optics_rrtmgp),       intent(in) :: kdist_lw
+    class(ty_gas_optics_rrtmgp_ccpp),  intent(in) :: kdist_lw
 
     ! Outputs
-    type(ty_optical_props_1scl),       intent(out) :: cloud_lw
+    type(ty_optical_props_1scl_ccpp),  intent(out) :: cloud_lw
     real(kind_phys), dimension(:,:),   intent(out) :: cld_lw_abs_cloudsim
     real(kind_phys), dimension(:,:),   intent(out) :: snow_lw_abs_cloudsim
     real(kind_phys), dimension(:,:),   intent(out) :: grau_lw_abs_cloudsim

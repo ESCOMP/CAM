@@ -1,0 +1,15 @@
+[ccpp-table-properties]
+  name = ty_optical_props_1scl_ccpp
+  type = ddt
+
+[ccpp-arg-table]
+  name = ty_optical_props_1scl_ccpp
+  type = ddt
+
+[ccpp-table-properties]
+  name = ty_optical_props_2str_ccpp
+  type = ddt
+
+[ccpp-arg-table]
+  name = ty_optical_props_2str_ccpp
+  type = ddt

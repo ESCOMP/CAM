@@ -30,9 +30,9 @@ use mcica_subcol_gen, only: mcica_subcol_sw, mcica_subcol_lw
 
 use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
 
-use mo_gas_concentrations, only: ty_gas_concs
-use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp 
-use mo_optical_props,      only: ty_optical_props_2str, ty_optical_props_1scl
+use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
+use ccpp_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp_ccpp
+use ccpp_optical_props,      only: ty_optical_props_2str_ccpp, ty_optical_props_1scl_ccpp
 
 use cam_history_support,   only: fillvalue
 use cam_abortutils,   only: endrun
@@ -167,7 +167,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    integer,                     intent(in) :: nlay           ! number of layers in radiation calculation
    integer,                     intent(in) :: numactivecols  ! number of columns, ncol for LW, nday for SW
 
-   type(ty_gas_concs),       intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
+   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
 
    integer, optional,          intent(in) :: idxday(:)   ! indices of daylight columns in a chunk
 
@@ -250,7 +250,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
       end do
    end if
 
-   errmsg = gas_concs%set_vmr(gas_name, gas_vmr)
+   errmsg = gas_concs%gas_concs%set_vmr(gas_name, gas_vmr)
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR, gas_concs%set_vmr: '//trim(errmsg))
    end if
@@ -302,7 +302,7 @@ subroutine rrtmgp_set_gases_sw( &
    integer,                     intent(in)    :: nlay
    integer,                     intent(in)    :: nday
    integer,                     intent(in)    :: idxday(:)
-   type(ty_gas_concs),          intent(inout) :: gas_concs
+   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs
 
    ! local variables
    integer :: i
@@ -346,9 +346,9 @@ subroutine rrtmgp_set_cloud_sw( &
    real(r8), pointer    :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"
    real(r8), intent(in) :: cldfprime(pcols,pver) ! combined cloud fraction
 
-   logical,                     intent(in)  :: graupel_in_rad ! graupel in radiation code
-   class(ty_gas_optics_rrtmgp), intent(in)  :: kdist_sw  ! shortwave gas optics object
-   type(ty_optical_props_2str), intent(out) :: cloud_sw  ! SW cloud optical properties object
+   logical,                          intent(in)  :: graupel_in_rad ! graupel in radiation code
+   class(ty_gas_optics_rrtmgp_ccpp), intent(in)  :: kdist_sw  ! shortwave gas optics object
+   type(ty_optical_props_2str_ccpp), intent(out) :: cloud_sw  ! SW cloud optical properties object
 
    ! Diagnostic outputs
    real(r8), intent(out) :: tot_cld_vistau(pcols,pver)   ! gbx total cloud optical depth
@@ -607,7 +607,7 @@ subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
    type(physics_state), target, intent(in) :: state
    type(physics_buffer_desc),   pointer    :: pbuf(:)
 
-   type(ty_optical_props_1scl), intent(inout) :: aer_lw
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: aer_lw
 
    ! Local variables
    integer :: ncol
@@ -652,7 +652,7 @@ subroutine rrtmgp_set_aer_sw( &
    integer,  intent(in) :: nnite          ! number of night columns
    integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
 
-   type(ty_optical_props_2str), intent(inout) :: aer_sw
+   type(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw
 
    ! local variables
    integer  :: i

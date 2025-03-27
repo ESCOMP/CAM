@@ -30,8 +30,8 @@ module rrtmgp_lw_mcica_subcol_gen
 
 use machine,              only: kind_phys
 use shr_RandNum_mod,      only: ShrKissRandGen
-use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
-use mo_optical_props,     only: ty_optical_props_1scl
+use ccpp_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp_ccpp
+use ccpp_optical_props,     only: ty_optical_props_1scl_ccpp
 
 implicit none
 private
@@ -60,7 +60,7 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
    ! number of subcolumns
 
    ! arguments
-   class(ty_gas_optics_rrtmgp), intent(in) :: kdist  ! spectral information
+   class(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist  ! spectral information
    integer,  intent(in)  :: ktoprad
    integer,  intent(in)  :: nbnd                     ! number of spectral bands
    integer,  intent(in)  :: ngpt                     ! number of subcolumns (g-point intervals)
@@ -72,7 +72,7 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
    real(kind_phys), dimension(:,:),   intent(in)  :: pmid        ! layer pressures (Pa)
    real(kind_phys), dimension(:,:),   intent(in)  :: cldfrac     ! layer cloud fraction
    real(kind_phys), dimension(:,:,:), intent(in)  :: tauc        ! cloud optical depth
-   type(ty_optical_props_1scl),       intent(inout) :: cloud_lw
+   type(ty_optical_props_1scl_ccpp),  intent(inout) :: cloud_lw
    character(len=*),                  intent(out) :: errmsg
    integer,                           intent(out) :: errflg
 

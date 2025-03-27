@@ -1,0 +1,7 @@
+[ccpp-table-properties]
+  name = ty_source_func_lw_ccpp
+  type = ddt
+
+[ccpp-arg-table]
+  name = ty_source_func_lw_ccpp
+  type = ddt

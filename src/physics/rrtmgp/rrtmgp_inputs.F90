@@ -1,9 +1,9 @@
 module rrtmgp_inputs
  use machine, only: kind_phys
- use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
- use mo_optical_props,     only: ty_optical_props_1scl, ty_optical_props_2str
- use mo_gas_concentrations, only: ty_gas_concs
- use mo_source_functions,   only: ty_source_func_lw
+ use ccpp_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp_ccpp
+ use ccpp_optical_props,     only: ty_optical_props_1scl_ccpp, ty_optical_props_2str_ccpp
+ use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
+ use ccpp_source_functions,   only: ty_source_func_lw_ccpp
  use string_utils,          only: to_lower
  use radiation_utils,       only: radiation_utils_init, get_sw_spectral_boundaries_ccpp
 
@@ -37,8 +37,8 @@ module rrtmgp_inputs
      integer,                       intent(in) :: gasnamelength
      real(kind_phys),               intent(in) :: current_cal_day
      real(kind_phys), dimension(:), intent(in) :: pref_edge
-     type(ty_gas_optics_rrtmgp),    intent(in) :: kdist_sw
-     type(ty_gas_optics_rrtmgp),    intent(in) :: kdist_lw
+     type(ty_gas_optics_rrtmgp_ccpp),    intent(in) :: kdist_sw
+     type(ty_gas_optics_rrtmgp_ccpp),    intent(in) :: kdist_lw
      logical,                       intent(in) :: is_first_step
      logical,                       intent(in) :: is_first_restart_step
      logical,                       intent(in) :: use_rad_dt_cosz
@@ -78,12 +78,6 @@ module rrtmgp_inputs
      ! Set error variables
      errflg = 0
      errmsg = ''
-
-     ! Read RRTMGP coefficients files and initialize kdist objects.
-     ! peverwhee - Will be inputs to rrtmgp_gas_optics_init
-!      call coefs_init(coefs_sw_file, available_gases, kdist_sw)
-!      call coefs_init(coefs_lw_file, available_gases, kdist_lw)
-
 
      ! Number of layers in radiation calculation is capped by the number of
      ! pressure interfaces below 1 Pa.  When the entire model atmosphere is
@@ -204,8 +198,8 @@ module rrtmgp_inputs
      real(kind_phys), dimension(:),   intent(in) :: aldir
      real(kind_phys), dimension(:),   intent(in) :: aldif
      real(kind_phys),                 intent(in) :: stebol    ! stefan-boltzmann constant
-     class(ty_gas_optics_rrtmgp),     intent(in) :: kdist_sw  ! spectral information
-     class(ty_gas_optics_rrtmgp),     intent(in) :: kdist_lw  ! spectral information
+     type(ty_gas_optics_rrtmgp_ccpp),     intent(in) :: kdist_sw  ! spectral information
+     type(ty_gas_optics_rrtmgp_ccpp),     intent(in) :: kdist_lw  ! spectral information
      character(len=*), dimension(:),  intent(in) :: gaslist
      ! Outputs
      real(kind_phys), dimension(:,:), intent(out) :: t_rad
@@ -221,13 +215,13 @@ module rrtmgp_inputs
 
      real(kind_phys), dimension(:),   intent(out) :: t_sfc
      real(kind_phys), dimension(:),   intent(out) :: coszrs_day
-     type(ty_gas_concs),              intent(out) :: gas_concs_lw
-     type(ty_optical_props_1scl),     intent(out) :: atm_optics_lw
-     type(ty_optical_props_1scl),     intent(out) :: aer_lw
-     type(ty_source_func_lw),         intent(out) :: sources_lw
-     type(ty_gas_concs),              intent(out) :: gas_concs_sw
-     type(ty_optical_props_2str),     intent(out) :: atm_optics_sw
-     type(ty_optical_props_2str),     intent(out) :: aer_sw
+     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_lw
+     type(ty_optical_props_1scl_ccpp),     intent(out) :: atm_optics_lw
+     type(ty_optical_props_1scl_ccpp),     intent(out) :: aer_lw
+     type(ty_source_func_lw_ccpp),         intent(out) :: sources_lw
+     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_sw
+     type(ty_optical_props_2str_ccpp),     intent(out) :: atm_optics_sw
+     type(ty_optical_props_2str_ccpp),     intent(out) :: aer_sw
      character(len=*), intent(out) :: errmsg
      integer,          intent(out) :: errflg
 
@@ -370,7 +364,7 @@ module rrtmgp_inputs
         end do
      end if
 
-     ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
+     ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs_ccpp objects
      ! work with CAM's uppercase names, but other objects that get input from the gas
      ! concs objects don't work.
      do idx = 1, size(gaslist)
@@ -380,7 +374,7 @@ module rrtmgp_inputs
      ! If no daylight columns, can't create empty RRTMGP objects
      if (dosw .and. nday > 0) then
         ! Initialize object for gas concentrations.
-         errmsg = gas_concs_sw%init(gaslist_lc)
+         errmsg = gas_concs_sw%gas_concs%init(gaslist_lc)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -405,7 +399,7 @@ module rrtmgp_inputs
 
      if (dolw) then
         ! Initialize object for gas concentrations
-        errmsg = gas_concs_lw%init(gaslist_lc)
+        errmsg = gas_concs_lw%gas_concs%init(gaslist_lc)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -426,7 +420,7 @@ module rrtmgp_inputs
         end if
 
         ! Initialize object for Planck sources.
-        errmsg = sources_lw%alloc(ncol, nlay, kdist_lw)
+        errmsg = sources_lw%sources%alloc(ncol, nlay, kdist_lw)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -449,8 +443,8 @@ module rrtmgp_inputs
    ! Set band indices for bands containing specific wavelengths.
 
    ! Arguments
-   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw
-   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_lw
+   type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_sw
+   type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_lw
    integer,                    intent(in) :: nswbands
    integer,                    intent(in) :: nlwbands
 

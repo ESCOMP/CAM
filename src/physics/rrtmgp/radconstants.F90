@@ -4,7 +4,6 @@ module radconstants
 ! code used in the RRTMGP model.
 
 use shr_kind_mod,         only: r8 => shr_kind_r8
-use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
 use cam_abortutils,       only: endrun
 use radiation_utils,      only: get_sw_spectral_boundaries_ccpp
 use radiation_utils,      only: get_lw_spectral_boundaries_ccpp

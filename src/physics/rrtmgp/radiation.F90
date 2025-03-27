@@ -46,12 +46,12 @@ use pio,                 only: file_desc_t, var_desc_t,                       &
                                pio_def_var, pio_put_var, pio_get_var,         &
                                pio_put_att, PIO_NOWRITE, pio_closefile
 
-use mo_gas_concentrations, only: ty_gas_concs
-use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
-use mo_optical_props,      only: ty_optical_props_1scl, ty_optical_props_2str
-use mo_source_functions,   only: ty_source_func_lw
-use mo_fluxes,             only: ty_fluxes_broadband
-use mo_fluxes_byband,      only: ty_fluxes_byband
+use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
+use ccpp_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp_ccpp
+use ccpp_optical_props,      only: ty_optical_props_1scl_ccpp, ty_optical_props_2str_ccpp
+use ccpp_source_functions,   only: ty_source_func_lw_ccpp
+use ccpp_fluxes,             only: ty_fluxes_broadband_ccpp
+use ccpp_fluxes_byband,    only: ty_fluxes_byband_ccpp
 
 use string_utils,        only: to_lower
 use cam_abortutils,      only: endrun, handle_allocate_error
@@ -240,8 +240,8 @@ logical :: dosw
 logical :: dolw
 
 ! Gas optics objects contain the data read from the coefficients files.
-type(ty_gas_optics_rrtmgp) :: kdist_sw
-type(ty_gas_optics_rrtmgp) :: kdist_lw
+type(ty_gas_optics_rrtmgp_ccpp) :: kdist_sw
+type(ty_gas_optics_rrtmgp_ccpp) :: kdist_lw
 
 ! lower case version of gaslist for RRTMGP
 character(len=gasnamelength) :: gaslist_lc(nradgas)
@@ -425,7 +425,7 @@ subroutine radiation_init(pbuf2d)
 
    ! names of gases that are available in the model 
    ! -- needed for the kdist initialization routines 
-   type(ty_gas_concs) :: available_gases
+   type(ty_gas_concs_ccpp) :: available_gases
 
    real(r8) :: qrl_unused(1,1)
 
@@ -444,14 +444,15 @@ subroutine radiation_init(pbuf2d)
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
-   ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
+   ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs_ccpp objects
    ! work with CAM's uppercase names, but other objects that get input from the gas
    ! concs objects don't work.
    do i = 1, nradgas
       gaslist_lc(i) = to_lower(gaslist(i))
    end do
 
-   errmsg = available_gases%init(gaslist_lc)
+   ! PEVERWHEE - add this to new rrtmgp_pre_iinit routine (possible also above code?)
+   errmsg = available_gases%gas_concs%init(gaslist_lc)
    call stop_on_err(errmsg, sub, 'available_gases%init')
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
@@ -813,7 +814,6 @@ subroutine radiation_tend( &
 
    use rrtmgp_inputs,      only: rrtmgp_inputs_run
    use rrtmgp_pre,         only: rrtmgp_pre_run
-   use rrtmgp_lw_initialize_fluxes, only: rrtmgp_lw_initialize_fluxes_run
    use rrtmgp_lw_cloud_optics,      only: rrtmgp_lw_cloud_optics_run
    use rrtmgp_lw_mcica_subcol_gen,  only: rrtmgp_lw_mcica_subcol_gen_run
    use rrtmgp_lw_gas_optics_pre,    only: rrtmgp_lw_gas_optics_pre_run
@@ -936,36 +936,36 @@ subroutine radiation_tend( &
    real(r8), allocatable :: sfac(:,:)
    
    ! Planck sources for LW.
-   type(ty_source_func_lw) :: sources_lw
+   type(ty_source_func_lw_ccpp) :: sources_lw
 
    ! Gas volume mixing ratios.  Use separate objects for LW and SW because SW only does
    ! calculations for daylight columns.
    ! These objects have a final method which deallocates the internal memory when they
    ! go out of scope (i.e., when radiation_tend returns), so no need for explicit deallocation.
-   type(ty_gas_concs) :: gas_concs_lw
-   type(ty_gas_concs) :: gas_concs_sw
+   type(ty_gas_concs_ccpp) :: gas_concs_lw
+   type(ty_gas_concs_ccpp) :: gas_concs_sw
 
    ! Atmosphere optics.  This object is initialized with gas optics, then is incremented
    ! by the aerosol optics for the clear-sky radiative flux calculations, and then
    ! incremented again by the cloud optics for the all-sky radiative flux calculations.
-   type(ty_optical_props_1scl) :: atm_optics_lw
-   type(ty_optical_props_2str) :: atm_optics_sw
+   type(ty_optical_props_1scl_ccpp) :: atm_optics_lw
+   type(ty_optical_props_2str_ccpp) :: atm_optics_sw
 
    ! Cloud optical properties objects (McICA sampling of cloud optical properties).
-   type(ty_optical_props_1scl) :: cloud_lw
-   type(ty_optical_props_2str) :: cloud_sw
+   type(ty_optical_props_1scl_ccpp) :: cloud_lw
+   type(ty_optical_props_2str_ccpp) :: cloud_sw
 
    ! Aerosol optical properties objects.
-   type(ty_optical_props_1scl) :: aer_lw
-   type(ty_optical_props_2str) :: aer_sw
+   type(ty_optical_props_1scl_ccpp) :: aer_lw
+   type(ty_optical_props_2str_ccpp) :: aer_sw
 
    ! Flux objects contain all fluxes computed by RRTMGP.
    ! SW allsky fluxes always include spectrally resolved fluxes needed for surface models.
-   type(ty_fluxes_byband) :: fsw
+   type(ty_fluxes_byband_ccpp) :: fsw
    ! LW allsky fluxes only need spectrally resolved fluxes when spectralflux=.true.
-   type(ty_fluxes_byband) :: flw
+   type(ty_fluxes_byband_ccpp) :: flw
    ! Only broadband fluxes needed for clear sky (diagnostics).
-   type(ty_fluxes_broadband) :: fswc, flwc
+   type(ty_fluxes_broadband_ccpp) :: fswc, flwc
 
    ! Arrays for output diagnostics on CAM grid.
    real(r8) :: fns(pcols,pverp)     ! net shortwave flux
@@ -1143,7 +1143,7 @@ subroutine radiation_tend( &
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
                   errmsg = kdist_sw%gas_optics( &
-                     pmid_day, pint_day, t_day, gas_concs_sw, atm_optics_sw, &
+                     pmid_day, pint_day, t_day, gas_concs_sw%gas_concs, atm_optics_sw, &
                      toa_flux)
                   call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
 
@@ -1168,7 +1168,7 @@ subroutine radiation_tend( &
                   ! Compute clear-sky fluxes.
                   errmsg = rte_sw(&
                      atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
-                     alb_dir, alb_dif, fswc)
+                     alb_dir, alb_dif, fswc%fluxes)
                   call stop_on_err(errmsg, sub, 'clear-sky rte_sw')
 
                   ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
@@ -1178,7 +1178,7 @@ subroutine radiation_tend( &
                   ! Compute all-sky fluxes.
                   errmsg = rte_sw(&
                      atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
-                     alb_dir, alb_dif, fsw)
+                     alb_dir, alb_dif, fsw%fluxes)
                   call stop_on_err(errmsg, sub, 'all-sky rte_sw')
 
                end if
@@ -1388,9 +1388,9 @@ subroutine radiation_tend( &
       ! full chunks for output to CAM history.
 
       integer :: i
-      real(r8), dimension(size(fsw%bnd_flux_dn,1), &
-                          size(fsw%bnd_flux_dn,2), &
-                          size(fsw%bnd_flux_dn,3)) :: flux_dn_diffuse
+      real(r8), dimension(size(fsw%fluxes%bnd_flux_dn,1), &
+                          size(fsw%fluxes%bnd_flux_dn,2), &
+                          size(fsw%fluxes%bnd_flux_dn,3)) :: flux_dn_diffuse
       !-------------------------------------------------------------------------
 
       ! Initialize to provide 0.0 values for night columns.
@@ -1415,18 +1415,18 @@ subroutine radiation_tend( &
       rd%fsntc = 0._r8
 
       do i = 1, nday
-         fns(idxday(i),ktopcam:)  = fsw%flux_net(i, ktoprad:)
-         fcns(idxday(i),ktopcam:) = fswc%flux_net(i,ktoprad:)
-         fsds(idxday(i))          = fsw%flux_dn(i, nlay+1)
-         rd%fsdsc(idxday(i))      = fswc%flux_dn(i, nlay+1)
-         rd%fsutoa(idxday(i))     = fsw%flux_up(i, 1)
-         rd%fsntoa(idxday(i))     = fsw%flux_net(i, 1)
-         rd%fsntoac(idxday(i))    = fswc%flux_net(i, 1)
-         rd%solin(idxday(i))      = fswc%flux_dn(i, 1)
-         rd%flux_sw_up(idxday(i),ktopcam:)     = fsw%flux_up(i,ktoprad:)
-         rd%flux_sw_dn(idxday(i),ktopcam:)     = fsw%flux_dn(i,ktoprad:)
-         rd%flux_sw_clr_up(idxday(i),ktopcam:) = fswc%flux_up(i,ktoprad:) 
-         rd%flux_sw_clr_dn(idxday(i),ktopcam:) = fswc%flux_dn(i,ktoprad:)
+         fns(idxday(i),ktopcam:)  = fsw%fluxes%flux_net(i, ktoprad:)
+         fcns(idxday(i),ktopcam:) = fswc%fluxes%flux_net(i,ktoprad:)
+         fsds(idxday(i))          = fsw%fluxes%flux_dn(i, nlay+1)
+         rd%fsdsc(idxday(i))      = fswc%fluxes%flux_dn(i, nlay+1)
+         rd%fsutoa(idxday(i))     = fsw%fluxes%flux_up(i, 1)
+         rd%fsntoa(idxday(i))     = fsw%fluxes%flux_net(i, 1)
+         rd%fsntoac(idxday(i))    = fswc%fluxes%flux_net(i, 1)
+         rd%solin(idxday(i))      = fswc%fluxes%flux_dn(i, 1)
+         rd%flux_sw_up(idxday(i),ktopcam:)     = fsw%fluxes%flux_up(i,ktoprad:)
+         rd%flux_sw_dn(idxday(i),ktopcam:)     = fsw%fluxes%flux_dn(i,ktoprad:)
+         rd%flux_sw_clr_up(idxday(i),ktopcam:) = fswc%fluxes%flux_up(i,ktoprad:)
+         rd%flux_sw_clr_dn(idxday(i),ktopcam:) = fswc%fluxes%flux_dn(i,ktoprad:)
       end do
 
       ! Compute heating rate as a dry static energy tendency.
@@ -1453,8 +1453,8 @@ subroutine radiation_tend( &
          su  = 0._r8
          sd  = 0._r8
          do i = 1, nday
-            su(idxday(i),ktopcam:,:) = fsw%bnd_flux_up(i,ktoprad:,:)
-            sd(idxday(i),ktopcam:,:) = fsw%bnd_flux_dn(i,ktoprad:,:)
+            su(idxday(i),ktopcam:,:) = fsw%fluxes%bnd_flux_up(i,ktoprad:,:)
+            sd(idxday(i),ktopcam:,:) = fsw%fluxes%bnd_flux_dn(i,ktoprad:,:)
          end do
       end if
 
@@ -1473,14 +1473,14 @@ subroutine radiation_tend( &
       cam_out%solld = 0.0_r8
 
       ! Calculate diffuse flux from total and direct
-      flux_dn_diffuse = fsw%bnd_flux_dn - fsw%bnd_flux_dn_dir
+      flux_dn_diffuse = fsw%fluxes%bnd_flux_dn - fsw%fluxes%bnd_flux_dn_dir
 
       do i = 1, nday
-         cam_out%soll(idxday(i)) = sum(fsw%bnd_flux_dn_dir(i,nlay+1,1:9))      &
-                                   + 0.5_r8 * fsw%bnd_flux_dn_dir(i,nlay+1,10) 
+         cam_out%soll(idxday(i)) = sum(fsw%fluxes%bnd_flux_dn_dir(i,nlay+1,1:9))      &
+                                   + 0.5_r8 * fsw%fluxes%bnd_flux_dn_dir(i,nlay+1,10)
 
-         cam_out%sols(idxday(i)) = 0.5_r8 * fsw%bnd_flux_dn_dir(i,nlay+1,10)   &
-                                   + sum(fsw%bnd_flux_dn_dir(i,nlay+1,11:14))
+         cam_out%sols(idxday(i)) = 0.5_r8 * fsw%fluxes%bnd_flux_dn_dir(i,nlay+1,10)   &
+                                   + sum(fsw%fluxes%bnd_flux_dn_dir(i,nlay+1,11:14))
 
          cam_out%solld(idxday(i)) = sum(flux_dn_diffuse(i,nlay+1,1:9))         &
                                     + 0.5_r8 * flux_dn_diffuse(i,nlay+1,10)
@@ -1502,13 +1502,13 @@ subroutine radiation_tend( &
       fcnl = 0._r8
 
       ! RTE-RRTMGP convention for net is (down - up) **CAM assumes (up - down) !!
-      fnl(:ncol,ktopcam:)  = -1._r8 * flw%flux_net(    :, ktoprad:)
-      fcnl(:ncol,ktopcam:) = -1._r8 * flwc%flux_net(   :, ktoprad:)
+      fnl(:ncol,ktopcam:)  = -1._r8 * flw%fluxes%flux_net(    :, ktoprad:)
+      fcnl(:ncol,ktopcam:) = -1._r8 * flwc%fluxes%flux_net(   :, ktoprad:)
 
-      rd%flux_lw_up(:ncol,ktopcam:)     = flw%flux_up( :, ktoprad:)
-      rd%flux_lw_clr_up(:ncol,ktopcam:) = flwc%flux_up(:, ktoprad:)
-      rd%flux_lw_dn(:ncol,ktopcam:)     = flw%flux_dn( :, ktoprad:)
-      rd%flux_lw_clr_dn(:ncol,ktopcam:) = flwc%flux_dn(:, ktoprad:)
+      rd%flux_lw_up(:ncol,ktopcam:)     = flw%fluxes%flux_up( :, ktoprad:)
+      rd%flux_lw_clr_up(:ncol,ktopcam:) = flwc%fluxes%flux_up(:, ktoprad:)
+      rd%flux_lw_dn(:ncol,ktopcam:)     = flw%fluxes%flux_dn( :, ktoprad:)
+      rd%flux_lw_clr_dn(:ncol,ktopcam:) = flwc%fluxes%flux_dn(:, ktoprad:)
 
       call heating_rate('LW', ncol, fnl, qrl)
       call heating_rate('LW', ncol, fcnl, rd%qrlc)
@@ -1519,11 +1519,11 @@ subroutine radiation_tend( &
       rd%flnsc(:ncol) = fcnl(:ncol, pverp)
       rd%flntc(:ncol) = fcnl(:ncol, ktopcam)    ! net lw flux at top-of-model
 
-      cam_out%flwds(:ncol) = flw%flux_dn(:, nlay+1)
-      rd%fldsc(:ncol)      = flwc%flux_dn(:, nlay+1)
+      cam_out%flwds(:ncol) = flw%fluxes%flux_dn(:, nlay+1)
+      rd%fldsc(:ncol)      = flwc%fluxes%flux_dn(:, nlay+1)
 
-      rd%flut(:ncol)  = flw%flux_up(:, ktoprad) 
-      rd%flutc(:ncol) = flwc%flux_up(:, ktoprad)
+      rd%flut(:ncol)  = flw%fluxes%flux_up(:, ktoprad)
+      rd%flutc(:ncol) = flwc%fluxes%flux_up(:, ktoprad)
 
       ! Output fluxes at 200 mb
       call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl,  rd%fln200)
@@ -1537,8 +1537,8 @@ subroutine radiation_tend( &
       if (spectralflux) then
          lu  = 0._r8
          ld  = 0._r8
-         lu(:ncol, ktopcam:, :)  = flw%bnd_flux_up(:, ktoprad:, :)
-         ld(:ncol, ktopcam:, :)  = flw%bnd_flux_dn(:, ktoprad:, :)
+         lu(:ncol, ktopcam:, :)  = flw%fluxes%bnd_flux_up(:, ktoprad:, :)
+         ld(:ncol, ktopcam:, :)  = flw%fluxes%bnd_flux_dn(:, ktoprad:, :)
       end if
 
    end subroutine set_lw_diags
@@ -1745,8 +1745,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
 
    ! arguments
    character(len=*),                  intent(in)  :: coefs_file
-   class(ty_gas_concs),               intent(in)  :: available_gases
-   class(ty_gas_optics_rrtmgp),       intent(inout) :: kdist
+   class(ty_gas_concs_ccpp),          intent(in)  :: available_gases
+   class(ty_gas_optics_rrtmgp_ccpp),  intent(inout) :: kdist
 
    ! local variables
    type(file_desc_t) :: fh    ! pio file handle
@@ -2234,7 +2234,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       end if
    else if (allocated(solar_src_quiet)) then
       error_msg = kdist%load( &
-         available_gases, gas_names, key_species,               &
+         available_gases%gas_concs, gas_names, key_species,     &
          band2gpt, band_lims_wavenum,                           &
          press_ref, press_ref_trop, temp_ref,                   &
          temp_ref_p, temp_ref_t, vmr_ref,                       & 
@@ -2284,135 +2284,6 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (allocated(rayl_upper))        deallocate(rayl_upper)
 
 end subroutine coefs_init
-
-!=========================================================================================
-
-subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
-
-   ! Allocate flux arrays and set values to zero.
-
-   ! Arguments
-   integer,                    intent(in)    :: ncol, nlevels, nbands
-   class(ty_fluxes_broadband), intent(inout) :: fluxes
-   logical, optional,          intent(in)    :: do_direct
-
-   ! Local variables
-   logical :: do_direct_local
-   integer :: istat
-   character(len=*), parameter :: sub = 'initialize_rrtmgp_fluxes'
-   !----------------------------------------------------------------------------
-
-   if (present(do_direct)) then
-      do_direct_local = .true.
-   else
-      do_direct_local = .false.
-   end if
-
-   ! Broadband fluxes
-   allocate(fluxes%flux_up(ncol, nlevels), stat=istat)
-   call handle_allocate_error(istat, sub, 'fluxes%flux_up')
-   allocate(fluxes%flux_dn(ncol, nlevels), stat=istat)
-   call handle_allocate_error(istat, sub, 'fluxes%flux_dn')
-   allocate(fluxes%flux_net(ncol, nlevels), stat=istat)
-   call handle_allocate_error(istat, sub, 'fluxes%flux_net')
-   if (do_direct_local) then
-      allocate(fluxes%flux_dn_dir(ncol, nlevels), stat=istat)
-      call handle_allocate_error(istat, sub, 'fluxes%flux_dn_dir')
-   end if
-
-   select type (fluxes)
-   type is (ty_fluxes_byband)
-      ! Fluxes by band always needed for SW.  Only allocate for LW
-      ! when spectralflux is true.
-      if (nbands == nswbands .or. spectralflux) then
-         allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=istat)
-         call handle_allocate_error(istat, sub, 'fluxes%bnd_flux_up')
-         allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=istat)
-         call handle_allocate_error(istat, sub, 'fluxes%bnd_flux_dn')
-         allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=istat)
-         call handle_allocate_error(istat, sub, 'fluxes%bnd_flux_net')
-         if (do_direct_local) then
-            allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=istat)
-            call handle_allocate_error(istat, sub, 'fluxes%bnd_flux_dn_dir')
-         end if
-      end if
-   end select
-
-   ! Initialize
-   call reset_fluxes(fluxes)
-
-end subroutine initialize_rrtmgp_fluxes
-
-!=========================================================================================
-
-subroutine reset_fluxes(fluxes)
-
-   ! Reset flux arrays to zero.
-
-   class(ty_fluxes_broadband), intent(inout) :: fluxes
-   !----------------------------------------------------------------------------
-
-   ! Reset broadband fluxes
-   fluxes%flux_up(:,:) = 0._r8
-   fluxes%flux_dn(:,:) = 0._r8
-   fluxes%flux_net(:,:) = 0._r8
-   if (associated(fluxes%flux_dn_dir)) fluxes%flux_dn_dir(:,:) = 0._r8
-
-   select type (fluxes)
-   type is (ty_fluxes_byband)
-      ! Reset band-by-band fluxes
-      if (associated(fluxes%bnd_flux_up)) fluxes%bnd_flux_up(:,:,:) = 0._r8
-      if (associated(fluxes%bnd_flux_dn)) fluxes%bnd_flux_dn(:,:,:) = 0._r8
-      if (associated(fluxes%bnd_flux_net)) fluxes%bnd_flux_net(:,:,:) = 0._r8
-      if (associated(fluxes%bnd_flux_dn_dir)) fluxes%bnd_flux_dn_dir(:,:,:) = 0._r8
-   end select
-
-end subroutine reset_fluxes
-
-!=========================================================================================
-
-subroutine free_optics_sw(optics)
-
-   type(ty_optical_props_2str), intent(inout) :: optics
-
-   if (allocated(optics%tau)) deallocate(optics%tau)
-   if (allocated(optics%ssa)) deallocate(optics%ssa)
-   if (allocated(optics%g)) deallocate(optics%g)
-   call optics%finalize()
-
-end subroutine free_optics_sw
-
-!=========================================================================================
-
-subroutine free_optics_lw(optics)
-
-   type(ty_optical_props_1scl), intent(inout) :: optics
-
-   if (allocated(optics%tau)) deallocate(optics%tau)
-   call optics%finalize()
-
-end subroutine free_optics_lw
-
-!=========================================================================================
-
-subroutine free_fluxes(fluxes)
-
-   class(ty_fluxes_broadband), intent(inout) :: fluxes
-
-   if (associated(fluxes%flux_up)) deallocate(fluxes%flux_up)
-   if (associated(fluxes%flux_dn)) deallocate(fluxes%flux_dn)
-   if (associated(fluxes%flux_net)) deallocate(fluxes%flux_net)
-   if (associated(fluxes%flux_dn_dir)) deallocate(fluxes%flux_dn_dir)
-
-   select type (fluxes)
-   type is (ty_fluxes_byband)
-      if (associated(fluxes%bnd_flux_up)) deallocate(fluxes%bnd_flux_up)
-      if (associated(fluxes%bnd_flux_dn)) deallocate(fluxes%bnd_flux_dn)
-      if (associated(fluxes%bnd_flux_net)) deallocate(fluxes%bnd_flux_net)
-      if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
-   end select
-
-end subroutine free_fluxes
 
 !=========================================================================================
 

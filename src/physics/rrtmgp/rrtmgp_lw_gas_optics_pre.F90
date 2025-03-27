@@ -5,8 +5,8 @@
 !! and functions needed to compute the longwave gaseous optical properties in RRTMGP.
 !! It also contains a run routine to compute gas optics during the radiation subcycle
 module rrtmgp_lw_gas_optics_pre
-  use machine,               only: kind_phys
-  use mo_gas_concentrations, only: ty_gas_concs
+  use machine,                 only: kind_phys
+  use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
 
   implicit none
 
@@ -39,7 +39,7 @@ contains
     real(kind_phys),             intent(in) :: rad_const_array(:,:,:) ! array of radiatively-active constituent vmrs
                                                                       !  last index corresponds to index in gaslist
 
-    type(ty_gas_concs),          intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
+    type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
     character(len=*),            intent(out)   :: errmsg
     integer,                     intent(out)   :: errflg
 
@@ -124,7 +124,7 @@ contains
           end do
        end if
 
-       errmsg = gas_concs%set_vmr(gaslist(gas_idx), gas_vmr)
+       errmsg = gas_concs%gas_concs%set_vmr(gaslist(gas_idx), gas_vmr)
        if (len_trim(errmsg) > 0) then
           errflg = 1
           return
