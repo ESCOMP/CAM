@@ -366,12 +366,12 @@ contains
        call t_stopf('nlte_aliarms_calc')
 
     else if (nlte_use_extco2) then
-
        call t_startf('nlte_extco2_hrate')
 
        call nlte_extco2_hrate(lchnk, ncol, state%t, state%pmid, xco2mmr, xn2mmr, xommr, xo2mmr, co2cooling)
 
-       qrlf(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+      ! qrlf(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+       qrlf(:ncol,:) = qrlfomichev(:ncol,:)
 
        call t_stopf('nlte_extco2_hrate')
 
