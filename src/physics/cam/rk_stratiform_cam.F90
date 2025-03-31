@@ -138,9 +138,6 @@ contains
 
    do_psrhmin = rk_strat_polstrat_rhmin .ne. unset_r8
 
-   ! call cldwat_init(rk_strat_icritw,rk_strat_icritc,rk_strat_conke,&
-   !                  rk_strat_r3lcrit,rk_strat_polstrat_rhmin,do_psrhmin)
-
    call prognostic_cloud_water_init(&
       amIRoot = masterproc, &
       iulog   = iulog, &
@@ -204,7 +201,7 @@ subroutine rk_stratiform_cam_register
    call pbuf_add_field('PRAIN',     'physpkg', dtype_r8, (/pcols,pver/), prain_idx) ! precipitation_production_due_to_microphysics
    call pbuf_add_field('NEVAPR',    'physpkg', dtype_r8, (/pcols,pver/), nevapr_idx) ! precipitation_evaporation_due_to_microphysics
 
-   call pbuf_add_field('WSEDL',     'physpkg', dtype_r8, (/pcols,pver/), wsedl_idx) ! ??
+   call pbuf_add_field('WSEDL',     'physpkg', dtype_r8, (/pcols,pver/), wsedl_idx) ! sedimentation velocity of liquid stratus cloud droplet [m s-1]
 
    call pbuf_add_field('REI',       'physpkg', dtype_r8, (/pcols,pver/), rei_idx) ! effective_radius_of_stratiform_cloud_ice_particle
    call pbuf_add_field('REL',       'physpkg', dtype_r8, (/pcols,pver/), rel_idx) ! effective_radius_of_stratiform_cloud_liquid_water_particle
@@ -374,8 +371,6 @@ subroutine rk_stratiform_cam_init()
    call addfld ('ICECLDF',    (/ 'lev' /),   'A', 'fraction', 'Stratus ICE cloud fraction'                              )
    call addfld ('IWC',        (/ 'lev' /),   'A', 'kg/m3'   , 'Grid box average ice water content'                      )
    call addfld ('LWC',        (/ 'lev' /),   'A', 'kg/m3'   , 'Grid box average liquid water content'                   )
-   call addfld ('ICWNC',      (/ 'lev' /),   'A', 'm-3'     , 'Prognostic in-cloud water number conc'                   )
-   call addfld ('ICINC',      (/ 'lev' /),   'A', 'm-3'     , 'Prognostic in-cloud ice number conc'                     )
    call addfld ('REL',        (/ 'lev' /),   'A', 'micron'  , 'effective liquid drop radius'                            )
    call addfld ('REI',        (/ 'lev' /),   'A', 'micron'  , 'effective ice particle radius'                           )
 
@@ -480,14 +475,14 @@ subroutine rk_stratiform_cam_tend( &
 
    use prognostic_cloud_water, only: icritc !REMOVECAM no longer need to be public after CAM is retired
    use physconst,        only: gravit, rhoh2o, epsilo, latvap, latice, cpair, tmelt, cappa
-   use physconst,        only: rair, rh2o
+   use physconst,        only: rair, rh2o, pi
    use ref_pres,         only: trop_cloud_top_lev
 
    use cloud_optical_properties,    only: cldefr
    use phys_control,     only: cam_physpkg_is
    use tropopause,       only: tropopause_find_cam
-   use phys_grid,        only: get_rlat_all_p
-   use physconst,        only: pi, tmelt
+   use phys_grid,        only: get_lat_all_p
+   use constituents,     only: cnst_get_ind
 
    ! Arguments
    type(physics_state), intent(in)    :: state       ! State variables
@@ -518,6 +513,8 @@ subroutine rk_stratiform_cam_tend( &
    integer :: lchnk                                  ! Chunk identifier
    integer :: ncol                                   ! Number of atmospheric columns
    integer :: itim_old
+
+   real(r8), parameter :: rdair = 287.15_r8
 
    ! Physics buffer fields
    real(r8), pointer :: landm(:)             ! Land fraction ramped over water
@@ -610,11 +607,10 @@ subroutine rk_stratiform_cam_tend( &
 
    logical  :: lq(pcnst)
    integer  :: troplev(pcols)
-   real(r8) :: rlat(pcols)
    real(r8) :: dlat(pcols)
-   real(r8), parameter :: rad2deg = 180._r8/pi
 
    integer  :: top_lev
+   integer  :: ixq
 
    character(len=512)   :: errmsg
    integer              :: errflg
@@ -624,6 +620,8 @@ subroutine rk_stratiform_cam_tend( &
 
    lchnk = state%lchnk
    ncol  = state%ncol
+
+   call cnst_get_ind('Q', ixq) ! water vapor index in const array.
 
    call physics_state_copy(state,state1)             ! Copy state to local state1.
 
@@ -676,8 +674,7 @@ subroutine rk_stratiform_cam_tend( &
    endif
 
    ! dlat required for CCPPized scheme
-   call get_rlat_all_p(lchnk,ncol,rlat)
-   dlat(:ncol) = rlat(:ncol)*rad2deg
+   call get_lat_all_p(lchnk,ncol,dlat)
 
    ! ------------- !
    ! Sedimentation !
@@ -690,7 +687,7 @@ subroutine rk_stratiform_cam_tend( &
    call t_startf('stratiform_sediment')
 
    lq(:)        = .FALSE.
-   lq(1)        = .TRUE.
+   lq(ixq)        = .TRUE.
    lq(ixcldice) = .TRUE.
    lq(ixcldliq) = .TRUE.
    call physics_ptend_init(ptend_loc, state%psetcols, 'pcwsediment', ls=.true., lq=lq)! Initialize local ptend type
@@ -731,7 +728,7 @@ subroutine rk_stratiform_cam_tend( &
      pvice               = pvice(:ncol,:),                 &
      liqtend             = ptend_loc%q(:ncol,:,ixcldliq),  &
      icetend             = ptend_loc%q(:ncol,:,ixcldice),  &
-     wvtend              = ptend_loc%q(:ncol,:,1),         & ! assumes wv is at 1
+     wvtend              = ptend_loc%q(:ncol,:,ixq),       &
      htend               = ptend_loc%s(:ncol,:),           &
      sfliq               = rain(:ncol),                    & ! mass units (not precip units)
      sfice               = snow_sed(:ncol),                & ! precip units (as stored in pbuf)
@@ -742,7 +739,7 @@ subroutine rk_stratiform_cam_tend( &
       call endrun('rk_stratiform_tend:' // errmsg)
    endif
 
-   wsedl(:ncol,:pver) = pvliq(:ncol,:pver)/gravit/(state1%pmid(:ncol,:pver)/(287.15_r8*state1%t(:ncol,:pver)))
+   wsedl(:ncol,:pver) = pvliq(:ncol,:pver)/gravit/(state1%pmid(:ncol,:pver)/(rdair*state1%t(:ncol,:pver)))
 
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
    prec_sed(:) = 0._r8
@@ -765,7 +762,7 @@ subroutine rk_stratiform_cam_tend( &
    endif
 
    ! Record history variables
-   call outfld( 'DQSED'   ,ptend_loc%q(:,:,1)       , pcols,lchnk )
+   call outfld( 'DQSED'   ,ptend_loc%q(:,:,ixq)     , pcols,lchnk )
    call outfld( 'DISED'   ,ptend_loc%q(:,:,ixcldice), pcols,lchnk )
    call outfld( 'DLSED'   ,ptend_loc%q(:,:,ixcldliq), pcols,lchnk )
    call outfld( 'HSED'    ,ptend_loc%s              , pcols,lchnk )
@@ -901,7 +898,7 @@ subroutine rk_stratiform_cam_tend( &
       ps = state1%pint(:,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
-      q = state1%q(:ncol,:,1), & ! note: assumes wv is at index 1.
+      q = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
       shallowcu = shallowcu(:ncol,:), &
@@ -943,7 +940,7 @@ subroutine rk_stratiform_cam_tend( &
       ps = state1%pint(:,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
-      q_wv = state1%q(:ncol,:,1), & ! note: assumes wv is at index 1.
+      q_wv = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
       shallowcu = shallowcu(:ncol,:), &
@@ -983,7 +980,7 @@ subroutine rk_stratiform_cam_tend( &
       pver = pver, &
       dtime = dtime, &
       t = state1%t(:ncol,:), &
-      q_wv = state1%q(:ncol,:pver,1), &
+      q_wv = state1%q(:ncol,:pver,ixq), &
       cldice = state1%q(:ncol,:pver,ixcldice), & ! using before-repartitioning values for bit-for-bit.
       cldliq = state1%q(:ncol,:pver,ixcldliq), & ! using before-repartitioning values for bit-for-bit.
       qcwat = qcwat(:ncol,:), &
@@ -1019,8 +1016,6 @@ subroutine rk_stratiform_cam_tend( &
    call pbuf_get_field(pbuf, ls_flxsnw_idx, rkflxsnw)
 
    call t_startf('pcond')
-
-   !totcw(:ncol,:pver)     = state1%q(:ncol,:pver,ixcldice) + state1%q(:ncol,:pver,ixcldliq)
 
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
    qme(:,:) = 0._r8
@@ -1064,7 +1059,7 @@ subroutine rk_stratiform_cam_tend( &
       ttend           = ttend(:ncol,:),        &
       tn              = state1%t(:ncol,:),     &
       qtend           = qtend(:ncol,:),        &
-      qn              = state1%q(:ncol,:,1),   & ! assumes wv is at 1
+      qn              = state1%q(:ncol,:,ixq), &
       ltend           = ltend(:ncol,:),        &
       cldice          = state1%q(:ncol,:pver,ixcldice), & ! for bit-for-bit, use values pre-repartitioning.
       cldliq          = state1%q(:ncol,:pver,ixcldliq), & ! for bit-for-bit, use values pre-repartitioning.
@@ -1165,7 +1160,7 @@ subroutine rk_stratiform_cam_tend( &
    !-------------------------------------------------------
 
    lq(:)        = .FALSE.
-   lq(1)        = .true.
+   lq(ixq)        = .true.
    lq(ixcldice) = .true.
    lq(ixcldliq) = .true.
    call physics_ptend_init( ptend_loc, state1%psetcols, 'cldwat', ls=.true., lq=lq)
@@ -1200,7 +1195,7 @@ subroutine rk_stratiform_cam_tend( &
       prec_str        = prec_str(:ncol),       &
       snow_str        = snow_str(:ncol),       &
       tend_s          = ptend_loc%s(:ncol,:),  &
-      tend_q          = ptend_loc%q(:ncol,:,1), &
+      tend_q          = ptend_loc%q(:ncol,:,ixq), &
       tend_cldice     = ptend_loc%q(:ncol,:,ixcldice), &
       tend_cldliq     = ptend_loc%q(:ncol,:,ixcldliq), &
       errmsg          = errmsg,                &
@@ -1236,7 +1231,7 @@ subroutine rk_stratiform_cam_tend( &
    call outfld('PSACWO'   , psacwo,      pcols, lchnk )
    call outfld('PSACIO'   , psacio,      pcols, lchnk )
 
-   ! initialize local variables for diagnostics
+   ! initialize local variables for CFMIP diagnostics
    mr_ccliq(1:ncol,1:pver) = 0._r8
    mr_ccice(1:ncol,1:pver) = 0._r8
    mr_lsliq(1:ncol,1:pver) = 0._r8
@@ -1295,7 +1290,7 @@ subroutine rk_stratiform_cam_tend( &
       ps = state1%pint(:,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
-      q = state1%q(:ncol,:,1), & ! note: assumes wv is at index 1.
+      q = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
       shallowcu = shallowcu(:ncol,:), &
@@ -1320,8 +1315,8 @@ subroutine rk_stratiform_cam_tend( &
 
    do k = 1, pver
       do i = 1, ncol
-         iwc(i,k)   = state1%q(i,k,ixcldice)*state1%pmid(i,k)/(287.15_r8*state1%t(i,k))
-         lwc(i,k)   = state1%q(i,k,ixcldliq)*state1%pmid(i,k)/(287.15_r8*state1%t(i,k))
+         iwc(i,k)   = state1%q(i,k,ixcldice)*state1%pmid(i,k)/(rdair*state1%t(i,k))
+         lwc(i,k)   = state1%q(i,k,ixcldliq)*state1%pmid(i,k)/(rdair*state1%t(i,k))
          icimr(i,k) = state1%q(i,k,ixcldice) / max(0.01_r8,rhcloud(i,k))
          icwmr(i,k) = state1%q(i,k,ixcldliq) / max(0.01_r8,rhcloud(i,k))
       end do
@@ -1339,7 +1334,7 @@ subroutine rk_stratiform_cam_tend( &
       ncol = ncol, &
       pver = pver, &
       t = state1%t(:ncol,:), &
-      q_wv = state1%q(:ncol,:,1), & ! wv at 1.
+      q_wv = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       cldliq = state1%q(:ncol,:,ixcldliq), &
       qcwat = qcwat(:ncol,:), &
