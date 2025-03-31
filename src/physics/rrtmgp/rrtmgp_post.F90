@@ -18,15 +18,15 @@ subroutine rrtmgp_post_run(ncol, qrs, qrl, pdel, atm_optics_sw, cloud_sw, aer_sw
    real(kind_phys), dimension(:,:),  intent(in)    :: pdel
    real(kind_phys), dimension(:,:),  intent(inout) :: qrs
    real(kind_phys), dimension(:,:),  intent(inout) :: qrl
-   class(ty_optical_props_2str_ccpp), intent(inout) :: atm_optics_sw
-   class(ty_optical_props_1scl_ccpp), intent(inout) :: aer_lw
-   class(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw
-   class(ty_optical_props_1scl_ccpp), intent(inout) :: cloud_lw
-   class(ty_optical_props_2str_ccpp), intent(inout) :: cloud_sw
-   class(ty_fluxes_broadband_ccpp),   intent(inout) :: fswc
-   class(ty_fluxes_broadband_ccpp),   intent(inout) :: flwc
-   class(ty_fluxes_byband_ccpp),      intent(inout) :: fsw
-   class(ty_fluxes_byband_ccpp),      intent(inout) :: flw
+   type(ty_optical_props_2str_ccpp), intent(inout) :: atm_optics_sw
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: aer_lw
+   type(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: cloud_lw
+   type(ty_optical_props_2str_ccpp), intent(inout) :: cloud_sw
+   type(ty_fluxes_broadband_ccpp),   intent(inout) :: fswc
+   type(ty_fluxes_broadband_ccpp),   intent(inout) :: flwc
+   type(ty_fluxes_byband_ccpp),      intent(inout) :: fsw
+   type(ty_fluxes_byband_ccpp),      intent(inout) :: flw
    type(ty_source_func_lw_ccpp),     intent(inout) :: sources_lw
    character(len=*),                 intent(out)   :: errmsg
    integer,                          intent(out)   :: errflg
@@ -56,12 +56,12 @@ end subroutine rrtmgp_post_run
 
 subroutine free_optics_sw(optics)
 
-   class(ty_optical_props_2str_ccpp), intent(inout) :: optics
+   type(ty_optical_props_2str_ccpp), intent(inout) :: optics
 
-   if (allocated(optics%tau)) deallocate(optics%tau)
-   if (allocated(optics%ssa)) deallocate(optics%ssa)
-   if (allocated(optics%g)) deallocate(optics%g)
-   call optics%finalize()
+   if (allocated(optics%optical_props%tau)) deallocate(optics%optical_props%tau)
+   if (allocated(optics%optical_props%ssa)) deallocate(optics%optical_props%ssa)
+   if (allocated(optics%optical_props%g)) deallocate(optics%optical_props%g)
+   call optics%optical_props%finalize()
 
 end subroutine free_optics_sw
 
@@ -69,10 +69,10 @@ end subroutine free_optics_sw
 
 subroutine free_optics_lw(optics)
 
-   class(ty_optical_props_1scl_ccpp), intent(inout) :: optics
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: optics
 
-   if (allocated(optics%tau)) deallocate(optics%tau)
-   call optics%finalize()
+   if (allocated(optics%optical_props%tau)) deallocate(optics%optical_props%tau)
+   call optics%optical_props%finalize()
 
 end subroutine free_optics_lw
 

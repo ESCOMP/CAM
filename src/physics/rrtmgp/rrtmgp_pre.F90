@@ -190,26 +190,26 @@ subroutine initialize_rrtmgp_fluxes_broadband(ncol, nlevels, nbands, nswbands, s
    ! Broadband fluxes
    allocate(fluxes%fluxes%flux_up(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_up". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_up". Message: ', &
               alloc_errmsg
       return
    end if
    allocate(fluxes%fluxes%flux_dn(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_dn". Message: ', &
               alloc_errmsg
       return
    end if
    allocate(fluxes%fluxes%flux_net(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_net". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_net". Message: ', &
               alloc_errmsg
       return
    end if
    if (do_direct_local) then
       allocate(fluxes%fluxes%flux_dn_dir(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
       if (errflg /= 0) then
-         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn_dir". Message: ', &
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_dn_dir". Message: ', &
                  alloc_errmsg
          return
       end if
@@ -249,26 +249,26 @@ subroutine initialize_rrtmgp_fluxes_byband(ncol, nlevels, nbands, nswbands, spec
    ! Broadband fluxes
    allocate(fluxes%fluxes%flux_up(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_up". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_up". Message: ', &
               alloc_errmsg
       return
    end if
    allocate(fluxes%fluxes%flux_dn(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_dn". Message: ', &
               alloc_errmsg
       return
    end if
    allocate(fluxes%fluxes%flux_net(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
    if (errflg /= 0) then
-      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_net". Message: ', &
+      write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_net". Message: ', &
               alloc_errmsg
       return
    end if
    if (do_direct_local) then
       allocate(fluxes%fluxes%flux_dn_dir(ncol, nlevels), stat=errflg, errmsg=alloc_errmsg)
       if (errflg /= 0) then
-         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%flux_dn_dir". Message: ', &
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%flux_dn_dir". Message: ', &
                  alloc_errmsg
          return
       end if
@@ -279,26 +279,26 @@ subroutine initialize_rrtmgp_fluxes_byband(ncol, nlevels, nbands, nswbands, spec
    if (nbands == nswbands .or. spectralflux) then
       allocate(fluxes%fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
       if (errflg /= 0) then
-         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_up". Message: ', &
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%bnd_flux_up". Message: ', &
                 alloc_errmsg
          return
       end if
       allocate(fluxes%fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
       if (errflg /= 0) then
-         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_dn". Message: ', &
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%bnd_flux_dn". Message: ', &
                  alloc_errmsg
          return
       end if
       allocate(fluxes%fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
       if (errflg /= 0) then
-         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_net". Message: ', &
+         write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%bnd_flux_net". Message: ', &
                  alloc_errmsg
          return
       end if
       if (do_direct_local) then
          allocate(fluxes%fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=errflg, errmsg=alloc_errmsg)
          if (errflg /= 0) then
-            write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%bnd_flux_dn_dir". Message: ', &
+            write(errmsg, '(a,a,a)') sub, ': ERROR: failed to allocate "fluxes%fluxes%bnd_flux_dn_dir". Message: ', &
                     alloc_errmsg
             return
          end if

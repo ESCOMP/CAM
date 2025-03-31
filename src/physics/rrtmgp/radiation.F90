@@ -1142,10 +1142,10 @@ subroutine radiation_tend( &
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
-                  errmsg = kdist_sw%gas_optics( &
-                     pmid_day, pint_day, t_day, gas_concs_sw%gas_concs, atm_optics_sw, &
+                  errmsg = kdist_sw%gas_props%gas_optics( &
+                     pmid_day, pint_day, t_day, gas_concs_sw%gas_concs, atm_optics_sw%optical_props, &
                      toa_flux)
-                  call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
+                  call stop_on_err(errmsg, sub, 'kdist_sw%gas_props%gas_optics')
 
                   ! Scale the solar source
                   call get_variability(toa_flux, sfac, band2gpt_sw, nswbands)
@@ -1162,22 +1162,22 @@ subroutine radiation_tend( &
                if (nday > 0) then
 
                   ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
-                  errmsg = aer_sw%increment(atm_optics_sw)
-                  call stop_on_err(errmsg, sub, 'aer_sw%increment')
+                  errmsg = aer_sw%optical_props%increment(atm_optics_sw%optical_props)
+                  call stop_on_err(errmsg, sub, 'aer_sw%optical_props%increment')
 
                   ! Compute clear-sky fluxes.
                   errmsg = rte_sw(&
-                     atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                     atm_optics_sw%optical_props, top_at_1, coszrs_day, toa_flux, &
                      alb_dir, alb_dif, fswc%fluxes)
                   call stop_on_err(errmsg, sub, 'clear-sky rte_sw')
 
                   ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
-                  errmsg = cloud_sw%increment(atm_optics_sw)
-                  call stop_on_err(errmsg, sub, 'cloud_sw%increment')
+                  errmsg = cloud_sw%optical_props%increment(atm_optics_sw%optical_props)
+                  call stop_on_err(errmsg, sub, 'cloud_sw%optical_props%increment')
 
                   ! Compute all-sky fluxes.
                   errmsg = rte_sw(&
-                     atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                     atm_optics_sw%optical_props, top_at_1, coszrs_day, toa_flux, &
                      alb_dir, alb_dif, fsw%fluxes)
                   call stop_on_err(errmsg, sub, 'all-sky rte_sw')
 
@@ -2233,7 +2233,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
          call endrun(sub//': ERROR message: '//errmsg)
       end if
    else if (allocated(solar_src_quiet)) then
-      error_msg = kdist%load( &
+      error_msg = kdist%gas_props%load( &
          available_gases%gas_concs, gas_names, key_species,     &
          band2gpt, band_lims_wavenum,                           &
          press_ref, press_ref_trop, temp_ref,                   &
@@ -2256,7 +2256,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       error_msg = 'must supply either totplnk and planck_frac, or solar_src_[*]'
    end if
 
-   call stop_on_err(error_msg, sub, 'kdist%load')
+   call stop_on_err(error_msg, sub, 'kdist%gas_props%load')
 
    deallocate( &
       gas_names, key_species,               &

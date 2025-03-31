@@ -269,7 +269,7 @@ module rrtmgp_inputs
         pmid_rad(:,1)   = pint_rad(:,1) + 0.5_kind_phys * (pint_rad(:,2) - pint_rad(:,1))
 
         ! For case of CAM MT, also ensure pint_rad(:,2) > pint_rad(:,1) & pmid_rad(:,2) > max(pmid_rad(:,1), min_pressure)
-        where (pmid_rad(:,2) <= kdist_sw%get_press_min()) pmid_rad(:,2) = pint_rad(:,2) + 0.01_kind_phys
+        where (pmid_rad(:,2) <= kdist_sw%gas_props%get_press_min()) pmid_rad(:,2) = pint_rad(:,2) + 0.01_kind_phys
      else
         ! nlay < pverp, thus the 1 Pa level is within a CAM layer.  Assuming the top interface of
         ! this layer is at a pressure < 1 Pa, we need to adjust the top of this layer so that it
@@ -280,8 +280,8 @@ module rrtmgp_inputs
      end if
 
      ! Limit temperatures to be within the limits of RRTMGP validity.
-     tref_min = kdist_sw%get_temp_min()
-     tref_max = kdist_sw%get_temp_max()
+     tref_min = kdist_sw%gas_props%get_temp_min()
+     tref_max = kdist_sw%gas_props%get_temp_max()
      t_rad = merge(t_rad, tref_min, t_rad > tref_min)
      t_rad = merge(t_rad, tref_max, t_rad < tref_max)
 
@@ -382,7 +382,7 @@ module rrtmgp_inputs
 
         ! Initialize object for combined gas + aerosol + cloud optics.
         ! Allocates arrays for properties represented on g-points.
-        errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
+        errmsg = atm_optics_sw%optical_props%alloc_2str(nday, nlay, kdist_sw%gas_props)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -390,7 +390,7 @@ module rrtmgp_inputs
 
         ! Initialize object for SW aerosol optics.  Allocates arrays
         ! for properties represented by band.
-        errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber())
+        errmsg = aer_sw%optical_props%alloc_2str(nday, nlay, kdist_sw%gas_props%get_band_lims_wavenumber())
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -406,21 +406,21 @@ module rrtmgp_inputs
         end if
 
         ! Initialize object for combined gas + aerosol + cloud optics.
-        errmsg = atm_optics_lw%alloc_1scl(ncol, nlay, kdist_lw)
+        errmsg = atm_optics_lw%optical_props%alloc_1scl(ncol, nlay, kdist_lw%gas_props)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
         end if
 
         ! Initialize object for LW aerosol optics.
-        errmsg = aer_lw%alloc_1scl(ncol, nlay, kdist_lw%get_band_lims_wavenumber())
+        errmsg = aer_lw%optical_props%alloc_1scl(ncol, nlay, kdist_lw%gas_props%get_band_lims_wavenumber())
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
         end if
 
         ! Initialize object for Planck sources.
-        errmsg = sources_lw%sources%alloc(ncol, nlay, kdist_lw)
+        errmsg = sources_lw%sources%alloc(ncol, nlay, kdist_lw%gas_props)
         if (len_trim(errmsg) > 0) then
            errflg = 1
            return
@@ -475,21 +475,21 @@ module rrtmgp_inputs
    errflg = 0
    errmsg = ''
    ! Check that number of sw/lw bands in gas optics files matches the parameters.
-   if (kdist_sw%get_nband() /= nswbands) then
-      write(errmsg,'(a, a,i4,a,i4)') sub, ': ERROR: number of sw bands in file, ', kdist_sw%get_nband(), &
+   if (kdist_sw%gas_props%get_nband() /= nswbands) then
+      write(errmsg,'(a, a,i4,a,i4)') sub, ': ERROR: number of sw bands in file, ', kdist_sw%gas_props%get_nband(), &
          ", doesn't match parameter nswbands= ", nswbands
       errflg = 1
       return
    end if
-   if (kdist_lw%get_nband() /= nlwbands) then
-      write(errmsg,'(a, a,i4,a,i4)') sub, ': ERROR: number of lw bands in file, ', kdist_lw%get_nband(), &
+   if (kdist_lw%gas_props%get_nband() /= nlwbands) then
+      write(errmsg,'(a, a,i4,a,i4)') sub, ': ERROR: number of lw bands in file, ', kdist_lw%gas_props%get_nband(), &
          ", doesn't match parameter nlwbands= ", nlwbands
       errflg = 1
       return
    end if
 
-   nswgpts = kdist_sw%get_ngpt()
-   nlwgpts = kdist_lw%get_ngpt()
+   nswgpts = kdist_sw%gas_props%get_ngpt()
+   nlwgpts = kdist_lw%gas_props%get_ngpt()
 
    ! SW band bounds in cm^-1
    allocate( values(2,nswbands), stat=istat )
@@ -498,12 +498,12 @@ module rrtmgp_inputs
       errflg = 1
       return
    end if
-   values = kdist_sw%get_band_lims_wavenumber()
+   values = kdist_sw%gas_props%get_band_lims_wavenumber()
    wavenumber_low_shortwave = values(1,:)
    wavenumber_high_shortwave = values(2,:)
 
    ! First and last g-point for each SW band:
-   band2gpt_sw = kdist_sw%get_band_lims_gpoint()
+   band2gpt_sw = kdist_sw%gas_props%get_band_lims_gpoint()
 
    ! Indices into specific bands
    call get_band_index_by_value('sw', 500.0_kind_phys, 'nm', nswbands, &
@@ -536,7 +536,7 @@ module rrtmgp_inputs
       errflg = 1
       return
    end if
-   values = kdist_lw%get_band_lims_wavenumber()
+   values = kdist_lw%gas_props%get_band_lims_wavenumber()
    wavenumber_low_longwave = values(1,:)
    wavenumber_high_longwave = values(2,:)
 

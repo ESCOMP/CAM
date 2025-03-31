@@ -32,11 +32,11 @@ contains
    real(kind_phys), dimension(:,:), intent(in) :: t_lay
    real(kind_phys), dimension(:),   intent(in) :: tsfg
    real(kind_phys), dimension(:,:), intent(in) :: t_lev
-   class(ty_gas_concs_ccpp),         intent(in)    :: gas_concs                !< RRTMGP gas concentrations object
+   type(ty_gas_concs_ccpp),         intent(in)    :: gas_concs                !< RRTMGP gas concentrations object
 
    ! Outputs
-   class(ty_optical_props_1scl_ccpp),  intent(inout) :: lw_optical_props_clrsky  !< Clearsky optical properties
-   class(ty_source_func_lw_ccpp),      intent(inout) :: sources
+   type(ty_optical_props_1scl_ccpp),  intent(inout) :: lw_optical_props_clrsky  !< Clearsky optical properties
+   type(ty_source_func_lw_ccpp),      intent(inout) :: sources
    character(len=*),                  intent(out)   :: errmsg
    integer,                           intent(out)   :: errflg
    type(ty_gas_optics_rrtmgp_ccpp),   intent(inout) :: lw_gas_props             !< RRTMGP gas optics object
@@ -55,23 +55,23 @@ contains
    iCol = ((iter_num - 1) * rrtmgp_phys_blksz) + 1
    iCol2= min(iCol + rrtmgp_phys_blksz - 1, ncol)
    if (include_interface_temp) then
-      call check_error_msg('rrtmgp_lw_main_gas_optics',lw_gas_props%gas_optics(&
+      call check_error_msg('rrtmgp_lw_main_gas_optics',lw_gas_props%gas_props%gas_optics(&
             p_lay(iCol:iCol2,:),              & ! IN  - Pressure @ layer-centers (Pa)
             p_lev(iCol:iCol2,:),              & ! IN  - Pressure @ layer-interfaces (Pa)
             t_lay(iCol:iCol2,:),              & ! IN  - Temperature @ layer-centers (K)
             tsfg(iCol:iCol2),                 & ! IN  - Skin-temperature (K)
             gas_concs%gas_concs,              & ! IN  - RRTMGP DDT: trace gas volume mixing-ratios
-            lw_optical_props_clrsky,          & ! OUT - RRTMGP DDT: longwave optical properties
+            lw_optical_props_clrsky%optical_props,          & ! OUT - RRTMGP DDT: longwave optical properties
             sources%sources,                  & ! OUT - RRTMGP DDT: source functions
             tlev=t_lev(iCol:iCol2,:)))          ! IN  - Temperature @ layer-interfaces (K) (optional)
    else
-      call check_error_msg('rrtmgp_lw_main_gas_optics',lw_gas_props%gas_optics(&
+      call check_error_msg('rrtmgp_lw_main_gas_optics',lw_gas_props%gas_props%gas_optics(&
             p_lay(iCol:iCol2,:),              & ! IN  - Pressure @ layer-centers (Pa)
             p_lev(iCol:iCol2,:),              & ! IN  - Pressure @ layer-interfaces (Pa)
             t_lay(iCol:iCol2,:),              & ! IN  - Temperature @ layer-centers (K)
             tsfg(iCol:iCol2),                 & ! IN  - Skin-temperature (K)
             gas_concs%gas_concs,              & ! IN  - RRTMGP DDT: trace gas volumne mixing-ratios
-            lw_optical_props_clrsky,          & ! OUT - RRTMGP DDT: longwave optical properties
+            lw_optical_props_clrsky%optical_props,          & ! OUT - RRTMGP DDT: longwave optical properties
             sources%sources))                   ! OUT - RRTMGP DDT: source functions
    end if
 

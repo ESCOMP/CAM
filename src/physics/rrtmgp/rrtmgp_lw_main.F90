@@ -6,7 +6,6 @@ module rrtmgp_lw_main
   use machine,                  only: kind_phys
   use mo_rte_lw,                only: rte_lw
   use ccpp_fluxes_byband,       only: ty_fluxes_byband_ccpp
-  use ccpp_optical_props,       only: ty_optical_props_arry_ccpp
   use ccpp_optical_props,       only: ty_optical_props_1scl_ccpp
   use ccpp_fluxes_byband,       only: ty_fluxes_byband_ccpp
   use ccpp_fluxes,              only: ty_fluxes_broadband_ccpp
@@ -43,7 +42,6 @@ contains
     real(kind_phys), dimension(:,:), intent(in) :: sfc_emiss_byband
 
     class(ty_source_func_lw_ccpp), intent(in) :: sources
-    !class(ty_source_func_lw), intent(in) :: sources
 
     ! Outputs
     real(kind_phys), dimension(:,:),   intent(inout) :: fluxlwUP_jac
@@ -77,13 +75,13 @@ contains
     ! ###################################################################################
     ! Increment
     call check_error_msg('rrtmgp_lw_main_increment_aerosol_to_clrsky',&
-         aerlw%increment(lw_optical_props_clrsky))
+         aerlw%optical_props%increment(lw_optical_props_clrsky%optical_props))
 
     ! Call RTE solver
     if (doLWclrsky) then
        if (nGauss_angles .gt. 1) then
           call check_error_msg('rrtmgp_lw_main_lw_rte_clrsky',rte_lw(           &
-               lw_optical_props_clrsky,         & ! IN  - optical-properties
+               lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                top_at_1,                        & ! IN  - veritcal ordering flag
                sources%sources,                 & ! IN  - source function
                sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -92,9 +90,9 @@ contains
        else
           if (use_lw_optimal_angles) then
              call check_error_msg('rrtmgp_lw_main_opt_angle',&
-                  lw_gas_props%compute_optimal_angles(lw_optical_props_clrsky,lw_Ds))
+                  lw_gas_props%gas_props%compute_optimal_angles(lw_optical_props_clrsky%optical_props,lw_Ds))
              call check_error_msg('rrtmgp_lw_main_lw_rte_clrsky',rte_lw(           &
-                  lw_optical_props_clrsky,         & ! IN  - optical-properties
+                  lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -102,7 +100,7 @@ contains
                   lw_Ds = lw_Ds))
           else
             call check_error_msg('rrtmgp_lw_main_lw_rte_clrsky',rte_lw(           &
-                 lw_optical_props_clrsky,         & ! IN  - optical-properties
+                 lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                  top_at_1,                        & ! IN  - veritcal ordering flag
                  sources%sources,                 & ! IN  - source function
                  sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -130,13 +128,13 @@ contains
     if (doGP_lwscat) then 
        ! Increment
        call check_error_msg('rrtmgp_lw_main_increment_clrsky_to_clouds',&
-            lw_optical_props_clrsky%increment(lw_optical_props_clouds))
+            lw_optical_props_clrsky%optical_props%increment(lw_optical_props_clouds%optical_props))
           
        if (use_LW_jacobian) then
           if (nGauss_angles .gt. 1) then
              ! Compute LW Jacobians; use Gaussian angles
              call check_error_msg('rrtmgp_lw_main_lw_rte_allsky',rte_lw(           &
-                  lw_optical_props_clouds,         & ! IN  - optical-properties
+                  lw_optical_props_clouds%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -146,7 +144,7 @@ contains
           else
              ! Compute LW Jacobians; don't use Gaussian angles
              call check_error_msg('rrtmgp_lw_main_lw_rte_allsky',rte_lw(           &
-                  lw_optical_props_clouds,         & ! IN  - optical-properties
+                  lw_optical_props_clouds%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -158,7 +156,7 @@ contains
              ! Compute LW Jacobians; use Gaussian angles
              ! Don't compute LW Jacobians; use Gaussian angles
              call check_error_msg('rrtmgp_lw_main_lw_rte_allsky',rte_lw(           &
-                  lw_optical_props_clouds,         & ! IN  - optical-properties
+                  lw_optical_props_clouds%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -167,7 +165,7 @@ contains
           else
              ! Don't compute LW Jacobians; don't use Gaussian angles
              call check_error_msg('rrtmgp_lw_main_lw_rte_allsky',rte_lw(           &
-                  lw_optical_props_clouds,         & ! IN  - optical-properties
+                  lw_optical_props_clouds%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -178,13 +176,13 @@ contains
     else
        ! Increment
        call check_error_msg('rrtmgp_lw_main_increment_clouds_to_clrsky', &
-            lw_optical_props_clouds%increment(lw_optical_props_clrsky))
+            lw_optical_props_clouds%optical_props%increment(lw_optical_props_clrsky%optical_props))
           
        if (use_LW_jacobian) then
           if (nGauss_angles .gt. 1) then
              ! Compute LW Jacobians; use Gaussian angles
              call check_error_msg('rrtmgp_lw_rte_run',rte_lw(           &
-                  lw_optical_props_clrsky,         & ! IN  - optical-properties
+                  lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -194,7 +192,7 @@ contains
           else
              ! Compute LW Jacobians; don't use Gaussian angles
              call check_error_msg('rrtmgp_lw_rte_run',rte_lw(           &
-                  lw_optical_props_clrsky,         & ! IN  - optical-properties
+                  lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -205,7 +203,7 @@ contains
           if (nGauss_angles .gt. 1) then
              ! Don't compute LW Jacobians; use Gaussian angles
              call check_error_msg('rrtmgp_lw_rte_run',rte_lw(           &
-                  lw_optical_props_clrsky,         & ! IN  - optical-properties
+                  lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band
@@ -214,7 +212,7 @@ contains
           else
              ! Don't compute LW Jacobians; don't use Gaussian angles
              call check_error_msg('rrtmgp_lw_rte_run',rte_lw(           &
-                  lw_optical_props_clrsky,         & ! IN  - optical-properties
+                  lw_optical_props_clrsky%optical_props,         & ! IN  - optical-properties
                   top_at_1,                        & ! IN  - veritcal ordering flag
                   sources%sources,                 & ! IN  - source function
                   sfc_emiss_byband,                & ! IN  - surface emissivity in each LW band

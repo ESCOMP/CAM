@@ -551,39 +551,39 @@ subroutine rrtmgp_set_cloud_sw( &
 
       ! MCICA uses spectral data (on bands) to construct subcolumns (one per g-point)
       call mcica_subcol_sw( &
-         kdist_sw, nswbands, nswgpts, nday, nlay, &
+         kdist_sw%gas_props, nswbands, nswgpts, nday, nlay, &
          nver, changeseed, pmid, cldf, tauc,     &
          ssac, asmc, taucmcl, ssacmcl, asmcmcl)
    
       ! Initialize object for SW cloud optical properties.
-      errmsg = cloud_sw%alloc_2str(nday, nlay, kdist_sw)
+      errmsg = cloud_sw%optical_props%alloc_2str(nday, nlay, kdist_sw%gas_props)
       if (len_trim(errmsg) > 0) then
-         call endrun(trim(sub)//': ERROR: cloud_sw%alloc_2str: '//trim(errmsg))
+         call endrun(trim(sub)//': ERROR: cloud_sw%optical_props%alloc_2str: '//trim(errmsg))
       end if
 
       ! If there is an extra layer in the radiation then this initialization
       ! will provide the optical properties there.
-      cloud_sw%tau = 0.0_r8
-      cloud_sw%ssa = 1.0_r8
-      cloud_sw%g   = 0.0_r8
+      cloud_sw%optical_props%tau = 0.0_r8
+      cloud_sw%optical_props%ssa = 1.0_r8
+      cloud_sw%optical_props%g   = 0.0_r8
 
       ! Set the properties on g-points.
       do igpt = 1,nswgpts
-         cloud_sw%g  (:,ktoprad:,igpt) = asmcmcl(igpt,:,:)
-         cloud_sw%ssa(:,ktoprad:,igpt) = ssacmcl(igpt,:,:)
-         cloud_sw%tau(:,ktoprad:,igpt) = taucmcl(igpt,:,:)
+         cloud_sw%optical_props%g  (:,ktoprad:,igpt) = asmcmcl(igpt,:,:)
+         cloud_sw%optical_props%ssa(:,ktoprad:,igpt) = ssacmcl(igpt,:,:)
+         cloud_sw%optical_props%tau(:,ktoprad:,igpt) = taucmcl(igpt,:,:)
       end do
 
       ! validate checks that: tau > 0, ssa is in range [0,1], and g is in range [-1,1].
-      errmsg = cloud_sw%validate()
+      errmsg = cloud_sw%optical_props%validate()
       if (len_trim(errmsg) > 0) then
-         call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
+         call endrun(sub//': ERROR: cloud_sw%optical_props%validate: '//trim(errmsg))
       end if
 
       ! delta scaling adjusts for forward scattering
-      errmsg = cloud_sw%delta_scale()
+      errmsg = cloud_sw%optical_props%delta_scale()
       if (len_trim(errmsg) > 0) then
-         call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
+         call endrun(sub//': ERROR: cloud_sw%optical_props%delta_scale: '//trim(errmsg))
       end if
 
       ! All information is in cloud_sw, now deallocate local vars.
@@ -626,13 +626,13 @@ subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
 
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there.
-   aer_lw%tau = 0.0_r8
+   aer_lw%optical_props%tau = 0.0_r8
 
-   aer_lw%tau(:ncol, ktoprad:, :) = aer_lw_abs(:ncol, ktopcam:, :)
+   aer_lw%optical_props%tau(:ncol, ktoprad:, :) = aer_lw_abs(:ncol, ktopcam:, :)
 
-   errmsg = aer_lw%validate()
+   errmsg = aer_lw%optical_props%validate()
    if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: aer_lw%validate: '//trim(errmsg))
+      call endrun(sub//': ERROR: aer_lw%optical_props%validate: '//trim(errmsg))
    end if
 end subroutine rrtmgp_set_aer_lw
 
@@ -688,31 +688,31 @@ subroutine rrtmgp_set_aer_sw( &
                   
       ! If there is an extra layer in the radiation then this initialization
       ! will provide default values.
-      aer_sw%tau = 0.0_r8
-      aer_sw%ssa = 1.0_r8
-      aer_sw%g   = 0.0_r8
+      aer_sw%optical_props%tau = 0.0_r8
+      aer_sw%optical_props%ssa = 1.0_r8
+      aer_sw%optical_props%g   = 0.0_r8
 
       ! CAM fields are products tau, tau*ssa, tau*ssa*asy
       ! Fields expected by RRTMGP are computed by
-      ! aer_sw%tau = aer_tau
-      ! aer_sw%ssa = aer_tau_w / aer_tau
-      ! aer_sw%g   = aer_tau_w_g / aer_taw_w
+      ! aer_sw%optical_props%tau = aer_tau
+      ! aer_sw%optical_props%ssa = aer_tau_w / aer_tau
+      ! aer_sw%optical_props%g   = aer_tau_w_g / aer_taw_w
       ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
 
       do i = 1, nday
          ! set aerosol optical depth, clip to zero
-         aer_sw%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
+         aer_sw%optical_props%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
          ! set value of single scattering albedo
-         aer_sw%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
+         aer_sw%optical_props%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
                                           1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
          ! set value of asymmetry
-         aer_sw%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
+         aer_sw%optical_props%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
                                         0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
       end do
 
       ! impose limits on the components
-      aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
-      aer_sw%g   = min(max(aer_sw%g, -1._r8), 1._r8)
+      aer_sw%optical_props%ssa = min(max(aer_sw%optical_props%ssa, 0._r8), 1._r8)
+      aer_sw%optical_props%g   = min(max(aer_sw%optical_props%g, -1._r8), 1._r8)
 
    end if
 

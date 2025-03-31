@@ -71,7 +71,7 @@ contains
     errflg = 0
 
     ! Initialize the gas optics object with data.
-    errmsg = kdist%load( &
+    errmsg = kdist%gas_props%load( &
          available_gases%gas_concs, gas_names, key_species,    &
          band2gpt, band_lims_wavenum,                          &
          press_ref, press_ref_trop, temp_ref,                  &

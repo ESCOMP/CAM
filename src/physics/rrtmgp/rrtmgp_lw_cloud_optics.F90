@@ -242,7 +242,7 @@ contains
     ! Enforce tauc >= 0.
     tauc = merge(tauc, 0.0_kind_phys, tauc > 0.0_kind_phys)
 
-    errmsg =cloud_lw%alloc_1scl(ncol, nlay, kdist_lw)
+    errmsg =cloud_lw%optical_props%alloc_1scl(ncol, nlay, kdist_lw%gas_props)
     if (len_trim(errmsg) > 0) then
        errflg = 1
        return

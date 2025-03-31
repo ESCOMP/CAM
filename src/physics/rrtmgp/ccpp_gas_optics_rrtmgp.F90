@@ -4,7 +4,8 @@ module ccpp_gas_optics_rrtmgp
 
    !> \section arg_table_ty_gas_optics_rrtmgp_ccpp Argument Table
    !! \htmlinclude ty_gas_optics_rrtmgp_ccpp.html
-   type, public, extends(ty_gas_optics_rrtmgp) :: ty_gas_optics_rrtmgp_ccpp
+   type, public :: ty_gas_optics_rrtmgp_ccpp
+      type(ty_gas_optics_rrtmgp) :: gas_props
    end type
 
 end module ccpp_gas_optics_rrtmgp

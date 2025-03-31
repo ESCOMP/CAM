@@ -155,7 +155,7 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
       do idx = 1,ncol
          do isubcol = 1,ngpt
             if (iscloudy(isubcol,idx,kdx) .and. (cldf(idx,kdx) > 0._kind_phys) ) then
-               ndx = kdist%convert_gpt2band(isubcol)
+               ndx = kdist%gas_props%convert_gpt2band(isubcol)
                taucmcl(isubcol,idx,kdx) = tauc(ndx,idx,kdx)
             else
                taucmcl(isubcol,idx,kdx) = 0._kind_phys
@@ -168,15 +168,15 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
 
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there
-   cloud_lw%tau = 0.0_kind_phys
+   cloud_lw%optical_props%tau = 0.0_kind_phys
 
    ! Set the properties on g-points
    do idx = 1, ngpt
-      cloud_lw%tau(:,ktoprad:,idx) = taucmcl(idx,:,:)
+      cloud_lw%optical_props%tau(:,ktoprad:,idx) = taucmcl(idx,:,:)
    end do
 
    ! validate checks that: tau > 0
-   errmsg = cloud_lw%validate()
+   errmsg = cloud_lw%optical_props%validate()
    if (len_trim(errmsg) > 0) then
        errflg = 1
        return

@@ -6,17 +6,14 @@ module ccpp_optical_props
 
    !> \section arg_table_ty_optical_props_1scl_ccpp Argument Table
    !! \htmlinclude ty_optical_props_1scl_ccpp.html
-   type, public, extends(ty_optical_props_1scl) :: ty_optical_props_1scl_ccpp
+   type, public :: ty_optical_props_1scl_ccpp
+      type(ty_optical_props_1scl) :: optical_props
    end type
 
    !> \section arg_table_ty_optical_props_2str_ccpp Argument Table
    !! \htmlinclude ty_optical_props_2str_ccpp.html
-   type, public, extends(ty_optical_props_2str) :: ty_optical_props_2str_ccpp
-   end type
-
-   !> \section arg_table_ty_optical_props_arry_ccpp Argument Table
-   !! \htmlinclude ty_optical_props_arry_ccpp.html
-   type, public, abstract, extends(ty_optical_props_arry) :: ty_optical_props_arry_ccpp
+   type, public :: ty_optical_props_2str_ccpp
+      type(ty_optical_props_2str) :: optical_props
    end type
 
 end module ccpp_optical_props

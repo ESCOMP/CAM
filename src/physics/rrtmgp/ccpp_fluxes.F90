@@ -3,11 +3,6 @@ module ccpp_fluxes
    use mo_fluxes, only: ty_fluxes
    use mo_fluxes, only: ty_fluxes_broadband
 
-   !> \section arg_table_ty_fluxes_ccpp Argument Table
-   !! \htmlinclude ty_fluxes_ccpp.html
-!   type, public, aibstract, extends(ty_fluxes) :: ty_fluxes_ccpp
-!   end type
-
    !> \section arg_table_ty_fluxes_broadband_ccpp Argument Table
    !! \htmlinclude ty_fluxes_broadband_ccpp.html
    type, public :: ty_fluxes_broadband_ccpp
