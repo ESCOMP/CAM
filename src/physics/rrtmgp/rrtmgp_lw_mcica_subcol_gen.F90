@@ -81,7 +81,7 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
    integer :: idx, isubcol, kdx, ndx
 
    real(kind_phys), parameter :: cldmin = 1.0e-80_kind_phys  ! min cloud fraction
-   real(kind_phys) :: cldf(ncol,pver)      ! cloud fraction clipped to cldmin
+   real(kind_phys) :: cldf(ncol,nver)      ! cloud fraction clipped to cldmin
 
    type(ShrKissRandGen) :: kiss_gen  ! KISS RNG object
    integer  :: kiss_seed(ncol,4)

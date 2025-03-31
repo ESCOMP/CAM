@@ -12,10 +12,11 @@ contains
 !> \section arg_table_rrtmgp_post_run Argument Table
 !! \htmlinclude rrtmgp_post_run.html
 !!
-subroutine rrtmgp_post_run(ncol, qrs, qrl, pdel, atm_optics_sw, cloud_sw, aer_sw, &
-                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, errmsg, errflg)
+subroutine rrtmgp_post_run(ncol, qrs, qrl, fsns, pdel, atm_optics_sw, cloud_sw, aer_sw, &
+                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, netsw, errmsg, errflg)
    integer,                          intent(in)    :: ncol
    real(kind_phys), dimension(:,:),  intent(in)    :: pdel
+   real(kind_phys), dimension(:),    intent(in)    :: fsns
    real(kind_phys), dimension(:,:),  intent(inout) :: qrs
    real(kind_phys), dimension(:,:),  intent(inout) :: qrl
    type(ty_optical_props_2str_ccpp), intent(inout) :: atm_optics_sw
@@ -28,6 +29,7 @@ subroutine rrtmgp_post_run(ncol, qrs, qrl, pdel, atm_optics_sw, cloud_sw, aer_sw
    type(ty_fluxes_byband_ccpp),      intent(inout) :: fsw
    type(ty_fluxes_byband_ccpp),      intent(inout) :: flw
    type(ty_source_func_lw_ccpp),     intent(inout) :: sources_lw
+   real(kind_phys), dimension(:),    intent(out)   :: netsw
    character(len=*),                 intent(out)   :: errmsg
    integer,                          intent(out)   :: errflg
 
@@ -38,6 +40,10 @@ subroutine rrtmgp_post_run(ncol, qrs, qrl, pdel, atm_optics_sw, cloud_sw, aer_sw
    ! as Q*dp (for energy conservation).
    qrs(:ncol,:) = qrs(:ncol,:) * pdel(:ncol,:)
    qrl(:ncol,:) = qrl(:ncol,:) * pdel(:ncol,:)
+
+   ! Set the netsw to be sent to the coupler
+   netsw(:ncol) = fsns(:ncol)
+
    call free_optics_sw(atm_optics_sw)
    call free_optics_sw(cloud_sw)
    call free_optics_sw(aer_sw)

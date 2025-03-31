@@ -1371,8 +1371,8 @@ subroutine radiation_tend( &
       deallocate(rd)
    end if
 
-   call rrtmgp_post_run(ncol, qrs, qrl, state%pdel, atm_optics_sw, cloud_sw, aer_sw, &
-                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, errmsg, errflg)
+   call rrtmgp_post_run(ncol, qrs, qrl, fsns, state%pdel, atm_optics_sw, cloud_sw, aer_sw, &
+                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, cam_out%netsw, errmsg, errflg)
    if (errflg /= 0) then
      call endrun(sub//': '//errmsg)
    end if
@@ -1437,8 +1437,6 @@ subroutine radiation_tend( &
       fsnt(:ncol)     = fns(:ncol,ktopcam)  ! net sw flux at top-of-model (w/o extra layer)
       rd%fsnsc(:ncol) = fcns(:ncol,pverp)   ! net sw clearsky flux at surface
       rd%fsntc(:ncol) = fcns(:ncol,ktopcam) ! net sw clearsky flux at top
-
-      cam_out%netsw(:ncol) = fsns(:ncol)
 
       ! Output fluxes at 200 mb
       call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fns,  rd%fsn200)

@@ -26,7 +26,7 @@ use cloud_rad_props,  only: get_liquid_optics_sw, liquid_cloud_get_rad_props_lw,
                             get_snow_optics_sw,   snow_cloud_get_rad_props_lw,   &
                             get_grau_optics_sw,   grau_cloud_get_rad_props_lw
                                  
-use mcica_subcol_gen, only: mcica_subcol_sw, mcica_subcol_lw
+use mcica_subcol_gen, only: mcica_subcol_sw
 
 use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
 
