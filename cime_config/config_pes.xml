@@ -339,7 +339,7 @@
       </pes>
     </mach>
     <mach name="derecho">
-      <pes pesize="any" compset="_CAM\d0%WX">
+      <pes pesize="any" compset="_CAM\d0%W(X|A)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-4</ntasks_atm>
@@ -397,7 +397,7 @@
       </pes>
     </mach>
     <mach name="derecho">
-      <pes pesize="any" compset="_CAM\d0%WX">
+      <pes pesize="any" compset="_CAM\d0%W(X|A)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-16</ntasks_atm>
@@ -833,7 +833,7 @@
 	  <rootpe_cpl>0</rootpe_cpl>
 	</rootpe>
       </pes>
-      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|WC|WX)">
+      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|WC|WX|CARMA)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-4</ntasks_atm>
@@ -1418,7 +1418,7 @@
       </pes>
     </mach>
     <mach name="derecho">
-      <pes pesize="any" compset="_(CAM50|CAM60)%(CT|CV|CF|WC)">
+      <pes pesize="any" compset="_(CAM50|CAM60)%(CT|CV|CF|WC|CARMA)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-8</ntasks_atm>
