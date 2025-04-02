@@ -211,7 +211,7 @@ contains
     use scamMod,         only: scm_crm_mode, single_column
     use phys_control,    only: phys_getopts
     use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
-    use air_composition, only: dry_air_species_num
+    use air_composition, only: dry_air_species_num, thermodynamic_active_species_num, thermodynamic_active_species_idx
     use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -231,6 +231,7 @@ contains
     integer :: ixnumsnow, ixnumrain
     integer :: ncol                                ! number of columns
     integer :: ixh, ixh2    ! constituent indices for H, H2
+    logical :: derive_new_geopotential             ! derive new geopotential fields?
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
@@ -419,9 +420,23 @@ contains
        end do
     end if
 
-    ! Derive new geopotential fields if heating or water tendency not 0.
+    ! Derive new geopotential fields if heating or water species tendency not 0.
+    derive_new_geopotential = .false.
+    if(ptend%ls) then
+        ! Heating tendency not 0
+        derive_new_geopotential = .true.
+    else
+        ! Check all water species and if there are nonzero tendencies
+        const_water_loop: do m = dry_air_species_num + 1, thermodynamic_active_species_num
+            if(ptend%lq(thermodynamic_active_species_idx(m))) then
+                ! does water species have tendency?
+                derive_new_geopotential = .true.
+                exit const_water_loop
+            endif
+        enddo const_water_loop
+    endif
 
-    if (ptend%ls .or. ptend%lq(1)) then
+    if (derive_new_geopotential) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
             state%t     , state%q(:,:,:), rairv_loc(:,:), gravit  , zvirv              , &
