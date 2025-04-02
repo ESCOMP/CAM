@@ -160,7 +160,6 @@
   real(r8),                  intent(in) :: pref_edge(plevp)  ! Reference pressures at interfaces
   type(physics_buffer_desc), pointer    :: pbuf2d(:,:)
 
-  integer limcnv                                   ! Top interface level limit for convection
   integer k
   character(len=16)          :: eddy_scheme
 
@@ -266,26 +265,8 @@
      qpert_idx = pbuf_get_index('qpert')
 
      if( masterproc ) write(iulog,*) 'convect_shallow_init: Hack shallow convection'
-   ! Limit shallow convection to regions below 40 mb
-   ! Note this calculation is repeated in the deep convection interface
-     if( pref_edge(1) >= 4.e3_r8 ) then
-         limcnv = 1
-     else
-         do k = 1, plev
-            if( pref_edge(k) < 4.e3_r8 .and. pref_edge(k+1) >= 4.e3_r8 ) then
-                limcnv = k
-                goto 10
-            end if
-         end do
-         limcnv = plevp
-     end if
-10   continue
 
-     if( masterproc ) then
-         write(iulog,*) 'MFINTI: Convection will be capped at intfc ', limcnv, ' which is ', pref_edge(limcnv), ' pascals'
-     end if
-
-     call mfinti( rair, cpair, gravit, latvap, rhoh2o, limcnv) ! Get args from inti.F90
+     call mfinti( rair, cpair, gravit, latvap, rhoh2o, pref_edge) ! Get args from inti.F90
 
   case('UW') ! Park and Bretherton shallow convection scheme
 
@@ -357,7 +338,7 @@
    use camsrfexch,      only : cam_in_t
 
    use constituents,    only : pcnst, cnst_get_ind, cnst_get_type_byind
-   use hk_conv,         only : cmfmca
+   use hk_conv,         only : cmfmca_cam
    use uwshcu,          only : compute_uwshcu_inv
    use unicon_cam,      only : unicon_out_t, unicon_cam_tend
 
@@ -411,7 +392,7 @@
    real(r8) :: tpert(pcols)                                              ! PBL perturbation theta
 
    real(r8), pointer   :: pblh(:)                                        ! PBL height [ m ]
-   real(r8), pointer   :: qpert(:,:)                                     ! PBL perturbation specific humidity
+   real(r8), pointer   :: qpert(:)                                       ! PBL perturbation specific humidity
 
    ! Temperature tendency from shallow convection (pbuf pointer).
    real(r8), pointer, dimension(:,:) :: ttend_sh
@@ -567,9 +548,8 @@
       call physics_ptend_init( ptend_loc, state%psetcols, 'cmfmca', ls=.true., lq=lq  ) ! Initialize local ptend type
 
       call pbuf_get_field(pbuf, qpert_idx, qpert)
-      qpert(:ncol,2:pcnst) = 0._r8
 
-      call cmfmca( lchnk        ,  ncol         ,                                               &
+      call cmfmca_cam( lchnk        ,  ncol         ,                                               &
                    nstep        ,  ztodt        ,  state%pmid ,  state%pdel  ,                  &
                    state%rpdel  ,  state%zm     ,  tpert      ,  qpert       ,  state%phis  ,   &
                    pblh         ,  state%t      ,  state%q    ,  ptend_loc%s ,  ptend_loc%q ,   &
@@ -684,11 +664,9 @@
    ! Calculate fractional occurance of shallow convection    !
    ! --------------------------------------------------------!
 
- ! Modification : I should check whether below computation of freqsh is correct.
-
    freqsh(:) = 0._r8
    do i = 1, ncol
-      if( maxval(cmfmc2(i,:pver)) <= 0._r8 ) then
+      if (maxval(cmfmc2(i,:pver)) > 0._r8) then
           freqsh(i) = 1._r8
       end if
    end do
@@ -885,9 +863,9 @@
 
     top_lev = 1
     call phys_getopts (macrop_scheme_out  = macrop_scheme)
-    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
 
-    call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:))
+    call cloud_fraction_fice_run(ncol, state1%t(1:ncol,:), tmelt, top_lev, pver, fice(1:ncol,:), fsnow_conv(1:ncol,:), errmsg, errflg)
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &

@@ -74,7 +74,8 @@ module zm_conv_intr
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
    real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
-   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcel pbl calculation
+   logical  :: zmconv_parcel_pbl = .false.           ! switch for parcel pbl calculation
+   real(r8) :: zmconv_parcel_hscale = unset_r8       ! Fraction of PBL depth over which to mix initial parcel
    real(r8) :: zmconv_tau = unset_r8          ! Timescale for convection
 
 
@@ -163,7 +164,7 @@ subroutine zm_conv_readnl(nlfile)
                         zmconv_ke, zmconv_ke_lnd,  &
                         zmconv_momcu, zmconv_momcd, &
                         zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
-                        zmconv_parcel_pbl, zmconv_tau
+                        zmconv_parcel_pbl,  zmconv_parcel_hscale, zmconv_tau
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -202,6 +203,8 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
    call mpi_bcast(zmconv_parcel_pbl,        1, mpi_logical, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_pbl")
+   call mpi_bcast(zmconv_parcel_hscale,      1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_hscale")
    call mpi_bcast(zmconv_tau,               1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tau")
 
@@ -345,7 +348,7 @@ subroutine zm_conv_init(pref_edge)
                   pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin,  &
                   no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_parcel_hscale, zmconv_tau, &
                   masterproc, iulog, errmsg, errflg)
 
       if (errflg /= 0) then
@@ -598,10 +601,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       freqzm(ideep(i)) = 1.0_r8
    end do
    call outfld('FREQZM  ',freqzm          ,pcols   ,lchnk   )
-!
-! Convert mass flux from reported mb/s to kg/m^2/s
-!
-   mcon(:ncol,:pverp) = mcon(:ncol,:pverp) * 100._r8/gravit
+
    mconzm(:ncol,:pverp) = mcon(:ncol,:pverp)
 
    call outfld('CMFMC_DP', mconzm, pcols, lchnk)
@@ -671,9 +671,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     top_lev = 1
     call phys_getopts (macrop_scheme_out  = macrop_scheme)
-    if ( .not. (macrop_scheme == "rk" .or. macrop_scheme == "SPCAM_sam1mom")) top_lev = trop_cloud_top_lev
+    if ( .not. (macrop_scheme == "rk")) top_lev = trop_cloud_top_lev
 
-    call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:))
+    call cloud_fraction_fice_run(ncol, state1%t(:ncol,:), tmelt, top_lev, pver, fice(:ncol,:), fsnow_conv(:ncol,:), errmsg, errflg)
 
     call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
