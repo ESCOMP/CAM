@@ -411,7 +411,8 @@ end function radiation_do
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
-   use rrtmgp_inputs, only: rrtmgp_inputs_init
+   use rrtmgp_pre,        only: rrtmgp_pre_init
+   use rrtmgp_inputs,     only: rrtmgp_inputs_init
    use rrtmgp_inputs_cam, only: rrtmgp_inputs_cam_init
 
    ! Initialize the radiation and cloud optics.
@@ -444,16 +445,11 @@ subroutine radiation_init(pbuf2d)
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
-   ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs_ccpp objects
-   ! work with CAM's uppercase names, but other objects that get input from the gas
-   ! concs objects don't work.
-   do i = 1, nradgas
-      gaslist_lc(i) = to_lower(gaslist(i))
-   end do
-
-   ! PEVERWHEE - add this to new rrtmgp_pre_iinit routine (possible also above code?)
-   errmsg = available_gases%gas_concs%init(gaslist_lc)
-   call stop_on_err(errmsg, sub, 'available_gases%init')
+   ! Initialize available_gases object
+   call rrtmgp_pre_init(nradgas, gaslist, available_gases, gaslist_lc, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': ERROR -'//errmsg)
+   end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
@@ -1236,19 +1232,25 @@ subroutine radiation_tend( &
          if (degrau_idx > 0) then
             call pbuf_get_field(pbuf, degrau_idx,   degrau)
          end if
+
          do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau))
          do_snow = associated(cldfsnow)
-         ! Set cloud optical properties in cloud_lw object.
-         call rrtmgp_lw_cloud_optics_run(ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau,       &
-             cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lambda, mu, iclwp, iciwp,  &
-             dei, icswp, des, icgrauwp, degrau, nlwbands, do_snow, &
-             do_graupel, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, pver, ktopcam, &
-             grau_lw_abs_cloudsim, idx_lw_cloudsim, tauc, cldf, errmsg, errflg)
 
+         ! Cloud optics for COSP
+         cld_lw_abs_cloudsim = cld_lw_abs(idx_lw_cloudsim,:,:)
+         snow_lw_abs_cloudsim = snow_lw_abs(idx_lw_cloudsim,:,:)
+         grau_lw_abs_cloudsim = grau_lw_abs(idx_lw_cloudsim,:,:)
+
+         ! Set cloud optical properties in cloud_lw object.
+         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau, &
+             cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lambda, mu, iclwp, iciwp,        &
+             dei, icswp, des, icgrauwp, degrau, nlwbands, do_snow,                           &
+             do_graupel, pver, ktopcam, tauc, cldf, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
-         call rrtmgp_lw_mcica_subcol_gen_run(ktoprad, &
+
+         call rrtmgp_lw_mcica_subcol_gen_run(dolw, ktoprad, &
                  kdist_lw, nlwbands, nlwgpts, ncol, pver, nlaycam, nlwgpts, &
                  state%pmid, cldf, tauc, cloud_lw, errmsg, errflg )
          if (errflg /= 0) then
@@ -1264,8 +1266,8 @@ subroutine radiation_tend( &
                call rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw
-               call rrtmgp_lw_gas_optics_pre_run(icall, gas_mmrs, state%pmid, state%pint, nlay, ncol, gaslist, idxday, &
-                  pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
+               call rrtmgp_lw_gas_optics_pre_run(icall, gas_mmrs, state%pmid, state%pint, nlay, ncol, gaslist, &
+                  idxday, pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
@@ -1372,7 +1374,7 @@ subroutine radiation_tend( &
       end if   ! docosp
    end if   ! if (dosw .or. dolw) then
 
-   ! Calculate dry static energy if LW calc wasn't done; needed before calling radheat_run
+   ! Calculate dry static energy if LW calc or SW calc wasn't done; needed before calling radheat_run
    call rrtmgp_dry_static_energy_tendency_run(ncol, state%pdel, (.not. dosw), (.not. dolw), &
              qrs, qrl, errmsg, errflg)
    if (errflg /= 0) then

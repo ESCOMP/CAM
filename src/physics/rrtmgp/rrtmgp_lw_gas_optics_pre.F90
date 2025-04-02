@@ -1,9 +1,3 @@
-!> \file rrtmgp_lw_gas_optics_pre.F90
-!!
-
-!> This module contains an init routine to initialize the k-distribution data
-!! and functions needed to compute the longwave gaseous optical properties in RRTMGP.
-!! It also contains a run routine to compute gas optics during the radiation subcycle
 module rrtmgp_lw_gas_optics_pre
   use machine,                 only: kind_phys
   use ccpp_gas_concentrations, only: ty_gas_concs_ccpp
@@ -21,25 +15,22 @@ contains
 
     ! Set gas vmr for the gases in the radconstants module's gaslist.
 
-    ! The memory management for the gas_concs object is internal. The arrays passed to it
-    ! are copied to the internally allocated memory.
-
-    integer,                     intent(in) :: icall      ! index of climate/diagnostic radiation call
-    character(len=*),            intent(in) :: gaslist(:)
-    integer,                     intent(in) :: nlay               ! number of layers in radiation calculation
-    integer,                     intent(in) :: ncol      ! number of columns, ncol for LW, nday for SW
-    integer,                     intent(in) :: pverp
-    integer,                     intent(in) :: idxday(:)          ! indices of daylight columns in a chunk
-    integer,                     intent(in) :: ktoprad
-    integer,                     intent(in) :: ktopcam
-    integer,                     intent(in) :: nradgas
-    logical,                     intent(in) :: dolw
-    real(kind_phys),             intent(in) :: pmid(:,:)
-    real(kind_phys),             intent(in) :: pint(:,:)
+    integer,                     intent(in) :: icall                  ! Subcycle index of climate/diagnostic radiation call
+    character(len=*),            intent(in) :: gaslist(:)             ! Radiatively active gases
+    integer,                     intent(in) :: nlay                   ! Number of layers in radiation calculation
+    integer,                     intent(in) :: ncol                   ! Total number of columns
+    integer,                     intent(in) :: pverp                  ! Total number of layer interfaces
+    integer,                     intent(in) :: idxday(:)              ! Indices of daylight columns
+    integer,                     intent(in) :: ktoprad                ! Index in RRTMGP array corresponding to top layer or interface of CAM arrays
+    integer,                     intent(in) :: ktopcam                ! Index in CAM arrays of top level (layer or interface) at which RRTMGP is active
+    integer,                     intent(in) :: nradgas                ! Number of radiatively active gases
+    logical,                     intent(in) :: dolw                   ! Flag for whether to perform longwave calculaion
+    real(kind_phys),             intent(in) :: pmid(:,:)              ! Air pressure at midpoints [Pa]
+    real(kind_phys),             intent(in) :: pint(:,:)              ! Air pressure at interfaces [Pa]
     real(kind_phys),             intent(in) :: rad_const_array(:,:,:) ! array of radiatively-active constituent vmrs
                                                                       !  last index corresponds to index in gaslist
 
-    type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
+    type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs           ! the result is VMR inside gas_concs
     character(len=*),            intent(out)   :: errmsg
     integer,                     intent(out)   :: errflg
 
@@ -130,8 +121,6 @@ contains
           return
        end if
 
-!       deallocate(gas_vmr)
-!       deallocate(mmr)
     end do
 
   end subroutine rrtmgp_lw_gas_optics_pre_run

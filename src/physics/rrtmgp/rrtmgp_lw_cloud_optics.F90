@@ -42,16 +42,16 @@ contains
                   abs_lw_liq_in, abs_lw_ice_in, nlwbands, g_mu_in, g_lambda_in,  &
                   g_d_eff_in, tiny_in, errmsg, errflg)
     ! Inputs
-    integer,          intent(in)  :: nmu_in
-    integer,          intent(in)  :: nlambda_in
-    integer,          intent(in)  :: n_g_d_in
-    integer,          intent(in)  :: nlwbands
-    real(kind_phys), dimension(:,:,:), intent(in) :: abs_lw_liq_in
-    real(kind_phys), dimension(:,:),   intent(in) :: abs_lw_ice_in
-    real(kind_phys), dimension(:,:),   intent(in) :: g_lambda_in
-    real(kind_phys), dimension(:),     intent(in) :: g_mu_in
-    real(kind_phys), dimension(:),     intent(in) :: g_d_eff_in
-    real(kind_phys),                   intent(in) :: tiny_in
+    integer,                           intent(in) :: nmu_in           ! Number of mu samples on grid
+    integer,                           intent(in) :: nlambda_in       ! Number of lambda scale samples on grid
+    integer,                           intent(in) :: n_g_d_in         ! Number of radiative effective diameter samples on grid
+    integer,                           intent(in) :: nlwbands         ! Number of longwave bands
+    real(kind_phys), dimension(:,:,:), intent(in) :: abs_lw_liq_in    ! Longwave mass specific absorption for in-cloud liquid water path
+    real(kind_phys), dimension(:,:),   intent(in) :: abs_lw_ice_in    ! Longwave mass specific absorption for in-cloud ice water path
+    real(kind_phys), dimension(:,:),   intent(in) :: g_lambda_in      ! lambda scale samples on grid
+    real(kind_phys), dimension(:),     intent(in) :: g_mu_in          ! Mu samples on grid
+    real(kind_phys), dimension(:),     intent(in) :: g_d_eff_in       ! Radiative effective diameter samples on grid
+    real(kind_phys),                   intent(in) :: tiny_in          ! Definition of what "tiny" means
 
     ! Outputs
     character(len=*), intent(out) :: errmsg
@@ -111,48 +111,44 @@ contains
 !> \section arg_table_rrtmgp_lw_cloud_optics_run Argument Table
 !! \htmlinclude rrtmgp_lw_cloud_optics_run.html
 !!
-  subroutine rrtmgp_lw_cloud_optics_run(ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau,       &
-             cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lamc, pgam, iclwpth, iciwpth,  &
-             dei, icswpth, des, icgrauwpth, degrau, nlwbands, do_snow, &
-             do_graupel, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, pver, ktopcam,               &
-             grau_lw_abs_cloudsim, idx_lw_cloudsim, tauc, cldf, errmsg, errflg)
+  subroutine rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau, &
+             cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lamc, pgam, iclwpth, iciwpth,   &
+             dei, icswpth, des, icgrauwpth, degrau, nlwbands, do_snow,                      &
+             do_graupel, pver, ktopcam, tauc, cldf, errmsg, errflg)
     ! Compute combined cloud optical properties
     ! Create MCICA stochastic arrays for cloud LW optical properties
     ! Initialize optical properties object (cloud_lw) and load with MCICA columns
 
     ! Inputs
-    integer,                           intent(in) :: ncol
-    integer,                           intent(in) :: nlay
-    integer,                           intent(in) :: nlaycam
-    integer,                           intent(in) :: nlwbands
-    integer,                           intent(in) :: pver
-    integer,                           intent(in) :: ktopcam
-    integer,                           intent(in) :: idx_lw_cloudsim
-    real(kind_phys), dimension(:,:),   intent(in) :: cld
-    real(kind_phys), dimension(:,:),   intent(in) :: cldfsnow
-    real(kind_phys), dimension(:,:),   intent(in) :: cldfgrau
-    real(kind_phys), dimension(:,:),   intent(in) :: cldfprime
-    real(kind_phys), dimension(:,:),   intent(in) :: lamc
-    real(kind_phys), dimension(:,:),   intent(in) :: pgam
-    real(kind_phys), dimension(:,:),   intent(in) :: iclwpth
-    real(kind_phys), dimension(:,:),   intent(in) :: iciwpth
-    real(kind_phys), dimension(:,:),   intent(in) :: icswpth
-    real(kind_phys), dimension(:,:),   intent(in) :: icgrauwpth
-    real(kind_phys), dimension(:,:),   intent(in) :: dei
-    real(kind_phys), dimension(:,:),   intent(in) :: des
-    real(kind_phys), dimension(:,:),   intent(in) :: degrau
-    logical,                           intent(in) :: graupel_in_rad
-    logical,                           intent(in) :: do_snow
-    logical,                           intent(in) :: do_graupel
-    class(ty_gas_optics_rrtmgp_ccpp),  intent(in) :: kdist_lw
+    integer,                           intent(in) :: ncol             ! Number of columns
+    integer,                           intent(in) :: nlay             ! Number of vertical layers in radiation
+    integer,                           intent(in) :: nlaycam          ! Number of model layers in radiation
+    integer,                           intent(in) :: nlwbands         ! Number of longwave bands
+    integer,                           intent(in) :: pver             ! Total number of vertical layers
+    integer,                           intent(in) :: ktopcam          ! Index in CAM arrays of top level (layer or interface) at which RRTMGP is active
+    real(kind_phys), dimension(:,:),   intent(in) :: cld              ! Cloud fraction (liq + ice)
+    real(kind_phys), dimension(:,:),   intent(in) :: cldfsnow         ! Cloud fraction of just "snow clouds"
+    real(kind_phys), dimension(:,:),   intent(in) :: cldfgrau         ! Cloud fraction of just "graupel clouds"
+    real(kind_phys), dimension(:,:),   intent(in) :: cldfprime        ! Modified cloud fraction
+    real(kind_phys), dimension(:,:),   intent(in) :: lamc             ! Prognosed value of lambda for cloud
+    real(kind_phys), dimension(:,:),   intent(in) :: pgam             ! Prognosed value of mu for cloud
+    real(kind_phys), dimension(:,:),   intent(in) :: iclwpth          ! In-cloud liquid water path
+    real(kind_phys), dimension(:,:),   intent(in) :: iciwpth          ! In-cloud ice water path 
+    real(kind_phys), dimension(:,:),   intent(in) :: icswpth          ! In-cloud snow water path
+    real(kind_phys), dimension(:,:),   intent(in) :: icgrauwpth       ! In-cloud graupel water path
+    real(kind_phys), dimension(:,:),   intent(in) :: dei              ! Mean effective radius for ice cloud
+    real(kind_phys), dimension(:,:),   intent(in) :: des              ! Mean effective radius for snow
+    real(kind_phys), dimension(:,:),   intent(in) :: degrau           ! Mean effective radius for graupel
+    logical,                           intent(in) :: graupel_in_rad   ! Flag for whether to include graupel in calculation
+    logical,                           intent(in) :: do_snow          ! Flag for whether cldfsnow is present
+    logical,                           intent(in) :: do_graupel       ! Flag for whether cldfgrau is present
+    logical,                           intent(in) :: dolw             ! Flag for whether to perform longwave calculation
+    class(ty_gas_optics_rrtmgp_ccpp),  intent(in) :: kdist_lw         ! Longwave gas optics object
 
     ! Outputs
-    type(ty_optical_props_1scl_ccpp),  intent(out) :: cloud_lw
-    real(kind_phys), dimension(:,:),   intent(out) :: cld_lw_abs_cloudsim
-    real(kind_phys), dimension(:,:),   intent(out) :: snow_lw_abs_cloudsim
-    real(kind_phys), dimension(:,:),   intent(out) :: grau_lw_abs_cloudsim
-    real(kind_phys), dimension(:,:),   intent(out) :: cldf
-    real(kind_phys), dimension(:,:,:), intent(out) :: tauc
+    type(ty_optical_props_1scl_ccpp),  intent(out) :: cloud_lw        ! Longwave cloud optics object
+    real(kind_phys), dimension(:,:),   intent(out) :: cldf            ! Subset cloud fraction
+    real(kind_phys), dimension(:,:,:), intent(out) :: tauc            ! Cloud optical depth
     character(len=*),                  intent(out) :: errmsg
     integer,                           intent(out) :: errflg
 
@@ -169,6 +165,15 @@ contains
 
     character(len=*), parameter :: sub = 'rrtmgp_lw_cloud_optics_run'
     !--------------------------------------------------------------------------------
+
+    ! Set error variables
+    errmsg = ''
+    errflg = 0
+
+    ! If not doing longwave, no need to proceed
+    if (.not. dolw) then
+       return
+    end if
 
     ! Combine the cloud optical properties.
 
@@ -226,11 +231,6 @@ contains
           end do
        end do
     end if
-
-    ! Cloud optics for COSP
-    cld_lw_abs_cloudsim = cld_lw_abs(idx_lw_cloudsim,:,:)
-    snow_lw_abs_cloudsim = snow_lw_abs(idx_lw_cloudsim,:,:)
-    grau_lw_abs_cloudsim = grau_lw_abs(idx_lw_cloudsim,:,:)
 
     ! Extract just the layers of CAM where RRTMGP does calculations
 

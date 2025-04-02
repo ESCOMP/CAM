@@ -1,12 +1,43 @@
 module rrtmgp_pre
- use ccpp_kinds, only: kind_phys
- use ccpp_fluxes,        only: ty_fluxes_broadband_ccpp
- use ccpp_fluxes_byband, only: ty_fluxes_byband_ccpp
+ use ccpp_kinds,              only: kind_phys
+ use ccpp_fluxes,             only: ty_fluxes_broadband_ccpp
+ use ccpp_fluxes_byband,      only: ty_fluxes_byband_ccpp
+ use atmos_phys_string_utils, only: to_lower
 
+ public :: rrtmgp_pre_init
  public :: rrtmgp_pre_run
  public :: radiation_do_ccpp
 
 CONTAINS
+
+!> \section arg_table_rrtmgp_pre_init Argument Table
+!! \htmlinclude rrtmgp_pre_init.html
+!!
+  subroutine rrtmgp_pre_init(nradgas, gaslist, available_gases, gaslist_lc, errmsg, errflg)
+     integer,                             intent(in) :: nradgas          ! Number of radiatively active gases
+     character(len=*),                    intent(in) :: gaslist          ! List of radiatively active gases
+     type(ty_gas_concentrations_ccpp), intent(inout) :: available_gases  ! Gas concentrations object
+     character(len=*),                   intent(out) :: gaslist_lc       ! Lowercase verison of radiatively active gas list
+     character(len=512),                 intent(out) :: errmsg
+     integer,                            intent(out) :: errflg
+
+     ! Set error variables
+     errmsg = ''
+     errflg = 0
+
+     ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs_ccpp objects
+     ! work with CAM's uppercase names, but other objects that get input from the gas
+     ! concs objects don't work.
+     do i = 1, nradgas
+        gaslist_lc(i) = to_lower(gaslist(i))
+     end do
+
+     errmsg = available_gases%gas_concs%init(gaslist_lc)
+     if (len_trim(errmsg) /= 0) then
+        errflg = 1
+     end if
+
+  end subroutine rrtmgp_pre_init
 
 !> \section arg_table_rrtmgp_pre_run Argument Table
 !! \htmlinclude rrtmgp_pre_run.html
@@ -16,31 +47,31 @@ CONTAINS
                   nswbands, spectralflux, fsw, fswc, flw, flwc, errmsg, errflg)
      use time_manager,         only: get_curr_calday
      ! Inputs
-     real(kind_phys), dimension(:), intent(in) :: coszrs
-     integer,                       intent(in) :: dtime
-     integer,                       intent(in) :: nstep
-     integer,                       intent(in) :: iradsw
-     integer,                       intent(in) :: iradlw
-     integer,                       intent(in) :: irad_always
-     integer,                       intent(in) :: ncol
-     integer,                       intent(in) :: nlay
-     integer,                       intent(in) :: nlwbands
-     integer,                       intent(in) :: nswbands
-     logical,                       intent(in) :: spectralflux
+     real(kind_phys), dimension(:),    intent(in) :: coszrs        ! Cosine solar zenith angle
+     integer,                          intent(in) :: dtime         ! Timestep size [s]
+     integer,                          intent(in) :: nstep         ! Timestep number
+     integer,                          intent(in) :: iradsw        ! Freq. of shortwave radiation calc in time steps (positive) or hours (negative)
+     integer,                          intent(in) :: iradlw        ! Freq. of longwave radiation calc in time steps (positive) or hours (negative)
+     integer,                          intent(in) :: irad_always   ! Number of time steps to execute radiation continuously
+     integer,                          intent(in) :: ncol          ! Number of columns
+     integer,                          intent(in) :: nlay          ! Number of vertical layers
+     integer,                          intent(in) :: nlwbands      ! Number of longwave bands
+     integer,                          intent(in) :: nswbands      ! Number of shortwave bands
+     logical,                          intent(in) :: spectralflux  ! Flag to calculate fluxes (up and down) per band
      ! Outputs
-     class(ty_fluxes_broadband_ccpp),   intent(out) :: fswc
-     class(ty_fluxes_byband_ccpp),      intent(out) :: fsw
-     class(ty_fluxes_broadband_ccpp),   intent(out) :: flwc
-     class(ty_fluxes_byband_ccpp),      intent(out) :: flw
-     integer,                      intent(out) :: nday
-     integer,                      intent(out) :: nnite
-     real(kind_phys),              intent(out) :: nextsw_cday
-     integer, dimension(:),        intent(out) :: idxday
-     integer, dimension(:),        intent(out) :: idxnite
-     logical,                      intent(out) :: dosw
-     logical,                      intent(out) :: dolw
-     character(len=*),             intent(out) :: errmsg
-     integer,                      intent(out) :: errflg
+     class(ty_fluxes_broadband_ccpp), intent(out) :: fswc          ! Clear-sky shortwave flux object
+     class(ty_fluxes_byband_ccpp),    intent(out) :: fsw           ! All-sky shortwave flux object
+     class(ty_fluxes_broadband_ccpp), intent(out) :: flwc          ! Clear-sky longwave flux object
+     class(ty_fluxes_byband_ccpp),    intent(out) :: flw           ! All-sky longwave flux object
+     integer,                         intent(out) :: nday          ! Number of daylight columns
+     integer,                         intent(out) :: nnite         ! Number of nighttime columns
+     real(kind_phys),                 intent(out) :: nextsw_cday   ! The next calendar day during which radiation calculation will be performed
+     integer, dimension(:),           intent(out) :: idxday        ! Indices of daylight columns
+     integer, dimension(:),           intent(out) :: idxnite       ! Indices of nighttime columns
+     logical,                         intent(out) :: dosw          ! Flag to do shortwave calculation
+     logical,                         intent(out) :: dolw          ! Flag to do longwave calculation
+     character(len=*),                intent(out) :: errmsg
+     integer,                         intent(out) :: errflg
 
      ! Local variables
      integer :: idx

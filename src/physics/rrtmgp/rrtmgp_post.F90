@@ -14,22 +14,22 @@ contains
 !!
 subroutine rrtmgp_post_run(ncol, qrs, qrl, fsns, pdel, atm_optics_sw, cloud_sw, aer_sw, &
                   fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, netsw, errmsg, errflg)
-   integer,                          intent(in)    :: ncol
-   real(kind_phys), dimension(:,:),  intent(in)    :: pdel
-   real(kind_phys), dimension(:),    intent(in)    :: fsns
-   real(kind_phys), dimension(:,:),  intent(inout) :: qrs
-   real(kind_phys), dimension(:,:),  intent(inout) :: qrl
-   type(ty_optical_props_2str_ccpp), intent(inout) :: atm_optics_sw
-   type(ty_optical_props_1scl_ccpp), intent(inout) :: aer_lw
-   type(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw
-   type(ty_optical_props_1scl_ccpp), intent(inout) :: cloud_lw
-   type(ty_optical_props_2str_ccpp), intent(inout) :: cloud_sw
-   type(ty_fluxes_broadband_ccpp),   intent(inout) :: fswc
-   type(ty_fluxes_broadband_ccpp),   intent(inout) :: flwc
-   type(ty_fluxes_byband_ccpp),      intent(inout) :: fsw
-   type(ty_fluxes_byband_ccpp),      intent(inout) :: flw
-   type(ty_source_func_lw_ccpp),     intent(inout) :: sources_lw
-   real(kind_phys), dimension(:),    intent(out)   :: netsw
+   integer,                          intent(in)    :: ncol           ! Number of columns
+   real(kind_phys), dimension(:,:),  intent(in)    :: pdel           ! Layer thickness [Pa]
+   real(kind_phys), dimension(:),    intent(in)    :: fsns           ! Surface net shortwave flux [W m-2]
+   real(kind_phys), dimension(:,:),  intent(inout) :: qrs            ! Shortwave heating rate [J kg-1 s-1]
+   real(kind_phys), dimension(:,:),  intent(inout) :: qrl            ! Longwave heating rate [J kg-1 s-1]
+   type(ty_optical_props_2str_ccpp), intent(inout) :: atm_optics_sw  ! Atmosphere optical properties object (shortwave)
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: aer_lw         ! Aerosol optical properties object (longwave)
+   type(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw         ! Aerosol optical properties object (shortwave)
+   type(ty_optical_props_1scl_ccpp), intent(inout) :: cloud_lw       ! Cloud optical properties object (longwave)
+   type(ty_optical_props_2str_ccpp), intent(inout) :: cloud_sw       ! Cloud optical properties object (shortwave)
+   type(ty_fluxes_broadband_ccpp),   intent(inout) :: fswc           ! Shortwave clear-sky flux object
+   type(ty_fluxes_broadband_ccpp),   intent(inout) :: flwc           ! Longwave clear-sky flux object
+   type(ty_fluxes_byband_ccpp),      intent(inout) :: fsw            ! Shortwave all-sky flux object
+   type(ty_fluxes_byband_ccpp),      intent(inout) :: flw            ! Longwave all-sky flux object
+   type(ty_source_func_lw_ccpp),     intent(inout) :: sources_lw     ! Longwave sources object
+   real(kind_phys), dimension(:),    intent(out)   :: netsw          ! Net shortwave flux to be sent to coupler [W m-2]
    character(len=*),                 intent(out)   :: errmsg
    integer,                          intent(out)   :: errflg
 

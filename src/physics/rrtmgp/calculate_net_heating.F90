@@ -35,16 +35,16 @@ subroutine calculate_net_heating_run(ncol, rad_heat, qrl, qrs, fsns, fsnt, flns,
 !-----------------------------------------------------------------------
 
     ! Arguments
-   integer,                    intent(in)  :: ncol          ! horizontal dimension
-   real(kind_phys),            intent(in)  :: qrl(:,:)      ! longwave heating
-   real(kind_phys),            intent(in)  :: qrs(:,:)      ! shortwave heating
-   real(kind_phys),            intent(in)  :: fsns(:)       ! Surface solar absorbed flux
-   real(kind_phys),            intent(in)  :: fsnt(:)       ! Net column abs solar flux at model top
-   real(kind_phys),            intent(in)  :: flns(:)       ! Srf longwave cooling (up-down) flux
-   real(kind_phys),            intent(in)  :: flnt(:)       ! Net outgoing lw flux at model top
+   integer,                    intent(in)  :: ncol           ! horizontal dimension
+   real(kind_phys),            intent(in)  :: qrl(:,:)       ! longwave heating [J kg-1 s-1]
+   real(kind_phys),            intent(in)  :: qrs(:,:)       ! shortwave heating [J kg-1 s-1]
+   real(kind_phys),            intent(in)  :: fsns(:)        ! Surface solar absorbed flux [W m-2]
+   real(kind_phys),            intent(in)  :: fsnt(:)        ! Net column abs solar flux at model top [W m-2]
+   real(kind_phys),            intent(in)  :: flns(:)        ! Srf longwave cooling (up-down) flux [W m-2]
+   real(kind_phys),            intent(in)  :: flnt(:)        ! Net outgoing lw flux at model top [W m-2]
    logical,                    intent(in)  :: is_offline_dyn ! is offline dycore
-   real(kind_phys),            intent(out) :: rad_heat(:,:) ! radiative heating
-   real(kind_phys),            intent(out) :: net_flx(:)    ! net boundary flux
+   real(kind_phys),            intent(out) :: rad_heat(:,:)  ! radiative heating [J kg-1 s-1]
+   real(kind_phys),            intent(out) :: net_flx(:)     ! net boundary flux [W m-2]
    character(len=*),           intent(out) :: errmsg
    integer,                    intent(out) :: errflg
 

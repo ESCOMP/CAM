@@ -34,12 +34,12 @@ subroutine rrtmgp_dry_static_energy_tendency_run(ncol, pdel, calc_sw_heat, calc_
 !-----------------------------------------------------------------------
 
    ! Arguments
-   integer,                         intent(in)    :: ncol
-   real(kind_phys), dimension(:,:), intent(in)    :: pdel
-   logical,                         intent(in)    :: calc_sw_heat
-   logical,                         intent(in)    :: calc_lw_heat
-   real(kind_phys), dimension(:,:), intent(inout) :: qrs    ! shortwave heating
-   real(kind_phys), dimension(:,:), intent(inout) :: qrl    ! longwave heating
+   integer,                         intent(in)    :: ncol          ! Number of columns
+   real(kind_phys), dimension(:,:), intent(in)    :: pdel          ! Layer thickness
+   logical,                         intent(in)    :: calc_sw_heat  ! Flag to calculate net shortwave heating
+   logical,                         intent(in)    :: calc_lw_heat  ! Flag to calculate net longwave heating
+   real(kind_phys), dimension(:,:), intent(inout) :: qrs           ! shortwave heating rate (J kg-1 s-1)
+   real(kind_phys), dimension(:,:), intent(inout) :: qrl           ! longwave heating rate  (J kg-1 s-1)
    character(len=*),                intent(out)   :: errmsg
    integer,                         intent(out)   :: errflg
 

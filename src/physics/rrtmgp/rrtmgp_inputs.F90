@@ -25,48 +25,51 @@ module rrtmgp_inputs
                    nextsw_cday, current_cal_day, band2gpt_sw, errmsg, errflg)
 
      ! Inputs
-     integer,                       intent(in) :: nswbands
-     integer,                       intent(in) :: pverp
-     integer,                       intent(in) :: pver
-     integer,                       intent(in) :: iradsw
-     integer,                       intent(in) :: timestep_size
-     integer,                       intent(in) :: nstep
-     integer,                       intent(in) :: nlwbands
-     integer,                       intent(in) :: nradgas
-     integer,                       intent(in) :: iulog
-     integer,                       intent(in) :: gasnamelength
-     real(kind_phys),               intent(in) :: current_cal_day
-     real(kind_phys), dimension(:), intent(in) :: pref_edge
-     type(ty_gas_optics_rrtmgp_ccpp),    intent(in) :: kdist_sw
-     type(ty_gas_optics_rrtmgp_ccpp),    intent(in) :: kdist_lw
-     logical,                       intent(in) :: is_first_step
-     logical,                       intent(in) :: is_first_restart_step
-     logical,                       intent(in) :: use_rad_dt_cosz
+     integer,                         intent(in) :: nswbands
+     integer,                         intent(in) :: nlwbands               ! Number of longwave bands
+     integer,                         intent(in) :: nradgas                ! Number of radiatively active gases
+     integer,                         intent(in) :: pverp                  ! Number of vertical interfaces
+     integer,                         intent(in) :: pver                   ! Number of vertical layers
+     integer,                         intent(in) :: iradsw                 ! Freq. of shortwave radiation calc in time steps (positive) or hours (negative).
+     integer,                         intent(in) :: timestep_size          ! Timestep size (s)
+     integer,                         intent(in) :: nstep                  ! Current timestep number
+     integer,                         intent(in) :: iulog                  ! Logging unit
+     integer,                         intent(in) :: gasnamelength          ! Length of all of the gas_list entries
+     real(kind_phys),                 intent(in) :: current_cal_day        ! Current calendar day
+     real(kind_phys), dimension(:),   intent(in) :: pref_edge              ! Reference pressures (interfaces) (Pa)
+     type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_sw               ! Shortwave gas optics object
+     type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_lw               ! Longwave gas optics object
+     logical,                         intent(in) :: is_first_step          ! Flag for whether this is the first timestep (.true. = yes)
+     logical,                         intent(in) :: is_first_restart_step  ! Flag for whether this is the first restart step (.true. = yes)
+     logical,                         intent(in) :: use_rad_dt_cosz
      character(len=*),  dimension(:), intent(in) :: gaslist
 
      ! Outputs
-     integer,                       intent(out) :: ktopcam
-     integer,                       intent(out) :: ktoprad
-     integer,                       intent(out) :: nlaycam
-     integer,                       intent(out) :: nlay
-     integer,                       intent(out) :: nlayp
-     integer,                       intent(out) :: idx_sw_diag
-     integer,                       intent(out) :: idx_nir_diag
-     integer,                       intent(out) :: idx_uv_diag
-     integer,                       intent(out) :: idx_sw_cloudsim
-     integer,                       intent(out) :: idx_lw_diag
-     integer,                       intent(out) :: idx_lw_cloudsim
-     integer,                       intent(out) :: nswgpts
-     integer,                       intent(out) :: nlwgpts
-     integer, dimension(:,:),       intent(out) :: band2gpt_sw
-     real(kind_phys),               intent(out) :: nextsw_cday
-     real(kind_phys), dimension(:), intent(out) :: sw_low_bounds
-     real(kind_phys), dimension(:), intent(out) :: sw_high_bounds
-     real(kind_phys), dimension(:,:), intent(out) :: qrl
+     integer,                         intent(out) :: ktopcam               ! Index in CAM arrays of top level (layer or interface) at which RRTMGP is active
+     integer,                         intent(out) :: ktoprad               ! Index in RRTMGP array corresponding to top layer or interface of CAM arrays
+     integer,                         intent(out) :: nlaycam               ! Number of vertical layers in CAM. Is either equal to nlay
+                                                                           !  or is 1 less than nlay if "extra layer" is used in the radiation calculations
+     integer,                         intent(out) :: nlay                  ! Number of vertical layers in radiation calculation
+     integer,                         intent(out) :: nlayp                 ! Number of vertical interfaces in radiation calculations (nlay + 1)
+     ! Indices to specific bands for diagnostic output and COSP input
+     integer,                         intent(out) :: idx_sw_diag           ! Index of band containing 500-nm wave
+     integer,                         intent(out) :: idx_nir_diag          ! Index of band containing 1000-nm wave
+     integer,                         intent(out) :: idx_uv_diag           ! Index of band containing 400-nm wave
+     integer,                         intent(out) :: idx_sw_cloudsim       ! Index of band for shortwave cosp diagnostics
+     integer,                         intent(out) :: idx_lw_diag           ! Index of band containing 1000-cm-1 wave (H2O window)
+     integer,                         intent(out) :: idx_lw_cloudsim       ! Index of band for longwave cosp diagnostics
+
+     integer,                         intent(out) :: nswgpts               ! Number of shortwave g-points
+     integer,                         intent(out) :: nlwgpts               ! Number of longwave g-points
+     integer, dimension(:,:),         intent(out) :: band2gpt_sw           ! Array for converting shortwave band limits to g-points
+     real(kind_phys),                 intent(out) :: nextsw_cday           ! The next calendar day during which the shortwave radiation calculation will be performed
+     real(kind_phys), dimension(:),   intent(out) :: sw_low_bounds         ! Lower bounds of shortwave bands
+     real(kind_phys), dimension(:),   intent(out) :: sw_high_bounds        ! Upper bounds of shortwave bands
+     real(kind_phys), dimension(:,:), intent(out) :: qrl                   ! Longwave radiative heating
      character(len=*),                intent(out) :: errmsg
      integer,                         intent(out) :: errflg
-     integer,                       intent(inout) :: irad_always
-     real(kind_phys),               intent(inout) :: dt_avg        ! averaging time interval for zenith angle
+     integer,                         intent(inout) :: irad_always         ! Number of time steps to execute radiation continuously
+     real(kind_phys),                 intent(inout) :: dt_avg              ! averaging time interval for zenith angle
 
      ! Local variables
      real(kind_phys), target :: wavenumber_low_shortwave(nswbands)
@@ -168,62 +171,62 @@ module rrtmgp_inputs
                   sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,        &
                   errmsg, errflg)
      ! Inputs
-     logical, intent(in) :: graupel_in_rad
-     integer, intent(in) :: ncol
-     integer, intent(in) :: pver
-     integer, intent(in) :: pverp
-     integer, intent(in) :: nlay
-     integer, intent(in) :: nswbands
-     integer, intent(in) :: ktopcam
-     integer, intent(in) :: ktoprad
-     integer, intent(in) :: gasnamelength
-     integer, intent(in) :: nday
-     logical, intent(in) :: dosw
-     logical, intent(in) :: dolw
-     logical, intent(in) :: snow_associated
-     logical, intent(in) :: graupel_associated
-     integer, dimension(:), intent(in)           :: idxday
-     real(kind_phys), dimension(:,:), intent(in) :: pmid
-     real(kind_phys), dimension(:,:), intent(in) :: pint
-     real(kind_phys), dimension(:,:), intent(in) :: t
-     real(kind_phys), dimension(:,:), intent(in) :: cldfsnow
-     real(kind_phys), dimension(:,:), intent(in) :: cldfgrau
-     real(kind_phys), dimension(:,:), intent(in) :: cld
-     real(kind_phys), dimension(:),   intent(in) :: sw_low_bounds
-     real(kind_phys), dimension(:),   intent(in) :: sw_high_bounds
-     real(kind_phys), dimension(:),   intent(in) :: coszrs
-     real(kind_phys), dimension(:),   intent(in) :: lwup
-     real(kind_phys), dimension(:),   intent(in) :: asdir
-     real(kind_phys), dimension(:),   intent(in) :: asdif
-     real(kind_phys), dimension(:),   intent(in) :: aldir
-     real(kind_phys), dimension(:),   intent(in) :: aldif
-     real(kind_phys),                 intent(in) :: stebol    ! stefan-boltzmann constant
-     type(ty_gas_optics_rrtmgp_ccpp),     intent(in) :: kdist_sw  ! spectral information
-     type(ty_gas_optics_rrtmgp_ccpp),     intent(in) :: kdist_lw  ! spectral information
-     character(len=*), dimension(:),  intent(in) :: gaslist
+     logical,                              intent(in) :: graupel_in_rad        ! Flag to include graupel in radiation calculation
+     integer,                              intent(in) :: ncol                  ! Number of columns
+     integer,                              intent(in) :: pver                  ! Number of vertical layers
+     integer,                              intent(in) :: pverp                 ! Number of vertical interfaces
+     integer,                              intent(in) :: nlay                  ! Number of vertical layers used in radiation calculation
+     integer,                              intent(in) :: nswbands              ! Number of shortwave bands
+     integer,                              intent(in) :: ktopcam               ! Index in CAM arrays of top level (layer or interface) at which RRTMGP is active
+     integer,                              intent(in) :: ktoprad               ! Index in RRTMGP array corresponding to top layer or interface of CAM arrays
+     integer,                              intent(in) :: gasnamelength         ! Length of gases in gas_list
+     integer,                              intent(in) :: nday                  ! Number of daylight columns
+     logical,                              intent(in) :: dosw                  ! Flag for performing the shortwave calculation
+     logical,                              intent(in) :: dolw                  ! Flag for performing the longwave calculation
+     logical,                              intent(in) :: snow_associated       ! Flag for whether the cloud snow fraction argument should be used
+     logical,                              intent(in) :: graupel_associated    ! Flag for whether the cloud graupel fraction argument should be used
+     integer,         dimension(:),        intent(in) :: idxday                ! Indices of daylight columns
+     real(kind_phys), dimension(:,:),      intent(in) :: pmid                  ! Air pressure at midpoint (Pa)
+     real(kind_phys), dimension(:,:),      intent(in) :: pint                  ! Air pressure at interface (Pa)
+     real(kind_phys), dimension(:,:),      intent(in) :: t                     ! Air temperature (K)
+     real(kind_phys), dimension(:,:),      intent(in) :: cldfsnow              ! Cloud fraction of just "snow clouds"
+     real(kind_phys), dimension(:,:),      intent(in) :: cldfgrau              ! Cloud fraction of just "graupel clouds"
+     real(kind_phys), dimension(:,:),      intent(in) :: cld                   ! Cloud fraction (liq+ice)
+     real(kind_phys), dimension(:),        intent(in) :: sw_low_bounds         ! Lower bounds for shortwave bands
+     real(kind_phys), dimension(:),        intent(in) :: sw_high_bounds        ! Upper bounds for shortwave bands
+     real(kind_phys), dimension(:),        intent(in) :: coszrs                ! Cosine of solar senith angle (radians)
+     real(kind_phys), dimension(:),        intent(in) :: lwup                  ! Longwave up flux (W m-2)
+     real(kind_phys), dimension(:),        intent(in) :: asdir                 ! Shortwave direct albedo (fraction)
+     real(kind_phys), dimension(:),        intent(in) :: asdif                 ! Shortwave diffuse albedo (fraction)
+     real(kind_phys), dimension(:),        intent(in) :: aldir                 ! Longwave direct albedo (fraction)
+     real(kind_phys), dimension(:),        intent(in) :: aldif                 ! Longwave diffuse albedo (fraction)
+     real(kind_phys),                      intent(in) :: stebol                ! Stefan-Boltzmann constant (W m-2 K-4)
+     type(ty_gas_optics_rrtmgp_ccpp),      intent(in) :: kdist_sw              ! Shortwave gas optics object
+     type(ty_gas_optics_rrtmgp_ccpp),      intent(in) :: kdist_lw              ! Longwave gas optics object
+     character(len=*), dimension(:),       intent(in) :: gaslist               ! Radiatively active gases
      ! Outputs
-     real(kind_phys), dimension(:,:), intent(out) :: t_rad
-     real(kind_phys), dimension(:,:), intent(out) :: pmid_rad
-     real(kind_phys), dimension(:,:), intent(out) :: pint_rad
-     real(kind_phys), dimension(:,:), intent(out) :: t_day
-     real(kind_phys), dimension(:,:), intent(out) :: pint_day
-     real(kind_phys), dimension(:,:), intent(out) :: pmid_day
-     real(kind_phys), dimension(:,:), intent(out) :: emis_sfc
-     real(kind_phys), dimension(:,:), intent(out) :: alb_dir
-     real(kind_phys), dimension(:,:), intent(out) :: alb_dif
-     real(kind_phys), dimension(:,:), intent(out) :: cldfprime ! modiifed cloud fraciton
+     real(kind_phys), dimension(:,:),      intent(out) :: t_rad                ! Air temperature with radiation indexing (K)
+     real(kind_phys), dimension(:,:),      intent(out) :: pmid_rad             ! Midpoint pressure with radiation indexing (Pa)
+     real(kind_phys), dimension(:,:),      intent(out) :: pint_rad             ! Interface pressure with radiation indexing (Pa)
+     real(kind_phys), dimension(:,:),      intent(out) :: t_day                ! Air temperature of daylight columns (K)
+     real(kind_phys), dimension(:,:),      intent(out) :: pint_day             ! Interface pressure of daylight columns (Pa)
+     real(kind_phys), dimension(:,:),      intent(out) :: pmid_day             ! Midpoint pressure of daylight columns (Pa)
+     real(kind_phys), dimension(:,:),      intent(out) :: emis_sfc             ! Surface emissivity (fraction)
+     real(kind_phys), dimension(:,:),      intent(out) :: alb_dir              ! Surface albedo due to UV and VIS direct (fraction)
+     real(kind_phys), dimension(:,:),      intent(out) :: alb_dif              ! Surface albedo due to IR diffused (fraction)
+     real(kind_phys), dimension(:,:),      intent(out) :: cldfprime            ! modified cloud fraciton
 
-     real(kind_phys), dimension(:),   intent(out) :: t_sfc
-     real(kind_phys), dimension(:),   intent(out) :: coszrs_day
-     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_lw
-     type(ty_optical_props_1scl_ccpp),     intent(out) :: atm_optics_lw
-     type(ty_optical_props_1scl_ccpp),     intent(out) :: aer_lw
-     type(ty_source_func_lw_ccpp),         intent(out) :: sources_lw
-     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_sw
-     type(ty_optical_props_2str_ccpp),     intent(out) :: atm_optics_sw
-     type(ty_optical_props_2str_ccpp),     intent(out) :: aer_sw
-     character(len=*), intent(out) :: errmsg
-     integer,          intent(out) :: errflg
+     real(kind_phys), dimension(:),        intent(out) :: t_sfc                ! Surface temperature (K)
+     real(kind_phys), dimension(:),        intent(out) :: coszrs_day           ! Cosine of solar zenith angle for daylight columns (radians)
+     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_lw         ! Gas concentrations object for longwave radiation
+     type(ty_optical_props_1scl_ccpp),     intent(out) :: atm_optics_lw        ! Atmosphere optical properties object for longwave radiation
+     type(ty_optical_props_1scl_ccpp),     intent(out) :: aer_lw               ! Aerosol optical properties object for longwave radiation
+     type(ty_source_func_lw_ccpp),         intent(out) :: sources_lw           ! Longwave sources object for longwave radiation
+     type(ty_gas_concs_ccpp),              intent(out) :: gas_concs_sw         ! Gas concentrations object for shortwave radiation
+     type(ty_optical_props_2str_ccpp),     intent(out) :: atm_optics_sw        ! Atmosphere optical properties object for shortwave radiation
+     type(ty_optical_props_2str_ccpp),     intent(out) :: aer_sw               ! Aerosol optical properties object for shortwave radiation
+     character(len=*),                     intent(out) :: errmsg
+     integer,                              intent(out) :: errflg
 
      ! Local variables
      real(kind_phys) :: tref_min
@@ -445,24 +448,24 @@ module rrtmgp_inputs
    ! Arguments
    type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_sw
    type(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist_lw
-   integer,                    intent(in) :: nswbands
-   integer,                    intent(in) :: nlwbands
+   integer,                         intent(in) :: nswbands
+   integer,                         intent(in) :: nlwbands
 
-   integer,                   intent(out) :: idx_sw_diag
-   integer,                   intent(out) :: idx_nir_diag
-   integer,                   intent(out) :: idx_uv_diag
-   integer,                   intent(out) :: idx_sw_cloudsim
-   integer,                   intent(out) :: idx_lw_diag
-   integer,                   intent(out) :: idx_lw_cloudsim
-   integer,                   intent(out) :: nswgpts
-   integer,                   intent(out) :: nlwgpts
-   integer, dimension(:,:),   intent(out) :: band2gpt_sw
-   real(kind_phys), dimension(:), intent(out) :: wavenumber_low_shortwave
-   real(kind_phys), dimension(:), intent(out) :: wavenumber_high_shortwave
-   real(kind_phys), dimension(:), intent(out) :: wavenumber_low_longwave
-   real(kind_phys), dimension(:), intent(out) :: wavenumber_high_longwave
-   character(len=*),          intent(out) :: errmsg
-   integer,                   intent(out) :: errflg
+   integer,                        intent(out) :: idx_sw_diag
+   integer,                        intent(out) :: idx_nir_diag
+   integer,                        intent(out) :: idx_uv_diag
+   integer,                        intent(out) :: idx_sw_cloudsim
+   integer,                        intent(out) :: idx_lw_diag
+   integer,                        intent(out) :: idx_lw_cloudsim
+   integer,                        intent(out) :: nswgpts
+   integer,                        intent(out) :: nlwgpts
+   integer, dimension(:,:),        intent(out) :: band2gpt_sw
+   real(kind_phys), dimension(:),  intent(out) :: wavenumber_low_shortwave
+   real(kind_phys), dimension(:),  intent(out) :: wavenumber_high_shortwave
+   real(kind_phys), dimension(:),  intent(out) :: wavenumber_low_longwave
+   real(kind_phys), dimension(:),  intent(out) :: wavenumber_high_longwave
+   character(len=*),               intent(out) :: errmsg
+   integer,                        intent(out) :: errflg
 
    ! Local variables
    integer :: istat
@@ -561,15 +564,15 @@ module rrtmgp_inputs
 
    ! Find band index for requested wavelength/wavenumber.
 
-   character(len=*), intent(in) :: swlw        ! sw or lw bands
-   real(kind_phys),         intent(in) :: targetvalue  
-   character(len=*), intent(in) :: units       ! units of targetvalue
-   integer,          intent(in) :: nbnds
+   character(len=*),                      intent(in) :: swlw        ! sw or lw bands
+   real(kind_phys),                       intent(in) :: targetvalue  
+   character(len=*),                      intent(in) :: units       ! units of targetvalue
+   integer,                               intent(in) :: nbnds
    real(kind_phys), target, dimension(:), intent(in) :: wavenumber_low
    real(kind_phys), target, dimension(:), intent(in) :: wavenumber_high
-   character(len=*), intent(out) :: errmsg
-   integer,          intent(out) :: errflg
-   integer,          intent(out) :: ans
+   character(len=*),                     intent(out) :: errmsg
+   integer,                              intent(out) :: errflg
+   integer,                              intent(out) :: ans
 
    ! local
    real(kind_phys), pointer, dimension(:) :: lowboundaries, highboundaries

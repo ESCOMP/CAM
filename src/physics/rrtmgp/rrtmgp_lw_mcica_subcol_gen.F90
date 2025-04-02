@@ -28,8 +28,8 @@ module rrtmgp_lw_mcica_subcol_gen
 ! 
 !----------------------------------------------------------------------------------------
 
-use machine,              only: kind_phys
-use shr_RandNum_mod,      only: ShrKissRandGen
+use machine,                only: kind_phys
+use shr_RandNum_mod,        only: ShrKissRandGen
 use ccpp_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp_ccpp
 use ccpp_optical_props,     only: ty_optical_props_1scl_ccpp
 
@@ -47,7 +47,7 @@ contains
 !> \section arg_table_rrtmgp_lw_mcica_subcol_gen_run Argument Table
 !! \htmlinclude rrtmgp_lw_mcica_subcol_gen_run.html
 subroutine rrtmgp_lw_mcica_subcol_gen_run( &
-   ktoprad, kdist, nbnd, ngpt, ncol, pver, nver, &
+   dolw, ktoprad, kdist, nbnd, ngpt, ncol, pver, nver, &
    changeseed, pmid, cldfrac, tauc, cloud_lw,     &
    errmsg, errflg )
 
@@ -60,21 +60,22 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
    ! number of subcolumns
 
    ! arguments
-   class(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist  ! spectral information
-   integer,  intent(in)  :: ktoprad
-   integer,  intent(in)  :: nbnd                     ! number of spectral bands
-   integer,  intent(in)  :: ngpt                     ! number of subcolumns (g-point intervals)
-   integer,  intent(in)  :: ncol                     ! number of columns
-   integer,  intent(in)  :: pver                     ! total number of layers
-   integer,  intent(in)  :: nver                     ! number of layers
-   integer,  intent(in)  :: changeseed               ! if the subcolumn generator is called multiple times, 
-                                                     ! permute the seed between each call.
-   real(kind_phys), dimension(:,:),   intent(in)  :: pmid        ! layer pressures (Pa)
-   real(kind_phys), dimension(:,:),   intent(in)  :: cldfrac     ! layer cloud fraction
-   real(kind_phys), dimension(:,:,:), intent(in)  :: tauc        ! cloud optical depth
-   type(ty_optical_props_1scl_ccpp),  intent(inout) :: cloud_lw
-   character(len=*),                  intent(out) :: errmsg
-   integer,                           intent(out) :: errflg
+   class(ty_gas_optics_rrtmgp_ccpp), intent(in) :: kdist        ! Gas optics object
+   logical,                          intent(in) :: dolw         ! Flag for whether to perform longwave calculation
+   integer,                          intent(in) :: ktoprad      ! Index in RRTMGP array corresponding to top layer or interface of CAM arrays
+   integer,                          intent(in) :: nbnd         ! Number of spectral bands
+   integer,                          intent(in) :: ngpt         ! Number of subcolumns (g-point intervals)
+   integer,                          intent(in) :: ncol         ! Number of columns
+   integer,                          intent(in) :: pver         ! Number of model layers
+   integer,                          intent(in) :: nver         ! Number of layers in radiation calculation
+   integer,                          intent(in) :: changeseed   ! If the subcolumn generator is called multiple times, 
+                                                                ! permute the seed between each call.
+   real(kind_phys), dimension(:,:),   intent(in)  :: pmid       ! Layer pressures at midpoints (Pa)
+   real(kind_phys), dimension(:,:),   intent(in)  :: cldfrac    ! Layer cloud fraction
+   real(kind_phys), dimension(:,:,:), intent(in)  :: tauc       ! Cloud optical depth
+   type(ty_optical_props_1scl_ccpp),  intent(inout) :: cloud_lw ! Cloud optics object
+   character(len=*),                  intent(out)   :: errmsg
+   integer,                           intent(out)   :: errflg
 
    ! Local variables
 
@@ -96,6 +97,11 @@ subroutine rrtmgp_lw_mcica_subcol_gen_run( &
    ! Set error variables
    errflg = 0
    errmsg = ''
+
+   ! If we're not doing longwave this timestep, no need to proceed
+   if (.not. dolw) then
+      return
+   end if
 
    ! clip cloud fraction
    cldf(:,:) = cldfrac(:ncol,:)

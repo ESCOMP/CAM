@@ -21,14 +21,15 @@ contains
 
   subroutine radiation_utils_init(nswbands_in, nlwbands_in, low_shortwave, high_shortwave, &
                   low_longwave, high_longwave, errmsg, errflg)
-    integer, intent(in) :: nswbands_in
-    integer, intent(in) :: nlwbands_in
-    real(kind_phys), intent(in) :: low_shortwave(:)
-    real(kind_phys), intent(in) :: high_shortwave(:)
-    real(kind_phys), intent(in) :: low_longwave(:)
-    real(kind_phys), intent(in) :: high_longwave(:)
-    integer, intent(out) :: errflg
-    character(len=*), intent(out) :: errmsg
+    integer,          intent(in) :: nswbands_in         ! Number of shortwave bands
+    integer,          intent(in) :: nlwbands_in         ! Number of longwave bands
+    real(kind_phys),  intent(in) :: low_shortwave(:)    ! Low range values for shortwave bands  (cm-1)
+    real(kind_phys),  intent(in) :: high_shortwave(:)   ! High range values for shortwave bands (cm-1)
+    real(kind_phys),  intent(in) :: low_longwave(:)     ! Low range values for longwave bands   (cm-1)
+    real(kind_phys),  intent(in) :: high_longwave(:)    ! High range values for longwave bands  (cm-1)
+    integer,         intent(out) :: errflg
+    character(len=*),intent(out) :: errmsg
+    ! Local variables
     character(len=256) :: alloc_errmsg
 
     errflg = 0
@@ -69,13 +70,13 @@ contains
 
  subroutine get_sw_spectral_boundaries_ccpp(low_boundaries, high_boundaries, units, errmsg, errflg)
 
-   ! provide spectral boundaries of each shortwave band
+   ! provide spectral boundaries of each shortwave band in the units requested
 
-   real(kind_phys), dimension(:), intent(out) :: low_boundaries
-   real(kind_phys), dimension(:), intent(out) :: high_boundaries
-   character(*), intent(in) :: units ! requested units
-   character(len=*), intent(out) :: errmsg
-   integer,          intent(out) :: errflg
+   real(kind_phys),  dimension(:), intent(out) :: low_boundaries      ! low range bounds for shortwave bands in requested units
+   real(kind_phys),  dimension(:), intent(out) :: high_boundaries     ! high range bounds for shortwave bands in requested units
+   character(*),                    intent(in) :: units               ! requested units
+   character(len=*),               intent(out) :: errmsg
+   integer,                        intent(out) :: errflg
 
    character(len=*), parameter :: sub = 'get_sw_spectral_boundaries_ccpp'
    !----------------------------------------------------------------------------
@@ -115,10 +116,11 @@ contains
 
 subroutine get_lw_spectral_boundaries_ccpp(low_boundaries, high_boundaries, units, errmsg, errflg)
 
-   ! provide spectral boundaries of each longwave band
+   ! provide spectral boundaries of each longwave band in the units requested
 
-   real(kind_phys), intent(out) :: low_boundaries(nlwbands), high_boundaries(nlwbands)
-   character(*), intent(in) :: units ! requested units
+   real(kind_phys),  intent(out) :: low_boundaries(nlwbands)    ! low range bounds for longwave bands in requested units
+   real(kind_phys),  intent(out) :: high_boundaries(nlwbands)   ! high range bounds for longwave bands in requested units
+   character(*),      intent(in) :: units                       ! requested units
    character(len=*), intent(out) :: errmsg
    integer,          intent(out) :: errflg
 
@@ -160,15 +162,16 @@ end subroutine get_lw_spectral_boundaries_ccpp
 
 subroutine get_mu_lambda_weights_ccpp(nmu, nlambda, g_mu, g_lambda, lamc, pgam, &
                 mu_wgts, lambda_wgts, errmsg, errflg)
-  integer,         intent(in) :: nmu
-  integer,         intent(in) :: nlambda
-  real(kind_phys), intent(in) :: g_mu(:)
-  real(kind_phys), intent(in) :: g_lambda(:,:)
-  real(kind_phys), intent(in) :: lamc   ! prognosed value of lambda for cloud
-  real(kind_phys), intent(in) :: pgam   ! prognosed value of mu for cloud
+  ! Get mu and lambda interpolation weights
+  integer,            intent(in) :: nmu            ! number of mu values
+  integer,            intent(in) :: nlambda        ! number of lambda values
+  real(kind_phys),    intent(in) :: g_mu(:)        ! mu values
+  real(kind_phys),    intent(in) :: g_lambda(:,:)  ! lambda table
+  real(kind_phys),    intent(in) :: lamc           ! prognosed value of lambda for cloud
+  real(kind_phys),    intent(in) :: pgam           ! prognosed value of mu for cloud
   ! Output interpolation weights. Caller is responsible for freeing these.
-  type(interp_type), intent(out) :: mu_wgts
-  type(interp_type), intent(out) :: lambda_wgts
+  type(interp_type), intent(out) :: mu_wgts        ! mu interpolation weights
+  type(interp_type), intent(out) :: lambda_wgts    ! lambda interpolation weights
   character(len=*),  intent(out) :: errmsg
   integer,           intent(out) :: errflg
 
