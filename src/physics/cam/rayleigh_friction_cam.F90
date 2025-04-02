@@ -22,8 +22,8 @@ save
 ! Public interfaces
 public :: &
      rayleigh_friction_readnl,  & ! read namelist
-     rayleigh_friction_initO,   & ! Initialization
-     rayleigh_friction_tendO      ! Computation of tendencies
+     rayleigh_friction_cam_init,   & ! Initialization
+     rayleigh_friction_cam_tend      ! Computation of tendencies
 
 ! Namelist variables
 integer  :: rayk0 = 2           ! vertical level at which rayleigh friction term is centered
@@ -94,7 +94,7 @@ end subroutine rayleigh_friction_readnl
 
 !=========================================================================================
 
-subroutine rayleigh_friction_initO()
+subroutine rayleigh_friction_cam_init()
 
    !---------------------------Local storage-------------------------------
    character(len=512) errmsg
@@ -103,11 +103,11 @@ subroutine rayleigh_friction_initO()
    call rayleigh_friction_init(pver, raytau0, raykrange, rayk0, masterproc, iulog, errmsg, errflg)
    if (errflg /= 0) call endrun(errmsg)
 
-end subroutine rayleigh_friction_initO
+end subroutine rayleigh_friction_cam_init
   
 !=========================================================================================
 
-subroutine rayleigh_friction_tendO(                                     &
+subroutine rayleigh_friction_cam_tend(                                     &
      ztodt    ,state    ,ptend    )
 
    !-----------------------------------------------------------------------
@@ -133,6 +133,6 @@ subroutine rayleigh_friction_tendO(                                     &
    call rayleigh_friction_run(ncol, pver, ztodt, state%u, state%v, ptend%u, ptend%v, ptend%s, errmsg, errflg)
    if (errflg /= 0) call endrun(errmsg)
 
-end subroutine rayleigh_friction_tendO
+end subroutine rayleigh_friction_cam_tend
 
 end module rayleigh_friction_cam

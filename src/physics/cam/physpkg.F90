@@ -741,7 +741,7 @@ contains
     use conv_water,         only: conv_water_init
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
-    use rayleigh_friction_cam, only: rayleigh_friction_initO
+    use rayleigh_friction_cam, only: rayleigh_friction_cam_init
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
     use rad_constituents,   only: rad_cnst_init
@@ -874,7 +874,7 @@ contains
 
     call gw_init()
 
-    call rayleigh_friction_initO()
+    call rayleigh_friction_cam_init()
 
     call vertical_diffusion_init(pbuf2d)
 
@@ -1355,7 +1355,7 @@ contains
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
-    use rayleigh_friction_cam, only: rayleigh_friction_tendO
+    use rayleigh_friction_cam, only: rayleigh_friction_cam_tend
     use constituents,       only: cnst_get_ind
     use physics_types,      only: physics_state, physics_tend, physics_ptend, physics_update,    &
                                   physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
@@ -1649,7 +1649,7 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
             fh2o, surfric, obklen, flx_heat)
     end if
-    call rayleigh_friction_tendO( ztodt, state, ptend)
+    call rayleigh_friction_cam_tend( ztodt, state, ptend)
     if ( (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") .and.      &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
