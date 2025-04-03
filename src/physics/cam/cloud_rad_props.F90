@@ -78,16 +78,25 @@ real(r8), parameter :: tiny = 1.e-80_r8
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init()
-
+subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
+                  abs_lw_liq_out, abs_lw_ice_out, g_mu_out, g_lambda_out, &
+                  g_d_eff_out, tiny_out)
    use netcdf
    use spmd_utils,     only: masterproc
    use ioFileMod,      only: getfil
    use error_messages, only: handle_ncerr
-   use rrtmgp_lw_cloud_optics, only: rrtmgp_lw_cloud_optics_init
 #if ( defined SPMD )
    use mpishorthand
 #endif
+   integer, intent(out) :: nmu_out
+   integer, intent(out) :: nlambda_out
+   integer, intent(out) :: n_g_d_out
+   real(r8), allocatable, intent(out) :: abs_lw_liq_out(:,:,:)
+   real(r8), allocatable, intent(out) :: abs_lw_ice_out(:,:)
+   real(r8), allocatable, intent(out) :: g_mu_out(:)
+   real(r8), allocatable, intent(out) :: g_lambda_out(:,:)
+   real(r8), allocatable, intent(out) :: g_d_eff_out(:)
+   real(r8),              intent(out) :: tiny_out
 
    character(len=256) :: liquidfile
    character(len=256) :: icefile
@@ -281,13 +290,36 @@ subroutine cloud_rad_props_init()
    call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
 #endif
 
-   ! Initialize ccpp modules
-   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
-                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
-                  g_d_eff, tiny, errmsg, err)
-   if (err /= 0) then
-      call endrun(sub//': rrtmgp_lw_cloud_optics_init failed: '//errmsg)
+   ! Set output variables
+   tiny_out = tiny
+   nmu_out = nmu
+   nlambda_out = nlambda
+   n_g_d_out = n_g_d
+   allocate(abs_lw_liq_out(nmu,nlambda,nlwbands), stat=ierr, errmsg=errmsg)
+   if (ierr /= 0) then
+      call endrun(sub//': Failed to allocate abs_lw_liq_out - message: '//errmsg)
    end if
+   abs_lw_liq_out = abs_lw_liq
+   allocate(abs_lw_ice_out(n_g_d,nlwbands), stat=ierr, errmsg=errmsg)
+   if (ierr /= 0) then
+      call endrun(sub//': Failed to allocate abs_lw_ice_out - message: '//errmsg)
+   end if
+   abs_lw_ice_out = abs_lw_ice
+   allocate(g_mu_out(nmu), stat=ierr, errmsg=errmsg)
+   if (ierr /= 0) then
+      call endrun(sub//': Failed to allocate g_mu_out - message: '//errmsg)
+   end if
+   g_mu_out = g_mu
+   allocate(g_lambda_out(nmu,nlambda), stat=ierr, errmsg=errmsg)
+   if (ierr /= 0) then
+      call endrun(sub//': Failed to allocate g_lambda_out - message: '//errmsg)
+   end if
+   g_lambda_out = g_lambda
+   allocate(g_d_eff_out(n_g_d), stat=ierr, errmsg=errmsg)
+   if (ierr /= 0) then
+      call endrun(sub//': Failed to allocate g_d_eff_out - message: '//errmsg)
+   end if
+   g_d_eff_out = g_d_eff
    return
 
 end subroutine cloud_rad_props_init

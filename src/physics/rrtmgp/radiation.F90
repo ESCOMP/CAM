@@ -411,9 +411,10 @@ end function radiation_do
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
-   use rrtmgp_pre,        only: rrtmgp_pre_init
-   use rrtmgp_inputs,     only: rrtmgp_inputs_init
-   use rrtmgp_inputs_cam, only: rrtmgp_inputs_cam_init
+   use rrtmgp_pre,             only: rrtmgp_pre_init
+   use rrtmgp_inputs,          only: rrtmgp_inputs_init
+   use rrtmgp_inputs_cam,      only: rrtmgp_inputs_cam_init
+   use rrtmgp_lw_cloud_optics, only: rrtmgp_lw_cloud_optics_init
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -440,6 +441,15 @@ subroutine radiation_init(pbuf2d)
    integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr, istat, errflg
 
+   ! Cloud optics variables
+   integer :: nmu, n_g_d, nlambda
+   real(kind=r8), allocatable :: abs_lw_ice(:,:)
+   real(kind=r8), allocatable :: abs_lw_liq(:,:,:)
+   real(kind=r8), allocatable :: g_lambda(:,:)
+   real(kind=r8), allocatable :: g_mu(:)
+   real(kind=r8), allocatable :: g_d_eff(:)
+   real(kind=r8) :: tiny
+
    integer :: dtime
 
    character(len=*), parameter :: sub = 'radiation_init'
@@ -448,7 +458,7 @@ subroutine radiation_init(pbuf2d)
    ! Initialize available_gases object
    call rrtmgp_pre_init(nradgas, gaslist, available_gases, gaslist_lc, errmsg, errflg)
    if (errflg /= 0) then
-      call endrun(sub//': ERROR -'//errmsg)
+      call endrun(sub//': '//errmsg)
    end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
@@ -458,15 +468,19 @@ subroutine radiation_init(pbuf2d)
    ! Set up inputs to RRTMGP
    call rrtmgp_inputs_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
                    pref_edge, nlay, pver, pverp, kdist_sw, kdist_lw, qrl_unused, is_first_step(), use_rad_dt_cosz, &
-                   get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(),       &
+                   get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(), masterproc, &
                    nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,          &
                    idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,          &
                    nextsw_cday, get_curr_calday(), band2gpt_sw, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
-
+   ! Set up CAM-side RRTMGP inputs - will go away once SW radiation is CCPPized
    call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
            idx_lw_cloudsim)
 
+   ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
 
    call rad_solar_var_init(nswbands)
@@ -474,7 +488,15 @@ subroutine radiation_init(pbuf2d)
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
 
-   call cloud_rad_props_init()
+   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
+                             g_mu, g_lambda, g_d_eff, tiny)
+
+   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
+                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
+                  g_d_eff, tiny, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
   
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=ierr)
@@ -484,29 +506,10 @@ subroutine radiation_init(pbuf2d)
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
    end if
 
-   ! Set the radiation timestep for cosz calculations if requested using
-   ! the adjusted iradsw value from radiation
-   !if (use_rad_dt_cosz)  then
-   !   dtime  = get_step_size()
-   !   dt_avg = iradsw*dtime
-   !end if
-
-   ! Surface components to get radiation computed today
-   !if (.not. is_first_restart_step()) then
-   !   nextsw_cday = get_curr_calday()
-   !end if
-
    call phys_getopts(history_amwg_out   = history_amwg,    &
                      history_vdiag_out  = history_vdiag,   &
                      history_budget_out = history_budget,  &
                      history_budget_histfile_num_out = history_budget_histfile_num)
-
-   ! "irad_always" is number of time steps to execute radiation continuously from
-   ! start of initial OR restart run
-   !nstep = get_nstep()
-   !if (irad_always > 0) then
-   !   irad_always = irad_always + nstep
-   !end if
 
    if (docosp) call cospsimulator_intr_init()
 
@@ -804,35 +807,36 @@ subroutine radiation_tend( &
    !-----------------------------------------------------------------------
 
    ! Location/Orbital Parameters for cosine zenith angle
-   use phys_grid,          only: get_rlat_all_p, get_rlon_all_p
-   use cam_control_mod,    only: eccen, mvelpp, lambm0, obliqr
-   use shr_orb_mod,        only: shr_orb_decl, shr_orb_cosz
+   use phys_grid,                         only: get_rlat_all_p, get_rlon_all_p
+   use cam_control_mod,                   only: eccen, mvelpp, lambm0, obliqr
+   use shr_orb_mod,                       only: shr_orb_decl, shr_orb_cosz
 
-   use rrtmgp_inputs,      only: rrtmgp_inputs_run
-   use rrtmgp_pre,         only: rrtmgp_pre_run
-   use rrtmgp_lw_cloud_optics,      only: rrtmgp_lw_cloud_optics_run
-   use rrtmgp_lw_mcica_subcol_gen,  only: rrtmgp_lw_mcica_subcol_gen_run
-   use rrtmgp_lw_gas_optics_pre,    only: rrtmgp_lw_gas_optics_pre_run
-   use rrtmgp_lw_gas_optics,        only: rrtmgp_lw_gas_optics_run
-   use rrtmgp_lw_main,              only: rrtmgp_lw_main_run
+   ! CCPPized schemes
+   use rrtmgp_inputs,                     only: rrtmgp_inputs_run
+   use rrtmgp_pre,                        only: rrtmgp_pre_run
+   use rrtmgp_lw_cloud_optics,            only: rrtmgp_lw_cloud_optics_run
+   use rrtmgp_lw_mcica_subcol_gen,        only: rrtmgp_lw_mcica_subcol_gen_run
+   use rrtmgp_lw_gas_optics_pre,          only: rrtmgp_lw_gas_optics_pre_run
+   use rrtmgp_lw_gas_optics,              only: rrtmgp_lw_gas_optics_run
+   use rrtmgp_lw_main,                    only: rrtmgp_lw_main_run
    use rrtmgp_dry_static_energy_tendency, only: rrtmgp_dry_static_energy_tendency_run
-   use rrtmgp_post,                 only: rrtmgp_post_run
+   use rrtmgp_post,                       only: rrtmgp_post_run
 
-   use rrtmgp_inputs_cam,  only: rrtmgp_get_gas_mmrs, &
-                                 rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
-                                 rrtmgp_set_aer_sw
+   use rrtmgp_inputs_cam,                 only: rrtmgp_get_gas_mmrs, rrtmgp_set_aer_lw, &
+                                                rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
+                                                rrtmgp_set_aer_sw
 
    ! RRTMGP drivers for flux calculations.
-   use mo_rte_lw,          only: rte_lw
-   use mo_rte_sw,          only: rte_sw
+   use mo_rte_lw,                         only: rte_lw
+   use mo_rte_sw,                         only: rte_sw
 
-   use radheat,            only: radheat_tend
+   use radheat,                           only: radheat_tend
 
-   use radiation_data,     only: rad_data_write
+   use radiation_data,                    only: rad_data_write
 
-   use interpolate_data,   only: vertinterp
-   use tropopause,         only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
-   use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps
+   use interpolate_data,                  only: vertinterp
+   use tropopause,                        only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use cospsimulator_intr,                only: docosp, cospsimulator_intr_run, cosp_nradsteps
 
 
    ! Arguments
@@ -869,6 +873,9 @@ subroutine radiation_tend( &
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"
    real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"
    real(r8)          :: cldfprime(pcols,pver)   ! combined cloud fraction
+   real(r8)          :: cld_lw_abs(nlwbands,state%ncol,pver)  ! Cloud absorption optics depth
+   real(r8)          :: snow_lw_abs(nlwbands,state%ncol,pver) ! Snow absorption optics depth
+   real(r8)          :: grau_lw_abs(nlwbands,state%ncol,pver) ! Graupel absorption optics depth
    real(r8), pointer :: qrs(:,:) ! shortwave radiative heating rate 
    real(r8), pointer :: qrl(:,:) ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
@@ -1017,6 +1024,8 @@ subroutine radiation_tend( &
       end do
    end if
 
+   ! Determine if we're running radiation (sw and/or lw) this timestep,
+   !  find daylight and nighttime indices, and initialize fluxes
    call rrtmgp_pre_run(coszrs, get_nstep(), get_step_size(), iradsw, iradlw, irad_always, &
            ncol, nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands,   &
            nswbands, spectralflux, fsw, fswc, flw, flwc, errmsg, errflg)
@@ -1085,8 +1094,8 @@ subroutine radiation_tend( &
          call handle_allocate_error(istat, sub, 'gas_mmrs, message: '//errmsg)
       end if
 
-      ! Prepares state variables, daylit columns, albedos for RRTMGP
-      ! Also calculates modified cloud fraction
+      ! Prepare state variables, daylit columns, albedos for RRTMGP
+      ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
                   state%pmid, state%pint, state%t, &
                   nday, idxday, cldfprime, coszrs, kdist_sw, t_sfc,       &
@@ -1236,20 +1245,21 @@ subroutine radiation_tend( &
          do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau))
          do_snow = associated(cldfsnow)
 
-         ! Cloud optics for COSP
-         cld_lw_abs_cloudsim = cld_lw_abs(idx_lw_cloudsim,:,:)
-         snow_lw_abs_cloudsim = snow_lw_abs(idx_lw_cloudsim,:,:)
-         grau_lw_abs_cloudsim = grau_lw_abs(idx_lw_cloudsim,:,:)
-
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld, cldfsnow, cldfgrau, &
              cldfprime, graupel_in_rad, kdist_lw, cloud_lw, lambda, mu, iclwp, iciwp,        &
-             dei, icswp, des, icgrauwp, degrau, nlwbands, do_snow,                           &
-             do_graupel, pver, ktopcam, tauc, cldf, errmsg, errflg)
+             dei, icswp, des, icgrauwp, degrau, nlwbands, do_snow, do_graupel, pver,         &
+             ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
 
+         ! Cloud optics for COSP
+         cld_lw_abs_cloudsim(:ncol,:) = cld_lw_abs(idx_lw_cloudsim,:,:)
+         snow_lw_abs_cloudsim(:ncol,:) = snow_lw_abs(idx_lw_cloudsim,:,:)
+         grau_lw_abs_cloudsim(:ncol,:) = grau_lw_abs(idx_lw_cloudsim,:,:)
+
+         ! Create McICA stochastic arrays for lw cloud optical properties
          call rrtmgp_lw_mcica_subcol_gen_run(dolw, ktoprad, &
                  kdist_lw, nlwbands, nlwgpts, ncol, pver, nlaycam, nlwgpts, &
                  state%pmid, cldf, tauc, cloud_lw, errmsg, errflg )
@@ -1404,6 +1414,7 @@ subroutine radiation_tend( &
       deallocate(rd)
    end if
 
+   ! Calculate radiative heating (Q*dp), set netsw flux, and do object cleanup
    call rrtmgp_post_run(ncol, qrs, qrl, fsns, state%pdel, atm_optics_sw, cloud_sw, aer_sw, &
                   fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, cam_out%netsw, errmsg, errflg)
    if (errflg /= 0) then
@@ -2261,7 +2272,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
                   totplnk, planck_frac, rayl_lower, rayl_upper, optimal_angle_fit,     &
                   errmsg, ierr)
       if (ierr /= 0) then
-         call endrun(sub//': ERROR message: '//errmsg)
+         call endrun(sub//': '//errmsg)
       end if
    else if (allocated(solar_src_quiet)) then
       error_msg = kdist%gas_props%load( &
