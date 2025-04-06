@@ -813,7 +813,7 @@ subroutine radiation_tend( &
 
    ! CCPPized schemes
    use rrtmgp_inputs,                     only: rrtmgp_inputs_run
-   use rrtmgp_pre,                        only: rrtmgp_pre_run
+   use rrtmgp_pre,                        only: rrtmgp_pre_run, rrtmgp_pre_timestep_init
    use rrtmgp_lw_cloud_optics,            only: rrtmgp_lw_cloud_optics_run
    use rrtmgp_lw_mcica_subcol_gen,        only: rrtmgp_lw_mcica_subcol_gen_run
    use rrtmgp_lw_gas_optics_pre,          only: rrtmgp_lw_gas_optics_pre_run
@@ -868,6 +868,9 @@ subroutine radiation_tend( &
    real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 
    integer :: itim_old
+   integer :: nextsw_nstep
+   integer :: offset
+   real(r8) :: next_cday
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"
@@ -1024,11 +1027,21 @@ subroutine radiation_tend( &
       end do
    end if
 
+   ! Get next SW radiation timestep
+   call rrtmgp_pre_timestep_init(get_nstep(), get_step_size(), iradsw, irad_always, offset, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
+
+   ! Calculate next calendar day and next radiation calendar day
+   nextsw_cday = get_curr_calday(offset=offset)
+   next_cday = get_curr_calday(offset=int(get_step_size()))
+
    ! Determine if we're running radiation (sw and/or lw) this timestep,
    !  find daylight and nighttime indices, and initialize fluxes
    call rrtmgp_pre_run(coszrs, get_nstep(), get_step_size(), iradsw, iradlw, irad_always, &
-           ncol, nextsw_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands,   &
-           nswbands, spectralflux, fsw, fswc, flw, flwc, errmsg, errflg)
+           ncol, next_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands,   &
+           nswbands, spectralflux, nextsw_cday, fsw, fswc, flw, flwc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
