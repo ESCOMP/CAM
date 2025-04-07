@@ -768,8 +768,8 @@
 <!-- gravity wave settings -->
 
 <effgw_beres_dp                                               >0.7D0</effgw_beres_dp>
-<effgw_beres_dp model_top="lt"                                >0.30D0</effgw_beres_dp>
-<effgw_beres_dp model_top="mt"                                >0.70D0</effgw_beres_dp>
+<effgw_beres_dp model_top="lt"                                >0.15D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"                                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp model_top="ht" phys="cam7"                    >0.25D0</effgw_beres_dp>
 <effgw_beres_dp model_top="xt" phys="cam7"                    >0.25D0</effgw_beres_dp>
 <effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
@@ -3573,9 +3573,9 @@
 
 <!-- HEMCO: Harmonized Emissions Component -->
 <use_hemco>.false.</use_hemco>
-<hemco_data_root>atm/cam/geoschem/emis/ExtData/HEMCO</hemco_data_root>
-<hemco_config_file>atm/cam/geoschem/emis/HEMCO_Config.CC.CEDS_AEIC19.NEx.c230615.rc</hemco_config_file>
-<hemco_diagn_file>atm/cam/geoschem/emis/HEMCO_Diagn.3_5_0.c230307.rc</hemco_diagn_file>
+<hemco_data_root>atm/cam/geoschem/ExtData/HEMCO</hemco_data_root>
+<hemco_config_file>atm/cam/hemco/HEMCO_Config.CC.CEDS_AEIC19.NEx.c241122.rc</hemco_config_file>
+<hemco_diagn_file>atm/cam/hemco/HEMCO_Diagn.3_5_0.c230307.rc</hemco_diagn_file>
 <hemco_emission_year>-1</hemco_emission_year>
 
 <!-- Default emissions grid resolution at 2x2.5 degree: coarser may result in masking artifacts -->
