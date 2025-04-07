@@ -1099,7 +1099,12 @@ contains
        end if
 
 !-----------------------------------------------------------------
-!       ... N + O2 -> NO + O  Abel Fernandez, A. Goumri, and Arthur Fontijn; 1998
+!       ... N + O2 -> NO + O
+! Rate coefficients calculated by J. Orlando, D. Kinnison, and J. Zhang (2024)
+! from data published in:
+! "Kinetics of the Reactions of N(4S) Atoms with O2 and CO2 over Wide Temperatures Ranges"
+! Abel Fernandez, A. Goumri, and Arthur Fontijn, 1998
+! https://doi.org/10.1021/jp972365k
 !-----------------------------------------------------------------
        if( usr_N_O2_ndx > 0 ) then
           call comp_exp( exp_fac, -2557._r8*tinv, ncol )
@@ -1107,7 +1112,10 @@ contains
        end if
        
 !-----------------------------------------------------------------
-!       ... N2D + O2 -> NO + O  Duff, J.W., H. Dothe, and R. D. Sharma, 2003
+!       ... N2D + O2 -> NO + O
+! "On the rate coefficient of the N(2D)+O2->NO+O reaction in the terrestrial thermosphere"
+! Duff, J.W., H. Dothe, and R. D. Sharma, 2003
+! https://doi.org/10.1029/2002GL016720
 !-----------------------------------------------------------------
        if( usr_N2D_O2_ndx > 0 ) then
           rxt(:,k,usr_N2D_O2_ndx) = 6.2e-12_r8 * temp(:ncol,k)/300.0_r8
@@ -1115,6 +1123,9 @@ contains
 
 !-----------------------------------------------------------------
 !       ... N2D + e -> N + e  Roble, 1995
+! "Energetics of the Mesosphere and Thermosphere"
+! R. Roble, 1995
+! https://doi.org/10.1029/GM087p0001
 !-----------------------------------------------------------------
        if( usr_N2D_e_ndx > 0 ) then
           rxt(:,k,usr_N2D_e_ndx) = 3.6e-10_r8 * sqrt(tempe(:ncol,k)/300.0_r8)
