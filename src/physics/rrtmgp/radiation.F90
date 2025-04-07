@@ -1289,7 +1289,7 @@ subroutine radiation_tend( &
                call rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw
-               call rrtmgp_lw_gas_optics_pre_run(icall, gas_mmrs, state%pmid, state%pint, nlay, ncol, gaslist, &
+               call rrtmgp_lw_gas_optics_pre_run(gas_mmrs, state%pmid, state%pint, nlay, ncol, gaslist, &
                   idxday, pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
