@@ -1361,6 +1361,7 @@ contains
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction_cam, only: rayleigh_friction_cam_tend
+    use rayleigh_friction,  only: rayleigh_friction_run
     use constituents,       only: cnst_get_ind
     use physics_types,      only: physics_state, physics_tend, physics_ptend, physics_update,    &
                                   physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
@@ -1455,6 +1456,10 @@ contains
 
     ! For aerosol budget diagnostics
     type(carma_diags_t), pointer :: carma_diags_obj
+
+    ! For rayleigh friction CCPP calls
+    character(len=512) errmsg
+    integer errflg
 
     !-----------------------------------------------------------------------
     carma_diags_obj => carma_diags_t()
@@ -1680,7 +1685,20 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
             fh2o, surfric, obklen, flx_heat)
     end if
-    call rayleigh_friction_cam_tend( ztodt, state, ptend)
+
+    call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
+
+    ! Initialize ptend variables to zero
+    !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+    ptend%u(:,:) = 0._r8
+    ptend%v(:,:) = 0._r8
+    ptend%s(:,:) = 0._r8
+    !REMOVECAM_END
+
+    call rayleigh_friction_run(pver, ztodt, state%u(:ncol,:), state%v(:ncol,:), ptend%u(:ncol,:),&
+         ptend%v(:ncol,:), ptend%s(:ncol,:), errmsg, errflg)
+    if (errflg /= 0) call endrun(errmsg)
+
     if ( (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") .and.      &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)

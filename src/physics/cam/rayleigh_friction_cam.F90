@@ -126,12 +126,12 @@ subroutine rayleigh_friction_cam_tend(                                     &
    integer ncol                                ! number of atmospheric columns
    real(r8) rztodt                             ! 1./ztodt
 
-   call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
+   !call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
 
-   ncol  = state%ncol
+   !ncol  = state%ncol
 
-   call rayleigh_friction_run(ncol, pver, ztodt, state%u, state%v, ptend%u, ptend%v, ptend%s, errmsg, errflg)
-   if (errflg /= 0) call endrun(errmsg)
+   !call rayleigh_friction_run(ncol, pver, ztodt, state%u, state%v, ptend%u, ptend%v, ptend%s, errmsg, errflg)
+   !if (errflg /= 0) call endrun(errmsg)
 
 end subroutine rayleigh_friction_cam_tend
 
