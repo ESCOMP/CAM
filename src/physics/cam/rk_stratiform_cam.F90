@@ -475,7 +475,7 @@ subroutine rk_stratiform_cam_tend( &
 
    use prognostic_cloud_water, only: icritc !REMOVECAM no longer need to be public after CAM is retired
    use physconst,        only: gravit, rhoh2o, epsilo, latvap, latice, cpair, tmelt, cappa
-   use physconst,        only: rair, rh2o, pi
+   use physconst,        only: rair, rh2o, pi, pref, lapse_rate
    use ref_pres,         only: trop_cloud_top_lev
 
    use cloud_optical_properties,    only: cldefr
@@ -893,6 +893,8 @@ subroutine rk_stratiform_cam_tend( &
       gravit = gravit, &
       rair = rair, &
       tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
       ps = state1%pint(:,pverp), &
@@ -935,6 +937,8 @@ subroutine rk_stratiform_cam_tend( &
       gravit = gravit, &
       rair = rair, &
       tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
       ps = state1%pint(:,pverp), &
@@ -1285,6 +1289,8 @@ subroutine rk_stratiform_cam_tend( &
       gravit = gravit, &
       rair = rair, &
       tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
       ps = state1%pint(:,pverp), &

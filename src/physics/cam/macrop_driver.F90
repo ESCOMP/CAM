@@ -409,7 +409,7 @@ end subroutine macrop_driver_readnl
   use cam_history,      only: outfld
   use constituents,     only: cnst_get_ind, pcnst
   use cldwat2m_macro,   only: mmacro_pcond
-  use physconst,        only: cpair, tmelt, gravit, cappa, rair
+  use physconst,        only: cpair, tmelt, gravit, cappa, rair, pref, lapse_rate
   use time_manager,     only: get_nstep
 
   use ref_pres,         only: top_lev => trop_cloud_top_lev
@@ -908,6 +908,8 @@ end subroutine macrop_driver_readnl
       gravit = gravit, &
       rair = rair, &
       tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
       top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
       pmid = state_loc%pmid(:ncol,:), &
       ps = state_loc%pint(:,pverp), &
