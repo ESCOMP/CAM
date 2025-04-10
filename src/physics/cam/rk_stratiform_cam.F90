@@ -897,7 +897,7 @@ subroutine rk_stratiform_cam_tend( &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
-      ps = state1%pint(:,pverp), &
+      ps = state1%pint(:ncol,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
       q = state1%q(:ncol,:,ixq), &
@@ -941,7 +941,7 @@ subroutine rk_stratiform_cam_tend( &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
-      ps = state1%pint(:,pverp), &
+      ps = state1%pint(:ncol,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
       q_wv = state1%q(:ncol,:,ixq), &
@@ -1293,7 +1293,7 @@ subroutine rk_stratiform_cam_tend( &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
       pmid = state1%pmid(:ncol,:), &
-      ps = state1%pint(:,pverp), &
+      ps = state1%pint(:ncol,pverp), &
       temp = state1%t(:ncol,:), &
       sst = sst(:ncol), &
       q = state1%q(:ncol,:,ixq), &

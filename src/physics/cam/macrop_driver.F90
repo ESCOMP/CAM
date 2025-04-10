@@ -912,7 +912,7 @@ end subroutine macrop_driver_readnl
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
       pmid = state_loc%pmid(:ncol,:), &
-      ps = state_loc%pint(:,pverp), &
+      ps = state_loc%pint(:ncol,pverp), &
       temp = state_loc%t(:ncol,:), &
       sst = sst(:ncol), &
       q = state_loc%q(:ncol,:,1), & ! note: assumes wv is at index 1.
