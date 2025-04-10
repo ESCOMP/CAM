@@ -685,8 +685,8 @@ $waccm_phys = $cfg_ref->get('waccm_phys');
 
 if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
-# WACCM includes 3 age of air tracers by default
-if ($chem_pkg =~ /waccm_ma/ or $chem_pkg =~ /waccm_tsmlt/ or $chem_pkg =~ /waccm_t4ma/) {
+# WACCM and CAM-Chem includes 3 age of air tracers by default
+if ($chem_pkg =~ /waccm_/ or $chem_pkg =~ /trop_strat_/) {
     $cfg_ref->set('age_of_air_trcs', 1);
 }
 
@@ -2172,7 +2172,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/zhang_mcfarlane\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
-    print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/check_energy\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
