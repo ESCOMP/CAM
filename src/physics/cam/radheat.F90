@@ -118,6 +118,11 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
 
    call physics_ptend_init(ptend,state%psetcols, 'radheat', ls=.true.)
 
+   ! REMOVECAM no longer need once CAM is retired and pcols doesn't exist
+   ptend%s(:,:) = 0._r8
+   net_flx(:) = 0._r8
+   ! END_REMOVECAM
+
 #if ( defined OFFLINE_DYN )
    ptend%s(:ncol,:) = 0._r8
    do k = 1,pver
@@ -125,11 +130,11 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
        ptend%s(:ncol,k) = (qrs(:ncol,k) + qrl(:ncol,k))
      endif
    enddo
-   call calculate_net_heating_run(ncol, ptend%s, qrl, qrs, fsns, fsnt, flns, flnt, &
-                .true., net_flx, errmsg, errflg)
+   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns, fsnt, flns, &
+                flnt, .true., net_flx(:ncol), errmsg, errflg)
 #else
-   call calculate_net_heating_run(ncol, ptend%s, qrl, qrs, fsns, fsnt, flns, flnt, &
-                .false., net_flx, errmsg, errflg)
+   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns, fsnt, flns, &
+                flnt, .false., net_flx(:ncol), errmsg, errflg)
 #endif
 
 end subroutine radheat_tend
