@@ -20,7 +20,7 @@ use physconst,           only: cappa, cpair, gravit, stebol
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_gas, rad_cnst_out
+use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_out
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist, radconstants_init
@@ -875,6 +875,8 @@ subroutine radiation_tend( &
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"
    real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"
+   real(r8), pointer :: cldfsnow_in(:,:)  ! Cloud fraction of just "snow clouds", subset
+   real(r8), pointer :: cldfgrau_in(:,:)  ! Cloud fraction of just "graupel clouds", subset
    real(r8)          :: cldfprime(pcols,pver)   ! combined cloud fraction
    real(r8)          :: cld_lw_abs(nlwbands,state%ncol,pver)  ! Cloud absorption optics depth
    real(r8)          :: snow_lw_abs(nlwbands,state%ncol,pver) ! Snow absorption optics depth
@@ -1112,6 +1114,17 @@ subroutine radiation_tend( &
          call handle_allocate_error(istat, sub, 'gas_mmrs, message: '//errmsg)
       end if
 
+      if (associated(cldfgrau)) then
+         cldfgrau_in => cldfgrau(:ncol,:)
+      else
+         cldfgrau_in => null()
+      end if
+
+      if (associated(cldfsnow)) then
+         cldfsnow_in => cldfsnow(:ncol,:)
+      else
+         cldfsnow_in => null()
+      end if
       ! Prepare state variables, daylit columns, albedos for RRTMGP
       ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
@@ -1121,7 +1134,7 @@ subroutine radiation_tend( &
                   pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup(:ncol), stebol,  &
                   ncol, ktopcam, ktoprad, nswbands, cam_in%asdir(:ncol), cam_in%asdif(:ncol), &
                   sw_low_bounds, sw_high_bounds, cam_in%aldir(:ncol), cam_in%aldif(:ncol), nlay, &
-                  pverp, pver, cld(:ncol,:), cldfsnow(:ncol,:), cldfgrau(:ncol,:), &
+                  pverp, pver, cld(:ncol,:), cldfsnow_in, cldfgrau_in, &
                   graupel_in_rad, gasnamelength, gaslist, gas_concs_lw, aer_lw, atm_optics_lw, &
                   kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
                   errmsg, errflg)
@@ -1264,8 +1277,8 @@ subroutine radiation_tend( &
          do_snow = associated(cldfsnow)
 
          ! Set cloud optical properties in cloud_lw object.
-         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow(:ncol,:),  &
-             cldfgrau(:ncol,:), cldfprime(:ncol,:), graupel_in_rad, kdist_lw, cloud_lw, lambda(:ncol,:), &
+         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,  &
+             cldfgrau_in, cldfprime(:ncol,:), graupel_in_rad, kdist_lw, cloud_lw, lambda(:ncol,:), &
              mu(:ncol,:), iclwp(:ncol,:), iciwp(:ncol,:), dei(:ncol,:), icswp(:ncol,:), des(:ncol,:), &
              icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver,         &
              ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
