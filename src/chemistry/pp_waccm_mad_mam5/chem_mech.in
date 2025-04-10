@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: WACCM_MAD_MAM4_JPL19
-* Tag database identifier : MZ322_MAD_MAM4_20221220
-* Tag created by : lke
+* User-given Tag Description: MAD_MAM5
+* Tag database identifier : MZ373_MAD_MAM4_20250304
+* Tag created by : jz
 * Tag created from branch : MAD_MAM4
-* Tag created on : 2022-12-20 14:37:15.595223-07
+* Tag created on : 2025-03-04 10:51:57.706966-07
 * Comments for this tag follow:
-*     lke : 2022-12-20 : WACCM Middle Atmosphere and D-region mechanism, updated to JPL19
+*     jz : 2025-03-04 : odd-nitrogen reaction update
 
       SPECIES
 
@@ -824,14 +824,13 @@
 *********************************
 *** odd-nitrogen
 *********************************
+[agn2d]                N2D  -> N                                                ; 1.06e-05 
 [HO2NO2_OH]            HO2NO2 + OH  -> H2O + NO2 + O2                           ; 4.5e-13, 610 
-[N2D_O,cph=229.61]     N2D + O  -> N + O                                        ; 7e-13 
-[N2D_O2,cph=177.51]    N2D + O2  -> NO + O1D                                    ; 5e-12 
+[N2D_NO,cph=543.13]    N2D + NO  -> N2 + O                                      ; 7e-11 
 [N_NO,cph=313.75]      N + NO  -> N2 + O                                        ; 2.1e-11, 100 
 [N_NO2a]               N + NO2  -> N2O + O                                      ; 2.9e-12, 220 
 [N_NO2b]               N + NO2  -> 2*NO                                         ; 1.45e-12, 220 
 [N_NO2c]               N + NO2  -> N2 + O2                                      ; 1.45e-12, 220 
-[N_O2,cph=133.75]      N + O2  -> NO + O                                        ; 3.3e-12, -3150 
 [NO2_O,cph=193.02]     NO2 + O  -> NO + O2                                      ; 5.1e-12, 210 
 [NO2_O3]               NO2 + O3  -> NO3 + O2                                    ; 1.2e-13, -2450 
 [NO2_O_M]              NO2 + O + M  -> NO3 + M                                  ; 2.5e-31, 1.8, 2.2e-11, 0.7, 0.6 
@@ -850,7 +849,10 @@
 [tag_NO2_OH]           NO2 + OH + M  -> HNO3 + M                                ; 1.8e-30, 3, 2.8e-11, 0, 0.6 
 [usr_HNO3_OH]          HNO3 + OH  -> NO3 + H2O                                   
 [usr_HO2NO2_M]         HO2NO2 + M  -> HO2 + NO2 + M                              
+[usr_N2D_e,cph=229.61] N2D + e  -> N + e                                         
+[usr_N2D_O2,cph=177.51] N2D + O2  -> NO + O1D                                    
 [usr_N2O5_M]           N2O5 + M  -> NO2 + NO3 + M                                
+[usr_N_O2,cph=133.75]  N + O2  -> NO + O                                         
 *********************************
 *** odd-chlorine
 *********************************
@@ -1038,31 +1040,29 @@
       End Reactions
 
       Ext Forcing
- so4_a2 <- dataset 
- DMS <- dataset 
- NO2 <- dataset 
- SO2 <- dataset 
- bc_a1 <- dataset 
+ CO <- dataset 
  bc_a4 <- dataset 
+ SO2 <- dataset 
+ NO2 <- dataset 
+ bc_a1 <- dataset 
+ NO <- dataset 
+ pom_a1 <- dataset 
+ DMS <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
- num_a4 <- dataset 
- num_a5 <- dataset
- pom_a1 <- dataset 
- pom_a4 <- dataset 
  so4_a1 <- dataset 
- so4_a5 <- dataset
- CO <- dataset 
- NO <- dataset 
- N 
- N2D 
+ so4_a2 <- dataset 
+ num_a4 <- dataset 
+ pom_a4 <- dataset 
+ O2p 
  N2p 
+ Np 
+ N2D 
+ e 
+ N 
+ O 
  OH 
  Op 
- e 
- Np 
- O 
- O2p 
       End Ext Forcing
 
       End Chemistry

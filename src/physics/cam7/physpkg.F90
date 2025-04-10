@@ -2408,7 +2408,15 @@ contains
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
+        if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
+           call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+                      fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+        end if
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
+        if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
+          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+               fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+        end if
         call tot_energy_phys(state, 'phAM')
         call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
