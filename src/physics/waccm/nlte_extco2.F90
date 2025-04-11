@@ -48,9 +48,10 @@ contains
     n2_mw_inv  = 1._r8/n2_mw
 
     lev0 = 1
-    do while (pref_mid(lev0) < max_pressure_lw)
-       lev0 = lev0+1
-    end do
+!    do while (pref_mid(lev0) < max_pressure_lw)
+!       lev0 = lev0+1
+!    end do
+    lev0 = pver
 
     call addfld ('QCO2ext',   (/ 'lev' /), 'A','K/s','Extended CO2 cooling')
     call addfld ('TCO2ext',   (/ 'lev' /), 'A','K','Temp used in Extended CO2 cooling')
