@@ -481,7 +481,7 @@ subroutine rk_stratiform_cam_tend( &
    use cloud_optical_properties,    only: cldefr
    use phys_control,     only: cam_physpkg_is
    use tropopause,       only: tropopause_find_cam
-   use phys_grid,        only: get_lat_all_p
+   use phys_grid,        only: get_rlat_all_p
    use constituents,     only: cnst_get_ind
 
    ! Arguments
@@ -607,7 +607,9 @@ subroutine rk_stratiform_cam_tend( &
 
    logical  :: lq(pcnst)
    integer  :: troplev(pcols)
+   real(r8) :: rlat(pcols)
    real(r8) :: dlat(pcols)
+   real(r8), parameter :: rad2deg = 180._r8/pi
 
    integer  :: top_lev
    integer  :: ixq
@@ -674,7 +676,10 @@ subroutine rk_stratiform_cam_tend( &
    endif
 
    ! dlat required for CCPPized scheme
-   call get_lat_all_p(lchnk,ncol,dlat)
+   ! have to use get_rlat_all_p here because dlat is expected to be r8
+   ! and phys_grid does not implement dlat in r8, only int
+   call get_rlat_all_p(lchnk,ncol,rlat)
+   dlat(:ncol) = rlat(:ncol)*rad2deg
 
    ! ------------- !
    ! Sedimentation !
