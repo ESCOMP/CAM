@@ -48,7 +48,7 @@ contains
     n2_mw_inv  = 1._r8/n2_mw
 
     lev0 = 1
-    do while (pref_mid(lev0) < 1.e4_r8) ! max_pressure_lw)
+    do while (pref_mid(lev0) < max_pressure_lw)
        lev0 = lev0+1
     end do
 
@@ -113,8 +113,7 @@ contains
        n2vmr(:)  = mbarv(icol,:,lchnk) * n2mmr(icol,:) * n2_mw_inv
        o2vmr(:)  = mbarv(icol,:,lchnk) * o2mmr(icol,:) * o2_mw_inv
        hPa(:)    = pres(icol,:) * 1.e-2_r8 ! Pa --> hPa
-       hPa(pver) = 1.e3_r8
-       surf_temp = -300._r8 ! temp(icol,pver)
+       surf_temp = temp(icol,pver)
 
        tempout(icol,:) = temp(icol,:)
        presout(icol,:) = hPa(:)
