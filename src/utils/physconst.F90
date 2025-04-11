@@ -56,7 +56,7 @@ module physconst
    real(r8), public, parameter :: pstd        = 6.0E1_r8             ! Standard pressure (Pascals)
 #else
    real(r8), public, parameter :: pstd        = shr_const_pstd       ! Standard pressure (Pascals)
-   real(r8), public, protected :: pref        = 1.0e5_kind_phys      ! Reference surface pressure (Pascals)
+   real(r8), public, protected :: pref        = 1.0e5_r8             ! Reference surface pressure (Pascals)
    real(r8), public, parameter :: tref        = 288._r8              ! Reference temperature (K)
    real(r8), public, parameter :: lapse_rate  = 0.0065_r8            ! reference lapse rate (K m-1)
 #endif
