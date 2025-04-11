@@ -65,7 +65,6 @@ module chemistry
   ! Private routines:
   !
   private :: sect02_mam4
-  private :: erfc_num_recipes
 
   ! Location of valid geoschem_config.yml and species_database.yml
   ! Use local files in run folder
@@ -4728,33 +4727,6 @@ contains
     ENDDO
 
   end subroutine chem_emissions
-!
-!   P R E S C R I B E   A E R O S O L   D I S T R I B U T I O N
-!
-! Based on code from Feng et al., 2021 GMD (WRF-GC v2.0), by Xu Feng et al.
-! in module_diag_aero_size_info.F, originally based from WRF-Chem.
-!
-! Reference:
-! Feng, X., Lin, H., Fu, T.-M., Sulprizio, M. P., Zhuang, J., Jacob, D. J., Tian, H., Ma, Y., Zhang, L., Wang, X., Chen, Q., and Han, Z.: WRF-GC (v2.0): online two-way coupling of WRF (v3.9.1.1) and GEOS-Chem (v12.7.2) for modeling regional atmospheric chemistry–meteorology interactions, Geosci. Model Dev., 14, 3741–3768, https://doi.org/10.5194/gmd-14-3741-2021, 2021.
-!
-
-  real(8) function erfc_num_recipes( x )
-    !
-    !   from press et al, numerical recipes, 1990, page 164
-    !
-    implicit none
-    real(r8) :: x, erfc_dbl, dum, t, z
-    z = abs(x)
-    t = 1.0_r8/(1.0_r8 + 0.5_r8*z)
-    dum =  ( -z*z - 1.26551223_r8 + t*(1.00002368_r8 + t*(0.37409196_r8 +   &
-      t*(0.09678418_r8 + t*(-0.18628806_r8 + t*(0.27886807_r8 +   &
-                                       t*(-1.13520398_r8 +   &
-      t*(1.48851587_r8 + t*(-0.82215223_r8 + t*0.17087277_r8 )))))))))
-    erfc_dbl = t * exp(dum)
-    if (x .lt. 0.0_r8) erfc_dbl = 2.0_r8 - erfc_dbl
-    erfc_num_recipes = erfc_dbl
-    return
-  end function erfc_num_recipes
 
   ! sect02_mam4 is based off sect02_new in WRF-GC, which is based off
   ! sect02 in WRF-Chem chem/module_optical_averaging.F.
@@ -4763,76 +4735,81 @@ contains
   ! prog calculates mass and number for each section.
   subroutine sect02_mam4(dgnum_um, sigmag, duma, nbin, dlo_sect, dhi_sect, &
                          xnum_sect, xmas_sect)
-        ! INPUT PARAMETERS:
-        ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
-        ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
-        ! duma                 1.0 ?
-        ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
-        ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
-        ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        ! OUTPUT PARAMETERS:
-        ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
-        ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
+    use shr_spfn_mod, only: erfc => shr_spfn_erfc
 
-        implicit none
-        real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
-        integer                               :: n, nbin
-        real(8)                               :: dgnum, dgnum_um, dhi,  &
-                                                 dlo, duma, dumfrac,    &
-                                                 dx, sigmag,            &
-                                                 sx, sxroot2, thi, tlo, x0, x3, &
-                                                 xhi, xlo, xmtot, xntot
-        real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
-        real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
-        real(8)                               :: pi
-        parameter (pi = 3.141592653589_r8)
+    ! INPUT PARAMETERS:
+    ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
+    ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
+    ! duma                 1.0 ?
+    ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
+    ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
+    ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        xmtot = duma
-        xntot = duma
+    ! OUTPUT PARAMETERS:
+    ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
+    ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
 
-        ! Compute bins based on number of bins. Originally sect02_new.
-        ! For MAM4, we prescribe the bin ranges as well.
-        ! dlo = dlo_um*1.0E-4_r8
-        ! dhi = dhi_um*1.0E-4_r8
-        ! xlo = log( dlo )
-        ! xhi = log( dhi )
-        ! dx  = (xhi - xlo)/nbin
-        ! do n = 1, nbin
-        !     dlo_sect(n) = exp( xlo + dx*(n-1) )
-        !     dhi_sect(n) = exp( xlo + dx*n )
-        ! end do
+    implicit none
+    real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
+    integer                               :: n, nbin
+    real(8)                               :: dgnum, dgnum_um, dhi,  &
+         dlo, duma, dumfrac,    &
+         dx, sigmag,            &
+         sx, sxroot2, thi, tlo, x0, x3, &
+         xhi, xlo, xmtot, xntot
+    real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
+    real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
+    real(8)                               :: pi
+    parameter (pi = 3.141592653589_r8)
 
-        ! dlo_sect and dhi_sect have to be scaled by 1e-4
-        ! in order to fit parameters in the above calculation, if they are prescribed.
+    xmtot = duma
+    xntot = duma
 
-        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
-        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+    ! Compute bins based on number of bins. Originally sect02_new.
+    ! For MAM4, we prescribe the bin ranges as well.
+    ! dlo = dlo_um*1.0E-4_r8
+    ! dhi = dhi_um*1.0E-4_r8
+    ! xlo = log( dlo )
+    ! xhi = log( dhi )
+    ! dx  = (xhi - xlo)/nbin
+    ! do n = 1, nbin
+    !     dlo_sect(n) = exp( xlo + dx*(n-1) )
+    !     dhi_sect(n) = exp( xlo + dx*n )
+    ! end do
 
-        dgnum = dgnum_um*1.0E-4_r8
-        sx = log( sigmag )
-        x0 = log( dgnum )
-        x3 = x0 + 3.0_r8*sx*sx
-        sxroot2 = sx * sqrt( 2.0_r8 )
-        do n = 1, nbin
-            xlo = log( my_dlo_sect(n) )
-            xhi = log( my_dhi_sect(n) )
-            tlo = (xlo - x0)/sxroot2
-            thi = (xhi - x0)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            end if
-            xnum_sect(n) = xntot*dumfrac
-            tlo = (xlo - x3)/sxroot2
-            thi = (xhi - x3)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            endif
-            xmas_sect(n) = xmtot*dumfrac
-        enddo
+    ! dlo_sect and dhi_sect have to be scaled by 1e-4
+    ! in order to fit parameters in the above calculation, if they are prescribed.
+
+    my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
+    my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+
+    dgnum = dgnum_um*1.0E-4_r8
+    sx = log( sigmag )
+    x0 = log( dgnum )
+    x3 = x0 + 3.0_r8*sx*sx
+    sxroot2 = sx * sqrt( 2.0_r8 )
+    do n = 1, nbin
+       xlo = log( my_dlo_sect(n) )
+       xhi = log( my_dhi_sect(n) )
+       tlo = (xlo - x0)/sxroot2
+       thi = (xhi - x0)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       end if
+       xnum_sect(n) = xntot*dumfrac
+       tlo = (xlo - x3)/sxroot2
+       thi = (xhi - x3)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       endif
+       xmas_sect(n) = xmtot*dumfrac
+    enddo
+
   end subroutine sect02_mam4
+
 end module chemistry
