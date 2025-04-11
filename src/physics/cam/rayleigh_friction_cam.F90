@@ -13,29 +13,19 @@ use spmd_utils,        only: masterproc
 use phys_control,      only: use_simple_phys
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
-use rayleigh_friction, only: rayleigh_friction_init, rayleigh_friction_run
 
 implicit none
 private
 save
   
 ! Public interfaces
-public :: &
-     rayleigh_friction_readnl,  & ! read namelist
-     rayleigh_friction_cam_init,   & ! Initialization
-     rayleigh_friction_cam_tend      ! Computation of tendencies
-
-! Namelist variables
-integer  :: rayk0 = 2           ! vertical level at which rayleigh friction term is centered
-real(r8) :: raykrange = 0._r8   ! range of rayleigh friction profile 
-                                ! if 0, range is set to satisfy x=2 (see below)
-real(r8) :: raytau0 = 0._r8     ! approximate value of decay time at model top (days)
-                                ! if 0., no rayleigh friction is applied
-! Local
-real (r8) :: krange         ! range of rayleigh friction profile 
-real (r8) :: tau0           ! approximate value of decay time at model top
-real (r8) :: otau0          ! inverse of tau0
-real (r8) :: otau(pver)     ! inverse decay time versus vertical level
+public :: rayleigh_friction_readnl  ! read namelist
+! Rayleigh friction namelist parameters for use in physpkg                                                                                            
+integer, public  :: rf_nl_k0 = 2           ! vertical level at which rayleigh friction term is centered                                               
+real(r8), public :: rf_nl_krange = 0._r8   ! range of rayleigh friction profile                                                                       
+                                           ! if 0, range is set to satisfy x=2 (see below)                                                            
+real(r8), public :: rf_nl_tau0 = 0._r8     ! approximate value of decay time at model top (days)                                                      
+                                           ! if 0., no rayleigh friction is applied                                                                   
 
 !===============================================================================
 contains
@@ -50,7 +40,8 @@ subroutine rayleigh_friction_readnl(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
-   integer :: unitn, ierr
+   integer :: unitn, ierr, rayk0
+   real (r8) :: raykrange, raytau0
    character(len=*), parameter :: sub = 'rayleigh_friction_readnl'
 
    namelist /rayleigh_friction_nl/ rayk0, raykrange, raytau0
@@ -79,12 +70,17 @@ subroutine rayleigh_friction_readnl(nlfile)
    call mpi_bcast(raytau0, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: raytau0")
 
+   ! Set module variables
+   rf_nl_tau0 = raytau0
+   rf_nl_krange = raykrange
+   rf_nl_k0 = rayk0
+   
    if (masterproc) then
       if (raytau0 > 0._r8) then
          write (iulog,*) 'Rayleigh friction options: '
-         write (iulog,*) '  rayk0     = ', rayk0
-         write (iulog,*) '  raykrange = ', raykrange
-         write (iulog,*) '  raytau0   = ', raytau0
+         write (iulog,*) '  rayk0     = ', rf_nl_k0
+         write (iulog,*) '  raykrange = ', rf_nl_krange
+         write (iulog,*) '  raytau0   = ', rf_nl_tau0
       else
          write (iulog,*) 'Rayleigh friction not enabled.'
       end if
@@ -93,46 +89,5 @@ subroutine rayleigh_friction_readnl(nlfile)
 end subroutine rayleigh_friction_readnl
 
 !=========================================================================================
-
-subroutine rayleigh_friction_cam_init()
-
-   !---------------------------Local storage-------------------------------
-   character(len=512) errmsg
-   integer errflg
-
-   call rayleigh_friction_init(pver, raytau0, raykrange, rayk0, masterproc, iulog, errmsg, errflg)
-   if (errflg /= 0) call endrun(errmsg)
-
-end subroutine rayleigh_friction_cam_init
-  
-!=========================================================================================
-
-subroutine rayleigh_friction_cam_tend(                                     &
-     ztodt    ,state    ,ptend    )
-
-   !-----------------------------------------------------------------------
-   ! compute tendencies for rayleigh friction
-   !-----------------------------------------------------------------------
-   use physics_types, only: physics_state, physics_ptend, physics_ptend_init
-
-   !------------------------------Arguments--------------------------------
-   real(r8),            intent(in) :: ztodt      ! physics timestep
-   type(physics_state), intent(in) :: state      ! physics state variables
-    
-   type(physics_ptend), intent(out):: ptend      ! individual parameterization tendencies
-  !---------------------------Local storage-------------------------------
-   character(len=512) errmsg
-   integer errflg
-   integer ncol                                ! number of atmospheric columns
-   real(r8) rztodt                             ! 1./ztodt
-
-   !call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
-
-   !ncol  = state%ncol
-
-   !call rayleigh_friction_run(ncol, pver, ztodt, state%u, state%v, ptend%u, ptend%v, ptend%s, errmsg, errflg)
-   !if (errflg /= 0) call endrun(errmsg)
-
-end subroutine rayleigh_friction_cam_tend
 
 end module rayleigh_friction_cam

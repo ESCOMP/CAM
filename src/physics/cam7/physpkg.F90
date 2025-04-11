@@ -738,7 +738,8 @@ contains
     use conv_water,         only: conv_water_init
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
-    use rayleigh_friction_cam,  only: rayleigh_friction_initO
+    use rayleigh_friction,  only: rayleigh_friction_init
+    use rayleigh_friction_cam, only: rf_nl_k0, rf_nl_krange, rf_nl_tau0
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
     use phys_debug,         only: phys_debug_state_init
@@ -787,6 +788,10 @@ contains
                                            ! temperature, water vapor, cloud
                                            ! ice, cloud liquid, U, V
     integer :: history_budget_histfile_num ! output history file number for budget fields
+
+    ! Needed for rayleigh friction
+    character(len=512) errmsg
+    integer errflg
 
     !-----------------------------------------------------------------------
 
@@ -876,7 +881,9 @@ contains
 
     call gw_init()
 
-    call rayleigh_friction_initO()
+    call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
+         iulog, errmsg, errflg)
+    if (errflg /= 0) call endrun(errmsg)
 
     call vertical_diffusion_init(pbuf2d)
 
@@ -1357,7 +1364,7 @@ contains
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
-    use rayleigh_friction_cam,  only: rayleigh_friction_tendO
+    use rayleigh_friction,  only: rayleigh_friction_run
     use physics_types,      only: physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
                                   dyn_te_idx
     use waccmx_phys_intr,   only: waccmx_phys_mspd_tend  ! WACCM-X major diffusion
@@ -1518,6 +1525,10 @@ contains
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
+
+    ! For rayleigh friction CCPP calls
+    character(len=512) errmsg
+    integer errflg
 
     !-----------------------------------------------------------------------
     lchnk = state%lchnk
@@ -2167,7 +2178,20 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
             fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call rayleigh_friction_tendO( ztodt, state, ptend)
+
+    call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
+
+    ! Initialize ptend variables to zero
+    !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+    ptend%u(:,:) = 0._r8
+    ptend%v(:,:) = 0._r8
+    ptend%s(:,:) = 0._r8
+    !REMOVECAM_END
+
+    call rayleigh_friction_run(pver, ztodt, state%u(:ncol,:), state%v(:ncol,:), ptend%u(:ncol,:),&
+         ptend%v(:ncol,:), ptend%s(:ncol,:), errmsg, errflg)
+    if (errflg /= 0) call endrun(errmsg)
+
     if ( (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") .and.      &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
