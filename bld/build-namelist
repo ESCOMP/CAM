@@ -3852,10 +3852,10 @@ if (!$simple_phys) {
 
     if ($phys =~ /cam7/) {
 	#
-	# moving mountains only supported by SE dycore
+	# moving mountains only supported by MPAS and SE dycore
 	# (since vorticity needs to be passed to physics in dp_coupling)
 	#
-	if ( $dyn =~ /se/ ) {
+	if ( $dyn =~ /mpas|se/ ) {
 	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
 	} else {
 	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.false.');
@@ -3864,10 +3864,9 @@ if (!$simple_phys) {
 
     my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
     if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
-         if ( ! ($dyn =~ /se/) ) {
-            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
-
-         }
+        if ( ! ($dyn =~ /mpas|se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with MPAS and SE dycore\n";
+        }
     }
 
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
