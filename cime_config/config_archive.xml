@@ -13,8 +13,10 @@
       <rpointer_content>$CASE.cam$NINST_STRING.r.$DATENAME.nc </rpointer_content>
     </rpointer>
     <test_file_names>
-      <tfile disposition="copy">rpointer.atm.$DATENAME</tfile>
-      <tfile disposition="copy">rpointer.atm_9999.$DATENAME</tfile>
+      <tfile disposition="copy">rpointer.atm.1976-01-01-00000</tfile>
+      <tfile disposition="copy">rpointer.atm_9999.1976-01-01-00000</tfile>
+      <tfile disposition="ignore">rpointer.atm.1976-02-01-00000</tfile>
+      <tfile disposition="ignore">rpointer.atm_9999.1976-01-02-00000</tfile>
       <tfile disposition="copy">casename.cam.r.1976-01-01-00000.nc</tfile>
       <tfile disposition="copy">casename.cam.rh4.1976-01-01-00000.nc</tfile>
       <tfile disposition="move">casename.cam.h0.1976-01-01-00000.nc</tfile>
