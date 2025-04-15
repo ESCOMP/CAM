@@ -514,8 +514,6 @@ subroutine rk_stratiform_cam_tend( &
    integer :: ncol                                   ! Number of atmospheric columns
    integer :: itim_old
 
-   real(r8), parameter :: rdair = 287.15_r8
-
    ! Physics buffer fields
    real(r8), pointer :: landm(:)             ! Land fraction ramped over water
 
@@ -744,7 +742,7 @@ subroutine rk_stratiform_cam_tend( &
       call endrun('rk_stratiform_tend:' // errmsg)
    endif
 
-   wsedl(:ncol,:pver) = pvliq(:ncol,:pver)/gravit/(state1%pmid(:ncol,:pver)/(rdair*state1%t(:ncol,:pver)))
+   wsedl(:ncol,:pver) = pvliq(:ncol,:pver)/gravit/(state1%pmid(:ncol,:pver)/(rair*state1%t(:ncol,:pver)))
 
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
    prec_sed(:) = 0._r8
@@ -1326,8 +1324,8 @@ subroutine rk_stratiform_cam_tend( &
 
    do k = 1, pver
       do i = 1, ncol
-         iwc(i,k)   = state1%q(i,k,ixcldice)*state1%pmid(i,k)/(rdair*state1%t(i,k))
-         lwc(i,k)   = state1%q(i,k,ixcldliq)*state1%pmid(i,k)/(rdair*state1%t(i,k))
+         iwc(i,k)   = state1%q(i,k,ixcldice)*state1%pmid(i,k)/(rair*state1%t(i,k))
+         lwc(i,k)   = state1%q(i,k,ixcldliq)*state1%pmid(i,k)/(rair*state1%t(i,k))
          icimr(i,k) = state1%q(i,k,ixcldice) / max(0.01_r8,rhcloud(i,k))
          icwmr(i,k) = state1%q(i,k,ixcldliq) / max(0.01_r8,rhcloud(i,k))
       end do

@@ -225,6 +225,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     use radiation,     only: radiation_do
     use cloud_cover_diags, only: cloud_cover_diags_out
     use phys_control,  only: phys_getopts
+    use physconst,     only: rair
 
     use ref_pres,       only: top_lev=>trop_cloud_top_lev
 
@@ -404,8 +405,8 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
              ! in-cloud mixing ratio maximum limit of 0.005 kg/kg
              icimr(i,k)     = min( allcld_ice(i,k) / max(0.0001_r8,cld(i,k)),0.005_r8 )
              icwmr(i,k)     = min( allcld_liq(i,k) / max(0.0001_r8,cld(i,k)),0.005_r8 )
-             iwc(i,k)       = allcld_ice(i,k) * state%pmid(i,k) / (287.15_r8*state%t(i,k))
-             lwc(i,k)       = allcld_liq(i,k) * state%pmid(i,k) / (287.15_r8*state%t(i,k))
+             iwc(i,k)       = allcld_ice(i,k) * state%pmid(i,k) / (rair*state%t(i,k))
+             lwc(i,k)       = allcld_liq(i,k) * state%pmid(i,k) / (rair*state%t(i,k))
              ! Calculate total cloud water paths in each layer
              iciwp(i,k)     = icimr(i,k) * state%pdel(i,k) / gravit
              iclwp(i,k)     = icwmr(i,k) * state%pdel(i,k) / gravit
