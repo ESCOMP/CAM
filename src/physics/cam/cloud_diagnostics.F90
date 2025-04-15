@@ -220,10 +220,11 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 !-----------------------------------------------------------------------
     use physics_types, only: physics_state
     use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
-    use pkg_cldoptics, only: cldovrlap, cldclw,  cldems
+    use cloud_optical_properties, only: cldovrlap, cldclw, cldems_rk, cldems
     use conv_water,    only: conv_water_in_rad, conv_water_4rad
     use radiation,     only: radiation_do
     use cloud_cover_diags, only: cloud_cover_diags_out
+    use phys_control,  only: phys_getopts
 
     use ref_pres,       only: top_lev=>trop_cloud_top_lev
 
@@ -287,6 +288,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     real(r8) :: effcld(pcols,pver)      ! effective cloud=cld*emis
 
     logical :: dosw,dolw
+    character(len=16) :: microp_scheme  ! microphysics scheme
 
 !-----------------------------------------------------------------------
     if (.not.do_cld_diag) return
@@ -442,7 +444,11 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     endif
 
 ! Determine parameters for maximum/random overlap
-    call cldovrlap(lchnk, ncol, state%pint, cld, nmxrgn, pmxrgn)
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   nmxrgn(:) = 0
+   pmxrgn(:,:) = 0._r8
+   !REMOVECAM_END
+    call cldovrlap(ncol, pver, pverp, state%pint(:ncol,:), cld(:ncol,:), nmxrgn(:ncol), pmxrgn(:ncol,:))
 
     ! Cloud cover diagnostics (done in radiation_tend for camrt)
     if (.not.camrt_rad) then
@@ -464,7 +470,12 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     if(one_mom_clouds) then
 
        ! Cloud emissivity.
-       call cldems(lchnk, ncol, cwp, ficemr, rei, cldemis, cldtau)
+       call phys_getopts(microp_scheme_out=microp_scheme)
+       if(microp_scheme == 'RK') then
+         call cldems_rk(ncol, pver, cwp, ficemr, rei, cldemis, cldtau)
+       else
+         call cldems   (ncol, pver, cwp, ficemr, rei, cldemis, cldtau)
+       endif
 
        ! Effective cloud cover
        do k=1,pver
@@ -511,7 +522,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
 ! Diagnostic liquid water path (old specified form)
 
-    call cldclw(lchnk, ncol, state%zi, clwpold, tpw, hl)
+    call cldclw(ncol, state%zi, clwpold, tpw, hl)
     call outfld('SETLWP'  ,clwpold, pcols,lchnk)
     call outfld('LWSH'    ,hl     , pcols,lchnk)
 

@@ -5290,6 +5290,11 @@ sub check_snapshot_settings {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }
         }
+
+        if ($microphys eq 'rk') {
+            push (@validList_bc, ("'rk_stratiform_tend'"));
+        }
+
         push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
     }
     if ($user_set_after) {
