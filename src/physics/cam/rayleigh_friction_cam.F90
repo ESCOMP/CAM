@@ -49,6 +49,11 @@ subroutine rayleigh_friction_readnl(nlfile)
 
    if (use_simple_phys) return
 
+   ! Initialize with default values
+   rayk0 = rf_nl_k0
+   raykrange = rf_nl_krange
+   raytau0 = rf_nl_tau0
+
    if (masterproc) then
       unitn = getunit()
       open( unitn, file=trim(nlfile), status='old' )
