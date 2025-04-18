@@ -743,6 +743,7 @@ contains
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
     use rayleigh_friction,  only: rayleigh_friction_init
+    use rayleigh_friction_cam, only: rf_nl_k0, rf_nl_krange, rf_nl_tau0
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
     use rad_constituents,   only: rad_cnst_init
@@ -791,6 +792,11 @@ contains
                                            ! temperature, water vapor, cloud
                                            ! ice, cloud liquid, U, V
     integer :: history_budget_histfile_num ! output history file number for budget fields
+
+    ! Needed for rayleigh friction
+    character(len=512) errmsg
+    integer errflg
+
     !-----------------------------------------------------------------------
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
@@ -879,7 +885,9 @@ contains
 
     call gw_init()
 
-    call rayleigh_friction_init()
+    call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
+         iulog, errmsg, errflg)
+    if (errflg /= 0) call endrun(errmsg)
 
     call vertical_diffusion_init(pbuf2d)
 
@@ -1360,11 +1368,11 @@ contains
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
-    use rayleigh_friction,  only: rayleigh_friction_tend
+    use rayleigh_friction,  only: rayleigh_friction_run
     use constituents,       only: cnst_get_ind
     use physics_types,      only: physics_state, physics_tend, physics_ptend, physics_update,    &
                                   physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
-                                  dyn_te_idx
+                                  dyn_te_idx, physics_ptend_init
     use waccmx_phys_intr,   only: waccmx_phys_mspd_tend  ! WACCM-X major diffusion
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
@@ -1455,6 +1463,10 @@ contains
 
     ! For aerosol budget diagnostics
     type(carma_diags_t), pointer :: carma_diags_obj
+
+    ! For rayleigh friction CCPP calls
+    character(len=512) errmsg
+    integer errflg
 
     !-----------------------------------------------------------------------
     carma_diags_obj => carma_diags_t()
@@ -1676,7 +1688,28 @@ contains
     ! Rayleigh friction calculation
     !===================================================
     call t_startf('rayleigh_friction')
-    call rayleigh_friction_tend( ztodt, state, ptend)
+    if (trim(cam_take_snapshot_before) == "rayleigh_friction_tend") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+            fh2o, surfric, obklen, flx_heat)
+    end if
+
+    call physics_ptend_init(ptend, state%psetcols, 'rayleigh friction', ls=.true., lu=.true., lv=.true.)
+
+    ! Initialize ptend variables to zero
+    !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+    ptend%u(:,:) = 0._r8
+    ptend%v(:,:) = 0._r8
+    ptend%s(:,:) = 0._r8
+    !REMOVECAM_END
+
+    call rayleigh_friction_run(pver, ztodt, state%u(:ncol,:), state%v(:ncol,:), ptend%u(:ncol,:),&
+         ptend%v(:ncol,:), ptend%s(:ncol,:), errmsg, errflg)
+    if (errflg /= 0) call endrun(errmsg)
+
+    if ( (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") .and.      &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+       call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
     if ( ptend%lu ) then
       call outfld( 'UTEND_RAYLEIGH', ptend%u, pcols, lchnk)
     end if
@@ -1684,6 +1717,10 @@ contains
       call outfld( 'VTEND_RAYLEIGH', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
+    if (trim(cam_take_snapshot_after) == "rayleigh_friction_tend") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+            fh2o, surfric, obklen, flx_heat)
+    end if
     call t_stopf('rayleigh_friction')
 
     if (do_clubb_sgs) then

@@ -5262,6 +5262,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_diagnostics_calc'"));
     } else {
         # CAM physpkg
@@ -5276,6 +5277,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_shallow_tend'"));
         if ($microphys =~ /^mg/) {
             if ($clubb_sgs  =~ /$TRUE/io) {

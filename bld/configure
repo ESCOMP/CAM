@@ -2177,6 +2177,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
 
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
 
