@@ -12,7 +12,8 @@
 <avgflag_pertape>'I'</avgflag_pertape>
 <nhtfrq>-24</nhtfrq>
 <fincl1>
- 'PS','PRECL','Q','CLDLIQ','RAINQM','T','U','V','iCLy','iCL','iCL2','OMEGA','TT_SLOT1','TT_SLOT2','TT_SLOT3','TT_COSB','TT_CCOSB','TT_lCCOSB'
+  'PS','PRECL','Q','CLDLIQ','RAINQM','T','U','V','iCLy','iCL','iCL2','OMEGA',
+  'TT_SLOT1','TT_SLOT2','TT_SLOT3','TT_COSB','TT_CCOSB','TT_lCCOSB'
 </fincl1>
 
 <analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>
