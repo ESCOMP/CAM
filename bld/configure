@@ -1252,8 +1252,7 @@ elsif ($phys_pkg eq 'cam4') {
 }
 else {
     # Simple models use cam7-lt vertical grid.
-    # $nlev = 58; # - ERROR: No default value found for ncdata
-    $nlev = 30; # bit-for-bit baselines for now
+    $nlev = 58;
 }
 
 # user override
