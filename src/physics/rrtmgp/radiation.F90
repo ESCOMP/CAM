@@ -1273,12 +1273,12 @@ subroutine radiation_tend( &
             call pbuf_get_field(pbuf, degrau_idx,   degrau)
          end if
 
-         do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau))
+         do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau)) .and. graupel_in_rad
          do_snow = associated(cldfsnow)
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,  &
-             cldfgrau_in, cldfprime(:ncol,:), graupel_in_rad, kdist_lw, cloud_lw, lambda(:ncol,:), &
+             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), &
              mu(:ncol,:), iclwp(:ncol,:), iciwp(:ncol,:), dei(:ncol,:), icswp(:ncol,:), des(:ncol,:), &
              icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver,         &
              ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
@@ -1305,6 +1305,7 @@ subroutine radiation_tend( &
             if (active_calls(icall)) then
 
                ! Grab the gas mass mixing ratios from rad_constituents
+               gas_mmrs = 0._r8
                call rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw
@@ -1342,7 +1343,7 @@ subroutine radiation_tend( &
                !$acc             emis_sfc)  &
                !$acc        copy(flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, flwc%fluxes%flux_dn, &
                !$acc             flw, flw%fluxes%flux_net, flw%fluxes%flux_up, flw%fluxes%flux_dn)
-               call rrtmgp_lw_main_run(dolw, dolw, .true., .false., .false., &
+               call rrtmgp_lw_main_run(dolw, dolw, .false., .false., .false., &
                                  0, ncol, 1, ncol, atm_optics_lw, &
                                  cloud_lw, top_at_1, sources_lw, emis_sfc, kdist_lw, &
                                  aer_lw, fluxlwup_jac, lw_ds, flwc, flw, errmsg, errflg)
