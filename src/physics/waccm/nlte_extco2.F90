@@ -26,32 +26,23 @@ module nlte_extco2
   real(r8) :: co2_mw_inv = -huge(1.0_r8)       ! CO2 molecular weight (inverse)
   real(r8) :: n2_mw_inv  = -huge(1.0_r8)       ! N2 molecular weight (inverse)
 
-  integer :: lev0 = -1
-
 contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  subroutine nlte_extco2_init(max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
+  subroutine nlte_extco2_init(co2_mw,n2_mw,o1_mw,o2_mw)
     use ref_pres, only: pref_mid
 
     ! Input variables
-    real(r8), intent(in)  :: max_pressure_lw  ! Pa
-    real(r8), intent(in) :: o1_mw             ! O molecular weight
-    real(r8), intent(in) :: o2_mw             ! O2 molecular weight
-    real(r8), intent(in) :: co2_mw            ! CO2 molecular weight
-    real(r8), intent(in) :: n2_mw             ! N2 molecular weight
+    real(r8), intent(in) :: o1_mw     ! O molecular weight
+    real(r8), intent(in) :: o2_mw     ! O2 molecular weight
+    real(r8), intent(in) :: co2_mw    ! CO2 molecular weight
+    real(r8), intent(in) :: n2_mw     ! N2 molecular weight
 
     co2_mw_inv = 1._r8/co2_mw
     o1_mw_inv  = 1._r8/o1_mw
     o2_mw_inv  = 1._r8/o2_mw
     n2_mw_inv  = 1._r8/n2_mw
-
-    lev0 = 1
-!    do while (pref_mid(lev0) < max_pressure_lw)
-!       lev0 = lev0+1
-!    end do
-    lev0 = pver
 
     call addfld ('QCO2ext',   (/ 'lev' /), 'A','K/s','Extended CO2 cooling')
     call addfld ('TCO2ext',   (/ 'lev' /), 'A','K','Temp used in Extended CO2 cooling')
@@ -71,15 +62,15 @@ contains
     use air_composition, only: mbarv
 
     ! Input variables
-    integer, intent(in) :: ncol                          ! number of atmospheric columns
-    integer, intent(in) :: lchnk                         ! chunk identifier
+    integer, intent(in) :: ncol           ! number of atmospheric columns
+    integer, intent(in) :: lchnk          ! chunk identifier
 
-    real(r8), intent(in) :: temp(:,:)          ! K
-    real(r8), intent(in) :: pres(:,:)          ! Pa
-    real(r8), intent(in) :: co2mmr(:,:)        ! CO2 mass mixing ratio profile
-    real(r8), intent(in) :: n2mmr(:,:)         ! N2 mass mixing ratio profile
-    real(r8), intent(in) :: ommr(:,:)          ! O mass mixing ratio profile
-    real(r8), intent(in) :: o2mmr(:,:)         ! O2 mass mixing ratio profile
+    real(r8), intent(in) :: temp(:,:)     ! temperature (K)
+    real(r8), intent(in) :: pres(:,:)     ! pressure (Pa)
+    real(r8), intent(in) :: co2mmr(:,:)   ! CO2 mass mixing ratio
+    real(r8), intent(in) :: n2mmr(:,:)    ! N2 mass mixing ratio
+    real(r8), intent(in) :: ommr(:,:)     ! O mass mixing ratio
+    real(r8), intent(in) :: o2mmr(:,:)    ! O2 mass mixing ratio
 
     ! Output
     real(r8), intent(out) :: co2cooling(:,:)   ! K sec-1
@@ -126,7 +117,7 @@ contains
        heatrate(:) = 0._r8
 
        ! Units: Temperature in K, pressure in hPa, vmrs in mol/mol, heating rate in K/day
-       call co2_nlte_cool(temp(icol,:), hPa, co2vmr, ovmr, o2vmr, n2vmr, lev0, &
+       call co2_nlte_cool(temp(icol,:), hPa, co2vmr, ovmr, o2vmr, n2vmr, pver, &
                           surf_temp, heatrate) !   (K day-1)
 
        co2cooling(icol,:) = heatrate(:) * day_per_sec ! K day-1 --> K sec-1
