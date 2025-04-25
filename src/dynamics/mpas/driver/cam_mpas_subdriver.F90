@@ -2319,8 +2319,10 @@ contains
             vertex_index = verticesoncell(i, cell_index)
 
             cell_value = cell_value + &
-                kiteareasonvertex(j, vertex_index) / areacell(cell_index) * vertex_value(cell_level, vertex_index)
+                kiteareasonvertex(j, vertex_index) * vertex_value(cell_level, vertex_index)
         end do
+
+        cell_value = cell_value / areacell(cell_index)
     end function regrid_from_vertex_to_cell
 
     !-----------------------------------------------------------------------
