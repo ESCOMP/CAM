@@ -16,7 +16,7 @@
 	path = src/physics/pumas
 	url = https://github.com/ESCOMP/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.36
+        fxtag = pumas_cam-release_v1.38
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]
@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_08_000
+        fxtag = atmos_phys0_13_000
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -71,7 +71,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm2_0_hemco3_9_0
+        fxtag = hemco-cesm2_1_0_hemco3_9_0
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
@@ -144,14 +144,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.39
+fxtag = ccs_config_cesm1.0.40
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.91
+fxtag = cime6.1.92
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
@@ -200,6 +200,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 [submodule "fms"]
 path = libraries/FMS
 url = https://github.com/ESCOMP/FMS_interface
-fxtag = fi_240828
+fxtag = fi_250411
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
+
+[submodule "tools/CUPiD"]
+path = tools/CUPiD
+url = https://github.com/NCAR/CUPiD.git
+fxtag = v0.1.4
+fxrequired = ToplevelRequired
+fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
+
