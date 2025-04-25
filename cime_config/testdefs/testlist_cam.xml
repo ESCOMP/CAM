@@ -1322,7 +1322,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >Adiabatic, analytic ICs</option>
+      <option name="comment" >Dry adiabatic (no physics forcings), analytic ICs</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1332,6 +1332,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Dry Held-Suarez forcing (Held and Suarez, 1994)</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1341,6 +1342,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Moist Kessler forcing, baroclinic wave IC, terminator chemistry</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1350,6 +1352,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Moist Held-Suarez forcing (Thatcher and Jablonowski, 2016)</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1359,6 +1362,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Frierson forcing (Frierson, 2006) </option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -2702,13 +2706,13 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="PC6" grid="f09_f09_mg17" name="SMS_Ld5" testmods="cam/cam6_port_f09_rrtmgp">
+  <test compset="PC7" grid="ne3pg3_ne3pg3_mt232" name="SMS_D_Ln9" testmods="cam/pc7_ne3pg3">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM6 PORT w/ RRTMGP</option>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">CAM7-LT PORT</option>
     </options>
   </test>
 
