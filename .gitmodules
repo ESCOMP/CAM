@@ -13,10 +13,10 @@
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
 [submodule "pumas"]
-        path = src/physics/pumas
-        url =  https://github.com/ESCOMP/PUMAS
+	path = src/physics/pumas
+	url = https://github.com/ESCOMP/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.38
+        fxtag = pumas_cam-release_v1.36
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]
@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_13_000
+        fxtag = atmos_phys0_08_000
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -71,7 +71,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm2_1_0_hemco3_9_0
+        fxtag = hemco-cesm2_0_hemco3_9_0
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
@@ -116,21 +116,21 @@
 [submodule "cism"]
 path = components/cism
 url = https://github.com/ESCOMP/CISM-wrapper
-fxtag = cismwrap_2_2_005
+fxtag = cismwrap_2_2_006
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CISM-wrapper
 
 [submodule "rtm"]
 path = components/rtm
 url = https://github.com/ESCOMP/RTM
-fxtag = rtm1_0_84
+fxtag = rtm1_0_86
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/RTM
 
 [submodule "mosart"]
 path = components/mosart
 url = https://github.com/ESCOMP/MOSART
-fxtag = mosart1.1.07
+fxtag = mosart1.1.08
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/MOSART
 
@@ -151,21 +151,21 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.72
+fxtag = cime6.1.91
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
 [submodule "cmeps"]
 path = components/cmeps
 url = https://github.com/ESCOMP/CMEPS.git
-fxtag = cmeps1.0.39
+fxtag = cmeps1.0.47
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
 [submodule "cdeps"]
 path = components/cdeps
 url = https://github.com/ESCOMP/CDEPS.git
-fxtag = cdeps1.0.69
+fxtag = cdeps1.0.73
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
@@ -179,7 +179,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CESM_share
 [submodule "parallelio"]
 path = libraries/parallelio
 url = https://github.com/NCAR/ParallelIO
-fxtag = pio2_6_3
+fxtag = pio2_6_4
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 
@@ -193,7 +193,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 [submodule "clm"]
 path = components/clm
 url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.3.017
+fxtag = ctsm5.3.029
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
@@ -203,11 +203,3 @@ url = https://github.com/ESCOMP/FMS_interface
 fxtag = fi_240828
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
-
-[submodule "tools/CUPiD"]
-path = tools/CUPiD
-url = https://github.com/NCAR/CUPiD.git
-fxtag = v0.1.4
-fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
-
