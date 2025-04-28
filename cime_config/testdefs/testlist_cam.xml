@@ -310,17 +310,6 @@
     </options>
   </test>
 
-<!--              CAM Stand alone                          -->
-<!--     012        -->
-  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-      <option name="comment" >012 tsm</option>
-    </options>
-  </test>
 <!--              111 tsm, ter, tbr, tbl, changed to QPC6/f19      -->
   <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
     <machines>
@@ -351,34 +340,32 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              301                         -->
+
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
     <options>
-      <option name="comment" >301 plb</option>
+      <option name="comment" >phys_loadbalance=1; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              303                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >303 plb</option>
+      <option name="comment" >phys_loadbalance=3; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              304                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >304 plb</option>
+      <option name="comment" >phys_loadbalance=0; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1033,66 +1020,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              701                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >701 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              702                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >702 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              703                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >703 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              711 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >711 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              712 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >712 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              713 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >713 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              720                        -->
   <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
@@ -1110,16 +1037,6 @@
     </machines>
     <options>
       <option name="comment" >721 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              011                        -->
-  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2" testmods="cam/outfrq24h_port">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >011 tsm</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -2662,6 +2579,18 @@
       <option name="comment" >WACCM TSMLT MAM4</option>
     </options>
   </test>
+
+<!-- PORT (offline radiation driver) -->
+
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >012 tsm</option>
+    </options>
+  </test>
   <test compset="PC4" grid="f19_f19_mg17" name="SMS" testmods="cam/cam4_port">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
@@ -2679,6 +2608,15 @@
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2" testmods="cam/outfrq24h_port">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >011 tsm</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="PC5" grid="f45_f45_mg37" name="SMS_D" testmods="cam/cam5_port_f45">
@@ -2706,7 +2644,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="PC7" grid="ne3pg3_ne3pg3_mt232" name="SMS_D_Ln9" testmods="cam/pc7_ne3pg3">
+  <test compset="PC7" grid="ne3pg3_ne3pg3_mt232" name="SMS_D_Ln3" testmods="cam/pc7_ne3pg3">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
