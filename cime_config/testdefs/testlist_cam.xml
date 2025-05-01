@@ -1677,6 +1677,15 @@
       <option name="comment">CAM7 low top ~40 km with archiving</option>
     </options>
   </test>
+  <test compset="FHISTC_LTso" grid="mpasa120_mpasa120" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa120">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">CAM7 low top ~40 km with MPAS dynamical core</option>
+    </options>
+  </test>
   <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
