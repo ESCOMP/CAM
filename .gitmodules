@@ -51,14 +51,14 @@
 	path = src/chemistry/geoschem/geoschem_src
 	url = https://github.com/geoschem/geos-chem.git
         fxrequired = AlwaysRequired
-        fxtag = 14.4.3
+        fxtag = 14.5.3
         fxDONOTUSEurl = https://github.com/geoschem/geos-chem.git
 
 [submodule "cloud_j"]
 	path = src/chemistry/cloud_j
 	url = https://github.com/geoschem/cloud-j.git
         fxrequired = AlwaysRequired
-        fxtag = 7.7.3
+        fxtag = 8.0.1
         fxDONOTUSEurl = https://github.com/geoschem/cloud-j.git
 
 [submodule "hetp"]
@@ -71,7 +71,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm2_1_0_hemco3_9_0
+        fxtag = hemco-cesm2_2_0_hemco3_10_3
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
