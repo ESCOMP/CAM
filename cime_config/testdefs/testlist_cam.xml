@@ -1581,7 +1581,7 @@
       <option name="comment">CAM7-LT, cosp, radiation diagnostics</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="ne30pg3_ne30pg3_mt232" name="ERR_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_LTso" grid="ne16pg3_ne16pg3_mt232" name="ERR_Ln9" testmods="cam/outfrq9s_bwic">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
