@@ -505,7 +505,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       end do
 
       do k = 1, pver
-         phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
+         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pver+1) / phys_state(lchnk)%pmid(:ncol,k))**cappa
       end do
 
 
@@ -836,6 +836,8 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
    real(r8) :: sum_water
    real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2,tvk,tk
+   real(r8), parameter :: epsilon = 0.05_r8
+   real(r8) :: dp_epsilon
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
@@ -884,8 +886,16 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
         pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
         pmiddry(k,iCell) = dpdry(k)*rgas*tk /(gravit*dz(k))
-      end do
-    end do
+        !
+        ! PMID is not necessarily bounded by the hydrostatic interface pressure.
+        ! (has been found to be an issue at ~3.75km resolution in surface layer)
+        !
+        dp_epsilon = dp(k)*epsilon
+        if (pmid(k,iCell)>pint(k,iCell)-dp_epsilon.or.pmid(k,iCell)<pint(k+1,iCell)+dp_epsilon) then
+           pmid(k, iCell) = 0.5*(pint(k,iCell)+pint(k+1,iCell))
+        end if
+     end do
+   end do
 end subroutine hydrostatic_pressure
 
 subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
