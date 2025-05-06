@@ -885,10 +885,9 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         ! PMID is not necessarily bounded by the hydrostatic interface pressure.
         ! (has been found to be an issue at ~3.75km resolution in surface layer)
         !
-        dp_epsilon = dp(k)*epsilon
-        if (pmid(k,iCell)>pint(k,iCell)-dp_epsilon.or.pmid(k,iCell)<pint(k+1,iCell)+dp_epsilon) then
-           pmid(k, iCell) = 0.5*(pint(k,iCell)+pint(k+1,iCell))
-        end if
+        dp_epsilon = dp(k) * epsilon
+        pmid   (k, iCell) = max(min(pmid   (k, iCell), pint   (k, iCell) - dp_epsilon), pint   (k + 1, iCell) + dp_epsilon)
+        pmiddry(k, iCell) = max(min(pmiddry(k, iCell), pintdry(k, iCell) - dp_epsilon), pintdry(k + 1, iCell) + dp_epsilon)
      end do
    end do
 end subroutine hydrostatic_pressure
