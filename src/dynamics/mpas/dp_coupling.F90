@@ -8,7 +8,7 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cappa, zvir
+use physconst,      only: gravit, zvir
 use air_composition,only: cpairv
 use air_composition,only: dry_air_species_num
 use dyn_comp,       only: dyn_export_t, dyn_import_t
@@ -417,7 +417,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
    use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
-   use air_composition, only: rairv, dry_air_species_num
+   use air_composition, only: rairv, dry_air_species_num, cappav
    use qneg_module,     only: qneg3
    use shr_const_mod,   only: shr_const_rwv
    use constituents,    only: qmin
@@ -433,8 +433,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
-
-   real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
@@ -504,13 +502,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
                             phys_state(lchnk)%lnpmid(:ncol,k), ncol)
       end do
 
-      do k = 1, pver
-         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pver+1) / phys_state(lchnk)%pmid(:ncol,k))**cappa
-      end do
-
-
-
-
       if (dry_air_species_num>0) then
         !------------------------------------------------------------
         ! Apply limiters to mixing ratios of major species
@@ -527,6 +518,10 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       else
         zvirv(:,:) = zvir
       endif
+      do k = 1, pver
+         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pver+1) / phys_state(lchnk)%pmid(:ncol,k))**cappav(:ncol,k,lchnk)
+      end do
+
       !
       ! update cp_dycore in module air_composition.
       ! (note: at this point q is dry)
