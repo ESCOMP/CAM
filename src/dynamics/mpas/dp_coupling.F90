@@ -38,15 +38,15 @@ contains
 !=========================================================================================
 
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
-   use cam_mpas_subdriver, only: cam_mpas_update_halo
+   use cam_mpas_subdriver, only: cam_mpas_update_halo, cam_mpas_vertex_to_cell_relative_vorticities
 
    ! Convert the dynamics output state into the physics input state.
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
    ! dry air mass.
    use cam_history,    only: hist_fld_active
-   use dyn_comp,       only: frontgf_idx, frontga_idx
+   use dyn_comp,       only: frontgf_idx, frontga_idx, vort4gw_idx
    use mpas_constants, only: Rv_over_Rd => rvord
-   use phys_control,   only: use_gw_front, use_gw_front_igw
+   use phys_control,   only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
    use cam_budget,     only : thermo_budget_history
 
    ! arguments
@@ -101,6 +101,12 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), allocatable :: frontgf_phys(:,:,:)
    real(r8), allocatable :: frontga_phys(:,:,:)
 
+   ! Temporary arrays to hold vorticity for the "moving mountain" gravity wave scheme.
+   real(r8), allocatable :: vort4gw(:, :)         ! Data are unchunked.
+   real(r8), allocatable :: vort4gw_phys(:, :, :) ! Data are chunked.
+   ! Pointer to vorticity in physics buffer for the "moving mountain" gravity wave scheme.
+   real(r8), pointer :: pbuf_vort4gw(:, :)
+
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
@@ -115,6 +121,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer :: ierr
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
+
+   nullify(pbuf_chnk)
+   nullify(pbuf_frontgf)
+   nullify(pbuf_frontga)
+   nullify(pbuf_vort4gw)
 
    compute_energy_diags=thermo_budget_history
 
@@ -155,9 +166,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    if (use_gw_front .or. use_gw_front_igw) then
       call cam_mpas_update_halo('scalars', endrun)   ! scalars is the name of tracers in the MPAS state pool
-      nullify(pbuf_chnk)
-      nullify(pbuf_frontgf)
-      nullify(pbuf_frontga)
       !
       ! compute frontogenesis function and angle for gravity wave scheme
       !
@@ -195,6 +203,16 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    end if
 
+   if (use_gw_movmtn_pbl) then
+      call cam_mpas_vertex_to_cell_relative_vorticities(vort4gw)
+
+      allocate(vort4gw_phys(pcols, pver, begchunk:endchunk), stat=ierr)
+
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate vort4gw_phys')
+      end if
+   end if
+
    call t_startf('dpcopy')
 
    ncols = columns_on_task
@@ -224,6 +242,10 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          if (use_gw_front .or. use_gw_front_igw) then
             frontgf_phys(icol_p, k, lchnk) = frontogenesisFunction(kk, i)
             frontga_phys(icol_p, k, lchnk) = frontogenesisAngle(kk, i)
+         end if
+
+         if (use_gw_movmtn_pbl) then
+            vort4gw_phys(icol_p, k, lchnk) = vort4gw(kk, i)
          end if
       end do
 
@@ -259,6 +281,25 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       deallocate(frontga_phys)
       deallocate(frontogenesisFunction)
       deallocate(frontogenesisAngle)
+   end if
+
+   if (use_gw_movmtn_pbl) then
+      !$omp parallel do private (lchnk, ncols, icol, k, pbuf_chnk, pbuf_vort4gw)
+      do lchnk = begchunk, endchunk
+         ncols = get_ncols_p(lchnk)
+         pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+
+         call pbuf_get_field(pbuf_chnk, vort4gw_idx, pbuf_vort4gw)
+
+         do k = 1, pver
+            do icol = 1, ncols
+               pbuf_vort4gw(icol, k) = vort4gw_phys(icol, k, lchnk)
+            end do
+         end do
+      end do
+
+      deallocate(vort4gw)
+      deallocate(vort4gw_phys)
    end if
 
    call t_stopf('dpcopy')
