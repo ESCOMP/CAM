@@ -832,7 +832,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    real(r8) :: sum_water
    real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2,tvk,tk
    real(r8), parameter :: epsilon = 0.05_r8
-   real(r8) :: dp_epsilon
+   real(r8) :: dp_epsilon, dpdry_epsilon
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
