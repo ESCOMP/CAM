@@ -1790,6 +1790,9 @@ $cfg_cppdefs .= " -DPLEV=$nlev -DPCNST=$nadv -DPCOLS=$pcols -DPSUBCOLS=$psubcols
 # Radiatively active constituent number
 $cfg_cppdefs .= " -DN_RAD_CNST=$max_n_rad_cnst";
 
+# use iso_c_binding c_bool in RRTMGP (needed for nag-7)
+if ($rad_pkg eq 'rrtmgp') { $cfg_cppdefs .= ' -DRTE_USE_CBOOL'; }
+
 # offline driver for FV dycore
 if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 
