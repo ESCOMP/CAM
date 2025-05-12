@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=3,3,3,3,3,3,3,3,3
+inithist='ENDOFRUN'
+phys_grid_ctem_nfreq=3
+phys_grid_ctem_zm_nbas=16
+phys_grid_ctem_za_nlat=15
+fincl3 = 'Uzm','Vzm','Wzm','THzm', 'VTHzm','WTHzm','UVzm','UWzm'

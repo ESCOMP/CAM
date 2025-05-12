@@ -9,7 +9,8 @@ module dp_coupling
 
    use physics_types,     only: physics_state, physics_tend, physics_cnst_limit
    use constituents,      only: pcnst
-   use physconst,         only: gravit, zvir, cpairv, rairv
+   use physconst,         only: gravit, zvir
+   use air_composition,   only: cpairv, rairv
    use geopotential,      only: geopotential_t
    use check_energy,      only: check_energy_timestep_init
    use dynamics_vars,     only: T_FVDYCORE_GRID, t_fvdycore_state
@@ -76,7 +77,7 @@ CONTAINS
     use ctem,           only: ctem_diags, do_circulation_diags
     use diag_module,    only: fv_diag_am_calc
     use gravity_waves_sources, only: gws_src_fnct
-    use physconst,      only: physconst_update
+    use cam_thermo,     only: cam_thermo_dry_air_update
     use shr_const_mod,  only: shr_const_rwv
     use dyn_comp,       only: frontgf_idx, frontga_idx, uzm_idx
     use qbo,            only: qbo_use_forcing
@@ -84,7 +85,7 @@ CONTAINS
     use zonal_mean,     only: zonal_mean_3D
     use d2a3dikj_mod,   only: d2a3dikj
     use qneg_module,   only: qneg3
-
+    use air_composition,only: dry_air_species_num
 !-----------------------------------------------------------------------
     implicit none
 !-----------------------------------------------------------------------
@@ -570,17 +571,22 @@ chnk_loop2 : &
              end if
           end do
        end do
-
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+       !
+       ! Convert dry type constituents from moist to dry mixing ratio
+       ! (note: cam_thermo_dry_air_update assumes dry unless optional conversion factor provided)
+       !
+       call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
+       call set_wet_to_dry(phys_state(lchnk), convert_cnst_type='dry') ! Dynamics had moist, physics wants dry
+       if (dry_air_species_num>0) then
 !------------------------------------------------------------
 ! Apply limiters to mixing ratios of major species
 !------------------------------------------------------------
          call physics_cnst_limit( phys_state(lchnk) )
 !-----------------------------------------------------------------------------
-! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
+! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
 ! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
 !-----------------------------------------------------------------------------
-         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+         call cam_thermo_dry_air_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
        endif
 
 !------------------------------------------------------------------------
@@ -595,7 +601,7 @@ chnk_loop2 : &
 ! Compute initial geopotential heights
        call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint  , &
                             phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel , &
-                            phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,1), rairv(:,:,lchnk), gravit, zvirv, &
+                            phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv, &
                             phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol                )
 
 ! Compute initial dry static energy, include surface geopotential
@@ -606,11 +612,6 @@ chnk_loop2 : &
           end do
        end do
 
-!
-! Convert dry type constituents from moist to dry mixing ratio
-!
-       call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
-       call set_wet_to_dry(phys_state(lchnk))    ! Dynamics had moist, physics wants dry.
 !
 ! Ensure tracers are all positive
 !
@@ -652,7 +653,7 @@ chnk_loop2 : &
    use metdata,     only: get_met_fields
 #endif
    use physics_buffer, only: physics_buffer_desc
-   use physconst,      only: physconst_calc_kappav
+   use cam_thermo,     only: cam_thermo_calc_kappav
 
 !-----------------------------------------------------------------------
     implicit none
@@ -913,7 +914,7 @@ chnk_loop2 : &
     call t_startf ('p_d_adjust')
     if (iam .lt. grid%npes_xy) then
        if (grid%high_alt) then
-          call physconst_calc_kappav(ifirstxy,ilastxy,jfirstxy,jlastxy,1,km, grid%ntotq, tracer, cappa3v )
+          call cam_thermo_calc_kappav(tracer, cappa3v )
        else
           cappa3v = cappa
        endif

@@ -105,6 +105,7 @@ subroutine dyn_grid_init()
    ! coupling code requires constructing global fields for the cell center
    ! grid which is used by the physics parameterizations.
 
+   use hycoef,              only: ps0
    use ref_pres,            only: ref_pres_init
    use std_atm_profile,     only: std_atm_pres
    use time_manager,        only: get_step_size
@@ -130,7 +131,7 @@ subroutine dyn_grid_init()
 
    ! MPAS-A always requires at least one scalar (qv).  CAM has the same requirement
    ! and it is enforced by the configure script which sets the cpp macrop PCNST.
-   call cam_mpas_init_phase3(fh_ini, pcnst, endrun)
+   call cam_mpas_init_phase3(fh_ini, pcnst)
 
    ! Read or compute all time-invariant fields for the MPAS-A dycore
    ! Time-invariant fields are stored in the MPAS mesh pool.  This call
@@ -141,7 +142,7 @@ subroutine dyn_grid_init()
    ierr = pio_get_att(fh_ini, pio_global, 'sphere_radius', sphere_radius)
 
    ! Compute reference pressures from reference heights.
-   call std_atm_pres(zw, pref_edge)
+   call std_atm_pres(zw, pref_edge, user_specified_ps=ps0)
    pref_mid = (pref_edge(1:plev) + pref_edge(2:plevp)) * 0.5_r8
 
    num_pr_lev = 0
@@ -173,7 +174,7 @@ subroutine dyn_grid_init()
    ! centered grid is used by the physics parameterizations.  The physics
    ! decomposition of the cell centered grid is defined in phys_grid_init.
    call define_cam_grids()
-   
+
 end subroutine dyn_grid_init
 
 !=========================================================================================
@@ -380,7 +381,7 @@ integer function get_dyn_grid_parm(name) result(ival)
       ival = nCells_g
    else if(name == 'plev') then
       ival = plev
-   else	
+   else
       ival = -1
    end if
 
@@ -428,7 +429,7 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex )
    ! for a field on a dynamics decomposition.  The code in hbuf_accum_addlcltime appears
    ! to also assume that the field is on the physics grid since there is no argument
    ! passed to specify which dynamics grid the coordinates are for.
-   
+
    call endrun(subname//': not implemented for the MPAS grids')
 
 end subroutine dyn_grid_get_elem_coords
@@ -453,6 +454,8 @@ subroutine setup_time_invariant(fh_ini)
    type(mpas_pool_type),   pointer :: meshPool
    real(r8), pointer     :: rdzw(:)
    real(r8), allocatable :: dzw(:)
+   integer, pointer :: nCells
+   real(r8), dimension(:), pointer :: lonCell
 
    integer :: k, kk
    integer :: ierr
@@ -473,6 +476,7 @@ subroutine setup_time_invariant(fh_ini)
    call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
    call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
    call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevelsSolve) ! MPAS always solves over the full column
+   call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
 
    ! check that number of vertical layers matches MPAS grid data
    if (plev /= nVertLevelsSolve) then
@@ -481,6 +485,17 @@ subroutine setup_time_invariant(fh_ini)
       call endrun(subname//': ERROR: number of levels in IC file ('//int2str(nVertLevelsSolve)// &
                            ') does not match plev ('//int2str(nVertLevelsSolve)//').')
    end if
+
+   ! Ensure longitudes are within the [0,2*pi) range, and only remap values that
+   ! are outside the range. Some non-simple physics in CAM require this
+   ! longitude range, the MPAS-A dycore does not require any specific range for
+   ! lonCell
+   call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
+   do k=1,nCells
+      if (lonCell(k) < 0._r8 .or. lonCell(k) >= (2._r8 * pi)) then
+         lonCell(k) = lonCell(k) - (2._r8 * pi) * floor(lonCell(k) / (2._r8 * pi))
+      end if
+   end do
 
    ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
    ! Note: This same pair of calls happens a second time later in the initialization of
@@ -530,7 +545,8 @@ subroutine define_cam_grids()
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create, iMap
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
- 
+   use shr_const_mod,    only: PI => SHR_CONST_PI
+
    ! Local variables
    integer :: i, j
 
@@ -545,6 +561,7 @@ subroutine define_cam_grids()
    real(r8), dimension(:), pointer :: latCell   ! cell center latitude (radians)
    real(r8), dimension(:), pointer :: lonCell   ! cell center longitude (radians)
    real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
+   real(r8), dimension(:), pointer :: areaWeight! normalized cell areas weights
 
    integer,  dimension(:), pointer :: indexToEdgeID ! global indices of edge nodes
    real(r8), dimension(:), pointer :: latEdge   ! edge node latitude (radians)
@@ -555,6 +572,13 @@ subroutine define_cam_grids()
    real(r8), dimension(:), pointer :: lonVertex ! vertex node longitude (radians)
    integer :: ierr
    character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
+   integer              :: hdim1_d ! Global Longitudes or global grid size (nCells_g)
+   integer              :: hdim2_d ! Latitudes or 1 for unstructured grids
+   integer              :: num_levels ! Number of levels
+   integer              :: index_model_top_layer
+   integer              :: index_surface_layer
+   logical              :: unstructured
+   type (physics_column_t), allocatable  :: dyn_cols(:)
    !----------------------------------------------------------------------------
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
@@ -577,7 +601,12 @@ subroutine define_cam_grids()
           'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=gidx)
    lon_coord => horiz_coord_create('lonCell', 'nCells', nCells_g, 'longitude',     &
           'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=gidx)
- 
+
+   allocate(areaWeight(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate area_weight :'//int2str(__LINE__))
+   call get_dyn_grid_info(hdim1_d, hdim2_d, num_levels, index_model_top_layer, index_surface_layer, unstructured, dyn_cols)
+
+
    ! Map for cell centers grid
    allocate(grid_map(3, nCellsSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
@@ -586,11 +615,19 @@ subroutine define_cam_grids()
       grid_map(1, i) = i
       grid_map(2, i) = 1
       grid_map(3, i) = gidx(i)
+      areaWeight(i) = dyn_cols(i)%weight/(4.0_r8*PI)
    end do
 
    ! cell center grid for I/O using MPAS names
    call cam_grid_register('mpas_cell', dyn_decomp, lat_coord, lon_coord,     &
           grid_map, block_indexed=.false., unstruct=.true.)
+   call cam_grid_attribute_register('mpas_cell', 'area_cell', 'mpas cell areas', &
+         'nCells', areaCell, map=gidx)
+   call cam_grid_attribute_register('mpas_cell', 'area_weight_mpas', 'mpas area weight', &
+         'nCells', areaWeight, map=gidx)
+
+   nullify(areaWeight) ! areaWeight belongs to grid now
+   nullify(areaCell) ! areaCell belongs to grid now
 
    ! create new coordinates and grid using CAM names
    lat_coord => horiz_coord_create('lat', 'ncol', nCells_g, 'latitude',      &
@@ -602,6 +639,8 @@ subroutine define_cam_grids()
 
    ! gidx can be deallocated.  Values are copied into the coordinate and attribute objects.
    deallocate(gidx)
+
+   deallocate(dyn_cols)
 
    ! grid_map memory cannot be deallocated.  The cam_filemap_t object just points
    ! to it.  Pointer can be disassociated.
@@ -629,7 +668,7 @@ subroutine define_cam_grids()
           'degrees_north', 1, nEdgesSolve, latEdge(1:nEdgesSolve)*rad2deg, map=gidx)
    lon_coord => horiz_coord_create('lonEdge', 'nEdges', nEdges_g, 'longitude',     &
           'degrees_east', 1, nEdgesSolve, lonEdge(1:nEdgesSolve)*rad2deg, map=gidx)
- 
+
    ! Map for edge node grid
    allocate(grid_map(3, nEdgesSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
@@ -666,7 +705,7 @@ subroutine define_cam_grids()
           'degrees_north', 1, nVerticesSolve, latVertex(1:nVerticesSolve)*rad2deg, map=gidx)
    lon_coord => horiz_coord_create('lonVertex', 'nVertices', nVertices_g, 'longitude',     &
           'degrees_east', 1, nVerticesSolve, lonVertex(1:nVerticesSolve)*rad2deg, map=gidx)
- 
+
    ! Map for vertex node grid
    allocate(grid_map(3, nVerticesSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
@@ -685,7 +724,7 @@ subroutine define_cam_grids()
    nullify(grid_map)
    nullify(lat_coord)
    nullify(lon_coord)
-   
+
 end subroutine define_cam_grids
 
 end module dyn_grid

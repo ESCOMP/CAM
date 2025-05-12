@@ -97,14 +97,14 @@
 <!-- Monthly -->
 <fincl1>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2' 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2' 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op',
 	 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2',
 	 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
          'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN',
 	 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS', 'U_08_SIN',
 	 'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'V_08_COS', 'V_08_SIN',
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN',
-         'ALATM', 'ALONM', 'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11',
+         'ALATM', 'ALONM', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11',
          'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH', 'CH4', 'CL',
          'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD', 'CO',
          'DTCOND', 'DTV', 'DUV', 'DVV', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC','FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC',
@@ -122,19 +122,19 @@
 <!-- Instantaneous every hour -->
 <fincl2>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H'
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H'
 </fincl2>
 <!-- Instantaneous every day -->
 <fincl3>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
 	 'Op2P', 'Op2D', 'Op', 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot',
 	 'Z3GM', 'OpDens', 'EDens'
 </fincl3>
 <!-- Average every day -->
 <fincl4>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT',
 	 'QO3', 'QCO2', 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
 	 'SolIonRate_Tot', 'Z3GM', 'OpDens', 'EDens'
 </fincl4>

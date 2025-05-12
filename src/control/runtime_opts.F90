@@ -36,12 +36,11 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use spmd_utils,          only: spmd_utils_readnl
    use cam_history,         only: history_readnl
    use physconst,           only: physconst_readnl
+   use air_composition,     only: air_composition_readnl
    use physics_buffer,      only: pbuf_readnl
    use phys_control,        only: phys_ctl_readnl
    use wv_saturation,       only: wv_sat_readnl
    use ref_pres,            only: ref_pres_readnl
-   use cam3_aero_data,      only: cam3_aero_data_readnl
-   use cam3_ozone_data,     only: cam3_ozone_data_readnl
    use dadadj_cam,          only: dadadj_readnl
    use macrop_driver,       only: macrop_driver_readnl
    use microp_driver,       only: microp_driver_readnl
@@ -49,7 +48,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use subcol,              only: subcol_readnl
    use cloud_fraction,      only: cldfrc_readnl
    use cldfrc2m,            only: cldfrc2m_readnl
-   use rk_stratiform,       only: rk_stratiform_readnl
+   use rk_stratiform_cam,   only: rk_stratiform_cam_readnl
    use unicon_cam,          only: unicon_cam_readnl
    use zm_conv_intr,        only: zm_conv_readnl
    use hk_conv,             only: hkconv_readnl
@@ -63,7 +62,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use conv_water,          only: conv_water_readnl
    use rad_constituents,    only: rad_cnst_readnl
    use radiation_data,      only: rad_data_readnl
-   use modal_aer_opt,       only: modal_aer_opt_readnl
+   use aerosol_optics_cam,  only: aerosol_optics_cam_readnl
    use clubb_intr,          only: clubb_readnl
    use chemistry,           only: chem_readnl
    use prescribed_volcaero, only: prescribed_volcaero_readnl
@@ -78,7 +77,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use aircraft_emit,       only: aircraft_emit_readnl
    use cospsimulator_intr,  only: cospsimulator_intr_readnl
    use vertical_diffusion,  only: vd_readnl
-   use rayleigh_friction,   only: rayleigh_friction_readnl
+   use rayleigh_friction_cam, only: rayleigh_friction_readnl
 
    use cam_diagnostics,     only: diag_readnl
    use radheat,             only: radheat_readnl
@@ -90,11 +89,22 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use rate_diags,          only: rate_diags_readnl
    use tracers,             only: tracers_readnl
    use nudging,             only: nudging_readnl
+#if ( defined SIMPLE )
+   use frierson_cam,        only: frierson_readnl
+#endif
 
    use dyn_comp,            only: dyn_readnl
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
+   use hemco_interface,     only: hemco_readnl
+   use upper_bc,            only: ubc_readnl
+   use cam_budget,          only: cam_budget_readnl
+   use phys_grid_ctem,      only: phys_grid_ctem_readnl
+   use mo_lightning,        only: lightning_readnl
+   use surface_emissions_mod, only: surface_emissions_readnl
+   use elevated_emissions_mod, only: elevated_emissions_readnl
+   use atm_stream_ndep,     only: stream_ndep_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -121,6 +131,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
 
    call spmd_utils_readnl(nlfilename)
    call phys_grid_readnl(nlfilename)
+   call air_composition_readnl(nlfilename)
    call physconst_readnl(nlfilename)
 !++bee 13 Oct 2015, need to fix the pbuf_global_allocate functionality, then
 !                   can uncomment the pbuf_readnl line
@@ -129,11 +140,10 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cnst_readnl(nlfilename)
    call history_readnl(nlfilename)
    call chem_surfvals_readnl(nlfilename)
+   call ubc_readnl(nlfilename)
    call phys_ctl_readnl(nlfilename)
    call wv_sat_readnl(nlfilename)
    call ref_pres_readnl(nlfilename)
-   call cam3_aero_data_readnl(nlfilename)
-   call cam3_ozone_data_readnl(nlfilename)
    call dadadj_readnl(nlfilename)
    call macrop_driver_readnl(nlfilename)
    call microp_driver_readnl(nlfilename)
@@ -144,7 +154,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cldfrc2m_readnl(nlfilename)
    call unicon_cam_readnl(nlfilename)
    call zm_conv_readnl(nlfilename)
-   call rk_stratiform_readnl(nlfilename)
+   call rk_stratiform_cam_readnl(nlfilename)
    call hkconv_readnl(nlfilename)
    call uwshcu_readnl(nlfilename)
    call cld_sediment_readnl(nlfilename)
@@ -158,8 +168,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call radiation_readnl(nlfilename)
    call rad_cnst_readnl(nlfilename)
    call rad_data_readnl(nlfilename)
-   call modal_aer_opt_readnl(nlfilename)
+   call aerosol_optics_cam_readnl(nlfilename)
    call chem_readnl(nlfilename)
+   call lightning_readnl(nlfilename)
    call prescribed_volcaero_readnl(nlfilename)
    call prescribed_strataero_readnl(nlfilename)
    call solar_data_readnl(nlfilename)
@@ -187,10 +198,19 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call rate_diags_readnl(nlfilename)
    call scam_readnl(nlfilename, single_column, scmlat, scmlon)
    call nudging_readnl(nlfilename)
+#if ( defined SIMPLE )
+   call frierson_readnl(nlfilename)
+#endif
 
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
+   call hemco_readnl(nlfilename)
+   call cam_budget_readnl(nlfilename)
+   call phys_grid_ctem_readnl(nlfilename)
+   call surface_emissions_readnl(nlfilename)
+   call elevated_emissions_readnl(nlfilename)
+   call stream_ndep_readnl(nlfilename)
 
 end subroutine read_namelist
 

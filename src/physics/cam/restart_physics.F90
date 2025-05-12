@@ -48,7 +48,7 @@ module restart_physics
 
   CONTAINS
     subroutine init_restart_physics ( File, pbuf2d)
-      
+
     use physics_buffer,      only: pbuf_init_restart, physics_buffer_desc
     use ppgrid,              only: pver, pverp
     use chemistry,           only: chem_init_restart
@@ -61,6 +61,7 @@ module restart_physics
     use cam_pio_utils,       only: cam_pio_def_dim
     use subcol_utils,        only: is_subcol_on
     use subcol,              only: subcol_init_restart
+    use carma_intr,          only: carma_restart_init
 
     type(file_desc_t), intent(inout) :: file
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -127,12 +128,14 @@ module restart_physics
     ierr = pio_def_var(File, 'wsx',  pio_double, hdimids, wsx_desc)
     ierr = pio_def_var(File, 'wsy',  pio_double, hdimids, wsy_desc)
     ierr = pio_def_var(File, 'shf',  pio_double, hdimids, shf_desc)
- 
+
     call radiation_define_restart(file)
 
     if (is_subcol_on()) then
       call subcol_init_restart(file, hdimids)
     end if
+
+    call carma_restart_init(file)
 
   end subroutine init_restart_physics
 
@@ -141,7 +144,7 @@ module restart_physics
       !-----------------------------------------------------------------------
       use physics_buffer,      only: physics_buffer_desc, pbuf_write_restart
       use phys_grid,           only: phys_decomp
-      
+
       use ppgrid,              only: begchunk, endchunk, pcols, pverp
       use chemistry,           only: chem_write_restart
       use prescribed_ozone,    only: write_prescribed_ozone_restart
@@ -157,6 +160,7 @@ module restart_physics
       use pio,                 only: pio_write_darray
       use subcol_utils,        only: is_subcol_on
       use subcol,              only: subcol_write_restart
+      use carma_intr,          only: carma_restart_write
       !
       ! Input arguments
       !
@@ -329,7 +333,8 @@ module restart_physics
       call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
 
       call radiation_write_restart(file)
-      
+      call carma_restart_write(file)
+
     end subroutine write_restart_physics
 
 !#######################################################################
@@ -338,7 +343,7 @@ module restart_physics
 
      !-----------------------------------------------------------------------
      use physics_buffer,      only: physics_buffer_desc, pbuf_read_restart
-     
+
      use ppgrid,              only: begchunk, endchunk, pcols, pver, pverp
      use chemistry,           only: chem_read_restart
      use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_id
@@ -352,6 +357,7 @@ module restart_physics
      use subcol_utils,        only: is_subcol_on
      use subcol,              only: subcol_read_restart
      use pio,                 only: pio_read_darray
+     use carma_intr,          only: carma_restart_read
      !
      ! Arguments
      !
@@ -396,7 +402,7 @@ module restart_physics
      end if
      call cam_grid_get_decomp(physgrid, dims(1:2), gdims(1:nhdims), pio_double, &
           iodesc)
-     
+
      ! data for chemistry
      call chem_read_restart(File)
 
@@ -589,6 +595,7 @@ module restart_physics
      deallocate(tmpfield2)
 
      call radiation_read_restart(file)
+     call carma_restart_read(file)
 
    end subroutine read_restart_physics
 

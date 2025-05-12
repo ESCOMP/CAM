@@ -5,8 +5,8 @@ mfilt  = 1,   5, 20, 40, 120, 240, 365,  73, 365
 ndens  = 2,   2,  2,  2,   2,   2,   1,   1,   1
 
 
-fincl1 = 'ABSORB:A', 'ACTREL:A', 'AODABSdn:A', 'AODBCdn:A', 'AODdnDUST1:A', 'AODdnDUST2:A', 
-   'AODdnDUST3:A', 'AODdnMODE1:A', 'AODdnMODE2:A', 'AODdnMODE3:A', 'AODDUST2:A', 'AODDUST:A', 'AODNIRstdn:A', 'AODPOMdn:A', 'AODSO4dn:A', 'AODSOAdn:A', 'AODSSdn:A', 
+fincl1 = 'ABSORB:A', 'ACTREL:A', 'AODABSdn:A', 'AODBCdn:A', 'AODdnDUST01:A', 'AODdnDUST02:A', 
+   'AODdnDUST03:A', 'AODdn_aitken:A', 'AODdn_accum:A', 'AODdn_coarse:A', 'AODDUST02:A', 'AODDUST:A', 'AODNIRstdn:A', 'AODPOMdn:A', 'AODSO4dn:A', 'AODSOAdn:A', 'AODSSdn:A', 
    'AODUVdn:A', 'AODUVstdn:A', 'AODVIS:A', 'AODVISdn:A', 'AODVISstdn:A', 'AQ_SO2:A', 'AREA:A', 'AREI:A', 'AREL:A', 'bc_a1:A', 'bc_a1DDF:A', 
    'bc_a1SFWET:A', 'bc_a4:A', 'bc_a4DDF:A', 'bc_a4SFWET:A', 'bc_c1:A', 'bc_c1DDF:A', 'bc_c1SFWET:A', 'bc_c4:A', 'bc_c4DDF:A', 
    'bc_c4SFWET:A', 'BROX:A', 'BROY:A', 'BURDENBCdn', 'BURDENDUSTdn:A', 'BURDENPOMdn:A', 'BURDENSEASALTdn:A', 'BURDENSO4dn:A', 

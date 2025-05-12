@@ -14,14 +14,18 @@ use dyn_comp,       only: dyn_import_t, dyn_export_t, dyn_run, dyn_final
 
 use dp_coupling,    only: d_p_coupling, p_d_coupling
 
-use camsrfexch,     only: cam_out_t     
+use camsrfexch,     only: cam_out_t
 
 use cam_history,    only: addfld, outfld, hist_fld_active, write_inithist
 
 use time_manager,   only: get_step_size, get_nstep, is_first_step, is_first_restart_step
 
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
- 
+
+use aerosol_properties_mod, only: aerosol_properties
+use aerosol_state_mod,      only: aerosol_state
+use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+
 implicit none
 private
 save
@@ -32,6 +36,9 @@ public :: &
    stepon_run2, &
    stepon_run3, &
    stepon_final
+
+class(aerosol_properties), pointer :: aero_props_obj => null()
+logical :: aerosols_transported = .false.
 
 !=========================================================================================
 contains
@@ -67,6 +74,14 @@ subroutine stepon_init(dyn_in, dyn_out)
    call addfld ('rho_tend', (/ 'lev' /),  'A', 'kg/m^3/s', &
                 'physics tendency of dry air density', gridname='mpas_cell')
 
+   ! get aerosol properties
+   aero_props_obj => aerosol_properties_object()
+
+   if (associated(aero_props_obj)) then
+      ! determine if there are transported aerosol contistuents
+      aerosols_transported = aero_props_obj%number_transported()>0
+   end if
+
 end subroutine stepon_init
 
 !=========================================================================================
@@ -84,6 +99,11 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
 
    ! local variables
    integer :: nstep
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
+
    !----------------------------------------------------------------------------
 
    nstep     = get_nstep()
@@ -94,13 +114,27 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    ! of the dynamics initialization (done in dyn_init) since the dycore
    ! does not run and dyn_in points to the same memory as dyn_out.
    call write_dynvar(dyn_out)
-   
+
    call t_barrierf('sync_d_p_coupling', mpicom)
    call t_startf('d_p_coupling')
    ! Move data into phys_state structure.
    call d_p_coupling (phys_state, phys_tend, pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
-   
+
+   !----------------------------------------------------------
+   ! update aerosol state object from CAM physics state constituents
+   !----------------------------------------------------------
+   if (aerosols_transported) then
+
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! pass number mass or number mixing ratios of aerosol constituents
+         ! to aerosol state object
+         call aero_state_obj%set_transported(phys_state(c)%q)
+      end do
+
+   end if
+
 end subroutine stepon_run1
 
 !=========================================================================================
@@ -113,6 +147,22 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    type (dyn_import_t), intent(inout) :: dyn_in
    type (dyn_export_t), intent(inout) :: dyn_out
    !----------------------------------------------------------------------------
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+
+   !----------------------------------------------------------
+   ! update physics state with aerosol constituents
+   !----------------------------------------------------------
+   nullify(aero_state_obj)
+
+   if (aerosols_transported) then
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(phys_state(c)%q)
+      end do
+   end if
 
    call t_barrierf('sync_p_d_coupling', mpicom)
    call t_startf('p_d_coupling')
@@ -139,7 +189,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf('dyn_run')
-   call dyn_run(dyn_in, dyn_out)	
+   call dyn_run(dyn_in, dyn_out)
    call t_stopf('dyn_run')
 
 end subroutine stepon_run3

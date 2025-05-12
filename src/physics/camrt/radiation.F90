@@ -582,7 +582,7 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
-   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_def_var(File, 'nextsw_cday', pio_double, nextsw_cday_desc)
    ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
 
    if (radiation_do('aeres')) then
@@ -709,6 +709,7 @@ subroutine radiation_read_restart(file)
    integer :: dims(3), gdims(3), nhdims
    integer :: vsize
    integer :: i
+   real(r8) :: temp_var
 
    type(var_desc_t) :: vardesc
    character(len=16) :: pname
@@ -761,7 +762,8 @@ subroutine radiation_read_restart(file)
    end if
 
    ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
-   ierr = pio_get_var(File, vardesc, nextsw_cday)
+   ierr = pio_get_var(File, vardesc, temp_var)
+   nextsw_cday = temp_var
 
 end subroutine radiation_read_restart
   
@@ -791,7 +793,7 @@ subroutine radiation_tend( &
    use interpolate_data,    only: vertinterp
    use radiation_data,      only: rad_data_write
    use cloud_cover_diags,   only: cloud_cover_diags_out
-   use tropopause,          only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,          only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    use orbit,               only: zenith
 
    ! Arguments
@@ -850,7 +852,7 @@ subroutine radiation_tend( &
    ! This is used by the chemistry.
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
 
-   ! This is used for the energy checker and the Eulerian dycore.
+   ! This is used for the energy checker.
    real(r8), pointer :: fsns(:)  ! Surface solar absorbed flux
    real(r8), pointer :: fsnt(:)  ! Net column abs solar flux at model top
    real(r8), pointer :: flns(:)  ! Srf longwave cooling (up-down) flux
@@ -875,7 +877,7 @@ subroutine radiation_tend( &
    ! Aerosol shortwave radiative properties
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
 
    ! Aerosol longwave absorption optical depth
@@ -999,7 +1001,7 @@ subroutine radiation_tend( &
       ! Solar radiation computation
 
       if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-         call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+         call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
       endif
 
       if (dosw) then

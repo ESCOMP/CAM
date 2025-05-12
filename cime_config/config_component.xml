@@ -8,11 +8,11 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%MAM5][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
-    <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM][%DEV]"                                     >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM70[%LT][%MT][%WA][%WX][%CSO][%CT1S][%CT4S][%CT0MA][%CT1MA][%CT4MA]"                                                                                                                                                                                                                                                                                                    >CAM cam7 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CARMATS][%CARMAWM][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
+    <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -27,7 +27,7 @@
      SINGLE COLUMN CAM
     ===============
    -->
-    <desc atm="CAM[456]0%SCAM">CAM stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
+    <desc atm="CAM60%SCAM">CAM stand-alone single column mode -- user defined IOP settings can be placed under the usermods scam_user directory:</desc>
     <desc atm="[%SDYN]">CAM specified dynamics is used in finite volume dynamical core:</desc>
     <desc atm="[%NUDG]">CAM physics is nudged towards prescribed meteorology:</desc>
   <!--
@@ -35,19 +35,31 @@
      CAM Options
     ===============
    -->
-    <desc option="DEV"          >CAM development physics:</desc>
-    <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
-    <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
+    <desc option="CT1S"         >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
+    <desc option="CT2S"         >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
+    <desc option="CT4S"         >CAM-Chem troposphere/stratosphere simplified chemistry for climate simulations:</desc>
+    <desc option="CT0MA"        >Middle atmosphere chemistiry:</desc>
+    <desc option="CT1MA"        >Middle atmosphere chemistiry with T1 troposphere chemistry:</desc>
+    <desc option="CT4MA"        >Middle atmosphere chemistiry with T4 troposphere chemistry:</desc>
+    <desc option="CSO"          >Specified oxidants chemistiry </desc>
+    <desc option="GEOSCHEM"     >GEOS-Chem troposphere/stratosphere chemistry :</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="LT"           >CAM low top model </desc>
+    <desc option="WA"           >WACCM model </desc>
+    <desc option="WX"           >WACCMX extended model </desc>
     <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
+    <desc option="MT"           >CAM mid top model </desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
-    <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
-    <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
-    <desc option="SPCAMM"       >CAM super-parameterized CAM double moment m2005 SAM microphysics </desc>
-    <desc option="SPCAMCLBM"    >CAM super-parameterized CAM double moment m2005 SAM microphysics using CLUBB </desc>
     <desc option="TMOZ"         >CAM tropospheric chemistry with bulk aerosols:</desc>
+
+  <!--
+    ===============
+     HEMCO Options
+    ===============
+  -->
+    <desc option="HEMCO"        >With Harmonized Emissions Component (HEMCO) for chemistry:</desc>
 
   <!--
     ===============
@@ -67,8 +79,8 @@
     ===============
    -->
     <desc option="ADIAB"        >CAM dry adiabatic configurarion (no physics forcing):</desc>
-    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
+    <desc option="GRAYRAD"      >CAM moist simple model (Frierson, 2006):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
     <desc option="KESSLER"      >CAM moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
 
@@ -100,10 +112,9 @@
 
   <entry id="CAM_DYCORE">
     <type>char</type>
-    <valid_values>eul,fv,fv3,se,mpas</valid_values>
+    <valid_values>fv,fv3,se,mpas</valid_values>
     <default_value>fv</default_value>
     <values match="last">
-      <value grid="a%T[1-9]" >eul</value>
       <value grid="a%ne[0-9]">se</value>
       <value grid="a%C[0-9]" >fv3</value>
       <value grid="a%mpasa[0-9]">mpas</value>
@@ -118,62 +129,87 @@
     <valid_values></valid_values>
     <default_value></default_value>
     <values match="last" modifier='additive'>
-      <value compset="_CAM30">-phys cam3</value>
       <value compset="_CAM40">-phys cam4</value>
       <value compset="_CAM50">-phys cam5</value>
       <value compset="_CAM60">-phys cam6</value>
+      <value compset="_CAM70">-phys cam7</value>
 
       <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
-      <value compset="_CAM%DEV">-phys cam_dev</value>
-      <value compset="_(CAM50|CAM60)%.*(CCTS1|CFIRE)">-chem trop_strat_mam4_vbs</value>
+      <value compset="_CAM.*(%CT1S|%CFIRE)">-chem trop_strat_mam5_vbs</value>
+      <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
-      <value compset="CAM60%CVBSX">-chem trop_strat_mam4_vbsext</value>
-      <value compset="CAM60%CCTS2">-chem trop_strat_mam4_ts2</value>
+      <value compset="CAM60%CARMATS">-chem trop_strat_noaero -carma trop_strat_soa5</value>
+      <value compset="CAM60%CARMAWM">-chem waccm_ma_noaero -carma trop_strat_soa1</value>
+      <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
+      <value compset="CAM60%CT2S">-chem trop_strat_mam5_ts2</value>
+      <value compset="CAM.*%CT4S">-chem trop_strat_mam5_ts4</value>
+      <value compset="CAM.*%CSO">-chem ghg_mam4</value>
+      <value compset="CAM.*WA%CSO">-chem waccm_sc_mam4</value>
+      <value compset="CAM.*%CT0MA">-chem waccm_ma_mam5</value>
+      <value compset="CAM.*%CT1MA">-chem waccm_tsmlt_mam5</value>
+      <value compset="CAM.*%CT4MA">-chem waccm_t4ma_mam5</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-dyn eul -scam</value>
-      <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
-      <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
-      <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
-      <value compset="CAM%SPCAMCLBM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 -spcam_clubb_sgs </value>
       <value compset="_CAM40%TMOZ">-chem trop_mozart</value>
 
       <value compset="_CAM.*_BGC%B">-co2_cycle</value>
 
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
-      <value compset="_(CAM50|CAM60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
       <value compset="_CAM40%WCCM">-chem waccm_ma</value>
-      <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
-      <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam5</value>
+      <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam5</value>
       <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
-      <value compset="_(CAM50|CAM60)%WCTS(_|%SDYN)">-chem waccm_tsmlt_mam4</value>
-      <value compset="_CAM60%WCTS%MAM5_">-chem waccm_tsmlt_mam5</value>
-      <value compset="_CAM60%MAM5_">-chem trop_mam5</value>
+      <value compset="_(CAM50|CAM60)%WCTS(_|%SDYN)">-chem waccm_tsmlt_mam5</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
+      <value compset="_CAM70%WX">-waccmx -ionosphere wxie</value>
       <value compset="_CAM\d0%WX_" >-waccmx -ionosphere none -chem waccm_ma</value>
       <value compset="_CAM40%WXIE(_|%)">-chem waccm_ma</value>
       <value compset="_CAM40%WXIED">-chem waccm_mad</value>
-      <value compset="_CAM60%WXIE(_|%)">-chem waccm_ma_mam4</value>
-      <value compset="_CAM60%WXIED">-chem waccm_mad_mam4</value>
+      <value compset="_CAM60%WXIE(_|%)">-chem waccm_ma_mam5</value>
+      <value compset="_CAM60%WXIED">-chem waccm_mad_mam5</value>
 
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
-      <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
+      <value compset="_CAM\d0%CT.*%SDYN">-nlev 56</value>
+      <value compset="_CAM\d0%CARMATS.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
+      <value compset="_CAM70%LT">-model_top lt</value>
+      <value compset="_CAM70%MT">-model_top mt</value>
+      <value compset="_CAM70%WA">-model_top ht</value>
+      <value compset="_CAM70%WX">-model_top xt</value>
+
+      <!-- SCAM IOPs -->
+      <value compset="_CAM.*%SCAMARM95">-scam arm95</value>
+      <value compset="_CAM.*%SCAMARM97">-scam arm97</value>
+      <value compset="_CAM.*%SCAMATEX">-scam atex</value>
+      <value compset="_CAM.*%SCAMBOMEX">-scam bomex</value>
+      <value compset="_CAM.*%SCAMCGILSS11">-scam cgilss11</value>
+      <value compset="_CAM.*%SCAMCGILSS12">-scam cgilss12</value>
+      <value compset="_CAM.*%SCAMCGILSS6">-scam cgilss6</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF01">-scam dycomsrf01</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF02">-scam dycomsrf02</value>
+      <value compset="_CAM.*%SCAMGATE3">-scam gateIII</value>
+      <value compset="_CAM.*%SCAMMPACE">-scam mpace</value>
+      <value compset="_CAM.*%SCAMRICO">-scam rico</value>
+      <value compset="_CAM.*%SCAMSPARTICUS">-scam sparticus</value>
+      <value compset="_CAM.*%SCAMTOGA2">-scam togaII</value>
+      <value compset="_CAM.*%SCAMTWP06">-scam twp06</value>
+      <value compset="_CAM.*%SCAMCAMFRC">-scam camfrc</value>
 
       <!-- Simple models -->
-      <value compset="_CAM%ADIAB">-phys adiabatic</value>
-      <value compset="_CAM%DABIP04">-phys adiabatic</value>
+      <value compset="_CAM%ADIAB">-phys adiabatic -analytic_ic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
+      <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic -nadv_tt=6</value>
 
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
       <value compset="_DOCN%AQP"   >-aquaplanet</value>
+      <value compset="_CAM70.*_SLND_SICE_DOCN%AQP" >-chem none</value>
 
       <!-- PORT -->
       <value compset="%PORT">-offline_drv rad</value>
@@ -202,20 +238,23 @@
       <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
+      <value compset="1850[CE]?_CAM70%LT"     >1850_cam_lt</value>
+      <value compset="1850[CE]?_CAM70%MT"     >1850_cam_mt</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
-      <value compset="2000_CAM%DEV"      >2000_cam6</value>
+      <value compset="2000[CE]?_CAM70"        >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
-      <value compset="2000_CAM60%.*CCTS1"  >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%.*CT1S" >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%CARMATS">carma_trop_strat_cam6</value>
+      <value compset="2000_CAM60%GEOSCHEM">2000_geoschem</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
-      <value compset="2000_CAM30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
       <value compset="2000_CAM50_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam5</value>
@@ -223,12 +262,14 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
+      <value compset="2000_CAM70.*_SLND_SICE_DOCN%AQP" >aquaplanet_cam7</value>
       <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
-      <value compset="2010_CAM60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>
+      <value compset="2010_CAM60%.*CT1S" >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
+      <value compset="2010_CAM60%GEOSCHEM">2010_geoschem</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
@@ -238,15 +279,28 @@
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
       <value compset="HIST_CAM50"        >1850-2005_cam5</value>
       <value compset="HIST_CAM60"        >hist_cam6</value>
+      <value compset="HIST_CAM70%LT"     >hist_cam_lt</value>
+      <value compset="HIST_CAM70%MT"     >hist_cam_mt</value>
       <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
-      <value compset="HIST_CAM60%.*CCTS1"  >hist_trop_strat_vbs_cam6</value>
-      <value compset="HIST_CAM60%.*CCTS[12]%NUDG">hist_trop_strat_nudged_cam6</value>
+      <value compset="HIST[CE]?_CAM70%WA%CT">waccm_ma_hist_cam7</value>
+      <value compset="HIST[CE]?_CAM70%WA%CSO">waccm_sc_hist_cam7</value>
+      <value compset="HIST[CE]?_CAM70%WX">waccm_ma_hist_cam7</value>
+      <value compset="HIST[CE]?_CAM.*CT1S">hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST[CE]?_CAM7.*CT4S"  >hist_trop_strat_t4s_cam7</value>
+      <value compset="1850[CE]?_CAM7.*CT4S"  >1850_trop_strat_t4s_cam7</value>
+      <value compset="HIST_CAM60%.*CT[12]S%NUDG">hist_trop_strat_nudged_cam6</value>
+      <value compset="HIST_CAM60%CARMATS">carma_trop_strat_hist_cam6</value>
+      <value compset="HIST_CAM60%CARMATS%NUDG">carma_trop_strat_nudged_cam6</value>
+      <value compset="HIST_CAM60%CARMAWM">carma_waccm_ma_hist_cam6</value>
+      <value compset="HIST_CAM60%CARMAWM%NUDG">carma_waccm_ma_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_CAM60%GEOSCHEM">hist_geoschem</value>
+      <value compset="HIST_CAM60%GEOSCHEM%NUDG">hist_geoschem_nudged</value>
       <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
@@ -271,17 +325,16 @@
       <value compset="_CAM60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
       <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_ma_cam6</value>
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
-      <value compset="_CAM60%.*CCTS1%SDYN"  >sd_trop_strat_vbs_cam6</value>
-      <value compset="_CAM60%.*CCTS2%SDYN"  >sd_trop_strat2_cam6</value>
+      <value compset="_CAM60%.*CT1S%SDYN" >sd_trop_strat_vbs_cam6</value>
+      <value compset="_CAM60%.*CT2S%SDYN" >sd_trop_strat2_cam6</value>
+      <value compset="_CAM60%CARMATS%SDYN">carma_trop_strat_sd_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
-      <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
+      <value compset="CAM%ADIAB"         >adiabatic</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
+      <value compset="CAM%GRAYRAD"       >dctest_frierson</value>
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
-
-      <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
-      <!--       <value compset="CAM[456]0%SCAM"    >scam_arm97</value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -317,6 +370,8 @@
       <value compset="_CAM60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
       <value compset="_CAM60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <!-- hemco (harmonized emissions component) option -->
+      <value compset="_CAM.*%HEMCO"> use_hemco=.true. </value>
       <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
       <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
     </values>
@@ -336,7 +391,8 @@
     <values match="last">
     <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
-    <value compset="CAM[456]0%.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM.*%SCAMCAMFRC">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_camfrc</value>
     </values>
     <group>run_component_cam</group>
     <file>env_case.xml</file>

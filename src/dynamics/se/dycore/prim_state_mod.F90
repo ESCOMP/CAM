@@ -4,7 +4,7 @@ module prim_state_mod
   use dimensions_mod,   only: nlev, np, nc, qsize_d, ntrac_d
   use parallel_mod,     only: ordered
   use hybrid_mod,       only: hybrid_t
-  use time_mod,         only: timelevel_t, TimeLevel_Qdp, time_at
+  use se_dyn_time_mod,  only: timelevel_t, TimeLevel_Qdp, time_at
   use control_mod,      only: qsplit, statediag_numtrac
   use global_norms_mod, only: global_integrals_general
   use element_mod,      only: element_t
@@ -19,19 +19,19 @@ module prim_state_mod
 CONTAINS
 
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm, omega_cn)
-    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: use_cslam
     use constituents,           only: cnst_name
-    use physconst,              only: thermodynamic_active_species_idx_dycore, dry_air_species_num
-    use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx
+    use air_composition,        only: thermodynamic_active_species_idx_dycore, dry_air_species_num
+    use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx
     use cam_control_mod,        only: initial_run
-    use time_mod,               only: tstep
+    use se_dyn_time_mod,        only: tstep
     use control_mod,            only: rsplit, qsplit
     use perf_mod,       only: t_startf, t_stopf
     type (element_t),             intent(inout) :: elem(:)
     type (TimeLevel_t), target,   intent(in)    :: tl
     type (hybrid_t),              intent(in)    :: hybrid
     integer,                      intent(in)    :: nets,nete
-    type(fvm_struct),             intent(inout) :: fvm(:)        
+    type(fvm_struct),             intent(inout) :: fvm(:)
     real (kind=r8), optional,     intent(in)    :: omega_cn(2,nets:nete)
     ! Local variables...
     integer            :: k,ie,m_cnst
@@ -60,7 +60,7 @@ CONTAINS
     n0=tl%n0
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
     ! moist surface pressure
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         do q=dry_air_species_num+1,thermodynamic_active_species_num
@@ -86,7 +86,7 @@ CONTAINS
     do ie=nets,nete
       da_gll(:,:,ie) = elem(ie)%mp(:,:)*elem(ie)%metdet(:,:)
     enddo
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         da_fvm(:,:,ie) = fvm(ie)%area_sphere(:,:)
       enddo
@@ -103,7 +103,7 @@ CONTAINS
     varname(3)           = 'T         '
     varname(4)           = 'OMEGA     '
     varname(5)           = 'OMEGA CN  '
-    if (ntrac>0) then
+    if (use_cslam) then
       varname(6)         = 'PSDRY(fvm)'
       varname(7)         = 'PS(fvm)   '
       varname(8)         = 'PSDRY(gll)'
@@ -117,7 +117,7 @@ CONTAINS
       nm2 = nm+statediag_numtrac!number of vars after tracers
     end if
 
-    do ie=nets,nete      
+    do ie=nets,nete
       min_local(ie,1)  = MINVAL(elem(ie)%state%v(:,:,1,:,n0))
       max_local(ie,1)  = MAXVAL(elem(ie)%state%v(:,:,1,:,n0))
       min_local(ie,2)  = MINVAL(elem(ie)%state%v(:,:,2,:,n0))
@@ -133,7 +133,7 @@ CONTAINS
         min_local(ie,5)  = 0.0_r8
         max_local(ie,5)  = 0.0_r8
       end if
-      if (ntrac>0) then
+      if (use_cslam) then
         min_local(ie,6) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
         max_local(ie,6) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
         min_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
@@ -141,7 +141,7 @@ CONTAINS
         min_local(ie,8)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,8)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,9)  = MINVAL(moist_ps(:,:,ie))
-        max_local(ie,9)  = MAXVAL(moist_ps(:,:,ie))      
+        max_local(ie,9)  = MAXVAL(moist_ps(:,:,ie))
         do q=1,statediag_numtrac
           varname(nm+q)         = TRIM(cnst_name(q))
           min_local(ie,nm+q) = MINVAL(fvm(ie)%c(1:nc,1:nc,:,q))
@@ -151,7 +151,7 @@ CONTAINS
         min_local(ie,6)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,6)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,7)  = MINVAL(moist_ps(:,:,ie))
-        max_local(ie,7)  = MAXVAL(moist_ps(:,:,ie))        
+        max_local(ie,7)  = MAXVAL(moist_ps(:,:,ie))
         do q=1,statediag_numtrac
           varname(nm+q)         = TRIM(cnst_name(q))
           tmp_q = elem(ie)%state%Qdp(:,:,:,q,n0_qdp)/elem(ie)%state%dp3d(:,:,:,n0)
@@ -168,7 +168,7 @@ CONTAINS
       max_local(ie,nm2+1)  = MAXVAL(elem(ie)%derived%FT(:,:,:))
       min_local(ie,nm2+2)  = MINVAL(elem(ie)%derived%FM(:,:,:,:))
       max_local(ie,nm2+2)  = MAXVAL(elem(ie)%derived%FM(:,:,:,:))
-      if (ntrac>0) then
+      if (use_cslam) then
         do q=1,statediag_numtrac
           varname(nm2+2+q)         = TRIM('F'//TRIM(cnst_name(q)))
           min_local(ie,nm2+2+q) = MINVAL(fvm(ie)%fc(1:nc,1:nc,:,q))
@@ -201,7 +201,7 @@ CONTAINS
     ! tracers
     !
     mass = -1.0_r8
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         do q=1,statediag_numtrac
           tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%c(1:nc,1:nc,:,q)*fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
@@ -243,7 +243,7 @@ CONTAINS
     if (tl%nstep==0.or..not. initial_run) then
       mass_chg(:) = 0.0_R8
       elem(nets)%derived%mass(nm+1:nm+statediag_numtrac)   = mass(nm+1:nm+statediag_numtrac)
-      if (ntrac>0) then
+      if (use_cslam) then
         elem(nets)%derived%mass(6:9)   = mass(6:9)
       else
         elem(nets)%derived%mass(6:7)   = mass(6:7)
@@ -286,14 +286,14 @@ CONTAINS
         write(iulog,100) varname(k),min_p(k),max_p(k)
       end do
     end if
-    
+
 100 format (A12,4(E23.15))
 101 format (A12,A23,A23,A23,A23)
 
 #ifdef waccm_debug
     call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
 #endif
-    call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm) 
+    call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
   end subroutine prim_printstate
 
 
@@ -345,20 +345,20 @@ CONTAINS
   subroutine adjust_nsplit(elem, tl,hybrid,nets,nete, fvm, omega_cn)
     use dimensions_mod,         only: ksponge_end
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use time_mod,               only: tstep
+    use se_dyn_time_mod,        only: tstep
     use control_mod,            only: rsplit, qsplit
     use perf_mod,               only: t_startf, t_stopf
-    use time_mod,               only: nsplit, nsplit_baseline,rsplit_baseline
+    use se_dyn_time_mod,        only: nsplit, nsplit_baseline,rsplit_baseline
     use control_mod,            only: qsplit, rsplit
     use time_manager,           only: get_step_size
     use cam_abortutils,         only: endrun
     use control_mod,    only: nu_top
     !
-    type (element_t),             intent(inout) :: elem(:)    
+    type (element_t),             intent(inout) :: elem(:)
     type (TimeLevel_t), target,   intent(in)    :: tl
     type (hybrid_t),              intent(in)    :: hybrid
     integer,                      intent(in)    :: nets,nete
-    type(fvm_struct),             intent(inout) :: fvm(:)        
+    type(fvm_struct),             intent(inout) :: fvm(:)
     real (kind=r8),               intent(in)    :: omega_cn(2,nets:nete)
     ! Local variables...
     integer            :: k,ie
@@ -393,7 +393,7 @@ CONTAINS
        nsplit=2*nsplit_baseline
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
-       nu_top=2.0_r8*nu_top       
+       nu_top=2.0_r8*nu_top
       !
       ! write diagnostics to log file
       !
@@ -406,7 +406,7 @@ CONTAINS
        end if
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)
-       
+
     else if (nsplit.ne.nsplit_baseline.and.max_o(1)<0.4_r8*threshold) then
       !
       ! should nsplit be reduced again?
@@ -416,9 +416,9 @@ CONTAINS
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
        nu_top=nu_top/2.0_r8
-       
+
 !       nu_div_scale_top(:) = 1.0_r8
-       
+
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)
        if(hybrid%masterthread) then
@@ -438,7 +438,7 @@ CONTAINS
     integer            :: k,ie
 
     real (kind=r8), dimension(nets:nete,nlev) :: max_local
-    real (kind=r8), dimension(nets:nete,nlev) :: min_local    
+    real (kind=r8), dimension(nets:nete,nlev) :: min_local
     real (kind=r8), dimension(nlev)           :: max_p
     real (kind=r8), dimension(nlev)           :: min_p
     integer        :: n0, n0_qdp, q, nm, nm2
@@ -462,7 +462,7 @@ CONTAINS
     !JMD This is a Thread Safe Reduction
     do k = 1, nlev
       max_p(k) = Parallelmax(max_local(:,k),hybrid)
-      min_p(k) = Parallelmin(min_local(:,k),hybrid)      
+      min_p(k) = Parallelmin(min_local(:,k),hybrid)
     end do
     if (hybrid%masterthread) then
        write(iulog,*)   '  '

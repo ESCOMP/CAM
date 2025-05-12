@@ -92,10 +92,10 @@ module tracer_data
      real(r8) :: one_yr = 0
      real(r8) :: curr_mod_time ! model time - calendar day
      real(r8) :: next_mod_time ! model time - calendar day - next time step
-     integer :: nlon
-     integer :: nlat
-     integer :: nlev
-     integer :: nilev
+     integer :: nlon = 0
+     integer :: nlat = 0
+     integer :: nlev = 0
+     integer :: nilev = 0
      integer :: ps_coords(3) ! LATDIM | LONDIM | TIMDIM
      integer :: ps_order(3) ! LATDIM | LONDIM | TIMDIM
      real(r8), pointer, dimension(:) :: lons => null()
@@ -104,7 +104,6 @@ module tracer_data
      real(r8), pointer, dimension(:) :: ilevs => null()
      real(r8), pointer, dimension(:) :: hyam => null()
      real(r8), pointer, dimension(:) :: hybm => null()
-     real(r8), pointer, dimension(:,:) :: ps => null()
      real(r8), pointer, dimension(:) :: hyai => null()
      real(r8), pointer, dimension(:) :: hybi => null()
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
@@ -115,7 +114,7 @@ module tracer_data
      integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
      integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
      logical :: dist
-     
+
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
@@ -132,6 +131,7 @@ module tracer_data
      logical :: fixed = .false.
      logical :: initialized = .false.
      logical :: top_bndry = .false.
+     logical :: top_layer = .false.
      logical :: stepTime = .false.  ! Do not interpolate in time, but use stepwise times
   endtype trfile
 
@@ -204,6 +204,7 @@ contains
     integer :: lchnk, ncol, icol, i,j
     logical :: found
     integer :: aircraft_cnt
+    integer :: err_handling
 
     call specify_fields( specifier, flds )
 
@@ -248,6 +249,10 @@ contains
     if ( (.not.file%cyclical) .and. (data_cycle_yr>0._r8) ) then
        call endrun('trcdata_init: Cannot specify data_cycle_yr if data type is not CYCLICAL')
     endif
+
+    if (file%top_bndry .and. file%top_layer) then
+       call endrun('trcdata_init: Cannot set both file%top_bndry and file%top_layer to TRUE.')
+    end if
 
     if (masterproc) then
        write(iulog,*) 'trcdata_init: data type: '//trim(data_type)//' file: '//trim(filename)
@@ -295,14 +300,14 @@ contains
        file%curr_data_times = file%curr_data_times - file%offset_time
     endif
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_dimid( file%curr_fileid, 'ncol', idx )
     file%unstructured = (ierr==PIO_NOERR)
     if (.not.file%unstructured) then
        ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
        file%zonal_ave = (ierr/=PIO_NOERR)
     endif
-    call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
     plon = get_dyn_grid_parm('plon')
     plat = get_dyn_grid_parm('plat')
@@ -334,19 +339,13 @@ contains
        lat_dimid = old_dimid
     endif
 
-    allocate( file%ps(file%nlon,file%nlat), stat=astat )
-    if( astat /= 0 ) then
-       write(iulog,*) 'trcdata_init: file%ps allocation error = ',astat
-       call endrun('trcdata_init: failed to allocate x array')
-    end if
-
-    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_varid( file%curr_fileid, 'PS', file%ps_id )
     file%has_ps = (ierr==PIO_NOERR)
     ierr = pio_inq_dimid( file%curr_fileid, 'altitude', idx )
     file%alt_data = (ierr==PIO_NOERR)
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
     if ( file%has_ps .and. .not.file%unstructured ) then
        if ( file%zonal_ave ) then
@@ -409,9 +408,9 @@ contains
           call endrun('trcdata_init: failed to allocate file%hyai and file%hybi arrays')
        end if
 
-       call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+       call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
        ierr = pio_inq_varid( file%curr_fileid, 'P0', varid)
-       call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+       call pio_seterrorhandling(File%curr_fileid, err_handling)
 
        if ( ierr == PIO_NOERR ) then
           ierr = pio_get_var( file%curr_fileid, varid, file%p0 )
@@ -429,11 +428,6 @@ contains
           ierr = pio_get_var( file%curr_fileid, varid, file%hybi )
        endif
 
-       allocate( file         %ps  (pcols,begchunk:endchunk), stat=astat   )
-       if( astat/= 0 ) then
-          write(iulog,*) 'trcdata_init: failed to allocate file%ps array; error = ',astat
-          call endrun
-       end if
        allocate( file%ps_in(1)%data(pcols,begchunk:endchunk), stat=astat   )
        if( astat/= 0 ) then
           write(iulog,*) 'trcdata_init: failed to allocate file%ps_in(1)%data array; error = ',astat
@@ -459,10 +453,16 @@ contains
     endif
 
 
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
+
     flds_loop: do f = 1,mxnflds
 
        ! get netcdf variable id for the field
        ierr = pio_inq_varid( file%curr_fileid, flds(f)%srcnam, flds(f)%var_id )
+       if (ierr/=pio_noerr) then
+          call endrun('trcdata_init: Cannot find var "'//trim(flds(f)%srcnam)// &
+                      '" in file "'//trim(file%curr_filename)//'"')
+       endif
 
        ! determine if the field has a vertical dimension
 
@@ -477,10 +477,10 @@ contains
        ! allocate memory only if not already in pbuf2d
 
        if ( .not. file%in_pbuf(f) ) then
-          if ( flds(f)%srf_fld .or. file%top_bndry ) then
-             allocate( flds(f)         %data(pcols,1,begchunk:endchunk), stat=astat   )
+          if ( flds(f)%srf_fld .or. file%top_bndry .or. file%top_layer ) then
+             allocate( flds(f)%data(pcols,1,begchunk:endchunk), stat=astat   )
           else
-             allocate( flds(f)         %data(pcols,pver,begchunk:endchunk), stat=astat   )
+             allocate( flds(f)%data(pcols,pver,begchunk:endchunk), stat=astat   )
           endif
           if( astat/= 0 ) then
              write(iulog,*) 'trcdata_init: failed to allocate flds(f)%data array; error = ',astat
@@ -581,6 +581,8 @@ contains
        flds(f)%units = trim(data_units(1:32))
 
     enddo flds_loop
+
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
 ! if weighting by latitude, compute weighting for horizontal interpolation
     if( file%weight_by_lat ) then
@@ -751,7 +753,7 @@ contains
             enddo
            endif
         endif
-   
+
         call mpi_bcast(file%weight_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
         call mpi_bcast(file%weight_y, plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
@@ -1749,7 +1751,7 @@ contains
 
         call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols, &
                        file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
-                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y)
       enddo
      else
       do c = begchunk,endchunk
@@ -1961,7 +1963,9 @@ contains
                    datain(:ncol,:) = fact1*flds(f)%input(nm)%data(:ncol,:,c) + fact2*flds(f)%input(np)%data(:ncol,:,c)
                 end if
                 if ( file%top_bndry ) then
-                   call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
+                   call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,1) )
+                else if ( file%top_layer ) then
+                   call vert_interp_ub_var(ncol, file%nlev, file%levs, state(c)%pmid(:ncol,1), datain(:ncol,:), data_out(:ncol,1) )
                 else if(file%conserve_column) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
@@ -1990,10 +1994,11 @@ contains
     real(r8), optional, pointer, dimension(:) :: data
 
     integer :: vid, ierr, id
+    integer :: err_handling
 
-    call pio_seterrorhandling( fid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( fid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_dimid( fid, dname, id )
-    call pio_seterrorhandling( fid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( fid, err_handling)
 
     if ( ierr==PIO_NOERR ) then
 
@@ -2100,6 +2105,7 @@ contains
     integer, allocatable , dimension(:) :: dates, datesecs
     integer :: astat, ierr
     logical :: need_first_ndx
+    integer :: err_handling
 
     if (len_trim(path) == 0) then
        filepath = trim(fname)
@@ -2140,9 +2146,9 @@ contains
     end if
 
     ierr =  pio_inq_varid( piofile, 'date',    dateid  )
-    call pio_seterrorhandling( piofile, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( piofile, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_varid( piofile, 'datesec', secid  )
-    call pio_seterrorhandling( piofile, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( piofile, err_handling)
 
     if(ierr==PIO_NOERR) then
        ierr = pio_get_var( piofile, secid,  datesecs  )
@@ -2272,12 +2278,12 @@ contains
 
     character(len=32) :: name
     integer :: ioerr, mcdimid, maxlen
-
+    integer :: err_handling
 
     ! Dimension should already be defined in restart file
-    call pio_seterrorhandling(pioFile, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(pioFile, PIO_BCAST_ERROR, oldmethod=err_handling)
     ioerr = pio_inq_dimid(pioFile,'max_chars', mcdimid)
-    call pio_seterrorhandling(pioFile, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(pioFile, err_handling)
     ! but define it if nessasary
     if(ioerr/= PIO_NOERR) then
        ioerr = pio_def_dim(pioFile, 'max_chars', SHR_KIND_CL, mcdimid)
@@ -2341,8 +2347,9 @@ contains
     character(len=64) :: name
     integer :: ioerr   ! error status
     integer :: slen
+    integer :: err_handling
 
-    call PIO_SetErrorHandling(piofile, PIO_BCAST_ERROR)
+    call PIO_SetErrorHandling(piofile, PIO_BCAST_ERROR, oldmethod=err_handling)
     name = trim(whence)//'_curr_fname'
     ioerr = pio_inq_varid(piofile, name, vdesc)
     if(ioerr==PIO_NOERR) then
@@ -2361,7 +2368,7 @@ contains
        ioerr = pio_get_var(piofile, vdesc, tr_file%next_filename)
        if(slen<SHR_KIND_CL) tr_file%next_filename(slen+1:)=' '
     end if
-    call PIO_SetErrorHandling(piofile, PIO_INTERNAL_ERROR)
+    call PIO_SetErrorHandling(piofile, err_handling)
 
 
 
@@ -2446,7 +2453,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio 
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2663,6 +2670,59 @@ contains
     end do
 
   end subroutine vert_interp_ub
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  subroutine vert_interp_ub_var( ncol, nlevs, plevs, press, datain, dataout )
+
+    !-----------------------------------------------------------------------
+    !
+    ! Interpolate data from current time-interpolated values to press
+    !
+    !--------------------------------------------------------------------------
+    ! Arguments
+    !
+    integer,  intent(in)  :: ncol
+    integer,  intent(in)  :: nlevs
+    real(r8), intent(in)  :: plevs(nlevs)
+    real(r8), intent(in)  :: press(ncol)
+    real(r8), intent(in)  :: datain(ncol,nlevs)
+    real(r8), intent(out) :: dataout(ncol)
+
+    !
+    ! local variables
+    !
+    integer  :: i,k
+    integer  :: ku,kl
+    real(r8) :: delp
+
+
+    do i = 1,ncol
+
+       if( press(i) <= plevs(1) ) then
+          kl = 1
+          ku = 1
+          delp = 0._r8
+       else if( press(i) >= plevs(nlevs) ) then
+          kl = nlevs
+          ku = nlevs
+          delp = 0._r8
+       else
+
+          do k = 2,nlevs
+             if( press(i) <= plevs(k) ) then
+                ku = k
+                kl = k - 1
+                delp = log( press(i)/plevs(k) ) / log( plevs(k-1)/plevs(k) )
+                exit
+             end if
+          end do
+
+       end if
+
+       dataout(i) = datain(i,kl) + delp * (datain(i,ku) - datain(i,kl))
+    end do
+
+  end subroutine vert_interp_ub_var
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------

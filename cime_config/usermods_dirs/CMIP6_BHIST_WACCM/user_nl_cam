@@ -1,8 +1,8 @@
- mfilt          = 1,    5,  20,  40, 120, 240, 365,  73, 365  
+ mfilt          = 1,    5,  20,  40, 120, 240, 365,  73, 365
  nhtfrq         = 0,-24,-6,-3,-1,1,-24,-120,-240
 
  fincl1         = 'ABSORB', 'ACBZO2', 'ACTREL', 'ALKNIT', 'ALKO2', 'ALKOOH', 'AOA1', 'AOA_NH', 'AODABSdn',
-         'AODBCdn', 'AODdnDUST1', 'AODdnDUST2', 'AODdnDUST3', 'AODdnMODE1', 'AODdnMODE2', 'AODdnMODE3', 'AODDUST2', 'AODDUST',
+         'AODBCdn', 'AODdnDUST01', 'AODdnDUST02', 'AODdnDUST03', 'AODdn_aitken', 'AODdn_accum', 'AODdn_coarse', 'AODDUST02', 'AODDUST',
          'AODNIRstdn', 'AODPOMdn', 'AODSO4dn', 'AODSOAdn', 'AODSSdn', 'AODUVdn', 'AODUVstdn', 'AODVIS', 'AODVISdn',
          'AODVISstdn', 'AQ_SO2', 'AREA', 'AREI', 'AREL', 'bc_a1', 'bc_a1DDF', 'bc_a1SFWET', 'bc_a4',
          'bc_a4_CLXF', 'bc_a4DDF', 'bc_a4SFWET', 'BCARY', 'bc_c1', 'bc_c1DDF', 'bc_c1SFWET', 'bc_c4', 'bc_c4DDF',
@@ -20,7 +20,7 @@
          'DF_ALKNIT', 'DF_ALKOOH', 'DF_BENZOOH', 'DF_BZOOH', 'DF_C2H5OH', 'DF_C2H5OOH', 'DF_C3H7OOH', 'DF_C6H5OOH', 'DF_CH2O',
          'DF_CH3CHO', 'DF_CH3CN', 'DF_CH3COCH3', 'DF_CH3COCHO', 'DF_CH3COOH', 'DF_CH3COOOH', 'DF_CH3OH', 'DF_CH3OOH', 'DF_CO',
          'DF_EOOH', 'DF_GLYALD', 'DF_H2O2', 'DF_H2SO4', 'DF_HCN', 'DF_HCOOH', 'DF_HNO3', 'DF_HO2NO2', 'DF_HONITR',
-         'DF_HPALD', 'DF_HYAC', 'DF_HYDRALD', 'DF_IEPOX', 'DF_ISOPNITA', 'DF_ISOPNITB', 'DF_ISOPNO3', 'DF_ISOPNOOH', 'DF_ISOPOOH',
+         'DF_HPALD', 'DF_HYAC', 'DF_HYDRALD', 'DF_IEPOX', 'DF_ISOPNITA', 'DF_ISOPNITB', 'DF_ISOP', 'DF_ISOPNOOH', 'DF_ISOPOOH',
          'DF_IVOC', 'DF_MACROOH', 'DF_MEKOOH', 'DF_MPAN', 'DF_NC4CH2OH', 'DF_NC4CHO', 'DF_NH3', 'DF_NH4', 'DF_NO2',
          'DF_NO', 'DF_NOA', 'DF_NTERPOOH', 'DF_O3', 'DF_ONITR', 'DF_PAN', 'DF_PHENOOH', 'DF_POOH', 'DF_ROOH',
          'DF_SO2', 'DF_SOAG0', 'DF_SOAG1', 'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'DF_TERP2OOH', 'DF_TERPNIT',
@@ -66,7 +66,7 @@
          'SFBIGENE', 'SFC2H2', 'SFC2H4', 'SFC2H5OH', 'SFC2H6', 'SFC3H6', 'SFC3H8', 'SFCH2O', 'SFCH3CHO',
          'SFCH3CN', 'SFCH3COCH3', 'SFCH3COCHO', 'SFCH3COOH', 'SFCH3OH', 'SFCO', 'SFDMS', 'SFdst_a1', 'SFdst_a2',
          'SFdst_a3', 'SFGLYALD', 'SFHCN', 'SFHCOOH', 'SFISOP', 'SFIVOC', 'SFMEK', 'SFMTERP', 'SFncl_a1',
-         'SFncl_a2', 'SFncl_a3', 'SFNH3', 'SFNO2', 'SFNO', 'SFnum_a1', 'SFnum_a2', 'SFnum_a3', 'SFpom_a4',
+         'SFncl_a2', 'SFncl_a3', 'SFNH3', 'SFNO', 'SFnum_a1', 'SFnum_a2', 'SFnum_a3', 'SFpom_a4',
          'SFSO2', 'SFso4_a1', 'SFso4_a2', 'SFSVOC', 'SFTOLUENE', 'SFXYLENES', 'SHFLX', 'SO2', 'SO2_CHML',
          'SO2_CHMP', 'SO2_CLXF', 'SO2_XFRC', 'SO3', 'so4_a1', 'so4_a1_CHMP', 'so4_a1_CLXF', 'so4_a1DDF', 'so4_a1_sfgaex1',
          'so4_a1SFWET', 'so4_a2', 'so4_a2_CHMP', 'so4_a2_CLXF', 'so4_a2DDF', 'so4_a2_sfgaex1', 'so4_a2_sfnnuc1', 'so4_a2SFWET', 'so4_a3',
@@ -94,7 +94,7 @@
          'WD_CH2O', 'WD_CH3CHO', 'WD_CH3CN', 'WD_CH3COCH3', 'WD_CH3COCHO', 'WD_CH3COOH', 'WD_CH3COOOH', 'WD_CH3OH', 'WD_CH3OOH',
          'WD_CLONO2', 'WD_COF2', 'WD_COFCL', 'WD_EOOH', 'WD_GLYALD', 'WD_H2O2', 'WD_H2SO4', 'WD_HBR', 'WD_HCL',
          'WD_HCN', 'WD_HCOOH', 'WD_HF', 'WD_HNO3', 'WD_HO2NO2', 'WD_HOBR', 'WD_HOCL', 'WD_HONITR', 'WD_HPALD',
-         'WD_HYAC', 'WD_HYDRALD', 'WD_IEPOX', 'WD_ISOPNITA', 'WD_ISOPNITB', 'WD_ISOPNO3', 'WD_ISOPNOOH', 'WD_ISOPOOH', 'WD_IVOC',
+         'WD_HYAC', 'WD_HYDRALD', 'WD_IEPOX', 'WD_ISOPNITA', 'WD_ISOPNITB', 'WD_ISOP', 'WD_ISOPNOOH', 'WD_ISOPOOH', 'WD_IVOC',
          'WD_MACR', 'WD_MACROOH', 'WD_MEKOOH', 'WD_MVK', 'WD_NC4CH2OH', 'WD_NC4CHO', 'WD_NDEP', 'WD_NH3', 'WD_NH4',
          'WD_NHDEP', 'WD_NOA', 'WD_NTERPOOH', 'WD_ONITR', 'WD_PHENOOH', 'WD_POOH', 'WD_ROOH', 'WD_SO2', 'WD_SOAG0',
          'WD_SOAG1', 'WD_SOAG2', 'WD_SOAG3', 'WD_SOAG4', 'WD_SVOC', 'WD_TERP2OOH', 'WD_TERPNIT', 'WD_TERPOOH', 'WD_TERPROD1',

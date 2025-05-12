@@ -1,0 +1,14 @@
+mfilt=1,1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1,1
+nhtfrq=-3,-3,-3,-3,-3,-3,-3,-3,-3,-3
+history_chemistry=.true.
+fincl2 = 'Q_fubc','NO_fubc','NO2_fubc','NO3_fubc','N2O5_fubc','CH4_UBC','Q_UBC','NO_UBC','NO2_UBC','NO3_UBC','HNO3_UBC','N2O5_UBC'
+avgflag_pertape = 'A','A'
+
+ubc_specifier = 'CH4->1.D-12MMR','Q:H2O->UBC_FILE','NO->UBC_FILE','NO2->UBC_FILE','NO3->UBC_FILE','HNO3->UBC_FILE','N2O5->UBC_FILE'
+ubc_file_path='$DIN_LOC_ROOT/atm/cam/chem/ubc/f.e21.FWHISTBgcCrop.f09_f09_mg17.CMIP6-AMIP-WACCM.ensAvg123.cam.h0zm.UBC.195001-201412_c220322.nc'
+ubc_file_input_type='CYCLICAL'
+ubc_file_cycle_yr  = 2000
+
+fstrat_list = ' '
+fstrat_file = ' '

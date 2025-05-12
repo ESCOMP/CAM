@@ -321,7 +321,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
      ztodt, p, tint, rhoi, cldn, wstarent, &
      kvm_in, kvh_in, ksrftms, dragblj,tauresx, tauresy, &
      rrho, ustar, pblh, kvm, kvh, kvq, cgh, cgs, tpert, qpert, &
-     tke, sprod, sfi, turbtype, sm_aw)
+     tke, sprod, sfi)
 
   use physics_types, only: physics_state
   use camsrfexch, only: cam_in_t
@@ -355,8 +355,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8), intent(out) :: tke(pcols,pver+1)
   real(r8), intent(out) :: sprod(pcols,pver+1)
   real(r8), intent(out) :: sfi(pcols,pver+1)
-  integer(i4), intent(out) :: turbtype(pcols,pver+1)
-  real(r8), intent(out) :: sm_aw(pcols,pver+1)
 
   integer :: i, k
 
@@ -370,7 +368,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        kvh      , kvq         , cgh        ,                                         &
        cgs      , tpert       , qpert      , tke            ,                        &
        sprod    , sfi         ,                                                      &
-       tauresx  , tauresy     , ksrftms    , dragblj , turbtype   , sm_aw )
+       tauresx  , tauresy     , ksrftms    , dragblj )
 
   ! The diffusivities from diag_TKE can be much larger than from HB in the free
   ! troposphere and upper atmosphere. These seem to be larger than observations,
@@ -416,7 +414,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
                               ustar  , pblh   , kvm_in   , kvh_in  , kvm_out  , kvh_out , kvq   , &
                               cgh    , cgs    , tpert    , qpert   , tke     ,                    &
                               sprod  , sfi    ,                                                   &
-                              tauresx, tauresy, ksrftms, dragblj, turbtype, sm_aw )
+                              tauresx, tauresy, ksrftms, dragblj )
 
   !-------------------------------------------------------------------- !
   ! Purpose: Interface to compute eddy diffusivities.                   !
@@ -426,16 +424,16 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   !                       May.    2008.                                 !
   !-------------------------------------------------------------------- !
 
-  use diffusion_solver, only: compute_vdiff
-  use cam_history,      only: outfld
-  use phys_debug_util,  only: phys_debug_col
-  use physconst,        only: cpairv
-  use pbl_utils,        only: calc_ustar, austausch_atm
-  use error_messages,   only: handle_errmsg
-  use coords_1d,        only: Coords1D
-  use wv_saturation,    only: qsat
-  use eddy_diff,        only: trbintd, caleddy
-  use physics_buffer,   only: pbuf_get_field
+  use diffusion_solver,     only: compute_vdiff
+  use cam_history,          only: outfld
+  use phys_debug_util,      only: phys_debug_col
+  use air_composition,      only: cpairv
+  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_friction_velocity
+  use error_messages,       only: handle_errmsg
+  use coords_1d,            only: Coords1D
+  use wv_saturation,        only: qsat
+  use eddy_diff,            only: trbintd, caleddy
+  use physics_buffer,       only: pbuf_get_field
 
   ! --------------- !
   ! Input Variables !
@@ -490,10 +488,6 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   real(r8), intent(out)   :: tke(pcols,pver+1)         ! Turbulent kinetic energy [ m2/s2 ]
   real(r8), intent(out)   :: sprod(pcols,pver+1)       ! Shear production [ m2/s3 ]
   real(r8), intent(out)   :: sfi(pcols,pver+1)         ! Interfacial layer saturation fraction [ fraction ]
-  integer(i4), intent(out):: turbtype(pcols,pver+1)    ! Turbulence type identifier at all interfaces [ no unit ]
-  real(r8), intent(out)   :: sm_aw(pcols,pver+1)       ! Normalized Galperin instability function for momentum [ no unit ]
-                                                       ! This is 1 when neutral condition (Ri=0),
-                                                       ! 4.964 for maximum unstable case, and 0 when Ri > Ricrit=0.19.
 
   ! ---------------------- !
   ! Input-Output Variables !
@@ -623,6 +617,8 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   ! For sedimentation-entrainment feedback
   real(r8)                :: wsed(pcols,ncvmax)        ! Sedimentation velocity at the top of each CL [ m/s ]
 
+  integer(i4)             :: turbtype(pcols,pver+1)    ! Turbulence type identifier at all interfaces [ no unit ]
+
   ! ---------- !
   ! Parameters !
   ! ---------- !
@@ -674,10 +670,11 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
      ! I am using updated wind, here.
 
      ! Compute ustar
-     call calc_ustar( ncol, tfd(:ncol,pver), pmid(:ncol,pver), &
-                      taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
-                      tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
-                      rrho(:ncol), ustar(:ncol))
+     rrho(:ncol)   = calc_ideal_gas_rrho(rair, tfd(:ncol,pver), pmid(:ncol,pver))
+     ustar(:ncol)  = calc_friction_velocity(taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
+                                            tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
+                                            rrho(:ncol))
+
      minpblh(:ncol) = 100.0_r8 * ustar(:ncol)   ! By construction, 'minpblh' is larger than 1 [m] when 'ustar_min = 0.01'.
 
      ! Calculate (qt,sl,n2,s2,ri) from a given set of (t,qv,ql,qi,u,v)
@@ -698,8 +695,12 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
 
      ! Get free atmosphere exchange coefficients. This 'kvf' is not used in UW moist PBL scheme
      if (use_kvf) then
-        call austausch_atm(pcols, ncol, pver, ntop_eddy, nbot_eddy, &
-             ml2, ri, s2, kvf )
+        kvf(:ncol,:) = 0.0_r8
+        do k = ntop_eddy, nbot_eddy-1
+           do i = 1, ncol
+              kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
+           end do
+        end do
      else
         kvf = 0._r8
      end if
@@ -738,7 +739,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
                    kvh       , kvm       , kvh_out   , kvm_out  ,          &
                    tpert     , qpert     , qrl       , kvf      , tke    , &
                    wstarent  , bprod     , sprod     , minpblh  , wpert  , &
-                   tkes      , went      , turbtype  , sm_aw    ,          &
+                   tkes      , went      , turbtype  ,                     &
                    kbase_o   , ktop_o    , ncvfin_o  ,                     &
                    kbase_mg  , ktop_mg   , ncvfin_mg ,                     &
                    kbase_f   , ktop_f    , ncvfin_f  ,                     &

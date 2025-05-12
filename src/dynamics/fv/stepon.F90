@@ -3,7 +3,7 @@ module stepon
 !----------------------------------------------------------------------
 ! stepon provides the interface layer that allows the different dynamical
 ! cores to be called from different locations in the time loop.  It also
-! provides a standard interface that is called from the higher level CAM   
+! provides a standard interface that is called from the higher level CAM
 ! component run methods while leaving non-standardized dycore interface
 ! methods to be called from this layer.  Ideally only the run methods
 ! which allow flexibility in the dynamics/physics calling sequence should
@@ -28,6 +28,10 @@ use cam_logfile,        only: iulog
 use cam_abortutils,     only: endrun
 use perf_mod,           only: t_startf, t_stopf, t_barrierf
 
+use aerosol_properties_mod, only: aerosol_properties
+use aerosol_state_mod,      only: aerosol_state
+use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+
 implicit none
 private
 save
@@ -49,6 +53,9 @@ logical, parameter :: fv_monitor=.true.  ! Monitor Mean/Max/Min fields
                                          ! set it to false for production runs
 real (r8) :: ptop
 
+class(aerosol_properties), pointer :: aero_props_obj => null()
+logical :: aerosols_transported = .false.
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -57,9 +64,11 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    use constituents, only: pcnst
    use time_manager, only: get_step_size
-   use physconst,    only: physconst_calc_kappav, rair, cpair
+   use physconst,    only: rair, cpair
+   use cam_thermo,   only: cam_thermo_calc_kappav
    use inic_analytic,      only: analytic_ic_active
    use cam_initfiles,      only: scale_dry_air_mass
+
    type (dyn_import_t)   :: dyn_in             ! Dynamics import container
    type (dyn_export_t)   :: dyn_out            ! Dynamics export container
 
@@ -77,6 +86,7 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    real(r8), allocatable :: delpdryxy(:,:,:)
    real(r8), allocatable :: cap3vi(:,:,:), cappa3v(:,:,:)
+
    !----------------------------------------------------------------------------
 
    if (.not. initial_run) nlres=.true.
@@ -127,9 +137,9 @@ subroutine stepon_init(dyn_in, dyn_out)
         enddo
       enddo
    else
- 
+
       ! Initial run --> generate pe and delp from the surface pressure
- 
+
 !$omp parallel do private(i,j,k)
          do j = jfirstxy, jlastxy
             do k=1,km+1
@@ -164,7 +174,7 @@ subroutine stepon_init(dyn_in, dyn_out)
       allocate( cappa3v(ifirstxy:ilastxy,jfirstxy:jlastxy,km) )
       allocate( cap3vi(ifirstxy:ilastxy,jfirstxy:jlastxy,km+1) )
       if (grid%high_alt) then
-         call physconst_calc_kappav( ifirstxy,ilastxy,jfirstxy,jlastxy,1,km, grid%ntotq, dyn_in%tracer, cappa3v )
+         call cam_thermo_calc_kappav( dyn_in%tracer, cappa3v )
 
 !$omp parallel do private(i,j,k)
          do k=2,km
@@ -213,7 +223,7 @@ subroutine stepon_init(dyn_in, dyn_out)
             do i = ifirstxy, ilastxy
                dyn_in%pt(i,j,k) =  dyn_in%t3(i,j,k)*            &
                 (1._r8 + zvir*dyn_in%tracer(i,j,k,1))    &
-                /dyn_in%pkz(i,j,k) 
+                /dyn_in%pkz(i,j,k)
             enddo
          enddo
       enddo
@@ -251,7 +261,15 @@ subroutine stepon_init(dyn_in, dyn_out)
          end if
       end do
       deallocate (delpdryxy)
-      
+
+   end if
+
+   ! get aerosol properties
+   aero_props_obj => aerosol_properties_object()
+
+   if (associated(aero_props_obj)) then
+      ! determine if there are transported aerosol contistuents
+      aerosols_transported = aero_props_obj%number_transported()>0
    end if
 
 end subroutine stepon_init
@@ -265,7 +283,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    use dp_coupling,       only: d_p_coupling
    use dyn_comp,          only: dyn_run
-   
+
    use physics_buffer,    only: physics_buffer_desc
    use advect_tend,       only: compute_adv_tends_xyz
 
@@ -279,7 +297,11 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    type(T_FVDYCORE_STATE), pointer :: dyn_state
 
-   integer  :: rc 
+   integer  :: rc
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
 
    dtime_out = dtime
    dyn_state => get_dyn_state()
@@ -296,9 +318,9 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call t_stopf  ('comp_adv_tends1')
    !
    !--------------------------------------------------------------------------
-   ! Perform finite-volume dynamics -- this dynamical core contains some 
+   ! Perform finite-volume dynamics -- this dynamical core contains some
    ! yet to be published algorithms. Its use in the CAM is
-   ! for software development purposes only. 
+   ! for software development purposes only.
    ! Please contact S.-J. Lin (Shian-Jiann.Lin@noaa.gov)
    ! if you plan to use this mudule for scientific purposes. Contact S.-J. Lin
    ! or Will Sawyer (sawyer@gmao.gsfc.nasa.gov) if you plan to modify the
@@ -318,7 +340,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
      write(iulog,*) "STEPON_RUN: dyn_run returned bad error code", rc
      write(iulog,*) "Quitting."
      call endrun
-   endif 
+   endif
    call t_stopf  ('dyn_run')
 
    call t_startf ('comp_adv_tends2')
@@ -333,12 +355,26 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call d_p_coupling(dyn_state%grid, phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
 
+   !----------------------------------------------------------
+   ! update aerosol state object from CAM physics state constituents
+   !----------------------------------------------------------
+   if (aerosols_transported) then
+
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! pass number mass or number mixing ratios of aerosol constituents
+         ! to aerosol state object
+         call aero_state_obj%set_transported(phys_state(c)%q)
+      end do
+
+   end if
+
 !EOC
 end subroutine stepon_run1
 
 !-----------------------------------------------------------------------
 
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE:  stepon_run2 -- second phase run method
 !
@@ -355,6 +391,10 @@ subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    type (T_FVDYCORE_GRID), pointer :: grid
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+
 !
 ! !DESCRIPTION:
 !
@@ -365,6 +405,19 @@ subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
 !BOC
 
 !-----------------------------------------------------------------------
+
+   !----------------------------------------------------------
+   ! update physics state with aerosol constituents
+   !----------------------------------------------------------
+   nullify(aero_state_obj)
+
+   if (aerosols_transported) then
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(phys_state(c)%q)
+      end do
+   end if
 
    !----------------------------------------------------------
    ! Update dynamics variables using phys_state & phys_tend.
@@ -394,7 +447,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state,             &
 ! !USES:
    use time_manager,     only: get_curr_date
    use fv_prints,        only: fv_out
-   use camsrfexch,       only: cam_out_t    
+   use camsrfexch,       only: cam_out_t
 !
 ! !INPUT PARAMETERS:
 !
@@ -434,7 +487,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state,             &
    ! Monitor max/min/mean of selected fields
    !
    !  SEE BELOW  ****  SEE BELOW  ****  SEE BELOW
-   
+
    ! Beware that fv_out uses both dynamics and physics instantiations.
    ! However, I think that they are used independently, so that the
    ! answers are correct. Still, this violates the notion that the
@@ -464,7 +517,7 @@ end subroutine stepon_run3
 
 !-----------------------------------------------------------------------
 
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE:  stepon_final --- Dynamics finalization
 !

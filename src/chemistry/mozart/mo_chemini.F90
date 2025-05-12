@@ -36,7 +36,7 @@ contains
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
        , exo_coldens_file &
-       , lght_no_prd_factor &
+       , use_hemco &
        , pbuf2d &
        )
 
@@ -48,15 +48,14 @@ contains
     use mo_srf_emissions,  only : srf_emissions_inti
     use mo_sulf,           only : sulf_inti
     use mo_photo,          only : photo_inti
-    use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
-    use seq_drydep_mod,    only : DD_XLND, drydep_method
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
     use spmd_utils,        only : iam
     use mo_fstrat,         only : fstrat_inti
     use mo_sethet,         only : sethet_inti
     use mo_usrrxt,         only : usrrxt_inti
+    use hco_cc_emissions,  only : hco_extfrc_inti
     use mo_extfrc,         only : extfrc_inti
     use mo_setext,         only : setext_inti
     use mo_setinv,         only : setinv_inti
@@ -95,7 +94,6 @@ contains
     character(len=*), dimension(:), intent(in) :: srf_emis_specifier
     character(len=*), dimension(:), intent(in) :: ext_frc_specifier
     character(len=*), intent(in) :: exo_coldens_file
-    real(r8),         intent(in) :: lght_no_prd_factor
     character(len=*), intent(in) :: ext_frc_type
     integer,          intent(in) :: ext_frc_cycle_yr
     integer,          intent(in) :: ext_frc_fixed_ymd
@@ -104,6 +102,7 @@ contains
     integer,          intent(in) :: srf_emis_cycle_yr
     integer,          intent(in) :: srf_emis_fixed_ymd
     integer,          intent(in) :: srf_emis_fixed_tod
+    logical,          intent(in) :: use_hemco
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -150,8 +149,15 @@ contains
     ! 	... initialize external forcings module
     !-----------------------------------------------------------------------
     call setext_inti()
-    call extfrc_inti(ext_frc_specifier, ext_frc_type, ext_frc_cycle_yr, ext_frc_fixed_ymd, ext_frc_fixed_tod)
-    if (masterproc) write(iulog,*) 'chemini: after extfrc_inti on node ',iam
+
+    if ( use_hemco ) then
+        ! Initialize HEMCO version of extfrc_inti
+        call hco_extfrc_inti()
+        if (masterproc) write(iulog,*) 'chemini: after hco_extfrc_inti on node ',iam
+    else
+        call extfrc_inti(ext_frc_specifier, ext_frc_type, ext_frc_cycle_yr, ext_frc_fixed_ymd, ext_frc_fixed_tod)
+        if (masterproc) write(iulog,*) 'chemini: after extfrc_inti on node ',iam
+    endif
 
     call sulf_inti()
     if (masterproc) write(iulog,*) 'chemini: after sulf_inti on node ',iam
@@ -163,19 +169,9 @@ contains
     if (masterproc) write(iulog,*) 'chemini: after sad_inti on node ',iam
 
     !-----------------------------------------------------------------------
-    !	... initialize the lightning module
-    !-----------------------------------------------------------------------
-    call lightning_inti(lght_no_prd_factor)
-    if (masterproc) write(iulog,*) 'chemini: after lightning_inti on node ',iam
-
-    !-----------------------------------------------------------------------
     !	... initialize the dry deposition module
     !-----------------------------------------------------------------------
-    if ( drydep_method == DD_XLND ) then
-       call drydep_inti(depvel_lnd_file)
-    else
-       call endrun('chemini: drydep_method must equal DD_XLND')
-    endif
+    call drydep_inti(depvel_lnd_file)
 
     if (masterproc) write(iulog,*) 'chemini: after drydep_inti on node ',iam
 

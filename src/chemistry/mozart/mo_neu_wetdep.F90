@@ -12,7 +12,7 @@ module mo_neu_wetdep
   use constituents,     only : pcnst
   use spmd_utils,       only : masterproc
   use cam_abortutils,   only : endrun
-  use seq_drydep_mod,   only : n_species_table, species_name_table, dheff
+  use shr_drydep_mod,   only : n_species_table, species_name_table, dheff
   use gas_wetdep_opts,  only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt
 !
   implicit none
@@ -27,6 +27,7 @@ module mo_neu_wetdep
   real(r8),allocatable, dimension(:) :: mol_weight
   logical ,allocatable, dimension(:) :: ice_uptake
   integer                     :: index_cldice,index_cldliq,nh3_ndx,co2_ndx,so2_ndx
+  integer                     :: so4_ndx,so4s_ndx ! geos-chem
   logical                     :: debug   = .false.
   integer                     :: hno3_ndx = 0
 !
@@ -51,7 +52,7 @@ subroutine neu_wetdep_init
 !
   use constituents, only : cnst_get_ind,cnst_mw
   use cam_history,  only : addfld, add_default, horiz_only
-  use phys_control, only : phys_getopts
+  use phys_control, only : phys_getopts, cam_chempkg_is
 !
   integer :: m,l
   character*20 :: test_name
@@ -85,6 +86,9 @@ subroutine neu_wetdep_init
 ! mapping based on the MOZART4 wet removal subroutine;
 ! this might need to be redone (JFL: Sep 2010)
 !
+! Skip mapping if using GEOS-Chem; all GEOS-Chem species are in dep_data_file
+! (heff table) specified in namelist drv_flds_in (EWL: Dec 2022)
+  if ( .not. cam_chempkg_is('geoschem_mam4') ) then
     select case( trim(test_name) )
 !
 ! CCMI: added SO2t and NH_50W
@@ -108,6 +112,7 @@ subroutine neu_wetdep_init
       case(  'SOAGbb4' )
          test_name = 'SOAGff4'
     end select
+  endif
 !
     do l = 1,n_species_table
 !
@@ -137,6 +142,12 @@ subroutine neu_wetdep_init
     end if
     if ( trim(test_name) == 'SO2' ) then
       so2_ndx = m
+    end if
+    if ( trim(test_name) == 'SO4' ) then ! GEOS-Chem bulk sulfate
+      so4_ndx = m
+    end if
+    if ( trim(test_name) == 'SO4S' ) then ! GEOS-Chem bulk sulfate on surface seasalt
+      so4s_ndx = m
     end if
 !
   end do
@@ -188,7 +199,6 @@ subroutine neu_wetdep_init
     call addfld     ('WD_'//trim(gas_wetdep_list(m)),horiz_only, 'A','kg/m2/s','vertical integrated wet deposition flux')
     call addfld     ('HEFF_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','M/atm','Effective Henrys Law coeff.')
     if (history_chemistry) then
-       call add_default('DTWR_'//trim(gas_wetdep_list(m)), 1, ' ')
        call add_default('WD_'//trim(gas_wetdep_list(m)), 1, ' ')
     end if
   end do
@@ -214,10 +224,10 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
      prain, nevapr, cld, cmfdqr, wd_tend, wd_tend_int)
 !
   use ppgrid,           only : pcols, pver
-!!DEK
   use phys_grid,        only : get_area_all_p, get_rlat_all_p
   use shr_const_mod,    only : SHR_CONST_REARTH,SHR_CONST_G
   use cam_history,      only : outfld
+  use shr_const_mod,    only : pi => shr_const_pi
 !
   implicit none
 !
@@ -238,7 +248,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
 !
 ! local arrays and variables
 !
-  integer :: i,k,l,kk,m,id
+  integer :: i,k,l,kk,m
   real(r8), parameter                       :: rearth = SHR_CONST_REARTH    ! radius earth (m)
   real(r8), parameter                       :: gravit = SHR_CONST_G         ! m/s^2
   real(r8), dimension(ncol)                 :: area, wk_out
@@ -260,14 +270,13 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   real(r8), parameter       :: ph_inv = 1._r8/ph
   real(r8)                  :: e298, dhr
   real(r8), dimension(ncol) :: dk1s,dk2s,wrk
-!!DEK
-  real(r8) :: pi
   real(r8) :: lats(pcols)
+
+  real(r8), parameter :: rad2deg = 180._r8/pi
+
 !
 ! from cam/src/physics/cam/stratiform.F90
 !
-!!DEK
-  pi = 4._r8*atan(1.0_r8)
 
   if (.not.do_neu_wetdep) return
 !
@@ -330,7 +339,6 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   end do
 !
 ! compute effective Henry's law coefficients
-! code taken from models/drv/shr/seq_drydep_mod.F90
 !
   heff = 0._r8
   do k=1,pver
@@ -342,14 +350,13 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
     do m=1,gas_wetdep_cnt
 !
       l    = mapping_to_heff(m)
-      id   = 6*(l - 1)
-      e298 = dheff(id+1)
-      dhr  = dheff(id+2)
+      e298 = dheff(1,l)
+      dhr  = dheff(2,l)
       heff(:,k,m) = e298*exp( dhr*wrk(:) )
       test_flag = -99
-      if( dheff(id+3) /= 0._r8 .and. dheff(id+5) == 0._r8 ) then
-        e298 = dheff(id+3)
-        dhr  = dheff(id+4)
+      if( dheff(3,l) /= 0._r8 .and. dheff(5,l) == 0._r8 ) then
+        e298 = dheff(3,l)
+        dhr  = dheff(4,l)
         dk1s(:) = e298*exp( dhr*wrk(:) )
         where( heff(:,k,m) /= 0._r8 )
           heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph_inv)
@@ -363,21 +370,21 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
          write(iulog, '(a,i4)') 'heff for m=',m
       endif
 !
-      if( dheff(id+5) /= 0._r8 ) then
-        if( nh3_ndx > 0 .or. co2_ndx > 0 .or. so2_ndx > 0 ) then
-          e298 = dheff(id+3)
-          dhr  = dheff(id+4)
+      if( dheff(5,l) /= 0._r8 ) then
+        if( nh3_ndx > 0 .or. co2_ndx > 0 .or. so2_ndx > 0 .or. so4_ndx > 0 .or. so4s_ndx > 0 ) then
+          e298 = dheff(3,l)
+          dhr  = dheff(4,l)
           dk1s(:) = e298*exp( dhr*wrk(:) )
-          e298 = dheff(id+5)
-          dhr  = dheff(id+6)
+          e298 = dheff(5,l)
+          dhr  = dheff(6,l)
           dk2s(:) = e298*exp( dhr*wrk(:) )
-          if( m == co2_ndx .or. m == so2_ndx ) then
+          if( m == co2_ndx .or. m == so2_ndx .or. m == so4_ndx .or. m == so4s_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph_inv*(1._r8 + dk2s(:)*ph_inv))
           else if( m == nh3_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph/dk2s(:))
           else
-             write(iulog,*) 'error in assigning henrys law coefficients'
-             write(iulog,*) 'species ',m
+             if ( masterproc ) write(iulog,*) 'error in assigning henrys law coefficients'
+             if ( masterproc ) write(iulog,*) 'species ',m
           end if
         end if
       end if
@@ -424,11 +431,11 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   dtwr(1:ncol,:,:) = wd_mmr(1:ncol,:,:) - dtwr(1:ncol,:,:)
   dtwr(1:ncol,:,:) = dtwr(1:ncol,:,:) / delt
 
-!!DEK polarward of 60S, 60N and <200hPa set to zero!
+! polarward of 60S, 60N and <200hPa set to zero!
   call get_rlat_all_p(lchnk, pcols, lats )
   do k = 1, pver
     do i= 1, ncol
-      if ( abs( lats(i)*180._r8/pi ) > 60._r8 ) then
+      if ( abs( lats(i)*rad2deg ) > 60._r8 ) then
         if ( pmid(i,k) < 20000._r8) then
            dtwr(i,k,:) = 0._r8
         endif

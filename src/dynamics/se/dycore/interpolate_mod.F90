@@ -15,6 +15,7 @@ module interpolate_mod
   use mesh_mod,               only: MeshUseMeshFile
   use control_mod,            only: cubed_sphere_map
   use cam_logfile,            only: iulog
+  use string_utils,           only: int2str
 
   implicit none
   private
@@ -88,7 +89,7 @@ module interpolate_mod
 
   ! store the  lat-lon grid
   ! gridtype = 1       equally spaced, including poles (FV scalars output grid)
-  ! gridtype = 2       Gauss grid (CAM Eulerian)
+  ! gridtype = 2       Gauss grid
   ! gridtype = 3       equally spaced, no poles (FV staggered velocity)
   ! Seven possible history files, last one is inithist and should be native grid
   integer :: nlat,nlon
@@ -608,7 +609,7 @@ contains
 
     p = (xp - xoy(ii))/(xoy(ii+1) - xoy(ii))
     q = (yp - xoy(jj))/(xoy(jj+1) - xoy(jj))
-    
+
     fxy = (1.0_r8 - p)*(1.0_r8 - q)* y4(1) + p*(1.0_r8 - q) * y4(2)   &
          + p*q* y4(3) + (1.0_r8 - p)*q * y4(4)
   end function interpol_bilinear
@@ -627,31 +628,31 @@ contains
     use fvm_control_volume_mod, only : fvm_struct
     !  use fvm_reconstruction_mod, only: reconstruction_gradient, recons_val_cart
     use edgetype_mod, only : edgedescriptor_t
-    
+
     type (interpdata_t), intent(in)     :: interpdata
     real (kind=r8), intent(inout)   :: f(1-nhc:nc+nhc,1-nhc:nc+nhc)
     type (fvm_struct), intent(in)       :: fvm
     type (cartesian2d_t), intent(in)    :: corners(:)
     type (edgedescriptor_t),intent(in)  :: desc
     logical, intent(in) :: lmono
-    
+
     real (kind=r8)             :: flatlon(:)
     ! local variables
     real (kind=r8)             :: xp,yp, tmpval
     real (kind=r8)             :: tmpaxp,tmpaxm, tmpayp, tmpaym
     integer                           :: i, ix, jy, starti,endi,tmpi
     real (kind=r8), dimension(1-nhe:nc+nhe,1-nhe:nc+nhe,6)      :: recons
-    
+
     real (kind=r8), dimension(nc+1) :: x, y
-    
+
     !  call reconstruction_gradient(f, fvm,recons,6,lmono)
     !  recons=0.0 ! PCoM
-    
+
     x(1:nc) = fvm%vtx_cart(1,1,1:nc,1   )
     y(1:nc) = fvm%vtx_cart(1,2,1   ,1:nc)
     x(nc+1) = fvm%vtx_cart(2,1,nc,1     )
     y(nc+1) = fvm%vtx_cart(3,2,1   ,nc  )
-    
+
     tmpaxp=(corners(1)%x+corners(2)%x)/2
     tmpaxm=(corners(2)%x-corners(1)%x)/2
     tmpayp=(corners(1)%y+corners(4)%y)/2
@@ -660,7 +661,7 @@ contains
       ! caculation phys grid coordinate of xp point, note the interp_xy are on the reference [-1,1]x[-1,1]
       xp=tan(tmpaxp+interpdata%interp_xy(i)%x*tmpaxm)
       yp=tan(tmpayp+interpdata%interp_xy(i)%y*tmpaym)
-      
+
       ! Search index along "x"  (bisection method)
       starti = 1
       endi = nc+1
@@ -674,7 +675,7 @@ contains
         endif
       enddo
       ix = starti
-      
+
       ! Search index along "y"
       starti = 1
       endi = nc+1
@@ -688,7 +689,7 @@ contains
         endif
       enddo
       jy = starti
-      
+
       !    call recons_val_cart(f(ix,jy), xp,yp, fvm%spherecentroid(ix,jy,:), fvm%recons_metrics(ix,jy,:), &
       !         recons(ix,jy,:), tmpval)
       tmpval=f(ix,jy)
@@ -1489,29 +1490,18 @@ end subroutine interpolate_ce
       call endrun('interpolate_scalar2d: resolution not supported')
     endif
 
-       ! Choice for Native (high-order) or Bilinear interpolations
-    if(present(fillvalue)) then
-       if (itype == 0) then
-          do i=1,interpdata%n_interp
-             fld(i)=interpolate_2d(interpdata%interp_xy(i),fld_cube,interp,nsize,fillvalue)
-          end do
-       elseif (itype == 1) then
-          do i=1,interpdata%n_interp
-             fld(i)=interpol_bilinear(interpdata%interp_xy(i),fld_cube,xoy,imin,imax,fillvalue)
-          end do
-       end if
+    ! Choice for Native (high-order) or Bilinear interpolations
+    if (itype == 0) then
+      do i=1,interpdata%n_interp
+        fld(i)=interpolate_2d(interpdata%interp_xy(i),fld_cube,interp,nsize,fillvalue)
+      end do
+    else if (itype == 1) then
+      do i=1,interpdata%n_interp
+        fld(i)=interpol_bilinear(interpdata%interp_xy(i),fld_cube,xoy,imin,imax,fillvalue)
+      end do
     else
-       if (itype == 0) then
-          do i=1,interpdata%n_interp
-             fld(i)=interpolate_2d(interpdata%interp_xy(i),fld_cube,interp,nsize)
-          end do
-       elseif (itype == 1) then
-          do i=1,interpdata%n_interp
-             fld(i)=interpol_bilinear(interpdata%interp_xy(i),fld_cube,xoy,imin,imax)
-          end do
-       end if
-    endif
-
+      call endrun("interpolate_scalar2d: wrong interpolation type: "//int2str(itype))
+    end if
 
   end subroutine interpolate_scalar2d
   subroutine interpolate_scalar3d(interpdata,fld_cube,nsize,nhalo,nlev,fld, fillvalue)
@@ -1560,37 +1550,20 @@ end subroutine interpolate_ce
     endif
 
     ! Choice for Native (high-order) or Bilinear interpolations
-    if(present(fillvalue)) then
-       if (itype == 0) then
-          do k=1,nlev
-             do i=1,interpdata%n_interp
-                fld(i,k)=interpolate_2d(interpdata%interp_xy(i),fld_cube(:,:,k),interp,nsize,fillvalue)
-             end do
-          end do
-       elseif (itype == 1) then
-          do k=1,nlev
-             do i=1,interpdata%n_interp
-                fld(i,k)=interpol_bilinear(interpdata%interp_xy(i),fld_cube(:,:,k),xoy,imin,imax,fillvalue)
-             end do
-          end do
-       endif
+    if (itype == 0) then
+      do k=1,nlev
+        do i=1,interpdata%n_interp
+          fld(i,k)=interpolate_2d(interpdata%interp_xy(i),fld_cube(:,:,k),interp,nsize,fillvalue)
+        end do
+      end do
+    elseif (itype == 1) then
+      do k=1,nlev
+        do i=1,interpdata%n_interp
+          fld(i,k)=interpol_bilinear(interpdata%interp_xy(i),fld_cube(:,:,k),xoy,imin,imax,fillvalue)
+        end do
+      end do
     else
-       if (itype == 0) then
-          do k=1,nlev
-             do i=1,interpdata%n_interp
-                fld(i,k)=interpolate_2d(interpdata%interp_xy(i),fld_cube(:,:,k),interp,nsize)
-             end do
-          end do
-       elseif (itype == 1) then
-          do k=1,nlev
-             do i=1,interpdata%n_interp
-                fld(i,k)=interpol_bilinear(interpdata%interp_xy(i),fld_cube(:,:,k),xoy,imin,imax)
-             end do
-          end do
-       else
-          write(iulog,*) itype
-          call endrun("wrong interpolation type")
-       endif
+      call endrun("interpolate_scalar3d: wrong interpolation type: "//int2str(itype))
     endif
   end subroutine interpolate_scalar3d
 
@@ -1652,8 +1625,8 @@ end subroutine interpolate_ce
 
     if (npts==np) then
        interp => interp_p
-    else if (npts==np) then
-       call endrun('Error in interpolate_vector(): input must be on velocity grid')
+    else
+       call endrun('interpolate_vector2d: Error in interpolate_vector(): input must be on GLL grid')
     endif
 
 
@@ -1670,8 +1643,7 @@ end subroutine interpolate_ce
           fld(i,2)=interpol_bilinear(interpdata%interp_xy(i),fld_contra(:,:,2),interp%glp(:),1,np)
        end do
     else
-       write(iulog,*) itype
-       call endrun("wrong interpolation type")
+       call endrun("interpolate_vector2d: wrong interpolation type: "//int2str(itype))
     endif
     do i=1,interpdata%n_interp
        ! convert fld from contra->latlon
@@ -1743,8 +1715,8 @@ end subroutine interpolate_ce
 
     if (npts==np) then
        interp => interp_p
-    else if (npts==np) then
-       call endrun('Error in interpolate_vector(): input must be on velocity grid')
+    else
+       call endrun('interpolate_vector3d: Error in interpolate_vector(): input must be on GLL grid')
     endif
 
 
@@ -1765,7 +1737,7 @@ end subroutine interpolate_ce
           end do
        end do
     else
-       call endrun("wrong interpolation type")
+       call endrun("interpolate_vector3d: wrong interpolation type: "//int2str(itype))
     endif
 
 

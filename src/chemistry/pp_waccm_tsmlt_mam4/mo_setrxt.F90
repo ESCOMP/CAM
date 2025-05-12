@@ -54,7 +54,7 @@
       rate(:,188) = 7e-13_r8
       rate(:,189) = 5e-12_r8
       rate(:,198) = 3.5e-12_r8
-      rate(:,200) = 1e-11_r8
+      rate(:,200) = 1.3e-11_r8
       rate(:,201) = 2.2e-11_r8
       rate(:,202) = 5e-11_r8
       rate(:,237) = 1.7e-13_r8
@@ -79,18 +79,18 @@
       rate(:,291) = 1.794e-10_r8
       rate(:,292) = 1.3e-10_r8
       rate(:,293) = 7.65e-11_r8
-      rate(:,307) = 4e-13_r8
-      rate(:,311) = 1.31e-10_r8
-      rate(:,312) = 3.5e-11_r8
-      rate(:,313) = 9e-12_r8
-      rate(:,320) = 6.8e-14_r8
-      rate(:,321) = 2e-13_r8
-      rate(:,335) = 7e-13_r8
-      rate(:,336) = 1e-12_r8
-      rate(:,340) = 1e-14_r8
-      rate(:,341) = 1e-11_r8
-      rate(:,342) = 1.15e-11_r8
-      rate(:,343) = 4e-14_r8
+      rate(:,306) = 4e-13_r8
+      rate(:,310) = 1.31e-10_r8
+      rate(:,311) = 3.5e-11_r8
+      rate(:,312) = 9e-12_r8
+      rate(:,319) = 6.8e-14_r8
+      rate(:,320) = 2e-13_r8
+      rate(:,335) = 1e-12_r8
+      rate(:,339) = 1e-14_r8
+      rate(:,340) = 1e-11_r8
+      rate(:,341) = 1.15e-11_r8
+      rate(:,342) = 4e-14_r8
+      rate(:,355) = 1.45e-10_r8
       rate(:,356) = 3e-12_r8
       rate(:,357) = 6.7e-13_r8
       rate(:,367) = 3.5e-13_r8
@@ -132,31 +132,31 @@
       rate(:,500) = 5.7e-11_r8
       rate(:,501) = 3.4e-11_r8
       rate(:,506) = 2.3e-12_r8
-      rate(:,507) = 1.2e-11_r8
-      rate(:,508) = 5.7e-11_r8
-      rate(:,509) = 2.8e-11_r8
-      rate(:,510) = 6.6e-11_r8
-      rate(:,511) = 1.4e-11_r8
-      rate(:,514) = 1.9e-12_r8
+      rate(:,508) = 1.2e-11_r8
+      rate(:,509) = 5.7e-11_r8
+      rate(:,510) = 2.8e-11_r8
+      rate(:,511) = 6.6e-11_r8
+      rate(:,512) = 1.4e-11_r8
+      rate(:,515) = 1.9e-12_r8
       rate(:,528) = 6.34e-08_r8
       rate(:,534) = 1.9e-11_r8
-      rate(:,535) = 1.2e-14_r8
-      rate(:,536) = 2e-10_r8
-      rate(:,541) = 1.34e-11_r8
-      rate(:,545) = 1.34e-11_r8
-      rate(:,547) = 1.7e-11_r8
-      rate(:,568) = 6e-11_r8
-      rate(:,571) = 1e-12_r8
-      rate(:,572) = 4e-10_r8
-      rate(:,573) = 2e-10_r8
-      rate(:,574) = 1e-10_r8
-      rate(:,575) = 5e-16_r8
-      rate(:,576) = 4.4e-10_r8
-      rate(:,577) = 9e-10_r8
-      rate(:,580) = 1.29e-07_r8
-      rate(:,581) = 2.31e-07_r8
-      rate(:,582) = 2.31e-06_r8
-      rate(:,583) = 4.63e-07_r8
+      rate(:,537) = 1.2e-14_r8
+      rate(:,538) = 2e-10_r8
+      rate(:,549) = 1.34e-11_r8
+      rate(:,555) = 1.34e-11_r8
+      rate(:,559) = 1.7e-11_r8
+      rate(:,582) = 6e-11_r8
+      rate(:,585) = 1e-12_r8
+      rate(:,586) = 4e-10_r8
+      rate(:,587) = 2e-10_r8
+      rate(:,588) = 1e-10_r8
+      rate(:,589) = 5e-16_r8
+      rate(:,590) = 4.4e-10_r8
+      rate(:,591) = 9e-10_r8
+      rate(:,594) = 1.29e-07_r8
+      rate(:,595) = 2.31e-07_r8
+      rate(:,596) = 2.31e-06_r8
+      rate(:,597) = 4.63e-07_r8
  
       do n = 1,pver
         offset = (n-1)*ncol
@@ -176,13 +176,13 @@
       exp_fac(:) = exp( -2000._r8 * itemp(:) )
       rate(:,171) = 1.4e-12_r8 * exp_fac(:)
       rate(:,425) = 1.05e-14_r8 * exp_fac(:)
-      rate(:,539) = 1.05e-14_r8 * exp_fac(:)
+      rate(:,545) = 1.05e-14_r8 * exp_fac(:)
       exp_fac(:) = exp( 200._r8 * itemp(:) )
       rate(:,176) = 3e-11_r8 * exp_fac(:)
       rate(:,264) = 5.5e-12_r8 * exp_fac(:)
       rate(:,303) = 3.8e-12_r8 * exp_fac(:)
-      rate(:,325) = 3.8e-12_r8 * exp_fac(:)
-      rate(:,352) = 3.8e-12_r8 * exp_fac(:)
+      rate(:,324) = 3.8e-12_r8 * exp_fac(:)
+      rate(:,351) = 3.8e-12_r8 * exp_fac(:)
       rate(:,360) = 3.8e-12_r8 * exp_fac(:)
       rate(:,364) = 3.8e-12_r8 * exp_fac(:)
       rate(:,380) = 2.3e-11_r8 * exp_fac(:)
@@ -205,8 +205,8 @@
       rate(:,262) = 1.7e-11_r8 * exp_fac(:)
       exp_fac(:) = exp( 180._r8 * itemp(:) )
       rate(:,182) = 1.8e-11_r8 * exp_fac(:)
-      rate(:,338) = 4.2e-12_r8 * exp_fac(:)
-      rate(:,351) = 4.2e-12_r8 * exp_fac(:)
+      rate(:,337) = 4.2e-12_r8 * exp_fac(:)
+      rate(:,350) = 4.2e-12_r8 * exp_fac(:)
       rate(:,359) = 4.2e-12_r8 * exp_fac(:)
       rate(:,388) = 4.2e-12_r8 * exp_fac(:)
       rate(:,408) = 4.4e-12_r8 * exp_fac(:)
@@ -215,23 +215,24 @@
       rate(:,492) = 4.2e-12_r8 * exp_fac(:)
       rate(:,497) = 4.2e-12_r8 * exp_fac(:)
       rate(:,183) = 1.7e-12_r8 * exp( -940._r8 * itemp(:) )
-      rate(:,187) = 1.3e-12_r8 * exp( 380._r8 * itemp(:) )
+      rate(:,187) = 4.5e-13_r8 * exp( 610._r8 * itemp(:) )
       rate(:,190) = 2.1e-11_r8 * exp( 100._r8 * itemp(:) )
       exp_fac(:) = exp( 220._r8 * itemp(:) )
       rate(:,191) = 2.9e-12_r8 * exp_fac(:)
       rate(:,192) = 1.45e-12_r8 * exp_fac(:)
       rate(:,193) = 1.45e-12_r8 * exp_fac(:)
-      rate(:,194) = 1.5e-11_r8 * exp( -3600._r8 * itemp(:) )
+      rate(:,194) = 3.3e-12_r8 * exp( -3150._r8 * itemp(:) )
       rate(:,195) = 5.1e-12_r8 * exp( 210._r8 * itemp(:) )
       exp_fac(:) = exp( -2450._r8 * itemp(:) )
       rate(:,196) = 1.2e-13_r8 * exp_fac(:)
       rate(:,222) = 3e-11_r8 * exp_fac(:)
-      rate(:,199) = 1.5e-11_r8 * exp( 170._r8 * itemp(:) )
-      exp_fac(:) = exp( 270._r8 * itemp(:) )
-      rate(:,203) = 3.3e-12_r8 * exp_fac(:)
-      rate(:,218) = 1.4e-11_r8 * exp_fac(:)
-      rate(:,232) = 7.4e-12_r8 * exp_fac(:)
-      rate(:,334) = 8.1e-12_r8 * exp_fac(:)
+      exp_fac(:) = exp( 125._r8 * itemp(:) )
+      rate(:,199) = 1.7e-11_r8 * exp_fac(:)
+      rate(:,297) = 5.5e-12_r8 * exp_fac(:)
+      exp_fac(:) = exp( 260._r8 * itemp(:) )
+      rate(:,203) = 3.44e-12_r8 * exp_fac(:)
+      rate(:,255) = 2.3e-12_r8 * exp_fac(:)
+      rate(:,258) = 8.8e-12_r8 * exp_fac(:)
       exp_fac(:) = exp( -1500._r8 * itemp(:) )
       rate(:,204) = 3e-12_r8 * exp_fac(:)
       rate(:,263) = 5.8e-12_r8 * exp_fac(:)
@@ -242,6 +243,10 @@
       rate(:,215) = 7.1e-12_r8 * exp( -1270._r8 * itemp(:) )
       rate(:,216) = 3.05e-11_r8 * exp( -2270._r8 * itemp(:) )
       rate(:,217) = 1.1e-11_r8 * exp( -980._r8 * itemp(:) )
+      exp_fac(:) = exp( 270._r8 * itemp(:) )
+      rate(:,218) = 1.4e-11_r8 * exp_fac(:)
+      rate(:,232) = 7.4e-12_r8 * exp_fac(:)
+      rate(:,333) = 8.1e-12_r8 * exp_fac(:)
       rate(:,219) = 3.6e-11_r8 * exp( -375._r8 * itemp(:) )
       rate(:,220) = 2.3e-11_r8 * exp( -200._r8 * itemp(:) )
       rate(:,221) = 3.3e-12_r8 * exp( -115._r8 * itemp(:) )
@@ -277,9 +282,6 @@
       rate(:,251) = 4.8e-12_r8 * exp( -310._r8 * itemp(:) )
       rate(:,252) = 1.6e-11_r8 * exp( -780._r8 * itemp(:) )
       rate(:,254) = 9.5e-13_r8 * exp( 550._r8 * itemp(:) )
-      exp_fac(:) = exp( 260._r8 * itemp(:) )
-      rate(:,255) = 2.3e-12_r8 * exp_fac(:)
-      rate(:,258) = 8.8e-12_r8 * exp_fac(:)
       rate(:,257) = 4.5e-12_r8 * exp( 460._r8 * itemp(:) )
       rate(:,260) = 1.9e-11_r8 * exp( 215._r8 * itemp(:) )
       rate(:,265) = 1.2e-10_r8 * exp( -430._r8 * itemp(:) )
@@ -293,18 +295,18 @@
       rate(:,291) = 1.794e-10_r8 * exp_fac(:)
       rate(:,292) = 1.3e-10_r8 * exp_fac(:)
       rate(:,293) = 7.65e-11_r8 * exp_fac(:)
-      rate(:,307) = 4e-13_r8 * exp_fac(:)
-      rate(:,311) = 1.31e-10_r8 * exp_fac(:)
-      rate(:,312) = 3.5e-11_r8 * exp_fac(:)
-      rate(:,313) = 9e-12_r8 * exp_fac(:)
-      rate(:,320) = 6.8e-14_r8 * exp_fac(:)
-      rate(:,321) = 2e-13_r8 * exp_fac(:)
-      rate(:,335) = 7e-13_r8 * exp_fac(:)
-      rate(:,336) = 1e-12_r8 * exp_fac(:)
-      rate(:,340) = 1e-14_r8 * exp_fac(:)
-      rate(:,341) = 1e-11_r8 * exp_fac(:)
-      rate(:,342) = 1.15e-11_r8 * exp_fac(:)
-      rate(:,343) = 4e-14_r8 * exp_fac(:)
+      rate(:,306) = 4e-13_r8 * exp_fac(:)
+      rate(:,310) = 1.31e-10_r8 * exp_fac(:)
+      rate(:,311) = 3.5e-11_r8 * exp_fac(:)
+      rate(:,312) = 9e-12_r8 * exp_fac(:)
+      rate(:,319) = 6.8e-14_r8 * exp_fac(:)
+      rate(:,320) = 2e-13_r8 * exp_fac(:)
+      rate(:,335) = 1e-12_r8 * exp_fac(:)
+      rate(:,339) = 1e-14_r8 * exp_fac(:)
+      rate(:,340) = 1e-11_r8 * exp_fac(:)
+      rate(:,341) = 1.15e-11_r8 * exp_fac(:)
+      rate(:,342) = 4e-14_r8 * exp_fac(:)
+      rate(:,355) = 1.45e-10_r8 * exp_fac(:)
       rate(:,356) = 3e-12_r8 * exp_fac(:)
       rate(:,357) = 6.7e-13_r8 * exp_fac(:)
       rate(:,367) = 3.5e-13_r8 * exp_fac(:)
@@ -346,31 +348,31 @@
       rate(:,500) = 5.7e-11_r8 * exp_fac(:)
       rate(:,501) = 3.4e-11_r8 * exp_fac(:)
       rate(:,506) = 2.3e-12_r8 * exp_fac(:)
-      rate(:,507) = 1.2e-11_r8 * exp_fac(:)
-      rate(:,508) = 5.7e-11_r8 * exp_fac(:)
-      rate(:,509) = 2.8e-11_r8 * exp_fac(:)
-      rate(:,510) = 6.6e-11_r8 * exp_fac(:)
-      rate(:,511) = 1.4e-11_r8 * exp_fac(:)
-      rate(:,514) = 1.9e-12_r8 * exp_fac(:)
+      rate(:,508) = 1.2e-11_r8 * exp_fac(:)
+      rate(:,509) = 5.7e-11_r8 * exp_fac(:)
+      rate(:,510) = 2.8e-11_r8 * exp_fac(:)
+      rate(:,511) = 6.6e-11_r8 * exp_fac(:)
+      rate(:,512) = 1.4e-11_r8 * exp_fac(:)
+      rate(:,515) = 1.9e-12_r8 * exp_fac(:)
       rate(:,528) = 6.34e-08_r8 * exp_fac(:)
       rate(:,534) = 1.9e-11_r8 * exp_fac(:)
-      rate(:,535) = 1.2e-14_r8 * exp_fac(:)
-      rate(:,536) = 2e-10_r8 * exp_fac(:)
-      rate(:,541) = 1.34e-11_r8 * exp_fac(:)
-      rate(:,545) = 1.34e-11_r8 * exp_fac(:)
-      rate(:,547) = 1.7e-11_r8 * exp_fac(:)
-      rate(:,568) = 6e-11_r8 * exp_fac(:)
-      rate(:,571) = 1e-12_r8 * exp_fac(:)
-      rate(:,572) = 4e-10_r8 * exp_fac(:)
-      rate(:,573) = 2e-10_r8 * exp_fac(:)
-      rate(:,574) = 1e-10_r8 * exp_fac(:)
-      rate(:,575) = 5e-16_r8 * exp_fac(:)
-      rate(:,576) = 4.4e-10_r8 * exp_fac(:)
-      rate(:,577) = 9e-10_r8 * exp_fac(:)
-      rate(:,580) = 1.29e-07_r8 * exp_fac(:)
-      rate(:,581) = 2.31e-07_r8 * exp_fac(:)
-      rate(:,582) = 2.31e-06_r8 * exp_fac(:)
-      rate(:,583) = 4.63e-07_r8 * exp_fac(:)
+      rate(:,537) = 1.2e-14_r8 * exp_fac(:)
+      rate(:,538) = 2e-10_r8 * exp_fac(:)
+      rate(:,549) = 1.34e-11_r8 * exp_fac(:)
+      rate(:,555) = 1.34e-11_r8 * exp_fac(:)
+      rate(:,559) = 1.7e-11_r8 * exp_fac(:)
+      rate(:,582) = 6e-11_r8 * exp_fac(:)
+      rate(:,585) = 1e-12_r8 * exp_fac(:)
+      rate(:,586) = 4e-10_r8 * exp_fac(:)
+      rate(:,587) = 2e-10_r8 * exp_fac(:)
+      rate(:,588) = 1e-10_r8 * exp_fac(:)
+      rate(:,589) = 5e-16_r8 * exp_fac(:)
+      rate(:,590) = 4.4e-10_r8 * exp_fac(:)
+      rate(:,591) = 9e-10_r8 * exp_fac(:)
+      rate(:,594) = 1.29e-07_r8 * exp_fac(:)
+      rate(:,595) = 2.31e-07_r8 * exp_fac(:)
+      rate(:,596) = 2.31e-06_r8 * exp_fac(:)
+      rate(:,597) = 4.63e-07_r8 * exp_fac(:)
       exp_fac(:) = exp( 400._r8 * itemp(:) )
       rate(:,274) = 6e-12_r8 * exp_fac(:)
       rate(:,373) = 5e-13_r8 * exp_fac(:)
@@ -385,7 +387,7 @@
       rate(:,392) = 8.5e-16_r8 * exp_fac(:)
       exp_fac(:) = exp( -1100._r8 * itemp(:) )
       rate(:,282) = 2.03e-11_r8 * exp_fac(:)
-      rate(:,513) = 3.4e-12_r8 * exp_fac(:)
+      rate(:,514) = 3.4e-12_r8 * exp_fac(:)
       rate(:,283) = 1.96e-12_r8 * exp( -1200._r8 * itemp(:) )
       rate(:,284) = 4.85e-12_r8 * exp( -850._r8 * itemp(:) )
       rate(:,285) = 9e-13_r8 * exp( -360._r8 * itemp(:) )
@@ -396,7 +398,6 @@
       rate(:,288) = 9.2e-13_r8 * exp( -1560._r8 * itemp(:) )
       rate(:,294) = 9.7e-15_r8 * exp( 625._r8 * itemp(:) )
       rate(:,295) = 6e-13_r8 * exp( -2058._r8 * itemp(:) )
-      rate(:,297) = 5.5e-12_r8 * exp( 125._r8 * itemp(:) )
       rate(:,298) = 5e-13_r8 * exp( -424._r8 * itemp(:) )
       rate(:,299) = 1.9e-14_r8 * exp( 706._r8 * itemp(:) )
       rate(:,300) = 4.1e-13_r8 * exp( 750._r8 * itemp(:) )
@@ -406,10 +407,10 @@
       rate(:,302) = 2.9e-12_r8 * exp( -345._r8 * itemp(:) )
       rate(:,304) = 2.45e-12_r8 * exp( -1775._r8 * itemp(:) )
       exp_fac(:) = exp( 700._r8 * itemp(:) )
-      rate(:,308) = 7.5e-13_r8 * exp_fac(:)
-      rate(:,322) = 7.5e-13_r8 * exp_fac(:)
-      rate(:,337) = 7.5e-13_r8 * exp_fac(:)
-      rate(:,350) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,307) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,321) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,336) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,349) = 7.5e-13_r8 * exp_fac(:)
       rate(:,358) = 7.5e-13_r8 * exp_fac(:)
       rate(:,362) = 8.6e-13_r8 * exp_fac(:)
       rate(:,374) = 8e-13_r8 * exp_fac(:)
@@ -429,12 +430,16 @@
       rate(:,486) = 7.5e-13_r8 * exp_fac(:)
       rate(:,491) = 7.5e-13_r8 * exp_fac(:)
       rate(:,496) = 7.5e-13_r8 * exp_fac(:)
-      rate(:,309) = 2.4e+12_r8 * exp( -7000._r8 * itemp(:) )
-      rate(:,310) = 2.6e-12_r8 * exp( 265._r8 * itemp(:) )
-      rate(:,314) = 1.08e-10_r8 * exp( 105._r8 * itemp(:) )
-      rate(:,319) = 1.2e-14_r8 * exp( -2630._r8 * itemp(:) )
+      rate(:,540) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,547) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,557) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,560) = 7.5e-13_r8 * exp_fac(:)
+      rate(:,308) = 2.4e+12_r8 * exp( -7000._r8 * itemp(:) )
+      rate(:,309) = 2.6e-12_r8 * exp( 265._r8 * itemp(:) )
+      rate(:,313) = 1.08e-10_r8 * exp( 105._r8 * itemp(:) )
+      rate(:,318) = 1.2e-14_r8 * exp( -2630._r8 * itemp(:) )
       exp_fac(:) = exp( 365._r8 * itemp(:) )
-      rate(:,323) = 2.6e-12_r8 * exp_fac(:)
+      rate(:,322) = 2.6e-12_r8 * exp_fac(:)
       rate(:,440) = 2.6e-12_r8 * exp_fac(:)
       rate(:,445) = 2.6e-12_r8 * exp_fac(:)
       rate(:,447) = 2.6e-12_r8 * exp_fac(:)
@@ -442,35 +447,42 @@
       rate(:,467) = 2.6e-12_r8 * exp_fac(:)
       rate(:,473) = 2.6e-12_r8 * exp_fac(:)
       rate(:,476) = 2.6e-12_r8 * exp_fac(:)
-      rate(:,324) = 6.9e-12_r8 * exp( -230._r8 * itemp(:) )
-      rate(:,326) = 7.2e-11_r8 * exp( -70._r8 * itemp(:) )
-      rate(:,327) = 7.66e-12_r8 * exp( -1020._r8 * itemp(:) )
+      rate(:,541) = 2.6e-12_r8 * exp_fac(:)
+      rate(:,548) = 2.6e-12_r8 * exp_fac(:)
+      rate(:,558) = 2.6e-12_r8 * exp_fac(:)
+      rate(:,561) = 2.6e-12_r8 * exp_fac(:)
+      rate(:,323) = 6.9e-12_r8 * exp( -230._r8 * itemp(:) )
+      rate(:,325) = 7.2e-11_r8 * exp( -70._r8 * itemp(:) )
+      rate(:,326) = 7.66e-12_r8 * exp( -1020._r8 * itemp(:) )
       exp_fac(:) = exp( -1900._r8 * itemp(:) )
-      rate(:,328) = 1.4e-12_r8 * exp_fac(:)
-      rate(:,348) = 6.5e-15_r8 * exp_fac(:)
-      rate(:,329) = 4.63e-12_r8 * exp( 350._r8 * itemp(:) )
-      rate(:,330) = 7.8e-13_r8 * exp( -1050._r8 * itemp(:) )
+      rate(:,327) = 1.4e-12_r8 * exp_fac(:)
+      rate(:,347) = 6.5e-15_r8 * exp_fac(:)
+      exp_fac(:) = exp( 350._r8 * itemp(:) )
+      rate(:,328) = 4.63e-12_r8 * exp_fac(:)
+      rate(:,544) = 2.7e-12_r8 * exp_fac(:)
+      rate(:,329) = 7.8e-13_r8 * exp( -1050._r8 * itemp(:) )
       exp_fac(:) = exp( 500._r8 * itemp(:) )
-      rate(:,331) = 2.9e-12_r8 * exp_fac(:)
-      rate(:,332) = 2e-12_r8 * exp_fac(:)
+      rate(:,330) = 2.9e-12_r8 * exp_fac(:)
+      rate(:,331) = 2e-12_r8 * exp_fac(:)
       rate(:,361) = 7.1e-13_r8 * exp_fac(:)
       rate(:,382) = 2e-12_r8 * exp_fac(:)
       rate(:,485) = 2e-12_r8 * exp_fac(:)
       rate(:,490) = 2e-12_r8 * exp_fac(:)
       rate(:,495) = 2e-12_r8 * exp_fac(:)
       exp_fac(:) = exp( 1040._r8 * itemp(:) )
-      rate(:,333) = 4.3e-13_r8 * exp_fac(:)
+      rate(:,332) = 4.3e-13_r8 * exp_fac(:)
       rate(:,383) = 4.3e-13_r8 * exp_fac(:)
       rate(:,436) = 4.3e-13_r8 * exp_fac(:)
       rate(:,450) = 4.3e-13_r8 * exp_fac(:)
       rate(:,453) = 4.3e-13_r8 * exp_fac(:)
       rate(:,456) = 4.3e-13_r8 * exp_fac(:)
-      rate(:,339) = 1.6e+11_r8 * exp( -4150._r8 * itemp(:) )
-      rate(:,347) = 4.6e-13_r8 * exp( -1156._r8 * itemp(:) )
-      rate(:,349) = 3.75e-13_r8 * exp( -40._r8 * itemp(:) )
-      rate(:,353) = 8.7e-12_r8 * exp( -615._r8 * itemp(:) )
-      rate(:,354) = 1.4e-12_r8 * exp( -1860._r8 * itemp(:) )
-      rate(:,355) = 8.4e-13_r8 * exp( 830._r8 * itemp(:) )
+      rate(:,334) = 3.15e-14_r8 * exp( 920._r8 * itemp(:) )
+      rate(:,338) = 1.6e+11_r8 * exp( -4150._r8 * itemp(:) )
+      rate(:,346) = 4.6e-13_r8 * exp( -1156._r8 * itemp(:) )
+      rate(:,348) = 3.75e-13_r8 * exp( -40._r8 * itemp(:) )
+      rate(:,352) = 9.19e-12_r8 * exp( -630._r8 * itemp(:) )
+      rate(:,353) = 1.4e-12_r8 * exp( -1860._r8 * itemp(:) )
+      rate(:,354) = 8.4e-13_r8 * exp( 830._r8 * itemp(:) )
       rate(:,369) = 4.8e-12_r8 * exp( 120._r8 * itemp(:) )
       rate(:,370) = 5.1e-14_r8 * exp( 693._r8 * itemp(:) )
       exp_fac(:) = exp( 360._r8 * itemp(:) )
@@ -480,6 +492,8 @@
       rate(:,385) = 5.3e-12_r8 * exp_fac(:)
       rate(:,422) = 2.7e-12_r8 * exp_fac(:)
       rate(:,433) = 2.7e-12_r8 * exp_fac(:)
+      rate(:,536) = 2.7e-12_r8 * exp_fac(:)
+      rate(:,552) = 2.7e-12_r8 * exp_fac(:)
       rate(:,378) = 1.5e-15_r8 * exp( -2100._r8 * itemp(:) )
       exp_fac(:) = exp( 530._r8 * itemp(:) )
       rate(:,381) = 4.6e-12_r8 * exp_fac(:)
@@ -493,42 +507,46 @@
       rate(:,413) = 1.6e+09_r8 * exp( -8300._r8 * itemp(:) )
       exp_fac(:) = exp( -446._r8 * itemp(:) )
       rate(:,418) = 3.03e-12_r8 * exp_fac(:)
-      rate(:,538) = 3.03e-12_r8 * exp_fac(:)
+      rate(:,542) = 3.03e-12_r8 * exp_fac(:)
       exp_fac(:) = exp( 410._r8 * itemp(:) )
       rate(:,426) = 2.54e-11_r8 * exp_fac(:)
-      rate(:,540) = 2.54e-11_r8 * exp_fac(:)
+      rate(:,546) = 2.54e-11_r8 * exp_fac(:)
       rate(:,430) = 1.3e-12_r8 * exp( 640._r8 * itemp(:) )
       exp_fac(:) = exp( -193._r8 * itemp(:) )
       rate(:,438) = 2.3e-12_r8 * exp_fac(:)
-      rate(:,537) = 2.3e-12_r8 * exp_fac(:)
+      rate(:,539) = 2.3e-12_r8 * exp_fac(:)
       rate(:,442) = 5.9e-12_r8 * exp( 225._r8 * itemp(:) )
       rate(:,461) = 4.7e-13_r8 * exp( 1220._r8 * itemp(:) )
       exp_fac(:) = exp( 352._r8 * itemp(:) )
       rate(:,469) = 1.7e-12_r8 * exp_fac(:)
-      rate(:,546) = 1.7e-12_r8 * exp_fac(:)
+      rate(:,556) = 1.7e-12_r8 * exp_fac(:)
       exp_fac(:) = exp( 490._r8 * itemp(:) )
       rate(:,482) = 1.2e-12_r8 * exp_fac(:)
-      rate(:,542) = 1.2e-12_r8 * exp_fac(:)
+      rate(:,550) = 1.2e-12_r8 * exp_fac(:)
       exp_fac(:) = exp( -580._r8 * itemp(:) )
       rate(:,483) = 6.3e-16_r8 * exp_fac(:)
-      rate(:,543) = 6.3e-16_r8 * exp_fac(:)
+      rate(:,553) = 6.3e-16_r8 * exp_fac(:)
       exp_fac(:) = exp( 440._r8 * itemp(:) )
       rate(:,484) = 1.2e-11_r8 * exp_fac(:)
-      rate(:,544) = 1.2e-11_r8 * exp_fac(:)
+      rate(:,554) = 1.2e-11_r8 * exp_fac(:)
       rate(:,502) = 1.9e-13_r8 * exp( 520._r8 * itemp(:) )
-      rate(:,503) = 9.6e-12_r8 * exp( -234._r8 * itemp(:) )
+      rate(:,503) = 1.1e-11_r8 * exp( -280._r8 * itemp(:) )
       rate(:,504) = 2.1e-11_r8 * exp( -2200._r8 * itemp(:) )
       rate(:,505) = 7.2e-14_r8 * exp( -1070._r8 * itemp(:) )
-      rate(:,512) = 1.6e-13_r8 * exp( -2280._r8 * itemp(:) )
-      rate(:,515) = 2.7e-11_r8 * exp( 335._r8 * itemp(:) )
+      rate(:,513) = 1.6e-13_r8 * exp( -2280._r8 * itemp(:) )
+      rate(:,516) = 2.6e-11_r8 * exp( 330._r8 * itemp(:) )
       rate(:,519) = 1.7e-12_r8 * exp( -710._r8 * itemp(:) )
+      exp_fac(:) = exp( 1300._r8 * itemp(:) )
+      rate(:,535) = 2.75e-13_r8 * exp_fac(:)
+      rate(:,543) = 2.12e-13_r8 * exp_fac(:)
+      rate(:,551) = 2.6e-13_r8 * exp_fac(:)
 
       itemp(:) = 300._r8 * itemp(:)
  
       n = ncol*pver
 
-      ko(:) = 4.4e-32_r8 * itemp(:)**1.3_r8
-      kinf(:) = 7.5e-11_r8 * itemp(:)**(-0.2_r8)
+      ko(:) = 5.3e-32_r8 * itemp(:)**1.8_r8
+      kinf(:) = 9.5e-11_r8 * itemp(:)**(-0.4_r8)
       call jpl( rate(:,175), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 6.9e-31_r8 * itemp(:)**1._r8
@@ -567,33 +585,29 @@
       kinf(:) = 6.9e-12_r8 * itemp(:)**2.9_r8
       call jpl( rate(:,259), m, 0.6_r8, ko, kinf, n )
 
-      ko(:) = 5.9e-33_r8 * itemp(:)**1._r8
-      kinf(:) = 1.1e-12_r8 * itemp(:)**(-1.3_r8)
-      call jpl( rate(:,305), m, 0.6_r8, ko, kinf, n )
-
-      ko(:) = 4.28e-33_r8
-      kinf(:) = 9.3e-15_r8 * itemp(:)**(-4.42_r8)
-      call jpl( rate(:,306), m, 0.8_r8, ko, kinf, n )
+      ko(:) = 6.1e-33_r8 * itemp(:)**1.5_r8
+      kinf(:) = 9.8e-15_r8 * itemp(:)**(-4.6_r8)
+      call jpl( rate(:,305), m, 0.8_r8, ko, kinf, n )
 
       ko(:) = 5.2e-30_r8 * itemp(:)**2.4_r8
       kinf(:) = 2.2e-10_r8 * itemp(:)**0.7_r8
-      call jpl( rate(:,316), m, 0.6_r8, ko, kinf, n )
+      call jpl( rate(:,315), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 5.5e-30_r8
       kinf(:) = 8.3e-13_r8 * itemp(:)**(-2._r8)
-      call jpl( rate(:,317), m, 0.6_r8, ko, kinf, n )
+      call jpl( rate(:,316), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 1.6e-29_r8 * itemp(:)**3.3_r8
       kinf(:) = 3.1e-10_r8 * itemp(:)
-      call jpl( rate(:,318), m, 0.6_r8, ko, kinf, n )
+      call jpl( rate(:,317), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 8.6e-29_r8 * itemp(:)**3.1_r8
       kinf(:) = 9e-12_r8 * itemp(:)**0.85_r8
-      call jpl( rate(:,344), m, 0.48_r8, ko, kinf, n )
+      call jpl( rate(:,343), m, 0.48_r8, ko, kinf, n )
 
-      ko(:) = 9.7e-29_r8 * itemp(:)**5.6_r8
-      kinf(:) = 9.3e-12_r8 * itemp(:)**1.5_r8
-      call jpl( rate(:,345), m, 0.6_r8, ko, kinf, n )
+      ko(:) = 7.3e-29_r8 * itemp(:)**4.1_r8
+      kinf(:) = 9.5e-12_r8 * itemp(:)**1.6_r8
+      call jpl( rate(:,344), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 8e-27_r8 * itemp(:)**3.5_r8
       kinf(:) = 3e-11_r8
@@ -602,6 +616,10 @@
       ko(:) = 8e-27_r8 * itemp(:)**3.5_r8
       kinf(:) = 3e-11_r8
       call jpl( rate(:,391), m, 0.5_r8, ko, kinf, n )
+
+      ko(:) = 9.7e-29_r8 * itemp(:)**5.6_r8
+      kinf(:) = 9.3e-12_r8 * itemp(:)**1.5_r8
+      call jpl( rate(:,394), m, 0.6_r8, ko, kinf, n )
 
       ko(:) = 9.7e-29_r8 * itemp(:)**5.6_r8
       kinf(:) = 9.3e-12_r8 * itemp(:)**1.5_r8
@@ -618,6 +636,10 @@
       ko(:) = 9.7e-29_r8 * itemp(:)**5.6_r8
       kinf(:) = 9.3e-12_r8 * itemp(:)**1.5_r8
       call jpl( rate(:,465), m, 0.6_r8, ko, kinf, n )
+
+      ko(:) = 2.9e-31_r8 * itemp(:)**4.1_r8
+      kinf(:) = 1.7e-12_r8 * itemp(:)**(-0.2_r8)
+      call jpl( rate(:,507), m, 0.6_r8, ko, kinf, n )
 
       end subroutine setrxt
 
@@ -662,12 +684,12 @@
       rate(:n,172) = 6.9e-12_r8
       rate(:n,188) = 7e-13_r8
       rate(:n,189) = 5e-12_r8
-      rate(:n,568) = 6e-11_r8
-      rate(:n,571) = 1e-12_r8
-      rate(:n,572) = 4e-10_r8
-      rate(:n,573) = 2e-10_r8
-      rate(:n,574) = 1e-10_r8
-      rate(:n,576) = 4.4e-10_r8
+      rate(:n,582) = 6e-11_r8
+      rate(:n,585) = 1e-12_r8
+      rate(:n,586) = 4e-10_r8
+      rate(:n,587) = 2e-10_r8
+      rate(:n,588) = 1e-10_r8
+      rate(:n,590) = 4.4e-10_r8
  
       do k = 1,kbot
         offset = (k-1)*ncol
@@ -689,17 +711,18 @@
       rate(:n,182) = 1.8e-11_r8 * exp( 180._r8 * itemp(:) )
       rate(:n,183) = 1.7e-12_r8 * exp( -940._r8 * itemp(:) )
       rate(:n,190) = 2.1e-11_r8 * exp( 100._r8 * itemp(:) )
-      rate(:n,194) = 1.5e-11_r8 * exp( -3600._r8 * itemp(:) )
+      rate(:n,194) = 3.3e-12_r8 * exp( -3150._r8 * itemp(:) )
       rate(:n,195) = 5.1e-12_r8 * exp( 210._r8 * itemp(:) )
-      rate(:n,203) = 3.3e-12_r8 * exp( 270._r8 * itemp(:) )
+      rate(:n,203) = 3.44e-12_r8 * exp( 260._r8 * itemp(:) )
       rate(:n,204) = 3e-12_r8 * exp( -1500._r8 * itemp(:) )
 
       itemp(:) = 300._r8 * itemp(:)
 
-      ko(:) = 4.4e-32_r8 * itemp(:)**1.3_r8
-      kinf(:) = 7.5e-11_r8 * itemp(:)**(-0.2_r8)
+      ko(:) = 5.3e-32_r8 * itemp(:)**1.8_r8
+      kinf(:) = 9.5e-11_r8 * itemp(:)**(-0.4_r8)
       call jpl( wrk, m, 0.6_r8, ko, kinf, n )
       rate(:n,175) = wrk(:)
+
 
 
 

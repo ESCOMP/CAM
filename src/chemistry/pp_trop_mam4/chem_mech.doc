@@ -22,10 +22,11 @@
       ( 19)  so4_a1             (NH4HSO4)
       ( 20)  so4_a2             (NH4HSO4)
       ( 21)  so4_a3             (NH4HSO4)
-      ( 22)  SOAG               (C)
-      ( 23)  soa_a1             (C)
-      ( 24)  soa_a2             (C)
-      ( 25)  H2O             
+      ( 22)  soa_a1             (C)
+      ( 23)  soa_a2             (C)
+      ( 24)  SOAE               (C)
+      ( 25)  SOAG               (C)
+      ( 26)  H2O             
   
   
      Invariant species
@@ -68,21 +69,27 @@ Class List
       ( 19)  so4_a1          
       ( 20)  so4_a2          
       ( 21)  so4_a3          
-      ( 22)  SOAG            
-      ( 23)  soa_a1          
-      ( 24)  soa_a2          
-      ( 25)  H2O             
+      ( 22)  soa_a1          
+      ( 23)  soa_a2          
+      ( 24)  SOAE            
+      ( 25)  SOAG            
+      ( 26)  H2O             
   
      Photolysis
   jh2o2            (  1)   H2O2 + hv ->  2*OH                                                   rate = ** User defined **         (  1)
+  jsoa_a1          (  2)   soa_a1 + hv -> (No products)                                         rate = ** User defined **         (  2)
+  jsoa_a2          (  3)   soa_a2 + hv -> (No products)                                         rate = ** User defined **         (  3)
   
      Reactions
-  OH_H2O2          (  1)   OH + H2O2 ->  H2O + HO2                                              rate = 1.80E-12                   (  2)
-  usr_HO2_HO2      (  2)   HO2 + HO2 ->  H2O2 + O2                                              rate = ** User defined **         (  3)
-  DMS_NO3          (  3)   DMS + NO3 ->  SO2 + {HNO3}                                           rate = 1.90E-13*exp(    520./t)   (  4)
-  DMS_OHa          (  4)   DMS + OH ->  SO2                                                     rate = 9.60E-12*exp(   -234./t)   (  5)
-  usr_DMS_OH       (  5)   DMS + OH ->  0.5*SO2 + 0.5*HO2                                       rate = ** User defined **         (  6)
-  usr_SO2_OH       (  6)   SO2 + OH ->  H2SO4                                                   rate = ** User defined **         (  7)
+  OH_H2O2          (  1)   OH + H2O2 ->  H2O + HO2                                              rate = 1.80E-12                   (  4)
+  usr_HO2_HO2      (  2)   HO2 + HO2 ->  H2O2 + O2                                              rate = ** User defined **         (  5)
+  DMS_NO3          (  3)   DMS + NO3 ->  SO2 + {HNO3}                                           rate = 1.90E-13*exp(    520./t)   (  6)
+  DMS_OHa          (  4)   DMS + OH ->  SO2                                                     rate = 1.10E-11*exp(   -280./t)   (  7)
+  SO2_OH_M         (  5)   SO2 + OH + M ->  H2SO4                                               troe : ko=2.90E-31*(300/t)**4.10  (  8)
+                                                                                                       ki=1.70E-12*(300/t)**-0.20 
+                                                                                                        f=0.60                    
+  usr_DMS_OH       (  6)   DMS + OH ->  0.5*SO2 + 0.5*HO2                                       rate = ** User defined **         (  9)
+  SOAE_tau         (  7)   SOAE ->  SOAG                                                        rate = 1.16E-05                   ( 10)
   
 Extraneous prod/loss species
  ( 1)   SO2   (dataset)
@@ -100,13 +107,13 @@ Extraneous prod/loss species
   
     d(bc_a1)/dt = 0                                                                                                     
     d(bc_a4)/dt = 0                                                                                                     
-    d(DMS)/dt =  - r3*NO3*DMS  - r4*OH*DMS  - r5*OH*DMS                                                                 
+    d(DMS)/dt =  - r3*NO3*DMS  - r4*OH*DMS  - r6*OH*DMS                                                                 
     d(dst_a1)/dt = 0                                                                                                    
     d(dst_a2)/dt = 0                                                                                                    
     d(dst_a3)/dt = 0                                                                                                    
     d(H2O2)/dt = r2                                                                                                     
                   - j1*H2O2  - r1*OH*H2O2                                                                               
-    d(H2SO4)/dt = r6*OH*SO2                                                                                             
+    d(H2SO4)/dt = r5*OH*M*SO2                                                                                           
     d(ncl_a1)/dt = 0                                                                                                    
     d(ncl_a2)/dt = 0                                                                                                    
     d(ncl_a3)/dt = 0                                                                                                    
@@ -116,12 +123,13 @@ Extraneous prod/loss species
     d(num_a4)/dt = 0                                                                                                    
     d(pom_a1)/dt = 0                                                                                                    
     d(pom_a4)/dt = 0                                                                                                    
-    d(SO2)/dt = r3*NO3*DMS  + r4*OH*DMS  + .5*r5*OH*DMS                                                                 
-                 - r6*OH*SO2                                                                                            
+    d(SO2)/dt = r3*NO3*DMS  + r4*OH*DMS  + .5*r6*OH*DMS                                                                 
+                 - r5*OH*M*SO2                                                                                          
     d(so4_a1)/dt = 0                                                                                                    
     d(so4_a2)/dt = 0                                                                                                    
     d(so4_a3)/dt = 0                                                                                                    
-    d(SOAG)/dt = 0                                                                                                      
-    d(soa_a1)/dt = 0                                                                                                    
-    d(soa_a2)/dt = 0                                                                                                    
+    d(soa_a1)/dt =  - j2*soa_a1                                                                                         
+    d(soa_a2)/dt =  - j3*soa_a2                                                                                         
+    d(SOAE)/dt =  - r7*SOAE                                                                                             
+    d(SOAG)/dt = r7*SOAE                                                                                                
     d(H2O)/dt = r1*OH*H2O2                                                                                              

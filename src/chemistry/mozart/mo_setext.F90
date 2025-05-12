@@ -106,6 +106,7 @@ contains
     use mo_lightning, only : prod_no
 
     use mo_extfrc,    only : extfrc_set
+    use hco_cc_emissions, only : hco_set_extfrc
     use chem_mods,    only : extcnt
     use tracer_srcs,  only : num_tracer_srcs, tracer_src_flds, get_srcs_data
     use mo_chem_utls, only : get_extfrc_ndx
@@ -117,6 +118,8 @@ contains
     use spehox,         only : hox_prod_factor
 
     use physics_buffer, only : physics_buffer_desc
+
+    use phys_control,   only : use_hemco                   ! Use Harmonized Emissions Component (HEMCO)
 
     implicit none
 
@@ -167,10 +170,17 @@ contains
 
     no_lgt(:,:) = 0._r8
 
-    !--------------------------------------------------------
-    !     ... set frcing from datasets
-    !--------------------------------------------------------
-    call extfrc_set( lchnk, zint_rel, extfrc, ncol )
+    if(use_hemco) then
+       !--------------------------------------------------------
+       !     ... set frcing from datasets (HEMCO)
+       !--------------------------------------------------------
+       call hco_set_extfrc( lchnk, zint_rel, extfrc, ncol, pbuf )
+    else
+       !--------------------------------------------------------
+       !     ... set frcing from datasets
+       !--------------------------------------------------------
+       call extfrc_set( lchnk, zint_rel, extfrc, ncol )
+    endif
 
     !--------------------------------------------------------
     !     ... set nox production from lighting

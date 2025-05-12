@@ -5,4 +5,4 @@ inithist='ENDOFRUN'
 pbuf_global_allocate=.false.
 history_carma=.true.
 carma_do_fixedinit=.false.
-carma_reftfile="camrun.cam.r.carma_reft.nc"
+carma_do_partialinit=.false.

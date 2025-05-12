@@ -18,11 +18,11 @@
 !--------------------------------------------------------------------
       real(r8) :: im(ncol,nlev)
       im(:,:) = 1._r8 / m(:,:)
-      rate(:,:, 2) = rate(:,:, 2) * inv(:,:, 3)
-      rate(:,:, 4) = rate(:,:, 4) * inv(:,:, 5)
-      rate(:,:, 5) = rate(:,:, 5) * inv(:,:, 3)
-      rate(:,:, 6) = rate(:,:, 6) * inv(:,:, 3)
+      rate(:,:, 4) = rate(:,:, 4) * inv(:,:, 3)
+      rate(:,:, 6) = rate(:,:, 6) * inv(:,:, 5)
       rate(:,:, 7) = rate(:,:, 7) * inv(:,:, 3)
-      rate(:,:, 3) = rate(:,:, 3) * inv(:,:, 6) * inv(:,:, 6) * im(:,:)
+      rate(:,:, 9) = rate(:,:, 9) * inv(:,:, 3)
+      rate(:,:, 5) = rate(:,:, 5) * inv(:,:, 6) * inv(:,:, 6) * im(:,:)
+      rate(:,:, 8) = rate(:,:, 8) * inv(:,:, 3) * inv(:,:, 1)
       end subroutine adjrxt
       end module mo_adjrxt

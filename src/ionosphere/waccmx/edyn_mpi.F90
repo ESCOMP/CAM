@@ -846,7 +846,7 @@ contains
       !
       ! Local:
       integer :: j,ier,len
-      integer,parameter :: mxnf=6
+      integer,parameter :: mxnf=7
       real(r8) :: sndbuf(nglblon,4,mxnf)
 
       if (nf > mxnf) then

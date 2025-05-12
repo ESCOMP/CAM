@@ -34,6 +34,7 @@ module ion_electron_temp
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog ! Output unit
   use ionos_state_mod,  only : ionos_state
+  use air_composition,only : cpairv
 
   implicit none
 
@@ -77,7 +78,7 @@ contains
 
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
-    use spmd_utils, only: mpicom, masterprocid, mpicom, mpi_logical
+    use spmd_utils,      only: mpicom, masterprocid, mpicom, mpi_logical
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -119,7 +120,7 @@ contains
 ! Time independent initialization for ionosphere simulation.
 !-----------------------------------------------------------------------
 
-    use phys_control,     only : phys_getopts !Method used to get flag for waccmx ionosphere output variables
+    use phys_control,     only: phys_getopts !Method used to get flag for waccmx ionosphere output variables
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -135,16 +136,16 @@ contains
     !-------------------------------------------------------------------------------
     !  Add history variables for ionosphere
     !-------------------------------------------------------------------------------
-    call addfld ('QIonElec' ,(/ 'lev' /), 'I', 'K/s', 'Electron Ion Thermal Heating Rate')
+    call addfld ('QIonElec' ,(/ 'lev' /), 'I', 'K sec-1', 'Electron Ion Thermal Heating Rate')
     call addfld ('TElec&IC'     ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon&IC'      ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
     call addfld ('TElec'        ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon'         ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
     call addfld ('ElecColDens'  ,horiz_only , 'I', 'TECU',   'Electron Column Density')
     if (.not.steady_state_ion_elec_temp) then
-       call addfld ('QIN'          ,(/ 'lev' /), 'I', 'J/kg/s', 'Ion-neutral Heating')
-       call addfld ('QEN'          ,(/ 'lev' /), 'I', ' ',      'Electron-neutral Heating')
-       call addfld ('QEI'          ,(/ 'lev' /), 'I', ' ',      'Electron-ion Heating')
+       call addfld ('QIN'          ,(/ 'lev' /), 'I', 'K sec-1','Ion-neutral Heating Rate')
+       call addfld ('QEN'          ,(/ 'lev' /), 'I', 'K sec-1','Electron-neutral Heating Rate')
+       call addfld ('QEI'          ,(/ 'lev' /), 'I', 'K sec-1','Electron-ion Heating Rate')
        call addfld ('LOSS_g3'      ,(/ 'lev' /), 'I', ' ',      'Loss Term g3')
        call addfld ('LOSS_EI'      ,(/ 'lev' /), 'I', ' ',      'Loss Term EI')
        call addfld ('LOSS_IN'      ,(/ 'lev' /), 'I', ' ',      'Loss Term IN')
@@ -192,7 +193,7 @@ contains
 
 !==============================================================================
   subroutine ion_electron_temp_timestep_init(phys_state,pbuf2d)
-    use time_manager,only : is_first_step
+    use time_manager, only: is_first_step
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -246,13 +247,13 @@ contains
     ! Grab fields from initial condition file and put in physics buffer
     !-----------------------------------------------------------------------
 
-    use pio,              only : file_desc_t
-    use cam_grid_support, only : cam_grid_check, cam_grid_id
-    use cam_grid_support, only : cam_grid_get_dim_names
-    use cam_abortutils,   only : endrun
-    use ncdio_atm,        only : infld
-    use ppgrid,           only : pcols, pver, begchunk, endchunk
-    use infnan,   only: nan, assignment(=)
+    use pio,              only: file_desc_t
+    use cam_grid_support, only: cam_grid_check, cam_grid_id
+    use cam_grid_support, only: cam_grid_get_dim_names
+    use cam_abortutils,   only: endrun
+    use ncdio_atm,        only: infld
+    use ppgrid,           only: pcols, pver, begchunk, endchunk
+    use infnan,           only: nan, assignment(=)
 
     type(file_desc_t), intent(inout)   :: ncid_ini    ! Initial condition file id
     type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
@@ -334,14 +335,13 @@ contains
 
   subroutine ion_electron_temp_tend(state, ptend, pbuf, ztodt)
 
-    use physconst,        only : cpairv
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation
     !-------------------------------------------------------------------------------------
 
 !------------------------------Arguments--------------------------------
 
-    use physics_types,       only : physics_ptend_sum
+    use physics_types,       only: physics_ptend_sum
 
     type(physics_state), intent(in)    :: state               ! physics state structure
     type(physics_ptend), intent(inout) :: ptend               ! parameterization tendency structure
@@ -429,13 +429,14 @@ contains
     ! Time independent initialization for extended ionosphere simulation called in phys_init
     ! of physpkg module which is called in cam_comp module
     !---------------------------------------------------------------------------------------
-    use mo_apex,          only : bnorth, beast, bdown             ! Magnetic field components
-    use time_manager,     only : get_curr_calday                  ! Routine to get current calendar day
-    use physconst,        only : rairv, mbarv, rearth             ! Constituent dependent rair and mbar
-    use ref_pres,         only : press_lim_idx
-    use orbit,            only : zenith
+    use mo_apex,          only: bnorth, beast, bdown             ! Magnetic field components
+    use time_manager,     only: get_curr_calday                  ! Routine to get current calendar day
+    use physconst,        only: rearth
+    use air_composition,  only: rairv, mbarv                     ! Constituent dependent rair and mbar
+    use ref_pres,         only: press_lim_idx
+    use orbit,            only: zenith
 
-    use short_lived_species, only : slvd_index,slvd_pbf_ndx => pbf_idx ! Routines to access short lived species
+    use short_lived_species, only: slvd_index,slvd_pbf_ndx => pbf_idx ! Routines to access short lived species
 
     type(physics_buffer_desc), pointer  :: pbuf(:)             ! physics buffer
     type(physics_state), intent(in),    target :: state        ! physics state structure
@@ -858,9 +859,9 @@ contains
   ! Routine to compute the electron and ion temperature
   !-----------------------------------------------------------------------
 
-    use physconst, only : gravit ! Gravity (m/s2)
-    use physconst, only : rairv, mbarv  ! Constituent dependent rair and mbar
-    use mo_apex, only: alatm
+    use physconst,       only: gravit ! Gravity (m/s2)
+    use air_composition, only: rairv, mbarv  ! Constituent dependent rair and mbar
+    use mo_apex,         only: alatm
 
 !------------------------------Arguments--------------------------------
 
@@ -1036,9 +1037,9 @@ contains
     real(r8), dimension(pcols,pver)     :: delZ         ! Delta z: midpoints
 
     real(r8), dimension(pcols,pver)     :: qjoule       ! joule heating
-    real(r8), dimension(pcols,pver)     :: qen          ! electron-neutral heating
-    real(r8), dimension(pcols,pver)     :: qei          ! electron-ion Coulomb heating
-    real(r8), dimension(pcols,pver)     :: qin          ! ion-neutral heating
+    real(r8), dimension(pcols,pver)     :: qen          ! electron-neutral heating (units: ev/g/s)
+    real(r8), dimension(pcols,pver)     :: qei          ! electron-ion Coulomb heating (units: ev/g/s)
+    real(r8), dimension(pcols,pver)     :: qin          ! ion-neutral heating (units: ev/g/s)
     real(r8), dimension(pcols,pver)     :: rho          ! mass density
 
     real(r8), dimension(pcols,pver)     :: wrk2
@@ -1052,6 +1053,7 @@ contains
     logical, dimension(pcols)           :: colConv      ! flag for column converging
     logical                             :: converged    ! Flag for convergence in electron temperature
                                                         ! calculation iteration loop
+    real(r8) :: qrate(pcols,pver) ! heating rate diagnostic
 
     !---------------------------------------------------------------------------------------------------------
     !  Initialize arrays to zero and column convergence logical to .false.
@@ -1451,9 +1453,14 @@ contains
 
    dSETendOut(1:ncol,1:teTiBot) = (qei(1:ncol,1:teTiBot)+qen(1:ncol,1:teTiBot)) / sToQConv    ! J/kg/s
 
-   call outfld ('QEN', qen, pcols, lchnk)
-   call outfld ('QEI', qei, pcols, lchnk)
-   call outfld ('QIN', qin, pcols, lchnk)
+   qrate(:ncol,:) = qen(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QEN', qrate, pcols, lchnk)
+
+   qrate(:ncol,:) = qei(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QEI', qrate, pcols, lchnk)
+
+   qrate(:ncol,:) = qin(:ncol,:)/sToQConv/cpairv(:ncol,:,lchnk) ! K/s
+   call outfld ('QIN', qrate, pcols, lchnk)
 
    return
 

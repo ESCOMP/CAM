@@ -32,6 +32,7 @@ module edynamo
   real(r8), allocatable, dimension(:,:) :: &
     zigm11,    & ! sigma11*cos(theta0)
     zigmc,     & ! sigmac
+    zigm1,     & ! for Hall conductance diagnostic
     zigm2,     & ! sigma2
     zigm22,    & ! sigma22/cos(theta0)
     rim1,rim2, & ! see description in comment below
@@ -80,11 +81,11 @@ module edynamo
 !
 ! Global longitude values near mag equator and poles for complete_integrals and rhs.
 ! These are declared in module data because they are used by subs complete_integrals
-! and rhspde.  The nf2d 6 fields are: zigm11,zigm22,zigmc,zigm2,rim1,rim2,
+! and rhspde.  The nf2d 7 fields are: zigm11,zigm22,zigmc,zigm1,zigm2,rim1,rim2,
 ! order is important (see feq_jpm1 and fpole_jpm2)!
 !
-  integer, parameter :: nf2d=6               ! 6 2d fields
-  real(r8), allocatable :: feq_jpm1(:,:,:)   ! 6 fields at 2 lats (eq-1, eq+1)
+  integer, parameter :: nf2d=7               ! 7 2d fields
+  real(r8), allocatable :: feq_jpm1(:,:,:)   ! 7 fields at 2 lats (eq-1, eq+1)
   real(r8), allocatable :: fpole_jpm2(:,:,:) ! fields at S pole+1,2 and N pole-1,2
 
   real(r8), allocatable :: unitvm(:)
@@ -364,6 +365,9 @@ contains
     allocate(zigmc(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
     if (istat /= 0) call endrun('alloc_edyn: zigmc')
     zigmc = finit
+    allocate(zigm1(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
+    if (istat /= 0) call endrun('alloc_edyn: zigm1')
+    zigm1 = finit
     allocate(zigm2(mlon00:mlon11,mlat00:mlat11) ,stat=istat)
     if (istat /= 0) call endrun('alloc_edyn: zigm2')
     zigm2 = finit
@@ -523,6 +527,7 @@ contains
 !
     zigm11 = finit
     zigm22 = finit
+    zigm1  = finit
     zigm2  = finit
     zigmc  = finit
     rim1   = finit
@@ -613,6 +618,9 @@ contains
 !
           zigmc(i,j) = zigmc(i,j) + sig1*rtramrm(i,k)*htfunc(i,k)
           zigm2(i,j) = zigm2(i,j) + sig2*rtramrm(i,k)*htfunc(i,k)
+
+! zigm1: int(sigma_p) ds
+          zigm1(i,j) = zigm1(i,j) + sig1*rtramrm(i,k)*htfunc(i,k)
 !
 ! rim1: int [sigma_p*d_1^2/D u_e2+(sigma_h-(sigma_p*d_1*d_2)/D) u_e1] ds
 ! rim2: int [(sigma_h+sigma_p*d_1*d_2/D) u_e2-sigma_p*d_2^2/D u_e1 ] ds
@@ -645,6 +653,7 @@ contains
         zigm22(i,j) = 1.e-2_r8*zigm22(i,j)*aam(i)*adota2_mag(i,j)
         zigmc(i,j)  = 1.e-2_r8*zigmc (i,j)*aam(i)*a1dta2_mag(i,j)
         zigm2(i,j)  = 1.e-2_r8*zigm2 (i,j)*aam(i)
+        zigm1(i,j)  = 1.e-2_r8*zigm1 (i,j)*aam(i)
         rim1(i,j)   = 1.e-2_r8*rim1(i,j)*aam(i)*be3_mag(i,j)
         rim2(i,j)   = 1.e-2_r8*rim2(i,j)*aam(i)*be3_mag(i,j)
       enddo ! i = 1,nmlon
@@ -694,6 +703,7 @@ contains
     fmsub(:,:,4) = zigm2 (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,5) = rim1  (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,6) = rim2  (mlon0:mlon1,mlat0:mlat1)
+    fmsub(:,:,7) = zigm1 (mlon0:mlon1,mlat0:mlat1)
 
     call mp_mageq_jpm1(fmsub,mlon0,mlon1,mlat0,mlat1,nmlonp1,feq_jpm1,nf2d)
 !
@@ -734,6 +744,8 @@ contains
                                          feq_jpm1(mlon0:mlon1,2,5))
         rim2  (mlon0:mlon1,j) = .060_r8*(feq_jpm1(mlon0:mlon1,1,6)+ &
                                          feq_jpm1(mlon0:mlon1,2,6))
+        zigm1 (mlon0:mlon1,j) = .060_r8*(feq_jpm1(mlon0:mlon1,1,7)+ &
+                                         feq_jpm1(mlon0:mlon1,2,7))
 !
 ! Include the boundary condition at the equator eq.(5.30) in
 ! Richmond (1995) Ionospheric Electrodynamics use. Mag. Apex Coord.
@@ -751,12 +763,6 @@ contains
         enddo ! i=mlon0,mlon1
       endif ! j at equator
     enddo ! j=mlat0,mlat1
-!
-    do j=mlat0,mlat1
-      call outfld('EDYN_ZIGM11_PED',zigm11(mlon0:omlon1,j),omlon1-mlon0+1,j)
-      call outfld('EDYN_ZIGM2_HAL',zigm2(mlon0:omlon1,j),omlon1-mlon0+1,j)
-    enddo
-
 !
 ! Using notation of Richmond (1995) on right-hand side below:
 ! Sigma_(phi phi) = zigm11*abs(sin I_m)
@@ -805,6 +811,7 @@ contains
     fmsub(:,:,4) = zigm2 (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,5) = rim1  (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,6) = rim2  (mlon0:mlon1,mlat0:mlat1)
+    fmsub(:,:,7) = zigm1 (mlon0:mlon1,mlat0:mlat1)
 !
 ! mp_magpole_2d returns fpole_jpm2(nmlonp1,1->4,nf) as:
 !   1: j = 2       (spole+1)
@@ -845,6 +852,10 @@ contains
           dot_product(unitvm,fpole_jpm2(1:nmlon,1,4))-  &
           dot_product(unitvm,fpole_jpm2(1:nmlon,2,4)))/ &
           (3._r8*r8_nmlon)
+        zigm1(mlon0,j) = (4._r8*                        &
+          dot_product(unitvm,fpole_jpm2(1:nmlon,1,7))-  &
+          dot_product(unitvm,fpole_jpm2(1:nmlon,2,7)))/ &
+          (3._r8*r8_nmlon)
 !
 ! Extend south pole over longitude:
         do i=mlon0+1,mlon1
@@ -852,6 +863,7 @@ contains
           zigm22(i,j) = zigm22(mlon0,j)
           zigmc (i,j) = zigmc (mlon0,j)
           zigm2 (i,j) = zigm2 (mlon0,j)
+          zigm1 (i,j) = zigm1 (mlon0,j)
         enddo ! i=mlon0,mlon1
 !
 ! RHS vector (I_1,I_2): average over south pole:
@@ -882,6 +894,10 @@ contains
           dot_product(unitvm,fpole_jpm2(1:nmlon,3,4))-   &
           dot_product(unitvm,fpole_jpm2(1:nmlon,4,4)))/  &
           (3._r8*r8_nmlon)
+        zigm1(mlon0,j) = (4._r8*                         &
+          dot_product(unitvm,fpole_jpm2(1:nmlon,3,7))-   &
+          dot_product(unitvm,fpole_jpm2(1:nmlon,4,7)))/  &
+          (3._r8*r8_nmlon)
 !
 ! Extend north pole over longitude:
         do i=mlon0+1,mlon1
@@ -889,6 +905,7 @@ contains
           zigm22(i,j) = zigm22(mlon0,j)
           zigmc (i,j) = zigmc (mlon0,j)
           zigm2 (i,j) = zigm2 (mlon0,j)
+          zigm1 (i,j) = zigm1 (mlon0,j)
         enddo ! i=mlon0,mlon1
 !
 ! RHS vector (I_1,I_2): average over north pole:
@@ -910,6 +927,7 @@ contains
     fmsub(:,:,4) = zigm2 (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,5) = rim1  (mlon0:mlon1,mlat0:mlat1)
     fmsub(:,:,6) = rim2  (mlon0:mlon1,mlat0:mlat1)
+    fmsub(:,:,7) = zigm1 (mlon0:mlon1,mlat0:mlat1)
 
     call mp_mag_foldhem(fmsub,mlon0,mlon1,mlat0,mlat1,nf2d)
     call mp_mag_periodic_f2d(fmsub,mlon0,mlon1,mlat0,mlat1,nf2d)
@@ -920,6 +938,7 @@ contains
     zigm2 (mlon0:mlon1,mlat0:mlat1) = fmsub(:,:,4)
     rim1  (mlon0:mlon1,mlat0:mlat1) = fmsub(:,:,5)
     rim2  (mlon0:mlon1,mlat0:mlat1) = fmsub(:,:,6)
+    zigm1 (mlon0:mlon1,mlat0:mlat1) = fmsub(:,:,7)
 !
 ! Reverse sign of zigmc in northern hemisphere.
     do j=mlat0,mlat1
@@ -930,6 +949,8 @@ contains
           call outfld('EDYN_RIM1',rim1(mlon0:omlon1,j),omlon1-mlon0+1,j)
           call outfld('EDYN_RIM2',rim2(mlon0:omlon1,j),omlon1-mlon0+1,j)
        endif
+       call outfld('PED_CONDUCTANCE', zigm2(mlon0:omlon1,j),omlon1-mlon0+1,j)
+       call outfld('HALL_CONDUCTANCE',zigm1(mlon0:omlon1,j),omlon1-mlon0+1,j)
     enddo
 
     if (debug.and.masterproc) then
@@ -1210,6 +1231,7 @@ contains
     enddo
 
     do j=mlat0,mlat1
+      call outfld('PHIHM',phihm(mlon0:omlon1,j),omlon1-mlon0+1,j)
       call outfld('PHIM2D',phim2d(mlon0:omlon1,j),omlon1-mlon0+1,j)
     enddo
 

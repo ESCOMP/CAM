@@ -17,7 +17,6 @@ module vertremap_mod
 
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: np,nlev,qsize,nlevp,npsq,nc
-  use hybvcoord_mod,          only: hvcoord_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use perf_mod,               only: t_startf, t_stopf ! _EXTERNAL
@@ -25,7 +24,7 @@ module vertremap_mod
   use cam_abortutils,         only: endrun
 
   implicit none
-  
+
   public remap1                  ! remap any field, splines, monotone
   public remap1_nofilter         ! remap any field, splines, no filter
 ! todo: tweak interface to match remap1 above, rename remap1_ppm:
@@ -65,19 +64,19 @@ module vertremap_mod
       if (any(kord(:) >= 0)) then
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            if (kord(itrac) >= 0) then            
+            if (kord(itrac) >= 0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
             end if
           end do
-        end if        
+        end if
         call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            if (kord(itrac) >= 0) then            
+            if (kord(itrac) >= 0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
             end if
           end do
-        end if        
+        end if
       endif
       if (any(kord(:)<0)) then
         !
@@ -89,20 +88,20 @@ module vertremap_mod
           kord_local = abs(kord)
           logp    = .false.
         else
-          kord_local = abs(kord/10)         
+          kord_local = abs(kord/10)
           if (identifier==1) then
             logp    = .true.
           else
-            logp    = .false.            
+            logp    = .false.
           end if
         end if
         !
         ! modified FV3 vertical remapping
-        !        
+        !
         if (qdp_mass) then
           inv_dp = 1.0_r8/dp1
           do itrac=1,qsize
-            if (kord(itrac)<0) then            
+            if (kord(itrac)<0) then
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*inv_dp(:,:,:)
             end if
           end do
@@ -124,7 +123,7 @@ module vertremap_mod
                 pe2(i,k) = log(pe2(i,k))
               end do
             end do
-            
+
             do itrac=1,qsize
               if (kord(itrac)<0) then
                 call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &
@@ -457,7 +456,7 @@ subroutine binary_search(pio, pivot, k)
   real(kind=r8), intent(in)    :: pio(nlev+2), pivot
   integer,       intent(inout) :: k
   integer :: lo, hi, mid
-  
+
   if (pio(k) > pivot) then
     lo = 1
     hi = k
@@ -597,7 +596,7 @@ end function integrate_parabola
     y4 = (1.0_r8-a)*y1 + a*y2
     y3 = max(lo, min(hi, y3))
     y4 = max(lo, min(hi, y4))
-  end subroutine linextrap 
+  end subroutine linextrap
 end module vertremap_mod
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -56,9 +56,8 @@ logical           :: history_vdiag        = .false.    ! output the variables us
 logical           :: history_aerosol      = .false.    ! output the MAM aerosol variables and tendencies
 logical           :: history_aero_optics  = .false.    ! output the aerosol
 logical           :: history_eddy         = .false.    ! output the eddy variables
-logical           :: history_budget       = .false.    ! output tendencies and state variables for CAM4
-                                                       ! temperature, water vapor, cloud ice and cloud
-                                                       ! liquid budgets.
+logical           :: history_budget       = .false.    ! output tendencies and state variables for T, water vapor,
+                                                       ! cloud ice and cloud liquid budgets
 logical           :: convproc_do_aer      = .false.    ! switch for new convective scavenging treatment for modal aerosols
 
 integer           :: history_budget_histfile_num = 1   ! output history file number for budget fields
@@ -66,6 +65,7 @@ logical           :: history_waccm        = .false.    ! output variables of int
 logical           :: history_waccmx       = .false.    ! output variables of interest for WACCM-X runs
 logical           :: history_chemistry    = .true.     ! output default chemistry-related variables
 logical           :: history_carma        = .false.    ! output default CARMA-related variables
+logical           :: history_carma_srf_flx= .false.    ! output default CARMA-related variables
 logical           :: history_clubb        = .true.     ! output default CLUBB-related variables
 logical           :: history_cesm_forcing = .false.
 logical           :: history_dust         = .false.
@@ -73,6 +73,8 @@ logical           :: history_scwaccm_forcing = .false.
 logical           :: history_chemspecies_srf = .false.
 
 logical           :: do_clubb_sgs
+logical           :: do_hb_above_clubb       = .false. ! enable HB vertical mixing above clubb top
+
 ! Check validity of physics_state objects in physics_update.
 logical           :: state_debug_checks   = .false.
 
@@ -83,8 +85,6 @@ logical           :: offline_driver       = .false.    ! true => offline driver 
 
 
 logical, public, protected :: use_simple_phys = .false. ! true => simple physics configuration
-
-logical :: use_spcam       ! true => use super parameterized CAM
 
 logical :: prog_modal_aero ! determines whether prognostic modal aerosols are present in the run.
 
@@ -97,9 +97,13 @@ logical, public, protected :: use_gw_front = .false.      ! Frontogenesis.
 logical, public, protected :: use_gw_front_igw = .false.  ! Frontogenesis to inertial spectrum.
 logical, public, protected :: use_gw_convect_dp = .false. ! Deep convection.
 logical, public, protected :: use_gw_convect_sh = .false. ! Shallow convection.
+logical, public, protected :: use_gw_movmtn_pbl = .false. ! moving mountain
 
 ! FV dycore angular momentum correction
 logical, public, protected :: fv_am_correction = .false.
+
+! Option for Harmonized Emissions Component (HEMCO)
+logical, public, protected :: use_hemco = .false.
 
 ! CAM snapshot before/after file numbers and control
 character(len=32) :: cam_take_snapshot_before = ''  ! Physics routine to take a snopshot "before"
@@ -129,12 +133,13 @@ subroutine phys_ctl_readnl(nlfile)
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, srf_flux_avg, &
       use_subcol_microp, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
-      history_waccmx, history_chemistry, history_carma, history_clubb, history_dust, &
+      history_waccmx, history_chemistry, history_carma, history_carma_srf_flx, &
+      history_clubb, history_dust, &
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
-      use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
+      use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, use_gw_movmtn_pbl, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, use_hemco, do_hb_above_clubb
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -176,6 +181,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(history_waccmx,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_chemistry,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_carma,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
+   call mpi_bcast(history_carma_srf_flx,       1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_clubb,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_cesm_forcing,        1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_chemspecies_srf,     1,                     mpi_logical,   masterprocid, mpicom, ierr)
@@ -189,6 +195,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(use_gw_front_igw,            1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_gw_convect_dp,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_gw_convect_sh,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
+   call mpi_bcast(use_gw_movmtn_pbl,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(cld_macmic_num_steps,        1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(offline_driver,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(convproc_do_aer,             1,                     mpi_logical,   masterprocid, mpicom, ierr)
@@ -197,9 +204,8 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_take_snapshot_before,    len(cam_take_snapshot_before), mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_after,     len(cam_take_snapshot_after),  mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_physics_mesh,            len(cam_physics_mesh), mpi_character, masterprocid, mpicom, ierr)
-
-   use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
-                      .or. cam_physpkg_is('spcam_m2005'))
+   call mpi_bcast(do_hb_above_clubb,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
+   call mpi_bcast(use_hemco,                   1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
    call cam_ctrl_set_physics_type(cam_physpkg)
 
@@ -223,36 +229,37 @@ subroutine phys_ctl_readnl(nlfile)
    endif
 
    ! Add a check to make sure CLUBB and MG are used together
-   if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
+   if ( do_clubb_sgs .and.  microp_scheme .ne. 'MG') then
       write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
       call endrun('CLUBB and microphysics schemes incompatible')
    endif
 
    ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB_SGS if do_clubb_sgs is true
-   if (do_clubb_sgs .and. .not. use_spcam) then
+   if (do_clubb_sgs) then
       if (eddy_scheme .ne. 'CLUBB_SGS' .or. macrop_scheme .ne. 'CLUBB_SGS' .or. shallow_scheme .ne. 'CLUBB_SGS') then
          write(iulog,*)'eddy_scheme, macrop_scheme and shallow_scheme must all be CLUBB_SGS.  Quiting'
          call endrun('CLUBB and eddy, macrop or shallow schemes incompatible')
       endif
    endif
 
-   if (cam_physpkg_is("cam_dev")) then
+   if (cam_physpkg_is("cam7")) then
       ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB
       if (eddy_scheme /= 'CLUBB_SGS' .or. macrop_scheme /= 'CLUBB_SGS' .or. shallow_scheme /= 'CLUBB_SGS') then
-         write(iulog,*) 'cam_dev is only compatible with CLUBB.  Quitting'
-         call endrun('cam_dev is only compatible with eddy, macrop, and shallow schemes = CLUBB_SGS')
-      end if
-      ! Add a check to make sure SPCAM is not used
-      if (use_spcam) then
-         write(iulog,*)'SPCAM not compatible with cam_dev physics.  Quitting'
-         call endrun('SPCAM and cam_dev incompatible')
+         write(iulog,*) 'cam7 is only compatible with CLUBB.  Quitting'
+         call endrun('cam7 is only compatible with eddy, macrop, and shallow schemes = CLUBB_SGS')
       end if
       ! Add check to make sure we are not trying to use `camrt`
       if (trim(radiation_scheme) == 'camrt') then
-         write(iulog,*) ' camrt specified and it is not compatible with cam_dev'
-         call endrun('cam_dev is not compatible with camrt radiation scheme')
+         write(iulog,*) ' camrt specified and it is not compatible with cam7'
+         call endrun('cam7 is not compatible with camrt radiation scheme')
       end if
    end if
+
+   ! do_hb_above_clubb requires that CLUBB is being used
+   if (do_hb_above_clubb .and. .not. do_clubb_sgs) then
+      write(iulog,*)'do_hb_above_clubb requires CLUBB to be active'
+      call endrun('do_hb_above_clubb incompatible with do_clubb_sgs = .false.')
+   endif
 
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
@@ -307,12 +314,12 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                          history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, &
                         history_waccm_out, history_waccmx_out, history_chemistry_out, &
-                        history_carma_out, history_clubb_out, history_dust_out, &
+                        history_carma_out, history_carma_srf_flx_out, history_clubb_out, history_dust_out, &
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
-                        do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
+                        do_clubb_sgs_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out, do_hb_above_clubb_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -320,7 +327,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
-!	   SPCAM_microp_scheme_out : SPCAM microphysics scheme
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
@@ -330,7 +336,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
    logical,           intent(out), optional :: use_subcol_microp_out
-   logical,           intent(out), optional :: use_spcam_out
    logical,           intent(out), optional :: atm_dep_flux_out
    logical,           intent(out), optional :: history_amwg_out
    logical,           intent(out), optional :: history_vdiag_out
@@ -343,6 +348,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: history_waccmx_out
    logical,           intent(out), optional :: history_chemistry_out
    logical,           intent(out), optional :: history_carma_out
+   logical,           intent(out), optional :: history_carma_srf_flx_out
    logical,           intent(out), optional :: history_clubb_out
    logical,           intent(out), optional :: history_cesm_forcing_out
    logical,           intent(out), optional :: history_chemspecies_srf_out
@@ -360,6 +366,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=32), intent(out), optional :: cam_take_snapshot_before_out
    character(len=32), intent(out), optional :: cam_take_snapshot_after_out
    character(len=cl), intent(out), optional :: physics_grid_out
+   logical,           intent(out), optional :: do_hb_above_clubb_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
@@ -367,7 +374,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
    if ( present(use_subcol_microp_out   ) ) use_subcol_microp_out    = use_subcol_microp
-   if ( present(use_spcam_out           ) ) use_spcam_out            = use_spcam
 
    if ( present(macrop_scheme_out       ) ) macrop_scheme_out        = macrop_scheme
    if ( present(atm_dep_flux_out        ) ) atm_dep_flux_out         = atm_dep_flux
@@ -385,6 +391,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(history_chemspecies_srf_out) ) history_chemspecies_srf_out = history_chemspecies_srf
    if ( present(history_scwaccm_forcing_out) ) history_scwaccm_forcing_out = history_scwaccm_forcing
    if ( present(history_carma_out       ) ) history_carma_out        = history_carma
+   if ( present(history_carma_srf_flx_out) ) history_carma_srf_flx_out= history_carma_srf_flx
    if ( present(history_clubb_out       ) ) history_clubb_out        = history_clubb
    if ( present(history_dust_out        ) ) history_dust_out         = history_dust
    if ( present(do_clubb_sgs_out        ) ) do_clubb_sgs_out         = do_clubb_sgs
@@ -399,6 +406,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(cam_take_snapshot_before_out) ) cam_take_snapshot_before_out = cam_take_snapshot_before
    if ( present(cam_take_snapshot_after_out ) ) cam_take_snapshot_after_out  = cam_take_snapshot_after
    if ( present(physics_grid_out         ) ) physics_grid_out        = cam_physics_mesh
+   if ( present(do_hb_above_clubb_out    ) ) do_hb_above_clubb_out   = do_hb_above_clubb
 
 end subroutine phys_getopts
 

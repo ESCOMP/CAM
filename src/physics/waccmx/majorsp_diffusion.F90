@@ -4,7 +4,7 @@ module majorsp_diffusion
 ! This module computes the diffusion of major species (O2 and O) mass mixing
 ! ratio. This routine computes both the molecular and eddy diffusivity. This
 ! is adapted from the major species diffusion calculation of TIME-GCM.
-! 
+!
 ! Calling sequence:
 !   initialization:
 !      init
@@ -134,9 +134,9 @@ contains
 !-------------------------------------------------------------------------------
 ! interface routine. output tendency.
 !-------------------------------------------------------------------------------
-    use physics_types,  only: physics_state, physics_ptend
-    use upper_bc,       only: ubc_get_vals
-    use physconst,      only: rairv, mbarv
+    use physics_types,   only: physics_state, physics_ptend
+    use upper_bc,        only: ubc_get_vals
+    use air_composition, only: rairv, mbarv
 
 !------------------------------Arguments--------------------------------
     real(r8), intent(in) :: ztodt                  ! 2 delta-t
@@ -147,7 +147,6 @@ contains
     real(r8) :: tendo2o(pcols,pver,2)              ! temporary array for o2 and o tendency
     real(r8) :: ubc_mmr(pcols,pcnst)               ! upper bndy mixing ratios (kg/kg)
     real(r8) :: ubc_t(pcols)                       ! upper bndy temperature (K)
-    real(r8) :: ubc_flux(pcols,pcnst)              ! upper bndy flux (kg/s/m^2)
     integer :: lchnk                               ! chunk identifier
     integer :: ncol                                ! number of atmospheric columns
     integer :: i, k                                ! indexing integers
@@ -164,7 +163,7 @@ contains
     !----------------------------------------------------------------------------------------------
     tendo2o(:ncol,:,io2) = ptend%q(:ncol,:,indx_O2)
     tendo2o(:ncol,:,io1) = ptend%q(:ncol,:,indx_O)
-    
+
     !----------------------------------------------------------------------
     ! Operate on copies of the input states, convert to tendencies at end.
     !----------------------------------------------------------------------
@@ -175,8 +174,7 @@ contains
        !-------------------------------------------
        ! set upper boundary values of O2 and O MMR.
        !-------------------------------------------
-       call ubc_get_vals( lchnk, ncol, state%pint, state%zi, state%t, state%q, &
-                          state%omega, state%phis, ubc_t, ubc_mmr, ubc_flux )
+       call ubc_get_vals( lchnk, ncol, state%pint, state%zi, ubc_t, ubc_mmr )
        o2mmr_ubc(:ncol) = ubc_mmr(:ncol,indx_O2)
        ommr_ubc(:ncol) = ubc_mmr(:ncol,indx_O)
     endif
@@ -218,7 +216,7 @@ contains
 !-----------------------------------------------------------------------
 ! Driver routine to compute major species diffusion (O2 and O).
 
-! Turbulent diffusivities and boundary layer nonlocal transport terms are 
+! Turbulent diffusivities and boundary layer nonlocal transport terms are
 ! obtained from the turbulence module.
 !---------------------------Arguments------------------------------------
     use ref_pres,     only: lev0 => nbot_molec
@@ -234,7 +232,7 @@ contains
     real(r8), intent(in) :: rairv(pcols,pver)                  ! composition dependent gas "constant"
     real(r8), intent(in) :: mbarv(pcols,pver)                  ! composition dependent mean mass
 
-    real(r8), intent(inout) :: q(pcols,pver,pcnst) ! constituents 
+    real(r8), intent(inout) :: q(pcols,pver,pcnst) ! constituents
 
 !---------------------------Local storage-------------------------------
     real(r8) :: o2(pcols,pver), o1(pcols,pver)     ! o2, o1 mixing ratio (kg/kg moist air)
@@ -352,7 +350,7 @@ contains
     ! Set up mean mass working array
     !------------------------------------------------------------------
     ! ep, ak at the interface level immediately below midpoint level nbot_molec
-    
+
     ! WKS4 = .5*(DMBAR/DZ)/MBAR
     do i=1,ncol
        wks4(i) = (mbarv(i,lev0)-mbarv(i,lev0+1))/                               &
@@ -362,7 +360,7 @@ contains
     !-----------------------------------
     ! Calculate coefficient matrices
     !-----------------------------------
-    km = 1 
+    km = 1
     kp = 2
     do i=1, ncol
        ep(i,io2,kp) = 1._r8-(2._r8/(mbarv(i,lev0+1)+mbarv(i,lev0)))*                  &
@@ -385,8 +383,8 @@ contains
       enddo
     enddo
 !
-! WKS1=MBAR/M3*(T00/(T0+T))*0.25/(TAU*DET(ak)) ak at the interface level 
-! immediately below midpoint level nbot_molec. 
+! WKS1=MBAR/M3*(T00/(T0+T))*0.25/(TAU*DET(ak)) ak at the interface level
+! immediately below midpoint level nbot_molec.
     do i=1,ncol
       wks1(i) = 0.5_r8*(mbarv(i,lev0+1)+mbarv(i,lev0))*rmassinv_n2*       &
         (2._r8*t00/(t(i,lev0+1)+t(i,lev0)))**0.25_r8/                      &
@@ -431,7 +429,7 @@ contains
 
           enddo
        enddo
-       
+
     !---------------------------------------------
     ! Calculate coefficients for diagonals and rhs
     !---------------------------------------------
@@ -456,11 +454,11 @@ contains
                 pk(i,isp,m) = (ak(i,isp,m,km)*(rdzmid(i,k+1)+ep(i,m,km)/2._r8)-   &
                      expzi(i,k+1)*difk(i,k+1)*(rdzmid(i,k+1)-                  &
                      wks3(i))*delta(isp,m))*rdz(i,k)
-                
+
                 rk(i,isp,m) = (ak(i,isp,m,kp)*(rdzmid(i,k)-ep(i,m,kp)/2._r8)-     &
                      expzi(i,k)*difk(i,k)*(rdzmid(i,k)+                        &
                      wks4(i))*delta(isp,m))*rdz(i,k)
-   
+
                 qk(i,isp,m) = -(ak(i,isp,m,km)*(rdzmid(i,k+1)-ep(i,m,km)/2._r8)+  &
                      ak(i,isp,m,kp)*(rdzmid(i,k)+ep(i,m,kp)/2._r8))*rdz(i,k)+     &
                      ((expzi(i,k)*difk(i,k)*(rdzmid(i,k)-wks4(i))+             &
@@ -475,7 +473,7 @@ contains
           fk(i,io2) = expzm(i,k)*o2(i,k)*rztodt
           fk(i,io1) = expzm(i,k)*o1(i,k)*rztodt
        enddo
- 
+
        !----------------------------
        ! Lower boundary
        !----------------------------
@@ -538,10 +536,10 @@ contains
                   .5_r8*(o1(i,k)+ommr_ubc(i)))-                                  &
                   (1._r8-delta(io1,m))*(phi(io1,m)-phi(io1,3))*                &
                   .5_r8*(o1(i,k)+ommr_ubc(i))
-             
+
           enddo
        enddo
-       
+
 !
 ! WKS1=MBAR/M3*(T00/(T0+T))**0.25/(TAU*DET(ALFA))
        do i=1,ncol
@@ -559,7 +557,7 @@ contains
           do isp=io2,io1
              do i=1,ncol
                 ak(i,isp,m,kp) = ak(i,isp,m,kp)*wks1(i)
-                
+
                 pk(i,isp,m) = (ak(i,isp,m,km)*(rdzmid(i,k+1)+ep(i,m,km)/2._r8)-   &
                      expzi(i,k+1)*difk(i,k+1)*(rdzmid(i,k+1)-                  &
                      wks3(i))*delta(isp,m))*rdz(i,k)
@@ -591,7 +589,7 @@ contains
        enddo
 
     else
-       
+
        do i=1,ncol
           wks3(i) = wks4(i)
        enddo

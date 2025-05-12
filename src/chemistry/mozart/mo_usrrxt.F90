@@ -3,6 +3,7 @@ module mo_usrrxt
   use shr_kind_mod,     only : r8 => shr_kind_r8
   use cam_logfile,      only : iulog
   use ppgrid,           only : pver, pcols
+  use cam_abortutils,   only : endrun
 
   implicit none
 
@@ -19,6 +20,7 @@ module mo_usrrxt
   integer :: usr_N2O5_aer_ndx
   integer :: usr_NO3_aer_ndx
   integer :: usr_NO2_aer_ndx
+  integer :: usr_CO_OH_ndx
   integer :: usr_CO_OH_a_ndx
   integer :: usr_CO_OH_b_ndx
   integer :: usr_PAN_M_ndx
@@ -30,6 +32,9 @@ module mo_usrrxt
   integer :: usr_DMS_OH_ndx
   integer :: usr_HO2_aer_ndx
   integer :: usr_GLYOXAL_aer_ndx
+  integer :: usr_N_O2_ndx
+  integer :: usr_N2D_O2_ndx
+  integer :: usr_N2D_e_ndx
 
   integer :: tag_NO2_NO3_ndx
   integer :: tag_NO2_OH_ndx
@@ -257,6 +262,7 @@ contains
     usr_N2O5_aer_ndx     = get_rxt_ndx( 'usr_N2O5_aer' )
     usr_NO3_aer_ndx      = get_rxt_ndx( 'usr_NO3_aer' )
     usr_NO2_aer_ndx      = get_rxt_ndx( 'usr_NO2_aer' )
+    usr_CO_OH_ndx        = get_rxt_ndx( 'usr_CO_OH' )
     usr_CO_OH_a_ndx      = get_rxt_ndx( 'usr_CO_OH_a' )
     usr_CO_OH_b_ndx      = get_rxt_ndx( 'usr_CO_OH_b' )
     usr_PAN_M_ndx        = get_rxt_ndx( 'usr_PAN_M' )
@@ -270,6 +276,9 @@ contains
     usr_MPAN_M_ndx       = get_rxt_ndx( 'usr_MPAN_M' )
     usr_XOOH_OH_ndx      = get_rxt_ndx( 'usr_XOOH_OH' )
     usr_SO2_OH_ndx       = get_rxt_ndx( 'usr_SO2_OH' )
+    usr_N_O2_ndx         = get_rxt_ndx( 'usr_N_O2' )
+    usr_N2D_O2_ndx       = get_rxt_ndx( 'usr_N2D_O2' )
+    usr_N2D_e_ndx        = get_rxt_ndx( 'usr_N2D_e' )
     usr_DMS_OH_ndx       = get_rxt_ndx( 'usr_DMS_OH' )
     usr_HO2_aer_ndx      = get_rxt_ndx( 'usr_HO2_aer' )
     usr_GLYOXAL_aer_ndx  = get_rxt_ndx( 'usr_GLYOXAL_aer' )
@@ -566,7 +575,7 @@ contains
        write(iulog,'(10i5)') usr_O_O2_ndx,usr_HO2_HO2_ndx,tag_NO2_NO3_ndx,usr_N2O5_M_ndx,tag_NO2_OH_ndx,usr_HNO3_OH_ndx &
                             ,tag_NO2_HO2_ndx,usr_HO2NO2_M_ndx,usr_N2O5_aer_ndx,usr_NO3_aer_ndx,usr_NO2_aer_ndx &
                             ,usr_CO_OH_b_ndx,tag_C2H4_OH_ndx,tag_C3H6_OH_ndx,tag_CH3CO3_NO2_ndx,usr_PAN_M_ndx,usr_CH3COCH3_OH_ndx &
-                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
+                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_N2D_O2_ndx,usr_N2D_e_ndx,usr_N_O2_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
                             ,usr_GLYOXAL_aer_ndx,usr_ISOPNITA_aer_ndx,usr_ISOPNITB_aer_ndx,usr_ONITR_aer_ndx,usr_HONITR_aer_ndx &
                             ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx,usr_ISOPZD1O2_ndx &
                             ,usr_ISOPZD4O2_ndx,usr_ISOPFDN_aer_ndx,usr_ISOPFNP_aer_ndx,usr_ISOPN2B_aer_ndx,usr_ISOPN1D_aer_ndx &
@@ -591,7 +600,7 @@ contains
 
   end subroutine usrrxt_inti
 
-  subroutine usrrxt( rxt, temp, tempi, tempe, invariants, h2ovmr,  &
+  subroutine usrrxt( state, rxt, temp, tempi, tempe, invariants, h2ovmr,  &
                      pmid, m, sulfate, mmr, relhum, strato_sad, &
                      tropchemlev, dlat, ncol, sad_trop, reff_trop, cwat, mbar, pbuf )
 
@@ -599,10 +608,11 @@ contains
 !        ... set the user specified reaction rates
 !-----------------------------------------------------------------
 
-    use mo_constants,  only : pi, avo => avogadro, boltz_cgs, rgas
-    use chem_mods,     only : nfs, rxntot, gas_pcnst, inv_m_ndx=>indexm
-    use mo_setinv,     only : inv_o2_ndx=>o2_ndx, inv_h2o_ndx=>h2o_ndx
-    use physics_buffer,only : physics_buffer_desc
+    use mo_constants,    only : pi, avo => avogadro, boltz_cgs, rgas
+    use chem_mods,       only : nfs, rxntot, gas_pcnst, inv_m_ndx=>indexm
+    use mo_setinv,       only : inv_o2_ndx=>o2_ndx, inv_h2o_ndx=>h2o_ndx
+    use physics_buffer,  only : physics_buffer_desc
+    use physics_types,   only : physics_state
     use carma_flags_mod, only : carma_hetchem_feedback
     use aero_model,      only : aero_model_surfarea
     use rad_constituents,only : rad_cnst_get_info
@@ -631,6 +641,7 @@ contains
     real(r8), intent(inout) :: rxt(ncol,pver,rxntot)      ! gas phase rates
     real(r8), intent(out)   :: sad_trop(pcols,pver)       ! tropospheric surface area density (cm2/cm3)
     real(r8), intent(out)   :: reff_trop(pcols,pver)      ! tropospheric effective radius (cm)
+    type(physics_state),    intent(in) :: state           ! Physics state variables
     type(physics_buffer_desc), pointer :: pbuf(:)
 
 !-----------------------------------------------------------------
@@ -642,10 +653,10 @@ contains
 !-----------------------------------------------------------------
 ! 	... reaction probabilities for heterogeneous reactions
 !-----------------------------------------------------------------
-    real(r8), parameter :: gamma_n2o5 = 0.10_r8         ! from Jacob, Atm Env, 34, 2131, 2000
-    real(r8), parameter :: gamma_ho2  = 0.20_r8         !
-    real(r8), parameter :: gamma_no2  = 0.0001_r8       !
-    real(r8), parameter :: gamma_no3  = 0.001_r8        !
+    real(r8), parameter :: gamma_n2o5 = 0.02_r8         ! JPL19
+    real(r8), parameter :: gamma_ho2  = 0.10_r8         ! Gaubert et al., https://doi.org/10.5194/acp-20-14617-2020
+    real(r8), parameter :: gamma_no2  = 8.0e-6_r8       ! Liu et al., Environ.Sci.&Tech, 53, 3517, 2019 doi:10.1021/acs.est.8b06367
+    real(r8), parameter :: gamma_no3  = 0.002_r8        ! JPL19
     real(r8), parameter :: gamma_glyoxal  = 2.0e-4_r8   !  Washenfelder et al, JGR, 2011
 !TS1 species
     real(r8), parameter :: gamma_isopnita  = 0.005_r8        ! from Fisher et al., ACP, 2016
@@ -756,7 +767,7 @@ contains
     real(r8), parameter  :: pH            =  4.5e+00_r8
 
     real(r8), pointer :: sfc(:), dm_aer(:)
-    integer :: ntot_amode
+    integer :: ntot_amode, nbins
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
  !TS2
@@ -765,13 +776,21 @@ contains
     real(r8) ::  nyield
     real(r8) ::  acorr
     real(r8) ::  exp_natom
+    character(len=*), parameter :: subname = 'usrrxt'
 
     ! get info about the modal aerosols
     ! get ntot_amode
     call rad_cnst_get_info(0, nmodes=ntot_amode)
+    call rad_cnst_get_info(0, nbins=nbins)
+
+    if (ntot_amode>0.and.nbins>0) then
+      call endrun(subname // ':: ERROR running with MAM and CARMA simultaneously not supported.')
+    end if
 
     if (ntot_amode>0) then
        allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
+    else if (nbins>0) then
+       allocate(sfc_array(pcols,pver,nbins), dm_array(pcols,pver,nbins) )
     else
        allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
     endif
@@ -789,7 +808,7 @@ contains
        else
 
           call aero_model_surfarea( &
-               mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
+               state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
                het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
 
        endif
@@ -916,7 +935,22 @@ contains
           end if
        end if
 !-----------------------------------------------------------------
-!           co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
+! 	... co + oh --> co2 + ho2 (new single reaction for combined branches [JPL19])
+!-----------------------------------------------------------------
+       if( usr_CO_OH_ndx > 0 ) then
+         ko  (:)  = 6.9e-33_r8 * ( 298._r8 / temp(:ncol,k) )**(2.1_r8)
+         kinf(:)  = 1.1e-12_r8 * ( 298._r8 / temp(:ncol,k) )**(-1.3_r8)
+
+         term2(:) = (1 + (log10( ko(:)*m(:,k) / kinf(:) ))**2)**(-1)
+
+         term1(:) = (kinf(:) * ko(:)*m(:,k)) / (kinf(:) + ko(:)*m(:,k)) * (0.6_r8)**term2(:)
+
+         rxt(:ncol,k,usr_CO_OH_ndx) = term1(:) + 1.85e-13_r8 * exp(-65._r8/temp(:ncol,k)) * (1._r8 - term1(:)/kinf(:))
+
+       end if
+!-----------------------------------------------------------------
+!       ... co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_a_ndx > 0 ) then
           rxt(:,k,usr_CO_OH_a_ndx) = 1.5e-13_r8 * &
@@ -924,6 +958,7 @@ contains
        end if
 !-----------------------------------------------------------------
 ! 	... co + oh --> co2 + h (second branch JPL15-10, with CO+OH+M)
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_b_ndx > 0 ) then
          kinf(:)  = 2.1e+09_r8 * (temp(:ncol,k)/ t0)**(6.1_r8)
@@ -1064,13 +1099,48 @@ contains
        end if
 
 !-----------------------------------------------------------------
+!       ... N + O2 -> NO + O
+! Rate coefficients calculated by J. Orlando, D. Kinnison, and J. Zhang (2024)
+! from data published in:
+! "Kinetics of the Reactions of N(4S) Atoms with O2 and CO2 over Wide Temperatures Ranges"
+! Abel Fernandez, A. Goumri, and Arthur Fontijn, 1998
+! https://doi.org/10.1021/jp972365k
+!-----------------------------------------------------------------
+       if( usr_N_O2_ndx > 0 ) then
+          call comp_exp( exp_fac, -2557._r8*tinv, ncol )
+          rxt(:,k,usr_N_O2_ndx) = 2.0e-18_r8 * temp(:ncol,k)**2.15_r8 * exp_fac(:)
+       end if
+       
+!-----------------------------------------------------------------
+!       ... N2D + O2 -> NO + O
+! "On the rate coefficient of the N(2D)+O2->NO+O reaction in the terrestrial thermosphere"
+! Duff, J.W., H. Dothe, and R. D. Sharma, 2003
+! https://doi.org/10.1029/2002GL016720
+!-----------------------------------------------------------------
+       if( usr_N2D_O2_ndx > 0 ) then
+          rxt(:,k,usr_N2D_O2_ndx) = 6.2e-12_r8 * temp(:ncol,k)/300.0_r8
+       end if
+
+!-----------------------------------------------------------------
+!       ... N2D + e -> N + e  Roble, 1995
+! "Energetics of the Mesosphere and Thermosphere"
+! R. Roble, 1995
+! https://doi.org/10.1029/GM087p0001
+!-----------------------------------------------------------------
+       if( usr_N2D_e_ndx > 0 ) then
+          rxt(:,k,usr_N2D_e_ndx) = 3.6e-10_r8 * sqrt(tempe(:ncol,k)/300.0_r8)
+       end if
+       
+!-----------------------------------------------------------------
 !       ... DMS + OH  --> .5 * SO2
+!       JPL15-10 (use [O2] = 0.21*[M])
+!       k = 8.2E-39 * exp(5376/T) * [O2] / (1 + 1.05E-5 *([O2]/[M]) * exp(3644/T))
 !-----------------------------------------------------------------
        if( usr_DMS_OH_ndx > 0 ) then
-          call comp_exp( exp_fac, 7460._r8*tinv, ncol )
-          ko(:) = 1._r8 + 5.5e-31_r8 * exp_fac * m(:,k) * 0.21_r8
-          call comp_exp( exp_fac, 7810._r8*tinv, ncol )
-          rxt(:,k,usr_DMS_OH_ndx) = 1.7e-42_r8 * exp_fac * m(:,k) * 0.21_r8 / ko(:)
+          call comp_exp( exp_fac, 3644._r8*tinv, ncol )
+          ko(:) = 1._r8 + 1.05e-5_r8 * exp_fac * 0.21_r8
+          call comp_exp( exp_fac, 5376._r8*tinv, ncol )
+          rxt(:,k,usr_DMS_OH_ndx) = 8.2e-39_r8 * exp_fac * m(:,k) * 0.21_r8 / ko(:)
        end if
 
 !-----------------------------------------------------------------
@@ -1980,8 +2050,8 @@ contains
                sur(:ncol) = strato_sad(:ncol,k)
             else
                sur(:) = sulfate(:,k)*m(:,k)/avo*wso4 &              ! xform mixing ratio to g/cm3
-                        / amas &                                    ! xform g/cm3 to num particels/cm3
-                        * fare &                                    ! xform num particels/cm3 to cm2/cm3
+                        / amas &                                    ! xform g/cm3 to num particles/cm3
+                        * fare &                                    ! xform num particles/cm3 to cm2/cm3
                         * xr(:)*xr(:)                               ! humidity factor
             endif
 !-----------------------------------------------------------------
@@ -2000,7 +2070,7 @@ contains
 !       so that velo = 3.75e3*sqrt(T)  (NH3)    gama=0.4
 !--------------------------------------------------------
 !-----------------------------------------------------------------
-!	... use this n2o5 -> 2*hno3 only in tropopause
+!	... use this n2o5 -> 2*hno3 only in troposphere
 !-----------------------------------------------------------------
 	    rxt(:,k,het1_ndx) = rxt(:,k,het1_ndx) &
                                 +.25_r8 * gam1 * sur(:) * 1.40e3_r8 * sqrt( temp(:ncol,k) )
@@ -2011,138 +2081,141 @@ contains
 !-----------------------------------------------------------------
 !      ... CO tags
 !-----------------------------------------------------------------
-      if( usr_CO_OH_b_ndx > 0 ) then
+      if( usr_CO_OH_b_ndx > 0 .and. usr_CO_OH_ndx < 0 ) then
+         usr_CO_OH_ndx = usr_CO_OH_b_ndx
+      end if
+      if( usr_CO_OH_ndx > 0 ) then
          if( usr_COhc_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_COhc_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_COhc_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_COme_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_COme_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_COme_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO01_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO01_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO01_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO02_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO02_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO02_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO03_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO03_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO03_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO04_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO04_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO04_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO05_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO05_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO05_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO06_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO06_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO06_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO07_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO07_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO07_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO08_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO08_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO08_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO09_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO09_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO09_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO10_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO10_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO10_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO11_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO11_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO11_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO12_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO12_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO12_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO13_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO13_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO13_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO14_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO14_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO14_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO15_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO15_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO15_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO16_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO16_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO16_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO17_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO17_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO17_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO18_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO18_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO18_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO19_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO19_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO19_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO20_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO20_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO20_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO21_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO21_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO21_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO22_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO22_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO22_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO23_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO23_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO23_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO24_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO24_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO24_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO25_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO25_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO25_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO26_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO26_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO26_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO27_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO27_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO27_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO28_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO28_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO28_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO29_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO29_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO29_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO30_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO30_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO30_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO31_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO31_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO31_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO32_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO32_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO32_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO33_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO33_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO33_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO34_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO34_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO34_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO35_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO35_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO35_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO36_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO36_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO36_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO37_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO37_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO37_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO38_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO38_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO38_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO39_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO39_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO39_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO40_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO40_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO40_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO41_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO41_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO41_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
          if( usr_CO42_OH_ndx > 0 ) then
-            rxt(:ncol,:,usr_CO42_OH_ndx) = rxt(:ncol,:,usr_CO_OH_b_ndx)
+            rxt(:ncol,:,usr_CO42_OH_ndx) = rxt(:ncol,:,usr_CO_OH_ndx)
          end if
       end if
 !lke--

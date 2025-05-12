@@ -67,7 +67,7 @@
 
 <!-- Monthly -->
 <fincl1>
-  'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR',
+  'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR',
   'CFC11', 'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH',
   'CH4', 'CL', 'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2',
   'CLOUD', 'CO', 'CO2', 'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT',
@@ -103,7 +103,7 @@
   'CL','CL2', 'CLO', 'OCLO', 'CL2O2', 'CLONO2', 'HOCL', 'HCL', 'CLOX', 'CLOY',
   'BR', 'BRO', 'HOBR', 'HBR', 'BRCL', 'BRONO2', 'BROX', 'BROY', 'TCLY',
   'jo2_a', 'jo2_b', 'jo3_a',  'jo3_b', 'jhocl', 'jno3_b', 'jcl2o2',
-  'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE','AOA1','AOA2',
+  'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE',
   'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
   'VTHzm', 'WTHzm', 'UVzm', 'UWzm', 'TH', 'MSKtem'
 </fincl2>
@@ -133,33 +133,10 @@
 <met_data_path>atm/cam/met/GEOS5</met_data_path>
 <met_filenames_list>atm/cam/met/GEOS5_filenames_list_c120516.txt</met_filenames_list>
 
-<!-- bnd_topo --->
+<!-- bnd_topo -->
 <bnd_topo>atm/cam/met/USGS-gtopo30_1.9x2.5_phys_geos5_c100929.nc</bnd_topo>
 
 <!-- sim_year used for CLM datasets and SSTs forcings -->
 <sim_year>1850-2000</sim_year>
-
-<!-- Use AMIP SST datasets -->
-<sstcyc>.false.</sstcyc>
-<stream_year_first>1850</stream_year_first>
-<stream_year_last>2008</stream_year_last>
-
-<bndtvs hgrid="0.47x0.63"  sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="0.9x1.25"   sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="1.9x2.5"    sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="4x5"        sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_4x5_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="10x15"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_10x15_1850_2008_c100127.nc</bndtvs>
-
-<bndtvs hgrid="128x256"    sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_128x256_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="64x128"     sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_64x128_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="48x96"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_48x96_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="32x64"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_32x64_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="8x16"       sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_8x16_1850_2008_c100128.nc</bndtvs>
-
-<!-- Use the clim_pi SST datasets if AMIP datasets not available -->
-<sstcyc            hgrid="0.23x0.31">.true.</sstcyc>
-<stream_year_first hgrid="0.23x0.31">0</stream_year_first>
-<stream_year_last  hgrid="0.23x0.31">0</stream_year_last>
-<bndtvs            hgrid="0.23x0.31"  sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_clim_pi_c091020.nc</bndtvs>
 
 </namelist_defaults>
