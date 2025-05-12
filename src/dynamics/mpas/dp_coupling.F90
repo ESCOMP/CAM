@@ -519,7 +519,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
         zvirv(:,:) = zvir
       endif
       do k = 1, pver
-         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pver+1) / phys_state(lchnk)%pmid(:ncol,k))**cappav(:ncol,k,lchnk)
+         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pverp) / phys_state(lchnk)%pmid(:ncol,k))**cappav(:ncol,k,lchnk)
       end do
 
       !
