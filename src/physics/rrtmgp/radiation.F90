@@ -881,8 +881,10 @@ subroutine radiation_tend( &
    real(r8)          :: cld_lw_abs(nlwbands,state%ncol,pver)  ! Cloud absorption optics depth
    real(r8)          :: snow_lw_abs(nlwbands,state%ncol,pver) ! Snow absorption optics depth
    real(r8)          :: grau_lw_abs(nlwbands,state%ncol,pver) ! Graupel absorption optics depth
-   real(r8), pointer :: qrs(:,:) ! shortwave radiative heating rate 
-   real(r8), pointer :: qrl(:,:) ! longwave  radiative heating rate 
+   real(r8), pointer :: qrs(:,:) ! shortwave radiative heating rate adjusted by air pressure thickness
+   real(r8), pointer :: qrl(:,:) ! longwave  radiative heating rate adjusted by air pressure thickness
+   real(r8)          :: qrs_prime(pcols, pver) ! shortwave heating rate
+   real(r8)          :: qrl_prime(pcols, pver) ! longwave heating rate
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
    real(r8), pointer :: fsns(:)  ! Surface solar absorbed flux
    real(r8), pointer :: fsnt(:)  ! Net column abs solar flux at model top
@@ -1417,9 +1419,12 @@ subroutine radiation_tend( &
       end if   ! docosp
    end if   ! if (dosw .or. dolw) then
 
+   qrs_prime = qrs
+   qrl_prime = qrl
+
    ! Calculate dry static energy if LW calc or SW calc wasn't done; needed before calling radheat_run
    call rrtmgp_dry_static_energy_tendency_run(state%pdel(:ncol,:), (.not. dosw), (.not. dolw), &
-             qrs(:ncol,:), qrl(:ncol,:), errmsg, errflg)
+             qrs(:ncol,:), qrl(:ncol,:), qrs_prime(:ncol,:), qrl_prime(:ncol,:), errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1430,14 +1435,14 @@ subroutine radiation_tend( &
    ! Compute net radiative heating tendency.  Note that the WACCM version
    ! of radheat_tend merges upper atmosphere heating rates with those calculated
    ! by RRTMGP.
-   call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
+   call radheat_tend(state, pbuf,  ptend, qrl_prime, qrs_prime, fsns, &
                      fsnt, flns, flnt, cam_in%asdir, net_flx)
 
    if (write_output) then
       ! Compute heating rate for dtheta/dt
       do k = 1, pver
          do i = 1, ncol
-            ftem(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
+            ftem(i,k) = (qrs_prime(i,k) + qrl_prime(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
          end do
       end do
       call outfld('HR', ftem, pcols, lchnk)
@@ -1450,8 +1455,8 @@ subroutine radiation_tend( &
    cam_out%netsw(:) = 0._r8
 
    ! Calculate radiative heating (Q*dp), set netsw flux, and do object cleanup
-   call rrtmgp_post_run(qrs(:ncol,:), qrl(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), atm_optics_sw, cloud_sw, aer_sw, &
-                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, cam_out%netsw(:ncol), errmsg, errflg)
+   call rrtmgp_post_run(qrs_prime(:ncol,:), qrl_prime(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), atm_optics_sw, cloud_sw, aer_sw, &
+                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, qrs(:ncol,:), qrl(:ncol,:), cam_out%netsw(:ncol), errmsg, errflg)
    if (errflg /= 0) then
      call endrun(sub//': '//errmsg)
    end if
@@ -2027,7 +2032,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ierr = pio_get_var(fh, vid, temp_ref_t)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_T')
 
-   ! standard spectroscopic reference pressure [hPa]
+   ! standard spectroscopic reference pressure [Pa]
    ierr = pio_inq_varid(fh, 'absorption_coefficient_ref_P', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': absorption_coefficient_ref_P not found')
    ierr = pio_get_var(fh, vid, temp_ref_p)
