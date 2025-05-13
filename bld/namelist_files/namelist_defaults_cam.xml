@@ -34,6 +34,7 @@
 <ncdata nlev="26" analytic_ic="1" >atm/cam/inic/cam_vcoords_L26_c180105.nc</ncdata>
 <ncdata nlev="30" analytic_ic="1" >atm/cam/inic/cam_vcoords_L30_c180105.nc</ncdata>
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
+<ncdata nlev="58" analytic_ic="1" >atm/cam/inic/cam_vcoords_L58_c250227.nc</ncdata>
 
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c240507.nc</ncdata>
@@ -2000,7 +2001,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
-<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.3_2023Jan08.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.5_2025Feb14.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -3599,9 +3600,9 @@
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 
 <!-- GEOS-Chem chemistry -->
-<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
-<geoschem_aeropt_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/FAST_JX/v2024-05/</geoschem_aeropt_inputs>
-<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05/</geoschem_photol_inputs>
+<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
+<geoschem_aeropt_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS/Aerosol_Optics/v2024-08/</geoschem_aeropt_inputs>
+<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/ExtData/CHEM_INPUTS/CLOUD_J/v2024-09/</geoschem_photol_inputs>
 
 <BC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_BC_2010.nc</BC_GAINS_filename>
 <OC_GAINS_filename >atm/cam/chem/carma/data/ETP_base_CLE_V5_OC_2010.nc</OC_GAINS_filename>

@@ -3,16 +3,42 @@
 <!-- list of gas phase species that undergo wet deposition -->
 <list id="gas">
   ACTA
+  AERI
   ALD2
+  ALK4N2
+  ALK4P
+  AONITA
+  APAN
+  APINN
+  APINP
+  AROMCHO
   AROMP4
   AROMP5
+  AROMPN
+  ASOA1
+  ASOA2
+  ASOA3
+  ASOAN
+  ASOG1
+  ASOG2
+  ASOG3
   ATOOH
   BALD
   BENZP
+  BPINN
+  BPINO
+  BPINON
+  BPINOOH
+  BPINP
   BR2
   BRCL
+  BRSALA
+  BRSALC
+  BUTN
   BZCO3H
   BZPAN
+  C96N
+  C96O2H
   CH2O
   CSL
   EOH
@@ -25,6 +51,7 @@
   GLYX
   H2O2
   HAC
+  HACTA
   HBR
   HC5A
   HCL
@@ -58,13 +85,25 @@
   IHN2
   IHN3
   IHN4
+  INDIOL
   INPB
   INPD
+  IONITA
   IONO
   IONO2
+  ISALA
+  ISALC
   ITCN
   ITHN
+  LIMAL
+  LIMKB
+  LIMKET
+  LIMN
+  LIMNB
   LIMO
+  LIMO2H
+  LIMO3H
+  LIMPAN
   LVOC
   LVOCOA
   MACR1OOH
@@ -76,13 +115,16 @@
   MCRHP
   MCT
   MEK
+  MEKPN
   MGLY
   MOH
+  MONITA
   MONITS
   MONITU
   MP
   MPAN
   MPN
+  MSA
   MTPA
   MTPO
   MVK
@@ -92,10 +134,21 @@
   MVKHP
   MVKN
   MVKPC
+  MYRCO
   NH3
+  NH4
+  NIT
+  NITS
   NPHEN
   PAN
+  PFE
+  PHAN
   PHEN
+  PIN
+  PINAL
+  PINO3H
+  PINONIC
+  PINPAN
   PP
   PPN
   PROPNN
@@ -104,41 +157,26 @@
   PYAC
   R4N2
   R4P
+  R7N2
+  R7P
   RA3P
   RB3P
+  RCOOH
   RIPA
   RIPB
   RIPC
   RIPD
+  RNO3
   RP
-  SO2
-  AERI
-  AONITA
-  ASOA1
-  ASOA2
-  ASOA3
-  ASOAN
-  ASOG1
-  ASOG2
-  ASOG3
-  BRSALA
-  BRSALC
-  INDIOL
-  IONITA
-  ISALA
-  ISALC
-  MONITA
-  MSA
-  NH4
-  NIT
-  NITS
   SALAAL
   SALACL
   SALCAL
   SALCCL
+  SO2
   SO4S
   SOAGX
   SOAIE
+  TLFUONE
   TSOA0
   TSOA1
   TSOA2
@@ -147,7 +185,6 @@
   TSOG1
   TSOG2
   TSOG3
-  PFE
 </list>
 
 </gas_wetdep_list_definition>

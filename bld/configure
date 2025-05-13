@@ -1252,8 +1252,7 @@ elsif ($phys_pkg eq 'cam4') {
 }
 else {
     # Simple models use cam7-lt vertical grid.
-    # $nlev = 58; # - ERROR: No default value found for ncdata
-    $nlev = 30; # bit-for-bit baselines for now
+    $nlev = 58;
 }
 
 # user override
@@ -1333,7 +1332,7 @@ if ($chem_pkg =~ '_mam3') {
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_CESM -DMODEL_GEOSCHEM';
     if ($chem_pkg =~ '_mam4') {
-        $chem_nadv = 269; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
+        $chem_nadv = 312; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
     }
 }
 # CARMA sectional microphysics
@@ -2170,7 +2169,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
     print $fh "$camsrcdir/src/atmos_phys/phys_utils\n";
 
-    #Add the CCPP'ized subdirectories
+    # Add the CCPP'ized subdirectories
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/zhang_mcfarlane\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
@@ -2178,7 +2177,9 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/utils\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
 
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
 

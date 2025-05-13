@@ -3852,10 +3852,10 @@ if (!$simple_phys) {
 
     if ($phys =~ /cam7/) {
 	#
-	# moving mountains only supported by SE dycore
+	# moving mountains only supported by MPAS and SE dycore
 	# (since vorticity needs to be passed to physics in dp_coupling)
 	#
-	if ( $dyn =~ /se/ ) {
+	if ( $dyn =~ /mpas|se/ ) {
 	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
 	} else {
 	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.false.');
@@ -3864,10 +3864,9 @@ if (!$simple_phys) {
 
     my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
     if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
-         if ( ! ($dyn =~ /se/) ) {
-            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
-
-         }
+        if ( ! ($dyn =~ /mpas|se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with MPAS and SE dycore\n";
+        }
     }
 
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
@@ -5262,6 +5261,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_diagnostics_calc'"));
     } else {
         # CAM physpkg
@@ -5276,6 +5276,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_shallow_tend'"));
         if ($microphys =~ /^mg/) {
             if ($clubb_sgs  =~ /$TRUE/io) {
@@ -5288,6 +5289,11 @@ sub check_snapshot_settings {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }
         }
+
+        if ($microphys eq 'rk') {
+            push (@validList_bc, ("'rk_stratiform_tend'"));
+        }
+
         push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
     }
     if ($user_set_after) {

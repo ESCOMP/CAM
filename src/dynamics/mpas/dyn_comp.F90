@@ -38,7 +38,7 @@ use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
 
-use phys_control,       only: use_gw_front, use_gw_front_igw
+use phys_control,       only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
 
 implicit none
 private
@@ -234,6 +234,9 @@ end type dyn_export_t
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
 
+! Index of vorticity in physics buffer for the "moving mountain" gravity wave scheme.
+integer, protected, public :: vort4gw_idx = -1
+
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
@@ -321,6 +324,11 @@ subroutine dyn_register()
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
    end if
 
+   if (use_gw_movmtn_pbl) then
+      ! Add vorticity field to physics buffer for the "moving mountain" gravity wave scheme.
+      ! This field will be updated during dynamics-physics coupling.
+      call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols, pver/), vort4gw_idx)
+   end if
 end subroutine dyn_register
 
 !=========================================================================================
