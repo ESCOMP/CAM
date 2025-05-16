@@ -18,6 +18,7 @@ module mo_chm_diags
   public :: chm_diags_inti
   public :: chm_diags
   public :: het_diags
+  public :: chm_prod_ndep_flx
 
   integer :: id_n,id_no,id_no2,id_no3,id_n2o5,id_hno3,id_ho2no2,id_clono2,id_brono2
   integer :: id_isopfdn, id_isopfdnc, id_terpfdn !these are dinitrates
@@ -54,6 +55,8 @@ module mo_chm_diags
 
   real(r8), parameter :: N_molwgt = 14.00674_r8
   real(r8), parameter :: S_molwgt = 32.066_r8
+
+  logical, protected :: chm_prod_ndep_flx =.false.
 
 contains
 
@@ -329,6 +332,8 @@ contains
     enddo
 
     toth_species = (/ id_ch4, id_h2o, id_h2 /)
+
+    chm_prod_ndep_flx = any(noy_species>0) .or. any(nhx_species>0)
 
     call addfld( 'NOX',     (/ 'lev' /), 'A', 'mol/mol', 'nox (N+NO+NO2)' )
     call addfld( 'NOY',     (/ 'lev' /), 'A', 'mol/mol', &

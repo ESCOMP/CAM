@@ -520,11 +520,13 @@ contains
     logical :: lexist
 
     if (len_trim(drydep_srf_file) == 0) then
-       write(iulog,*)'**************************************'
-       write(iulog,*)' get_landuse_and_soilw_from_file: INFO:'
-       write(iulog,*)' drydep_srf_file not set:'
-       write(iulog,*)' setting fraction_landuse to zero'
-       write(iulog,*)'**************************************'
+       if (masterproc) then
+          write(iulog,*)'**************************************'
+          write(iulog,*)' get_landuse_and_soilw_from_file: INFO:'
+          write(iulog,*)' drydep_srf_file not set:'
+          write(iulog,*)' setting fraction_landuse to zero'
+          write(iulog,*)'**************************************'
+       end if
        fraction_landuse = 0._r8
        return
     end if
@@ -536,12 +538,14 @@ contains
        call infld('fraction_landuse', piofile, 'ncol','class',1,pcols,1,n_land_type, begchunk,endchunk, &
             fraction_landuse, readvar, gridname='physgrid')
        if (.not. readvar) then
-          write(iulog,*)'**************************************'
-          write(iulog,*)'get_landuse_and_soilw_from_file: INFO:'
-          write(iulog,*)' fraction_landuse not read from file: '
-          write(iulog,*)' ', trim(locfn)
-          write(iulog,*)' setting all values to zero'
-          write(iulog,*)'**************************************'
+          if (masterproc) then
+             write(iulog,*)'**************************************'
+             write(iulog,*)'get_landuse_and_soilw_from_file: INFO:'
+             write(iulog,*)' fraction_landuse not read from file: '
+             write(iulog,*)' ', trim(locfn)
+             write(iulog,*)' setting all values to zero'
+             write(iulog,*)'**************************************'
+          end if
           fraction_landuse = 0._r8
        end if
 

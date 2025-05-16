@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_parms_data_file>
+
+<!-- Energetic Particle Precipitation -->
+<epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</epp_all_filepath>
+<epp_all_varname>'epp_ion_rates'</epp_all_varname>
+
+<!--Species IC -->
+<ncdata dyn="se" hgrid="ne30np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne30pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
+<ncdata dyn="se" hgrid="ne16np4" nlev="135">atm/waccm/ic/FHIST_WAt1ma_ne16pg3_spinup01.cam.i.1980-01-01-00000_c250124.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne30pg3_spinup03.cam.i.1980-01-01-00000_c250201.nc</ncdata>
+<ncdata dyn="se" hgrid="ne16np4" nlev="189">atm/waccm/ic/FHIST_WXma_ne16pg3_spinup02.cam.i.1980-01-01-00000_c250201.nc</ncdata>
+
+<!-- topography -->
+<bnd_topo dyn="se" hgrid="ne16np4" npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
+
+<!-- LBC, UBC Files -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_list>
+ 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
+ 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'CFC11eq'
+</flbc_list>
+
+<!-- Upper Boundary -->
+<tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1850-2100_c100204.nc</tgcm_ubc_file>
+<tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
+
+<!-- Emissions -->
+<csw_time_type>SERIAL</csw_time_type>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- History Streams -->
+
+<mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
+
+<history_cesm_forcing>.true.</history_cesm_forcing>
+<history_scwaccm_forcing>.true. </history_scwaccm_forcing>
+<history_waccm>.true.</history_waccm>
+<history_amwg>.true.</history_amwg>
+<history_carma>.false.</history_carma>
+<history_clubb>.false.</history_clubb>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_aerosol>.false.</history_aerosol>
+<history_aero_optics>.false.</history_aero_optics>
+
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+</namelist_defaults>

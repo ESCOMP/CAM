@@ -50,9 +50,11 @@ use cam_abortutils,       only: endrun
 
 use aerosol_properties_mod, only: aerosol_properties
 use modal_aerosol_properties_mod, only: modal_aerosol_properties
+use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
 use aerosol_state_mod, only: aerosol_state
 use modal_aerosol_state_mod, only: modal_aerosol_state
+use carma_aerosol_state_mod, only: carma_aerosol_state
 
 implicit none
 private
@@ -110,6 +112,9 @@ integer :: idxsul   = -1 ! index in aerosol list for sulfate
 integer :: idxdst2  = -1 ! index in aerosol list for dust2
 integer :: idxdst3  = -1 ! index in aerosol list for dust3
 integer :: idxdst4  = -1 ! index in aerosol list for dust4
+
+! carma aerosols
+logical :: clim_carma_aero
 
 ! modal aerosols
 logical :: clim_modal_aero
@@ -179,6 +184,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    ! local variables
    integer  :: iaer, ierr
    integer  :: m, n, nmodes, nspec
+   integer :: nbins
 
    character(len=32) :: str32
    character(len=*), parameter :: routine = 'microp_aero_init'
@@ -212,22 +218,25 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
    ! The modal aerosols can be either prognostic or prescribed.
-   call rad_cnst_get_info(0, nmodes=nmodes)
+   call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
    clim_modal_aero = (nmodes > 0)
+   clim_carma_aero = (nbins> 0)
 
    ast_idx = pbuf_get_index('AST')
 
-   if (clim_modal_aero) then
-
+   if (clim_modal_aero .or. clim_carma_aero) then
       cldo_idx = pbuf_get_index('CLDO')
-      dgnumwet_idx = pbuf_get_index('DGNUMWET')
-
-      aero_props_obj => modal_aerosol_properties()
-      if (.not.associated(aero_props_obj)) then
-         call endrun('ma_convproc_init: construction of modal_aerosol_properties object failed')
+      if (clim_modal_aero) then
+         aero_props_obj => modal_aerosol_properties()
+      else if (clim_carma_aero) then
+         aero_props_obj => carma_aerosol_properties()
       end if
       call ndrop_init(aero_props_obj)
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+   end if
+
+   if (clim_modal_aero) then
+
+      dgnumwet_idx = pbuf_get_index('DGNUMWET')
 
       allocate(aero_state(begchunk:endchunk))
       do c = begchunk,endchunk
@@ -308,7 +317,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 
-   else
+   else if (.not.clim_carma_aero) then
 
       ! Props needed for BAM number concentration calcs.
 
@@ -330,19 +339,23 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       end do
 
       call ndrop_bam_init()
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
 
    end if
 
-   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation')
+   call addfld('LCLOUD', (/ 'lev' /), 'A', ' ',   'Liquid cloud fraction used in stratus activation', sampled_on_subcycle=.true.)
 
-   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity'                   )
-   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice'           )
+   call addfld('WSUB',   (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity',            sampled_on_subcycle=.true.)
+   call addfld('WSUBI',  (/ 'lev' /), 'A', 'm/s', 'Diagnostic sub-grid vertical velocity for ice',    sampled_on_subcycle=.true.)
 
    if (history_amwg) then
       call add_default ('WSUB     ', 1, ' ')
    end if
 
+   if (associated(aero_props_obj)) then
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+   else
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
+   end if
    if (use_hetfrz_classnuc) then
       if (associated(aero_props_obj)) then
          call hetfrz_classnuc_cam_init(mincld, aero_props_obj)
@@ -564,17 +577,28 @@ subroutine microp_aero_run ( &
 
    call physics_ptend_init(ptend_all, state%psetcols, 'microp_aero')
 
+   ! create the aerosol state object
    if (clim_modal_aero) then
-      ! create an aerosol state object specifically for cam state1
       aero_state1_obj => modal_aerosol_state( state1, pbuf )
       if (.not.associated(aero_state1_obj)) then
          call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
       end if
+   else if (clim_carma_aero) then
+      aero_state1_obj => carma_aerosol_state( state1, pbuf )
+      if (.not.associated(aero_state1_obj)) then
+         call endrun('microp_aero_run: construction of aero_state1_obj carma_aerosol_state object failed')
+      end if
+   end if
+
+   if (clim_modal_aero.or.clim_carma_aero) then
 
       itim_old = pbuf_old_tim_idx()
 
       call pbuf_get_field(pbuf, ast_idx,  cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
       call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   end if
+
+   if (clim_modal_aero) then
       call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet)
    end if
 
@@ -703,9 +727,9 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Droplet Activation
 
-   if (clim_modal_aero) then
+   if (clim_modal_aero .or. clim_carma_aero) then
 
-      ! for modal aerosol
+      ! for modal or carma aerosol
 
       ! partition cloud fraction into liquid water part
       lcldn = 0._r8
@@ -756,7 +780,7 @@ subroutine microp_aero_run ( &
       do k = top_lev, pver
          do i = 1, ncol
 
-            if (state1%q(i,k,cldliq_idx) >= qsmall) then
+            if (naer_all > 0 .and. state1%q(i,k,cldliq_idx) >= qsmall) then
 
                ! get droplet activation rate
 
@@ -841,7 +865,7 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !bulk aerosol ccn concentration (modal does it in ndrop, from dropmixnuc)
 
-   if (.not. clim_modal_aero) then
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero)) then
 
       ! ccn concentration as diagnostic
       call ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
@@ -859,7 +883,7 @@ subroutine microp_aero_run ( &
 
    end if
 
-   if (clim_modal_aero) then
+   if (clim_modal_aero.or.clim_carma_aero) then
       deallocate(factnum)
    end if
 

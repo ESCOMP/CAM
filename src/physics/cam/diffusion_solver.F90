@@ -161,6 +161,7 @@
     use linear_1d_operators, only : BoundaryType, BoundaryFixedLayer, &
          BoundaryData, BoundaryFlux, TriDiagDecomp
     use vdiff_lu_solver,     only : fin_vol_lu_decomp
+    use vertical_diffusion_solver, only : fin_vol_solve
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
     use air_composition,     only: rairv
@@ -367,8 +368,6 @@
     ! Combined molecular and eddy diffusion.
     real(r8) :: kv_total(pcols,pver+1)
 
-    logical  :: use_spcam
-
     !--------------------------------
     ! Variables needed for WACCM-X
     !--------------------------------
@@ -387,8 +386,6 @@
     ! ----------------------- !
     ! Main Computation Begins !
     ! ----------------------- !
-
-    call phys_getopts(use_spcam_out = use_spcam)
 
     errstring = ''
     if( ( diffuse(fieldlist,'u') .or. diffuse(fieldlist,'v') ) .and. .not. diffuse(fieldlist,'s') ) then
@@ -570,12 +567,15 @@
           tau_damp_rate(:,k) = tau_damp_rate(:,k) + dragblj(:ncol,k)
        end do
 
-       decomp = fin_vol_lu_decomp(ztodt, p, &
-            coef_q=tau_damp_rate, coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+       v(:ncol,:) = fin_vol_solve(ztodt, p, v(:ncol,:), ncol, pver, &
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
 
-       call decomp%left_div(u(:ncol,:))
-       call decomp%left_div(v(:ncol,:))
-       call decomp%finalize()
+       u(:ncol,:) = fin_vol_solve(ztodt, p, u(:ncol,:), ncol, pver, &
+                         coef_q=tau_damp_rate,                      &
+                         coef_q_diff=kvm(:ncol,:)*dpidz_sq)
+
+
 
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
@@ -715,16 +715,14 @@
   !                moist static energy,not the dry static energy.
 
     if( diffuse(fieldlist,'s') ) then
-      if (.not. use_spcam) then
 
        ! Add counter-gradient to input static energy profiles
+       do k = 1, pver
+          dse(:ncol,k) = dse(:ncol,k) + ztodt * p%rdel(:,k) * gravit  *      &
+                         ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgh(:ncol,k+1) &
+                         - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
+       end do
 
-         do k = 1, pver
-            dse(:ncol,k) = dse(:ncol,k) + ztodt * p%rdel(:,k) * gravit  *                &
-                                        ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgh(:ncol,k+1) &
-                                        - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
-         end do
-       endif
        ! Add the explicit surface fluxes to the lowest layer
        dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
 
@@ -741,16 +739,11 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kvh(:ncol,:)*dpidz_sq, &
-               upper_bndry=interface_boundary)
 
-          if (.not. use_spcam) then
-           call decomp%left_div(dse(:ncol,:), &
-                l_cond=BoundaryData(dse_top(:ncol)))
-          endif
-
-          call decomp%finalize()
+          dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                         coef_q_diff=kvh(:ncol,:)*dpidz_sq,                &
+                         upper_bndry=interface_boundary,                   &
+                         l_cond=BoundaryData(dse_top(:ncol)))
 
           ! Calculate flux at top interface
 
@@ -759,19 +752,14 @@
           topflx(:ncol) =  - kvh(:ncol,1) * tmpi2(:ncol,1) / (ztodt*gravit) * &
                ( dse(:ncol,1) - dse_top(:ncol) )
 
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kvt(:ncol,:)*dpidz_sq, &
-               coef_q_weight=cpairv(:ncol,:))
-
           ttemp0 = t(:ncol,:)
           ttemp = ttemp0
 
           ! upper boundary is zero flux for extended model
-          if (.not. use_spcam) then
-             call decomp%left_div(ttemp)
-          end if
+          ttemp = fin_vol_solve(ztodt, p, ttemp, ncol, pver, &
+                  coef_q_diff=kvt(:ncol,:)*dpidz_sq,         &
+                  coef_q_weight=cpairv(:ncol,:))
 
-          call decomp%finalize()
 
           !-------------------------------------
           !  Update dry static energy
@@ -791,16 +779,10 @@
 
           ! Boundary layer thickness of "0._r8" signifies that the boundary
           ! condition is defined directly on the top interface.
-          decomp = fin_vol_lu_decomp(ztodt, p, &
-               coef_q_diff=kv_total(:ncol,:)*dpidz_sq, &
-               upper_bndry=interface_boundary)
-
-          if (.not. use_spcam) then
-             call decomp%left_div(dse(:ncol,:), &
-                  l_cond=BoundaryData(dse_top(:ncol)))
-          end if
-
-          call decomp%finalize()
+          dse(:ncol,:) = fin_vol_solve(ztodt, p, dse(:ncol,:), ncol, pver, &
+                         coef_q_diff=kv_total(:ncol,:)*dpidz_sq,           &
+                         upper_bndry=interface_boundary,                   &
+                         l_cond=BoundaryData(dse_top(:ncol)))
 
           ! Calculate flux at top interface
 
@@ -832,27 +814,25 @@
     do m = 1, ncnst
 
        if( diffuse(fieldlist,'q',m) ) then
-           if (.not. use_spcam) then
 
-              ! Add the nonlocal transport terms to constituents in the PBL.
-              ! Check for neg q's in each constituent and put the original vertical
-              ! profile back if a neg value is found. A neg value implies that the
-              ! quasi-equilibrium conditions assumed for the countergradient term are
-              ! strongly violated.
+          ! Add the nonlocal transport terms to constituents in the PBL.
+          ! Check for neg q's in each constituent and put the original vertical
+          ! profile back if a neg value is found. A neg value implies that the
+          ! quasi-equilibrium conditions assumed for the countergradient term are
+          ! strongly violated.
 
-              qtm(:ncol,:pver) = q(:ncol,:pver,m)
+          qtm(:ncol,:pver) = q(:ncol,:pver,m)
 
-              do k = 1, pver
-                 q(:ncol,k,m) = q(:ncol,k,m) + &
-                                ztodt * p%rdel(:,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
-                              ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)                 &
-                              - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
-              end do
-              lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
-              do k = 1, pver
-                 q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
-              end do
-           endif
+          do k = 1, pver
+             q(:ncol,k,m) = q(:ncol,k,m) + &
+                            ztodt * p%rdel(:,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
+                            ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)               &
+                            - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
+          end do
+          lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
+          do k = 1, pver
+             q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
+          end do
 
            ! Add the explicit surface fluxes to the lowest layer
 
@@ -900,9 +880,7 @@
                  endif
               end if
 
-              if (.not. use_spcam) then
-                 call no_molec_decomp%left_div(q(:ncol,:,m))
-              end if
+              call no_molec_decomp%left_div(q(:ncol,:,m))
 
            end if
 

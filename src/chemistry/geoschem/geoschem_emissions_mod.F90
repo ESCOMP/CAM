@@ -432,13 +432,13 @@ CONTAINS
        ! Convert from kg/m2/s to molec/cm3/s
        ! Note 1: cnst_mw is in kg/kmole
        ! Note 2: avogad is in molecules/kmole
-       CALL Outfld( TRIM(SpcName), eflx(:nY,:nZ,N) / State_Met%BXHEIGHT(1,:nY,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), eflx(:nY,:nZ,N) / State_Met%BXHEIGHT(1,:nY,nZ:1:-1) * 1.0E-06_r8 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CLXF'
        ! Convert from kg/m2/s to molec/cm2/s
        ! Note 1: cnst_mw is in kg/kmole
        ! Note 2: avogad is in molecules/kmole
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2) * 1.0E-04_r8 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
        CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2), nY, LCHNK )
@@ -454,7 +454,7 @@ CONTAINS
     ! Multiply by MWNO * BXHEIGHT * 1.0E+06 / AVO
     !           = mole/molec * kg NO/mole * m * cm^3/m^3
     ! cnst_mw(N) is in g/mole
-    SCALFAC = cnst_mw(N) * 1.0E-03 * 1.0E+06 / AVO
+    SCALFAC = cnst_mw(N) * 1.0E-03_r8 * 1.0E+06_r8 / AVO
     DO J = 1, nY
     DO L = 1, nZ
        eflx(J,L,N) = eflx(J,L,N)                      &

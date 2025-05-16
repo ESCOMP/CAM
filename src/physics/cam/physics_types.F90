@@ -32,7 +32,6 @@ module physics_types
   public physics_ptend_init
   public physics_state_set_grid
   public physics_dme_adjust  ! adjust dry mass and energy for change in water
-                             ! cannot be applied to eul or sld dycores
   public physics_state_copy  ! copy a physics_state object
   public physics_ptend_copy  ! copy a physics_ptend object
   public physics_ptend_sum   ! accumulate physics_ptend objects
@@ -101,7 +100,8 @@ module physics_types
                            ! Second dimension is (phys_te_idx) CAM physics total energy and
                            ! (dyn_te_idx) dycore total energy computed in physics
           te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
-          te_cur,         &! vertically integrated total (kinetic + static) energy of current state
+          te_cur           ! vertically integrated total (kinetic + static) energy of current state
+     real(r8), dimension(:), allocatable           :: &
           tw_ini,         &! vertically integrated total water of initial state
           tw_cur           ! vertically integrated total water of new state
      real(r8), dimension(:,:),allocatable          :: &
@@ -537,9 +537,9 @@ contains
          varname="state%te_ini",    msg=msg)
     call shr_assert_in_domain(state%te_cur(:ncol,:),    is_nan=.false., &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol,:),    is_nan=.false., &
+    call shr_assert_in_domain(state%tw_ini(:ncol),      is_nan=.false., &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol,:),    is_nan=.false., &
+    call shr_assert_in_domain(state%tw_cur(:ncol),      is_nan=.false., &
          varname="state%tw_cur",    msg=msg)
     call shr_assert_in_domain(state%temp_ini(:ncol,:),  is_nan=.false., &
          varname="state%temp_ini",  msg=msg)
@@ -615,9 +615,9 @@ contains
          varname="state%te_ini",    msg=msg)
     call shr_assert_in_domain(state%te_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_ini(:ncol),      lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_cur(:ncol),      lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_cur",    msg=msg)
     call shr_assert_in_domain(state%temp_ini(:ncol,:),  lt=posinf_r8, gt=neginf_r8, &
          varname="state%temp_ini",  msg=msg)
@@ -1208,9 +1208,6 @@ end subroutine physics_ptend_copy
     !         interfaces and midpoints to the surface pressure. The result is no longer in
     !         the original hybrid coordinate.
     !
-    !         This procedure cannot be applied to the "eul" or "sld" dycores because they
-    !         require the hybrid coordinate.
-    !
     ! Author: Byron Boville
 
     ! !REVISION HISTORY:
@@ -1262,7 +1259,7 @@ end subroutine physics_ptend_copy
     state%ps(:ncol) = state%pint(:ncol,1)
 
     !
-    ! original code for backwards compatability with FV and EUL
+    ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
       do k = 1, pver
@@ -1351,8 +1348,8 @@ end subroutine physics_ptend_copy
      end do
      state_out%te_ini(:ncol,:) = state_in%te_ini(:ncol,:)
      state_out%te_cur(:ncol,:) = state_in%te_cur(:ncol,:)
-     state_out%tw_ini(:ncol,:) = state_in%tw_ini(:ncol,:)
-     state_out%tw_cur(:ncol,:) = state_in%tw_cur(:ncol,:)
+     state_out%tw_ini(:ncol)   = state_in%tw_ini(:ncol)
+     state_out%tw_cur(:ncol)   = state_in%tw_cur(:ncol)
 
     do k = 1, pver
        do i = 1, ncol
@@ -1667,10 +1664,10 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%te_cur(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_cur')
 
-  allocate(state%tw_ini(psetcols,2), stat=ierr)
+  allocate(state%tw_ini(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_ini')
 
-  allocate(state%tw_cur(psetcols,2), stat=ierr)
+  allocate(state%tw_cur(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_cur')
 
   allocate(state%temp_ini(psetcols,pver), stat=ierr)
@@ -1720,8 +1717,8 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
 
   state%te_ini(:,:) = inf
   state%te_cur(:,:) = inf
-  state%tw_ini(:,:) = inf
-  state%tw_cur(:,:) = inf
+  state%tw_ini(:) = inf
+  state%tw_cur(:) = inf
   state%temp_ini(:,:) = inf
   state%z_ini(:,:)  = inf
 

@@ -398,7 +398,7 @@ contains
           cnt = arraydimsize
           call shr_scam_getCloseLatLon(ncid,scmlat,scmlon,closelat,closelon,latidx,lonidx)
           if (trim(field_dnames(1)) == 'lon') then
-            strt(1) = lonidx ! First dim always lon for Eulerian dycore
+            strt(1) = lonidx
           else
             call endrun(trim(subname)//': lon should be first dimension for '//trim(varname))
           end if
@@ -831,7 +831,7 @@ contains
           cnt = arraydimsize
           call shr_scam_getCloseLatLon(ncid,scmlat,scmlon,closelat,closelon,latidx,lonidx)
           if (trim(field_dnames(1)) == 'lon') then
-            strt(1) = lonidx ! First dim always lon for Eulerian dycore
+            strt(1) = lonidx
           else
             call endrun(trim(subname)//': lon should be first dimension for '//trim(varname))
           end if

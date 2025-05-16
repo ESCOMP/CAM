@@ -62,9 +62,6 @@ begin
   adjust_state_from_topo = field@adjust_state_from_topo
 
   mass_fix               = False
-  if(dycore .eq. "eul") then
-    mass_fix             = True
-  end if
 
 ;------------------------
 ; Define disk directories
@@ -231,8 +228,8 @@ begin
 
   exit_script = False
 
-  if(dycore .ne. "eul" .and. dycore .ne. "fv" .and. dycore .ne. "homme" ) then
-     print("Error:  'dycore' must be:  'eul', 'fv', or 'homme'")
+  if(dycore .ne. "fv" .and. dycore .ne. "homme" ) then
+     print("Error:  'dycore' must be:  'fv', or 'homme'")
      print("        'dycore' is currently:  "+dycore)
      exit_script = True
   end if

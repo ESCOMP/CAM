@@ -140,9 +140,6 @@ subroutine convect_deep_init(pref_edge)
      call zm_conv_init(pref_edge)
   case('UNICON')
      if (masterproc) write(iulog,*)'convect_deep: deep convection done by UNICON'
-  case('SPCAM')
-     if (masterproc) write(iulog,*)'convect_deep: deep convection done by SPCAM'
-     return
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select

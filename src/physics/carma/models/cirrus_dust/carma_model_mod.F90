@@ -335,7 +335,7 @@ contains
           ! Read in the tables.
           call wrap_inq_varid(fid, 'wavelength', wave_vid)
           call wrap_get_var_realx(fid, wave_vid, warren_wave)
-          warren_wave = warren_wave * 1e-4          ! um -> cm
+          warren_wave = warren_wave * 1e-4_r8          ! um -> cm
   
           call wrap_inq_varid(fid, 'm_real', real_vid)
           call wrap_get_var_realx(fid, real_vid, warren_real)
@@ -1386,7 +1386,7 @@ contains
         ! Now integrate the snow distribution. We know the snow amount, but need an effective radius
         ! to determine the snow number.
         sub_d  = 2._f * (r(NBIN) + (dr(NBIN) / 2._f)) * shapeFactor
-        sub_dd = (snow_max_d * 1e-4 - sub_d) / NINTS_SNOW
+        sub_dd = (snow_max_d * 1e-4_r8 - sub_d) / NINTS_SNOW
         sub_d  = sub_d + sub_dd / 2._f
         
         remainder = 0._f
@@ -1403,7 +1403,7 @@ contains
           !   m = aD^2.1
           !
           ! NOTE: This needs to match the density assumption made in the detrained ice bins.
-          remainder = remainder + nsnow / lambda * 4.22e-3_f * (sub_d**2.1)
+          remainder = remainder + nsnow / lambda * 4.22e-3_f * (sub_d**2.1_r8)
   
           sub_d = sub_d + sub_dd
         end do
@@ -1416,7 +1416,7 @@ contains
         ! Now integrate the snow distribution. We know the snow amount, but need an effective radius
         ! to determine the snow number.
         snow_d = 2._f * ((r(NBIN) + dr(NBIN) / 2._f)) 
-        sub_dd = (snow_max_d * 1e-4 - snow_d) / NINTS_SNOW
+        sub_dd = (snow_max_d * 1e-4_r8 - snow_d) / NINTS_SNOW
         sub_d  = snow_d + (sub_dd / 2._f)
        
         snow_r3 = 0._f
@@ -2570,7 +2570,7 @@ contains
                        * sqrt(1._r8 + .006_r8/rhop(ibin)/GRAV/(r(ibin)*2._r8)**2.5_r8) &
                        / sqrt(1.928_r8*(1331._r8*(r(ibin)*2._r8)**1.56_r8 + .38_r8)**.092_r8 - 1._r8)
        else
-           uth = uthfact*1.e-2_r8* 0.13_r8 * sqrt(rhop(ibin)*GRAV*(.75e-4_r8)*2./rhoa)   &
+           uth = uthfact*1.e-2_r8* 0.13_r8 * sqrt(rhop(ibin)*GRAV*(.75e-4_r8)*2._r8/rhoa)   &
                        * sqrt(1._r8 + .006_r8/rhop(ibin)/GRAV/((.75e-4_r8)*2._r8)**2.5_r8) &
                        / sqrt(1.928_r8*(1331._r8*((.75e-4_r8)*2._r8)**1.56_r8 + .38_r8)**.092_r8 - 1._r8)
        endif
@@ -2703,7 +2703,7 @@ contains
     if (present(wbk)) then
       k = wbk
     else
-      k = 0.94*u**0.5_r8            ! follow Grini and Zender, 2004JGR
+      k = 0.94_r8*u**0.5_r8            ! follow Grini and Zender, 2004JGR
  !    k = 2.5_r8                   ! Lansing's estimate
     end if 
   
@@ -2718,4 +2718,4 @@ contains
 
   end subroutine WeibullWind
 
-end module
+end module carma_model_mod

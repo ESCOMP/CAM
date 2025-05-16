@@ -26,5 +26,3 @@ FINCL4       = 'T:I       ','U:I       ','V:I       ','Q:I       ','DTCOND:I  ',
                'PS:I      ','PHIS:I    ','FU        ','FV        ','RELHUM:I  ',
 
 collect_column_output = .false.,.false.,.true.,.true.
-
-eul_divdampn=1.

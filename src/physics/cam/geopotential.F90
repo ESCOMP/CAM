@@ -88,7 +88,7 @@ use geopotential_temp,         only: geopotential_temp_run !CCPP version
     call cnst_get_ind('Q', ixq)
 
     !
-    ! original code for backwards compatability with FV and EUL
+    ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
 

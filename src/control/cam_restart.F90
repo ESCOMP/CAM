@@ -106,12 +106,8 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
    ! (%c = caseid, $y = year, $m = month, $d = day, $s = seconds in day, %t = number)
    rfilename_spec = '%c.cam' // trim(inst_suffix) //'.r.%y-%m-%d-%s.nc'
 
-   if (present(yr_spec).and.present(mon_spec).and.present(day_spec).and.present(sec_spec)) then
-      fname = interpret_filename_spec( rfilename_spec, &
-              yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
-   else
-      fname = interpret_filename_spec( rfilename_spec )
-   end if
+   fname = interpret_filename_spec( rfilename_spec, &
+        yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
 
    call cam_pio_createfile(fh, trim(fname), 0)
    ierr = cam_pio_set_fill(fh)
@@ -132,38 +128,39 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
    call ionosphere_write_restart(fh)
    call write_restart_physics(fh, cam_in, cam_out, pbuf2d)
 
-   if (present(yr_spec).and.present(mon_spec).and.&
-      present(day_spec).and.present(sec_spec)) then
-      call write_restart_history(fh, yr_spec=yr_spec, mon_spec=mon_spec, &
-                                 day_spec=day_spec, sec_spec= sec_spec )
-   else
-      call write_restart_history(fh)
-   end if
+   call write_restart_history(fh, yr_spec=yr_spec, mon_spec=mon_spec, &
+        day_spec=day_spec, sec_spec= sec_spec )
 
    ! Close the primary restart file
    call pio_closefile(fh)
 
    ! Update the restart pointer file
-   call write_rest_pfile(fname)
+   call write_rest_pfile(fname, yr_spec=yr_spec, mon_spec=mon_spec, &
+                                 day_spec=day_spec, sec_spec= sec_spec )
 
 end subroutine cam_write_restart
 
 !========================================================================================
 
-subroutine write_rest_pfile(restart_file)
+subroutine write_rest_pfile(restart_file, yr_spec, mon_spec, day_spec, sec_spec)
 
    ! Write the restart pointer file
-
-   use cam_initfiles, only: rest_pfile
-
+   use cam_instance,     only: inst_suffix
+   use filenames,        only: interpret_filename_spec
    character(len=*), intent(in) :: restart_file
+   integer,       optional, intent(in) :: yr_spec         ! Simulation year
+   integer,       optional, intent(in) :: mon_spec        ! Simulation month
+   integer,       optional, intent(in) :: day_spec        ! Simulation day
+   integer,       optional, intent(in) :: sec_spec        ! Seconds into current simulation day
 
    integer :: nsds, ierr
+   character(len=CL) :: rest_pfile
    character(len=*), parameter :: sub='write_rest_pfile'
    !---------------------------------------------------------------------------
 
    if (masterproc) then
-
+      rest_pfile = interpret_filename_spec('rpointer.cam'//trim(inst_suffix)//'.'//'%y-%m-%d-%s',&
+           yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
       nsds = getunit()
       call opnfil(rest_pfile, nsds, 'f')
       rewind nsds

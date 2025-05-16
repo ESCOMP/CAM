@@ -56,4 +56,7 @@
 <csw_time_type>CYCLICAL</csw_time_type>
 <csw_cycle_yr>1850 </csw_cycle_yr>
 
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850</sim_year>
+
 </namelist_defaults>

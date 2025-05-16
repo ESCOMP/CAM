@@ -11,7 +11,7 @@ Verifies that changing physics load balancing doesn't change answers
 from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
-from CIME.utils import append_testlog
+from CIME.status import append_testlog
 
 logger = logging.getLogger(__name__)
 

@@ -26,6 +26,9 @@ real(r8), target :: wavenumber_high_longwave(nlwbands)
 
 logical :: wavenumber_boundaries_set = .false.
 
+! First and last g-point for each band.
+integer, public, protected :: band2gpt_sw(2,nswbands)
+
 integer, public, protected :: nswgpts  ! number of SW g-points
 integer, public, protected :: nlwgpts  ! number of LW g-points
 
@@ -103,6 +106,9 @@ subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
    values = kdist_sw%get_band_lims_wavenumber()
    wavenumber_low_shortwave = values(1,:)
    wavenumber_high_shortwave = values(2,:)
+
+   ! First and last g-point for each SW band:
+   band2gpt_sw = kdist_sw%get_band_lims_gpoint()
 
    ! Indices into specific bands
    idx_sw_diag     = get_band_index_by_value('sw', 500.0_r8, 'nm')

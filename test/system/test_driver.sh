@@ -554,7 +554,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     case $hostname in
         # derecho
         derec* | dec* )
-          testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         # casper
         casper* | crhtc* )

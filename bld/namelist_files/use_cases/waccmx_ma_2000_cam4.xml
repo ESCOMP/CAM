@@ -74,7 +74,7 @@
 
 <!-- Monthly -->
 <fincl1>
-  'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR',
+  'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR',
   'CFC11', 'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH',
   'CH4', 'CL', 'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2',
   'CLOUD', 'CO', 'CO2', 'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT',
@@ -110,7 +110,7 @@
   'CL','CL2', 'CLO', 'OCLO', 'CL2O2', 'CLONO2', 'HOCL', 'HCL', 'CLOX', 'CLOY',
   'BR', 'BRO', 'HOBR', 'HBR', 'BRCL', 'BRONO2', 'BROX', 'BROY', 'TCLY',
   'jo2_a', 'jo2_b', 'jo3_a',  'jo3_b', 'jhocl', 'jno3_b', 'jcl2o2',
-  'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE','AOA1','AOA2',
+  'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE',
   'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
   'O2_1S', 'O2_1D',
   'Op', 'O2p', 'Np', 'NOp', 'N2p', 'e',
@@ -121,7 +121,7 @@
 
 <!-- Instantaneous every day -->
 <fincl3>
-  'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113',
+  'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113',
   'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH', 'CH4', 'CL', 'CL2', 'CL2O2',
   'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD', 'CO', 'CO2', 'DTCOND', 'DTV',
   'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC', 'FSDS', 'FSNS', 'FSNSC', 'FSNT',

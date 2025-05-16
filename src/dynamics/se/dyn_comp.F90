@@ -10,7 +10,7 @@ use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname,
                                   cnst_is_a_water_species
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
-use phys_control,           only: use_gw_front, use_gw_front_igw
+use phys_control,           only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
 use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf, &
                                   ini_grid_hdim_name
 
@@ -79,6 +79,7 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
+integer, public    :: vort4gw_idx      = -1
 
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -572,6 +573,10 @@ subroutine dyn_register()
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/),       &
          frontga_idx)
    end if
+   if (use_gw_movmtn_pbl) then
+      call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols,pver/),       &
+         vort4gw_idx)
+   end if
 
 end subroutine dyn_register
 
@@ -875,8 +880,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
       !$OMP END PARALLEL
-
-      if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
+      if (use_gw_front .or. use_gw_front_igw .or. use_gw_movmtn_pbl) call gws_init(elem)
    end if  ! iam < par%nprocs
 
    call addfld ('nu_kmvis',   (/ 'lev' /), 'A', '', 'Molecular viscosity Laplacian coefficient'            , gridname='GLL')
@@ -1993,7 +1997,7 @@ subroutine set_phis(dyn_in)
                               PHIS_OUT=phis_tmp, mask=pmask(:))
       deallocate(glob_ind)
 
-   end if
+    end if
 
    deallocate(pmask)
 

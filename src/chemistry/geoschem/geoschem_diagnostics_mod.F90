@@ -56,10 +56,10 @@ MODULE GeosChem_Diagnostics_Mod
   REAL(r8) :: NHx_MWs(2)
   REAL(r8) :: TOTH_MWs(3)
 
-  REAL(r8), PARAMETER :: MW_NIT  = 62.01
-  REAL(r8), PARAMETER :: MW_HNO3 = 63.01
-  REAL(r8), PARAMETER :: MW_HCl  = 36.45
-  REAL(r8), PARAMETER :: MW_H2O  = 18.02
+  REAL(r8), PARAMETER :: MW_NIT  = 62.01_r8
+  REAL(r8), PARAMETER :: MW_HNO3 = 63.01_r8
+  REAL(r8), PARAMETER :: MW_HCl  = 36.45_r8
+  REAL(r8), PARAMETER :: MW_H2O  = 18.02_r8
 
   ! NOx species
   INTEGER :: i_NO, i_NO2, i_N

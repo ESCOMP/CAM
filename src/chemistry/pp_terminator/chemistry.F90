@@ -32,9 +32,10 @@ module chemistry
   public :: chem_write_restart
   public :: chem_read_restart
   public :: chem_init_restart
-  public :: chem_readnl                    ! read chem namelist 
+  public :: chem_readnl                    ! read chem namelist
   public :: chem_reset_fluxes
   public :: chem_emissions
+  public :: chem_has_ndep_flx
 
   interface chem_write_restart
      module procedure chem_write_restart_bin
@@ -45,9 +46,11 @@ module chemistry
      module procedure chem_read_restart_pio
   end interface
 
+  logical, parameter :: chem_has_ndep_flx = .false.
+
   ! Private data
   integer, parameter :: nspecies = 3
-  
+
   integer :: idx_cl =-1
   integer :: idx_cl2=-1
 
@@ -75,10 +78,10 @@ contains
 !================================================================================================
 
   subroutine chem_register
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: register advected constituents for parameterized greenhouse gas chemistry
-    ! 
+    !
     !-----------------------------------------------------------------------
 
     real(r8), parameter :: cptmp = 666._r8
@@ -86,10 +89,10 @@ contains
 
     logical :: camout
     integer :: i, n
-    
+
     do i = 1, nspecies
        camout = trim(species(i)) .eq. 'RHO'
-       call cnst_add( species(i), adv_mass(i), cptmp, qmin, n, &  
+       call cnst_add( species(i), adv_mass(i), cptmp, qmin, n, &
                       readiv=.true.,mixtype='dry',cam_outfld=camout)
        indices(i) = n
        map2chm(n) = i
@@ -123,12 +126,12 @@ contains
 !================================================================================================
 
   function chem_implements_cnst(name)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: return true if specified constituent is implemented by this package
-    ! 
+    !
     ! Author: B. Eaton
-    ! 
+    !
     !-----------------------------------------------------------------------
     implicit none
     !-----------------------------Arguments---------------------------------
@@ -137,7 +140,7 @@ contains
     logical :: chem_implements_cnst        ! return value
 
     integer :: i
-    
+
     chem_implements_cnst = .false.
 
     do i = 1, nspecies
@@ -150,13 +153,13 @@ contains
   end function chem_implements_cnst
 
 !===============================================================================
-  
+
   subroutine chem_init(phys_state, pbuf2d)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: initialize parameterized greenhouse gas chemistry
     !          (declare history variables)
-    ! 
+    !
     !-----------------------------------------------------------------------
     use physics_buffer, only: physics_buffer_desc
     use cam_history,    only: addfld, add_default, horiz_only
@@ -196,7 +199,7 @@ contains
   subroutine chem_timestep_init(phys_state, pbuf2d)
     use physics_buffer,   only: physics_buffer_desc
 
-    type(physics_state), intent(in):: phys_state(begchunk:endchunk)                 
+    type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
   end subroutine chem_timestep_init
@@ -222,7 +225,7 @@ contains
     real(r8), optional,  intent(out)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
 
     real(r8) :: a(pver),b(pver),c(pver),d(pver)
-    
+
     real(r8) :: k1(pcols)
     real(r8) :: k2(pcols)
 
@@ -278,7 +281,7 @@ contains
            l(i,:) = (1._r8 - e(i,:))/det(i,:)/dt
         elsewhere
            l(i,:) = 4._r8*k2(i)
-        endwhere 
+        endwhere
 
         cl_f(i,:) = -l(i,:)*(cl(i,:) - det(i,:) + r(i) )*(cl(i,:) + det(i,:) + r(i)) / ( 1._r8 +e(i,:) + dt*l(i,:)*(cl(i,:) + r(i)))
         cl2_f(i,:) = -cl_f(i,:) / 2._r8
@@ -325,7 +328,7 @@ contains
     real(r8)            :: q_vmr(size(q, 1)) !  volume mixing ratio (ncol)
     real(r8)            :: det(size(q, 1))
     real(r8)            :: krat(size(q, 1))
-    
+
     real(r8)            :: k1(size(q, 1))
     real(r8)            :: k2(size(q, 1))
 
@@ -347,7 +350,7 @@ contains
     krat(:) = k1(:) / (4._r8 * k2(:))
 
     h = init_vmr_cl + 2._r8 * init_vmr_cl2
-    
+
     det(:) = sqrt(krat(:) * krat(:) + 2._r8 * h * krat(:))
 
     if (trim(name) == trim(species(1)) ) then
@@ -412,7 +415,7 @@ contains
   end subroutine chem_init_restart
 !================================================================================
   subroutine chem_reset_fluxes( fptr, cam_in )
-    use camsrfexch, only : cam_in_t     
+    use camsrfexch, only : cam_in_t
 
     real(r8), pointer             :: fptr(:,:)        ! pointer into    array data
     type(cam_in_t), intent(inout) :: cam_in(begchunk:endchunk)
@@ -420,7 +423,7 @@ contains
   end subroutine chem_reset_fluxes
 !================================================================================
   subroutine chem_emissions( state, cam_in, pbuf )
-    use camsrfexch,       only: cam_in_t     
+    use camsrfexch,       only: cam_in_t
     use physics_buffer,   only: physics_buffer_desc
 
     ! Arguments:

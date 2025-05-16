@@ -489,80 +489,80 @@ contains
       ! Register output fields from SILHS
       !-------------------------------
       call addfld('SILHS_NCLD_SCOL', (/'psubcols', 'ilev    '/), 'I', 'm^-3', &
-           'Subcolumn Cloud Number Concentration', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Cloud Number Concentration', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_NRAIN_SCOL', (/'psubcols', 'ilev    '/), 'I', 'm^-3', &
-           'Subcolumn Number Concentration of Rain from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Number Concentration of Rain from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_OMEGA_SCOL', (/'psubcols', 'ilev    '/), 'I', 'Pa/s', &
-           'Subcolumn vertical pressure velocity', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn vertical pressure velocity', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_RCM_SCOL', (/'psubcols', 'ilev    '/), 'I', 'kg/kg', &
-           'Subcolumn Cloud Liquid Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Cloud Liquid Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_RICLD_SCOL', (/'psubcols', 'ilev    '/), 'I', 'kg/kg', &
-           'Subcolumn Cloud Ice Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Cloud Ice Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_NICLD_SCOL', (/'psubcols', 'ilev    '/), 'I', 'kg/kg', &
-           'Subcolumn Cloud Ice Number Conc from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Cloud Ice Number Conc from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_RRAIN_SCOL', (/'psubcols', 'ilev    '/), 'I', 'kg/kg', &
-           'Subcolumn Precipitating Liquid Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Precipitating Liquid Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_RT_SCOL', (/'psubcols', 'ilev    '/), 'I', 'kg/kg ', &
-           'Subcolumn Total Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn Total Water from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_THLM_SCOL', (/'psubcols', 'ilev    '/), 'I', 'K', &
-           'Subcolumn liquid water pot temperature', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn liquid water pot temperature', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_WEIGHT_SCOL', (/'psubcols'/), 'I', 'frac', &
-           'Weights for each subcolumn', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Weights for each subcolumn', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
       call addfld('SILHS_WM_SCOL', (/'psubcols', 'ilev    '/), 'I', 'm/s', &
-           'Subcolumn vertical velocity from SILHS', flag_xyfill=.true., fill_value=1.e30_r8)
+           'Subcolumn vertical velocity from SILHS', flag_xyfill=.true., fill_value=1.e30_r8, sampled_on_subcycle=.true.)
 
       call addfld('NR_IN_LH', (/ 'lev' /), 'I', 'm^-3', &
-                  'Num Rain Conc as input to SILHS')
+                  'Num Rain Conc as input to SILHS', sampled_on_subcycle=.true.)
      call addfld('SILHS_RTM', (/ 'ilev' /), 'I', 'kg/kg', &
-                  'Input total water mixing ratio')
+                  'Input total water mixing ratio', sampled_on_subcycle=.true.)
      call addfld('SILHS_THLM', (/ 'ilev' /), 'I', 'K', &
-                  'Input liquid water potential temperature')
+                  'Input liquid water potential temperature', sampled_on_subcycle=.true.)
      call addfld('SILHS_QC_IN', (/ 'lev' /), 'I', 'kg/kg', &
-                  'Input cloud water mixing ratio')
+                  'Input cloud water mixing ratio', sampled_on_subcycle=.true.)
      call addfld('SILHS_QI_IN', (/ 'lev' /), 'I', 'kg/kg', &
-                  'Input cloud ice mixing ratio')
+                  'Input cloud ice mixing ratio', sampled_on_subcycle=.true.)
      call addfld('SILHS_NC_IN', (/ 'lev' /), 'I', '#/kg', &
-                  'Input cloud water number concentration')
+                  'Input cloud water number concentration', sampled_on_subcycle=.true.)
      call addfld('SILHS_NI_IN', (/ 'lev' /), 'I', '#/kg', &
-                  'Input cloud ice number concentration')
+                  'Input cloud ice number concentration', sampled_on_subcycle=.true.)
      call addfld('AKM_CLUBB', (/ 'ilev' /), 'I', '(kg/kg)/s', &
-                  'Exact Kessler autoconversion')
+                  'Exact Kessler autoconversion', sampled_on_subcycle=.true.)
      call addfld('AKM_LH_CLUBB', (/ 'ilev' /), 'I', '(kg/kg)/s', &
-                  'Monte Carlo estimate of Kessler autoconversion')
+                  'Monte Carlo estimate of Kessler autoconversion', sampled_on_subcycle=.true.)
      call addfld('INVS_EXNER', (/ 'lev' /), 'I', 'none', &
-                  'inverse EXNER function from state in subcol_SILHS')
+                  'inverse EXNER function from state in subcol_SILHS', sampled_on_subcycle=.true.)
      call addfld('SILHS_ZTODT', horiz_only, 'I', 's', & 
-                  'Length of Physics timestep (for debugging)')
+                  'Length of Physics timestep (for debugging)', sampled_on_subcycle=.true.)
      if ( subcol_SILHS_constrainmn ) then
         call addfld('SILHS_MSC_CLDICE', (/ 'lev' /), 'A', 'kg/kg', &
-                    'Mean Cloud Ice across subcolumns')
+                    'Mean Cloud Ice across subcolumns', sampled_on_subcycle=.true.)
         call addfld('SILHS_STDSC_CLDICE', (/ 'lev' /), 'A', 'kg/kg', &
-                    'Standard deviation of Ice across subcolumns')
+                    'Standard deviation of Ice across subcolumns', sampled_on_subcycle=.true.)
         if ( ixsnow > 0 ) then
            call addfld('SILHS_MSC_CLDLIQ', (/ 'lev' /), 'A', 'kg/kg', &
-                       'Mean Cloud Liquid across subcolumns')
+                       'Mean Cloud Liquid across subcolumns', sampled_on_subcycle=.true.)
            call addfld('SILHS_STDSC_CLDLIQ', (/ 'lev' /), 'A', 'kg/kg', &
-                       'Standard deviation of Liquid across subcolumns')
+                       'Standard deviation of Liquid across subcolumns', sampled_on_subcycle=.true.)
            call addfld('SILHS_MSC_Q', (/ 'lev' /), 'A', 'kg/kg', &
-                       'Mean water vapor across subcolumns')
+                       'Mean water vapor across subcolumns', sampled_on_subcycle=.true.)
            call addfld('SILHS_STDSC_Q', (/ 'lev' /), 'A', 'kg/kg', &
-                       'Standard deviation of water vapor across subcolumns')
+                       'Standard deviation of water vapor across subcolumns', sampled_on_subcycle=.true.)
         endif ! ixsnow > 0
      endif ! subcol_SILHS_constrainmn
      call addfld('SILHS_EFF_CLDFRAC', (/ 'lev' /), 'A', 'frac', &
-                  'Calculated cloud fraction from subcolumn liq or ice') 
+                  'Calculated cloud fraction from subcolumn liq or ice', sampled_on_subcycle=.true.)
 
      call addfld('SILHS_CLUBB_PRECIP_FRAC', (/ 'lev' /), 'A', 'frac', &
-                  'Precipitation fraction from CLUBB (set_up_pdf_params_incl_hydromet)')
+                  'Precipitation fraction from CLUBB (set_up_pdf_params_incl_hydromet)', sampled_on_subcycle=.true.)
      call addfld('SILHS_CLUBB_ICE_SS_FRAC', (/ 'lev' /), 'A', 'frac', &
-                  'Ice supersaturation fraction from CLUBB')
+                  'Ice supersaturation fraction from CLUBB', sampled_on_subcycle=.true.)
 
-     call addfld ('QVHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Water vapor mixing ratio tendency from hole filling')
-     call addfld ('QCHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud water mixing ratio tendency from hole filling')
-     call addfld ('QRHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Rain water mixing ratio tendency from hole filling')
-     call addfld ('QIHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice mixing ratio tendency from hole filling')
-     call addfld ('QSHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from hole filling')
-     call addfld ('THFTEN', (/ 'lev' /), 'A', 'K/s', 'Temperature tendency from hole filling')
+     call addfld ('QVHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Water vapor mixing ratio tendency from hole filling', sampled_on_subcycle=.true.)
+     call addfld ('QCHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud water mixing ratio tendency from hole filling', sampled_on_subcycle=.true.)
+     call addfld ('QRHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Rain water mixing ratio tendency from hole filling', sampled_on_subcycle=.true.)
+     call addfld ('QIHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice mixing ratio tendency from hole filling', sampled_on_subcycle=.true.)
+     call addfld ('QSHFTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from hole filling', sampled_on_subcycle=.true.)
+     call addfld ('THFTEN', (/ 'lev' /), 'A', 'K/s', 'Temperature tendency from hole filling', sampled_on_subcycle=.true.)
 
 #endif
 #endif

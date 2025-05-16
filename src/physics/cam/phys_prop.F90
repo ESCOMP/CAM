@@ -6,7 +6,7 @@ module phys_prop
 ! This module is a utility used by the rad_constituents module.  The properties stored
 ! here are meant to be accessed via that module.  This module knows nothing about how
 ! this data is associated with the constituents that are radiatively active or those that
-! are being used for diagnostic calculations.  That is the responsibility of the 
+! are being used for diagnostic calculations.  That is the responsibility of the
 ! rad_constituents module.
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
@@ -74,6 +74,33 @@ type :: physprop_type
    real(r8), pointer :: refrtablw(:,:)  ! table of real refractive indices for aerosols infrared
    real(r8), pointer :: refitablw(:,:)  ! table of imag refractive indices for aerosols infrared
 
+   ! for core/shell optics
+   real(r8), pointer :: extpsw2(:,:) ! specific extinction
+   real(r8), pointer :: abspsw2(:,:) ! specific absorption
+   real(r8), pointer :: asmpsw2(:,:) ! asymmetry factor
+   real(r8), pointer :: absplw2(:,:) ! specific absorption
+   real(r8), pointer :: corefrac(:)  ! table of real refractive indices for aerosols visible
+   integer :: nfraC       ! number of Chebyshev coefficients
+
+   ! for hygroscopic species of pure sulfate
+   real(r8), pointer :: sw_hygro_ext_wtp(:,:)
+   real(r8), pointer :: sw_hygro_ssa_wtp(:,:)
+   real(r8), pointer :: sw_hygro_asm_wtp(:,:)
+   real(r8), pointer :: lw_hygro_abs_wtp(:,:)
+   real(r8), pointer :: wgtpct (:)  ! weight percent!
+   integer :: nwtp       ! number weight percent
+   ! for hygroscopic species of externally mixed aerosols
+   real(r8), pointer :: sw_hygro_coreshell_ext(:,:,:,:,:)
+   real(r8), pointer :: sw_hygro_coreshell_ssa(:,:,:,:,:)
+   real(r8), pointer :: sw_hygro_coreshell_asm(:,:,:,:,:)
+   real(r8), pointer :: lw_hygro_coreshell_abs(:,:,:,:,:)
+   real(r8), pointer :: bcdust(:)  ! table of bc-dust mass ratio
+   real(r8), pointer :: kap(:)         ! table of kappa
+   real(r8), pointer :: relh(:)         ! table of relative humidity
+   integer :: nbcdust
+   integer :: nkap
+   integer :: nrelh
+
    ! microphysics parameters.
    character(len=32) :: aername ! for output of number concentration
    real(r8) :: density_aer      ! density of aerosol (kg/m3)
@@ -105,7 +132,7 @@ type (physprop_type), pointer :: physprop(:)
 ! the properties.  Searching the uniquefilenames array provides the index into the physprop
 ! array.
 character(len=256), allocatable :: uniquefilenames(:)
- 
+
 ! Number of evenly spaced intervals in rh used in this module and in the aer_rad_props module
 ! for calculations of aerosol hygroscopic growth.
 integer, parameter, public :: nrh = 1000
@@ -135,7 +162,7 @@ subroutine physprop_accum_unique_files(radname, type)
    do i = 1, ncnst
 
       ! check if radname is either a bulk aerosol or a mode
-      if (type(i) == 'A' .or. type(i) == 'M') then
+      if (type(i) == 'A' .or. type(i) == 'M' .or. type(i) == 'B') then
 
          ! check if this filename has been used by another aerosol.  If not
          ! then add it to the list of unique names.
@@ -194,7 +221,7 @@ subroutine physprop_init()
    character(len=256) :: locfn ! path to actual file used
    character(len=32)  :: aername_str ! string read from netCDF file -- may contain trailing
                                      ! nulls which aren't dealt with by trim()
-   
+
    integer :: ierr ! error codes from mpi
 
    !------------------------------------------------------------------------------------
@@ -206,6 +233,20 @@ subroutine physprop_init()
       nullify(physprop(fileindex)%sw_hygro_ssa)
       nullify(physprop(fileindex)%sw_hygro_asm)
       nullify(physprop(fileindex)%lw_hygro_abs)
+
+      nullify(physprop(fileindex)%sw_hygro_ext_wtp)
+      nullify(physprop(fileindex)%sw_hygro_ssa_wtp)
+      nullify(physprop(fileindex)%sw_hygro_asm_wtp)
+      nullify(physprop(fileindex)%lw_hygro_abs_wtp)
+      nullify(physprop(fileindex)%wgtpct)
+
+      nullify(physprop(fileindex)%sw_hygro_coreshell_ext)
+      nullify(physprop(fileindex)%sw_hygro_coreshell_ssa)
+      nullify(physprop(fileindex)%sw_hygro_coreshell_asm)
+      nullify(physprop(fileindex)%lw_hygro_coreshell_abs)
+      nullify(physprop(fileindex)%bcdust)
+      nullify(physprop(fileindex)%kap)
+      nullify(physprop(fileindex)%relh)
 
       nullify(physprop(fileindex)%sw_nonhygro_ext)
       nullify(physprop(fileindex)%sw_nonhygro_ssa)
@@ -231,6 +272,12 @@ subroutine physprop_init()
       nullify(physprop(fileindex)%refitabsw)
       nullify(physprop(fileindex)%refrtablw)
       nullify(physprop(fileindex)%refitablw)
+
+      nullify(physprop(fileindex)%extpsw2)
+      nullify(physprop(fileindex)%abspsw2)
+      nullify(physprop(fileindex)%asmpsw2)
+      nullify(physprop(fileindex)%absplw2)
+      nullify(physprop(fileindex)%corefrac)
 
       call getfil(uniquefilenames(fileindex), locfn, 0)
       physprop(fileindex)%sourcefile = locfn
@@ -270,6 +317,7 @@ end function physprop_get_id
 
 subroutine physprop_get(id, sourcefile, opticstype, &
    sw_hygro_ext, sw_hygro_ssa, sw_hygro_asm, lw_hygro_abs, &
+   sw_hygro_ext_wtp, sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_abs_wtp, &
    sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, &
    sw_nonhygro_scat, sw_nonhygro_ascat, lw_abs, &
    refindex_aer_sw, refindex_aer_lw, &
@@ -278,7 +326,12 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    refitabsw, refrtablw, refitablw, &
    aername, density_aer, hygro_aer, dryrad_aer, dispersion_aer, &
    num_to_mass_aer, ncoef, prefr, prefi, sigmag, &
-   dgnum, dgnumlo, dgnumhi, rhcrystal, rhdeliques)
+   dgnum, dgnumlo, dgnumhi, rhcrystal, rhdeliques, &
+   extpsw2, abspsw2, asmpsw2, absplw2, corefrac, nfrac, &
+   wgtpct, bcdust, kap, relh, &
+   nkap, nwtp, nbcdust, nrelh, &
+   sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, &
+   sw_hygro_coreshell_asm, lw_hygro_coreshell_abs )
 
    ! Return requested properties for specified ID.
 
@@ -287,15 +340,33 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    character(len=256),       optional, intent(out) :: sourcefile ! Absolute pathname of data file.
    character(len=ot_length), optional, intent(out) :: opticstype
    real(r8),          optional, pointer     :: sw_hygro_ext(:,:)
-   real(r8),          optional, pointer     :: sw_hygro_ssa(:,:) 
-   real(r8),          optional, pointer     :: sw_hygro_asm(:,:) 
-   real(r8),          optional, pointer     :: lw_hygro_abs(:,:)         
+   real(r8),          optional, pointer     :: sw_hygro_ssa(:,:)
+   real(r8),          optional, pointer     :: sw_hygro_asm(:,:)
+   real(r8),          optional, pointer     :: lw_hygro_abs(:,:)
+   real(r8),          optional, pointer     :: sw_hygro_ext_wtp(:,:)
+   real(r8),          optional, pointer     :: sw_hygro_ssa_wtp(:,:)
+   real(r8),          optional, pointer     :: sw_hygro_asm_wtp(:,:)
+   real(r8),          optional, pointer     :: lw_hygro_abs_wtp(:,:)
+   real(r8),          optional, pointer     :: wgtpct(:)
+   integer,           optional, intent(out) :: nwtp
+
+   real(r8),          optional, pointer     :: sw_hygro_coreshell_ext(:,:,:,:,:)
+   real(r8),          optional, pointer     :: sw_hygro_coreshell_ssa(:,:,:,:,:)
+   real(r8),          optional, pointer     :: sw_hygro_coreshell_asm(:,:,:,:,:)
+   real(r8),          optional, pointer     :: lw_hygro_coreshell_abs(:,:,:,:,:)
+   real(r8),          optional, pointer     :: kap(:)
+   integer,           optional, intent(out) :: nkap
+   real(r8),          optional, pointer     :: bcdust(:)
+   integer,           optional, intent(out) :: nbcdust
+   real(r8),          optional, pointer     :: relh(:)
+   integer,           optional, intent(out) :: nrelh
+
    real(r8),          optional, pointer     :: sw_nonhygro_ext(:)
    real(r8),          optional, pointer     :: sw_nonhygro_ssa(:)
    real(r8),          optional, pointer     :: sw_nonhygro_asm(:)
    real(r8),          optional, pointer     :: sw_nonhygro_scat(:)
    real(r8),          optional, pointer     :: sw_nonhygro_ascat(:)
-   real(r8),          optional, pointer     :: lw_abs(:)         
+   real(r8),          optional, pointer     :: lw_abs(:)
    complex(r8),       optional, pointer     :: refindex_aer_sw(:)
    complex(r8),       optional, pointer     :: refindex_aer_lw(:)
    real(r8),          optional, pointer     :: r_sw_ext(:,:)
@@ -311,10 +382,10 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    real(r8),          optional, pointer     :: refitabsw(:,:)
    real(r8),          optional, pointer     :: refrtablw(:,:)
    real(r8),          optional, pointer     :: refitablw(:,:)
-   character(len=20), optional, intent(out) :: aername           
-   real(r8),          optional, intent(out) :: density_aer       
-   real(r8),          optional, intent(out) :: hygro_aer         
-   real(r8),          optional, intent(out) :: dryrad_aer        
+   character(len=20), optional, intent(out) :: aername
+   real(r8),          optional, intent(out) :: density_aer
+   real(r8),          optional, intent(out) :: hygro_aer
+   real(r8),          optional, intent(out) :: dryrad_aer
    real(r8),          optional, intent(out) :: dispersion_aer
    real(r8),          optional, intent(out) :: num_to_mass_aer
    integer,           optional, intent(out) :: ncoef
@@ -326,6 +397,13 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    real(r8),          optional, intent(out) :: dgnumhi
    real(r8),          optional, intent(out) :: rhcrystal
    real(r8),          optional, intent(out) :: rhdeliques
+! for core/shell
+   real(r8),          optional, pointer     :: extpsw2(:,:)
+   real(r8),          optional, pointer     :: abspsw2(:,:)
+   real(r8),          optional, pointer     :: asmpsw2(:,:)
+   real(r8),          optional, pointer     :: absplw2(:,:)
+   real(r8),          optional, pointer     :: corefrac(:)
+   integer,           optional, intent(out) :: nfrac
 
    ! Local variables
    character(len=*), parameter :: subname = 'physprop_get'
@@ -342,6 +420,22 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    if (present(sw_hygro_ssa))      sw_hygro_ssa      => physprop(id)%sw_hygro_ssa
    if (present(sw_hygro_asm))      sw_hygro_asm      => physprop(id)%sw_hygro_asm
    if (present(lw_hygro_abs))      lw_hygro_abs      => physprop(id)%lw_hygro_abs
+   if (present(sw_hygro_ext_wtp))  sw_hygro_ext_wtp  => physprop(id)%sw_hygro_ext_wtp
+   if (present(sw_hygro_ssa_wtp))  sw_hygro_ssa_wtp  => physprop(id)%sw_hygro_ssa_wtp
+   if (present(sw_hygro_asm_wtp))  sw_hygro_asm_wtp  => physprop(id)%sw_hygro_asm_wtp
+   if (present(lw_hygro_abs_wtp))  lw_hygro_abs_wtp  => physprop(id)%lw_hygro_abs_wtp
+   if (present(wgtpct))            wgtpct            => physprop(id)%wgtpct
+   if (present(nwtp))              nwtp              =  physprop(id)%nwtp
+   if (present(sw_hygro_coreshell_ext)) sw_hygro_coreshell_ext => physprop(id)%sw_hygro_coreshell_ext
+   if (present(sw_hygro_coreshell_ssa)) sw_hygro_coreshell_ssa => physprop(id)%sw_hygro_coreshell_ssa
+   if (present(sw_hygro_coreshell_asm)) sw_hygro_coreshell_asm => physprop(id)%sw_hygro_coreshell_asm
+   if (present(lw_hygro_coreshell_abs)) lw_hygro_coreshell_abs => physprop(id)%lw_hygro_coreshell_abs
+   if (present(kap))                    kap                    => physprop(id)%kap
+   if (present(nkap))                   nkap                   =  physprop(id)%nkap
+   if (present(bcdust))                 bcdust                 => physprop(id)%bcdust
+   if (present(nbcdust))                nbcdust                =  physprop(id)%nbcdust
+   if (present(relh))                   relh                   => physprop(id)%relh
+   if (present(nrelh))                  nrelh                  =  physprop(id)%nrelh
    if (present(sw_nonhygro_ext))   sw_nonhygro_ext   => physprop(id)%sw_nonhygro_ext
    if (present(sw_nonhygro_ssa))   sw_nonhygro_ssa   => physprop(id)%sw_nonhygro_ssa
    if (present(sw_nonhygro_asm))   sw_nonhygro_asm   => physprop(id)%sw_nonhygro_asm
@@ -384,6 +478,14 @@ subroutine physprop_get(id, sourcefile, opticstype, &
    if (present(rhcrystal))       rhcrystal       =  physprop(id)%rhcrystal
    if (present(rhdeliques))      rhdeliques      =  physprop(id)%rhdeliques
 
+! For core/shell bins
+   if (present(extpsw2))            extpsw2        => physprop(id)%extpsw2
+   if (present(abspsw2))            abspsw2        => physprop(id)%abspsw2
+   if (present(asmpsw2))            asmpsw2        => physprop(id)%asmpsw2
+   if (present(absplw2))            absplw2        => physprop(id)%absplw2
+   if (present(corefrac))           corefrac       => physprop(id)%corefrac
+   if (present(nfrac))              nfrac         =  physprop(id)%nfrac
+
 end subroutine physprop_get
 
 !================================================================================================
@@ -392,7 +494,7 @@ end subroutine physprop_get
 
 subroutine aerosol_optics_init(phys_prop, nc_id)
 
-   ! Determine the opticstype, then call the 
+   ! Determine the opticstype, then call the
    ! appropriate routine to read the data.
 
    type(physprop_type), intent(inout) :: phys_prop  ! data after interp onto cam rh mesh
@@ -423,21 +525,33 @@ subroutine aerosol_optics_init(phys_prop, nc_id)
    case ('hygroscopic')
       call hygroscopic_optics_init(phys_prop, nc_id)
 
+   case ('hygroscopic_wtp')
+      call hygroscopic_wtp_optics_init(phys_prop, nc_id)
+
+   case ('hygroscopic_coreshell')
+      call hygroscopic_coreshell_optics_init(phys_prop, nc_id)
+
    case ('nonhygro')
       call nonhygro_optics_init(phys_prop, nc_id)
-        
+
    case ('insoluble')
       call insoluble_optics_init(phys_prop, nc_id)
-        
+
    case ('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
       call volcanic_radius_optics_init(phys_prop, nc_id)
 
    case ('volcanic')
       call volcanic_optics_init(phys_prop, nc_id)
-        
+
    case ('modal')
       call modal_optics_init(phys_prop, nc_id)
-        
+
+   case ('sectional')
+      call bin_optics_init(phys_prop, nc_id)
+
+   case ('sectional_props')
+      call bindef_optics_init(phys_prop, nc_id)
+
    ! other types of optics can be added here
 
    case default
@@ -1099,6 +1213,108 @@ end subroutine modal_optics_init
 
 !================================================================================================
 
+subroutine bin_optics_init(props, ncid)
+
+!  Read optics data for modal aerosols
+
+   type (physprop_type), intent(inout) :: props   ! storage for file data
+   type (file_desc_T),   intent(inout) :: ncid    ! indentifier for netcdf file
+
+   ! Local variables
+   integer :: ierr
+   integer :: did
+   integer :: ival
+   type(var_desc_t) :: vid
+
+   character(len=*), parameter :: subname = 'bin_optics_init'
+   !------------------------------------------------------------------------------------
+
+   ! Check dimensions for number of lw and sw bands
+
+   ierr = pio_inq_dimid(ncid, 'lw_band', did)
+   ierr = pio_inq_dimlen(ncid, did, ival)
+   if (ival .ne. nlwbands) call endrun(subname//':'//props%sourcefile// &
+        ' has the wrong number of lw bands')
+
+   ierr = pio_inq_dimid(ncid, 'sw_band', did)
+   ierr = pio_inq_dimlen(ncid, did, ival)
+   if (ival .ne. nswbands) call endrun(subname//':'//props%sourcefile// &
+        ' has the wrong number of sw bands')
+
+   ! Get other dimensions
+   ierr = pio_inq_dimid(ncid, 'corefrac', did)
+   ierr = pio_inq_dimlen(ncid, did, props%nfrac)
+
+
+   ! Allocate arrays
+   allocate( &
+      props%extpsw2(props%nfrac,nswbands), &
+      props%abspsw2(props%nfrac,nswbands), &
+      props%asmpsw2(props%nfrac,nswbands), &
+      props%absplw2(props%nfrac,nlwbands), &
+      props%corefrac(props%nfrac) )
+
+   ierr = pio_inq_varid(ncid, 'extpsw2', vid)
+   ierr = pio_get_var(ncid, vid, props%extpsw2)
+
+   ierr = pio_inq_varid(ncid, 'abspsw2', vid)
+   ierr = pio_get_var(ncid, vid, props%abspsw2)
+
+   ierr = pio_inq_varid(ncid, 'asmpsw2', vid)
+   ierr = pio_get_var(ncid, vid, props%asmpsw2)
+
+   ierr = pio_inq_varid(ncid, 'absplw2', vid)
+   ierr = pio_get_var(ncid, vid, props%absplw2)
+
+   ierr = pio_inq_varid(ncid, 'corefrac', vid)
+   ierr = pio_get_var(ncid, vid, props%corefrac)
+
+end subroutine bin_optics_init
+
+
+!================================================================================================
+
+subroutine bindef_optics_init(props, ncid)
+
+!  Read optics data for modal aerosols
+
+   type (physprop_type), intent(inout) :: props   ! storage for file data
+   type (file_desc_T),   intent(inout) :: ncid    ! indentifier for netcdf file
+
+   ! Local variables
+   integer :: ierr
+   integer :: did
+   integer :: ival
+   type(var_desc_t) :: vid
+
+   character(len=*), parameter :: subname = 'bin_optics_init'
+   !------------------------------------------------------------------------------------
+
+   ! Check dimensions for number of lw and sw bands
+
+   ierr = pio_inq_dimid(ncid, 'lw_band', did)
+   ierr = pio_inq_dimlen(ncid, did, ival)
+   if (ival .ne. nlwbands) call endrun(subname//':'//props%sourcefile// &
+        ' has the wrong number of lw bands')
+
+   ierr = pio_inq_dimid(ncid, 'sw_band', did)
+   ierr = pio_inq_dimlen(ncid, did, ival)
+   if (ival .ne. nswbands) call endrun(subname//':'//props%sourcefile// &
+        ' has the wrong number of sw bands')
+
+   ierr = pio_inq_varid(ncid, 'density', vid)
+   ierr = pio_get_var(ncid, vid, props%density_aer)
+
+   ierr = pio_inq_varid(ncid, 'hygroscopicity', vid)
+   ierr = pio_get_var(ncid, vid, props%hygro_aer)
+
+  ! read refractive index data if available
+   call refindex_aer_init(props, ncid)
+
+end subroutine bindef_optics_init
+
+!================================================================================================
+
 subroutine bulk_props_init(physprop, nc_id)
 
 !  Read props for bulk aerosols
@@ -1131,13 +1347,13 @@ subroutine bulk_props_init(physprop, nc_id)
 
    ierr = pio_inq_varid(nc_id, 'dryrad', vid)
    ierr = pio_get_var(nc_id, vid, physprop%dryrad_aer)
-         
+
    ierr = pio_inq_varid(nc_id, 'hygroscopicity', vid)
    ierr = pio_get_var(nc_id, vid, physprop%hygro_aer)
 
    ierr = pio_inq_varid(nc_id, 'num_to_mass_ratio', vid)
    ierr = pio_get_var(nc_id, vid, physprop%num_to_mass_aer)
-      
+
    ! Output select data to log file
    if (debug .and. masterproc .and. idx_sw_diag > 0) then
       if (trim(physprop%aername) == 'SULFATE') then
@@ -1315,5 +1531,155 @@ end subroutine aer_optics_log_rh
 
 
 !================================================================================================
+
+subroutine hygroscopic_coreshell_optics_init(phys_prop, nc_id)
+
+   ! Read optics data of type 'hygroscopic_coreshell' and interpolate it to CAM's rh mesh.
+
+   type (physprop_type), intent(inout) :: phys_prop  ! data after interp onto cam rh mesh
+   type (file_desc_T),   intent(inout) :: nc_id      ! indentifier for netcdf file
+
+   ! Local variables
+   integer :: ierr ! error flag
+
+   integer :: rh_id, lw_band_id, sw_band_id, coreshell_id, dstbc_id, kap_id
+   integer :: sw_ext_id, sw_ssa_id, sw_asm_id, lw_abs_id
+   integer :: nbnd, swbands, did
+
+   ! temp data from hygroscopic file before interpolation onto cam-rh-mesh
+   integer  :: nrh ! number of rh values in file
+   integer  :: nfrac  ! number of core/shell ratio values in file
+   integer  :: nbcdust,nkap
+
+   real(r8) :: rh ! real rh value on cam rh mesh (indexvalue)
+   character(len=*), parameter :: sub = 'hygroscopic_coreshell_optics_init'
+   !------------------------------------------------------------------------------------
+
+   if (masterproc) then
+     write(iulog,*) 'hygroscopic_coreshell_optics_init: Read file '//trim(phys_prop%sourcefile)
+   endif
+
+   ierr = pio_inq_dimid(nc_id, 'lw_band', lw_band_id)
+   ierr = pio_inq_dimlen(nc_id, lw_band_id, nbnd)
+   if (nbnd .ne. nlwbands) call endrun(trim(phys_prop%sourcefile)// &
+        ' has the wrong number of lwbands')
+
+   ierr = pio_inq_dimid(nc_id, 'sw_band', sw_band_id)
+   ierr = pio_inq_dimlen(nc_id, sw_band_id, swbands)
+   if(swbands .ne. nswbands) call endrun(trim(phys_prop%sourcefile)// &
+        ' has the wrong number of sw bands')
+
+
+   ierr = pio_inq_dimid(nc_id, 'coreshellratio', did)
+   ierr = pio_inq_dimlen(nc_id, did, phys_prop%nfrac)
+
+   ierr = pio_inq_dimid(nc_id, 'dstbcratio', did)
+   ierr = pio_inq_dimlen(nc_id, did, phys_prop%nbcdust)
+
+   ierr = pio_inq_dimid(nc_id, 'kap', did)
+   ierr = pio_inq_dimlen(nc_id, did, phys_prop%nkap)
+
+   ierr = pio_inq_dimid(nc_id, 'rh_idx', rh_id)
+   ierr = pio_inq_dimlen(nc_id, rh_id, phys_prop%nrelh)
+
+   allocate(phys_prop%sw_hygro_coreshell_ext(phys_prop%nrelh,nswbands, &
+                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   allocate(phys_prop%sw_hygro_coreshell_ssa(phys_prop%nrelh,nswbands, &
+                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   allocate(phys_prop%sw_hygro_coreshell_asm(phys_prop%nrelh,nswbands, &
+                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   allocate(phys_prop%lw_hygro_coreshell_abs(phys_prop%nrelh,nlwbands, &
+                                             phys_prop%nfrac,phys_prop%nbcdust,phys_prop%nkap))
+   allocate(phys_prop%corefrac(phys_prop%nfrac))
+   allocate(phys_prop%bcdust(phys_prop%nbcdust))
+   allocate(phys_prop%kap(phys_prop%nkap))
+   allocate(phys_prop%relh(phys_prop%nrelh))
+
+   ierr = pio_inq_varid(nc_id, 'rh', rh_id)
+   ierr = pio_inq_varid(nc_id, 'coreshellratio', coreshell_id)  ! modified by Pengfei for coreshell
+   ierr = pio_inq_varid(nc_id, 'dstbcratio', dstbc_id)  ! modified by Pengfei for coreshell
+   ierr = pio_inq_varid(nc_id, 'kap', kap_id)
+
+   ierr = pio_inq_varid(nc_id, 'ext_sw_coreshell', sw_ext_id)
+   ierr = pio_inq_varid(nc_id, 'ssa_sw_coreshell', sw_ssa_id)
+   ierr = pio_inq_varid(nc_id, 'asm_sw_coreshell', sw_asm_id)
+   ierr = pio_inq_varid(nc_id, 'abs_lw_coreshell', lw_abs_id)
+
+   ierr = pio_get_var(nc_id, sw_ext_id, phys_prop%sw_hygro_coreshell_ext)
+   ierr = pio_get_var(nc_id, sw_ssa_id, phys_prop%sw_hygro_coreshell_ssa)
+   ierr = pio_get_var(nc_id, sw_asm_id, phys_prop%sw_hygro_coreshell_asm)
+   ierr = pio_get_var(nc_id, lw_abs_id, phys_prop%lw_hygro_coreshell_abs)
+   ierr = pio_get_var(nc_id, kap_id, phys_prop%kap)
+   ierr = pio_get_var(nc_id, rh_id, phys_prop%relh)
+   ierr = pio_get_var(nc_id, dstbc_id, phys_prop%bcdust)
+   ierr = pio_get_var(nc_id, coreshell_id, phys_prop%corefrac)
+
+   ! read refractive index data if available
+   call refindex_aer_init(phys_prop, nc_id)
+
+end subroutine hygroscopic_coreshell_optics_init
+
+!================================================================================================
+
+subroutine hygroscopic_wtp_optics_init(phys_prop, nc_id)
+
+   ! Read optics data of type 'hygroscopic' and interpolate it to CAM's rh mesh.
+
+   type (physprop_type), intent(inout) :: phys_prop  ! data after interp onto cam rh mesh
+   type (file_desc_T),   intent(inout) :: nc_id      ! indentifier for netcdf file
+
+   ! Local variables
+   integer :: ierr ! error flag
+
+   integer :: lw_band_id, sw_band_id, did
+   integer :: sw_ext_wtp_id, sw_ssa_wtp_id, sw_asm_wtp_id, lw_ext_wtp_id, wtp_id
+   integer :: nbnd, swbands
+
+   real(r8) :: rh ! real rh value on cam rh mesh (indexvalue)
+   character(len=*), parameter :: sub = 'hygroscopic_wtp_optics_init'
+   !------------------------------------------------------------------------------------
+
+!st
+  ! Get other dimensions
+   ierr = pio_inq_dimid(nc_id, 'wgtpct', did)
+   ierr = pio_inq_dimlen(nc_id, did, phys_prop%nwtp)
+
+
+   allocate(phys_prop%sw_hygro_ext_wtp(phys_prop%nwtp,nswbands))
+   allocate(phys_prop%sw_hygro_ssa_wtp(phys_prop%nwtp,nswbands))
+   allocate(phys_prop%sw_hygro_asm_wtp(phys_prop%nwtp,nswbands))
+   allocate(phys_prop%lw_hygro_abs_wtp(phys_prop%nwtp,nlwbands))
+   allocate(phys_prop%wgtpct(phys_prop%nwtp))
+
+   ierr = pio_inq_dimid(nc_id, 'lw_band', lw_band_id)
+   ierr = pio_inq_dimlen(nc_id, lw_band_id, nbnd)
+   if (nbnd .ne. nlwbands) call endrun(phys_prop%sourcefile// &
+        ' has the wrong number of lwbands')
+
+   ierr = pio_inq_dimid(nc_id, 'sw_band', sw_band_id)
+   ierr = pio_inq_dimlen(nc_id, sw_band_id, swbands)
+   if(swbands .ne. nswbands) call endrun(phys_prop%sourcefile// &
+        ' has the wrong number of sw bands')
+
+   ierr = pio_inq_varid(nc_id, 'ext_sw_wtp', sw_ext_wtp_id)
+   ierr = pio_inq_varid(nc_id, 'ssa_sw_wtp', sw_ssa_wtp_id)
+   ierr = pio_inq_varid(nc_id, 'asm_sw_wtp', sw_asm_wtp_id)
+   ierr = pio_inq_varid(nc_id, 'abs_lw_wtp', lw_ext_wtp_id)
+   ierr = pio_inq_varid(nc_id, 'wgtpct', wtp_id)
+
+   ierr = pio_get_var(nc_id, sw_ext_wtp_id, phys_prop%sw_hygro_ext_wtp)
+   ierr = pio_get_var(nc_id, sw_ssa_wtp_id, phys_prop%sw_hygro_ssa_wtp)
+   ierr = pio_get_var(nc_id, sw_asm_wtp_id, phys_prop%sw_hygro_asm_wtp)
+   ierr = pio_get_var(nc_id, lw_ext_wtp_id, phys_prop%lw_hygro_abs_wtp)
+   ierr = pio_get_var(nc_id, wtp_id, phys_prop%wgtpct)
+
+   ! read refractive index data if available
+   call refindex_aer_init(phys_prop, nc_id)
+
+   ! read bulk aero props
+   call bulk_props_init(phys_prop, nc_id)
+
+end subroutine hygroscopic_wtp_optics_init
+
 
 end module phys_prop
