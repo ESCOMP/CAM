@@ -411,10 +411,11 @@ end function radiation_do
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
-   use rrtmgp_pre,             only: rrtmgp_pre_init
-   use rrtmgp_inputs,          only: rrtmgp_inputs_init
-   use rrtmgp_inputs_cam,      only: rrtmgp_inputs_cam_init
-   use rrtmgp_lw_cloud_optics, only: rrtmgp_lw_cloud_optics_init
+   use rrtmgp_pre,                only: rrtmgp_pre_init
+   use rrtmgp_inputs,             only: rrtmgp_inputs_init
+   use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
+   use rrtmgp_lw_cloud_optics,    only: rrtmgp_lw_cloud_optics_init
+   use rrtmgp_lw_gas_optics_data, only: rrtmgp_lw_gas_optics_data_init
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -463,7 +464,10 @@ subroutine radiation_init(pbuf2d)
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
-   call coefs_init(coefs_lw_file, available_gases, kdist_lw)
+   call rrtmgp_lw_gas_optics_data_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    ! Set up inputs to RRTMGP
    call rrtmgp_inputs_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
@@ -1820,7 +1824,6 @@ end subroutine radiation_output_lw
 !===============================================================================
 
 subroutine coefs_init(coefs_file, available_gases, kdist)
-   use rrtmgp_lw_gas_optics_data, only: rrtmgp_lw_gas_optics_data_init
 
    ! Read data from coefficients file.  Initialize the kdist object.
    ! available_gases object provides the gas names that CAM provides.
@@ -2300,21 +2303,21 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Initialize the gas optics object with data. The calls are slightly different depending
    ! on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
 
-   if (allocated(totplnk) .and. allocated(planck_frac)) then
-      call rrtmgp_lw_gas_optics_data_init(kdist, available_gases, gas_names,           &
-                  key_species, band2gpt, band_lims_wavenum, press_ref, press_ref_trop, &
-                  temp_ref, temp_ref_p, temp_ref_t, vmr_ref, kmajor, kminor_lower,     &
-                  kminor_upper, gas_minor, identifier_minor, minor_gases_lower,        &
-                  minor_gases_upper, minor_limits_gpt_lower, minor_limits_gpt_upper,   &
-                  minor_scales_with_density_lower, minor_scales_with_density_upper,    &
-                  scaling_gas_lower, scaling_gas_upper, scale_by_complement_lower,     &
-                  scale_by_complement_upper, kminor_start_lower, kminor_start_upper,   &
-                  totplnk, planck_frac, rayl_lower, rayl_upper, optimal_angle_fit,     &
-                  errmsg, ierr)
-      if (ierr /= 0) then
-         call endrun(sub//': '//errmsg)
-      end if
-   else if (allocated(solar_src_quiet)) then
+   !if (allocated(totplnk) .and. allocated(planck_frac)) then
+   !   call rrtmgp_lw_gas_optics_data_init(kdist, available_gases, gas_names,           &
+   !               key_species, band2gpt, band_lims_wavenum, press_ref, press_ref_trop, &
+   !               temp_ref, temp_ref_p, temp_ref_t, vmr_ref, kmajor, kminor_lower,     &
+   !               kminor_upper, gas_minor, identifier_minor, minor_gases_lower,        &
+   !               minor_gases_upper, minor_limits_gpt_lower, minor_limits_gpt_upper,   &
+   !               minor_scales_with_density_lower, minor_scales_with_density_upper,    &
+   !               scaling_gas_lower, scaling_gas_upper, scale_by_complement_lower,     &
+   !               scale_by_complement_upper, kminor_start_lower, kminor_start_upper,   &
+   !               totplnk, planck_frac, rayl_lower, rayl_upper, optimal_angle_fit,     &
+   !               errmsg, ierr)
+   !   if (ierr /= 0) then
+   !      call endrun(sub//': '//errmsg)
+   !   end if
+   if (allocated(solar_src_quiet)) then
       error_msg = kdist%gas_props%load( &
          available_gases%gas_concs, gas_names, key_species,     &
          band2gpt, band_lims_wavenum,                           &
