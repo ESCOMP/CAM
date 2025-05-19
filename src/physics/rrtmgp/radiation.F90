@@ -416,6 +416,7 @@ subroutine radiation_init(pbuf2d)
    use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
    use rrtmgp_lw_cloud_optics,    only: rrtmgp_lw_cloud_optics_init
    use rrtmgp_lw_gas_optics_data, only: rrtmgp_lw_gas_optics_data_init
+   use rrtmgp_sw_gas_optics_data, only: rrtmgp_sw_gas_optics_data_init
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -462,9 +463,20 @@ subroutine radiation_init(pbuf2d)
       call endrun(sub//': '//errmsg)
    end if
 
+   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
+                             g_mu, g_lambda, g_d_eff, tiny)
+
+   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
+                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
+                  g_d_eff, tiny, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
+
    ! Read RRTMGP coefficients files and initialize kdist objects.
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
    call rrtmgp_lw_gas_optics_data_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
+   call rrtmgp_sw_gas_optics_data_init(kdist_sw, coefs_sw_file, available_gases, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -492,15 +504,15 @@ subroutine radiation_init(pbuf2d)
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
 
-   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
-                             g_mu, g_lambda, g_d_eff, tiny)
+!   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
+!                             g_mu, g_lambda, g_d_eff, tiny)
 
-   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
-                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
-                  g_d_eff, tiny, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
+!   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
+!                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
+!                  g_d_eff, tiny, errmsg, errflg)
+!   if (errflg /= 0) then
+!      call endrun(sub//': '//errmsg)
+!   end if
   
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=ierr)
