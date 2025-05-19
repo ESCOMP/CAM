@@ -334,6 +334,11 @@
     <lname>2000_CAM60%PORT_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>PC7</alias>
+    <lname>HIST_CAM70%LT%PORT_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ****************************** -->
   <!-- CAM untested compsets -->
   <!-- ****************************** -->
