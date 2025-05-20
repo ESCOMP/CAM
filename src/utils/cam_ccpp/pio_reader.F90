@@ -167,7 +167,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -178,7 +178,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -198,12 +198,18 @@ contains
 
       !Now attempt to allocate and initialize variable, and
       !read-in the NetCDF data:
+      allocate(var, stat=errcode, errmsg=errmsg)
+      if(errcode /= 0) then
+         !Reset PIO back to original error handling method:
+         call pio_seterrorhandling(pio_file_handle, err_handling)
+         return
+      end if
       var = huge(1)
       errcode = pio_get_var(pio_file_handle, var_id, var)
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -265,7 +271,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -276,7 +282,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -307,7 +313,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -327,7 +333,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -348,7 +354,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -410,7 +416,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -421,7 +427,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -452,7 +458,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -472,7 +478,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -493,7 +499,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -555,7 +561,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -566,7 +572,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -597,7 +603,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -617,7 +623,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -638,7 +644,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -700,7 +706,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -711,7 +717,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -742,7 +748,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -762,7 +768,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -783,7 +789,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -845,7 +851,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -856,7 +862,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -887,7 +893,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -907,7 +913,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -929,7 +935,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -995,7 +1001,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1006,7 +1012,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1026,12 +1032,18 @@ contains
 
       !Now attempt to allocate and initialize variable, and
       !read-in the NetCDF data:
+      allocate(var, stat=errcode, errmsg=errmsg)
+      if(errcode /= 0) then
+         !Reset PIO back to original error handling method:
+         call pio_seterrorhandling(pio_file_handle, err_handling)
+         return
+      end if
       var = huge(1._kind_phys)
       errcode = pio_get_var(pio_file_handle, var_id, var)
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1093,7 +1105,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1104,7 +1116,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1135,7 +1147,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1155,7 +1167,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1176,7 +1188,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1238,7 +1250,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1249,7 +1261,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1280,7 +1292,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1300,7 +1312,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1321,7 +1333,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1383,7 +1395,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1394,7 +1406,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1425,7 +1437,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1445,7 +1457,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1466,7 +1478,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1528,7 +1540,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1539,7 +1551,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1570,7 +1582,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1590,7 +1602,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1611,7 +1623,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1673,7 +1685,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1684,7 +1696,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1715,7 +1727,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1735,7 +1747,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1757,7 +1769,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1823,7 +1835,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1834,7 +1846,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1883,7 +1895,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1903,7 +1915,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1926,7 +1938,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1988,7 +2000,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -1999,7 +2011,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2048,7 +2060,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2068,7 +2080,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2091,7 +2103,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2153,7 +2165,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2164,7 +2176,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2213,7 +2225,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2233,7 +2245,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2256,7 +2268,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2318,7 +2330,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2329,7 +2341,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2378,7 +2390,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2398,7 +2410,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2421,7 +2433,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2483,7 +2495,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2494,7 +2506,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2543,7 +2555,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2563,7 +2575,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2587,7 +2599,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2649,7 +2661,7 @@ contains
       errcode = pio_inq_varid(pio_file_handle, varname, var_id)
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_id_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_id_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2660,7 +2672,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, xtype=nc_type, ndims=ndims)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2709,7 +2721,7 @@ contains
       errcode = pio_inquire_variable(pio_file_handle, var_id, dimids=dim_ids)
       if(errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_inq_var_info_err, errcode, errmsg)
+         call get_pio_errmsg(pio_inq_var_info_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2729,7 +2741,7 @@ contains
          errcode = pio_inq_dimlen(pio_file_handle, dim_ids(i), dim_sizes(i))
          if(errcode /= PIO_NOERR) then
             !Extract error message from PIO:
-            call get_pio_errmsg(pio_inq_dim_len_err, errcode, errmsg)
+            call get_pio_errmsg(pio_inq_dim_len_err, varname, errcode, errmsg)
 
             !Reset PIO back to original error handling method:
             call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2753,7 +2765,7 @@ contains
 
       if (errcode /= PIO_NOERR) then
          !Extract error message from PIO:
-         call get_pio_errmsg(pio_get_var_err, errcode, errmsg)
+         call get_pio_errmsg(pio_get_var_err, varname, errcode, errmsg)
 
          !Reset PIO back to original error handling method:
          call pio_seterrorhandling(pio_file_handle, err_handling)
@@ -2769,7 +2781,7 @@ contains
       errmsg = ''
    end subroutine get_netcdf_var_char_5d
 
-   subroutine get_pio_errmsg(caller_errcode, errcode, errmsg)
+   subroutine get_pio_errmsg(caller_errcode, varname, errcode, errmsg)
       !Set error message based off PIO error code,
       !and then reset PIO error code to caller-specified
       !error code.
@@ -2784,13 +2796,16 @@ contains
 
       !Input/output arguments:
       integer,          intent(in)    :: caller_errcode !New error code caller wants.
+      character(len=*), intent(in)    :: varname
       integer,          intent(inout) :: errcode        !Error code
       character(len=*), intent(inout) :: errmsg         !Error message
 
       !Local variables:
       integer :: strerr !Error code returned if pio_strerror fails
+      character(len=256) :: pio_error
 
-      strerr = pio_strerror(errcode, errmsg)
+      strerr = pio_strerror(errcode, pio_error)
+      write(errmsg, '(a,a,a,a)') 'Error for variable "', varname, '" - message: ', pio_error
       if(strerr /= PIO_NOERR) then
          write(errmsg, *) "Failed to get error message for PIO code: ", errcode
          errcode = pio_get_msg_err
