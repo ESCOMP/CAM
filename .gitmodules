@@ -16,7 +16,7 @@
 	path = src/physics/pumas
 	url = https://github.com/ESCOMP/PUMAS
         fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.38
+        fxtag = pumas_cam-release_v1.39
         fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
 
 [submodule "pumas-frozen"]
@@ -144,14 +144,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.40
+fxtag = ccs_config_cesm1.0.40_izumi_update0.1
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.93
+fxtag = cime6.1.97
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 

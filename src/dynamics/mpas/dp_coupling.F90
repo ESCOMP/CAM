@@ -8,7 +8,7 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cappa, zvir
+use physconst,      only: gravit, zvir
 use air_composition,only: cpairv
 use air_composition,only: dry_air_species_num
 use dyn_comp,       only: dyn_export_t, dyn_import_t
@@ -458,7 +458,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
    use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
-   use air_composition, only: rairv, dry_air_species_num
+   use air_composition, only: rairv, dry_air_species_num, cappav
    use qneg_module,     only: qneg3
    use shr_const_mod,   only: shr_const_rwv
    use constituents,    only: qmin
@@ -474,8 +474,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
-
-   real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
@@ -545,13 +543,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
                             phys_state(lchnk)%lnpmid(:ncol,k), ncol)
       end do
 
-      do k = 1, pver
-         phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
-      end do
-
-
-
-
       if (dry_air_species_num>0) then
         !------------------------------------------------------------
         ! Apply limiters to mixing ratios of major species
@@ -568,6 +559,10 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       else
         zvirv(:,:) = zvir
       endif
+      do k = 1, pver
+         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pverp) / phys_state(lchnk)%pmid(:ncol,k))**cappav(:ncol,k,lchnk)
+      end do
+
       !
       ! update cp_dycore in module air_composition.
       ! (note: at this point q is dry)
@@ -877,6 +872,8 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
    real(r8) :: sum_water
    real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2,tvk,tk
+   real(r8), parameter :: epsilon = 0.05_r8
+   real(r8) :: dp_epsilon, dpdry_epsilon
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
@@ -925,8 +922,16 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
         pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
         pmiddry(k,iCell) = dpdry(k)*rgas*tk /(gravit*dz(k))
-      end do
-    end do
+        !
+        ! PMID is not necessarily bounded by the hydrostatic interface pressure.
+        ! (has been found to be an issue at ~3.75km resolution in surface layer)
+        !
+        dp_epsilon = dp(k) * epsilon
+        dpdry_epsilon = dpdry(k)*epsilon
+        pmid   (k, iCell) = max(min(pmid   (k, iCell), pint   (k, iCell) - dp_epsilon), pint   (k + 1, iCell) + dp_epsilon)
+        pmiddry(k, iCell) = max(min(pmiddry(k, iCell), pintdry(k, iCell) - dpdry_epsilon), pintdry(k + 1, iCell) + dpdry_epsilon)
+     end do
+   end do
 end subroutine hydrostatic_pressure
 
 subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)

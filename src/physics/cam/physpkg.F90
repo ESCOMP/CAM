@@ -40,6 +40,8 @@ module physpkg
 
   use carma_diags_mod, only: carma_diags_t
 
+  use offline_driver,  only: offline_driver_dorun
+
   implicit none
   private
   save
@@ -860,23 +862,27 @@ contains
 
     ! initialize carma
     call carma_init(pbuf2d)
-    call surface_emissions_init(pbuf2d)
-    call elevated_emissions_init(pbuf2d)
 
-    ! Prognostic chemistry.
-    call chem_init(phys_state,pbuf2d)
+    if (.not. offline_driver_dorun) then
 
-    ! Lightning flash frq and NOx prod
-    call lightning_init( pbuf2d )
+       call surface_emissions_init(pbuf2d)
+       call elevated_emissions_init(pbuf2d)
 
-    ! Prescribed tracers
-    call prescribed_ozone_init()
-    call prescribed_ghg_init()
-    call prescribed_aero_init()
-    call aerodep_flx_init()
-    call aircraft_emit_init()
-    call prescribed_volcaero_init()
-    call prescribed_strataero_init()
+       ! Prognostic chemistry.
+       call chem_init(phys_state,pbuf2d)
+
+       ! Lightning flash frq and NOx prod
+       call lightning_init( pbuf2d )
+
+       ! Prescribed tracers
+       call prescribed_ozone_init()
+       call prescribed_ghg_init()
+       call prescribed_aero_init()
+       call aerodep_flx_init()
+       call aircraft_emit_init()
+       call prescribed_volcaero_init()
+       call prescribed_strataero_init()
+    end if
 
     ! co2 cycle
     if (co2_transport()) then

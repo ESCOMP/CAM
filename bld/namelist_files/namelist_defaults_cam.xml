@@ -48,229 +48,227 @@
 <ncdata hgrid="mpasa120" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
 
-<!-- Files with initial conditions -->
-<ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_0.23x0.31_L26_c061106.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_1980-01-01_0.47x0.63_L26_c071226.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_0.47x0.63_L26_c061106.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.5x0.625" nlev="26" ic_ymd="1001"     >atm/cam/inic/fv/cami_0000-10-01_0.5x0.625_L26_c031204.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_1987-01-01_0.9x1.25_L26_c060703.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_0.9x1.25_L26_c051205.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_1.9x2.5_L26_c070408.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_1.9x2.5_L26_c040809.nc</ncdata>
-<ncdata dyn="fv"  hgrid="2.5x3.33"  nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_2.5x3.33_L26_c110309.nc</ncdata>
-<ncdata dyn="fv"  hgrid="2.5x3.33"  nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_2.5x3.33_L26_c091007.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0001-01-01_4x5_L26_c060608.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_10x15_L26_c030918.nc</ncdata>
+<!-- FV Initial Conditions -->
+<ncdata hgrid="10x15" nlev="26"                    >atm/cam/inic/fv/cami_0000-01-01_10x15_L26_c030918.nc</ncdata>
+<ncdata hgrid="10x15" nlev="26" aquaplanet="1"     >atm/cam/inic/fv/aqua_0000-01-01_10x15_L26_c161230.nc</ncdata>
+<ncdata hgrid="10x15" nlev="26" chem="trop_mozart" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L26_c081104.nc</ncdata>
+<ncdata hgrid="10x15" nlev="26" chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_10x15_L26_c060216.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30"                    >atm/cam/inic/fv/cami_0000-01-01_10x15_L30_c081013.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30" aquaplanet="1"     >atm/cam/inic/fv/aqua_0000-01-01_10x15_L30_c170103.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30" chem="trop_mozart" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L30_c081104.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32"                    >atm/cam/inic/fv/cami-mam4_0000-01-01_10x15_L32_c170914.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32" aquaplanet="1"     >atm/cam/inic/fv/aqua_0000-01-01_10x15_L32_c170103.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32" carma="trop_strat_soa5"   >atm/cam/inic/fv/carma_trop_strat_2000_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32" carma="trop_strat_soa5" aquaplanet="1">atm/cam/inic/fv/aqua_carma_trop_strat_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
+<ncdata hgrid="10x15" nlev="66"                    >atm/waccm/ic/cami_2000-01-01_10x15_L66_c041121.nc</ncdata>
+<ncdata hgrid="10x15" nlev="70"  carma="trop_strat_soa1" aquaplanet="1">atm/waccm/ic/aqua_carma_waccm_0002-01-01_10x15_L70_c220325.nc</ncdata>
+<ncdata hgrid="10x15" nlev="70"                    >atm/waccm/ic/f2000.waccm-mam3_10x15_L70.cam2.i.0017-01-01.c141016.nc</ncdata>
+<ncdata hgrid="10x15" nlev="81"  waccmx="1"        >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_10x15_L81_c141027.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.23x0.31" nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_0.23x0.31_L30_c110527.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_0.47x0.63_L30_c100929.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L30_c100618.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L30_c090306.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="30"  ic_ymd="901"     >atm/cam/inic/fv/cami_0000-09-01_1.9x2.5_L30_c070109.nc</ncdata>
-<ncdata dyn="fv"  hgrid="2.5x3.33"  nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami_0000-01-01_2.5x3.33_L30_c110309.nc </ncdata>
-<ncdata dyn="fv"  hgrid="2.5x3.33"  nlev="30"  ic_ymd="901"     >atm/cam/inic/fv/cami_0000-09-01_2.5x3.33_L30_c100831.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami_0000-01-01_4x5_L30_c090108.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="30"  ic_ymd="101"     >atm/cam/inic/fv/cami_0000-01-01_10x15_L30_c081013.nc</ncdata>
+<ncdata hgrid="4x5" nlev="26"                      >atm/cam/inic/fv/cami_0001-01-01_4x5_L26_c060608.nc</ncdata>
+<ncdata hgrid="4x5" nlev="26" chem="trop_mozart"   >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L26_c081104.nc</ncdata>
+<ncdata hgrid="4x5" nlev="26" chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
+<ncdata hgrid="4x5" nlev="30"                      >atm/cam/inic/fv/cami_0000-01-01_4x5_L30_c090108.nc</ncdata>
+<ncdata hgrid="4x5" nlev="30" chem="trop_mozart"   >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L30_c081104.nc</ncdata>
+<ncdata hgrid="4x5" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
+<ncdata hgrid="4x5" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
+<ncdata hgrid="4x5" nlev="66"                      >atm/waccm/ic/wa3_4x5_1950_spinup.cam2.i.1960-01-01-00000.nc</ncdata>
+<ncdata hgrid="4x5" nlev="66"  chem="waccm_ma_sulfur" >atm/waccm/ic/f40.2000.4deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
+<ncdata hgrid="4x5" nlev="70"                      >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
+<ncdata hgrid="4x5" nlev="81"  waccmx="1"          >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_4x5_L81_c160630.nc</ncdata>
+<ncdata hgrid="4x5" nlev="126" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_aqua_4x5_L126_c170705.nc</ncdata>
+<ncdata hgrid="4x5" nlev="130" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_4x5_L130_c180803.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="10x15"     nlev="32"                 carma="trop_strat_soa5">atm/cam/inic/fv/carma_trop_strat_2000_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="32"  aquaplanet="1" carma="trop_strat_soa5">atm/cam/inic/fv/aqua_carma_trop_strat_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
+<ncdata hgrid="2.5x3.33" nlev="26"                >atm/cam/inic/fv/cami_0000-01-01_2.5x3.33_L26_c110309.nc</ncdata>
+<ncdata hgrid="2.5x3.33" nlev="26" ic_ymd="901"   >atm/cam/inic/fv/cami_0000-09-01_2.5x3.33_L26_c091007.nc</ncdata>
+<ncdata hgrid="2.5x3.33" nlev="30"                >atm/cam/inic/fv/cami_0000-01-01_2.5x3.33_L30_c110309.nc </ncdata>
+<ncdata hgrid="2.5x3.33" nlev="30" ic_ymd="901"   >atm/cam/inic/fv/cami_0000-09-01_2.5x3.33_L30_c100831.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="32"  aquaplanet="1" carma="trop_strat_soa5">atm/cam/inic/fv/QPCARMATS_f19_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="26"                 >atm/cam/inic/fv/cami_0000-01-01_1.9x2.5_L26_c070408.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="26" ic_ymd="901"    >atm/cam/inic/fv/cami_0000-09-01_1.9x2.5_L26_c040809.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="26" aquaplanet="1"  >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L26_c161020.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="26" chem="trop_mozart" >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L26_c081104.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="26" chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L26_c080114.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30"                  >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L30_c090306.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" ic_ymd="901"     >atm/cam/inic/fv/cami_0000-09-01_1.9x2.5_L30_c070109.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" aquaplanet="1"   >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L30_c161020.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_mozart"                   >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L30_c081104.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L30_c080215.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="32"                  >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L32_c150407.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="32" aquaplanet="1"   >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L32_c161020.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="32" carma="trop_strat_soa5" aquaplanet="1">atm/cam/inic/fv/QPCARMATS_f19_carmats4038_spinup01_0002-01-01_c241029.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="66"                  >atm/waccm/ic/cami_2000-07-01_1.9x2.5_L66_c040928.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="66" chem="waccm_ma_sulfur" >atm/waccm/ic/f40.2deg.wcm.carma.sulf.L66.cam2.i.2010-01-01.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" ic_ymd="18500101" >atm/waccm/ic/b1850.waccm-mam3_1.9x2.5_L70.cam2.i.0156-01-01.c120523.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" aquaplanet="1" ic_ymd="20000101" >atm/waccm/ic/aqua.cam6.waccmsc_1.9x2.5_L70.2000-01-01.c170123.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" chem="waccm_tsmlt_mam4" aquaplanet="1" ic_ymd="20000101">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" chem="waccm_ma_mam4" aquaplanet="1" ic_ymd="20000101" >atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" carma="trop_strat_soa1" ic_ymd="19800101">atm/waccm/ic/FWmaCARMAHIST_f19_carmats038_spinupl03.cam.i.1980-01-01_c241025.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="70" carma="trop_strat_soa1" aquaplanet="1" ic_ymd="101">atm/cam/inic/fv/aqua_carma_waccm_0002-01-01_1.9x2.5_L70_c220809.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="81" waccmx="1"        >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_L81_c110906.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="103"                  >atm/waccm/ic/cami_2000-05-01_1.9x2.5_L103_c040928.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="126" waccmx="1"       >atm/waccm/ic/f.c54137.FX2000climo.f19_f19.ZGTest.001.cam.i.0002-01-01-00000_c170817.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="130" waccmx="1"       >atm/waccm/ic/wcmx-cam6-phys_1.9x2.5_130lev_2000_c181115.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="130" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="10x15"     nlev="70"  aquaplanet="1" carma="trop_strat_soa1">atm/waccm/ic/aqua_carma_waccm_0002-01-01_10x15_L70_c220325.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"                 carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f19_carmats038_spinupl03.cam.i.1980-01-01_c241025.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" carma="trop_strat_soa1">atm/cam/inic/fv/aqua_carma_waccm_0002-01-01_1.9x2.5_L70_c220809.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="70"                 carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f09_spinup01.cam.i.1980-01-01-00000_c220128.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="26"                 >atm/cam/inic/fv/cami_1987-01-01_0.9x1.25_L26_c060703.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="26" ic_ymd="901"    >atm/cam/inic/fv/cami_0000-09-01_0.9x1.25_L26_c051205.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="26" aquaplanet="1"  >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L26_c161020.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="30"                 >atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L30_c100618.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="30" aquaplanet="1"  >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L30_c161020.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="30" chem="trop_mozart" >atm/cam/inic/fv/cami-chem_1990-01-01_0.9x1.25_L30_c080724.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32"                 >atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L32_c141031.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" aquaplanet="1"  >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L32_c161020.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="66"                 >atm/waccm/ic/cami_2000-02-01_0.9x1.25_L66_c040928.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="70"                 >atm/waccm/ic/FWT2000_f09_spinup01.cam.i.0001-01-02-00000_c160315.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="70" carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f09_spinup01.cam.i.1980-01-01-00000_c220128.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="126" waccmx="1">atm/waccm/ic/fx2000_0.9x1.25_126lev_0002-01-01-00000_c181221.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="130" waccmx="1">atm/waccm/ic/wcmx-cam6-phys_0.9x1.25_130lev_2000_c190122.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L32_c141031.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L32_c150407.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam4_0000-01-01_10x15_L32_c170914.nc</ncdata>
+<ncdata hgrid="0.5x0.625" nlev="26"                >atm/cam/inic/fv/cami_0000-10-01_0.5x0.625_L26_c031204.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/cami_0000-01-01_0.47x0.63_L26_APE_c080227.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L26_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L26_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0000-01-01_10x15_L26_c161230.nc</ncdata>
+<ncdata hgrid="0.47x0.63" nlev="26"                >atm/cam/inic/fv/cami_1980-01-01_0.47x0.63_L26_c071226.nc</ncdata>
+<ncdata hgrid="0.47x0.63" nlev="26" ic_ymd="901"   >atm/cam/inic/fv/cami_0000-09-01_0.47x0.63_L26_c061106.nc</ncdata>
+<ncdata hgrid="0.47x0.63" nlev="26" aquaplanet="1" >atm/cam/inic/fv/cami_0000-01-01_0.47x0.63_L26_APE_c080227.nc</ncdata>
+<ncdata hgrid="0.47x0.63" nlev="30"                >atm/cam/inic/fv/cami-mam3_0000-01-01_0.47x0.63_L30_c100929.nc</ncdata>
+<ncdata hgrid="0.47x0.63" nlev="130" waccmx="1"    >atm/waccm/ic/FC6X2000_f05_spinup01.cam.i.0002-01-01-00000_c190711.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="30"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L30_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="30"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L30_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="30"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0000-01-01_10x15_L30_c170103.nc</ncdata>
+<ncdata hgrid="0.23x0.31" nlev="26"                >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
+<ncdata hgrid="0.23x0.31" nlev="26" ic_ymd="901"   >atm/cam/inic/fv/cami_0000-09-01_0.23x0.31_L26_c061106.nc</ncdata>
+<ncdata hgrid="0.23x0.31" nlev="30"                >atm/cam/inic/fv/cami-mam3_0000-01-01_0.23x0.31_L30_c110527.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L32_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L32_c161020.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv/aqua_0000-01-01_10x15_L32_c170103.nc</ncdata>
+<!-- SE Initial Conditions -->
+<ncdata hgrid="ne3np4"   nlev="26"             >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="30"             >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="32"                 >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="32"  ic_ymd="901"   >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-09-01-00000.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="32"  aquaplanet="1" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="58"             >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93"             >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="30"  chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_0.9x1.25_L30_c080724.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="26"  chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L26_c080114.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="30"  chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L30_c080215.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="30"                 >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne5np4_L30_c170517.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="32"                 >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L32_01-01-31_c230520.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne5np4_L32_c170517.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="58"                 >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L58_01-01-31_c230520.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="66"                 >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="70"  aquaplanet="1" chem="waccm_ma_mam4">atm/waccm/ic/aqua_waccm_ma_ne5np4_70L_c220729.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="70"  aquaplanet="1" chem="waccm_ma_mam5">atm/waccm/ic/aqua_waccm_ma_ne5np4_70L_c220729.nc</ncdata>
+<ncdata hgrid="ne5np4"   nlev="126" waccmx="1"     >atm/waccm/ic/waccmx_aqua_ne5np4_126L_c210304.nc</ncdata>
 
-<ncdata dyn="fv" hgrid="10x15"   nlev="26" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="10x15"   nlev="30" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L30_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="26" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="30" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L30_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="26" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="30" chem="trop_mozart" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L30_c081104.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne16np4_L26_c171020.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne16np4_L26_c170417.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="30"                 >atm/cam/inic/se/ape_topo_cam4_ne16np4_L30_c171020.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne16np4_L30_c170417.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="32"                 >atm/cam/inic/se/ape_topo_cam4_ne16np4_L32_c171020.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne16np4_L32_c170509.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="126" waccmx="1"                                 >atm/waccm/ic/waccmx_ne16np4_126L_c200108.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="126" waccmx="1" aquaplanet="1"                  >atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="130" waccmx="1"     >atm/waccm/ic/waccmx_ne16pg3_L130_c250318.nc</ncdata>
 
-<ncdata dyn="fv" hgrid="10x15"   nlev="30" chem="trop_strat_mam4_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
-<ncdata dyn="fv" hgrid="10x15"   nlev="30" chem="trop_strat_mam5_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="30" chem="trop_strat_mam4_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="30" chem="trop_strat_mam5_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam4_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam5_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="30"                 >atm/cam/inic/se/ape_topo_cam4_ne30np4_L30_c171020.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne30np4_L30_c170417.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32"                 >atm/cam/inic/se/F2000climo_ne30pg3_mg17_01-01-00000_c200424.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne30np4_L32_c170509.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_vbs" npg="3">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_vbs" npg="3">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="58"                 >atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="70"                 >atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="70" npg="3"         >atm/waccm/ic/FW2000.ne30pg3_ne30pg3_nlev70_c230906.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="93"                           >atm/cam/inic/se/c153_ne30pg3_FMTHIST_x02.cam.i.1990-01-01-00000_c240618.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.cam6_3_160.FCMT_ne30.moving_mtn.001.cam.i.1996-01-01-00000_c240618.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="110"                >atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="130" waccmx="1"         >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="130" waccmx="1" npg="3" >atm/waccm/ic/waccmx_ne30pg3_L130_c250307.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.cam6_3_160.FCMT_ne30.moving_mtn.001.cam.i.1996-01-01-00000_c240618.nc</ncdata>
+<ncdata hgrid="ne60np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne60np4_L26_c171018.nc</ncdata>
+<ncdata hgrid="ne60np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne60np4_L26_c171023.nc</ncdata>
+<ncdata hgrid="ne60np4"  nlev="30"                 >atm/cam/inic/se/ape_topo_cam4_ne60np4_L30_c171020.nc</ncdata>
+<ncdata hgrid="ne60np4"  nlev="32"                 >atm/cam/inic/se/ape_topo_cam4_ne60np4_L32_c171020.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/c153_ne30pg3_FMTHIST_x02.cam.i.1990-01-01-00000_c240618.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne120np4_L26_c171018.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne120np4_L26_c170419.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="30"                 >atm/cam/inic/se/ape_topo_cam4_ne120np4_L30_c171024.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="32"                 >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="4x5"       nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_10x15_L26_c060216.nc</ncdata>
+<ncdata hgrid="ne240np4" nlev="26"                 >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
+<ncdata hgrid="ne240np4" nlev="26"  ic_ymd="901"   >atm/cam/inic/homme/cami_0000-09-01_ne240np4_L26_c061106.nc</ncdata>
+<ncdata hgrid="ne240np4" nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne240np4_L26_c170613.nc</ncdata>
+<ncdata hgrid="ne240np4" nlev="30"                 >atm/cam/inic/homme/cami-mam3_0000-01-ne240np4_L30_c111004.nc</ncdata>
+<ncdata hgrid="ne240np4" nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="66"   ic_ymd="20000201" >atm/waccm/ic/cami_2000-02-01_0.9x1.25_L66_c040928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="66"   ic_ymd="20000701" >atm/waccm/ic/cami_2000-07-01_1.9x2.5_L66_c040928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="70"                     >atm/waccm/ic/FWT2000_f09_spinup01.cam.i.0001-01-02-00000_c160315.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" >atm/waccm/ic/aqua.cam6.waccmsc_1.9x2.5_L70.2000-01-01.c170123.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_tsmlt_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_ma_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne5np4"    nlev="70"  aquaplanet="1" chem="waccm_ma_mam4">atm/waccm/ic/aqua_waccm_ma_ne5np4_70L_c220729.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne5np4"    nlev="70"  aquaplanet="1" chem="waccm_ma_mam5">atm/waccm/ic/aqua_waccm_ma_ne5np4_70L_c220729.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_10x15_L70.cam2.i.0017-01-01.c141016.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="18500101" >atm/waccm/ic/b1850.waccm-mam3_1.9x2.5_L70.cam2.i.0156-01-01.c120523.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="103"  ic_ymd="20000501" >atm/waccm/ic/cami_2000-05-01_1.9x2.5_L103_c040928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="66"   ic_ymd="19600101" >atm/waccm/ic/wa3_4x5_1950_spinup.cam2.i.1960-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="66"   ic_ymd="20000101" >atm/waccm/ic/cami_2000-01-01_10x15_L66_c041121.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="66"  chem="waccm_ma_sulfur" ic_ymd="20000101">atm/waccm/ic/f40.2000.4deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="66"  chem="waccm_ma_sulfur" ic_ymd="20100101">atm/waccm/ic/f40.2deg.wcm.carma.sulf.L66.cam2.i.2010-01-01.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_L81_c110906.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_4x5_L81_c160630.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_10x15_L81_c141027.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="126" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_aqua_4x5_L126_c170705.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="126" waccmx="1">atm/waccm/ic/f.c54137.FX2000climo.f19_f19.ZGTest.001.cam.i.0002-01-01-00000_c170817.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="126" waccmx="1">atm/waccm/ic/fx2000_0.9x1.25_126lev_0002-01-01-00000_c181221.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1">atm/waccm/ic/wcmx-cam6-phys_1.9x2.5_130lev_2000_c181115.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="130" waccmx="1">atm/waccm/ic/wcmx-cam6-phys_0.9x1.25_130lev_2000_c190122.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="130" waccmx="1">atm/waccm/ic/FC6X2000_f05_spinup01.cam.i.0002-01-01-00000_c190711.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_4x5_L130_c180803.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne5np4"    nlev="126" waccmx="1"               >atm/waccm/ic/waccmx_aqua_ne5np4_126L_c210304.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1"               >atm/waccm/ic/waccmx_ne16np4_126L_c200108.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne16np4"   nlev="130" waccmx="1"               >atm/waccm/ic/waccmx_ne16pg3_L130_c250318.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne30np4"   nlev="130" waccmx="1"               >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne30np4" npg="3" nlev="130" waccmx="1"         >atm/waccm/ic/waccmx_ne30pg3_L130_c250307.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" >atm/cam/inic/se/F2000climo_CONUS_30x8_mt12_mg3_01-01-00000_c200421.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="70" >atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata dyn="fv3"   hgrid="C24"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="30"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L30_c161020.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C192" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C192_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C384" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C384_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C24"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C24"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L30_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C24"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C24_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L30_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C48_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L30_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C96_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C192" nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C192" nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L30_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C192" nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C192_L26_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C384" nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L32_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C384" nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L30_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C384" nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C384_L26_c200625.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 
-<ncdata dyn="fv3"   hgrid="C24"  nlev="70"                  ic_ymd="101" >atm/waccm/ic/f2000.waccm-mam3_C24_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C48"  nlev="70"                  ic_ymd="101" >atm/waccm/ic/f2000.waccm-mam3_C48_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C96"  nlev="70"                  ic_ymd="101" >atm/waccm/ic/f2000.waccm-mam3_C96_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" >atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne3np4" nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="901" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-09-01-00000.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne3np4"   nlev="93"             ic_ymd="101" >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
-<ncdata dyn="se" hgrid="ne5np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
-<ncdata dyn="se" hgrid="ne5np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L32_01-01-31_c230520.nc</ncdata>
-<ncdata dyn="se" hgrid="ne5np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne5pg3_mg37_L58_01-01-31_c230520.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L26_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L32_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne30pg3_mg17_01-01-00000_c200424.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L26_c171018.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L32_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L26_c171018.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L30_c171024.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="101" >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="901" >atm/cam/inic/homme/cami_0000-09-01_ne240np4_L26_c061106.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne240np4" nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01-ne240np4_L30_c111004.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne5np4"   nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne16np4_L26_c170417.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne60np4_L26_c171023.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne120np4_L26_c170419.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4" nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne240np4_L26_c170613.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne5np4"   nlev="30"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam5_ne5np4_L30_c170517.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="30"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam5_ne16np4_L30_c170417.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="30"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam5_ne30np4_L30_c170417.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="30"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne3np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="ne5np4"   nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne5np4_L32_c170517.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne16np4_L32_c170509.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne30np4_L32_c170509.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_CONUS_30x8_mt12_mg3_01-01-00000_c200421.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"     nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne5np4"   nlev="66"           ic_ymd="101">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"           ic_ymd="101">atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000.ne30pg3_ne30pg3_nlev70_c230906.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
-
-<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
-
+<!-- MPAS Initial Conditions -->
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L58_CFSR_c240814.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L93_CFSR_c240814.nc</ncdata>
+
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L93_CFSR_c240814.nc</ncdata>
+
+<!-- FV3 Initial Conditions -->
+<ncdata hgrid="C24"  nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C24_L26_c200625.nc</ncdata>
+<ncdata hgrid="C24"  nlev="30"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L30_c200625.nc</ncdata>
+<ncdata hgrid="C24"  nlev="32"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L32_c200625.nc</ncdata>
+<ncdata hgrid="C24"  nlev="32"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c200625.nc</ncdata>
+<ncdata hgrid="C24"  nlev="70"                  >atm/waccm/ic/f2000.waccm-mam3_C24_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
+
+<ncdata hgrid="C48"  nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C48_L26_c200625.nc</ncdata>
+<ncdata hgrid="C48"  nlev="26"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C48_L26_c200625.nc</ncdata>
+<ncdata hgrid="C48"  nlev="30"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L30_c200625.nc</ncdata>
+<ncdata hgrid="C48"  nlev="32"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L32_c200625.nc</ncdata>
+<ncdata hgrid="C48"  nlev="32"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c200625.nc</ncdata>
+<ncdata hgrid="C48"  nlev="70"                  >atm/waccm/ic/f2000.waccm-mam3_C48_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
+
+<ncdata hgrid="C96"  nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C96_L26_c200625.nc</ncdata>
+<ncdata hgrid="C96"  nlev="26"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C96_L26_c200625.nc</ncdata>
+<ncdata hgrid="C96"  nlev="30"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L30_c200625.nc</ncdata>
+<ncdata hgrid="C96"  nlev="30"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C96_L30_c161020.nc</ncdata>
+<ncdata hgrid="C96"  nlev="32"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L32_c200625.nc</ncdata>
+<ncdata hgrid="C96"  nlev="32"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C96_L32_c200625.nc</ncdata>
+<ncdata hgrid="C96"  nlev="70"                  >atm/waccm/ic/f2000.waccm-mam3_C96_L70.cam2.i.0017-01-01_c200625.nc</ncdata>
+
+<ncdata hgrid="C192" nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C192_L26_c200625.nc</ncdata>
+<ncdata hgrid="C192" nlev="30"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L30_c200625.nc</ncdata>
+<ncdata hgrid="C192" nlev="32"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L32_c200625.nc</ncdata>
+<ncdata hgrid="C192" nlev="32"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C192_L32_c200625.nc</ncdata>
+
+<ncdata hgrid="C384" nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C384_L26_c200625.nc</ncdata>
+<ncdata hgrid="C384" nlev="30"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L30_c200625.nc</ncdata>
+<ncdata hgrid="C384" nlev="32"                  >atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L32_c200625.nc</ncdata>
+<ncdata hgrid="C384" nlev="32"  aquaplanet="1"  >atm/cam/inic/fv3/aqua_0006-01-01_C384_L32_c200625.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="0.23x0.31" >atm/cam/topo/USGS_gtopo30_0.23x0.31_remap_c061107.nc</bnd_topo>
@@ -3022,9 +3020,6 @@
 <!-- IOP USER/User specified IOP forcing/lat:yy/lon:xx/Date:Any/Length:Any/-These are just defaults and can be updated by the user via cime_config/usermods_dir -->
 <ncdata            hgrid="ne3np4"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
 <iopfile                                              scam_iop="camfrc"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
-
-<!-- physics loadbalance -->
-<phys_loadbalance dyn="fv3"> 2 </phys_loadbalance>
 
 <!-- Control output to history file(s) -->
 <history_amwg>                 .true.   </history_amwg>
