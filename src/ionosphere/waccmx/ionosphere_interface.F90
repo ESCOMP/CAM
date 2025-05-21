@@ -840,6 +840,11 @@ module ionosphere_interface
             end do
          end do
 
+         if (state_debug_checks) then
+            call shr_assert_in_domain(te_blck, is_nan=.false., varname="te_blck", msg="NaN found in te_blck in ionosphere_run2")
+            call shr_assert_in_domain(ti_blck, is_nan=.false., varname="ti_blck", msg="NaN found in ti_blck in ionosphere_run2")
+         end if
+
          call t_startf('d_pie_coupling')
 
          ! Compute geometric height and some diagnostic fields needed by
@@ -861,10 +866,10 @@ module ionosphere_interface
          call t_stopf ('d_pie_coupling')
 
          if (state_debug_checks) then
-            call shr_assert_in_domain(ui_blck, is_nan=.false., varname="ui_blck", msg="NaN found in ionosphere_run2")
-            call shr_assert_in_domain(vi_blck, is_nan=.false., varname="vi_blck", msg="NaN found in ionosphere_run2")
-            call shr_assert_in_domain(wi_blck, is_nan=.false., varname="wi_blck", msg="NaN found in ionosphere_run2")
-            call shr_assert_in_domain(opmmr_blck, is_nan=.false., varname="opmmr_blck", msg="NaN found in ionosphere_run2")
+            call shr_assert_in_domain(ui_blck, is_nan=.false., varname="ui_blck", msg="NaN found in ui_blck in ionosphere_run2")
+            call shr_assert_in_domain(vi_blck, is_nan=.false., varname="vi_blck", msg="NaN found in vi_blck in ionosphere_run2")
+            call shr_assert_in_domain(wi_blck, is_nan=.false., varname="wi_blck", msg="NaN found in wi_blck in ionosphere_run2")
+            call shr_assert_in_domain(opmmr_blck, is_nan=.false., varname="opmmr_blck", msg="NaN found in opmmr_blck in ionosphere_run2")
          end if
 
          !
