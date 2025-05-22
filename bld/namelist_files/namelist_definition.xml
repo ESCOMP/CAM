@@ -3226,7 +3226,7 @@ Default: .false.
 
 <entry id="zmconv_parcel_hscale" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
- The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction). 
+ The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction).
 Default: 0.5
 </entry>
 
@@ -8187,6 +8187,15 @@ se_molecular_diff.
 If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then
 the molecular diffusion and thermal conductivity coefficients will be
 multiplied by a factor of se_molecular_diff.
+
+Default: 0.
+</entry>
+
+<entry id="se_min_temperature" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Used by SE dycore to apply floor to temperature.....
+
+NEEDS TO BE FILLED IN
 
 Default: 0.
 </entry>
