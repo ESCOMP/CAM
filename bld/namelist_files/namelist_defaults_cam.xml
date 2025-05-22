@@ -881,6 +881,7 @@
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">30</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="ne30np4"  waccmx="1">30</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.47x0.63" waccmx="1">90</ionos_xport_nsplit>
+<ionos_xport_nsplit hgrid="ne120np4"  waccmx="1">180</ionos_xport_nsplit>
 <oplus_ring_polar_filter>.true.</oplus_ring_polar_filter>
 <oplus_shapiro_const                 >3.d-2</oplus_shapiro_const>
 <oplus_shapiro_const hgrid="ne120np4">6.d-3</oplus_shapiro_const>
@@ -891,11 +892,13 @@
 <oplus_grid hgrid="ne30np4"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.9x1.25"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.47x0.63"> 576,384 </oplus_grid>
+<oplus_grid hgrid="ne120np4"> 576,384 </oplus_grid>
 <!-- Magnetic grid resolution -->
 <edyn_grid>80x97</edyn_grid>
 <edyn_grid hgrid="0.9x1.25">160x193</edyn_grid>
 <edyn_grid hgrid="ne30np4" >160x193</edyn_grid>
 <edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
+<edyn_grid hgrid="ne120np4" >320x385</edyn_grid>
 
 <!-- ESMF mesh files for physics decomposition -->
 <cam_physics_mesh hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
