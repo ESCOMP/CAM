@@ -3351,7 +3351,6 @@
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
 <mpas_apply_lbcs> .false. </mpas_apply_lbcs>
 <mpas_jedi_da> .false. </mpas_jedi_da>
-<mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
@@ -3361,7 +3360,7 @@
 <mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 
 <mpas_do_restart               > .false. </mpas_do_restart>
-<mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
+<mpas_print_global_minmax_vel  > .false. </mpas_print_global_minmax_vel>
 <mpas_print_detailed_minmax_vel> .false. </mpas_print_detailed_minmax_vel>
 <mpas_print_global_minmax_sca  > .false. </mpas_print_global_minmax_sca>
 
