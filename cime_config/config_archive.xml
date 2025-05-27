@@ -5,6 +5,7 @@
     <rest_file_extension>rh\d*</rest_file_extension>
     <rest_file_extension>rs</rest_file_extension>
     <rest_file_extension>i\.\d.*\.nc(\.gz)?$</rest_file_extension>
+    <hist_file_extension>i\..*\.nc(\.gz)?$</hist_file_extension>
     <hist_file_extension>h\d*.*\.nc(\.gz)?$</hist_file_extension>
     <hist_file_extension>e</hist_file_extension>
     <rest_history_varname>nhfil</rest_history_varname>
