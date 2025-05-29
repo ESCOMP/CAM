@@ -10,30 +10,30 @@ module steady_state_tei
   use cam_abortutils, only: endrun
 
   implicit none
-  
-  private 
+
+  private
 
   !------------------------
-  ! PUBLIC: interfaces 
+  ! PUBLIC: interfaces
   !------------------------
   public :: steady_state_tei_init
   public :: steady_state_tei_tend
-  
+
   integer :: indxTe = -1
   integer :: indxTi = -1
   integer :: indxQt = -1
   integer :: indxAR = -1
   integer :: indxO1 = -1
   integer :: indxO2 = -1
-  
+
   real(r8) :: op_mass
-  
+
 contains
 
 !==============================================================================
 
   subroutine steady_state_tei_init(pbuf2d)
-  
+
 !-----------------------------------------------------------------------
 ! Time independent initialization for ionosphere simulation.
 !-----------------------------------------------------------------------
@@ -41,10 +41,8 @@ contains
     use constituents,   only: cnst_get_ind
     use mo_chem_utls,   only: get_spc_ndx                  ! Routine to get index of adv_mass array for short lived species
     use chem_mods,      only: adv_mass                     ! Array holding mass values for short lived species
-    use infnan,         only: nan, assignment(=)
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    real(r8) :: nanval
 
     call cnst_get_ind( 'O2', indxO2, abort=.true. )
     call cnst_get_ind( 'O',  indxO1, abort=.true. )
@@ -56,11 +54,7 @@ contains
     indxTi = pbuf_get_index( 'TIon' )
     indxQt = pbuf_get_index( 'QTeAur' )
     indxAR = pbuf_get_index( 'AurIPRateSum' )
-    
-    nanval=nan
-    call pbuf_set_field(pbuf2d, indxQt, nanval)
-    call pbuf_set_field(pbuf2d, indxAR, nanval)
-    
+
     op_mass = adv_mass(get_spc_ndx('Op'))
 
   end subroutine steady_state_tei_init
@@ -76,7 +70,7 @@ contains
     use perf_mod,         only: t_startf, t_stopf           ! timing utils
     use ionos_state_mod,  only: ionos_state
     !-------------------------------------------------------------------------------------
-    ! Calculate dry static energy and O+ tendency for extended ionosphere simulation 
+    ! Calculate dry static energy and O+ tendency for extended ionosphere simulation
     !-------------------------------------------------------------------------------------
 
     !------------------------------Arguments--------------------------------
@@ -89,29 +83,29 @@ contains
     !---------------------------Local variables-------------------------------
 
     real(r8),dimension(pver,state%ncol) :: &
-         tn,    &   ! neutral temperature (deg K) 
-         o2,    &   ! molecular oxygen (mmr) 
+         tn,    &   ! neutral temperature (deg K)
+         o2,    &   ! molecular oxygen (mmr)
          o1,    &   ! atomic oxygen (mmr)
          n2,    &   ! molecular nitrogen (mmr)
          ne,    &   ! electron density (cm3)
          te,    &   ! electron temperature (from previous time step) (K)
          ti,    &   ! ion temperature (from previous time step) (K)
-         op,    &   ! O+ number dens (/cm^3) 
-         o2p,   &   ! O2+ number dens (/cm^3) 
-         nop,   &   ! NO+ number dens (/cm^3) 
+         op,    &   ! O+ number dens (/cm^3)
+         o2p,   &   ! O2+ number dens (/cm^3)
+         nop,   &   ! NO+ number dens (/cm^3)
          barm,  &   ! mean molecular weight (g/mole)
          qji_ti     ! joule heating from qjoule_ti (used ui,vi) ev/g/s
 
     real(r8) :: chi(state%ncol)             ! solar zenith angle (radians)
     real(r8) :: qtot(pver,state%ncol)       ! total ionization rate  (s-1 cm-3)
-    real(r8) :: pmid(pver,state%ncol)       ! mid-level press (dyne/cm^2) !  10._r8*pmid(:ncol,k) 
+    real(r8) :: pmid(pver,state%ncol)       ! mid-level press (dyne/cm^2) !  10._r8*pmid(:ncol,k)
     real(r8) :: pint(pverp,state%ncol)      ! interface press (dyne/cm^2)
 
-    real(r8) :: te_out(pver,state%ncol)     ! output electron temperature (deg K) 
+    real(r8) :: te_out(pver,state%ncol)     ! output electron temperature (deg K)
     real(r8) :: ti_out(pver,state%ncol)     ! output ion temperature (deg K)
     real(r8) :: qtotal_out(pver,state%ncol) ! heating rate of neutrals
-    
-    integer :: lchnk                        ! Chunk number 
+
+    integer :: lchnk                        ! Chunk number
     integer :: ncol                         ! Number of columns in chunk
     integer :: i, k
 
@@ -135,7 +129,7 @@ contains
 
     call pbuf_get_field(pbuf, indxTe, te_ptr)
     call pbuf_get_field(pbuf, indxTi, ti_ptr)
-    call pbuf_get_field(pbuf, indxQt, qteaur) 
+    call pbuf_get_field(pbuf, indxQt, qteaur)
     call pbuf_get_field(pbuf, indxAR, aurIPRateSum)
 
     do i =1,ncol
@@ -163,7 +157,7 @@ contains
                 f107, chi, qtot, qteaur(:ncol), alatm(:ncol,lchnk), &
                 istate%dipmag(:ncol,1), pmid, pint, 1,pver,ncol, &
                 te_out, ti_out, qtotal_out )
-    
+
     do i =1,ncol
        te_ptr(i,pver:1:-1) = te_out(1:pver,i)
        ti_ptr(i,pver:1:-1) = ti_out(1:pver,i)
