@@ -199,14 +199,24 @@
       <option name="comment" >CAM7-LT aquaplanet</option>
     </options>
   </test>
-  <test compset="QPC7" grid="ne30pg3_ne30pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq3s_cosp">
+  <test compset="QPC7" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
-      <option name="comment" >CAM7-LT aquaplanet w/ COSP</option>
+      <option name="comment" >CAM7-LT aquaplanet</option>
+    </options>
+  </test>
+  <test compset="QPC7" grid="mpasa480_mpasa480_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa480">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >CAM7-LT aquaplanet on mpasa480</option>
     </options>
   </test>
   <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
@@ -1195,27 +1205,19 @@
    </options>
   </test>
 
-  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERS_Ln9_P288x1" testmods="cam/outfrq9s_mpasa120">
+  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
+      <option name="comment" >F2000climo w/ mpasa120</option>
     </options>
   </test>
 
   <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_Ln9_P24x1" testmods="cam/outfrq9s_mpasa480">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:45:00</option>
-    </options>
-  </test>
-
-  <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa480_pertlim">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
@@ -1590,10 +1592,9 @@
       <option name="comment">CAM7-LT, archiving, resubmit</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="mpasa480_mpasa480" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa480">
+  <test compset="FHISTC_LTso" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
