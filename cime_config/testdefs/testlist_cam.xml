@@ -199,7 +199,7 @@
       <option name="comment" >CAM7-LT aquaplanet</option>
     </options>
   </test>
-  <test compset="QPC7" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
+  <test compset="QPC7" grid="mpasa120_mpasa120" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
@@ -1205,7 +1205,7 @@
    </options>
   </test>
 
-  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
+  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1592,7 +1592,7 @@
       <option name="comment">CAM7-LT, archiving, resubmit</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
+  <test compset="FHISTC_LTso" grid="mpasa120_mpasa120" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
