@@ -85,6 +85,7 @@ subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
    use spmd_utils,     only: masterproc
    use ioFileMod,      only: getfil
    use error_messages, only: handle_ncerr
+   use cam_abortutils, only: handle_allocate_error
 #if ( defined SPMD )
    use mpishorthand
 #endif
@@ -296,29 +297,19 @@ subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
    nlambda_out = nlambda
    n_g_d_out = n_g_d
    allocate(abs_lw_liq_out(nmu,nlambda,nlwbands), stat=ierr, errmsg=errmsg)
-   if (ierr /= 0) then
-      call endrun(sub//': Failed to allocate abs_lw_liq_out - message: '//errmsg)
-   end if
+   call handle_allocate_error(ierr, sub, 'abs_lw_liq_out')
    abs_lw_liq_out = abs_lw_liq
    allocate(abs_lw_ice_out(n_g_d,nlwbands), stat=ierr, errmsg=errmsg)
-   if (ierr /= 0) then
-      call endrun(sub//': Failed to allocate abs_lw_ice_out - message: '//errmsg)
-   end if
+   call handle_allocate_error(ierr, sub, 'abs_lw_ice_out')
    abs_lw_ice_out = abs_lw_ice
    allocate(g_mu_out(nmu), stat=ierr, errmsg=errmsg)
-   if (ierr /= 0) then
-      call endrun(sub//': Failed to allocate g_mu_out - message: '//errmsg)
-   end if
+   call handle_allocate_error(ierr, sub, 'g_mu_out')
    g_mu_out = g_mu
    allocate(g_lambda_out(nmu,nlambda), stat=ierr, errmsg=errmsg)
-   if (ierr /= 0) then
-      call endrun(sub//': Failed to allocate g_lambda_out - message: '//errmsg)
-   end if
+   call handle_allocate_error(ierr, sub, 'g_lambda_out')
    g_lambda_out = g_lambda
    allocate(g_d_eff_out(n_g_d), stat=ierr, errmsg=errmsg)
-   if (ierr /= 0) then
-      call endrun(sub//': Failed to allocate g_d_eff_out - message: '//errmsg)
-   end if
+   call handle_allocate_error(ierr, sub, 'g_d_eff_out')
    g_d_eff_out = g_d_eff
    return
 

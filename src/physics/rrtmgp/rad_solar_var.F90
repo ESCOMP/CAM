@@ -58,6 +58,9 @@ contains
        end if
 
        call get_sw_spectral_boundaries_ccpp(radbinmin, radbinmax, 'nm', errmsg, errflg)
+       if (errflg /= 0) then
+          call endrun('rad_solar_var_init: Error during get_sw_spectral_boundaries_ccpp - message: "'//errmsg//'"')
+       end if
 
        ! Make sure that the far-IR is included, even if radiation grid does not
        ! extend that far down. 10^5 nm corresponds to a wavenumber of
