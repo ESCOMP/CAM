@@ -216,7 +216,7 @@ contains
     call addfld ('THzm', (/'lev'/), 'A','K',      'Zonal-Mean potential temp', gridname='ctem_zm' )
     call addfld ('VTHzm',(/'lev'/), 'A','K m s-1','Zonal-Mean meridional Heat Flux:', gridname='ctem_zm')
     call addfld ('WTHzm',(/'lev'/), 'A','K m s-1','Zonal-Mean vertical Heat Flux:', gridname='ctem_zm')
-    call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Zonal-Mean ,eridional Flux of Zonal Momentum', gridname='ctem_zm')
+    call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Zonal-Mean meridional Flux of Zonal Momentum', gridname='ctem_zm')
     call addfld ('UWzm', (/'lev'/), 'A','m2 s-2', 'Zonal-Mean vertical Flux of Zonal Momentum', gridname='ctem_zm')
 
     call addfld ('PSzm',  horiz_only, 'A', 'Pa', 'Zonal-Mean surface pressure', gridname='ctem_zm' )

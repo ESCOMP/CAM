@@ -179,7 +179,7 @@ contains
 
     allocate(mytidi_send(npes), stat=astat)
     if (astat/=0) then
-       call endrun(subname//'not able to allocate mytidi_send( array')
+       call endrun(subname//'not able to allocate mytidi_send array')
     end if
     allocate(mytidj_send(npes), stat=astat)
     if (astat/=0) then
