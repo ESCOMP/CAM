@@ -66,7 +66,7 @@ contains
     end do
     allocate(decomp(total_cols), stat=rc)
     if (rc/=0) then
-       call endrun(subname//'not able to allacate decomp')
+       call endrun(subname//'not able to allocate decomp')
     end if
 
     dindex = 0
@@ -102,17 +102,17 @@ contains
 
     allocate(ownedElemCoords(spatialDim*numOwnedElements), stat=rc)
     if (rc/=0) then
-       call endrun(subname//'not able to allacate ownedElemCoords')
+       call endrun(subname//'not able to allocate ownedElemCoords')
     end if
 
     allocate(lonMesh(total_cols), stat=rc)
     if (rc/=0) then
-       call endrun(subname//'not able to allacate lonMesh')
+       call endrun(subname//'not able to allocate lonMesh')
     end if
 
     allocate(latMesh(total_cols), stat=rc)
     if (rc/=0) then
-       call endrun(subname//'not able to allacate latMesh')
+       call endrun(subname//'not able to allocate latMesh')
     end if
 
     call ESMF_MeshGet(physics_grid_mesh, ownedElemCoords=ownedElemCoords)
@@ -126,14 +126,14 @@ contains
     ! obtain internally generated cam lats and lons
     allocate(lon(total_cols), stat=rc);
     if (rc/=0) then
-       call endrun(subname//'not able to allacate lon')
+       call endrun(subname//'not able to allocate lon')
     end if
 
     lon(:) = 0._r8
 
     allocate(lat(total_cols), stat=rc);
     if (rc/=0) then
-       call endrun(subname//'not able to allacate lat')
+       call endrun(subname//'not able to allocate lat')
     end if
 
     lat(:) = 0._r8

@@ -346,12 +346,13 @@ contains
         call HCOI_Chunk_Init()
     endif
 
+    ! TEM diagnostics
+    call ctem_diags_reg()
+
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
         call pbuf_cam_snapshot_register()
     end if
-
-    call ctem_diags_reg()
 
   end subroutine phys_register
 

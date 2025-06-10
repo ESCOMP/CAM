@@ -65,7 +65,7 @@ contains
     integer, parameter :: minlons_per_pe = 2
 
     integer, allocatable :: petmap(:,:,:)
-    integer :: petcnt
+    integer :: petcnt, astat
 
     integer                       :: lbnd_lat, ubnd_lat, lbnd_lon, ubnd_lon
     integer                       :: lbnd(1), ubnd(1)
@@ -81,8 +81,14 @@ contains
     nlon = 2*nlat
     delx = 360._r8/nlon
 
-    allocate(glons(nlon))
-    allocate(glats(nlat))
+    allocate(glons(nlon), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate glons array')
+    end if
+    allocate(glats(nlat), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate glats array')
+    end if
 
     glons(1) = 0._r8
     glats(1) = -90._r8 + 0.5_r8 * dely
@@ -171,20 +177,44 @@ contains
 
     call mpi_comm_split(mpicom,mytidj,mytid,zonal_comm,ierr)
 
-    allocate(mytidi_send(npes))
-    allocate(mytidj_send(npes))
-    allocate(mytidi_recv(npes))
-    allocate(mytidj_recv(npes))
+    allocate(mytidi_send(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate mytidi_send( array')
+    end if
+    allocate(mytidj_send(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate mytidj_send array')
+    end if
+    allocate(mytidi_recv(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate mytidi_recv array')
+    end if
+    allocate(mytidj_recv(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate mytidj_recv array')
+    end if
 
     mytidi_send = mytidi
     mytidj_send = mytidj
     call mpi_alltoall(mytidi_send, 1, MPI_INTEGER, mytidi_recv, 1, MPI_INTEGER, mpicom, ierr)
     call mpi_alltoall(mytidj_send, 1, MPI_INTEGER, mytidj_recv, 1, MPI_INTEGER, mpicom, ierr)
 
-    allocate(nlons_send(npes))
-    allocate(nlats_send(npes))
-    allocate(nlons_recv(npes))
-    allocate(nlats_recv(npes))
+    allocate(nlons_send(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlons_send array')
+    end if
+    allocate(nlats_send(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlats_send array')
+    end if
+    allocate(nlons_recv(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlons_recv array')
+    end if
+    allocate(nlats_recv(npes), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlats_recv array')
+    end if
 
     nlons_send(:) = mynlons
     nlats_send(:) = mynlats
@@ -195,8 +225,14 @@ contains
     deallocate(nlons_send)
     deallocate(nlats_send)
 
-    allocate(nlons_task(ntasks_lon))
-    allocate(nlats_task(ntasks_lat))
+    allocate(nlons_task(ntasks_lon), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlons_task array')
+    end if
+    allocate(nlats_task(ntasks_lat), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate nlats_task array')
+    end if
 
     do i = 1, ntasks_lon
        loop1: do n = 1, npes
@@ -227,7 +263,10 @@ contains
 
     ! set up 2D ESMF lon lat grid
 
-    allocate(petmap(ntasks_lon,ntasks_lat,1))
+    allocate(petmap(ntasks_lon,ntasks_lat,1), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate petmap array')
+    end if
 
     petcnt = 0
     do j = 1,ntasks_lat

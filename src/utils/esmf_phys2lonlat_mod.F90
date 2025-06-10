@@ -127,14 +127,14 @@ contains
     use ppgrid, only: pcols, pver, begchunk, endchunk
     use phys_grid, only: get_ncols_p
 
-    type(fields_bundle_t) :: physflds(nflds)
-    type(fields_bundle_t) :: lonlatflds(nflds)
+    type(fields_bundle_t), intent(in) :: physflds(nflds)
+    type(fields_bundle_t), intent(inout) :: lonlatflds(nflds)
 
     integer :: i, ichnk, ncol, ifld, ilev, icol, rc
     real(ESMF_KIND_R8), pointer :: physptr(:,:,:)
     real(ESMF_KIND_R8), pointer :: lonlatptr(:,:,:,:)
 
-    character(len=*), parameter :: subname = 'esmf_phys2lonlat_regrid: '
+    character(len=*), parameter :: subname = 'esmf_phys2lonlat_regrid_3d: '
 
     call ESMF_FieldGet(physfld_3d, localDe=0, farrayPtr=physptr, rc=rc)
     call check_esmf_error(rc, subname//'ESMF_FieldGet physptr')

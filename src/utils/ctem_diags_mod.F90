@@ -7,7 +7,7 @@
 ! the zonal mean terms of the TEM equation
 !-----------------------------------------------------------------------------
 module ctem_diags_mod
-  use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: r8 => shr_kind_r8, cx => SHR_KIND_CX
   use ppgrid, only: begchunk, endchunk, pcols, pver, pverp
   use physics_types, only: physics_state
   use phys_grid, only: get_ncols_p
@@ -44,6 +44,7 @@ contains
 
     character(len=*), intent(in) :: nlfile
     integer :: unitn, ierr
+    character(len=cx) :: iomsg
 
     character(len=*), parameter :: prefix = 'ctem_diags_readnl: '
 
@@ -54,9 +55,9 @@ contains
        open( newunit=unitn, file=trim(nlfile), status='old' )
        call find_group_name(unitn, 'ctem_diags_nl', status=ierr)
        if (ierr == 0) then
-          read(unitn, ctem_diags_nl, iostat=ierr)
+          read(unitn, ctem_diags_nl, iostat=ierr, iomsg=iomsg)
           if (ierr /= 0) then
-             call endrun(prefix//'ctem_diags_nl: ERROR reading namelist')
+             call endrun(prefix//'ctem_diags_nl: ERROR reading namelist: '//trim(iomsg))
           end if
        end if
        close(unitn)
@@ -97,6 +98,8 @@ contains
     type(horiz_coord_t), pointer :: lat_coord
     integer :: i, j, ind, astat
 
+    character(len=*), parameter :: subname = 'ctem_diags_reg: '
+
     if (.not.ctem_diags_active) return
 
     ! initialize grids and mapping
@@ -112,6 +115,9 @@ contains
 
     ! grid decomposition map
     allocate(grid_map(4,endlat-beglat+1), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate grid_map array')
+    end if
 
     ind = 0
     do j = beglat, endlat
@@ -134,7 +140,11 @@ contains
     nullify(grid_map)
 
     ! for the lon-lat grid
-    allocate(grid_map(4, ((endlon - beglon + 1) * (endlat - beglat + 1))))
+    allocate(grid_map(4, ((endlon - beglon + 1) * (endlat - beglat + 1))), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate grid_map array')
+    end if
+
     ind = 0
     do i = beglat, endlat
        do j = beglon, endlon
@@ -146,7 +156,11 @@ contains
        end do
     end do
 
-    allocate(coord_map(endlat - beglat + 1))
+    allocate(coord_map(endlat - beglat + 1), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate coord_map array')
+    end if
+
     if (beglon==1) then
        coord_map = (/ (i, i = beglat, endlat) /)
     else
@@ -157,7 +171,11 @@ contains
 
     nullify(coord_map)
 
-    allocate(coord_map(endlon - beglon + 1))
+    allocate(coord_map(endlon - beglon + 1), stat=astat)
+    if (astat/=0) then
+       call endrun(subname//'not able to allocate coord_map array')
+    end if
+
     if (beglat==1) then
        coord_map = (/ (i, i = beglon, endlon) /)
     else
@@ -183,10 +201,9 @@ contains
 
     ! fields on reg lon lat grid
     call addfld ('THtem', (/'lev'/), 'A','K',      'Potential temp', gridname='ctem_lonlat' )
-    call addfld ('Utem',  (/'lev'/), 'A','m s-1',  'Zonal-Mean zonal wind', gridname='ctem_lonlat' )
-    call addfld ('Vtem',  (/'lev'/), 'A','m s-1',  'Zonal-Mean meridional wind', gridname='ctem_lonlat' )
-    call addfld ('Wtem',  (/'lev'/), 'A','m s-1',  'Zonal-Mean vertical wind', gridname='ctem_lonlat' )
-
+    call addfld ('Utem',  (/'lev'/), 'A','m s-1',  'Zonal wind', gridname='ctem_lonlat' )
+    call addfld ('Vtem',  (/'lev'/), 'A','m s-1',  'Meridional wind', gridname='ctem_lonlat' )
+    call addfld ('Wtem',  (/'lev'/), 'A','m s-1',  'Vertical wind', gridname='ctem_lonlat' )
     call addfld ('VTHtem',(/'lev'/), 'A','K m s-1','Meridional Heat Flux:', gridname='ctem_lonlat')
     call addfld ('WTHtem',(/'lev'/), 'A','K m s-1','Vertical Heat Flux:', gridname='ctem_lonlat')
     call addfld ('UVtem', (/'lev'/), 'A','m2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_lonlat')
@@ -197,14 +214,14 @@ contains
     call addfld ('Vzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean meridional wind', gridname='ctem_zm' )
     call addfld ('Wzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean vertical wind', gridname='ctem_zm' )
     call addfld ('THzm', (/'lev'/), 'A','K',      'Zonal-Mean potential temp', gridname='ctem_zm' )
-    call addfld ('VTHzm',(/'lev'/), 'A','K m s-1','Meridional Heat Flux:', gridname='ctem_zm')
-    call addfld ('WTHzm',(/'lev'/), 'A','K m s-1','Vertical Heat Flux:', gridname='ctem_zm')
-    call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_zm')
-    call addfld ('UWzm', (/'lev'/), 'A','m2 s-2', 'Vertical Flux of Zonal Momentum', gridname='ctem_zm')
+    call addfld ('VTHzm',(/'lev'/), 'A','K m s-1','Zonal-Mean meridional Heat Flux:', gridname='ctem_zm')
+    call addfld ('WTHzm',(/'lev'/), 'A','K m s-1','Zonal-Mean vertical Heat Flux:', gridname='ctem_zm')
+    call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Zonal-Mean ,eridional Flux of Zonal Momentum', gridname='ctem_zm')
+    call addfld ('UWzm', (/'lev'/), 'A','m2 s-2', 'Zonal-Mean vertical Flux of Zonal Momentum', gridname='ctem_zm')
 
     call addfld ('PSzm',  horiz_only, 'A', 'Pa', 'Zonal-Mean surface pressure', gridname='ctem_zm' )
     call addfld ('PStem', horiz_only, 'A', 'Pa', 'Surface Pressure', gridname='ctem_lonlat')
-    call addfld ('MSKtem',horiz_only, 'A','1',  'TEM mask', gridname='ctem_lonlat' )
+    call addfld ('MSKtem',horiz_only, 'A', '1',  'TEM mask', gridname='ctem_lonlat' )
 
   end subroutine ctem_diags_init
 

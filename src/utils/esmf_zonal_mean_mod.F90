@@ -42,7 +42,7 @@ contains
     real(r8) :: tmparr(lon_beg:lon_end,pver)
     real(r8) :: gsum(pver)
 
-    real(r8) :: wsum(pver)
+    real(r8) :: wsums(lat_beg:lat_end,pver)
 
     integer :: numlons, ilat, ilev
 
@@ -51,29 +51,13 @@ contains
     ! zonal mean
     if (present(wght)) then
 
-       do ilat = lat_beg, lat_end
-
-          tmparr(lon_beg:lon_end,:) = wght(lon_beg:lon_end,ilat,:)
-          call shr_reprosum_calc(tmparr, wsum, numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
-
-          tmparr(lon_beg:lon_end,:) = wght(lon_beg:lon_end,ilat,:)*lonlatarr(lon_beg:lon_end,ilat,:)
-          call shr_reprosum_calc(tmparr, gsum, numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
-
-          do ilev = 1,pver
-             if (wsum(ilev)>0._r8) then
-                zmarr(ilat,ilev) = gsum(ilev)/wsum(ilev)
-             else
-                zmarr(ilat,ilev) = fillvalue
-             end if
-          end do
-
-       end do
+       wsums = esmf_zonal_mean_wsums(wght)
+       call esmf_zonal_mean_masked(lonlatarr, wght, wsums, zmarr)
 
     else
 
        do ilat = lat_beg, lat_end
-          tmparr(lon_beg:lon_end,:) = lonlatarr(lon_beg:lon_end,ilat,:)
-          call shr_reprosum_calc(tmparr, gsum, numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
+          call shr_reprosum_calc(lonlatarr(lon_beg:lon_end,ilat,:), gsum, numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
           zmarr(ilat,:) = gsum(:)/nlon
        end do
 
@@ -118,15 +102,14 @@ contains
     real(r8), intent(in) :: wght(lon_beg:lon_end,lat_beg:lat_end,pver)
 
     real(r8) :: wsums(lat_beg:lat_end,pver)
-    real(r8) :: tmparr(lon_beg:lon_end,pver)
     integer :: numlons, ilat
 
     numlons = lon_end-lon_beg+1
 
     do ilat = lat_beg, lat_end
 
-       tmparr(lon_beg:lon_end,:) = wght(lon_beg:lon_end,ilat,:)
-       call shr_reprosum_calc(tmparr, wsums(ilat,1:pver), numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
+       call shr_reprosum_calc(wght(lon_beg:lon_end,ilat,:), wsums(ilat,1:pver), &
+                              numlons, numlons, pver, gbl_count=nlon, commid=zonal_comm)
 
     end do
 
