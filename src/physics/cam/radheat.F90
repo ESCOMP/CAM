@@ -131,11 +131,11 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
        ptend%s(:ncol,k) = (qrs(:ncol,k) + qrl(:ncol,k))
      endif
    enddo
-   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns, fsnt, flns, &
-                flnt, .true., net_flx(:ncol), errmsg, errflg)
+   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns(:ncol), &
+                fsnt(:ncol), flns(:ncol), flnt(:ncol), .true., net_flx(:ncol), errmsg, errflg)
 #else
-   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns, fsnt, flns, &
-                flnt, .false., net_flx(:ncol), errmsg, errflg)
+   call calculate_net_heating_run(ncol, ptend%s(:ncol,:), qrl(:ncol,:), qrs(:ncol,:), fsns(:ncol), &
+                fsnt(:ncol), flns(:ncol), flnt(:ncol), .false., net_flx(:ncol), errmsg, errflg)
 #endif
 
    if (errflg /= 0) then
