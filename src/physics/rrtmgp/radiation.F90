@@ -151,7 +151,6 @@ logical :: graupel_in_rad   = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
 ! Gathered indices of day and night columns 
-!  chunk_column_index = IdxDay(daylight_column_index)
 integer :: nday           ! Number of daylight columns
 integer :: nnite          ! Number of night columns
 integer :: idxday(pcols)   ! chunk indices of daylight columns
@@ -398,9 +397,9 @@ function radiation_do(op)
    nstep = get_nstep()
 
    select case (op)
-      case ('sw') ! do a shortwave heating calc this timestep?
+      case ('sw') ! Set radiation_do to true if doing a shortwave heating calc this timestep
          call radiation_do_ccpp(op, nstep, iradsw, irad_always, radiation_do, errmsg, errcode)
-      case ('lw') ! do a longwave heating calc this timestep?
+      case ('lw') ! Set radiation_do to true if doing a longwave heating calc this timestep
          call radiation_do_ccpp(op, nstep, iradlw, irad_always, radiation_do, errmsg, errcode)
       case default
          call endrun('radiation_do: unknown operation:'//op)

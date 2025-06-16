@@ -105,6 +105,9 @@ subroutine rrtmgp_inputs_cam_init(ktcam, ktrad, idx_sw_diag_in, idx_nir_diag_in,
 
    ! Initialize the module data containing the SW band boundaries.
    call get_sw_spectral_boundaries_ccpp(sw_low_bounds, sw_high_bounds, 'cm^-1', errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun('rrtmgp_inputs_cam_init: error during get_sw_spectral_boundaries_ccpp - message: '//errmsg)
+   end if
 
 end subroutine rrtmgp_inputs_cam_init
 
