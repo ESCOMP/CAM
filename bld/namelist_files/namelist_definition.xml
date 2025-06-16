@@ -8193,10 +8193,9 @@ Default: 0.
 
 <entry id="se_min_temperature" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
-Used by SE dycore to apply floor to temperature.....
-
-NEEDS TO BE FILLED IN
-
+Used by spectral element dynamical core to apply floor to temperature.
+If set to a value greater than zero the floor is applied.
+Otherwise, no floor is applied.
 Default: 0.
 </entry>
 
