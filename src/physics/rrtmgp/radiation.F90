@@ -1179,7 +1179,7 @@ subroutine radiation_tend( &
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
-                  !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs) &
+                  !$acc data copyin(kdist_sw,kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw,gas_concs_sw%gas_concs) &
                   !$acc        copy(atm_optics_sw%optical_props) &
                   !$acc     copyout(toa_flux)
                   errmsg = kdist_sw%gas_props%gas_optics( &
@@ -1204,14 +1204,14 @@ subroutine radiation_tend( &
 
                   ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
                   !$acc data copyin(coszrs_day, toa_flux, alb_dir, alb_dif, &
-                  !$acc             atm_optics_sw%optical_props, atm_optics_sw%optical_props%tau, &
+                  !$acc             atm_optics_sw, atm_optics_sw%optical_props, atm_optics_sw%optical_props%tau, &
                   !$acc             atm_optics_sw%optical_props%ssa, atm_optics_sw%optical_props%g, &
-                  !$acc             aer_sw%optical_props, aer_sw%optical_props%tau, &
+                  !$acc             aer_sw, aer_sw%optical_props, aer_sw%optical_props%tau, &
                   !$acc             aer_sw%optical_props%ssa, aer_sw%optical_props%g, &
-                  !$acc             cloud_sw%optical_props, cloud_sw%optical_props%tau, &
+                  !$acc             cloud_sw, cloud_sw%optical_props, cloud_sw%optical_props%tau, &
                   !$acc             cloud_sw%optical_props%ssa, cloud_sw%optical_props%g) &
-                  !$acc        copy(fswc%fluxes, fswc%fluxes%flux_net,fswc%fluxes%flux_up,fswc%fluxes%flux_dn, &
-                  !$acc             fsw%fluxes, fsw%fluxes%flux_net, fsw%fluxes%flux_up, fsw%fluxes%flux_dn)
+                  !$acc        copy(fswc, fswc%fluxes, fswc%fluxes%flux_net,fswc%fluxes%flux_up,fswc%fluxes%flux_dn, &
+                  !$acc             fsw, fsw%fluxes, fsw%fluxes%flux_net, fsw%fluxes%flux_up, fsw%fluxes%flux_dn)
                   errmsg = aer_sw%optical_props%increment(atm_optics_sw%optical_props)
                   call stop_on_err(errmsg, sub, 'aer_sw%optical_props%increment')
 
@@ -1317,8 +1317,8 @@ subroutine radiation_tend( &
                end if
 
                ! Compute the gas optics and Planck sources.
-               !$acc data copyin(kdist_lw%gas_props, pmid_rad, pint_rad, &
-               !$acc             t_rad, t_sfc, gas_concs_lw%gas_concs) &
+               !$acc data copyin(kdist_lw,kdist_lw%gas_props, pmid_rad, pint_rad, &
+               !$acc             t_rad, t_sfc, gas_concs_lw, gas_concs_lw%gas_concs) &
                !$acc        copy(atm_optics_lw%optical_props, atm_optics_lw%optical_props%tau, &
                !$acc             sources_lw%sources, sources_lw%sources%lay_source, &
                !$acc             sources_lw%sources%sfc_source, sources_lw%sources%lev_source_inc, &
@@ -1335,15 +1335,16 @@ subroutine radiation_tend( &
                call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
 
                ! Call the main rrtmgp_lw driver
-               !$acc data copyin(atm_optics_lw%optical_props, atm_optics_lw%optical_props%tau, &
-               !$acc             aer_lw%optical_props, aer_lw%optical_props%tau, &
-               !$acc             cloud_lw%optical_props, cloud_lw%optical_props%tau, &
-               !$acc             sources_lw%sources, sources_lw%sources%lay_source, &
+               !$acc data copyin(atm_optics_lw, atm_optics_lw%optical_props, atm_optics_lw%optical_props%tau, &
+               !$acc             aer_lw, aer_lw%optical_props, aer_lw%optical_props%tau, &
+               !$acc             cloud_lw, cloud_lw%optical_props, cloud_lw%optical_props%tau, &
+               !$acc             sources_lw, sources_lw%sources, sources_lw%sources%lay_source, &
                !$acc             sources_lw%sources%sfc_source, sources_lw%sources%lev_source_inc, &
                !$acc             sources_lw%sources%lev_source_dec, sources_lw%sources%sfc_source_Jac, &
                !$acc             emis_sfc)  &
-               !$acc        copy(flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, flwc%fluxes%flux_dn, &
-               !$acc             flw, flw%fluxes%flux_net, flw%fluxes%flux_up, flw%fluxes%flux_dn)
+               !$acc        copy(flwc, flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, flwc%fluxes%flux_dn, &
+               !$acc             flw, flw%fluxes, flw%fluxes%flux_net, flw%fluxes%flux_up, flw%fluxes%flux_dn,      &
+               !$acc             lw_ds)
                call rrtmgp_lw_main_run(dolw, dolw, .false., .false., .false., &
                                  0, ncol, 1, ncol, atm_optics_lw, &
                                  cloud_lw, top_at_1, sources_lw, emis_sfc, kdist_lw, &
