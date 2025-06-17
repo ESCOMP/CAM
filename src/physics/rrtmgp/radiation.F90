@@ -992,6 +992,7 @@ subroutine radiation_tend( &
    real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
 
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
+   real(r8), target :: zero_variable(1,1)
 
    character(len=128) :: errmsg
    integer            :: errflg, err
@@ -1000,6 +1001,9 @@ subroutine radiation_tend( &
 
    lchnk = state%lchnk
    ncol = state%ncol
+
+   ! Initialize dummy zero variable
+   zero_variable = 0._r8
 
    if (present(rd_out)) then
       rd => rd_out
@@ -1118,13 +1122,13 @@ subroutine radiation_tend( &
       if (associated(cldfgrau)) then
          cldfgrau_in => cldfgrau(:ncol,:)
       else
-         cldfgrau_in => null()
+         cldfgrau_in => zero_variable
       end if
 
       if (associated(cldfsnow)) then
          cldfsnow_in => cldfsnow(:ncol,:)
       else
-         cldfsnow_in => null()
+         cldfsnow_in => zero_variable
       end if
       ! Prepare state variables, daylit columns, albedos for RRTMGP
       ! Also calculate modified cloud fraction

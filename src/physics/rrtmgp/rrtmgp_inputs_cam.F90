@@ -285,7 +285,7 @@ subroutine rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
    ncol = state%ncol
    do i = 1, nradgas
       call rad_cnst_get_gas(icall, gaslist(i), state, pbuf, gas_mmr)
-      gas_mmrs(:,:,i) = gas_mmr
+      gas_mmrs(:,:,i) = gas_mmr(:ncol,:)
    end do
 end subroutine rrtmgp_get_gas_mmrs
 
