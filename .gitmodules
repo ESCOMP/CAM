@@ -160,7 +160,7 @@ path = components/cmeps
 url = https://github.com/ESCOMP/CMEPS.git
 fxtag = cmeps1.0.47
 fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/adamrher/CMEPS.git
+fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
 [submodule "cdeps"]
 path = components/cdeps
