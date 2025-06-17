@@ -685,8 +685,8 @@ $waccm_phys = $cfg_ref->get('waccm_phys');
 
 if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
-# WACCM includes 3 age of air tracers by default
-if ($chem_pkg =~ /waccm_ma/ or $chem_pkg =~ /waccm_tsmlt/ or $chem_pkg =~ /waccm_t4ma/) {
+# WACCM and CAM-Chem includes 3 age of air tracers by default
+if ($chem_pkg =~ /waccm_/ or $chem_pkg =~ /trop_strat_/) {
     $cfg_ref->set('age_of_air_trcs', 1);
 }
 
@@ -1252,8 +1252,7 @@ elsif ($phys_pkg eq 'cam4') {
 }
 else {
     # Simple models use cam7-lt vertical grid.
-    # $nlev = 58; # - ERROR: No default value found for ncdata
-    $nlev = 30; # bit-for-bit baselines for now
+    $nlev = 58;
 }
 
 # user override
@@ -1333,7 +1332,7 @@ if ($chem_pkg =~ '_mam3') {
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_CESM -DMODEL_GEOSCHEM';
     if ($chem_pkg =~ '_mam4') {
-        $chem_nadv = 269; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
+        $chem_nadv = 312; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
     }
 }
 # CARMA sectional microphysics
@@ -1791,6 +1790,9 @@ $cfg_cppdefs .= " -DPLEV=$nlev -DPCNST=$nadv -DPCOLS=$pcols -DPSUBCOLS=$psubcols
 # Radiatively active constituent number
 $cfg_cppdefs .= " -DN_RAD_CNST=$max_n_rad_cnst";
 
+# use iso_c_binding c_bool in RRTMGP (needed for nag-7)
+if ($rad_pkg eq 'rrtmgp') { $cfg_cppdefs .= ' -DRTE_USE_CBOOL'; }
+
 # offline driver for FV dycore
 if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 
@@ -2168,13 +2170,16 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
     print $fh "$camsrcdir/src/atmos_phys/phys_utils\n";
 
-    #Add the CCPP'ized subdirectories
+    # Add the CCPP'ized subdirectories
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/zhang_mcfarlane\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/dry_adiabatic_adjust\n";
-    print $fh "$camsrcdir/src/atmos_phys/schemes/check_energy\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/check_energy\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
 
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
 

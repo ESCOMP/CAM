@@ -31,7 +31,7 @@ CONTAINS
     use clubb_intr,    only: clubb_implements_cnst,         clubb_init_cnst
     use co2_cycle,     only: co2_implements_cnst,           co2_init_cnst
     use microp_driver, only: microp_driver_implements_cnst, microp_driver_init_cnst
-    use rk_stratiform, only: rk_stratiform_implements_cnst, rk_stratiform_init_cnst
+    use rk_stratiform_cam, only: rk_stratiform_cam_implements_cnst, rk_stratiform_cam_init_cnst
     use tracers,       only: tracers_implements_cnst,       tracers_init_cnst
     use unicon_cam,    only: unicon_implements_cnst,        unicon_init_cnst
 
@@ -124,10 +124,10 @@ CONTAINS
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "microp_driver_init_cnst"'
       end if
-    else if (rk_stratiform_implements_cnst(trim(name))) then
-      call rk_stratiform_init_cnst(trim(name), latvals, lonvals, mask_use, q)
+    else if (rk_stratiform_cam_implements_cnst(trim(name))) then
+      call rk_stratiform_cam_init_cnst(trim(name), latvals, lonvals, mask_use, q)
       if(masterproc .and. verbose_use) then
-        write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_init_cnst"'
+        write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_cam_init_cnst"'
       end if
     else if (tracers_implements_cnst(trim(name))) then
       call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q, z=z)

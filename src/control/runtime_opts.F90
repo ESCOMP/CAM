@@ -48,7 +48,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use subcol,              only: subcol_readnl
    use cloud_fraction,      only: cldfrc_readnl
    use cldfrc2m,            only: cldfrc2m_readnl
-   use rk_stratiform,       only: rk_stratiform_readnl
+   use rk_stratiform_cam,   only: rk_stratiform_cam_readnl
    use unicon_cam,          only: unicon_cam_readnl
    use zm_conv_intr,        only: zm_conv_readnl
    use hk_conv,             only: hkconv_readnl
@@ -77,7 +77,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use aircraft_emit,       only: aircraft_emit_readnl
    use cospsimulator_intr,  only: cospsimulator_intr_readnl
    use vertical_diffusion,  only: vd_readnl
-   use rayleigh_friction,   only: rayleigh_friction_readnl
+   use rayleigh_friction_cam, only: rayleigh_friction_readnl
 
    use cam_diagnostics,     only: diag_readnl
    use radheat,             only: radheat_readnl
@@ -105,6 +105,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use surface_emissions_mod, only: surface_emissions_readnl
    use elevated_emissions_mod, only: elevated_emissions_readnl
    use atm_stream_ndep,     only: stream_ndep_readnl
+   use ctem_diags_mod, only: ctem_diags_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -154,7 +155,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cldfrc2m_readnl(nlfilename)
    call unicon_cam_readnl(nlfilename)
    call zm_conv_readnl(nlfilename)
-   call rk_stratiform_readnl(nlfilename)
+   call rk_stratiform_cam_readnl(nlfilename)
    call hkconv_readnl(nlfilename)
    call uwshcu_readnl(nlfilename)
    call cld_sediment_readnl(nlfilename)
@@ -211,6 +212,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call surface_emissions_readnl(nlfilename)
    call elevated_emissions_readnl(nlfilename)
    call stream_ndep_readnl(nlfilename)
+   call ctem_diags_readnl(nlfilename)
 
 end subroutine read_namelist
 

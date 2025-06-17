@@ -468,8 +468,11 @@ subroutine radiation_init(pbuf2d)
       ktoprad = 2
       nlaycam = pver
       nlay = nlay+1 ! reassign the value so later code understands to treat this case like nlay==pverp
-      write(iulog,*) 'RADIATION_INIT: Special case of 1 model interface at p < 1Pa. Top layer will be INCLUDED in radiation calculation.'
-      write(iulog,*) 'RADIATION_INIT: nlay = ',nlay, ' same as pverp: ',nlay==pverp
+      if (masterproc) then
+         write(iulog,*) 'RADIATION_INIT: Special case of 1 model interface at p < 1Pa. Top layer will be INCLUDED in radiation calculation.'
+         write(iulog,*) 'RADIATION_INIT: Top layer will be INCLUDED in radiation calculation.'
+         write(iulog,*) 'RADIATION_INIT: nlay = ',nlay, ' same as pverp: ',nlay==pverp
+      end if
    else
       ! nlay < pverp.  nlay layers are used in radiation calcs, and they are
       ! all CAM layers.
@@ -1420,6 +1423,8 @@ subroutine radiation_tend( &
    qrs(:ncol,:) = qrs(:ncol,:) * state%pdel(:ncol,:)
    qrl(:ncol,:) = qrl(:ncol,:) * state%pdel(:ncol,:)
 
+   cam_out%netsw(:ncol) = fsns(:ncol)
+
    if (.not. present(rd_out)) then
       deallocate(rd)
    end if
@@ -1495,8 +1500,6 @@ subroutine radiation_tend( &
       fsnt(:ncol)     = fns(:ncol,ktopcam)  ! net sw flux at top-of-model (w/o extra layer)
       rd%fsnsc(:ncol) = fcns(:ncol,pverp)   ! net sw clearsky flux at surface
       rd%fsntc(:ncol) = fcns(:ncol,ktopcam) ! net sw clearsky flux at top
-
-      cam_out%netsw(:ncol) = fsns(:ncol)
 
       ! Output fluxes at 200 mb
       call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fns,  rd%fsn200)
@@ -1800,6 +1803,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Read data from coefficients file.  Initialize the kdist object.
    ! available_gases object provides the gas names that CAM provides.
 
+   use mo_rte_kind, only: wl
+
    ! arguments
    character(len=*),                  intent(in)  :: coefs_file
    class(ty_gas_concs),               intent(in)  :: available_gases
@@ -1850,9 +1855,9 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
                                                     minor_limits_gpt_upper
    ! Send these to RRTMGP as logicals,
    ! but they have to be read from the netCDF as integers
-   logical, dimension(:),            allocatable :: minor_scales_with_density_lower, &
+   logical(wl), dimension(:),        allocatable :: minor_scales_with_density_lower, &
                                                     minor_scales_with_density_upper
-   logical, dimension(:),            allocatable :: scale_by_complement_lower, &
+   logical(wl), dimension(:),        allocatable :: scale_by_complement_lower, &
                                                     scale_by_complement_upper
    integer, dimension(:), allocatable :: int2log   ! use this to convert integer-to-logical.
    integer, dimension(:),            allocatable :: kminor_start_lower, kminor_start_upper

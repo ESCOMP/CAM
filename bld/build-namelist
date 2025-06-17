@@ -3851,15 +3851,22 @@ if (!$simple_phys) {
     }
 
     if ($phys =~ /cam7/) {
-       add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+	#
+	# moving mountains only supported by MPAS and SE dycore
+	# (since vorticity needs to be passed to physics in dp_coupling)
+	#
+	if ( $dyn =~ /mpas|se/ ) {
+	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
+	} else {
+	    add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.false.');
+	}
     }
 
     my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
     if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
-         if ( ! ($dyn =~ /se/) ) {
-            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
-
-         }
+        if ( ! ($dyn =~ /mpas|se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with MPAS and SE dycore\n";
+        }
     }
 
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
@@ -3882,7 +3889,12 @@ if ($waccm_phys or
     # QBO in the high vertical resolution configuration.
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
+    #WACCM value
     my $hdepth_scaling = '0.25D0' ;
+    #MT value
+    if ($cfg->get('model_top') eq 'mt') {
+	$hdepth_scaling = '0.32D0';
+    }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
 	my $nlon = $cfg->get('nlon');
@@ -3904,7 +3916,7 @@ if ($waccm_phys or
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
-    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.32D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }
@@ -4341,7 +4353,6 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_xnutr');
     add_default($nl, 'mpas_cam_coef');
     add_default($nl, 'mpas_cam_damping_levels');
-    add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
     add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
@@ -5249,6 +5260,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_diagnostics_calc'"));
     } else {
         # CAM physpkg
@@ -5263,6 +5275,7 @@ sub check_snapshot_settings {
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+			      "'rayleigh_friction_tend'",
                               "'convect_shallow_tend'"));
         if ($microphys =~ /^mg/) {
             if ($clubb_sgs  =~ /$TRUE/io) {
@@ -5275,6 +5288,11 @@ sub check_snapshot_settings {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }
         }
+
+        if ($microphys eq 'rk') {
+            push (@validList_bc, ("'rk_stratiform_tend'"));
+        }
+
         push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
     }
     if ($user_set_after) {
