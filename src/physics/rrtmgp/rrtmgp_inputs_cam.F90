@@ -170,7 +170,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    integer,                     intent(in) :: nlay           ! number of layers in radiation calculation
    integer,                     intent(in) :: numactivecols  ! number of columns, ncol for LW, nday for SW
 
-   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
+   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VMR inside gas_concs
 
    integer, optional,          intent(in) :: idxday(:)   ! indices of daylight columns in a chunk
 
@@ -338,7 +338,7 @@ subroutine rrtmgp_set_cloud_sw( &
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
    integer,  intent(in) :: nday           ! number of daylight columns
    integer,  intent(in) :: idxday(pcols)  ! indices of daylight columns in the chunk
-   integer,  intent(in) :: nswgpts
+   integer,  intent(in) :: nswgpts        ! number of shortwave g-points
    integer,  intent(in) :: nnite          ! number of night columns
    integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
 
