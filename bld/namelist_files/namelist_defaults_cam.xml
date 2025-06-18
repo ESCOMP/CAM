@@ -2383,7 +2383,7 @@
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="600" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="300" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1"> 3 </cld_macmic_num_steps>
-<!-- hi-res and var-res support for ne120, ARCTIC, ARCTICGRIS, POALRCAP, CONUS -->
+<!-- hi-res and var-res support for ne120, ARCTIC, ARCTICGRIS, POLARCAP, CONUS -->
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
