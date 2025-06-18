@@ -26,6 +26,7 @@
 <dtime dyn="se"    hgrid="ne0np4.ARCTIC.ne30x4">450</dtime>
 <dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 <dtime dyn="se"    hgrid="ne0np4.POLARCAP.ne30x4">450</dtime>
+<dtime dyn="se"    hgrid="ne0np4.NATL.ne30x8">225</dtime>
 
 <dtime dyn="mpas"                  >1800</dtime>
 
@@ -227,11 +228,13 @@
 
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" >atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/inic/cami-mam4_0000-01-01_ne0np4.NATL.ne30x8_L32_c201109.nc</ncdata>
 
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20200101_CONUS_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20200101_ARCTIC_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20200101_ARCTICGRIS_c250617.nc</ncdata>
-<ncdata hgrid="ne0np4.POLARCAP.ne30x4"   nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
+<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_c250618.nc</ncdata>
 
 <!-- MPAS Initial Conditions -->
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
@@ -320,6 +323,7 @@
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.POLARCAP.ne30x4"   >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/topo/POLARCAP_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20250322.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.NATL.ne30x8"       >/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/topo/NATL_30_x8_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042.nc</bnd_topo>
 
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
@@ -350,6 +354,7 @@
 <se_mesh_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/coords/ne30x4_EXODUS_ARCTIC_c191009.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/coords/ne30x8_EXODUS_ARCTICGRIS_c191209.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/grids/POLARRES_ne30x4_EXODUS.nc</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.NATL.ne30x8"      >/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/grids/NATL_ne30x8_EXODUS.nc</se_mesh_file>
 
 <!-- Analytic ICs  -->
 <analytic_ic_type                   > none </analytic_ic_type>
@@ -1993,6 +1998,7 @@
 <drydep_srf_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/chem/trop_mam/atmsrf_ne30x4_ARCTIC_191011.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne30x8_ARCTICGRIS_191212.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/atmsrf/atmsrf_POLARCAP_250322.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.NATL.ne30x8">/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/atmsrf/atmsrf_ne0np4.NATL.ne30x8_201109.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="C24">atm/cam/chem/trop_mam/atmsrf_C24_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C48">atm/cam/chem/trop_mam/atmsrf_C48_c200625.nc</drydep_srf_file>
@@ -2383,7 +2389,7 @@
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="600" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="300" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1"> 3 </cld_macmic_num_steps>
-<!-- hi-res and var-res support for ne120, ARCTIC, ARCTICGRIS, POLARCAP, CONUS -->
+<!-- hi-res and var-res support for ne120, ARCTIC, ARCTICGRIS, POLARCAP, CONUS, NATL -->
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
@@ -3252,6 +3258,7 @@
 <se_refined_mesh hgrid="ne0np4.ARCTIC.ne30x4" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4.ARCTICGRIS.ne30x8" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4.POLARCAP.ne30x4" > .true. </se_refined_mesh>
+<se_refined_mesh hgrid="ne0np4.NATL.ne30x8" > .true. </se_refined_mesh>
 
 <se_nsplit>                   2 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
