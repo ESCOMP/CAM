@@ -93,15 +93,6 @@
     </options>
   </test>
 
-  <test compset="FHIST" grid="f19_f19_mg17" name="SMS_Ln9" testmods="cam/outfrq9s_nochem">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--              CAM test-supported COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
@@ -445,16 +436,6 @@
     </machines>
     <options>
       <option name="comment" >325 eq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              334 tsm ter tbl                        -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_unicon">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >334 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1618,6 +1599,15 @@
       <option name="comment">CAM7 low top ~40 km with MPAS dynamical core</option>
     </options>
   </test>
+  <test compset="FHISTC_LTso" grid="mpasa480_mpasa480_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa480">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">CAM7-LT with MPAS dynamical core</option>
+    </options>
+  </test>
   <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
@@ -1829,6 +1819,15 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
+    </options>
+  </test>
+  <test compset="FHIST_C4" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">CAM4, Historical</option>
     </options>
   </test>
 
@@ -2410,7 +2409,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_P48x1_D_Ln9" testmods="cam/outfrq9s" supported="false">
+  <test compset="FW4madSD" grid="f19_f19_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
