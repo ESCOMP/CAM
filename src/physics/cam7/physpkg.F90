@@ -158,6 +158,7 @@ contains
     use hemco_interface,    only: HCOI_Chunk_Init
     use surface_emissions_mod, only: surface_emissions_reg
     use elevated_emissions_mod, only: elevated_emissions_reg
+    use ctem_diags_mod, only: ctem_diags_reg
 
     !---------------------------Local variables-----------------------------
     !
@@ -344,6 +345,9 @@ contains
         ! initialize harmonized emissions component (HEMCO)
         call HCOI_Chunk_Init()
     endif
+
+    ! TEM diagnostics
+    call ctem_diags_reg()
 
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
@@ -772,6 +776,7 @@ contains
     use elevated_emissions_mod, only: elevated_emissions_init
 
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
+    use ctem_diags_mod, only: ctem_diags_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -1053,6 +1058,8 @@ contains
 
     psl_idx = pbuf_get_index('PSL')
 
+    call ctem_diags_init()
+
   end subroutine phys_init
 
   !
@@ -1076,6 +1083,7 @@ contains
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
+    use ctem_diags_mod, only: ctem_diags_calc
     !
     ! Input arguments
     !
@@ -1120,6 +1128,9 @@ contains
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
+
+    ! TEM diagnostics
+    call ctem_diags_calc(phys_state)
 
     !-----------------------------------------------------------------------
     ! Advance time information
@@ -1310,6 +1321,7 @@ contains
     use phys_grid_ctem, only: phys_grid_ctem_final
     use nudging,        only: Nudge_Model, nudging_final
     use hemco_interface, only: HCOI_Chunk_Final
+    use ctem_diags_mod, only: ctem_diags_final
 
     !-----------------------------------------------------------------------
     !
@@ -1336,9 +1348,11 @@ contains
     if(Nudge_Model) call nudging_final()
 
     if(use_hemco) then
-        ! cleanup hemco
-        call HCOI_Chunk_Final
+       ! cleanup hemco
+       call HCOI_Chunk_Final
     endif
+
+    call ctem_diags_final()
 
   end subroutine phys_final
 
