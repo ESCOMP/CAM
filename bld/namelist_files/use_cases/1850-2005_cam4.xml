@@ -29,7 +29,7 @@
 <prescribed_volcaero_datapath>atm/cam/volc</prescribed_volcaero_datapath>
 <prescribed_volcaero_file>CCSM4_volcanic_1850-2008_prototype1.nc</prescribed_volcaero_file>
 
-<!-- sim_year attribute used for boundary datasets -->
-<sim_year>1850-2000</sim_year>
+<!-- sim_year attribute used for nitrogen deposition datasets -->
+<sim_year>1850-2015</sim_year>
 
 </namelist_defaults>
