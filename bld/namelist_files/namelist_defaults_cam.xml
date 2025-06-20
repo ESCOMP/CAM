@@ -228,13 +228,13 @@
 
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" >atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
-<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/inic/cami-mam4_0000-01-01_ne0np4.NATL.ne30x8_L32_c201109.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L32_c250620.nc</ncdata>
 
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20200101_CONUS_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20200101_ARCTIC_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20200101_ARCTICGRIS_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
-<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_c250618.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L58_c250618.nc</ncdata>
 
 <!-- MPAS Initial Conditions -->
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
