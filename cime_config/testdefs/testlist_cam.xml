@@ -2416,6 +2416,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
+      <option name="comment">WACCM/CAM4, enhanced D-region ion chemistry, specified dynamics</option>
     </options>
   </test>
   <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
