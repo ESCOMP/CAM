@@ -159,8 +159,8 @@ fxDONOTUSEurl = https://github.com/ESMCI/cime
 [submodule "cmeps"]
 path = components/cmeps
 url = https://github.com/ESCOMP/CMEPS.git
-#fxtag = cmeps1.1.2	
-fxtag = cmeps1.0.47
+fxtag = cmeps1.1.2	
+#fxtag = cmeps1.0.47
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
@@ -195,7 +195,8 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 [submodule "clm"]
 path = components/clm
 url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.3.029
+#fxtag = ctsm5.3.029
+fxtag = ctsm5.3.052
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
