@@ -1535,7 +1535,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FHIST" grid="ne0ARCTICne30x4_ne0ARCTICne30x4_mt12" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s" supported="false">
+  <test compset="FHIST" grid="ne0ARCTICne30x4_ne0ARCTICne30x4_mt12" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="cam_refined"/>
