@@ -121,11 +121,13 @@ module control_mod
 
   !
   ! molecular diffusion
-  !  
+  !
   real(r8), public :: molecular_diff = -1.0_r8
 
   integer, public  :: vert_remap_uvTq_alg, vert_remap_tracer_alg
 
-
   integer, public :: pgf_formulation = -1 !PGF formulation - see prim_advance_mod.F90
+
+  real(r8), public :: min_temperature = 0._r8
+
 end module control_mod

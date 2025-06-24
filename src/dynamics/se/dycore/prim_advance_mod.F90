@@ -444,7 +444,7 @@ contains
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: nu_t_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
-    use control_mod,    only: molecular_diff,sponge_del4_lev
+    use control_mod,    only: molecular_diff,sponge_del4_lev, min_temperature
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk, vlaplace_sphere_wk_mol
@@ -688,6 +688,18 @@ contains
           enddo
         enddo
       enddo
+      if (min_temperature>0._r8) then
+        ! apply floor to temperature
+        do ie=nets,nete
+          do k=sponge_del4_lev+2,nlev
+            do j=1,np
+              do i=1,np
+                elem(ie)%state%T(i,j,k,nt) = max(elem(ie)%state%T(i,j,k,nt),min_temperature)
+              end do
+            end do
+          end do
+        end do
+      end if
       call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dAH')
     end do
 
