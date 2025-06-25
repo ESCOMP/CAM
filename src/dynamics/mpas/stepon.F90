@@ -53,16 +53,16 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    ! dycore state variables on MPAS grids
    call addfld ('u_mpas',     (/ 'lev' /),  'A', 'm/s', 'normal velocity at edges', gridname='mpas_edge')
-   call addfld ('w_mpas',     (/ 'ilev' /), 'A', 'm/s', 'vertical velocity', gridname='mpas_cell')
-   call addfld ('theta_mpas', (/ 'lev' /),  'A', 'K', 'potential temperature', gridname='mpas_cell')
-   call addfld ('rho_mpas',   (/ 'lev' /),  'A', 'kg/m^3', 'dry air density', gridname='mpas_cell')
-   call addfld ('qv_mpas',    (/ 'lev' /),  'A', 'kg/kg', 'water vapor dry mmr', gridname='mpas_cell')
+   call addfld ('w_mpas',     (/ 'ilev' /), 'A', 'm/s', 'vertical velocity', gridname='cam_cell')
+   call addfld ('theta_mpas', (/ 'lev' /),  'A', 'K', 'potential temperature', gridname='cam_cell')
+   call addfld ('rho_mpas',   (/ 'lev' /),  'A', 'kg/m^3', 'dry air density', gridname='cam_cell')
+   call addfld ('qv_mpas',    (/ 'lev' /),  'A', 'kg/kg', 'water vapor dry mmr', gridname='cam_cell')
    call addfld ('uReconstructZonal_mpas', (/ 'lev' /), 'A', 'm/s', &
-                'zonal velocity at cell centers', gridname='mpas_cell')
+                'zonal velocity at cell centers', gridname='cam_cell')
    call addfld ('uReconstructMeridional_mpas', (/ 'lev' /), 'A', 'm/s', &
-                'meridional velocity at cell centers', gridname='mpas_cell')
+                'meridional velocity at cell centers', gridname='cam_cell')
    call addfld ('divergence_mpas', (/ 'lev' /), 'A', '1/s', &
-                'Horizontal velocity divergence at cell center', gridname='mpas_cell')
+                'Horizontal velocity divergence at cell center', gridname='cam_cell')
    call addfld ('vorticity_mpas', (/ 'lev' /), 'A', '1/s', &
                 'Relative vorticity at vertices', gridname='mpas_vertex')
 
@@ -70,9 +70,9 @@ subroutine stepon_init(dyn_in, dyn_out)
    call addfld ('ru_tend_mpas', (/ 'lev' /), 'A', 'kg/m^2/s', &
                 'physics tendency of normal horizontal momentum', gridname='mpas_edge')
    call addfld ('rtheta_tend_mpas', (/ 'lev' /), 'A', 'kg K/m^3/s', &
-                'physics tendency of rho*theta/zz', gridname='mpas_cell')
+                'physics tendency of rho*theta/zz', gridname='cam_cell')
    call addfld ('rho_tend_mpas', (/ 'lev' /), 'A', 'kg/m^3/s', &
-                'physics tendency of dry air density', gridname='mpas_cell')
+                'physics tendency of dry air density', gridname='cam_cell')
 
    ! get aerosol properties
    aero_props_obj => aerosol_properties_object()
