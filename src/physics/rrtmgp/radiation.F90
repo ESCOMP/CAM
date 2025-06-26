@@ -1463,8 +1463,9 @@ subroutine radiation_tend( &
    cam_out%netsw(:) = 0._r8
 
    ! Calculate radiative heating (Q*dp), set netsw flux, and do object cleanup
-   call rrtmgp_post_run(qrs_prime(:ncol,:), qrl_prime(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), atm_optics_sw, cloud_sw, aer_sw, &
-                  fsw, fswc, sources_lw, cloud_lw, aer_lw, flw, flwc, qrs(:ncol,:), qrl(:ncol,:), cam_out%netsw(:ncol), errmsg, errflg)
+   call rrtmgp_post_run(qrs_prime(:ncol,:), qrl_prime(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), atm_optics_sw, cloud_sw, &
+           aer_sw, fsw, fswc, atm_optics_lw, sources_lw, cloud_lw, aer_lw, flw, flwc, qrs(:ncol,:), qrl(:ncol,:),          &
+           cam_out%netsw(:ncol), errmsg, errflg)
    if (errflg /= 0) then
      call endrun(sub//': '//errmsg)
    end if
