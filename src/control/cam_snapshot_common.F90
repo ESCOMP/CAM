@@ -433,9 +433,16 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
 ! This subroutine does the addfld calls for cam_in fields
 !--------------------------------------------------------
 
+   use constituents, only: cnst_name
+
    type(cam_in_t), intent(in) :: cam_in
 
-   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+   integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   ! for constituent loop.
+   integer :: mcnst
+   character(len=64)  :: fname
+   character(len=128) :: lname
 
    ncam_in_var = 0
 
@@ -464,8 +471,18 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%shf',             'cam_in_shf',               'unset',          horiz_only)
 
-   call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
+   ! cam_in%cflx is sized (pcols, pcnst); because the constituent indices at the model that reads this
+   ! data may not match the indices in the model outputting the snapshot,
+   ! cam_in%cflx is split into a series of snapshot variables cam_in_cflx_(constituent name).
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      lname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+                            fname, lname, 'kg m-2 s-1', horiz_only)
+   enddo
+
+   ! call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+   !   'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%wsx',             'cam_in_wsx',               'unset',          horiz_only)
@@ -988,11 +1005,15 @@ end subroutine tend_snapshot_all_outfld
 
 subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
+   use constituents, only: cnst_name
+
    integer,         intent(in)  :: lchnk
    integer,         intent(in)  :: file_num
    type(cam_in_t),  intent(in)  :: cam_in
 
    integer :: i
+   integer :: mcnst
+   character(len=64) :: fname
 
    do i=1, ncam_in_var
 
@@ -1057,12 +1078,25 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
          call outfld(cam_in_snapshot(i)%standard_name, cam_in%dstflx, pcols, lchnk)
 
       case default
-         call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         if (cam_in_snapshot(i)%ddt_string(1:12) == 'cam_in_cflx_') then
+            ! This case is handled below in a loop (not looked up here as it would be i*pcnst iterations)
+         else
+            call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         endif
 
       end select
 
       call cam_history_snapshot_deactivate(trim(cam_in_snapshot(i)%standard_name))
 
+   end do
+
+   ! Handle cam_in%cflx constituent loop
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+
+      call cam_history_snapshot_activate(trim(fname), file_num)
+      call outfld(fname, cam_in%cflx(:,mcnst), pcols, lchnk)
+      call cam_history_snapshot_deactivate(trim(fname))
    end do
 
 end subroutine cam_in_snapshot_all_outfld
