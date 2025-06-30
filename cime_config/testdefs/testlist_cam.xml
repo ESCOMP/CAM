@@ -9,7 +9,6 @@
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="aux_cam_short"/>
       <machine name="derecho" compiler="intel" category="aux_cam_one"/>
     </machines>
@@ -28,7 +27,6 @@
   <test compset="F2010climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -50,6 +48,16 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+
+  <test compset="FHIST" grid="f19_f19_mt232" name="ERI_D_Ln18" testmods="cam/lonlat_fv_diags">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >cam6 hybrid/branch restarts; limited areas; AM & zonal diags</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
 
@@ -319,16 +327,6 @@
     </options>
   </test>
 
-<!--              111 tsm, ter, tbr, tbl, changed to QPC6/f19      -->
-  <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >111 tsm, ter, tbr</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              311                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_eoyttrac">
     <machines>
@@ -449,16 +447,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              368                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >368 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
+
 <!--              369                         -->
   <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_am">
     <machines>
@@ -466,16 +455,6 @@
     </machines>
     <options>
       <option name="comment" >369 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              381                         -->
-  <test compset="QPC6HIST" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s_co2cycle_usecase">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >381 tsm</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1173,16 +1152,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              742                        -->
-  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1" testmods="cam/outfrq3s_ttrac_usecase">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >742 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
+
   <test compset="QPC5" grid="ne3_ne3_mg37" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
