@@ -11,7 +11,7 @@ module cospsimulator_intr
   !
   ! ######################################################################################
   use shr_kind_mod,         only: r8 => shr_kind_r8
-  use spmd_utils,           only: masterproc, mpi_real8, MPI_MAX ! JKS memory (last 2)
+  use spmd_utils,           only: masterproc
   use ppgrid,               only: pcols, pver, pverp, begchunk, endchunk
   use ref_pres,             only: ktop => trop_cloud_top_lev
   use perf_mod,             only: t_startf, t_stopf
@@ -41,7 +41,7 @@ module cospsimulator_intr
        nhydro            => N_HYDRO, &
        cloudsat_preclvl
   use mod_cosp_stats,           only: cosp_change_vertical_grid
-  use mod_cosp_rttov_interface, only: rttov_cfg ! JKS
+  use mod_cosp_rttov_interface, only: rttov_cfg
 #endif
   implicit none
   private
@@ -221,7 +221,6 @@ module cospsimulator_intr
   integer :: dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx, dei_idx
-!  integer :: ubot_idx, vbot_idx
   
   ! ######################################################################################
   ! Declarations specific to COSP2
@@ -405,7 +404,7 @@ CONTAINS
     call mpibcast(cosp_histfile_aux_num,1,  mpiint, 0, mpicom)
     call mpibcast(cosp_histfile_aux,    1,  mpilog, 0, mpicom)
     call mpibcast(cosp_nradsteps,       1,  mpiint, 0, mpicom)
-    call mpibcast(rttov_Ninstruments,   1,  mpiint, 0, mpicom) ! JKS - Additional RTTOV variable. This should work.
+    call mpibcast(rttov_Ninstruments,   1,  mpiint, 0, mpicom)
     call mpibcast(rttov_instrument_namelists, len(rttov_instrument_namelists(1))*50, mpichar, 0, mpicom)
 
     do i=1,6 ! Broadcast swathing variables.
@@ -435,7 +434,7 @@ CONTAINS
     if (cosp_lmodis_sim) then
        lmodis_sim = .true.
     end if
-    if ((rttov_Ninstruments .gt. 0) .and. cosp_lrttov_sim) then
+    if ((rttov_Ninstruments > 0) .and. cosp_lrttov_sim) then
        lrttov_sim = .true.
     end if
 
@@ -1173,8 +1172,6 @@ CONTAINS
     shflxsnw_idx   = pbuf_get_index('SH_FLXSNW', errcode=ierr)    
     lsflxprc_idx   = pbuf_get_index('LS_FLXPRC')
     lsflxsnw_idx   = pbuf_get_index('LS_FLXSNW')
-!    ubot_idx       = pbuf_get_index('U10') ! alternate option is 10m winds (U10 and V10)
-!    vbot_idx       = pbuf_get_index('V10')
     
     allocate(first_run_cosp(begchunk:endchunk), run_cosp(1:pcols,begchunk:endchunk), &
        stat=istat)
@@ -1357,7 +1354,7 @@ CONTAINS
     use mod_cosp,             only: cosp_simulator
     use mod_quickbeam_optics, only: size_distribution
     use time_manager,         only: get_curr_date ! Gets the date/time valid at the end of the timestep. Should be fine.
-    use ref_pres,             only: top_lev=>trop_cloud_top_lev ! JKS cloud water diagnostics
+    use ref_pres,             only: top_lev=>trop_cloud_top_lev
     use conv_water,           only: conv_water_in_rad, conv_water_4rad
 #endif
 
@@ -1484,7 +1481,7 @@ CONTAINS
         fmt,   & ! format descriptor for flexible RTTOV output
         i_str
         
-    ! JKS RTTOV outputs?
+    ! RTTOV outputs
     character(len=max_fieldname_len),dimension(rttov_Ninstruments,nf_rttov) :: &
          fname_rttov
 
@@ -1654,10 +1651,6 @@ CONTAINS
     integer :: yr, mon, day      ! year, month, and day components of a date
     integer :: ncsec             ! current time of day [seconds]
 
-    ! JKS trying to correct the cloud water fields
-    real(r8) :: allcld_ice (pcols,pver) ! cloud ice (Convective?)
-    real(r8) :: allcld_liq (pcols,pver) ! cloud liquid (Convective?)    
-    
     call t_startf('init_and_stuff')
     ! Create the fname string array for RTTOV
     fmt = '(I3.3)' ! an integer of width 3 with zeros at the left
@@ -2068,31 +2061,21 @@ CONTAINS
        if (cam_in%landfrac(i) > 0.01_r8) landmask(i)= 1
     end do
 
-    ! Lat-lon for COSP-RTTOV convert from radians to cosp input type
-    ! Initalize
-    lat_cosp(1:ncol)=0._r8
-    lon_cosp(1:ncol)=0._r8
-    ! convert from radians to degrees_north and degrees_east 
-    lat_cosp=state%lat*180._r8/(pi)  ! needs to go from -90 to +90 degrees north
-    lon_cosp=state%lon*180._r8/(pi)  ! needs to go from 0 to 360 degrees east
-
     ! initalize landmask
     landmask(1:ncol)=0._r8
     ! calculate landmask
     do i=1,ncol
-       if (cam_in%landfrac(i).gt.0.01_r8) landmask(i)= 1
+       if (cam_in%landfrac(i)>0.01_r8) landmask(i)= 1
     end do
     
     ! RTTOV surface mask (consider sea ice as well)
+    ! 1: land, 0: ocean, 2: sea ice
     rttov_sfcmask(1:ncol) = 0
     do i=1,ncol
-       ! Land is 1
-       if ((cam_in%landfrac(i) .gt. cam_in%ocnfrac(i)) .and. (cam_in%landfrac(i) .gt. cam_in%icefrac(i))) then
+       if ((cam_in%landfrac(i) > cam_in%ocnfrac(i)) .and. (cam_in%landfrac(i) > cam_in%icefrac(i))) then
           rttov_sfcmask(i) = 1
-       ! Ocean is 0 
-       else if (cam_in%ocnfrac(i) .gt. cam_in%icefrac(i)) then
+       else if (cam_in%ocnfrac(i) > cam_in%icefrac(i)) then
           rttov_sfcmask(i) = 0
-       ! Sea ice is 2 
        else
           rttov_sfcmask(i) = 2
        end if
@@ -2257,19 +2240,19 @@ CONTAINS
 
     cospstateIN%sza(1:ncol)                    = acosd(coszrs(1:ncol)) ! Hokey because we get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
 
-    cospstateIN%cloudIce(1:ncol,1:pver) = allcld_ice ! gridcell ice water mixing ratio
-    cospstateIN%cloudLiq(1:ncol,1:pver) = allcld_liq ! gridcell liquid water mixing ratio
+    cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice ! gridcell ice water mixing ratio
+    cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq ! gridcell liquid water mixing ratio
 
-    ! Combine large-scale and convective cloud effective radii into effective diameters for RTTOV
+    ! Combine large-scale and convective cloud liquid effective radii into effective diameters for RTTOV
     ! Reff(Npoints,Nlevels,N_HYDRO)
     ! The weighted Reff is given by: Reff_net = (M_1 + M_2) / (M_1/Reff_1 + M_2/Reff_2)
     ! Multiply by 2 to go from radius to diameter, multiply 1e6 to go from meters to microns.
     cospstateIN%DeffLiq(:,:) = 0._r8 ! Initialize for zero everywhere.
-    where ((mr_lsliq(1:ncol,1:pver) .gt. 0._r8) .and. (mr_ccliq(1:ncol,1:pver) .gt. 0._r8))
+    where ((mr_lsliq(1:ncol,1:pver) > 0._r8) .and. (mr_ccliq(1:ncol,1:pver) > 0._r8))
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))          
-    else where (mr_lsliq(1:ncol,1:pver) .gt. 0._r8)
+    else where (mr_lsliq(1:ncol,1:pver) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
-    else where (mr_ccliq(:,Nlevels:1:-1) .gt. 0._r8)
+    else where (mr_ccliq(:,Nlevels:1:-1) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
     end where
     cospstateIN%DeffIce(:,:) = dei(1:ncol,1:pver)
@@ -2387,7 +2370,7 @@ CONTAINS
        ! ISCCP simulator
        if (lisccp_sim) then
           ! 1D
-          where(cam_sunlit(1:ncol) .eq. 0)
+          where(cam_sunlit(1:ncol) == 0)
              cospOUT%isccp_totalcldarea(1:ncol)  = R_UNDEF
              cospOUT%isccp_meanptop(1:ncol)      = R_UNDEF
              cospOUT%isccp_meantaucld(1:ncol)    = R_UNDEF
@@ -2397,7 +2380,7 @@ CONTAINS
           end where
           ! 2D
           do i=1,nscol_cosp
-             where (cam_sunlit(1:ncol) .eq. 0)
+             where (cam_sunlit(1:ncol) == 0)
                 cospOUT%isccp_boxtau(1:ncol,i)  = R_UNDEF
                 cospOUT%isccp_boxptop(1:ncol,i) = R_UNDEF
              end where
@@ -2405,7 +2388,7 @@ CONTAINS
           ! 3D
           do i=1,nprs_cosp
              do k=1,ntau_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cam_sunlit(1:ncol) == 0)
                    cospOUT%isccp_fq(1:ncol,k,i) = R_UNDEF
                 end where
              end do
@@ -2416,7 +2399,7 @@ CONTAINS
        if (lmisr_sim) then
           do i=1,nhtmisr_cosp
              do k=1,ntau_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cam_sunlit(1:ncol) == 0)
                    cospOUT%misr_fq(1:ncol,k,i) = R_UNDEF
                 end where
              end do
@@ -2426,7 +2409,7 @@ CONTAINS
        ! MODIS simulator
        if (lmodis_sim) then
           ! 1D
-          where(cam_sunlit(1:ncol) .eq. 0)
+          where(cam_sunlit(1:ncol) == 0)
              cospOUT%modis_Cloud_Fraction_Total_Mean(1:ncol)       = R_UNDEF
              cospOUT%modis_Cloud_Fraction_Water_Mean(1:ncol)       = R_UNDEF
              cospOUT%modis_Cloud_Fraction_Ice_Mean(1:ncol)         = R_UNDEF
@@ -2448,17 +2431,17 @@ CONTAINS
           ! 3D
           do i=1,ntau_cosp_modis
              do k=1,nprs_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cam_sunlit(1:ncol) == 0)
                    cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure(1:ncol,i,k) = R_UNDEF 
                 end where
              enddo
              do k=1,numMODISReffIceBins
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cam_sunlit(1:ncol) == 0)
                    cospOUT%modis_Optical_Thickness_vs_ReffICE(1:ncol,i,k) = R_UNDEF
                 end where
              end do
              do k=1,numMODISReffLiqBins
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cam_sunlit(1:ncol) == 0)
                    cospOUT%modis_Optical_Thickness_vs_ReffLIQ(1:ncol,i,k) = R_UNDEF
                 end where
              enddo
@@ -2703,7 +2686,7 @@ CONTAINS
 
     call t_startf("destroy_cospIN")
 
-    call destroy_cospIN(cospIN) ! JKS add swath destroy logical? Need to update function
+    call destroy_cospIN(cospIN)
 
     call t_stopf("destroy_cospIN") 
     call t_startf("destroy_cospstateIN")
@@ -2731,7 +2714,7 @@ CONTAINS
        !! where there is no isccp cloud fraction, set meanptop_isccp = R_UNDEF
        !! weight meantau_isccp by the cloud fraction
        !! where there is no isccp cloud fraction, set meantau_isccp = R_UNDEF
-       where (cldtot_isccp(:ncol) .eq. R_UNDEF)
+       where (cldtot_isccp(:ncol) == R_UNDEF)
           meancldalb_isccp(:ncol) = R_UNDEF
           meanptop_isccp(:ncol)   = R_UNDEF
           meantau_isccp(:ncol)    = R_UNDEF
@@ -2765,7 +2748,7 @@ CONTAINS
        call outfld('CLDLOW_CAL_ICE',cldlow_cal_ice, pcols,lchnk)
        call outfld('CLDLOW_CAL_LIQ',cldlow_cal_liq, pcols,lchnk)
        call outfld('CLDLOW_CAL_UN', cldlow_cal_un,  pcols,lchnk) !+1.4
-       where (cld_cal(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air).  
           !! I'm not sure why COSP produces a mix of R_UNDEF and realvalue in the nht_cosp dimension.
           cld_cal(:ncol,:nht_cosp) = 0.0_r8
@@ -2773,56 +2756,56 @@ CONTAINS
        call outfld('CLD_CAL',        cld_cal,       pcols,lchnk)  !! fails check_accum if 'A'
        call outfld('MOL532_CAL',     mol532_cal,    pcols,lchnk)
        
-       where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) .eq. R_UNDEF)
+       where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
           !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
           !!            cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = R_UNDEF
           cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
        end where
        call outfld('CFAD_SR532_CAL',cfad_sr532_cal    ,pcols,lchnk)
        
-       where (refl_parasol(:ncol,:nsza_cosp) .eq. R_UNDEF)
+       where (refl_parasol(:ncol,:nsza_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air).  
           refl_parasol(:ncol,:nsza_cosp) = 0
        end where
        call outfld('RFL_PARASOL',refl_parasol   ,pcols,lchnk) !!
        
-       where (cld_cal_liq(:ncol,:nht_cosp) .eq. R_UNDEF) !+cosp1.4
+       where (cld_cal_liq(:ncol,:nht_cosp) == R_UNDEF) !+cosp1.4
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_liq(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_LIQ',cld_cal_liq    ,pcols,lchnk)  !!
        
-       where (cld_cal_ice(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_ice(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_ice(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_ICE',cld_cal_ice    ,pcols,lchnk)  !!
        
-       where (cld_cal_un(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_un(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_un(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
        
-       where (cld_cal_tmp(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_tmp(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmp(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMP',cld_cal_tmp    ,pcols,lchnk)  !!
        
-       where (cld_cal_tmpliq(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_tmpliq(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpliq(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPLIQ',cld_cal_tmpliq    ,pcols,lchnk)  !!
        
-       where (cld_cal_tmpice(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_tmpice(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpice(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPICE',cld_cal_tmpice    ,pcols,lchnk)  !!
        
-       where (cld_cal_tmpun(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cld_cal_tmpun(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpun(:ncol,:nht_cosp) = 0.0_r8
        end where
@@ -2844,22 +2827,22 @@ CONTAINS
 
        ! NOTE: This output handling does not work with the COSP satellite swathing 
        ! because nans meant to be swathed are assigned to R_UNDEF.
-       where (cldopaq_cal_2d(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cldopaq_cal_2d(:ncol,:nht_cosp) == R_UNDEF)
           cldopaq_cal_2d(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLDOPQ_CAL_2D',   cldopaq_cal_2d,    pcols, lchnk)
        !
-       where (cldthin_cal_2d(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cldthin_cal_2d(:ncol,:nht_cosp) == R_UNDEF)
           cldthin_cal_2d(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLDTHN_CAL_2D',   cldthin_cal_2d,    pcols, lchnk)
        !
-       where (cldzopaq_cal_2d(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (cldzopaq_cal_2d(:ncol,:nht_cosp) == R_UNDEF)
           cldzopaq_cal_2d(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLDZOPQ_CAL_2D',  cldzopaq_cal_2d,   pcols, lchnk)
        !
-       where (opacity_cal_2d(:ncol,:nht_cosp) .eq. R_UNDEF)
+       where (opacity_cal_2d(:ncol,:nht_cosp) == R_UNDEF)
           opacity_cal_2d(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('OPACITY_CAL_2D',  opacity_cal_2d,    pcols, lchnk)
@@ -2868,7 +2851,7 @@ CONTAINS
     
     ! RADAR SIMULATOR OUTPUTS
     if (lradar_sim) then
-       where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) .eq. R_UNDEF)
+       where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) == R_UNDEF)
           !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue 
           !           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = R_UNDEF
           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = 0.0_r8
@@ -2907,7 +2890,7 @@ CONTAINS
        
        !! where there is no cloud fraction or no retrieval, set to R_UNDEF, 
        !! otherwise weight retrieval by cloud fraction
-       where ((cltmodis(:ncol) .eq. R_UNDEF) .or. (tautmodis(:ncol) .eq. R_UNDEF))
+       where ((cltmodis(:ncol) == R_UNDEF) .or. (tautmodis(:ncol) == R_UNDEF))
           tautmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction cltmodis
@@ -2915,7 +2898,7 @@ CONTAINS
        end where
        call outfld('TAUTMODIS',tautmodis    ,pcols,lchnk)
        
-       where ((tauwmodis(:ncol) .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
+       where ((tauwmodis(:ncol) == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           tauwmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
@@ -2923,7 +2906,7 @@ CONTAINS
        end where
        call outfld('TAUWMODIS',tauwmodis    ,pcols,lchnk)
        
-       where ((tauimodis(:ncol) .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
+       where ((tauimodis(:ncol) == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           tauimodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
@@ -2931,7 +2914,7 @@ CONTAINS
        end where
        call outfld('TAUIMODIS',tauimodis    ,pcols,lchnk)
        
-       where ((tautlogmodis(:ncol)  .eq. R_UNDEF) .or. (cltmodis(:ncol) .eq. R_UNDEF))
+       where ((tautlogmodis(:ncol)  == R_UNDEF) .or. (cltmodis(:ncol) == R_UNDEF))
           tautlogmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction cltmodis
@@ -2939,7 +2922,7 @@ CONTAINS
        end where
        call outfld('TAUTLOGMODIS',tautlogmodis    ,pcols,lchnk)
        
-       where ((tauwlogmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
+       where ((tauwlogmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           tauwlogmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
@@ -2947,7 +2930,7 @@ CONTAINS
        end where
        call outfld('TAUWLOGMODIS',tauwlogmodis    ,pcols,lchnk)
        
-       where ((tauilogmodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF)) 
+       where ((tauilogmodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF)) 
           tauilogmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
@@ -2955,7 +2938,7 @@ CONTAINS
        end where
        call outfld('TAUILOGMODIS',tauilogmodis    ,pcols,lchnk)
        
-       where ((reffclwmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF)) 
+       where ((reffclwmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF)) 
           reffclwmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
@@ -2963,7 +2946,7 @@ CONTAINS
        end where
        call outfld('REFFCLWMODIS',reffclwmodis    ,pcols,lchnk)
        
-       where ((reffclimodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
+       where ((reffclimodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           reffclimodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
@@ -2971,7 +2954,7 @@ CONTAINS
        end where
        call outfld('REFFCLIMODIS',reffclimodis    ,pcols,lchnk)
        
-       where ((pctmodis(:ncol)  .eq. R_UNDEF) .or. ( cltmodis(:ncol) .eq. R_UNDEF))
+       where ((pctmodis(:ncol)  == R_UNDEF) .or. ( cltmodis(:ncol) == R_UNDEF))
           pctmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction cltmodis
@@ -2979,7 +2962,7 @@ CONTAINS
        end where
        call outfld('PCTMODIS',pctmodis    ,pcols,lchnk)
        
-       where ((lwpmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
+       where ((lwpmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           lwpmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
@@ -2987,7 +2970,7 @@ CONTAINS
        end where
        call outfld('LWPMODIS',lwpmodis    ,pcols,lchnk)
        
-       where ((iwpmodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
+       where ((iwpmodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           iwpmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
@@ -3150,7 +3133,7 @@ CONTAINS
     !--------------------------------------------------------------------------------------
              
     call t_startf("scops")
-    if (Ncolumns .gt. 1) then
+    if (Ncolumns > 1) then
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        ! Generate subcolumns for clouds (SCOPS) and precipitation type (PREC_SCOPS)
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3158,7 +3141,7 @@ CONTAINS
        allocate(rngs(nPoints), seed(nPoints), stat=istat)
        call handle_allocate_error(istat, sub, 'rngs, seed')
        seed = int(sfcP)
-       if (Npoints .gt. 1) seed=(sfcP-int(sfcP))*1000000 
+       if (Npoints > 1) seed=(sfcP-int(sfcP))*1000000 
        call init_rng(rngs, seed)
    
        ! Call scops
@@ -3192,12 +3175,12 @@ CONTAINS
        do j=1,nPoints
           do k=1,nLevels
              do i=1,nColumns
-                if (cospIN%frac_out(j,i,k)  .eq. 1)  frac_ls(j,k) = frac_ls(j,k)+1._wp
-                if (cospIN%frac_out(j,i,k)  .eq. 2)  frac_cv(j,k) = frac_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 1)         prec_ls(j,k) = prec_ls(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 2)         prec_cv(j,k) = prec_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 3)         prec_cv(j,k) = prec_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 3)         prec_ls(j,k) = prec_ls(j,k)+1._wp
+                if (cospIN%frac_out(j,i,k)  == 1)  frac_ls(j,k) = frac_ls(j,k)+1._wp
+                if (cospIN%frac_out(j,i,k)  == 2)  frac_cv(j,k) = frac_cv(j,k)+1._wp
+                if (frac_prec(j,i,k) == 1)         prec_ls(j,k) = prec_ls(j,k)+1._wp
+                if (frac_prec(j,i,k) == 2)         prec_cv(j,k) = prec_cv(j,k)+1._wp
+                if (frac_prec(j,i,k) == 3)         prec_cv(j,k) = prec_cv(j,k)+1._wp
+                if (frac_prec(j,i,k) == 3)         prec_ls(j,k) = prec_ls(j,k)+1._wp
              enddo
              frac_ls(j,k)=frac_ls(j,k)/nColumns
              frac_cv(j,k)=frac_cv(j,k)/nColumns
@@ -3206,10 +3189,10 @@ CONTAINS
 
              ! Adjust grid-box mean snow properties to local properties
              ! Convert longwave optical depth to longwave emissivity
-             if (prec_ls(j,k) .ne. 0._r8 .and. dtau_s_snow(j,k) .gt. 0._r8) then
+             if (prec_ls(j,k) /= 0._r8 .and. dtau_s_snow(j,k) > 0._r8) then
                 dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k) 
              end if
-             if (prec_ls(j,k) .ne. 0._r8 .and. dem_s_snow(j,k) .gt. 0._r8) then
+             if (prec_ls(j,k) /= 0._r8 .and. dem_s_snow(j,k) > 0._r8) then
                 dem_s_snow(j,k) = dem_s_snow(j,k)/prec_ls(j,k)
                 dem_s_snow(j,k) = 1._r8 - exp ( -1._r8*dem_s_snow(j,k))
              end if !!+JEK
@@ -3270,22 +3253,22 @@ CONTAINS
        do k=1,nLevels
           do j=1,nPoints
              ! Clouds
-             if (frac_ls(j,k) .ne. 0._r8) then
+             if (frac_ls(j,k) /= 0._r8) then
                 mr_hydro(j,:,k,I_LSCLIQ) = mr_hydro(j,:,k,I_LSCLIQ)/frac_ls(j,k)
                 mr_hydro(j,:,k,I_LSCICE) = mr_hydro(j,:,k,I_LSCICE)/frac_ls(j,k)
              endif
-             if (frac_cv(j,k) .ne. 0._r8) then
+             if (frac_cv(j,k) /= 0._r8) then
                 mr_hydro(j,:,k,I_CVCLIQ) = mr_hydro(j,:,k,I_CVCLIQ)/frac_cv(j,k)
                 mr_hydro(j,:,k,I_CVCICE) = mr_hydro(j,:,k,I_CVCICE)/frac_cv(j,k)
              endif
              
              ! Precipitation
-             if (prec_ls(j,k) .ne. 0._r8) then
+             if (prec_ls(j,k) /= 0._r8) then
                 fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
                 fl_lssnow(j,k) = fl_lssnowIN(j,k)/prec_ls(j,k)
                 fl_lsgrpl(j,k) = fl_lsgrplIN(j,k)/prec_ls(j,k)
              endif
-             if (prec_cv(j,k) .ne. 0._r8) then
+             if (prec_cv(j,k) /= 0._r8) then
                 fl_ccrain(j,k) = fl_ccrainIN(j,k)/prec_cv(j,k)
                 fl_ccsnow(j,k) = fl_ccsnowIN(j,k)/prec_cv(j,k)
              endif
@@ -3377,9 +3360,9 @@ CONTAINS
                cospIN%kr_vol_cloudsat(1:nPoints,k,:))
 
         ! At each model level, what fraction of the precipitation is frozen?
-          where(mr_hydro(:,k,:,I_LSRAIN) .gt. 0 .or. mr_hydro(:,k,:,I_LSSNOW) .gt. 0 .or. &
-                mr_hydro(:,k,:,I_CVRAIN) .gt. 0 .or. mr_hydro(:,k,:,I_CVSNOW) .gt. 0 .or. &
-                mr_hydro(:,k,:,I_LSGRPL) .gt. 0)
+          where(mr_hydro(:,k,:,I_LSRAIN) > 0 .or. mr_hydro(:,k,:,I_LSSNOW) > 0 .or. &
+                mr_hydro(:,k,:,I_CVRAIN) > 0 .or. mr_hydro(:,k,:,I_CVSNOW) > 0 .or. &
+                mr_hydro(:,k,:,I_LSGRPL) > 0)
              fracPrecipIce(:,k,:) = (mr_hydro(:,k,:,I_LSSNOW) + mr_hydro(:,k,:,I_CVSNOW) + &
                   mr_hydro(:,k,:,I_LSGRPL)) / &
                   (mr_hydro(:,k,:,I_LSSNOW) + mr_hydro(:,k,:,I_CVSNOW) + mr_hydro(:,k,:,I_LSGRPL) + &
@@ -3450,7 +3433,7 @@ CONTAINS
             cospIN%emiss_11)
        ! Add in contributions from radiative snow 
        do j=1,nColumns
-          where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
+          where(frac_prec(:,j,:) == 1 .or. frac_prec(:,j,:) == 3)
              cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_s_snow)
           endwhere
        enddo
@@ -3467,8 +3450,8 @@ CONTAINS
        
        ! Add in contributions from snow 
        do j=1,nColumns
-          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
+          where((frac_prec(:,j,:) == 1 .or. frac_prec(:,j,:) == 3) .and. &
+               Reff(:,j,:,I_LSSNOW) > 0._r8 .and. dtau_s_snow > 0._r8)
              cospIN%tau_067(:,j,:)  = cospIN%tau_067(:,j,:)+dtau_s_snow
           endwhere
        enddo
@@ -3507,8 +3490,8 @@ CONTAINS
        ! Cloud snow and size	
        MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
        do j=1,nColumns
-          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
+          where((frac_prec(:,j,:) == 1 .or. frac_prec(:,j,:) == 3) .and. &
+               Reff(:,j,:,I_LSSNOW) > 0._r8 .and. dtau_s_snow > 0._r8)
              MODIS_cloudSnow(:,j,:) = mr_hydro(:,j,:,I_LSSNOW)
              MODIS_snowSize(:,j,:)  = Reff(:,j,:,I_LSSNOW)
           elsewhere
@@ -4197,7 +4180,7 @@ CONTAINS
     type(cosp_optical_inputs),intent(inout) :: y
     integer :: i
     
-    if (size(y%cfg_rttov) .gt. 0) then
+    if (size(y%cfg_rttov) > 0) then
         do i=1,y%Ninst_rttov
             call destroy_rttov_config(y%cfg_rttov(i))
         end do
