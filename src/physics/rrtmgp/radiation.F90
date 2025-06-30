@@ -466,14 +466,6 @@ subroutine radiation_init(pbuf2d)
       call endrun(sub//': '//errmsg)
    end if
 
-   ! Read ice and liquid optics files
-   call cloud_rad_props_init(abs_lw_liq, abs_lw_ice, &
-                  ext_sw_liq, ssa_sw_liq, asm_sw_liq, ext_sw_ice, ssa_sw_ice, &
-                  asm_sw_ice, g_mu, g_lambda, g_d_eff, tiny)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
-
    ! Read RRTMGP coefficients files and initialize kdist objects.
    call rrtmgp_lw_gas_optics_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
    if (errflg /= 0) then
@@ -506,6 +498,14 @@ subroutine radiation_init(pbuf2d)
 
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
+
+   ! Read ice and liquid optics files
+   call cloud_rad_props_init(abs_lw_liq, abs_lw_ice, &
+                  ext_sw_liq, ssa_sw_liq, asm_sw_liq, ext_sw_ice, ssa_sw_ice, &
+                  asm_sw_ice, g_mu, g_lambda, g_d_eff, tiny)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=ierr)
