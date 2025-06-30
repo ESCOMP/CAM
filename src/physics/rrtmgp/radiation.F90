@@ -26,8 +26,6 @@ use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist, radconstants_init
 use rad_solar_var,       only: rad_solar_var_init, get_variability
 
-use cloud_rad_props,     only: cloud_rad_props_init
-
 use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
                                cospsimulator_intr_run, cosp_nradsteps
 
@@ -223,6 +221,20 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
 integer :: nlwgpts
 integer :: nswgpts
 
+! Cloud optics variables
+real(kind=r8), allocatable :: abs_lw_ice(:,:)
+real(kind=r8), allocatable :: asm_sw_ice(:,:)
+real(kind=r8), allocatable :: ssa_sw_ice(:,:)
+real(kind=r8), allocatable :: ext_sw_ice(:,:)
+real(kind=r8), allocatable :: abs_lw_liq(:,:,:)
+real(kind=r8), allocatable :: ext_sw_liq(:,:,:)
+real(kind=r8), allocatable :: ssa_sw_liq(:,:,:)
+real(kind=r8), allocatable :: asm_sw_liq(:,:,:)
+real(kind=r8), allocatable :: g_lambda(:,:)
+real(kind=r8), allocatable :: g_mu(:)
+real(kind=r8), allocatable :: g_d_eff(:)
+real(kind=r8) :: tiny
+
 ! Band indices for bands containing specific wavelengths
 integer :: idx_sw_diag
 integer :: idx_nir_diag
@@ -411,11 +423,12 @@ end function radiation_do
 
 subroutine radiation_init(pbuf2d)
    use rrtmgp_pre,                only: rrtmgp_pre_init
-   use rrtmgp_inputs,             only: rrtmgp_inputs_init
+   use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
    use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
-   use rrtmgp_lw_cloud_optics,    only: rrtmgp_lw_cloud_optics_init
-!   use rrtmgp_lw_gas_optics_data, only: rrtmgp_lw_gas_optics_data_init
-!   use rrtmgp_sw_gas_optics_data, only: rrtmgp_sw_gas_optics_data_init
+   use cloud_rad_props,           only: cloud_rad_props_init
+   use rad_constituents,          only: iceopticsfile, liqopticsfile
+   use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_init
+   use rrtmgp_sw_gas_optics,      only: rrtmgp_sw_gas_optics_init
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -441,15 +454,7 @@ subroutine radiation_init(pbuf2d)
                                           ! liquid budgets.
    integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr, istat, errflg
-
-   ! Cloud optics variables
-   integer :: nmu, n_g_d, nlambda
-   real(kind=r8), allocatable :: abs_lw_ice(:,:)
-   real(kind=r8), allocatable :: abs_lw_liq(:,:,:)
-   real(kind=r8), allocatable :: g_lambda(:,:)
-   real(kind=r8), allocatable :: g_mu(:)
-   real(kind=r8), allocatable :: g_d_eff(:)
-   real(kind=r8) :: tiny
+!   integer :: nmu, n_g_d, nlambda         ! dimensions in optics files
 
    integer :: dtime
 
@@ -462,37 +467,30 @@ subroutine radiation_init(pbuf2d)
       call endrun(sub//': '//errmsg)
    end if
 
-!   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
-!                             g_mu, g_lambda, g_d_eff, tiny)
-!
-!   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
-!                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
-!                  g_d_eff, tiny, errmsg, errflg)
-!   if (errflg /= 0) then
-!      call endrun(sub//': '//errmsg)
-!   end if
-
-!   write(iulog,*) 'peverwhee - reading in data from file!'
+   ! Read ice and liquid optics files
+   call cloud_rad_props_init(abs_lw_liq, abs_lw_ice, &
+                  ext_sw_liq, ssa_sw_liq, asm_sw_liq, ext_sw_ice, ssa_sw_ice, &
+                  asm_sw_ice, g_mu, g_lambda, g_d_eff, tiny)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
-   call rrtmgp_lw_gas_optics_data_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
+   call rrtmgp_lw_gas_optics_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': lw '//errmsg)
    end if
-   call rrtmgp_sw_gas_optics_data_init(kdist_sw, coefs_sw_file, available_gases, errmsg, errflg)
+   call rrtmgp_sw_gas_optics_init(kdist_sw, coefs_sw_file, available_gases, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': sw '//errmsg)
    end if
-!   write(iulog,*) 'peverwhee - done reading in data from file!'
-!   call coefs_init(coefs_sw_file, available_gases, kdist_sw)
-!   call coefs_init(coefs_lw_file, available_gases, kdist_lw)
 
    ! Set up inputs to RRTMGP
-   call rrtmgp_inputs_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
+   call rrtmgp_inputs_setup_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
                    pref_edge, nlay, pver, pverp, kdist_sw, kdist_lw, qrl_unused, is_first_step(), use_rad_dt_cosz, &
                    get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(), masterproc, &
                    nlwbands, nradgas, gasnamelength, iulog, idx_sw_diag, idx_nir_diag, idx_uv_diag,          &
-                   idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, nlayp,                   &
+                   idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, gaslist, nswgpts, nlwgpts, nlayp,          &
                    nextsw_cday, get_curr_calday(), band2gpt_sw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
@@ -510,15 +508,6 @@ subroutine radiation_init(pbuf2d)
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
 
-   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
-                             g_mu, g_lambda, g_d_eff, tiny)
-   call rrtmgp_lw_cloud_optics_init(nmu, nlambda, n_g_d, &
-                  abs_lw_liq, abs_lw_ice, nlwbands, g_mu, g_lambda, &
-                  g_d_eff, tiny, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
-  
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=ierr)
    cldfgrau_idx = pbuf_get_index('CLDFGRAU', errcode=ierr)
@@ -1303,11 +1292,12 @@ subroutine radiation_tend( &
          do_snow = associated(cldfsnow)
 
          ! Set cloud optical properties in cloud_lw object.
-         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,  &
-             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), &
-             mu(:ncol,:), iclwp(:ncol,:), iciwp(:ncol,:), dei(:ncol,:), icswp(:ncol,:), des(:ncol,:), &
-             icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver,         &
-             ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
+         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,     &
+             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), mu(:ncol,:),    &
+             iclwp(:ncol,:), iciwp(:ncol,:), abs_lw_liq, abs_lw_ice, g_mu, g_lambda, g_d_eff,      &
+             tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:), icgrauwp(:ncol,:), degrau(:ncol,:), &
+             nlwbands, do_snow, do_graupel, pver, ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs,    &
+             grau_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
@@ -1847,560 +1837,6 @@ subroutine radiation_output_lw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FULC'//diag(icall), rd%flux_lw_clr_up, pcols, lchnk)
 
 end subroutine radiation_output_lw
-
-!===============================================================================
-
-subroutine coefs_init(coefs_file, available_gases, kdist)
-
-   ! Read data from coefficients file.  Initialize the kdist object.
-   ! available_gases object provides the gas names that CAM provides.
-
-   use mo_rte_kind, only: wl
-
-   ! arguments
-   character(len=*),                  intent(in)  :: coefs_file
-   class(ty_gas_concs_ccpp),          intent(in)  :: available_gases
-   class(ty_gas_optics_rrtmgp_ccpp),  intent(inout) :: kdist
-
-   ! local variables
-   type(file_desc_t) :: fh    ! pio file handle
-   character(len=cl) :: locfn ! path to file on local storage
-
-   ! File dimensions
-   integer ::            &
-      absorber,          &
-      atmos_layer,       &
-      bnd,               &
-      pressure,          &
-      temperature,       &
-      absorber_ext,      &
-      pressure_interp,   &
-      mixing_fraction,   &
-      gpt,               &
-      temperature_Planck
-   
-   integer :: i
-   integer :: did, vid
-   integer :: ierr, istat
-
-   character(32), dimension(:),  allocatable :: gas_names
-   integer,  dimension(:,:,:),   allocatable :: key_species
-   integer,  dimension(:,:),     allocatable :: band2gpt
-   real(r8), dimension(:,:),     allocatable :: band_lims_wavenum
-   real(r8), dimension(:),       allocatable :: press_ref, temp_ref
-   real(r8)                                  :: press_ref_trop, temp_ref_t, temp_ref_p
-   real(r8), dimension(:,:,:),   allocatable :: vmr_ref
-   real(r8), dimension(:,:,:,:), allocatable :: kmajor
-   real(r8), dimension(:,:,:),   allocatable :: kminor_lower, kminor_upper
-   real(r8), dimension(:,:),     allocatable :: totplnk
-   real(r8), dimension(:,:,:,:), allocatable :: planck_frac
-   real(r8), dimension(:),       allocatable :: solar_src_quiet, solar_src_facular, solar_src_sunspot
-   real(r8)                                  :: tsi_default
-   real(r8), dimension(:,:,:),   allocatable :: rayl_lower, rayl_upper
-   character(len=32), dimension(:),  allocatable :: gas_minor,         &
-                                                    identifier_minor,  &
-                                                    minor_gases_lower, &
-                                                    minor_gases_upper, &
-                                                    scaling_gas_lower, &
-                                                    scaling_gas_upper
-   integer, dimension(:,:),          allocatable :: minor_limits_gpt_lower, &
-                                                    minor_limits_gpt_upper
-   ! Send these to RRTMGP as logicals,
-   ! but they have to be read from the netCDF as integers
-   logical(wl), dimension(:),        allocatable :: minor_scales_with_density_lower, &
-                                                    minor_scales_with_density_upper
-   logical(wl), dimension(:),        allocatable :: scale_by_complement_lower, &
-                                                    scale_by_complement_upper
-   integer, dimension(:), allocatable :: int2log   ! use this to convert integer-to-logical.
-   integer, dimension(:),            allocatable :: kminor_start_lower, kminor_start_upper
-   real(r8), dimension(:,:),         allocatable :: optimal_angle_fit
-   real(r8)                                      :: mg_default, sb_default
-
-   integer :: pairs, &
-              minorabsorbers, &
-              minor_absorber_intervals_lower, &
-              minor_absorber_intervals_upper, &
-              contributors_lower, &
-              contributors_upper, &
-              fit_coeffs
-
-   character(len=128) :: error_msg
-   character(len=512) :: errmsg
-   character(len=*), parameter :: sub = 'coefs_init'
-   !----------------------------------------------------------------------------
-
-   ! Open file
-   call getfil(coefs_file, locfn, 0)
-   call cam_pio_openfile(fh, locfn, PIO_NOWRITE)
-
-   call pio_seterrorhandling(fh, PIO_BCAST_ERROR)
-
-   ! Get dimensions
-
-   ierr = pio_inq_dimid(fh, 'absorber', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': absorber not found')
-   ierr = pio_inq_dimlen(fh, did, absorber)
-
-   ierr = pio_inq_dimid(fh, 'atmos_layer', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': atmos_layer not found')
-   ierr = pio_inq_dimlen(fh, did, atmos_layer)
-
-   ierr = pio_inq_dimid(fh, 'bnd', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': bnd not found')
-   ierr = pio_inq_dimlen(fh, did, bnd)
-
-   ierr = pio_inq_dimid(fh, 'pressure', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': pressure not found')
-   ierr = pio_inq_dimlen(fh, did, pressure)
-
-   ierr = pio_inq_dimid(fh, 'temperature', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': temperature not found')
-   ierr = pio_inq_dimlen(fh, did, temperature)
-
-   ierr = pio_inq_dimid(fh, 'absorber_ext', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': absorber_ext not found')
-   ierr = pio_inq_dimlen(fh, did, absorber_ext)
-
-   ierr = pio_inq_dimid(fh, 'pressure_interp', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': pressure_interp not found')
-   ierr = pio_inq_dimlen(fh, did, pressure_interp)
-
-   ierr = pio_inq_dimid(fh, 'mixing_fraction', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': mixing_fraction not found')
-   ierr = pio_inq_dimlen(fh, did, mixing_fraction)
-   
-   ierr = pio_inq_dimid(fh, 'gpt', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': gpt not found')
-   ierr = pio_inq_dimlen(fh, did, gpt)
-
-   temperature_Planck = 0
-   ierr = pio_inq_dimid(fh, 'temperature_Planck', did)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_inq_dimlen(fh, did, temperature_Planck)
-   end if
-   ierr = pio_inq_dimid(fh, 'pair', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': pair not found')
-   ierr = pio_inq_dimlen(fh, did, pairs)
-   ierr = pio_inq_dimid(fh, 'minor_absorber', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_absorber not found')
-   ierr = pio_inq_dimlen(fh, did, minorabsorbers)
-   ierr = pio_inq_dimid(fh, 'minor_absorber_intervals_lower', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_absorber_intervals_lower not found')
-   ierr = pio_inq_dimlen(fh, did, minor_absorber_intervals_lower)
-   ierr = pio_inq_dimid(fh, 'minor_absorber_intervals_upper', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_absorber_intervals_upper not found')
-   ierr = pio_inq_dimlen(fh, did, minor_absorber_intervals_upper)
-   ierr = pio_inq_dimid(fh, 'contributors_lower', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': contributors_lower not found')
-   ierr = pio_inq_dimlen(fh, did, contributors_lower)
-   ierr = pio_inq_dimid(fh, 'contributors_upper', did)
-   if (ierr /= PIO_NOERR) call endrun(sub//': contributors_upper not found')
-   ierr = pio_inq_dimlen(fh, did, contributors_upper)
-
-   ierr = pio_inq_dimid(fh, 'fit_coeffs', did)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_inq_dimlen(fh, did, fit_coeffs)
-   end if
-
-   ! Get variables
-   
-   ! names of absorbing gases
-   allocate(gas_names(absorber), stat=istat)
-   call handle_allocate_error(istat, sub, 'gas_names')
-   ierr = pio_inq_varid(fh, 'gas_names', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': gas_names not found')
-   ierr = pio_get_var(fh, vid, gas_names)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading gas_names')
-
-   ! key species pair for each band
-   allocate(key_species(2,atmos_layer,bnd), stat=istat)
-   call handle_allocate_error(istat, sub, 'key_species')
-   ierr = pio_inq_varid(fh, 'key_species', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': key_species not found')
-   ierr = pio_get_var(fh, vid, key_species)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading key_species')
-
-   ! beginning and ending gpoint for each band
-   allocate(band2gpt(2,bnd), stat=istat)
-   call handle_allocate_error(istat, sub, 'band2gpt')
-   ierr = pio_inq_varid(fh, 'bnd_limits_gpt', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_gpt not found')
-   ierr = pio_get_var(fh, vid, band2gpt)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_gpt')
-
-   ! beginning and ending wavenumber for each band
-   allocate(band_lims_wavenum(2,bnd), stat=istat)
-   call handle_allocate_error(istat, sub, 'band_lims_wavenum')
-   ierr = pio_inq_varid(fh, 'bnd_limits_wavenumber', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_wavenumber not found')
-   ierr = pio_get_var(fh, vid, band_lims_wavenum)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_wavenumber')
-
-   ! pressures [hPa] for reference atmosphere; press_ref(# reference layers)
-   allocate(press_ref(pressure), stat=istat)
-   call handle_allocate_error(istat, sub, 'press_ref')
-   ierr = pio_inq_varid(fh, 'press_ref', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': press_ref not found')
-   ierr = pio_get_var(fh, vid, press_ref)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading press_ref')
-
-   ! reference pressure separating the lower and upper atmosphere
-   ierr = pio_inq_varid(fh, 'press_ref_trop', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': press_ref_trop not found')
-   ierr = pio_get_var(fh, vid, press_ref_trop)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading press_ref_trop')
-
-   ! temperatures [K] for reference atmosphere; temp_ref(# reference layers)
-   allocate(temp_ref(temperature), stat=istat)
-   call handle_allocate_error(istat, sub, 'temp_ref')
-   ierr = pio_inq_varid(fh, 'temp_ref', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': temp_ref not found')
-   ierr = pio_get_var(fh, vid, temp_ref)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading temp_ref')
-
-   ! standard spectroscopic reference temperature [K]
-   ierr = pio_inq_varid(fh, 'absorption_coefficient_ref_T', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': absorption_coefficient_ref_T not found')
-   ierr = pio_get_var(fh, vid, temp_ref_t)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_T')
-
-   ! standard spectroscopic reference pressure [Pa]
-   ierr = pio_inq_varid(fh, 'absorption_coefficient_ref_P', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': absorption_coefficient_ref_P not found')
-   ierr = pio_get_var(fh, vid, temp_ref_p)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_P')
-
-   ! volume mixing ratios for reference atmosphere
-   allocate(vmr_ref(atmos_layer, absorber_ext, temperature), stat=istat)
-   call handle_allocate_error(istat, sub, 'vmr_ref')
-   ierr = pio_inq_varid(fh, 'vmr_ref', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': vmr_ref not found')
-   ierr = pio_get_var(fh, vid, vmr_ref)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading vmr_ref')
-
-   ! absorption coefficients due to major absorbing gases
-   allocate(kmajor(gpt,mixing_fraction,pressure_interp,temperature), stat=istat)
-   call handle_allocate_error(istat, sub, 'kmajor')
-   ierr = pio_inq_varid(fh, 'kmajor', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': kmajor not found')
-   ierr = pio_get_var(fh, vid, kmajor)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kmajor')
-
-   ! absorption coefficients due to minor absorbing gases in lower part of atmosphere
-   allocate(kminor_lower(contributors_lower, mixing_fraction, temperature), stat=istat)
-   call handle_allocate_error(istat, sub, 'kminor_lower')
-   ierr = pio_inq_varid(fh, 'kminor_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_lower not found')
-   ierr = pio_get_var(fh, vid, kminor_lower)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_lower')
-
-   ! absorption coefficients due to minor absorbing gases in upper part of atmosphere
-   allocate(kminor_upper(contributors_upper, mixing_fraction, temperature), stat=istat)
-   call handle_allocate_error(istat, sub, 'kminor_upper')
-   ierr = pio_inq_varid(fh, 'kminor_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_upper not found')
-   ierr = pio_get_var(fh, vid, kminor_upper)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_upper')
-
-   ! integrated Planck function by band
-   ierr = pio_inq_varid(fh, 'totplnk', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(totplnk(temperature_Planck,bnd), stat=istat)
-      call handle_allocate_error(istat, sub, 'totplnk')
-      ierr = pio_get_var(fh, vid, totplnk)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading totplnk')
-   end if
-
-   ! Planck fractions
-   ierr = pio_inq_varid(fh, 'plank_fraction', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(planck_frac(gpt,mixing_fraction,pressure_interp,temperature), stat=istat)
-      call handle_allocate_error(istat, sub, 'planck_frac')
-      ierr = pio_get_var(fh, vid, planck_frac)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading plank_fraction')
-   end if
-
-   ierr = pio_inq_varid(fh, 'optimal_angle_fit', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(optimal_angle_fit(fit_coeffs, bnd), stat=istat)
-      call handle_allocate_error(istat, sub, 'optiman_angle_fit')
-      ierr = pio_get_var(fh, vid, optimal_angle_fit)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading optimal_angle_fit')
-   end if
-
-   ierr = pio_inq_varid(fh, 'solar_source_quiet', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(solar_src_quiet(gpt), stat=istat)
-      call handle_allocate_error(istat, sub, 'solar_src_quiet')
-      ierr = pio_get_var(fh, vid, solar_src_quiet)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_quiet')
-   end if
-
-   ierr = pio_inq_varid(fh, 'solar_source_facular', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(solar_src_facular(gpt), stat=istat)
-      call handle_allocate_error(istat, sub, 'solar_src_facular')
-      ierr = pio_get_var(fh, vid, solar_src_facular)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_facular')
-   end if
-
-   ierr = pio_inq_varid(fh, 'solar_source_sunspot', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(solar_src_sunspot(gpt), stat=istat)
-      call handle_allocate_error(istat, sub, 'solar_src_sunspot')
-      ierr = pio_get_var(fh, vid, solar_src_sunspot)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_sunspot')
-   end if
-
-   ierr = pio_inq_varid(fh, 'tsi_default', vid)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(fh, vid, tsi_default)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading tsi_default')
-   end if
-
-   ierr = pio_inq_varid(fh, 'mg_default', vid)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(fh, vid, mg_default)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading mg_default')
-   end if
-
-   ierr = pio_inq_varid(fh, 'sb_default', vid)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(fh, vid, sb_default)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading sb_default')
-   end if
-
-   ! rayleigh scattering contribution in lower part of atmosphere
-   ierr = pio_inq_varid(fh, 'rayl_lower', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(rayl_lower(gpt,mixing_fraction,temperature), stat=istat)
-      call handle_allocate_error(istat, sub, 'rayl_lower')
-      ierr = pio_get_var(fh, vid, rayl_lower)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_lower')
-   end if
-
-   ! rayleigh scattering contribution in upper part of atmosphere
-   ierr = pio_inq_varid(fh, 'rayl_upper', vid)
-   if (ierr == PIO_NOERR) then
-      allocate(rayl_upper(gpt,mixing_fraction,temperature), stat=istat)
-      call handle_allocate_error(istat, sub, 'rayl_upper')
-      ierr = pio_get_var(fh, vid, rayl_upper)
-      if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_upper')
-   end if
-
-   allocate(gas_minor(minorabsorbers), stat=istat)
-   call handle_allocate_error(istat, sub, 'gas_minor')
-   ierr = pio_inq_varid(fh, 'gas_minor', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': gas_minor not found')
-   ierr = pio_get_var(fh, vid, gas_minor)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading gas_minor')
-
-   allocate(identifier_minor(minorabsorbers), stat=istat)
-   call handle_allocate_error(istat, sub, 'identifier_minor')
-   ierr = pio_inq_varid(fh, 'identifier_minor', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': identifier_minor not found')
-   ierr = pio_get_var(fh, vid, identifier_minor)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading identifier_minor')
-   
-   allocate(minor_gases_lower(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_gases_lower')
-   ierr = pio_inq_varid(fh, 'minor_gases_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_gases_lower not found')
-   ierr = pio_get_var(fh, vid, minor_gases_lower)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_gases_lower')
-
-   allocate(minor_gases_upper(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_gases_upper')
-   ierr = pio_inq_varid(fh, 'minor_gases_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_gases_upper not found')
-   ierr = pio_get_var(fh, vid, minor_gases_upper)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_gases_upper')
-
-   allocate(minor_limits_gpt_lower(pairs,minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_limits_gpt_lower')
-   ierr = pio_inq_varid(fh, 'minor_limits_gpt_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_limits_gpt_lower not found')
-   ierr = pio_get_var(fh, vid, minor_limits_gpt_lower)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_limits_gpt_lower')
-
-   allocate(minor_limits_gpt_upper(pairs,minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_limits_gpt_upper')
-   ierr = pio_inq_varid(fh, 'minor_limits_gpt_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_limits_gpt_upper not found')
-   ierr = pio_get_var(fh, vid, minor_limits_gpt_upper)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_limits_gpt_upper')
-
-   ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'int2log for lower')
-
-   allocate(minor_scales_with_density_lower(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_scales_with_density_lower')
-   ierr = pio_inq_varid(fh, 'minor_scales_with_density_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_lower not found')
-   ierr = pio_get_var(fh, vid, int2log)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_scales_with_density_lower')
-   do i = 1,minor_absorber_intervals_lower
-      if (int2log(i) .eq. 0) then
-         minor_scales_with_density_lower(i) = .false.
-      else
-         minor_scales_with_density_lower(i) = .true.
-      end if
-   end do
-
-   allocate(scale_by_complement_lower(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'scale_by_complement_lower')
-   ierr = pio_inq_varid(fh, 'scale_by_complement_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': scale_by_complement_lower not found')
-   ierr = pio_get_var(fh, vid, int2log)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading scale_by_complement_lower')
-   do i = 1,minor_absorber_intervals_lower
-      if (int2log(i) .eq. 0) then
-         scale_by_complement_lower(i) = .false.
-      else
-         scale_by_complement_lower(i) = .true.
-      end if
-   end do
-
-   deallocate(int2log)
-
-   ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'int2log for upper')
-
-   allocate(minor_scales_with_density_upper(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'minor_scales_with_density_upper')
-   ierr = pio_inq_varid(fh, 'minor_scales_with_density_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_upper not found')
-   ierr = pio_get_var(fh, vid, int2log)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_scales_with_density_upper')
-   do i = 1,minor_absorber_intervals_upper
-      if (int2log(i) .eq. 0) then
-         minor_scales_with_density_upper(i) = .false.
-      else
-         minor_scales_with_density_upper(i) = .true.
-      end if
-   end do
-
-   allocate(scale_by_complement_upper(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'scale_by_complement_upper')
-   ierr = pio_inq_varid(fh, 'scale_by_complement_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': scale_by_complement_upper not found')
-   ierr = pio_get_var(fh, vid, int2log)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading scale_by_complement_upper')
-   do i = 1,minor_absorber_intervals_upper
-      if (int2log(i) .eq. 0) then
-         scale_by_complement_upper(i) = .false.
-      else
-         scale_by_complement_upper(i) = .true.
-      end if
-   end do
-
-   deallocate(int2log)
-
-   allocate(scaling_gas_lower(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'scaling_gas_lower')
-   ierr = pio_inq_varid(fh, 'scaling_gas_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': scaling_gas_lower not found')
-   ierr = pio_get_var(fh, vid, scaling_gas_lower)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading scaling_gas_lower')
-
-   allocate(scaling_gas_upper(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'scaling_gas_upper')
-   ierr = pio_inq_varid(fh, 'scaling_gas_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': scaling_gas_upper not found')
-   ierr = pio_get_var(fh, vid, scaling_gas_upper)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading scaling_gas_upper')
-
-   allocate(kminor_start_lower(minor_absorber_intervals_lower), stat=istat)
-   call handle_allocate_error(istat, sub, 'kminor_start_lower')
-   ierr = pio_inq_varid(fh, 'kminor_start_lower', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_start_lower not found')
-   ierr = pio_get_var(fh, vid, kminor_start_lower)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_start_lower')
-
-   allocate(kminor_start_upper(minor_absorber_intervals_upper), stat=istat)
-   call handle_allocate_error(istat, sub, 'kminor_start_upper')
-   ierr = pio_inq_varid(fh, 'kminor_start_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_start_upper not found')
-   ierr = pio_get_var(fh, vid, kminor_start_upper)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_start_upper')
-
-   ! Close file
-   call pio_closefile(fh)
-
-   ! Initialize the gas optics object with data. The calls are slightly different depending
-   ! on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
-
-   if (allocated(totplnk) .and. allocated(planck_frac)) then
-      error_msg = kdist%gas_props%load( &
-         available_gases%gas_concs, gas_names, key_species,              &
-         band2gpt, band_lims_wavenum,                          &
-         press_ref, press_ref_trop, temp_ref,                  &
-         temp_ref_p, temp_ref_t, vmr_ref,                      &
-         kmajor, kminor_lower, kminor_upper,                   &
-         gas_minor, identifier_minor,                          &
-         minor_gases_lower, minor_gases_upper,                 &
-         minor_limits_gpt_lower, minor_limits_gpt_upper,       &
-         minor_scales_with_density_lower,                      &
-         minor_scales_with_density_upper,                      &
-         scaling_gas_lower, scaling_gas_upper,                 &
-         scale_by_complement_lower, scale_by_complement_upper, &
-         kminor_start_lower, kminor_start_upper,               &
-         totplnk, planck_frac, rayl_lower, rayl_upper,         &
-         optimal_angle_fit)
-   else if (allocated(solar_src_quiet)) then
-      error_msg = kdist%gas_props%load( &
-         available_gases%gas_concs, gas_names, key_species,     &
-         band2gpt, band_lims_wavenum,                           &
-         press_ref, press_ref_trop, temp_ref,                   &
-         temp_ref_p, temp_ref_t, vmr_ref,                       & 
-         kmajor, kminor_lower, kminor_upper,                    &
-         gas_minor, identifier_minor,                           &
-         minor_gases_lower, minor_gases_upper,                  &
-         minor_limits_gpt_lower, minor_limits_gpt_upper,        &
-         minor_scales_with_density_lower,                       &
-         minor_scales_with_density_upper,                       &
-         scaling_gas_lower, scaling_gas_upper,                  &
-         scale_by_complement_lower,                             &
-         scale_by_complement_upper,                             &
-         kminor_start_lower,                                    &
-         kminor_start_upper,                                    &
-         solar_src_quiet, solar_src_facular, solar_src_sunspot, &
-         tsi_default, mg_default, sb_default,                   &
-         rayl_lower, rayl_upper)
-   else
-      error_msg = 'must supply either totplnk and planck_frac, or solar_src_[*]'
-   end if
-
-   call stop_on_err(error_msg, sub, 'kdist%gas_props%load')
-
-   deallocate( &
-      gas_names, key_species,               &
-      band2gpt, band_lims_wavenum,          &
-      press_ref, temp_ref, vmr_ref,         &
-      kmajor, kminor_lower, kminor_upper,   &
-      gas_minor, identifier_minor,          &
-      minor_gases_lower, minor_gases_upper, &
-      minor_limits_gpt_lower,               & 
-      minor_limits_gpt_upper,               &
-      minor_scales_with_density_lower,      &
-      minor_scales_with_density_upper,      &
-      scale_by_complement_lower,            & 
-      scale_by_complement_upper,            &
-      scaling_gas_lower, scaling_gas_upper, & 
-      kminor_start_lower, kminor_start_upper)
-
-   if (allocated(totplnk))           deallocate(totplnk)
-   if (allocated(planck_frac))       deallocate(planck_frac)
-   if (allocated(optimal_angle_fit)) deallocate(optimal_angle_fit)
-   if (allocated(solar_src_quiet))   deallocate(solar_src_quiet)
-   if (allocated(solar_src_facular)) deallocate(solar_src_facular)
-   if (allocated(solar_src_sunspot)) deallocate(solar_src_sunspot)
-   if (allocated(rayl_lower))        deallocate(rayl_lower)
-   if (allocated(rayl_upper))        deallocate(rayl_upper)
-
-end subroutine coefs_init
 
 !=========================================================================================
 
