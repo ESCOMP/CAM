@@ -481,9 +481,6 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
                             fname, lname, 'kg m-2 s-1', horiz_only)
    enddo
 
-   ! call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-   !   'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
-
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%wsx',             'cam_in_wsx',               'unset',          horiz_only)
 
