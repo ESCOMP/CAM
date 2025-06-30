@@ -25,7 +25,7 @@
 <met_fix_mass>.true.</met_fix_mass>
 <met_data_file hgrid="1.9x2.5">1980/MERRA2_1.9x2.5_19800101.nc</met_data_file>
 <met_data_path hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5</met_data_path>
-<met_filenames_list hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_c190911.txt</met_filenames_list>
+<met_filenames_list hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_1980-2023_c240324</met_filenames_list>
 <met_data_file dyn="fv"  hgrid="0.9x1.25" chem="waccm_ma_mam4" >1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
 <met_data_file dyn="fv"  hgrid="0.9x1.25" chem="waccm_ma_mam5" >1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
 <met_data_file dyn="fv"  hgrid="0.9x1.25" chem="waccm_mad_mam4">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
@@ -71,7 +71,7 @@
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
-  'AOA1', 'AOA2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD',
+  'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD',
   'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC',
   'FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 'HORZ', 'LANDFRAC', 'LHFLX', 'OCNFRAC',
   'OH', 'OMEGA', 'PHIS', 'PRECC', 'PRECL', 'PS', 'QFLX', 'QRL', 'QRLNLTE',

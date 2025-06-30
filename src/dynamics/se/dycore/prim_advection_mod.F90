@@ -18,7 +18,6 @@ module prim_advection_mod
 !
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nlev, np, qsize, nc
-  use physconst,              only: cpair
   use derivative_mod,         only: derivative_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -45,7 +44,7 @@ module prim_advection_mod
   public :: prim_advec_tracers_fvm
   public :: vertical_remap
 
-  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax, edgeAdv1,  edgeveloc
+  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax, edgeveloc
 
   integer,parameter :: DSSeta = 1
   integer,parameter :: DSSomega = 2
@@ -63,7 +62,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only: nlev, qsize, nelemd,ntrac
+    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam
     use parallel_mod,   only: parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -80,7 +79,7 @@ contains
     !
     ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
     !
-    if (ntrac>0) then
+    if (use_cslam) then
        advec_remap_num_threads = 1
     else
        advec_remap_num_threads = tracer_num_threads
@@ -89,17 +88,17 @@ contains
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
-    call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
-                         nthreads=horz_num_threads*advec_remap_num_threads)
-    call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
-                         nthreads=horz_num_threads*advec_remap_num_threads)
-    ! This is a different type of buffer pointer allocation
-    ! used for determine the minimum and maximum value from
-    ! neighboring  elements
-    call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
-                        nthreads=horz_num_threads*advec_remap_num_threads)
-
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+    if (.not.use_cslam) then
+      call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
+           nthreads=horz_num_threads*advec_remap_num_threads)
+      call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
+           nthreads=horz_num_threads*advec_remap_num_threads)
+      ! This is a different type of buffer pointer allocation
+      ! used for determine the minimum and maximum value from
+      ! neighboring  elements
+      call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
+           nthreads=horz_num_threads*advec_remap_num_threads)
+    end if
     call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
 
 
@@ -948,7 +947,7 @@ contains
     use vertremap_mod,          only: remap1
     use hybrid_mod,             only: hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only: fvm_struct
-    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: use_cslam, ntrac
     use dimensions_mod,         only: kord_tr,kord_tr_cslam
     use cam_logfile,            only: iulog
     use physconst,              only: pi
@@ -1076,7 +1075,7 @@ contains
       call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
     enddo
 
-    if (ntrac>0) then
+    if (use_cslam) then
       !
       ! vertical remapping of CSLAM tracers
       !

@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- Initial conditions -->
+<ncdata hgrid="ne30np4" nlev="93">atm/cam/inic/se/1850C_T4S_ne30pg3_spinup01.cam.i.0002-01-01_c241114.nc</ncdata>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_data_type>FIXED</solar_data_type>
+<solar_data_ymd>18500701</solar_data_ymd>
+
+<!-- Ocean Emissions -->
+<csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850</csw_cycle_yr>
+
+<!-- External forcing -->
+<ext_frc_type>CYCLICAL</ext_frc_type>
+<ext_frc_cycle_yr>1850</ext_frc_cycle_yr>
+<ext_frc_specifier hgrid="ne30np4" npg="3">
+  'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+  'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+  'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+  'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+  'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+  'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+  'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc'
+</ext_frc_specifier>
+
+<!-- Surface emissions -->
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
+
+<!-- Lower boundary concentrations -->
+<flbc_type>CYCLICAL</flbc_type>
+<flbc_cycle_yr>1850</flbc_cycle_yr>
+<flbc_file>atm/waccm/lb/LBC_17500116-25001216_CMIP6_SSP585_0p5degLat_c20200824.nc</flbc_file>
+<flbc_list>
+  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
+  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'H2402', 'OCS', 'SF6', 'CFC11eq'
+</flbc_list>
+
+<!-- history output -->
+<history_chemistry>.true.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+
+</namelist_defaults>

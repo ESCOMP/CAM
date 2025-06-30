@@ -208,6 +208,8 @@ contains
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_budget,         only: cam_budget_init
+    use constituents,       only: cnst_get_ind
+
 
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
 
@@ -220,7 +222,7 @@ contains
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
     ! local variables
-    integer :: lchnk
+    integer :: lchnk, ixq
     !-----------------------------------------------------------------------
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
@@ -281,7 +283,8 @@ contains
 
     ! Initialize CAM CCPP constituent properties array
     ! for use in CCPP-ized physics schemes:
-    call ccpp_const_props_init()
+    call cnst_get_ind('Q', ixq)
+    call ccpp_const_props_init(ixq)
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
@@ -503,7 +506,7 @@ contains
     use air_composition, only: cpairv, cp_or_cv_dycore
     use time_manager,    only: get_nstep
     use nudging,         only: Nudge_Model, Nudge_ON, nudging_timestep_tend
-    use check_energy,    only: check_energy_chng
+    use check_energy,    only: check_energy_cam_chng
 
     ! Arguments
     !
@@ -595,7 +598,7 @@ contains
     if (Nudge_Model .and. Nudge_ON) then
       call nudging_timestep_tend(state,ptend)
       call physics_update(state, ptend, ztodt, tend)
-      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+      call check_energy_cam_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
     endif
 
     call tot_energy_phys(state, 'phAP')
@@ -613,7 +616,7 @@ contains
          to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
     if (moist_physics) then
-      ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
+      ! Scale dry mass and energy
       call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
       call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
       tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
@@ -654,7 +657,7 @@ contains
         !
         ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
         !
-        call set_dry_to_wet(state)
+        call set_dry_to_wet(state, convert_cnst_type='dry')
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
         call tot_energy_phys(state, 'phAM')
         call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
@@ -728,7 +731,8 @@ contains
     use cam_diagnostics,   only: diag_conv_tend_ini, diag_conv, diag_export
     use cam_history,       only: outfld
     use time_manager,      only: get_nstep
-    use check_energy,      only: check_energy_chng, check_energy_fix, check_energy_timestep_init
+    use check_energy,      only: check_energy_cam_chng, check_energy_cam_fix
+    use check_energy,      only: check_energy_timestep_init
     use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend
@@ -830,10 +834,10 @@ contains
 
     call t_startf('energy_fixer')
 
-    if (adiabatic .and. (.not. dycore_is('EUL'))) then
-      call check_energy_fix(state, ptend, nstep, flx_heat)
+    if (adiabatic) then
+      call check_energy_cam_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
-      call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+      call check_energy_cam_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
 
@@ -968,7 +972,7 @@ contains
     ! surface flux is computed and supplied as an argument to
     ! check_energy_chng to account for how the simplified physics forcings are
     ! changing the total exnergy.
-    call check_energy_chng(state, tend, "tphysidl", nstep, ztodt, zero, zero, zero, zero)
+    call check_energy_cam_chng(state, tend, "tphysidl", nstep, ztodt, zero, zero, zero, zero)
 
     if (chem_is_active()) then
       call t_startf('simple_chem')

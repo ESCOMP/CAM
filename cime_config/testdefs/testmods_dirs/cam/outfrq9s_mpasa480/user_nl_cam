@@ -4,3 +4,4 @@ nhtfrq=9,9,9,9,9,9
 inithist='ENDOFRUN'
 mpas_cam_coef=1.0D0
 mpas_cam_damping_levels=3
+pertlim = 1.e-14

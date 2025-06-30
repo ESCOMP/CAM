@@ -927,7 +927,6 @@ subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
                grid%cosp, grid%cose, ycrit)
 
    !for filtering of u and v in div4 damping 
-   !(needs larger halo than cam3.5 code)
    call pft_cf(im, jm, js2gs, jn2gd, jn1gs,                             & 
                grid%scdiv4, grid%sediv4, grid%dcdiv4, grid%dediv4,      & 
                grid%cosp, grid%cose, ycrit)                               

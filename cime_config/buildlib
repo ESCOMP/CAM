@@ -6,7 +6,7 @@ create the cam library
 # pylint: disable=multiple-imports, wrong-import-position, wildcard-import
 # pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
 # pylint: disable=invalid-name
-import sys, os, filecmp, shutil, imp
+import sys, os, filecmp, shutil
 
 
 _CIMEROOT = os.environ.get("CIMEROOT")
@@ -19,10 +19,55 @@ sys.path.append(_LIBDIR)
 from standard_script_setup import *
 from CIME.case import Case
 from CIME.utils import run_sub_or_cmd, expect, run_cmd
+from CIME.utils import import_from_file
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
 
 logger = logging.getLogger(__name__)
+
+###############################################################################
+def _build_fms(caseroot, libroot, bldroot):
+    ###############################################################################
+
+    with Case(caseroot) as case:
+
+        # Only need FMS for fv3 dycore
+        cam_dycore = case.get_value("CAM_DYCORE")
+        srcroot = case.get_value("SRCROOT")
+        if cam_dycore == "fv3":
+            # first check for the external FMS library and build it
+            # Check to see if some other component built it already
+            fmsbuildlib = os.path.join(srcroot, "libraries", "FMS", "buildlib")
+            librootfms = os.path.join(libroot, "libfms.a")
+            if not os.path.exists(librootfms):
+                if case.get_value("DEBUG"):
+                    strdebug = "debug"
+                else:
+                    strdebug = "nodebug"
+
+                if case.get_value("BUILD_THREADED"):
+                    strthread = "threads"
+                else:
+                    strthread = "nothreads"
+
+                mpilib = case.get_value("MPILIB")
+                sharedpath = os.path.join(case.get_value("COMPILER"), mpilib,
+                                          strdebug, strthread)
+                slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
+                fmsbuildroot = os.path.join(slr, sharedpath)
+                fmsinstallpath = os.path.join(fmsbuildroot, "FMS")
+                install_libfms = os.path.join(fmsinstallpath, "libfms.a")
+
+                if not os.path.exists(install_libfms):
+                    if not os.path.exists(fmsbuildlib):
+                        #todo: call checkout_externals to get this component
+                        expect(False, "FMS external not found")
+                    else:
+                        stat, _, err = run_cmd(f"{fmsbuildlib} {fmsbuildroot} {fmsinstallpath} {caseroot}", verbose=True)
+                        expect(stat==0, f"FMS build Failed {err}")
+
+                if os.path.exists(install_libfms):
+                    shutil.copy(install_libfms, libroot)
 
 ###############################################################################
 def _build_cam(caseroot, libroot, bldroot):
@@ -41,10 +86,10 @@ def _build_cam(caseroot, libroot, bldroot):
         cmd = os.path.join(os.path.join(srcroot, "cime_config", "buildcpp"))
         logger.info("     ...calling cam buildcpp to set build time options")
         try:
-            mod = imp.load_source("buildcpp", cmd)
-            cam_cppdefs = mod.buildcpp(case)
+            buildcpp = import_from_file("buildcpp", cmd)
+            cam_cppdefs = buildcpp.buildcpp(case)
         except:
-            raise
+            raise RuntimeError("CAM's 'buildcpp' script failed to run properly.")
 
     with Case(caseroot) as case:
 
@@ -63,12 +108,11 @@ def _build_cam(caseroot, libroot, bldroot):
             threaded = "threads" if case.get_value("BUILD_THREADED") or case.get_value("FORCE_BUILD_SMP") else "nothreads"
             comp_interface = case.get_value("COMP_INTERFACE")
             fmsbuilddir = os.path.join(
-                slr, compiler, mpilib, debug, threaded, comp_interface)
+                slr, compiler, mpilib, debug, threaded, "FMS")
             user_incldir = '"-I{} -I{} -I{}"'.format(
                 os.path.join(srcroot, "libraries", "FMS", "src", "include"),
                 os.path.join(srcroot, "libraries", "FMS", "src", "mpp", "include"),
-                fmsbuilddir,
-            )
+                fmsbuilddir)
 
         # -------------------------------------------------------
         # Filepath is created in caseroot/camconf by the call
@@ -119,6 +163,7 @@ def _build_cam(caseroot, libroot, bldroot):
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
+    _build_fms(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
 
 

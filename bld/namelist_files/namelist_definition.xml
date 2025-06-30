@@ -476,20 +476,6 @@
        Default: none
        </entry>
 
-<!-- Aerosols: Data (CAM version) -->
-
-<entry id="bndtvaer" type="char*256" input_pathname="abs" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Full pathname of time-variant boundary dataset for aerosol masses.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cam3_aero_data_on" type="logical" category="aero_data_cam"
-       group="cam3_aero_data_nl" valid_values="" >
-Add CAM3 prescribed aerosols to the physics buffer.
-Default: FALSE
-</entry>
-
 <!-- Physics grid decomp including physics dynamics coupling methods -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
@@ -550,6 +536,13 @@ Turns on TEM circulation diagnostics history output.  Only valid for FV dycore.
 
 Default: .false.,  unless it is overridden (WACCM with interactive chemistry and a few other specific
           configurations do this)
+</entry>
+
+<entry id="ctem_diags_numlats" type="integer"  category="diagnostics"
+       group="ctem_diags_nl" valid_values="" >
+Number of latitude grid points for zonal average Transformed Eulerian Mean (TEM)
+diagnostics history fields.  Values greater than zero turn on the TEM diagostics.
+Default: 0
 </entry>
 
 <entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
@@ -685,8 +678,7 @@ Default: 0
 
 <entry id="fv_fft_flt" type="integer"  category="dyn_fv"
        group="dyn_fv_inparm" valid_values="0,1" >
-1 for FFT filter always, 0 for combined algebraic/FFT filter.  The value 0
-is used for CAM3, otherwise it is using the value 1.
+1 for FFT filter always, 0 for combined algebraic/FFT filter.
 Default: set by build-namelist
 </entry>
 
@@ -1199,107 +1191,6 @@ If true nudge atmospheric temperature (T) from the meteorology.
 Default: true
 </entry>
 
-<!-- Dynamics: Eulerian Spectral -->
-
-<entry id="eul_dif2_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-del^2 horizontal diffusion coefficient.  This is used above the Nth order
-diffusion.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_hdif_order" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Order (N) of horizontal diffusion operator used below the sponge layers.
-N must be a positive multiple of 2.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_kmnhdn" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-The order N horizontal diffusion operator will be used in and below the
-layer specified by this variable.
-Default: 4
-</entry>
-
-<entry id="eul_hdif_coef" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Nth order horizontal diffusion coefficient.
-Default: set by build-namelist
-</entry>
-
-<entry id="eul_divdampn" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of days (from timestep 0) to run divergence damper. Use only if spectral
-model becomes dynamicallly unstable during initialization. Suggested value:
-2. (Value must be &gt;= 0.)  Default: 0.
-</entry>
-
-<entry id="eul_tfilt_eps" type="real"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Time filter coefficient.  Default: 0.06
-</entry>
-
-<entry id="eul_kmxhdc" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="">
-Number of levels over which to apply Courant limiter, starting at top of
-model.
-Default: 5
-</entry>
-
-<entry id="eul_nsplit" type="integer"  category="dyn_eul"
-       group="dyn_eul_inparm" valid_values="" >
-Number of dynamics timesteps per physics timestep. If zero, a best-estimate
-will be automatically calculated.
-Default: 1
-</entry>
-
-<!-- MPI configuration for global spectral dycores (EUL and SLD) -->
-
-<entry id="dyn_allgather" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics gather option.
-   0: use mpi_allgatherv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_alltoall" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Spectral dynamics transpose option.
-   0: use mpi_alltoallv
-   1: use point-to-point MPI-1 two-sided implementation
-   2: use point-to-point MPI-2 one-sided implementation if supported,
-        otherwise use MPI-1 implementation
-   3: use Co-Array Fortran implementation if supported,
-        otherwise use MPI-1 implementation
-Default: 0
-</entry>
-
-<entry id="dyn_equi_by_col" type="logical"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Flag indicating whether to assign latitudes to equidistribute columns or
-latitudes. This only matters when using a reduced grid.
-Default: TRUE
-</entry>
-
-<entry id="dyn_npes" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Number of processes assigned to dynamics (SE, EUL and SLD dycores).
-Default: Total number of processes assigned to job.
-</entry>
-
-<entry id="dyn_npes_stride" type="integer"  category="dyn_spectral_spmd"
-       group="spmd_dyn_inparm" valid_values="">
-Stride for dynamics processes (EUL and SLD dycores).
-E.g., if stride=2, assign every second process to the dynamics.
-Default: 1
-</entry>
-
 <!-- Gravity Wave Drag -->
 
 <entry id="use_gw_oro" type="logical" category="gw_drag"
@@ -1330,6 +1221,19 @@ Default: set by build-namelist.
        group="phys_ctl_nl" valid_values="" >
 Whether or not to enable gravity waves produced by shallow convection.
 Default: .false.
+</entry>
+
+<entry id="use_gw_movmtn_pbl" type="logical" category="gw_drag"
+       group="phys_ctl_nl" valid_values="" >
+Whether or not to enable gravity waves from PBL moving mountains source.
+Default: .false.
+</entry>
+
+<entry id="use_gw_rdg_resid" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to enable gravity waves from residual (non-ridge)
+orography
+Default: set by build-namelist.
 </entry>
 
 <entry id="pgwv" type="integer" category="gw_drag"
@@ -1435,6 +1339,36 @@ Max efficiency associated with anisotropic OGW.
 Default: 1.0
 </entry>
 
+<entry id="effgw_rdg_resid" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor associated with residual non-ridge topo
+Default: set by build-namelist.
+</entry>
+
+<entry id="effgw_movmtn_pbl" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Efficiency scaling factor for moving mountain source
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_psteer" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global steering level (Pa) for moving mtns. If negative steering level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_plaunch" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Global launch level (Pa) for moving mtns. If negative launch level, it will be provided by future code
+Default: set by build-namelist.
+</entry>
+
+<entry id="movmtn_source" type="integer" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Integer code for movmtn source: 1=vorticity, 2=upwp
+Default: set by build-namelist.
+</entry>
+
 <entry id="rdg_beta_cd_llb" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Drag coefficient for obstacles in low-level flow.
@@ -1489,12 +1423,6 @@ Full pathname of boundary dataset for meso-gamma ridges.
 Default: set by build-namelist.
 </entry>
 
-<entry id="fcrit2" type="real"  category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Critical Froude number squared (used only for orographic waves).
-Default: set by build-namelist.
-</entry>
-
 <entry id="gw_oro_south_fac" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Factor to multiply tau by, for orographic waves in the southern hemisphere.
@@ -1533,6 +1461,13 @@ Width of gaussian used to create frontogenesis tau profile [m/s].
 Default: set by build-namelist.
 </entry>
 
+<entry id="alpha_gw_movmtn" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Tunable parameter controlling proportion of boundary layer momentum flux escaping as GW momentum flux
+Default: set by build-namelist.
+</entry>
+
+
 <entry id="gw_drag_file" type="char*256" input_pathname="abs" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Full pathname of Beres lookup table data file for gravity waves sourced
@@ -1544,6 +1479,12 @@ Default: set by build-namelist.
        group="gw_drag_nl" valid_values="" >
 Full pathname of Beres lookup table data file for gravity waves sourced
 from shallow convection.
+Default: set by build-namelist.
+</entry>
+
+<entry id="gw_drag_file_mm" type="char*256" input_pathname="abs" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Relative pathname of lookup table for deep convective moving mountain GW source
 Default: set by build-namelist.
 </entry>
 
@@ -3390,19 +3331,6 @@ Tunable evaporation efficiency in ZM deep convection scheme.
 Default: set by build-namelist
 </entry>
 
-<entry id="zmconv_org" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Include organization parameterization in ZM.   This value is set to true automatically
-if -zmconv_org is set in configure.
-Default: .false., unless -zmconv_org set in configure
-</entry>
-
-<entry id="zmconv_microp" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Turn on convective microphysics
-Default: .false.
-</entry>
-
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
@@ -3432,6 +3360,12 @@ Default: 70.0 J kg-1
        group="zmconv_nl" valid_values="" >
 Turn on ZM deep convection initial parcel properties as a function of a well mixed boundary layer
 Default: .false.
+</entry>
+
+<entry id="zmconv_parcel_hscale" type="real" category="conv"
+       group="zmconv_nl" valid_values="" >
+ The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction).
+Default: 0.5
 </entry>
 
 <entry id="zmconv_tau" type="real" category="conv"
@@ -3720,16 +3654,14 @@ Default: 10
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
+Default: 'ZM' unless using 'UNICON' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
-SPCAM has two different microphysics schemes: SPCAM_m2005 (Morrison et al 2005),
-SPCAM_sam1mom (Khairoutinov 2003)
 Default: set by build-namelist (depends on value set in configure).
 </entry>
 
@@ -3742,19 +3674,19 @@ Default: set by build-namelist
 
 <entry id="do_clubb_sgs" type="logical" category="conv"
        group="phys_ctl_nl" valid_values="" >
-Switch for CLUBB_SGS
+Flag for CLUBB_SGS.  N.B. this variable may not be set by the user.  It is
+set by build-namelist via information in the configure cache file to be
+consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
  'UNICON' which doesn't distinquish shallow and deep.
- 'SPCAM_m2005' for SPCAM double moment
- 'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -3906,6 +3838,11 @@ air is supersaturated with respect to ice.
 <entry id="clubb_beta" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Plume widths for theta_l and rt
+</entry>
+
+<entry id="clubb_bv_efold" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+E-folding parameter for mixed Brunt Vaisala Frequency
 </entry>
 
 <entry id="clubb_c1" type="real" category="pblrad"
@@ -4147,6 +4084,15 @@ Gaussian PDF, and also decreases the difference between the means of w from
 each Gaussian.
 </entry>
 
+<entry id="clubb_iiPDF_type" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="1,2,3,4,5,6,7" >
+Selected option for the two-component normal (double Gaussian) PDF type to use for the w, rt,
+and theta-l (or w, chi, and eta) portion of CLUBB's multivariate, two-component PDF.
+iiPDF_ADG1 = 1 (ADG1 PDF), iiPDF_ADG2 = 2 (ADG2 PDF), iiPDF_3D_Luhar = 3 (3D Luhar PDF),
+iiPDF_new = 4 (new PDF), iiPDF_TSDADG = 5 (TSDADG PDF), iiPDF_LY93 = 6 (Lewellen and Yoh (1993)),
+iiPDF_new_hybrid = 7 (new hybrid PDF)
+</entry>
+
 <entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="1,2,3" >
 Option for the placement of the call to CLUBB's PDF closure. The options include: ipdf_pre_advance_fields (1) calls the PDF closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
@@ -4170,11 +4116,32 @@ Flag to uses an alternate equation to calculate the Brunt-Vaisala frequency.
 This equation calculates an in-cloud Brunt-Vaisala frequency.
 </entry>
 
+<entry id="clubb_l_C2_cloud_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use cloud fraction to adjust the value of the
+turbulent dissipation coefficient, C2.
+</entry>
+
+<entry id="clubb_l_calc_thlp2_rad" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Include the contribution of radiation to thlp2
+</entry>
+
+<entry id="clubb_l_calc_w_corr" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Calculate the correlations between w and the hydrometeors
+</entry>
+
 <entry id="clubb_l_call_pdf_closure_twice" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to call CLUBB's PDF closure at both thermodynamic and momentum vertical
 grid levels.  When this flag is turned off, CLUBB's PDF closure is only called
 on thermodynamic grid levels.
+</entry>
+
+<entry id="clubb_l_const_Nc_in_cloud" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use a constant cloud droplet conc. within cloud
 </entry>
 
 <entry id="clubb_l_damp_wp2_using_em" type="logical" category="pblrad"
@@ -4198,6 +4165,17 @@ is turned off, Lscale is calculated first, and then dissipation time-scale tau
 is calculated as tau = Lscale / sqrt(tke).
 </entry>
 
+<entry id="clubb_l_diagnose_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Diagnose correlations instead of using fixed ones
+</entry>
+
+<entry id="clubb_l_diffuse_rtm_and_thlm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Implicit diffusion on moisture and temperature, implemented within CLUBB's
+matrix equations for wprtp/rtm and wpthlp/thlm.
+</entry>
+
 <entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Explicit diffusion on temperature and moisture by CLUBB, in addition to CLUBB's
@@ -4212,6 +4190,11 @@ Flag to run CLUBB with E3SM settings.
 <entry id="clubb_l_enable_relaxed_clipping" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats.
+</entry>
+
+<entry id="clubb_l_fix_w_chi_eta_correlations" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use a fixed correlation for s and t Mellor(chi/eta)
 </entry>
 
 <entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
@@ -4308,6 +4291,11 @@ horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
 calculated by down-gradient diffusion.
 </entry>
 
+<entry id="clubb_l_prescribed_avg_deltaz" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+used in adj_low_res_nu. If .true., avg_deltaz = deltaz
+</entry>
+
 <entry id="clubb_l_rcm_supersat_adj" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to take any remaining supersaturation after CLUBB PDF call and add it to
@@ -4315,6 +4303,11 @@ rcm (mean cloud water mixing ratio).  Supersaturation may be found after the
 PDF call due to issues when the PDF is called on both the thermodynamic grid
 levels and the momentum grid levels and variables are interpolated between the
 two grid level types.
+</entry>
+
+<entry id="clubb_l_rtm_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Turn on (true) and off (false) rtm nudging.
 </entry>
 
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
@@ -4329,11 +4322,23 @@ Use the standard discretization for the turbulent advection terms.  Setting to
 advance_wp2_wp3_module.F90 and in advance_xp2_xpyp_module.F90.
 </entry>
 
+<entry id="clubb_l_stability_correct_Kh_N2_zm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Whether or not we want CLUBB to apply a stability correction Kh_N2_zm.
+</entry>
+
 <entry id="clubb_l_stability_correct_tau_zm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use a stability corrected version of CLUBB's time scale (tau_zm).  This
 creates a time scale that provides stronger damping at altitudes where
 Brunt-Vaisala frequency is large.
+</entry>
+
+<entry id="clubb_l_tke_aniso" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use anisotropic turbulent kinetic energy in the CLUBB higher order closure, i.e.
+calculate TKE = 1/2 (u'^2 + v'^2 + w'^2). This improves the simulation of complex
+turbulence but at a greater cost than running without.
 </entry>
 
 <entry id="clubb_l_trapezoidal_rule_zm" type="logical" category="pblrad"
@@ -4352,6 +4357,13 @@ adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zt flag applies this
 adjustment to PDF fields calculated on thermodynamic vertical grid levels.
 </entry>
 
+<entry id="clubb_l_upwind_xm_ma" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent or mean advection terms. It
+affects rtm, thlm, sclrm, um and vm.
+</entry>
+
 <entry id="clubb_l_upwind_xpyp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use "upwind" discretization in the turbulent advection term in the
@@ -4359,6 +4371,11 @@ xpyp predictive equation, where xpyp is a field such as rtp2 (variance of
 vertical velocity) or rtpthlp (covariance of total water and liquid water
 potential temperature).  When this flag is turned off, centered discretization
 is used.
+</entry>
+
+<entry id="clubb_l_uv_nudge" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Turn on (true) or off (false) uv wind speed nudging.
 </entry>
 
 <entry id="clubb_l_use_C11_Richardson" type="logical" category="pblrad"
@@ -4381,6 +4398,13 @@ a flux such as total water flux or flux of liquid water potential temperature.
 Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
 levels influence the amount of cloudiness and amount of cloud water in a
 grid box.
+</entry>
+
+<entry id="clubb_l_use_precip_frac" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use precipitation fraction in KK microphysics. The
+precipitation fraction is automatically set to 1 when this
+flag is turned off.
 </entry>
 
 <entry id="clubb_l_use_shear_Richardson" type="logical" category="pblrad"
@@ -4468,6 +4492,16 @@ clubb_up2_sfc_coef increases the values of up2 and vp2 at the surface.
 CLUBB tunable parameter - Lscale threshold: damp C6 and C7 (units: m)
 </entry>
 
+<entry id="clubb_wpxp_Ri_exp"  type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Exponent for Richardson number in calculation of invrs_tau_wpxp term
+</entry>
+
+<entry id="clubb_z_displace"  type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Displacement of log law profile above ground  (units: m)
+</entry>
+
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
@@ -4511,6 +4545,23 @@ is not active.
 Default: none
 </entry>
 
+<entry id="carma_sulfnuc_method" type="char*10" category="carma"
+       group="carma_nl" valid_values="ZhaoTurco,Vehkamaki" >
+ Nucleation methods:
+  ZhaoTurco
+      Zhao, J. and Turco, R.,
+      Nucleation simulations in the wake of a jet aircraft in stratospheric flight,
+      J. Aerosol Sci., 26, 779-795, 1995,
+      https://doi.org/10.1016/0021-8502(95)00010-A
+  Vehkamaki
+     Vehkamaki, H., M. Kulmala, I. Napari, K.E.J. Lehtinen,
+     C. Timmreck, M. Noppel and A. Laaksonen, 2002,
+     An improved parameterization for sulfuric acid-water nucleation
+     rates for tropospheric and stratospheric conditions,
+     J. Geophys. Res., 107, 4622, doi:10.1029/2002jd002184
+Default: none
+</entry>
+
 <entry id="carma_conmax" type="real" category="carma"
        group="carma_nl" valid_values="" >
 A fraction that scales how tight the convergence criteria are to
@@ -4525,6 +4576,13 @@ Default: 0.1
 When non-zero, the largest change in temperature (K)
 allowed per substep.
 Default: 0.
+</entry>
+
+<entry id="carma_do_coremasscheck" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that do coremasscheck after certain subroutines
+and abort the model if the check not pass.
+Default: FALSE
 </entry>
 
 <entry id="carma_do_aerosol" type="logical" category="carma"
@@ -4554,6 +4612,14 @@ Flag indicating that CARMA should do clear sky calculations for
 particles that are not part of a cloud in addition to doing a
 separate calculation for incloud particles. Only valid when
 carma_do_incloud is true.
+Default: FALSE
+</entry>
+
+<entry id="carma_do_cloudborne" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating whether CARMA aerosol should be allowed to become
+cloudborne. It is actually CAM and not CARMA that moves aerosol
+between cloudborne and interstitial.
 Default: FALSE
 </entry>
 
@@ -4618,6 +4684,41 @@ Default: FALSE
 Flag indicating that the condensational growth process is enabled for
 CARMA particles.
 Default: FALSE
+</entry>
+
+<entry id="carma_do_budget_diags" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that model specific budget diagnostics should be
+generated.
+Default: FALSE
+</entry>
+
+<entry id="carma_do_package_diags" type="logical" category="carma"
+       group="carma_nl" valid_values="" >
+Flag indicating that model specific budget diagnostics should be
+generated per physics package for the packages listed in
+carma_diag_packages.
+Default: FALSE
+</entry>
+
+<entry id="carma_diags_packages" type="char*12(100)" category="carma"
+       group="carma_nl" valid_values="" >
+List of physics packages for which diagnostic output is desired.
+Default: NONE
+</entry>
+
+<entry id="carma_debug_packages" type="char*32(100)" category="carma"
+       group="carma_nl" valid_values="" >
+List of physics packages for which debug output from the local carma
+state checker is desired.
+Default: NONE
+</entry>
+
+<entry id="carma_diags_file" type="integer" category="carma"
+       group="carma_nl" valid_values="" >
+When > 0, indicates the history file to be used by default for diagnostic output.
+A value of 1 indicates the h0 file. When 0 no diagnostics are output.
+Default: 0
 </entry>
 
 <entry id="carma_rad_feedback" type="logical" category="carma"
@@ -4721,14 +4822,6 @@ Default: 8
 Specifies the maximum number of substeps that could be used for the
 first guess when condensational growth requires substepping.
 Default: 1
-</entry>
-
-<entry id="carma_reftfile" type="char*256" category="carma"
-       group="carma_nl" valid_values="" >
-Specifies the name of the reference temperature file that will be
-used (and created if necessary)  for initialization of CARMA to a
-fixed temperature profile.
-Default: carma_reft.nc
 </entry>
 
 <entry id="carma_cstick" type="real" category="carma"
@@ -4912,6 +5005,13 @@ the dust model.
 Default: set by build-namelist.
 </entry>
 
+<entry id="carma_dustemisfactor" type="real" category="carma"
+       group="carma_model_nl" valid_values="" >
+CARMA dust emissions scaling factor
+Default: 0.5e-9_r8
+</entry>
+
+
 
 <!-- CARMA model - sea salt -->
 
@@ -4927,28 +5027,127 @@ Specifies the name of the sea salt emission parameterization.
 Default: Gong
 </entry>
 
+<!-- CARMA model - aerosol -->
+<entry id="carma_BCOCemissions" type="char*32" category="carma_model"
+       group="carma_model_nl" valid_values="Yu2015,Specified" >
+Specifies the input method of black and organic carbon aerosol emissions
+for the trop_strat CARMA model.
 
-=======
-<!-- Ozone: Data (original CAM version) -->
+Valid options are:
 
-<entry id="bndtvo" type="char*256" input_pathname="abs" category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Full pathname of time-variant ozone mixing ratio boundary dataset.
+ Yu2015 -- method used in Yu et. al, 2015
+ Specified -- {{ hilight }}emissions_specifier{{ closehilight }} method which places emissions in physcis buffer
+
+Default: Yu2015
+</entry>
+
+<entry id="carma_SO4elevemis" type="char*32" category="carma_model"
+       group="carma_model_nl" valid_values="NONE,Specified" >
+Specifies the input method of sulfate emissions
+for the trop_strat CARMA model.
+
+Valid options are:
+
+ Specified -- {{ hilight }}elev_emis_specifier{{ closehilight }} method which places emissions in physcis buffer
+
+Default: NONE
+</entry>
+
+<entry id="elev_emis_specifier" type="char*256(50)" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+List of full pathnames of surface emission datasets.
+
+Elevated emission data added to physcis buffer read from a set of netcdf file.
+Each tracer species emissions is read from its own file as directed by the
+namelist variable {{ hilight }}elev_emis_specifier{{ closehilight }}.  The
+{{ hilight }}emissions_specifier{{ closehilight }} variable tells the model
+which species have emissions and the file path for the corresponding species.
+That is, the {{ hilight }}elev_emis_specifier{{ closehilight }} variable is
+set something like:
+
+ elev_emis_specifier = 'SO4 -> /path/emis.SO4.nc',
+                       'OC -> /path/emis.OC.nc', etc...
+
+Each emission file can have more than one source.  When the emission are
+read in the sources are summed to give a total emission field for the
+corresponding species.  The emission can be read in as time series of data,
+cycle over a given year, or be fixed to a given date.
+
 Default: set by build-namelist.
 </entry>
 
-<entry id="cam3_ozone_data_on" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Add CAM3 prescribed ozone to the physics buffer.
-Default: FALSE
+<entry id="elev_emis_type" type="char*32" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation of emission datasets specified.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+by {{ hilight }}elev_emis_specifier{{ closehilight }}.
+Default: 'CYCLICAL'
 </entry>
 
-<entry id="ozncyc" type="logical"  category="o3_data_cam"
-       group="cam3_ozone_data_nl" valid_values="" >
-Flag for yearly cycling of ozone data. If set to FALSE, a multi-year
-dataset is assumed, otherwise a single-year dataset is assumed, and ozone
-will be cycled over the 12 monthly averages in the file.
-Default: TRUE
+<entry id="elev_emis_cycle_yr" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The  cycle year of the elevated emissions data
+if {{ hilight }}elev_emis_type{{ closehilight }}  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="elev_emis_fixed_ymd" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The date at which the elevated emissions are fixed
+if {{ hilight }}elev_emis_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="elev_emis_fixed_tod" type="integer" category="cam_chem"
+       group="elevated_emissions_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}elev_emis_fixed_ymd{{ closehilight }}
+at which the elevated emissions are fixed
+if {{ hilight }}elev_emis_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+<entry id="BC_GAINS_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC GAINS file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_GAINS_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC GAINS file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="BC_ship_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC ship file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_ship_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC ship file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="BC_GFEDv3_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+BC GFEDv3 file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="OC_GFEDv3_filename" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+OC GFEDv3 file.
+Default: set by build-namelist.
+</entry>
+
+<entry id="Chlorophy11_file" type="char*256" input_pathname="abs" category="carma_model"
+       group="carma_model_nl" valid_values="" >
+Dust erosion factor file.
+Default: set by build-namelist.
 </entry>
 
 <!-- Performance Tuning and Profiling -->
@@ -5084,7 +5283,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5104,7 +5303,7 @@ Default: set by build-namelist
 		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
 		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
 		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
-		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext">
+		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5260,6 +5459,7 @@ Default: NONE.
 </entry>
 
 <!-- HEMCO -->
+
 <entry id="hemco_data_root" type="char*256" input_pathname="abs" category="hemco"
        group="hemco_nl" valid_values="" >
 Full pathname of HEMCO data root for use in reading HEMCO input files.
@@ -5297,6 +5497,25 @@ Force emission year for HEMCO clock if positive. This will force cycling of data
 Default: set by build-namelist for climo cases, otherwise -1 to use model clock.
 </entry>
 
+<!-- GEOS-Chem model -->
+
+<entry id="geoschem_chem_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the GEOS-Chem chemistry inputs directory.
+Default: set by build-namelist.
+</entry>
+
+<entry id="geoschem_aeropt_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the aerosols optical property inputs directory used in GEOS-Chem outside of Cloud-J.
+Default: set by build-namelist.
+</entry>
+
+<entry id="geoschem_photol_inputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname of the Cloud-J photolysis inputs directory used in GEOS-Chem.
+Default: set by build-namelist.
+</entry>
 
 <!-- Reference Pressures -->
 
@@ -5362,7 +5581,7 @@ Default: 0
 </entry>
 
 <entry id="eddy_scheme" type="char*16" category="pbl"
-       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS,SPCAM_sam1mom,SPCAM_m2005" >
+       group="phys_ctl_nl" valid_values="HB,diag_TKE,HBR,CLUBB_SGS" >
 Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
@@ -5516,7 +5735,13 @@ Default: .true.
 <entry id="history_carma" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
 Switch for diagnostics specific to the current CARMA model.
-Default: .true.
+Default: .false.
+</entry>
+
+<entry id="history_carma_srf_flx" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostics specific to the current CARMA model.
+Default: .false.
 </entry>
 
 <entry id="history_clubb" type="logical"  category="diagnostics"
@@ -5578,7 +5803,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5586,7 +5811,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -5595,7 +5820,7 @@ Default: Unused
 
 <!-- Radiation -->
 <entry id="radiation_scheme" type="char*16" category="radiation"
-       group="phys_ctl_nl" valid_values="rrtmg,camrt" >
+       group="phys_ctl_nl" valid_values="rrtmgp,rrtmg,camrt" >
 Type of radiation scheme employed.
 Default: set by build-namelist
 </entry>
@@ -5687,6 +5912,13 @@ Default: FALSE
 <entry id="mode_defs" type="char*256(120)"  category="radiation"
        group="rad_cnst_nl" valid_values="" >
 Definitions for the aerosol modes that may be used in the rad_climate and
+rad_diag_* variables.
+Default: set by build-namelist
+</entry>
+
+<entry id="bin_defs" type="char*256(640)"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+Definitions for the aerosol bins that may be used in the rad_climate and
 rad_diag_* variables.
 Default: set by build-namelist
 </entry>
@@ -5784,6 +6016,25 @@ Default: 'A'
 Switch to turn on Fixed Dynamical Heating in the offline radiation tool (PORT).
 Default: false
 </entry>
+
+<!-- RRTMGP -->
+
+<entry id="rrtmgp_coefs_lw_file" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="" >
+Relative pathname for LW gas optics coefficients for RRTMGP.  This data is
+part of the RRTMGP source, thus this pathname is relative to the root source
+code directory for the CAM component.
+Default: set by build-namelist.
+</entry>
+
+<entry id="rrtmgp_coefs_sw_file" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="" >
+Relative pathname for SW gas optics coefficients for RRTMGP.  This data is
+part of the RRTMGP source, thus this pathname is relative to the root source
+code directory for the CAM component.
+Default: set by build-namelist.
+</entry>
+
 
 <!-- Aerosol and cloud optics -->
 
@@ -5988,6 +6239,12 @@ Use the SCAM-IOP specified observed water vapor at each time step instead of for
 Default: FALSE
 </entry>
 
+<entry id="scm_use_3dfrc" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use the SCAM-IOP 3d forcing if true, use combination of dycore vertical advection and iop horiz advection if false
+Default:False
+</entry>
+
 <entry id="scm_force_latlon" type="logical" category="scam"
        group="scam_nl" valid_values="">
 Force scam to use the lat lon fields specified in the scam namelist not what is closest to IOP avail lat lon
@@ -6156,7 +6413,7 @@ Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
   OFF --> wet deposition is turned off
-Default: NEU except for SPCAM runs
+Default: NEU
 </entry>
 
 <entry id="gas_wetdep_list" type="char*16(1000)" category="cam_chem"
@@ -6263,19 +6520,19 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factb_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for below cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_factic_interstitial" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of interstitial modal aerosols.
 Default: set by build-namelist.
 </entry>
 
 <entry id="sol_facti_cloud_borne" type="real" category="cam_chem"
-       group="aerosol_nl" valid_values="" >
+       group="aero_wetdep_nl" valid_values="" >
 Tuning for in-cloud scavenging of cloud-borne modal aerosols.
 Default: set by build-namelist.
 </entry>
@@ -7161,6 +7418,60 @@ cycle over a given year, or be fixed to a given date.
 Default: set by build-namelist.
 </entry>
 
+<entry id="emissions_specifier" type="char*256(50)" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+List of full pathnames of surface emission datasets.
+
+Surface emission data added to physcis buffer read from a set of netcdf file.
+Each tracer species emissions is read from its own file as directed by the
+namelist variable {{ hilight }}emissions_specifier{{ closehilight }}.  The
+{{ hilight }}emissions_specifier{{ closehilight }} variable tells the model
+which species have emissions and the file path for the corresponding species.
+That is, the {{ hilight }}emissions_specifier{{ closehilight }} variable is
+set something like:
+
+ emissions_specifier = 'BC -> /path/emis.BC.nc',
+                       'OC -> /path/emis.OC.nc', etc...
+
+Each emission file can have more than one source.  When the emission are
+read in the sources are summed to give a total emission field for the
+corresponding species.  The emission can be read in as time series of data,
+cycle over a given year, or be fixed to a given date.
+
+Default: set by build-namelist.
+</entry>
+
+<entry id="emissions_type" type="char*32" category="cam_chem"
+       group="surface_emissions_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation of emission datasets specified.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+by {{ hilight }}emissions_specifier{{ closehilight }}.
+Default: 'CYCLICAL'
+</entry>
+
+<entry id="emissions_cycle_yr" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The  cycle year of the surface emissions data
+if {{ hilight }}emissions_type{{ closehilight }}  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="emissions_fixed_ymd" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The date at which the surface emissions are fixed
+if {{ hilight }}emissions_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="emissions_fixed_tod" type="integer" category="cam_chem"
+       group="surface_emissions_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}emissions_fixed_ymd{{ closehilight }}
+at which the surface emissions are fixed
+if {{ hilight }}emissions_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
+</entry>
 
 <entry id="sulf_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="sulf_nl" valid_values="" >
@@ -7623,40 +7934,29 @@ Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
 Default: FALSE
 </entry>
 
-<entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
-       group="ndep_inparm" valid_values="" >
-List of nitrogen deposition fluxes to be sent from CAM to surface models.
-Default: set by build-namelist.
-</entry>
-
 <entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Year first to use in nitrogen deposition stream data. Set by case xml variable
-CAM_STREAM_NDEP_YEAR_FIRST
+Year first to use in nitrogen deposition stream data.
 </entry>
 
 <entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 Year last to use in nitrogen deposition stream data.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
 </entry>
 
 <entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
-Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+Model year to align with stream_ndep_year_first.
 </entry>
 
 <entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP stream data filename.
-Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+Nitrogen deposition stream data filename.
 </entry>
 
 <entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
-NDEP mesh file corresponding to sream_ndep_data_filename.
-Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+Grid mesh file corresponding to stream_ndep_data_filename.
 </entry>
 
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
@@ -7682,6 +7982,21 @@ Default: .false.
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
 Default: set by build-namelist.
+</entry>
+
+<entry id="dust_emis_method" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="Zender_2003,Leung_2023" >
+Which dust emission method is going to be used.
+Either the Zender 2003 scheme or the Leung 2023 scheme.
+Default: Zender_2003
+</entry>
+
+<entry id="zender_soil_erod_source" type="char*80" category="dust_emissions"
+       group="dust_emis_inparm" valid_values="none,lnd,atm" >
+Option only applying for the Zender_2003 method for whether the soil erodibility
+file is handled in the active LAND model or in the ATM model.
+(only used when dust_emis_method is Zender_2003)
+Default: atm
 </entry>
 
 <!-- Ozone namelist variables shared between CAM and driver -->
@@ -8364,6 +8679,20 @@ Default: Set by build-namelist.
   Default: Set by build-namelist.
 </entry>
 
+<entry id="se_dribble_in_rsplit_loop" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="0,1" >
+
+  0: physics tendencies will be added every vertical remapping time-step (dt_phys/se_nsplit)
+     for se_ftype=0,2
+
+  1: physics tendencies will be added every dynamics time-step (dt_phys/se_nsplit*se_rsplit)
+     for se_ftype=0,2
+
+     If se_ftype=1 then se_dribble_in_rsplit_loop has no effect since physics tendencies are added as an adjustment
+
+  Default: Set by build-namelist.
+</entry>
+
 
 <!-- MPAS dycore -->
 
@@ -8759,7 +9088,7 @@ Default: "."
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
-       group="camexp" valid_values="1850,2000,1850-2000">
+       group="camexp" valid_values="1850,2000,2010,1850-2000,1850-2015">
 This varible is only used internally by build-namelist to determine
 appropriate defaults for climatological or transient forcing datasets.
 Default: set by build-namelist.
@@ -9491,38 +9820,6 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
-</entry>
-
-<!-- ndep stream forcing -->
-
-<!-- ========================================================================================  -->
-<!-- ndepdyn streams namelist                                                                  -->
-<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
-<!-- ========================================================================================  -->
-
-<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream meshfile for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-First year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Last year to loop over for Nitrogen Deposition data
-</entry>
-
-<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
-       group="ndep_stream_nml" valid_values="" >
-Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>

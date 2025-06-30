@@ -24,6 +24,7 @@ module chemistry
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
   use phys_control,     only : use_hemco   ! HEMCO switch logical
+  use mo_chm_diags,     only : chem_has_ndep_flx => chm_prod_ndep_flx
 
   implicit none
   private
@@ -46,6 +47,7 @@ module chemistry
   public :: chem_read_restart
   public :: chem_init_restart
   public :: chem_emissions
+  public :: chem_has_ndep_flx
 
   integer, public :: imozart = -1       ! index of 1st constituent
 
@@ -187,6 +189,7 @@ end function chem_is
     logical :: cam_outfld
     character(len=128) :: mixtype
     character(len=128) :: molectype
+    logical :: ndropmixed
     integer :: islvd
 
 !-----------------------------------------------------------------------
@@ -238,10 +241,15 @@ end function chem_is
        ic_from_cam2  = .true.
        has_fixed_ubc = ubc_fixed_conc(solsym(m))
        has_fixed_ubflx = .false.
+       ndropmixed = .false.
        lng_name      = trim( solsym(m) )
        molectype = 'minor'
 
        qmin = 1.e-36_r8
+
+       if ( index(lng_name,'_a')>0 ) then ! modal aerosol species undergoes ndrop activation mixing
+          ndropmixed = .true.
+       endif
 
        if ( lng_name(1:5) .eq. 'num_a' ) then ! aerosol number density
           qmin = 1.e-5_r8
@@ -296,7 +304,8 @@ end function chem_is
           short_lived_map(islvd) = m
        else
           call cnst_add( solsym(m), adv_mass(m), cptmp, qmin, n, readiv=ic_from_cam2, cam_outfld=cam_outfld, &
-                         mixtype=mixtype, molectype=molectype, fixed_ubc=has_fixed_ubc, fixed_ubflx=has_fixed_ubflx, &
+                         mixtype=mixtype, molectype=molectype, ndropmixed=ndropmixed, &
+                         fixed_ubc=has_fixed_ubc, fixed_ubflx=has_fixed_ubflx, &
                          longname=trim(lng_name) )
 
           if( imozart == -1 ) then
@@ -334,7 +343,6 @@ end function chem_is
     use tracer_cnst,      only: tracer_cnst_defaultopts, tracer_cnst_setopts
     use tracer_srcs,      only: tracer_srcs_defaultopts, tracer_srcs_setopts
     use aero_model,       only: aero_model_readnl
-    use dust_model,       only: dust_readnl
     use gas_wetdep_opts,  only: gas_wetdep_readnl
     use mo_drydep,        only: drydep_srf_file
     use mo_sulf,          only: sulf_readnl
@@ -421,6 +429,8 @@ end function chem_is
          tracer_srcs_cycle_yr_out  = tracer_srcs_cycle_yr,  &
          tracer_srcs_fixed_ymd_out = tracer_srcs_fixed_ymd, &
          tracer_srcs_fixed_tod_out = tracer_srcs_fixed_tod  )
+
+    drydep_srf_file = ' '
 
     if (masterproc) then
        unitn = getunit()
@@ -541,7 +551,6 @@ end function chem_is
         tracer_srcs_fixed_tod_in = tracer_srcs_fixed_tod )
 
    call aero_model_readnl(nlfile)
-   call dust_readnl(nlfile)
 !
    call gas_wetdep_readnl(nlfile)
    call gcr_ionization_readnl(nlfile)
@@ -637,7 +646,6 @@ end function chem_is_active
     use mo_chem_utls,        only : get_spc_ndx
     use cam_abortutils,      only : endrun
     use aero_model,          only : aero_model_init
-    use mo_setsox,           only : sox_inti
     use constituents,        only : sflxnam
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
@@ -672,9 +680,6 @@ end function chem_is_active
                        history_budget_out = history_budget , &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        history_cesm_forcing_out = history_cesm_forcing )
-
-    ! aqueous chem initialization
-    call sox_inti()
 
     ! Initialize aerosols
     call aero_model_init( pbuf2d )
@@ -1140,11 +1145,12 @@ end function chem_is_active
     use mo_gas_phase_chemdr, only : gas_phase_chemdr
     use camsrfexch,          only : cam_in_t, cam_out_t
     use perf_mod,            only : t_startf, t_stopf
-    use tropopause,          only : tropopause_findChemTrop, tropopause_find
+    use tropopause,          only : tropopause_findChemTrop, tropopause_find_cam
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed
     use short_lived_species, only : short_lived_species_writeic
+    use atm_stream_ndep,     only : ndep_stream_active
 
     implicit none
 
@@ -1218,11 +1224,15 @@ end function chem_is_active
 !-----------------------------------------------------------------------
 ! get tropopause level
 !-----------------------------------------------------------------------
+    !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+    tropLev(:) = 0
+    tropLevChem(:) = 0
+    !REMOVECAM_END
     if (.not.chem_use_chemtrop) then
-       call tropopause_find(state,tropLev)
+       call tropopause_find_cam(state,tropLev)
        tropLevChem=tropLev
     else
-       call tropopause_find(state,tropLev)
+       call tropopause_find_cam(state,tropLev)
        call tropopause_findChemTrop(state, tropLevChem)
     endif
 
@@ -1251,7 +1261,7 @@ end function chem_is_active
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
 
-    call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
+    call gas_phase_chemdr(state,lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
@@ -1259,11 +1269,13 @@ end function chem_is_active
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
                           nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf )
-    if (associated(cam_out%nhx_nitrogen_flx)) then
-       cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
-    endif
-    if (associated(cam_out%noy_nitrogen_flx)) then
-       cam_out%noy_nitrogen_flx(:ncol) = noy_nitrogen_flx(:ncol)
+    if (.not.ndep_stream_active) then
+       if (associated(cam_out%nhx_nitrogen_flx)) then
+          cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
+       endif
+       if (associated(cam_out%noy_nitrogen_flx)) then
+          cam_out%noy_nitrogen_flx(:ncol) = noy_nitrogen_flx(:ncol)
+       endif
     endif
 
     call t_stopf( 'chemdr' )
@@ -1333,10 +1345,12 @@ end function chem_is_active
     use mee_ionization, only: mee_ion_final
     use rate_diags, only: rate_diags_final
     use species_sums_diags, only: species_sums_final
+    use short_lived_species, only: short_lived_species_final
 
     call mee_ion_final()
     call rate_diags_final()
     call species_sums_final()
+    call short_lived_species_final()
 
   end subroutine chem_final
 

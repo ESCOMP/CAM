@@ -10,7 +10,11 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/cam
 rc=$?
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/camrt
 rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/carma
+rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/rrtmg -s aer_src
+rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/rrtmgp -s data,ext
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/simple
 rc=`expr $? + $rc`
@@ -25,7 +29,11 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/cam
 rc=$?
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/camrt
 rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/carma
+rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/rrtmg -s aer_src
+rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/rrtmgp -s data,ext
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/simple
 rc=`expr $? + $rc`
@@ -54,12 +62,12 @@ fi
 #Check Chemistry
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry -s geoschem/geoschem_src,cloud_j,hetp
 rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry -s geoschem/geoschem_src,cloud_j,hetp
 rc=`expr $? + $rc`
 
 fi
@@ -67,26 +75,22 @@ fi
 #Check Dynamics
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/fv3 -s atmos_cubed_sphere,microphys
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/fv3 -s atmos_cubed_sphere,microphys,src_override
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/se
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/fv
-rc=`expr $? + $rc`
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/eul
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/dynamics/mpas -s dycore
 rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/fv3 -s atmos_cubed_sphere,microphys
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/fv3 -s atmos_cubed_sphere,microphys,src_override
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/se
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/fv
-rc=`expr $? + $rc`
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/eul
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/dynamics/mpas -s dycore
 rc=`expr $? + $rc`
@@ -96,8 +100,6 @@ fi
 #Check other
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/advection
-rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/control
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/utils
@@ -105,8 +107,6 @@ rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/advection
-rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/control
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/utils

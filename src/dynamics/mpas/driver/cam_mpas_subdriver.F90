@@ -31,6 +31,7 @@ module cam_mpas_subdriver
               cam_mpas_compute_unit_vectors, &
               cam_mpas_update_halo, &
               cam_mpas_cell_to_edge_winds, &
+              cam_mpas_vertex_to_cell_relative_vorticities, &
               cam_mpas_run, &
               cam_mpas_finalize, &
               cam_mpas_debug_stream, &
@@ -49,10 +50,12 @@ module cam_mpas_subdriver
     ! This interface should be compatible with CAM's endrun routine
     !
     abstract interface
-       subroutine halt_model(mesg, ierr)
+       subroutine halt_model(mesg, ierr, line, file)
            use shr_kind_mod, only : shr_kind_in
            character(len=*), intent(in), optional :: mesg
            integer(kind=shr_kind_in), intent(in), optional :: ierr
+           integer(kind=shr_kind_in), intent(in), optional :: line
+           character(len=*), intent(in), optional :: file
        end subroutine halt_model
     end interface
 
@@ -73,13 +76,20 @@ contains
     !-----------------------------------------------------------------------
     subroutine cam_mpas_init_phase1(mpicom, endrun, logUnits, realkind)
 
+#ifdef MPAS_USE_MPI_F08
+       use mpi_f08, only : mpi_comm_type => mpi_comm
+#endif
        use mpas_domain_routines, only : mpas_allocate_domain
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_kind_types, only : RKIND
 
        ! Dummy argument
+#ifdef MPAS_USE_MPI_F08
+       type(mpi_comm_type), intent(in) :: mpicom
+#else
        integer, intent(in) :: mpicom
+#endif
        procedure(halt_model) :: endrun
        integer, dimension(2), intent(in) :: logUnits
        integer, intent(in) :: realkind
@@ -108,7 +118,7 @@ contains
        !
        ! Initialize MPAS infrastructure (principally, the mpas_dmpar module)
        !
-       call mpas_framework_init_phase1(domain_ptr % dminfo, mpi_comm=mpicom)
+       call mpas_framework_init_phase1(domain_ptr % dminfo, external_comm=mpicom)
 
        call atm_setup_core(corelist)
        call atm_setup_domain(domain_ptr)
@@ -152,6 +162,7 @@ contains
 
        use mpas_framework, only : mpas_framework_init_phase2
        use mpas_timer, only : mpas_timer_start
+       use mpas_stream_inquiry, only : mpas_stream_inquiry_new_streaminfo
 
        type (iosystem_desc_t), pointer :: pio_subsystem
        procedure(halt_model) :: endrun
@@ -181,12 +192,20 @@ contains
 
        call mpas_timer_start('total time')
 
+       ! Since MPAS is being used as a dycore and is not responsible for IO, it's enough to create this
+       ! object without running its init(). Any queries made to it will always return `.false.`
+       domain_ptr % streamInfo => mpas_stream_inquiry_new_streaminfo()
+       if (.not. associated(domain_ptr % streamInfo)) then
+          call endrun(subname//': FATAL: streamInfo instantiation failed for core '//trim(domain_ptr % core % coreName))
+       end if
+
        ierr = domain_ptr % core % define_packages(domain_ptr % packages)
        if ( ierr /= 0 ) then
           call endrun(subname//': FATAL: Package definition failed for core '//trim(domain_ptr % core % coreName))
        end if
 
-       ierr = domain_ptr % core % setup_packages(domain_ptr % configs, domain_ptr % packages, domain_ptr % iocontext)
+       ierr = domain_ptr % core % setup_packages(domain_ptr % configs, domain_ptr % streamInfo, &
+                                                 domain_ptr % packages, domain_ptr % iocontext)
        if ( ierr /= 0 ) then
           call endrun(subname//': FATAL: Package setup failed for core '//trim(domain_ptr % core % coreName))
        end if
@@ -2195,6 +2214,116 @@ contains
 
     end subroutine cam_mpas_cell_to_edge_winds
 
+    !-------------------------------------------------------------------------------
+    ! subroutine cam_mpas_vertex_to_cell_relative_vorticities
+    !
+    !> \brief  Compute the relative vorticities at cell points.
+    !> \author Kuan-Chih Wang
+    !> \date   2025-04-12
+    !> \details
+    !>  MPAS uses staggered C-grid for spatial discretization, where relative
+    !>  vorticities are located at vertex points because wind vectors are located at
+    !>  edge points. However, physics schemes that use relative vorticities as input
+    !>  usually want them at cell points instead.
+    !>  This subroutine computes the relative vorticity at each cell point from its
+    !>  surrounding vertex points and returns the results.
+    !
+    !-------------------------------------------------------------------------------
+    subroutine cam_mpas_vertex_to_cell_relative_vorticities(cell_relative_vorticity)
+        use mpas_derived_types, only: mpas_pool_type
+        use mpas_kind_types, only: rkind
+        use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+
+        real(rkind), allocatable, intent(out) :: cell_relative_vorticity(:, :)
+
+        character(*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_vertex_to_cell_relative_vorticities'
+        integer :: i, k
+        integer :: ierr
+        integer, pointer :: ncellssolve, nvertlevels
+        integer, pointer :: kiteforcell(:, :), nedgesoncell(:), verticesoncell(:, :)
+        real(rkind), pointer :: areacell(:), kiteareasonvertex(:, :), vorticity(:, :)
+        type(mpas_pool_type), pointer :: mpas_pool_diag, mpas_pool_mesh
+
+        nullify(ncellssolve, nvertlevels)
+        nullify(kiteforcell, nedgesoncell, verticesoncell)
+        nullify(areacell, kiteareasonvertex, vorticity)
+        nullify(mpas_pool_diag, mpas_pool_mesh)
+
+        call mpas_pool_get_subpool(domain_ptr % blocklist % allstructs, 'diag', mpas_pool_diag)
+        call mpas_pool_get_subpool(domain_ptr % blocklist % allstructs, 'mesh', mpas_pool_mesh)
+
+        ! Input.
+        call mpas_pool_get_dimension(mpas_pool_mesh, 'nCellsSolve', ncellssolve)
+        call mpas_pool_get_dimension(mpas_pool_mesh, 'nVertLevels', nvertlevels)
+
+        call mpas_pool_get_array(mpas_pool_mesh, 'kiteForCell', kiteforcell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'nEdgesOnCell', nedgesoncell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'verticesOnCell', verticesoncell)
+
+        call mpas_pool_get_array(mpas_pool_mesh, 'areaCell', areacell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'kiteAreasOnVertex', kiteareasonvertex)
+        call mpas_pool_get_array(mpas_pool_diag, 'vorticity', vorticity)
+
+        ! Output.
+        allocate(cell_relative_vorticity(nvertlevels, ncellssolve), stat=ierr)
+
+        if (ierr /= 0) then
+            call endrun(subname // ': Failed to allocate cell_relative_vorticity')
+        end if
+
+        do i = 1, ncellssolve
+            do k = 1, nvertlevels
+                cell_relative_vorticity(k, i) = regrid_from_vertex_to_cell(i, k, &
+                    nedgesoncell, verticesoncell, kiteforcell, kiteareasonvertex, areacell, &
+                    vorticity)
+            end do
+        end do
+
+        nullify(ncellssolve, nvertlevels)
+        nullify(kiteforcell, nedgesoncell, verticesoncell)
+        nullify(areacell, kiteareasonvertex, vorticity)
+        nullify(mpas_pool_diag, mpas_pool_mesh)
+    end subroutine cam_mpas_vertex_to_cell_relative_vorticities
+
+    !-------------------------------------------------------------------------------
+    ! function regrid_from_vertex_to_cell
+    !
+    !> \brief  Regrid values from vertex points to the specified cell point.
+    !> \author Kuan-Chih Wang
+    !> \date   2025-04-12
+    !> \details
+    !>  This function computes the area weighted average (i.e., `cell_value`) at the
+    !>  specified cell point (i.e., `cell_index` and `cell_level`) from the values
+    !>  at its surrounding vertex points (i.e., `vertex_value`).
+    !>  The formulation used here is adapted and generalized from the
+    !>  `atm_compute_solve_diagnostics` subroutine in MPAS.
+    !
+    !-------------------------------------------------------------------------------
+    pure function regrid_from_vertex_to_cell(cell_index, cell_level, &
+            nverticesoncell, verticesoncell, kiteforcell, kiteareasonvertex, areacell, &
+            vertex_value) result(cell_value)
+        use mpas_kind_types, only: rkind
+
+        integer, intent(in) :: cell_index, cell_level
+        integer, intent(in) :: nverticesoncell(:), verticesoncell(:, :), kiteforcell(:, :)
+        real(rkind), intent(in) :: kiteareasonvertex(:, :), areacell(:)
+        real(rkind), intent(in) :: vertex_value(:, :)
+        real(rkind) :: cell_value
+
+        integer :: i, j, vertex_index
+
+        cell_value = 0.0_rkind
+
+        do i = 1, nverticesoncell(cell_index)
+            j = kiteforcell(i, cell_index)
+            vertex_index = verticesoncell(i, cell_index)
+
+            cell_value = cell_value + &
+                kiteareasonvertex(j, vertex_index) * vertex_value(cell_level, vertex_index)
+        end do
+
+        cell_value = cell_value / areacell(cell_index)
+    end function regrid_from_vertex_to_cell
 
     !-----------------------------------------------------------------------
     !  routine cam_mpas_run
@@ -2353,6 +2482,7 @@ contains
        !
        ! Finalize infrastructure
        !
+       deallocate(domain_ptr % streamInfo) ! created by mpas_stream_inquiry_new_streaminfo
 
        ! Print out log stats and close log file
        !   (Do this after timer stats are printed and stream mgr finalized,

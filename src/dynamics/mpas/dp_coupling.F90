@@ -8,7 +8,7 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cappa, zvir
+use physconst,      only: gravit, zvir
 use air_composition,only: cpairv
 use air_composition,only: dry_air_species_num
 use dyn_comp,       only: dyn_export_t, dyn_import_t
@@ -38,15 +38,15 @@ contains
 !=========================================================================================
 
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
-   use cam_mpas_subdriver, only: cam_mpas_update_halo
+   use cam_mpas_subdriver, only: cam_mpas_update_halo, cam_mpas_vertex_to_cell_relative_vorticities
 
    ! Convert the dynamics output state into the physics input state.
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
    ! dry air mass.
    use cam_history,    only: hist_fld_active
-   use dyn_comp,       only: frontgf_idx, frontga_idx
+   use dyn_comp,       only: frontgf_idx, frontga_idx, vort4gw_idx
    use mpas_constants, only: Rv_over_Rd => rvord
-   use phys_control,   only: use_gw_front, use_gw_front_igw
+   use phys_control,   only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
    use cam_budget,     only : thermo_budget_history
 
    ! arguments
@@ -101,6 +101,12 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), allocatable :: frontgf_phys(:,:,:)
    real(r8), allocatable :: frontga_phys(:,:,:)
 
+   ! Temporary arrays to hold vorticity for the "moving mountain" gravity wave scheme.
+   real(r8), allocatable :: vort4gw(:, :)         ! Data are unchunked.
+   real(r8), allocatable :: vort4gw_phys(:, :, :) ! Data are chunked.
+   ! Pointer to vorticity in physics buffer for the "moving mountain" gravity wave scheme.
+   real(r8), pointer :: pbuf_vort4gw(:, :)
+
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
@@ -115,6 +121,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer :: ierr
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
+
+   nullify(pbuf_chnk)
+   nullify(pbuf_frontgf)
+   nullify(pbuf_frontga)
+   nullify(pbuf_vort4gw)
 
    compute_energy_diags=thermo_budget_history
 
@@ -155,9 +166,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    if (use_gw_front .or. use_gw_front_igw) then
       call cam_mpas_update_halo('scalars', endrun)   ! scalars is the name of tracers in the MPAS state pool
-      nullify(pbuf_chnk)
-      nullify(pbuf_frontgf)
-      nullify(pbuf_frontga)
       !
       ! compute frontogenesis function and angle for gravity wave scheme
       !
@@ -195,6 +203,16 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    end if
 
+   if (use_gw_movmtn_pbl) then
+      call cam_mpas_vertex_to_cell_relative_vorticities(vort4gw)
+
+      allocate(vort4gw_phys(pcols, pver, begchunk:endchunk), stat=ierr)
+
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate vort4gw_phys')
+      end if
+   end if
+
    call t_startf('dpcopy')
 
    ncols = columns_on_task
@@ -224,6 +242,10 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          if (use_gw_front .or. use_gw_front_igw) then
             frontgf_phys(icol_p, k, lchnk) = frontogenesisFunction(kk, i)
             frontga_phys(icol_p, k, lchnk) = frontogenesisAngle(kk, i)
+         end if
+
+         if (use_gw_movmtn_pbl) then
+            vort4gw_phys(icol_p, k, lchnk) = vort4gw(kk, i)
          end if
       end do
 
@@ -259,6 +281,25 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       deallocate(frontga_phys)
       deallocate(frontogenesisFunction)
       deallocate(frontogenesisAngle)
+   end if
+
+   if (use_gw_movmtn_pbl) then
+      !$omp parallel do private (lchnk, ncols, icol, k, pbuf_chnk, pbuf_vort4gw)
+      do lchnk = begchunk, endchunk
+         ncols = get_ncols_p(lchnk)
+         pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+
+         call pbuf_get_field(pbuf_chnk, vort4gw_idx, pbuf_vort4gw)
+
+         do k = 1, pver
+            do icol = 1, ncols
+               pbuf_vort4gw(icol, k) = vort4gw_phys(icol, k, lchnk)
+            end do
+         end do
+      end do
+
+      deallocate(vort4gw)
+      deallocate(vort4gw_phys)
    end if
 
    call t_stopf('dpcopy')
@@ -417,7 +458,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
    use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
-   use air_composition, only: rairv, dry_air_species_num
+   use air_composition, only: rairv, dry_air_species_num, cappav
    use qneg_module,     only: qneg3
    use shr_const_mod,   only: shr_const_rwv
    use constituents,    only: qmin
@@ -433,8 +474,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
-
-   real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
@@ -504,13 +543,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
                             phys_state(lchnk)%lnpmid(:ncol,k), ncol)
       end do
 
-      do k = 1, pver
-         phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
-      end do
-
-
-
-
       if (dry_air_species_num>0) then
         !------------------------------------------------------------
         ! Apply limiters to mixing ratios of major species
@@ -527,6 +559,10 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       else
         zvirv(:,:) = zvir
       endif
+      do k = 1, pver
+         phys_state(lchnk)%exner(:ncol,k) = (phys_state(lchnk)%pint(:ncol,pverp) / phys_state(lchnk)%pmid(:ncol,k))**cappav(:ncol,k,lchnk)
+      end do
+
       !
       ! update cp_dycore in module air_composition.
       ! (note: at this point q is dry)
@@ -836,6 +872,8 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
    real(r8) :: sum_water
    real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2,tvk,tk
+   real(r8), parameter :: epsilon = 0.05_r8
+   real(r8) :: dp_epsilon, dpdry_epsilon
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
@@ -884,8 +922,16 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
         pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
         pmiddry(k,iCell) = dpdry(k)*rgas*tk /(gravit*dz(k))
-      end do
-    end do
+        !
+        ! PMID is not necessarily bounded by the hydrostatic interface pressure.
+        ! (has been found to be an issue at ~3.75km resolution in surface layer)
+        !
+        dp_epsilon = dp(k) * epsilon
+        dpdry_epsilon = dpdry(k)*epsilon
+        pmid   (k, iCell) = max(min(pmid   (k, iCell), pint   (k, iCell) - dp_epsilon), pint   (k + 1, iCell) + dp_epsilon)
+        pmiddry(k, iCell) = max(min(pmiddry(k, iCell), pintdry(k, iCell) - dpdry_epsilon), pintdry(k + 1, iCell) + dpdry_epsilon)
+     end do
+   end do
 end subroutine hydrostatic_pressure
 
 subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
@@ -1079,12 +1125,12 @@ end subroutine tot_energy_dyn
       do k=1, nVertLevels
 
          frontogenesisFunction(k,iCell) = 0.5_r8*(         &
-              -divh(k)*(theta_x(k)**2 + theta_y(k)**2)  &
-              -d_diag(k)*theta_x(k)**2                  &
-              -2.0_r8*d_off_diag(k)*theta_x(k)*theta_y(k)  &
-              +d_diag(k)*theta_y(k)**2                )
-         frontogenesisAngle(k,iCell) = atan2(theta_y(k),theta_x(k))
-
+              - divh(k)*(theta_x(k)**2 + theta_y(k)**2)    &
+              - d_diag(k)*theta_x(k)**2                    &
+              - 2.0_r8*d_off_diag(k)*theta_x(k)*theta_y(k) &
+              + d_diag(k)*theta_y(k)**2                )
+         frontogenesisAngle(k,iCell) = atan2(theta_y(k), theta_x(k) + 1.e-10_r8)
+         
       end do
 
    end do

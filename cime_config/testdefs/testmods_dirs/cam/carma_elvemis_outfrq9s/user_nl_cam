@@ -1,0 +1,14 @@
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9,9,9,9
+inithist='ENDOFRUN'
+carma_SO4elevemis = 'Specified'
+elev_emis_specifier =
+           'SO4 -> $DIN_LOC_ROOT/atm/cam/chem/carma/elev_emis/so4_a1_geoeng_cyclical_2Tg_20.0-20.1km_30.6S_180E_1.9x2.5_c230823.nc',
+           'SO4 -> $DIN_LOC_ROOT/atm/cam/chem/carma/elev_emis/so4_a1_geoeng_cyclical_2Tg_20.0-20.1km_30.6N_180E_1.9x2.5_c230823.nc'
+elev_emis_type = 'CYCLICAL'
+elev_emis_cycle_yr = 2040
+
+fincl2 = 'SO4_elevemis','PRSULF01EM','PRSULF02EM','PRSULF03EM','PRSULF04EM','PRSULF05EM','PRSULF06EM','PRSULF07EM',
+         'PRSULF08EM','PRSULF09EM','PRSULF10EM','PRSULF11EM','PRSULF12EM','PRSULF13EM','PRSULF14EM','PRSULF15EM',
+         'PRSULF16EM','PRSULF17EM','PRSULF18EM','PRSULF19EM','PRSULF20EM',

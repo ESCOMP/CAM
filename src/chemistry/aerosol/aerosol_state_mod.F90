@@ -51,11 +51,15 @@ module aerosol_state_mod
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
      procedure(aero_hygroscopicity), deferred :: hygroscopicity
      procedure(aero_water_uptake), deferred :: water_uptake
+     procedure(aero_wgtpct), deferred :: wgtpct
      procedure :: refractive_index_sw
      procedure :: refractive_index_lw
      procedure(aero_volume), deferred :: dry_volume
      procedure(aero_volume), deferred :: wet_volume
      procedure(aero_volume), deferred :: water_volume
+     procedure(aero_wet_diam), deferred :: wet_diameter
+     procedure :: convcld_actfrac
+     procedure :: sol_factb_interstitial
  end type aerosol_state
 
   ! for state fields
@@ -219,15 +223,15 @@ module aerosol_state_mod
      ! returns hygroscopicity for a given radiation diagnostic list number and
      ! bin number
      !------------------------------------------------------------------------------
-     function aero_hygroscopicity(self, list_ndx, bin_ndx) result(kappa)
+     subroutine aero_hygroscopicity(self, list_ndx, bin_ndx, kappa)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
        integer, intent(in) :: bin_ndx      ! bin number
 
-       real(r8), pointer :: kappa(:,:)     ! hygroscopicity (ncol,nlev)
+       real(r8), intent(out) :: kappa(:,:)              ! hygroscopicity (ncol,nlev)
 
-     end function aero_hygroscopicity
+     end subroutine aero_hygroscopicity
 
      !------------------------------------------------------------------------------
      ! returns aerosol wet diameter and aerosol water concentration for a given
@@ -248,6 +252,17 @@ module aerosol_state_mod
      end subroutine aero_water_uptake
 
      !------------------------------------------------------------------------------
+     ! aerosol weight precent of H2SO4/H2O solution
+     !------------------------------------------------------------------------------
+     function aero_wgtpct(self, ncol, nlev) result(wtp)
+       import :: aerosol_state, r8
+       class(aerosol_state), intent(in) :: self
+       integer, intent(in) ::  ncol,nlev
+       real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+
+     end function aero_wgtpct
+
+     !------------------------------------------------------------------------------
      ! aerosol volume interface
      !------------------------------------------------------------------------------
      function aero_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
@@ -264,6 +279,21 @@ module aerosol_state_mod
 
      end function aero_volume
 
+     !------------------------------------------------------------------------------
+     ! aerosol wet diameter
+     !------------------------------------------------------------------------------
+     function aero_wet_diam(self, bin_idx, ncol, nlev) result(diam)
+       import :: aerosol_state,  r8
+
+       class(aerosol_state), intent(in) :: self
+       integer, intent(in) :: bin_idx   ! bin number
+       integer, intent(in) :: ncol      ! number of columns
+       integer, intent(in) :: nlev      ! number of levels
+
+       real(r8) :: diam(ncol,nlev)
+
+     end function aero_wet_diam
+
   end interface
 
 contains
@@ -272,7 +302,7 @@ contains
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
   subroutine loadaer( self, aero_props, istart, istop, k,  m, cs, phase, &
-                       naerosol, vaerosol, hygro, errnum, errstr)
+                       naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties
 
@@ -295,10 +325,13 @@ contains
     integer ,         intent(out) :: errnum
     character(len=*), intent(out) :: errstr
 
+    real(r8), optional, intent(in) :: pom_hygro     ! POM hygroscopicity override
+
     ! internal
     real(r8), pointer :: raer(:,:) ! interstitial aerosol mass, number mixing ratios
     real(r8), pointer :: qqcw(:,:) ! cloud-borne aerosol mass, number mixing ratios
     real(r8) :: specdens, spechygro
+    character(len=aero_name_len) :: spectype
 
     real(r8) :: vol(istart:istop) ! aerosol volume mixing ratio
     integer  :: i, l
@@ -314,7 +347,12 @@ contains
 
        call self%get_ambient_mmr(l,m, raer)
        call self%get_cldbrne_mmr(l,m, qqcw)
-       call aero_props%get(m,l, density=specdens, hygro=spechygro)
+       call aero_props%get(m,l, density=specdens, hygro=spechygro, spectype=spectype)
+       if (present(pom_hygro)) then
+          if (spectype=='p-organic'.and.pom_hygro>0._r8) then
+             spechygro=pom_hygro
+          endif
+       endif
 
        if (phase == 3) then
           do i = istart, istop
@@ -854,5 +892,85 @@ contains
     end do
 
   end function refractive_index_lw
+
+  !------------------------------------------------------------------------------
+  ! prescribed aerosol activation fraction for convective cloud
+  !------------------------------------------------------------------------------
+  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
+
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: ibin   ! bin index
+    integer, intent(in) :: ispc   ! species index
+    integer, intent(in) :: ncol   ! number of columns
+    integer, intent(in) :: nlev   ! number of vertical levels
+
+    real(r8) :: frac(ncol,nlev)
+
+    frac = 0.8_r8 ! rce 2010/05/02
+
+  end function convcld_actfrac
+
+  !------------------------------------------------------------------------------
+  ! below cloud solubility factor for interstitial aerosols
+  !------------------------------------------------------------------------------
+  function sol_factb_interstitial(self, bin_ndx, ncol, nlev, aero_props) result(sol_factb)
+
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+
+    real(r8) :: sol_factb(ncol,nlev)
+
+    real(r8), pointer :: aer_mmr(:,:)
+    real(r8) :: totmmr(ncol,nlev)
+    real(r8) :: solmmr(ncol,nlev)
+    integer :: ispc
+    character(len=aero_name_len) :: spectype
+
+    sol_factb(:,:) = 0.0_r8
+
+    totmmr(:,:) = 0._r8
+    solmmr(:,:) = 0._r8
+
+    do ispc = 1, aero_props%nspecies(bin_ndx)
+
+       call aero_props%species_type(bin_ndx, ispc, spectype)
+       call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+
+       totmmr(:ncol,:) = totmmr(:ncol,:) + aer_mmr(:ncol,:)
+
+       if (trim(spectype) == 'sulfate') then
+          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.5_r8
+       end if
+       if (trim(spectype) == 'p-organic') then
+          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
+       end if
+       if (trim(spectype) == 's-organic') then
+          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
+       end if
+       if (trim(spectype) == 'dust') then
+          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.1_r8
+       end if
+       if (trim(spectype) == 'seasalt') then
+          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.8_r8
+       end if
+
+    end do   !nspec
+
+    where ( totmmr > 0._r8 )
+       sol_factb = solmmr/totmmr
+    end where
+
+    where ( sol_factb > 0.8_r8 )
+       sol_factb = 0.8_r8
+    end where
+    where ( sol_factb < 0.1_r8 )
+       sol_factb = 0.1_r8
+    end where
+
+  end function sol_factb_interstitial
+
 
 end module aerosol_state_mod

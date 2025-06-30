@@ -14,7 +14,7 @@
 
 <!-- Low top upper boundary conditions -->
 <ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
-<ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.185001-201412_c230509cdf5.nc</ubc_file_path>
+<ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.1849-2014_c240604.nc</ubc_file_path>
 <ubc_file_input_type>CYCLICAL</ubc_file_input_type>
 <ubc_file_cycle_yr>1850</ubc_file_cycle_yr>
 
@@ -60,5 +60,8 @@
 
 <csw_time_type>CYCLICAL</csw_time_type>
 <csw_cycle_yr>1850 </csw_cycle_yr>
+
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850</sim_year>
 
 </namelist_defaults>

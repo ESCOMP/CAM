@@ -728,8 +728,8 @@ subroutine radiation_tend( &
                                  ice_cloud_get_rad_props_lw, cloud_rad_props_get_lw, &
                                  grau_cloud_get_rad_props_lw, get_grau_optics_sw, &
                                  snow_cloud_get_rad_props_lw, get_snow_optics_sw
-   use slingo,             only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
-   use ebert_curry,        only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
+   use slingo_liq_optics,  only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
+   use ebert_curry_ice_optics, only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
 
    use rad_solar_var,      only: get_variability
    use radsw,              only: rad_rrtmg_sw
@@ -741,7 +741,7 @@ subroutine radiation_tend( &
                                  num_rrtmg_levs
 
    use interpolate_data,   only: vertinterp
-   use tropopause,         only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,         only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
 
    use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps
 
@@ -806,28 +806,28 @@ subroutine radiation_tend( &
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
    real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice asymmetry parameter * tau * w
    real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! ice forward scattered fraction * tau * w
    real(r8) :: ice_lw_abs (nlwbands,pcols,pver)   ! ice absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
    real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid asymmetry parameter * tau * w
    real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! liquid forward scattered fraction * tau * w
    real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
    real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud asymmetry parameter * w * tau
    real(r8) :: cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
    real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
    real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow asymmetry parameter * tau * w
    real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
    real(r8) :: snow_lw_abs (nlwbands,pcols,pver)! snow absorption optics depth (LW)
 
@@ -835,7 +835,7 @@ subroutine radiation_tend( &
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
    real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
-   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
+   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel asymmetry parameter * tau * w
    real(r8) :: grau_tau_w_f(nswbands,pcols,pver) ! graupel forward scattered fraction * tau * w
    real(r8) :: grau_lw_abs (nlwbands,pcols,pver)! graupel absorption optics depth (LW)
 
@@ -843,7 +843,7 @@ subroutine radiation_tend( &
    real(r8) :: cldfprime(pcols,pver)              ! combined cloud fraction (snow plus regular)
    real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
    real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud asymmetry parameter * w * tau
    real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
    real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
@@ -855,7 +855,7 @@ subroutine radiation_tend( &
    ! Aerosol radiative properties
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
 
@@ -958,7 +958,11 @@ subroutine radiation_tend( &
 
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-      call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      troplev(:) = 0
+      p_trop(:) = 0._r8
+      !REMOVECAM_END
+      call tropopause_find_cam(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
 
    ! Get time of next radiation calculation - albedos will need to be

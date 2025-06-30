@@ -12,7 +12,7 @@ use ppgrid,          only: pcols, pver, begchunk, endchunk
 use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
 use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
 
-use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all
+use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all, write_camiop
 use cam_history_support, only: max_fieldname_len
 use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, apcnst, bpcnst, cnst_get_ind
@@ -221,9 +221,7 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if (.not.dycore_is('EUL')) then 
-      call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
-    end if
+    call addfld ('TFIX',    horiz_only,  'A', 'K/s',          'T fixer (T equivalent of Energy correction)')
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
 
     ! outfld calls in diag_phys_tend_writeout
@@ -232,9 +230,9 @@ contains
     call register_vector_field('UTEND_TOT','VTEND_TOT')
 
     ! Debugging negative water output fields
-    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp')
-    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp')
-    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp')
+    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
 
     call addfld ('Z3',         (/ 'lev' /), 'A', 'm',         'Geopotential Height (above sea level)')
     call addfld ('Z1000',      horiz_only,  'A', 'm',         'Geopotential Z at 1000 mbar pressure surface')
@@ -253,6 +251,7 @@ contains
     call addfld ('OMEGAV',     (/ 'lev' /), 'A', 'm Pa/s2 ',  'Vertical flux of meridional momentum' )
     call addfld ('OMGAOMGA',   (/ 'lev' /), 'A', 'Pa2/s2',    'Vertical flux of vertical momentum' )
 
+    call addfld ('UT',         (/ 'lev' /), 'A', 'K m/s   ',  'Zonal heat transport')
     call addfld ('UU',         (/ 'lev' /), 'A', 'm2/s2',     'Zonal velocity squared' )
     call addfld ('WSPEED',     (/ 'lev' /), 'X', 'm/s',       'Horizontal total wind speed maximum' )
     call addfld ('WSPDSRFMX',  horiz_only,  'X', 'm/s',       'Horizontal total wind speed maximum at surface layer midpoint' )
@@ -339,6 +338,7 @@ contains
       call add_default ('VT      ', 1, ' ')
       call add_default ('VU      ', 1, ' ')
       call add_default ('VV      ', 1, ' ')
+      call add_default ('UT      ', 1, ' ')
       call add_default ('UU      ', 1, ' ')
       call add_default ('OMEGAT  ', 1, ' ')
       call add_default ('OMEGAU  ', 1, ' ')
@@ -365,9 +365,7 @@ contains
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
       call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if (.not.dycore_is('EUL')) then 
-        call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
-      end if
+      call add_default ('TFIX    '  , history_budget_histfile_num, ' ')
     end if
 
     if (history_waccm) then
@@ -438,6 +436,7 @@ contains
 
     ! outfld calls in diag_phys_writeout
     call addfld ('OMEGAQ',     (/ 'lev' /), 'A', 'kgPa/kgs', 'Vertical water transport' )
+    call addfld ('UQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Zonal water transport')
     call addfld ('VQ',         (/ 'lev' /), 'A', 'm/skg/kg',  'Meridional water transport')
     call addfld ('QQ',         (/ 'lev' /), 'A', 'kg2/kg2',   'Eddy moisture variance')
 
@@ -501,6 +500,8 @@ contains
     call addfld ('TREFHTMX', horiz_only, 'X','K','Maximum reference height temperature over output period')
     call addfld ('QREFHT',   horiz_only, 'A', 'kg/kg','Reference height humidity')
     call addfld ('U10',      horiz_only, 'A', 'm/s','10m wind speed')
+    call addfld ('UGUST',    horiz_only, 'A', 'm/s','Gustiness term added to U10')
+    call addfld ('U10WITHGUSTS',horiz_only, 'A', 'm/s','10m wind speed with gustiness added')
     call addfld ('RHREFHT',  horiz_only, 'A', 'fraction','Reference height relative humidity')
 
     call addfld ('LANDFRAC', horiz_only, 'A', 'fraction','Fraction of sfc area covered by land')
@@ -566,6 +567,9 @@ contains
     call addfld('a2x_DSTWET4',  horiz_only, 'A',  'kg/m2/s', 'wetdep of dust (bin4)')
     call addfld('a2x_DSTDRY4',  horiz_only, 'A',  'kg/m2/s', 'drydep of dust (bin4)')
 
+    call addfld('a2x_NOYDEP',  horiz_only, 'A',  'kgN/m2/s', 'NOy Deposition Flux')
+    call addfld('a2x_NHXDEP',  horiz_only, 'A',  'kgN/m2/s', 'NHx Deposition Flux')
+
     ! defaults
     if (history_amwg) then
       call add_default (cnst_name(1), 1, ' ')
@@ -609,6 +613,7 @@ contains
    end if
 
     if (history_eddy) then
+      call add_default ('UQ      ', 1, ' ')
       call add_default ('VQ      ', 1, ' ')
     endif
 
@@ -899,11 +904,12 @@ contains
     ! Purpose: output dry physics diagnostics
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cappa
-    use time_manager,       only: get_nstep
-    use interpolate_data,   only: vertinterp
-    use tidal_diag,         only: tidal_diag_write
-    use air_composition,    only: cpairv, rairv
+    use physconst,            only: gravit, rga, rair, cappa
+    use time_manager,         only: get_nstep
+    use interpolate_data,     only: vertinterp
+    use tidal_diag,           only: tidal_diag_write
+    use air_composition,      only: cpairv, rairv
+    use cam_diagnostic_utils, only: cpslec
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -940,9 +946,7 @@ contains
 
     call outfld('PHIS    ',state%phis,    pcols,   lchnk     )
 
-#if (defined BFB_CAM_SCAM_IOP )
-    call outfld('phis    ',state%phis,    pcols,   lchnk     )
-#endif
+    if (write_camiop) call outfld('phis    ',state%phis,    pcols,   lchnk     )
 
     call outfld( 'CPAIRV', cpairv(:ncol,:,lchnk), ncol, lchnk )
     call outfld( 'RAIRV', rairv(:ncol,:,lchnk), ncol, lchnk )
@@ -1016,6 +1020,9 @@ contains
     !
     ! zonal advection
     !
+    ftem(:ncol,:) = state%u(:ncol,:)*state%t(:ncol,:)
+    call outfld ('UT      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%u(:ncol,:)**2
     call outfld ('UU      ',ftem    ,pcols   ,lchnk     )
 
@@ -1033,9 +1040,7 @@ contains
       call outfld('OMEGA   ',state%omega,    pcols,   lchnk     )
     endif
 
-#if (defined BFB_CAM_SCAM_IOP )
-    call outfld('omega   ',state%omega,    pcols,   lchnk     )
-#endif
+    if (write_camiop) call outfld('omega   ',state%omega,    pcols,   lchnk     )
 
     ftem(:ncol,:) = state%omega(:ncol,:)*state%t(:ncol,:)
     call outfld('OMEGAT  ',ftem,    pcols,   lchnk     )
@@ -1282,9 +1287,10 @@ contains
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
     call outfld('PDEL',    state%pdel,    pcols, lchnk)
 
-    !
-    ! Meridional advection fields
-    !
+
+    ftem(:ncol,:) = state%u(:ncol,:)*state%q(:ncol,:,ixq)
+    call outfld ('UQ      ',ftem    ,pcols   ,lchnk     )
+
     ftem(:ncol,:) = state%v(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld ('VQ      ',ftem    ,pcols   ,lchnk     )
 
@@ -1697,9 +1703,7 @@ contains
       call outfld('PRECLav ', precl, pcols, lchnk )
       call outfld('PRECCav ', precc, pcols, lchnk )
 
-#if ( defined BFB_CAM_SCAM_IOP )
-      call outfld('Prec   ' , prect, pcols, lchnk )
-#endif
+      if (write_camiop) call outfld('Prec   ' , prect, pcols, lchnk )
 
       ! Total convection tendencies.
 
@@ -1785,6 +1789,9 @@ contains
       call outfld('TREFHTMN', cam_in%tref,      pcols, lchnk)
       call outfld('QREFHT',   cam_in%qref,      pcols, lchnk)
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
+      call outfld('UGUST',    cam_in%ugustOut,  pcols, lchnk)
+      call outfld('U10WITHGUSTS',cam_in%u10withGusts, pcols, lchnk)
+
       !
       ! Calculate and output reference height RH (RHREFHT)
       call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
@@ -1794,11 +1801,13 @@ contains
       call outfld('RHREFHT',   ftem,      pcols, lchnk)
 
 
-#if (defined BFB_CAM_SCAM_IOP )
-      call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
-      call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
-      call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
-#endif
+      if (write_camiop) then
+         call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
+         call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
+         call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
+         call outfld('Tg', cam_in%ts, pcols, lchnk)
+         call outfld('Tsair',cam_in%ts, pcols, lchnk)
+      end if
       !
       ! Ouput ocn and ice fractions
       !
@@ -2055,14 +2064,10 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (.not.dycore_is('EUL')) then 
-      call check_energy_get_integrals( heat_glob_out=heat_glob )
-      ftem2(:ncol)  = heat_glob/cpair
-      call outfld('TFIX', ftem2, pcols, lchnk   )
-      ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver) - heat_glob/cpair
-    else
-      ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver)
-    end if
+    call check_energy_get_integrals( heat_glob_out=heat_glob )
+    ftem2(:ncol)  = heat_glob/cpair
+    call outfld('TFIX', ftem2, pcols, lchnk   )
+    ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver) - heat_glob/cpair
     call outfld('PTTEND',ftem3, pcols, lchnk )
     ftem3(:ncol,:pver)  = tend%dudt(:ncol,:pver)
     call outfld('UTEND_PHYSTOT',ftem3, pcols, lchnk )
