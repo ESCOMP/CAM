@@ -383,7 +383,6 @@ subroutine radiation_init(pbuf2d)
    integer :: err
 
    ! Cloud optics variables
-   integer :: nmu, n_g_d, nlambda
    real(kind=r8), allocatable :: abs_lw_ice(:,:)
    real(kind=r8), allocatable :: ext_sw_ice(:,:)
    real(kind=r8), allocatable :: ssa_sw_ice(:,:)
@@ -405,9 +404,9 @@ subroutine radiation_init(pbuf2d)
    call rad_data_init(pbuf2d) ! initialize output fields for offline driver
    call radsw_init()
    call radlw_init()
-   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
-                  ext_sw_liq, ssa_sw_liq, asm_sw_liq, ext_sw_ice, ssa_sw_ice, &
-                  asm_sw_ice, g_mu, g_lambda, g_d_eff, tiny)
+   call cloud_rad_props_init(abs_lw_liq, abs_lw_ice, ext_sw_liq, ssa_sw_liq, &
+                  asm_sw_liq, ext_sw_ice, ssa_sw_ice, asm_sw_ice, g_mu,      &
+                  g_lambda, g_d_eff, tiny)
 
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=err)

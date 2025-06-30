@@ -454,7 +454,6 @@ subroutine radiation_init(pbuf2d)
                                           ! liquid budgets.
    integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr, istat, errflg
-!   integer :: nmu, n_g_d, nlambda         ! dimensions in optics files
 
    integer :: dtime
 
