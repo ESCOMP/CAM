@@ -199,14 +199,24 @@
       <option name="comment" >CAM7-LT aquaplanet</option>
     </options>
   </test>
-  <test compset="QPC7" grid="ne30pg3_ne30pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq3s_cosp">
+  <test compset="QPC7" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
-      <option name="comment" >CAM7-LT aquaplanet w/ COSP</option>
+      <option name="comment" >CAM7-LT aquaplanet</option>
+    </options>
+  </test>
+  <test compset="QPC7" grid="mpasa480_mpasa480_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s_mpasa480">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >CAM7-LT aquaplanet on mpasa480</option>
     </options>
   </test>
   <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
@@ -310,17 +320,6 @@
     </options>
   </test>
 
-<!--              CAM Stand alone                          -->
-<!--     012        -->
-  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-      <option name="comment" >012 tsm</option>
-    </options>
-  </test>
 <!--              111 tsm, ter, tbr, tbl, changed to QPC6/f19      -->
   <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
     <machines>
@@ -351,34 +350,32 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              301                         -->
+
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
     <options>
-      <option name="comment" >301 plb</option>
+      <option name="comment" >phys_loadbalance=1; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              303                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >303 plb</option>
+      <option name="comment" >phys_loadbalance=3; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              304                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >304 plb</option>
+      <option name="comment" >phys_loadbalance=0; 5 test tracers; end of year</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1033,66 +1030,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              701                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >701 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              702                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >702 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              703                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >703 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              711 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >711 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              712 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >712 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              713 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >713 teq</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              720                        -->
   <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
@@ -1110,16 +1047,6 @@
     </machines>
     <options>
       <option name="comment" >721 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              011                        -->
-  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2" testmods="cam/outfrq24h_port">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >011 tsm</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1211,7 +1138,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FHISTC_WXma" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_WXma" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln9" testmods="cam/outfrq9s_ctem">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="waccmx"/>
@@ -1278,27 +1205,19 @@
    </options>
   </test>
 
-  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERS_Ln9_P288x1" testmods="cam/outfrq9s_mpasa120">
+  <test compset="F2000climo" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
+      <option name="comment" >F2000climo w/ mpasa120</option>
     </options>
   </test>
 
   <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_Ln9_P24x1" testmods="cam/outfrq9s_mpasa480">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:45:00</option>
-    </options>
-  </test>
-
-  <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa480_pertlim">
-    <machines>
-      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
@@ -1322,7 +1241,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >Adiabatic, analytic ICs</option>
+      <option name="comment" >Dry adiabatic (no physics forcings), analytic ICs</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1332,6 +1251,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Dry Held-Suarez forcing (Held and Suarez, 1994)</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1341,6 +1261,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Moist Kessler forcing, baroclinic wave IC, terminator chemistry</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1350,6 +1271,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Moist Held-Suarez forcing (Thatcher and Jablonowski, 2016)</option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1359,6 +1281,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
+      <option name="comment" >Frierson forcing (Frierson, 2006) </option>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
@@ -1641,46 +1564,37 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_LTso" grid="ne30pg3_ne30pg3_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">CAM7 low top ~40 km</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="ne30pg3_ne30pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_LTso" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/cosp_rad_diags">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">CAM7-LT, cosp, radiation diagnostics</option>
+    </options>
+  </test>
+  <test compset="FHISTC_LTso" grid="ne16pg3_ne16pg3_mt232" name="ERR_Ln9" testmods="cam/outfrq9s_bwic">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM7 low top ~40 km</option>
+      <option name="comment">CAM7-LT, archiving, resubmit</option>
     </options>
   </test>
-  <test compset="FHISTC_LTso" grid="ne3pg3_ne3pg3_mg37" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM7 low top ~40 km</option>
-    </options>
-  </test>
-  <test compset="FHISTC_LTso" grid="ne3pg3_ne3pg3_mg37" name="ERR_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM7 low top ~40 km with archiving</option>
-    </options>
-  </test>
-  <test compset="FHISTC_LTso" grid="mpasa480_mpasa480" name="ERS_D_Ln9" testmods="cam/outfrq9s_mpasa480">
+  <test compset="FHISTC_LTso" grid="mpasa120_mpasa120" name="ERC_D_Ln9_P512" testmods="cam/outfrq9s_mpasa120">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -2668,6 +2582,18 @@
       <option name="comment" >WACCM TSMLT MAM4</option>
     </options>
   </test>
+
+<!-- PORT (offline radiation driver) -->
+
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >012 tsm</option>
+    </options>
+  </test>
   <test compset="PC4" grid="f19_f19_mg17" name="SMS" testmods="cam/cam4_port">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
@@ -2685,6 +2611,15 @@
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2" testmods="cam/outfrq24h_port">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >011 tsm</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="PC5" grid="f45_f45_mg37" name="SMS_D" testmods="cam/cam5_port_f45">
@@ -2712,13 +2647,13 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="PC6" grid="f09_f09_mg17" name="SMS_Ld5" testmods="cam/cam6_port_f09_rrtmgp">
+  <test compset="PC7" grid="ne3pg3_ne3pg3_mt232" name="SMS_D_Ln3" testmods="cam/pc7_ne3pg3">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
-      <option name="comment">CAM6 PORT w/ RRTMGP</option>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">CAM7-LT PORT</option>
     </options>
   </test>
 

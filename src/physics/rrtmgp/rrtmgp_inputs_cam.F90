@@ -105,6 +105,9 @@ subroutine rrtmgp_inputs_cam_init(ktcam, ktrad, idx_sw_diag_in, idx_nir_diag_in,
 
    ! Initialize the module data containing the SW band boundaries.
    call get_sw_spectral_boundaries_ccpp(sw_low_bounds, sw_high_bounds, 'cm^-1', errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun('rrtmgp_inputs_cam_init: error during get_sw_spectral_boundaries_ccpp - message: '//errmsg)
+   end if
 
 end subroutine rrtmgp_inputs_cam_init
 
@@ -167,7 +170,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    integer,                     intent(in) :: nlay           ! number of layers in radiation calculation
    integer,                     intent(in) :: numactivecols  ! number of columns, ncol for LW, nday for SW
 
-   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VRM inside gas_concs
+   type(ty_gas_concs_ccpp),     intent(inout) :: gas_concs  ! the result is VMR inside gas_concs
 
    integer, optional,          intent(in) :: idxday(:)   ! indices of daylight columns in a chunk
 
@@ -282,7 +285,7 @@ subroutine rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
    ncol = state%ncol
    do i = 1, nradgas
       call rad_cnst_get_gas(icall, gaslist(i), state, pbuf, gas_mmr)
-      gas_mmrs(:,:,i) = gas_mmr
+      gas_mmrs(:,:,i) = gas_mmr(:ncol,:)
    end do
 end subroutine rrtmgp_get_gas_mmrs
 
@@ -335,7 +338,7 @@ subroutine rrtmgp_set_cloud_sw( &
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
    integer,  intent(in) :: nday           ! number of daylight columns
    integer,  intent(in) :: idxday(pcols)  ! indices of daylight columns in the chunk
-   integer,  intent(in) :: nswgpts
+   integer,  intent(in) :: nswgpts        ! number of shortwave g-points
    integer,  intent(in) :: nnite          ! number of night columns
    integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
 

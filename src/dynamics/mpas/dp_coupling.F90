@@ -1125,12 +1125,12 @@ end subroutine tot_energy_dyn
       do k=1, nVertLevels
 
          frontogenesisFunction(k,iCell) = 0.5_r8*(         &
-              -divh(k)*(theta_x(k)**2 + theta_y(k)**2)  &
-              -d_diag(k)*theta_x(k)**2                  &
-              -2.0_r8*d_off_diag(k)*theta_x(k)*theta_y(k)  &
-              +d_diag(k)*theta_y(k)**2                )
-         frontogenesisAngle(k,iCell) = atan2(theta_y(k),theta_x(k))
-
+              - divh(k)*(theta_x(k)**2 + theta_y(k)**2)    &
+              - d_diag(k)*theta_x(k)**2                    &
+              - 2.0_r8*d_off_diag(k)*theta_x(k)*theta_y(k) &
+              + d_diag(k)*theta_y(k)**2                )
+         frontogenesisAngle(k,iCell) = atan2(theta_y(k), theta_x(k) + 1.e-10_r8)
+         
       end do
 
    end do

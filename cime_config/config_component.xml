@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM70[%LT][%MT][%WA][%WX][%CSO][%CT1S][%CT4S][%CT0MA][%CT1MA][%CT4MA]"                                                                                                                                                                                                                                                                                                    >CAM cam7 physics:</desc>
+    <desc atm="CAM70[%LT][%MT][%WA][%WX][%CSO][%CT1S][%CT4S][%CT0MA][%CT1MA][%CT4MA][%PORT]"                                                                                                                                                                                                                                                                                             >CAM cam7 physics:</desc>
     <desc atm="CAM60[%1PCT][%4xCO2][%CARMATS][%CARMAWM][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
     <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
@@ -262,7 +262,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
-      <value compset="2000_CAM70.*_SLND_SICE_DOCN%AQP" >aquaplanet_cam7</value>
+      <value compset="2000[CE]?_CAM70.*_SLND_SICE_DOCN%AQP">aquaplanet_cam7</value>
       <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
@@ -279,8 +279,8 @@
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
       <value compset="HIST_CAM50"        >1850-2005_cam5</value>
       <value compset="HIST_CAM60"        >hist_cam6</value>
-      <value compset="HIST_CAM70%LT"     >hist_cam_lt</value>
-      <value compset="HIST_CAM70%MT"     >hist_cam_mt</value>
+      <value compset="HIST[CE]?_CAM70%LT">hist_cam_lt</value>
+      <value compset="HIST[CE]?_CAM70%MT">hist_cam_mt</value>
       <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>

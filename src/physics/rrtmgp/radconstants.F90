@@ -5,8 +5,6 @@ module radconstants
 
 use shr_kind_mod,         only: r8 => shr_kind_r8
 use cam_abortutils,       only: endrun
-use radiation_utils,      only: get_sw_spectral_boundaries_ccpp
-use radiation_utils,      only: get_lw_spectral_boundaries_ccpp
 
 implicit none
 private
@@ -72,7 +70,8 @@ subroutine radconstants_init(idx_sw_diag_in, idx_nir_diag_in, idx_uv_diag_in, id
 end subroutine radconstants_init
 !=========================================================================================
 
- subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
+subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
+   use radiation_utils,      only: get_sw_spectral_boundaries_ccpp
 
    ! provide spectral boundaries of each shortwave band
 
@@ -89,11 +88,12 @@ end subroutine radconstants_init
       call endrun(errmsg)
    end if
 
- end subroutine get_sw_spectral_boundaries
+end subroutine get_sw_spectral_boundaries
 
 !=========================================================================================
 
 subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
+   use radiation_utils,      only: get_lw_spectral_boundaries_ccpp
 
    ! provide spectral boundaries of each longwave band
 

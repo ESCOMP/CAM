@@ -9,3 +9,4 @@ amiesh_files = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_sh.nc'
 fincl6 = 'prescr_phihm','prescr_efxm','prescr_kevm','prescr_efxp','prescr_kevp','amie_efx_phys','amie_kev_phys'
 oplus_grid = 144,96
 ionos_npes = 120
+steady_state_ion_elec_temp = .true.
