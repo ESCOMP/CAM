@@ -2479,125 +2479,166 @@ This default logical is set in cospsimulator_intr.F90
 Default: 50
 </entry>
 
-<entry id="rttov_Ninstruments" type="integer"  category="cosp"
+<entry id="cosp_rttov_Ninstruments" type="integer"  category="cosp"
        group="cospsimulator_nl" valid_values="">
 Number of RTTOV instruments to simulate.
 This default logical is set in cospsimulator_intr.F90
 Default: 0
 </entry>
     
-<entry id="rttov_instrument_namelists" type="char*256(50)"  category="cosp"
+<entry id="cosp_rttov_instrument_namelists" type="char*256(50)"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-List of RTTOV instrument namelist files read when running RTTOV in COSP.
+List of RTTOV instrument namelist files to read when running RTTOV in COSP.
+File paths are read relative to the case run directory 
+(e.g. /glade/derecho/scratch/$USER/$CASENAME/run/). Each namelist file
+contains information specifying the simulated instrument, channels, and
+outputs. Templates and instructions can be found in the COSP-RTTOV 
+code repository.
 Default: none
 </entry>
 
 <!-- Swathing input control parameters. -->
-<entry id="N_SWATHS_ISCCP" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_ISCCP" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP ISCCP data.
+Number of satellite sampling swaths used to mask COSP ISCCP data.
 Default: none
 </entry>
 
-<entry id="N_SWATHS_MISR" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_MISR" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP MISR data.
+Number of satellite sampling swaths used to mask COSP MISR data.
 Default: none
 </entry>
 
-<entry id="N_SWATHS_MODIS" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_MODIS" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP MODIS data.
+Number of satellite sampling swaths used to mask COSP MODIS data.
 Default: none
 </entry>
 
-<entry id="N_SWATHS_CSCAL" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_CSCAL" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP CloudSat-CALIPSO data.
+Number of satellite sampling swaths used to mask COSP CloudSat-CALIPSO data.
 Default: none
 </entry>
 
-<entry id="N_SWATHS_PARASOL" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_PARASOL" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP PARASOL data.
+Number of satellite sampling swaths used to mask COSP PARASOL data.
 Default: none
 </entry>
 
-<entry id="N_SWATHS_ATLID" type="integer*10"  category="cosp"
+<entry id="cosp_N_SWATHS_ATLID" type="integer*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Number of satellite sampling swaths to mask COSP ATLID data.
+Number of satellite sampling swaths used to mask COSP ATLID data.
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_ISCCP" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_ISCCP" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP ISCCP data.
+Swath localtimes (hours) for masking COSP ISCCP data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_MISR" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_MISR" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP MISR data.
+Swath localtimes (hours) for masking COSP MISR data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_MODIS" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_MODIS" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP MODIS data.
+Swath localtimes (hours) for masking COSP MODIS data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_CSCAL" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_CSCAL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data.
+Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data. The  
+sampling "local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_PARASOL" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_PARASOL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP PARASOL data.
+Swath localtimes (hours) for masking COSP PARASOL data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_LOCALTIMES_ATLID" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_LOCALTIMES_ATLID" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP ATLID data.
+Swath localtimes (hours) for masking COSP ATLID data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_ISCCP" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_ISCCP" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP ISCCP data.
+Swath widths (kilometers) for masking COSP ISCCP data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_MISR" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_MISR" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP MISR data.
+Swath widths (kilometers) for masking COSP MISR data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_MODIS" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_MODIS" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP MODIS data.
+Swath widths (kilometers) for masking COSP MODIS data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_CSCAL" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_CSCAL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP CSCAL data.
+Swath widths (kilometers) for masking COSP CSCAL data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_PARASOL" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_PARASOL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP PARASOL data.
+Swath widths (kilometers) for masking COSP PARASOL data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 
-<entry id="SWATH_WIDTHS_ATLID" type="real*10"  category="cosp"
+<entry id="cosp_SWATH_WIDTHS_ATLID" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath widths (kilometers) for masking COSP ATLID data.
+Swath widths (kilometers) for masking COSP ATLID data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
 Default: none
 </entry>
 

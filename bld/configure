@@ -1912,7 +1912,6 @@ if ($cosp) {
       $ldflags .= " -L$cosp_libdir -lrttov13_wrapper -lrttov13_mw_scatt -lrttov13_brdf_atlas -lrttov13_emis_atlas -lrttov13_other -lrttov13_parallel -lrttov13_coef_io -lrttov13_hdf -lrttov13_main ";
       # Let the RTTOV libraries stay where they are:
       # A more functional code would read these from Makefile.rttov in the COSP2 directory in CAM instead of hardcoding, but I don't know how to do that yet.
-    #   $ldflags .= " -L$rttov_libdir -lrttov13_wrapper -lrttov13_mw_scatt -lrttov13_brdf_atlas -lrttov13_emis_atlas -lrttov13_other -lrttov13_parallel -lrttov13_coef_io -lrttov13_hdf -lrttov13_main ";
       $cfg_ref->set('ldflags', $ldflags);
       print "Adding rttov libraries as dependencies in ldflags.\n";
     }       
