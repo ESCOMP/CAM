@@ -22,7 +22,7 @@ module chemistry
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
 #endif
-  
+
   ! GEOS-Chem derived types
   USE DiagList_Mod,         ONLY : DgnList          ! Diagnostics list object
   use GeosChem_History_Mod, ONLY : HistoryConfigObj ! History diagnostic object
@@ -59,12 +59,12 @@ module chemistry
   public :: chem_readnl                    ! read chem namelist
   public :: chem_emissions
   public :: chem_timestep_init
+  public :: chem_has_ndep_flx
 
   !
   ! Private routines:
   !
   private :: sect02_mam4
-  private :: erfc_num_recipes
 
   ! Location of valid geoschem_config.yml and species_database.yml
   ! Use local files in run folder
@@ -166,6 +166,8 @@ module chemistry
   ! For dry deposition
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 
+  ! for nitrogen deposition fluxes to surface models
+  logical, parameter :: chem_has_ndep_flx = .false.
 
 contains
 
@@ -515,11 +517,11 @@ contains
     CALL cnst_get_ind('Q',     cQ,     abort=.True.)
     CALL cnst_get_ind('H2O',   cH2O,   abort=.True.)
     CALL cnst_get_ind('H2SO4', cH2SO4, abort=.True.)
- 
+
     !------------------------------------------------------------
     ! Get mapping between dry deposition species and species set
     !------------------------------------------------------------
-    
+
     nIgnored = 0
 
     if (debug .and. masterproc) write(iulog,'(a,i4,a)') 'chem_register: looping over gas dry deposition list with ', nddvels, ' species'
@@ -831,7 +833,7 @@ contains
        ! Now go through the KPP mechanism and add any species not
        ! implemented by the tracer list in geoschem_config.yml
        !----------------------------------------------------------
-       
+
        IF ( nSpec > nSlsMax ) THEN
           CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
        ENDIF
@@ -1016,13 +1018,14 @@ contains
     use Photolysis_Mod,        only : Init_Photolysis
     use PhysConstants,         only : PI, PI_180, Re
     use Pressure_Mod,          only : Accept_External_ApBp
+    use precision_mod,         only : MISSING_DBLE, f8
     use State_Chm_Mod,         only : Ind_
     use State_Grid_Mod,        only : Init_State_Grid, Cleanup_State_Grid
     use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
     use Time_Mod,              only : Accept_External_Date_Time
     use Ucx_Mod,               only : Init_Ucx
     use Unitconv_Mod,          only : MOLES_SPECIES_PER_MOLES_DRY_AIR
-    use Vdiff_Mod,             only : Max_PblHt_For_Vdiff 
+    use Vdiff_Mod,             only : Max_PblHt_For_Vdiff
 
     TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER, INTENT(INOUT) :: pbuf2d(:,:)
@@ -1143,7 +1146,7 @@ contains
     ! on State_Grid(BEGCHUNK).
     ! To go around this, we define all of GEOS-Chem arrays with
     ! size PCOLS x PVER, which is the largest possible number of
-    ! grid cells. 
+    ! grid cells.
     CALL Init_State_Grid( Input_Opt  = Input_Opt, &
                           State_Grid = maxGrid,   &
                           RC         = RC        )
@@ -1168,7 +1171,7 @@ contains
     ! optical properties of aerosols outside of Cloud-J.
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_chem_inputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_aeropt_inputs)
+    Input_Opt%AER_OPTICS_DIR       = TRIM(geoschem_aeropt_inputs)
     Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_photol_inputs)
 
     !----------------------------------------------------------
@@ -1461,6 +1464,17 @@ contains
           State_Chm(I)%Species(N)%Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
        ENDDO
 
+       ! Kludge: Replace State_Chm initialization in GC_Init_Extra
+       ! since it is only ran for BEGCHUNK below.
+       ! This will set the proper tolerances for KPP species.
+       WHERE( State_Chm(I)%KPP_AbsTol == MISSING_DBLE )
+          State_Chm(I)%KPP_AbsTol = 1.0e-2_f8
+       ENDWHERE
+
+       WHERE( State_Chm(I)%KPP_RelTol == MISSING_DBLE )
+          State_Chm(I)%KPP_RelTol = 0.5e-2_f8
+       ENDWHERE
+
     ENDDO
     Input_Opt%amIRoot = MasterProc
 
@@ -1477,6 +1491,46 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    ! Kludge: Copy initialized fields in phot container in State_Chm
+    ! to other chunks because they are being read in GC_Init_Extra -> init_aerosol -> ...
+    DO I = BEGCHUNK, ENDCHUNK
+        IF(I .ne. BEGCHUNK) THEN
+            ! Set in RD_AOD
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+            State_Chm(I)%Phot%RHAA = State_Chm(BEGCHUNK)%Phot%RHAA
+            State_Chm(I)%Phot%RDAA = State_Chm(BEGCHUNK)%Phot%RDAA
+            State_Chm(I)%Phot%RWAA = State_Chm(BEGCHUNK)%Phot%RWAA
+            State_Chm(I)%Phot%SGAA = State_Chm(BEGCHUNK)%Phot%SGAA
+            State_Chm(I)%Phot%REAA = State_Chm(BEGCHUNK)%Phot%REAA
+            State_Chm(I)%Phot%NRLAA = State_Chm(BEGCHUNK)%Phot%NRLAA
+            State_Chm(I)%Phot%NCMAA = State_Chm(BEGCHUNK)%Phot%NCMAA
+            State_Chm(I)%Phot%QQAA = State_Chm(BEGCHUNK)%Phot%QQAA
+            State_Chm(I)%Phot%ALPHAA = State_Chm(BEGCHUNK)%Phot%ALPHAA
+            State_Chm(I)%Phot%SSAA = State_Chm(BEGCHUNK)%Phot%SSAA
+            State_Chm(I)%Phot%ASYMAA = State_Chm(BEGCHUNK)%Phot%ASYMAA
+            State_Chm(I)%Phot%PHAA = State_Chm(BEGCHUNK)%Phot%PHAA
+
+            ! This is a scalar -- very important for later calculations...
+            State_Chm(I)%Phot%IWV1000 = State_Chm(BEGCHUNK)%Phot%IWV1000
+
+            ! Set in CALC_AOD
+            State_Chm(I)%Phot%IWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IWVREQUIRED
+            State_Chm(I)%Phot%IRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IRTWVREQUIRED
+            State_Chm(I)%Phot%IWVSELECT = State_Chm(BEGCHUNK)%Phot%IWVSELECT
+            State_Chm(I)%Phot%IRTWVSELECT = State_Chm(BEGCHUNK)%Phot%IRTWVSELECT
+            State_Chm(I)%Phot%ACOEF_WV = State_Chm(BEGCHUNK)%Phot%ACOEF_WV
+            State_Chm(I)%Phot%BCOEF_WV = State_Chm(BEGCHUNK)%Phot%BCOEF_WV
+            State_Chm(I)%Phot%CCOEF_WV = State_Chm(BEGCHUNK)%Phot%CCOEF_WV
+            State_Chm(I)%Phot%ACOEF_RTWV = State_Chm(BEGCHUNK)%Phot%ACOEF_RTWV
+            State_Chm(I)%Phot%BCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%BCOEF_RTWV
+            State_Chm(I)%Phot%CCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%CCOEF_RTWV
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+
+            State_Chm(I)%Phot%NWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NWVREQUIRED
+            State_Chm(I)%Phot%NRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NRTWVREQUIRED
+        ENDIF
+    ENDDO
+
     IF ( Input_Opt%LDryD ) THEN
        !----------------------------------------------------------
        ! Get mapping between CESM dry deposited species and the
@@ -1484,7 +1538,7 @@ contains
        ! Init_Drydep
        ! Thibaud M. Fritz - 04 Mar 2020
        !----------------------------------------------------------
-       
+
        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
@@ -1617,6 +1671,8 @@ contains
     IF ( Input_Opt%ITS_A_FULLCHEM_SIM .or. &
          Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
        DO I = BEGCHUNK, ENDCHUNK
+          ! Restrict prints to one thread only
+          Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
           CALL Init_Photolysis( Input_Opt  = Input_Opt,                &
                                 State_Grid = State_Grid(I),            &
                                 State_Chm  = State_Chm(I),             &
@@ -1631,6 +1687,7 @@ contains
             State_Chm(I)%Phot%OREF = State_Chm(BEGCHUNK)%Phot%OREF
           ENDIF
        ENDDO
+       Input_Opt%amIRoot = MasterProc
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Photolysis"!'
@@ -1754,7 +1811,7 @@ contains
     use mo_flbc,           only : flbc_chk
     use mo_ghg_chem,       only : ghg_chem_timestep_init
     use physics_buffer,    only : physics_buffer_desc
-    
+
     TYPE(physics_state), INTENT(IN):: phys_state(begchunk:endchunk)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
@@ -2019,7 +2076,7 @@ contains
     REAL(r8)          :: mmr_tend(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: wk_out(state%NCOL)
     LOGICAL           :: Found
-    
+
     CHARACTER(LEN=shr_kind_cl) :: tagName
 
     REAL(r8), PARAMETER   :: zlnd  = 0.01_r8   ! Roughness length for soil [m]
@@ -2364,7 +2421,7 @@ contains
     ENDDO
 
     ! Deal with secondary organic aerosols (SOAs). This mapping is using the
-    ! complex SOA option in GEOS-Chem. 
+    ! complex SOA option in GEOS-Chem.
     ! MAM uses five volatility bins spanning saturation concentrations from 0.01
     ! to 100 ug/m3 (logarithmically). The complex SOA option has four volatility
     ! bins that 0.1 to 100 ug/m3. We lump the lowest two bins in CESM2 to the
@@ -3692,7 +3749,7 @@ contains
     ! Compute the surface flux for the non-local mixing,
     ! (which means getting emissions & drydep from HEMCO)
     ! and store it in State_Chm%Surface_Flux
-    ! 
+    !
     ! For CESM-GC, Surface_Flux will be equal to the opposite of the
     ! dry deposition flux since emissions are loaded externally
     ! ( SurfaceFlux = eflx - dflx = - dflx )
@@ -3739,10 +3796,10 @@ contains
           ! Get the species ID from the drydep ID
           N = State_Chm(BEGCHUNK)%Map_DryDep(ND)
           IF ( N <= 0 ) CYCLE
-   
+
           M = map2GCinv(N)
           IF ( M <= 0 ) CYCLE
-   
+
           cam_in%cflx(1:nY,M) = cam_in%cflx(1:nY,M) &
                               + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
        ENDDO
@@ -3763,7 +3820,7 @@ contains
                             new_units      = KG_SPECIES_PER_M2,  &
                             previous_units = previous_units,     &
                             RC             = RC                    )
- 
+
 
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
@@ -4088,7 +4145,8 @@ contains
     call t_stopf('GEOSChem_MAM_Interfacing')
     call t_startf('GEOSChem_MAM_GasAerExch')
 
-    call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
+    call aero_model_gasaerexch( state, &
+                                loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
                                 lchnk             = LCHNK,                  &
                                 troplev           = Trop_Lev(:),            &
@@ -4669,33 +4727,6 @@ contains
     ENDDO
 
   end subroutine chem_emissions
-!
-!   P R E S C R I B E   A E R O S O L   D I S T R I B U T I O N
-!
-! Based on code from Feng et al., 2021 GMD (WRF-GC v2.0), by Xu Feng et al.
-! in module_diag_aero_size_info.F, originally based from WRF-Chem.
-!
-! Reference:
-! Feng, X., Lin, H., Fu, T.-M., Sulprizio, M. P., Zhuang, J., Jacob, D. J., Tian, H., Ma, Y., Zhang, L., Wang, X., Chen, Q., and Han, Z.: WRF-GC (v2.0): online two-way coupling of WRF (v3.9.1.1) and GEOS-Chem (v12.7.2) for modeling regional atmospheric chemistry–meteorology interactions, Geosci. Model Dev., 14, 3741–3768, https://doi.org/10.5194/gmd-14-3741-2021, 2021.
-!
-
-  real(8) function erfc_num_recipes( x )
-    !
-    !   from press et al, numerical recipes, 1990, page 164
-    !
-    implicit none
-    real(r8) :: x, erfc_dbl, dum, t, z
-    z = abs(x)
-    t = 1.0_r8/(1.0_r8 + 0.5_r8*z)
-    dum =  ( -z*z - 1.26551223_r8 + t*(1.00002368_r8 + t*(0.37409196_r8 +   &
-      t*(0.09678418_r8 + t*(-0.18628806_r8 + t*(0.27886807_r8 +   &
-                                       t*(-1.13520398_r8 +   &
-      t*(1.48851587_r8 + t*(-0.82215223_r8 + t*0.17087277_r8 )))))))))
-    erfc_dbl = t * exp(dum)
-    if (x .lt. 0.0_r8) erfc_dbl = 2.0_r8 - erfc_dbl
-    erfc_num_recipes = erfc_dbl
-    return
-  end function erfc_num_recipes
 
   ! sect02_mam4 is based off sect02_new in WRF-GC, which is based off
   ! sect02 in WRF-Chem chem/module_optical_averaging.F.
@@ -4704,76 +4735,81 @@ contains
   ! prog calculates mass and number for each section.
   subroutine sect02_mam4(dgnum_um, sigmag, duma, nbin, dlo_sect, dhi_sect, &
                          xnum_sect, xmas_sect)
-        ! INPUT PARAMETERS:
-        ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
-        ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
-        ! duma                 1.0 ?
-        ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
-        ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
-        ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        ! OUTPUT PARAMETERS:
-        ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
-        ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
+    use shr_spfn_mod, only: erfc => shr_spfn_erfc
 
-        implicit none
-        real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
-        integer                               :: n, nbin
-        real(8)                               :: dgnum, dgnum_um, dhi,  &
-                                                 dlo, duma, dumfrac,    &
-                                                 dx, sigmag,            &
-                                                 sx, sxroot2, thi, tlo, x0, x3, &
-                                                 xhi, xlo, xmtot, xntot
-        real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
-        real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
-        real(8)                               :: pi
-        parameter (pi = 3.141592653589_r8)
+    ! INPUT PARAMETERS:
+    ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
+    ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
+    ! duma                 1.0 ?
+    ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
+    ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
+    ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        xmtot = duma
-        xntot = duma
+    ! OUTPUT PARAMETERS:
+    ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
+    ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
 
-        ! Compute bins based on number of bins. Originally sect02_new.
-        ! For MAM4, we prescribe the bin ranges as well.
-        ! dlo = dlo_um*1.0E-4_r8
-        ! dhi = dhi_um*1.0E-4_r8
-        ! xlo = log( dlo )
-        ! xhi = log( dhi )
-        ! dx  = (xhi - xlo)/nbin
-        ! do n = 1, nbin
-        !     dlo_sect(n) = exp( xlo + dx*(n-1) )
-        !     dhi_sect(n) = exp( xlo + dx*n )
-        ! end do
+    implicit none
+    real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
+    integer                               :: n, nbin
+    real(8)                               :: dgnum, dgnum_um, dhi,  &
+         dlo, duma, dumfrac,    &
+         dx, sigmag,            &
+         sx, sxroot2, thi, tlo, x0, x3, &
+         xhi, xlo, xmtot, xntot
+    real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
+    real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
+    real(8)                               :: pi
+    parameter (pi = 3.141592653589_r8)
 
-        ! dlo_sect and dhi_sect have to be scaled by 1e-4
-        ! in order to fit parameters in the above calculation, if they are prescribed.
+    xmtot = duma
+    xntot = duma
 
-        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
-        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+    ! Compute bins based on number of bins. Originally sect02_new.
+    ! For MAM4, we prescribe the bin ranges as well.
+    ! dlo = dlo_um*1.0E-4_r8
+    ! dhi = dhi_um*1.0E-4_r8
+    ! xlo = log( dlo )
+    ! xhi = log( dhi )
+    ! dx  = (xhi - xlo)/nbin
+    ! do n = 1, nbin
+    !     dlo_sect(n) = exp( xlo + dx*(n-1) )
+    !     dhi_sect(n) = exp( xlo + dx*n )
+    ! end do
 
-        dgnum = dgnum_um*1.0E-4_r8
-        sx = log( sigmag )
-        x0 = log( dgnum )
-        x3 = x0 + 3.0_r8*sx*sx
-        sxroot2 = sx * sqrt( 2.0_r8 )
-        do n = 1, nbin
-            xlo = log( my_dlo_sect(n) )
-            xhi = log( my_dhi_sect(n) )
-            tlo = (xlo - x0)/sxroot2
-            thi = (xhi - x0)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            end if
-            xnum_sect(n) = xntot*dumfrac
-            tlo = (xlo - x3)/sxroot2
-            thi = (xhi - x3)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            endif
-            xmas_sect(n) = xmtot*dumfrac
-        enddo
+    ! dlo_sect and dhi_sect have to be scaled by 1e-4
+    ! in order to fit parameters in the above calculation, if they are prescribed.
+
+    my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
+    my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+
+    dgnum = dgnum_um*1.0E-4_r8
+    sx = log( sigmag )
+    x0 = log( dgnum )
+    x3 = x0 + 3.0_r8*sx*sx
+    sxroot2 = sx * sqrt( 2.0_r8 )
+    do n = 1, nbin
+       xlo = log( my_dlo_sect(n) )
+       xhi = log( my_dhi_sect(n) )
+       tlo = (xlo - x0)/sxroot2
+       thi = (xhi - x0)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       end if
+       xnum_sect(n) = xntot*dumfrac
+       tlo = (xlo - x3)/sxroot2
+       thi = (xhi - x3)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       endif
+       xmas_sect(n) = xmtot*dumfrac
+    enddo
+
   end subroutine sect02_mam4
+
 end module chemistry

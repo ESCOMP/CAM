@@ -115,18 +115,53 @@ use time_manager,   only: is_first_step, is_first_restart_step
 
    lchnk = state%lchnk
 
+   call cam_history_snapshot_activate('tphysbc_flx_heat', file_num)
    call outfld('tphysbc_flx_heat', flx_heat, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_flx_heat')
+
+   call cam_history_snapshot_activate('tphysbc_cmfmc', file_num)
    call outfld('tphysbc_cmfmc', cmfmc, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_cmfmc')
+
+   call cam_history_snapshot_activate('tphysbc_cmfcme', file_num)
    call outfld('tphysbc_cmfcme', cmfcme, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_cmfcme')
+
+   call cam_history_snapshot_activate('tphysbc_zdu', file_num)
    call outfld('tphysbc_zdu', zdu, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_zdu')
+
+   call cam_history_snapshot_activate('tphysbc_rliq', file_num)
    call outfld('tphysbc_rliq', rliq, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_rliq')
+
+   call cam_history_snapshot_activate('tphysbc_rice', file_num)
    call outfld('tphysbc_rice', rice, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_rice')
+
+   call cam_history_snapshot_activate('tphysbc_dlf', file_num)
    call outfld('tphysbc_dlf', dlf, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_dlf')
+
+   call cam_history_snapshot_activate('tphysbc_dlf2', file_num)
    call outfld('tphysbc_dlf2', dlf2, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_dlf2')
+
+   call cam_history_snapshot_activate('tphysbc_rliq2', file_num)
    call outfld('tphysbc_rliq2', rliq2, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_rliq2')
+
+   call cam_history_snapshot_activate('tphysbc_det_s', file_num)
    call outfld('tphysbc_det_s', det_s, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_det_s')
+
+   call cam_history_snapshot_activate('tphysbc_det_ice', file_num)
    call outfld('tphysbc_det_ice', det_ice, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_det_ice')
+
+   call cam_history_snapshot_activate('tphysbc_net_flx', file_num)
    call outfld('tphysbc_net_flx', net_flx, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysbc_net_flx')
 
    call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
@@ -163,10 +198,22 @@ use time_manager,   only: is_first_step
 
    lchnk = state%lchnk
 
+   call cam_history_snapshot_activate('tphysac_fh2o', file_num)
    call outfld('tphysac_fh2o', fh2o, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysac_fh2o')
+
+   call cam_history_snapshot_activate('tphysac_surfric', file_num)
    call outfld('tphysac_surfric', surfric, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysac_surfric')
+
+   call cam_history_snapshot_activate('tphysac_obklen', file_num)
    call outfld('tphysac_obklen', obklen, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysac_obklen')
+
+   call cam_history_snapshot_activate('tphysac_flx_heat', file_num)
    call outfld('tphysac_flx_heat', flx_heat, pcols, lchnk)
+   call cam_history_snapshot_deactivate('tphysac_flx_heat')
+
 
    call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
@@ -192,7 +239,7 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
      'flx',        'tphysbc_flx_heat',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cmfmc',        'tphysbc_cmfmc',         'unset',              'lev')
+     'cmfmc',        'tphysbc_cmfmc',         'unset',              'ilev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cmfcme',        'tphysbc_cmfcme',         'unset',              'lev')

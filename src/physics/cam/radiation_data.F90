@@ -975,6 +975,8 @@ contains
           enddo
        endif
 
+       phys_state(c)%rpdel(:ncol,:) = 1.0_r8 / phys_state(c)%pdel(:ncol,:)
+
        ! adjust temperatue input above tropopause for Fixed Dynamical Heating ....
        if (do_fdh) then
           pbuf => pbuf_get_chunk(pbuf2d, c)

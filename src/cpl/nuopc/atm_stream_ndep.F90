@@ -21,52 +21,46 @@ module atm_stream_ndep
   implicit none
   private
 
+  public :: stream_ndep_readnl    ! read runtime options
   public :: stream_ndep_init      ! position datasets for dynamic ndep
   public :: stream_ndep_interp    ! interpolates between two years of ndep file data
 
   private :: stream_ndep_check_units   ! Check the units and make sure they can be used
 
   ! The ndep stream is not needed for aquaplanet or simple model configurations.  It
-  ! is disabled by setting the namelist variable stream_ndep_data_filename to blank.
-  logical, public, protected :: use_ndep_stream = .true.
+  ! is disabled by setting the namelist variable stream_ndep_data_filename to 'UNSET' or empty string.
+  logical, public, protected :: ndep_stream_active = .false.
 
   type(shr_strdata_type) :: sdat_ndep                      ! input data stream
   logical, public        :: stream_ndep_is_initialized = .false.
   character(len=CS)      :: stream_varlist_ndep(2)
   type(ESMF_Clock)       :: model_clock
 
-  character(len=*), parameter :: sourcefile = &
-       __FILE__
+  character(len=*), parameter :: sourcefile = __FILE__
+
+  character(len=CL) :: stream_ndep_data_filename
+  character(len=CL) :: stream_ndep_mesh_filename
+  integer           :: stream_ndep_year_first ! first year in stream to use
+  integer           :: stream_ndep_year_last  ! last year in stream to use
+  integer           :: stream_ndep_year_align ! align stream_year_firstndep with
 
 !==============================================================================
 contains
 !==============================================================================
 
-  subroutine stream_ndep_init(model_mesh, model_clock, rc)
-    !
-    ! Initialize data stream information.
+  subroutine stream_ndep_readnl(nlfile)
 
     ! Uses:
-    use cam_instance     , only: inst_suffix
-    use shr_nl_mod       , only: shr_nl_find_group_name
-    use dshr_strdata_mod , only: shr_strdata_init_from_inline
+    use shr_nl_mod, only: shr_nl_find_group_name
 
     ! input/output variables
-    type(ESMF_CLock), intent(in)  :: model_clock
-    type(ESMF_Mesh) , intent(in)  :: model_mesh
-    integer         , intent(out) :: rc
+    character(len=*), intent(in) :: nlfile
 
     ! local variables
     integer                 :: nu_nml                 ! unit for namelist file
     integer                 :: nml_error              ! namelist i/o error flag
-    character(len=CL)       :: stream_ndep_data_filename
-    character(len=CL)       :: stream_ndep_mesh_filename
-    character(len=CL)       :: filein                 ! atm namelist file
-    integer                 :: stream_ndep_year_first ! first year in stream to use
-    integer                 :: stream_ndep_year_last  ! last year in stream to use
-    integer                 :: stream_ndep_year_align ! align stream_year_firstndep with
     integer                 :: ierr
-    character(*), parameter :: subName = "('stream_ndep_init')"
+    character(*), parameter :: subName = "('stream_ndep_readnl')"
     !-----------------------------------------------------------------------
 
     namelist /ndep_stream_nl/      &
@@ -75,8 +69,6 @@ contains
          stream_ndep_year_first,    &
          stream_ndep_year_last,     &
          stream_ndep_year_align
-
-    rc = ESMF_SUCCESS
 
     ! Default values for namelist
     stream_ndep_data_filename = ' '
@@ -90,10 +82,9 @@ contains
 
     ! Read ndep_stream namelist
     if (masterproc) then
-       filein = "atm_in" // trim(inst_suffix)
-       open( newunit=nu_nml, file=trim(filein), status='old', iostat=nml_error )
+       open( newunit=nu_nml, file=trim(nlfile), status='old', iostat=nml_error )
        if (nml_error /= 0) then
-          call endrun(subName//': ERROR opening '//trim(filein)//errMsg(sourcefile, __LINE__))
+          call endrun(subName//': ERROR opening '//trim(nlfile)//errMsg(sourcefile, __LINE__))
        end if
        call shr_nl_find_group_name(nu_nml, 'ndep_stream_nl', status=nml_error)
        if (nml_error == 0) then
@@ -101,8 +92,6 @@ contains
           if (nml_error /= 0) then
              call endrun(' ERROR reading ndep_stream_nl namelist'//errMsg(sourcefile, __LINE__))
           end if
-       else
-          call endrun(' ERROR finding ndep_stream_nl namelist'//errMsg(sourcefile, __LINE__))
        end if
        close(nu_nml)
     endif
@@ -117,9 +106,10 @@ contains
     call mpi_bcast(stream_ndep_year_align, 1, mpi_integer, 0, mpicom, ierr)
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_align")
 
+    ndep_stream_active = len_trim(stream_ndep_data_filename)>0 .and. stream_ndep_data_filename/='UNSET'
+
     ! Check whether the stream is being used.
-    if (stream_ndep_data_filename == ' '.or.stream_ndep_data_filename == 'UNSET') then
-       use_ndep_stream = .false.
+    if (.not.ndep_stream_active) then
        if (masterproc) then
           write(iulog,'(a)') ' '
           write(iulog,'(a)') 'NDEP STREAM IS NOT USED.'
@@ -140,6 +130,25 @@ contains
        write(iulog,'(a)'   )  ' '
     endif
 
+  end subroutine stream_ndep_readnl
+
+  subroutine stream_ndep_init(model_mesh, model_clock, rc)
+    use dshr_strdata_mod, only: shr_strdata_init_from_inline
+
+    ! input/output variables
+    type(ESMF_CLock), intent(in)  :: model_clock
+    type(ESMF_Mesh) , intent(in)  :: model_mesh
+    integer         , intent(out) :: rc
+
+    ! local variables
+    character(*), parameter :: subName = "('stream_ndep_init')"
+
+    rc = ESMF_SUCCESS
+    if (.not.ndep_stream_active) then
+       return
+    end if
+    !
+    ! Initialize data stream information.
     ! Read in units
     call stream_ndep_check_units(stream_ndep_data_filename)
 
@@ -237,6 +246,11 @@ contains
     integer :: mcdate  ! Current model date (yyyymmdd)
     real(r8), pointer :: dataptr1d_nhx(:)
     real(r8), pointer :: dataptr1d_noy(:)
+
+    ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
+    ! expects units of kgN/m2/sec
+    real(r8), parameter :: scale_ndep = .001_r8
+
     !-----------------------------------------------------------------------
 
     ! Advance sdat stream
@@ -260,8 +274,8 @@ contains
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
-          cam_out(c)%nhx_nitrogen_flx(i) = dataptr1d_nhx(g)
-          cam_out(c)%noy_nitrogen_flx(i) = dataptr1d_noy(g)
+          cam_out(c)%nhx_nitrogen_flx(i) = dataptr1d_nhx(g) * scale_ndep
+          cam_out(c)%noy_nitrogen_flx(i) = dataptr1d_noy(g) * scale_ndep
           g = g + 1
        end do
     end do

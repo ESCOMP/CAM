@@ -18,7 +18,6 @@ module prim_advection_mod
 !
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nlev, np, qsize, nc
-  use physconst,              only: cpair
   use derivative_mod,         only: derivative_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -948,7 +947,7 @@ contains
     use vertremap_mod,          only: remap1
     use hybrid_mod,             only: hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only: fvm_struct
-    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: use_cslam, ntrac
     use dimensions_mod,         only: kord_tr,kord_tr_cslam
     use cam_logfile,            only: iulog
     use physconst,              only: pi
@@ -1076,7 +1075,7 @@ contains
       call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
     enddo
 
-    if (ntrac>0) then
+    if (use_cslam) then
       !
       ! vertical remapping of CSLAM tracers
       !

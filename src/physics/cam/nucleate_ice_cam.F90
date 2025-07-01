@@ -69,7 +69,7 @@ integer :: &
    naai_hom_idx = -1
 
 integer :: &
-   ast_idx   = -1
+   aist_idx = -1
 
 integer :: &
     qsatfac_idx = -1
@@ -86,8 +86,8 @@ integer :: idxdst3  = -1 ! index in aerosol list for dust3
 integer :: idxdst4  = -1 ! index in aerosol list for dust4
 integer :: idxbcphi = -1 ! index in aerosol list for Soot (BCPHIL)
 
-! modal aerosols
-logical :: clim_modal_aero = .false.
+! MODAL or CARMA aerosols
+logical :: clim_modal_carma = .false.
 logical :: prog_modal_aero = .false.
 
 logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
@@ -169,7 +169,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    integer :: ierr
    integer :: ispc, ibin
    integer :: idxtmp
-   integer :: nmodes
+   integer :: nmodes, nbins
 
    character(len=*), parameter :: routine = 'nucleate_ice_cam_init'
    logical :: history_cesm_forcing
@@ -179,12 +179,18 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    !--------------------------------------------------------------------------------------------
    call phys_getopts(prog_modal_aero_out = prog_modal_aero, history_cesm_forcing_out = history_cesm_forcing)
 
+   ! clim_modal_aero determines whether modal or carma aerosols are used in the climate calculation.
+   ! The modal aerosols can be either prognostic or prescribed.
+   call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
+
+   clim_modal_carma = (nmodes > 0) .or. (nbins > 0)
+
    mincld     = mincld_in
    bulk_scale = bulk_scale_in
 
    lq(:) = .false.
 
-   if (prog_modal_aero.and.use_preexisting_ice) then
+   if (clim_modal_carma.and.use_preexisting_ice) then
 
       if (.not. present(aero_props)) then
          call endrun(routine//' :  aero_props must be present')
@@ -263,52 +269,52 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
 
    if (cam_physpkg_is("cam7")) then
       ! Updates for PUMAS v1.21+
-      call addfld('NIHFTEN',  (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to homogenous freezing')
-      call addfld('NIDEPTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to deposition nucleation')
-      call addfld('NIIMMTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to immersion freezing')
-      call addfld('NIMEYTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to meyers deposition')
+      call addfld('NIHFTEN',  (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to homogenous freezing', sampled_on_subcycle=.true.)
+      call addfld('NIDEPTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to deposition nucleation', sampled_on_subcycle=.true.)
+      call addfld('NIIMMTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to immersion freezing', sampled_on_subcycle=.true.)
+      call addfld('NIMEYTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to meyers deposition', sampled_on_subcycle=.true.)
    else
-      call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to homogenous freezing')
-      call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to deposition nucleation')
-      call addfld('NIIMM', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to immersion freezing')
-      call addfld('NIMEY', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to meyers deposition')
+      call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to homogenous freezing', sampled_on_subcycle=.true.)
+      call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to deposition nucleation', sampled_on_subcycle=.true.)
+      call addfld('NIIMM', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to immersion freezing', sampled_on_subcycle=.true.)
+      call addfld('NIMEY', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to meyers deposition', sampled_on_subcycle=.true.)
    endif
 
-   call addfld('NIREGM',(/ 'lev' /), 'A', 'C', 'Ice Nucleation Temperature Threshold for Regime')
-   call addfld('NISUBGRID',(/ 'lev' /), 'A', '', 'Ice Nucleation subgrid saturation factor')
-   call addfld('NITROP_PD',(/ 'lev' /), 'A', '', 'Chemical Tropopause probability')
+   call addfld('NIREGM',(/ 'lev' /), 'A', 'C', 'Ice Nucleation Temperature Threshold for Regime', sampled_on_subcycle=.true.)
+   call addfld('NISUBGRID',(/ 'lev' /), 'A', '', 'Ice Nucleation subgrid saturation factor', sampled_on_subcycle=.true.)
+   call addfld('NITROP_PD',(/ 'lev' /), 'A', '', 'Chemical Tropopause probability', sampled_on_subcycle=.true.)
    if ( history_cesm_forcing ) then
       call add_default('NITROP_PD',8,' ')
    endif
 
    if (use_preexisting_ice) then
-      call addfld('fhom',      (/ 'lev' /), 'A','fraction', 'Fraction of cirrus where homogeneous freezing occur'   )
-      call addfld ('WICE',     (/ 'lev' /), 'A','m/s','Vertical velocity Reduction caused by preexisting ice'  )
-      call addfld ('WEFF',     (/ 'lev' /), 'A','m/s','Effective Vertical velocity for ice nucleation' )
+      call addfld('fhom',      (/ 'lev' /), 'A','fraction', 'Fraction of cirrus where homogeneous freezing occur', sampled_on_subcycle=.true.)
+      call addfld ('WICE',     (/ 'lev' /), 'A','m/s','Vertical velocity Reduction caused by preexisting ice', sampled_on_subcycle=.true.)
+      call addfld ('WEFF',     (/ 'lev' /), 'A','m/s','Effective Vertical velocity for ice nucleation', sampled_on_subcycle=.true.)
 
       if (cam_physpkg_is("cam7")) then
          ! Updates for PUMAS v1.21+
-         call addfld ('INnso4TEN',   (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency so4 (in) to ice_nucleation')
-         call addfld ('INnbcTEN',    (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency bc  (in) to ice_nucleation')
-         call addfld ('INndustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (in) ice_nucleation')
-         call addfld ('INondustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (out) from ice_nucleation')
+         call addfld ('INnso4TEN',   (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency so4 (in) to ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INnbcTEN',    (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency bc  (in) to ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INndustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (in) ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INondustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (out) from ice_nucleation', sampled_on_subcycle=.true.)
          call addfld ('INhetTEN',    (/ 'lev' /), 'A','1/m3/s', &
-              'Tendency for contribution for in-cloud ice number density increase by het nucleation in ice cloud')
+              'Tendency for contribution for in-cloud ice number density increase by het nucleation in ice cloud', sampled_on_subcycle=.true.)
          call addfld ('INhomTEN',    (/ 'lev' /), 'A','1/m3/s', &
-              'Tendency for contribution for in-cloud ice number density increase by hom nucleation in ice cloud')
+              'Tendency for contribution for in-cloud ice number density increase by hom nucleation in ice cloud', sampled_on_subcycle=.true.)
       else
-         call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3','Number Concentration so4 (in) to ice_nucleation')
-         call addfld ('INnbc',    (/ 'lev' /), 'A','1/m3','Number Concentration bc  (in) to ice_nucleation')
-         call addfld ('INndust',  (/ 'lev' /), 'A','1/m3','Number Concentration dust (in) ice_nucleation')
-         call addfld ('INondust',  (/ 'lev' /), 'A','1/m3','Number Concentration dust (out) from ice_nucleation')
+         call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3','Number Concentration so4 (in) to ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INnbc',    (/ 'lev' /), 'A','1/m3','Number Concentration bc  (in) to ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INndust',  (/ 'lev' /), 'A','1/m3','Number Concentration dust (in) ice_nucleation', sampled_on_subcycle=.true.)
+         call addfld ('INondust',  (/ 'lev' /), 'A','1/m3','Number Concentration dust (out) from ice_nucleation', sampled_on_subcycle=.true.)
          call addfld ('INhet',    (/ 'lev' /), 'A','1/m3', &
-              'contribution for in-cloud ice number density increase by het nucleation in ice cloud')
+              'contribution for in-cloud ice number density increase by het nucleation in ice cloud', sampled_on_subcycle=.true.)
          call addfld ('INhom',    (/ 'lev' /), 'A','1/m3', &
-              'contribution for in-cloud ice number density increase by hom nucleation in ice cloud')
+              'contribution for in-cloud ice number density increase by hom nucleation in ice cloud', sampled_on_subcycle=.true.)
       endif
 
-      call addfld ('INFrehom', (/ 'lev' /), 'A','frequency','hom IN frequency ice cloud')
-      call addfld ('INFreIN',  (/ 'lev' /), 'A','frequency','frequency of ice nucleation occur')
+      call addfld ('INFrehom', (/ 'lev' /), 'A','frequency','hom IN frequency ice cloud', sampled_on_subcycle=.true.)
+      call addfld ('INFreIN',  (/ 'lev' /), 'A','frequency','frequency of ice nucleation occur', sampled_on_subcycle=.true.)
 
       if (hist_preexisting_ice) then
          call add_default ('WSUBI   ', 1, ' ')  ! addfld/outfld calls are in microp_aero
@@ -326,13 +332,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
       end if
    end if
 
-   ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
-   ! The modal aerosols can be either prognostic or prescribed.
-   call rad_cnst_get_info(0, nmodes=nmodes)
-
-   clim_modal_aero = (nmodes > 0)
-
-   if (.not. clim_modal_aero) then
+   if (.not. clim_modal_carma) then
 
       ! Props needed for BAM number concentration calcs.
 
@@ -360,7 +360,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
         mincld)
 
    ! get indices for fields in the physics buffer
-   ast_idx = pbuf_get_index('AST')
+   aist_idx = pbuf_get_index('AIST')
 
 end subroutine nucleate_ice_cam_init
 
@@ -400,8 +400,7 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), pointer :: pmid(:,:)       ! pressure at layer midpoints (pa)
 
    real(r8), pointer :: aer_mmr(:,:)    ! aerosol mass mixing ratio
-
-   real(r8), pointer :: ast(:,:)
+   real(r8), pointer :: aist(:,:)
    real(r8) :: icecldf(pcols,pver)  ! ice cloud fraction
    real(r8), pointer :: qsatfac(:,:)      ! Subgrid cloud water saturation scaling factor.
 
@@ -471,6 +470,10 @@ subroutine nucleate_ice_cam_calc( &
 
    real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
 
+   integer :: nbins, nmaxspc
+   real(r8), allocatable :: amb_num_bins(:,:,:)
+   real(r8), allocatable :: size_wght(:,:,:,:)
+
    !-------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -482,9 +485,20 @@ subroutine nucleate_ice_cam_calc( &
    ni    => state%q(:,:,numice_idx)
    pmid  => state%pmid
 
+   if (present(aero_props)) then
+      nbins = aero_props%nbins()
+      nmaxspc = maxval(aero_props%nspecies())
+
+      allocate(size_wght(ncol,pver,nbins,nmaxspc))
+      allocate(amb_num_bins(ncol,pver,nbins))
+   else
+      nbins = 0
+      nmaxspc = 0
+   endif
+
    rho(:ncol,:) = pmid(:ncol,:)/(rair*t(:ncol,:))
 
-   if (clim_modal_aero) then
+   if (clim_modal_carma) then
 
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
 
@@ -509,9 +523,8 @@ subroutine nucleate_ice_cam_calc( &
    end if
 
    itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
-   icecldf(:ncol,:pver) = ast(:ncol,:pver)
+   call pbuf_get_field(pbuf, aist_idx, aist, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   icecldf(:ncol,:pver) = aist(:ncol,:pver)
 
    ! naai and naai_hom are the outputs from this parameterization
    call pbuf_get_field(pbuf, naai_idx, naai)
@@ -595,7 +608,7 @@ subroutine nucleate_ice_cam_calc( &
    sulf_num_tot_col = 0._r8
    soot_num_col = 0._r8
 
-   if (clim_modal_aero) then
+   if (clim_modal_carma) then
 
       if (.not.(present(aero_props).and.present(aero_state))) then
          call endrun('nucleate_ice_cam_calc: aero_props and aero_state must be present')
@@ -605,14 +618,31 @@ subroutine nucleate_ice_cam_calc( &
       call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, ncol, pver, rho, &
                                            dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
 
+      do m = 1, aero_props%nbins()
+         call aero_state%get_ambient_num(m, amb_num)
+         amb_num_bins(:ncol,:,m) = amb_num(:ncol,:)
+         do l = 1, aero_props%nspecies(m)
+            call aero_props%species_type(m, l, spectype)
+            call aero_state%icenuc_size_wght( m, ncol, pver, spectype, use_preexisting_ice, size_wght(:,:,m,l))
+
+            !size_wght(:ncol,:,m,l) = wght(:ncol,:)
+         end do
+      end do
+
    else
       ! for bulk model
-      dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
-                            + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
-                            + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
-      sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
-      soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      if (idxdst1 > 0 .and. idxdst2 > 0 .and. idxdst3 > 0 .and. idxdst4 > 0) then
+         dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
+                                 + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
+                                 + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
+      end if
+      if (idxsul > 0) then
+         sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
+      end if
+      if (idxbcphi > 0) then
+         soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
+      end if
    endif
 
    kloop: do k = top_lev, pver
@@ -658,7 +688,7 @@ subroutine nucleate_ice_cam_calc( &
             ! in the next timestep and will supress homogeneous freezing.
 
 
-            if (prog_modal_aero .and. use_preexisting_ice) then
+            if (clim_modal_carma .and. use_preexisting_ice) then
 
                ! compute tendencies for transported aerosol constituents
                ! and update not-transported constituents
@@ -669,10 +699,7 @@ subroutine nucleate_ice_cam_calc( &
 
                      ! constituents of this bin will need to be updated
 
-                     call aero_state%get_ambient_num(m, amb_num)
-                     call aero_state%get_cldbrne_num(m, cld_num)
-
-                     if (amb_num(i,k)>0._r8) then
+                     if (amb_num_bins(i,k,m)>0._r8) then
                         delmmr_sum = 0._r8
                         delnum_sum = 0._r8
 
@@ -681,7 +708,8 @@ subroutine nucleate_ice_cam_calc( &
                            if (aero_props%icenuc_updates_mmr(m,l)) then
 
                               call aero_props%species_type(m, l, spectype)
-                              call aero_state%icenuc_size_wght( m, i,k, spectype, use_preexisting_ice, wght)
+
+                              wght = size_wght(i,k,m,l)
 
                               if (wght>0._r8) then
 
@@ -752,7 +780,7 @@ subroutine nucleate_ice_cam_calc( &
             ! particles. It may not represent the proper saturation threshold for
             ! nucleation, and wsubi from CLUBB is probably not representative of
             ! wave driven varaibility in the polar stratosphere.
-            if (nucleate_ice_use_troplev .and. clim_modal_aero) then
+            if (nucleate_ice_use_troplev .and. clim_modal_carma) then
                if ((k < troplev(i)) .and. (nucleate_ice_strat > 0._r8) .and. (oso4_num > 0._r8)) then
                   dso4_num = max(0._r8, (nucleate_ice_strat*so4_num_st_cr_tot - oso4_num) * 1e6_r8 / rho(i,k))
                   naai(i,k) = naai(i,k) + dso4_num
@@ -854,7 +882,7 @@ subroutine nucleate_ice_cam_calc( &
       end do iloop
    end do kloop
 
-   if (.not. clim_modal_aero) then
+   if (.not. clim_modal_carma) then
       deallocate( &
            naer2, &
            maerosol)
@@ -898,6 +926,13 @@ subroutine nucleate_ice_cam_calc( &
       end if
       call outfld('INFrehom',INFrehom,pcols,lchnk)
       call outfld('INFreIN ',INFreIN, pcols,lchnk)
+   end if
+
+   if (allocated(size_wght)) then
+      deallocate(size_wght)
+   end if
+   if (allocated(amb_num_bins)) then
+      deallocate(amb_num_bins)
    end if
 
 end subroutine nucleate_ice_cam_calc

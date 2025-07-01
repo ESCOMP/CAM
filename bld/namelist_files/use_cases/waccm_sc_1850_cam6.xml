@@ -88,4 +88,7 @@
  'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
 </fexcl1>
 
+<!-- for prescribed nitrogen deposition fluxes -->
+<sim_year>1850</sim_year>
+
 </namelist_defaults>

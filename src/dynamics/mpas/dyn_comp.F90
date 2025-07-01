@@ -11,7 +11,7 @@ use constituents,       only: pcnst, cnst_name, cnst_is_a_water_species, cnst_re
 use const_init,         only: cnst_init_default
 
 use cam_control_mod,    only: initial_run
-use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
+use cam_initfiles,      only: initial_file_get_id, topo_file_get_id, pertlim
 
 use cam_grid_support,   only: cam_grid_id, &
                               cam_grid_get_latvals, cam_grid_get_lonvals
@@ -38,7 +38,7 @@ use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
 
-use phys_control,       only: use_gw_front, use_gw_front_igw
+use phys_control,       only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
 
 implicit none
 private
@@ -234,6 +234,9 @@ end type dyn_export_t
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
 
+! Index of vorticity in physics buffer for the "moving mountain" gravity wave scheme.
+integer, protected, public :: vort4gw_idx = -1
+
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
@@ -321,6 +324,11 @@ subroutine dyn_register()
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
    end if
 
+   if (use_gw_movmtn_pbl) then
+      ! Add vorticity field to physics buffer for the "moving mountain" gravity wave scheme.
+      ! This field will be updated during dynamics-physics coupling.
+      call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols, pver/), vort4gw_idx)
+   end if
 end subroutine dyn_register
 
 !=========================================================================================
@@ -813,6 +821,11 @@ subroutine read_inidat(dyn_in)
 
    logical  :: readvar
 
+   integer                          :: rndm_seed_sz
+   integer, allocatable             :: rndm_seed(:)
+   real(r8)                         :: pertval
+   integer                          :: nc
+
    character(len=shr_kind_cx) :: str
 
    type(mpas_pool_type), pointer :: mesh_pool
@@ -1081,6 +1094,29 @@ subroutine read_inidat(dyn_in)
          theta(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
       else
          call endrun(subname//': failed to read theta from initial file')
+      end if
+
+      ! optionally introduce random perturbations to theta values
+      if (pertlim.ne.0.0_r8) then
+         if (masterproc) then
+            write(iulog,*) trim(subname), ': Adding random perturbation bounded', &
+               'by +/- ', pertlim, ' to initial theta field'
+         end if
+
+         call random_seed(size=rndm_seed_sz)
+         allocate(rndm_seed(rndm_seed_sz))
+
+         do nc = 1,nCellsSolve
+            rndm_seed = glob_ind(nc)
+            call random_seed(put=rndm_seed)
+            do kk = 1,plev
+               call random_number(pertval)
+               pertval = 2.0_r8*pertlim*(0.5_r8 - pertval)
+               theta(kk,nc) = theta(kk,nc)*(1.0_r8 + pertval)
+            end do
+         end do
+
+         deallocate(rndm_seed)
       end if
 
       ! read rho

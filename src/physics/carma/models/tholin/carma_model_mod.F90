@@ -102,7 +102,7 @@ contains
     integer, intent(out)               :: rc        !! return code, negative indicates failure
     
     ! Local variables
-    real(kind=f)                       :: RHO_THOLIN = 0.64     ! density of tholin particles (g/cm)
+    real(kind=f)                       :: RHO_THOLIN = 0.64_f   ! density of tholin particles (g/cm)
     real(kind=f), parameter            :: tholin_rmin = 1.e-7_f ! dust minimum radius (cm)
     real(kind=f), parameter            :: tholin_vmrat = 2.5_f  ! dust volume ratio
 
@@ -509,7 +509,7 @@ contains
         carma_emis_ilev_max = carma_emis_nLevs
 
         do ilev = 1, carma_emis_nLevs
-          if (carma_emis_rate(ilev) <= 0.0) then
+          if (carma_emis_rate(ilev) <= 0.0_r8) then
             carma_emis_ilev_min  = ilev + 1
           else
             exit  
@@ -517,7 +517,7 @@ contains
         end do
 
         do ilev = carma_emis_nLevs, 1, -1
-          if (carma_emis_rate(ilev) <= 0.0) then
+          if (carma_emis_rate(ilev) <= 0.0_r8) then
             carma_emis_ilev_max  = ilev - 1
           else
             exit  
@@ -639,4 +639,4 @@ contains
     return
   end subroutine CARMA_WetDeposition 
   
-end module
+end module carma_model_mod

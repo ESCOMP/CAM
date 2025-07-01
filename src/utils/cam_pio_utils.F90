@@ -132,7 +132,7 @@ contains
            latidx, lonidx)
       if (present(dimnames)) then
         if (trim(dimnames(1)) == 'lon') then
-          start(1) = lonidx ! First dim always lon for Eulerian dycore
+          start(1) = lonidx
           ! This could be generalized -- for now, stick with single column
           kount(1) = 1
         else
@@ -1133,12 +1133,14 @@ contains
 
     integer :: ierr
 
+    if(pio_iotask_rank(pio_subsystem) == 0) then
+       write(iulog,*) 'Opening existing file ', trim(fname), file%fh
+    end if
+
     ierr = pio_openfile(pio_subsystem, file, pio_iotype, fname, mode)
 
     if(ierr/= PIO_NOERR) then
        call endrun('Failed to open '//trim(fname)//' to read')
-    else if(pio_iotask_rank(pio_subsystem) == 0) then
-       write(iulog,*) 'Opened existing file ', trim(fname), file%fh
     end if
 
   end subroutine cam_pio_openfile

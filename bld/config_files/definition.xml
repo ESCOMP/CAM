@@ -26,8 +26,8 @@ Switch specifies whether CAM is being built by the CCSM sequential scripts.  0 =
 <entry id="cpl" valid_values="mct,nuopc" value="mct" >
 Coupling framework: mct or nuopc.  Default: mct.
 </entry>
-<entry id="dyn" valid_values="eul,fv,fv3,se,mpas" value="">
-Dynamics package: eul, fv, fv3, se, or mpas.
+<entry id="dyn" valid_values="fv,fv3,se,mpas" value="">
+Dynamics package: fv, fv3, se, or mpas.
 </entry>
 <entry id="waccm_phys" valid_values="0,1" value="0">
 Switch to turn on waccm physics: 0 => no, 1 => yes.
@@ -46,10 +46,12 @@ Switch to turn on analytic initial conditions for the dynamics state:
   0 => no
   1 => yes.
 </entry>
-<entry id="model_top" valid_values="none,lt,mt" value="none">
+<entry id="model_top" valid_values="none,lt,mt,ht,xt" value="none">
 Model top specifier - set by compset definition
   lt: ~ 40 km top
   mt: ~ 80 km top
+  ht: ~ 140 km top
+  xt: ~ 500 km top
 </entry>
 <entry id="waccmx" valid_values="0,1" value="0">
 Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
@@ -57,19 +59,19 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="phys" valid_values="cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
-Physics package: cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
+<entry id="phys" valid_values="cam4,cam5,cam6,cam7,held_suarez,adiabatic,kessler,tj2016,grayrad" value="">
+Physics package: cam4, cam5, cam6, cam7, held_suarez, adiabatic, kessler, tj2016, grayrad.
 </entry>
 <entry id="hemco" valid_values="0,1" value="0">
 Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.
 </entry>
-<entry id="microphys" valid_values="rk,mg1,mg2,mg3,pumas,spcam_m2005,spcam_sam1mom,none" value="">
+<entry id="microphys" valid_values="rk,mg1,mg2,mg3,pumas,none" value="">
 Microphysics package: rk (Rasch and Kristjansson), mg1 (Morrison and
 Gettelman two moment scheme CAM5.1), mg2 (Morrison and Gettelman second
-version CAM6), mg3 (MG scheme 3rd version, graupel), PUMAS, SPCAM_m2005, SPCAM_sam1mom.
+version CAM6), mg3 (MG scheme 3rd version, graupel), PUMAS.
 </entry>
-<entry id="macrophys" valid_values="rk,park,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
-Macrophysics package: RK, Park, CLUBB_SGS, SPCAM_sam1mom, SPCAM_m2005.
+<entry id="macrophys" valid_values="rk,park,clubb_sgs,none" value="">
+Macrophysics package: RK, Park, CLUBB_SGS.
 </entry>
 <entry id="clubb_sgs" valid_values="0,1" value="0">
 Switch to turn on CLUBB_SGS package: 0 => no, 1 => yes
@@ -83,28 +85,26 @@ Switch to turn on UNICON package: 0 => off, 1 => on
 <entry id="clubb_do_adv" valid_values="0,1" value="0">
 Switch to turn on/off advecting CLUBB moments: 0 => no, 1 => yes
 </entry>
-<entry id="zmconv_org" valid_values="0,1" value="0">
-Switch to turn on/off parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
-on Mapes and Neale (2011): 0 => no, 1 => yes
-</entry>
-<entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
+<entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,none" value="">
 PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
- (Holtslag, Boville, and Rasch), clubb_sgs, spcam_sam1om, spcam_m2005, none.
+ (Holtslag, Boville, and Rasch), clubb_sgs, none.
 </entry>
 <entry id="rad" valid_values="rrtmgp,rrtmg,camrt,none" value="">
 Radiative transfer calculation:
 camrt (CAM4 RT package), rrtmg (RRTMG package from AER), rrtmgp (updated version).
 </entry>
-<entry id="carma" valid_values="none,bc_strat,cirrus,cirrus_dust,dust,meteor_impact,meteor_smoke,mixed_sulfate,pmc,pmc_sulfate,sea_salt,sulfate,tholin,test_detrain,test_growth,test_passive,test_radiative,test_swelling,test_tracers,test_tracers2" value="none">
+<entry id="carma" valid_values="none,bc_strat,cirrus,cirrus_dust,dust,meteor_impact,meteor_smoke,mixed_sulfate,pmc,pmc_sulfate,sea_salt,sulfate,tholin,test_detrain,test_growth,test_passive,test_radiative,test_swelling,test_tracers,test_tracers2,trop_strat_soa1,trop_strat_soa5" value="none">
 CARMA sectional microphysics:
 none (disabled), bc_strat (Stratospheric Black Carbon), cirrus (Cirrus Clouds),
 cirrus_dust (Cirrus Clouds with dust), dust (Dust), meteor_impact (Meteor Impact),
 meteor_smoke (Meteor Smoke), mixed_sulfate (Meteor Smoke and Sulfate), pmc (Polar Mesospheric Clouds), pmc_sulfate (PMC and Sulfate), sea_salt (Sea Salt),
 sulfate (Sulfate Aerosols), tholin (early earth haze), test_detrain (Detrainment), test_growth (Particle Growth), test_passive (Passive Dust),
-test_radiative (Radiatively Active Dust), test_swelling (Sea Salt), test_tracers (Asian Monsoon), test_tracers2 (Guam).
+test_radiative (Radiatively Active Dust), test_swelling (Sea Salt), test_tracers (Asian Monsoon), test_tracers2 (Guam),
+trop_strat_soa1 (Trop Strat Aerosols SOA1),
+trop_strat_soa5 (Trop Strat Aerosols SOA5)
 </entry>
-<entry id="chem" valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_ts4,trop_strat_mam5_vbs,trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem_mam4" value="">
-  Chemistry package: none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_ts4,trop_strat_mam5_vbs,trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem_mam4
+<entry id="chem" valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_ts4,trop_strat_mam5_vbs,trop_strat_mam5_vbsext,trop_strat_noaero,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,waccm_t4ma_mam5,waccm_ma_noaero,geoschem_mam4" value="">
+  Chemistry package: none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_ts4,trop_strat_mam5_vbs,trop_strat_mam5_vbsext,trop_strat_noaero,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,waccm_t4ma_mam5,waccm_ma_noaero,geoschem_mam4
 </entry>
 <entry id="prog_species" valid_values="DST,SSLT,SO4,GHG,OC,BC,CARBON16" value="" list="1">
 Prognostic mozart species packages: list of any subset of the following: DST,SSLT,SO4,GHG,OC,BC,CARBON16
@@ -127,10 +127,10 @@ Chemistry source directory generated by the chemistry preprocessor; contains F90
 <entry id="chem_src_dir" value="">
 Chemistry source directory; contains F90 files.
 </entry>
-<entry id="ocn" valid_values="docn,dom,som,socn,aquaplanet,pop,mom" value="docn">
+<entry id="ocn" valid_values="docn,dom,som,socn,aquaplanet,pop,mom,mpaso" value="docn">
 Use data ocean model (docn or dom), stub ocean (socn), or aqua planet ocean
 (aquaplanet) in cam build.  When built from the CESM scripts the value of
-ocn may be set to pop.  This doesn't impact how CAM is built, only how
+ocn may be set to pop, mom, or mpaso.  This doesn't impact how CAM is built, only how
 attributes are matched when searching for namelist defaults.  If ocn is set
 to som then the docn component is used.
 </entry>
@@ -148,15 +148,15 @@ Modifications that allow perturbation growth testing: 0=off, 1=on.
 </entry>
 <entry id="scam" valid_values="0,1" value="0">
 Configure CAM for single column mode and specify an IOP: 0=no, 1=yes.
-This option only supported for the Eulerian and SE dycores.
+This option only supported for the SE dycore.
 </entry>
 <entry id="scam_iop" valid_values="arm95,arm97,atex,bomex,cgilss11,cgilss12,cgilss6,dycomsrf01,dycomsrf02,gateiii,mpace,rico,sas,sparticus,togaii,twp06,camfrc,none" value="none">
 Single column IOP
-Supported for Eulerian and SE dycores.
+Only supported for SE dycore.
 </entry>
 <entry id="camiop" valid_values="0,1" value="0">
 Configure CAM to generate an IOP file that can be used to drive SCAM: 0=no, 1=yes.
-Supported for Eulerian and SE dycores.
+Only supported for SE dycore.
 </entry>
 <entry id="hgrid" value="">
 Horizontal grid specifier.  The recognized values depend on
@@ -191,18 +191,9 @@ Total number of advected test tracers.
 <entry id="age_of_air_trcs" valid_values="0,1" value="0">
 Switch on (off) age of air tracers: 0=off, 1=on.
 </entry>
-<entry id="max_n_rad_cnst" value="30">
+<entry id="max_n_rad_cnst" value="80">
 Maximum number of constituents that are radiatively active or in any one
 diagnostic list.
-</entry>
-<entry id="trm" value="1">
-Maximum Fourier wavenumber.
-</entry>
-<entry id="trn" value="1">
-Highest degree of the Legendre polynomials for m=0.
-</entry>
-<entry id="trk" value="1">
-Highest degree of the associated Legendre polynomials.
 </entry>
 <entry id="pcols" value="16">
 Maximum number of columns in a chunk (physics data structure).
@@ -313,24 +304,6 @@ in Perl's $OSNAME variable.  This parameter allows the user to override
 that setting to allow for cross-compilation, and for instances where the
 $OSNAME value is too generic.  For example, currently on both cray-xt and
 bluegene systems $OSNAME has the value "linux".
-</entry>
-<entry id="spcam_clubb_sgs" valid_values="0,1" value="0">
-Switch to turn on SPCAM version of CLUBB_SGS package: 0 => no, 1 => yes
-</entry>
-<entry id="spcam_nx" value="4">
-SPCAM number of grid points in x
-</entry>
-<entry id="spcam_ny" value="1">
-SPCAM number of grid points in y
-</entry>
-<entry id="spcam_nz" value="1">
-SPCAM number of grid points in z
-</entry>
-<entry id="spcam_dx" value="1">
-SPCAM horizontal grid spacing, m
-</entry>
-<entry id="spcam_dt" value="1">
-SPCAM time step, s
 </entry>
 
 </config_definition>
