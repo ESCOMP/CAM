@@ -7023,7 +7023,7 @@ end subroutine print_active_fldlst
 
   subroutine cam_history_snapshot_activate(name, tape)
 
-  ! This subroutine activates (set aftflag to true) for the requested tape number
+  ! This subroutine activates (set actflag to true) for the requested tape number
 
   character(len=*), intent(in) :: name
   integer,          intent(in) :: tape
