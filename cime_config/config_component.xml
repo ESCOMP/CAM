@@ -12,7 +12,7 @@
     <desc atm="CAM60[%1PCT][%4xCO2][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
     <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -46,10 +46,6 @@
     <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
     <desc option="MT"           >CAM mid top model </desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
-    <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
-    <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
-    <desc option="SPCAMM"       >CAM super-parameterized CAM double moment m2005 SAM microphysics </desc>
-    <desc option="SPCAMCLBM"    >CAM super-parameterized CAM double moment m2005 SAM microphysics using CLUBB </desc>
     <desc option="TMOZ"         >CAM tropospheric chemistry with bulk aerosols:</desc>
 
   <!--
@@ -77,7 +73,6 @@
     ===============
    -->
     <desc option="ADIAB"        >CAM dry adiabatic configurarion (no physics forcing):</desc>
-    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
     <desc option="GRAYRAD"      >CAM moist simple model (Frierson, 2006):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
@@ -111,10 +106,9 @@
 
   <entry id="CAM_DYCORE">
     <type>char</type>
-    <valid_values>eul,fv,fv3,se,mpas</valid_values>
+    <valid_values>fv,fv3,se,mpas</valid_values>
     <default_value>fv</default_value>
     <values match="last">
-      <value grid="a%T[1-9]" >eul</value>
       <value grid="a%ne[0-9]">se</value>
       <value grid="a%C[0-9]" >fv3</value>
       <value grid="a%mpasa[0-9]">mpas</value>
@@ -143,10 +137,6 @@
       <value compset="CAM60%CT2S">-chem trop_strat_mam5_ts2</value>
       <value compset="CAM.*%CT4S">-chem trop_strat_mam5_ts4</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
-      <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
-      <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
-      <value compset="CAM%SPCAMCLBM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 -spcam_clubb_sgs </value>
       <value compset="_CAM40%TMOZ">-chem trop_mozart</value>
 
       <value compset="_CAM.*_BGC%B">-co2_cycle</value>
@@ -195,7 +185,6 @@
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
-      <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
@@ -204,6 +193,7 @@
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
       <value compset="_DOCN%AQP"   >-aquaplanet</value>
+      <value compset="_CAM70.*_SLND_SICE_DOCN%AQP" >-chem none</value>
 
       <!-- PORT -->
       <value compset="%PORT">-offline_drv rad</value>
@@ -255,6 +245,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
+      <value compset="2000_CAM70.*_SLND_SICE_DOCN%AQP" >aquaplanet_cam7</value>
       <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
@@ -314,7 +305,6 @@
       <value compset="_CAM60%.*CT2S%SDYN" >sd_trop_strat2_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
-      <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%GRAYRAD"       >dctest_frierson</value>
@@ -357,7 +347,8 @@
       <!-- hemco (harmonized emissions component) option -->
       <value compset="_CAM.*%HEMCO"> use_hemco=.true. </value>
       <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
-      <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
+      <!-- This has been commented out to allow FV3 to run in a small Earth configuration -->
+       <!-- <value grid="a%C[0-9]"> rearth = 6.37122D6 </value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -381,79 +372,6 @@
     <group>run_component_cam</group>
     <file>env_case.xml</file>
     <desc>User mods to apply to specific compset matches. </desc>
-  </entry>
-
-  <!--
-    ===============
-    NDEP Forcing from Streams
-    ===============
-   -->
-
-  <entry id="CAM_STREAM_NDEP_YEAR_FIRST">
-    <type>char</type>
-    <default_value>2000</default_value>
-    <values match="last">
-      <value compset="^1850[CE]?_">1850</value>
-      <value compset="^2010_">2010</value>
-      <value compset="^HIST[CE]?_">1850</value>
-      <value compset="^SSP"  >2015</value>
-    </values>
-    <group>run_component_cam</group>
-    <file>env_run.xml</file>
-    <desc>Nitrogen deposition data year first</desc>
-  </entry>
-
-  <entry id="CAM_STREAM_NDEP_YEAR_LAST">
-    <type>char</type>
-    <default_value>2000</default_value>
-    <values match="last">
-      <value compset="^2010_">2010</value>
-      <value compset="^1850[CE]?_">1850</value>
-      <value compset="^HIST[CE]?_">2015</value>
-      <value compset="^SSP"  >2101</value>
-    </values>
-    <group>run_component_cam</group>
-    <file>env_run.xml</file>
-    <desc>Nitrogen deposition data year last</desc>
-  </entry>
-
-  <entry id="CAM_STREAM_NDEP_YEAR_ALIGN">
-    <type>char</type>
-    <default_value>1</default_value>
-    <values match="last">
-      <value compset="^HIST[CE]?_">1850</value>
-      <value compset="^SSP"  >2015</value>
-    </values>
-    <group>run_component_cam</group>
-    <file>env_run.xml</file>
-    <desc>Nitrogen deposition align CAM_STREAM_NDEP_YEAR_FIRST with this model year</desc>
-  </entry>
-
-  <entry id="CAM_STREAM_NDEP_DATA_FILENAME">
-    <!-- Only the CMIP6 Tier I Nitogen deposition files are available -->
-    <type>char</type>
-    <default_value>UNSET</default_value>
-    <values match="last">
-      <value compset="^SSP585_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP5-8.5-WACCM_1849-2101_monthly_c191007.nc</value>
-      <value compset="^SSP126_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP1-2.6-WACCM_1849-2101_monthly_c191007.nc</value>
-      <value compset="^SSP245_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP2-4.5-WACCM_1849-2101_monthly_c191007.nc</value>
-      <value compset="^SSP370_">$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_SSP370_b.e21.BWSSP370cmip6.f09_g17.CMIP6-SSP3-7.0-WACCM.002_1849-2101_monthly_0.9x1.25_c211216.nc</value>
-      <value compset="^HIST[CE]?_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
-      <value compset="^2000_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
-      <value compset="^2010_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</value>
-      <value compset="^1850[CE]?_"  >$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</value>
-    </values>
-    <group>run_component_cam</group>
-    <file>env_run.xml</file>
-    <desc>Nitrogen deposition data filename</desc>
-  </entry>
-
-  <entry id="CAM_STREAM_NDEP_MESH_FILENAME">
-    <type>char</type>
-    <default_value>$DIN_LOC_ROOT/share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</default_value>
-    <group>run_component_cam</group>
-    <file>env_run.xml</file>
-    <desc>Nitrogen deposition mesh filename (corresponding to the CAM_STREAM_NDEP_DATA_FILENAME)</desc>
   </entry>
 
   <help>

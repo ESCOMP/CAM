@@ -509,14 +509,6 @@ if ($phys_mode_flags > 1) {
 my $simple_phys = 0;
 if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
-# If running either a simple physics or an aquaplanet configuration, the nitrogen
-# deposition data is not used.  These files are set in buildnml and can't be overridden
-# via user_nl_cam.  So provide an override here.
-if ($simple_phys or $aqua_mode) {
-    $nl->set_variable_value('ndep_stream_nl', 'stream_ndep_data_filename', '" "');
-    $nl->set_variable_value('ndep_stream_nl', 'stream_ndep_mesh_filename', '" "');
-}
-
 # Single column mode
 my $scam = $cfg->get('scam');
 my $scam_iop = $cfg->get('scam_iop');
@@ -705,6 +697,19 @@ if ($sim_year =~ /(\d+)-(\d+)/) {
     $sim_year_start = $1;
 }
 
+# Setup default ndep streams only if not simple_phys or aqua_mode and
+# the chemistry cannot produce the nitrogen depostion fluxes
+if (!($simple_phys or $aqua_mode)) {
+  my $chem_nitrodep = chem_has_species($cfg, 'NO') and chem_has_species($cfg, 'NH3');
+  if ((!$chem_nitrodep) or ($chem =~ /geoschem/)) {
+    add_default($nl, 'stream_ndep_mesh_filename');
+    add_default($nl, 'stream_ndep_data_filename', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_first', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_last', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_align', 'sim_year'=>$sim_year);
+  }
+}
+
 # Topography
 add_default($nl, 'use_topo_file');
 my $use_topo_file = $nl->get_value('use_topo_file');
@@ -755,11 +760,9 @@ if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
    # use solar data file as the default for rrtmg and waccm_ma
    add_default($nl, 'solar_irrad_data_file');
 
-   # This option only used by camrt and rrtmg radiation schemes.
-   # The solar spectral scaling is done internal to RRTMGP code.
-   if ($rad_pkg ne 'rrtmgp') {
-       add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
-   }
+   # The solar spectral scaling is done based on the distribution from
+   # the solar_irrad_data_file.
+   add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
 
 }
 elsif (!$simple_phys) {
@@ -1268,6 +1271,7 @@ if ($carma ne 'none') {
   add_default($nl, 'carma_model',       'val'=>$carma);
   add_default($nl, 'carma_flag',        'val'=>'.true.');
   add_default($nl, 'history_carma',     'val'=>'.true.');
+  add_default($nl, 'carma_sulfnuc_method','val'=>'ZhaoTurco');
 }
 if ($carma eq 'bc_strat') {
   add_default($nl, 'carma_do_drydep',   'val'=>'.true.');
@@ -1587,7 +1591,7 @@ if (defined $nl->get_value('prescribed_strataero_3modes')) {
 
 # determine if prescribed stratospheric aerosol data is needed
 if ( ($het_chem) || ($nl->get_value('prescribed_strataero_feedback') =~ /$TRUE/io ) ){
-    if ( ($carma ne 'sulfate') && !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
+    if ( !($nl->get_value('modal_strat_sulfate') =~ /$TRUE/io) ) { # if no prognostic stratospheric aerosols
 
         unless (defined $nl->get_value('prescribed_strataero_type')) {
             add_default($nl, 'prescribed_strataero_type','val'=>'CYCLICAL');
@@ -3654,7 +3658,6 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_c0_ocn');
     add_default($nl, 'zmconv_ke');
     add_default($nl, 'zmconv_ke_lnd');
-    add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_num_cin');
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
@@ -3683,7 +3686,7 @@ if ($cfg->get('microphys') eq 'rk') {
 }
 
 # Eddy Diffusivity Adjustments
-if ($cfg->get('pbl') eq "uw" or $cfg->get('pbl') eq "spcam_m2005") {
+if ($cfg->get('pbl') eq "uw") {
     add_default($nl, 'kv_top_pressure');
     add_default($nl, 'kv_top_scale');
     add_default($nl, 'kv_freetrop_scale');
@@ -3771,6 +3774,14 @@ if (!$simple_phys) {
        add_default($nl, 'use_gw_movmtn_pbl',        'val'=>'.true.');
     }
 
+    my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
+    if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
+         if ( ! ($dyn =~ /se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
+
+         }
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
@@ -3832,6 +3843,7 @@ my $do_gw_convect_sh = ($nl->get_value('use_gw_convect_sh') =~ /$TRUE/io);
 my $do_gw_movmtn_pbl = ($nl->get_value('use_gw_movmtn_pbl') =~ /$TRUE/io);
 my $do_gw_rdg_beta   = ($nl->get_value('use_gw_rdg_beta')   =~ /$TRUE/io);
 my $do_gw_rdg_gamma  = ($nl->get_value('use_gw_rdg_gamma')  =~ /$TRUE/io);
+my $do_gw_rdg_resid  = ($nl->get_value('use_gw_rdg_resid')  =~ /$TRUE/io);
 
 my $do_divstream        = ($nl->get_value('gw_rdg_do_divstream')  =~ /$TRUE/io);
 
@@ -3886,6 +3898,10 @@ if ($do_gw_convect_sh) {
 if ($do_gw_movmtn_pbl) {
     add_default($nl, 'gw_drag_file_mm');
     add_default($nl, 'alpha_gw_movmtn');
+    add_default($nl, 'effgw_movmtn_pbl');
+    add_default($nl, 'movmtn_source');
+    add_default($nl, 'movmtn_psteer');
+    add_default($nl, 'movmtn_plaunch');
 }
 
 if ($do_gw_rdg_beta) {
@@ -3903,6 +3919,10 @@ if ($do_gw_rdg_beta) {
     add_default($nl, 'gw_prndl',      'val'=>'0.5D0');
 } elsif (!$simple_phys) {
     add_default($nl, 'gw_prndl');
+}
+
+if ($do_gw_rdg_resid) {
+    add_default($nl, 'effgw_rdg_resid' );
 }
 
 if ($do_gw_rdg_gamma) {
@@ -3985,7 +4005,9 @@ if ($dyn eq 'fv') {
 
 # FV3 dycore
 if ( $dyn eq 'fv3') {
-
+    add_default($nl, 'fv3_a_imp');
+    add_default($nl, 'fv3_p_fac');
+    add_default($nl, 'fv3_use_logp');
     add_default($nl, 'fv3_adjust_dry_mass');
     add_default($nl, 'fv3_beta');
     add_default($nl, 'fv3_clock_grain');
@@ -4057,27 +4079,6 @@ if ( $dyn eq 'fv3') {
 	add_default($nl, 'fv3_layout', 'val'=>$layout);
     }
 
-}
-
-# EUL dycore
-if ($dyn eq 'eul') {
-    add_default($nl, 'eul_dif2_coef');
-    add_default($nl, 'eul_hdif_order');
-    add_default($nl, 'eul_hdif_kmnhdn');
-    add_default($nl, 'eul_hdif_coef');
-    add_default($nl, 'eul_divdampn');
-    add_default($nl, 'eul_tfilt_eps');
-    add_default($nl, 'eul_kmxhdc');
-    add_default($nl, 'eul_nsplit');
-}
-
-# SLD dycore
-if ($dyn eq 'sld') {
-    add_default($nl, 'sld_dif2_coef');
-    add_default($nl, 'sld_dif4_coef');
-    add_default($nl, 'sld_divdampn');
-    add_default($nl, 'sld_tfilt_eps');
-    add_default($nl, 'sld_kmxhdc');
 }
 
 # Single column model
@@ -4347,11 +4348,6 @@ if ($offline_drv ne 'stub') {
         add_default($nl, 'iradsw', 'val'=>'1');
         add_default($nl, 'iradlw', 'val'=>'1');
     }
-}
-
-if ($phys eq 'spcam_sam1mom' or $phys eq 'spcam_m2005') {
-    add_default($nl, 'iradsw', 'val'=>'1');
-    add_default($nl, 'iradlw', 'val'=>'1');
 }
 
 #-----------------------------------------------------------------------------------------------
