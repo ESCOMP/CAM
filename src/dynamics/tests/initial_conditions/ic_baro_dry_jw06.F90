@@ -48,7 +48,7 @@ module ic_baro_dry_jw06
 
 contains
 
-  subroutine bc_dry_jw06_set_ic(vcoord, latvals, lonvals, U, V, T, PS, PHIS, &
+  subroutine bc_dry_jw06_set_ic(vcoord, latvals, lonvals, U, V, W, T, PS, PHIS, &
                                 Q, m_cnst, mask, verbose)
     use dyn_tests_utils, only: vc_moist_pressure, vc_dry_pressure, vc_height
     use constituents,    only: cnst_name
@@ -67,6 +67,7 @@ contains
                                                     ! z_k for vccord 1)
     real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
+    real(r8), optional, intent(inout) :: W(:,:)     ! vertical velocity (nonhydrostatic)
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
     real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
@@ -77,7 +78,7 @@ contains
     ! Local variables
     logical, allocatable              :: mask_use(:)
     logical                           :: verbose_use
-    logical                           :: lu,lv,lt,lq,l3d_vars
+    logical                           :: lu,lv,lw,lt,lq,l3d_vars
     integer                           :: i, k, m
     integer                           :: ncol
     integer                           :: nlev
@@ -91,8 +92,8 @@ contains
     real(r8)                          :: phi_vertical
     real(r8)                          :: u_wind(size(latvals))
 
-       a_omega                = rearth*omega
-       exponent               = rair*gamma/gravit
+    a_omega                = rearth*omega
+    exponent               = rair*gamma/gravit
 
     allocate(mask_use(size(latvals)))
     if (present(mask)) then
@@ -163,13 +164,15 @@ contains
     !
     lu = present(U)
     lv = present(V)
+    lw = present(W)
     lT = present(T)
     lq = present(Q)
-    l3d_vars = lu .or. lv .or. lt .or.lq
+    l3d_vars = lu .or. lv .or. lw .or. lt .or.lq
     nlev = -1
     if (l3d_vars) then
       if (lu) nlev = size(U, 2)
       if (lv) nlev = size(V, 2)
+      if (lv) nlev = size(W, 2)
       if (lt) nlev = size(T, 2)
       if (lq) nlev = size(Q, 2)
 
@@ -199,6 +202,16 @@ contains
         end do
         if(masterproc.and. verbose_use) then
           write(iulog,*) '          V initialized by "',subname,'"'
+        end if
+      end if
+      if (lw) then
+        do k = 1, nlev
+          where(mask_use)
+            W(:,k) = 0.0_r8
+          end where
+        end do
+        if(masterproc.and. verbose_use) then
+          write(iulog,*) '          W (nonhydrostatic) initialized by "',subname,'"'
         end if
       end if
       if (lt) then
@@ -232,7 +245,7 @@ contains
           end where
         end do
         if(masterproc.and. verbose_use) then
-          write(iulog,*) '         ', trim(cnst_name(m_cnst(1))), ' initialized by "',subname,'"'
+          write(iulog,*) '          ', trim(cnst_name(m_cnst(1))), ' initialized by "',subname,'"'
         end if
       end if
     end if
