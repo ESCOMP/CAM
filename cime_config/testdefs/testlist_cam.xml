@@ -61,6 +61,16 @@
     </options>
   </test>
 
+  <test compset="FHIST" grid="f10_f10_mt232" name="ERC_D_Ln9" testmods="cam/outfrq3s_cospsathist">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >cam6, cosp, satellite, local time outputs</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
   <test compset="FHIST_BGC" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
@@ -393,16 +403,6 @@
     </machines>
     <options>
       <option name="comment" >317 tsm ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              318                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_cospsathist">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >318 tsm ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
