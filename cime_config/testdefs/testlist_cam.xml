@@ -51,7 +51,7 @@
     </options>
   </test>
 
-  <test compset="FHIST" grid="f19_f19_mt232" name="ERC_D_Ln9" testmods="cam/lonlat_fv_diags">
+  <test compset="FHIST" grid="f19_f19_mt232" name="ERI_D_Ln18" testmods="cam/lonlat_fv_diags">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
@@ -448,16 +448,6 @@
     </options>
   </test>
 
-<!--              369                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_am">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >369 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
   <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="gnu" category="waccmx"/>

@@ -25,3 +25,4 @@ hist_nhtfrq = 3
 hist_mfilt  = 1
 hist_ndens  = 1
 
+check_finidat_year_consistency=.false.
