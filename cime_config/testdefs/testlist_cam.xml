@@ -71,6 +71,16 @@
     </options>
   </test>
 
+  <test compset="FHIST" grid="ne3pg3_ne3pg3_mt232" name="ERC_D_Ln9" testmods="cam/nochem_clubbmf">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >cam6 w/ prescribed bulk aerosols, CLUBB+MF</option>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
   <test compset="FHIST_BGC" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
@@ -194,14 +204,6 @@
   <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="prebeta"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="QPC6" grid="ne5pg3_ne5pg3_mg37" name="ERP_Ln9" testmods="cam/outfrq9s_clubbmf">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -1015,15 +1017,6 @@
     </machines>
     <options>
       <option name="comment" >Spectral Element SCAM BFB test with CAM w GNU</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-  <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ba">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >cam6 physics with prescribed bulk aerosols</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
