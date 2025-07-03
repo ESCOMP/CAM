@@ -22,12 +22,12 @@ cd CAM
 ### To run CAM compatible with the CESM2.2 release:
 ```
 git checkout cam_cesm2_2_rel_02
-./manage_externals/checkout_externals
+bin/git-fleximod update
 ```
 ### To run CAM compatible with the CESM2.1 release:
 ```
 git checkout cam_cesm2_1_rel_41
-./manage_externals/checkout_externals
+bin/git-fleximod update
 ```
 ### To view the release branches in Github, go to the "Branch:main" pulldown menu and select the appropriate branch.
 
@@ -36,7 +36,7 @@ git checkout cam_cesm2_1_rel_41
 ## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](https://www.cgd.ucar.edu/sections/cseg/policies).
 ```
 git checkout cam6_3_162
-./bin/git-fleximod update
+bin/git-fleximod update
 ```
 ### CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
 
