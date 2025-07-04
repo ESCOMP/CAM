@@ -46,7 +46,7 @@
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >cam6 hybrid/branch restarts; limited areas; AM & zonal diags</option>
+      <option name="comment" >cam6 hybrid/branch restarts; limited areas; AM &amp; zonal diags</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
