@@ -1,7 +1,4 @@
-CAM_CONFIG_OPTS=`./xmlquery CAM_CONFIG_OPTS --value`
-if [[ $CAM_CONFIG_OPTS != *"-cosp"* ]]; then
-  ./xmlchange -append CAM_CONFIG_OPTS="-cosp"
-fi
+./xmlchange -append CAM_CONFIG_OPTS="-cosp"
 ./xmlchange ROF_NCPL=\$ATM_NCPL
 ./xmlchange GLC_NCPL=\$ATM_NCPL
 ./xmlchange RUN_STARTDATE="19950101"

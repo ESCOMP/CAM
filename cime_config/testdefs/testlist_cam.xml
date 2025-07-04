@@ -9,16 +9,6 @@
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="aux_cam_short"/>
-      <machine name="derecho" compiler="intel" category="aux_cam_one"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="izumi"    compiler="nag" category="aux_cam_one"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -91,10 +81,9 @@
     </options>
   </test>
 
-  <test compset="FHIST_BDRD" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHIST_BDRD" grid="f09_f09_mt232" name="ERC_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
-      <machine name="derecho" compiler="intel" category="aux_cam_short"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -105,7 +94,6 @@
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
-      <machine name="derecho" compiler="intel" category="aux_cam_short"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
