@@ -271,9 +271,6 @@
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
       <value compset="2010_CAM60%GEOSCHEM">2010_geoschem</value>
 
-      <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
-      <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
-
       <value compset="HIST_CAM40"        >1850-2005_cam4</value>
       <value compset="HIST_CAM40.*_BGC%B">1850-2005_cam4_bgc</value>
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
