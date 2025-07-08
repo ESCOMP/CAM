@@ -11,4 +11,6 @@
  lcltod_stop  = 0,0,10800,7200,0
  avgflag_pertape = 'I',' ','L','L','S'
  do_circulation_diags=.true.
- fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS'
+ fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP',
+       'CS_PIA','CS_RAINPOSS','CS_RAINPROB','CS_RAINCERT','CS_RAINHARD','CS_SNOWCERT','CS_SNOWPOSS',
+       'CS_UN'
