@@ -48,9 +48,9 @@ OBJS =  cosp_kinds.o cosp_constants.o cosp_cloudsat_interface.o cosp_config.o  \
 
 # Conditionally add dependencies on the STUB or actual RTTOV simulator.
 ifdef RTTOV
-OBJS += cosp_rttov_interface_v13.o cosp_rttov_v13.o
+OBJS += cosp_rttov_interface_v13.o cosp_rttov_v13.o cosp_rttov_util.o
 else
-OBJS += cosp_rttov_interfaceSTUB.o cosp_rttovSTUB.o
+OBJS += cosp_rttov_interfaceSTUB.o cosp_rttovSTUB.o cosp_rttov_utilSTUB.o
 endif
 
 # Copy the RTTOV libraries to the current location (which is the EXEROOT/the case bld directory)
@@ -79,23 +79,28 @@ cosp.o                     : cosp_kinds.o cosp_modis_interface.o cosp_constants.
 
 # Conditionally add dependencies on the STUB or actual RTTOV simulator.
 ifdef RTTOV
-cosp.o: cosp_rttov_interface_v13.o cosp_rttov_v13.o
+cosp.o                     : cosp_rttov_interface_v13.o cosp_rttov_v13.o cosp_rttov_util.o
+cosp_stats.o               : cosp_kinds.o cosp_config.o cosp_constants.o cosp_rttov_util.o
 else
-cosp.o: cosp_rttov_interfaceSTUB.o cosp_rttovSTUB.o
+cosp.o                     : cosp_rttov_interfaceSTUB.o cosp_rttovSTUB.o cosp_rttov_utilSTUB.o
+cosp_stats.o               : cosp_kinds.o cosp_config.o cosp_constants.o cosp_rttov_utilSTUB.o
 endif
 
 cosp_config.o              : cosp_kinds.o
 cosp_stats.o               : cosp_kinds.o cosp_config.o
-cosp_calipso_interface.o   : cosp_kinds.o lidar_simulator.o
-cosp_grLidar532_interface.o: cosp_kinds.o
-cosp_atlid_interface.o     : cosp_kinds.o
-cosp_cloudsat_interface.o  : cosp_kinds.o cosp_config.o quickbeam.o
-cosp_isccp_interface.o     : cosp_kinds.o icarus.o
-cosp_misr_interface.o      : cosp_kinds.o 
-cosp_modis_interface.o     : cosp_kinds.o cosp_config.o modis_simulator.o
-cosp_rttov_interfaceSTUB.o : cosp_kinds.o cosp_config.o cosp_rttovSTUB.o
-cosp_rttov_interface_v13.o : cosp_kinds.o cosp_config.o cosp_rttov_v13.o
-cosp_parasol_interface.o   : cosp_kinds.o 
+cosp_calipso_interface.o   : cosp_kinds.o cosp_stats.o lidar_simulator.o
+cosp_grLidar532_interface.o: cosp_kinds.o cosp_stats.o
+cosp_atlid_interface.o     : cosp_kinds.o cosp_stats.o
+cosp_cloudsat_interface.o  : cosp_kinds.o cosp_config.o quickbeam.o cosp_stats.o
+cosp_isccp_interface.o     : cosp_kinds.o cosp_stats.o icarus.o
+cosp_misr_interface.o      : cosp_kinds.o cosp_stats.o
+cosp_modis_interface.o     : cosp_kinds.o cosp_config.o modis_simulator.o    \
+							 cosp_stats.o
+cosp_rttov_interfaceSTUB.o : cosp_kinds.o cosp_config.o cosp_rttovSTUB.o     \
+							 cosp_rttov_utilSTUB.o
+cosp_rttov_interface_v13.o : cosp_kinds.o cosp_config.o cosp_rttov_v13.o     \
+							 cosp_rttov_util.o
+cosp_parasol_interface.o   : cosp_kinds.o cosp_stats.o
 cosp_rttovSTUB.o           : cosp_kinds.o cosp_config.o cosp_constants.o
 cosp_rttov_v13.o           : cosp_kinds.o cosp_config.o cosp_constants.o
 MISR_simulator.o           : cosp_kinds.o cosp_config.o cosp_stats.o
@@ -109,8 +114,9 @@ mo_rng.o              : cosp_kinds.o
 scops.o               : cosp_kinds.o mo_rng.o cosp_errorHandling.o
 prec_scops.o	      : cosp_kinds.o cosp_config.o
 cosp_optics.o         : cosp_kinds.o cosp_constants.o modis_simulator.o
-quickbeam_optics.o    : cosp_kinds.o cosp_config.o cosp_constants.o quickbeam.o      \
-			            cosp_errorHandling.o array_lib.o math_lib.o optics_lib.o 
+quickbeam_optics.o    : cosp_kinds.o cosp_config.o cosp_stats.o cosp_constants.o     \
+			            quickbeam.o cosp_errorHandling.o array_lib.o math_lib.o      \
+						optics_lib.o 
 optics_lib.o	      : cosp_kinds.o cosp_errorHandling.o
 array_lib.o   	      : cosp_kinds.o cosp_errorHandling.o
 math_lib.o            : cosp_kinds.o array_lib.o mrgrnk.o
@@ -118,6 +124,8 @@ mrgrnk.o              : cosp_kinds.o
 cosp_errorHandling.o  : cosp_kinds.o
 cosp_utils.o          : cosp_kinds.o cosp_config.o
 cosp_constants.o      : cosp_kinds.o
+cosp_rttov_util.o     : cosp_kinds.o
+cosp_rttov_utilSTUB.o : cosp_kinds.o
 
 #
 clean_objs:
@@ -142,6 +150,12 @@ cosp_rttov_interfaceSTUB.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_interface
 	$(F90) $(F90FLAGS) -c $<
     
 cosp_rttov_interface_v13.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_interface_v13.F90
+	$(F90) $(F90FLAGS) $(FFLAGS) -c $<
+
+cosp_rttov_utilSTUB.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_utilSTUB.F90 
+	$(F90) $(F90FLAGS) -c $<
+
+cosp_rttov_util.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_util.F90 
 	$(F90) $(F90FLAGS) $(FFLAGS) -c $<
 
 cosp_misr_interface.o : $(COSP_PATH)/src/src/simulator/cosp_misr_interface.F90

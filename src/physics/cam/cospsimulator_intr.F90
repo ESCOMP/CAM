@@ -19,9 +19,8 @@ module cospsimulator_intr
   use phys_control,         only: cam_physpkg_is
   use cam_logfile,          only: iulog
 #ifdef USE_COSP
-  use quickbeam,            only: radar_cfg
   use mod_quickbeam_optics, only: size_distribution
-  use mod_cosp,             only: cosp_outputs, cosp_optical_inputs, cosp_column_inputs, &
+  use mod_cosp,             only: cosp_outputs, &
        swath_inputs
   use mod_cosp_config,      only: pres_binCenters, pres_binEdges, tau_binCenters,      &
        tau_binEdges, cloudsat_binCenters, cloudsat_binEdges, calipso_binCenters,       &
@@ -40,8 +39,9 @@ module cospsimulator_intr
        nhtmisr_cosp      => numMISRHgtBins,      &
        nhydro            => N_HYDRO, &
        cloudsat_preclvl
-  use mod_cosp_stats,           only: cosp_change_vertical_grid
-  use mod_cosp_rttov_interface, only: rttov_cfg
+  use mod_cosp_stats,           only: cosp_change_vertical_grid, cosp_optical_inputs,  &
+      cosp_column_inputs, radar_cfg
+  use mod_cosp_rttov_util, only: rttov_cfg
 #endif
   implicit none
   private
