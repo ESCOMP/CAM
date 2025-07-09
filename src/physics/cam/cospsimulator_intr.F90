@@ -1190,13 +1190,15 @@ CONTAINS
     use mod_cosp,             only: cosp_init 
     use mod_cosp_config,      only: vgrid_zl, vgrid_zu, vgrid_z
     use mod_quickbeam_optics, only: hydro_class_init, quickbeam_optics_init
-    
+    use units,                only: getunit, freeunit
     ! Local
     logical :: ldouble=.false.
     logical :: lsingle=.true. ! Default is to use single moment
     integer :: k
     integer :: istat
+    integer :: unitn
     character(len=*), parameter :: sub = 'setcosp2values'
+    character(len=256), allocatable :: rttov_instrument_namelists_final(:)
     !--------------------------------------------------------------------------------------
 
     prsmid_cosp  = pres_binCenters
@@ -1232,10 +1234,20 @@ CONTAINS
     !         to _init functions in cosp_init.
     ! DS2019: Add logicals, default=.false., for new Lidar simuldators (Earthcare (atlid) and ground-based
     !         lidar at 532nm)
-    call COSP_INIT(Lisccp_sim, Lmodis_sim, Lmisr_sim, Lradar_sim, Llidar_sim, LgrLidar532, &
-         Latlid, Lparasol_sim, Lrttov_sim, radar_freq, k2, use_gas_abs, do_ray,              &
-         isccp_topheight, isccp_topheight_direction, surface_radar, rcfg_cloudsat,           &
-         use_vgrid, csat_vgrid, Nlr, nlay, cloudsat_micro_scheme)
+
+    ! Flexible RTTOV namelist I/O
+    allocate(rttov_instrument_namelists_final(rttov_Ninstruments))
+    rttov_instrument_namelists_final(:) = rttov_instrument_namelists(1:rttov_Ninstruments)
+
+    unitn = getunit()
+    
+    call COSP_INIT(Lisccp_sim, Lmodis_sim, Lmisr_sim, Lradar_sim, Llidar_sim, LgrLidar532,  &
+         Latlid, Lparasol_sim, Lrttov_sim, radar_freq, k2, use_gas_abs, do_ray,             &                       
+         isccp_topheight, isccp_topheight_direction, surface_radar, rcfg_cloudsat,          &
+         use_vgrid, csat_vgrid, Nlr, nlay, cloudsat_micro_scheme,                           &
+         rttov_Ninstruments, rttov_instrument_namelists_final, rttov_configs,unitn=unitn)
+    call freeunit(unitn)
+    deallocate(rttov_instrument_namelists_final)
 
     if (use_vgrid) then      !! using fixed vertical grid
        if (csat_vgrid) then
@@ -1629,7 +1641,7 @@ CONTAINS
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
     real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
-    real(r8),dimension(pcols,nhtml_cosp*nscol_cosp) :: &
+    real(r8),dimension(pcols,nlay*nscol_cosp) :: &
          tau067_out,emis11_out,fracliq_out,cal_betatot,cal_betatot_ice, &
          cal_betatot_liq,cal_tautot,cal_tautot_ice,cal_tautot_liq,cs_gvol_out,cs_krvol_out,cs_zvol_out,&
          asym34_out,ssa34_out
@@ -2190,7 +2202,11 @@ CONTAINS
     ! Construct COSP output derived type.
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
-    call construct_cosp_outputs(ncol, nscol_cosp, nlay, Nlvgrid, cospOUT)
+    if (allocated(rttov_configs)) then
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT,rttov_configs)
+    else
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT)
+    end if
     call t_stopf("construct_cosp_outputs")
     
     ! ######################################################################################
@@ -2252,7 +2268,7 @@ CONTAINS
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))          
     else where (mr_lsliq(1:ncol,1:pver) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
-    else where (mr_ccliq(:,Nlevels:1:-1) > 0._r8)
+    else where (mr_ccliq(1:ncol,1:pver) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
     end where
     cospstateIN%DeffIce(:,:) = dei(1:ncol,1:pver)
@@ -2275,27 +2291,21 @@ CONTAINS
 
     cospIN%cospswathsIN = cospswathsIN
     call t_stopf('construct_cospIN') 
-    
-    if (masterproc) then
-       if (docosp) then 
-           write(iulog,*)'at subsample_and_optics'
-       end if
-    end if     
 
-    ! *NOTE* Fields passed into subsample_and_optics are ordered from TOA-2-SFC.
     if (lradar_sim .or. (llidar_sim .or. (lisccp_sim .or. (lmisr_sim .or. lmodis_sim)))) then
        call t_startf("subsample_and_optics")
-       call subsample_and_optics(ncol,pver,nscol_cosp,nhydro,overlap,             &
-             use_precipitation_fluxes,lidar_ice_type,sd_cs(lchnk),cld(1:ncol,1:pver),&
-             concld(1:ncol,1:pver),rain_ls_interp(1:ncol,1:pver),                  &
-             snow_ls_interp(1:ncol,1:pver),grpl_ls_interp(1:ncol,1:pver),          &
-             rain_cv_interp(1:ncol,1:pver),snow_cv_interp(1:ncol,1:pver),          &
-             mr_lsliq(1:ncol,1:pver),mr_lsice(1:ncol,1:pver),                      &
-             mr_ccliq(1:ncol,1:pver),mr_ccice(1:ncol,1:pver),                      &
-             reff_cosp(1:ncol,1:pver,:),dtau_c(1:ncol,1:pver),                     &
-             dtau_s(1:ncol,1:pver),dem_c(1:ncol,1:pver),                           &
-             dem_s(1:ncol,1:pver),dtau_s_snow(1:ncol,1:pver),                      &
-             dem_s_snow(1:ncol,1:pver),state%ps(1:ncol),cospstateIN,cospIN)
+       ! The arrays passed here contain only active columns and the limited vertical
+       ! domain operated on by COSP.  Unsubscripted array arguments have already been
+       ! allocated to the correct size.  Arrays the size of a CAM chunk (pcol,pver)
+       ! need to pass the correct section (:ncol,ktop:pver).
+       call subsample_and_optics( &
+          ncol, nlay, nscol_cosp, nhydro, overlap, &
+          lidar_ice_type, sd_cs(lchnk), &
+          cld(:ncol,ktop:pver), concld(:ncol,ktop:pver), &
+          rain_ls_interp, snow_ls_interp, grpl_ls_interp, rain_cv_interp, &
+          snow_cv_interp, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
+          reff_cosp, dtau_c, dtau_s ,dem_c, dem_s, dtau_s_snow, &
+          dem_s_snow, state%ps(:ncol), cospstateIN, cospIN)
        call t_stopf("subsample_and_optics")
     end if
     
@@ -3577,11 +3587,12 @@ CONTAINS
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospstateIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     
-  subroutine construct_cospstateIN(npoints,nlevels,y)
+  subroutine construct_cospstateIN(npoints,nlevels,nchan,y)
     ! Inputs
     integer,intent(in) :: &
          npoints, & ! Number of horizontal gridpoints
-         nlevels    ! Number of vertical levels
+         nlevels, & ! Number of vertical levels
+         nchan      ! Number of channels
     ! Outputs
     type(cosp_column_inputs),intent(out) :: y
     
@@ -3601,10 +3612,9 @@ CONTAINS
        y%land(npoints), &
        y%skt(npoints), &
        y%surfelev(nPoints), &
-       y%emis_sfc(nchan), &
+       ! y%emis_sfc(nchan), & ! revisit this in COSPv2.0 code.
        y%u_sfc(npoints), &
        y%v_sfc(npoints), &
-       y%seaice(npoints), &
        y%lat(npoints), &
        y%lon(nPoints), &
        y%o3(npoints,nlevels), &
@@ -3626,6 +3636,7 @@ CONTAINS
     call handle_allocate_error(istat, sub, 'sunlit,..,fl_snow')
 
   end subroutine construct_cospstateIN
+
   ! ######################################################################################
   ! SUBROUTINE construct_cosp_outputs
   !
@@ -3790,10 +3801,10 @@ CONTAINS
                 if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
                     allocate(x % rttov_outputs(i) % refl_clear(Npoints,rttov_configs(i) % nchan_out))
                 end if
-            end if         
+            end if
         end do
     else
-        x % N_rttov_instruments = 0
+        x % Ninst_rttov = 0
     end if    
 
   end subroutine construct_cosp_outputs
