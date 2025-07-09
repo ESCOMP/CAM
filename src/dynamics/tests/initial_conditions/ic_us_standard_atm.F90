@@ -30,7 +30,7 @@ public :: us_std_atm_set_ic
 CONTAINS
 !=========================================================================================
 
-subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
+subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, W, T, PS, PHIS_IN, &
        PHIS_OUT, Q, m_cnst, mask, verbose)
     
    !----------------------------------------------------------------------------
@@ -46,6 +46,7 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
    real(r8), optional, intent(in)    :: zint(:,:)  ! height at layer interfaces
    real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
    real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
+   real(r8), optional, intent(inout) :: W(:,:)     ! vertical velocity (nonhydrostatic)
    real(r8), optional, intent(inout) :: T(:,:)     ! temperature
    real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
    real(r8), optional, intent(in)    :: PHIS_IN(:) ! surface geopotential
@@ -120,6 +121,19 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
          write(iulog,*) '          V initialized by '//subname
       end if
    end if
+
+   if (present(W)) then
+      nlev = size(W, 2)
+      do k = 1, nlev
+         where(mask_use)
+            W(:,k) = 0.0_r8
+         end where
+      end do
+      if(masterproc .and. verbose_use) then
+         write(iulog,*) '          W (nonhydrostatic) initialized by '//subname
+      end if
+   end if
+
 
    if (present(T)) then
       nlev = size(T, 2)

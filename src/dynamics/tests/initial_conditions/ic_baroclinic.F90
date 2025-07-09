@@ -73,7 +73,7 @@ module ic_baroclinic
 
 contains
 
-  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, zint, U, V, T, PS, PHIS, &
+  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, zint, U, V, W, T, PS, PHIS, &
        Q, m_cnst, mask, verbose)
     use dyn_tests_utils,     only: vc_moist_pressure, vc_dry_pressure, vc_height
     use constituents,        only: cnst_name
@@ -93,6 +93,7 @@ contains
     real(r8), optional, intent(in)    :: zint(:,:)  ! interface height (ncol,ilev), ordered top to bottom
     real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
+    real(r8), optional, intent(inout) :: W(:,:)     ! vertical velocity (nonhydrostatic)
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
     real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
@@ -113,7 +114,7 @@ contains
     real(r8)                          :: uk,vk,Tvk,qk,pk !mid-level state
     real(r8)                          :: psurface
     real(r8)                          :: wvp,qdry
-    logical                           :: lU, lV, lT, lQ, l3d_vars
+    logical                           :: lu, lv, lw, lt, lq, l3d_vars
     logical                           :: cnst1_is_moisture
     real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
     real(r8), allocatable             :: zmid(:,:) ! layer midpoint heights for test tracer initialization
@@ -214,13 +215,15 @@ contains
     !
     lu = present(U)
     lv = present(V)
-    lT = present(T)
+    lw = present(W)
+    lt = present(T)
     lq = present(Q)
-    l3d_vars = lu .or. lv .or. lt .or. lq
+    l3d_vars = lu .or. lv .or. lw .or. lt .or. lq
     nlev = -1
     if (l3d_vars) then
       if (lu) nlev = size(U, 2)
       if (lv) nlev = size(V, 2)
+      if (lv) nlev = size(W, 2)
       if (lt) nlev = size(T, 2)
 
       if (lq) then
@@ -332,6 +335,17 @@ contains
       if(lt .and. masterproc.and. verbose_use)  write(iulog,*) '          T initialized by "',subname,'"'
       if(lq .and. cnst1_is_moisture .and. masterproc.and. verbose_use)  write(iulog,*) &
            '          ', trim(cnst_name(m_cnst(1))), ' initialized by "',subname,'"'
+    end if
+
+    if (lw) then
+      do k = 1, nlev
+        where(mask_use)
+          W(:,k) = 0.0_r8
+        end where
+      end do
+      if(masterproc.and. verbose_use) then
+        write(iulog,*) '          W (nonhydrostatic) initialized by "',subname,'"'
+      end if
     end if
 
     if (lq) then

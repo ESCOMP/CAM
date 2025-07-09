@@ -38,8 +38,8 @@ module inic_analytic
 CONTAINS
 !==============================================================================
 
-  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint, U, V, T, &
-       PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask, verbose)
+  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint, U, V, W, &
+       T, PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask, verbose)
     use cam_initfiles,        only: pertlim
 #ifdef ANALYTIC_IC
     use ic_held_suarez,            only: hs94_set_ic
@@ -62,6 +62,7 @@ CONTAINS
     real(r8), optional, intent(in)    :: zint(:,:)   ! height at layer interfaces
     real(r8), optional, intent(inout) :: U(:,:)      ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)      ! meridional velocity
+    real(r8), optional, intent(inout) :: W(:,:)      ! vertical velocity (nonhydrostatic)
     real(r8), optional, intent(inout) :: T(:,:)      ! temperature
     real(r8), optional, intent(inout) :: PS(:)       ! surface pressure
     real(r8), optional, intent(in)    :: PHIS_IN(:)  ! surface geopotential
@@ -116,6 +117,13 @@ CONTAINS
         return
       end if
     end if
+    if (present(W)) then
+      if (size(W) > 0) then
+        call check_array_size(W(:,1), 'W', latvals, subname)
+      else
+        return
+      end if
+    end if
     if (present(T)) then
       if (size(T) > 0) then
         call check_array_size(T(:,1), 'T', latvals, subname)
@@ -160,20 +168,20 @@ CONTAINS
     end if
     select case(trim(analytic_ic_type))
     case('held_suarez_1994')
-      call hs94_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_OUT,     &
+      call hs94_set_ic(latvals, lonvals, U=U, V=V, W=W, T=T, PS=PS, PHIS=PHIS_OUT,  &
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('moist_baroclinic_wave_dcmip2016', 'dry_baroclinic_wave_dcmip2016')
-      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, &
-           PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
+      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, W=W, T=T, &
+           PS=PS, PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('dry_baroclinic_wave_jw2006')
-      call bc_dry_jw06_set_ic(vcoord, latvals, lonvals, U=U, V=V, T=T, PS=PS, &
+      call bc_dry_jw06_set_ic(vcoord, latvals, lonvals, U=U, V=V, W=W, T=T, PS=PS, &
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('us_standard_atmosphere')
-      call us_std_atm_set_ic(latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, PHIS_IN=PHIS_IN, &
-           PHIS_OUT=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
+      call us_std_atm_set_ic(latvals, lonvals, zint=zint, U=U, V=V, W=W, T=T, PS=PS, &
+           PHIS_IN=PHIS_IN, PHIS_OUT=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case default
       call endrun(subname//': Unknown analytic_ic_type, "'//trim(analytic_ic_type)//'"')
@@ -216,7 +224,7 @@ CONTAINS
 
   end subroutine dyn_set_inic_col
 
-  subroutine dyn_set_inic_cblock(vcoord,latvals, lonvals, glob_ind, U, V, T,  &
+  subroutine dyn_set_inic_cblock(vcoord,latvals, lonvals, glob_ind, U, V, W, T,  &
        PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask)
     !-----------------------------------------------------------------------
     !
@@ -231,6 +239,7 @@ CONTAINS
     integer,            intent(in)    :: glob_ind(:) ! global column index
     real(r8), optional, intent(inout) :: U(:,:,:)    ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:,:)    ! meridional velocity
+    real(r8), optional, intent(inout) :: W(:,:,:)      ! vertical velocity (nonhydrostatic)
     real(r8), optional, intent(inout) :: T(:,:,:)    ! temperature
     real(r8), optional, intent(inout) :: PS(:,:)     ! surface pressure
     real(r8), optional, intent(in)    :: PHIS_IN(:,:)! surface geopotential
@@ -258,6 +267,9 @@ CONTAINS
     end if
     if(present(V)) then
       call get_input_shape(V, 'V', mname, size1, size2, size3, subname)
+    end if
+    if(present(W)) then
+      call get_input_shape(W, 'W', mname, size1, size2, size3, subname)
     end if
     if(present(T)) then
       call get_input_shape(T, 'T', mname, size1, size2, size3, subname)
@@ -301,6 +313,10 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
           end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                 glob_ind(bbeg:bend), W=W(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+          end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then          
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), T=T(:,:,i),    &
@@ -332,6 +348,10 @@ CONTAINS
           if (present(V)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,:,i), verbose=verbose)
+          end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                 glob_ind(bbeg:bend), W=W(:,:,i), verbose=verbose)
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -382,6 +402,10 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
           end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                 glob_ind(bbeg:bend), W=W(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+          end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
@@ -413,6 +437,10 @@ CONTAINS
           if (present(V)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,i,:), verbose=verbose)
+          end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                 glob_ind(bbeg:bend), W=W(:,i,:), verbose=verbose)
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -463,6 +491,10 @@ CONTAINS
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                  V=V(:,i,:), verbose=verbose)
           end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                 W=W(:,i,:), verbose=verbose)
+          end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                    PS=PS(:,i),T=T(:,i,:),PHIS_IN=PHIS_IN(:,i), verbose=verbose)            
@@ -510,6 +542,10 @@ CONTAINS
           if (present(V)) then
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                  V=V(:,:,i), verbose=verbose)
+          end if
+          if (present(W)) then
+            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                 W=W(:,:,i), verbose=verbose)
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
