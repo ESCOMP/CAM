@@ -152,10 +152,10 @@ cosp_rttov_interfaceSTUB.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_interface
 cosp_rttov_interface_v13.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_interface_v13.F90
 	$(F90) $(F90FLAGS) $(FFLAGS) -c $<
 
-cosp_rttov_utilSTUB.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_utilSTUB.F90 
+cosp_rttov_utilSTUB.o : $(COSP_PATH)/src/src/cosp_rttov_utilSTUB.F90 
 	$(F90) $(F90FLAGS) -c $<
 
-cosp_rttov_util.o : $(COSP_PATH)/src/src/simulator/cosp_rttov_util.F90 
+cosp_rttov_util.o : $(COSP_PATH)/src/src/cosp_rttov_util.F90 
 	$(F90) $(F90FLAGS) $(FFLAGS) -c $<
 
 cosp_misr_interface.o : $(COSP_PATH)/src/src/simulator/cosp_misr_interface.F90
