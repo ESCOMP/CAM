@@ -3766,7 +3766,7 @@ CONTAINS
     
     ! RTTOV - Allocate output for multiple instruments
     if (lrttov_sim) then
-        x % N_rttov_instruments = N_rttov_instruments
+        x % Ninst_rttov = N_rttov_instruments
         allocate(x % rttov_outputs(N_rttov_instruments))
         do i=1,N_rttov_instruments
             x % rttov_outputs(i) % nchan_out = rttov_configs(i) % nchan_out
