@@ -97,20 +97,12 @@
         fxtag = v8.2.1
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
-# [submodule "cosp2"]
-# 	path = src/physics/cosp2/src
-# 	url = https://github.com/CFMIP/COSPv2.0
-#         fxrequired = AlwaysRequired
-#         fxsparse = ../.cosp_sparse_checkout
-#         fxtag = v2.1.4cesm
-# 	fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
-
 [submodule "cosp2"]
         path = src/physics/cosp2/src
         url = https://github.com/dustinswales/COSPv2.0
         fxrequired = AlwaysRequired
         fxsparse = ../.cosp_sparse_checkout
-        fxtag = feature/cosp_rttov_swathing
+        fxtag = d10be9f # Tag for feature/cosp_rrtov_swathing on 2025/07/09
         fxDONOTUSEurl = https://github.com/dustinswales/COSPv2.0
 
 [submodule "clubb"]
