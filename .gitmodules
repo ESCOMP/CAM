@@ -36,7 +36,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_13_000
+        fxtag = atmos_phys0_14_001
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -151,7 +151,7 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.97
+fxtag = cime6.1.102
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
@@ -186,7 +186,7 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm3_cice6_6_0_6
+fxtag = cesm3_cice6_6_0_13
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
@@ -200,14 +200,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 [submodule "fms"]
 path = libraries/FMS
 url = https://github.com/ESCOMP/FMS_interface
-fxtag = fi_250411
+fxtag = fi_250428
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/FMS_interface
 
 [submodule "tools/CUPiD"]
 path = tools/CUPiD
 url = https://github.com/NCAR/CUPiD.git
-fxtag = v0.1.4
+fxtag = v0.2.1
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
 

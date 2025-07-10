@@ -2148,6 +2148,8 @@ sub write_filepath
         }
         print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
         print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/objects\n";
     }
 
     if ($clubb_sgs) {
@@ -2179,6 +2181,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/utils\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";

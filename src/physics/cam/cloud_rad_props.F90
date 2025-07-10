@@ -37,6 +37,7 @@ public :: &
    get_snow_optics_sw,            &
    snow_cloud_get_rad_props_lw,   &
    get_grau_optics_sw,            &
+   get_mu_lambda_weights,         &
    grau_cloud_get_rad_props_lw
 
 
@@ -77,15 +78,26 @@ real(r8), parameter :: tiny = 1.e-80_r8
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init()
-
+subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
+                  abs_lw_liq_out, abs_lw_ice_out, g_mu_out, g_lambda_out, &
+                  g_d_eff_out, tiny_out)
    use netcdf
    use spmd_utils,     only: masterproc
    use ioFileMod,      only: getfil
    use error_messages, only: handle_ncerr
+   use cam_abortutils, only: handle_allocate_error
 #if ( defined SPMD )
    use mpishorthand
 #endif
+   integer, intent(out) :: nmu_out
+   integer, intent(out) :: nlambda_out
+   integer, intent(out) :: n_g_d_out
+   real(r8), allocatable, intent(out) :: abs_lw_liq_out(:,:,:)
+   real(r8), allocatable, intent(out) :: abs_lw_ice_out(:,:)
+   real(r8), allocatable, intent(out) :: g_mu_out(:)
+   real(r8), allocatable, intent(out) :: g_lambda_out(:,:)
+   real(r8), allocatable, intent(out) :: g_d_eff_out(:)
+   real(r8),              intent(out) :: tiny_out
 
    character(len=256) :: liquidfile
    character(len=256) :: icefile
@@ -103,6 +115,7 @@ subroutine cloud_rad_props_init()
 
    integer :: err
    character(len=*), parameter :: sub = 'cloud_rad_props_init'
+   character(len=512) :: errmsg
 
    liquidfile = liqopticsfile
    icefile = iceopticsfile
@@ -278,6 +291,26 @@ subroutine cloud_rad_props_init()
    call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
 #endif
 
+   ! Set output variables
+   tiny_out = tiny
+   nmu_out = nmu
+   nlambda_out = nlambda
+   n_g_d_out = n_g_d
+   allocate(abs_lw_liq_out(nmu,nlambda,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_liq_out')
+   abs_lw_liq_out = abs_lw_liq
+   allocate(abs_lw_ice_out(n_g_d,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_ice_out')
+   abs_lw_ice_out = abs_lw_ice
+   allocate(g_mu_out(nmu), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_mu_out')
+   g_mu_out = g_mu
+   allocate(g_lambda_out(nmu,nlambda), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_lambda_out')
+   g_lambda_out = g_lambda
+   allocate(g_d_eff_out(n_g_d), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_d_eff_out')
+   g_d_eff_out = g_d_eff
    return
 
 end subroutine cloud_rad_props_init
@@ -728,28 +761,21 @@ end subroutine gam_liquid_sw
 !==============================================================================
 
 subroutine get_mu_lambda_weights(lamc, pgam, mu_wgts, lambda_wgts)
+  use radiation_utils, only: get_mu_lambda_weights_ccpp
   real(r8), intent(in) :: lamc   ! prognosed value of lambda for cloud
   real(r8), intent(in) :: pgam   ! prognosed value of mu for cloud
   ! Output interpolation weights. Caller is responsible for freeing these.
   type(interp_type), intent(out) :: mu_wgts
   type(interp_type), intent(out) :: lambda_wgts
 
-  integer :: ilambda
-  real(r8) :: g_lambda_interp(nlambda)
+  character(len=512) :: errmsg
+  integer            :: errflg
 
-  ! Make interpolation weights for mu.
-  ! (Put pgam in a temporary array for this purpose.)
-  call lininterp_init(g_mu, nmu, [pgam], 1, extrap_method_bndry, mu_wgts)
-
-  ! Use mu weights to interpolate to a row in the lambda table.
-  do ilambda = 1, nlambda
-     call lininterp(g_lambda(:,ilambda), nmu, &
-          g_lambda_interp(ilambda:ilambda), 1, mu_wgts)
-  end do
-
-  ! Make interpolation weights for lambda.
-  call lininterp_init(g_lambda_interp, nlambda, [lamc], 1, &
-       extrap_method_bndry, lambda_wgts)
+  call get_mu_lambda_weights_ccpp(nmu, nlambda, g_mu, g_lambda, lamc, pgam, mu_wgts, &
+          lambda_wgts, errmsg, errflg)
+  if (errflg /= 0) then
+     call endrun('get_mu_lambda_weights: ERROR message: '//errmsg)
+  end if
 
 end subroutine get_mu_lambda_weights
 

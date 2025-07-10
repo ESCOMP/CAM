@@ -382,6 +382,15 @@ subroutine radiation_init(pbuf2d)
    integer :: history_budget_histfile_num ! output history file number for budget fields
    integer :: err
 
+   ! Cloud optics variables
+   integer :: nmu, n_g_d, nlambda
+   real(kind=r8), allocatable :: abs_lw_ice(:,:)
+   real(kind=r8), allocatable :: abs_lw_liq(:,:,:)
+   real(kind=r8), allocatable :: g_lambda(:,:)
+   real(kind=r8), allocatable :: g_mu(:)
+   real(kind=r8), allocatable :: g_d_eff(:)
+   real(kind=r8) :: tiny
+
    integer :: dtime
    !-----------------------------------------------------------------------
 
@@ -390,7 +399,8 @@ subroutine radiation_init(pbuf2d)
    call rad_data_init(pbuf2d) ! initialize output fields for offline driver
    call radsw_init()
    call radlw_init()
-   call cloud_rad_props_init()
+   call cloud_rad_props_init(nmu, nlambda, n_g_d, abs_lw_liq, abs_lw_ice, &
+                             g_mu, g_lambda, g_d_eff, tiny)
 
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=err)

@@ -538,6 +538,13 @@ Default: .false.,  unless it is overridden (WACCM with interactive chemistry and
           configurations do this)
 </entry>
 
+<entry id="ctem_diags_numlats" type="integer"  category="diagnostics"
+       group="ctem_diags_nl" valid_values="" >
+Number of latitude grid points for zonal average Transformed Eulerian Mean (TEM)
+diagnostics history fields.  Values greater than zero turn on the TEM diagostics.
+Default: 0
+</entry>
+
 <entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
        group="phys_grid_ctem_opts" valid_values="" >
 Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
