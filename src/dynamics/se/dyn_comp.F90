@@ -116,6 +116,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
+   use control_mod,    only: min_temperature
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
@@ -173,6 +174,8 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
    integer                      :: se_dribble_in_rsplit_loop
+   real(r8)                     :: se_min_temperature = 0.0_r8
+
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
@@ -218,7 +221,8 @@ subroutine dyn_readnl(NLFileName)
       se_kmax_jet,                 &
       se_molecular_diff,           &
       se_pgf_formulation,          &
-      se_dribble_in_rsplit_loop
+      se_dribble_in_rsplit_loop,   &
+      se_min_temperature
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -293,6 +297,8 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_dribble_in_rsplit_loop, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_min_temperature, 1, mpi_real8, masterprocid, mpicom, ierr)
+
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -361,6 +367,8 @@ subroutine dyn_readnl(NLFileName)
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
    dribble_in_rsplit_loop   = se_dribble_in_rsplit_loop
+   min_temperature          = se_min_temperature
+
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -496,6 +504,11 @@ subroutine dyn_readnl(NLFileName)
                             se_write_restart_unstruct
 
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', molecular_diff
+
+      if (min_temperature>0._r8) then
+         write(iulog, '(a,e9.2)') 'dyn_readnl: se_min_temperature  = ', min_temperature
+      end if
+
    end if
 
    call native_mapping_readnl(NLFileName)
