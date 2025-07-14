@@ -1227,7 +1227,9 @@ if ($phys_pkg eq 'cam7') {
     }
 }
 elsif ($waccmx) {
-    if ($phys_pkg eq 'cam6') {
+    if ($hgrid =~ /ne120/) {
+        $nlev = 273;
+    } elsif ($phys_pkg eq 'cam6') {
         $nlev = 130;
     } else {
         $nlev = 126;
