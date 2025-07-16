@@ -52,27 +52,27 @@ subroutine stepon_init(dyn_in, dyn_out)
    !----------------------------------------------------------------------------
 
    ! dycore state variables on MPAS grids
-   call addfld ('u',     (/ 'lev' /),  'A', 'm/s', 'normal velocity at edges', gridname='mpas_edge')
-   call addfld ('w',     (/ 'ilev' /), 'A', 'm/s', 'vertical velocity', gridname='mpas_cell')
-   call addfld ('theta', (/ 'lev' /),  'A', 'K',   'potential temperature', gridname='mpas_cell')
-   call addfld ('rho',   (/ 'lev' /),  'A', 'kg/m^3', 'dry air density', gridname='mpas_cell')
-   call addfld ('qv',    (/ 'lev' /),  'A', 'kg/kg', 'water vapor dry mmr', gridname='mpas_cell')
-   call addfld ('uReconstructZonal', (/ 'lev' /),  'A', 'm/s', &
-                'zonal velocity at cell centers', gridname='mpas_cell')
-   call addfld ('uReconstructMeridional', (/ 'lev' /),  'A', 'm/s', &
-                'meridional velocity at cell centers', gridname='mpas_cell')
-   call addfld ('divergence', (/ 'lev' /), 'A', '1/s', &
-                'Horizontal velocity divergence at cell center', gridname='mpas_cell')
-   call addfld ('vorticity', (/ 'lev' /), 'A', '1/s', &
+   call addfld ('u_mpas',     (/ 'lev' /),  'A', 'm/s', 'normal velocity at edges', gridname='mpas_edge')
+   call addfld ('w_mpas',     (/ 'ilev' /), 'A', 'm/s', 'vertical velocity', gridname='cam_cell')
+   call addfld ('theta_mpas', (/ 'lev' /),  'A', 'K', 'potential temperature', gridname='cam_cell')
+   call addfld ('rho_mpas',   (/ 'lev' /),  'A', 'kg/m^3', 'dry air density', gridname='cam_cell')
+   call addfld ('qv_mpas',    (/ 'lev' /),  'A', 'kg/kg', 'water vapor dry mmr', gridname='cam_cell')
+   call addfld ('uReconstructZonal_mpas', (/ 'lev' /), 'A', 'm/s', &
+                'zonal velocity at cell centers', gridname='cam_cell')
+   call addfld ('uReconstructMeridional_mpas', (/ 'lev' /), 'A', 'm/s', &
+                'meridional velocity at cell centers', gridname='cam_cell')
+   call addfld ('divergence_mpas', (/ 'lev' /), 'A', '1/s', &
+                'Horizontal velocity divergence at cell center', gridname='cam_cell')
+   call addfld ('vorticity_mpas', (/ 'lev' /), 'A', '1/s', &
                 'Relative vorticity at vertices', gridname='mpas_vertex')
 
    ! physics forcings on MPAS grids
-   call addfld ('ru_tend',     (/ 'lev' /),  'A', 'kg/m^2/s', &
+   call addfld ('ru_tend_mpas', (/ 'lev' /), 'A', 'kg/m^2/s', &
                 'physics tendency of normal horizontal momentum', gridname='mpas_edge')
-   call addfld ('rtheta_tend', (/ 'lev' /),  'A', 'kg K/m^3/s', &
-                'physics tendency of rho*theta/zz', gridname='mpas_cell')
-   call addfld ('rho_tend', (/ 'lev' /),  'A', 'kg/m^3/s', &
-                'physics tendency of dry air density', gridname='mpas_cell')
+   call addfld ('rtheta_tend_mpas', (/ 'lev' /), 'A', 'kg K/m^3/s', &
+                'physics tendency of rho*theta/zz', gridname='cam_cell')
+   call addfld ('rho_tend_mpas', (/ 'lev' /), 'A', 'kg/m^3/s', &
+                'physics tendency of dry air density', gridname='cam_cell')
 
    ! get aerosol properties
    aero_props_obj => aerosol_properties_object()
@@ -235,7 +235,7 @@ subroutine write_dynvar(dyn_out)
    nVerticesSolve = dyn_out%nVerticesSolve
    qv_idx         = dyn_out%index_qv
 
-   if (hist_fld_active('u')) then
+   if (hist_fld_active('u_mpas')) then
       allocate(arr2d(nEdgesSolve,plev), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
@@ -244,11 +244,11 @@ subroutine write_dynvar(dyn_out)
             arr2d(i,k) = dyn_out%uperp(kk,i)
          end do
       end do
-      call outfld('u', arr2d, nEdgesSolve, 1)
+      call outfld('u_mpas', arr2d, nEdgesSolve, 1)
       deallocate(arr2d)
    end if
 
-   if (hist_fld_active('w')) then
+   if (hist_fld_active('w_mpas')) then
       allocate(arr2d(nCellsSolve,plevp), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plevp
@@ -257,76 +257,76 @@ subroutine write_dynvar(dyn_out)
             arr2d(i,k) = dyn_out%w(kk,i)
          end do
       end do
-      call outfld('w', arr2d, nCellsSolve, 1)
+      call outfld('w_mpas', arr2d, nCellsSolve, 1)
       deallocate(arr2d)
    end if
 
    allocate(arr2d(nCellsSolve,plev), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
-   if (hist_fld_active('theta')) then
+   if (hist_fld_active('theta_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%theta(kk,i)
          end do
       end do
-      call outfld('theta', arr2d, nCellsSolve, 1)
+      call outfld('theta_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('rho')) then
+   if (hist_fld_active('rho_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%rho(kk,i)
          end do
       end do
-      call outfld('rho', arr2d, nCellsSolve, 1)
+      call outfld('rho_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('qv')) then
+   if (hist_fld_active('qv_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%tracers(qv_idx,kk,i)
          end do
       end do
-      call outfld('qv', arr2d, nCellsSolve, 1)
+      call outfld('qv_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('uReconstructZonal')) then
+   if (hist_fld_active('uReconstructZonal_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%ux(kk,i)
          end do
       end do
-      call outfld('uReconstructZonal', arr2d, nCellsSolve, 1)
+      call outfld('uReconstructZonal_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('uReconstructMeridional')) then
+   if (hist_fld_active('uReconstructMeridional_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%uy(kk,i)
          end do
       end do
-      call outfld('uReconstructMeridional', arr2d, nCellsSolve, 1)
+      call outfld('uReconstructMeridional_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('divergence')) then
+   if (hist_fld_active('divergence_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_out%divergence(kk,i)
          end do
       end do
-      call outfld('divergence', arr2d, nCellsSolve, 1)
+      call outfld('divergence_mpas', arr2d, nCellsSolve, 1)
    end if
 
    deallocate(arr2d)
 
-   if (hist_fld_active('vorticity')) then
+   if (hist_fld_active('vorticity_mpas')) then
       allocate(arr2d(nVerticesSolve,plev), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
@@ -335,7 +335,7 @@ subroutine write_dynvar(dyn_out)
             arr2d(i,k) = dyn_out%vorticity(kk,i)
          end do
       end do
-      call outfld('vorticity', arr2d, nVerticesSolve, 1)
+      call outfld('vorticity_mpas', arr2d, nVerticesSolve, 1)
       deallocate(arr2d)
    end if
 
@@ -369,7 +369,7 @@ subroutine write_forcings(dyn_in)
    nCellsSolve = dyn_in%nCellsSolve
    nEdgesSolve = dyn_in%nEdgesSolve
 
-   if (hist_fld_active('ru_tend')) then
+   if (hist_fld_active('ru_tend_mpas')) then
       allocate(arr2d(nEdgesSolve,plev), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
@@ -378,31 +378,31 @@ subroutine write_forcings(dyn_in)
             arr2d(i,k) = dyn_in%ru_tend(kk,i)
          end do
       end do
-      call outfld('ru_tend', arr2d, nEdgesSolve, 1)
+      call outfld('ru_tend_mpas', arr2d, nEdgesSolve, 1)
       deallocate(arr2d)
    end if
 
    allocate(arr2d(nCellsSolve,plev), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
-   if (hist_fld_active('rtheta_tend')) then
+   if (hist_fld_active('rtheta_tend_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_in%rtheta_tend(kk,i)
          end do
       end do
-      call outfld('rtheta_tend', arr2d, nCellsSolve, 1)
+      call outfld('rtheta_tend_mpas', arr2d, nCellsSolve, 1)
    end if
 
-   if (hist_fld_active('rho_tend')) then
+   if (hist_fld_active('rho_tend_mpas')) then
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
             arr2d(i,k) = dyn_in%rho_tend(kk,i)
          end do
       end do
-      call outfld('rho_tend', arr2d, nCellsSolve, 1)
+      call outfld('rho_tend_mpas', arr2d, nCellsSolve, 1)
    end if
 
    deallocate(arr2d)
