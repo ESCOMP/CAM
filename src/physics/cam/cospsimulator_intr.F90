@@ -263,11 +263,6 @@ module cospsimulator_intr
        gamma_2 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/),&
        gamma_3 = (/-1._r8, -1._r8,      2.0_r8,      2.0_r8, -1._r8, -1._r8,      2.0_r8,      2.0_r8,      2.0_r8/),&
        gamma_4 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/)
-
-  ! Local variables for orbit swathing
-  real(r8),dimension(:),allocatable :: &
-       cosp_localtime, &
-       cosp_localtime_width
        
   ! Swathing DDT array
   type(swath_inputs),dimension(6)  :: &
@@ -287,9 +282,13 @@ module cospsimulator_intr
            bt_total_pc(:,:), &
            rad_total_pc(:,:)
   end type rttov_output_write
-  
-  character(len=256), dimension(50) :: rttov_instrument_namelists = ' '     ! Input of paths to RTTOV instrument namelists  
-  integer :: rttov_Ninstruments = 0 ! Default is zero  
+
+  ! Number of RTTOV instruments to be simulated
+  integer :: rttov_Ninstruments = 0      ! Default
+  integer :: cosp_rttov_Ninstruments = 0 ! Namelist default
+  ! Namelist paths for each RTTOV instrument
+  character(len=256), dimension(50) :: rttov_instrument_namelists = ' '         ! Default
+  character(len=256), dimension(50) :: cosp_rttov_instrument_namelists = ' '    ! Namelist default
          
 #endif
 
@@ -312,25 +311,25 @@ CONTAINS
     character(len=*), parameter :: subname = 'cospsimulator_intr_readnl'
 
     ! Inputs for orbit swathing
-    integer :: N_SWATHS_ISCCP     = 0       ! Number of ISCCP swaths
-    integer :: N_SWATHS_MISR      = 0       ! Number of MISR swaths
-    integer :: N_SWATHS_MODIS     = 0       ! Number of MODIS swaths
-    integer :: N_SWATHS_PARASOL   = 0       ! Number of PARASOL swaths
-    integer :: N_SWATHS_CSCAL     = 0       ! Number of CLOUDSAT+CALIPSO swaths
-    integer :: N_SWATHS_ATLID     = 0       ! Number of ATLID swaths
+    integer :: COSP_N_SWATHS_ISCCP     = 0       ! Number of ISCCP swaths
+    integer :: COSP_N_SWATHS_MISR      = 0       ! Number of MISR swaths
+    integer :: COSP_N_SWATHS_MODIS     = 0       ! Number of MODIS swaths
+    integer :: COSP_N_SWATHS_PARASOL   = 0       ! Number of PARASOL swaths
+    integer :: COSP_N_SWATHS_CSCAL     = 0       ! Number of CLOUDSAT+CALIPSO swaths
+    integer :: COSP_N_SWATHS_ATLID     = 0       ! Number of ATLID swaths
     real(r8),dimension(10),target ::  & ! Arbitrary limit of 10 swaths seems reasonable.
-         SWATH_LOCALTIMES_ISCCP,    & ! Local time of ISCCP satellite overpasses (hrs GMT)
-         SWATH_LOCALTIMES_MISR,     & ! Local time of MISR satellite overpasses (hrs GMT)
-         SWATH_LOCALTIMES_MODIS,    & ! Local time of MODIS satellite overpasses (hrs GMT)
-         SWATH_LOCALTIMES_PARASOL,  & ! Local time of PARASOL satellite overpasses (hrs GMT)
-         SWATH_LOCALTIMES_CSCAL,    & ! Local time of CLOUDSAT+CALIPSO satellite overpasses (hrs GMT)
-         SWATH_LOCALTIMES_ATLID,    & ! Local time of ATLID satellite overpasses (hrs GMT)
-         SWATH_WIDTHS_ISCCP,        & ! Width in km of ISCCP satellite overpasses
-         SWATH_WIDTHS_MISR,         & ! Width in km of MISR satellite overpasses
-         SWATH_WIDTHS_MODIS,        & ! Width in km of MODIS satellite overpasses
-         SWATH_WIDTHS_PARASOL,      & ! Width in km of PARASOL satellite overpasses
-         SWATH_WIDTHS_CSCAL,        & ! Width in km of CLOUDSAT+CALIPSO satellite overpasses
-         SWATH_WIDTHS_ATLID           ! Width in km of ATLID satellite overpasses    
+         COSP_SWATH_LOCALTIMES_ISCCP,    & ! Local time of ISCCP satellite overpasses (hrs GMT)
+         COSP_SWATH_LOCALTIMES_MISR,     & ! Local time of MISR satellite overpasses (hrs GMT)
+         COSP_SWATH_LOCALTIMES_MODIS,    & ! Local time of MODIS satellite overpasses (hrs GMT)
+         COSP_SWATH_LOCALTIMES_PARASOL,  & ! Local time of PARASOL satellite overpasses (hrs GMT)
+         COSP_SWATH_LOCALTIMES_CSCAL,    & ! Local time of CLOUDSAT+CALIPSO satellite overpasses (hrs GMT)
+         COSP_SWATH_LOCALTIMES_ATLID,    & ! Local time of ATLID satellite overpasses (hrs GMT)
+         COSP_SWATH_WIDTHS_ISCCP,        & ! Width in km of ISCCP satellite overpasses
+         COSP_SWATH_WIDTHS_MISR,         & ! Width in km of MISR satellite overpasses
+         COSP_SWATH_WIDTHS_MODIS,        & ! Width in km of MODIS satellite overpasses
+         COSP_SWATH_WIDTHS_PARASOL,      & ! Width in km of PARASOL satellite overpasses
+         COSP_SWATH_WIDTHS_CSCAL,        & ! Width in km of CLOUDSAT+CALIPSO satellite overpasses
+         COSP_SWATH_WIDTHS_ATLID           ! Width in km of ATLID satellite overpasses    
        
 #ifdef USE_COSP
 !!! this list should include any variable that you might want to include in the namelist
@@ -339,12 +338,12 @@ CONTAINS
          cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
          cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
          cosp_ncolumns, cosp_nradsteps, cosp_passive, cosp_runall,                         &
-         rttov_Ninstruments, rttov_instrument_namelists,                                   &
-         N_SWATHS_ISCCP, SWATH_LOCALTIMES_ISCCP, SWATH_WIDTHS_ISCCP, N_SWATHS_MISR,        &
-         SWATH_LOCALTIMES_MISR, SWATH_WIDTHS_MISR, N_SWATHS_MODIS, SWATH_LOCALTIMES_MODIS, &
-         SWATH_WIDTHS_MODIS, N_SWATHS_PARASOL, SWATH_LOCALTIMES_PARASOL,                   &
-         SWATH_WIDTHS_PARASOL, N_SWATHS_CSCAL, SWATH_LOCALTIMES_CSCAL,                     &
-         SWATH_WIDTHS_CSCAL, N_SWATHS_ATLID, SWATH_LOCALTIMES_ATLID, SWATH_WIDTHS_ATLID
+         cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists,                         &
+         COSP_N_SWATHS_ISCCP, COSP_SWATH_LOCALTIMES_ISCCP, COSP_SWATH_WIDTHS_ISCCP, COSP_N_SWATHS_MISR,        &
+         COSP_SWATH_LOCALTIMES_MISR, COSP_SWATH_WIDTHS_MISR, COSP_N_SWATHS_MODIS, COSP_SWATH_LOCALTIMES_MODIS, &
+         COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
+         COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
+         COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
     
     !! read in the namelist
     if (masterproc) then
@@ -363,24 +362,24 @@ CONTAINS
 
    !  Indexing order for "cospIN % cospswathsIN" is ISCCP, MISR, CLOUDSAT-CALIPSO, ATLID, PARASOL, MODIS
     if (masterproc) then
-       cospswathsIN(1)%N_inst_swaths                             = N_SWATHS_ISCCP
-       cospswathsIN(1)%inst_localtimes(1:N_SWATHS_ISCCP)         = SWATH_LOCALTIMES_ISCCP
-       cospswathsIN(1)%inst_localtime_widths(1:N_SWATHS_ISCCP)   = SWATH_WIDTHS_ISCCP
-       cospswathsIN(2)%N_inst_swaths                             = N_SWATHS_MISR
-       cospswathsIN(2)%inst_localtimes(1:N_SWATHS_MISR)          = SWATH_LOCALTIMES_MISR
-       cospswathsIN(2)%inst_localtime_widths(1:N_SWATHS_MISR)    = SWATH_WIDTHS_MISR
-       cospswathsIN(3)%N_inst_swaths                             = N_SWATHS_CSCAL
-       cospswathsIN(3)%inst_localtimes(1:N_SWATHS_CSCAL)         = SWATH_LOCALTIMES_CSCAL
-       cospswathsIN(3)%inst_localtime_widths(1:N_SWATHS_CSCAL)   = SWATH_WIDTHS_CSCAL
-       cospswathsIN(4)%N_inst_swaths                             = N_SWATHS_ATLID
-       cospswathsIN(4)%inst_localtimes(1:N_SWATHS_ATLID)         = SWATH_LOCALTIMES_ATLID
-       cospswathsIN(4)%inst_localtime_widths(1:N_SWATHS_ATLID)   = SWATH_WIDTHS_ATLID
-       cospswathsIN(5)%N_inst_swaths                             = N_SWATHS_PARASOL
-       cospswathsIN(5)%inst_localtimes(1:N_SWATHS_PARASOL)       = SWATH_LOCALTIMES_PARASOL
-       cospswathsIN(5)%inst_localtime_widths(1:N_SWATHS_PARASOL) = SWATH_WIDTHS_PARASOL
-       cospswathsIN(6)%N_inst_swaths                             = N_SWATHS_MODIS
-       cospswathsIN(6)%inst_localtime_widths(1:N_SWATHS_MODIS)   = SWATH_WIDTHS_MODIS
-       cospswathsIN(6)%inst_localtimes(1:N_SWATHS_MODIS)         = SWATH_LOCALTIMES_MODIS
+       cospswathsIN(1)%N_inst_swaths                                  = COSP_N_SWATHS_ISCCP
+       cospswathsIN(1)%inst_localtimes(1:COSP_N_SWATHS_ISCCP)         = COSP_SWATH_LOCALTIMES_ISCCP
+       cospswathsIN(1)%inst_localtime_widths(1:COSP_N_SWATHS_ISCCP)   = COSP_SWATH_WIDTHS_ISCCP
+       cospswathsIN(2)%N_inst_swaths                                  = COSP_N_SWATHS_MISR
+       cospswathsIN(2)%inst_localtimes(1:COSP_N_SWATHS_MISR)          = COSP_SWATH_LOCALTIMES_MISR
+       cospswathsIN(2)%inst_localtime_widths(1:COSP_N_SWATHS_MISR)    = COSP_SWATH_WIDTHS_MISR
+       cospswathsIN(3)%N_inst_swaths                                  = COSP_N_SWATHS_CSCAL
+       cospswathsIN(3)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)         = COSP_SWATH_LOCALTIMES_CSCAL
+       cospswathsIN(3)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL)   = COSP_SWATH_WIDTHS_CSCAL
+       cospswathsIN(4)%N_inst_swaths                                  = COSP_N_SWATHS_ATLID
+       cospswathsIN(4)%inst_localtimes(1:COSP_N_SWATHS_ATLID)         = COSP_SWATH_LOCALTIMES_ATLID
+       cospswathsIN(4)%inst_localtime_widths(1:COSP_N_SWATHS_ATLID)   = COSP_SWATH_WIDTHS_ATLID
+       cospswathsIN(5)%N_inst_swaths                                  = COSP_N_SWATHS_PARASOL
+       cospswathsIN(5)%inst_localtimes(1:COSP_N_SWATHS_PARASOL)       = COSP_SWATH_LOCALTIMES_PARASOL
+       cospswathsIN(5)%inst_localtime_widths(1:COSP_N_SWATHS_PARASOL) = COSP_SWATH_WIDTHS_PARASOL
+       cospswathsIN(6)%N_inst_swaths                                  = COSP_N_SWATHS_MODIS
+       cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_MODIS)   = COSP_SWATH_WIDTHS_MODIS
+       cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_MODIS)         = COSP_SWATH_LOCALTIMES_MODIS
     end if
 
 #ifdef SPMD
@@ -404,8 +403,8 @@ CONTAINS
     call mpibcast(cosp_histfile_aux_num,1,  mpiint, 0, mpicom)
     call mpibcast(cosp_histfile_aux,    1,  mpilog, 0, mpicom)
     call mpibcast(cosp_nradsteps,       1,  mpiint, 0, mpicom)
-    call mpibcast(rttov_Ninstruments,   1,  mpiint, 0, mpicom)
-    call mpibcast(rttov_instrument_namelists, len(rttov_instrument_namelists(1))*50, mpichar, 0, mpicom)
+    call mpibcast(cosp_rttov_Ninstruments,   1,  mpiint, 0, mpicom)
+    call mpibcast(cosp_rttov_instrument_namelists, len(cosp_rttov_instrument_namelists(1))*50, mpichar, 0, mpicom)
 
     do i=1,6 ! Broadcast swathing variables.
       call mpibcast(cospswathsIN(i)%N_inst_swaths,         1,   mpiint, 0, mpicom)
@@ -434,7 +433,7 @@ CONTAINS
     if (cosp_lmodis_sim) then
        lmodis_sim = .true.
     end if
-    if ((rttov_Ninstruments > 0) .and. cosp_lrttov_sim) then
+    if ((cosp_rttov_Ninstruments > 0) .and. cosp_lrttov_sim) then
        lrttov_sim = .true.
     end if
 
@@ -503,6 +502,10 @@ CONTAINS
     ! Set number of sub-columns, from namelist
     ncolumns   = cosp_ncolumns
     nscol_cosp = cosp_ncolumns
+
+    ! Set RTTOV instruments and namelists paths, from cosp namelist
+    rttov_Ninstruments = cosp_rttov_Ninstruments
+    rttov_instrument_namelists = cosp_rttov_instrument_namelists
         
     if (masterproc) then
        if (docosp) then 
@@ -521,30 +524,32 @@ CONTAINS
           write(iulog,*)'  Write COSP input fields to history file  = ', cosp_histfile_aux_num
           write(iulog,*)'  Write COSP subcolumn fields              = ', lfrac_out
 
-          write(iulog,*)'  N_SWATHS_ISCCP                           = ', N_SWATHS_ISCCP
-          write(iulog,*)'  SWATH_LOCALTIMES_ISCCP                   = ', SWATH_LOCALTIMES_ISCCP
-          write(iulog,*)'  SWATH_WIDTHS_ISCCP                       = ', SWATH_WIDTHS_ISCCP
+          write(iulog,*)'  COSP_N_SWATHS_ISCCP                           = ', COSP_N_SWATHS_ISCCP
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_ISCCP                   = ', COSP_SWATH_LOCALTIMES_ISCCP
+          write(iulog,*)'  COSP_SWATH_WIDTHS_ISCCP                       = ', COSP_SWATH_WIDTHS_ISCCP
 
-          write(iulog,*)'  N_SWATHS_MISR                            = ', N_SWATHS_MISR
-          write(iulog,*)'  SWATH_LOCALTIMES_MISR                    = ', SWATH_LOCALTIMES_MISR
-          write(iulog,*)'  SWATH_WIDTHS_MISR                        = ', SWATH_WIDTHS_MISR
+          write(iulog,*)'  COSP_N_SWATHS_MISR                            = ', COSP_N_SWATHS_MISR
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_MISR                    = ', COSP_SWATH_LOCALTIMES_MISR
+          write(iulog,*)'  COSP_SWATH_WIDTHS_MISR                        = ', COSP_SWATH_WIDTHS_MISR
           
-          write(iulog,*)'  N_SWATHS_CSCAL                           = ', N_SWATHS_CSCAL
-          write(iulog,*)'  SWATH_LOCALTIMES_CSCAL                   = ', SWATH_LOCALTIMES_CSCAL
-          write(iulog,*)'  SWATH_WIDTHS_CSCAL                       = ', SWATH_WIDTHS_CSCAL
+          write(iulog,*)'  COSP_N_SWATHS_CSCAL                           = ', COSP_N_SWATHS_CSCAL
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_CSCAL                   = ', COSP_SWATH_LOCALTIMES_CSCAL
+          write(iulog,*)'  COSP_SWATH_WIDTHS_CSCAL                       = ', COSP_SWATH_WIDTHS_CSCAL
 
-          write(iulog,*)'  N_SWATHS_MODIS                           = ', N_SWATHS_MODIS
-          write(iulog,*)'  SWATH_LOCALTIMES_MODIS                   = ', SWATH_LOCALTIMES_MODIS
-          write(iulog,*)'  SWATH_WIDTHS_MODIS                       = ', SWATH_WIDTHS_MODIS
+          write(iulog,*)'  COSP_N_SWATHS_MODIS                           = ', COSP_N_SWATHS_MODIS
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_MODIS                   = ', COSP_SWATH_LOCALTIMES_MODIS
+          write(iulog,*)'  COSP_SWATH_WIDTHS_MODIS                       = ', COSP_SWATH_WIDTHS_MODIS
 
-          write(iulog,*)'  N_SWATHS_PARASOL                         = ', N_SWATHS_PARASOL
-          write(iulog,*)'  SWATH_LOCALTIMES_PARASOL                 = ', SWATH_LOCALTIMES_PARASOL
-          write(iulog,*)'  SWATH_WIDTHS_PARASOL                     = ', SWATH_WIDTHS_PARASOL
+          write(iulog,*)'  COSP_N_SWATHS_PARASOL                         = ', COSP_N_SWATHS_PARASOL
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_PARASOL                 = ', COSP_SWATH_LOCALTIMES_PARASOL
+          write(iulog,*)'  COSP_SWATH_WIDTHS_PARASOL                     = ', COSP_SWATH_WIDTHS_PARASOL
 
-          write(iulog,*)'  N_SWATHS_ATLID                           = ', N_SWATHS_ATLID
-          write(iulog,*)'  SWATH_LOCALTIMES_ATLID                   = ', SWATH_LOCALTIMES_ATLID
-          write(iulog,*)'  SWATH_WIDTHS_ATLID                       = ', SWATH_WIDTHS_ATLID
+          write(iulog,*)'  COSP_N_SWATHS_ATLID                           = ', COSP_N_SWATHS_ATLID
+          write(iulog,*)'  COSP_SWATH_LOCALTIMES_ATLID                   = ', COSP_SWATH_LOCALTIMES_ATLID
+          write(iulog,*)'  COSP_SWATH_WIDTHS_ATLID                       = ', COSP_SWATH_WIDTHS_ATLID
 
+          write(iulog,*)'  Number of RTTOV instruments                   = ', rttov_Ninstruments
+          write(iulog,*)'  RTTOV instrument namelists                    = ', rttov_instrument_namelists
        else
           write(iulog,*)'COSP not enabled'
        end if
@@ -2215,7 +2220,7 @@ CONTAINS
     ! Model state
     call t_startf("construct_cospstateIN")
 
-    call construct_cospstateIN(ncol, nlay, 0, cospstateIN)      
+    call construct_cospstateIN(ncol, nlay, 0, cospstateIN)
 
     ! convert to degrees.  Lat in range [-90,..,90], Lon in range [0,..,360]
     cospstateIN%lat             = state%lat(:ncol)*rad2deg
@@ -4135,7 +4140,7 @@ CONTAINS
         
      ! RTTOV multi-instrument
      if (allocated(y%rttov_outputs)) then
-         do i=1,y % N_rttov_instruments ! Iterate over each instrument
+         do i=1,y % Ninst_rttov ! Iterate over each instrument
              if (associated(y%rttov_outputs(i)%channel_indices)) then
                 deallocate(y%rttov_outputs(i)%channel_indices)
                 nullify(y%rttov_outputs(i)%channel_indices)
