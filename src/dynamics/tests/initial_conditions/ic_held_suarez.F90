@@ -22,7 +22,7 @@ module ic_held_suarez
 CONTAINS
 !==============================================================================
 
-  subroutine hs94_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
+  subroutine hs94_set_ic(latvals, lonvals, U, V, W, T, PS, PHIS,         &
        Q, m_cnst, mask, verbose)
     use const_init,    only: cnst_init_default
     use constituents,  only: cnst_name
@@ -38,6 +38,7 @@ CONTAINS
     real(r8),           intent(in)    :: lonvals(:) ! lon in degrees (ncol)
     real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
+    real(r8), optional, intent(inout) :: W(:,:)     ! vertical velocity (nonhydrostatic)
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
     real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
@@ -94,6 +95,18 @@ CONTAINS
       end do
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          V initialized by "',subname,'"'
+      end if
+    end if
+
+    if (present(W)) then
+      nlev = size(W, 2)
+      do k = 1, nlev
+        where(mask_use)
+          W(:,k) = 0.0_r8
+        end where
+      end do
+      if(masterproc .and. verbose_use) then
+        write(iulog,*) '          W (nonhydrostatic) initialized by "',subname,'"'
       end if
     end if
 

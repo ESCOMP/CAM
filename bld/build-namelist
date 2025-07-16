@@ -709,6 +709,19 @@ if (!($simple_phys or $aqua_mode)) {
   }
 }
 
+# Setup default ndep streams only if not simple_phys or aqua_mode and
+# the chemistry cannot produce the nitrogen depostion fluxes
+if (!($simple_phys or $aqua_mode)) {
+  my $chem_nitrodep = chem_has_species($cfg, 'NO') and chem_has_species($cfg, 'NH3');
+  if ((!$chem_nitrodep) or ($chem =~ /geoschem/)) {
+    add_default($nl, 'stream_ndep_mesh_filename');
+    add_default($nl, 'stream_ndep_data_filename', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_first', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_last', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_align', 'sim_year'=>$sim_year);
+  }
+}
+
 # Topography
 add_default($nl, 'use_topo_file');
 my $use_topo_file = $nl->get_value('use_topo_file');
@@ -3872,6 +3885,14 @@ if (!$simple_phys) {
         }
     }
 
+    my $use_gw_movmtn_pbl = $nl->get_value('use_gw_movmtn_pbl');
+    if ($use_gw_movmtn_pbl =~ /$TRUE/io) {
+         if ( ! ($dyn =~ /se/) ) {
+            die "$ProgName - ERROR: use_gw_movmtn_pbl is only available with the SE dycore \n";
+
+         }
+    }
+
     add_default($nl, 'use_gw_rdg_gamma' , 'val'=>'.false.');
     add_default($nl, 'use_gw_front_igw' , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
@@ -4100,7 +4121,9 @@ if ($dyn eq 'fv') {
 
 # FV3 dycore
 if ( $dyn eq 'fv3') {
-
+    add_default($nl, 'fv3_a_imp');
+    add_default($nl, 'fv3_p_fac');
+    add_default($nl, 'fv3_use_logp');
     add_default($nl, 'fv3_adjust_dry_mass');
     add_default($nl, 'fv3_beta');
     add_default($nl, 'fv3_clock_grain');
