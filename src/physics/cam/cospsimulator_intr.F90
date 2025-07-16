@@ -2749,45 +2749,56 @@ CONTAINS
        call outfld('CLDLOW_CAL_ICE',cldlow_cal_ice, pcols,lchnk)
        call outfld('CLDLOW_CAL_LIQ',cldlow_cal_liq, pcols,lchnk)
        call outfld('CLDLOW_CAL_UN', cldlow_cal_un,  pcols,lchnk) !+1.4
-       where (cld_cal(:ncol,:nht_cosp) == R_UNDEF)
-          !! setting missing values to 0 (clear air).  
-          !! I'm not sure why COSP produces a mix of R_UNDEF and realvalue in the nht_cosp dimension.
-          cld_cal(:ncol,:nht_cosp) = 0.0_r8
-       end where
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cld_cal(:ncol,:nht_cosp) == R_UNDEF)
+             !! setting missing values to 0 (clear air).  
+             !! I'm not sure why COSP produces a mix of R_UNDEF and realvalue in the nht_cosp dimension.
+             cld_cal(:ncol,:nht_cosp) = 0.0_r8
+          end where
+       end if
        call outfld('CLD_CAL',        cld_cal,       pcols,lchnk)  !! fails check_accum if 'A'
        call outfld('MOL532_CAL',     mol532_cal,    pcols,lchnk)
        
-       where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
-          !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
-          !!            cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = R_UNDEF
-          cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
-       end where
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
+             !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
+             !!            cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = R_UNDEF
+             cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
+         end where
+       end if
        call outfld('CFAD_SR532_CAL',cfad_sr532_cal    ,pcols,lchnk)
-       
-       where (refl_parasol(:ncol,:nsza_cosp) == R_UNDEF)
-          !! setting missing values to 0 (clear air).  
-          refl_parasol(:ncol,:nsza_cosp) = 0
-       end where
+       if (cospIN%cospswathsIN(5)%N_inst_swaths < 1) then
+          where (refl_parasol(:ncol,:nsza_cosp) == R_UNDEF)
+             !! setting missing values to 0 (clear air).  
+             refl_parasol(:ncol,:nsza_cosp) = 0
+          end where
+       end if
        call outfld('RFL_PARASOL',refl_parasol   ,pcols,lchnk) !!
        
-       where (cld_cal_liq(:ncol,:nht_cosp) == R_UNDEF) !+cosp1.4
-          !! setting missing values to 0 (clear air), likely below sea level
-          cld_cal_liq(:ncol,:nht_cosp) = 0.0_r8
-       end where
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cld_cal_liq(:ncol,:nht_cosp) == R_UNDEF) !+cosp1.4
+             !! setting missing values to 0 (clear air), likely below sea level
+             cld_cal_liq(:ncol,:nht_cosp) = 0.0_r8
+          end where
+       end if
        call outfld('CLD_CAL_LIQ',cld_cal_liq    ,pcols,lchnk)  !!
        
-       where (cld_cal_ice(:ncol,:nht_cosp) == R_UNDEF)
-          !! setting missing values to 0 (clear air), likely below sea level
-          cld_cal_ice(:ncol,:nht_cosp) = 0.0_r8
-       end where
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cld_cal_ice(:ncol,:nht_cosp) == R_UNDEF)
+             !! setting missing values to 0 (clear air), likely below sea level
+             cld_cal_ice(:ncol,:nht_cosp) = 0.0_r8
+          end where
+       end if
        call outfld('CLD_CAL_ICE',cld_cal_ice    ,pcols,lchnk)  !!
        
-       where (cld_cal_un(:ncol,:nht_cosp) == R_UNDEF)
-          !! setting missing values to 0 (clear air), likely below sea level
-          cld_cal_un(:ncol,:nht_cosp) = 0.0_r8
-       end where
-       call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
-       
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cld_cal_un(:ncol,:nht_cosp) == R_UNDEF)
+             !! setting missing values to 0 (clear air), likely below sea level
+             cld_cal_un(:ncol,:nht_cosp) = 0.0_r8
+          end where
+          call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
+       end if
+
        where (cld_cal_tmp(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmp(:ncol,:nht_cosp) = 0.0_r8
@@ -2852,11 +2863,13 @@ CONTAINS
     
     ! RADAR SIMULATOR OUTPUTS
     if (lradar_sim) then
-       where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) == R_UNDEF)
-          !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue 
-          !           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = R_UNDEF
-          cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = 0.0_r8
-       end where
+       if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
+          where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) == R_UNDEF)
+             !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue 
+             !           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = R_UNDEF
+             cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = 0.0_r8
+          end where
+       end if
        call outfld('CFAD_DBZE94_CS',cfad_dbze94_cs,   pcols, lchnk)
        call outfld('CLDTOT_CALCS',  cldtot_calcs,     pcols, lchnk)
        call outfld('CLDTOT_CS',     cldtot_cs,        pcols, lchnk)
