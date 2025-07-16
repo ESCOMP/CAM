@@ -1098,7 +1098,14 @@ CONTAINS
            end if 
        end do     
     end if
-
+    
+    if (masterproc) then
+       if (docosp) then 
+          write(iulog,*)'Finished RTTOV section in cospsimulator_intr_init'
+          write(iulog,*)'lrttov_sim:                   ', lrttov_sim
+       end if
+    end if
+    
     !! ADDFLD, ADD_DEFAULT, OUTFLD CALLS FOR COSP OUTPUTS IF RUNNING COSP OFF-LINE
     if (cosp_histfile_aux) then
        call addfld ('PS_COSP',         horiz_only,            'I','Pa', &
@@ -2278,6 +2285,13 @@ CONTAINS
     call construct_cospIN(ncol, nscol_cosp, nlay, rttov_Ninstruments, cospIN, emis_grey=1.0_r8) ! Apply unitary blackbody surface emissivity to be consistent with CESM physics
     cospIN%emsfc_lw = emsfc_lw
     if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
+    
+    if (masterproc) then
+       if (docosp) then 
+           write(iulog,*)'after construct_cospIN'
+       end if
+    end if         
+    
     if (lrttov_sim) cospIN%cfg_rttov     => rttov_configs
 
     cospIN%cospswathsIN = cospswathsIN
