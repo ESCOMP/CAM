@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- TSI dataset from Lean (via Caspar Ammann) -->
+<solar_data_file>atm/cam/solar/SOLAR_TSI_Lean_1610-2007_annual_c090324.nc</solar_data_file>
+
+<!-- GHG values from AR5 PRE2005_MIDYR_CONC.DAT (via Jean-Francois Lamarque) -->
+<scenario_ghg>RAMPED</scenario_ghg>
+<bndtvghg>atm/cam/ggas/ghg_hist_1765-2005_c091218.nc</bndtvghg>
+
+<!-- Prescribed BAM data is from Jean-Francois Lamarque -->
+<prescribed_aero_datapath>atm/cam/chem/trop_mozart_aero/aero</prescribed_aero_datapath>
+<prescribed_aero_file>aero_1.9x2.5_L26_1850-2005_c091112.nc</prescribed_aero_file>
+<prescribed_aero_type>INTERP_MISSING_MONTHS</prescribed_aero_type>
+
+<!-- aerosol deposition -->
+<aerodep_flx_datapath>atm/cam/chem/trop_mozart_aero/aero</aerodep_flx_datapath>
+<aerodep_flx_file>aerosoldep_monthly_1849-2006_1.9x2.5_c090803.nc</aerodep_flx_file>
+<aerodep_flx_type>INTERP_MISSING_MONTHS</aerodep_flx_type>
+
+<!-- Prescribed ozone data is from Jean-Francois Lamarque -->
+<prescribed_ozone_datapath>atm/cam/ozone</prescribed_ozone_datapath>
+<prescribed_ozone_file>ozone_1.9x2.5_L26_1850-2005_c091112.nc</prescribed_ozone_file>
+<prescribed_ozone_name>O3</prescribed_ozone_name>
+<prescribed_ozone_type>INTERP_MISSING_MONTHS</prescribed_ozone_type>
+
+<!-- Volcanic aerosol from eruptions is from Caspar Ammann -->
+<prescribed_volcaero_datapath>atm/cam/volc</prescribed_volcaero_datapath>
+<prescribed_volcaero_file>CCSM4_volcanic_1850-2008_prototype1.nc</prescribed_volcaero_file>
+
+<!-- sim_year attribute used for nitrogen deposition datasets -->
+<sim_year>1850-2015</sim_year>
+
+</namelist_defaults>

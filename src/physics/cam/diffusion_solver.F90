@@ -631,14 +631,14 @@
             ! the sum of 'taux(i) - ksrftms(i)*u(i,pver) + tauresx(i)'.
 
               if( itaures .eq. 1 ) then
-                 tauresx(i) = taux(i) + tautmsx(i) + taubljx(i) + tauresx(i)- tauimpx(i)
-                 tauresy(i) = tauy(i) + tautmsy(i) + taubljy(i) + tauresy(i)- tauimpy(i)
+                 tauresx(i) = taux(i) + tauresx(i) - tauimpx(i) + tautmsx(i) + taubljx(i)
+                 tauresy(i) = tauy(i) + tauresy(i) - tauimpy(i) + tautmsy(i) + taubljy(i)
               endif
 
           else
 
-             tautotx(i) = tautmsx(i) + taux(i)
-             tautoty(i) = tautmsy(i) + tauy(i)
+             tautotx(i) = taux(i) + tautmsx(i)
+             tautoty(i) = tauy(i) + tautmsy(i)
              tauresx(i) = 0._r8
              tauresy(i) = 0._r8
 

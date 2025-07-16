@@ -212,6 +212,7 @@
 <ncdata hgrid="ne120np4" nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"                 >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="273" waccmx="1"     >atm/waccm/ic/fx2000_ne120pg3L273.001.cam.i.0002-01-01-00000.noBRCL_c250522.nc</ncdata>
 
 <ncdata hgrid="ne240np4" nlev="26"                 >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
 <ncdata hgrid="ne240np4" nlev="26"  ic_ymd="901"   >atm/cam/inic/homme/cami_0000-09-01_ne240np4_L26_c061106.nc</ncdata>
@@ -882,7 +883,10 @@
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">30</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="ne30np4"  waccmx="1">30</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.47x0.63" waccmx="1">90</ionos_xport_nsplit>
+<ionos_xport_nsplit hgrid="ne120np4"  waccmx="1">180</ionos_xport_nsplit>
 <oplus_ring_polar_filter>.true.</oplus_ring_polar_filter>
+<oplus_shapiro_const                 >3.d-2</oplus_shapiro_const>
+<oplus_shapiro_const hgrid="ne120np4">6.d-3</oplus_shapiro_const>
 
 <!-- Oplus transport grid configuration -->
 <oplus_grid> 144,96 </oplus_grid>
@@ -890,11 +894,13 @@
 <oplus_grid hgrid="ne30np4"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.9x1.25"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.47x0.63"> 576,384 </oplus_grid>
+<oplus_grid hgrid="ne120np4"> 576,384 </oplus_grid>
 <!-- Magnetic grid resolution -->
 <edyn_grid>80x97</edyn_grid>
 <edyn_grid hgrid="0.9x1.25">160x193</edyn_grid>
 <edyn_grid hgrid="ne30np4" >160x193</edyn_grid>
 <edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
+<edyn_grid hgrid="ne120np4" >320x385</edyn_grid>
 
 <!-- ESMF mesh files for physics decomposition -->
 <cam_physics_mesh hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
@@ -907,6 +913,7 @@
 <cam_physics_mesh hgrid="ne16np4" npg="3">share/meshes/ne16pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
 <cam_physics_mesh hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
 <cam_physics_mesh hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne120np4" npg="3">share/meshes/ne120pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
@@ -1980,6 +1987,7 @@
 <drydep_srf_file hgrid="ne60np4"         >atm/cam/chem/trop_mam/atmsrf_ne60np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne120np4"        >atm/cam/chem/trop_mam/atmsrf_ne120np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne120np4" npg="2">atm/cam/chem/trop_mam/atmsrf_ne120np4.pg2_200109.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne120np4" npg="3">atm/cam/chem/trop_mam/atmsrf_ne120np4.pg3_c210324.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne240np4"        >atm/cam/chem/trop_mam/atmsrf_ne240np4_110920.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="ne0np4CONUS.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4conus30x8_161116.nc</drydep_srf_file>
@@ -2034,19 +2042,6 @@
 
 <stream_ndep_data_filename >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
 <stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</stream_ndep_data_filename>
-
-<stream_ndep_year_first >2000</stream_ndep_year_first>
-<stream_ndep_year_first sim_year="1850">1850</stream_ndep_year_first>
-<stream_ndep_year_first sim_year="1850-2015">1850</stream_ndep_year_first>
-<stream_ndep_year_first sim_year="2010">2010</stream_ndep_year_first>
-
-<stream_ndep_year_last >2000</stream_ndep_year_last>
-<stream_ndep_year_last sim_year="1850">1850</stream_ndep_year_last>
-<stream_ndep_year_last sim_year="1850-2015">2015</stream_ndep_year_last>
-<stream_ndep_year_last sim_year="2010">2010</stream_ndep_year_last>
-
-<stream_ndep_year_align >1</stream_ndep_year_align>
-<stream_ndep_year_align sim_year="1850-2015">1850</stream_ndep_year_align>
 
 <!-- Turbulent Mountain Stress -->
 <do_tms                                                     > .false. </do_tms>
@@ -3180,6 +3175,7 @@
 <se_hypervis_subcycle  hgrid="ne16np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
+<se_hypervis_subcycle  waccmx="1" hgrid="ne120np4" nlev="273"                   > 30</se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
@@ -3193,6 +3189,7 @@
 <se_hypervis_subcycle_sponge hgrid="ne16np4" model_top="ht"            > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="ht"            > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"            > 40 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccmx="1" hgrid="ne120np4" nlev="273"    > 180</se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -3227,13 +3224,16 @@
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
 
 <se_sponge_del4_nu_fac    > -1 </se_sponge_del4_nu_fac>
+<se_sponge_del4_nu_fac hgrid="ne120np4" nlev="273" waccmx="1"> 3.0 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0"> 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac model_top="ht"                           > 7.5 </se_sponge_del4_nu_div_fac>
+<se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="ht"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
+<se_sponge_del4_lev waccmx="1" hgrid="ne120np4" nlev="273"> 100 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
 <se_qsplit hgrid="ne30np4" waccm_phys="1" waccmx="1" model_top="none"> 2 </se_qsplit>
@@ -3260,6 +3260,7 @@
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
+<se_nsplit waccmx="1" hgrid="ne120np4" nlev="273" > 10 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
@@ -3267,6 +3268,7 @@
 <se_rsplit waccmx="1"                               > 4 </se_rsplit>
 <se_rsplit hgrid="ne16np4" waccmx="1" model_top="none"> 2 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
+<se_rsplit waccmx="1" hgrid="ne120np4" nlev="273"   > 5 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
 <se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>

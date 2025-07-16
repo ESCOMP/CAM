@@ -7,7 +7,7 @@
 module rad_solar_var
 
   use shr_kind_mod ,     only : r8 => shr_kind_r8
-  use radconstants,      only : nswbands, get_sw_spectral_boundaries, band2gpt_sw
+  use radiation_utils,   only : get_sw_spectral_boundaries_ccpp
   use solar_irrad_data,  only : sol_irrad, we, nbins, has_spectrum, sol_tsi
   use solar_irrad_data,  only : do_spctrl_scaling
   use cam_abortutils,    only : endrun
@@ -29,10 +29,12 @@ module rad_solar_var
 contains
 !-------------------------------------------------------------------------------
 
-  subroutine rad_solar_var_init( )
+  subroutine rad_solar_var_init(nswbands)
+    integer, intent(in) :: nswbands
 
-    integer :: ierr
+    integer :: ierr, errflg
     integer :: radmax_loc
+    character(len=512) :: errmsg
 
     if ( do_spctrl_scaling ) then
 
@@ -55,7 +57,10 @@ contains
           call endrun('rad_solar_var_init: Error allocating space for irrad')
        end if
 
-       call get_sw_spectral_boundaries(radbinmin, radbinmax, 'nm')
+       call get_sw_spectral_boundaries_ccpp(radbinmin, radbinmax, 'nm', errmsg, errflg)
+       if (errflg /= 0) then
+          call endrun('rad_solar_var_init: Error during get_sw_spectral_boundaries_ccpp - message: "'//errmsg//'"')
+       end if
 
        ! Make sure that the far-IR is included, even if radiation grid does not
        ! extend that far down. 10^5 nm corresponds to a wavenumber of
@@ -70,11 +75,13 @@ contains
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
 
-  subroutine get_variability(toa_flux, sfac) 
+  subroutine get_variability(toa_flux, sfac, band2gpt_sw, nswbands)
 
      ! Arguments 
      real(r8), intent(in)  :: toa_flux(:,:) ! TOA flux to be scaled (columns,gpts)
      real(r8), intent(out) :: sfac(:,:)     ! scaling factors (columns,gpts)
+     integer,  intent(in)  :: band2gpt_sw(:,:)
+     integer,  intent(in)  :: nswbands
 
      ! Local variables 
      integer :: i, j, istat, gpt_start, gpt_end, ncols

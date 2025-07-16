@@ -676,9 +676,6 @@ if ($analytic_ic) {
     add_default($nl, 'analytic_ic_type');
 }
 
-#
-# Simulated years: sim_year and sim_year_start
-#
 # sim_year
 # This is used to identify appropriate defaults for climatological or transient
 # forcing datasets.  If user hasn't specified then default to 2000 (present day climatology).
@@ -689,12 +686,14 @@ if (defined $nl->get_value('sim_year')) {
     $sim_year =~ s/['"]//g; #"'
 }
 
-# sim_year_start
-# If sim_year is input as a range of years, then select the first year
-# to use with some datasets
-my $sim_year_start = $sim_year;
+# If sim_year is input as a range of years, then extract the first and last years
+my $sim_year_first = $sim_year;
+my $sim_year_last  = $sim_year;
+my $sim_year_align = '1';
 if ($sim_year =~ /(\d+)-(\d+)/) {
-    $sim_year_start = $1;
+    $sim_year_first = $1;
+    $sim_year_last  = $2;
+    $sim_year_align = $1;
 }
 
 # Setup default ndep streams only if not simple_phys or aqua_mode and
@@ -704,9 +703,9 @@ if (!($simple_phys or $aqua_mode)) {
   if ((!$chem_nitrodep) or ($chem =~ /geoschem/)) {
     add_default($nl, 'stream_ndep_mesh_filename');
     add_default($nl, 'stream_ndep_data_filename', 'sim_year'=>$sim_year);
-    add_default($nl, 'stream_ndep_year_first', 'sim_year'=>$sim_year);
-    add_default($nl, 'stream_ndep_year_last', 'sim_year'=>$sim_year);
-    add_default($nl, 'stream_ndep_year_align', 'sim_year'=>$sim_year);
+    add_default($nl, 'stream_ndep_year_first', 'val'=>$sim_year_first);
+    add_default($nl, 'stream_ndep_year_last',  'val'=>$sim_year_last);
+    add_default($nl, 'stream_ndep_year_align', 'val'=>$sim_year_align);
   }
 }
 
@@ -3195,7 +3194,11 @@ if ($waccmx) {
   add_default($nl,'ionos_xport_nsplit');
   add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
   add_default($nl,'oplus_ring_polar_filter');
+  add_default($nl,'oplus_shapiro_const');
   add_default($nl,'rxn_rate_sums');
+  if ($cfg->get('hgrid') =~ /ne120/) {
+    add_default($nl,'se_min_temperature', 'val'=>'105.D0');
+  }
 }
 
 # Chemistry options
