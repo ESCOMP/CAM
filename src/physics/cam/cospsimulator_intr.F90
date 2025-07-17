@@ -2796,8 +2796,8 @@ CONTAINS
              !! setting missing values to 0 (clear air), likely below sea level
              cld_cal_un(:ncol,:nht_cosp) = 0.0_r8
           end where
-          call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
        end if
+       call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
 
        where (cld_cal_tmp(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
