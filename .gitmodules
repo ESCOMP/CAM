@@ -102,7 +102,7 @@
         url = https://github.com/dustinswales/COSPv2.0
         fxrequired = AlwaysRequired
         fxsparse = ../.cosp_sparse_checkout
-        fxtag = d10be9f # Tag for feature/cosp_rrtov_swathing on 2025/07/09
+        fxtag = e2afae9
         fxDONOTUSEurl = https://github.com/dustinswales/COSPv2.0
 
 [submodule "clubb"]
