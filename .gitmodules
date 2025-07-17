@@ -98,12 +98,12 @@
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
 [submodule "cosp2"]
-	path = src/physics/cosp2/src
-	url = https://github.com/CFMIP/COSPv2.0
+        path = src/physics/cosp2/src
+        url = https://github.com/dustinswales/COSPv2.0
         fxrequired = AlwaysRequired
         fxsparse = ../.cosp_sparse_checkout
-        fxtag = v2.1.4cesm
-	fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
+        fxtag = e2afae9
+        fxDONOTUSEurl = https://github.com/dustinswales/COSPv2.0
 
 [submodule "clubb"]
 	path = src/physics/clubb

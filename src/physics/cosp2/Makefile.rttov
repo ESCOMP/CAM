@@ -1,0 +1,80 @@
+# Makefile specifics for linking with RTTOV.
+# From src/test/Makefile_examples
+# -----------------------------------------------------------------------------
+
+# You must update the following variables below according to the local RTTOV installation and compiler
+
+# RTTOV_VERSION   RTTOV version number
+# RTTOVDIR        root directory for RTTOV binaries, libraries, modules, includes
+
+# FC              compiler command name
+# FFLAGS          compiler specific flags: -I$(RTTOVDIR)/mod -I$(RTTOVDIR)/include are mandatory
+# LDFLAGS_ARCH    flags for linker
+
+# BINDIR          directory to store the binary file
+
+# If RTTOV was compiled against the HDF5 or external LAPACK libraries this is
+# handled automatically using the contents of Makefile.local.
+
+# -----------------------------------------------------------------------------
+
+
+# Derecho build with HDF5 + openmp (03/27/2024)
+RTTOVDIR=/glade/u/home/jonahshaw/w/RTTOV2/hdf_build
+FC=ifort
+FFLAGS= -I$(RTTOVDIR)/mod -I$(RTTOVDIR)/include -fPIC -O3 -fopenmp
+LDFLAGS_ARCH=-fopenmp
+
+RTTOV_VERSION=13
+EXT_BIN=.exe
+EXT_OBJ=.o
+EXT_LIB=.a
+OBJDIR=$(RTTOVDIR)/obj
+BINDIR=$(RTTOVDIR)/bin
+
+
+#### Do not edit beyond this line ####
+
+include $(RTTOVDIR)/build/Makefile.local
+
+LIBDIR=$(RTTOVDIR)/lib
+
+ifdef LDFLAGS_HDF5
+	LIBS=\
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_brdf_atlas$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_emis_atlas$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_mw_scatt$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_other$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_coef_io$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_hdf$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_parallel$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_main$(EXT_LIB)
+
+	LLIBS=-L$(LIBDIR) \
+	  -lrttov$(RTTOV_VERSION)_brdf_atlas \
+	  -lrttov$(RTTOV_VERSION)_emis_atlas \
+	  -lrttov$(RTTOV_VERSION)_mw_scatt \
+	  -lrttov$(RTTOV_VERSION)_other \
+	  -lrttov$(RTTOV_VERSION)_coef_io \
+	  -lrttov$(RTTOV_VERSION)_hdf \
+	  -lrttov$(RTTOV_VERSION)_parallel \
+	  -lrttov$(RTTOV_VERSION)_main
+else
+	LIBS=\
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_brdf_atlas$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_emis_atlas$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_mw_scatt$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_other$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_coef_io$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_parallel$(EXT_LIB) \
+	  $(LIBDIR)/librttov$(RTTOV_VERSION)_main$(EXT_LIB)
+
+	LLIBS=-L$(LIBDIR) \
+	  -lrttov$(RTTOV_VERSION)_brdf_atlas \
+	  -lrttov$(RTTOV_VERSION)_emis_atlas \
+	  -lrttov$(RTTOV_VERSION)_mw_scatt \
+	  -lrttov$(RTTOV_VERSION)_other \
+	  -lrttov$(RTTOV_VERSION)_coef_io \
+	  -lrttov$(RTTOV_VERSION)_parallel \
+	  -lrttov$(RTTOV_VERSION)_main
+endif
