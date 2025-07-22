@@ -223,7 +223,6 @@ contains
     file%fill_in_months = .false.
     file%cyclical = .false.
     file%cyclical_list = .false.
-    file%dist = .false.
 
     select case ( data_type )
     case( 'FIXED' )
@@ -704,33 +703,37 @@ contains
         endif
 
         if(masterproc) then
-! compute weighting
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
-                                plon,plat,file%weight_x,file%weight_y,file%dist)
+           ! compute weighting.  NOTE: we always set
+           ! use_flight_distance=.false. for this path since these
+           ! weights are used to inerpolate field values like PS even
+           ! when the file contains other data which should be treated
+           ! as per-cell totals.
+           call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
+                               plon,plat,file%weight_x,file%weight_y, .false.)
 
-            do i2=1,plon
-               file%count_x(i2) = 0
-               do i1=1,file%nlon
-                  if(file%weight_x(i2,i1)>0.0_r8 ) then
-                     file%count_x(i2) = file%count_x(i2) + 1
-                     file%index_x(i2,file%count_x(i2)) = i1
-                  endif
-               enddo
-            enddo
+           do i2=1,plon
+              file%count_x(i2) = 0
+              do i1=1,file%nlon
+                 if(file%weight_x(i2,i1)>0.0_r8 ) then
+                    file%count_x(i2) = file%count_x(i2) + 1
+                    file%index_x(i2,file%count_x(i2)) = i1
+                 endif
+              enddo
+           enddo
 
-            do j2=1,plat
-               file%count_y(j2) = 0
-               do j1=1,file%nlat
-                  if(file%weight_y(j2,j1)>0.0_r8 ) then
-                     file%count_y(j2) = file%count_y(j2) + 1
-                     file%index_y(j2,file%count_y(j2)) = j1
-                  endif
-               enddo
-            enddo
+           do j2=1,plat
+              file%count_y(j2) = 0
+              do j1=1,file%nlat
+                 if(file%weight_y(j2,j1)>0.0_r8 ) then
+                    file%count_y(j2) = file%count_y(j2) + 1
+                    file%index_y(j2,file%count_y(j2)) = j1
+                 endif
+              enddo
+           enddo
 
            if( file%dist ) then
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
-                                plon,plat,file%weight0_x,file%weight0_y,file%dist)
+                                plon,plat,file%weight0_x,file%weight0_y, .true.)
 
             do i2=1,plon
                file%count0_x(i2) = 0
@@ -751,6 +754,7 @@ contains
                   endif
                enddo
             enddo
+
            endif
         endif
 
@@ -773,15 +777,15 @@ contains
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
            call mpi_bcast(file%count0_x, plon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
-           call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%count0_y, plat, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
            call mpi_bcast(file%index0_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
            call mpi_bcast(file%index0_y,  plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
         endif
-    endif
 
+    endif
   end subroutine trcdata_init
 
 !-----------------------------------------------------------------------
@@ -1522,6 +1526,14 @@ contains
              lons(:ncols) = lon_global_grid_ndx(:ncols,c)
              lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
+             ! NOTE: This uses weight_[xy] instead of weight0_[xy] and
+             ! hence treats the values as a field rather than per-cell
+             ! totals.  When file%dist == TRUE, this path only appears
+             ! to be used to interpolate PS, which is probably the
+             ! correct behavior.
+             !
+             ! @reviewers: The control flow is convoluted here, so
+             ! this merits some additional scrutiny.
              call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
                   file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
                   lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
@@ -2443,7 +2455,7 @@ contains
   end subroutine interpz_conserve
 
 !------------------------------------------------------------------------------
-   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+  subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
 
     implicit none
 
@@ -2453,7 +2465,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio
+    logical, intent(in)       :: use_flight_distance         ! .true. = flight distance, .false. = mixing ratio
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2461,89 +2473,124 @@ contains
     !   ... local variables
     !---------------------------------------------------------------
     integer  :: i, j, n
-    integer  :: sil
-    real(r8)     :: tl, y
-    real(r8)     :: bot, top
+    real(r8)     :: y, trg_lo, trg_hi, src_lo, src_hi, overlap, outside
 
+    do n = 1,ncol   ! loop over columns
 
+       trg(n,:) = 0.0_r8   ! probably not needed
 
-    do n = 1,ncol
-
+       ! calculate source pressure levels from hybrid coords
        do i=1,nsrc+1
           src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
        enddo
 
+       ! Check the invariant that src_x and trg_x values are
+       ! ascending.  This could also be checked at an earlier stage to
+       ! avoid doing so for every interpolation call.
+       if (.not. ALL(src_x(1:nsrc) < src_x(2:nsrc+1))) then
+          call endrun('src_x values are not ascending')
+       endif
+       if (.not. ALL(trg_x(n,1:ntrg) < trg_x(n,2:ntrg+1))) then
+          call endrun('trg_x values are not ascending')
+       endif
+
        do i = 1, ntrg
-          tl = trg_x(n,i+1)
-          if( (tl>src_x(1)).and.(trg_x(n,i)<src_x(nsrc+1)) ) then
-             do sil = 1,nsrc
-                if( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
-                   exit
-                end if
-             end do
-
-          if( tl>src_x(nsrc+1)) sil = nsrc
-
-             y = 0.0_r8
-             bot = min(tl,src_x(nsrc+1))
-             top = trg_x(n,i)
-             do j = sil,1,-1
-                if( top<src_x(j) ) then
-                    if(use_flight_distance) then
-                        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
-                    else
-                        y = y+(bot-src_x(j))*src(n,j)
-                    endif
-                    bot = src_x(j)
-                else
-                   if(use_flight_distance) then
-                      y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-                   else
-                      y = y+(bot-top)*src(n,j)
-                   endif
-                   exit
-                endif
-             enddo
-             trg(n,i) = y
-          else
-             trg(n,i) = 0.0_r8
-          end if
-       end do
-
-       if( trg_x(n,ntrg+1)<src_x(nsrc+1) ) then
-          top = trg_x(n,ntrg+1)
-          bot = src_x(nsrc+1)
           y = 0.0_r8
-          do j=nsrc,1,-1
-             if( top<src_x(j) ) then
+
+          trg_lo = trg_x(n, i)
+          trg_hi = trg_x(n, i+1)
+
+          do j = 1, nsrc
+             src_lo = src_x(j)
+             src_hi = src_x(j+1)
+
+             overlap = min(src_hi, trg_hi) - max(src_lo, trg_lo)
+             if (overlap > 0.0_r8) then
                 if(use_flight_distance) then
-                   y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                   ! add input based on the overlap fraction
+                   y = y + src(n,j) * overlap / (src_hi - src_lo)
                 else
-                   y = y+(bot-src_x(j))*src(n,j)
+                   ! convert to mass by multiplying by dp
+                   y = y + src(n,j) * overlap
                 endif
-                bot = src_x(j)
-             else
-                if(use_flight_distance) then
-                   y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-                else
-                   y = y+(bot-top)*src(n,j)
-                endif
-                exit
              endif
           enddo
-          trg(n,ntrg) = trg(n,ntrg)+y
-       endif
+          trg(n, i) = y
+       enddo
+
+       ! Handle source values outside the target range.  Since we want
+       ! to preserve the total amount, add these to the first/last
+       ! target bucket.
+       trg_lo = trg_x(n, 1)
+       y = 0.0_r8
+       do j = 1, nsrc
+          src_lo = src_x(j)
+          src_hi = src_x(j+1)
+
+          if (src_lo < trg_lo) then
+             if (src_hi <= trg_lo) then
+                ! whole source interval is outside the target range
+                outside = src_hi - src_lo
+             else
+                ! There was some overlap, which would have been added
+                ! previously.  Only add the parts outside the target
+                ! range.
+                outside = trg_lo - src_lo
+             endif
+             if(use_flight_distance) then
+                ! add the input scaled by the fraction outside
+                y = y + src(n,j) * outside / (src_hi - src_lo)
+             else
+                ! convert to mass by multiplying by dp
+                y = y + src(n,j) * outside
+             endif
+          else
+             exit
+          endif
+       enddo
+       trg(n,1) = trg(n,1) + y
+
+       trg_hi = trg_x(n, ntrg+1)
+       y = 0.0_r8
+       do j = nsrc, 1, -1
+          src_lo = src_x(j)
+          src_hi = src_x(j+1)
+
+          if (src_hi > trg_hi) then
+             if (src_lo >= trg_hi) then
+                ! whole source interval is outside the target range
+                outside = src_hi - src_lo
+             else
+                ! There was some overlap, which would have been added
+                ! previously.  Only add the parts outside the target
+                ! range.
+                outside = src_hi - trg_hi
+             endif
+             if(use_flight_distance) then
+                ! add the full input
+                y = y + src(n,j) * outside / (src_hi - src_lo)
+             else
+                ! convert to mass by multiplying by dp
+                y = y + src(n,j) * outside
+             endif
+          else
+             exit
+          endif
+       enddo
+       trg(n,ntrg) = trg(n,ntrg) + y
 
        ! turn mass into mixing ratio
        if(.not. use_flight_distance) then
           do i=1,ntrg
-             trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+             trg(n,i) = trg(n,i) / (trg_x(n,i+1) - trg_x(n,i))
           enddo
        endif
 
     enddo
 
-   end subroutine vert_interp_mixrat
+  end subroutine vert_interp_mixrat
+
+
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
     !--------------------------------------------------------------------------
