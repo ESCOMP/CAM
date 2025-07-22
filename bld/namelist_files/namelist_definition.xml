@@ -8198,6 +8198,14 @@ multiplied by a factor of se_molecular_diff.
 Default: 0.
 </entry>
 
+<entry id="se_min_temperature" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Used by spectral element dynamical core to apply floor to temperature.
+If set to a value greater than zero the floor is applied.
+Otherwise, no floor is applied.
+Default: 0.
+</entry>
+
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.
