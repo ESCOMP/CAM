@@ -158,6 +158,26 @@ module tracer_data
 
 contains
 
+  logical function env_var_equals(varname, checkval)
+    use shr_sys_mod,      only: shr_sys_getenv
+
+    character(len=*), intent(in) :: varname
+    character(len=*), intent(in) :: checkval
+
+    character(len=80)  :: envval
+    integer :: rcode             ! shr_sys_getenv return code
+
+    envval = ' '
+    call shr_sys_getenv (varname, envval, rcode)
+
+    if (envval .eq. checkval) then
+       env_var_equals =  .true.
+    else
+       env_var_equals =  .false.
+    endif
+
+  end function env_var_equals
+
 !--------------------------------------------------------------------------
 !--------------------------------------------------------------------------
   subroutine trcdata_init( specifier, filename, filelist, datapath, flds, file, &
@@ -167,7 +187,7 @@ contains
     use dyn_grid,        only : get_dyn_grid_parm, get_horiz_grid_d
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
-    use horizontal_interpolate, only : xy_interp_init
+    use horizontal_interpolate, only : xy_interp_init, xy_interp_run_unit_tests
     use spmd_utils,       only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
 
     implicit none
@@ -223,7 +243,18 @@ contains
     file%fill_in_months = .false.
     file%cyclical = .false.
     file%cyclical_list = .false.
-    file%dist = .false.
+
+    ! TODO(jrvb): This is in the original code.  Since the MPI
+    ! initialization would get a SEGV or ABRT following the file%dist
+    ! == TRUE path below, it is possible that someone added this to
+    ! prevent the crash, then forgot to take it out.  As written, this
+    ! overrides the file-specific setting in aircraft_emit.F90, so all
+    ! files are treated as mixing ratios rather than distances.
+    ! file%dist = .false.
+    if (env_var_equals('CESM_USE_OLD_HORIZONTAL_INTERP', '1')) then
+       ! Revert to the old behavior for doing comparison test
+       file%dist = .false.
+    endif
 
     select case ( data_type )
     case( 'FIXED' )
@@ -704,33 +735,37 @@ contains
         endif
 
         if(masterproc) then
-! compute weighting
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
-                                plon,plat,file%weight_x,file%weight_y,file%dist)
+           ! compute weighting.  NOTE: we always set
+           ! use_flight_distance=.false. for this path since these
+           ! weights are used to inerpolate field values like PS even
+           ! when the file contains other data which should be treated
+           ! as per-cell totals.
+           call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
+                               plon,plat,file%weight_x,file%weight_y, .false.)
 
-            do i2=1,plon
-               file%count_x(i2) = 0
-               do i1=1,file%nlon
-                  if(file%weight_x(i2,i1)>0.0_r8 ) then
-                     file%count_x(i2) = file%count_x(i2) + 1
-                     file%index_x(i2,file%count_x(i2)) = i1
-                  endif
-               enddo
-            enddo
+           do i2=1,plon
+              file%count_x(i2) = 0
+              do i1=1,file%nlon
+                 if(file%weight_x(i2,i1)>0.0_r8 ) then
+                    file%count_x(i2) = file%count_x(i2) + 1
+                    file%index_x(i2,file%count_x(i2)) = i1
+                 endif
+              enddo
+           enddo
 
-            do j2=1,plat
-               file%count_y(j2) = 0
-               do j1=1,file%nlat
-                  if(file%weight_y(j2,j1)>0.0_r8 ) then
-                     file%count_y(j2) = file%count_y(j2) + 1
-                     file%index_y(j2,file%count_y(j2)) = j1
-                  endif
-               enddo
-            enddo
+           do j2=1,plat
+              file%count_y(j2) = 0
+              do j1=1,file%nlat
+                 if(file%weight_y(j2,j1)>0.0_r8 ) then
+                    file%count_y(j2) = file%count_y(j2) + 1
+                    file%index_y(j2,file%count_y(j2)) = j1
+                 endif
+              enddo
+           enddo
 
            if( file%dist ) then
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
-                                plon,plat,file%weight0_x,file%weight0_y,file%dist)
+                                plon,plat,file%weight0_x,file%weight0_y, .true.)
 
             do i2=1,plon
                file%count0_x(i2) = 0
@@ -751,6 +786,7 @@ contains
                   endif
                enddo
             enddo
+
            endif
         endif
 
@@ -773,15 +809,24 @@ contains
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
            call mpi_bcast(file%count0_x, plon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
-           call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
+           ! BAD CALL: call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%count0_y, plat, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
            call mpi_bcast(file%index0_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
            call mpi_bcast(file%index0_y,  plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
         endif
+
     endif
 
+     ! TODO(jrvb): remove debug code
+     if (env_var_equals('CESM_RUN_TESTS', '1')) then
+        write(iulog,*) 'trcdata_init: running unit tests'
+        call xy_interp_run_unit_tests()
+        call vert_interp_run_unit_tests()
+        ! call endrun('unit tests done')
+     endif
   end subroutine trcdata_init
 
 !-----------------------------------------------------------------------
@@ -1522,6 +1567,14 @@ contains
              lons(:ncols) = lon_global_grid_ndx(:ncols,c)
              lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
+             ! NOTE: This uses weight_[xy] instead of weight0_[xy] and
+             ! hence treats the values as a field rather than per-cell
+             ! totals.  When file%dist == TRUE, this path only appears
+             ! to be used to interpolate PS, which is probably the
+             ! correct behavior.
+             !
+             ! @reviewers: The control flow is convoluted here, so
+             ! this merits some additional scrutiny.
              call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
                   file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
                   lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
@@ -2444,6 +2497,8 @@ contains
 
 !------------------------------------------------------------------------------
    subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    ! NOTE: this function is confusingly named, since it supports both
+    ! mixing ratio AND flight distance data
 
     implicit none
 
@@ -2466,6 +2521,10 @@ contains
     real(r8)     :: bot, top
 
 
+    if (env_var_equals('CESM_USE_NEW_VERT_INTERP', '1')) then
+       call new_vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+       return
+    endif
 
     do n = 1,ncol
 
@@ -2544,6 +2603,455 @@ contains
     enddo
 
    end subroutine vert_interp_mixrat
+
+
+  subroutine new_vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+
+    implicit none
+
+    integer, intent(in)   :: ncol
+    integer, intent(in)   :: nsrc                  ! dimension source array
+    integer, intent(in)   :: ntrg                  ! dimension target array
+    real(r8)              :: src_x(nsrc+1)         ! source coordinates
+    real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
+    real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    logical, intent(in)   :: use_flight_distance            ! .true. = flight distance, .false. = mixing ratio
+    real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
+
+    real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
+    !---------------------------------------------------------------
+    !   ... local variables
+    !---------------------------------------------------------------
+    integer  :: i, j, n
+    real(r8)     :: y, trg_lo, trg_hi, src_lo, src_hi, overlap, outside
+
+    do n = 1,ncol   ! loop over columns
+
+       trg(n,:) = 0.0_r8   ! probably not needed
+
+       ! calculate source pressure levels from hybrid coords
+       do i=1,nsrc+1
+          src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+       enddo
+
+       ! Check the invariant that src_x and trg_x values are
+       ! ascending.  This could also be checked at an earlier stage to
+       ! avoid doing so for every interpolation call.
+       if (.not. ALL(src_x(1:nsrc) < src_x(2:nsrc+1))) then
+          call endrun('src_x values are not ascending')
+       endif
+       if (.not. ALL(trg_x(n,1:ntrg) < trg_x(n,2:ntrg+1))) then
+          call endrun('trg_x values are not ascending')
+       endif
+
+       do i = 1, ntrg
+          y = 0.0_r8
+
+          trg_lo = trg_x(n, i)
+          trg_hi = trg_x(n, i+1)
+
+          do j = 1, nsrc
+             src_lo = src_x(j)
+             src_hi = src_x(j+1)
+
+             overlap = min(src_hi, trg_hi) - max(src_lo, trg_lo)
+             if (overlap > 0.0_r8) then
+                if(use_flight_distance) then
+                   ! add input based on the overlap fraction
+                   y = y + src(n,j) * overlap / (src_hi - src_lo)
+                else
+                   ! convert to mass by multiplying by dp
+                   y = y + src(n,j) * overlap
+                endif
+             endif
+          enddo
+          trg(n, i) = y
+       enddo
+
+       ! Handle source values outside the target range.  Since we want
+       ! to preserve the total amount, add these to the first/last
+       ! target bucket.
+       trg_lo = trg_x(n, 1)
+       y = 0.0_r8
+       do j = 1, nsrc
+          src_lo = src_x(j)
+          src_hi = src_x(j+1)
+
+          if (src_lo < trg_lo) then
+             if (src_hi <= trg_lo) then
+                ! whole source interval is outside the target range
+                outside = src_hi - src_lo
+             else
+                ! There was some overlap, which would have been added
+                ! previously.  Only add the parts outside the target
+                ! range.
+                outside = trg_lo - src_lo
+             endif
+             if(use_flight_distance) then
+                ! add the input scaled by the fraction outside
+                y = y + src(n,j) * outside / (src_hi - src_lo)
+             else
+                ! convert to mass by multiplying by dp
+                y = y + src(n,j) * outside
+             endif
+          else
+             exit
+          endif
+       enddo
+       trg(n,1) = trg(n,1) + y
+
+       trg_hi = trg_x(n, ntrg+1)
+       y = 0.0_r8
+       do j = nsrc, 1, -1
+          src_lo = src_x(j)
+          src_hi = src_x(j+1)
+
+          if (src_hi > trg_hi) then
+             if (src_lo >= trg_hi) then
+                ! whole source interval is outside the target range
+                outside = src_hi - src_lo
+             else
+                ! There was some overlap, which would have been added
+                ! previously.  Only add the parts outside the target
+                ! range.
+                outside = src_hi - trg_hi
+             endif
+             if(use_flight_distance) then
+                ! add the full input
+                y = y + src(n,j) * outside / (src_hi - src_lo)
+             else
+                ! convert to mass by multiplying by dp
+                y = y + src(n,j) * outside
+             endif
+          else
+             exit
+          endif
+       enddo
+       trg(n,ntrg) = trg(n,ntrg) + y
+
+       ! turn mass into mixing ratio
+       if(.not. use_flight_distance) then
+          do i=1,ntrg
+             trg(n,i) = trg(n,i) / (trg_x(n,i+1) - trg_x(n,i))
+          enddo
+       endif
+
+    enddo
+
+  end subroutine new_vert_interp_mixrat
+
+
+  ! TODO(jrvb): remove before final PR
+  subroutine check_invariant(invariant_condition, message)
+    logical, intent(in)  :: invariant_condition
+    character(len=*), intent(in) :: message
+    if ( .not.(invariant_condition) ) then
+       call endrun("Invariant check failed: " // message)
+    endif
+  end subroutine check_invariant
+
+
+  subroutine check_almost_equal(val1, val2, message)
+    real(r8), intent(in)  :: val1, val2
+    character(len=*), intent(in) :: message
+    character(len=1000) :: out
+
+    if ((val2 < 0.99999 * val1) .or. (val2 > 1.00001 * val1)) then
+       ! write(out, *) val1, ' !~ ', val2, '  ', message
+       ! call endrun(out)
+       write(iulog, *) 'CHECK FAILED: ', val1, ' !~ ', val2, '  ', message
+       write(iulog, *) '-------------------------------------------------------------'
+    endif
+  end subroutine check_almost_equal
+
+
+  subroutine vert_interp_run_unit_tests()
+
+    implicit none
+
+    ! For test purposes, target and source have max 50 levels.
+    ! use 1 instead of pcols, since why not
+    integer   :: ncol
+    integer   :: nsrc                  ! dimension source array
+    integer   :: ntrg                  ! dimension target array
+
+    real(r8)  :: trg_x(pcols,50+1)         ! target coordinates
+    real(r8)  :: src(pcols,50)             ! source array
+    logical   :: use_flight_distance       ! .true. = flight distance, .false. = mixing ratio
+    real(r8)  :: trg(pcols,50)             ! target array
+
+    real(r8)  :: ps(pcols), p0, hyai(50+1), hybi(50+1)
+
+    ncol = 1       ! one col for all tests; no need for more
+
+    ! Set these to 1 so we can diretly set the levels we want in the tests below
+    ps(:) = 1.0_r8
+    p0 = 1.0_r8
+
+    hybi(:) = 0.0_r8     ! ignore hybi below; just use hyai for source levels
+
+    ! simple test; can we call it at all?
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 50.0_r8
+    ntrg = 1
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 1000.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 50.0_r8, "vert_interp test: single value")
+
+    ! source is stretched across levels; mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 250.0_r8
+    hyai(2) = 750.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 1000.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 50.0_r8, "vert_interp test: mixrat stretch source")
+
+    ! source is stretched across levels; flight distance
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 250.0_r8
+    hyai(2) = 750.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 1000.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 100.0_r8, "vert_interp test: flight dist stretch source")
+
+    ! source is squeezed onto target; mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 250.0_r8
+    trg_x(1,2) = 750.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 200.0_r8, "vert_interp test: mixrat squeeze source - mid")
+
+    ! source is squeezed onto target; mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 300.0_r8
+    ntrg = 1
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 750.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 400.0_r8, "vert_interp test: mixrat squeeze source - low")
+
+    ! source is squeezed onto target; mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 300.0_r8
+    ntrg = 1
+    trg_x(1,1) = 250.0_r8
+    trg_x(1,2) = 1000.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 400.0_r8, "vert_interp test: mixrat squeeze source - high")
+
+    ! source is squeezed onto target; flight distance
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 250.0_r8
+    trg_x(1,2) = 750.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 100.0_r8, "vert_interp test: flight dist squeeze source - mid")
+
+    ! source is squeezed onto target; flight distance
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 750.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 100.0_r8, "vert_interp test: flight dist squeeze source - low")
+
+    ! source is squeezed onto target; flight distance
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 1
+    hyai(1) = 0.0_r8
+    hyai(2) = 1000.0_r8
+    src(1,1) = 100.0_r8
+    ntrg = 1
+    trg_x(1,1) = 250.0_r8
+    trg_x(1,2) = 1000.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 100.0_r8, "vert_interp test: flight dist squeeze source - high")
+
+    ! several source levels higher than target level: mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 5
+    hyai(1) = 0.0_r8
+    src(1,1) =                    50.0_r8
+    hyai(2) = 100.0_r8
+    src(1,2) =                   100.0_r8
+    hyai(3) = 600.0_r8
+    src(1,3) =                   300.0_r8
+    hyai(4) = 700.0_r8
+    src(1,4) =                   200.0_r8
+    hyai(5) = 800.0_r8
+    src(1,5) =                   100.0_r8
+    hyai(6) = 1000.0_r8
+
+    ntrg = 3
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 100.0_r8
+    trg_x(1,3) = 500.0_r8
+    trg_x(1,4) = 600.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 50.0_r8, "vert_interp test: mixrat source higher than target; level 1")
+    call check_almost_equal(trg(1,2), 100.0_r8, "vert_interp test: mixrat source higher than target; level 2")
+    call check_almost_equal(trg(1,3), &
+         (100.0_r8*200.0_r8 + 200.0_r8*100.0_r8 + 300.0_r8*100.0_r8 + 100.0_r8*100.0_r8) / 100.0_r8, &
+         "vert_interp test: mixrat source higher than target; level 3")
+
+    ! several source levels higher than target level: flight distance
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 5
+    hyai(1) = 0.0_r8
+    src(1,1) =                    50.0_r8
+    hyai(2) = 100.0_r8
+    src(1,2) =                   500.0_r8
+    hyai(3) = 600.0_r8
+    src(1,3) =                   300.0_r8
+    hyai(4) = 700.0_r8
+    src(1,4) =                   200.0_r8
+    hyai(5) = 800.0_r8
+    src(1,5) =                   100.0_r8
+    hyai(6) = 1000.0_r8
+
+    ntrg = 3
+    trg_x(1,1) = 0.0_r8
+    trg_x(1,2) = 100.0_r8
+    trg_x(1,3) = 500.0_r8
+    trg_x(1,4) = 600.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), 50.0_r8, "vert_interp test: flight dist source higher than target; level 1")
+    call check_almost_equal(trg(1,2), 400.0_r8, "vert_interp test: flight dist source higher than target; level 2")
+    call check_almost_equal(trg(1,3), &
+         100.0_r8 + 300.0_r8 + 200.0_r8 + 100.0_r8, &
+         "vert_interp test: flight dist source higher than target; level 3")
+
+    ! several source levels lower than target level: mixing ratio
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 5
+    hyai(1) = 0.0_r8
+    src(1,1) =                    50.0_r8
+    hyai(2) = 100.0_r8
+    src(1,2) =                   100.0_r8
+    hyai(3) = 200.0_r8
+    src(1,3) =                   300.0_r8
+    hyai(4) = 300.0_r8
+    src(1,4) =                   200.0_r8
+    hyai(5) = 500.0_r8
+    src(1,5) =                   100.0_r8
+    hyai(6) = 600.0_r8
+
+    ntrg = 3
+    trg_x(1,1) = 400.0_r8
+    trg_x(1,2) = 500.0_r8
+    trg_x(1,3) = 700.0_r8
+    trg_x(1,4) = 800.0_r8
+    use_flight_distance = .false.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), &
+         (50.0_r8*100.0_r8 + 100.0_r8*100.0_r8 + 300.0_r8*100.0_r8 + 200.0_r8*200.0_r8) / 100.0_r8, &
+         "vert_interp test: mixrat source lower than target; level 1")
+    call check_almost_equal(trg(1,2), 50.0_r8, "vert_interp test: mixrat source lower than target; level 2")
+    call check_almost_equal(trg(1,3), 0.0_r8, "vert_interp test: mixrat source lower than target; level 3")
+
+    ! several source levels lower than target level: flight dist
+    write(iulog,*) '============================================================'
+    src(:,:) = -1000000.0_r8
+    trg_x(:,:) = -999999999.0_r8
+    nsrc = 5
+    hyai(1) = 0.0_r8
+    src(1,1) =                    50.0_r8
+    hyai(2) = 100.0_r8
+    src(1,2) =                   100.0_r8
+    hyai(3) = 200.0_r8
+    src(1,3) =                   300.0_r8
+    hyai(4) = 300.0_r8
+    src(1,4) =                   200.0_r8
+    hyai(5) = 500.0_r8
+    src(1,5) =                   100.0_r8
+    hyai(6) = 600.0_r8
+
+    ntrg = 3
+    trg_x(1,1) = 400.0_r8
+    trg_x(1,2) = 500.0_r8
+    trg_x(1,3) = 700.0_r8
+    trg_x(1,4) = 800.0_r8
+    use_flight_distance = .true.
+    call vert_interp_mixrat(ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+    call check_almost_equal(trg(1,1), &
+         50.0_r8 + 100.0_r8 + 300.0_r8 + 200.0_r8, &
+         "vert_interp test: flight dist source lower than target; level 1")
+    call check_almost_equal(trg(1,2), 100.0_r8, "vert_interp test: flight dist source lower than target; level 2")
+    call check_almost_equal(trg(1,3), 0.0_r8, "vert_interp test: flight dist source lower than target; level 3")
+
+    write(iulog,*) '============================================================'
+    write(iulog,*) 'vert_interp tests succeeded'
+    write(iulog,*) '============================================================'
+
+  end subroutine vert_interp_run_unit_tests
+
+
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
     !--------------------------------------------------------------------------
