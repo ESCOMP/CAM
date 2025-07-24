@@ -500,9 +500,7 @@ subroutine radiation_init(pbuf2d)
    call rad_data_init(pbuf2d)
 
    ! Read ice and liquid optics files
-   call cloud_rad_props_init(abs_lw_liq, abs_lw_ice, &
-                  ext_sw_liq, ssa_sw_liq, asm_sw_liq, ext_sw_ice, ssa_sw_ice, &
-                  asm_sw_ice, g_mu, g_lambda, g_d_eff, tiny)
+   call cloud_rad_props_init(tiny)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1293,10 +1291,9 @@ subroutine radiation_tend( &
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,     &
              cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), mu(:ncol,:),    &
-             iclwp(:ncol,:), iciwp(:ncol,:), abs_lw_liq, abs_lw_ice, g_mu, g_lambda, g_d_eff,      &
-             tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:), icgrauwp(:ncol,:), degrau(:ncol,:), &
-             nlwbands, do_snow, do_graupel, pver, ktopcam, tauc, cldf, cld_lw_abs, snow_lw_abs,    &
-             grau_lw_abs, errmsg, errflg)
+             iclwp(:ncol,:), iciwp(:ncol,:), tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:),     &
+             icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver, ktopcam,     &
+             tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if

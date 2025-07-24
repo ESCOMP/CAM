@@ -21,6 +21,11 @@ use interpolate_data, only: interp_type, lininterp_init, lininterp, &
 
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
+use rrtmgp_cloud_optics_setup, only: g_mu_ccpp => g_mu, g_lambda_ccpp => g_lambda, g_d_eff_ccpp => g_d_eff
+use rrtmgp_cloud_optics_setup, only: abs_lw_liq_ccpp => abs_lw_liq, abs_lw_ice_ccpp => abs_lw_ice
+use rrtmgp_cloud_optics_setup, only: ext_sw_liq_ccpp => ext_sw_liq, ext_sw_ice_ccpp => ext_sw_ice
+use rrtmgp_cloud_optics_setup, only: ssa_sw_liq_ccpp => ssa_sw_liq, ssa_sw_ice_ccpp => ssa_sw_ice
+use rrtmgp_cloud_optics_setup, only: asm_sw_liq_ccpp => asm_sw_liq, asm_sw_ice_ccpp => asm_sw_ice
 
 
 implicit none
@@ -78,9 +83,7 @@ real(r8), parameter :: tiny = 1.e-80_r8
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init(abs_lw_liq_out, abs_lw_ice_out, ext_sw_liq_out,   &
-                  ssa_sw_liq_out, asm_sw_liq_out, ext_sw_ice_out, ssa_sw_ice_out, &
-                  asm_sw_ice_out, g_mu_out, g_lambda_out, g_d_eff_out, tiny_out)
+subroutine cloud_rad_props_init(tiny_out)
    use netcdf
    use spmd_utils,                only: masterproc
    use ioFileMod,                 only: getfil
@@ -90,18 +93,7 @@ subroutine cloud_rad_props_init(abs_lw_liq_out, abs_lw_ice_out, ext_sw_liq_out, 
 #if ( defined SPMD )
    use mpishorthand
 #endif
-   real(r8), allocatable, intent(out) :: abs_lw_liq_out(:,:,:)
-   real(r8), allocatable, intent(out) :: ext_sw_liq_out(:,:,:)
-   real(r8), allocatable, intent(out) :: asm_sw_liq_out(:,:,:)
-   real(r8), allocatable, intent(out) :: ssa_sw_liq_out(:,:,:)
-   real(r8), allocatable, intent(out) :: abs_lw_ice_out(:,:)
-   real(r8), allocatable, intent(out) :: ext_sw_ice_out(:,:)
-   real(r8), allocatable, intent(out) :: asm_sw_ice_out(:,:)
-   real(r8), allocatable, intent(out) :: ssa_sw_ice_out(:,:)
-   real(r8), allocatable, intent(out) :: g_mu_out(:)
-   real(r8), allocatable, intent(out) :: g_lambda_out(:,:)
-   real(r8), allocatable, intent(out) :: g_d_eff_out(:)
-   real(r8),              intent(out) :: tiny_out
+   real(r8), intent(out) :: tiny_out
 
    character(len=256) :: liquidfile
    character(len=256) :: icefile
@@ -142,51 +134,52 @@ subroutine cloud_rad_props_init(abs_lw_liq_out, abs_lw_ice_out, ext_sw_liq_out, 
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
-   call rrtmgp_cloud_optics_setup_init(liqopticsfile, iceopticsfile, abs_lw_liq,       &
-                  abs_lw_ice, ext_sw_liq, ext_sw_ice, ssa_sw_liq, ssa_sw_ice, asm_sw_liq, &
-                  asm_sw_ice, g_lambda, g_mu, g_d_eff, errmsg, err)
+   call rrtmgp_cloud_optics_setup_init(liqopticsfile, iceopticsfile, errmsg, err)
    if (err /= 0) then
       call endrun(sub//': '//errmsg)
    end if
 
+   ! Set module-level variables
    ! Set output variables
-   nmu = size(g_mu)
-   nlambda = size(g_lambda, 2)
-   n_g_d = size(g_d_eff)
+   nmu = size(g_mu_ccpp)
+   nlambda = size(g_lambda_ccpp, 2)
+   n_g_d = size(g_d_eff_ccpp)
+   allocate(abs_lw_liq(nmu,nlambda,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_liq')
+   abs_lw_liq = abs_lw_liq_ccpp
+   allocate(ext_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ext_sw_liq')
+   ext_sw_liq = ext_sw_liq_ccpp
+   allocate(ssa_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ssa_sw_liq')
+   ssa_sw_liq = ssa_sw_liq_ccpp
+   allocate(asm_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'asm_sw_liq')
+   asm_sw_liq = asm_sw_liq_ccpp
+   allocate(abs_lw_ice(n_g_d,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_ice')
+   abs_lw_ice = abs_lw_ice_ccpp
+   allocate(ext_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ext_sw_ice')
+   ext_sw_ice = ext_sw_ice_ccpp
+   allocate(ssa_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ssa_sw_ice')
+   ssa_sw_ice = ssa_sw_ice_ccpp
+   allocate(asm_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'asm_sw_ice')
+   asm_sw_ice = asm_sw_ice_ccpp
+   allocate(g_mu(nmu), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_mu')
+   g_mu = g_mu_ccpp
+   allocate(g_lambda(nmu,nlambda), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_lambda')
+   g_lambda = g_lambda_ccpp
+   allocate(g_d_eff(n_g_d), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_d_eff')
+   g_d_eff = g_d_eff_ccpp
+
+   ! Set output variables
    tiny_out = tiny
-   allocate(abs_lw_liq_out(nmu,nlambda,nlwbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'abs_lw_liq_out')
-   abs_lw_liq_out = abs_lw_liq
-   allocate(ext_sw_liq_out(nmu,nlambda,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'ext_sw_liq_out')
-   ext_sw_liq_out = ext_sw_liq
-   allocate(ssa_sw_liq_out(nmu,nlambda,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'ssa_sw_liq_out')
-   ssa_sw_liq_out = ssa_sw_liq
-   allocate(asm_sw_liq_out(nmu,nlambda,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'asm_sw_liq_out')
-   asm_sw_liq_out = asm_sw_liq
-   allocate(abs_lw_ice_out(n_g_d,nlwbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'abs_lw_ice_out')
-   abs_lw_ice_out = abs_lw_ice
-   allocate(ext_sw_ice_out(n_g_d,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'ext_sw_ice_out')
-   ext_sw_ice_out = ext_sw_ice
-   allocate(ssa_sw_ice_out(n_g_d,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'ssa_sw_ice_out')
-   ssa_sw_ice_out = ssa_sw_ice
-   allocate(asm_sw_ice_out(n_g_d,nswbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'asm_sw_ice_out')
-   asm_sw_ice_out = asm_sw_ice
-   allocate(g_mu_out(nmu), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_mu_out')
-   g_mu_out = g_mu
-   allocate(g_lambda_out(nmu,nlambda), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_lambda_out')
-   g_lambda_out = g_lambda
-   allocate(g_d_eff_out(n_g_d), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_d_eff_out')
-   g_d_eff_out = g_d_eff
    return
 
 end subroutine cloud_rad_props_init
