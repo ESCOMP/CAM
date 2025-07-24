@@ -49,9 +49,7 @@
 <ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
 <!-- Next entries are mostly used in EarthWorks -->
 <ncdata hgrid="mpasa30"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L58_notopo_coords_c240814.nc</ncdata>
-<ncdata hgrid="mpasa30"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa15"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L58_notopo_coords_c240911.nc</ncdata>
-<ncdata hgrid="mpasa15"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L93_notopo_coords_c240911.nc</ncdata>
 <!-- END EarthWorks specific -->
 
 <!-- FV Initial Conditions -->
@@ -250,9 +248,6 @@
 <ncdata hgrid="mpasa60"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L58_CFSR_c240905.nc</ncdata>
 <ncdata hgrid="mpasa30"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L58_CFSR_c240905.nc</ncdata>
 <ncdata hgrid="mpasa15"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L58_CFSR_c240905.nc</ncdata>
-<ncdata hgrid="mpasa60"  nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L93_CFSR_c240905.nc</ncdata>
-<ncdata hgrid="mpasa30"  nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L93_CFSR_c240905.nc</ncdata>
-<ncdata hgrid="mpasa15"  nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L93_CFSR_c240905.nc</ncdata>
 <!-- END EarthWorks specific, real-data ICs -->
 
 <!-- FV3 Initial Conditions -->
