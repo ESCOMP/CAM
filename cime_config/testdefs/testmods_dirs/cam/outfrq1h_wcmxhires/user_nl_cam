@@ -1,0 +1,25 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=-1,-1,-1,-1,-1,-1
+write_nstep0 = .true.
+
+ avgflag_pertape= 'I', 'I', 'A', 'I', 'I'
+
+ empty_htapes=.true.
+ fincl1= 'Z3GM', 'T', 'U', 'V', 'OMEGA', 'ElecColDens', 'PS', 'O', 'O2', 'H',
+         'QRS_TOT', 'QRL_TOT', 'KVM', 'EKGW', 'TTGW', 'UTGW_TOTAL', 'VTGW_TOTAL'
+ fincl2= 'Z3GM', 'T', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'EDens', 'PS', 'O', 'O2', 'H',
+         'OH', 'NO', 'O3', 'SIGMAHAL', 'SIGMAPED'
+ fincl3 ='T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN',
+         'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN',
+         'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN',
+         'QRS_TOT_12_SIN', 'QRS_TOT_12_COS'
+ fincl4 = 'ED1', 'ED2', 'PHIM2D', 'PHIHM', 'HALL_CONDUCTANCE', 'PED_CONDUCTANCE'
+ fincl5 = 'ElecColDens', 'PSL'
+ fincl6 = ' '
+ fincl7 = ' '
+ fincl8 = ' '
+ fincl9 = ' '
+ fincl10= ' '
+
+ ionos_npes = 3200
