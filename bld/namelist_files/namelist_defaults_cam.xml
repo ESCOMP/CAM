@@ -47,6 +47,10 @@
 <ncdata hgrid="mpasa480" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
+<!-- Next entries are mostly used in EarthWorks -->
+<ncdata hgrid="mpasa30"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L58_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L58_notopo_coords_c240911.nc</ncdata>
+<!-- END EarthWorks specific -->
 
 <!-- FV Initial Conditions -->
 <ncdata hgrid="10x15" nlev="26"                    >atm/cam/inic/fv/cami_0000-01-01_10x15_L26_c030918.nc</ncdata>
@@ -233,13 +237,16 @@
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L58_CFSR_c240814.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa480_L58_cami_c250527.nc</ncdata>
-<ncdata hgrid="mpasa480" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L93_CFSR_c240814.nc</ncdata>
 
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa120_L58_cami_c250527.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L93_CFSR_c240814.nc</ncdata>
+<!-- Next entries are mostly used in EarthWorks, real-data ICs -->
+<ncdata hgrid="mpasa60"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L58_CFSR_c240905.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L58_CFSR_c240905.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L58_CFSR_c240905.nc</ncdata>
+<!-- END EarthWorks specific, real-data ICs -->
 
 <!-- FV3 Initial Conditions -->
 <ncdata hgrid="C24"  nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C24_L26_c200625.nc</ncdata>
@@ -318,6 +325,11 @@
 
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
+<!-- Next entires are mostly used in EarthWorks, for real-data cases -->
+<bnd_topo hgrid="mpasa60" >atm/cam/topo/mpas/mpasa60_gmted2010_modis_bedmachine_nc3000_Laplace0050_noleak_20240507.nc</bnd_topo>
+<bnd_topo hgrid="mpasa30" >atm/cam/topo/mpas/mpasa30_gmted2010_modis_bedmachine_nc3000_Laplace0025_noleak_20240507.nc</bnd_topo>
+<bnd_topo hgrid="mpasa15" >atm/cam/topo/mpas/mpasa15_gmted2010_modis_bedmachine_nc3000_Laplace0013_noleak_20240507.nc</bnd_topo>
+<!-- END EarthWorks specific, for real-data cases -->
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
@@ -2000,8 +2012,11 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
-<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_c210511.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_c210601.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_c20210804.nc</drydep_srf_file>
 
 <!-- depvel data -->
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
@@ -2276,6 +2291,14 @@
 <clubb_mf_L0                       > 50.0    </clubb_mf_L0>
 <clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
 <clubb_mf_nup                      > 10      </clubb_mf_nup>
+
+<!-- Set radiation intervals based on mpas hgrids -->
+<iradlw hgrid="mpasa15"  > 10 </iradlw>
+<iradsw hgrid="mpasa15"  > 10 </iradsw>
+<iradlw hgrid="mpasa7p5" > 10 </iradlw>
+<iradsw hgrid="mpasa7p5" > 10 </iradsw>
+<iradlw hgrid="mpas3p75" > 10 </iradlw>
+<iradsw hgrid="mpas3p75" > 10 </iradsw>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
@@ -3305,6 +3328,10 @@
 <mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
+<!-- With default ATM_NCPL, these next entries do 3 MPAS-A steps per CAM step instead of 2 -->
+<mpas_dt hgrid="mpasa15"      >   80.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa7p5"     >   40.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3p75"    >   20.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -3322,6 +3349,9 @@
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa15">  15000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7p5">  7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3p75"> 3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
