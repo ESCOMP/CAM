@@ -9044,6 +9044,42 @@ Default: none
 
 <!-- for fv3 dynamical core -->
 
+<entry id="fv3_a_imp" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Controls behavior of the non-hydrostatic solver. Values greater
+than 0.5 enable the semi-implicit solver, in which the value of a_imp
+controls the time-off-centering: use a_imp = 1.0 for a fully backward
+time-stepping. For consistency, the sum of beta and a_imp should
+be 1 when the semi-implicit solver is used. The semi-implicit algo-
+rithm is substantially more efficient except at very high (km-scale)
+resolutions with an acoustic time step of a few seconds or less. 0.75
+by default. Proper values are 0, or between 0.5 and 1. This variable is
+only used if hydrostatic =.false.
+Default: 1.
+</entry>
+
+<entry id="fv3_p_fac" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Safety factor for minimum nonhydrostatic pressures, which
+will be limited so the full pressure is no less than p_fac times the
+hydrostatic pressure. This is only of concern in mid-top or high-
+top models with very low pressures near the model top, and has
+no effect in most simulations. The pressure limiting activates only
+when model is in danger of blowup due to unphysical negative
+total pressures. 0.05 by default. Only used if hydrostatic =.false.
+and the semi-implicit solver is used. Proper range is 0 to 0.25.
+Default: 0.05
+</entry>
+
+<entry id="fv3_use_logp" type="real" category="dyn_fv3"
+     group="fv_core_nml" valid_values="" >
+Logical: Enables a variant of the Lin pressure-gradient force 
+algorithm, which uses the logarithm of pressure instead of the Exner
+function (as in Lin 1997). This yields more accurate results for re-
+gions that are nearly isothermal. Ignored if hydrostatic = true.
+Default: FALSE
+</entry>
+
 <entry id="fv3_clock_grain" type="char*256" category="dyn_fv3"
        group="fms_nml" valid_values="" >
 The level of clock granularity used for performance timing sections

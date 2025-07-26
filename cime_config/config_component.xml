@@ -370,7 +370,8 @@
       <!-- hemco (harmonized emissions component) option -->
       <value compset="_CAM.*%HEMCO"> use_hemco=.true. </value>
       <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
-      <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
+      <!-- This has been commented out to allow FV3 to run in a small Earth configuration -->
+       <!-- <value grid="a%C[0-9]"> rearth = 6.37122D6 </value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>

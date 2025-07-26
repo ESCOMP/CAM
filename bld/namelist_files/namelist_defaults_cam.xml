@@ -786,6 +786,8 @@
 
 <effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
 
+<effgw_rdg_resid                   >1.0D0</effgw_rdg_resid>
+
 <effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
 <effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
@@ -3063,6 +3065,9 @@
 
 <fv3_print_memory_usage dyn="fv3">.true.</fv3_print_memory_usage>
 
+<fv3_a_imp                                                                  > 1.0D0     </fv3_a_imp>
+<fv3_p_fac                                                                  > 0.05D0    </fv3_p_fac>
+<fv3_use_logp                                                               > .false.   </fv3_use_logp>
 <fv3_adjust_dry_mass                                                        > .false.   </fv3_adjust_dry_mass>
 <fv3_beta                                                                   > 0         </fv3_beta>
 <fv3_consv_am                                                               > .false.   </fv3_consv_am>
