@@ -883,7 +883,7 @@ contains
        call co2_init()
     end if
 
-    call gw_drag_cam_init(ncol)
+    call gw_drag_cam_init()
 
     call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
          iulog, errmsg, errflg)

@@ -160,30 +160,6 @@ module gw_drag_cam
   integer :: thlp2_clubb_gw_idx  = -1
   integer :: wpthlp_clubb_gw_idx  = -1
 
-  ! anisotropic ridge fields
-  integer, parameter :: prdg = 16
-
-  real(r8), allocatable, dimension(:,:), target :: &
-     rdg_gbxar
-     ! Meso Beta
-  real(r8), allocatable, dimension(:,:,:), target :: &
-     rdg_hwdth,  &
-     rdg_clngt,  &
-     rdg_mxdis,  &
-     rdg_anixy,  &
-     rdg_angll
-
-     ! Meso Gamma
-  real(r8), allocatable, dimension(:,:), target :: &
-     rdg_gbxarg
-
-  real(r8), allocatable, dimension(:,:,:), target :: &
-     rdg_hwdthg, &
-     rdg_clngtg, &
-     rdg_mxdisg, &
-     rdg_anixyg, &
-     rdg_angllg
-
   ! Water constituent indices for budget
   integer :: ixcldliq = -1
   integer :: ixcldice = -1
@@ -231,6 +207,16 @@ module gw_drag_cam
   real(r8), pointer :: vpwp_clubb_gw(:,:)
   real(r8), pointer :: vort4gw(:,:)
 
+  ! Gravity wave Ridge scheme namelist
+  logical  :: gw_rdg_do_divstream, gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
+              gw_rdg_do_backward_compat
+
+  logical  :: gw_rdg_do_vdiff = .true.
+
+  real(r8) :: gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
+              gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
+              gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min
+
 
 !==========================================================================
 contains
@@ -242,7 +228,6 @@ subroutine gw_drag_cam_readnl(nlfile)
   use units,           only: getunit, freeunit
   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, &
                              mpi_character, mpi_logical, mpi_integer
-  use gw_rdg_cam,      only: gw_rdg_cam_readnl
 
   ! File containing namelist input.
   character(len=*), intent(in) :: nlfile
@@ -265,6 +250,11 @@ subroutine gw_drag_cam_readnl(nlfile)
        effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
        movmtn_plaunch
 
+   namelist /gw_rdg_nl/ gw_rdg_do_divstream, gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
+                   gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
+                   gw_rdg_do_smooth_regimes, gw_rdg_do_adjust_tauoro, &
+                   gw_rdg_do_backward_compat, gw_rdg_orohmin, gw_rdg_orovmin, &
+                   gw_rdg_orostratmin, gw_rdg_orom2min, gw_rdg_do_vdiff
 
 !----------------------------------------------------------------------
 
@@ -397,7 +387,56 @@ subroutine gw_drag_cam_readnl(nlfile)
        shr_errMsg(__FILE__, __LINE__))
 
   if (use_gw_rdg_gamma .or. use_gw_rdg_beta) then
-     call gw_rdg_cam_readnl(nlfile)
+     if (masterproc) then
+         unitn = getunit()
+         open( unitn, file=trim(nlfile), status='old' )
+         call find_group_name(unitn, 'gw_rdg_nl', status=ierr)
+         if (ierr == 0) then
+            read(unitn, gw_rdg_nl, iostat=ierr)
+            if (ierr /= 0) then
+               call endrun(sub // ':: ERROR reading namelist')
+            end if
+         end if
+         close(unitn)
+         call freeunit(unitn)
+      end if
+
+      ! Broadcast the local variables
+
+      call mpi_bcast(gw_rdg_do_divstream, 1, mpi_logical, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_do_divstream")
+      call mpi_bcast(gw_rdg_do_smooth_regimes, 1, mpi_logical, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_do_smooth_regimes")
+      call mpi_bcast(gw_rdg_do_adjust_tauoro, 1, mpi_logical, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_do_adjust_tauoro")
+      call mpi_bcast(gw_rdg_do_backward_compat, 1, mpi_logical, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_do_backward_compat")
+
+      call mpi_bcast(gw_rdg_C_BetaMax_DS, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_C_BetaMax_DS")
+      call mpi_bcast(gw_rdg_C_GammaMax, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_C_GammaMax")
+      call mpi_bcast(gw_rdg_Frx0, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_Frx0")
+      call mpi_bcast(gw_rdg_Frx1, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_Frx1")
+      call mpi_bcast(gw_rdg_C_BetaMax_SM, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_C_BetaMax_SM")
+      call mpi_bcast(gw_rdg_Fr_c, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_Fr_c")
+      call mpi_bcast(gw_rdg_orohmin, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_orohmin")
+      call mpi_bcast(gw_rdg_orovmin, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_orovmin")
+      call mpi_bcast(gw_rdg_orostratmin, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_orostratmin")
+      call mpi_bcast(gw_rdg_orom2min, 1, mpi_real8, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_orom2min")
+
+      call mpi_bcast(gw_rdg_do_vdiff, 1, mpi_logical, mstrid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_rdg_do_vdiff")
+
+      if (gw_rdg_Fr_c > 1.0_r8) call endrun(sub//": FATAL: gw_rdg_Fr_c must be <= 1")
   end if
 
 end subroutine gw_drag_cam_readnl
@@ -432,6 +471,8 @@ subroutine gw_drag_cam_init()
 
   use ref_pres,   only: pref_edge, pref_mid
   use physconst,  only: gravit, rair, rearth, pi
+
+  use ppgrid, only: pcols
 
   !---------------------------Local storage-------------------------------
 
@@ -476,18 +517,14 @@ subroutine gw_drag_cam_init()
      if (trim(gw_drag_file) /= "") then
         call getfil(gw_drag_file, gw_drag_file_loc)
      else
-        errmsg='ERROR gw_drag_cam_init: use_gw_convect_dp is true but gw_drag_file is not specified in namelist'
-        errflg=-1
-        return
+        call endrun('ERROR gw_drag_cam_init: use_gw_convect_dp is true but gw_drag_file is not specified in namelist')
      end if
   end if
   if (use_gw_convect_sh) then
      if (trim(gw_drag_file_sh) /= "") then
         call getfil(gw_drag_file_sh, gw_drag_file_sh_loc)
      else
-        errmsg='ERROR gw_drag_cam_init: use_gw_convect_sh is true but gw_drag_file_sh is not specified in namelist'
-        errflg=-1
-        return
+        call endrun('ERROR gw_drag_cam_init: use_gw_convect_sh is true but gw_drag_file_sh is not specified in namelist')
      end if
   end if
   !movmtn files
@@ -495,102 +532,117 @@ subroutine gw_drag_cam_init()
      if( trim(gw_drag_file_mm) /= "") then
         call getfil(gw_drag_file_mm, gw_drag_file_mm_loc)
      else
-        errmsg='ERROR gw_drag_cam_init: use_gw_movmtn_pbl is true but gw_drag_file_mm is not specified in namelist'
-        errflg=-1
-        return
+        call endrun('ERROR gw_drag_cam_init: use_gw_movmtn_pbl is true but gw_drag_file_mm is not specified in namelist')
      end if
   end if
-     !rdg files
+
+  !rdg files
   if (use_gw_rdg_beta) then
      if (trim(bnd_topo) /= "") then
         call getfil(bnd_topo, bnd_topo_loc)
      else
-        errmsg='ERROR gw_drag_cam_init: use_gw_rdg_beta is true but bnd_topo file is not specified in namelist'
-        errflg=-1
-        return
+        call endrun('ERROR gw_drag_cam_init: use_gw_rdg_beta is true but bnd_topo file is not specified in namelist')
      end if
   end if
   if (use_gw_rdg_gamma) then
      if ( trim(bnd_rdggm) /= "") then
         call getfil(bnd_rdggm, bnd_rdggm_loc)
      else
-        errmsg='ERROR gw_drag_cam_init: use_gw_rdg_gamma is true but bnd_rdggm file is not specified in namelist'
-        errflg=-1
-        return
+        call endrun('ERROR gw_drag_cam_init: use_gw_rdg_gamma is true but bnd_rdggm file is not specified in namelist')
      end if
   end if
 
   call gw_drag_init( &
-       iulog,  &
-       ktop,  &
-       masterproc, &
-       pver,  &
-       gravit,  &
-       rair,  &
-       pi,  &
-       fcrit2,  &
-       rearth,  &
-       pref_edge,  &
-       pref_mid,  &
-       pgwv,  &
-       gw_dc,  &
-       pgwv_long,  &
-       gw_dc_long,  &
-       tau_0_ubc,  &
-       effgw_beres_dp,  &
-       effgw_beres_sh,  &
-       effgw_cm,  &
-       effgw_cm_igw,  &
-       effgw_oro,  &
-       frontgfc,  &
-       gw_drag_file_loc,  &
-       gw_drag_file_sh_loc,  &
-       gw_drag_file_mm_loc,  &
-       taubgnd,  &
-       taubgnd_igw,  &
-       gw_polar_taper,  &
-       use_gw_rdg_beta,  &
-       n_rdg_beta,  &
-       effgw_rdg_beta,  &
-       effgw_rdg_beta_max,  &
-       rdg_beta_cd_llb,  &
-       trpd_leewv_rdg_beta,  &
-       use_gw_rdg_gamma,  &
-       n_rdg_gamma,  &
-       effgw_rdg_gamma,  &
-       effgw_rdg_gamma_max,  &
-       rdg_gamma_cd_llb,  &
-       trpd_leewv_rdg_gamma,  &
-       bnd_topo_loc,  &
-       bnd_rdggm_loc,  &
-       gw_oro_south_fac,  &
-       gw_limit_tau_without_eff,  &
-       gw_lndscl_sgh,  &
-       gw_prndl,  &
-       gw_apply_tndmax,  &
-       gw_qbo_hdepth_scaling,  &
-       gw_top_taper,  &
-       front_gaussian_width,  &
-       alpha_gw_movmtn,  &
-       use_gw_rdg_resid, &
-       effgw_rdg_resid, &
-       effgw_movmtn_pbl, &
-       movmtn_source, &
-       movmtn_psteer, &
-       movmtn_plaunch, &
-       use_gw_oro,  &
-       use_gw_front,  &
-       use_gw_front_igw,  &
-       use_gw_convect_dp,  &
-       use_gw_convect_sh,  &
-       use_simple_phys,  &
-       use_gw_movmtn_pbl,  &
-       do_molec_diff,  &
-       nbot_molec, &
-       wavelength_mid,  &
-       wavelength_long,  &
-       errmsg,  &
-       errflg )
+       iulog_in                     = iulog, &
+       ktop_in                      = ktop, &
+       masterproc_in                = masterproc, &
+       ncol                         = pcols, &
+       pver                         = pver, &
+       gravit_in                    = gravit, &
+       rair_in                      = rair, &
+       pi_in                        = pi, &
+       fcrit2_in                    = fcrit2, &
+       rearth_in                    = rearth, &
+       pref_edge_in                 = pref_edge, &
+       pref_mid_in                  = pref_mid, &
+       pgwv_nl                      = pgwv, &
+       gw_dc_nl                     = gw_dc, &
+       pgwv_long_nl                 = pgwv_long, &
+       gw_dc_long_nl                = gw_dc_long, &
+       tau_0_ubc_nl                 = tau_0_ubc, &
+       effgw_beres_dp_nl            = effgw_beres_dp, &
+       effgw_beres_sh_nl            = effgw_beres_sh, &
+       effgw_cm_nl                  = effgw_cm, &
+       effgw_cm_igw_nl              = effgw_cm_igw, &
+       effgw_oro_nl                 = effgw_oro, &
+       frontgfc_nl                  = frontgfc, &
+       gw_drag_file_nl              = gw_drag_file_loc, &
+       gw_drag_file_sh_nl           = gw_drag_file_sh_loc, &
+       gw_drag_file_mm_nl           = gw_drag_file_mm_loc, &
+       taubgnd_nl                   = taubgnd, &
+       taubgnd_igw_nl               = taubgnd_igw, &
+       gw_polar_taper_nl            = gw_polar_taper, &
+       use_gw_rdg_beta_nl           = use_gw_rdg_beta, &
+       n_rdg_beta_nl                = n_rdg_beta, &
+       effgw_rdg_beta_nl            = effgw_rdg_beta, &
+       effgw_rdg_beta_max_nl        = effgw_rdg_beta_max, &
+       rdg_beta_cd_llb_nl           = rdg_beta_cd_llb, &
+       trpd_leewv_rdg_beta_nl       = trpd_leewv_rdg_beta, &
+       use_gw_rdg_gamma_nl          = use_gw_rdg_gamma, &
+       n_rdg_gamma_nl               = n_rdg_gamma, &
+       effgw_rdg_gamma_nl           = effgw_rdg_gamma, &
+       effgw_rdg_gamma_max_nl       = effgw_rdg_gamma_max, &
+       rdg_gamma_cd_llb_nl          = rdg_gamma_cd_llb, &
+       trpd_leewv_rdg_gamma_nl      = trpd_leewv_rdg_gamma, &
+       bnd_topo_nl                  = bnd_topo_loc, &
+       bnd_rdggm_nl                 = bnd_rdggm_loc, &
+       gw_oro_south_fac_nl          = gw_oro_south_fac, &
+       gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &
+       gw_lndscl_sgh_nl             = gw_lndscl_sgh, &
+       gw_prndl_nl                  = gw_prndl, &
+       gw_apply_tndmax_nl           = gw_apply_tndmax, &
+       gw_qbo_hdepth_scaling_nl     = gw_qbo_hdepth_scaling, &
+       gw_top_taper_nl              = gw_top_taper, &
+       front_gaussian_width_nl      = front_gaussian_width, &
+       alpha_gw_movmtn_nl           = alpha_gw_movmtn, &
+       use_gw_rdg_resid_in          = use_gw_rdg_resid, &
+       effgw_rdg_resid_in           = effgw_rdg_resid, &
+       effgw_movmtn_pbl_in          = effgw_movmtn_pbl, &
+       movmtn_source_in             = movmtn_source, &
+       movmtn_psteer_in             = movmtn_psteer, &
+       movmtn_plaunch_in            = movmtn_plaunch, &
+       gw_rdg_do_divstream_nl       = gw_rdg_do_divstream, &
+       gw_rdg_do_smooth_regimes_nl  = gw_rdg_do_smooth_regimes, &
+       gw_rdg_do_adjust_tauoro_nl   = gw_rdg_do_adjust_tauoro, &
+       gw_rdg_do_backward_compat_nl = gw_rdg_do_backward_compat, &
+       gw_rdg_do_vdiff_nl           = gw_rdg_do_vdiff, &
+       gw_rdg_C_BetaMax_DS_nl       = gw_rdg_C_BetaMax_DS, &
+       gw_rdg_C_GammaMax_nl         = gw_rdg_C_GammaMax, &
+       gw_rdg_Frx0_nl               = gw_rdg_Frx0, &
+       gw_rdg_Frx1_nl               = gw_rdg_Frx1, &
+       gw_rdg_C_BetaMax_SM_nl       = gw_rdg_C_BetaMax_SM, &
+       gw_rdg_Fr_c_nl               = gw_rdg_Fr_c, &
+       gw_rdg_orohmin_nl            = gw_rdg_orohmin, &
+       gw_rdg_orovmin_nl            = gw_rdg_orovmin, &
+       gw_rdg_orostratmin_nl        = gw_rdg_orostratmin, &
+       gw_rdg_orom2min_nl           = gw_rdg_orom2min, &
+       use_gw_oro_in                = use_gw_oro, &
+       use_gw_front_in              = use_gw_front, &
+       use_gw_front_igw_in          = use_gw_front_igw, &
+       use_gw_convect_dp_in         = use_gw_convect_dp, &
+       use_gw_convect_sh_in         = use_gw_convect_sh, &
+       use_simple_phys_in           = use_simple_phys, &
+       use_gw_movmtn_pbl_in         = use_gw_movmtn_pbl, &
+       do_molec_diff_in             = do_molec_diff, &
+       nbot_molec_in                = nbot_molec, &
+       wavelength_mid_in            = wavelength_mid, &
+       wavelength_long_in           = wavelength_long, &
+       errmsg                       = errmsg, &
+       errflg                       = errflg)
+
+  if(errflg /= 0) then
+    call endrun("gw_init: " // errmsg)
+  endif
 
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_budget_out = history_budget, &
@@ -1304,15 +1356,55 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 !!!!jt  There was a problem passing an unassociated pointer (ttend_sh_arr) it was temporarily replaced with real array.
 !!!!jt  Only associated when running shallow convective gravity waves.  Fix this
+
+  ! Call the CCPPized subroutine
   call gw_drag_run( &
-       ncol, pcnst, pver, cnst_type, dt, cpair, cpairv(:ncol,:,lchnk), pi, frontgf, frontga, &
-       degree2radian,al0,dlat0, &
-       pint, piln, pdel, pdeldry, zm, zi, lat, cam_in%landfrac, &
-       dse, t, u, v, q, vort4gw, &
-       sgharr, kvtt, ttend_dp, ttend_sh_arr, ttend_clubb, &
-       thlp2_clubb_gw,wpthlp_clubb_gw,upwp_clubb_gw, vpwp_clubb_gw, &
-       ptend%s, ptend%q, ptend%u, ptend%v, scheme_name, nbot_molec, &
-       egwdffi_tot, flx_heat, errmsg, errflg)
+       ncol             = ncol, &
+       pcnst            = pcnst, &
+       pver             = pver, &
+       cnst_type        = cnst_type, &
+       dt               = dt, &
+       cpair            = cpair, &
+       cpairv           = cpairv(:ncol,:,lchnk), &
+       pi               = pi, &
+       frontgf          = frontgf, &
+       frontga          = frontga, &
+       degree2radian    = degree2radian, &
+       al0              = al0, &
+       dlat0            = dlat0, &
+       pint             = state1%pint(:ncol,:), &
+       piln             = state1%lnpint(:ncol,:), &
+       pdel             = state1%pdel(:ncol,:), &
+       pdeldry          = state1%pdeldry(:ncol,:), &
+       zm               = state1%zm(:ncol,:), &
+       zi               = state1%zi(:ncol,:), &
+       lat              = state1%lat(:ncol), &
+       landfrac         = cam_in%landfrac, &
+       dse              = state1%s(:ncol,:), &
+       state_t          = state1%t(:ncol,:), &
+       state_u          = state1%u(:ncol,:), &
+       state_v          = state1%v(:ncol,:), &
+       state_q          = state1%q(:ncol,:,:), &
+       vorticity        = vort4gw(:ncol,:pver), &
+       sgh              = sgharr(:ncol), &
+       kvtt             = kvtt(:ncol,:pver+1), &
+       ttend_dp         = ttend_dp(:ncol,:pver), &
+       ttend_sh         = ttend_sh_arr(:ncol,:pver), &
+       ttend_clubb      = ttend_clubb(:ncol,:pver), &
+       thlp2_clubb_gw   = thlp2_clubb_gw(:ncol,:pver+1), &
+       wpthlp_clubb_gw  = wpthlp_clubb_gw(:ncol,:pver+1), &
+       upwp_clubb_gw    = upwp_clubb_gw(:ncol,:pver+1), &
+       vpwp_clubb_gw    = vpwp_clubb_gw(:ncol,:pver+1), &
+       s_tend           = ptend%s(:ncol,:), &
+       q_tend           = ptend%q(:ncol,:,:), &
+       u_tend           = ptend%u(:ncol,:), &
+       v_tend           = ptend%v(:ncol,:), &
+       scheme_name      = scheme_name, &
+       nbot_molec       = nbot_molec, &
+       egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
+       flx_heat         = flx_heat(:ncol), &
+       errmsg           = errmsg, &
+       errflg           = errflg)
 
   ! Convert the tendencies for the dry constituents to dry air basis.
   do m = 1, pcnst
