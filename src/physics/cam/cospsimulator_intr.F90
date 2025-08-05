@@ -125,7 +125,6 @@ module cospsimulator_intr
   ! ######################################################################################
   ! Default CAM namelist settings
   ! ######################################################################################
-  ! CAM
   logical :: cosp_amwg             = .false.
   logical :: cosp_lite             = .false.
   logical :: cosp_passive          = .false.
@@ -1011,7 +1010,7 @@ CONTAINS
                   call add_default ('rttov_bt_total_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
 
-              if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then                
+              if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then 
                   call addfld ('rttov_bt_clear_inst'//trim(i_str),       &
                                (/'RTTOV_CHAN_I'//trim(i_str)/),          &
                                'A',                                      &
@@ -1363,7 +1362,7 @@ CONTAINS
     use mod_cosp_config,      only: R_UNDEF,parasol_nrefl, Nlvgrid
     use mod_cosp,             only: cosp_simulator
     use mod_quickbeam_optics, only: size_distribution
-    use time_manager,         only: get_curr_date ! Gets the date/time valid at the end of the timestep. Should be fine.
+    use time_manager,         only: get_curr_date ! Gets the date/time valid at the end of the timestep.
     use ref_pres,             only: top_lev=>trop_cloud_top_lev
     use conv_water,           only: conv_water_in_rad, conv_water_4rad
 #endif
@@ -1664,58 +1663,63 @@ CONTAINS
     call t_startf('init_and_stuff')
     ! Create the fname string array for RTTOV
     fmt = '(I3.3)' ! an integer of width 3 with zeros at the left
-    do i=1,rttov_Ninstruments
-        write (i_str,fmt) i ! converting integer to string i_str using a 'internal file'
-        do k=1,nf_rttov
-            fname_rttov(i,:) = (/'rttov_bt_total_inst'//trim(i_str),     &
-                                 'rttov_bt_clear_inst'//trim(i_str),     &
-                                 'rttov_rad_total_inst'//trim(i_str),    &
-                                 'rttov_rad_clear_inst'//trim(i_str),    &
-                                 'rttov_rad_cloudy_inst'//trim(i_str),   &
-                                 'rttov_refl_total_inst'//trim(i_str),   &
-                                 'rttov_refl_clear_inst'//trim(i_str),   &
-                                 'rttov_btpc_clr_inst'//trim(i_str),     &
-                                 'rttov_radpc_clr_inst'//trim(i_str) /)
-        end do
-    end do 
+    if (lrttov_sim) then
+       do i=1,rttov_Ninstruments
+           write (i_str,fmt) i ! converting integer to string i_str using a 'internal file'
+           do k=1,nf_rttov
+               fname_rttov(i,:) = (/'rttov_bt_total_inst'//trim(i_str),     &
+                                    'rttov_bt_clear_inst'//trim(i_str),     &
+                                    'rttov_rad_total_inst'//trim(i_str),    &
+                                    'rttov_rad_clear_inst'//trim(i_str),    &
+                                    'rttov_rad_cloudy_inst'//trim(i_str),   &
+                                    'rttov_refl_total_inst'//trim(i_str),   &
+                                    'rttov_refl_clear_inst'//trim(i_str),   &
+                                    'rttov_btpc_clr_inst'//trim(i_str),     &
+                                    'rttov_radpc_clr_inst'//trim(i_str) /)
+           end do
+       end do
+    end if
     
     
     ! Allocate the DDT for the RTTOV outputs (bleh?)
     if (lrttov_sim) then
-        call t_startf('allocate rttov_outputs_cp')
-        do i=1,rttov_Ninstruments
-            rttov_outputs_cp(i) % nchan_out = rttov_configs(i) % nchan_out
-            ! Only allocate output if the output has been requested.
-            if (not(rttov_configs(i) % Lrttov_pc)) then
-                if (rttov_configs(i) % Lrttov_bt) then
-                    allocate(rttov_outputs_cp(i) % bt_total(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    allocate(rttov_outputs_cp(i) % bt_clear(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_rad) then
-                    allocate(rttov_outputs_cp(i) % rad_total(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_rad .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    allocate(rttov_outputs_cp(i) % rad_clear(pcols,rttov_configs(i) % nchan_out))
-                    allocate(rttov_outputs_cp(i) % rad_cloudy(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_refl) then
-                    allocate(rttov_outputs_cp(i) % refl_total(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    allocate(rttov_outputs_cp(i) % refl_clear(pcols,rttov_configs(i) % nchan_out))
-                end if
-            else
-                if (rttov_configs(i) % Lrttov_bt) then
-                     allocate(rttov_outputs_cp(i) % bt_total_pc(pcols,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_rad) then
-                     allocate(rttov_outputs_cp(i) % rad_total_pc(pcols,rttov_configs(i) % nchan_out))
-                end if
-            end if        
-        end do
-        call t_stopf('allocate rttov_outputs_cp')
+       call t_startf('allocate rttov_outputs_cp')
+       do i=1,rttov_Ninstruments
+          rttov_outputs_cp(i) % nchan_out = rttov_configs(i) % nchan_out
+          ! Only allocate output if the output has been requested.
+          if (not(rttov_configs(i) % Lrttov_pc)) then
+             if (rttov_configs(i) % Lrttov_bt) then
+                allocate(rttov_outputs_cp(i) % bt_total(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_bt .and. &
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                   allocate(rttov_outputs_cp(i) % bt_clear(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then
+                allocate(rttov_outputs_cp(i) % rad_total(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_rad .and. &
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                   allocate(rttov_outputs_cp(i) % rad_clear(pcols,rttov_configs(i) % nchan_out))
+                   allocate(rttov_outputs_cp(i) % rad_cloudy(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_refl) then
+                allocate(rttov_outputs_cp(i) % refl_total(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_refl .and. &
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                allocate(rttov_outputs_cp(i) % refl_clear(pcols,rttov_configs(i) % nchan_out))
+             end if
+          else
+             if (rttov_configs(i) % Lrttov_bt) then
+                allocate(rttov_outputs_cp(i) % bt_total_pc(pcols,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then
+                allocate(rttov_outputs_cp(i) % rad_total_pc(pcols,rttov_configs(i) % nchan_out))
+             end if
+          end if        
+       end do
+       call t_stopf('allocate rttov_outputs_cp')
     end if
 
     ! ######################################################################################
@@ -1843,36 +1847,39 @@ CONTAINS
 
     ! Initialize the RTTOV outputs
     if (lrttov_sim) then
-        do i=1,rttov_Ninstruments
-            if (not(rttov_configs(i) % Lrttov_pc)) then
-                if (rttov_configs(i) % Lrttov_bt) then
-                    rttov_outputs_cp(i) % bt_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)     = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    rttov_outputs_cp(i) % bt_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)     = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_rad) then
-                    rttov_outputs_cp(i) % rad_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_rad .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    rttov_outputs_cp(i) % rad_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
-                    rttov_outputs_cp(i) % rad_cloudy(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_refl) then
-                    rttov_outputs_cp(i) % refl_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    rttov_outputs_cp(i) % refl_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
-                end if
-            else
-                if (rttov_configs(i) % Lrttov_bt) then
-                    rttov_outputs_cp(i) % bt_total_pc(1:pcols,1:rttov_outputs_cp(i) % nchan_out)  = R_UNDEF
-                end if
-                if (rttov_configs(i) % Lrttov_rad) then
-                    rttov_outputs_cp(i) % rad_total_pc(1:pcols,1:rttov_outputs_cp(i) % nchan_out) = R_UNDEF
-                end if
-            end if      
-        end do
+       do i=1,rttov_Ninstruments
+          if (not(rttov_configs(i) % Lrttov_pc)) then
+             if (rttov_configs(i) % Lrttov_bt) then
+                rttov_outputs_cp(i) % bt_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)     = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_bt .and. &
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                   rttov_outputs_cp(i) % bt_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)     = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then
+                rttov_outputs_cp(i) % rad_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_rad .and. & 
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                   rttov_outputs_cp(i) % rad_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
+                   rttov_outputs_cp(i) % rad_cloudy(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_refl) then
+                rttov_outputs_cp(i) % refl_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_refl .and. &
+                ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                   rttov_outputs_cp(i) % refl_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
+             end if
+          else
+             if (rttov_configs(i) % Lrttov_bt) then
+                rttov_outputs_cp(i) % bt_total_pc(1:pcols,1:rttov_outputs_cp(i) % nchan_out)  = R_UNDEF
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then
+                rttov_outputs_cp(i) % rad_total_pc(1:pcols,1:rttov_outputs_cp(i) % nchan_out) = R_UNDEF
+             end if
+          end if      
+       end do
     end if
 
     ! ######################################################################################
@@ -1921,32 +1928,35 @@ CONTAINS
        if (lrttov_sim) then
           do k=1,rttov_Ninstruments
              if (not(rttov_configs(k) % Lrttov_pc)) then
-                 if (rttov_configs(k) % Lrttov_bt) then
-                     run_rttov(k,1,1:pcols)=hist_fld_col_active(fname_rttov(k,1),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_bt .and. ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
-                     run_rttov(k,2,1:pcols)=hist_fld_col_active(fname_rttov(k,2),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_rad) then
-                     run_rttov(k,3,1:pcols)=hist_fld_col_active(fname_rttov(k,3),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_rad .and. ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
-                     run_rttov(k,4,1:pcols)=hist_fld_col_active(fname_rttov(k,4),lchnk,pcols)
-                     run_rttov(k,5,1:pcols)=hist_fld_col_active(fname_rttov(k,5),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_refl) then
-                     run_rttov(k,6,1:pcols)=hist_fld_col_active(fname_rttov(k,6),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_refl .and. ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
-                     run_rttov(k,7,1:pcols)=hist_fld_col_active(fname_rttov(k,7),lchnk,pcols)
-                 end if
+                if (rttov_configs(k) % Lrttov_bt) then
+                   run_rttov(k,1,1:pcols)=hist_fld_col_active(fname_rttov(k,1),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_bt .and. &
+                   ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
+                      run_rttov(k,2,1:pcols)=hist_fld_col_active(fname_rttov(k,2),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_rad) then
+                   run_rttov(k,3,1:pcols)=hist_fld_col_active(fname_rttov(k,3),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_rad .and. &
+                   ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
+                      run_rttov(k,4,1:pcols)=hist_fld_col_active(fname_rttov(k,4),lchnk,pcols)
+                      run_rttov(k,5,1:pcols)=hist_fld_col_active(fname_rttov(k,5),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_refl) then
+                   run_rttov(k,6,1:pcols)=hist_fld_col_active(fname_rttov(k,6),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_refl .and. &
+                   ((rttov_configs(k) % Lrttov_cld) .or. (rttov_configs(k) % Lrttov_aer))) then
+                      run_rttov(k,7,1:pcols)=hist_fld_col_active(fname_rttov(k,7),lchnk,pcols)
+                end if
              else
-                 if (rttov_configs(k) % Lrttov_bt) then
-                     run_rttov(k,8,1:pcols)=hist_fld_col_active(fname_rttov(k,8),lchnk,pcols)
-                 end if
-                 if (rttov_configs(k) % Lrttov_rad) then
-                     run_rttov(k,9,1:pcols)=hist_fld_col_active(fname_rttov(k,9),lchnk,pcols)
-                 end if
+                if (rttov_configs(k) % Lrttov_bt) then
+                   run_rttov(k,8,1:pcols)=hist_fld_col_active(fname_rttov(k,8),lchnk,pcols)
+                end if
+                if (rttov_configs(k) % Lrttov_rad) then
+                   run_rttov(k,9,1:pcols)=hist_fld_col_active(fname_rttov(k,9),lchnk,pcols)
+                end if
              end if                      
           end do
        end if          
@@ -2011,8 +2021,6 @@ CONTAINS
     !! precipitation fluxes
     call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc  )
     call pbuf_get_field(pbuf, dpflxsnw_idx, dp_flxsnw  )
-!    call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc  )
-!    call pbuf_get_field(pbuf, shflxsnw_idx, sh_flxsnw  )
     if (shflxprc_idx > 0) then
        call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc  )
     else
@@ -2066,30 +2074,25 @@ CONTAINS
     end do
     zint(:,nlayp) = surf_hgt
 
-    landmask = 0._r8
+    landmask(1:ncol) = 0._r8
     do i = 1, ncol
        if (cam_in%landfrac(i) > 0.01_r8) landmask(i)= 1
     end do
 
-    ! initalize landmask
-    landmask(1:ncol)=0._r8
-    ! calculate landmask
-    do i=1,ncol
-       if (cam_in%landfrac(i)>0.01_r8) landmask(i)= 1
-    end do
-    
     ! RTTOV surface mask (consider sea ice as well)
     ! 1: land, 0: ocean, 2: sea ice
-    rttov_sfcmask(1:ncol) = 0
-    do i=1,ncol
-       if ((cam_in%landfrac(i) > cam_in%ocnfrac(i)) .and. (cam_in%landfrac(i) > cam_in%icefrac(i))) then
-          rttov_sfcmask(i) = 1
-       else if (cam_in%ocnfrac(i) > cam_in%icefrac(i)) then
-          rttov_sfcmask(i) = 0
-       else
-          rttov_sfcmask(i) = 2
-       end if
-    end do
+    if (lrttov_sim) then
+       rttov_sfcmask(1:ncol) = 0
+       do i=1,ncol
+          if ((cam_in%landfrac(i) > cam_in%ocnfrac(i)) .and. (cam_in%landfrac(i) > cam_in%icefrac(i))) then
+             rttov_sfcmask(i) = 1
+          else if (cam_in%ocnfrac(i) > cam_in%icefrac(i)) then
+             rttov_sfcmask(i) = 0
+          else
+             rttov_sfcmask(i) = 2
+          end if
+       end do
+    end if
 
     ! Add together deep and shallow convection precipitation fluxes.
     ! Note: sh_flxprc and dp_flxprc variables are rain+snow
@@ -2144,7 +2147,6 @@ CONTAINS
     mr_lsice = 0._r8
     do k = 1, nlay
        kk = ktop + k -1
-
        do i = 1, ncol
           if (cld(i,k) > 0._r8) then
              mr_lsliq(i,k) = totg_liq(i,kk)
@@ -2240,7 +2242,7 @@ CONTAINS
     cospstateIN%surfelev        = surf_hgt
     cospstateIN%rttov_sfcmask   = rttov_sfcmask(1:ncol)
 
-    ! Set time 
+    ! Set time (used by RTTOV and all simulators for swathing)
     call get_curr_date(yr, mon, day, ncsec)
 
     cospstateIN%rttov_date(:,1)  = yr
@@ -2248,11 +2250,12 @@ CONTAINS
     cospstateIN%rttov_date(:,3)  = day
 
     ! Need to convert from total daily seconds to hour, minute, and seconds
-    cospstateIN%rttov_time(:,1)  = ncsec / 3600 ! Hours is nsec / 3600 (seconds per hour). Need integers to get the integer division!
+    cospstateIN%rttov_time(:,1)  = ncsec / 3600 ! Hours is nsec / 3600 (seconds per hour).
     cospstateIN%rttov_time(:,2)  = (ncsec - 3600 * (ncsec / 3600)) / 60 ! Remainder divided by 60 seconds per minute
     cospstateIN%rttov_time(:,3)  = ncsec - (3600*cospstateIN%rttov_time(:,1)) - (60*cospstateIN%rttov_time(:,2)) ! Final remainder
 
-    cospstateIN%sza(1:ncol)                    = acosd(coszrs(1:ncol)) ! Hokey because we get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
+    ! We get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
+    cospstateIN%sza(1:ncol)                    = acosd(coszrs(1:ncol))
 
     cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice ! gridcell ice water mixing ratio
     cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq ! gridcell liquid water mixing ratio
@@ -2263,7 +2266,8 @@ CONTAINS
     ! Multiply by 2 to go from radius to diameter, multiply 1e6 to go from meters to microns.
     cospstateIN%DeffLiq(:,:) = 0._r8 ! Initialize for zero everywhere.
     where ((mr_lsliq(1:ncol,1:pver) > 0._r8) .and. (mr_ccliq(1:ncol,1:pver) > 0._r8))
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))          
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / &
+        (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))
     else where (mr_lsliq(1:ncol,1:pver) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
     else where (mr_ccliq(1:ncol,1:pver) > 0._r8)
@@ -2275,7 +2279,8 @@ CONTAINS
 
     ! Optical inputs
     call t_startf("construct_cospIN")
-    call construct_cospIN(ncol, nscol_cosp, nlay, rttov_Ninstruments, cospIN, emis_grey=1.0_r8) ! Apply unitary blackbody surface emissivity to be consistent with CESM physics
+    ! Apply unitary blackbody surface emissivity to be consistent with CESM physics
+    call construct_cospIN(ncol, nscol_cosp, nlay, rttov_Ninstruments, cospIN, emis_grey=1.0_r8)
     cospIN%emsfc_lw = emsfc_lw
     if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
     if (lrttov_sim) cospIN%cfg_rttov     => rttov_configs
@@ -2577,32 +2582,41 @@ CONTAINS
 
     ! RTTOV
     if (lrttov_sim) then
-       do i=1,rttov_Ninstruments ! Not sure if this logical stuff is needed or not?
+       do i=1,rttov_Ninstruments
           if (rttov_configs(i) % Lrttov_pc) then
              if (rttov_configs(i) % Lrttov_bt) then
-                rttov_outputs_cp(i) % bt_total_pc(1:ncol,1:rttov_outputs_cp(i) % nchan_out)  = cospOUT % rttov_outputs(i) % bt_total_pc
+                rttov_outputs_cp(i) % bt_total_pc(1:ncol,1:rttov_outputs_cp(i) % nchan_out)  = &
+                  cospOUT % rttov_outputs(i) % bt_total_pc
              end if
              if (rttov_configs(i) % Lrttov_rad) then
-                rttov_outputs_cp(i) % rad_total_pc(1:ncol,1:rttov_outputs_cp(i) % nchan_out) = cospOUT % rttov_outputs(i) % rad_total_pc
+                rttov_outputs_cp(i) % rad_total_pc(1:ncol,1:rttov_outputs_cp(i) % nchan_out) = &
+                  cospOUT % rttov_outputs(i) % rad_total_pc
              end if
           else
              if (rttov_configs(i) % Lrttov_bt) then 
-                rttov_outputs_cp(i) % bt_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)        = cospOUT % rttov_outputs(i) % bt_total
+                rttov_outputs_cp(i) % bt_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)        = &
+                  cospOUT % rttov_outputs(i) % bt_total
                 if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                   rttov_outputs_cp(i) % bt_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)     = cospOUT % rttov_outputs(i) % bt_clear
+                   rttov_outputs_cp(i) % bt_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)     = &
+                     cospOUT % rttov_outputs(i) % bt_clear
                 end if
              end if
              if (rttov_configs(i) % Lrttov_rad) then
-                rttov_outputs_cp(i) % rad_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)       = cospOUT % rttov_outputs(i) % rad_total
+                rttov_outputs_cp(i) % rad_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)       = &
+                  cospOUT % rttov_outputs(i) % rad_total
                 if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                   rttov_outputs_cp(i) % rad_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)    = cospOUT % rttov_outputs(i) % rad_clear
-                   rttov_outputs_cp(i) % rad_cloudy(1:ncol,1:rttov_outputs_cp(i) % nchan_out)   = cospOUT % rttov_outputs(i) % rad_cloudy
+                   rttov_outputs_cp(i) % rad_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)    = &
+                     cospOUT % rttov_outputs(i) % rad_clear
+                   rttov_outputs_cp(i) % rad_cloudy(1:ncol,1:rttov_outputs_cp(i) % nchan_out)   = &
+                     cospOUT % rttov_outputs(i) % rad_cloudy
                 end if
              end if
              if (rttov_configs(i) % Lrttov_refl) then
-                rttov_outputs_cp(i) % refl_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)      = cospOUT % rttov_outputs(i) % refl_total
+                rttov_outputs_cp(i) % refl_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)      = &
+                  cospOUT % rttov_outputs(i) % refl_total
                 if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                   rttov_outputs_cp(i) % refl_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)   = cospOUT % rttov_outputs(i) % refl_clear
+                   rttov_outputs_cp(i) % refl_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)   = &
+                     cospOUT % rttov_outputs(i) % refl_clear
                 end if
              end if          
           end if
@@ -3770,43 +3784,43 @@ CONTAINS
     
     ! RTTOV - Allocate output for multiple instruments
     if (lrttov_sim) then
-        x % Ninst_rttov = N_rttov_instruments
-        allocate(x % rttov_outputs(N_rttov_instruments))
-        do i=1,N_rttov_instruments
-            x % rttov_outputs(i) % nchan_out = rttov_configs(i) % nchan_out
-            if (rttov_configs(i) % Lrttov_pc) then ! Treat PC-RTTOV fields as clear-sky only for now
-                allocate(x % rttov_outputs(i) % channel_indices(rttov_configs(i) % nchan_out))
-                if (rttov_configs(i) % Lrttov_bt) then                              ! Brightness temp
-                    allocate(x % rttov_outputs(i) % bt_total_pc(Npoints,rttov_configs(i) % nchan_out))
+       x % Ninst_rttov = N_rttov_instruments
+       allocate(x % rttov_outputs(N_rttov_instruments))
+       do i=1,N_rttov_instruments
+          x % rttov_outputs(i) % nchan_out = rttov_configs(i) % nchan_out
+          if (rttov_configs(i) % Lrttov_pc) then ! Treat PC-RTTOV fields as clear-sky only for now
+             allocate(x % rttov_outputs(i) % channel_indices(rttov_configs(i) % nchan_out))
+             if (rttov_configs(i) % Lrttov_bt) then                              ! Brightness temp
+                allocate(x % rttov_outputs(i) % bt_total_pc(Npoints,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then                             ! Radiance
+                allocate(x % rttov_outputs(i) % rad_total_pc(Npoints,rttov_configs(i) % nchan_out))
+             end if  
+          else
+             allocate(x % rttov_outputs(i) % channel_indices(rttov_configs(i) % nchan_out))
+             if (rttov_configs(i) % Lrttov_bt) then                              ! Brightness temp
+                allocate(x % rttov_outputs(i) % bt_total(Npoints,rttov_configs(i) % nchan_out))
+                if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
+                   allocate(x % rttov_outputs(i) % bt_clear(Npoints,rttov_configs(i) % nchan_out))
                 end if
-                if (rttov_configs(i) % Lrttov_rad) then                             ! Radiance
-                    allocate(x % rttov_outputs(i) % rad_total_pc(Npoints,rttov_configs(i) % nchan_out))
-                end if  
-            else
-                allocate(x % rttov_outputs(i) % channel_indices(rttov_configs(i) % nchan_out))
-                if (rttov_configs(i) % Lrttov_bt) then                              ! Brightness temp
-                    allocate(x % rttov_outputs(i) % bt_total(Npoints,rttov_configs(i) % nchan_out))
-                    if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                        allocate(x % rttov_outputs(i) % bt_clear(Npoints,rttov_configs(i) % nchan_out))
-                    end if
+             end if
+             if (rttov_configs(i) % Lrttov_rad) then                             ! Radiance
+                allocate(x % rttov_outputs(i) % rad_total(Npoints,rttov_configs(i) % nchan_out))
+                if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
+                   allocate(x % rttov_outputs(i) % rad_clear(Npoints,rttov_configs(i) % nchan_out))
                 end if
-                if (rttov_configs(i) % Lrttov_rad) then                             ! Radiance
-                    allocate(x % rttov_outputs(i) % rad_total(Npoints,rttov_configs(i) % nchan_out))
-                    if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                        allocate(x % rttov_outputs(i) % rad_clear(Npoints,rttov_configs(i) % nchan_out))
-                    end if
-                    if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
-                        allocate(x % rttov_outputs(i) % rad_cloudy(Npoints,rttov_configs(i) % nchan_out))
-                    end if
+                if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
+                   allocate(x % rttov_outputs(i) % rad_cloudy(Npoints,rttov_configs(i) % nchan_out))
                 end if
-                if (rttov_configs(i) % Lrttov_refl) then                            ! Reflectance
-                    allocate(x % rttov_outputs(i) % refl_total(Npoints,rttov_configs(i) % nchan_out))
-                end if
-                if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
-                    allocate(x % rttov_outputs(i) % refl_clear(Npoints,rttov_configs(i) % nchan_out))
-                end if
-            end if
-        end do
+             end if
+             if (rttov_configs(i) % Lrttov_refl) then                            ! Reflectance
+                allocate(x % rttov_outputs(i) % refl_total(Npoints,rttov_configs(i) % nchan_out))
+             end if
+             if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
+                allocate(x % rttov_outputs(i) % refl_clear(Npoints,rttov_configs(i) % nchan_out))
+             end if
+          end if
+       end do
     else
         x % Ninst_rttov = 0
     end if    
