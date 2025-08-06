@@ -1,22 +1,6 @@
+! CAM interface for the gravity waves drag parameterization
+! now moved to CCPP
 module gw_drag_cam
-
-!--------------------------------------------------------------------------
-! CAM and WACCM gravity wave parameterizations were merged by Sean Patrick
-! Santos in Summer 2013, and at the same time, gw_drag was split into
-! various modules. This is the CAM interface and driver module. The below
-! notes are for the old CAM and WACCM versions of gw_drag.
-!--------------------------------------------------------------------------
-! This file came from wa17 and was modified by Fabrizio: 07-02-2004
-! Standard gw_drag with modification (6) of latitude profile of gw spectrum
-!--------------------------------------------------------------------------
-! Purpose:
-!
-! Module to compute the forcing due to parameterized gravity waves. Both an
-! orographic and an internal source spectrum are considered.
-!
-! Author: Byron Boville
-!
-!--------------------------------------------------------------------------
   use shr_kind_mod,   only: r8=>shr_kind_r8, cl=>shr_kind_cl
   use shr_log_mod,    only: shr_errMsg => shr_log_errMsg
   use shr_assert_mod, only: shr_assert
@@ -30,7 +14,6 @@ module gw_drag_cam
   use cam_abortutils, only: endrun
   use error_messages, only: alloc_err
 
-
   use ref_pres,       only: do_molec_diff, nbot_molec
   use physconst,      only: cpair
 
@@ -41,11 +24,8 @@ module gw_drag_cam
 
 
   use gw_drag,        only: gw_drag_init
-!jt  use gw_common,      only: GWBand
-  use gw_movmtn,      only: gw_movmtn_init
   use physics_buffer, only: pbuf_get_field
 
-! Typical module header
   implicit none
   private
   save
@@ -216,6 +196,9 @@ module gw_drag_cam
   real(r8) :: gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
               gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
               gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min
+
+  ! State vramp
+  real(r8), pointer :: vramp(:) => null()
 
 
 !==========================================================================
@@ -474,6 +457,8 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
+  use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
+
   !---------------------------Local storage-------------------------------
 
   integer          :: i, l, k
@@ -563,8 +548,7 @@ subroutine gw_drag_cam_init()
        pi_in                        = pi, &
        fcrit2_in                    = fcrit2, &
        rearth_in                    = rearth, &
-       pref_edge_in                 = pref_edge, &
-       pref_mid_in                  = pref_mid, &
+       pref_edge                    = pref_edge, &
        pgwv_nl                      = pgwv, &
        gw_dc_nl                     = gw_dc, &
        pgwv_long_nl                 = pgwv_long, &
@@ -644,6 +628,22 @@ subroutine gw_drag_cam_init()
     call endrun("gw_init: " // errmsg)
   endif
 
+  ! Initialize tapering
+  allocate(vramp(pver), stat=errflg)
+  call gravity_wave_drag_top_taper_init( &
+    pver = pver, &
+    amIRoot = masterproc, &
+    iulog = iulog, &
+    gw_top_taper = gw_top_taper, &
+    pref_edge = pref_edge, &
+    pref_mid = pref_mid, &
+    vramp = vramp(:pver), &
+    errmsg = errmsg, &
+    errflg = errflg)
+  if(errflg /= 0) then
+    call endrun("gravity_wave_drag_top_taper_init: " // errmsg)
+  endif
+
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_budget_out = history_budget, &
        history_budget_histfile_num_out = history_budget_histfile_num, &
@@ -695,9 +695,6 @@ subroutine gw_drag_cam_init()
      end if
 
   end if
-
-!jt  call gw_rdg_cam_init(band_oro,use_gw_rdg_beta,use_gw_rdg_gamma)
-
 
   ! ========= gw front initialization! ==========================
   if (use_gw_front .or. use_gw_front_igw) then
@@ -967,8 +964,6 @@ subroutine gw_drag_cam_beres_diag_init(use_gw_convect_dp,use_gw_convect_sh, gw_d
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_waccm_out = history_waccm)
 
-!!$  call gw_beres_init(pver, pi, gw_drag_file_sh_path, gw_drag_file_dp_path, pref_edge, wavelength_mid, use_gw_convect_dp,use_gw_convect_sh, masterproc, iulog, errmsg, errflg )
-
   if (use_gw_convect_dp) then
      ! Output for gravity waves from the Beres scheme (deep).
      call gw_spec_addflds(ngwv, dc, prefix=beres_dp_pf, scheme="Beres (deep)", &
@@ -1034,13 +1029,6 @@ subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, pl
   integer           :: errorflg
 
   if (use_gw_movmtn_pbl) then
-
-!!$     call getfil(file_name, file_path)
-!!$     call gw_movmtn_init( pver, file_path, &
-!!$          gw_dc, wavelength_mid, &
-!!$          pref_edge, psteer, plaunch, source, masterproc, iulog, errormsg, errorflg )
-
-
      call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
           'Vorticity')
      call addfld ('GWUT_MOVMTN',(/ 'lev' /), 'I','m s-2', &
@@ -1121,10 +1109,16 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use camsrfexch,      only: cam_in_t
   ! Location-dependent cpair
   use air_composition, only: cpairv
-  use physconst,       only: pi
+  use physconst,       only: pi, rair, gravit, cpair
   use time_manager,    only: get_step_size
-  use gw_drag,         only: gw_drag_run
   use coords_1d,       only: Coords1D
+
+  ! CCPPized subroutines
+  use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_run
+  use gw_drag,         only: gw_drag_run
+  use gw_rdg,          only: gw_rdg_run
+  use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_finalize
+
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
@@ -1143,22 +1137,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   integer :: istat
 
   integer :: i, k                   ! loop indices
-
-
-  real(r8) :: ttgw(state%ncol,pver) ! temperature tendency
-  real(r8) :: utgw(state%ncol,pver) ! zonal wind tendency
-  real(r8) :: vtgw(state%ncol,pver) ! meridional wind tendency
-
-  real(r8) :: ni(state%ncol,pver+1) ! interface Brunt-Vaisalla frequency
-  real(r8) :: nm(state%ncol,pver)   ! midpoint Brunt-Vaisalla frequency
-  real(r8) :: rhoi(state%ncol,pver+1)     ! interface density
-  real(r8), allocatable :: tau(:,:,:)  ! wave Reynolds stress
-  real(r8) :: tau0x(state%ncol)     ! c=0 sfc. stress (zonal)
-  real(r8) :: tau0y(state%ncol)     ! c=0 sfc. stress (meridional)
-  real(r8) :: ubi(state%ncol,pver+1)! projection of wind at interfaces
-  real(r8) :: ubm(state%ncol,pver)  ! projection of wind at midpoints
-  real(r8) :: xv(state%ncol)        ! unit vector of source wind (x)
-  real(r8) :: yv(state%ncol)        ! unit vector of source wind (y)
 
   integer :: m                      ! dummy integers
   real(r8) :: qtgw(state%ncol,pver,pcnst) ! constituents tendencies
@@ -1233,11 +1211,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Scale sgh to account for landfrac.
   real(r8) :: sgh_scaled(state%ncol)
 
-  ! Parameters for the IGW polar taper.
-  real(r8), parameter :: degree2radian = pi/180._r8
-  real(r8), parameter :: al0 = 82.5_r8 * degree2radian
-  real(r8), parameter :: dlat0 = 5.0_r8 * degree2radian
-
   ! effective gw diffusivity at interfaces needed for output
   real(r8) :: egwdffi(state%ncol,pver+1)
   ! sum from the two types of spectral GW
@@ -1251,24 +1224,15 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Which constituents are being affected by diffusion.
   logical  :: lq(pcnst)
 
-  ! Contiguous copies of state arrays.
-  real(r8) :: dse(state%ncol,pver)
-  real(r8) :: t(state%ncol,pver)
-  real(r8) :: u(state%ncol,pver)
-  real(r8) :: v(state%ncol,pver)
-  real(r8) :: q(state%ncol,pver,pcnst)
-  real(r8) :: lat(state%ncol)
-  real(r8) :: pdel(state%ncol,pver)
-  real(r8) :: pdeldry(state%ncol,pver)
-  real(r8) :: pint(state%ncol,pver+1)
-  real(r8) :: piln(state%ncol,pver+1)
-  real(r8) :: zm(state%ncol,pver)
-  real(r8) :: zi(state%ncol,pver+1)
+  ! Temporaries for profiles from interstitial
+  type(Coords1D) :: p
+  real(r8) :: rhoi(pcols, pver+1)
+  real(r8) :: nm(pcols, pver)
+  real(r8) :: ni(pcols, pver+1)
 
   character(len=64)               :: scheme_name
   character(len=512)              :: errmsg
   integer                         :: errflg
-  type(Coords1D) :: p               ! Pressure coordinates
 
   real(r8)          :: ttend_sh_arr(state%ncol,pver)
 
@@ -1278,49 +1242,23 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   lchnk = state1%lchnk
   ncol  = state1%ncol
-
-  p = Coords1D(state1%pint(:ncol,:))
-
-  dse = state1%s(:ncol,:)
-  t = state1%t(:ncol,:)
-  u = state1%u(:ncol,:)
-  v = state1%v(:ncol,:)
-  q = state1%q(:ncol,:,:)
-  piln = state1%lnpint(:ncol,:)
-  zm = state1%zm(:ncol,:)
-  zi = state1%zi(:ncol,:)
-  lat= state1%lat(:ncol)
-  lq = .true.
+  lq(:) = .true.
   call physics_ptend_init(ptend, state1%psetcols, "Gravity wave drag", &
        ls=.true., lu=.true., lv=.true., lq=lq)
-
-!jt  moved to gw_drag_run
-!!$  ! Profiles of background state variables
-!!$  call gw_prof(ncol, p, cpair, t, rhoi, nm, ni)
 
   if (do_molec_diff) then
      !--------------------------------------------------------
      ! Initialize and calculate local molecular diffusivity
      !--------------------------------------------------------
-
      call pbuf_get_field(pbuf, kvt_idx, kvt_in)  ! kvtt(1:pcols,1:pver+1)
      kvtt = kvt_in(:ncol,:)
-
   else
-
      kvtt = 0._r8
-
   end if
-
-!jt  moved to gw_run
-!!$  if (use_gw_front_igw) then
-!!$     u_coriolis = coriolis_speed(band_long, state1%lat(:ncol))
-!!$  end if
 
   ! Totals that accumulate over different sources.
   egwdffi_tot = 0._r8
   flx_heat = 0._r8
-
 
   if (use_gw_front .or. use_gw_front_igw) then
      ! Get frontogenesis physics buffer fields set by dynamics.
@@ -1357,21 +1295,39 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 !!!!jt  There was a problem passing an unassociated pointer (ttend_sh_arr) it was temporarily replaced with real array.
 !!!!jt  Only associated when running shallow convective gravity waves.  Fix this
 
+  rhoi(:,:) = 0._r8
+  nm(:,:) = 0._r8
+  ni(:,:) = 0._r8
+
+  ! Call the CCPPized subroutine to compute necessary profiles for gravity wave drag parameterizations.
+  call gravity_wave_drag_prepare_profiles_run( &
+    ncol   = ncol, &
+    pver   = pver, &
+    cpair  = cpair, &
+    rair   = rair, &
+    gravit = gravit, &
+    pint   = state1%pint(:ncol,:pver+1), &
+    t      = state1%t(:ncol,:pver), &
+    ! below output
+    p      = p, &
+    rhoi   = rhoi(:ncol,:pver+1), &
+    nm     = nm(:ncol,:pver), &
+    ni     = ni(:ncol,:pver+1), &
+    errmsg = errmsg, &
+    errflg = errflg)
+
   ! Call the CCPPized subroutine
   call gw_drag_run( &
        ncol             = ncol, &
        pcnst            = pcnst, &
        pver             = pver, &
-       cnst_type        = cnst_type, &
        dt               = dt, &
        cpair            = cpair, &
        cpairv           = cpairv(:ncol,:,lchnk), &
        pi               = pi, &
-       frontgf          = frontgf, &
-       frontga          = frontga, &
-       degree2radian    = degree2radian, &
-       al0              = al0, &
-       dlat0            = dlat0, &
+       vramp            = vramp, &
+       frontgf          = frontgf(:ncol,:pver), &
+       frontga          = frontga(:ncol,:pver), &
        pint             = state1%pint(:ncol,:), &
        piln             = state1%lnpint(:ncol,:), &
        pdel             = state1%pdel(:ncol,:), &
@@ -1379,7 +1335,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        zm               = state1%zm(:ncol,:), &
        zi               = state1%zi(:ncol,:), &
        lat              = state1%lat(:ncol), &
-       landfrac         = cam_in%landfrac, &
+       landfrac         = cam_in%landfrac(:ncol), &
        dse              = state1%s(:ncol,:), &
        state_t          = state1%t(:ncol,:), &
        state_u          = state1%u(:ncol,:), &
@@ -1387,6 +1343,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        state_q          = state1%q(:ncol,:,:), &
        vorticity        = vort4gw(:ncol,:pver), &
        sgh              = sgharr(:ncol), &
+       p                = p, &
+       rhoi             = rhoi(:ncol,:pver+1), &
+       nm               = nm(:ncol,:pver), &
+       ni               = ni(:ncol,:pver+1), &
        kvtt             = kvtt(:ncol,:pver+1), &
        ttend_dp         = ttend_dp(:ncol,:pver), &
        ttend_sh         = ttend_sh_arr(:ncol,:pver), &
@@ -1405,6 +1365,70 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        flx_heat         = flx_heat(:ncol), &
        errmsg           = errmsg, &
        errflg           = errflg)
+
+  if(errflg /= 0) then
+    call endrun("gw_drag_run: " // errmsg)
+  endif
+
+  if (use_gw_rdg_beta .or. use_gw_rdg_gamma) then
+     ! Save state at top of routine
+     ! Useful for unit testing checks
+      call outfld('UEGW', state1%u ,  ncol, lchnk)
+      call outfld('VEGW', state1%v ,  ncol, lchnk)
+      call outfld('TEGW', state1%t ,  ncol, lchnk)
+      call outfld('ZEGW', state1%zi , ncol, lchnk)
+      call outfld('ZMGW', state1%zm , ncol, lchnk)
+
+      call gw_rdg_run( &
+        ncol                    = ncol, &
+        pver                    = pver, &
+        pcnst                   = pcnst, &
+        dt                      = dt, &
+        pi                      = pi, &
+        use_gw_rdg_beta         = use_gw_rdg_beta, &
+        use_gw_rdg_gamma        = use_gw_rdg_gamma, &
+        vramp                   = vramp, &
+        p                       = p, &
+        n_rdg_beta              = n_rdg_beta, &
+        n_rdg_gamma             = n_rdg_gamma, &
+        u                       = state1%u(:ncol,:), &
+        v                       = state1%v(:ncol,:), &
+        t                       = state1%t(:ncol,:), &
+        q                       = state1%q(:ncol,:,:), &
+        dse                     = state1%s(:ncol,:), &
+        piln                    = state1%lnpint(:ncol,:), &
+        zm                      = state1%zm(:ncol,:), &
+        zi                      = state1%zi(:ncol,:), &
+        nm                      = nm(:ncol,:), &
+        ni                      = ni(:ncol,:), &
+        rhoi                    = rhoi(:ncol,:), &
+        kvtt                    = kvtt(:ncol,:), &
+        effgw_rdg_resid         = effgw_rdg_resid, &
+        use_gw_rdg_resid        = use_gw_rdg_resid, &
+        effgw_rdg_beta          = effgw_rdg_beta, &
+        effgw_rdg_beta_max      = effgw_rdg_beta_max, &
+        effgw_rdg_gamma         = effgw_rdg_gamma, &
+        effgw_rdg_gamma_max     = effgw_rdg_gamma_max, &
+        rdg_beta_cd_llb         = rdg_beta_cd_llb, &
+        trpd_leewv_rdg_beta     = trpd_leewv_rdg_beta, &
+        rdg_gamma_cd_llb        = rdg_gamma_cd_llb, &
+        trpd_leewv_rdg_gamma    = trpd_leewv_rdg_gamma, &
+        ! Input/output arguments
+        s_tend                  = ptend%s(:ncol,:pver), &
+        q_tend                  = ptend%q(:ncol,:pver,:pcnst), &
+        u_tend                  = ptend%u(:ncol,:pver), &
+        v_tend                  = ptend%v(:ncol,:pver), &
+        ! Output arguments
+        flx_heat                = flx_heat(:ncol), &
+        errmsg                  = errmsg, &
+        errflg                  = errflg)
+  end if
+
+  ! Call the CCPPized subroutine to clean up
+  call gravity_wave_drag_prepare_profiles_timestep_finalize( &
+    p      = p, &
+    errmsg = errmsg, &
+    errflg = errflg)
 
   ! Convert the tendencies for the dry constituents to dry air basis.
   do m = 1, pcnst
@@ -1611,7 +1635,6 @@ subroutine gw_spec_outflds(prefix, lchnk, ncol, ngwv, phase_speeds, dc, u, v, xv
 
 
   ! Accumulate wind tendencies binned according to phase speed.
-
   utb = 0._r8
 
   ! Find which output bin the phase speed corresponds to.
