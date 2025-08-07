@@ -22,8 +22,6 @@ module gw_drag_cam
                             use_gw_convect_dp, use_gw_convect_sh,       &
                             use_simple_phys, use_gw_movmtn_pbl, phys_getopts
 
-
-  use gw_drag,        only: gw_drag_init
   use physics_buffer, only: pbuf_get_field
 
   implicit none
@@ -196,6 +194,20 @@ module gw_drag_cam
   real(r8) :: gw_rdg_C_BetaMax_DS, gw_rdg_C_GammaMax, &
               gw_rdg_Frx0, gw_rdg_Frx1, gw_rdg_C_BetaMax_SM, gw_rdg_Fr_c, &
               gw_rdg_orohmin, gw_rdg_orovmin, gw_rdg_orostratmin, gw_rdg_orom2min
+
+  ! Gravity wave Ridge scheme data
+  ! this is grid dependent and stored by chunk at initialization (last dimension is lchnk)
+  ! the original variants are used for Meso Beta and stored in bnd_topo_file
+  ! the "g" variants are used for Meso Gamma and stored in bnd_rdggm_file
+  integer, parameter :: prdg = 16
+  real(r8), pointer, dimension(:,:)   :: rdg_gbxar, rdg_gbxarg
+  real(r8), pointer, dimension(:,:)   :: rdg_isovar!, rdg_isovarg
+  real(r8), pointer, dimension(:,:)   :: rdg_isowgt!, rdg_isowgtg
+  real(r8), pointer, dimension(:,:,:) :: rdg_hwdth, rdg_hwdthg
+  real(r8), pointer, dimension(:,:,:) :: rdg_clngt, rdg_clngtg
+  real(r8), pointer, dimension(:,:,:) :: rdg_mxdis, rdg_mxdisg
+  real(r8), pointer, dimension(:,:,:) :: rdg_anixy, rdg_anixyg
+  real(r8), pointer, dimension(:,:,:) :: rdg_angll, rdg_angllg
 
   ! State vramp
   real(r8), pointer :: vramp(:) => null()
@@ -448,7 +460,8 @@ subroutine gw_drag_cam_init()
 
   use cam_grid_support, only: cam_grid_check, cam_grid_id
   use cam_grid_support, only: cam_grid_get_dim_names
-  use pio,              only: file_desc_t
+  use pio,              only: file_desc_t, PIO_NOWRITE, pio_closefile
+  use cam_pio_utils,    only: cam_pio_openfile
   use ncdio_atm,        only: infld
   use ioFileMod,        only: getfil
 
@@ -457,11 +470,12 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
+  use gw_drag,        only: gw_drag_init
   use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
 
   !---------------------------Local storage-------------------------------
 
-  integer          :: i, l, k
+  integer          :: i, l, k, lchnk
   character(len=1) :: cn
 
   ! Index for levels at specific pressures.
@@ -481,6 +495,7 @@ subroutine gw_drag_cam_init()
   integer            :: grid_id
   character(len=8)   :: dim1name, dim2name
   logical            :: found
+  logical            :: found_rdggm
   character(len=cl) :: bnd_rdggm_loc   ! filepath of topo file on local disk
 
   ! Allow reporting of error messages.
@@ -578,8 +593,6 @@ subroutine gw_drag_cam_init()
        effgw_rdg_gamma_max_nl       = effgw_rdg_gamma_max, &
        rdg_gamma_cd_llb_nl          = rdg_gamma_cd_llb, &
        trpd_leewv_rdg_gamma_nl      = trpd_leewv_rdg_gamma, &
-       bnd_topo_nl                  = bnd_topo_loc, &
-       bnd_rdggm_nl                 = bnd_rdggm_loc, &
        gw_oro_south_fac_nl          = gw_oro_south_fac, &
        gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &
        gw_lndscl_sgh_nl             = gw_lndscl_sgh, &
@@ -643,6 +656,137 @@ subroutine gw_drag_cam_init()
   if(errflg /= 0) then
     call endrun("gravity_wave_drag_top_taper_init: " // errmsg)
   endif
+
+  ! For gravity wave ridge scheme, initialize and read data into model state.
+  ! This has to be at the host/CAM interface level because of chunking.
+
+  ! First, initialize the data to zeros to populate default values for unused columns
+  allocate(rdg_gbxar(pcols, begchunk:endchunk), stat=errflg)
+  allocate(rdg_isovar(pcols, begchunk:endchunk), stat=errflg)
+  allocate(rdg_isowgt(pcols, begchunk:endchunk), stat=errflg)
+  allocate(rdg_hwdth(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_clngt(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_mxdis(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_anixy(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_angll(pcols, prdg, begchunk:endchunk), stat=errflg)
+
+  rdg_gbxar(:,:) = 0._r8
+  rdg_isovar(:,:) = 0._r8
+  rdg_isowgt(:,:) = 0._r8
+  rdg_hwdth(:,:,:) = 0._r8
+  rdg_clngt(:,:,:) = 0._r8
+  rdg_mxdis(:,:,:) = 0._r8
+  rdg_anixy(:,:,:) = 0._r8
+  rdg_angll(:,:,:) = 0._r8
+
+  allocate(rdg_gbxarg(pcols, begchunk:endchunk), stat=errflg)
+  allocate(rdg_hwdthg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_clngtg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_mxdisg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_anixyg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  allocate(rdg_angllg(pcols, prdg, begchunk:endchunk), stat=errflg)
+
+  rdg_gbxarg(:,:) = 0._r8
+  rdg_hwdthg(:,:,:) = 0._r8
+  rdg_clngtg(:,:,:) = 0._r8
+  rdg_mxdisg(:,:,:) = 0._r8
+  rdg_anixyg(:,:,:) = 0._r8
+  rdg_angllg(:,:,:) = 0._r8
+
+  if(use_gw_rdg_beta .or. use_gw_rdg_gamma) then
+    grid_id = cam_grid_id('physgrid')
+    if(.not. cam_grid_check(grid_id)) call endrun(sub // ': ERROR: no "physgrid" grid')
+    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+  endif
+
+  if(use_gw_rdg_beta) then
+
+      ! The CCPPized initialization routine, gravity_wave_drag_beta_ridge_init,
+      ! uses the I/O reader which is not chunk aware. Thus, we have to lift this
+      ! up in to the host model layer and use infld to read it in;
+      ! SIMA can still use the "native" routine with ncol only.
+      fh_topo => topo_file_get_id()
+      if (.not. associated(fh_topo)) then
+         ! Try to open topo file here.  This workaround will not be needed
+         ! once the refactored initialization sequence is on trunk.
+         allocate(fh_topo)
+         call cam_pio_openfile(fh_topo, bnd_topo_loc, PIO_NOWRITE)
+      end if
+
+      call infld('GBXAR', fh_topo, dim1name, dim2name, 1, pcols, &
+                          begchunk, endchunk, rdg_gbxar, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: GBXAR not found on topo file')
+      rdg_gbxar = rdg_gbxar * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
+
+      call infld('ISOVAR', fh_topo, dim1name, dim2name, 1, pcols, &
+                          begchunk, endchunk, rdg_isovar, found, gridname='physgrid')
+      ! ++jtb - Temporary fix until topo files contain this variable
+      if (.not. found) rdg_isovar(:,:) = 0._r8
+
+      call infld('ISOWGT', fh_topo, dim1name, dim2name, 1, pcols, &
+                          begchunk, endchunk, rdg_isowgt, found, gridname='physgrid')
+      ! ++jtb - Temporary fix until topo files contain this variable
+      if (.not. found) rdg_isowgt(:,:) = 0._r8
+
+      call infld('HWDTH', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_hwdth, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: HWDTH not found on topo file')
+
+      call infld('CLNGT', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_clngt, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: CLNGT not found on topo file')
+
+      call infld('MXDIS', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_mxdis, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: MXDIS not found on topo file')
+
+      call infld('ANIXY', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_anixy, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: ANIXY not found on topo file')
+
+      call infld('ANGLL', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_angll, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: ANGLL not found on topo file')
+  endif
+
+  ! Gamma ridge data initialization
+  if(use_gw_rdg_gamma) then
+
+      call cam_pio_openfile(fh_rdggm, bnd_rdggm_loc, PIO_NOWRITE)
+      if (.not. use_gw_rdg_beta) then
+        call infld('GBXAR', fh_rdggm, dim1name, dim2name, 1, pcols, &
+                            begchunk, endchunk, rdg_gbxarg, found, gridname='physgrid')
+        if (.not. found) call endrun(sub//': ERROR: GBXAR not found on bnd_rdggm')
+        rdg_gbxarg = rdg_gbxarg * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
+      else
+        rdg_gbxarg = rdg_gbxar
+      endif
+
+      call infld('HWDTH', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_hwdthg, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: HWDTH not found on bnd_rdggm')
+
+      call infld('CLNGT', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_clngtg, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: CLNGT not found on bnd_rdggm')
+
+      call infld('MXDIS', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_mxdisg, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: MXDIS not found on bnd_rdggm')
+
+      call infld('ANIXY', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_anixyg, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: ANIXY not found on bnd_rdggm')
+
+      call infld('ANGLL', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
+                 1, prdg, begchunk, endchunk, rdg_angllg, found, gridname='physgrid')
+      if (.not. found) call endrun(sub//': ERROR: ANGLL not found on bnd_rdggm')
+
+      call pio_closefile(fh_rdggm)
+  endif
+
+
+  !------- diagnostics code
 
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_budget_out = history_budget, &
@@ -1413,6 +1557,21 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         trpd_leewv_rdg_beta     = trpd_leewv_rdg_beta, &
         rdg_gamma_cd_llb        = rdg_gamma_cd_llb, &
         trpd_leewv_rdg_gamma    = trpd_leewv_rdg_gamma, &
+        ! Input data for beta/gamma waves - stored for all chunks
+        gbxar                   = rdg_gbxar(:ncol,lchnk), &
+        isovar                  = rdg_isovar(:ncol,lchnk), &
+        isowgt                  = rdg_isowgt(:ncol,lchnk), &
+        hwdth                   = rdg_hwdth(:ncol,:,lchnk), &
+        clngt                   = rdg_clngt(:ncol,:,lchnk), &
+        mxdis                   = rdg_mxdis(:ncol,:,lchnk), &
+        anixy                   = rdg_anixy(:ncol,:,lchnk), &
+        angll                   = rdg_angll(:ncol,:,lchnk), &
+        gbxarg                  = rdg_gbxarg(:ncol,lchnk), &
+        hwdthg                  = rdg_hwdthg(:ncol,:,lchnk), &
+        clngtg                  = rdg_clngtg(:ncol,:,lchnk), &
+        mxdisg                  = rdg_mxdisg(:ncol,:,lchnk), &
+        anixyg                  = rdg_anixyg(:ncol,:,lchnk), &
+        angllg                  = rdg_angllg(:ncol,:,lchnk), &
         ! Input/output arguments
         s_tend                  = ptend%s(:ncol,:pver), &
         q_tend                  = ptend%q(:ncol,:pver,:pcnst), &
