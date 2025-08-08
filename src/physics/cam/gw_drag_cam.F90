@@ -466,6 +466,7 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
+  use gw_movmtn,      only: gw_movmtn_init
   use gw_drag,        only: gw_drag_init
   use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
   use gw_rdg, only: gw_rdg_init
@@ -563,6 +564,8 @@ subroutine gw_drag_cam_init()
   endif
 
   ! pbuf index initialization
+  kvt_idx = pbuf_get_index('kvt')
+
   if(use_gw_front .or. use_gw_front_igw) then
      frontgf_idx = pbuf_get_index('FRONTGF')
      frontga_idx = pbuf_get_index('FRONTGA')
@@ -580,6 +583,21 @@ subroutine gw_drag_cam_init()
 
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
      sgh_idx = pbuf_get_index('SGH')
+  endif
+
+  ! Call the CCPPized initialization subroutines
+  if(use_gw_movmtn_pbl) then
+    call gw_movmtn_init(pver = pver, &
+                        masterproc = masterproc, &
+                        iulog = iulog, &
+                        file_path = gw_drag_file_mm_loc, &
+                        gw_delta_c = gw_dc, & ! mid
+                        pref_edge = pref_edge, &
+                        movmtn_psteer = movmtn_psteer, &
+                        movmtn_plaunch = movmtn_plaunch, &
+                        movmtn_source_nl = movmtn_source, &
+                        errmsg = errmsg, errflg = errflg)
+    if (errflg /= 0) return
   endif
 
   call gw_drag_init( &
@@ -606,7 +624,6 @@ subroutine gw_drag_cam_init()
        frontgfc_nl                  = frontgfc, &
        gw_drag_file_nl              = gw_drag_file_loc, &
        gw_drag_file_sh_nl           = gw_drag_file_sh_loc, &
-       gw_drag_file_mm_nl           = gw_drag_file_mm_loc, &
        taubgnd_nl                   = taubgnd, &
        taubgnd_igw_nl               = taubgnd_igw, &
        gw_polar_taper_nl            = gw_polar_taper, &
@@ -618,18 +635,12 @@ subroutine gw_drag_cam_init()
        gw_qbo_hdepth_scaling_nl     = gw_qbo_hdepth_scaling, &
        gw_top_taper_nl              = gw_top_taper, &
        front_gaussian_width_nl      = front_gaussian_width, &
-       alpha_gw_movmtn_nl           = alpha_gw_movmtn, &
-       effgw_movmtn_pbl_in          = effgw_movmtn_pbl, &
-       movmtn_source_in             = movmtn_source, &
-       movmtn_psteer_in             = movmtn_psteer, &
-       movmtn_plaunch_in            = movmtn_plaunch, &
        use_gw_oro_in                = use_gw_oro, &
        use_gw_front_in              = use_gw_front, &
        use_gw_front_igw_in          = use_gw_front_igw, &
        use_gw_convect_dp_in         = use_gw_convect_dp, &
        use_gw_convect_sh_in         = use_gw_convect_sh, &
        use_simple_phys_in           = use_simple_phys, &
-       use_gw_movmtn_pbl_in         = use_gw_movmtn_pbl, &
        do_molec_diff_in             = do_molec_diff, &
        nbot_molec_in                = nbot_molec, &
        errmsg                       = errmsg, &
@@ -1280,6 +1291,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! CCPPized subroutines
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_run
+  use gw_movmtn,       only: gw_movmtn_run
   use gw_drag,         only: gw_drag_run
   use gw_rdg,          only: gw_rdg_run
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_finalize
@@ -1326,6 +1338,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Molecular diffusivity
   real(r8), pointer :: kvt_in(:,:)
   real(r8) :: kvtt(state%ncol,pver+1)
+  real(r8) :: kvt_gw(state%ncol,pver+1)
   real(r8) :: sgharr(state%ncol)
 
   ! Frontogenesis
@@ -1334,33 +1347,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
-
-  ! gridbox area
-  real(r8), pointer :: gbxar(:)
-
-     ! Beta ridges
-  ! width of ridges.
-  real(r8), pointer :: hwdth(:,:)
-  ! length of ridges.
-  real(r8), pointer :: clngt(:,:)
-  ! Maximum deviations of ridges.
-  real(r8), pointer :: mxdis(:,:)
-  ! orientation of ridges.
-  real(r8), pointer :: angll(:,:)
-  ! anisotropy of ridges.
-  real(r8), pointer :: anixy(:,:)
-
-     ! Gamma ridges
-  ! width of ridges.
-  real(r8), pointer :: hwdthg(:,:)
-  ! length of ridges.
-  real(r8), pointer :: clngtg(:,:)
-  ! Maximum deviations of ridges.
-  real(r8), pointer :: mxdisg(:,:)
-  ! orientation of ridges.
-  real(r8), pointer :: angllg(:,:)
-  ! anisotropy of ridges.
-  real(r8), pointer :: anixyg(:,:)
 
   ! Indices of gravity wave source and lowest level where wind tendencies
   ! are allowed.
@@ -1372,6 +1358,15 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: hdepth(state%ncol)
   ! maximum heating rate
   real(r8) :: maxq0(state%ncol)
+
+  ! Temporaries for output from individual gw schemes.
+  real(r8) :: ubi(state%ncol, pver+1)! projection of wind at interfaces
+  real(r8) :: ubm(state%ncol, pver)  ! projection of wind at midpoints
+  real(r8) :: xv(state%ncol)        ! unit vector of source wind (x)
+  real(r8) :: yv(state%ncol)        ! unit vector of source wind (y)
+  real(r8) :: ttgw(state%ncol, pver) ! temperature tendency
+  real(r8) :: utgw(state%ncol, pver) ! zonal wind tendency
+  real(r8) :: vtgw(state%ncol, pver) ! meridional wind tendency
 
   ! Scale sgh to account for landfrac.
   real(r8) :: sgh_scaled(state%ncol)
@@ -1421,9 +1416,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      kvtt = 0._r8
   end if
 
-  ! Totals that accumulate over different sources.
-  egwdffi_tot = 0._r8
-  flx_heat = 0._r8
+  ! Totals that accumulate over different sources, initialize over pcols.
+  egwdffi_tot(:,:) = 0._r8
+  flx_heat(:) = 0._r8
 
   if (use_gw_front .or. use_gw_front_igw) then
      ! Get frontogenesis physics buffer fields set by dynamics.
@@ -1465,20 +1460,89 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Call the CCPPized subroutine to compute necessary profiles for gravity wave drag parameterizations.
   call gravity_wave_drag_prepare_profiles_run( &
-       ncol   = ncol, &
-       pver   = pver, &
-       cpair  = cpair, &
-       rair   = rair, &
-       gravit = gravit, &
-       pint   = state1%pint(:ncol,:pver+1), &
-       t      = state1%t(:ncol,:pver), &
+       ncol    = ncol, &
+       pver    = pver, &
+       cpair   = cpair, &
+       rair    = rair, &
+       gravit  = gravit, &
+       pint    = state1%pint(:ncol,:pver+1), &
+       t       = state1%t(:ncol,:pver), &
+       do_molec_diff = do_molec_diff, &
+       nbot_molec = nbot_molec, &
+       cpairv  = cpairv(:ncol,:pver,lchnk), &
+       kvt     = kvtt(:ncol,:pver+1), &
        ! below output
-       p      = p, &
-       rhoi   = rhoi(:ncol,:pver+1), &
-       nm     = nm(:ncol,:pver), &
-       ni     = ni(:ncol,:pver+1), &
-       errmsg = errmsg, &
-       errflg = errflg)
+       p       = p, &
+       rhoi    = rhoi(:ncol,:pver+1), &
+       nm      = nm(:ncol,:pver), &
+       ni      = ni(:ncol,:pver+1), &
+       egwdffi = egwdffi_tot(:ncol,:pver+1), &
+       kvt_gw  = kvt_gw(:ncol,:pver+1), &
+       flx_heat= flx_heat(:ncol), &
+       scheme_name = scheme_name, &
+       errmsg  = errmsg, &
+       errflg  = errflg)
+
+  ! Call the CCPPized subroutine for the moving mountain gravity waves.
+  if (use_gw_movmtn_pbl) then
+    call gw_movmtn_run( &
+      ncol                = ncol, &
+      pver                = pver, &
+      pcnst               = pcnst, &
+      gravit              = gravit, &
+      rair                = rair, &
+      dt                  = dt, &
+      p                   = p, &
+      vramp               = vramp, &
+      state_u             = state1%u(:ncol,:), &
+      state_v             = state1%v(:ncol,:), &
+      state_t             = state1%t(:ncol,:), &
+      state_q             = state1%q(:ncol,:,:), &
+      dse                 = state1%s(:ncol,:), &
+      pint                = state1%pint(:ncol,:), &
+      piln                = state1%lnpint(:ncol,:), &
+      rhoi                = rhoi(:ncol,:), &
+      nm                  = nm(:ncol,:), &
+      ni                  = ni(:ncol,:), &
+      kvt_gw              = kvt_gw(:ncol,:pver+1), &
+      ttend_dp            = ttend_dp(:ncol,:), &
+      ttend_clubb         = ttend_clubb(:ncol,:), &
+      upwp_clubb          = upwp_clubb_gw(:ncol,:), &
+      vpwp_clubb          = vpwp_clubb_gw(:ncol,:), &
+      vorticity           = vort4gw(:ncol,:), &           ! only in SE dycore.
+      zm                  = state1%zm(:ncol,:), &
+      alpha_gw_movmtn     = alpha_gw_movmtn, &
+      effgw_movmtn_pbl    = effgw_movmtn_pbl, &
+      gw_apply_tndmax     = gw_apply_tndmax, &
+      use_gw_movmtn_pbl   = use_gw_movmtn_pbl, &
+      ! Input/output arguments
+      q_tend              = ptend%q(:ncol,:pver,:pcnst), &
+      u_tend              = ptend%u(:ncol,:pver), &
+      v_tend              = ptend%v(:ncol,:pver), &
+      s_tend              = ptend%s(:ncol,:pver), &
+      ! Output arguments
+      src_level           = src_level(:ncol), &
+      tend_level          = tend_level(:ncol), &
+      ubm                 = ubm(:ncol,:pver), &
+      ubi                 = ubi(:ncol,:pver+1), &
+      xv                  = xv(:ncol), &
+      yv                  = yv(:ncol), &
+      hdepth              = hdepth(:ncol), &
+      utgw                = utgw(:ncol,:pver), &
+      vtgw                = vtgw(:ncol,:pver), &
+      ttgw                = ttgw(:ncol,:pver), &
+      qtgw                = qtgw(:ncol,:pver,:pcnst), &
+      egwdffi             = egwdffi(:ncol,:pver+1), &
+      dttdf               = dttdf(:ncol,:pver), &
+      dttke               = dttke(:ncol,:pver), &
+      errmsg              = errmsg, &
+      errflg              = errflg)
+
+    ! add the diffusion coefficients
+    do k = 1, pver + 1
+      egwdffi_tot(:ncol, k) = egwdffi_tot(:ncol, k) + egwdffi(:ncol, k)
+    end do
+  end if
 
   ! Call the CCPPized subroutine
   call gw_drag_run( &
@@ -1505,7 +1569,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        state_u          = state1%u(:ncol,:), &
        state_v          = state1%v(:ncol,:), &
        state_q          = state1%q(:ncol,:,:), &
-       vorticity        = vort4gw(:ncol,:pver), &
        sgh              = sgharr(:ncol), &
        p                = p, &
        rhoi             = rhoi(:ncol,:pver+1), &
@@ -1514,16 +1577,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        kvtt             = kvtt(:ncol,:pver+1), &
        ttend_dp         = ttend_dp(:ncol,:pver), &
        ttend_sh         = ttend_sh_arr(:ncol,:pver), &
-       ttend_clubb      = ttend_clubb(:ncol,:pver), &
-       thlp2_clubb_gw   = thlp2_clubb_gw(:ncol,:pver+1), &
-       wpthlp_clubb_gw  = wpthlp_clubb_gw(:ncol,:pver+1), &
-       upwp_clubb_gw    = upwp_clubb_gw(:ncol,:pver+1), &
-       vpwp_clubb_gw    = vpwp_clubb_gw(:ncol,:pver+1), &
+       ! below input/output (accummulated tendencies)
        s_tend           = ptend%s(:ncol,:), &
        q_tend           = ptend%q(:ncol,:,:), &
        u_tend           = ptend%u(:ncol,:), &
        v_tend           = ptend%v(:ncol,:), &
-       scheme_name      = scheme_name, &
+       ! below output
        nbot_molec       = nbot_molec, &
        egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
        flx_heat         = flx_heat(:ncol), &
