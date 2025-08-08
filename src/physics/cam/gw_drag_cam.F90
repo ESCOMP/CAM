@@ -92,10 +92,6 @@ module gw_drag_cam
   logical :: use_gw_rdg_resid = .false.
   real(r8) :: effgw_rdg_resid = unset_r8
 
-  ! Horzontal wavelengths [m].
-  real(r8), parameter :: wavelength_mid = 1.e5_r8
-  real(r8), parameter :: wavelength_long = 3.e5_r8
-
   ! Background stress source strengths.
   real(r8) :: taubgnd = unset_r8
   real(r8) :: taubgnd_igw = unset_r8
@@ -472,6 +468,7 @@ subroutine gw_drag_cam_init()
 
   use gw_drag,        only: gw_drag_init
   use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
+  use gw_rdg, only: gw_rdg_init
 
   !---------------------------Local storage-------------------------------
 
@@ -552,11 +549,43 @@ subroutine gw_drag_cam_init()
      end if
   end if
 
+  ! Sanity checks
+  if(use_gw_oro) then
+    if (effgw_oro == unset_r8) then
+      call endrun("gw_init: Orographic gravity waves enabled, but effgw_oro was not set.")
+    end if
+  end if
+
+  if(use_gw_front .or. use_gw_front_igw) then
+    if(frontgfc == unset_r8) then
+      call endrun("gw_init: Frontogenesis enabled, but frontgfc was not set!")
+    endif
+  endif
+
+  ! pbuf index initialization
+  if(use_gw_front .or. use_gw_front_igw) then
+     frontgf_idx = pbuf_get_index('FRONTGF')
+     frontga_idx = pbuf_get_index('FRONTGA')
+  endif
+
+  if(use_gw_movmtn_pbl) then
+     ! get pbuf indices for CLUBB couplings
+     ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
+     thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
+     upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
+     vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
+     wpthlp_clubb_gw_idx = pbuf_get_index('WPTHLP_CLUBB_GW')
+     vort4gw_idx         = pbuf_get_index('VORT4GW')
+  endif
+
+  if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
+     sgh_idx = pbuf_get_index('SGH')
+  endif
+
   call gw_drag_init( &
-       iulog_in                     = iulog, &
-       ktop_in                      = ktop, &
-       masterproc_in                = masterproc, &
-       ncol                         = pcols, &
+       iulog                        = iulog, &
+       ktop                         = ktop, &
+       masterproc                   = masterproc, &
        pver                         = pver, &
        gravit_in                    = gravit, &
        rair_in                      = rair, &
@@ -581,18 +610,6 @@ subroutine gw_drag_cam_init()
        taubgnd_nl                   = taubgnd, &
        taubgnd_igw_nl               = taubgnd_igw, &
        gw_polar_taper_nl            = gw_polar_taper, &
-       use_gw_rdg_beta_nl           = use_gw_rdg_beta, &
-       n_rdg_beta_nl                = n_rdg_beta, &
-       effgw_rdg_beta_nl            = effgw_rdg_beta, &
-       effgw_rdg_beta_max_nl        = effgw_rdg_beta_max, &
-       rdg_beta_cd_llb_nl           = rdg_beta_cd_llb, &
-       trpd_leewv_rdg_beta_nl       = trpd_leewv_rdg_beta, &
-       use_gw_rdg_gamma_nl          = use_gw_rdg_gamma, &
-       n_rdg_gamma_nl               = n_rdg_gamma, &
-       effgw_rdg_gamma_nl           = effgw_rdg_gamma, &
-       effgw_rdg_gamma_max_nl       = effgw_rdg_gamma_max, &
-       rdg_gamma_cd_llb_nl          = rdg_gamma_cd_llb, &
-       trpd_leewv_rdg_gamma_nl      = trpd_leewv_rdg_gamma, &
        gw_oro_south_fac_nl          = gw_oro_south_fac, &
        gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &
        gw_lndscl_sgh_nl             = gw_lndscl_sgh, &
@@ -602,27 +619,10 @@ subroutine gw_drag_cam_init()
        gw_top_taper_nl              = gw_top_taper, &
        front_gaussian_width_nl      = front_gaussian_width, &
        alpha_gw_movmtn_nl           = alpha_gw_movmtn, &
-       use_gw_rdg_resid_in          = use_gw_rdg_resid, &
-       effgw_rdg_resid_in           = effgw_rdg_resid, &
        effgw_movmtn_pbl_in          = effgw_movmtn_pbl, &
        movmtn_source_in             = movmtn_source, &
        movmtn_psteer_in             = movmtn_psteer, &
        movmtn_plaunch_in            = movmtn_plaunch, &
-       gw_rdg_do_divstream_nl       = gw_rdg_do_divstream, &
-       gw_rdg_do_smooth_regimes_nl  = gw_rdg_do_smooth_regimes, &
-       gw_rdg_do_adjust_tauoro_nl   = gw_rdg_do_adjust_tauoro, &
-       gw_rdg_do_backward_compat_nl = gw_rdg_do_backward_compat, &
-       gw_rdg_do_vdiff_nl           = gw_rdg_do_vdiff, &
-       gw_rdg_C_BetaMax_DS_nl       = gw_rdg_C_BetaMax_DS, &
-       gw_rdg_C_GammaMax_nl         = gw_rdg_C_GammaMax, &
-       gw_rdg_Frx0_nl               = gw_rdg_Frx0, &
-       gw_rdg_Frx1_nl               = gw_rdg_Frx1, &
-       gw_rdg_C_BetaMax_SM_nl       = gw_rdg_C_BetaMax_SM, &
-       gw_rdg_Fr_c_nl               = gw_rdg_Fr_c, &
-       gw_rdg_orohmin_nl            = gw_rdg_orohmin, &
-       gw_rdg_orovmin_nl            = gw_rdg_orovmin, &
-       gw_rdg_orostratmin_nl        = gw_rdg_orostratmin, &
-       gw_rdg_orom2min_nl           = gw_rdg_orom2min, &
        use_gw_oro_in                = use_gw_oro, &
        use_gw_front_in              = use_gw_front, &
        use_gw_front_igw_in          = use_gw_front_igw, &
@@ -632,8 +632,6 @@ subroutine gw_drag_cam_init()
        use_gw_movmtn_pbl_in         = use_gw_movmtn_pbl, &
        do_molec_diff_in             = do_molec_diff, &
        nbot_molec_in                = nbot_molec, &
-       wavelength_mid_in            = wavelength_mid, &
-       wavelength_long_in           = wavelength_long, &
        errmsg                       = errmsg, &
        errflg                       = errflg)
 
@@ -785,8 +783,41 @@ subroutine gw_drag_cam_init()
       call pio_closefile(fh_rdggm)
   endif
 
+  ! Call the underlying ridge scheme initialization to populate namelist variables
+  ! into module
+  if(use_gw_rdg_beta .or. use_gw_rdg_gamma) then
+    call gw_rdg_init( &
+      gw_delta_c             = gw_dc, &
+      rearth                 = rearth, &
+      effgw_rdg_beta         = effgw_rdg_beta, &
+      effgw_rdg_gamma        = effgw_rdg_gamma, &
+      use_gw_rdg_beta_in     = use_gw_rdg_beta, &
+      use_gw_rdg_gamma_in    = use_gw_rdg_gamma, &
+      gw_rdg_do_divstream_nl = gw_rdg_do_divstream, &
+      gw_rdg_C_BetaMax_DS_nl = gw_rdg_C_BetaMax_DS, &
+      gw_rdg_C_GammaMax_nl   = gw_rdg_C_GammaMax, &
+      gw_rdg_Frx0_nl         = gw_rdg_Frx0, &
+      gw_rdg_Frx1_nl         = gw_rdg_Frx1, &
+      gw_rdg_C_BetaMax_SM_nl = gw_rdg_C_BetaMax_SM, &
+      gw_rdg_Fr_c_nl         = gw_rdg_Fr_c, &
+      gw_rdg_do_smooth_regimes_nl  = gw_rdg_do_smooth_regimes, &
+      gw_rdg_do_adjust_tauoro_nl   = gw_rdg_do_adjust_tauoro, &
+      gw_rdg_do_backward_compat_nl = gw_rdg_do_backward_compat, &
+      gw_rdg_orohmin_nl      = gw_rdg_orohmin, &
+      gw_rdg_orovmin_nl      = gw_rdg_orovmin, &
+      gw_rdg_orostratmin_nl  = gw_rdg_orostratmin, &
+      gw_rdg_orom2min_nl     = gw_rdg_orom2min, &
+      gw_rdg_do_vdiff_nl     = gw_rdg_do_vdiff, &
+      errmsg = errmsg, &
+      errflg = errflg)
+    if (errflg /= 0) return
+  endif
 
-  !------- diagnostics code
+  !--------------------------------------------------
+  ! CAM-specific diagnostic initialization code.
+  ! Code below should not contain any physics logic, and should be for diagnostics only.
+  ! Similar code is replicated in sima_diagnostics for CAM-SIMA.
+  !--------------------------------------------------
 
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_budget_out = history_budget, &
@@ -794,140 +825,50 @@ subroutine gw_drag_cam_init()
        history_waccm_out = history_waccm, &
        history_amwg_out   = history_amwg  )
 
-  if ( use_gw_oro ) then
-
-     if (effgw_oro == unset_r8) then
-        call endrun("gw_init: Orographic gravity waves enabled, &
-             &but effgw_oro was not set.")
-     end if
-  end if
-
+  ! Orographic terms.
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
-
-     sgh_idx = pbuf_get_index('SGH')
-
-     ! Declare history variables for orographic term
-     call addfld ('TAUAORO',    (/ 'ilev' /), 'I','N m-2',  &
-          'Total stress from original OGW scheme')
-     call addfld ('TTGWORO',    (/ 'lev' /), 'A','K s-1',  &
-          'T tendency - orographic gravity wave drag')
-     call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K s-1',  &
-          'T tendency - orographic gravity wave, diffusion.')
-     call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K s-1',  &
-          'T tendency - orographic gravity wave, breaking KE.')
-     call addfld ('UTGWORO',    (/ 'lev' /), 'A','m s-2', &
-          'U tendency - orographic gravity wave drag')
-     call addfld ('VTGWORO',    (/ 'lev' /), 'A','m s-2', &
-          'V tendency - orographic gravity wave drag')
-     call register_vector_field('UTGWORO', 'VTGWORO')
-     call addfld ('TAUGWX',     horiz_only,  'A','N m-2', &
-          'Zonal gravity wave surface stress')
-     call addfld ('TAUGWY',     horiz_only,  'A','N m-2', &
-          'Meridional gravity wave surface stress')
-     call register_vector_field('TAUGWX', 'TAUGWY')
-
-     if (history_amwg) then
-        call add_default('TAUGWX  ', 1, ' ')
-        call add_default('TAUGWY  ', 1, ' ')
-     end if
-
-     if (history_waccm) then
-        call add_default('UTGWORO ', 1, ' ')
-        call add_default('VTGWORO ', 1, ' ')
-        call add_default('TAUGWX  ', 1, ' ')
-        call add_default('TAUGWY  ', 1, ' ')
-     end if
-
+     call gw_drag_cam_oro_diag_init()
   end if
 
-  ! ========= gw front initialization! ==========================
+  ! Frontogenesis terms.
   if (use_gw_front .or. use_gw_front_igw) then
-
-     frontgf_idx = pbuf_get_index('FRONTGF')
-     frontga_idx = pbuf_get_index('FRONTGA')
-
-     call shr_assert(unset_r8 /= frontgfc, &
-          "gw_init: Frontogenesis enabled, but frontgfc was &
-          & not set!"// &
-          shr_errMsg(__FILE__, __LINE__))
-
-     call addfld ('FRONTGF', (/ 'lev' /), 'A', 'K^2/M^2/S', &
-          'Frontogenesis function at gws src level')
-     call addfld ('FRONTGFA', (/ 'lev' /), 'A', 'K^2/M^2/S', &
-          'Frontogenesis function at gws src level')
-
-     if (history_waccm) then
-        call add_default('FRONTGF', 1, ' ')
-        call add_default('FRONTGFA', 1, ' ')
-     end if
-
-     if (use_gw_front) then
-        if (masterproc) then
-           write(iulog,*) 'gw_init: gw spectrum taubgnd, ', &
-                'effgw_cm = ',taubgnd, effgw_cm
-           write(iulog,*) ' '
-        end if
-!jt ******** Add this to a gw_drag_cam_front_diag_init subroutine
-        ! Output for gravity waves from frontogenesis.
-!jt ******** create bands on CAM side to pass to spec addflds
-        !jt call gw_spec_addflds(prefix=cm_pf, scheme="C&M", band=band_mid, &
-        !jt     history_defaults=history_waccm)
-     end if
+     ! Output for gravity waves from frontogenesis.
+     call gw_drag_cam_front_diag_init(use_gw_front, use_gw_front_igw, &
+                                      pgwv, gw_dc, pgwv_long, gw_dc_long)
   end if
-  ! ========= Moving Mountain initialization! ==========================
+
+  ! Moving mountain terms.
   if (use_gw_movmtn_pbl) then
-     ! get pbuf indices for CLUBB couplings
-     ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
-     thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
-     upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
-     vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
-     wpthlp_clubb_gw_idx = pbuf_get_index('WPTHLP_CLUBB_GW')
-     vort4gw_idx         = pbuf_get_index('VORT4GW')
-
-     if (masterproc) then
-        write (iulog,*) 'Moving Mountain development code call init_movmtn'
-     end if
-
-     call gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, gw_drag_file_mm,movmtn_psteer, movmtn_plaunch, movmtn_source)
+     call gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, gw_drag_file_mm, movmtn_psteer, movmtn_plaunch, movmtn_source)
   end if
-  ! ========= Convect diagnostics init! ==========================
 
+  ! Gravity wave convective terms.
   if (use_gw_convect_dp .or. use_gw_convect_sh) then
 
      if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
-
      if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
 
-     call gw_drag_cam_beres_diag_init(use_gw_convect_dp,use_gw_convect_sh, gw_drag_file, gw_drag_file_sh, pgwv,gw_dc)
+     call gw_drag_cam_beres_diag_init(use_gw_convect_dp, use_gw_convect_sh, gw_drag_file, gw_drag_file_sh, pgwv,gw_dc)
   end if
-  ! ========= Convect Beta/Gamma initialization! ==========================
+
+  ! Ridge meso-beta/gamma terms.
   if (use_gw_rdg_beta .or. use_gw_rdg_gamma) then
      call gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   end if
-  call addfld ('EKGW' ,(/ 'ilev' /), 'A','M2/S', &
-       'Effective Kzz due to diffusion by gravity waves')
+  call addfld ('EKGW' ,(/ 'ilev' /), 'A','M2/S', 'Effective Kzz due to diffusion by gravity waves')
 
   if (history_waccm) then
      call add_default('EKGW', 1, ' ')
   end if
 
-  call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', &
-       'Total U tendency due to gravity wave drag')
-  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', &
-       'Total V tendency due to gravity wave drag')
+  ! Total tendencies for all gravity wave parameterizations.
+  call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', 'Total U tendency due to gravity wave drag')
+  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m s-2', 'Total V tendency due to gravity wave drag')
   call register_vector_field('UTGW_TOTAL', 'VTGW_TOTAL')
-
-  ! Total temperature tendency output.
-  call addfld ('TTGW', (/ 'lev' /), 'A', 'K s-1',  &
-       'T tendency - gravity wave drag')
-
-  ! Water budget terms.
-  call addfld('QTGW',(/ 'lev' /), 'A','kg/kg/s', &
-       'Q tendency - gravity wave drag')
-  call addfld('CLDLIQTGW',(/ 'lev' /), 'A','kg/kg/s', &
-       'CLDLIQ tendency - gravity wave drag')
-  call addfld('CLDICETGW',(/ 'lev' /), 'A','kg/kg/s', &
-       'CLDICE tendency - gravity wave drag')
+  call addfld ('TTGW', (/ 'lev' /), 'A', 'K s-1', 'T tendency - gravity wave drag')
+  call addfld('QTGW',(/ 'lev' /), 'A','kg/kg/s', 'Q tendency - gravity wave drag')
+  call addfld('CLDLIQTGW',(/ 'lev' /), 'A','kg/kg/s', 'CLDLIQ tendency - gravity wave drag')
+  call addfld('CLDICETGW',(/ 'lev' /), 'A','kg/kg/s', 'CLDICE tendency - gravity wave drag')
 
   if ( history_budget ) then
      call add_default('TTGW', history_budget_histfile_num, ' ')
@@ -940,10 +881,90 @@ subroutine gw_drag_cam_init()
   call cnst_get_ind("CLDLIQ", ixcldliq)
   call cnst_get_ind("CLDICE", ixcldice)
 
-
 end subroutine gw_drag_cam_init
 
 !==========================================================================
+
+subroutine gw_drag_cam_front_diag_init(use_gw_front, use_gw_front_igw, pgwv, gw_dc, pgwv_long, gw_dc_long)
+  use cam_history, only: addfld, add_default, register_vector_field
+
+  logical, intent(in)  :: use_gw_front
+  logical, intent(in)  :: use_gw_front_igw
+  integer, intent(in)  :: pgwv
+  real(r8), intent(in) :: gw_dc
+  integer, intent(in)  :: pgwv_long
+  real(r8), intent(in) :: gw_dc_long
+
+  logical :: history_waccm
+
+  ! Used to decide whether temperature tendencies should be output
+  call phys_getopts(history_waccm_out = history_waccm)
+
+  call addfld ('FRONTGF', (/ 'lev' /), 'A', 'K^2/M^2/S', 'Frontogenesis function at gws src level')
+  call addfld ('FRONTGFA', (/ 'lev' /), 'A', 'K^2/M^2/S', 'Frontogenesis function at gws src level')
+
+  if (history_waccm) then
+     call add_default('FRONTGF', 1, ' ')
+     call add_default('FRONTGFA', 1, ' ')
+  end if
+
+  if (use_gw_front) then
+     ! Output for gravity waves from frontogenesis (C&M scheme)
+     call gw_spec_addflds(pgwv, gw_dc, prefix=cm_pf, scheme="C&M", &
+          history_defaults=history_waccm)
+  end if
+
+  if (use_gw_front_igw) then
+     ! Output for inertial gravity waves from frontogenesis (C&M IGW scheme)
+     call gw_spec_addflds(pgwv_long, gw_dc_long, prefix=cm_igw_pf, scheme="C&M IGW", &
+          history_defaults=history_waccm)
+  end if
+
+end subroutine gw_drag_cam_front_diag_init
+
+subroutine gw_drag_cam_oro_diag_init()
+  use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history_support, only: horiz_only
+
+  logical :: history_amwg, history_waccm
+
+  ! Used to decide whether temperature tendencies should be output
+  call phys_getopts(history_amwg_out = history_amwg, &
+                    history_waccm_out = history_waccm)
+
+  ! Declare history variables for orographic term
+  call addfld ('TAUAORO',    (/ 'ilev' /), 'I','N m-2',  &
+      'Total stress from original OGW scheme')
+  call addfld ('TTGWORO',    (/ 'lev' /), 'A','K s-1',  &
+      'T tendency - orographic gravity wave drag')
+  call addfld ('TTGWSDFORO', (/ 'lev' /), 'A','K s-1',  &
+      'T tendency - orographic gravity wave, diffusion.')
+  call addfld ('TTGWSKEORO', (/ 'lev' /), 'A','K s-1',  &
+      'T tendency - orographic gravity wave, breaking KE.')
+  call addfld ('UTGWORO',    (/ 'lev' /), 'A','m s-2', &
+      'U tendency - orographic gravity wave drag')
+  call addfld ('VTGWORO',    (/ 'lev' /), 'A','m s-2', &
+      'V tendency - orographic gravity wave drag')
+  call register_vector_field('UTGWORO', 'VTGWORO')
+  call addfld ('TAUGWX',     horiz_only,  'A','N m-2', &
+      'Zonal gravity wave surface stress')
+  call addfld ('TAUGWY',     horiz_only,  'A','N m-2', &
+      'Meridional gravity wave surface stress')
+  call register_vector_field('TAUGWX', 'TAUGWY')
+
+  if (history_amwg) then
+    call add_default('TAUGWX  ', 1, ' ')
+    call add_default('TAUGWY  ', 1, ' ')
+  end if
+
+  if (history_waccm) then
+    call add_default('UTGWORO ', 1, ' ')
+    call add_default('VTGWORO ', 1, ' ')
+    call add_default('TAUGWX  ', 1, ' ')
+    call add_default('TAUGWY  ', 1, ' ')
+  end if
+
+end subroutine gw_drag_cam_oro_diag_init
 
 subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   use cam_history, only: addfld, add_default, register_vector_field
@@ -1378,7 +1399,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   character(len=512)              :: errmsg
   integer                         :: errflg
 
-  real(r8)          :: ttend_sh_arr(state%ncol,pver)
+  real(r8) :: ttend_sh_arr(pcols, pver)
 
   !------------------------------------------------------------------------
   ! Make local copy of input state.
@@ -1429,6 +1450,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   if (use_gw_convect_sh) then
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_sh_idx, ttend_sh)
+     ttend_sh_arr(:ncol,:pver) = ttend_sh(:ncol,:pver)
   end if
   if (use_gw_oro) then
      call pbuf_get_field(pbuf, sgh_idx, sgh)
@@ -1436,8 +1458,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   else
      sgharr=0._r8
   end if
-!!!!jt  There was a problem passing an unassociated pointer (ttend_sh_arr) it was temporarily replaced with real array.
-!!!!jt  Only associated when running shallow convective gravity waves.  Fix this
 
   rhoi(:,:) = 0._r8
   nm(:,:) = 0._r8
@@ -1445,20 +1465,20 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Call the CCPPized subroutine to compute necessary profiles for gravity wave drag parameterizations.
   call gravity_wave_drag_prepare_profiles_run( &
-    ncol   = ncol, &
-    pver   = pver, &
-    cpair  = cpair, &
-    rair   = rair, &
-    gravit = gravit, &
-    pint   = state1%pint(:ncol,:pver+1), &
-    t      = state1%t(:ncol,:pver), &
-    ! below output
-    p      = p, &
-    rhoi   = rhoi(:ncol,:pver+1), &
-    nm     = nm(:ncol,:pver), &
-    ni     = ni(:ncol,:pver+1), &
-    errmsg = errmsg, &
-    errflg = errflg)
+       ncol   = ncol, &
+       pver   = pver, &
+       cpair  = cpair, &
+       rair   = rair, &
+       gravit = gravit, &
+       pint   = state1%pint(:ncol,:pver+1), &
+       t      = state1%t(:ncol,:pver), &
+       ! below output
+       p      = p, &
+       rhoi   = rhoi(:ncol,:pver+1), &
+       nm     = nm(:ncol,:pver), &
+       ni     = ni(:ncol,:pver+1), &
+       errmsg = errmsg, &
+       errflg = errflg)
 
   ! Call the CCPPized subroutine
   call gw_drag_run( &
