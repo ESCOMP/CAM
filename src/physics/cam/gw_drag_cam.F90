@@ -579,11 +579,16 @@ subroutine gw_drag_cam_init()
      vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
      wpthlp_clubb_gw_idx = pbuf_get_index('WPTHLP_CLUBB_GW')
      vort4gw_idx         = pbuf_get_index('VORT4GW')
+
+     ttend_dp_idx        = pbuf_get_index('TTEND_DP')
   endif
 
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
      sgh_idx = pbuf_get_index('SGH')
   endif
+
+   if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
+   if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
 
   ! Call the CCPPized initialization subroutines
   if(use_gw_movmtn_pbl) then
@@ -855,10 +860,6 @@ subroutine gw_drag_cam_init()
 
   ! Gravity wave convective terms.
   if (use_gw_convect_dp .or. use_gw_convect_sh) then
-
-     if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
-     if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
-
      call gw_drag_cam_beres_diag_init(use_gw_convect_dp, use_gw_convect_sh, gw_drag_file, gw_drag_file_sh, pgwv,gw_dc)
   end if
 
@@ -1394,6 +1395,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   character(len=512)              :: errmsg
   integer                         :: errflg
 
+  real(r8) :: ttend_dp_arr(pcols, pver)
   real(r8) :: ttend_sh_arr(pcols, pver)
 
   !------------------------------------------------------------------------
@@ -1426,10 +1428,15 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, frontga_idx, frontga)
   end if
 
-  if (use_gw_movmtn_pbl) then
-     ! Set up heating
-     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+  if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
+    ! Set up heating
+    call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+    ttend_dp_arr(:ncol, :pver) = ttend_dp(:ncol, :pver)
+  else
+    ttend_dp_arr(:,:) = 0._r8
+  endif
 
+  if (use_gw_movmtn_pbl) then
      !   New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
      call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
@@ -1438,15 +1445,13 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
      call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
   end if
-  if (use_gw_convect_dp) then
-     ! Set up heating
-     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
-  end if
   if (use_gw_convect_sh) then
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_sh_idx, ttend_sh)
      ttend_sh_arr(:ncol,:pver) = ttend_sh(:ncol,:pver)
-  end if
+  else
+     ttend_sh_arr(:,:) = 0._r8
+  endif
   if (use_gw_oro) then
      call pbuf_get_field(pbuf, sgh_idx, sgh)
      sgharr=sgh
@@ -1505,7 +1510,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       nm                  = nm(:ncol,:), &
       ni                  = ni(:ncol,:), &
       kvt_gw              = kvt_gw(:ncol,:pver+1), &
-      ttend_dp            = ttend_dp(:ncol,:), &
+      ttend_dp            = ttend_dp_arr(:ncol,:), &
       ttend_clubb         = ttend_clubb(:ncol,:), &
       upwp_clubb          = upwp_clubb_gw(:ncol,:), &
       vpwp_clubb          = vpwp_clubb_gw(:ncol,:), &
@@ -1575,7 +1580,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        nm               = nm(:ncol,:pver), &
        ni               = ni(:ncol,:pver+1), &
        kvtt             = kvtt(:ncol,:pver+1), &
-       ttend_dp         = ttend_dp(:ncol,:pver), &
+       ttend_dp         = ttend_dp_arr(:ncol,:pver), &
        ttend_sh         = ttend_sh_arr(:ncol,:pver), &
        ! below input/output (accummulated tendencies)
        s_tend           = ptend%s(:ncol,:), &
