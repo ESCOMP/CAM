@@ -879,7 +879,7 @@ contains
        call co2_init()
     end if
 
-    call gw_drag_cam_init(ncol)
+    call gw_drag_cam_init()
 
     call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
          iulog, errmsg, errflg)
@@ -2268,16 +2268,16 @@ contains
     !===================================================
     ! Gravity wave drag
     !===================================================
-    call t_startf('gw_drag_cam_tend')
+    call t_startf('gw_tend')
 
-    if (trim(cam_take_snapshot_before) == "gw_drag_cam_tend") then
+    if (trim(cam_take_snapshot_before) == "gw_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
 
     call gw_drag_cam_tend(state, pbuf, ztodt, ptend, cam_in, flx_heat)
 
-    if ( (trim(cam_take_snapshot_after) == "gw_drag_cam_tend") .and.                   &
+    if ( (trim(cam_take_snapshot_after) == "gw_tend") .and.                   &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
@@ -2289,7 +2289,7 @@ contains
     end if
     call physics_update(state, ptend, ztodt, tend)
 
-    if (trim(cam_take_snapshot_after) == "gw_drag_cam_tend") then
+    if (trim(cam_take_snapshot_after) == "gw_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
@@ -2297,7 +2297,7 @@ contains
     ! Check energy integrals
     call check_energy_cam_chng(state, tend, "gwdrag", nstep, ztodt, zero, &
          zero, zero, flx_heat)
-    call t_stopf('gw_drag_cam_tend')
+    call t_stopf('gw_tend')
 
     ! QBO relaxation
 
