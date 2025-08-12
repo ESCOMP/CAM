@@ -467,6 +467,7 @@ subroutine gw_drag_cam_init()
   use ppgrid, only: pcols
 
   use gw_movmtn,      only: gw_movmtn_init
+  use gw_convect,     only: gw_beres_init
   use gw_drag,        only: gw_drag_init
   use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
   use gw_rdg, only: gw_rdg_init
@@ -587,8 +588,20 @@ subroutine gw_drag_cam_init()
      sgh_idx = pbuf_get_index('SGH')
   endif
 
-   if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
-   if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
+  if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
+  if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
+
+  ! Output initialization status
+  if(masterproc) then
+    write(iulog,*) "gw_drag_cam_init: use_gw_front = ", use_gw_front
+    write(iulog,*) "gw_drag_cam_init: use_gw_front_igw = ", use_gw_front_igw
+    write(iulog,*) "gw_drag_cam_init: use_gw_movmtn_pbl = ", use_gw_movmtn_pbl
+    write(iulog,*) "gw_drag_cam_init: use_gw_oro = ", use_gw_oro
+    write(iulog,*) "gw_drag_cam_init: use_gw_rdg_beta = ", use_gw_rdg_beta
+    write(iulog,*) "gw_drag_cam_init: use_gw_rdg_gamma = ", use_gw_rdg_gamma
+    write(iulog,*) "gw_drag_cam_init: use_gw_convect_dp = ", use_gw_convect_dp
+    write(iulog,*) "gw_drag_cam_init: use_gw_convect_sh = ", use_gw_convect_sh
+  endif
 
   ! Call the CCPPized initialization subroutines
   if(use_gw_movmtn_pbl) then
@@ -604,6 +617,24 @@ subroutine gw_drag_cam_init()
                         errmsg = errmsg, errflg = errflg)
     if (errflg /= 0) return
   endif
+
+  if(use_gw_convect_dp .or. use_gw_convect_sh) then
+    call gw_beres_init( &
+      pver                = pver, &
+      pi                  = pi, &
+      masterproc          = masterproc, &
+      iulog               = iulog, &
+      gw_drag_file_sh     = gw_drag_file_sh_loc, &
+      gw_drag_file_dp     = gw_drag_file_loc, &
+      pref_edge           = pref_edge, &
+      gw_delta_c          = gw_dc, &
+      pgwv                = pgwv, &
+      use_gw_convect_dp   = use_gw_convect_dp, &
+      use_gw_convect_sh   = use_gw_convect_sh, &
+      errmsg              = errmsg, &
+      errflg              = errflg)
+    if (errflg /= 0) return
+  end if
 
   call gw_drag_init( &
        iulog                        = iulog, &
@@ -621,14 +652,10 @@ subroutine gw_drag_cam_init()
        pgwv_long_nl                 = pgwv_long, &
        gw_dc_long_nl                = gw_dc_long, &
        tau_0_ubc_nl                 = tau_0_ubc, &
-       effgw_beres_dp_nl            = effgw_beres_dp, &
-       effgw_beres_sh_nl            = effgw_beres_sh, &
        effgw_cm_nl                  = effgw_cm, &
        effgw_cm_igw_nl              = effgw_cm_igw, &
        effgw_oro_nl                 = effgw_oro, &
        frontgfc_nl                  = frontgfc, &
-       gw_drag_file_nl              = gw_drag_file_loc, &
-       gw_drag_file_sh_nl           = gw_drag_file_sh_loc, &
        taubgnd_nl                   = taubgnd, &
        taubgnd_igw_nl               = taubgnd_igw, &
        gw_polar_taper_nl            = gw_polar_taper, &
@@ -643,8 +670,6 @@ subroutine gw_drag_cam_init()
        use_gw_oro_in                = use_gw_oro, &
        use_gw_front_in              = use_gw_front, &
        use_gw_front_igw_in          = use_gw_front_igw, &
-       use_gw_convect_dp_in         = use_gw_convect_dp, &
-       use_gw_convect_sh_in         = use_gw_convect_sh, &
        use_simple_phys_in           = use_simple_phys, &
        do_molec_diff_in             = do_molec_diff, &
        nbot_molec_in                = nbot_molec, &
@@ -1293,9 +1318,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! CCPPized subroutines
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_run
   use gw_movmtn,       only: gw_movmtn_run
+  use gw_convect,      only: gw_beres_deep_run
+  use gw_convect,      only: gw_beres_shallow_run
   use gw_drag,         only: gw_drag_run
   use gw_rdg,          only: gw_rdg_run
-  use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_finalize
+  use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_final
 
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
@@ -1549,6 +1576,128 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     end do
   end if
 
+  ! Convective gravity waves (Beres scheme, deep).
+  if (use_gw_convect_dp) then
+    call gw_beres_deep_run( &
+          ncol            = ncol, &
+          pver            = pver, &
+          pcnst           = pcnst, &
+          dt              = dt, &
+          p               = p, &
+          vramp           = vramp, &
+          pi              = pi, &
+          cpair           = cpair, &
+          effgw_beres_dp  = effgw_beres_dp, &
+          gw_apply_tndmax = gw_apply_tndmax, &
+          u               = state1%u(:ncol,:pver), &
+          v               = state1%v(:ncol,:pver), &
+          t               = state1%t(:ncol,:pver), &
+          q               = state1%q(:ncol,:pver,:), &
+          dse             = state1%s(:ncol,:pver), &
+          piln            = state1%lnpint(:ncol,:pver+1), &
+          rhoi            = rhoi(:ncol,:pver+1), &
+          nm              = nm(:ncol,:pver), &
+          ni              = ni(:ncol,:pver+1), &
+          kvt_gw          = kvt_gw(:ncol,:pver+1), &
+          ttend_dp        = ttend_dp_arr(:ncol,:pver), &
+          zm              = state1%zm(:ncol,:pver), &
+          lat             = state1%lat(:ncol), &
+          tend_q          = ptend%q(:ncol,:pver,:), &
+          tend_u          = ptend%u(:ncol,:pver), &
+          tend_v          = ptend%v(:ncol,:pver), &
+          tend_s          = ptend%s(:ncol,:pver), &
+          flx_heat        = flx_heat(:ncol), &
+          src_level       = src_level(:ncol), &
+          tend_level      = tend_level(:ncol), &
+          ubm             = ubm(:ncol,:pver), &
+          ubi             = ubi(:ncol,:pver+1), &
+          xv              = xv(:ncol), &
+          yv              = yv(:ncol), &
+          hdepth          = hdepth(:ncol), &
+          maxq0           = maxq0(:ncol), &
+          utgw            = utgw(:ncol,:pver), &
+          vtgw            = vtgw(:ncol,:pver), &
+          ttgw            = ttgw(:ncol,:pver), &
+          qtgw            = qtgw(:ncol,:pver,:), &
+          egwdffi_tot     = egwdffi_tot(:ncol,:pver+1), &
+          dttdf           = dttdf(:ncol,:pver), &
+          dttke           = dttke(:ncol,:pver), &
+          errmsg          = errmsg, &
+          errflg          = errflg)
+
+    ! Change ttgw to a temperature tendency before outputing it.
+    !ttgw = ttgw / cpair
+    !call gw_spec_outflds(beres_dp_pf, ncol, pver, band_mid, phase_speeds, u, v, &
+    !     xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
+    !     taucd)
+
+    ! Diagnostic outputs (convert hdepth to km).
+    call outfld('NETDT', ttend_dp, pcols, lchnk)
+    call outfld('HDEPTH', hdepth/1000._r8, ncol, lchnk)
+    call outfld('MAXQ0', maxq0, ncol, lchnk)
+  end if
+
+  ! Convective gravity waves (Beres scheme, shallow).
+  if (use_gw_convect_sh) then
+    call gw_beres_shallow_run( &
+          ncol            = ncol, &
+          pver            = pver, &
+          pcnst           = pcnst, &
+          dt              = dt, &
+          p               = p, &
+          vramp           = vramp, &
+          pi              = pi, &
+          cpair           = cpair, &
+          effgw_beres_sh  = effgw_beres_sh, &
+          gw_apply_tndmax = gw_apply_tndmax, &
+          u               = state1%u(:ncol,:pver), &
+          v               = state1%v(:ncol,:pver), &
+          t               = state1%t(:ncol,:pver), &
+          q               = state1%q(:ncol,:pver,:), &
+          dse             = state1%s(:ncol,:pver), &
+          piln            = state1%lnpint(:ncol,:pver+1), &
+          rhoi            = rhoi(:ncol,:pver+1), &
+          nm              = nm(:ncol,:pver), &
+          ni              = ni(:ncol,:pver+1), &
+          kvt_gw          = kvt_gw(:ncol,:pver+1), &
+          ttend_sh        = ttend_sh_arr(:ncol,:pver), &
+          zm              = state1%zm(:ncol,:pver), &
+          lat             = state1%lat(:ncol), &
+          tend_q          = ptend%q(:ncol,:pver,:), &
+          tend_u          = ptend%u(:ncol,:pver), &
+          tend_v          = ptend%v(:ncol,:pver), &
+          tend_s          = ptend%s(:ncol,:pver), &
+          flx_heat        = flx_heat(:ncol), &
+          src_level       = src_level(:ncol), &
+          tend_level      = tend_level(:ncol), &
+          ubm             = ubm(:ncol,:pver), &
+          ubi             = ubi(:ncol,:pver+1), &
+          xv              = xv(:ncol), &
+          yv              = yv(:ncol), &
+          hdepth          = hdepth(:ncol), &
+          maxq0           = maxq0(:ncol), &
+          utgw            = utgw(:ncol,:pver), &
+          vtgw            = vtgw(:ncol,:pver), &
+          ttgw            = ttgw(:ncol,:pver), &
+          qtgw            = qtgw(:ncol,:pver,:), &
+          egwdffi_tot     = egwdffi_tot(:ncol,:pver+1), &
+          dttdf           = dttdf(:ncol,:pver), &
+          dttke           = dttke(:ncol,:pver), &
+          errmsg          = errmsg, &
+          errflg          = errflg)
+
+    ! Change ttgw to a temperature tendency before outputing it.
+    !ttgw = ttgw / cpair
+    !call gw_spec_outflds(beres_dp_pf, ncol, pver, band_mid, phase_speeds, u, v, &
+    !     xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
+    !     taucd)
+
+    ! Diagnostic outputs (convert hdepth to km).
+    call outfld('SNETDT',  ttend_sh, pcols, lchnk)
+    call outfld('SHDEPTH', hdepth/1000._r8, ncol, lchnk)
+    call outfld('SMAXQ0',  maxq0, ncol, lchnk)
+  end if
+
   ! Call the CCPPized subroutine
   call gw_drag_run( &
        ncol             = ncol, &
@@ -1668,7 +1817,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 
   ! Call the CCPPized subroutine to clean up
-  call gravity_wave_drag_prepare_profiles_timestep_finalize( &
+  call gravity_wave_drag_prepare_profiles_timestep_final( &
     p      = p, &
     errmsg = errmsg, &
     errflg = errflg)
