@@ -7992,6 +7992,13 @@ If TRUE, then use the ALI-ARMS scheme (an alternative method of computing non-LT
 Default: FALSE
 </entry>
 
+<entry id="nlte_use_extco2" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the extended CO2 scheme of Lopez-Puertas et al. 2024 as an alternative method of computing non-LTE
+CO2 cooling rates in the upper atmosphere.
+Default: FALSE
+</entry>
+
 <entry id="nlte_aliarms_every_x" type="integer" category="waccm_phys"
        group="radheat_nl" valid_values="" >
 Call ALI-ARMS every X timesteps
