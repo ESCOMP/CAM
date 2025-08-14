@@ -1616,6 +1616,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           errmsg          = errmsg, &
           errflg          = errflg)
 
+    call outfld(trim(beres_dp_pf) // 'TTGWSDF', dttdf / cpair, ncol, lchnk)
+    call outfld(trim(beres_dp_pf) // 'TTGWSKE', dttke / cpair, ncol, lchnk)
+
     ! Simple output fields written to history file.
     ! Total wind tendencies.
     call outfld (trim(beres_dp_pf)//'UTGWSPEC', utgw , ncol, lchnk)
@@ -1684,11 +1687,14 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           errmsg          = errmsg, &
           errflg          = errflg)
 
-    ! Change ttgw to a temperature tendency before outputing it.
-    !ttgw = ttgw / cpair
-    !call gw_spec_outflds(beres_dp_pf, ncol, pver, band_mid, phase_speeds, u, v, &
-    !     xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
-    !     taucd)
+    call outfld(trim(beres_sh_pf) // 'TTGWSDF', dttdf / cpair, ncol, lchnk)
+    call outfld(trim(beres_sh_pf) // 'TTGWSKE', dttke / cpair, ncol, lchnk)
+
+    ! Simple output fields written to history file.
+    ! Total wind tendencies.
+    call outfld (trim(beres_sh_pf)//'UTGWSPEC', utgw , ncol, lchnk)
+    call outfld (trim(beres_sh_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
+    call outfld (trim(beres_sh_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
 
     ! Diagnostic outputs (convert hdepth to km).
     call outfld('SNETDT',  ttend_sh, pcols, lchnk)
