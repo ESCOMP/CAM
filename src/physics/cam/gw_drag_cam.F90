@@ -163,11 +163,6 @@ module gw_drag_cam
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  ! fcrit2 for the mid-scale waves has been made a namelist variable to
-  ! facilitate backwards compatibility with the CAM3 version of this
-  ! parameterization.  In CAM3, fcrit2=0.5.
-  real(r8) :: fcrit2 = unset_r8   ! critical froude number squared
-
   ! Temperature change due to deep convection.
   real(r8), pointer :: ttend_dp(:,:)
   ! Temperature change due to shallow convection.
@@ -466,12 +461,13 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
+  use gravity_wave_drag_orographic, only: gravity_wave_drag_orographic_init
+  use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
+  use gw_drag,        only: gw_drag_init
+  use gw_front,       only: gravity_wave_frontogenesis_init
+  use gw_rdg,         only: gw_rdg_init
   use gw_movmtn,      only: gw_movmtn_init
   use gw_convect,     only: gw_beres_init
-  use gravity_wave_drag_orographic, only: gravity_wave_drag_orographic_init
-  use gw_drag,        only: gw_drag_init
-  use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
-  use gw_rdg, only: gw_rdg_init
 
   !---------------------------Local storage-------------------------------
 
@@ -646,6 +642,7 @@ subroutine gw_drag_cam_init()
     if(errflg /= 0) call endrun(errmsg)
   endif
 
+  ! Initialize gw_common
   call gw_drag_init( &
        iulog                        = iulog, &
        ktop                         = ktop, &
@@ -654,36 +651,42 @@ subroutine gw_drag_cam_init()
        gravit_in                    = gravit, &
        rair_in                      = rair, &
        pi_in                        = pi, &
-       fcrit2_in                    = fcrit2, &
        rearth_in                    = rearth, &
        pref_edge                    = pref_edge, &
-       pgwv_nl                      = pgwv, &
-       gw_dc_nl                     = gw_dc, &
-       pgwv_long_nl                 = pgwv_long, &
-       gw_dc_long_nl                = gw_dc_long, &
        tau_0_ubc_nl                 = tau_0_ubc, &
-       effgw_cm_nl                  = effgw_cm, &
-       effgw_cm_igw_nl              = effgw_cm_igw, &
-       frontgfc_nl                  = frontgfc, &
-       taubgnd_nl                   = taubgnd, &
-       taubgnd_igw_nl               = taubgnd_igw, &
-       gw_polar_taper_nl            = gw_polar_taper, &
-       gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &
+       gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &    ! fixme: appears unused. 8/14/25 hplin
        gw_prndl_nl                  = gw_prndl, &
-       gw_apply_tndmax_nl           = gw_apply_tndmax, &
        gw_qbo_hdepth_scaling_nl     = gw_qbo_hdepth_scaling, &
-       gw_top_taper_nl              = gw_top_taper, &
-       front_gaussian_width_nl      = front_gaussian_width, &
-       use_gw_front_in              = use_gw_front, &
-       use_gw_front_igw_in          = use_gw_front_igw, &
-       use_simple_phys_in           = use_simple_phys, &
-       do_molec_diff_in             = do_molec_diff, &
-       nbot_molec_in                = nbot_molec, &
        errmsg                       = errmsg, &
        errflg                       = errflg)
 
   if(errflg /= 0) then
     call endrun("gw_drag_init: " // errmsg)
+  endif
+
+  if(use_gw_front .or. use_gw_front_igw) then
+    call gravity_wave_frontogenesis_init( &
+         pver                 = pver, &
+         pi                   = pi, &
+         masterproc           = masterproc, &
+         iulog                = iulog, &
+         pref_edge            = pref_edge, &
+         frontgfc             = frontgfc, &
+         gw_delta_c           = gw_dc, &
+         pgwv                 = pgwv, &
+         pgwv_long            = pgwv_long, &
+         taubgnd              = taubgnd, &
+         taubgnd_igw          = taubgnd_igw, &
+         effgw_cm             = effgw_cm, &
+         effgw_cm_igw         = effgw_cm_igw, &
+         use_gw_front         = use_gw_front, &
+         use_gw_front_igw     = use_gw_front_igw, &
+         front_gaussian_width = front_gaussian_width, &
+         errmsg               = errmsg, &
+         errflg               = errflg)
+    if(errflg /= 0) then
+      call endrun("gravity_wave_frontogenesis_init: " // errmsg)
+    endif
   endif
 
   ! Initialize tapering
@@ -835,7 +838,6 @@ subroutine gw_drag_cam_init()
   if(use_gw_rdg_beta .or. use_gw_rdg_gamma) then
     call gw_rdg_init( &
       gw_delta_c             = gw_dc, &
-      rearth                 = rearth, &
       effgw_rdg_beta         = effgw_rdg_beta, &
       effgw_rdg_gamma        = effgw_rdg_gamma, &
       use_gw_rdg_beta_in     = use_gw_rdg_beta, &
@@ -1018,52 +1020,11 @@ subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   character(len=1) :: cn
   integer          :: i
   logical :: history_waccm
-  !----------------------------------------------------------------------
-  ! read in look-up table for source spectra
-  !-----------------------------------------------------------------------
 
   ! Used to decide whether temperature tendencies should be output.
   call phys_getopts( history_waccm_out = history_waccm)
 
   if (use_gw_rdg_beta) then
-
-     call addfld ('WBR_HT1',     horiz_only,  'I','m', &
-          'Wave breaking height for DSW')
-     call addfld ('TLB_HT1',     horiz_only,  'I','m', &
-          'Form drag layer height')
-     call addfld ('BWV_HT1',     horiz_only,  'I','m', &
-          'Bottom of freely-propagating OGW regime')
-     call addfld ('TAUDSW1',     horiz_only,  'I','Nm-2', &
-          'DSW enhanced drag')
-     call addfld ('TAUORO1',     horiz_only,  'I','Nm-2', &
-          'lower BC on propagating wave stress')
-     call addfld ('UBMSRC1',     horiz_only,  'I','ms-1', &
-          'below-peak-level on-ridge wind')
-     call addfld ('USRC1',     horiz_only,  'I','ms-1', &
-          'below-peak-level Zonal wind')
-     call addfld ('VSRC1',     horiz_only,  'I','ms-1', &
-          'below-peak-level Meridional wind')
-     call addfld ('NSRC1',     horiz_only,  'I','s-1', &
-          'below-peak-level stratification')
-     call addfld ('MXDIS1',     horiz_only,  'I','m', &
-          'Ridge/obstacle height')
-     call addfld ('ANGLL1',     horiz_only,  'I','degrees', &
-          'orientation clockwise w/resp north-south')
-     call addfld ('ANIXY1',     horiz_only,  'I','1', &
-          'Ridge quality')
-     call addfld ('HWDTH1',     horiz_only,  'I','km', &
-          'Ridge width')
-     call addfld ('CLNGT1',     horiz_only,  'I','km', &
-          'Ridge length')
-     call addfld ('GBXAR1',     horiz_only,  'I','km+2', &
-          'grid box area')
-
-     call addfld ('Fr1_DIAG',     horiz_only,  'I','1', &
-          'Critical Froude number for linear waves')
-     call addfld ('Fr2_DIAG',     horiz_only,  'I','1', &
-          'Critical Froude number for blocked flow')
-     call addfld ('Frx_DIAG',     horiz_only,  'I','1', &
-          'Obstacle Froude Number')
 
      call addfld('UEGW',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
           'Zonal wind profile-entry to GW ' )
@@ -1076,29 +1037,6 @@ subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
           'interface geopotential heights in GW code ' )
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
-
-     call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
-          'Ridge based momentum flux profile')
-     call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
-          'Ridge based momentum flux profile')
-     call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
-          'On-ridge wind profile           ' )
-     call addfld('UBT1RDGBETA' , (/ 'lev' /) , 'I'  ,'m s-1' , &
-          'On-ridge wind tendency from ridge 1     ')
-
-     do i = 1, 6
-        write(cn, '(i1)') i
-        call addfld('TAU'//cn//'RDGBETAY' , (/ 'ilev' /), 'I', 'N m-2', &
-          'Ridge based momentum flux profile')
-        call addfld('TAU'//cn//'RDGBETAX' , (/ 'ilev' /), 'I', 'N m-2', &
-          'Ridge based momentum flux profile')
-        call register_vector_field('TAU'//cn//'RDGBETAX','TAU'//cn//'RDGBETAY')
-        call addfld('UT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm s-1', &
-          'U wind tendency from ridge '//cn)
-        call addfld('VT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm s-1', &
-          'V wind tendency from ridge '//cn)
-        call register_vector_field('UT'//cn//'RDGBETA','VT'//cn//'RDGBETA')
-     end do
 
      call addfld('TAUARDGBETAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
@@ -1113,26 +1051,6 @@ subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   end if
 
   if (use_gw_rdg_gamma) then
-
-     call addfld ('TAU1RDGGAMMAM' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
-          'Ridge based momentum flux profile')
-     call addfld ('UBM1GAMMA',  (/ 'lev' /) , 'A'  ,'s-1' ,  &
-          'On-ridge wind profile           ' )
-     call addfld ('UBT1RDGGAMMA' , (/ 'lev' /) , 'I'  ,'m s-1' , &
-          'On-ridge wind tendency from ridge 1     ')
-
-     do i = 1, 6
-        write(cn, '(i1)') i
-        call addfld('TAU'//cn//'RDGGAMMAY', (/ 'ilev' /), 'I', 'N m-2', &
-          'Ridge based momentum flux profile')
-        call addfld('TAU'//cn//'RDGGAMMAX', (/ 'ilev' /), 'I', 'N m-2', &
-          'Ridge based momentum flux profile')
-        call addfld('UT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm s-1', &
-          'U wind tendency from ridge '//cn)
-        call addfld('VT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm s-1', &
-          'V wind tendency from ridge '//cn)
-        call register_vector_field('UT'//cn//'RDGGAMMA','VT'//cn//'RDGGAMMA')
-     end do
 
      call addfld ('TAUARDGGAMMAY' , (/ 'ilev' /) , 'I'  ,'N m-2' , &
           'Ridge based momentum flux profile')
@@ -1149,6 +1067,7 @@ subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
      call addfld ('VTRDGGM' , (/ 'lev' /) , 'I'  ,'m s-1' , &
           'V wind tendency from ridge 6     ')
      call register_vector_field('UTRDGGM','VTRDGGM')
+
   end if
 end subroutine gw_drag_cam_rdg_diag_init
 !==========================================================================
@@ -1326,9 +1245,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_movmtn,       only: gw_movmtn_run
   use gw_convect,      only: gw_beres_deep_run
   use gw_convect,      only: gw_beres_shallow_run
-  use gw_drag,         only: gw_drag_run
+  use gw_front,        only: gravity_wave_frontogenesis_run
+  use gw_front,        only: gravity_wave_frontogenesis_inertial_run
   use gravity_wave_drag_orographic, only: gravity_wave_drag_orographic_run
-  use gw_rdg,          only: gw_rdg_run
+  use gw_rdg,          only: gravity_wave_drag_ridge_beta_run
+  use gw_rdg,          only: gravity_wave_drag_ridge_gamma_run
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_final
 
   !------------------------------Arguments--------------------------------
@@ -1352,9 +1273,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   integer :: m                      ! dummy integers
   real(r8) :: qtgw(state%ncol,pver,pcnst) ! constituents tendencies
-
-  ! Reynolds stress for waves propagating in each cardinal direction.
-  real(r8) :: taucd(state%ncol,pver+1,4)
 
   ! gravity wave wind tendency for each wave
   real(r8), allocatable :: gwut(:,:,:)
@@ -1427,7 +1345,26 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: ni(pcols, pver+1)
 
   ! Temporaries for diagnostic
+  real(r8) :: taurx(state%ncol, pver + 1) ! wave stress in zonal direction
+  real(r8) :: taury(state%ncol, pver + 1) ! wave stress in meridional direction
+  real(r8) :: tauardgx(state%ncol, pver + 1) ! ridge based momentum profile
+  real(r8) :: tauardgy(state%ncol, pver + 1) ! ridge based momentum profile
+  real(r8) :: utrdg(state%ncol, pver) ! tendency accummulators
+  real(r8) :: vtrdg(state%ncol, pver)
+  real(r8) :: ttrdg(state%ncol, pver)
   real(r8) :: tau0x(pcols), tau0y(pcols)
+  real(r8) :: taua(pcols, pver+1), tau0(pcols, pver+1)
+  real(r8) :: gwut0(pcols, pver)
+  ! Reynolds stress for waves propagating in each cardinal direction.
+  real(r8) :: taucd_west (pcols, pver+1)
+  real(r8) :: taucd_east (pcols, pver+1)
+  real(r8) :: taucd_south(pcols, pver+1)
+  real(r8) :: taucd_north(pcols, pver+1)
+  real(r8) :: utend1(pcols, pver)
+  real(r8) :: utend2(pcols, pver)
+  real(r8) :: utend3(pcols, pver)
+  real(r8) :: utend4(pcols, pver)
+  real(r8) :: utend5(pcols, pver)
 
   character(len=64)               :: scheme_name
   character(len=512)              :: errmsg
@@ -1464,6 +1401,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Get frontogenesis physics buffer fields set by dynamics.
      call pbuf_get_field(pbuf, frontgf_idx, frontgf)
      call pbuf_get_field(pbuf, frontga_idx, frontga)
+
+     ! Output for diagnostics.
+     call outfld ('FRONTGF', frontgf, pcols, lchnk)
+     call outfld ('FRONTGFA', frontga, pcols, lchnk)
   end if
 
   if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
@@ -1475,7 +1416,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   endif
 
   if (use_gw_movmtn_pbl) then
-     !   New couplings from CLUBB
+     ! New couplings from CLUBB
      call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
      call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
      call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
@@ -1483,6 +1424,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
      call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
   end if
+
   if (use_gw_convect_sh) then
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_sh_idx, ttend_sh)
@@ -1490,11 +1432,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   else
      ttend_sh_arr(:,:) = 0._r8
   endif
+
   if (use_gw_oro) then
      call pbuf_get_field(pbuf, sgh_idx, sgh)
-     sgharr=sgh
+     sgharr = sgh
   else
-     sgharr=0._r8
+     sgharr = 0._r8
   end if
 
   rhoi(:,:) = 0._r8
@@ -1528,6 +1471,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Call the CCPPized subroutine for the moving mountain gravity waves.
   if (use_gw_movmtn_pbl) then
+    call outfld('U_MOVMTN_IN', state1%u, ncol, lchnk)
+    call outfld('V_MOVMTN_IN', state1%v, ncol, lchnk)
+
+    tau0(:,:) = 0._r8
+    gwut0(:,:) = 0._r8
+
     call gw_movmtn_run( &
       ncol                = ncol, &
       pver                = pver, &
@@ -1575,20 +1524,47 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       vtgw                = vtgw(:ncol,:pver), &
       ttgw                = ttgw(:ncol,:pver), &
       qtgw                = qtgw(:ncol,:pver,:pcnst), &
-      egwdffi             = egwdffi(:ncol,:pver+1), &
+      egwdffi_tot         = egwdffi_tot(:ncol,:pver+1), &
       dttdf               = dttdf(:ncol,:pver), &
       dttke               = dttke(:ncol,:pver), &
+      tau0                = tau0(:ncol,:pver+1), &
+      gwut0               = gwut0(:ncol,:pver), &
       errmsg              = errmsg, &
       errflg              = errflg)
 
-    ! add the diffusion coefficients
-    do k = 1, pver + 1
-      egwdffi_tot(:ncol, k) = egwdffi_tot(:ncol, k) + egwdffi(:ncol, k)
-    end do
+    !-------------------------------------------------------------
+    ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
+    ! and unit vector components describing direction of wavevector
+    ! and application of wave-drag force. I believe correct setting
+    ! for c is c=0, since it is incorporated in ubm and (xv,yv)
+    !--------------------------------------------------------------
+
+    call outfld('SRC_LEVEL_MOVMTN', real(src_level,r8), ncol, lchnk)
+    call outfld('TND_LEVEL_MOVMTN', real(tend_level,r8), ncol, lchnk)
+    call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
+    call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
+
+    call outfld('TAU_MOVMTN', tau0, ncol, lchnk)
+    call outfld('GWUT_MOVMTN', gwut0, ncol, lchnk)
+    call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
+    call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
+    call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
+    call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
+    call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
+    call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
+    call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)
+    call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
+    call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
+    call outfld('VORT4GW', vort4gw, pcols, lchnk)
   end if
 
   ! Convective gravity waves (Beres scheme, deep).
   if (use_gw_convect_dp) then
+    taucd_west(:,:) = 0._r8
+    taucd_east(:,:) = 0._r8
+    taucd_south(:,:) = 0._r8
+    taucd_north(:,:) = 0._r8
+
     call gw_beres_deep_run( &
           ncol            = ncol, &
           pver            = pver, &
@@ -1633,14 +1609,25 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           egwdffi_tot     = egwdffi_tot(:ncol,:pver+1), &
           dttdf           = dttdf(:ncol,:pver), &
           dttke           = dttke(:ncol,:pver), &
+          taucd_west      = taucd_west(:ncol,:pver+1), &
+          taucd_east      = taucd_east(:ncol,:pver+1), &
+          taucd_south     = taucd_south(:ncol,:pver+1), &
+          taucd_north     = taucd_north(:ncol,:pver+1), &
           errmsg          = errmsg, &
           errflg          = errflg)
 
-    ! Change ttgw to a temperature tendency before outputing it.
-    !ttgw = ttgw / cpair
-    !call gw_spec_outflds(beres_dp_pf, ncol, pver, band_mid, phase_speeds, u, v, &
-    !     xv, yv, gwut, dttdf, dttke, tau(:,:,2:), utgw, vtgw, ttgw, &
-    !     taucd)
+    ! Simple output fields written to history file.
+    ! Total wind tendencies.
+    call outfld (trim(beres_dp_pf)//'UTGWSPEC', utgw , ncol, lchnk)
+    call outfld (trim(beres_dp_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
+    call outfld (trim(beres_dp_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
+
+    ! Tau in each direction.
+    call outfld (trim(beres_dp_pf)//'TAUE', taucd_east,  pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'TAUW', taucd_west,  pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'TAUN', taucd_north, pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'TAUS', taucd_south, pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'TAUNET', taucd_east + taucd_west, pcols, lchnk)
 
     ! Diagnostic outputs (convert hdepth to km).
     call outfld('NETDT', ttend_dp, pcols, lchnk)
@@ -1710,60 +1697,157 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 
   ! Call the CCPPized subroutine
-  ! this is just the remnant to be ccppized now. 8/12/25 hplin
-  if(use_gw_front .or. use_gw_front_igw) then
-    call gw_drag_run( &
+  if(use_gw_front) then
+    taucd_west(:,:) = 0._r8
+    taucd_east(:,:) = 0._r8
+    taucd_south(:,:) = 0._r8
+    taucd_north(:,:) = 0._r8
+    utend1(:,:) = 0._r8
+    utend2(:,:) = 0._r8
+    utend3(:,:) = 0._r8
+    utend4(:,:) = 0._r8
+    utend5(:,:) = 0._r8
+
+    call gravity_wave_frontogenesis_run( &
          ncol             = ncol, &
-         pcnst            = pcnst, &
          pver             = pver, &
+         pcnst            = pcnst, &
          dt               = dt, &
          cpair            = cpair, &
-         cpairv           = cpairv(:ncol,:,lchnk), &
-         pi               = pi, &
-         vramp            = vramp, &
-         frontgf          = frontgf(:ncol,:pver), &
-         frontga          = frontga(:ncol,:pver), &
-         pint             = state1%pint(:ncol,:), &
-         piln             = state1%lnpint(:ncol,:), &
-         pdel             = state1%pdel(:ncol,:), &
-         pdeldry          = state1%pdeldry(:ncol,:), &
-         zm               = state1%zm(:ncol,:), &
-         zi               = state1%zi(:ncol,:), &
-         lat              = state1%lat(:ncol), &
-         landfrac         = cam_in%landfrac(:ncol), &
-         dse              = state1%s(:ncol,:), &
-         state_t          = state1%t(:ncol,:), &
-         state_u          = state1%u(:ncol,:), &
-         state_v          = state1%v(:ncol,:), &
-         state_q          = state1%q(:ncol,:,:), &
-         sgh              = sgharr(:ncol), &
          p                = p, &
+         vramp            = vramp, &
+         piln             = state1%lnpint(:ncol,:), &
          rhoi             = rhoi(:ncol,:pver+1), &
          nm               = nm(:ncol,:pver), &
          ni               = ni(:ncol,:pver+1), &
-         kvtt             = kvt_gw(:ncol,:pver+1), &
-         ttend_dp         = ttend_dp_arr(:ncol,:pver), &
-         ttend_sh         = ttend_sh_arr(:ncol,:pver), &
+         effgw_cm         = effgw_cm, &
+         gw_polar_taper   = gw_polar_taper, &
+         gw_apply_tndmax  = gw_apply_tndmax, &
+         lat              = state1%lat(:ncol), &
+         u                = state1%u(:ncol,:), &
+         v                = state1%v(:ncol,:), &
+         t                = state1%t(:ncol,:), &
+         q                = state1%q(:ncol,:,:), &
+         dse              = state1%s(:ncol,:), &
+         frontgf          = frontgf(:ncol,:pver), &
+         kvt_gw           = kvt_gw(:ncol,:pver+1), &
          ! below input/output (accummulated tendencies)
-         s_tend           = ptend%s(:ncol,:), &
-         q_tend           = ptend%q(:ncol,:,:), &
-         u_tend           = ptend%u(:ncol,:), &
-         v_tend           = ptend%v(:ncol,:), &
-         ! below output
-         nbot_molec       = nbot_molec, &
+         tend_q           = ptend%q(:ncol,:,:), &
+         tend_u           = ptend%u(:ncol,:), &
+         tend_v           = ptend%v(:ncol,:), &
+         tend_s           = ptend%s(:ncol,:), &
          egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
+         ! below output
+         src_level        = src_level(:ncol), &
+         tend_level       = tend_level(:ncol), &
+         ubm              = ubm(:ncol,:pver), &
+         ubi              = ubi(:ncol,:pver+1), &
+         xv               = xv(:ncol), &
+         yv               = yv(:ncol), &
+         utgw             = utgw(:ncol,:pver), &
+         vtgw             = vtgw(:ncol,:pver), &
+         ttgw             = ttgw(:ncol,:pver), &
+         qtgw             = qtgw(:ncol,:pver,:), &
+         dttdf            = dttdf(:ncol,:pver), &
+         dttke            = dttke(:ncol,:pver), &
+         taucd_west       = taucd_west(:ncol,:pver+1), &
+         taucd_east       = taucd_east(:ncol,:pver+1), &
+         taucd_south      = taucd_south(:ncol,:pver+1), &
+         taucd_north      = taucd_north(:ncol,:pver+1), &
+         utend1           = utend1(:ncol,:pver), &
+         utend2           = utend2(:ncol,:pver), &
+         utend3           = utend3(:ncol,:pver), &
+         utend4           = utend4(:ncol,:pver), &
+         utend5           = utend5(:ncol,:pver), &
          flx_heat         = flx_heat(:ncol), &
          errmsg           = errmsg, &
          errflg           = errflg)
 
     if(errflg /= 0) then
-      call endrun("gw_drag_run: " // errmsg)
+      call endrun("gravity_wave_frontogenesis_run: " // errmsg)
+    endif
+
+    ! Output wind tendencies binned by phase speed.
+    call outfld(trim(cm_pf)//'UTEND1', utend1, pcols, lchnk)
+    call outfld(trim(cm_pf)//'UTEND2', utend2, pcols, lchnk)
+    call outfld(trim(cm_pf)//'UTEND3', utend3, pcols, lchnk)
+    call outfld(trim(cm_pf)//'UTEND4', utend4, pcols, lchnk)
+    call outfld(trim(cm_pf)//'UTEND5', utend5, pcols, lchnk)
+
+    ! Output temperature tendencies due to diffusion and from kinetic energy.
+    call outfld(trim(cm_pf)//'TTGWSDF', dttdf / cpair, ncol, lchnk)
+    call outfld(trim(cm_pf)//'TTGWSKE', dttke / cpair, ncol, lchnk)
+
+    ! Simple output fields written to history file.
+    ! Total wind tendencies.
+    call outfld (trim(cm_pf)//'UTGWSPEC', utgw , ncol, lchnk)
+    call outfld (trim(cm_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
+    call outfld (trim(cm_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
+
+    ! Tau in each direction.
+    call outfld (trim(cm_pf)//'TAUE', taucd_east,  pcols, lchnk)
+    call outfld (trim(cm_pf)//'TAUW', taucd_west,  pcols, lchnk)
+    call outfld (trim(cm_pf)//'TAUN', taucd_north, pcols, lchnk)
+    call outfld (trim(cm_pf)//'TAUS', taucd_south, pcols, lchnk)
+    call outfld (trim(cm_pf)//'TAUNET', taucd_east + taucd_west, pcols, lchnk)
+  endif
+
+  if(use_gw_front_igw) then
+    call gravity_wave_frontogenesis_inertial_run( &
+         ncol             = ncol, &
+         pver             = pver, &
+         pcnst            = pcnst, &
+         dt               = dt, &
+         cpair            = cpair, &
+         p                = p, &
+         vramp            = vramp, &
+         piln             = state1%lnpint(:ncol,:), &
+         rhoi             = rhoi(:ncol,:pver+1), &
+         nm               = nm(:ncol,:pver), &
+         ni               = ni(:ncol,:pver+1), &
+         effgw_cm_igw     = effgw_cm_igw, &
+         gw_polar_taper   = gw_polar_taper, &
+         gw_apply_tndmax  = gw_apply_tndmax, &
+         lat              = state1%lat(:ncol), &
+         u                = state1%u(:ncol,:), &
+         v                = state1%v(:ncol,:), &
+         t                = state1%t(:ncol,:), &
+         q                = state1%q(:ncol,:,:), &
+         dse              = state1%s(:ncol,:), &
+         frontgf          = frontgf(:ncol,:pver), &
+         kvt_gw           = kvt_gw(:ncol,:pver+1), &
+         ! below input/output (accummulated tendencies)
+         tend_q           = ptend%q(:ncol,:,:), &
+         tend_u           = ptend%u(:ncol,:), &
+         tend_v           = ptend%v(:ncol,:), &
+         tend_s           = ptend%s(:ncol,:), &
+         egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
+         ! below output
+         src_level        = src_level(:ncol), &
+         tend_level       = tend_level(:ncol), &
+         ubm              = ubm(:ncol,:pver), &
+         ubi              = ubi(:ncol,:pver+1), &
+         xv               = xv(:ncol), &
+         yv               = yv(:ncol), &
+         utgw             = utgw(:ncol,:pver), &
+         vtgw             = vtgw(:ncol,:pver), &
+         ttgw             = ttgw(:ncol,:pver), &
+         qtgw             = qtgw(:ncol,:pver,:), &
+         dttdf            = dttdf(:ncol,:pver), &
+         dttke            = dttke(:ncol,:pver), &
+         flx_heat         = flx_heat(:ncol), &
+         errmsg           = errmsg, &
+         errflg           = errflg)
+
+    if(errflg /= 0) then
+      call endrun("gravity_wave_frontogenesis_inertial_run: " // errmsg)
     endif
   endif
 
   if(use_gw_oro) then
     tau0x(:) = 0._r8
     tau0y(:) = 0._r8
+    taua(:,:) = 0._r8
 
     call gravity_wave_drag_orographic_run( &
       ncol              = ncol, &
@@ -1811,6 +1895,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       egwdffi_tot       = egwdffi_tot(:ncol,:pver+1), &
       tau0x             = tau0x(:ncol), &
       tau0y             = tau0y(:ncol), &
+      taua              = taua(:ncol,:pver+1), &
       flx_heat          = flx_heat(:ncol), &
       errmsg            = errmsg, &
       errflg            = errflg)
@@ -1819,7 +1904,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     endif
 
     ! Write output fields to history file
-    !call outfld('TAUAORO', tau(:,0,:),  ncol, lchnk)
+    call outfld('TAUAORO', taua,  ncol, lchnk)
     call outfld('UTGWORO', utgw,  ncol, lchnk)
     call outfld('VTGWORO', vtgw,  ncol, lchnk)
     call outfld('TTGWORO', ttgw,  ncol, lchnk)
@@ -1829,73 +1914,149 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('TAUGWY', tau0y, ncol, lchnk)
   endif
 
-  if (use_gw_rdg_beta .or. use_gw_rdg_gamma) then
-     ! Save state at top of routine
-     ! Useful for unit testing checks
-      call outfld('UEGW', state1%u ,  ncol, lchnk)
-      call outfld('VEGW', state1%v ,  ncol, lchnk)
-      call outfld('TEGW', state1%t ,  ncol, lchnk)
-      call outfld('ZEGW', state1%zi , ncol, lchnk)
-      call outfld('ZMGW', state1%zm , ncol, lchnk)
+  if (use_gw_rdg_beta) then
+    ! Save state at top of routine
+    ! Useful for unit testing checks
+    call outfld('UEGW', state1%u ,  ncol, lchnk)
+    call outfld('VEGW', state1%v ,  ncol, lchnk)
+    call outfld('TEGW', state1%t ,  ncol, lchnk)
+    call outfld('ZEGW', state1%zi , ncol, lchnk)
+    call outfld('ZMGW', state1%zm , ncol, lchnk)
 
-      call gw_rdg_run( &
-        ncol                    = ncol, &
-        pver                    = pver, &
-        pcnst                   = pcnst, &
-        dt                      = dt, &
-        pi                      = pi, &
-        use_gw_rdg_beta         = use_gw_rdg_beta, &
-        use_gw_rdg_gamma        = use_gw_rdg_gamma, &
-        vramp                   = vramp, &
-        p                       = p, &
-        n_rdg_beta              = n_rdg_beta, &
-        n_rdg_gamma             = n_rdg_gamma, &
-        u                       = state1%u(:ncol,:), &
-        v                       = state1%v(:ncol,:), &
-        t                       = state1%t(:ncol,:), &
-        q                       = state1%q(:ncol,:,:), &
-        dse                     = state1%s(:ncol,:), &
-        piln                    = state1%lnpint(:ncol,:), &
-        zm                      = state1%zm(:ncol,:), &
-        zi                      = state1%zi(:ncol,:pver+1), &
-        nm                      = nm(:ncol,:), &
-        ni                      = ni(:ncol,:pver+1), &
-        rhoi                    = rhoi(:ncol,:pver+1), &
-        kvtt                    = kvt_gw(:ncol,:pver+1), &
-        effgw_rdg_resid         = effgw_rdg_resid, &
-        use_gw_rdg_resid        = use_gw_rdg_resid, &
-        effgw_rdg_beta          = effgw_rdg_beta, &
-        effgw_rdg_beta_max      = effgw_rdg_beta_max, &
-        effgw_rdg_gamma         = effgw_rdg_gamma, &
-        effgw_rdg_gamma_max     = effgw_rdg_gamma_max, &
-        rdg_beta_cd_llb         = rdg_beta_cd_llb, &
-        trpd_leewv_rdg_beta     = trpd_leewv_rdg_beta, &
-        rdg_gamma_cd_llb        = rdg_gamma_cd_llb, &
-        trpd_leewv_rdg_gamma    = trpd_leewv_rdg_gamma, &
-        ! Input data for beta/gamma waves - stored for all chunks
-        gbxar                   = rdg_gbxar(:ncol,lchnk), &
-        isovar                  = rdg_isovar(:ncol,lchnk), &
-        isowgt                  = rdg_isowgt(:ncol,lchnk), &
-        hwdth                   = rdg_hwdth(:ncol,:,lchnk), &
-        clngt                   = rdg_clngt(:ncol,:,lchnk), &
-        mxdis                   = rdg_mxdis(:ncol,:,lchnk), &
-        anixy                   = rdg_anixy(:ncol,:,lchnk), &
-        angll                   = rdg_angll(:ncol,:,lchnk), &
-        gbxarg                  = rdg_gbxarg(:ncol,lchnk), &
-        hwdthg                  = rdg_hwdthg(:ncol,:,lchnk), &
-        clngtg                  = rdg_clngtg(:ncol,:,lchnk), &
-        mxdisg                  = rdg_mxdisg(:ncol,:,lchnk), &
-        anixyg                  = rdg_anixyg(:ncol,:,lchnk), &
-        angllg                  = rdg_angllg(:ncol,:,lchnk), &
-        ! Input/output arguments
-        s_tend                  = ptend%s(:ncol,:pver), &
-        q_tend                  = ptend%q(:ncol,:pver,:pcnst), &
-        u_tend                  = ptend%u(:ncol,:pver), &
-        v_tend                  = ptend%v(:ncol,:pver), &
-        ! Output arguments
-        flx_heat                = flx_heat(:ncol), &
-        errmsg                  = errmsg, &
-        errflg                  = errflg)
+    call gravity_wave_drag_ridge_beta_run( &
+      ncol                    = ncol, &
+      pver                    = pver, &
+      pcnst                   = pcnst, &
+      dt                      = dt, &
+      pi                      = pi, &
+      cpair                   = cpair, &
+      vramp                   = vramp, &
+      p                       = p, &
+      n_rdg_beta              = n_rdg_beta, &
+      u                       = state1%u(:ncol,:), &
+      v                       = state1%v(:ncol,:), &
+      t                       = state1%t(:ncol,:), &
+      q                       = state1%q(:ncol,:,:), &
+      dse                     = state1%s(:ncol,:), &
+      piln                    = state1%lnpint(:ncol,:), &
+      zm                      = state1%zm(:ncol,:), &
+      zi                      = state1%zi(:ncol,:pver+1), &
+      nm                      = nm(:ncol,:), &
+      ni                      = ni(:ncol,:pver+1), &
+      rhoi                    = rhoi(:ncol,:pver+1), &
+      kvt_gw                  = kvt_gw(:ncol,:pver+1), &
+      use_gw_rdg_resid        = use_gw_rdg_resid, &
+      effgw_rdg_resid         = effgw_rdg_resid, &
+      effgw_rdg_beta          = effgw_rdg_beta, &
+      effgw_rdg_beta_max      = effgw_rdg_beta_max, &
+      rdg_beta_cd_llb         = rdg_beta_cd_llb, &
+      trpd_leewv_rdg_beta     = trpd_leewv_rdg_beta, &
+      ! Input data for beta waves - stored for all chunks
+      gbxar                   = rdg_gbxar(:ncol,lchnk), &
+      isovar                  = rdg_isovar(:ncol,lchnk), &
+      isowgt                  = rdg_isowgt(:ncol,lchnk), &
+      hwdth                   = rdg_hwdth(:ncol,:,lchnk), &
+      clngt                   = rdg_clngt(:ncol,:,lchnk), &
+      mxdis                   = rdg_mxdis(:ncol,:,lchnk), &
+      anixy                   = rdg_anixy(:ncol,:,lchnk), &
+      angll                   = rdg_angll(:ncol,:,lchnk), &
+      ! Input/output arguments
+      s_tend                  = ptend%s(:ncol,:pver), &
+      q_tend                  = ptend%q(:ncol,:pver,:pcnst), &
+      u_tend                  = ptend%u(:ncol,:pver), &
+      v_tend                  = ptend%v(:ncol,:pver), &
+      ! Output arguments
+      flx_heat                = flx_heat(:ncol), &
+      taurx                   = taurx(:ncol,:pver+1), &
+      taury                   = taury(:ncol,:pver+1), &
+      tauardgx                = tauardgx(:ncol,:pver+1), &
+      tauardgy                = tauardgy(:ncol,:pver+1), &
+      utrdg                   = utrdg(:ncol,:pver), &
+      vtrdg                   = vtrdg(:ncol,:pver), &
+      ttrdg                   = ttrdg(:ncol,:pver), &
+      errmsg                  = errmsg, &
+      errflg                  = errflg)
+
+     call outfld('TAUGWX', taurx(:,pver+1), ncol, lchnk)
+     call outfld('TAUGWY', taury(:,pver+1), ncol, lchnk)
+     call outfld('UTGWORO', utrdg,  ncol, lchnk)
+     call outfld('VTGWORO', vtrdg,  ncol, lchnk)
+     call outfld('TTGWORO', ttrdg,  ncol, lchnk)
+
+     call outfld('TAUARDGBETAX', tauardgx, ncol, lchnk)
+     call outfld('TAUARDGBETAY', tauardgy, ncol, lchnk)
+
+  end if
+
+  if (use_gw_rdg_gamma) then
+    ! Save state at top of routine
+    ! Useful for unit testing checks
+    call outfld('UEGW', state1%u ,  ncol, lchnk)
+    call outfld('VEGW', state1%v ,  ncol, lchnk)
+    call outfld('TEGW', state1%t ,  ncol, lchnk)
+    call outfld('ZEGW', state1%zi , ncol, lchnk)
+    call outfld('ZMGW', state1%zm , ncol, lchnk)
+
+    call gravity_wave_drag_ridge_gamma_run( &
+      ncol                    = ncol, &
+      pver                    = pver, &
+      pcnst                   = pcnst, &
+      dt                      = dt, &
+      pi                      = pi, &
+      cpair                   = cpair, &
+      vramp                   = vramp, &
+      p                       = p, &
+      n_rdg_gamma             = n_rdg_gamma, &
+      u                       = state1%u(:ncol,:), &
+      v                       = state1%v(:ncol,:), &
+      t                       = state1%t(:ncol,:), &
+      q                       = state1%q(:ncol,:,:), &
+      dse                     = state1%s(:ncol,:), &
+      piln                    = state1%lnpint(:ncol,:), &
+      zm                      = state1%zm(:ncol,:), &
+      zi                      = state1%zi(:ncol,:pver+1), &
+      nm                      = nm(:ncol,:), &
+      ni                      = ni(:ncol,:pver+1), &
+      rhoi                    = rhoi(:ncol,:pver+1), &
+      kvt_gw                  = kvt_gw(:ncol,:pver+1), &
+      effgw_rdg_resid         = effgw_rdg_resid, &
+      use_gw_rdg_resid        = use_gw_rdg_resid, &
+      effgw_rdg_gamma         = effgw_rdg_gamma, &
+      effgw_rdg_gamma_max     = effgw_rdg_gamma_max, &
+      rdg_gamma_cd_llb        = rdg_gamma_cd_llb, &
+      trpd_leewv_rdg_gamma    = trpd_leewv_rdg_gamma, &
+      ! Input data for beta/gamma waves - stored for all chunks
+      gbxarg                  = rdg_gbxarg(:ncol,lchnk), &
+      hwdthg                  = rdg_hwdthg(:ncol,:,lchnk), &
+      clngtg                  = rdg_clngtg(:ncol,:,lchnk), &
+      mxdisg                  = rdg_mxdisg(:ncol,:,lchnk), &
+      anixyg                  = rdg_anixyg(:ncol,:,lchnk), &
+      angllg                  = rdg_angllg(:ncol,:,lchnk), &
+      ! Input/output arguments
+      s_tend                  = ptend%s(:ncol,:pver), &
+      q_tend                  = ptend%q(:ncol,:pver,:pcnst), &
+      u_tend                  = ptend%u(:ncol,:pver), &
+      v_tend                  = ptend%v(:ncol,:pver), &
+      ! Output arguments
+      flx_heat                = flx_heat(:ncol), &
+      taurx                   = taurx(:ncol,:pver+1), &
+      taury                   = taury(:ncol,:pver+1), &
+      tauardgx                = tauardgx(:ncol,:pver+1), &
+      tauardgy                = tauardgy(:ncol,:pver+1), &
+      utrdg                   = utrdg(:ncol,:pver), &
+      vtrdg                   = vtrdg(:ncol,:pver), &
+      ttrdg                   = ttrdg(:ncol,:pver), &
+      errmsg                  = errmsg, &
+      errflg                  = errflg)
+
+     call outfld('TAURDGGMX', taurx(:,pver+1), ncol, lchnk)
+     call outfld('TAURDGGMY', taury(:,pver+1), ncol, lchnk)
+     call outfld('UTRDGGM', utrdg,  ncol, lchnk)
+     call outfld('VTRDGGM', vtrdg,  ncol, lchnk)
+     call outfld('TTGWORO', ttrdg,  ncol, lchnk)
+
+     call outfld('TAUARDGGAMMAX', tauardgx, ncol, lchnk)
+     call outfld('TAUARDGGAMMAY', tauardgy, ncol, lchnk)
   end if
 
   ! Call the CCPPized subroutine to clean up
