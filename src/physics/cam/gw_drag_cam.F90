@@ -461,13 +461,14 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
-  use gravity_wave_drag_orographic, only: gravity_wave_drag_orographic_init
-  use gravity_wave_drag_top_taper, only: gravity_wave_drag_top_taper_init
   use gw_drag,        only: gw_drag_init
-  use gw_front,       only: gravity_wave_frontogenesis_init
-  use gw_rdg,         only: gw_rdg_init
-  use gw_movmtn,      only: gw_movmtn_init
-  use gw_convect,     only: gw_beres_init
+
+  use gravity_wave_drag_orographic,      only: gravity_wave_drag_orographic_init
+  use gravity_wave_drag_top_taper,       only: gravity_wave_drag_top_taper_init
+  use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_init
+  use gravity_wave_drag_ridge,      only: gw_rdg_init
+  use gravity_wave_drag_moving_mountain, only: gravity_wave_drag_moving_mountain_init
+  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_init
 
   !---------------------------Local storage-------------------------------
 
@@ -602,7 +603,7 @@ subroutine gw_drag_cam_init()
 
   ! Call the CCPPized initialization subroutines
   if(use_gw_movmtn_pbl) then
-    call gw_movmtn_init(pver = pver, &
+    call gravity_wave_drag_moving_mountain_init(pver = pver, &
                         masterproc = masterproc, &
                         iulog = iulog, &
                         file_path = gw_drag_file_mm_loc, &
@@ -616,7 +617,7 @@ subroutine gw_drag_cam_init()
   endif
 
   if(use_gw_convect_dp .or. use_gw_convect_sh) then
-    call gw_beres_init( &
+    call gravity_wave_drag_convection_init( &
       pver                = pver, &
       pi                  = pi, &
       masterproc          = masterproc, &
@@ -665,7 +666,7 @@ subroutine gw_drag_cam_init()
   endif
 
   if(use_gw_front .or. use_gw_front_igw) then
-    call gravity_wave_frontogenesis_init( &
+    call gravity_wave_drag_frontogenesis_init( &
          pver                 = pver, &
          pi                   = pi, &
          masterproc           = masterproc, &
@@ -685,7 +686,7 @@ subroutine gw_drag_cam_init()
          errmsg               = errmsg, &
          errflg               = errflg)
     if(errflg /= 0) then
-      call endrun("gravity_wave_frontogenesis_init: " // errmsg)
+      call endrun("gravity_wave_drag_frontogenesis_init: " // errmsg)
     endif
   endif
 
@@ -1242,15 +1243,15 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! CCPPized subroutines
   use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_run
-  use gw_movmtn,       only: gw_movmtn_run
-  use gw_convect,      only: gw_beres_deep_run
-  use gw_convect,      only: gw_beres_shallow_run
-  use gw_front,        only: gravity_wave_frontogenesis_run
-  use gw_front,        only: gravity_wave_frontogenesis_inertial_run
-  use gravity_wave_drag_orographic, only: gravity_wave_drag_orographic_run
-  use gw_rdg,          only: gravity_wave_drag_ridge_beta_run
-  use gw_rdg,          only: gravity_wave_drag_ridge_gamma_run
-  use gravity_wave_drag_interstitials, only: gravity_wave_drag_prepare_profiles_timestep_final
+  use gravity_wave_drag_moving_mountain,  only: gravity_wave_drag_moving_mountain_run
+  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_deep_run
+  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_shallow_run
+  use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_run
+  use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_inertial_run
+  use gravity_wave_drag_orographic,      only: gravity_wave_drag_orographic_run
+  use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_beta_run
+  use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_gamma_run
+  use gravity_wave_drag_interstitials,   only: gravity_wave_drag_prepare_profiles_timestep_final
 
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
@@ -1565,7 +1566,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     taucd_south(:,:) = 0._r8
     taucd_north(:,:) = 0._r8
 
-    call gw_beres_deep_run( &
+    call gravity_wave_drag_convection_deep_run( &
           ncol            = ncol, &
           pver            = pver, &
           pcnst           = pcnst, &
@@ -1640,7 +1641,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Convective gravity waves (Beres scheme, shallow).
   if (use_gw_convect_sh) then
-    call gw_beres_shallow_run( &
+    call gravity_wave_drag_convection_shallow_run( &
           ncol            = ncol, &
           pver            = pver, &
           pcnst           = pcnst, &
@@ -1714,7 +1715,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     utend4(:,:) = 0._r8
     utend5(:,:) = 0._r8
 
-    call gravity_wave_frontogenesis_run( &
+    call gravity_wave_drag_frontogenesis_run( &
          ncol             = ncol, &
          pver             = pver, &
          pcnst            = pcnst, &
@@ -1770,7 +1771,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          errflg           = errflg)
 
     if(errflg /= 0) then
-      call endrun("gravity_wave_frontogenesis_run: " // errmsg)
+      call endrun("gravity_wave_drag_frontogenesis_run: " // errmsg)
     endif
 
     ! Output wind tendencies binned by phase speed.
@@ -1799,7 +1800,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   endif
 
   if(use_gw_front_igw) then
-    call gravity_wave_frontogenesis_inertial_run( &
+    call gravity_wave_drag_frontogenesis_inertial_run( &
          ncol             = ncol, &
          pver             = pver, &
          pcnst            = pcnst, &
@@ -1846,7 +1847,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          errflg           = errflg)
 
     if(errflg /= 0) then
-      call endrun("gravity_wave_frontogenesis_inertial_run: " // errmsg)
+      call endrun("gravity_wave_drag_frontogenesis_inertial_run: " // errmsg)
     endif
   endif
 
