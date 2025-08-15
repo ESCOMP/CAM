@@ -461,12 +461,12 @@ subroutine gw_drag_cam_init()
 
   use ppgrid, only: pcols
 
-  use gw_drag,        only: gw_drag_init
+  use gw_common,                         only: gravity_wave_drag_common_init
 
   use gravity_wave_drag_orographic,      only: gravity_wave_drag_orographic_init
   use gravity_wave_drag_top_taper,       only: gravity_wave_drag_top_taper_init
   use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_init
-  use gravity_wave_drag_ridge,      only: gw_rdg_init
+  use gravity_wave_drag_ridge,           only: gw_rdg_init
   use gravity_wave_drag_moving_mountain, only: gravity_wave_drag_moving_mountain_init
   use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_init
 
@@ -601,7 +601,21 @@ subroutine gw_drag_cam_init()
     write(iulog,*) "gw_drag_cam_init: use_gw_convect_sh = ", use_gw_convect_sh
   endif
 
-  ! Call the CCPPized initialization subroutines
+  ! Call the CCPPized initialization subroutines for the common module.
+  call gravity_wave_drag_common_init( &
+       pver_in                      = pver, &
+       amIRoot                      = masterproc, &
+       iulog                        = iulog, &
+       tau_0_ubc_in                 = tau_0_ubc, &
+       ktop_in                      = ktop, &
+       gravit_in                    = gravit, &
+       rair_in                      = rair, &
+       prndl_in                     = gw_prndl, &
+       gw_qbo_hdepth_scaling_in     = gw_qbo_hdepth_scaling, &
+       errmsg                       = errmsg, &
+       errflg                       = errflg)
+
+  ! Call the CCPPized initialization subroutines for individual parameterizations.
   if(use_gw_movmtn_pbl) then
     call gravity_wave_drag_moving_mountain_init(pver = pver, &
                         masterproc = masterproc, &
@@ -643,24 +657,7 @@ subroutine gw_drag_cam_init()
     if(errflg /= 0) call endrun(errmsg)
   endif
 
-  ! Initialize gw_common
-  call gw_drag_init( &
-       iulog                        = iulog, &
-       ktop                         = ktop, &
-       masterproc                   = masterproc, &
-       pver                         = pver, &
-       gravit_in                    = gravit, &
-       rair_in                      = rair, &
-       pi_in                        = pi, &
-       rearth_in                    = rearth, &
-       pref_edge                    = pref_edge, &
-       tau_0_ubc_nl                 = tau_0_ubc, &
-       gw_limit_tau_without_eff_nl  = gw_limit_tau_without_eff, &    ! fixme: appears unused. 8/14/25 hplin
-       gw_prndl_nl                  = gw_prndl, &
-       gw_qbo_hdepth_scaling_nl     = gw_qbo_hdepth_scaling, &
-       errmsg                       = errmsg, &
-       errflg                       = errflg)
-
+  ! note: gw_limit_tau_without_eff appears unused.
   if(errflg /= 0) then
     call endrun("gw_drag_init: " // errmsg)
   endif
@@ -693,15 +690,15 @@ subroutine gw_drag_cam_init()
   ! Initialize tapering
   allocate(vramp(pver), stat=errflg)
   call gravity_wave_drag_top_taper_init( &
-    pver = pver, &
-    amIRoot = masterproc, &
-    iulog = iulog, &
-    gw_top_taper = gw_top_taper, &
-    pref_edge = pref_edge, &
-    pref_mid = pref_mid, &
-    vramp = vramp(:pver), &
-    errmsg = errmsg, &
-    errflg = errflg)
+       pver = pver, &
+       amIRoot = masterproc, &
+       iulog = iulog, &
+       gw_top_taper = gw_top_taper, &
+       pref_edge = pref_edge, &
+       pref_mid = pref_mid, &
+       vramp = vramp(:pver), &
+       errmsg = errmsg, &
+       errflg = errflg)
   if(errflg /= 0) then
     call endrun(errmsg)
   endif
@@ -1478,7 +1475,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     tau0(:,:) = 0._r8
     gwut0(:,:) = 0._r8
 
-    call gw_movmtn_run( &
+    call gravity_wave_drag_moving_mountain_run( &
       ncol                = ncol, &
       pver                = pver, &
       pcnst               = pcnst, &
@@ -1937,6 +1934,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dt                      = dt, &
       pi                      = pi, &
       cpair                   = cpair, &
+      rair                    = rair, &
       vramp                   = vramp, &
       p                       = p, &
       n_rdg_beta              = n_rdg_beta, &
@@ -2011,6 +2009,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dt                      = dt, &
       pi                      = pi, &
       cpair                   = cpair, &
+      rair                    = rair, &
       vramp                   = vramp, &
       p                       = p, &
       n_rdg_gamma             = n_rdg_gamma, &
