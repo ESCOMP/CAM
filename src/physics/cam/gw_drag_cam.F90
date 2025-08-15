@@ -591,14 +591,17 @@ subroutine gw_drag_cam_init()
 
   ! Output initialization status
   if(masterproc) then
+    write(iulog,*) "gw_drag_cam_init: use_gw_movmtn_pbl = ", use_gw_movmtn_pbl
+
+    write(iulog,*) "gw_drag_cam_init: use_gw_convect_dp = ", use_gw_convect_dp
+    write(iulog,*) "gw_drag_cam_init: use_gw_convect_sh = ", use_gw_convect_sh
+
     write(iulog,*) "gw_drag_cam_init: use_gw_front = ", use_gw_front
     write(iulog,*) "gw_drag_cam_init: use_gw_front_igw = ", use_gw_front_igw
-    write(iulog,*) "gw_drag_cam_init: use_gw_movmtn_pbl = ", use_gw_movmtn_pbl
+
     write(iulog,*) "gw_drag_cam_init: use_gw_oro = ", use_gw_oro
     write(iulog,*) "gw_drag_cam_init: use_gw_rdg_beta = ", use_gw_rdg_beta
     write(iulog,*) "gw_drag_cam_init: use_gw_rdg_gamma = ", use_gw_rdg_gamma
-    write(iulog,*) "gw_drag_cam_init: use_gw_convect_dp = ", use_gw_convect_dp
-    write(iulog,*) "gw_drag_cam_init: use_gw_convect_sh = ", use_gw_convect_sh
   endif
 
   ! Call the CCPPized initialization subroutines for the common module.
