@@ -2109,7 +2109,6 @@ sub write_filepath
 	print $fh "$camsrcdir/src/physics/ali_arms\n";
 	print $fh "$camsrcdir/src/physics/ali_arms/subs\n";
 	print $fh "$camsrcdir/src/physics/ali_arms/include\n";
-	print $fh "$camsrcdir/src/physics/waccm/co2cool_modules\n";
     }
     print $fh "$camsrcdir/src/ionosphere\n";
 
@@ -2174,6 +2173,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/physics/cam\n";
     print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
     print $fh "$camsrcdir/src/atmos_phys/phys_utils\n";
+    print $fh "$camsrcdir/src/physics/nlte_extco2/src\n";
+    print $fh "$camsrcdir/src/physics/nlte_extco2\n";
 
     # Add the CCPP'ized subdirectories
     print $fh "$camsrcdir/src/atmos_phys/schemes/tropopause_find\n";
