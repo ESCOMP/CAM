@@ -7,10 +7,10 @@
 !--------------------------------------------------------------------------------
 module nlte_extco2
 
-  use ppgrid,             only: pcols, pver
-  use shr_kind_mod,       only: r8 => shr_kind_r8
-  use cam_logfile,        only: iulog
-  use spmd_utils,         only: masterproc
+  use ppgrid,       only: pcols, pver
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  use cam_logfile,  only: iulog
+  use spmd_utils,   only: masterproc
   use cam_history,  only: add_default, addfld, outfld
 
   use co2cool, only: co2_nlte_cool

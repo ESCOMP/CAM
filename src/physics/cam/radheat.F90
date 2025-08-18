@@ -22,8 +22,9 @@ module radheat
   use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
   use physconst,       only: cpair,mwco2
   use air_composition, only: cpairv
-  use perf_mod
   use cam_logfile,     only: iulog
+  use cam_abortutils,  only: endrun
+  use nlte_extco2, only: nlte_extco2_init, nlte_extco2_hrate
 
   implicit none
   private
@@ -56,17 +57,62 @@ module radheat
   real(r8) :: max_pressure_lw=50._r8
 
   integer :: ntop_qrs_cam             ! top level for pure cam solar heating
+  logical :: nlte_use_extco2 = .false. ! If true, use the extended CO2 scheme of Lopez-Puertas et al. 2024
 
 !===============================================================================
 contains
 !===============================================================================
-subroutine radheat_readnl(nlfile)
 
-  character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+  subroutine radheat_readnl(nlfile)
+    use namelist_utils, only : find_group_name
+    use spmd_utils, only : mpicom, masterprocid, mpi_logical,&
+         & mpi_success
 
-  ! No options for this version of radheat; this is just a stub.
+    character(len=*), intent(in) :: nlfile  ! filepath for file
+    ! containing namelist input
 
-end subroutine radheat_readnl
+    integer                      :: unitn, ierr
+    character(len=*), parameter  :: subname = 'radheat_readnl'
+
+    ! ===================
+    ! Namelist definition
+    ! ===================
+    namelist /radheat_nl/ nlte_use_extco2
+
+    ! =============
+    ! Read namelist
+    ! =============
+    if (masterproc) then
+       ! read namelist
+       open( newunit=unitn, file=trim(nlfile), status='old' )
+       call find_group_name(unitn, 'radheat_nl', status=ierr)
+       if (ierr == 0) then
+          read(unitn, radheat_nl, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(subname//': radheat_nl: ERROR reading&
+                  & namelist')
+          end if
+       end if
+       close(unitn)
+
+    end if
+
+    ! ============================
+    ! Broadcast namelist variables
+    ! ============================
+    call mpi_bcast(nlte_use_extco2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//': MPI_BCAST ERROR: nlte_use_extco2')
+    end if
+
+    ! =============================
+    ! Write setting to cam.log file
+    ! =============================
+    if (masterproc) then
+       write(iulog,*) subname,': nlte_use_extco2: ',nlte_use_extco2
+    end if
+
+  end subroutine radheat_readnl
 
 !================================================================================================
 
@@ -82,7 +128,7 @@ end subroutine radheat_readnl
 
   subroutine radheat_init(pref_mid)
 
-    
+
     use nlte_fomichev,    only: nlte_fomichev_init
     use phys_control,     only: phys_getopts
 
@@ -169,7 +215,7 @@ end subroutine radheat_readnl
        endif
 
     end do
-    
+
     co2_mw = mwco2
     o1_mw  = 16._r8
     o2_mw  = 32._r8
@@ -179,7 +225,9 @@ end subroutine radheat_readnl
     nlte_limit_co2 = .true.
 ! Initialize Fomichev parameterization
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
-    
+    if (nlte_use_extco2) then
+       call nlte_extco2_init(co2_mw, n2_mw, o1_mw, o2_mw)
+    end if
 
     ! determine upppermost level that is purely solar heating (no MLT chem heating)
     ntop_qrs_cam = 0
@@ -244,7 +292,6 @@ end subroutine radheat_readnl
     real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables
-    integer  :: k 
     integer  :: ncol                                ! number of atmospheric columns
     integer  :: lchnk                               ! chunk identifier
     real(r8) :: qrl_mrg(pcols,pver)                 ! merged LW heating
@@ -252,7 +299,7 @@ end subroutine radheat_readnl
     real(r8) :: qrs_mrg(pcols,pver)                 ! merged SW heating
 
     real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate ! (K/s)
-    real(r8) :: o3cool(pcols,pver) ! Fomichev cooling rate ! (K/s)
+    real(r8) :: o3cool(pcols,pver)  ! Fomichev cooling rate ! (K/s)
     real(r8) :: co2cool(pcols,pver) ! Fomichev cooling rate ! (K/s)
     real(r8) :: c2scool(pcols,pver) ! Fomichev cooling rate ! (K/s)
     real(r8) :: xco2mmr(pcols,pver) ! CO2
@@ -260,6 +307,7 @@ end subroutine radheat_readnl
     real(r8) :: xo3mmr(pcols,pver)  ! O3
     real(r8) :: xommr(pcols,pver)   ! O
     real(r8) :: xn2mmr(pcols,pver)  ! N2
+    real(r8) :: co2cooling(pcols,pver)
 
     real(r8), parameter :: N2_VMR       = 0.78084 ! From US standard atmosphere
     real(r8), parameter :: N2_mass      = 28.0134 ! g/mol
@@ -275,7 +323,7 @@ end subroutine radheat_readnl
     ncol  = state%ncol
     lchnk = state%lchnk
     call physics_ptend_init(ptend, state%psetcols, 'radheat', ls=.true.)
- 
+
 ! Shortwave heating is RRTMG solar heating only
     qrs_mrg(:,:) = qrs(:,:)
 
@@ -300,7 +348,13 @@ end subroutine radheat_readnl
 
    call nlte_fomichev_calc (lchnk,ncol,state%pmid,state%pint,state%t, &
         xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlfomichev,co2cool,o3cool,c2scool)
-   qrl_mlt = qrlfomichev
+
+   if (nlte_use_extco2) then
+      call nlte_extco2_hrate(lchnk, ncol, state%t, state%pmid, xco2mmr, xn2mmr, xommr, xo2mmr, co2cooling)
+      qrl_mlt(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+   else
+      qrl_mlt(:ncol,:) = qrlfomichev(:ncol,:)
+   end if
 
 !  Merge cam long wave heating for lower atmosphere with M/LT (nlte) heating
    call merge_qrl (ncol, qrl, qrl_mlt, qrl_mrg)
