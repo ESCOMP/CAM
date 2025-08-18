@@ -151,7 +151,7 @@ contains
                 end select
              end if
              call slope_limiter(nhe,nc,nhc,fcube(:,:,k_in,itr),jx,jy,irecons,recons(:,:,:,itr),&
-                  spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
+                  spherecentroid,&
                   recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual)
           end if
        end do
@@ -356,6 +356,7 @@ contains
     real (kind=r8), dimension(-1:1) :: minval_array, maxval_array
     real (kind=r8), parameter :: threshold = 1.0E-40_r8
     character(len=128)        :: errormsg 
+
     select case (irecons_actual)
        !
        ! PLM limiter
@@ -564,6 +565,7 @@ contains
   !        recons ...  array of reconstructed coefficients                            !
   ! OUTPUT: value ... evaluation at a given point                                     !
   !-----------------------------------------------------------------------------------!
+  !DIR$ ATTRIBUTES FORCEINLINE :: recons_val_cart
   subroutine recons_val_cart(fcube, cartx, carty, centroid, pre_computed_metrics, recons, value)
     implicit none
     real(kind=r8), intent(in) :: fcube
@@ -586,6 +588,7 @@ contains
          recons(6) * (pre_computed_metrics(3) + dx*dy)
   END subroutine recons_val_cart
 
+    !DIR$ ATTRIBUTES FORCEINLINE :: recons_val_cart_plm
     subroutine recons_val_cart_plm(fcube, cartx, carty, centroid, recons, value)
     implicit none
     real(kind=r8), intent(in) :: fcube
@@ -640,43 +643,62 @@ contains
   end subroutine slopelimiter_val
   !END SUBROUTINE SLOPELIMITER_VAL------------------------------------------CE-for FVM!
 
-  function matmul_w(w,f,ns)
+  !DIR$ ATTRIBUTES FORCEINLINE :: dotproduct
+  function dotproduct(w,f,ns)
     implicit none
-    real (kind=r8)                          :: matmul_w
+    real (kind=r8)                          :: dotproduct
     real (kind=r8),dimension(:), intent(in) :: w,f      !dimension(ns)
     integer,                     intent(in) :: ns
     integer                                 :: k
-    matmul_w = 0.0_r8
+
+    if(ns==3) then
+      dotproduct = DotProduct_3(w,f)
+    else
+      dotproduct = DotProduct_gen(w,f,ns)
+    endif
+
+  end function dotproduct
+
+  !DIR$ ATTRIBUTES FORCEINLINE :: DotProduct_gen
+  function DotProduct_gen(w,f,ns)
+    implicit none
+    real (kind=r8)                          :: DotProduct_gen
+    real (kind=r8),dimension(:), intent(in) :: w,f      !dimension(ns)
+    integer,                     intent(in) :: ns
+    integer                                 :: k
+    DotProduct_gen = 0.0_r8
     do k=1,ns
-      matmul_w = matmul_w+w(k)*f(k)
+       DotProduct_gen = DotProduct_gen+w(k)*f(k)
     end do
-  end function matmul_w
+  end function DotProduct_gen
 
   ! special hard-coded version of the function where ns=3
   ! for performance optimization
-!  function matmul_w(w, f)
-!    IMPLICIT NONE
-!    REAL(KIND=r8), dimension(3), intent(in) :: w
-!    REAL(KIND=r8), dimension(3), intent(in) :: f
-!    REAL(KIND=r8) :: matmul_w
-!    matmul_w = w(1)*f(1) + w(2)*f(2) + w(3)*f(3)
-!  end function matmul_w
+  !DIR$ ATTRIBUTES FORCEINLINE :: DotProduct_3
+  function DotProduct_3(w, f)
+    IMPLICIT NONE
+    REAL(KIND=r8), dimension(3), intent(in) :: w
+    REAL(KIND=r8), dimension(3), intent(in) :: f
+    REAL(KIND=r8) :: DotProduct_3
+    DotProduct_3 = w(1)*f(1) + w(2)*f(2) + w(3)*f(3)
+  end function DotProduct_3
 
-  subroutine extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,fcube,cubeboundary,halo_interp_weight,ibase,&
+  subroutine extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,fcube,cubeboundary,hWeight,ibase,&
        fpanel,fotherpanel)
     implicit none
     integer, intent(in) :: cubeboundary,nc,nhr,nht,nh,nhc,ns
     real (kind=r8),   &
          dimension(1-nhc:nc+nhc, 1-nhc:nc+nhc), intent(in)          :: fcube
 
-    real (kind=r8), intent(in) :: halo_interp_weight(1:ns,1-nh:nc+nh,1:nhr,2)
+    real (kind=r8), intent(in) :: hWeight(1:ns,1-nh:nc+nh,1:nhr,2)
     integer              , intent(in) :: ibase(1-nh:nc+nh,1:nhr,2)
 
     real (kind=r8)  , dimension(1-nht:nc+nht, 1-nht:nc+nht ), intent(out)           :: fpanel
     real   (kind=r8), dimension(1-nht:nc+nht,1-nht:nc+nht,2), intent(out), optional :: fotherpanel
 
     integer :: i, halo,ibaseref
-    real (kind=r8), dimension(1:ns,1-nh:nc+nh,1:nhr) :: w
+
+    real (kind=r8), dimension(1-nhc:nc+nhc) :: ftmp
     !
     !  fpanel = 1.0E19 !dbg
     !
@@ -783,12 +805,11 @@ contains
       !
       ! fill in values that are on the west panels projection
       !
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
+        ftmp(:) = fcube(1-halo,:)   ! copy to a temporary
         do i=halo-nh,nc+nh-(halo-1)
           ibaseref=ibase(i,halo,1)
-          !           ibaseref = ibase(i,halo,1)
-          fpanel(1-halo ,i) = matmul_w(w(:,i,halo),fcube(1-halo ,ibaseref:ibaseref+ns-1),ns)
+          fpanel(1-halo ,i) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
         end do
       end do
 
@@ -799,12 +820,13 @@ contains
         fotherpanel (1-nht:0,1-nht:nc+nht,1)=fcube(1-nht:0,1-nht:nc+nht)
         !
         do halo=1,nhr
+          ftmp(:) = fcube(halo,:)   ! copy to a temporary
           do i=halo-nh,nc+nh-(halo-1)
             ibaseref=ibase(i,halo,1)
             !
             ! Exploit symmetry in interpolation weights
             !
-            fotherpanel(halo,i,1)     = matmul_w(w(:,i,halo),fcube(halo   ,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel(halo,i,1)     = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
       end if
@@ -851,21 +873,21 @@ contains
       !      -3 |-2 |-1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
       !
       fpanel      (1-nht:nc     ,1-nht:nc+nht  )=fcube(1-nht:nc     ,1-nht:nc+nht)
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
+        ftmp(:) = fcube(nc+halo,:)   ! copy to a temporary
         do i=halo-nh,nc+nh-(halo-1)
           ibaseref = ibase(i,halo,1)
-          fpanel      (nc+halo   ,i  ) = matmul_w(w(:,i,halo),fcube(nc  +halo,ibaseref:ibaseref+ns-1),ns)
+          fpanel      (nc+halo   ,i  ) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
         end do
       end do
 
       if (present(fotherpanel)) then
         fotherpanel (nc+1 :nc+nht ,1-nht:nc+nht,1)=fcube(nc+1 :nc+nht ,1-nht:nc+nht) !
         do halo=1,nhr
+          ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
           do i=halo-nh,nc+nh-(halo-1)
-            !           ibaseref=ibase(i,halo,1 )
             ibaseref = ibase(i,halo,1)
-            fotherpanel (nc+1-halo ,i,1) = matmul_w(w(:,i,halo),fcube(nc+1-halo,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel (nc+1-halo ,i,1) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
       end if
@@ -905,11 +927,10 @@ contains
       !
       ! fill in values that are on the same projection as "main" element
       fpanel      (1-nht:nc+nht ,1-nht:nc)=fcube(1-nht:nc+nht ,1-nht:nc)
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
         do i=halo-nh,nc+nh-(halo-1)
           ibaseref = ibase(i,halo,1)
-          fpanel      (i,nc+halo    ) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+halo  ),ns) !north
+          fpanel      (i,nc+halo    ) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,nc+halo),ns) !north
         end do
       end do
       if (present(fotherpanel)) then
@@ -919,7 +940,7 @@ contains
         do halo=1,nhr
           do i=halo-nh,nc+nh-(halo-1)
             ibaseref = ibase(i,halo,1)
-            fotherpanel (i,nc+1-halo,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
+            fotherpanel (i,nc+1-halo,1) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
           end do
         end do
       end if
@@ -960,19 +981,19 @@ contains
       ! fill in values that are on the same projection as "main" element (marked with "i" in Figure above)
       !
       fpanel      (1-nht:nc+nht,1:nc+nht  )=fcube(1-nht:nc+nht,1:nc+nht)
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
         do i=halo-nh,nc+nh-(halo-1)
           ibaseref=ibase(i,halo,1)!ibase(i,halo,2)
-          fpanel      (i,1-halo ) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,1-halo),ns)  !south
+          fpanel      (i,1-halo ) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,1-halo),ns)  !south
         end do
       end do
       if (present(fotherpanel)) then
         fotherpanel (1-nht:nc+nht,1-nht:0 ,1)=fcube(1-nht:nc+nht,1-nht:0 )
         do halo=1,nhr
+          ftmp(:) = fcube(:,halo)
           do i=halo-nh,nc+nh-(halo-1)
             ibaseref=ibase(i,halo,1)!ibase(i,halo,2)
-            fotherpanel (i,  halo,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
+            fotherpanel (i,  halo,1) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
           end do
         end do
       end if
@@ -1018,12 +1039,12 @@ contains
       !
       ! fill in west part (marked with "w" on Figure above) and south part (marked with "s")
       !
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
+        ftmp(:)  = fcube(1-halo,:)   ! copy to a temporary
         do i=max(halo-nh,0),nc+nh-(halo-1)
           ibaseref=ibase(i,halo,1)!ibase(i,halo,1)
-          fpanel(1-halo ,i) = matmul_w(w(:,i,halo),fcube(1-halo ,ibaseref:ibaseref+ns-1),ns) !west
-          fpanel(i,1-halo ) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,1-halo) ,ns)  !south
+          fpanel(1-halo ,i) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)   !west
+          fpanel(i,1-halo ) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,1-halo) ,ns)  !south
         end do
       end do
       !
@@ -1075,20 +1096,18 @@ contains
         !
         ! compute interpolated cell average values in "p" cells on Figure on above
         !
-        w = halo_interp_weight(:,:,:,1)
         do halo=1,nhr
           do i=max(halo-nh,0),nc+nh-(halo-1)
             ibaseref=ibase(i,halo,1)
             !
             ! use same weights as interpolation south from main panel (symmetric)
             !
-            fotherpanel(i,halo,1)  = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,halo),ns)
+            fotherpanel(i,halo,1)  = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,halo),ns)
           end do
         end do
         !
         ! compute interpolated cell average values in "w" cells on Figure on above
         !
-        w = halo_interp_weight(:,:,:,2)
         do halo=1,nhr
           do i=nc+halo-nhr,nc+1
             ibaseref=ibase(i,halo,2)-nc
@@ -1108,7 +1127,7 @@ contains
             ! !              |              |
             ! ===============================
             !
-            fotherpanel(1-halo,i-nc,1)  = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,halo),ns)
+            fotherpanel(1-halo,i-nc,1)  = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,halo),ns)
           end do
         end do
         fotherpanel(0,1,1) = 0.25_r8*(fotherpanel(-1,1,1)+fotherpanel(1,1,1)+fotherpanel(0,2,1)+fotherpanel(0,0,1))
@@ -1164,21 +1183,21 @@ contains
         !
         ! compute interpolated cell average values in "p" cells on Figure on above
         !
-        w = halo_interp_weight(:,:,:,1) ! symmetry
         do halo=1,nhr
+          ftmp(:) = fcube(halo,:)   ! copy to a temporary
           do i=max(halo-nh,0),nc+nh-(halo-1)
             ibaseref=ibase(i,halo,1)
             !
             ! use same weights as interpolation south from main panel (symmetric)
             !
-            fotherpanel(halo,i,2)  = matmul_w(w(:,i,halo),fcube(halo,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel(halo,i,2)  = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
         !
         ! compute interpolated cell average values in "s" cells on Figure on above
         !
-        w = halo_interp_weight(:,:,:,2)
         do halo=1,nhr
+          ftmp(:) = fcube(halo,:)   ! copy to a temporary
           do i=nc+halo-nhr,nc+1
             ibaseref=ibase(i,halo,2)-nc
             !
@@ -1197,7 +1216,7 @@ contains
             ! !              |              |
             ! ===============================
             !
-            fotherpanel(i-nc,1-halo,2)  = matmul_w(w(:,i,halo),fcube(halo,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel(i-nc,1-halo,2)  = dotproduct(hWeight(:,i,halo,2),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
         fotherpanel(1,0,2) = 0.25_r8*(fotherpanel(0,0,2)+fotherpanel(2,0,2)+fotherpanel(1,-1,2)+fotherpanel(1,1,2))
@@ -1235,21 +1254,20 @@ contains
       !
       ! east
       !
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
+        ftmp(:) = fcube(nc+halo,:)   ! copy to a temporary
         do i=max(halo-nh,0),nc+nh-(halo-1)
           ibaseref = ibase(i,halo,1)
-          fpanel(nc+halo,i) = matmul_w(w(:,i,halo),fcube(nc  +halo,ibaseref:ibaseref+ns-1),ns)
+          fpanel(nc+halo,i) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
         end do
       end do
       !
       ! south
       !
-      w = halo_interp_weight(:,:,:,2)
       do halo=1,nhr
         do i=halo-nh,min(nc+nh-(halo-1),nc+1)
           ibaseref = ibase(i,halo,2)
-          fpanel(i,1-halo ) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,1-halo),ns)  !south
+          fpanel(i,1-halo ) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,1-halo),ns)  !south
         end do
       end do
       fpanel(nc+1,0   )=0.25_r8*(&
@@ -1299,20 +1317,19 @@ contains
       if (present(fotherpanel)) then
         fotherpanel(1-nht:nc,1-nht:0,1)  = fcube(1-nht:nc,1-nht:0)
         !
-        w = halo_interp_weight(:,:,:,2)
         !
         ! fill in "n" on Figure above
         !
         do halo=1,nhr
+          ftmp(:) = fcube(:,halo)
           do i=halo-nh,min(nc+nh-(halo-1),nc+1)
             ibaseref = ibase(i,halo,2)
-            fotherpanel (i,halo,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
+            fotherpanel (i,halo,1) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
           end do
         end do
         !
         ! fill in "e" on Figure above
         !
-        w = halo_interp_weight(:,:,:,1)
         do halo=1,nhr
           do i=0,nht-halo!nc+nh-(halo-1)
             ibaseref = ibase(i,halo,1)
@@ -1322,7 +1339,7 @@ contains
             ! use symmetry for weights (same weights as East from main panel but for south panel
             ! projection the indecies are rotated)
             !
-            fotherpanel (nc+halo ,1-i,1) = matmul_w(w(:,i,halo),fcube(nc+ibaseref:nc+ibaseref+ns-1,halo),ns)
+            fotherpanel (nc+halo ,1-i,1) = dotproduct(hWeight(:,i,halo,1),fcube(nc+ibaseref:nc+ibaseref+ns-1,halo),ns)
           end do
         end do
         fotherpanel(nc+1,1,1) = 0.25_r8*(fotherpanel(nc+2,1,1)+fotherpanel(nc,1,1)&
@@ -1378,18 +1395,18 @@ contains
         !
         ! fill in "w" on Figure above
         !
-        w = halo_interp_weight(:,:,:,1)
         do halo=1,nhr
+          ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
           do i=0,nc+nh-(halo-1)
             ibaseref = ibase(i,halo,1)
-            fotherpanel(nc+1-halo,i,2) = matmul_w(w(:,i,halo),fcube(nc+1-halo,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel(nc+1-halo,i,2) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
         !
         ! fill in "s" on Figure above
         !
-        w = halo_interp_weight(:,:,:,2)
         do halo=1,nhr
+          ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
           do i=nc+1-nht+halo,nc+1
             !
             !
@@ -1417,7 +1434,7 @@ contains
             !
             ! fcube index: due to rotation (see Figure above)
             !
-            fotherpanel(nc+(nc+1-i),1-halo,2) = matmul_w(w(:,i,halo),fcube(nc+1-halo,ibaseref:ibaseref+ns-1),ns)
+            fotherpanel(nc+(nc+1-i),1-halo,2) = dotproduct(hWeight(:,i,halo,2),ftmp(ibaseref:ibaseref+ns-1),ns)
           end do
         end do
         fotherpanel(nc,0,2) = 0.25_r8*(fotherpanel(nc+1,0,2)+fotherpanel(nc-1,0,2)&
@@ -1454,21 +1471,20 @@ contains
       !
       ! west
       !
-      w = halo_interp_weight(:,:,:,1)
       do halo=1,nhr
+        ftmp(:) = fcube(1-halo,:)   ! copy to a temporary
         do i=halo-nh,min(nc+nh-(halo-1),nc+1)
           ibaseref=ibase(i,halo,1)
-          fpanel(1-halo ,i) = matmul_w(w(:,i,halo),fcube(1-halo ,ibaseref:ibaseref+ns-1),ns)
+          fpanel(1-halo ,i) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
         end do
       end do
       !
       ! north
       !
-      w = halo_interp_weight(:,:,:,2)
       do halo=1,nhr
         do i=max(halo-nh,0),nc+nh-(halo-1)
            ibaseref = ibase(i,halo,2)
-           fpanel(i,nc+halo) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+halo  ),ns) !north
+           fpanel(i,nc+halo) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,nc+halo  ),ns) !north
          end do
        end do
        fpanel(0   ,nc+1)=0.25_r8*(&
@@ -1509,11 +1525,10 @@ contains
          !
          ! (use code from north above)
          !
-         w = halo_interp_weight(:,:,:,2)
          do halo=1,nhr
            do i=max(halo-nh,0),nc+nh-(halo-1)
              ibaseref = ibase(i,halo,2)
-             fotherpanel(i,nc+1-halo,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+1-halo  ),ns)
+             fotherpanel(i,nc+1-halo,1) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,nc+1-halo  ),ns)
            end do
          end do
          !
@@ -1521,11 +1536,10 @@ contains
          !
          ! (use code from west above)
          !
-         w = halo_interp_weight(:,:,:,1)
          do halo=1,nhr
            do i=nc+1-nht+halo,nc+1
              ibaseref=ibase(i,halo,1)-nc
-             fotherpanel(1-halo,nc-(i-(nc+1)),1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
+             fotherpanel(1-halo,nc-(i-(nc+1)),1) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
            end do
          end do
          fotherpanel(0,nc,1)=0.25_r8*(&
@@ -1574,11 +1588,11 @@ contains
          !
          ! (use code from west above)
          !
-         w = halo_interp_weight(:,:,:,1)
          do halo=1,nhr
+           ftmp(:) = fcube(halo,:)   ! copy to a temporary
            do i=halo-nh,min(nc+nh-(halo-1),nc+1)
              ibaseref=ibase(i,halo,1)
-             fotherpanel(halo ,i,2) = matmul_w(w(:,i,halo),fcube(halo ,ibaseref:ibaseref+ns-1),ns)
+             fotherpanel(halo ,i,2) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
            end do
          end do
          !
@@ -1587,11 +1601,11 @@ contains
          !
          ! (use code from north above)
          !
-         w = halo_interp_weight(:,:,:,2)
          do halo=1,nhr
+           ftmp(:) = fcube(halo,:)   ! copy to a temporary
            do i=0,nht-halo
              ibaseref = ibase(i,halo,2)+nc
-             fotherpanel(1-i,nc+halo,2) = matmul_w(w(:,i,halo),fcube(halo,ibaseref:ibaseref+ns-1),ns) !north
+             fotherpanel(1-i,nc+halo,2) = dotproduct(hWeight(:,i,halo,2),ftmp(ibaseref:ibaseref+ns-1),ns) !north
            end do
          end do
          fotherpanel(1,nc+1,2)=0.25_r8*(&
@@ -1630,21 +1644,20 @@ contains
        !
        ! east
        !
-       w = halo_interp_weight(:,:,:,1)
        do halo=1,nhr
+         ftmp(:) = fcube(nc+halo,:)   ! copy to a temporary
          do i=halo-nh,min(nc+nh-(halo-1),nc+1)
            ibaseref=ibase(i,halo,1 )
-           fpanel(nc+halo,i) = matmul_w(w(:,i,halo),fcube(nc  +halo,ibaseref:ibaseref+ns-1),ns)
+           fpanel(nc+halo,i) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
          end do
        end do
        !
        ! north
        !
-       !     w = halo_interp_weight(:,:,:,1)
        do halo=1,nhr
          do i=halo-nh,min(nc+nh-(halo-1),nc+1)
            ibaseref=ibase(i,halo,1)
-           fpanel(i,nc+halo) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+halo  ),ns) !north
+           fpanel(i,nc+halo) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,nc+halo  ),ns) !north
          end do
        end do
        fpanel(nc+1,nc+1)=0.25_r8*(&
@@ -1697,17 +1710,15 @@ contains
          !
          ! (use north case from above and shift/reverse j-index
          !
-         w = halo_interp_weight(:,:,:,1)
          do halo=1,nhr
            do i=halo-nh,min(nc+nh-(halo-1),nc+1)
              ibaseref=ibase(i,halo,1)
-             fotherpanel (i,nc+1-halo,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
+             fotherpanel (i,nc+1-halo,1) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
            end do
          end do
          !
          ! fill in "e" on Figure above
          !
-         w = halo_interp_weight(:,:,:,2)
          do halo=1,nhr
            do i=max(halo-nh,0),nht-halo
              ibaseref=ibase(i,halo,2) +nc
@@ -1715,7 +1726,7 @@ contains
              ! fotherpanel uses indexing of main panel's projection
              ! fcube: rotated indexing
              !
-             fotherpanel (nc+halo,nc+i,1) = matmul_w(w(:,i,halo),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
+             fotherpanel (nc+halo,nc+i,1) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,nc+1-halo),ns)
            end do
          end do
          fotherpanel(nc+1,nc,1)=0.25_r8*(&
@@ -1774,25 +1785,25 @@ contains
          !
          ! (use east case from above and shift/reverse j-index
          !
-         w = halo_interp_weight(:,:,:,1)
          do halo=1,nhr
+           ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
            do i=halo-nh,min(nc+nh-(halo-1),nc+1)
              ibaseref=ibase(i,halo,1 )
-             fotherpanel(nc+1-halo,i,2) = matmul_w(w(:,i,halo),fcube(nc+1-halo,ibaseref:ibaseref+ns-1),ns)
+             fotherpanel(nc+1-halo,i,2) = dotproduct(hWeight(:,i,halo,1),ftmp(ibaseref:ibaseref+ns-1),ns)
            end do
          end do
          !
          ! fill in "n" on Figure above
          !
-         w = halo_interp_weight(:,:,:,2)
          do halo=1,nhr
+           ! ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
            do i=max(halo-nh,0),nht-halo
              ibaseref=ibase(i,halo,2) +nc
              !
              ! fotherpanel uses indexing of main panel's projection
              ! fcube: rotated indexing
              !
-             fotherpanel (nc+i,nc+halo,2) = matmul_w(w(:,i,halo),fcube(nc+1-halo,ibaseref:ibaseref+ns-1),ns)
+             fotherpanel (nc+i,nc+halo,2) = dotproduct(hWeight(:,i,halo,2),ftmp(ibaseref:ibaseref+ns-1),ns)
            end do
          end do
          fotherpanel(nc,nc+1,2)=0.25_r8*(&
