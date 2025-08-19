@@ -292,6 +292,7 @@ contains
     real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables
+    integer  :: k
     integer  :: ncol                                ! number of atmospheric columns
     integer  :: lchnk                               ! chunk identifier
     real(r8) :: qrl_mrg(pcols,pver)                 ! merged LW heating
