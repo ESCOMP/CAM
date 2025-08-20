@@ -1,0 +1,61 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+
+fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP',
+       'CS_PIA','CS_RAINPOSS','CS_RAINPROB','CS_RAINCERT','CS_RAINHARD','CS_SNOWCERT','CS_SNOWPOSS',
+       'CS_UN'
+
+ mode_defs=
+'mam4_mode1:accum:=', 'A:num_a1:N:num_c1:num_mr:+',
+  'A:so4_a1:N:so4_c1:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc:+',
+  'A:pom_a1:N:pom_c1:p-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocpho_rrtmg_c130709.nc:+',
+  'A:soa_a1:N:soa_c1:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+  'A:bc_a1:N:bc_c1:black-c:$DIN_LOC_ROOT/atm/cam/physprops/bcpho_rrtmg_c100508.nc:+',
+  'A:dst_a1:N:dst_c1:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+  'A:ncl_a1:N:ncl_c1:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam4_mode2:aitken:=', 'A:num_a2:N:num_c2:num_mr:+',
+  'A:so4_a2:N:so4_c2:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc:+',
+  'A:soa_a2:N:soa_c2:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+  'A:ncl_a2:N:ncl_c2:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc:+',
+  'A:dst_a2:N:dst_c2:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc',
+'mam4_mode3:coarse:=', 'A:num_a3:N:num_c3:num_mr:+',
+  'A:dst_a3:N:dst_c3:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+  'A:ncl_a3:N:ncl_c3:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc:+',
+  'A:so4_a3:N:so4_c3:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc',
+'mam4_mode4:primary_carbon:=', 'A:num_a4:N:num_c4:num_mr:+',
+  'A:pom_a4:N:pom_c4:p-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocpho_rrtmg_c130709.nc:+',
+  'A:bc_a4:N:bc_c4:black-c:$DIN_LOC_ROOT/atm/cam/physprops/bcpho_rrtmg_c100508.nc',
+'mam4_m1_noso4:accum:=', 'A:num_a1:N:num_c1:num_mr:+',
+  'A:pom_a1:N:pom_c1:p-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocpho_rrtmg_c130709.nc:+',
+  'A:soa_a1:N:soa_c1:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+  'A:bc_a1:N:bc_c1:black-c:$DIN_LOC_ROOT/atm/cam/physprops/bcpho_rrtmg_c100508.nc:+',
+  'A:dst_a1:N:dst_c1:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+  'A:ncl_a1:N:ncl_c1:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam4_m2_noso4:aitken:=', 'A:num_a2:N:num_c2:num_mr:+',
+  'A:soa_a2:N:soa_c2:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+  'A:ncl_a2:N:ncl_c2:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc:+',
+  'A:dst_a2:N:dst_c2:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc',
+'mam4_m3_noso4:coarse:=', 'A:num_a3:N:num_c3:num_mr:+',
+  'A:dst_a3:N:dst_c3:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+  'A:ncl_a3:N:ncl_c3:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc'
+
+rad_climate=
+  'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'N:ozone:O3', 'A:N2O:N2O', 'A:CH4:CH4', 'N:CFC11STAR:CFC11', 'A:CFC12:CFC12',
+  'M:mam4_mode1:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc',
+  'M:mam4_mode2:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
+  'M:mam4_mode3:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc',
+  'M:mam4_mode4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc',
+  'N:VOLC_MMR1:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc',
+  'N:VOLC_MMR2:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc',
+  'N:VOLC_MMR3:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc'
+rad_diag_1=
+  'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'N:ozone:O3', 'A:N2O:N2O', 'A:CH4:CH4', 'N:CFC11STAR:CFC11', 'A:CFC12:CFC12'
+rad_diag_2=
+  'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'N:ozone:O3', 'A:N2O:N2O', 'A:CH4:CH4', 'N:CFC11STAR:CFC11', 'A:CFC12:CFC12',
+  'M:mam4_m1_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc',
+  'M:mam4_m2_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
+  'M:mam4_m3_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc',
+  'M:mam4_mode4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc'
+
