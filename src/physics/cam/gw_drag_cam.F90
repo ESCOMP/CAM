@@ -1015,6 +1015,7 @@ end subroutine gw_drag_cam_oro_diag_init
 
 subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history_support, only: horiz_only
 
   logical, intent(in) ::  use_gw_rdg_beta
   logical, intent(in) ::  use_gw_rdg_gamma
@@ -1079,6 +1080,7 @@ subroutine gw_drag_cam_beres_diag_init(use_gw_convect_dp,use_gw_convect_sh, gw_d
   use physconst,       only: pi
   use ref_pres,        only: pref_edge
   use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history_support, only: horiz_only
 
   logical, intent(in)            :: use_gw_convect_dp,use_gw_convect_sh
   integer, intent(in)            :: ngwv
@@ -1140,6 +1142,7 @@ subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, pl
   use ref_pres,   only: pref_edge
   use physics_buffer,   only: pbuf_get_index
   use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history_support, only: horiz_only
 
   character(len=*), intent(in) :: file_name
   logical, intent(in) :: use_gw_movmtn_pbl
@@ -1437,9 +1440,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   if (use_gw_oro) then
      call pbuf_get_field(pbuf, sgh_idx, sgh)
-     sgharr = sgh
+     sgharr(:ncol) = sgh(:ncol)
   else
-     sgharr = 0._r8
+     sgharr(:) = 0._r8
   end if
 
   rhoi(:,:) = 0._r8
