@@ -990,7 +990,6 @@ contains
       if (present(fotherpanel)) then
         fotherpanel (1-nht:nc+nht,1-nht:0 ,1)=fcube(1-nht:nc+nht,1-nht:0 )
         do halo=1,nhr
-          ftmp(:) = fcube(:,halo)
           do i=halo-nh,nc+nh-(halo-1)
             ibaseref=ibase(i,halo,1)!ibase(i,halo,2)
             fotherpanel (i,  halo,1) = dotproduct(hWeight(:,i,halo,1),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
@@ -1321,7 +1320,6 @@ contains
         ! fill in "n" on Figure above
         !
         do halo=1,nhr
-          ftmp(:) = fcube(:,halo)
           do i=halo-nh,min(nc+nh-(halo-1),nc+1)
             ibaseref = ibase(i,halo,2)
             fotherpanel (i,halo,1) = dotproduct(hWeight(:,i,halo,2),fcube(ibaseref:ibaseref+ns-1,  halo),ns)
