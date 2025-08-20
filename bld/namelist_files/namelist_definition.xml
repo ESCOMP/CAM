@@ -1509,17 +1509,9 @@ Default: set by build-namelist.
 
 <entry id="gw_top_taper" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
-  Whether or not to apply tapering at the top of the model to reduce
-  undesired effects of gravity waves in the thermosphere/ionosphere.
-  The pressure above which tapering will be applied is set by
-  the gw_bot_taper_pressure parameter.
+Whether or not to apply tapering at the top of the model (above 0.6E-02 Pa)
+to reduce undesired effects of gravity waves in the thermosphere/ionosphere.
 Default: set by build-namelist
-</entry>
-
-<entry id="gw_bot_taper_pres" type="logical" category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Pressure above which gravity wave tapering will be applied.
-Default: set by build-namelist (default above 0.6E-02 Pa)
 </entry>
 
 <!-- Gravity Wave Ridge -->

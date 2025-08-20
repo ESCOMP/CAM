@@ -609,12 +609,13 @@ subroutine gw_drag_cam_init()
        pver_in                      = pver, &
        amIRoot                      = masterproc, &
        iulog                        = iulog, &
+       pref_edge                    = pref_edge, &
        tau_0_ubc_in                 = tau_0_ubc, &
        ktop_in                      = ktop, &
        gravit_in                    = gravit, &
        rair_in                      = rair, &
        prndl_in                     = gw_prndl, &
-       gw_qbo_hdepth_scaling_in     = gw_qbo_hdepth_scaling, &
+       qbo_hdepth_scaling_in        = gw_qbo_hdepth_scaling, &
        errmsg                       = errmsg, &
        errflg                       = errflg)
 

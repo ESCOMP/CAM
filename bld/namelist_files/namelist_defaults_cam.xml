@@ -769,7 +769,6 @@
 
 <gw_top_taper>.false.</gw_top_taper>
 <gw_top_taper waccmx="1">.true.</gw_top_taper>
-<gw_bot_taper_pres> 0.6E-02 </gw_bot_taper_pres>
 
 <pgwv>32</pgwv>
 <pgwv waccmx="1">18</pgwv>
