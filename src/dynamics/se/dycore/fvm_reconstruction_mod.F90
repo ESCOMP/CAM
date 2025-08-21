@@ -1794,7 +1794,7 @@ contains
          ! fill in "n" on Figure above
          !
          do halo=1,nhr
-           ! ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
+           ftmp(:) = fcube(nc+1-halo,:)   ! copy to a temporary
            do i=max(halo-nh,0),nht-halo
              ibaseref=ibase(i,halo,2) +nc
              !
