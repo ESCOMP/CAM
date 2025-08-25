@@ -675,6 +675,7 @@ subroutine gw_drag_cam_init()
          pref_edge            = pref_edge, &
          frontgfc             = frontgfc, &
          gw_delta_c           = gw_dc, &
+         gw_delta_c_long      = gw_dc_long, &
          pgwv                 = pgwv, &
          pgwv_long            = pgwv_long, &
          taubgnd              = taubgnd, &
