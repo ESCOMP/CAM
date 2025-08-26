@@ -40,11 +40,6 @@ module gw_drag_cam
 !
   real(r8), parameter :: unset_r8 = huge(1._r8)
 
-  ! Top level for gravity waves.
-  integer, parameter :: ktop = 1
-  ! Bottom level for frontal waves.
-  integer :: kbot_front
-
   ! Factor for SH orographic waves.
   real(r8) :: gw_oro_south_fac = 1._r8
 
@@ -201,7 +196,7 @@ module gw_drag_cam
   real(r8), pointer, dimension(:,:,:) :: rdg_angll, rdg_angllg
 
   ! State vramp
-  real(r8), pointer :: vramp(:) => null()
+  real(r8) :: vramp(pver)
 
 
 !==========================================================================
@@ -611,7 +606,6 @@ subroutine gw_drag_cam_init()
        iulog                        = iulog, &
        pref_edge                    = pref_edge, &
        tau_0_ubc_in                 = tau_0_ubc, &
-       ktop_in                      = ktop, &
        gravit_in                    = gravit, &
        rair_in                      = rair, &
        prndl_in                     = gw_prndl, &
@@ -693,7 +687,6 @@ subroutine gw_drag_cam_init()
   endif
 
   ! Initialize tapering
-  allocate(vramp(pver), stat=errflg)
   call gravity_wave_drag_top_taper_init( &
        pver = pver, &
        amIRoot = masterproc, &
@@ -1469,6 +1462,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        nm      = nm(:ncol,:pver), &
        ni      = ni(:ncol,:pver+1), &
        egwdffi = egwdffi_tot(:ncol,:pver+1), &
+       tend_q  = ptend%q(:ncol,:pver,:), &   ! to initialize tendencies.
+       tend_u  = ptend%u(:ncol,:pver), &
+       tend_v  = ptend%v(:ncol,:pver), &
+       tend_s  = ptend%s(:ncol,:pver), &
        kvt_gw  = kvt_gw(:ncol,:pver+1), &
        flx_heat= flx_heat(:ncol), &
        scheme_name = scheme_name, &
