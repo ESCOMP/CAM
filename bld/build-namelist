@@ -786,7 +786,8 @@ elsif (!$simple_phys) {
 
 
 # COSP simulator
-if ($cfg->get('cosp')) {
+my $docosp = $cfg->get('cosp');
+if ($docosp) {
     add_default($nl, 'docosp', 'val'=>'.true.');
 }
 
@@ -4422,17 +4423,31 @@ my $interpolate_output = $nl->get_value('interpolate_output');
 my @interp_output = split /,/, $interpolate_output;
 for my $i (0 .. $#interp_output) {
   if ($interp_output[$i] =~ /$TRUE/io) {
+
     # Currently, interpolated output is only supported for the SE dycore
     if ( ! ($dyn =~ /se/) ) {
       die "$ProgName - ERROR: interpolate_output is not supported for $dyn dycore";
     }
+
     # Currently, interpolated output is incompatible with regional output
     my $region = $nl->get_value('fincl${i}lonlat');
     if (defined $region) {
       die "$ProgName - ERROR: interpolate_output is currently incompatible with regional output (e.g., fincl${i}lonlat)";
     }
+
   }
 }
+
+# Currently, interpolated output does not work with the COSP fields that use
+# more than 1 mdims.
+my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
+if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
+if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
+    die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
+        " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
+        " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+}
+
 
 my $offline_drv = $cfg->get('offline_drv');
 if ($offline_drv ne 'stub') {

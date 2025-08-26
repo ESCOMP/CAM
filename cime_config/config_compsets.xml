@@ -223,16 +223,6 @@
   </compset>
 
   <compset>
-    <alias>QPC5HIST</alias>
-    <lname>HIST_CAM50_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QPC5M7</alias>
-    <lname>2000_CAM50%MAM7_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPC6HIST</alias>
     <lname>HIST_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
@@ -297,6 +287,11 @@
   <!-- ****************************** -->
   <!-- CAM tested compsets -->
   <!-- ****************************** -->
+
+  <compset>
+    <alias>FHIST_C5</alias>
+    <lname>HIST_CAM50_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>FHIST_C4</alias>

@@ -1,5 +1,206 @@
 ===============================================================
 
+Tag name: cam6_4_109
+Originator(s): eaton
+Date: 20 August 2025
+One-line Summary: testing updates
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1359
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+. Add ERI tests (branch and hybrid runs) for cam5, cam6, and cam7
+  F-compsets.  Previously only aquaplanet configurations tested. 
+
+. Add testing of interpolated output for FHISTC_LTso.  Move COSP output to
+  a separate history file that uses the native SE grid.  The COSP output of
+  fields with more than 1 mdim to an interpolated lat/lon grid doesn't
+  work.
+
+. Add check to build-namelist to prevent specifiying COSP output on an
+  interpolated history file.
+
+. Updates to cam5 testing: combine several one-off tests into a single test
+  and move most QPC5 tests to FHIST_C5.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by: cacraig
+
+List all files eliminated:
+
+cime_config/testdefs/testmods_dirs/cam/outfrq3s_ba/*
+cime_config/testdefs/testmods_dirs/cam/outfrq3s_eoyttrac/*
+cime_config/testdefs/testmods_dirs/cam/outfrq3s_ttrac/*
+cime_config/testdefs/testmods_dirs/cam/rad_diag_mam/*
+cime_config/testdefs/testmods_dirs/cam/volc/*
+cime_config/testdefs/testmods_dirs/cam/volc_usecase/*
+. remove unused testmods
+
+List all files added and what they do:
+
+bld/build-namelist
+. add check for COSP output on an interpolated file
+
+cime_config/testdefs/testmods_dirs/cam/carma_cosp_rad_diag_mam/*
+. combine testmods carma_sea_salt, outfrq3s_cosp, and rad_diag_mam into
+  carma_cosp_rad_diag_mam.
+
+cime_config/testdefs/testmods_dirs/cam/mam7/*
+. testmods for mam7 aerosols
+
+cime_config/testdefs/testmods_dirs/cam/mc_ttrac
+. testmods for mass conservation of test tracer TT_UN
+
+cime_config/testdefs/testmods_dirs/cam/outfrq3s_eri/*
+. testmods for ERI test - 3 step output frequency and set
+  check_finidat_year_consistency=.false. in user_nl_clm
+
+cime_config/testdefs/testmods_dirs/cam/sat_lcltod/*
+. testmods for satellite track and local time of day outputs
+
+List all existing files that have been modified, and describe the changes:
+
+cime_config/config_compsets.xml
+. add
+  FHIST_C5 = HIST_CAM50_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
+. remove QPC5HIST
+. remove QPC5M7
+
+cime_config/config_component.xml
+. remove unused (and untested) modifiers %CLB, %RCO2
+. remove modifier %MAM7
+
+cime_config/testdefs/testlist_cam.xml
+. add ERI tests for cam5, cam6, and cam7 F compsets:
+  replace 
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s
+  by
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  and add
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri
+
+. add cam7 test for satellite tracks and local tod
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+
+. add cam5 test for mam7 modal aerosols
+  replace
+  SMS_D_Ln9.f19_f19_mg17.QPC5M7.derecho_intel.cam-outfrq9s
+  by
+  SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7
+
+. Combine these tests and move to FHIST_C5.
+  Replace
+  ERC_D_Ln9.ne16_ne16_mg17.QPC5HIST.derecho_intel.cam-outfrq3s_usecase
+  SMS_D_Ld2.f19_f19_mg17.QPC5HIST.derecho_intel.cam-volc_usecase
+  by
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri
+
+. remove
+  SMS_D_Ln9.ne5pg3_ne5pg3_mg37.QPC5.izumi_gnu.cam-outfrq3s_ttrac
+  ERC_D_Ln9.ne5_ne5_mg37.QPC5.izumi_nag.cam-outfrq3s_ttrac
+  - test tracers and interpolated se output tested elsewhere
+
+  ERC_D_Ln9.ne5_ne5_mg37.QPC5.izumi_gnu.cam-outfrq3s_ba
+  - cam5 nochem tested by rad_diag testmods
+
+. replace
+  ERP_Ln9.ne5_ne5_mg37.QPC5.izumi_gnu.cam-outfrq9s
+  by
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s
+
+. replace
+  ERC_D_Ln9.f10_f10_mg37.QPC5.izumi_gnu.cam-rad_diag
+  by
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag
+
+. combine 3 QPC5 tests into a single FHIST_C5 test:
+  replace
+  ERC_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-carma_sea_salt
+  ERC_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_cosp
+  SMS_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-rad_diag_mam
+  by
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_nag.cam-carma_cosp_rad_diag_mam
+
+. remove
+  ERI_D_Ln18.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_eoyttrac
+  - cam5 ERI test done elsewhere
+
+. move QPC5 tests to FHIST_C5
+  replace
+  TMC_D.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_eoyttrac
+  PLB_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal0
+  PLB_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal1
+  PLB_D_Ln9.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal3
+  by
+  TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3
+
+cime_config/testdefs/testmods_dirs/cam/cosp_rad_diags/user_nl_cam
+. move the cosp output to h1, add cosp aux output to h2
+. interpolate h0 to default lat/lon grid
+
+cime_config/testdefs/testmods_dirs/cam/rad_diag/shell_commands
+. remove RUN_STARTDATE and unsetting of use case
+
+cime_config/testdefs/testmods_dirs/cam/rad_diag/user_nl_cam
+cime_config/testdefs/testmods_dirs/cam/rad_diag/user_nl_clm
+. change nhtfrq to 9
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: DIFF)
+ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: DIFF)
+ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF)
+SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7 (Overall: DIFF)
+- new tests - no baselines
+
+SMS_D_Ln9_P1280x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL)
+- pre-existing failure due to build-namelist error requiring CLM/CTSM external update.
+
+derecho/nvhpc/aux_cam: PASS
+
+izumi/nag/aux_cam:
+
+ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF)
+- changed test definition to include interpolated output on h0 and move the
+  cosp output to h1
+
+PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-ttrac_loadbal0 (Overall: DIFF)
+PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-ttrac_loadbal1 (Overall: DIFF)
+PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-ttrac_loadbal3 (Overall: DIFF)
+TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: DIFF)
+
+izumi/gnu/aux_cam:
+
+ERC_D_Ln9.f10_f10_mg37.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: DIFF)
+ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: DIFF)
+ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF)
+ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s (Overall: DIFF)
+- new tests - no baselines
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers: None.  Diffs all due either to lack of
+  baselines for new tests or to changes in the test definition.
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_108
 Originator(s): peverwhee
 Date: August 19, 2025
