@@ -12,7 +12,6 @@ module gw_drag_cam
   use cam_history,    only: outfld
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
-  use error_messages, only: alloc_err
 
   use ref_pres,       only: do_molec_diff, nbot_molec
   use physconst,      only: cpair
@@ -21,8 +20,6 @@ module gw_drag_cam
   use phys_control,   only: use_gw_oro, use_gw_front, use_gw_front_igw, &
                             use_gw_convect_dp, use_gw_convect_sh,       &
                             use_simple_phys, use_gw_movmtn_pbl, phys_getopts
-
-  use physics_buffer, only: pbuf_get_field
 
   implicit none
   private
@@ -428,8 +425,6 @@ subroutine gw_drag_cam_init()
 
   use cam_history,      only: addfld, add_default, horiz_only
   use cam_history,      only: register_vector_field
-  use air_composition,  only: cpairv
-  use interpolate_data, only: lininterp
   use phys_control,     only: phys_getopts
   use physics_buffer,   only: pbuf_get_index
   use constituents,     only: cnst_get_ind
@@ -465,9 +460,6 @@ subroutine gw_drag_cam_init()
   integer          :: i, l, k, lchnk
   character(len=1) :: cn
 
-  ! Index for levels at specific pressures.
-  integer :: kfront
-
   ! output tendencies and state variables for CAM4 temperature,
   ! water vapor, cloud ice and cloud liquid budgets.
   logical :: history_budget
@@ -482,11 +474,8 @@ subroutine gw_drag_cam_init()
   integer            :: grid_id
   character(len=8)   :: dim1name, dim2name
   logical            :: found
-  logical            :: found_rdggm
   character(len=cl) :: bnd_rdggm_loc   ! filepath of topo file on local disk
 
-  ! Allow reporting of error messages.
-  character(len=128) :: errstring
   character(len=*), parameter :: sub = 'gw_init'
 
   ! temporary workaround for restart w/ ridge scheme
@@ -1009,8 +998,6 @@ subroutine gw_drag_cam_rdg_diag_init(use_gw_rdg_beta,use_gw_rdg_gamma)
   logical, intent(in) ::  use_gw_rdg_beta
   logical, intent(in) ::  use_gw_rdg_gamma
 
-  character(len=1) :: cn
-  integer          :: i
   logical :: history_waccm
 
   ! Used to decide whether temperature tendencies should be output.
@@ -1139,16 +1126,6 @@ subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, pl
   real(r8), intent(in) :: plaunch
   integer, intent(in)  :: source
 
-  ! PIO variable ids and error code.
-  integer :: mfccid, uhid, hdid, stat
-
-  ! Full path to gw_drag_file.
-  character(len=cl) :: file_path
-  character(len=cl) :: msg
-
-  character(len=512):: errormsg
-  integer           :: errorflg
-
   if (use_gw_movmtn_pbl) then
      call addfld ('VORT4GW', (/ 'lev' /), 'A', 's-1', &
           'Vorticity')
@@ -1224,7 +1201,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use physics_types,   only: physics_state_copy
   use constituents,    only: cnst_type
   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
   use camsrfexch,      only: cam_in_t
@@ -1307,12 +1284,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! sum from the two types of spectral GW
   real(r8) :: egwdffi_tot(pcols,pver+1)
 
-  ! Momentum fluxes used by fixer.
-  real(r8) :: um_flux(state%ncol), vm_flux(state%ncol)
-
-  ! Energy change used by fixer.
-  real(r8) :: de(state%ncol)
-
   ! Which constituents are being affected by diffusion.
   logical  :: lq(pcnst)
 
@@ -1322,14 +1293,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: nm(pcols, pver)
   real(r8) :: ni(pcols, pver+1)
 
-  ! Temporaries for diagnostic
+  ! Temporaries for diagnostic outputs.
   real(r8) :: taurx(state%ncol, pver + 1) ! wave stress in zonal direction
   real(r8) :: taury(state%ncol, pver + 1) ! wave stress in meridional direction
   real(r8) :: tauardgx(state%ncol, pver + 1) ! ridge based momentum profile
   real(r8) :: tauardgy(state%ncol, pver + 1) ! ridge based momentum profile
-  real(r8) :: utrdg(state%ncol, pver) ! tendency accummulators
-  real(r8) :: vtrdg(state%ncol, pver)
-  real(r8) :: ttrdg(state%ncol, pver)
   real(r8) :: tau0x(pcols), tau0y(pcols)
   real(r8) :: taua(pcols, pver+1), tau0(pcols, pver+1)
   real(r8) :: gwut0(pcols, pver)
@@ -1343,6 +1311,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: utend3(pcols, pver)
   real(r8) :: utend4(pcols, pver)
   real(r8) :: utend5(pcols, pver)
+  ! Temporaries for moving mountain diagnostic outputs.
+  real(r8) :: usteer(pcols)
+  real(r8) :: vsteer(pcols)
+  real(r8) :: CS(pcols)
+  real(r8) :: steer_level(pcols)
+  real(r8) :: xpwp_src(pcols)
 
   character(len=64)               :: scheme_name
   character(len=512)              :: errmsg
@@ -1390,13 +1364,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld ('FRONTGFA', frontga, pcols, lchnk)
   end if
 
+  ttend_dp_arr(:,:) = 0._r8
   if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
     ! Set up heating
     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
-    ttend_dp_arr(:,:) = 0._r8
     ttend_dp_arr(:ncol, :pver) = ttend_dp(:ncol, :pver)
-  else
-    ttend_dp_arr(:,:) = 0._r8
   endif
 
   if (use_gw_movmtn_pbl) then
@@ -1406,15 +1378,15 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call pbuf_get_field(pbuf, wpthlp_clubb_gw_idx, wpthlp_clubb_gw)
      call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
      call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+     ! Coupling from SE dycore only.
      call pbuf_get_field(pbuf, vort4gw_idx, vort4gw)
   end if
 
+  ttend_sh_arr(:,:) = 0._r8
   if (use_gw_convect_sh) then
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_sh_idx, ttend_sh)
      ttend_sh_arr(:ncol,:pver) = ttend_sh(:ncol,:pver)
-  else
-     ttend_sh_arr(:,:) = 0._r8
   endif
 
   if (use_gw_oro) then
@@ -1472,6 +1444,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     tau0(:,:) = 0._r8
     gwut0(:,:) = 0._r8
     hdepth(:) = 0._r8
+    usteer(:) = 0._r8
+    vsteer(:) = 0._r8
+    CS(:) = 0._r8
+    steer_level(:) = 0._r8
+    xpwp_src(:) = 0._r8
 
     call gravity_wave_drag_moving_mountain_run( &
       ncol                = ncol, &
@@ -1525,6 +1502,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dttke               = dttke(:ncol,:pver), &
       tau0                = tau0(:ncol,:pver+1), &
       gwut0               = gwut0(:ncol,:pver), &
+      usteer              = usteer(:ncol), &
+      vsteer              = vsteer(:ncol), &
+      CS                  = CS(:ncol), &
+      steer_level         = steer_level(:ncol), &
+      xpwp_src            = xpwp_src(:ncol), &
       errmsg              = errmsg, &
       errflg              = errflg)
 
@@ -1552,6 +1534,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk)
     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk)
     call outfld('VORT4GW', vort4gw, pcols, lchnk)
+
+    call outfld('UCELL_MOVMTN', usteer, pcols, lchnk)
+    call outfld('VCELL_MOVMTN', vsteer, pcols, lchnk)
+    call outfld('CS_MOVMTN', CS, pcols, lchnk)
+    call outfld('STEER_LEVEL_MOVMTN', steer_level, pcols, lchnk )
+    call outfld('XPWP_SRC_MOVMTN', xpwp_src, pcols, lchnk )
   end if
 
   ! Convective gravity waves (Beres scheme, deep).
@@ -1979,17 +1967,17 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       taury                   = taury(:ncol,:pver+1), &
       tauardgx                = tauardgx(:ncol,:pver+1), &
       tauardgy                = tauardgy(:ncol,:pver+1), &
-      utrdg                   = utrdg(:ncol,:pver), &
-      vtrdg                   = vtrdg(:ncol,:pver), &
-      ttrdg                   = ttrdg(:ncol,:pver), &
+      utgw                    = utgw(:ncol,:pver), &
+      vtgw                    = vtgw(:ncol,:pver), &
+      ttgw                    = ttgw(:ncol,:pver), &
       errmsg                  = errmsg, &
       errflg                  = errflg)
 
      call outfld('TAUGWX', taurx(:,pver+1), ncol, lchnk)
      call outfld('TAUGWY', taury(:,pver+1), ncol, lchnk)
-     call outfld('UTGWORO', utrdg,  ncol, lchnk)
-     call outfld('VTGWORO', vtrdg,  ncol, lchnk)
-     call outfld('TTGWORO', ttrdg,  ncol, lchnk)
+     call outfld('UTGWORO', utgw, pcols, lchnk)
+     call outfld('VTGWORO', vtgw, pcols, lchnk)
+     call outfld('TTGWORO', ttgw, pcols, lchnk)
 
      call outfld('TAUARDGBETAX', tauardgx, ncol, lchnk)
      call outfld('TAUARDGBETAY', tauardgy, ncol, lchnk)
@@ -2052,17 +2040,17 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       taury                   = taury(:ncol,:pver+1), &
       tauardgx                = tauardgx(:ncol,:pver+1), &
       tauardgy                = tauardgy(:ncol,:pver+1), &
-      utrdg                   = utrdg(:ncol,:pver), &
-      vtrdg                   = vtrdg(:ncol,:pver), &
-      ttrdg                   = ttrdg(:ncol,:pver), &
+      utgw                    = utgw(:ncol,:pver), &
+      vtgw                    = vtgw(:ncol,:pver), &
+      ttgw                    = ttgw(:ncol,:pver), &
       errmsg                  = errmsg, &
       errflg                  = errflg)
 
      call outfld('TAURDGGMX', taurx(:,pver+1), ncol, lchnk)
      call outfld('TAURDGGMY', taury(:,pver+1), ncol, lchnk)
-     call outfld('UTRDGGM', utrdg,  ncol, lchnk)
-     call outfld('VTRDGGM', vtrdg,  ncol, lchnk)
-     call outfld('TTGWORO', ttrdg,  ncol, lchnk)
+     call outfld('UTRDGGM', utgw, pcols, lchnk)
+     call outfld('VTRDGGM', vtgw, pcols, lchnk)
+     call outfld('TTGWORO', ttgw, pcols, lchnk)
 
      call outfld('TAUARDGGAMMAX', tauardgx, ncol, lchnk)
      call outfld('TAUARDGGAMMAY', tauardgy, ncol, lchnk)
