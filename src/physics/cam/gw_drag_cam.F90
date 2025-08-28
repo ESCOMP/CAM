@@ -158,11 +158,6 @@ module gw_drag_cam
   integer :: pgwv_long = -1
   real(r8) :: gw_dc_long = unset_r8
 
-  ! Temperature change due to deep convection.
-  real(r8), pointer :: ttend_dp(:,:)
-  ! Temperature change due to shallow convection.
-  real(r8), pointer :: ttend_sh(:,:)
-
   !  New couplings from CLUBB
   real(r8), pointer :: ttend_clubb(:,:)
   real(r8), pointer :: thlp2_clubb_gw(:,:)
@@ -1266,25 +1261,12 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
-  integer :: istat
 
-  integer :: i, k                   ! loop indices
-
-  integer :: m                      ! dummy integers
-  real(r8) :: qtgw(state%ncol,pver,pcnst) ! constituents tendencies
-
-  ! gravity wave wind tendency for each wave
-  real(r8), allocatable :: gwut(:,:,:)
+  integer :: i, k, m
 
   ! Temperature tendencies from diffusion and kinetic energy.
-  real(r8) :: dttdf(state%ncol,pver)
-  real(r8) :: dttke(state%ncol,pver)
-
-  ! Wave phase speeds for each column
-  real(r8), allocatable :: phase_speeds(:,:)
-
-  ! Efficiency for a gravity wave source.
-  real(r8) :: effgw(state%ncol)
+  real(r8) :: dttdf(pcols,pver)
+  real(r8) :: dttke(pcols,pver)
 
   ! pbuf fields
   ! Molecular diffusivity
@@ -1307,26 +1289,23 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Convective source heating depth.
   ! heating depth
-  real(r8) :: hdepth(state%ncol)
+  real(r8) :: hdepth(pcols)
   ! maximum heating rate
-  real(r8) :: maxq0(state%ncol)
+  real(r8) :: maxq0(pcols)
 
   ! Temporaries for output from individual gw schemes.
   real(r8) :: ubi(state%ncol, pver+1)! projection of wind at interfaces
   real(r8) :: ubm(state%ncol, pver)  ! projection of wind at midpoints
-  real(r8) :: xv(state%ncol)        ! unit vector of source wind (x)
-  real(r8) :: yv(state%ncol)        ! unit vector of source wind (y)
-  real(r8) :: ttgw(state%ncol, pver) ! temperature tendency
-  real(r8) :: utgw(state%ncol, pver) ! zonal wind tendency
-  real(r8) :: vtgw(state%ncol, pver) ! meridional wind tendency
-
-  ! Scale sgh to account for landfrac.
-  real(r8) :: sgh_scaled(state%ncol)
+  real(r8) :: xv(state%ncol)         ! unit vector of source wind (x)
+  real(r8) :: yv(state%ncol)         ! unit vector of source wind (y)
+  real(r8) :: ttgw(pcols, pver) ! temperature tendency
+  real(r8) :: utgw(pcols, pver) ! zonal wind tendency
+  real(r8) :: vtgw(pcols, pver) ! meridional wind tendency
+  real(r8) :: qtgw(pcols,pver,pcnst) ! constituents tendencies
 
   ! effective gw diffusivity at interfaces needed for output
-  real(r8) :: egwdffi(state%ncol,pver+1)
   ! sum from the two types of spectral GW
-  real(r8) :: egwdffi_tot(state%ncol,pver+1)
+  real(r8) :: egwdffi_tot(pcols,pver+1)
 
   ! Momentum fluxes used by fixer.
   real(r8) :: um_flux(state%ncol), vm_flux(state%ncol)
@@ -1369,6 +1348,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   character(len=512)              :: errmsg
   integer                         :: errflg
 
+  ! Temperature change due to deep convection.
+  real(r8), pointer :: ttend_dp(:,:)
+  ! Temperature change due to shallow convection.
+  real(r8), pointer :: ttend_sh(:,:)
+
   real(r8) :: ttend_dp_arr(pcols, pver)
   real(r8) :: ttend_sh_arr(pcols, pver)
 
@@ -1386,7 +1370,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !--------------------------------------------------------
      ! Initialize and calculate local molecular diffusivity
      !--------------------------------------------------------
-     call pbuf_get_field(pbuf, kvt_idx, kvt_in)  ! kvtt(1:pcols,1:pver+1)
+     call pbuf_get_field(pbuf, kvt_idx, kvt_in)  ! kvt_in(1:pcols,1:pver+1)
      kvtt = kvt_in(:ncol,:)
   else
      kvtt = 0._r8
@@ -1409,6 +1393,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
     ! Set up heating
     call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+    ttend_dp_arr(:,:) = 0._r8
     ttend_dp_arr(:ncol, :pver) = ttend_dp(:ncol, :pver)
   else
     ttend_dp_arr(:,:) = 0._r8
@@ -1472,6 +1457,13 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        errmsg  = errmsg, &
        errflg  = errflg)
 
+  dttdf(:,:) = 0._r8
+  dttke(:,:) = 0._r8
+  utgw(:,:) = 0._r8
+  vtgw(:,:) = 0._r8
+  qtgw(:,:) = 0._r8
+  ttgw(:,:) = 0._r8
+
   ! Call the CCPPized subroutine for the moving mountain gravity waves.
   if (use_gw_movmtn_pbl) then
     call outfld('U_MOVMTN_IN', state1%u, ncol, lchnk)
@@ -1479,6 +1471,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
     tau0(:,:) = 0._r8
     gwut0(:,:) = 0._r8
+    hdepth(:) = 0._r8
 
     call gravity_wave_drag_moving_mountain_run( &
       ncol                = ncol, &
@@ -1549,9 +1542,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
     call outfld('TAU_MOVMTN', tau0, ncol, lchnk)
     call outfld('GWUT_MOVMTN', gwut0, ncol, lchnk)
-    call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
-    call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
-    call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
+    call outfld('VTGW_MOVMTN', vtgw, pcols, lchnk)
+    call outfld('UTGW_MOVMTN', utgw, pcols, lchnk)
+    call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, pcols, lchnk)
     call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
@@ -1567,6 +1560,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     taucd_east(:,:) = 0._r8
     taucd_south(:,:) = 0._r8
     taucd_north(:,:) = 0._r8
+    hdepth(:) = 0._r8
+    maxq0(:) = 0._r8
 
     call gravity_wave_drag_convection_deep_run( &
           ncol            = ncol, &
@@ -1619,14 +1614,14 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           errmsg          = errmsg, &
           errflg          = errflg)
 
-    call outfld(trim(beres_dp_pf) // 'TTGWSDF', dttdf / cpair, ncol, lchnk)
-    call outfld(trim(beres_dp_pf) // 'TTGWSKE', dttke / cpair, ncol, lchnk)
+    call outfld(trim(beres_dp_pf) // 'TTGWSDF', dttdf / cpair, pcols, lchnk)
+    call outfld(trim(beres_dp_pf) // 'TTGWSKE', dttke / cpair, pcols, lchnk)
 
     ! Simple output fields written to history file.
     ! Total wind tendencies.
-    call outfld (trim(beres_dp_pf)//'UTGWSPEC', utgw , ncol, lchnk)
-    call outfld (trim(beres_dp_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
-    call outfld (trim(beres_dp_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
+    call outfld (trim(beres_dp_pf)//'UTGWSPEC', utgw, pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'VTGWSPEC', vtgw, pcols, lchnk)
+    call outfld (trim(beres_dp_pf)//'TTGWSPEC', ttgw, pcols, lchnk)
 
     ! Tau in each direction.
     call outfld (trim(beres_dp_pf)//'TAUE', taucd_east,  pcols, lchnk)
@@ -1636,13 +1631,16 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld (trim(beres_dp_pf)//'TAUNET', taucd_east + taucd_west, pcols, lchnk)
 
     ! Diagnostic outputs (convert hdepth to km).
-    call outfld('NETDT', ttend_dp, pcols, lchnk)
-    call outfld('HDEPTH', hdepth/1000._r8, ncol, lchnk)
-    call outfld('MAXQ0', maxq0, ncol, lchnk)
+    call outfld('NETDT', ttend_dp_arr, pcols, lchnk)
+    call outfld('HDEPTH', hdepth/1000._r8, pcols, lchnk)
+    call outfld('MAXQ0', maxq0, pcols, lchnk)
   end if
 
   ! Convective gravity waves (Beres scheme, shallow).
   if (use_gw_convect_sh) then
+    hdepth(:) = 0._r8
+    maxq0(:) = 0._r8
+
     call gravity_wave_drag_convection_shallow_run( &
           ncol            = ncol, &
           pver            = pver, &
@@ -1690,19 +1688,19 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           errmsg          = errmsg, &
           errflg          = errflg)
 
-    call outfld(trim(beres_sh_pf) // 'TTGWSDF', dttdf / cpair, ncol, lchnk)
-    call outfld(trim(beres_sh_pf) // 'TTGWSKE', dttke / cpair, ncol, lchnk)
+    call outfld(trim(beres_sh_pf) // 'TTGWSDF', dttdf / cpair, pcols, lchnk)
+    call outfld(trim(beres_sh_pf) // 'TTGWSKE', dttke / cpair, pcols, lchnk)
 
     ! Simple output fields written to history file.
     ! Total wind tendencies.
-    call outfld (trim(beres_sh_pf)//'UTGWSPEC', utgw , ncol, lchnk)
-    call outfld (trim(beres_sh_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
-    call outfld (trim(beres_sh_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
+    call outfld (trim(beres_sh_pf)//'UTGWSPEC', utgw, pcols, lchnk)
+    call outfld (trim(beres_sh_pf)//'VTGWSPEC', vtgw, pcols, lchnk)
+    call outfld (trim(beres_sh_pf)//'TTGWSPEC', ttgw, pcols, lchnk)
 
     ! Diagnostic outputs (convert hdepth to km).
     call outfld('SNETDT',  ttend_sh, pcols, lchnk)
-    call outfld('SHDEPTH', hdepth/1000._r8, ncol, lchnk)
-    call outfld('SMAXQ0',  maxq0, ncol, lchnk)
+    call outfld('SHDEPTH', hdepth/1000._r8, pcols, lchnk)
+    call outfld('SMAXQ0',  maxq0, pcols, lchnk)
   end if
 
   ! Call the CCPPized subroutine
@@ -1784,14 +1782,14 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld(trim(cm_pf)//'UTEND5', utend5, pcols, lchnk)
 
     ! Output temperature tendencies due to diffusion and from kinetic energy.
-    call outfld(trim(cm_pf)//'TTGWSDF', dttdf / cpair, ncol, lchnk)
-    call outfld(trim(cm_pf)//'TTGWSKE', dttke / cpair, ncol, lchnk)
+    call outfld(trim(cm_pf)//'TTGWSDF', dttdf / cpair, pcols, lchnk)
+    call outfld(trim(cm_pf)//'TTGWSKE', dttke / cpair, pcols, lchnk)
 
     ! Simple output fields written to history file.
     ! Total wind tendencies.
-    call outfld (trim(cm_pf)//'UTGWSPEC', utgw , ncol, lchnk)
-    call outfld (trim(cm_pf)//'VTGWSPEC', vtgw , ncol, lchnk)
-    call outfld (trim(cm_pf)//'TTGWSPEC', ttgw , ncol, lchnk)
+    call outfld (trim(cm_pf)//'UTGWSPEC', utgw, pcols, lchnk)
+    call outfld (trim(cm_pf)//'VTGWSPEC', vtgw, pcols, lchnk)
+    call outfld (trim(cm_pf)//'TTGWSPEC', ttgw, pcols, lchnk)
 
     ! Tau in each direction.
     call outfld (trim(cm_pf)//'TAUE', taucd_east,  pcols, lchnk)
@@ -1914,11 +1912,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
     ! Write output fields to history file
     call outfld('TAUAORO', taua,  ncol, lchnk)
-    call outfld('UTGWORO', utgw,  ncol, lchnk)
-    call outfld('VTGWORO', vtgw,  ncol, lchnk)
-    call outfld('TTGWORO', ttgw,  ncol, lchnk)
-    call outfld('TTGWSDFORO', dttdf / cpair,  ncol, lchnk)
-    call outfld('TTGWSKEORO', dttke / cpair,  ncol, lchnk)
+    call outfld('UTGWORO', utgw, pcols, lchnk)
+    call outfld('VTGWORO', vtgw, pcols, lchnk)
+    call outfld('TTGWORO', ttgw, pcols, lchnk)
+    call outfld('TTGWSDFORO', dttdf / cpair,  pcols, lchnk)
+    call outfld('TTGWSKEORO', dttke / cpair,  pcols, lchnk)
     call outfld('TAUGWX', tau0x, ncol, lchnk)
     call outfld('TAUGWY', tau0y, ncol, lchnk)
   endif
@@ -2088,7 +2086,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end do
 
   ! Write totals to history file.
-  call outfld('EKGW', egwdffi_tot , ncol, lchnk)
+  call outfld('EKGW', egwdffi_tot , pcols, lchnk)
   call outfld('TTGW', ptend%s/cpairv(:,:,lchnk),  pcols, lchnk)
 
   call outfld('UTGW_TOTAL', ptend%u, pcols, lchnk)
@@ -2097,7 +2095,6 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   call outfld('QTGW', ptend%q(:,:,1), pcols, lchnk)
   call outfld('CLDLIQTGW', ptend%q(:,:,ixcldliq), pcols, lchnk)
   call outfld('CLDICETGW', ptend%q(:,:,ixcldice), pcols, lchnk)
-
 
 end subroutine gw_drag_cam_tend
 
