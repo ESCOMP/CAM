@@ -802,6 +802,11 @@ subroutine gw_drag_cam_init()
                  1, prdg, begchunk, endchunk, rdg_mxdisg, found, gridname='physgrid')
       if (.not. found) call endrun(sub//': ERROR: MXDIS not found on bnd_rdggm')
 
+      ! Apply negative value correction for gamma ridge maximum displacement
+      where (rdg_mxdisg < 0._r8)
+        rdg_mxdisg = 0._r8
+      end where
+
       call infld('ANIXY', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
                  1, prdg, begchunk, endchunk, rdg_anixyg, found, gridname='physgrid')
       if (.not. found) call endrun(sub//': ERROR: ANIXY not found on bnd_rdggm')
@@ -1433,7 +1438,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   dttke(:,:) = 0._r8
   utgw(:,:) = 0._r8
   vtgw(:,:) = 0._r8
-  qtgw(:,:) = 0._r8
+  qtgw(:,:,:) = 0._r8
   ttgw(:,:) = 0._r8
 
   ! Call the CCPPized subroutine for the moving mountain gravity waves.
