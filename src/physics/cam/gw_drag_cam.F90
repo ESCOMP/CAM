@@ -97,9 +97,6 @@ module gw_drag_cam
   ! should actually use it.)
   logical :: tau_0_ubc = .false.
 
-  ! Whether or not to limit tau *before* applying any efficiency factors.
-  logical :: gw_limit_tau_without_eff = .false.
-
   ! Whether or not to apply tendency max
   logical :: gw_apply_tndmax = .true.
 
@@ -217,7 +214,7 @@ subroutine gw_drag_cam_readnl(nlfile)
        rdg_beta_cd_llb, trpd_leewv_rdg_beta, &
        use_gw_rdg_gamma, n_rdg_gamma, effgw_rdg_gamma, effgw_rdg_gamma_max, &
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
-       gw_oro_south_fac, gw_limit_tau_without_eff, &
+       gw_oro_south_fac, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
        gw_top_taper, front_gaussian_width, alpha_gw_movmtn, use_gw_rdg_resid, &
        effgw_rdg_resid, effgw_movmtn_pbl, movmtn_source, movmtn_psteer, &
@@ -307,8 +304,6 @@ subroutine gw_drag_cam_readnl(nlfile)
 
   call mpi_bcast(gw_polar_taper, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_polar_taper")
-  call mpi_bcast(gw_limit_tau_without_eff, 1, mpi_logical, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_limit_tau_without_eff")
   call mpi_bcast(gw_apply_tndmax, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_apply_tndmax")
 
@@ -639,7 +634,6 @@ subroutine gw_drag_cam_init()
     if(errflg /= 0) call endrun(errmsg)
   endif
 
-  ! note: gw_limit_tau_without_eff appears unused.
   if(errflg /= 0) then
     call endrun("gw_drag_init: " // errmsg)
   endif

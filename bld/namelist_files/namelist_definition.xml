@@ -1270,13 +1270,6 @@ In the low-top model, this helps to conserve momentum and produce a QBO.
 Default: set by build-namelist.
 </entry>
 
-<entry id="gw_limit_tau_without_eff" type="logical" category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Apply limiters to tau before applying the efficiency factor, rather than
-afterward.
-Default: set by build-namelist
-</entry>
-
 <entry id="gw_apply_tndmax" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Apply limiter on maximum wind tendency from stress divergence in gravity wave drag scheme.

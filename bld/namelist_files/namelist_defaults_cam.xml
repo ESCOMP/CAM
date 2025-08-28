@@ -834,16 +834,6 @@
 <gw_lndscl_sgh chem="trop_strat_mam5_vbsext">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa5">.false.</gw_lndscl_sgh>
-<gw_limit_tau_without_eff               >.false.</gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff waccm_phys="1">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff model_top="ht">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="geoschem_mam4">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam4_vbs">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff carma="trop_strat_soa1">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff carma="trop_strat_soa5">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                          >.true. </gw_apply_tndmax>
 <gw_apply_tndmax chem="geoschem_mam4"     >.false.</gw_apply_tndmax>
 <gw_apply_tndmax phys="cam7"              >.false.</gw_apply_tndmax>
