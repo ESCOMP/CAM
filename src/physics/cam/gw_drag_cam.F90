@@ -446,7 +446,7 @@ subroutine gw_drag_cam_init()
   use gravity_wave_drag_orographic,      only: gravity_wave_drag_orographic_init
   use gravity_wave_drag_top_taper,       only: gravity_wave_drag_top_taper_init
   use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_init
-  use gravity_wave_drag_ridge,           only: gw_rdg_init
+  use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_init
   use gravity_wave_drag_moving_mountain, only: gravity_wave_drag_moving_mountain_init
   use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_init
 
@@ -815,12 +815,13 @@ subroutine gw_drag_cam_init()
   ! Call the underlying ridge scheme initialization to populate namelist variables
   ! into module
   if(use_gw_rdg_beta .or. use_gw_rdg_gamma) then
-    call gw_rdg_init( &
+    call gravity_wave_drag_ridge_init( &
+      ncol                   = ncol, &
+      use_gw_rdg_beta_in     = use_gw_rdg_beta, &
+      use_gw_rdg_gamma_in    = use_gw_rdg_gamma, &
       gw_delta_c             = gw_dc, &
       effgw_rdg_beta         = effgw_rdg_beta, &
       effgw_rdg_gamma        = effgw_rdg_gamma, &
-      use_gw_rdg_beta_in     = use_gw_rdg_beta, &
-      use_gw_rdg_gamma_in    = use_gw_rdg_gamma, &
       gw_rdg_do_divstream_nl = gw_rdg_do_divstream, &
       gw_rdg_C_BetaMax_DS_nl = gw_rdg_C_BetaMax_DS, &
       gw_rdg_C_GammaMax_nl   = gw_rdg_C_GammaMax, &
@@ -838,7 +839,9 @@ subroutine gw_drag_cam_init()
       gw_rdg_do_vdiff_nl     = gw_rdg_do_vdiff, &
       errmsg = errmsg, &
       errflg = errflg)
-    if (errflg /= 0) return
+    if (errflg /= 0) then
+      call endrun(errmsg)
+    endif
   endif
 
   !--------------------------------------------------
@@ -1921,6 +1924,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       ncol                    = ncol, &
       pver                    = pver, &
       pcnst                   = pcnst, &
+      nrdg                    = prdg, &
       dt                      = dt, &
       pi                      = pi, &
       cpair                   = cpair, &
@@ -1996,6 +2000,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       ncol                    = ncol, &
       pver                    = pver, &
       pcnst                   = pcnst, &
+      nrdg                    = prdg, &
       dt                      = dt, &
       pi                      = pi, &
       cpair                   = cpair, &
