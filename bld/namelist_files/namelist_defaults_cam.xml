@@ -575,6 +575,12 @@
 <rrtmgp_coefs_lw_file>src/physics/rrtmgp/data/rrtmgp-gas-lw-g128.nc</rrtmgp_coefs_lw_file>
 <rrtmgp_coefs_sw_file>src/physics/rrtmgp/data/rrtmgp-gas-sw-g112.nc</rrtmgp_coefs_sw_file>
 
+<!-- Pressure top for blending region for radiation heating -->
+<p_top_for_equil_rad>                  0.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  waccmx="1" >     1.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  waccm_phys="1" > 1.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  rad="rrtmgp">    2.D0 </p_top_for_equil_rad>
+
 <!-- CAM-RT absorptivity/emissivity lookup table -->
 <absems_data rad="camrt">atm/cam/rad/abs_ems_factors_fastvx.c030508.nc</absems_data>
 

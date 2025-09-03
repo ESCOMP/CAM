@@ -12,13 +12,6 @@
         fxtag = carma4_09
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
-[submodule "pumas"]
-	path = src/physics/pumas
-	url = https://github.com/ESCOMP/PUMAS
-        fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.39
-        fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
-
 [submodule "pumas-frozen"]
 	path = src/physics/pumas-frozen
 	url = https://github.com/ESCOMP/PUMAS
@@ -36,9 +29,17 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_14_001
+        fxtag = atmos_phys0_16_001
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
+
+[submodule "cam-sima"]
+        path = src/utils/cam-sima
+        url = https://github.com/ESCOMP/CAM-SIMA.git
+        fxrequired = AlwaysRequired
+        fxsparse = ../.sima_phys_utils_sparse_checkout
+        fxtag = sima0_07_000
+        fxDONOTUSEurl = https://github.com/ESCOMP/CAM-SIMA.git
 
 [submodule "fv3"]
 	path = src/dynamics/fv3

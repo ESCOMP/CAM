@@ -1,6 +1,13 @@
 mfilt=1,1,1,1,1,1
 ndens=1,1,1,1,1,1
-nhtfrq=3,3,3,3,3,3
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+
+history_carma=.true.
+carma_do_fixedinit=.false.
+
+fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP','CS_PIA',
+       'CS_RAINPOSS','CS_RAINPROB','CS_RAINCERT','CS_RAINHARD','CS_SNOWCERT','CS_SNOWPOSS'
 
 mode_defs=
 'mam3_mode1:accum:=', 'A:num_a1:N:num_c1:num_mr:+',
@@ -40,4 +47,3 @@ rad_diag_1=
  'M:mam3_m1_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc',
  'M:mam3_m2_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
  'M:mam3_m3_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc'
-

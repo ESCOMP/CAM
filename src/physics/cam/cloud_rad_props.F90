@@ -21,6 +21,11 @@ use interpolate_data, only: interp_type, lininterp_init, lininterp, &
 
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
+use rrtmgp_cloud_optics_setup, only: g_mu_ccpp => g_mu, g_lambda_ccpp => g_lambda, g_d_eff_ccpp => g_d_eff
+use rrtmgp_cloud_optics_setup, only: abs_lw_liq_ccpp => abs_lw_liq, abs_lw_ice_ccpp => abs_lw_ice
+use rrtmgp_cloud_optics_setup, only: ext_sw_liq_ccpp => ext_sw_liq, ext_sw_ice_ccpp => ext_sw_ice
+use rrtmgp_cloud_optics_setup, only: ssa_sw_liq_ccpp => ssa_sw_liq, ssa_sw_ice_ccpp => ssa_sw_ice
+use rrtmgp_cloud_optics_setup, only: asm_sw_liq_ccpp => asm_sw_liq, asm_sw_ice_ccpp => asm_sw_ice
 
 
 implicit none
@@ -78,26 +83,17 @@ real(r8), parameter :: tiny = 1.e-80_r8
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
-                  abs_lw_liq_out, abs_lw_ice_out, g_mu_out, g_lambda_out, &
-                  g_d_eff_out, tiny_out)
+subroutine cloud_rad_props_init(tiny_out)
    use netcdf
-   use spmd_utils,     only: masterproc
-   use ioFileMod,      only: getfil
-   use error_messages, only: handle_ncerr
-   use cam_abortutils, only: handle_allocate_error
+   use spmd_utils,                only: masterproc
+   use ioFileMod,                 only: getfil
+   use error_messages,            only: handle_ncerr
+   use cam_abortutils,            only: handle_allocate_error
+   use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
 #if ( defined SPMD )
    use mpishorthand
 #endif
-   integer, intent(out) :: nmu_out
-   integer, intent(out) :: nlambda_out
-   integer, intent(out) :: n_g_d_out
-   real(r8), allocatable, intent(out) :: abs_lw_liq_out(:,:,:)
-   real(r8), allocatable, intent(out) :: abs_lw_ice_out(:,:)
-   real(r8), allocatable, intent(out) :: g_mu_out(:)
-   real(r8), allocatable, intent(out) :: g_lambda_out(:,:)
-   real(r8), allocatable, intent(out) :: g_d_eff_out(:)
-   real(r8),              intent(out) :: tiny_out
+   real(r8), intent(out) :: tiny_out
 
    character(len=256) :: liquidfile
    character(len=256) :: icefile
@@ -138,179 +134,52 @@ subroutine cloud_rad_props_init(nmu_out, nlambda_out, n_g_d_out, &
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
-   ! read liquid cloud optics
-   if (masterproc) then
-      call getfil( trim(liquidfile), locfn, 0)
-      call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'liquid optics file missing')
-      write(iulog,*)' reading liquid cloud optics from file ',locfn
+   call rrtmgp_cloud_optics_setup_init(liqopticsfile, iceopticsfile, errmsg, err)
+   if (err /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
-      call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
-      if (f_nlwbands /= nlwbands) call endrun(sub//': number of lw bands does not match')
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
-      if (f_nswbands /= nswbands) call endrun(sub//': number of sw bands does not match')
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'mu', mudimid), 'getting mu dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, mudimid, len=nmu), 'getting n mu samples')
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'lambda_scale', lambdadimid), 'getting lambda dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, lambdadimid, len=nlambda), 'getting n lambda samples')
-   end if ! if (masterproc)
-
-#if ( defined SPMD )
-   call mpibcast(nmu, 1, mpiint, 0, mpicom, ierr)
-   call mpibcast(nlambda, 1, mpiint, 0, mpicom, ierr)
-#endif
-
-   allocate(g_mu(nmu))
-   allocate(g_lambda(nmu,nlambda))
-   allocate(ext_sw_liq(nmu,nlambda,nswbands) )
-   allocate(ssa_sw_liq(nmu,nlambda,nswbands))
-   allocate(asm_sw_liq(nmu,nlambda,nswbands))
-   allocate(abs_lw_liq(nmu,nlambda,nlwbands))
-
-   if (masterproc) then
-      call handle_ncerr( nf90_inq_varid(ncid, 'mu', mu_id),&
-         'cloud optics mu get')
-      call handle_ncerr( nf90_get_var(ncid, mu_id, g_mu),&
-         'read cloud optics mu values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'lambda', lambda_id),&
-         'cloud optics lambda get')
-      call handle_ncerr( nf90_get_var(ncid, lambda_id, g_lambda),&
-         'read cloud optics lambda values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'k_ext_sw', ext_sw_liq_id),&
-         'cloud optics ext_sw_liq get')
-      call handle_ncerr( nf90_get_var(ncid, ext_sw_liq_id, ext_sw_liq),&
-         'read cloud optics ext_sw_liq values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'ssa_sw', ssa_sw_liq_id),&
-         'cloud optics ssa_sw_liq get')
-      call handle_ncerr( nf90_get_var(ncid, ssa_sw_liq_id, ssa_sw_liq),&
-         'read cloud optics ssa_sw_liq values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'asm_sw', asm_sw_liq_id),&
-         'cloud optics asm_sw_liq get')
-      call handle_ncerr( nf90_get_var(ncid, asm_sw_liq_id, asm_sw_liq),&
-         'read cloud optics asm_sw_liq values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'k_abs_lw', abs_lw_liq_id),&
-         'cloud optics abs_lw_liq get')
-      call handle_ncerr( nf90_get_var(ncid, abs_lw_liq_id, abs_lw_liq),&
-         'read cloud optics abs_lw_liq values')
-
-      call handle_ncerr( nf90_close(ncid), 'liquid optics file missing')
-   end if ! if masterproc
-
-#if ( defined SPMD )
-    call mpibcast(g_mu, nmu, mpir8, 0, mpicom, ierr)
-    call mpibcast(g_lambda, nmu*nlambda, mpir8, 0, mpicom, ierr)
-    call mpibcast(ext_sw_liq, nmu*nlambda*nswbands, mpir8, 0, mpicom, ierr)
-    call mpibcast(ssa_sw_liq, nmu*nlambda*nswbands, mpir8, 0, mpicom, ierr)
-    call mpibcast(asm_sw_liq, nmu*nlambda*nswbands, mpir8, 0, mpicom, ierr)
-    call mpibcast(abs_lw_liq, nmu*nlambda*nlwbands, mpir8, 0, mpicom, ierr)
-#endif
-   ! Convert kext from m^2/Volume to m^2/Kg
-   ext_sw_liq = ext_sw_liq / 0.9970449e3_r8
-   abs_lw_liq = abs_lw_liq / 0.9970449e3_r8
-
-   ! read ice cloud optics
-   if (masterproc) then
-      call getfil( trim(icefile), locfn, 0)
-      call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'ice optics file missing')
-      write(iulog,*)' reading ice cloud optics from file ',locfn
-      call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
-      if (f_nlwbands /= nlwbands) then
-         call endrun(sub//': number of lw bands does not match')
-      end if
-      call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
-      if (f_nswbands /= nswbands) then
-         call endrun(sub//': number of sw bands does not match')
-      end if
-      call handle_ncerr(nf90_inq_dimid( ncid, 'd_eff', d_dimid), 'getting deff dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, d_dimid, len=n_g_d), 'getting n deff samples')
-   end if ! if (masterproc)
-
-#if ( defined SPMD )
-   call mpibcast(n_g_d, 1, mpiint, 0, mpicom, ierr)
-!   call mpibcast(nswbands, 1, mpiint, 0, mpicom, ierr)
-!   call mpibcast(nlwbands, 1, mpiint, 0, mpicom, ierr)
-#endif
-
-   allocate(g_d_eff(n_g_d))
-   allocate(ext_sw_ice(n_g_d,nswbands))
-   allocate(ssa_sw_ice(n_g_d,nswbands))
-   allocate(asm_sw_ice(n_g_d,nswbands))
-   allocate(abs_lw_ice(n_g_d,nlwbands))
-
-   if (masterproc) then
-      call handle_ncerr( nf90_inq_varid(ncid, 'd_eff', d_id),&
-         'cloud optics deff get')
-      call handle_ncerr( nf90_get_var(ncid, d_id, g_d_eff),&
-         'read cloud optics deff values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ext', ext_sw_ice_id),&
-         'cloud optics ext_sw_ice get')
-      call handle_ncerr(nf90_inquire_variable ( ncid, ext_sw_ice_id, ndims=ndims, dimids=vdimids),&
-         'checking dimensions of ext_sw_ice')
-      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(1), len=templen),&
-         'getting first dimension sw_ext')
-      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(2), len=templen),&
-         'getting first dimension sw_ext')
-      call handle_ncerr( nf90_get_var(ncid, ext_sw_ice_id, ext_sw_ice),&
-         'read cloud optics ext_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ssa', ssa_sw_ice_id),&
-         'cloud optics ssa_sw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, ssa_sw_ice_id, ssa_sw_ice),&
-         'read cloud optics ssa_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_asm', asm_sw_ice_id),&
-         'cloud optics asm_sw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, asm_sw_ice_id, asm_sw_ice),&
-         'read cloud optics asm_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'lw_abs', abs_lw_ice_id),&
-         'cloud optics abs_lw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, abs_lw_ice_id, abs_lw_ice),&
-         'read cloud optics abs_lw_ice values')
-
-      call handle_ncerr( nf90_close(ncid), 'ice optics file missing')
-   end if ! if masterproc
-
-#if ( defined SPMD )
-   call mpibcast(g_d_eff, n_g_d, mpir8, 0, mpicom, ierr)
-   call mpibcast(ext_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(ssa_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(asm_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
-#endif
+   ! Set module-level variables
+   ! Set output variables
+   nmu = size(g_mu_ccpp)
+   nlambda = size(g_lambda_ccpp, 2)
+   n_g_d = size(g_d_eff_ccpp)
+   allocate(abs_lw_liq(nmu,nlambda,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_liq')
+   abs_lw_liq = abs_lw_liq_ccpp
+   allocate(ext_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ext_sw_liq')
+   ext_sw_liq = ext_sw_liq_ccpp
+   allocate(ssa_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ssa_sw_liq')
+   ssa_sw_liq = ssa_sw_liq_ccpp
+   allocate(asm_sw_liq(nmu,nlambda,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'asm_sw_liq')
+   asm_sw_liq = asm_sw_liq_ccpp
+   allocate(abs_lw_ice(n_g_d,nlwbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'abs_lw_ice')
+   abs_lw_ice = abs_lw_ice_ccpp
+   allocate(ext_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ext_sw_ice')
+   ext_sw_ice = ext_sw_ice_ccpp
+   allocate(ssa_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'ssa_sw_ice')
+   ssa_sw_ice = ssa_sw_ice_ccpp
+   allocate(asm_sw_ice(n_g_d,nswbands), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'asm_sw_ice')
+   asm_sw_ice = asm_sw_ice_ccpp
+   allocate(g_mu(nmu), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_mu')
+   g_mu = g_mu_ccpp
+   allocate(g_lambda(nmu,nlambda), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_lambda')
+   g_lambda = g_lambda_ccpp
+   allocate(g_d_eff(n_g_d), stat=ierr)
+   call handle_allocate_error(ierr, sub, 'g_d_eff')
+   g_d_eff = g_d_eff_ccpp
 
    ! Set output variables
    tiny_out = tiny
-   nmu_out = nmu
-   nlambda_out = nlambda
-   n_g_d_out = n_g_d
-   allocate(abs_lw_liq_out(nmu,nlambda,nlwbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'abs_lw_liq_out')
-   abs_lw_liq_out = abs_lw_liq
-   allocate(abs_lw_ice_out(n_g_d,nlwbands), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'abs_lw_ice_out')
-   abs_lw_ice_out = abs_lw_ice
-   allocate(g_mu_out(nmu), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_mu_out')
-   g_mu_out = g_mu
-   allocate(g_lambda_out(nmu,nlambda), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_lambda_out')
-   g_lambda_out = g_lambda
-   allocate(g_d_eff_out(n_g_d), stat=ierr)
-   call handle_allocate_error(ierr, sub, 'g_d_eff_out')
-   g_d_eff_out = g_d_eff
    return
 
 end subroutine cloud_rad_props_init

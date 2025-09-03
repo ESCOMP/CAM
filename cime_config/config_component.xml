@@ -9,10 +9,10 @@
     ===============
    -->
     <desc atm="CAM70[%LT][%MT][%WA][%WX][%CSO][%CT1S][%CT4S][%CT0MA][%CT1MA][%CT4MA][%PORT]"                                                                                                                                                                                                                                                                                             >CAM cam7 physics:</desc>
-    <desc atm="CAM60[%1PCT][%4xCO2][%CARMATS][%CARMAWM][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CT1S][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2]"  >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CARMATS][%CARMAWM][%CT1S][%CT2S][%CFIRE][%CVBSX][%NUDG][%PORT][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]" >CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CT1S][%PORT][%SCAM][%SDYN][%WCSC][%WCTS][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                                 >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                                                                          >CAM cam4 physics:</desc>
+    <desc atm="CAM[%ADIAB][%TJ16][%GRAYRAD][%HS94][%KESSLER]"  >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -44,14 +44,11 @@
     <desc option="CSO"          >Specified oxidants chemistiry </desc>
     <desc option="GEOSCHEM"     >GEOS-Chem troposphere/stratosphere chemistry :</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
-    <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
     <desc option="LT"           >CAM low top model </desc>
     <desc option="WA"           >WACCM model </desc>
     <desc option="WX"           >WACCMX extended model </desc>
-    <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
     <desc option="MT"           >CAM mid top model </desc>
-    <desc option="RCO2"         >CAM CO2 ramp: </desc>
     <desc option="TMOZ"         >CAM tropospheric chemistry with bulk aerosols:</desc>
 
   <!--
@@ -138,7 +135,6 @@
       <value compset="_CAM.*(%CT1S|%CFIRE)">-chem trop_strat_mam5_vbs</value>
       <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
-      <value compset="%MAM7">-chem trop_mam7</value>
       <value compset="CAM60%CARMATS">-chem trop_strat_noaero -carma trop_strat_soa5</value>
       <value compset="CAM60%CARMAWM">-chem waccm_ma_noaero -carma trop_strat_soa1</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
@@ -149,7 +145,6 @@
       <value compset="CAM.*%CT0MA">-chem waccm_ma_mam5</value>
       <value compset="CAM.*%CT1MA">-chem waccm_tsmlt_mam5</value>
       <value compset="CAM.*%CT4MA">-chem waccm_t4ma_mam5</value>
-      <value compset="_CAM50%CLB">-clubb_sgs</value>
       <value compset="_CAM40%TMOZ">-chem trop_mozart</value>
 
       <value compset="_CAM.*_BGC%B">-co2_cycle</value>
@@ -353,7 +348,6 @@
     <valid_values></valid_values>
     <default_value></default_value>
     <values match="last" modifier="additive">
-      <value compset="_CAM.*%RCO2"> scenario_ghg=&apos;RAMP_CO2_ONLY&apos;ramp_co2_annual_rate=1 </value>
       <value compset="_CAM60%4xCO2"> co2vmr=1138.8e-6  </value>
       <value compset="_CAM60%WCTS%4xCO2"> flbc_cycle_yr=1  </value>
       <value compset="_CAM60%WCTS%4xCO2"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6abrupt4xCO2_cyclicalYear1_0p5degLat_c180929.nc'  </value>
