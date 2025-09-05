@@ -816,7 +816,6 @@ subroutine gw_drag_cam_init()
   ! into module
   if(use_gw_rdg_beta .or. use_gw_rdg_gamma) then
     call gravity_wave_drag_ridge_init( &
-      ncol                   = ncol, &
       use_gw_rdg_beta_in     = use_gw_rdg_beta, &
       use_gw_rdg_gamma_in    = use_gw_rdg_gamma, &
       gw_delta_c             = gw_dc, &
@@ -1907,8 +1906,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('TTGWORO', ttgw, pcols, lchnk)
     call outfld('TTGWSDFORO', dttdf / cpair,  pcols, lchnk)
     call outfld('TTGWSKEORO', dttke / cpair,  pcols, lchnk)
-    call outfld('TAUGWX', tau0x, ncol, lchnk)
-    call outfld('TAUGWY', tau0y, ncol, lchnk)
+    call outfld('TAUGWX', tau0x, pcols, lchnk)
+    call outfld('TAUGWY', tau0y, pcols, lchnk)
   endif
 
   if (use_gw_rdg_beta) then
