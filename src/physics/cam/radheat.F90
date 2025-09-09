@@ -39,15 +39,11 @@ module radheat
 
   public :: radheat_disable_waccm ! disable waccm heating in the upper atm
 
+  real(r8), public :: p_top_for_equil_rad = 0._r8
+
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
   real(r8):: qrl_wt(pver)             ! merge weight for cam long wave heating
-
-  ! sw merge region
-  ! highest altitude (lowest  pressure) of merge region (Pa)
-  real(r8) :: min_pressure_sw= 5._r8
-  ! lowest  altitude (lowest  pressure) of merge region (Pa)
-  real(r8) :: max_pressure_sw=50._r8
 
   ! lw merge region
   ! highest altitude (lowest  pressure) of merge region (Pa)
@@ -61,10 +57,36 @@ module radheat
 contains
 !===============================================================================
 subroutine radheat_readnl(nlfile)
+   ! Read radheat_nl namelist group
+   use namelist_utils,  only: find_group_name
+   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8
+   use cam_abortutils,  only: endrun
 
-  character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
-  ! No options for this version of radheat; this is just a stub.
+   ! Local variables
+   integer :: unitn, ierr
+   integer :: dtime      ! timestep size
+   character(len=32) :: errmsg
+   character(len=*), parameter :: sub = 'radheat_readnl'
+
+   namelist /radheat_nl/ p_top_for_equil_rad
+   !-----------------------------------------------------------------------------
+
+   if (masterproc) then
+      open( newunit=unitn, file=trim(nlfile), status='old' )
+      call find_group_name(unitn, 'radheat_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, radheat_nl, iostat=ierr, iomsg=errmsg)
+         if (ierr /= 0) then
+            call endrun(sub//': ERROR reading namelist: '//trim(errmsg))
+         end if
+      end if
+      close(unitn)
+   end if
+
+   call mpi_bcast(p_top_for_equil_rad, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: p_top_for_equil_rad")
 
 end subroutine radheat_readnl
 
@@ -92,8 +114,6 @@ end subroutine radheat_readnl
     ! local vars
     real(r8) :: co2_mw, o1_mw, o2_mw, o3_mw, no_mw, n2_mw ! molecular weights
 
-    real(r8) :: delta_merge_sw      ! range of merge region
-    real(r8) :: midpoint_sw         ! midpoint of merge region
     real(r8) :: delta_merge_lw      ! range of merge region
     real(r8) :: midpoint_lw         ! midpoint of merge region
     real(r8) :: psh(pver)           ! pressure scale height
@@ -116,42 +136,21 @@ end subroutine radheat_readnl
     ! set max/min pressures for merging regions.
 
     if (camrt) then
-       min_pressure_sw = 1e5_r8*exp(-10._r8)
-       max_pressure_sw = 1e5_r8*exp(-9._r8)
        min_pressure_lw = 1e5_r8*exp(-10._r8)
        max_pressure_lw = 1e5_r8*exp(-8.57_r8)
     else
-       min_pressure_sw =  5._r8
-       max_pressure_sw = 50._r8
-       min_pressure_lw = 10._r8
+       min_pressure_lw = p_top_for_equil_rad
        max_pressure_lw = 50._r8
     endif
 
-    delta_merge_sw = max_pressure_sw - min_pressure_sw
     delta_merge_lw = max_pressure_lw - min_pressure_lw
 
-    midpoint_sw = (max_pressure_sw + min_pressure_sw)/2._r8
     midpoint_lw = (max_pressure_lw + min_pressure_lw)/2._r8
 
     do k=1,pver
 
        ! pressure scale heights for camrt merging (cam4)
        psh(k)=log(1e5_r8/pref_mid(k))
-
-       if ( pref_mid(k) .le. min_pressure_sw  ) then
-          qrs_wt(k) = 0._r8
-       else if( pref_mid(k) .ge. max_pressure_sw) then
-          qrs_wt(k) = 1._r8
-       else
-          if (camrt) then
-             ! camrt
-             qrs_wt(k) = 1._r8 - tanh( (psh(k) - 9._r8)/.75_r8 )
-          else
-             ! rrtmg
-             qrs_wt(k) = 0.5_r8 + 1.5_r8*((pref_mid(k)-midpoint_sw)/delta_merge_sw) &
-                       - 2._r8*((pref_mid(k)-midpoint_sw)/delta_merge_sw)**3._r8
-          endif
-       endif
 
        if ( pref_mid(k) .le. min_pressure_lw  ) then
           qrl_wt(k)= 0._r8

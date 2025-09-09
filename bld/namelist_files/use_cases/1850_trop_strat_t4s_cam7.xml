@@ -6,7 +6,7 @@
 <ncdata hgrid="ne30np4" nlev="93">atm/cam/inic/se/1850C_T4S_ne30pg3_spinup01.cam.i.0002-01-01_c241114.nc</ncdata>
 
 <!-- Solar data -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_irrad_data_file>
 <solar_data_type>FIXED</solar_data_type>
 <solar_data_ymd>18500701</solar_data_ymd>
 

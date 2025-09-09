@@ -12,13 +12,6 @@
         fxtag = carma4_09
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
-[submodule "pumas"]
-	path = src/physics/pumas
-	url = https://github.com/ESCOMP/PUMAS
-        fxrequired = AlwaysRequired
-        fxtag = pumas_cam-release_v1.39
-        fxDONOTUSEurl = https://github.com/ESCOMP/PUMAS
-
 [submodule "pumas-frozen"]
 	path = src/physics/pumas-frozen
 	url = https://github.com/ESCOMP/PUMAS
@@ -36,7 +29,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-        fxtag = atmos_phys0_15_000
+        fxtag = atmos_phys0_16_002
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -87,7 +80,7 @@
 	path = src/physics/rrtmgp/ext
 	url = https://github.com/earth-system-radiation/rte-rrtmgp.git
         fxrequired = AlwaysRequired
-        fxtag = v1.7
+	fxtag = v1.9.2
         fxDONOTUSEurl = https://github.com/earth-system-radiation/rte-rrtmgp.git
 
 [submodule "rrtmgp-data"]

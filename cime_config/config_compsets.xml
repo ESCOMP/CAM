@@ -208,11 +208,6 @@
   </compset>
 
   <compset>
-    <alias>QPC41850</alias>
-    <lname>1850_CAM40_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPC4X</alias>
     <lname>2000_CAM40%WX_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
@@ -306,6 +301,11 @@
   <compset>
     <alias>F1850</alias>
     <lname>1850_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>F1850_C4</alias>
+    <lname>1850_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>

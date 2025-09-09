@@ -5764,11 +5764,12 @@ Calculate radiative effect of graupel/hail (using snow optics)
 Default: FALSE
 </entry>
 
-<entry id="p_top_for_rrtmgp" type="real"  category="radiation"
-       group="radiation_nl" valid_values="" >
-Top pressure level for RRTMGP
+<entry id="p_top_for_equil_rad" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top pressure level for non-LTE blending region
 Default: 1.0 for WACCM/WACCMX
-         10. for all other CAM runs
+         2. for all other RRTMGP runs
+         0.0 for all other runs
 </entry>
 
 <entry id="use_rad_dt_cosz" type="logical"  category="radiation"
