@@ -101,7 +101,7 @@ module aerosol_properties_mod
      !  species morphology
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                               spectype, specname, specmorph, refindex_sw, refindex_lw)
+          spectype, specname, specmorph, refindex_sw, refindex_lw)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -124,7 +124,9 @@ module aerosol_properties_mod
           refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
           sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
           sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-          corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh )
+          corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
+          sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, &
+          sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
 
        import :: aerosol_properties, r8
 
@@ -168,6 +170,17 @@ module aerosol_properties_mod
        integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
        integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
        integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
+
+       ! hygroscopic
+       real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:)
+       real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:)
+       real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:)
+
+       ! non-hygroscopic
+       real(r8),  optional, pointer :: sw_nonhygro_ext(:)
+       real(r8),  optional, pointer :: sw_nonhygro_ssa(:)
+       real(r8),  optional, pointer :: sw_nonhygro_asm(:)
+       real(r8),  optional, pointer :: lw_nonhygro_ext(:)
 
      end subroutine aero_optics_params
 
@@ -375,12 +388,12 @@ module aerosol_properties_mod
      ! returns name for a given radiation list number and aerosol bin
      !------------------------------------------------------------------------------
      function aero_bin_name(self, list_ndx,  bin_ndx) result(name)
-       import :: aerosol_properties, r8
+       import :: aerosol_properties, r8, aero_name_len
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: list_ndx ! radiation list number
        integer, intent(in) :: bin_ndx  ! bin number
 
-       character(len=32) name
+       character(len=aero_name_len) :: name
 
      end function aero_bin_name
 

@@ -4,7 +4,7 @@ module aerosol_optics_cam
   use cam_logfile,  only: iulog
   use radconstants, only: nswbands, nlwbands, idx_sw_diag, idx_uv_diag, idx_nir_diag
   use radconstants, only: get_lw_spectral_boundaries
-  use phys_prop,    only: ot_length
+  use phys_prop,    only: ot_length, numrh=>nrh
   use physics_types,only: physics_state
   use physics_buffer,only: physics_buffer_desc
   use ppgrid, only: pcols, pver
@@ -21,15 +21,19 @@ module aerosol_optics_cam
   use aerosol_properties_mod, only: aerosol_properties
   use modal_aerosol_properties_mod, only: modal_aerosol_properties
   use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use bulk_aerosol_properties_mod, only: bulk_aerosol_properties
 
   use aerosol_state_mod,      only: aerosol_state
   use modal_aerosol_state_mod,only: modal_aerosol_state
   use carma_aerosol_state_mod,only: carma_aerosol_state
+  use bulk_aerosol_state_mod, only: bulk_aerosol_state
 
   use aerosol_optics_mod,     only: aerosol_optics
   use refractive_aerosol_optics_mod, only: refractive_aerosol_optics
   use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
   use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
+  use hygroscopic_aerosol_optics_mod, only: hygroscopic_aerosol_optics
+  use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
 
   implicit none
 
@@ -59,6 +63,8 @@ module aerosol_optics_cam
 
   logical :: carma_active = .false.
   logical :: modal_active = .false.
+  logical :: bulk_active = .false.
+
   integer :: num_aero_models = 0
   integer :: lw10um_indx = -1            ! wavelength index corresponding to 10 microns
   real(r8), parameter :: lw10um = 10._r8 ! microns
@@ -132,6 +138,7 @@ contains
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_init: '
     integer :: nmodes=0, nbins=0, iaermod, istat, ilist, i
+    integer :: nbulk_aerosols=0
 
     logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
@@ -151,15 +158,19 @@ contains
 
     num_aero_models = 0
 
-    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
+    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins, naero=nbulk_aerosols)
     modal_active = nmodes>0
     carma_active = nbins>0
+    bulk_active = nbulk_aerosols>0
 
     ! count aerosol models
     if (modal_active) then
        num_aero_models = num_aero_models+1
     end if
     if (carma_active) then
+       num_aero_models = num_aero_models+1
+    end if
+    if (bulk_active) then
        num_aero_models = num_aero_models+1
     end if
 
@@ -180,9 +191,16 @@ contains
        iaermod = iaermod+1
        aero_props(iaermod)%obj => carma_aerosol_properties()
     end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_props(iaermod)%obj => bulk_aerosol_properties()
+    end if
+       
 
     if (water_refindex_file=='NONE') then
-       call endrun(prefix//'water_refindex_file must be specified')
+       if (modal_active .or. carma_active) then
+          call endrun(prefix//'water_refindex_file must be specified')
+       end if
     else
        call getfil(water_refindex_file, locfile)
        call read_water_refindex(locfile)
@@ -643,6 +661,7 @@ contains
     real(r8) :: specdens
     character(len=32) :: spectype            ! species type
     real(r8), pointer :: specmmr(:,:)
+    real(r8), pointer :: aerommr(:,:)
     real(r8)          :: hygro_aer           !
 
     real(r8) :: scath2o, absh2o, sumscat, sumabs, sumhygro
@@ -722,6 +741,10 @@ contains
        iaermod = iaermod+1
        aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_state(iaermod)%obj => bulk_aerosol_state( state, pbuf )
+    end if
 
     allocate(pext(ncol), stat=istat)
     if (istat/=0) then
@@ -740,6 +763,10 @@ contains
        call endrun(prefix//'array allocation error: pasm')
     end if
 
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
+    
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -757,7 +784,6 @@ contains
           aodbin(:) = 0.0_r8
 
           call aeroprops%optics_params(list_idx, ibin, opticstype=opticstype)
-
           select case (trim(opticstype))
           case('modal') ! refractive method
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
@@ -772,6 +798,16 @@ contains
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
+          case('hygroscopic','hygro')
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, list_idx, ibin, ncol, pver, numrh, relh(:ncol,:))
+             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
+             mass = mass * aerommr ! aerosol mass for BAM
+
+          case('nonhygro', 'insoluble')
+            aero_optics=>insoluble_aerosol_optics(aeroprops, list_idx, ibin)
+             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
+             mass = mass * aerommr ! aerosol mass for BAM
+
           case default
              call endrun(prefix//'optics method not recognized')
           end select
@@ -796,7 +832,7 @@ contains
                       ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
-                      call update_diags
+                      call update_diags()
 
                    end do column
 
@@ -1165,7 +1201,8 @@ contains
 
     real(r8) :: dopaer(pcols)
     real(r8) :: mass(pcols,pver)
-
+    real(r8), pointer :: aerommr(:,:)
+    
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_lw: '
 
     integer :: ibin, nbins
@@ -1210,6 +1247,10 @@ contains
        iaermod = iaermod+1
        aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_state(iaermod)%obj => bulk_aerosol_state( state, pbuf )
+    end if
 
     ncol = state%ncol
 
@@ -1247,6 +1288,17 @@ contains
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
+
+          case('hygroscopic','hygro')
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, list_idx, ibin, ncol, pver, numrh, relh(:ncol,:))
+             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
+             mass = mass * aerommr ! aerosol mass for BAM
+
+          case('nonhygro', 'insoluble')
+            aero_optics=>insoluble_aerosol_optics(aeroprops, list_idx, ibin)
+             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
+             mass = mass * aerommr ! aerosol mass for BAM
+
           case default
              call endrun(prefix//'optics method not recognized')
           end select

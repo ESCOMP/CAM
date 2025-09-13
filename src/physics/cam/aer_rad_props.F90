@@ -102,11 +102,11 @@ subroutine aer_rad_props_init()
          odv_names(i) = 'ODV_'//trim(aernames(i))
          call add_default (odv_names(i), 1, ' ')
       end do
-    endif
+   endif
 
-    if (nmodes>0 .or. nbins>0) then
+   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_init()
-    end if
+   end if
 
    deallocate(aernames)
 
@@ -221,7 +221,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
    ! Contributions from modal and bin aerosols.
-   if (nmodes>0 .or. nbins>0) then
+   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, &
                                  tau, tau_w, tau_w_g, tau_w_f)
    else
@@ -236,73 +236,6 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    !REMOVECAM_END
    call tropopause_find_cam(state, troplev)
 
-   ! Contributions from bulk aerosols.
-   do iaerosol = 1, numaerosols
-
-      ! get bulk aerosol mass mixing ratio
-      call rad_cnst_get_aer_mmr(list_idx, iaerosol, state, pbuf, aermmr)
-      aermass(1:ncol,1:top_lev-1) = 0._r8
-      aermass(1:ncol,top_lev:pver) = aermmr(1:ncol,top_lev:pver) * mmr_to_mass(1:ncol,top_lev:pver)
-
-      ! get optics type
-      call rad_cnst_get_aer_props(list_idx, iaerosol, opticstype=opticstype)
-
-      select case (trim(opticstype))
-      case('hygro','hygroscopic','hygroscopi')
-         ! get optical properties for hygroscopic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, sw_hygro_ext=h_ext, sw_hygro_ssa=h_ssa, sw_hygro_asm=h_asm)
-         call get_hygro_rad_props(ncol, krh, wrh, aermass, h_ext, h_ssa, h_asm, ta, tw, twg, twf)
-         tau    (1:ncol,1:pver,:) = tau    (1:ncol,1:pver,:) + ta (1:ncol,:,:)
-         tau_w  (1:ncol,1:pver,:) = tau_w  (1:ncol,1:pver,:) + tw (1:ncol,:,:)
-         tau_w_g(1:ncol,1:pver,:) = tau_w_g(1:ncol,1:pver,:) + twg(1:ncol,:,:)
-         tau_w_f(1:ncol,1:pver,:) = tau_w_f(1:ncol,1:pver,:) + twf(1:ncol,:,:)
-
-      case('nonhygro','insoluble ')
-         ! get optical properties for non-hygroscopic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, sw_nonhygro_ext=n_ext, sw_nonhygro_ssa=n_ssa, &
-                                     sw_nonhygro_asm=n_asm)
-
-         call get_nonhygro_rad_props(ncol, aermass, n_ext, n_ssa, n_asm, ta, tw, twg, twf)
-         tau    (1:ncol,1:pver,:) = tau    (1:ncol,1:pver,:) + ta (1:ncol,:,:)
-         tau_w  (1:ncol,1:pver,:) = tau_w  (1:ncol,1:pver,:) + tw (1:ncol,:,:)
-         tau_w_g(1:ncol,1:pver,:) = tau_w_g(1:ncol,1:pver,:) + twg(1:ncol,:,:)
-         tau_w_f(1:ncol,1:pver,:) = tau_w_f(1:ncol,1:pver,:) + twf(1:ncol,:,:)
-
-      case('volcanic')
-         ! get optical properties for volcanic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, sw_nonhygro_ext=n_ext, sw_nonhygro_scat=n_scat, &
-                                     sw_nonhygro_ascat=n_ascat)
-
-         call get_volcanic_rad_props(ncol, aermass, n_ext, n_scat, n_ascat, ta, tw, twg, twf)
-         tau    (1:ncol,1:pver,:) = tau    (1:ncol,1:pver,:) + ta (1:ncol,:,:)
-         tau_w  (1:ncol,1:pver,:) = tau_w  (1:ncol,1:pver,:) + tw (1:ncol,:,:)
-         tau_w_g(1:ncol,1:pver,:) = tau_w_g(1:ncol,1:pver,:) + twg(1:ncol,:,:)
-         tau_w_f(1:ncol,1:pver,:) = tau_w_f(1:ncol,1:pver,:) + twf(1:ncol,:,:)
-
-      case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
-         pbuf_fld = 'VOLC_RAD_GEOM '
-         if (len_trim(opticstype)>15) then
-            pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
-         endif
-         ! get optical properties for volcanic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, r_sw_ext=r_ext, r_sw_scat=r_scat, r_sw_ascat=r_ascat, mu=r_mu)
-         call get_volcanic_radius_rad_props(ncol, aermass, pbuf_fld, pbuf, r_ext, r_scat, r_ascat, r_mu, ta, tw, twg, twf)
-         tau    (1:ncol,1:pver,:) = tau    (1:ncol,1:pver,:) + ta (1:ncol,:,:)
-         tau_w  (1:ncol,1:pver,:) = tau_w  (1:ncol,1:pver,:) + tw (1:ncol,:,:)
-         tau_w_g(1:ncol,1:pver,:) = tau_w_g(1:ncol,1:pver,:) + twg(1:ncol,:,:)
-         tau_w_f(1:ncol,1:pver,:) = tau_w_f(1:ncol,1:pver,:) + twf(1:ncol,:,:)
-
-      case('zero')
-         ! no effect of "zero" aerosols, so update nothing
-      case default
-         call endrun('aer_rad_props_sw: unsupported opticstype :'//trim(opticstype)//':')
-      end select
-
-      ! diagnostic output of individual aerosol optical properties
-      ! currently implemented for climate list only
-      call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, iaerosol, ta(:,:,idx_sw_diag), list_idx, troplev)
-
-   enddo
 
    ! diagnostic output of total aerosol optical properties
    ! currently implemented for climate list only
@@ -378,109 +311,11 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
    ! Contributions from modal and sectional aerosols.
-   if (nmodes>0 .or. nbins>0) then
+   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
    else
       odap_aer = 0._r8
    end if
-
-   ! Contributions from bulk aerosols.
-   if (numaerosols > 0) then
-
-      ! compute mixing ratio to mass conversion
-      do k = 1, pver
-         mmr_to_mass(:ncol,k) = rga * state%pdeldry(:ncol,k)
-      end do
-
-      ! calculate relative humidity for table lookup into rh grid
-      do k = 1, pver
-         call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
-      end do
-      rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
-
-      rhtrunc(1:ncol,1:pver) = min(rh(1:ncol,1:pver),1._r8)
-      krh(1:ncol,1:pver) = min(floor( rhtrunc(1:ncol,1:pver) * nrh ) + 1, nrh - 1) ! index into rh mesh
-      wrh(1:ncol,1:pver) = rhtrunc(1:ncol,1:pver) * nrh - krh(1:ncol,1:pver)       ! (-) weighting on left side values
-
-   end if
-
-   ! Loop over bulk aerosols in list.
-   do iaerosol = 1, numaerosols
-
-      ! get aerosol mass mixing ratio
-      call rad_cnst_get_aer_mmr(list_idx, iaerosol, state, pbuf,  aermmr)
-      aermass(1:ncol,1:top_lev-1) = 0._r8
-      aermass(1:ncol,top_lev:pver) = aermmr(1:ncol,top_lev:pver) * mmr_to_mass(1:ncol,top_lev:pver)
-
-      ! get optics type
-      call rad_cnst_get_aer_props(list_idx, iaerosol, opticstype=opticstype)
-      select case (trim(opticstype))
-      case('hygroscopic')
-          ! get optical properties for hygroscopic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, lw_hygro_ext=lw_hygro_abs)
-         do bnd_idx = 1, nlwbands
-            do k = 1, pver
-               do i = 1, ncol
-                  odap_aer(i, k, bnd_idx) = odap_aer(i, k, bnd_idx) + &
-                       aermass(i, k) * &
-                       ((1 + wrh(i,k)) * lw_hygro_abs(krh(i,k)+1,bnd_idx) &
-                       - wrh(i,k)  * lw_hygro_abs(krh(i,k),  bnd_idx))
-               end do
-            end do
-         end do
-      case('insoluble','nonhygro','hygro','volcanic')
-          ! get optical properties for hygroscopic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, lw_ext=lw_abs)
-         do bnd_idx = 1, nlwbands
-            do k = 1, pver
-               do i = 1, ncol
-                  odap_aer(i,k,bnd_idx) = odap_aer(i,k,bnd_idx) + lw_abs(bnd_idx)*aermass(i,k)
-               end do
-            end do
-         end do
-
-      case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
-         pbuf_fld = 'VOLC_RAD_GEOM '
-         if (len_trim(opticstype)>15) then
-            pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
-         endif
-
-         ! get optical properties for hygroscopic aerosols
-         call rad_cnst_get_aer_props(list_idx, iaerosol, r_lw_abs=r_lw_abs, mu=r_mu)
-         ! get microphysical properties for volcanic aerosols
-         idx = pbuf_get_index(pbuf_fld)
-         call pbuf_get_field(pbuf, idx, geometric_radius )
-
-         ! interpolate in radius
-         ! caution: clip the table with no warning when outside bounds
-         nmu = size(r_mu)
-         r_mu_max = r_mu(nmu)
-         r_mu_min = r_mu(1)
-         do i = 1, ncol
-            do k = 1, pver
-               if(geometric_radius(i,k) > 0._r8) then
-                  mu(i,k) = log(geometric_radius(i,k))
-               else
-                  mu(i,k) = 0._r8
-               endif
-               mutrunc = max(min(mu(i,k),r_mu_max),r_mu_min)
-               kmu = max(min(1 + (mutrunc-r_mu_min)/(r_mu_max-r_mu_min)*(nmu-1),nmu-1._r8),1._r8)
-               wmu = max(min( (mutrunc -r_mu(kmu)) / (r_mu(kmu+1) - r_mu(kmu)) ,1._r8),0._r8)
-               do bnd_idx = 1, nlwbands
-                  odap_aer(i,k,bnd_idx) = odap_aer(i,k,bnd_idx) + &
-                     aermass(i,k) * &
-                     ((1._r8 - wmu) * r_lw_abs(bnd_idx, kmu  ) + &
-                     (wmu) * r_lw_abs(bnd_idx, kmu+1))
-               end do
-            end do
-         end do
-
-       case('zero')
-          ! zero aerosols types have no optical effect, so do nothing.
-       case default
-          call endrun('aer_rad_props_lw: unsupported opticstype: '//trim(opticstype))
-       end select
-    end do
 
 end subroutine aer_rad_props_lw
 

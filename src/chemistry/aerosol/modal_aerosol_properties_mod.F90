@@ -398,7 +398,10 @@ contains
        refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
        sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
        sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh )
+       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
+       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, &
+       sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
+
 
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
@@ -440,6 +443,17 @@ contains
     integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
     integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
     integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
+
+    ! hygroscopic
+    real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:)
+    real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:)
+    real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:)
+
+    ! non-hygroscopic
+    real(r8),  optional, pointer :: sw_nonhygro_ext(:)
+    real(r8),  optional, pointer :: sw_nonhygro_ssa(:)
+    real(r8),  optional, pointer :: sw_nonhygro_asm(:)
+    real(r8),  optional, pointer :: lw_nonhygro_ext(:)
 
     ! refactive index table parameters
     call rad_cnst_get_mode_props(list_ndx, bin_ndx, &
@@ -512,6 +526,31 @@ contains
     end if
     if (present(nrelh)) then
        nrelh = -1
+    end if
+
+    ! hygroscopic
+    if (present(sw_hygroscopic_ext)) then
+       nullify(sw_hygroscopic_ext)
+    end if
+    if (present(sw_hygroscopic_ssa)) then
+       nullify(sw_hygroscopic_ssa)
+    end if
+    if (present(sw_hygroscopic_asm)) then
+       nullify(sw_hygroscopic_asm)
+    end if
+
+    ! non-hygroscopic   
+    if (present(sw_nonhygro_ext)) then
+       nullify(sw_nonhygro_ext)
+    end if
+    if (present(sw_nonhygro_ssa)) then
+       nullify(sw_nonhygro_ssa)
+    end if
+    if (present(sw_nonhygro_asm)) then
+       nullify(sw_nonhygro_asm)
+    end if
+    if (present(lw_nonhygro_ext)) then
+       nullify(lw_nonhygro_ext)
     end if
 
   end subroutine optics_params
