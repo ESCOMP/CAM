@@ -23,6 +23,7 @@ use cam_history_support, only : fillvalue
 use ref_pres,         only: clim_modal_aero_top_lev
 
 use cam_abortutils,   only: endrun
+use bam_optics_diags_mod, only: bam_optics_diags_init, bam_optics_diags_out
 
 implicit none
 private
@@ -34,10 +35,6 @@ public :: &
    aer_rad_props_init,        &
    aer_rad_props_sw,          & ! return SW optical props of aerosols
    aer_rad_props_lw             ! return LW optical props of aerosols
-
-! Private data
-character(len=fieldname_len), pointer :: odv_names(:)  ! outfld names for visible OD
-
 
 !==============================================================================
 contains
@@ -82,26 +79,11 @@ subroutine aer_rad_props_init()
    allocate(aernames(numaerosols))
    call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes, nbins=nbins)
 
-   ! diagnostic output for bulk aerosols
-   ! create outfld names for visible OD
-   allocate(odv_names(numaerosols))
-   do i = 1, numaerosols
-      odv_names(i) = 'ODV_'//trim(aernames(i))
-      call addfld (odv_names(i), horiz_only, 'A', '1', &
-         trim(aernames(i))//' optical depth in visible band', flag_xyfill=.true.)
-   end do
+   call bam_optics_diags_init()
 
    ! Determine default fields
    if (history_amwg .or. history_dust ) then
       call add_default ('AEROD_v', 1, ' ')
-   endif
-
-   if ( history_aero_optics ) then
-      call add_default ('AEROD_v', 1, ' ')
-      do i = 1, numaerosols
-         odv_names(i) = 'ODV_'//trim(aernames(i))
-         call add_default (odv_names(i), 1, ' ')
-      end do
    endif
 
    if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
@@ -239,7 +221,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    ! diagnostic output of total aerosol optical properties
    ! currently implemented for climate list only
-   call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
+   call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
 
 end subroutine aer_rad_props_sw
 
@@ -526,48 +508,6 @@ subroutine get_volcanic_rad_props(ncol, mass, ext, scat, ascat, &
 end subroutine get_volcanic_rad_props
 
 !==============================================================================
-
-subroutine aer_vis_diag_out(lchnk, ncol, nnite, idxnite, iaer, tau, diag_idx, troplev)
-
-   ! output aerosol optical depth for the visible band
-
-   integer,          intent(in) :: lchnk
-   integer,          intent(in) :: ncol           ! number of columns
-   integer,          intent(in) :: nnite          ! number of night columns
-   integer,          intent(in) :: idxnite(:)     ! local column indices of night columns
-   integer,          intent(in) :: iaer           ! aerosol index -- if 0 then tau is a total for all aerosols
-   real(r8),         intent(in) :: tau(:,:)       ! aerosol optical depth for the visible band
-   integer,          intent(in) :: diag_idx       ! identifies whether the aerosol optics
-                                                  ! is for the climate calc or a diagnostic calc
-   integer,          intent(in) :: troplev(:)     ! tropopause level
-
-   ! Local variables
-   integer  :: i
-   real(r8) :: tmp(pcols), tmp2(pcols)
-   !-----------------------------------------------------------------------------
-
-   ! currently only implemented for climate calc
-   if (diag_idx > 0) return
-
-   ! compute total column aerosol optical depth
-   tmp(1:ncol) = sum(tau(1:ncol,:), 2)
-   ! use fillvalue to indicate night columns
-   do i = 1, nnite
-      tmp(idxnite(i)) = fillvalue
-   end do
-
-   if (iaer > 0) then
-      call outfld(odv_names(iaer), tmp, pcols, lchnk)
-   else
-      call outfld('AEROD_v', tmp, pcols, lchnk)
-      do i = 1, ncol
-        tmp2(i) = sum(tau(i,:troplev(i)))
-      end do
-      call outfld('AODvstrt', tmp2, pcols, lchnk)
-   end if
-
-end subroutine aer_vis_diag_out
-
 !==============================================================================
 
 end module aer_rad_props

@@ -35,6 +35,8 @@ module aerosol_optics_cam
   use hygroscopic_aerosol_optics_mod, only: hygroscopic_aerosol_optics
   use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
 
+  use bam_optics_diags_mod, only: bam_optics_diags_active, bam_optics_diags_out
+
   implicit none
 
   private
@@ -195,7 +197,6 @@ contains
        iaermod = iaermod+1
        aero_props(iaermod)%obj => bulk_aerosol_properties()
     end if
-       
 
     if (water_refindex_file=='NONE') then
        if (modal_active .or. carma_active) then
@@ -766,7 +767,7 @@ contains
     call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
     relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-    
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -846,7 +847,12 @@ contains
           deallocate(aero_optics)
           nullify(aero_optics)
 
-          call output_bin_diags
+          if (bam_optics_diags_active) then
+             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, ibin, tauxar(:,:,idx_sw_diag), &
+                  list_idx, troplev)
+          endif
+
+          call output_bin_diags()
 
        end do binloop
     end do aeromodel
@@ -1202,7 +1208,7 @@ contains
     real(r8) :: dopaer(pcols)
     real(r8) :: mass(pcols,pver)
     real(r8), pointer :: aerommr(:,:)
-    
+
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_lw: '
 
     integer :: ibin, nbins
