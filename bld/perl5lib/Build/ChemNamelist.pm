@@ -1,5 +1,7 @@
 package Build::ChemNamelist;
 
+no if $] >= 5.017011, warnings => 'experimental::smartmatch';
+
 #-------------------------------------------------------------------------------------
 # generates species lists for chemistry namelist settings
 #-------------------------------------------------------------------------------------
@@ -42,7 +44,7 @@ sub chem_has_species
 #-------------------------------------------------------------------------------
 sub set_dep_lists
 {
-    my ( $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print_lvl ) = @_;
+    my ( $chem, $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print_lvl ) = @_;
 
     my ( $gas_wetdep_list, $aer_wetdep_list, $aer_drydep_list, $aer_sol_facti, $aer_sol_factb, 
          $aer_scav_coef, $gas_drydep_list ) ;
@@ -69,13 +71,17 @@ sub set_dep_lists
     if ($print_lvl>=2) {print "Chemistry species : @species_list \n" ;}
     if ($print_lvl>=2) {print "Not transported species : @nottransported_list \n" ;}
 
-    $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    $gas_wetdep_list = get_gas_wetdep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    if ($print_lvl>=2) {print " gas wet dep list : $gas_wetdep_list  \n" ;}
 
-    $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    $aer_wetdep_list = get_aer_wetdep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    if ($print_lvl>=2) {print " aer wet dep list : $aer_wetdep_list  \n" ;}
 
-    $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    $gas_drydep_list = get_gas_drydep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    if ($print_lvl>=2) {print " dry dep list : $gas_drydep_list  \n" ;}
 
-    $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    $aer_drydep_list = get_aer_drydep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    if ($print_lvl>=2) {print " aer dry dep list : $aer_drydep_list  \n" ;}
 
     # set solubility factors for aerosols
     if (length($aer_wetdep_list)>2){ 
@@ -203,9 +209,14 @@ sub print_modal_info
 #-------------------------------------------------------------------------------
 sub get_gas_drydep_list
 {
-    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
+    my ($chem,$cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
-    my $master_file = "$cfg_dir/namelist_files/master_gas_drydep_list.xml";
+    my $master_file = '';
+    if ($chem =~ /geoschem/) {
+      $master_file = "$cfg_dir/namelist_files/geoschem_master_gas_drydep_list.xml";
+    } else {
+      $master_file = "$cfg_dir/namelist_files/mozart_master_gas_drydep_list.xml";
+    }
 
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
@@ -218,9 +229,14 @@ sub get_gas_drydep_list
 #-------------------------------------------------------------------------------
 sub get_aer_drydep_list
 {
-    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
+    my ($chem,$cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
-    my $master_file = "$cfg_dir/namelist_files/master_aer_drydep_list.xml";
+    my $master_file = '';
+    if ($chem =~ /geoschem/) {
+      $master_file = "$cfg_dir/namelist_files/geoschem_master_aer_drydep_list.xml";
+    } else {
+      $master_file = "$cfg_dir/namelist_files/mozart_master_aer_drydep_list.xml";
+    }
 
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
@@ -231,10 +247,15 @@ sub get_aer_drydep_list
 #-------------------------------------------------------------------------------
 sub get_aer_wetdep_list
 {
-    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
+    my ($chem,$cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
-    my $master_file = "$cfg_dir/namelist_files/master_aer_wetdep_list.xml";
-
+    my $master_file = '';
+    if ($chem =~ /geoschem/) {
+      $master_file = "$cfg_dir/namelist_files/geoschem_master_aer_wetdep_list.xml";
+    } else {
+      $master_file = "$cfg_dir/namelist_files/mozart_master_aer_wetdep_list.xml";
+    }
+      
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " aer wet dep list : $list  \n" ;}
@@ -244,9 +265,14 @@ sub get_aer_wetdep_list
 #-------------------------------------------------------------------------------
 sub get_gas_wetdep_list
 {
-    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
+    my ($chem,$cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
-    my $master_file = "$cfg_dir/namelist_files/master_gas_wetdep_list.xml";
+    my $master_file = '';
+    if ($chem =~ /geoschem/) {
+      $master_file = "$cfg_dir/namelist_files/geoschem_master_gas_wetdep_list.xml";
+    } else {
+      $master_file = "$cfg_dir/namelist_files/mozart_master_gas_wetdep_list.xml";
+    }
 
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
@@ -284,7 +310,6 @@ sub get_dep_list
 
     return ($list);
 }
-
 #-------------------------------------------------------------------------------
 sub read_master_list_file
 {

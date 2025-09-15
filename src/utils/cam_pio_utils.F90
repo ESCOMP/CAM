@@ -132,7 +132,7 @@ contains
            latidx, lonidx)
       if (present(dimnames)) then
         if (trim(dimnames(1)) == 'lon') then
-          start(1) = lonidx ! First dim always lon for Eulerian dycore
+          start(1) = lonidx
           ! This could be generalized -- for now, stick with single column
           kount(1) = 1
         else
@@ -1123,22 +1123,45 @@ contains
 
   end subroutine cam_pio_createfile
 
-  subroutine cam_pio_openfile(file, fname, mode)
+  subroutine cam_pio_openfile(file, fname, mode, errcode)
     use pio,            only: pio_openfile, file_desc_t, pio_noerr, pio_iotask_rank
+    use pio,            only: pio_seterrorhandling, PIO_BCAST_ERROR
     use cam_abortutils, only: endrun
 
     type(file_desc_t), intent(inout), target :: file
     character(len=*), intent(in) :: fname
     integer, intent(in) :: mode
+    integer, optional, intent(out) :: errcode
 
     integer :: ierr
+    integer :: err_handling
+
+    ! If an error code is present, make sure PIO returns an error
+    ! instead of aborting
+    if (present(errcode)) then
+       call pio_seterrorhandling(pio_subsystem, PIO_BCAST_ERROR, &
+               oldmethod=err_handling)
+    end if
+
+    if(pio_iotask_rank(pio_subsystem) == 0) then
+       write(iulog,*) 'Opening existing file ', trim(fname), file%fh
+    end if
 
     ierr = pio_openfile(pio_subsystem, file, pio_iotype, fname, mode)
 
-    if(ierr/= PIO_NOERR) then
+    if (present(errcode)) then
+       errcode = ierr
+    end if
+    
+    if(ierr/= PIO_NOERR .and. (.not. present(errcode))) then
        call endrun('Failed to open '//trim(fname)//' to read')
-    else if(pio_iotask_rank(pio_subsystem) == 0) then
-       write(iulog,*) 'Opened existing file ', trim(fname), file%fh
+    end if
+
+    ! If an error code is requested, then set the error
+    ! handling back to whatever it was running before
+    ! this routine
+    if (present(errcode)) then
+       call pio_seterrorhandling(pio_subsystem, err_handling)
     end if
 
   end subroutine cam_pio_openfile

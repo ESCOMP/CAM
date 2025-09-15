@@ -21,8 +21,8 @@
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- upper atmos forcings -->
-<waccm_forcing_type>FIXED</waccm_forcing_type>
-<waccm_forcing_fixed_ymd>20100101</waccm_forcing_fixed_ymd>
+<waccm_forcing_type>CYCLICAL</waccm_forcing_type>
+<waccm_forcing_cycle_yr>2010</waccm_forcing_cycle_yr>
 <waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
 <waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
 
@@ -110,7 +110,7 @@
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
-  'AOA1', 'AOA2', 'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
+  'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
   'UTGWSPEC', 'VTGWSPEC', 'BUTGWSPEC', 'AODVISstdn', 'AODVISdn', 'KVH_CLUBB', 'KVH', 'TTENDICE', 'QVTENDICE', 'QCTENDICE',
   'NCTENDICE', 'FQTENDICE', 'MASS'
 </fincl1>

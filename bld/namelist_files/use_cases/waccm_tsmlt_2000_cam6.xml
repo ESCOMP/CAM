@@ -242,8 +242,6 @@
  'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo_2deg/emissions-cmip6_so4_a2_anthro-res_surface_2000climo_1.9x2.5_c20200422.nc'
 </srf_emis_specifier>
 
-<ndep_list>'noy', 'nhx'</ndep_list>
-
 <!-- History Files -->
 
 <mfilt>           1,    5,  20,  40, 120, 240, 365,  73, 365   </mfilt>
@@ -260,7 +258,7 @@
 <history_cesm_forcing>.true.</history_cesm_forcing>
 <history_scwaccm_forcing>.true.</history_scwaccm_forcing>
 
-<fexcl1> 'AOA1SRC', 'AOA2SRC', 'NO2_CMXF' </fexcl1>
+<fexcl1> 'NO2_CMXF' </fexcl1>
 
 <fincl1>
    'ACTREL', 'AQ_SO2', 'AREA', 'BROX', 'BROY', 'BRY', 'CLOX', 'CLOY', 'CLY',  'NOX', 'NOY', 'TBRY', 'TCLY',  'CFC11STAR',

@@ -63,19 +63,6 @@ integer, parameter, public :: idx_uv_diag = 11 ! index to sw uv (345-441 nm) ban
 
 integer, parameter, public :: rrtmg_sw_cloudsim_band = 9  ! rrtmg band for .67 micron
 
-! Number of evenly spaced intervals in rh
-! The globality of this mesh may not be necessary
-! Perhaps it could be specific to the aerosol
-! But it is difficult to see how refined it must be
-! for lookup.  This value was found to be sufficient
-! for Sulfate and probably necessary to resolve the
-! high variation near rh = 1.  Alternative methods
-! were found to be too slow.
-! Optimal approach would be for cam to specify size of aerosol
-! based on each aerosol's characteristics.  Radiation 
-! should know nothing about hygroscopic growth!
-integer, parameter, public :: nrh = 1000  
-
 ! LONGWAVE DATA
 
 ! These are indices to the band for diagnostic output
@@ -122,9 +109,6 @@ character(len=gasnamelength), public, parameter :: gaslist(nradgas) &
 ! what is the minimum mass mixing ratio that can be supported by radiation implementation?
 real(r8), public, parameter :: minmmr(nradgas) &
    = epsilon(1._r8)
-
-! Length of "optics type" string specified in optics files.
-integer, parameter, public :: ot_length = 32
 
 public :: rad_gas_index
 

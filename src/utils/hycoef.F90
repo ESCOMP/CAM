@@ -21,6 +21,10 @@ save
 !          interfaces   p(k) = hyai(k)*ps0 + hybi(k)*ps
 !          midpoints    p(k) = hyam(k)*ps0 + hybm(k)*ps
 !
+! Note: Module data with a target attribute are targets of pointers in hist_coord_t
+!       objects in the cam_history_support module.  They are associated by the calls
+!       to add_hist_coord and add_vert_coord
+!
 !-----------------------------------------------------------------------
 
 real(r8), public, target :: hyai(plevp) ! ps0 component of hybrid coordinate - interfaces
@@ -41,7 +45,7 @@ real(r8), public, protected :: psr = 6.0e1_r8    ! Reference surface pressure (p
 real(r8), public, protected :: ps0 = 1.0e5_r8    ! Base state surface pressure (pascals)
 real(r8), public, protected :: psr = 1.0e5_r8    ! Reference surface pressure (pascals)
 #endif
-real(r8), target :: alev(plev)    ! level values (pascals) for 'lev' coord
+real(r8), target :: alev(plev)    ! level values (hPa) for 'lev' coord
 real(r8), target :: ailev(plevp)  ! interface level values for 'ilev' coord
 
 integer, public :: nprlev       ! number of pure pressure levels at top

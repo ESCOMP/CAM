@@ -23,7 +23,7 @@ contains
       use edyn_maggrid, only: set_maggrid, gmlat, nmlonp1, nmlat, nmlath, nmlev
       use edyn_mpi,     only: mp_exchange_tasks
       use edyn_mpi,     only: mp_distribute_mag
-      use edyn_grid_comp, only: edyn_grid_comp_init
+      use edyn_phys_grid, only: edyn_phys_grid_init
       use edyn_solve, only: edyn_solve_init
 
       !
@@ -47,7 +47,8 @@ contains
       call mp_exchange_tasks(mpicomm, 0, gmlat) ! single arg is iprint
 
       call alloc_edyn()      ! allocate dynamo arrays
-      call edyn_grid_comp_init(mpicomm)
+
+      call edyn_phys_grid_init()
 
       call add_fields()      ! add fields to WACCM history master list
 

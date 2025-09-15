@@ -31,6 +31,8 @@ appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
 
+derecho/nvhpc/aux_cam:
+
 izumi/nag/aux_cam:
 
 izumi/gnu/aux_cam:

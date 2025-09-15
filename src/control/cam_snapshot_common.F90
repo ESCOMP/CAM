@@ -48,7 +48,7 @@ private :: fill_pbuf_info
 
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
-integer, parameter :: npbuf_all = 327
+integer, parameter :: npbuf_all = 310
 
 type snapshot_type
   character(len=40)  :: ddt_string
@@ -81,12 +81,12 @@ integer :: npbuf_var
 integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
-type (snapshot_type)    ::  state_snapshot(27)
+type (snapshot_type)    ::  state_snapshot(30)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
 type (snapshot_type)    ::  cam_out_snapshot(30)
-type (snapshot_type_nd) ::  pbuf_snapshot(250)
+type (snapshot_type_nd) ::  pbuf_snapshot(300)
 
 contains
 
@@ -266,16 +266,25 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_afte
      'state%zi',        'state_zi',         'm',                'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_ini',    'state_te_ini',     'unset',            horiz_only)
+     'state%te_ini_phys', 'state_te_ini_phys',  'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_cur',    'state_te_cur',     'unset',            horiz_only)
+     'state%te_cur_phys', 'state_te_cur_phys',  'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_ini',    'state_tw_ini',     'unset',            horiz_only)
+     'state%tw_ini', 'state_tw_ini',  'unset',                      horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_cur',    'state_tw_cur',     'unset',            horiz_only)
+     'state%tw_cur', 'state_tw_cur',  'unset',                      horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'state%te_ini_dyn',  'state_te_ini_dyn',   'unset',            horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'state%te_cur_dyn',  'state_te_cur_dyn',   'unset',            horiz_only)
+
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'air_composition_cp_or_cv_dycore',  'cp_or_cv_dycore',   'J kg-1 K-1',  'lev')
 
 end subroutine cam_state_snapshot_init
 
@@ -424,9 +433,16 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
 ! This subroutine does the addfld calls for cam_in fields
 !--------------------------------------------------------
 
+   use constituents, only: cnst_name
+
    type(cam_in_t), intent(in) :: cam_in
 
-   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+   integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   ! for constituent loop.
+   integer :: mcnst
+   character(len=64)  :: fname
+   character(len=128) :: lname
 
    ncam_in_var = 0
 
@@ -455,8 +471,15 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%shf',             'cam_in_shf',               'unset',          horiz_only)
 
-   call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
+   ! cam_in%cflx is sized (pcols, pcnst); because the constituent indices at the model that reads this
+   ! data may not match the indices in the model outputting the snapshot,
+   ! cam_in%cflx is split into a series of snapshot variables cam_in_cflx_(constituent name).
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      lname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+                            fname, lname, 'kg m-2 s-1', horiz_only)
+   enddo
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%wsx',             'cam_in_wsx',               'unset',          horiz_only)
@@ -734,6 +757,9 @@ end subroutine snapshot_addfld
 
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
+   use physics_types,    only: phys_te_idx, dyn_te_idx
+   use air_composition,  only: cp_or_cv_dycore
+
    integer,              intent(in)  :: lchnk
    integer,              intent(in)  :: file_num
    type(physics_state),  intent(in)  :: state
@@ -817,17 +843,28 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
       case ('state%zi')
          call outfld(state_snapshot(i)%standard_name, state%zi, pcols, lchnk)
 
-      case ('state%te_ini')
-         call outfld(state_snapshot(i)%standard_name, state%te_ini, pcols, lchnk)
+      case ('state%te_ini_phys')
+         call outfld(state_snapshot(i)%standard_name, state%te_ini(:, phys_te_idx), pcols, lchnk)
 
-      case ('state%te_cur')
-         call outfld(state_snapshot(i)%standard_name, state%te_cur, pcols, lchnk)
+      case ('state%te_cur_phys')
+         call outfld(state_snapshot(i)%standard_name, state%te_cur(:, phys_te_idx), pcols, lchnk)
 
       case ('state%tw_ini')
          call outfld(state_snapshot(i)%standard_name, state%tw_ini, pcols, lchnk)
 
       case ('state%tw_cur')
          call outfld(state_snapshot(i)%standard_name, state%tw_cur, pcols, lchnk)
+
+      case ('state%te_ini_dyn')
+         call outfld(state_snapshot(i)%standard_name, state%te_ini(:, dyn_te_idx), pcols, lchnk)
+
+      case ('state%te_cur_dyn')
+         call outfld(state_snapshot(i)%standard_name, state%te_cur(:, dyn_te_idx), pcols, lchnk)
+
+      case ('air_composition_cp_or_cv_dycore')
+         ! this field is not part of physics state (it is in air_composition)
+         ! but describes the atmospheric thermodynamic state and thus saved within the snapshot
+         call outfld(state_snapshot(i)%standard_name, cp_or_cv_dycore(:,:,lchnk), pcols, lchnk)
 
       case default
          call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%ddt_string))
@@ -965,11 +1002,15 @@ end subroutine tend_snapshot_all_outfld
 
 subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
+   use constituents, only: cnst_name
+
    integer,         intent(in)  :: lchnk
    integer,         intent(in)  :: file_num
    type(cam_in_t),  intent(in)  :: cam_in
 
    integer :: i
+   integer :: mcnst
+   character(len=64) :: fname
 
    do i=1, ncam_in_var
 
@@ -1034,12 +1075,25 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
          call outfld(cam_in_snapshot(i)%standard_name, cam_in%dstflx, pcols, lchnk)
 
       case default
-         call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         if (cam_in_snapshot(i)%ddt_string(1:12) == 'cam_in_cflx_') then
+            ! This case is handled below in a loop (not looked up here as it would be i*pcnst iterations)
+         else
+            call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         endif
 
       end select
 
       call cam_history_snapshot_deactivate(trim(cam_in_snapshot(i)%standard_name))
 
+   end do
+
+   ! Handle cam_in%cflx constituent loop
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+
+      call cam_history_snapshot_activate(trim(fname), file_num)
+      call outfld(fname, cam_in%cflx(:,mcnst), pcols, lchnk)
+      call cam_history_snapshot_deactivate(trim(fname))
    end do
 
 end subroutine cam_in_snapshot_all_outfld
@@ -1240,17 +1294,6 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'AurIPRateSum           ','unset                  ',&
           'awk_PBL                ','unset                  ',&
           'bprod                  ','unset                  ',&
-          'cam3_bcphi             ','unset                  ',&
-          'cam3_bcpho             ','unset                  ',&
-          'cam3_dust1             ','unset                  ',&
-          'cam3_dust2             ','unset                  ',&
-          'cam3_dust3             ','unset                  ',&
-          'cam3_dust4             ','unset                  ',&
-          'cam3_ocphi             ','unset                  ',&
-          'cam3_ocpho             ','unset                  ',&
-          'cam3_ssam              ','unset                  ',&
-          'cam3_sscm              ','unset                  ',&
-          'cam3_sul               ','unset                  ',&
           'CC_ni                  ','unset                  ',&
           'CC_nl                  ','unset                  ',&
           'CC_qi                  ','unset                  ',&
@@ -1325,9 +1368,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'delta_thl_PBL          ','unset                  ',&
           'delta_tr_PBL           ','unset                  ',&
           'delta_u_PBL            ','unset                  ',&
-          'delta_v_PBL            ','unset                  '/) ,  (/2,100/))
-
-     pbuf_all(1:2,101:200) = reshape ( (/  &
+          'delta_v_PBL            ','unset                  ',&
           'DES                    ','unset                  ',&
           'DGNUM                  ','unset                  ',&
           'DGNUMWET               ','unset                  ',&
@@ -1335,12 +1376,12 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'DLFZM                  ','kg/kg/s                ',&
           'DNIFZM                 ','1/kg/s                 ',&
           'DNLFZM                 ','1/kg/s                 ',&
-          'DP_CLDICE              ','unset                  ',&
-          'DP_CLDLIQ              ','unset                  ',&
           'DP_FLXPRC              ','unset                  ',&
           'DP_FLXSNW              ','unset                  ',&
           'DP_FRAC                ','unset                  ',&
-          'dragblj                ','1/s                    ',&
+          'dragblj                ','1/s                    '  /),  (/2,100/))
+
+     pbuf_all(1:2,101:200) = reshape ( (/  &
           'DRYMASS                ','unset                  ',&
           'DRYRAD                 ','unset                  ',&
           'DRYVOL                 ','unset                  ',&
@@ -1427,9 +1468,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QCWAT                  ','unset                  ',&
           'QFLX                   ','kg/m2/s                ',&
           'QFLX_RES               ','unset                  ',&
-          'QINI                   ','unset                  '  /),    (/2,100/))
-
-     pbuf_all(1:2,201:300) = reshape ( (/  &
+          'QINI                   ','unset                  ',&
           'qir_det                ','kg/kg                  ',&
           'QIST                   ','unset                  ',&
           'qlr_det                ','kg/kg                  ',&
@@ -1442,7 +1481,9 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QRS                    ','K/s                    ',&
           'qrsin                  ','unset                  ',&
           'QSATFAC                ','-                      ',&
-          'QSNOW                  ','kg/kg                  ',&
+          'QSNOW                  ','kg/kg                  '  /),    (/2,100/))
+
+     pbuf_all(1:2,201:300) = reshape ( (/  &
           'QTeAur                 ','unset                  ',&
           'qti_flx                ','unset                  ',&
           'qtl_flx                ','unset                  ',&
@@ -1470,9 +1511,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'SD                     ','unset                  ',&
           'SGH30                  ','unset                  ',&
           'SGH                    ','unset                  ',&
-          'SH_CLDICE1             ','unset                  ',&
           'SH_CLDICE              ','unset                  ',&
-          'SH_CLDLIQ1             ','unset                  ',&
           'SH_CLDLIQ              ','unset                  ',&
           'SH_E_ED_RATIO          ','unset                  ',&
           'SHFLX                  ','W/m2                   ',&
@@ -1481,7 +1520,6 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'SH_FLXSNW              ','unset                  ',&
           'SH_FRAC                ','unset                  ',&
           'shfrc                  ','unset                  ',&
-          'smaw                   ','unset                  ',&
           'SNOW_DP                ','unset                  ',&
           'SNOW_PCW               ','unset                  ',&
           'SNOW_SED               ','unset                  ',&
@@ -1523,15 +1561,12 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'TTEND_DP               ','unset                  ',&
           'TTEND_SH               ','unset                  ',&
           'T_TTEND                ','unset                  ',&
-          'turbtype               ','unset                  ',&
           "UI                     ",'m/s                    ',&
           'UM                     ','unset                  ',&
           'UP2_nadv               ','unset                  ',&
           'UPWP                   ','m^2/s^2                ',&
           'UZM                    ','M/S                    ',&
-          'VI                     ','m/s                    '    /),                  (/2,100/))
-
-     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
+          'VI                     ','m/s                    ',&
           'VM                     ','m/s                    ',&
           'VOLC_MMR               ','unset                  ',&
           'VOLC_RAD_GEOM          ','unset                  ',&
@@ -1548,7 +1583,9 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'WPTHVP                 ','unset                  ',&
           'WSEDL                  ','unset                  ',&
           'wstarPBL               ','unset                  ',&
-          'ZM_DP                  ','unset                  ',&
+          'ZM_DP                  ','unset                  '  /),                  (/2,100/))
+
+     pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
           'ZM_DSUBCLD             ','unset                  ',&
           'ZM_DU                  ','unset                  ',&
           'ZM_ED                  ','unset                  ',&
@@ -1558,7 +1595,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ZM_MAXG                ','unset                  ',&
           'ZM_MD                  ','unset                  ',&
           'ZM_MU                  ','unset                  ',&
-          'ZTODT                  ','unset                  '  /),                     (/2,27/))
+          'ZTODT                  ','unset                  '  /),                     (/2,10/))
 
 ! Fields which are added with pbuf_add_field calls, but are data driven.  These are not
 ! included in the above list.  This means that these fields will not have proper units

@@ -13,10 +13,8 @@ module camsrfexch
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
   use srf_field_check, only: active_Sl_ram1, active_Sl_fv, active_Sl_soilw,                &
-                             active_Fall_flxdst1, active_Fall_flxvoc, active_Fall_flxfire, &
-                             active_Faxa_nhx, active_Faxa_noy
-
-
+                             active_Fall_flxdst1, active_Fall_flxvoc, active_Fall_flxfire
+  use cam_control_mod, only: aqua_planet, simple_phys
 
   implicit none
   private
@@ -100,6 +98,8 @@ module camsrfexch
      real(r8) :: tref(pcols)             ! ref height surface air temp
      real(r8) :: qref(pcols)             ! ref height specific humidity
      real(r8) :: u10(pcols)              ! 10m wind speed
+     real(r8) :: ugustOut(pcols)         ! gustiness added
+     real(r8) :: u10withGusts(pcols)     ! 10m wind speed with gusts added
      real(r8) :: ts(pcols)               ! merged surface temp
      real(r8) :: sst(pcols)              ! sea surface temp
      real(r8) :: snowhland(pcols)        ! snow depth (liquid water equivalent) over land
@@ -218,6 +218,8 @@ CONTAINS
        cam_in(c)%tref     (:) = 0._r8
        cam_in(c)%qref     (:) = 0._r8
        cam_in(c)%u10      (:) = 0._r8
+       cam_in(c)%ugustOut (:) = 0._r8
+       cam_in(c)%u10withGusts (:) = 0._r8
        cam_in(c)%ts       (:) = 0._r8
        cam_in(c)%sst      (:) = 0._r8
        cam_in(c)%snowhland(:) = 0._r8
@@ -321,14 +323,20 @@ CONTAINS
        cam_out(c)%dstwet4(:)  = 0._r8
 
        nullify(cam_out(c)%nhx_nitrogen_flx)
-       allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
-       if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
-       cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
-
        nullify(cam_out(c)%noy_nitrogen_flx)
-       allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
-       if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
-       cam_out(c)%noy_nitrogen_flx(:) = 0._r8
+
+       if (.not.(simple_phys .or. aqua_planet)) then
+
+          allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
+          if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
+          cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
+
+          allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
+          if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
+          cam_out(c)%noy_nitrogen_flx(:) = 0._r8
+
+       endif
+
     end do
 
   end subroutine atm2hub_alloc

@@ -215,13 +215,8 @@ end subroutine prescribed_ozone_readnl
 
     if( .not. has_prescribed_ozone ) return
 
-    if( cam_physpkg_is('cam3') .and. aqua_planet ) then
-       molmass = 48._r8
-       amass   = 28.9644_r8
-    else
-       molmass = 47.9981995_r8
-       amass   = mwdry
-    end if
+    molmass = 47.9981995_r8
+    amass   = mwdry
 
     call advance_trcdata( fields, file, state, pbuf2d )
 

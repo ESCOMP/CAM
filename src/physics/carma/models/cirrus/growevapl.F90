@@ -216,7 +216,7 @@ subroutine growevapl(carma, cstate, iz, rc)
 
             if( x .lt. 1._f )then
               growlg(ibin,igroup) = dmdt(ibin)/pc(iz,ibin,iepart) &
-                       * ( ar(ibin) - 0.5*dela(ibin)*x + &
+                       * ( ar(ibin) - 0.5_r8*dela(ibin)*x + &
                        (x/2._f - x**2/3._f)*a6(ibin) )
             else
               growlg(ibin,igroup) = dmdt(ibin) / dm(ibin,igroup)

@@ -161,7 +161,7 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
   do k = pver, 1, -1
      do i = 1, ncol
         if (boti(i) == 0) then
-           ! Detect if we are outside the maximum range (where z = 20 km).
+           ! Detect if we are outside the top of range (where z = 20 km).
            if (zm(i,k) >= 20000._r8) then
               boti(i) = k
               topi(i) = k
@@ -169,17 +169,20 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
               ! First spot where heating rate is positive.
               if (netdt(i,k) > 0.0_r8) boti(i) = k
            end if
-        else if (topi(i) == 0) then
-           ! Detect if we are outside the maximum range (z = 20 km).
-           if (zm(i,k) >= 20000._r8) then
-              topi(i) = k
-           else
-              ! First spot where heating rate is no longer positive.
-              if (.not. (netdt(i,k) > 0.0_r8)) topi(i) = k
-           end if
         end if
      end do
-     ! When all done, exit.
+     ! When all done, exit
+     if (all(boti /= 0)) exit
+  end do
+
+  do k = 1, pver
+     do i = 1, ncol
+        if (topi(i) == 0) then
+                ! First spot where heating rate is positive.
+              if ((netdt(i,k) > 0.0_r8) .AND. (zm(i,k) <= 20000._r8)) topi(i) = k-1
+        end if
+     end do
+     ! When all done, exit
      if (all(topi /= 0)) exit
   end do
 
@@ -187,8 +190,7 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
   hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
 
   ! J. Richter: this is an effective reduction of the GW phase speeds (needed to drive the QBO)
-  hdepth = hdepth*qbo_hdepth_scaling
-
+  hdepth = max(1000._r8, hdepth*qbo_hdepth_scaling)
   hd_idx = index_of_nearest(hdepth, desc%hd)
 
   ! hd_idx=0 signals that a heating depth is too shallow, i.e. that it is
@@ -283,7 +285,7 @@ subroutine gw_beres_src(ncol, band, desc, u, v, &
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0_r8
- 
+
         tau(i,:,topi(i)+1) = tau0
 
      end if ! heating depth above min and not at the pole

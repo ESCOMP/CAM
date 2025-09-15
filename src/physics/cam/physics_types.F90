@@ -32,7 +32,6 @@ module physics_types
   public physics_ptend_init
   public physics_state_set_grid
   public physics_dme_adjust  ! adjust dry mass and energy for change in water
-                             ! cannot be applied to eul or sld dycores
   public physics_state_copy  ! copy a physics_state object
   public physics_ptend_copy  ! copy a physics_ptend object
   public physics_ptend_sum   ! accumulate physics_ptend objects
@@ -101,7 +100,8 @@ module physics_types
                            ! Second dimension is (phys_te_idx) CAM physics total energy and
                            ! (dyn_te_idx) dycore total energy computed in physics
           te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
-          te_cur,         &! vertically integrated total (kinetic + static) energy of current state
+          te_cur           ! vertically integrated total (kinetic + static) energy of current state
+     real(r8), dimension(:), allocatable           :: &
           tw_ini,         &! vertically integrated total water of initial state
           tw_cur           ! vertically integrated total water of new state
      real(r8), dimension(:,:),allocatable          :: &
@@ -211,7 +211,7 @@ contains
     use scamMod,         only: scm_crm_mode, single_column
     use phys_control,    only: phys_getopts
     use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
-    use air_composition, only: dry_air_species_num
+    use air_composition, only: dry_air_species_num, thermodynamic_active_species_num, thermodynamic_active_species_idx
     use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -231,6 +231,7 @@ contains
     integer :: ixnumsnow, ixnumrain
     integer :: ncol                                ! number of columns
     integer :: ixh, ixh2    ! constituent indices for H, H2
+    logical :: derive_new_geopotential             ! derive new geopotential fields?
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
@@ -419,9 +420,23 @@ contains
        end do
     end if
 
-    ! Derive new geopotential fields if heating or water tendency not 0.
+    ! Derive new geopotential fields if heating or water species tendency not 0.
+    derive_new_geopotential = .false.
+    if(ptend%ls) then
+        ! Heating tendency not 0
+        derive_new_geopotential = .true.
+    else
+        ! Check all water species and if there are nonzero tendencies
+        const_water_loop: do m = dry_air_species_num + 1, thermodynamic_active_species_num
+            if(ptend%lq(thermodynamic_active_species_idx(m))) then
+                ! does water species have tendency?
+                derive_new_geopotential = .true.
+                exit const_water_loop
+            endif
+        enddo const_water_loop
+    endif
 
-    if (ptend%ls .or. ptend%lq(1)) then
+    if (derive_new_geopotential) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
             state%t     , state%q(:,:,:), rairv_loc(:,:), gravit  , zvirv              , &
@@ -537,9 +552,9 @@ contains
          varname="state%te_ini",    msg=msg)
     call shr_assert_in_domain(state%te_cur(:ncol,:),    is_nan=.false., &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol,:),    is_nan=.false., &
+    call shr_assert_in_domain(state%tw_ini(:ncol),      is_nan=.false., &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol,:),    is_nan=.false., &
+    call shr_assert_in_domain(state%tw_cur(:ncol),      is_nan=.false., &
          varname="state%tw_cur",    msg=msg)
     call shr_assert_in_domain(state%temp_ini(:ncol,:),  is_nan=.false., &
          varname="state%temp_ini",  msg=msg)
@@ -615,9 +630,9 @@ contains
          varname="state%te_ini",    msg=msg)
     call shr_assert_in_domain(state%te_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_ini(:ncol),      lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_cur(:ncol),      lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_cur",    msg=msg)
     call shr_assert_in_domain(state%temp_ini(:ncol,:),  lt=posinf_r8, gt=neginf_r8, &
          varname="state%temp_ini",  msg=msg)
@@ -1191,9 +1206,11 @@ end subroutine physics_ptend_copy
 
 !===============================================================================
   subroutine physics_dme_adjust(state, tend, qini, liqini, iceini, dt)
-    use air_composition, only: dry_air_species_num,thermodynamic_active_species_num
-    use air_composition, only: thermodynamic_active_species_idx
-    use dycore,          only: dycore_is
+    use air_composition,           only: dry_air_species_num,thermodynamic_active_species_num
+    use air_composition,           only: thermodynamic_active_species_idx
+    use dycore,                    only: dycore_is
+    use dme_adjust,                only: dme_adjust_run
+    use ccpp_constituent_prop_mod, only: ccpp_const_props
     !-----------------------------------------------------------------------
     !
     ! Purpose: Adjust the dry mass in each layer back to the value of physics input state
@@ -1207,9 +1224,6 @@ end subroutine physics_ptend_copy
     !         The mass in each layer is modified, changing the relationship of the layer
     !         interfaces and midpoints to the surface pressure. The result is no longer in
     !         the original hybrid coordinate.
-    !
-    !         This procedure cannot be applied to the "eul" or "sld" dycores because they
-    !         require the hybrid coordinate.
     !
     ! Author: Byron Boville
 
@@ -1247,6 +1261,12 @@ end subroutine physics_ptend_copy
 
     real(r8),allocatable :: cpairv_loc(:,:)
     integer :: m_cnst
+
+    logical :: is_dycore_moist
+
+    character(len=512)   :: errmsg
+    integer              :: errflg
+
     !
     !-----------------------------------------------------------------------
 
@@ -1257,19 +1277,19 @@ end subroutine physics_ptend_copy
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! adjust dry mass in each layer back to input value, while conserving
-    ! constituents, momentum, and total energy
-    state%ps(:ncol) = state%pint(:ncol,1)
-
     !
-    ! original code for backwards compatability with FV and EUL
+    ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
       do k = 1, pver
-        
+
+        ! adjust dry mass in each layer back to input value, while conserving
+        ! constituents, momentum, and total energy
+        state%ps(:ncol) = state%pint(:ncol,1)
+
         ! adjusment factor is just change in water vapor
         fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-        
+
         ! adjust constituents to conserve mass in each layer
         do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
@@ -1282,26 +1302,14 @@ end subroutine physics_ptend_copy
         state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
       end do
     else
-      do k = 1, pver
-        tot_water(:ncol,1) = qini(:ncol,k) +liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
-        tot_water(:ncol,2) = 0.0_r8
-        do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
-          m = thermodynamic_active_species_idx(m_cnst)
-          tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
-        end do
-        fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
-        ! adjust constituents to conserve mass in each layer
-        do m = 1, pcnst
-          state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
-        end do
-        ! compute new total pressure variables
-        state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
-        state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
-        state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
-        state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
-        state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
-        !note that mid-level variables (e.g. pmid) are not recomputed
-      end do
+      is_dycore_moist = .true.
+      call dme_adjust_run (state%ncol, pver, pcnst, state%ps(:ncol), state%pint(:ncol,:), state%pdel(:ncol,:), &
+                           state%lnpint(:ncol,:), state%rpdel(:ncol,:), &
+                           ccpp_const_props, state%q(:ncol,:,:), qini(:ncol,:), liqini(:ncol,:), iceini(:ncol,:), &
+                           is_dycore_moist, errmsg, errflg)
+      if (errflg /= 0) then
+         call endrun('physics_dme_adjust: '//errmsg)
+      end if
     endif
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
       zvirv(:,:) = shr_const_rwv / rairv(:,:,state%lchnk) - 1._r8
@@ -1351,8 +1359,8 @@ end subroutine physics_ptend_copy
      end do
      state_out%te_ini(:ncol,:) = state_in%te_ini(:ncol,:)
      state_out%te_cur(:ncol,:) = state_in%te_cur(:ncol,:)
-     state_out%tw_ini(:ncol,:) = state_in%tw_ini(:ncol,:)
-     state_out%tw_cur(:ncol,:) = state_in%tw_cur(:ncol,:)
+     state_out%tw_ini(:ncol)   = state_in%tw_ini(:ncol)
+     state_out%tw_cur(:ncol)   = state_in%tw_cur(:ncol)
 
     do k = 1, pver
        do i = 1, ncol
@@ -1481,40 +1489,72 @@ end subroutine set_state_pdry
 
 !===============================================================================
 
-subroutine set_wet_to_dry (state)
+subroutine set_wet_to_dry(state, convert_cnst_type)
+
+  ! Convert mixing ratios from a wet to dry basis for constituents of type
+  ! convert_cnst_type.  Constituents are given a type when they are added
+  ! to the constituent array by a call to cnst_add during the register
+  ! phase of initialization.  There are two constituent types: 'wet' for
+  ! water species and 'dry' for non-water species.
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=3),    intent(in)    :: convert_cnst_type
 
+  ! local variables
   integer m, ncol
+  character(len=*), parameter :: sub = 'set_wet_to_dry'
+  !-----------------------------------------------------------------------------
+
+  ! check input
+  if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
+  end if
 
   ncol = state%ncol
 
-  do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+  do m = 1, pcnst
+     if (cnst_type(m) == convert_cnst_type) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdel(:ncol,:)/state%pdeldry(:ncol,:)
-     endif
+     end if
   end do
 
 end subroutine set_wet_to_dry
 
 !===============================================================================
 
-subroutine set_dry_to_wet (state)
+subroutine set_dry_to_wet(state, convert_cnst_type)
+
+  ! Convert mixing ratios from a dry to wet basis for constituents of type
+  ! convert_cnst_type.  Constituents are given a type when they are added
+  ! to the constituent array by a call to cnst_add during the register
+  ! phase of initialization.  There are two constituent types: 'wet' for
+  ! water species and 'dry' for non-water species.
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=3),    intent(in)    :: convert_cnst_type
 
+  ! local variables
   integer m, ncol
+  character(len=*), parameter :: sub = 'set_dry_to_wet'
+  !-----------------------------------------------------------------------------
+
+  ! check input
+  if (.not.(convert_cnst_type == 'wet' .or. convert_cnst_type == 'dry')) then
+    write(iulog,*) sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type
+    call endrun(sub//': FATAL: convert_cnst_type not recognized: '//convert_cnst_type)
+  end if
 
   ncol = state%ncol
 
-  do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+  do m = 1, pcnst
+     if (cnst_type(m) == convert_cnst_type) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdeldry(:ncol,:)/state%pdel(:ncol,:)
-     endif
+     end if
   end do
 
 end subroutine set_dry_to_wet
@@ -1635,10 +1675,10 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%te_cur(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_cur')
 
-  allocate(state%tw_ini(psetcols,2), stat=ierr)
+  allocate(state%tw_ini(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_ini')
 
-  allocate(state%tw_cur(psetcols,2), stat=ierr)
+  allocate(state%tw_cur(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_cur')
 
   allocate(state%temp_ini(psetcols,pver), stat=ierr)
@@ -1688,8 +1728,8 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
 
   state%te_ini(:,:) = inf
   state%te_cur(:,:) = inf
-  state%tw_ini(:,:) = inf
-  state%tw_cur(:,:) = inf
+  state%tw_ini(:) = inf
+  state%tw_cur(:) = inf
   state%temp_ini(:,:) = inf
   state%z_ini(:,:)  = inf
 

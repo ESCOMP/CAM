@@ -83,4 +83,7 @@
 <flbc_type>      'CYCLICAL'                          </flbc_type>
 <flbc_cycle_yr>  2010                                </flbc_cycle_yr>
 
+<!-- sim_year -->
+<sim_year>2010</sim_year>
+
 </namelist_defaults>

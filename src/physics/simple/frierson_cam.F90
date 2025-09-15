@@ -83,7 +83,6 @@ module frierson_cam
   ! Some Physics buffer indices
   !-------------------------------
   integer :: prec_pcw_idx = 0
-  integer :: prec_dp_idx  = 0
   integer :: relhum_idx   = 0
 
   ! Global values for Surface Temp, surface fluxes, and radiative heating
@@ -133,7 +132,6 @@ contains
     !=====================================================================
 
     call pbuf_add_field('PREC_PCW','physpkg',dtype_r8, (/pcols/),     prec_pcw_idx)
-    call pbuf_add_field('PREC_DP' ,'physpkg',dtype_r8, (/pcols/),     prec_dp_idx )
     call pbuf_add_field('RELHUM'  ,'physpkg',dtype_r8, (/pcols,pver/),relhum_idx  )
 
   end subroutine frierson_register
@@ -361,7 +359,6 @@ contains
       ! Initialize physics buffer values
       !----------------------------------
       call pbuf_set_field(pbuf2d, prec_pcw_idx, 0._r8)
-      call pbuf_set_field(pbuf2d, prec_dp_idx , 0._r8)
 
       ! Allocate Surface fields
       !-------------------------

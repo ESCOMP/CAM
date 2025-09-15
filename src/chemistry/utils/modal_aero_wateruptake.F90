@@ -161,7 +161,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    use time_manager,  only: is_first_step
    use cam_history,   only: outfld, fieldname_len
-   use tropopause,    only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+   use tropopause,    only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    ! Arguments
    type(physics_state), target, intent(in)    :: state          ! Physics state variables
    type(physics_buffer_desc),   pointer       :: pbuf(:)        ! physics buffer
@@ -318,7 +318,10 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    if (modal_strat_sulfate) then
       ! get tropopause level
-      call tropopause_find(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+      !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+      tropLev(:) = 0
+      !REMOVECAM_END
+      call tropopause_find_cam(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
 
    h2ommr => state%q(:,:,1)

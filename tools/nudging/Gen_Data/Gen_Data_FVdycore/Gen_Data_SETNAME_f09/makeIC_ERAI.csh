@@ -23,11 +23,11 @@ setenv REF_DATE               20070901
 # Output file format
 
 setenv CASE                   ERAI_f09_L30  # Case name that will be appended to name of output file
-setenv DYCORE                 fv        # Dycore ("eul" or "fv" are the current choices)
+setenv DYCORE                 fv        # Dycore ("fv" is the only current choice)
 setenv PRECISION              float     # "double" or "float" are the current choices of output precision
-setenv PTRM                    -1       # "M" spectral truncation (for "eul" dycore only; ignored for other dycores; "-1" = no trunc)
-setenv PTRN                    -1       # "N" spectral truncation (for "eul" dycore only; ignored for other dycores; "-1" = no trunc)
-setenv PTRK                    -1       # "K" spectral truncation (for "eul" dycore only; ignored for other dycores; "-1" = no trunc)
+setenv PTRM                    -1       # "M" spectral truncation (for Gaussian grid; "-1" = no trunc)
+setenv PTRN                    -1       # "N" spectral truncation (for Gaussian grid; "-1" = no trunc)
+setenv PTRK                    -1       # "K" spectral truncation (for Gaussian grid; "-1" = no trunc)
 setenv PLAT                   192       # Number of latitudes  on output IC file
 setenv PLON                   288       # Number of longitudes on output IC file
 setenv PLEV                    30       # Number of vert levs  on output IC file

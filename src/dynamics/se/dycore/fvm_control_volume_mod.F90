@@ -128,7 +128,6 @@ module fvm_control_volume_mod
     !
     !******************************************
     !
-    real (kind=r8)           , allocatable :: phis_physgrid(:,:)
     real (kind=r8)           , allocatable :: vtx_cart_physgrid(:,:,:,:)
     real (kind=r8)           , allocatable :: flux_orient_physgrid(:,:,:)
     integer                  , allocatable :: ifct_physgrid(:,:)
@@ -280,7 +279,6 @@ contains
     end if
 
     do ie=1,nelemd
-      allocate(fvm(ie)%phis_physgrid          (fv_nphys,fv_nphys))
       allocate(fvm(ie)%vtx_cart_physgrid      (4,2,1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys))
       allocate(fvm(ie)%flux_orient_physgrid   (2,1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys))
       allocate(fvm(ie)%ifct_physgrid         (1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys))

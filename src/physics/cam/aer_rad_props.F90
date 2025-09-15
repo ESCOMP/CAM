@@ -11,7 +11,8 @@ use physconst,        only: rga
 use physics_types,    only: physics_state
 
 use physics_buffer,   only: physics_buffer_desc
-use radconstants,     only: nrh, nswbands, nlwbands, idx_sw_diag, ot_length
+use radconstants,     only: nswbands, nlwbands, idx_sw_diag
+use phys_prop,        only: nrh, ot_length
 use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, &
                             rad_cnst_get_aer_props
 use wv_saturation,    only: qsat
@@ -53,7 +54,8 @@ subroutine aer_rad_props_init()
    logical                    :: history_aero_optics  ! Output aerosol optics diagnostics
    logical                    :: history_dust         ! Output dust diagnostics
    logical                    :: prog_modal_aero      ! Prognostic modal aerosols present
-   integer                    :: nmodes          ! number of aerosol modes
+   integer                    :: nmodes               ! number of aerosol modes
+   integer                    :: nbins                ! number of aerosol bins
 
    !----------------------------------------------------------------------------
 
@@ -78,7 +80,7 @@ subroutine aer_rad_props_init()
 
    ! get names of bulk aerosols
    allocate(aernames(numaerosols))
-   call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes)
+   call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes, nbins=nbins)
 
    ! diagnostic output for bulk aerosols
    ! create outfld names for visible OD
@@ -102,8 +104,8 @@ subroutine aer_rad_props_init()
       end do
     endif
 
-    if (nmodes > 0) then
-       call aerosol_optics_cam_init()
+    if (nmodes>0 .or. nbins>0) then
+      call aerosol_optics_cam_init()
     end if
 
    deallocate(aernames)
@@ -118,7 +120,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    ! Return bulk layer tau, omega, g, f for all spectral intervals.
 
    use physics_buffer, only : physics_buffer_desc
-   use tropopause,     only : tropopause_find
+   use tropopause,     only : tropopause_find_cam
    ! Arguments
    integer,             intent(in) :: list_idx      ! index of the climate or a diagnostic list
    type(physics_state), intent(in), target :: state
@@ -129,7 +131,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    real(r8), intent(out) :: tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8), intent(out) :: tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * tau * w
+   real(r8), intent(out) :: tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * tau * w
    real(r8), intent(out) :: tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * tau * w
 
    ! Local variables
@@ -177,6 +179,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    integer  :: numaerosols     ! number of bulk aerosols in climate/diagnostic list
    integer  :: nmodes          ! number of aerosol modes in climate/diagnostic list
+   integer  :: nbins           ! number of aerosol bins in climate/diagnostic list
    integer  :: iaerosol        ! index into bulk aerosol list
 
    character(len=ot_length) :: opticstype       ! hygro or nonhygro
@@ -215,10 +218,10 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    wrh(1:ncol,1:pver) = rhtrunc(1:ncol,1:pver) * nrh - krh(1:ncol,1:pver)       ! (-) weighting on left side values
 
    ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes)
+   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
-   ! Contributions from modal aerosols.
-   if (nmodes > 0) then
+   ! Contributions from modal and bin aerosols.
+   if (nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, &
                                  tau, tau_w, tau_w_g, tau_w_f)
    else
@@ -228,7 +231,10 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
       tau_w_f(1:ncol,:,:) = 0._r8
    end if
 
-   call tropopause_find(state, troplev)
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   troplev = 0
+   !REMOVECAM_END
+   call tropopause_find_cam(state, troplev)
 
    ! Contributions from bulk aerosols.
    do iaerosol = 1, numaerosols
@@ -308,15 +314,14 @@ end subroutine aer_rad_props_sw
 
 subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
 
-   use radconstants,  only: ot_length
-
-   use physics_buffer, only : pbuf_get_field, pbuf_get_index, physics_buffer_desc
    ! Purpose: Compute aerosol transmissions needed in absorptivity/
    !    emissivity calculations
 
    ! lw extinction is the same representation for all
    ! species.  If this changes, this routine will need to do something
    ! similar to the sw with routines like get_hygro_lw_abs
+
+   use physics_buffer, only : pbuf_get_field, pbuf_get_index, physics_buffer_desc
 
    ! Arguments
    integer,             intent(in)  :: list_idx                      ! index of the climate or a diagnostic list
@@ -333,6 +338,7 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    integer :: ncol        ! number of columns
    integer :: numaerosols ! number of bulk aerosols in climate/diagnostic list
    integer :: nmodes      ! number of aerosol modes in climate/diagnostic list
+   integer :: nbins       ! number of aerosol bins in climate/diagnostic list
    integer :: iaerosol    ! index into bulk aerosol list
    character(len=ot_length) :: opticstype       ! hygro or nonhygro
 
@@ -369,10 +375,10 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    ncol = state%ncol
 
    ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes)
+   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
-   ! Contributions from modal aerosols.
-   if (nmodes > 0) then
+   ! Contributions from modal and sectional aerosols.
+   if (nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
    else
       odap_aer = 0._r8

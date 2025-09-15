@@ -155,7 +155,7 @@ contains
     !call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
        ! Intel compiler version 2023.0.0 on derecho had significant slowdown on subroutine interface without
-       ! these pointers.  
+       ! these pointers.
       fcube => fvm(ie)%c(:,:,:,:)
       spherecentroid => fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe)
       do k=kmin,kmax

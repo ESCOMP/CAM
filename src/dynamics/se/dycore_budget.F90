@@ -63,7 +63,7 @@ subroutine print_budget(hstwr)
   !
   ! mass budgets dynamics
   !
-  real(r8) :: dMdt_floating_dyn         ! mass tendency floating dynamics (dAD-dBD)
+  real(r8) :: dMdt_floating_dyn         ! mass tendency floating dynamics (dAL-dBL)
   real(r8) :: dMdt_vert_remap           ! mass tendency vertical remapping (dAR-dAD)
   real(r8) :: dMdt_del4_fric_heat       ! mass tendency del4 frictional heating (dAH-dCH)
   real(r8) :: dMdt_del4_tot             ! mass tendency del4 + del4 frictional heating (dAH-dBH)
@@ -73,7 +73,7 @@ subroutine print_budget(hstwr)
   !
   ! energy budgets dynamics
   !
-  real(r8) :: dEdt_floating_dyn         ! dE/dt floating dynamics (dAD-dBD)
+  real(r8) :: dEdt_floating_dyn         ! dE/dt floating dynamics (dAL-dBL)
   real(r8) :: dEdt_vert_remap           ! dE/dt vertical remapping (dAR-dAD)
   real(r8) :: dEdt_del4                 ! dE/dt del4 (dCH-dBH)
   real(r8) :: dEdt_del4_fric_heat       ! dE/dt del4 frictional heating (dAH-dCH)
@@ -132,7 +132,7 @@ subroutine print_budget(hstwr)
       call cam_budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
 
-    call cam_budget_get_global('dAD-dBD',teidx,dEdt_floating_dyn)
+    call cam_budget_get_global('dAL-dBL',teidx,dEdt_floating_dyn)
     call cam_budget_get_global('dAR-dAD',teidx,dEdt_vert_remap)
     dEdt_dycore_dyn = dEdt_floating_dyn+dEdt_vert_remap
 
@@ -459,7 +459,7 @@ subroutine print_budget(hstwr)
         ! detailed mass budget in dynamical core
         !
         if (is_cam_budget('dAD').and.is_cam_budget('dBD').and.is_cam_budget('dAR').and.is_cam_budget('dCH')) then
-          call cam_budget_get_global('dAD-dBD',m_cnst,dMdt_floating_dyn)
+          call cam_budget_get_global('dAL-dBL',m_cnst,dMdt_floating_dyn)
           call cam_budget_get_global('dAR-dAD',m_cnst,dMdt_vert_remap)
           tmp  = dMdt_floating_dyn+dMdt_vert_remap
           diff = abs_diff(tmp,0.0_r8,pf=pf)
@@ -472,7 +472,7 @@ subroutine print_budget(hstwr)
             write(iulog,*) "Error: mass non-conservation in dynamical core"
             write(iulog,*) "(detailed budget below)"
             write(iulog,*) " "
-            write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",dMdt_floating_dyn," Pa/m^2/s"
+            write(iulog,*)"dMASS/dt 2D dynamics            (dAL-dBL) ",dMdt_floating_dyn," Pa/m^2/s"
             write(iulog,*)"dE/dt vertical remapping        (dAR-dAD) ",dMdt_vert_remap
             write(iulog,*)" "
             write(iulog,*)"Breakdown of 2D dynamics:"

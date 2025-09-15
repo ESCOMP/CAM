@@ -10,7 +10,7 @@ function Create_field_Master_List(spectral_trunc_setting:integer, field:string )
 ;********************************************************************************************;
 ;                                                                                            ;
 ; Create_field_Master_List                                                                   ;
-;    spectral_trunc_setting : integer; Spectral truncation (Eulerian only)                   ;
+;    spectral_trunc_setting : integer; Spectral truncation (if Gaussian grid)                ;
 ;    "field" is a master variable carrying meta-data needed for file                         ;
 ;    processing                                                                              ;
 ;                                                                                            ;
@@ -29,7 +29,7 @@ begin
   Master_List@dimensions      = new( (/field_dim/), string )   ; "2D" or "3D" designation
   Master_List@horz_interp     = new( (/field_dim/), string )   ; flag to indicate which type of horizontal interpolation to use
   Master_List@vert_interp     = new( (/field_dim/), string )   ; flag to indicate which type of vertical   interpolation to use
-  Master_List@spec_trunc      = new( (/field_dim/), integer)   ; Spectral truncation to use (if Eulerian dycore)
+  Master_List@spec_trunc      = new( (/field_dim/), integer)   ; Spectral truncation (if Gaussian grid).
   Master_List@bin_factor      = new( (/field_dim/), double )   ; bin factor to use if horizontal interpolation is "binning"
                                                                ; (typical value:  1.)
   Master_List@loutput         = new( (/field_dim/), logical)   ; Flag to output field (if False, field is used only for internal processing
@@ -56,7 +56,7 @@ begin
   ;  Options for horizontal:   "no_interp"
   ;                            "cubic"    ; recommended only for non-tracer species
   ;                            "cubic_sp" ; should only be used for tracers and water products like Q, CLDLIQ, CLDICE, CLOUD, etc.
-  ;                            "spectral" ; only for non-tracer species in the Eulerian dycore
+  ;                            "spectral" ; only for non-tracer species (if Gaussian grid)
   ;                            "binning"  ; "conservative remapping" --> recommended for all horizontal interpolations
   ;
   ;  Options for vertical:     "no_interp"
@@ -732,9 +732,6 @@ begin
       print("  Post-processing flag for field '"+Master_List(ifield)+"' is '"+Master_List@post_process(ifield)+"'")
       print("  Valid post-processing options are: '"+post_process_flags+"'")
       exit
-    end if
-    if( field@dycore .ne. "eul") then
-      Master_List@spec_trunc(ifield) = -1
     end if
   end do
 

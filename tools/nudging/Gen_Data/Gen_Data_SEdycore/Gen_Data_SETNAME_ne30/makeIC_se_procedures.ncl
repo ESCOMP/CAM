@@ -1216,7 +1216,7 @@ begin
                                                     ; interpolation to use
   field@vert_interp =new( (/field_dim/), string )   ; flag to indicate which type of vertical
                                                     ; interpolation to use
-  field@spec_trunc  =new( (/field_dim/), integer)   ; Spectral truncation to use (if Eulerian dycore)
+  field@spec_trunc  =new( (/field_dim/), integer)   ; Spectral truncation to use (if Gaussian grid)
   field@bin_factor  =new( (/field_dim/), double )   ; bin factor to use if horizontal 
                                                     ; interpolation is "binning" (typical value:  1.)
   field@processed   =new( (/field_dim/), logical)   ; Set to False until field is processed

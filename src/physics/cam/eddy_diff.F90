@@ -632,7 +632,7 @@
                         kvh_in       , kvm_in       , kvh         , kvm        ,                &
                         tpert        , qpert        , qrlin       , kvf        , tke          , & 
                         wstarent     , bprod        , sprod       , minpblh    , wpert        , &
-                        tkes         , went         , turbtype    , sm_aw      ,                &
+                        tkes         , went         , turbtype    ,                             &
                         kbase_o      , ktop_o       , ncvfin_o    ,                             & 
                         kbase_mg     , ktop_mg      , ncvfin_mg   ,                             & 
                         kbase_f      , ktop_f       , ncvfin_f    ,                             & 
@@ -752,8 +752,6 @@
                                                       ! 3. = Bottom external interface of CL
                                                       ! 4. = Top external interface of CL.
                                                       ! 5. = Double entraining CL external interface 
-    real(r8), intent(out) :: sm_aw(pcols,pver+1)      ! Galperin instability function of momentum for use in the microphysics
-                                                      ! [ no unit ]
     integer(i4), intent(out) :: ipbl(pcols)           ! If 1, PBL is CL, while if 0, PBL is STL.
     integer(i4), intent(out) :: kpblh(pcols)          ! Layer index containing PBL within or at the base interface
     real(r8), intent(out) :: wsed_CL(pcols,ncvmax)    ! Sedimentation velocity at the top of each CL [ m/s ]
@@ -1002,7 +1000,6 @@
        sh_a(i,:pver+1)          = 0._r8
        sm_a(i,:pver+1)          = 0._r8
        ri_a(i,:pver+1)          = 0._r8
-       sm_aw(i,:pver+1)         = 0._r8
        ipbl(i)                  = 0
        kpblh(i)                 = pver
        wsed_CL(i,:ncvmax)       = 0._r8          
@@ -1844,7 +1841,6 @@
              bprod(i,k) = -kvh(i,k) * n2(i,k)
              sprod(i,k) =  kvm(i,k) * s2(i,k)
              turbtype(i,k) = 2                     ! CL interior interfaces.
-             sm_aw(i,k) = smcl(i,ncv)/alph1        ! Diagnostic output for microphysics
           end do
 
           ! 2. At CL top entrainment interface
@@ -1860,7 +1856,6 @@
           rcap = min( max(rcap,rcapmin), rcapmax )
           tke(i,kt)  = ebrk(i,ncv) * rcap
           tke(i,kt)  = min( tke(i,kt), tkemax )
-          sm_aw(i,kt) = smcl(i,ncv) / alph1        ! Diagnostic output for microphysics
 
           ! 3. At CL base entrainment interface and double entraining interfaces
           ! When current CL base is also the top interface of CL regime below,
@@ -1920,12 +1915,6 @@
              tke(i,kb) = min( tke(i,kb),tkemax )
 
           end if
-
-          ! For double entraining interface, simply use smcl(i,ncv) of the overlying CL. 
-          ! Below 'sm_aw' is a diagnostic output for use in the microphysics.
-          ! When 'kb' is surface, 'sm' will be over-written later below.
-
-          sm_aw(i,kb) = smcl(i,ncv)/alph1             
 
           ! Calculate wcap at all interfaces of CL. Put a  minimum threshold on TKE
           ! to prevent possible division by zero.  'wcap' at CL internal interfaces
@@ -2122,8 +2111,6 @@
               bprod(i,k) = -kvh(i,k) * n2(i,k)
               sprod(i,k) =  kvm(i,k) * s2(i,k)
 
-              sm_aw(i,k) = sm/alph1     ! This is diagnostic output for use in the microphysics             
-
           end if
 
        end do  ! k
@@ -2192,7 +2179,6 @@
                  wcap(i,k)  =  tke_imsi / b1
                  bprod(i,k) = -kvh_imsi * n2(i,k)
                  sprod(i,k) =  kvm_imsi * s2(i,k)
-                 sm_aw(i,k) =  sm/alph1     ! This is diagnostic output for use in the microphysics             
                  turbtype(i,k) = 1          ! This was added on Dec.10.2009 for use in microphysics.
              endif
 
@@ -2257,7 +2243,6 @@
        else
            sm_a(i,pver+1) = max(0._r8,(alph1+alph2*gh)/(1._r8+alph3*gh)/(1._r8+alph4exs*gh))
        endif
-       sm_aw(i,pver+1) = sm_a(i,pver+1)/alph1
        ri_a(i,pver+1)  = -(sm_a(i,pver+1)/sh_a(i,pver+1))*(bprod(i,pver+1)/sprod(i,pver+1))
 
        do k = 1, pver

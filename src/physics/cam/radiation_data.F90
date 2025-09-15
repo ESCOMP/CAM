@@ -740,7 +740,7 @@ contains
     use camsrfexch,       only: cam_in_t
     use physics_buffer,   only: pbuf_get_field, pbuf_old_tim_idx
     use constituents,     only: cnst_get_ind
-    use tropopause,       only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+    use tropopause,       only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
 
     implicit none
 
@@ -975,6 +975,8 @@ contains
           enddo
        endif
 
+       phys_state(c)%rpdel(:ncol,:) = 1.0_r8 / phys_state(c)%pdel(:ncol,:)
+
        ! adjust temperatue input above tropopause for Fixed Dynamical Heating ....
        if (do_fdh) then
           pbuf => pbuf_get_chunk(pbuf2d, c)
@@ -984,7 +986,11 @@ contains
           call pbuf_get_field(pbuf, qrsin_idx, qrsin)
           call pbuf_get_field(pbuf, qrlin_idx, qrlin)
 
-          call tropopause_find(phys_state(c), troplev, tropP=tropp(:), primary=TROP_ALG_CLIMATE, &
+          !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+          troplev(:) = 0
+          tropp(:) = 0._r8
+          !REMOVECAM_END
+          call tropopause_find_cam(phys_state(c), troplev, tropP=tropp, primary=TROP_ALG_CLIMATE, &
                                backup=TROP_ALG_CLIMATE)
 
           qrsin(:,:) = qrs_ptrs(c)%array(:,:)

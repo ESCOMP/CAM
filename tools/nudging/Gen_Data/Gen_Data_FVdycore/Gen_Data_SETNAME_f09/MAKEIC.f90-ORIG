@@ -571,8 +571,8 @@
 !                                      ! starting at 0 deg and moving
 !                                      ! eastward
       real*8 gwo  (plato)              ! Output Gaussian wgts (if relevant grid)
-      integer dyn_flag                 ! Dynamics flag of input grid:   Eul=1, FV=0
-      integer dyn_flago                ! Dynamics flag of output grid:  Eul=1, FV=0
+      integer dyn_flag                 ! Dynamics flag of input grid:   FV=0
+      integer dyn_flago                ! Dynamics flag of output grid:  FV=0
       real*8 bin_factor                ! bin-box area expansion/contraction factor relative to
 !                                      ! output grid-box area.
 !

@@ -206,7 +206,7 @@ end subroutine prescribed_volcaero_readnl
     use cam_history,  only : outfld
     use physconst,    only : mwdry                ! molecular weight dry air ~ kg/kmole
     use physconst,    only : boltz, gravit        ! J/K/molecule
-    use tropopause,   only : tropopause_find, TROP_ALG_TWMO, TROP_ALG_CLIMATE
+    use tropopause,   only : tropopause_find_cam
     
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     
@@ -260,7 +260,10 @@ end subroutine prescribed_volcaero_readnl
        call pbuf_get_field(pbuf_chnk, fields(1)%pbuf_ndx, data)
        data(:ncol,:) = to_mmr(:ncol,:) * data(:ncol,:) ! mmr
 
-       call tropopause_find(state(c), tropLev, primary=TROP_ALG_TWMO, backup=TROP_ALG_CLIMATE)
+       !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+       tropLev(:) = 0
+       !REMOVECAM_END
+       call tropopause_find_cam(state(c), tropLev)
        do i = 1,ncol
           do k = 1,pver
              ! set to zero below tropopause
