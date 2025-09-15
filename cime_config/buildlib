@@ -246,6 +246,10 @@ def _build_tuvx(caseroot, libroot, bldroot):
         if os.path.isfile(dst):
             os.remove(dst)
         os.symlink(_tuvx_lib_path(libroot), dst)
+        dst = os.path.join(libroot, "libyaml-cpp.a")
+        if os.path.isfile(dst):
+            os.remove(dst)
+        os.symlink(_yaml_cpp_lib_path(libroot), dst)
 
 ###############################################################################
 def _tuvx_include_dir(libroot):
@@ -256,6 +260,18 @@ def _tuvx_include_dir(libroot):
     expect(os.path.exists(coreinc), \
            "TUV-x include directory not found at {}".format(coreinc))
     return coreinc
+
+###############################################################################
+def _yaml_cpp_lib_path(libroot):
+###############################################################################
+# Returns the path to the yaml-cpp library
+
+    corelib = os.path.join(libroot, "lib64", "libyaml-cpp.a")
+    if not os.path.exists(corelib):
+        corelib = os.path.join(libroot, "lib", "libyaml-cpp.a")
+    expect(os.path.exists(corelib), \
+           "yaml-cpp library not found at {}".format(corelib))
+    return corelib
 
 ###############################################################################
 def _tuvx_lib_path(libroot):

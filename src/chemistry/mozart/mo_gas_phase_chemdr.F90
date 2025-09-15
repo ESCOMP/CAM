@@ -258,7 +258,7 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine gas_phase_chemdr(state, lchnk, ncol, imozart, q, &
+  subroutine gas_phase_chemdr(lchnk, ncol, imozart, q, &
                               phis, zm, zi, calday, &
                               tfld, pmid, pdel, pint, rpdel, rpdeldry, &
                               cldw, troplev, troplevchem, &
@@ -373,7 +373,6 @@ contains
     real(r8), intent(out) :: noy_nitrogen_flx(pcols)
     logical,        intent(in)    :: use_hemco                      ! use Harmonized Emissions Component (HEMCO)
 
-    type(physics_state),    intent(in) :: state     ! Physics state variables
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_state), target, intent(in) :: state
 

@@ -1273,14 +1273,14 @@ end function chem_is_active
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
 
-    call gas_phase_chemdr(state,lchnk, ncol, imozart, state%q, &
+    call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
-                          nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf )
+                          nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf, state )
     if (.not.ndep_stream_active) then
        if (associated(cam_out%nhx_nitrogen_flx)) then
           cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
