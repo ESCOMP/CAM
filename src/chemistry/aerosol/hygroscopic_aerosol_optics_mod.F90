@@ -3,6 +3,7 @@ module hygroscopic_aerosol_optics_mod
 
   use aerosol_optics_mod, only: aerosol_optics
   use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_state_mod, only: aerosol_state
 
   implicit none
 
@@ -22,6 +23,9 @@ module hygroscopic_aerosol_optics_mod
      real(r8), allocatable :: wrh(:,:) ! (-) weighting on left side values ! (pcols,pver)
      integer , allocatable :: krh(:,:) ! index into rh mesh
 
+     ! aerosol mass mixing ratio
+     real(r8), pointer :: mmr(:,:)
+
    contains
 
      procedure :: sw_props
@@ -39,8 +43,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, ilist, ibin, ncols, nlevs, numrh, relhum)   result(newobj)
-    class(aerosol_properties),intent(in), target :: aero_props   ! aerosol_properties object
+  function constructor(aero_props, aero_state, ilist, ibin, ncols, nlevs, numrh, relhum) &
+                result(newobj)
+    class(aerosol_properties),intent(in) :: aero_props   ! aerosol_properties object
+    class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
     integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncols, nlevs, numrh
@@ -81,6 +87,8 @@ contains
          sw_hygroscopic_asm=newobj%asm_sw, &
          lw_nonhygro_ext=newobj%abs_lw )
 
+    call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
+    
   end function constructor
 
   !------------------------------------------------------------------------------
@@ -108,6 +116,8 @@ contains
                            - self%wrh(icol,ilev)  * self%ssa_sw(self%krh(icol,ilev),  iwav)
        pasm(icol) = (1._r8 + self%wrh(icol,ilev)) * self%asm_sw(self%krh(icol,ilev)+1,iwav) &
                            - self%wrh(icol,ilev)  * self%asm_sw(self%krh(icol,ilev),  iwav)
+       
+       pext(icol) = pext(icol) * self%mmr(icol,ilev)
 
        pabs(icol) = pext(icol) * ( 1._r8 - palb(icol) )
 
@@ -126,7 +136,7 @@ contains
     integer, intent(in) :: iwav        ! wave length index
     real(r8),intent(out) :: pabs(ncol) ! parameterized specific absorption (m2/kg)
 
-    pabs(:ncol) = self%abs_lw(iwav)
+    pabs(:ncol) = self%abs_lw(iwav) * self%mmr(:ncol,ilev)
 
   end subroutine lw_props
 

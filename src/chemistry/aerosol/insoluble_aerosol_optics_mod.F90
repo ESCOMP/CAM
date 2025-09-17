@@ -3,6 +3,7 @@ module insoluble_aerosol_optics_mod
 
   use aerosol_optics_mod, only: aerosol_optics
   use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_state_mod, only: aerosol_state
 
   implicit none
 
@@ -15,6 +16,10 @@ module insoluble_aerosol_optics_mod
      real(r8), pointer :: sw_ext(:)
      real(r8), pointer :: sw_ssa(:)
      real(r8), pointer :: sw_asm(:)
+
+     ! aerosol mass mixing ratio
+     real(r8), pointer :: mmr(:,:)
+
    contains
 
      procedure :: sw_props
@@ -32,9 +37,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, ilist, ibin) result(newobj)
+  function constructor(aero_props, aero_state, ilist, ibin) result(newobj)
 
-    class(aerosol_properties),intent(in), target :: aero_props   ! aerosol_properties object
+    class(aerosol_properties),intent(in) :: aero_props   ! aerosol_properties object
+    class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
     integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
 
@@ -54,6 +60,8 @@ contains
          sw_nonhygro_ssa=newobj%sw_ssa, &
          sw_nonhygro_asm=newobj%sw_asm, &
          lw_nonhygro_ext=newobj%lw_abs )
+
+    call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
   end function constructor
 
@@ -81,7 +89,7 @@ contains
     real(r8),intent(out) :: palb(ncol) ! parameterized single scattering albedo
     real(r8),intent(out) :: pasm(ncol) ! parameterized asymmetry factor
 
-    pext(:ncol) = self%sw_ext(iwav)
+    pext(:ncol) = self%sw_ext(iwav) * self%mmr(:ncol,ilev)
     palb(:ncol) = self%sw_ssa(iwav)
     pasm(:ncol) = self%sw_asm(iwav)
 
@@ -100,7 +108,7 @@ contains
     integer, intent(in) :: iwav        ! wave length index
     real(r8),intent(out) :: pabs(ncol) ! parameterized specific absorption (m2/kg)
 
-    pabs(:ncol) = self%lw_abs(iwav)
+    pabs(:ncol) = self%lw_abs(iwav) * self%mmr(:ncol,ilev)
 
   end subroutine lw_props
 

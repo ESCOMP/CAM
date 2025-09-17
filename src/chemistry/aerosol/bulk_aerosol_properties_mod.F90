@@ -107,16 +107,6 @@ contains
     deallocate(alogsig)
     deallocate(f1)
 
-!    allocate(newobj%aernames(newobj%num_aerosols),stat=ierr )
-!    if( ierr /= 0 ) then
-!       nullify(newobj)
-!       return
-!    end if
-!
-!    call rad_cnst_get_info(0, aernames=newobj%aernames)
-
-
-
   end function constructor
 
   !------------------------------------------------------------------------------

@@ -155,8 +155,9 @@ contains
     character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
-                      history_aero_optics_out = history_aero_optics, &
+  !                    history_aero_optics_out = history_aero_optics, &
                       history_dust_out        = history_dust )
+    history_aero_optics=.false.
 
     num_aero_models = 0
 
@@ -573,6 +574,7 @@ contains
     real(r8), intent(inout) :: ga(pcols,0:pver,nswbands)     ! asymmetry factor
     real(r8), intent(inout) :: fa(pcols,0:pver,nswbands)     ! forward scattered fraction
 
+    real(r8) :: taubam(pcols,0:pver)
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_sw: '
 
     integer :: ibin, nbins
@@ -783,8 +785,10 @@ contains
           dustaodbin(:) = 0._r8
           burden(:) = 0._r8
           aodbin(:) = 0.0_r8
+          taubam(:,:) = 0._r8
 
           call aeroprops%optics_params(list_idx, ibin, opticstype=opticstype)
+
           select case (trim(opticstype))
           case('modal') ! refractive method
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
@@ -800,14 +804,11 @@ contains
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
           case('hygroscopic','hygro')
-             aero_optics=>hygroscopic_aerosol_optics(aeroprops, list_idx, ibin, ncol, pver, numrh, relh(:ncol,:))
-             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
-             mass = mass * aerommr ! aerosol mass for BAM
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, &
+                                                     ibin, ncol, pver, numrh, relh(:ncol,:))
 
           case('nonhygro', 'insoluble')
-            aero_optics=>insoluble_aerosol_optics(aeroprops, list_idx, ibin)
-             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
-             mass = mass * aerommr ! aerosol mass for BAM
+             aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
           case default
              call endrun(prefix//'optics method not recognized')
@@ -827,17 +828,24 @@ contains
                    call init_diags
 
                    column: do icol = 1,ncol
-                      dopaer(icol) = pext(icol)*mass(icol,ilev)
+                      dopaer(icol) = pext(icol) * mass(icol,ilev)
                       tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
                       wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)
                       ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
-                      call update_diags()
+
+                     ! call update_diags()
+
 
                    end do column
 
+                   if (bam_optics_diags_active.and.iwav==idx_sw_diag) then
+                      taubam(:ncol,ilev) = dopaer(:ncol)
+                   end if
+
                 end do vertical
+
              end do wavelength
 
           else
@@ -848,11 +856,11 @@ contains
           nullify(aero_optics)
 
           if (bam_optics_diags_active) then
-             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, ibin, tauxar(:,:,idx_sw_diag), &
+             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, ibin, taubam, &
                   list_idx, troplev)
           endif
 
-          call output_bin_diags()
+         ! call output_bin_diags()
 
        end do binloop
     end do aeromodel
@@ -1296,14 +1304,11 @@ contains
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
 
           case('hygroscopic','hygro')
-             aero_optics=>hygroscopic_aerosol_optics(aeroprops, list_idx, ibin, ncol, pver, numrh, relh(:ncol,:))
-             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
-             mass = mass * aerommr ! aerosol mass for BAM
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
+                                                     ncol, pver, numrh, relh(:ncol,:))
 
           case('nonhygro', 'insoluble')
-            aero_optics=>insoluble_aerosol_optics(aeroprops, list_idx, ibin)
-             call aerostate%get_ambient_mmr(list_idx, ibin, 1, aerommr)
-             mass = mass * aerommr ! aerosol mass for BAM
+             aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
           case default
              call endrun(prefix//'optics method not recognized')
