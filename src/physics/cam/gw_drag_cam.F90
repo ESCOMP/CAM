@@ -450,7 +450,8 @@ subroutine gw_drag_cam_init()
   use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_gamma_init
   use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_init
   use gravity_wave_drag_moving_mountain, only: gravity_wave_drag_moving_mountain_init
-  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_init
+  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_deep_init
+  use gravity_wave_drag_convection,      only: gravity_wave_drag_convection_shallow_init
 
   !---------------------------Local storage-------------------------------
 
@@ -609,19 +610,31 @@ subroutine gw_drag_cam_init()
     if (errflg /= 0) call endrun(errmsg)
   endif
 
-  if(use_gw_convect_dp .or. use_gw_convect_sh) then
-    call gravity_wave_drag_convection_init( &
+  if(use_gw_convect_dp) then
+    call gravity_wave_drag_convection_deep_init( &
+      pver                = pver, &
+      pi                  = pi, &
+      masterproc          = masterproc, &
+      iulog               = iulog, &
+      gw_drag_file_dp     = gw_drag_file_loc, &
+      pref_edge           = pref_edge, &
+      gw_delta_c          = gw_dc, &
+      pgwv                = pgwv, &
+      errmsg              = errmsg, &
+      errflg              = errflg)
+    if (errflg /= 0) call endrun(errmsg)
+  end if
+
+  if(use_gw_convect_sh) then
+    call gravity_wave_drag_convection_shallow_init( &
       pver                = pver, &
       pi                  = pi, &
       masterproc          = masterproc, &
       iulog               = iulog, &
       gw_drag_file_sh     = gw_drag_file_sh_loc, &
-      gw_drag_file_dp     = gw_drag_file_loc, &
       pref_edge           = pref_edge, &
       gw_delta_c          = gw_dc, &
       pgwv                = pgwv, &
-      use_gw_convect_dp   = use_gw_convect_dp, &
-      use_gw_convect_sh   = use_gw_convect_sh, &
       errmsg              = errmsg, &
       errflg              = errflg)
     if (errflg /= 0) call endrun(errmsg)
