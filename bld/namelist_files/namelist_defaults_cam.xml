@@ -576,11 +576,22 @@
 <rrtmgp_coefs_lw_file>src/physics/rrtmgp/data/rrtmgp-gas-lw-g128.nc</rrtmgp_coefs_lw_file>
 <rrtmgp_coefs_sw_file>src/physics/rrtmgp/data/rrtmgp-gas-sw-g112.nc</rrtmgp_coefs_sw_file>
 
-<!-- Pressure top for blending region for radiation heating -->
+<!-- Top valid pressure (Pa) top for LTE radiation scheme -->
 <p_top_for_equil_rad>                  0.D0 </p_top_for_equil_rad>
 <p_top_for_equil_rad  waccmx="1" >     1.D0 </p_top_for_equil_rad>
 <p_top_for_equil_rad  waccm_phys="1" > 1.D0 </p_top_for_equil_rad>
-<p_top_for_equil_rad  rad="rrtmgp">    2.D0 </p_top_for_equil_rad>
+<p_top_for_equil_rad  rad="rrtmgp">    5.D0 </p_top_for_equil_rad>
+
+<!-- Top pressure (Pa) for non-LTE/LTE merger region -->
+<p_top_for_radmrg>                     0.D0 </p_top_for_radmrg>
+<p_top_for_radmrg  rad="rrtmgp">       6.1D0 </p_top_for_radmrg>
+
+<!-- Bottom pressure (Pa) for non-LTE/LTE merger region -->
+<p_bot_for_radmrg>                     1.D0 </p_bot_for_radmrg>
+<p_bot_for_radmrg  rad="rrtmgp">       20.D0 </p_bot_for_radmrg>
+
+<!-- Scaling factor for simplified QRS MLT heating in CAM -->
+<qrsmlt_scaling>                     1.D0 </qrsmlt_scaling>
 
 <!-- CAM-RT absorptivity/emissivity lookup table -->
 <absems_data rad="camrt">atm/cam/rad/abs_ems_factors_fastvx.c030508.nc</absems_data>

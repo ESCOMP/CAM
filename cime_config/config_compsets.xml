@@ -63,6 +63,16 @@
   </compset>
 
   <compset>
+    <alias>F1850C_LTso</alias>
+    <lname>1850_CAM70%LT_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>F1850C_MTso</alias>
+    <lname>1850_CAM70%MT_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FLT1850_TESTINGONLY_v0c</alias>
     <lname>1850_CAM70%LT_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>

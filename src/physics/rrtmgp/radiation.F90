@@ -806,7 +806,7 @@ subroutine radiation_tend( &
    use phys_grid,                         only: get_rlat_all_p, get_rlon_all_p
    use cam_control_mod,                   only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,                       only: shr_orb_decl, shr_orb_cosz
-
+   
    ! CCPPized schemes
    use rrtmgp_inputs,                     only: rrtmgp_inputs_run
    use rrtmgp_pre,                        only: rrtmgp_pre_run, rrtmgp_pre_timestep_init
@@ -833,6 +833,7 @@ subroutine radiation_tend( &
    use interpolate_data,                  only: vertinterp
    use tropopause,                        only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    use cospsimulator_intr,                only: docosp, cospsimulator_intr_run, cosp_nradsteps
+   use dycore,                            only: dycore_is
 
 
    ! Arguments
@@ -988,6 +989,7 @@ subroutine radiation_tend( &
    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
    real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
 
+   logical :: is_mpas ! Flag for whether the dycore is MPAS
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
    real(r8), target :: zero_variable(1,1)
 
@@ -1127,10 +1129,11 @@ subroutine radiation_tend( &
       else
          cldfsnow_in => zero_variable
       end if
+      is_mpas = dycore_is('MPAS')
       ! Prepare state variables, daylit columns, albedos for RRTMGP
       ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
-                  state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
+                  masterproc, iulog, is_mpas, state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
                   nday, idxday, cldfprime(:ncol,:), coszrs(:ncol), kdist_sw, t_sfc,       &
                   emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
                   pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup(:ncol), stebol,  &
@@ -1439,7 +1442,7 @@ subroutine radiation_tend( &
    ! of radheat_tend merges upper atmosphere heating rates with those calculated
    ! by RRTMGP.
    call radheat_tend(state, pbuf,  ptend, qrl_prime, qrs_prime, fsns, &
-                     fsnt, flns, flnt, cam_in%asdir, net_flx)
+                     fsnt, flns, flnt, cam_in%asdir, coszrs, net_flx)
 
    if (write_output) then
       ! Compute heating rate for dtheta/dt

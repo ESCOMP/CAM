@@ -5766,10 +5766,25 @@ Default: FALSE
 
 <entry id="p_top_for_equil_rad" type="real"  category="radiation"
        group="radheat_nl" valid_values="" >
-Top pressure level for non-LTE blending region
+Top valid pressure level LTE radiation scheme
 Default: 1.0 for WACCM/WACCMX
          2. for all other RRTMGP runs
          0.0 for all other runs
+</entry>
+
+<entry id="p_top_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="p_bot_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Bottom pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="qrsmlt_scaling" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Scaling factor for simplified QRS MLT heating in CAM
 </entry>
 
 <entry id="use_rad_dt_cosz" type="logical"  category="radiation"

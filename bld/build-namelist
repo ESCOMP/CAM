@@ -740,7 +740,11 @@ elsif ($rad_pkg =~ m/rrtmgp/) {
     $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_sw_file', $abs_path);
 
     add_default($nl, 'p_top_for_equil_rad');
-
+}
+if (not $waccm_phys) {
+    add_default($nl, 'qrsmlt_scaling');
+    add_default($nl, 'p_top_for_radmrg');
+    add_default($nl, 'p_bot_for_radmrg');
 }
 
 # Solar irradiance
