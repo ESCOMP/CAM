@@ -1,5 +1,7 @@
 module bulk_aerosol_properties_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use cam_abortutils, only: endrun
+  use string_utils, only : to_lower
 
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
@@ -150,6 +152,56 @@ contains
     character(len=*), optional, intent(out) :: specmorph ! species morphology
     complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
+
+    integer :: ilist
+    character(len=20) :: aername
+
+    if (present(list_ndx)) then
+       ilist = list_ndx
+    else
+       ilist = 0
+    end if
+
+    if (present(density)) then
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  density_aer=density)
+    end if
+
+    if (present(hygro)) then
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  hygro_aer=hygro)
+    end if
+    if (present(spectype)) then
+
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  aername=aername)
+
+       select case ( to_lower( aername(:4) ) )
+       case('dust')
+          spectype = 'dust'
+       case('sulf')
+          spectype = 'sulfate'
+       case('bcar','bcph')
+          spectype = 'black-c'
+       case('ocar','ocph')
+          spectype = 'p-organic'
+       case('sslt','seas')
+          spectype = 'seasalt'
+       case default
+          spectype = 'UNKNOWN'
+          call endrun('ERROR: bulk_aerosol_properties_mod%get spectype aername not recognized')
+       end select
+
+    end if
+    if (present(specmorph)) then
+      call endrun('ERROR: bulk_aerosol_properties_mod%get specmorph not yet implemented')
+    end if
+    if (present(specname)) then
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  aername=specname)
+    end if
+    if (present(refindex_sw)) then
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  refindex_aer_sw=refindex_sw)
+    end if
+    if (present(refindex_lw)) then
+       call rad_cnst_get_aer_props(ilist, bin_ndx,  refindex_aer_lw=refindex_lw)
+    end if
 
   end subroutine get
 
@@ -334,6 +386,9 @@ contains
     real(r8), intent(in) :: volconc ! volume conc (m3/m3)
     real(r8), intent(in) :: numconc ! number conc (1/m3)
 
+    !    call endrun('ERROR: bulk_aerosol_properties_mod%amcube not yet implemented')
+    amcube = -huge(1._r8)
+
   end function amcube
 
   !------------------------------------------------------------------------------
@@ -348,6 +403,8 @@ contains
     real(r8),intent(out) :: fn       ! activation fraction for aerosol number
     real(r8),intent(out) :: fm       ! activation fraction for aerosol mass
 
+    call endrun('ERROR: bulk_aerosol_properties_mod%actfracs not yet implemented')
+
   end subroutine actfracs
 
   !------------------------------------------------------------------------
@@ -358,6 +415,8 @@ contains
     integer, intent(in) :: bin_ndx           ! bin number
     character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol number dens
     character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
+
+    call endrun('ERROR: bulk_aerosol_properties_mod%num_names not yet implemented')
 
   end subroutine num_names
 
@@ -372,6 +431,8 @@ contains
     character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol MMR
     character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
 
+    call endrun('ERROR: bulk_aerosol_properties_mod%mmr_names not yet implemented')
+
   end subroutine mmr_names
 
   !------------------------------------------------------------------------
@@ -381,6 +442,8 @@ contains
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
     character(len=*), intent(out) :: name   ! constituent name of ambient aerosol number dens
+
+    call endrun('ERROR: bulk_aerosol_properties_mod%amb_num_name not yet implemented')
 
   end subroutine amb_num_name
 
@@ -393,6 +456,8 @@ contains
     integer, intent(in) :: species_ndx       ! species number
     character(len=*), intent(out) :: name   ! constituent name of ambient aerosol MMR
 
+    call endrun('ERROR: bulk_aerosol_properties_mod%amb_mmr_name not yet implemented')
+
   end subroutine amb_mmr_name
 
   !------------------------------------------------------------------------
@@ -403,6 +468,8 @@ contains
     integer, intent(in) :: bin_ndx           ! bin number
     integer, intent(in) :: species_ndx       ! species number
     character(len=*), intent(out) :: spectype ! species type
+
+    call endrun('ERROR: bulk_aerosol_properties_mod%species_type not yet implemented')
 
   end subroutine species_type
 
@@ -440,6 +507,8 @@ contains
     integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
     integer,  intent(in) :: istop           ! stop column index
     integer,  intent(in) :: m               ! mode or bin index
+
+    call endrun('ERROR: bulk_aerosol_properties_mod%apply_number_limits not yet implemented')
 
   end subroutine apply_number_limits
 
@@ -592,6 +661,8 @@ contains
     integer,  intent(out) :: error_code            ! error code (0 if no error)
     character(len=*), intent(out) :: error_string  ! error string
 
+    call endrun('ERROR: bulk_aerosol_properties_mod%rebin_bulk_fluxes not yet implemented')
+
   end subroutine rebin_bulk_fluxes
 
   !------------------------------------------------------------------------------
@@ -600,6 +671,8 @@ contains
   logical function hydrophilic(self, bin_ndx)
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx ! bin number
+
+    call endrun('ERROR: bulk_aerosol_properties_mod%hydrophilic not yet implemented')
 
   end function hydrophilic
 

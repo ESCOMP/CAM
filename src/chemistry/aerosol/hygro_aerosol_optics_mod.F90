@@ -87,8 +87,6 @@ contains
          sw_hygroscopic_asm=newobj%asm_sw, &
          lw_nonhygro_ext=newobj%abs_lw )
 
-    print*,'FVDBG.constructor...shape(newobj%abs_lw): ',shape(newobj%abs_lw)
-
     call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
   end function constructor

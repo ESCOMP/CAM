@@ -836,7 +836,7 @@ contains
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
 
-                     ! call update_diags()
+                      call update_diags()
 
 
                    end do column
@@ -861,7 +861,7 @@ contains
                   list_idx, troplev)
           endif
 
-         ! call output_bin_diags()
+          call output_bin_diags()
 
        end do binloop
     end do aeromodel

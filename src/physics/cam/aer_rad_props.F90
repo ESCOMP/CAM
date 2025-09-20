@@ -111,16 +111,16 @@ subroutine aer_rad_props_init()
       call addfld(sw_wa_name(i), (/'lev'/),  'A','  ', 'SW WA '//numch, flag_xyfill=.true.)
       call addfld(sw_ga_name(i), (/'lev'/),  'A','  ', 'SW GA '//numch, flag_xyfill=.true.)
       call addfld(sw_fa_name(i), (/'lev'/),  'A','  ', 'SW FA '//numch, flag_xyfill=.true.)
-      call add_default (sw_ta_name(i), 2, ' ')
-      call add_default (sw_wa_name(i), 2, ' ')
-      call add_default (sw_ga_name(i), 2, ' ')
-      call add_default (sw_fa_name(i), 2, ' ')
+     ! call add_default (sw_ta_name(i), 2, ' ')
+     ! call add_default (sw_wa_name(i), 2, ' ')
+     ! call add_default (sw_ga_name(i), 2, ' ')
+     ! call add_default (sw_fa_name(i), 2, ' ')
    end do
    do i = 1,nlwbands
       write(numch,'(I2.2)') i
       lw_ta_name(i) =  'TALW'//numch
       call addfld(lw_ta_name(i), (/'lev'/),  'A','  ', 'LW TAU '//numch, flag_xyfill=.true.)
-      call add_default (lw_ta_name(i), 2, ' ')
+     ! call add_default (lw_ta_name(i), 2, ' ')
    end do
 
 end subroutine aer_rad_props_init
