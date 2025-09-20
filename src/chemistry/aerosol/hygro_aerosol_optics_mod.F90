@@ -1,4 +1,4 @@
-module hygroscopic_aerosol_optics_mod
+module hygro_aerosol_optics_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
 
   use aerosol_optics_mod, only: aerosol_optics
@@ -9,15 +9,15 @@ module hygroscopic_aerosol_optics_mod
 
   private
 
-  public :: hygroscopic_aerosol_optics
+  public :: hygro_aerosol_optics
 
-  type, extends(aerosol_optics) :: hygroscopic_aerosol_optics
+  type, extends(aerosol_optics) :: hygro_aerosol_optics
 
      ! aerosol optics properties tables (from physprops files)
      real(r8), pointer :: ext_sw(:,:) => null()
      real(r8), pointer :: ssa_sw(:,:) => null()
      real(r8), pointer :: asm_sw(:,:) => null()
-     real(r8), pointer :: abs_lw(:,:) => null()
+     real(r8), pointer :: abs_lw(:) => null()
 
      ! from state
      real(r8), allocatable :: wrh(:,:) ! (-) weighting on left side values ! (pcols,pver)
@@ -33,11 +33,11 @@ module hygroscopic_aerosol_optics_mod
 
      final :: destructor
 
-  end type hygroscopic_aerosol_optics
+  end type hygro_aerosol_optics
 
-  interface hygroscopic_aerosol_optics
+  interface hygro_aerosol_optics
      procedure :: constructor
-  end interface hygroscopic_aerosol_optics
+  end interface hygro_aerosol_optics
 
 contains
 
@@ -52,7 +52,7 @@ contains
     integer, intent(in) :: ncols, nlevs, numrh
     real(r8),intent(in) :: relhum(ncols,nlevs)
 
-    type(hygroscopic_aerosol_optics), pointer :: newobj
+    type(hygro_aerosol_optics), pointer :: newobj
 
     real(r8) :: rhtrunc(ncols,nlevs)
     integer :: ierr
@@ -85,7 +85,9 @@ contains
          sw_hygroscopic_ext=newobj%ext_sw, &
          sw_hygroscopic_ssa=newobj%ssa_sw, &
          sw_hygroscopic_asm=newobj%asm_sw, &
-         lw_hygroscopic_ext=newobj%abs_lw )
+         lw_nonhygro_ext=newobj%abs_lw )
+
+    print*,'FVDBG.constructor...shape(newobj%abs_lw): ',shape(newobj%abs_lw)
 
     call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
@@ -96,7 +98,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine sw_props(self, ncol, ilev, iwav, pext, pabs, palb, pasm)
 
-    class(hygroscopic_aerosol_optics), intent(in) :: self
+    class(hygro_aerosol_optics), intent(in) :: self
 
     integer, intent(in) :: ncol        ! number of columns
     integer, intent(in) :: ilev        ! vertical level index
@@ -130,7 +132,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine lw_props(self, ncol, ilev, iwav, pabs)
 
-    class(hygroscopic_aerosol_optics), intent(in) :: self
+    class(hygro_aerosol_optics), intent(in) :: self
     integer, intent(in) :: ncol        ! number of columns
     integer, intent(in) :: ilev        ! vertical level index
     integer, intent(in) :: iwav        ! wave length index
@@ -138,13 +140,7 @@ contains
 
     integer :: icol
 
-    ! interpolate the properties tables
-    do icol = 1, ncol
-       pabs(icol) = (1._r8 + self%wrh(icol,ilev)) * self%abs_lw(self%krh(icol,ilev)+1,iwav) &
-                           - self%wrh(icol,ilev)  * self%abs_lw(self%krh(icol,ilev),  iwav)
-
-       pabs(icol) = pabs(icol) * self%mmr(icol,ilev)
-    end do
+    pabs(:ncol) = self%abs_lw(iwav) * self%mmr(:ncol,ilev)
 
   end subroutine lw_props
 
@@ -152,11 +148,11 @@ contains
   !------------------------------------------------------------------------------
   subroutine destructor(self)
 
-    type(hygroscopic_aerosol_optics), intent(inout) :: self
+    type(hygro_aerosol_optics), intent(inout) :: self
 
     deallocate(self%wrh)
     deallocate(self%krh)
 
   end subroutine destructor
 
-end module hygroscopic_aerosol_optics_mod
+end module hygro_aerosol_optics_mod

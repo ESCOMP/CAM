@@ -36,6 +36,13 @@ public :: &
    aer_rad_props_sw,          & ! return SW optical props of aerosols
    aer_rad_props_lw             ! return LW optical props of aerosols
 
+
+  character(len=32) :: sw_ta_name(nswbands)
+  character(len=32) :: sw_wa_name(nswbands)
+  character(len=32) :: sw_ga_name(nswbands)
+  character(len=32) :: sw_fa_name(nswbands)
+  character(len=32) :: lw_ta_name(nlwbands)
+
 !==============================================================================
 contains
 !==============================================================================
@@ -53,6 +60,8 @@ subroutine aer_rad_props_init()
    logical                    :: prog_modal_aero      ! Prognostic modal aerosols present
    integer                    :: nmodes               ! number of aerosol modes
    integer                    :: nbins                ! number of aerosol bins
+
+   character(len=2) :: numch
 
    !----------------------------------------------------------------------------
 
@@ -82,7 +91,7 @@ subroutine aer_rad_props_init()
    call bam_optics_diags_init()
 
    ! Determine default fields
-   if (history_amwg .or. history_dust ) then
+   if (history_amwg .or. history_dust .or. history_aero_optics) then
       call add_default ('AEROD_v', 1, ' ')
    endif
 
@@ -91,6 +100,28 @@ subroutine aer_rad_props_init()
    end if
 
    deallocate(aernames)
+
+   do i = 1,nswbands
+      write(numch,'(I2.2)') i
+      sw_ta_name(i) =  'TASW'//numch
+      sw_wa_name(i) =  'WASW'//numch
+      sw_ga_name(i) =  'GASW'//numch
+      sw_fa_name(i) =  'FASW'//numch
+      call addfld(sw_ta_name(i), (/'lev'/),  'A','  ', 'SW TAU '//numch, flag_xyfill=.true.)
+      call addfld(sw_wa_name(i), (/'lev'/),  'A','  ', 'SW WA '//numch, flag_xyfill=.true.)
+      call addfld(sw_ga_name(i), (/'lev'/),  'A','  ', 'SW GA '//numch, flag_xyfill=.true.)
+      call addfld(sw_fa_name(i), (/'lev'/),  'A','  ', 'SW FA '//numch, flag_xyfill=.true.)
+      call add_default (sw_ta_name(i), 2, ' ')
+      call add_default (sw_wa_name(i), 2, ' ')
+      call add_default (sw_ga_name(i), 2, ' ')
+      call add_default (sw_fa_name(i), 2, ' ')
+   end do
+   do i = 1,nlwbands
+      write(numch,'(I2.2)') i
+      lw_ta_name(i) =  'TALW'//numch
+      call addfld(lw_ta_name(i), (/'lev'/),  'A','  ', 'LW TAU '//numch, flag_xyfill=.true.)
+      call add_default (lw_ta_name(i), 2, ' ')
+   end do
 
 end subroutine aer_rad_props_init
 
@@ -120,7 +151,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    integer :: ncol
    integer :: lchnk
-   integer :: k       ! index
+   integer :: i,k       ! index
    integer :: troplev(pcols)
 
    ! optical props for each aerosol
@@ -157,7 +188,6 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    real(r8) :: rh(pcols,pver)
    real(r8) :: rhtrunc(pcols,pver)
    real(r8) :: wrh(pcols,pver)
-   integer  :: krh(pcols,pver)
 
    integer  :: numaerosols     ! number of bulk aerosols in climate/diagnostic list
    integer  :: nmodes          ! number of aerosol modes in climate/diagnostic list
@@ -189,16 +219,6 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    tau_w_g(1:ncol,:,:) = 0._r8
    tau_w_f(1:ncol,:,:) = 0._r8
 
-   ! calculate relative humidity for table lookup into rh grid
-   do k = 1, pver
-      call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
-   end do
-   rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
-
-   rhtrunc(1:ncol,1:pver) = min(rh(1:ncol,1:pver),1._r8)
-   krh(1:ncol,1:pver) = min(floor( rhtrunc(1:ncol,1:pver) * nrh ) + 1, nrh - 1) ! index into rh mesh
-   wrh(1:ncol,1:pver) = rhtrunc(1:ncol,1:pver) * nrh - krh(1:ncol,1:pver)       ! (-) weighting on left side values
-
    ! get number of bulk aerosols and number of modes in current list
    call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
@@ -222,6 +242,13 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    ! diagnostic output of total aerosol optical properties
    ! currently implemented for climate list only
    call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
+
+    do i = 1,nswbands
+       call outfld(sw_ta_name(i), tau(1:ncol,1:pver,i), ncol, lchnk )
+       call outfld(sw_wa_name(i), tau_w(1:ncol,1:pver,i), ncol, lchnk )
+       call outfld(sw_ga_name(i), tau_w_g(1:ncol,1:pver,i), ncol, lchnk )
+       call outfld(sw_fa_name(i), tau_w_f(1:ncol,1:pver,i), ncol, lchnk )
+    end do
 
 end subroutine aer_rad_props_sw
 
@@ -270,20 +297,6 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    real(r8) :: r_mu_min, r_mu_max, wmu, mutrunc
    integer  :: nmu, kmu
 
-   ! for table lookup into rh grid
-   real(r8) :: es(pcols,pver)     ! saturation vapor pressure
-   real(r8) :: qs(pcols,pver)     ! saturation specific humidity
-   real(r8) :: rh(pcols,pver)
-   real(r8) :: rhtrunc(pcols,pver)
-   real(r8) :: wrh(pcols,pver)
-   integer  :: krh(pcols,pver)
-
-   ! aerosol (vertical) mass path and extinction
-   ! aerosol masses
-   real(r8), pointer :: aermmr(:,:)    ! mass mixing ratio of aerosols
-   real(r8) :: mmr_to_mass(pcols,pver) ! conversion factor for mmr to mass
-   real(r8) :: aermass(pcols,pver)     ! mass of aerosols
-
    character(len=16) :: pbuf_fld
    !-----------------------------------------------------------------------------
 
@@ -292,6 +305,8 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    ! get number of bulk aerosols and number of modes in current list
    call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
+   odap_aer = 0._r8
+
    ! Contributions from modal and sectional aerosols.
    if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
@@ -299,87 +314,15 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
       odap_aer = 0._r8
    end if
 
+    do i = 1,nlwbands
+       call outfld(lw_ta_name(i), odap_aer(1:ncol,1:pver,i), ncol, state%lchnk)
+    end do
+
 end subroutine aer_rad_props_lw
 
 !==============================================================================
 ! Private methods
 !==============================================================================
-
-subroutine get_hygro_rad_props(ncol, krh, wrh, mass, ext, ssa, asm, &
-                               tau, tau_w, tau_w_g, tau_w_f)
-
-   ! Arguments
-   integer,  intent(in) :: ncol
-   integer,  intent(in) :: krh(pcols,pver)  ! index for linear interpolation of optics on rh
-   real(r8), intent(in) :: wrh(pcols,pver)  ! weight for linear interpolation of optics on rh
-   real(r8), intent(in) :: mass(pcols,pver)
-   real(r8), intent(in) :: ext(:,:)
-   real(r8), intent(in) :: ssa(:,:)
-   real(r8), intent(in) :: asm(:,:)
-
-   real(r8), intent(out) :: tau    (pcols,pver,nswbands)
-   real(r8), intent(out) :: tau_w  (pcols,pver,nswbands)
-   real(r8), intent(out) :: tau_w_g(pcols,pver,nswbands)
-   real(r8), intent(out) :: tau_w_f(pcols,pver,nswbands)
-
-   ! Local variables
-   real(r8) :: ext1, ssa1, asm1
-   integer :: icol, ilev, iswband
-   !-----------------------------------------------------------------------------
-
-   do iswband = 1, nswbands
-      do icol = 1, ncol
-         do ilev = 1, pver
-            ext1 = (1 + wrh(icol,ilev)) * ext(krh(icol,ilev)+1,iswband) &
-                      - wrh(icol,ilev)  * ext(krh(icol,ilev),  iswband)
-            ssa1 = (1 + wrh(icol,ilev)) * ssa(krh(icol,ilev)+1,iswband) &
-                      - wrh(icol,ilev)  * ssa(krh(icol,ilev),  iswband)
-            asm1 = (1 + wrh(icol,ilev)) * asm(krh(icol,ilev)+1,iswband) &
-                      - wrh(icol,ilev)  * asm(krh(icol,ilev),  iswband)
-
-            tau    (icol, ilev, iswband) = mass(icol, ilev) * ext1
-            tau_w  (icol, ilev, iswband) = mass(icol, ilev) * ext1 * ssa1
-            tau_w_g(icol, ilev, iswband) = mass(icol, ilev) * ext1 * ssa1 * asm1
-            tau_w_f(icol, ilev, iswband) = mass(icol, ilev) * ext1 * ssa1 * asm1 * asm1
-         enddo
-      enddo
-   enddo
-
-end subroutine get_hygro_rad_props
-
-!==============================================================================
-
-subroutine get_nonhygro_rad_props(ncol, mass, ext, ssa, asm, &
-                                  tau, tau_w, tau_w_g, tau_w_f)
-
-   ! Arguments
-   integer,  intent(in) :: ncol
-   real(r8), intent(in) :: mass(pcols, pver)
-   real(r8), intent(in) :: ext(:)
-   real(r8), intent(in) :: ssa(:)
-   real(r8), intent(in) :: asm(:)
-
-   real(r8), intent(out) :: tau    (pcols, pver, nswbands)
-   real(r8), intent(out) :: tau_w  (pcols, pver, nswbands)
-   real(r8), intent(out) :: tau_w_g(pcols, pver, nswbands)
-   real(r8), intent(out) :: tau_w_f(pcols, pver, nswbands)
-
-   ! Local variables
-   integer  :: iswband
-   real(r8) :: ext1, ssa1, asm1
-   !-----------------------------------------------------------------------------
-
-   do iswband = 1, nswbands
-      ext1 = ext(iswband)
-      ssa1 = ssa(iswband)
-      asm1 = asm(iswband)
-      tau    (1:ncol,1:pver,iswband) = mass(1:ncol,1:pver) * ext1
-      tau_w  (1:ncol,1:pver,iswband) = mass(1:ncol,1:pver) * ext1 * ssa1
-      tau_w_g(1:ncol,1:pver,iswband) = mass(1:ncol,1:pver) * ext1 * ssa1 * asm1
-      tau_w_f(1:ncol,1:pver,iswband) = mass(1:ncol,1:pver) * ext1 * ssa1 * asm1 * asm1
-   enddo
-
-end subroutine get_nonhygro_rad_props
 
 !==============================================================================
 

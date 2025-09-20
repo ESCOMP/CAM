@@ -74,9 +74,6 @@ contains
 
     call rad_cnst_get_info(0, naero=naero)
 
-    !newobj%num_aerosols = naero 
-    
-
     allocate( nspecies(naero),stat=ierr )
     if( ierr /= 0 ) then
        nullify(newobj)
@@ -164,7 +161,7 @@ contains
        sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
        sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
        corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
-       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, &
+       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
        sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
 
 
@@ -213,6 +210,7 @@ contains
     real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:)
     real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:)
     real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:)
+    real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:)
 
     ! non-hygroscopic
     real(r8),  optional, pointer :: sw_nonhygro_ext(:)
@@ -226,6 +224,7 @@ contains
          sw_hygro_ext=sw_hygroscopic_ext, &
          sw_hygro_ssa=sw_hygroscopic_ssa, &
          sw_hygro_asm=sw_hygroscopic_asm, &
+         lw_hygro_ext=lw_hygroscopic_ext, &
          sw_nonhygro_ext=sw_nonhygro_ext, &
          sw_nonhygro_ssa=sw_nonhygro_ssa, &
          sw_nonhygro_asm=sw_nonhygro_asm, &
@@ -494,7 +493,7 @@ contains
     integer :: res
 
     call rad_cnst_get_info(list_ndx, naero=res)
-  
+
   end function nbins_rlist
 
   !------------------------------------------------------------------------------
@@ -537,7 +536,7 @@ contains
     character(len=aero_name_len) :: name
     character(len=64), allocatable :: names(:)
     integer :: naer
- 
+
 
     call rad_cnst_get_info(list_ndx, naero=naer)
 

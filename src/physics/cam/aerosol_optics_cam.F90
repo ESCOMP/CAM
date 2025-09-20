@@ -33,6 +33,7 @@ module aerosol_optics_cam
   use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
   use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
   use hygroscopic_aerosol_optics_mod, only: hygroscopic_aerosol_optics
+  use hygro_aerosol_optics_mod, only: hygro_aerosol_optics
   use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
 
   use bam_optics_diags_mod, only: bam_optics_diags_active, bam_optics_diags_out
@@ -766,6 +767,7 @@ contains
        call endrun(prefix//'array allocation error: pasm')
     end if
 
+    ! calculate relative humidity for table lookup into rh grid
     call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
     relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
@@ -794,16 +796,15 @@ contains
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
           case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
              aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                         ibin, ncol, pver, relh(:ncol,:))
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
-          case('hygroscopic','hygro')
+          case('hygro')
+             aero_optics=>hygro_aerosol_optics(aeroprops, aerostate, list_idx, &
+                                                     ibin, ncol, pver, numrh, relh(:ncol,:))
+          case('hygroscopic')
              aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                      ibin, ncol, pver, numrh, relh(:ncol,:))
 
@@ -1275,6 +1276,11 @@ contains
        call endrun(prefix//'array allocation error: pabs')
     end if
 
+    ! calculate relative humidity for table lookup into rh grid
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -1293,18 +1299,18 @@ contains
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
           case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
              aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                         ibin, ncol, pver, relh(:ncol,:))
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
 
-          case('hygroscopic','hygro')
+          case('hygroscopic')
              aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
+                                                     ncol, pver, numrh, relh(:ncol,:))
+
+          case('hygro')
+             aero_optics=>hygro_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                      ncol, pver, numrh, relh(:ncol,:))
 
           case('nonhygro', 'insoluble')
@@ -1322,7 +1328,7 @@ contains
                    call aero_optics%lw_props(ncol, ilev, iwav, pabs )
 
                    column: do icol = 1, ncol
-                      dopaer(icol) = pabs(icol)*mass(icol,ilev)
+                      dopaer(icol) = pabs(icol) * mass(icol,ilev)
                       tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
                       lwabs(icol,ilev) = lwabs(icol,ilev) + pabs(icol)
                    end do column

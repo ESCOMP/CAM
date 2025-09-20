@@ -125,7 +125,7 @@ module aerosol_properties_mod
           sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
           sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
           corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
-          sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, &
+          sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
           sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
 
        import :: aerosol_properties, r8
@@ -175,6 +175,7 @@ module aerosol_properties_mod
        real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:)
        real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:)
        real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:)
+       real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:)
 
        ! non-hygroscopic
        real(r8),  optional, pointer :: sw_nonhygro_ext(:)
