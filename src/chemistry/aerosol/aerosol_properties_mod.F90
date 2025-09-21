@@ -74,6 +74,7 @@ module aerosol_properties_mod
      procedure(aero_resuspension_resize), deferred :: resuspension_resize
      procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
      procedure(aero_hydrophilic), deferred :: hydrophilic
+     procedure :: is_bulk
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -126,7 +127,8 @@ module aerosol_properties_mod
           sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
           corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
           sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
-          sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
+          sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext, &
+          r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
 
        import :: aerosol_properties, r8
 
@@ -182,6 +184,13 @@ module aerosol_properties_mod
        real(r8),  optional, pointer :: sw_nonhygro_ssa(:)
        real(r8),  optional, pointer :: sw_nonhygro_asm(:)
        real(r8),  optional, pointer :: lw_nonhygro_ext(:)
+
+       ! volcanic radius
+       real(r8),  optional, pointer :: r_sw_ext(:,:)
+       real(r8),  optional, pointer :: r_sw_scat (:,:)
+       real(r8),  optional, pointer :: r_sw_ascat(:,:)
+       real(r8),  optional, pointer :: r_mu(:)
+       real(r8),  optional, pointer :: r_lw_abs(:,:)
 
      end subroutine aero_optics_params
 
@@ -723,5 +732,15 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if bulk aerosol representation
+  !------------------------------------------------------------------------------
+  pure logical function is_bulk(self)
+    class(aerosol_properties), intent(in) :: self
+
+    is_bulk = .false.
+
+  end function is_bulk
 
 end module aerosol_properties_mod

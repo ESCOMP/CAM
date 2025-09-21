@@ -79,6 +79,12 @@ subroutine aer_rad_props_init()
    call addfld ('AODvstrt', horiz_only, 'A', '1', &
       'Stratospheric Aerosol Optical Depth in visible band', flag_xyfill=.true.)
 
+   call addfld ('AEROD_LW1', horiz_only, 'A', '1', 'longwave diag', flag_xyfill=.true.)
+   call addfld ('AEROD_LWint', horiz_only, 'A', '1', 'longwave diag', flag_xyfill=.true.)
+
+   call add_default ('AEROD_LW1', 1, ' ')
+   call add_default ('AEROD_LWint', 1, ' ')
+
    ! Contributions to AEROD_v from individual aerosols (climate species).
 
    ! number of bulk aerosols in climate list
@@ -93,6 +99,7 @@ subroutine aer_rad_props_init()
    ! Determine default fields
    if (history_amwg .or. history_dust .or. history_aero_optics) then
       call add_default ('AEROD_v', 1, ' ')
+      call add_default ('AODvstrt', 1, ' ')
    endif
 
    if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
@@ -111,16 +118,16 @@ subroutine aer_rad_props_init()
       call addfld(sw_wa_name(i), (/'lev'/),  'A','  ', 'SW WA '//numch, flag_xyfill=.true.)
       call addfld(sw_ga_name(i), (/'lev'/),  'A','  ', 'SW GA '//numch, flag_xyfill=.true.)
       call addfld(sw_fa_name(i), (/'lev'/),  'A','  ', 'SW FA '//numch, flag_xyfill=.true.)
-     ! call add_default (sw_ta_name(i), 2, ' ')
-     ! call add_default (sw_wa_name(i), 2, ' ')
-     ! call add_default (sw_ga_name(i), 2, ' ')
-     ! call add_default (sw_fa_name(i), 2, ' ')
+      call add_default (sw_ta_name(i), 2, ' ')
+      call add_default (sw_wa_name(i), 2, ' ')
+      call add_default (sw_ga_name(i), 2, ' ')
+      call add_default (sw_fa_name(i), 2, ' ')
    end do
    do i = 1,nlwbands
       write(numch,'(I2.2)') i
       lw_ta_name(i) =  'TALW'//numch
       call addfld(lw_ta_name(i), (/'lev'/),  'A','  ', 'LW TAU '//numch, flag_xyfill=.true.)
-     ! call add_default (lw_ta_name(i), 2, ' ')
+      call add_default (lw_ta_name(i), 2, ' ')
    end do
 
 end subroutine aer_rad_props_init
@@ -297,10 +304,14 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    real(r8) :: r_mu_min, r_mu_max, wmu, mutrunc
    integer  :: nmu, kmu
 
+   real(r8) :: tmp(pcols,pver)
+
    character(len=16) :: pbuf_fld
    !-----------------------------------------------------------------------------
+   integer :: lchnk
 
    ncol = state%ncol
+   lchnk= state%lchnk
 
    ! get number of bulk aerosols and number of modes in current list
    call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
@@ -313,6 +324,16 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
    else
       odap_aer = 0._r8
    end if
+
+    tmp(:ncol,:) = odap_aer(:ncol,:,1)
+    call outfld('AEROD_LW1',odap_aer(:,:,1), pcols, lchnk)
+
+    do i = 1,ncol
+       do k = 1,pver
+          tmp(i,k) = sum(odap_aer(i,k,:))
+       end do
+    end do
+    call outfld('AEROD_LWint',odap_aer(:,:,1), pcols, lchnk)
 
     do i = 1,nlwbands
        call outfld(lw_ta_name(i), odap_aer(1:ncol,1:pver,i), ncol, state%lchnk)

@@ -6,7 +6,7 @@ module aerosol_optics_cam
   use radconstants, only: get_lw_spectral_boundaries
   use phys_prop,    only: ot_length, numrh=>nrh
   use physics_types,only: physics_state
-  use physics_buffer,only: physics_buffer_desc
+  use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use ppgrid, only: pcols, pver
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun
@@ -35,6 +35,7 @@ module aerosol_optics_cam
   use hygroscopic_aerosol_optics_mod, only: hygroscopic_aerosol_optics
   use hygro_aerosol_optics_mod, only: hygro_aerosol_optics
   use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
+  use volcrad_aerosol_optics_mod, only: volcrad_aerosol_optics
 
   use bam_optics_diags_mod, only: bam_optics_diags_active, bam_optics_diags_out
 
@@ -145,7 +146,7 @@ contains
 
     logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
-    integer :: m, n
+    integer :: m, n, cnt
 
     character(len=fieldname_len) :: fldname
     character(len=128) :: lngname
@@ -156,9 +157,8 @@ contains
     character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
-  !                    history_aero_optics_out = history_aero_optics, &
+                      history_aero_optics_out = history_aero_optics, &
                       history_dust_out        = history_dust )
-    history_aero_optics=.false.
 
     num_aero_models = 0
 
@@ -323,6 +323,8 @@ contains
           call endrun(prefix//'array allocation error: aoddustdn_fields')
        end if
 
+       cnt=0
+
        do n = 1,num_aero_models
 
           allocate(burden_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
@@ -353,7 +355,9 @@ contains
 
           do m = 1, aero_props(n)%obj%nbins()
 
-             write(fldname,'(a,i2.2)') 'BURDEN', m
+             cnt = cnt+1
+
+             write(fldname,'(a,i2.2)') 'BURDEN', cnt
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -369,7 +373,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODDUST', m
+             write(fldname,'(a,i2.2)') 'AODDUST', cnt
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -377,7 +381,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'BURDENdn', m
+             write(fldname,'(a,i2.2)') 'BURDENdn', cnt
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -393,7 +397,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODdnDUST', m
+             write(fldname,'(a,i2.2)') 'AODdnDUST', cnt
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -682,7 +686,11 @@ contains
     real(r8) :: ssavis(pcols)
     integer :: troplev(pcols)
 
-    integer :: i, k
+    integer :: i, k, bam_cnt
+
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
 
     nullify(aero_optics)
 
@@ -772,6 +780,8 @@ contains
     relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
+    bam_cnt = 0
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -811,8 +821,20 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             ! get microphysical properties for volcanic aerosols
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius )
+
+             aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
+                  ibin, ncol, pver, geometric_radius(:ncol,:))
+
           case default
-             call endrun(prefix//'optics method not recognized')
+             call endrun(prefix//'optics method not recognized: '//trim(opticstype))
           end select
 
           if (associated(aero_optics)) then
@@ -835,9 +857,9 @@ contains
                       ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
-
-                      call update_diags()
-
+                      if (.not.aeroprops%is_bulk()) then
+                         call update_diags()
+                      end if
 
                    end do column
 
@@ -856,12 +878,13 @@ contains
           deallocate(aero_optics)
           nullify(aero_optics)
 
-          if (bam_optics_diags_active) then
-             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, ibin, taubam, &
+          if (aeroprops%is_bulk()) then
+             bam_cnt = bam_cnt+1
+             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
                   list_idx, troplev)
-          endif
-
-          call output_bin_diags()
+          else
+             call output_bin_diags()
+          end if
 
        end do binloop
     end do aeromodel
@@ -1242,6 +1265,10 @@ contains
     character(len=32) :: opticstype
     integer :: iaermod
 
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
+
     real(r8) :: lwabs(pcols,pver)
     lwabs = 0._r8
     tauxar = 0._r8
@@ -1316,8 +1343,20 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             ! get microphysical properties for volcanic aerosols
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius )
+
+             aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
+                  ibin, ncol, pver, geometric_radius(:ncol,:))
+
           case default
-             call endrun(prefix//'optics method not recognized')
+             call endrun(prefix//'optics method not recognized: '//trim(opticstype))
           end select
 
           if (associated(aero_optics)) then

@@ -46,6 +46,7 @@ module bulk_aerosol_properties_mod
      procedure :: resuspension_resize
      procedure :: rebin_bulk_fluxes
      procedure :: hydrophilic
+     procedure :: is_bulk
 
      final :: destructor
 
@@ -214,7 +215,8 @@ contains
        sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
        corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
        sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
-       sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext)
+       sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext, &
+       r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
 
 
     class(bulk_aerosol_properties), intent(in) :: self
@@ -270,6 +272,13 @@ contains
     real(r8),  optional, pointer :: sw_nonhygro_asm(:)
     real(r8),  optional, pointer :: lw_nonhygro_ext(:)
 
+    ! volcanic radius
+    real(r8),  optional, pointer :: r_sw_ext(:,:)
+    real(r8),  optional, pointer :: r_sw_scat (:,:)
+    real(r8),  optional, pointer :: r_sw_ascat(:,:)
+    real(r8),  optional, pointer :: r_mu(:)
+    real(r8),  optional, pointer :: r_lw_abs(:,:)
+
     ! refactive index table parameters
     call rad_cnst_get_aer_props(list_ndx, bin_ndx, &
          opticstype=opticstype, &
@@ -280,7 +289,9 @@ contains
          sw_nonhygro_ext=sw_nonhygro_ext, &
          sw_nonhygro_ssa=sw_nonhygro_ssa, &
          sw_nonhygro_asm=sw_nonhygro_asm, &
-         lw_ext=lw_nonhygro_ext )
+         lw_ext=lw_nonhygro_ext, &
+         r_sw_ext=r_sw_ext, r_sw_scat=r_sw_scat, r_sw_ascat=r_sw_ascat, &
+         r_lw_abs=r_lw_abs, mu=r_mu )
 
     if (present(extpsw)) then
        nullify(extpsw)
@@ -675,5 +686,15 @@ contains
     call endrun('ERROR: bulk_aerosol_properties_mod%hydrophilic not yet implemented')
 
   end function hydrophilic
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if bulk aerosol representation
+  !------------------------------------------------------------------------------
+  pure logical function is_bulk(self)
+    class(bulk_aerosol_properties), intent(in) :: self
+
+    is_bulk = .true.
+
+  end function is_bulk
 
 end module bulk_aerosol_properties_mod
