@@ -72,7 +72,7 @@ contains
     real(r8) :: tmp(pcols), tmp2(pcols)
     !-----------------------------------------------------------------------------
 
-    if (.not.bam_optics_diags_active) return
+!    if (.not.bam_optics_diags_active) return
 
     ! currently only implemented for climate calc
     if (diag_idx > 0) return
