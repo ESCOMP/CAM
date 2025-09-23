@@ -446,6 +446,7 @@ subroutine gw_drag_cam_init()
   use gravity_wave_drag_orographic,      only: gravity_wave_drag_orographic_init
   use gravity_wave_drag_top_taper,       only: gravity_wave_drag_top_taper_init
   use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_init
+  use gravity_wave_drag_frontogenesis,   only: gravity_wave_drag_frontogenesis_inertial_init
   use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_beta_init
   use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_gamma_init
   use gravity_wave_drag_ridge,           only: gravity_wave_drag_ridge_init
@@ -653,7 +654,7 @@ subroutine gw_drag_cam_init()
     call endrun("gw_drag_init: " // errmsg)
   endif
 
-  if(use_gw_front .or. use_gw_front_igw) then
+  if(use_gw_front) then
     call gravity_wave_drag_frontogenesis_init( &
          pver                 = pver, &
          pi                   = pi, &
@@ -662,20 +663,34 @@ subroutine gw_drag_cam_init()
          pref_edge            = pref_edge, &
          frontgfc             = frontgfc, &
          gw_delta_c           = gw_dc, &
-         gw_delta_c_long      = gw_dc_long, &
          pgwv                 = pgwv, &
-         pgwv_long            = pgwv_long, &
          taubgnd              = taubgnd, &
-         taubgnd_igw          = taubgnd_igw, &
          effgw_cm             = effgw_cm, &
-         effgw_cm_igw         = effgw_cm_igw, &
-         use_gw_front         = use_gw_front, &
-         use_gw_front_igw     = use_gw_front_igw, &
          front_gaussian_width = front_gaussian_width, &
          errmsg               = errmsg, &
          errflg               = errflg)
     if(errflg /= 0) then
       call endrun("gravity_wave_drag_frontogenesis_init: " // errmsg)
+    endif
+  endif
+
+  if(use_gw_front_igw) then
+    call gravity_wave_drag_frontogenesis_inertial_init( &
+         pver                 = pver, &
+         pi                   = pi, &
+         masterproc           = masterproc, &
+         iulog                = iulog, &
+         pref_edge            = pref_edge, &
+         frontgfc             = frontgfc, &
+         gw_delta_c_long      = gw_dc_long, &
+         pgwv_long            = pgwv_long, &
+         taubgnd_igw          = taubgnd_igw, &
+         effgw_cm_igw         = effgw_cm_igw, &
+         front_gaussian_width = front_gaussian_width, &
+         errmsg               = errmsg, &
+         errflg               = errflg)
+    if(errflg /= 0) then
+      call endrun("gravity_wave_drag_frontogenesis_inertial_init: " // errmsg)
     endif
   endif
 
@@ -1491,12 +1506,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dt                  = dt, &
       p                   = p, &
       vramp               = vramp, &
-      state_u             = state1%u(:ncol,:), &
-      state_v             = state1%v(:ncol,:), &
-      state_t             = state1%t(:ncol,:), &
-      state_q             = state1%q(:ncol,:,:), &
+      u                   = state1%u(:ncol,:), &
+      v                   = state1%v(:ncol,:), &
+      t                   = state1%t(:ncol,:), &
+      q                   = state1%q(:ncol,:,:), &
       dse                 = state1%s(:ncol,:), &
-      pint                = state1%pint(:ncol,:), &
       piln                = state1%lnpint(:ncol,:), &
       rhoi                = rhoi(:ncol,:), &
       nm                  = nm(:ncol,:), &
