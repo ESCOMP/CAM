@@ -15,6 +15,7 @@ module aerosol_optics_cam
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
 
+  use ref_pres, only: clim_modal_aero_top_lev
   use tropopause, only : tropopause_findChemTrop
   use wv_saturation, only: qsat
 
@@ -86,6 +87,8 @@ module aerosol_optics_cam
   type(out_name), allocatable :: aodbindn_fields(:)
   type(out_name), allocatable :: aoddustdn_fields(:)
 
+  integer :: top_lev = 1
+
 contains
 
   !===============================================================================
@@ -153,12 +156,17 @@ contains
     logical :: history_aero_optics     ! output aerosol optics diagnostics
     logical :: history_amwg            ! output the variables used by the AMWG diag package
     logical :: history_dust            ! output dust diagnostics
+    logical :: prog_modal_aero         ! prognostic modal aerosols present
 
     character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
                       history_aero_optics_out = history_aero_optics, &
-                      history_dust_out        = history_dust )
+                      history_dust_out        = history_dust, &
+                      prog_modal_aero_out     = prog_modal_aero )
+
+    ! Limit modal aerosols with top_lev here.
+    if (prog_modal_aero) top_lev = clim_modal_aero_top_lev
 
     num_aero_models = 0
 
@@ -669,7 +677,6 @@ contains
     real(r8) :: specdens
     character(len=32) :: spectype            ! species type
     real(r8), pointer :: specmmr(:,:)
-    real(r8), pointer :: aerommr(:,:)
     real(r8)          :: hygro_aer           !
 
     real(r8) :: scath2o, absh2o, sumscat, sumabs, sumhygro
@@ -686,7 +693,7 @@ contains
     real(r8) :: ssavis(pcols)
     integer :: troplev(pcols)
 
-    integer :: i, k, bam_cnt
+    integer :: bam_cnt
 
     real(r8), pointer :: geometric_radius(:,:)
     integer  :: idx  ! index to pbuf for geometric radius
@@ -703,6 +710,7 @@ contains
     call tropopause_findChemTrop(state, troplev)
 
     mass(:ncol,:)        = state%pdeldry(:ncol,:)*rga
+    mass(:ncol,1:top_lev-1) = 0._r8
     air_density(:ncol,:) = state%pmid(:ncol,:)/(rair*state%t(:ncol,:))
 
     aodvis = 0._r8
@@ -1239,7 +1247,6 @@ contains
 
     real(r8) :: dopaer(pcols)
     real(r8) :: mass(pcols,pver)
-    real(r8), pointer :: aerommr(:,:)
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_lw: '
 

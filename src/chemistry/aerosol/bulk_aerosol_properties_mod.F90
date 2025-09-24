@@ -177,17 +177,17 @@ contains
        select case ( to_lower( aername(:4) ) )
        case('dust')
           spectype = 'dust'
-       case('sulf')
+       case('sulf','volc')
           spectype = 'sulfate'
        case('bcar','bcph')
           spectype = 'black-c'
        case('ocar','ocph')
           spectype = 'p-organic'
-       case('sslt','seas')
+       case('sslt','seas','ssam','sscm')
           spectype = 'seasalt'
        case default
           spectype = 'UNKNOWN'
-          call endrun('ERROR: bulk_aerosol_properties_mod%get spectype aername not recognized')
+          call endrun('ERROR: bulk_aerosol_properties_mod%get aername not recognized : '//aername)
        end select
 
     end if
