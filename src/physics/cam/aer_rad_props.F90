@@ -21,7 +21,7 @@ use cam_history,      only: fieldname_len, addfld, outfld, add_default, horiz_on
 use cam_history_support, only : fillvalue
 
 use cam_abortutils,   only: endrun
-use bam_optics_diags_mod, only: bam_optics_diags_init, bam_optics_diags_out
+use aer_vis_diag_mod, only: aer_vis_diag_init, aer_vis_diag_out
 
 implicit none
 private
@@ -63,7 +63,7 @@ subroutine aer_rad_props_init()
    ! number of bulk aerosols in climate list
    call rad_cnst_get_info(0, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
-   call bam_optics_diags_init()
+   call aer_vis_diag_init()
 
    ! Determine default fields
    if (history_amwg .or. history_dust .or. history_aero_optics) then
@@ -135,7 +135,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    ! diagnostic output of total aerosol optical properties
    ! currently implemented for climate list only
-   call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
+   call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
 
 end subroutine aer_rad_props_sw
 

@@ -1,4 +1,4 @@
-module bam_optics_diags_mod
+module aer_vis_diag_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use cam_history, only: fieldname_len, addfld, outfld, add_default, horiz_only
   use cam_history_support, only : fillvalue
@@ -9,18 +9,16 @@ module bam_optics_diags_mod
   implicit none
 
   private
-  public :: bam_optics_diags_active
-  public :: bam_optics_diags_init
-  public :: bam_optics_diags_out
+  public :: aer_vis_diag_init
+  public :: aer_vis_diag_out
 
   integer :: numaerosols=0
   character(len=fieldname_len), pointer :: odv_names(:)  ! outfld names for visible OD
-  logical :: bam_optics_diags_active = .false.
 
 contains
 
   !==============================================================================
-  subroutine bam_optics_diags_init()
+  subroutine aer_vis_diag_init()
 
     integer :: i
     character(len=64), allocatable :: aernames(:)
@@ -29,9 +27,7 @@ contains
     ! number of bulk aerosols in climate list
     call rad_cnst_get_info(0, naero=numaerosols)
 
-    bam_optics_diags_active = numaerosols>0
-
-    if (.not.bam_optics_diags_active) return
+    if (numaerosols<1) return
 
     ! get names of bulk aerosols
     allocate(aernames(numaerosols))
@@ -49,11 +45,10 @@ contains
        call add_default(odv_names(i), 1, ' ')
     end do
 
-  end subroutine bam_optics_diags_init
-
+  end subroutine aer_vis_diag_init
 
   !==============================================================================
-  subroutine bam_optics_diags_out(lchnk, ncol, nnite, idxnite, iaer, tau, diag_idx, troplev)
+  subroutine aer_vis_diag_out(lchnk, ncol, nnite, idxnite, iaer, tau, diag_idx, troplev)
 
     ! output aerosol optical depth for the visible band
 
@@ -71,8 +66,6 @@ contains
     integer  :: i
     real(r8) :: tmp(pcols), tmp2(pcols)
     !-----------------------------------------------------------------------------
-
-!    if (.not.bam_optics_diags_active) return
 
     ! currently only implemented for climate calc
     if (diag_idx > 0) return
@@ -94,8 +87,8 @@ contains
        call outfld('AODvstrt', tmp2, pcols, lchnk)
     end if
 
-  end subroutine bam_optics_diags_out
+  end subroutine aer_vis_diag_out
 
   !==============================================================================
 
-end module bam_optics_diags_mod
+end module aer_vis_diag_mod

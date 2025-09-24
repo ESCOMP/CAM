@@ -38,7 +38,7 @@ module aerosol_optics_cam
   use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
   use volcrad_aerosol_optics_mod, only: volcrad_aerosol_optics
 
-  use bam_optics_diags_mod, only: bam_optics_diags_active, bam_optics_diags_out
+  use aer_vis_diag_mod, only: aer_vis_diag_out
 
   implicit none
 
@@ -871,7 +871,7 @@ contains
 
                    end do column
 
-                   if (bam_optics_diags_active.and.iwav==idx_sw_diag) then
+                   if (aeroprops%is_bulk().and.iwav==idx_sw_diag) then
                       taubam(:ncol,ilev) = dopaer(:ncol)
                    end if
 
@@ -888,7 +888,7 @@ contains
 
           if (aeroprops%is_bulk()) then
              bam_cnt = bam_cnt+1
-             call bam_optics_diags_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
+             call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
                   list_idx, troplev)
           else
              call output_bin_diags()
