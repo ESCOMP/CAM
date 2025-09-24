@@ -32,6 +32,15 @@ public :: &
    aer_rad_props_sw,          & ! return SW optical props of aerosols
    aer_rad_props_lw             ! return LW optical props of aerosols
 
+! debug diags
+character(len=32) :: sw_ta_name(nswbands)
+character(len=32) :: sw_wa_name(nswbands)
+character(len=32) :: sw_ga_name(nswbands)
+character(len=32) :: sw_fa_name(nswbands)
+character(len=32) :: lw_ta_name(nlwbands)
+
+logical :: bam_debug = .false.
+
 !==============================================================================
 contains
 !==============================================================================
@@ -46,6 +55,8 @@ subroutine aer_rad_props_init()
    integer                    :: nmodes               ! number of aerosol modes
    integer                    :: nbins                ! number of aerosol bins
 
+   character(len=2) :: numch
+   integer :: i
    !----------------------------------------------------------------------------
 
    call phys_getopts( history_aero_optics_out    = history_aero_optics, &
@@ -72,6 +83,38 @@ subroutine aer_rad_props_init()
 
    if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_init()
+   endif
+
+   bam_debug = numaerosols>0 .and. history_aero_optics
+
+   ! for BAM debugging
+   if (bam_debug) then
+      call add_default ('AEROD_v', 2, ' ')
+      call add_default ('AODvstrt', 2, ' ')
+
+      ! debug diags
+      do i = 1,nswbands
+         write(numch,'(I2.2)') i
+         sw_ta_name(i) =  'TASW'//numch
+         sw_wa_name(i) =  'WASW'//numch
+         sw_ga_name(i) =  'GASW'//numch
+         sw_fa_name(i) =  'FASW'//numch
+         call addfld(sw_ta_name(i), (/'lev'/), 'A','  ', 'SW TAU for wave band '//numch, flag_xyfill=.true.)
+         call addfld(sw_wa_name(i), (/'lev'/), 'A','  ', 'SW WA for wave band '//numch, flag_xyfill=.true.)
+         call addfld(sw_ga_name(i), (/'lev'/), 'A','  ', 'SW GA for wave band '//numch, flag_xyfill=.true.)
+         call addfld(sw_fa_name(i), (/'lev'/), 'A','  ', 'SW FA for wave band '//numch, flag_xyfill=.true.)
+         call add_default (sw_ta_name(i), 2, ' ')
+         call add_default (sw_wa_name(i), 2, ' ')
+         call add_default (sw_ga_name(i), 2, ' ')
+         call add_default (sw_fa_name(i), 2, ' ')
+      end do
+      do i = 1,nlwbands
+         write(numch,'(I2.2)') i
+         lw_ta_name(i) =  'TALW'//numch
+         call addfld(lw_ta_name(i), (/'lev'/),  'A','  ', 'LW TAU for wave band '//numch, flag_xyfill=.true.)
+         call add_default (lw_ta_name(i), 2, ' ')
+      end do
+
    end if
 
 end subroutine aer_rad_props_init
@@ -106,7 +149,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    integer  :: numaerosols     ! number of bulk aerosols in climate/diagnostic list
    integer  :: nmodes          ! number of aerosol modes in climate/diagnostic list
    integer  :: nbins           ! number of aerosol bins in climate/diagnostic list
-
+   integer :: i
    !-----------------------------------------------------------------------------
 
    ncol  = state%ncol
@@ -137,6 +180,16 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    ! currently implemented for climate list only
    call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, 0, tau(:,:,idx_sw_diag), list_idx, troplev)
 
+   ! debug diags
+   if (bam_debug) then
+      do i = 1,nswbands
+         call outfld(sw_ta_name(i), tau(1:ncol,1:pver,i), ncol, lchnk )
+         call outfld(sw_wa_name(i), tau_w(1:ncol,1:pver,i), ncol, lchnk )
+         call outfld(sw_ga_name(i), tau_w_g(1:ncol,1:pver,i), ncol, lchnk )
+         call outfld(sw_fa_name(i), tau_w_f(1:ncol,1:pver,i), ncol, lchnk )
+      end do
+   end if
+
 end subroutine aer_rad_props_sw
 
 !==============================================================================
@@ -144,7 +197,7 @@ end subroutine aer_rad_props_sw
 subroutine aer_rad_props_lw(list_idx, state, pbuf, odap_aer)
 
    ! Purpose: Compute aerosol transmissions needed in absorptivity/
-  !    emissivity calculations
+   !    emissivity calculations
 
    use physics_buffer, only : physics_buffer_desc
 
@@ -160,7 +213,7 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf, odap_aer)
    integer :: numaerosols ! number of bulk aerosols in climate/diagnostic list
    integer :: nmodes      ! number of aerosol modes in climate/diagnostic list
    integer :: nbins       ! number of aerosol bins in climate/diagnostic list
-
+   integer :: i, ncol
    !-----------------------------------------------------------------------------
 
    ! get number of bulk aerosols and number of modes in current list
@@ -171,6 +224,14 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf, odap_aer)
    ! Contributions from modal and sectional aerosols.
    if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
+   end if
+
+   ! debug diags
+   if (bam_debug) then
+      ncol = state%ncol
+      do i = 1,nlwbands
+         call outfld(lw_ta_name(i), odap_aer(1:ncol,1:pver,i), ncol, state%lchnk)
+      end do
    end if
 
 end subroutine aer_rad_props_lw
