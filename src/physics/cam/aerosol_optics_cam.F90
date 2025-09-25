@@ -166,7 +166,11 @@ contains
                       prog_modal_aero_out     = prog_modal_aero )
 
     ! Limit modal aerosols with top_lev here.
-    if (prog_modal_aero) top_lev = clim_modal_aero_top_lev
+    if (prog_modal_aero) then
+       top_lev = clim_modal_aero_top_lev
+    else
+       top_lev = 1
+    endif
 
     num_aero_models = 0
 
@@ -710,7 +714,6 @@ contains
     call tropopause_findChemTrop(state, troplev)
 
     mass(:ncol,:)        = state%pdeldry(:ncol,:)*rga
-    mass(:ncol,1:top_lev-1) = 0._r8
     air_density(:ncol,:) = state%pmid(:ncol,:)/(rair*state%t(:ncol,:))
 
     aodvis = 0._r8
@@ -720,6 +723,9 @@ contains
     absorb = 0._r8
     aodtot = 0._r8
     tauxar = 0._r8
+    wa = 0._r8
+    ga = 0._r8
+    fa = 0._r8
     extinct = 0._r8
     extinctnir = 0._r8
     extinctuv = 0._r8
@@ -852,7 +858,7 @@ contains
 
              wavelength: do iwav = 1, nswbands
 
-                vertical: do ilev = 1, pver
+                vertical: do ilev = top_lev, pver
 
                    call aero_optics%sw_props(ncol, ilev, iwav, pext, pabs, palb, pasm )
 
