@@ -1,3 +1,6 @@
+!-------------------------------------------------------------------------------
+! Short-wave and long-wave hygroscopic aerosol properties
+!-------------------------------------------------------------------------------
 module hygroscopic_aerosol_optics_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
 

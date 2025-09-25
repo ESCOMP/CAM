@@ -204,7 +204,7 @@ contains
     real(r8),intent(out) :: palb(ncol) ! parameterized single scattering albedo
     real(r8),intent(out) :: pasm(ncol) ! parameterized asymmetry factor
 
-    integer :: icol 
+    integer :: icol
 
     type(table_interp_wghts) :: rhwghts(ncol)
     type(table_interp_wghts) :: cfwghts(ncol)

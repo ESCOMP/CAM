@@ -17,9 +17,6 @@ module bulk_aerosol_properties_mod
 
      private
 
-   !  integer :: num_aerosols = 0
-   !  character(len=64), allocatable :: aernames(:)
-
    contains
 
      procedure :: number_transported
@@ -113,8 +110,6 @@ contains
   !------------------------------------------------------------------------------
   subroutine destructor(self)
     type(bulk_aerosol_properties), intent(inout) :: self
-
-!    deallocate(self%aernames)
 
   end subroutine destructor
 

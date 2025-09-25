@@ -1,3 +1,6 @@
+!-------------------------------------------------------------------------------
+! Insoluble (non-hygrostatic) aerosol optical properties
+!-------------------------------------------------------------------------------
 module insoluble_aerosol_optics_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
 

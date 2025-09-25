@@ -1,3 +1,6 @@
+!-------------------------------------------------------------------------------
+! output aerosol optical depths for the visible band
+!-------------------------------------------------------------------------------
 module aer_vis_diag_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use cam_history, only: fieldname_len, addfld, outfld, add_default, horiz_only

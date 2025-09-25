@@ -1,3 +1,7 @@
+!-------------------------------------------------------------------------------
+! Geometric mean radius parameterized optical properties for volcanic
+! stratospheric aerosols
+!-------------------------------------------------------------------------------
 module volcrad_aerosol_optics_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
 
@@ -93,24 +97,24 @@ contains
     r_mu_max = newobj%r_mu(nmu)
     r_mu_min = newobj%r_mu(1)
 
-   do i = 1, ncols
-      do k = 1, nlevs
-         if(geometric_radius(i,k) > 0._r8) then
-            mu = log(geometric_radius(i,k))
-         else
-            mu = 0._r8
-         endif
+    do i = 1, ncols
+       do k = 1, nlevs
+          if(geometric_radius(i,k) > 0._r8) then
+             mu = log(geometric_radius(i,k))
+          else
+             mu = 0._r8
+          endif
 
-         ASSOCIATE ( kmu=>newobj%kmu(i,k), wmu=>newobj%wmu(i,k), r_mu=>newobj%r_mu )
+          ASSOCIATE ( kmu=>newobj%kmu(i,k), wmu=>newobj%wmu(i,k), r_mu=>newobj%r_mu )
 
-           mutrunc = max(min(mu,r_mu_max),r_mu_min)
-           kmu = max(min(1 + (mutrunc-r_mu_min)/(r_mu_max-r_mu_min)*(nmu-1),nmu-1._r8),1._r8)
-           wmu = max(min( (mutrunc -r_mu(kmu)) / (r_mu(kmu+1) - r_mu(kmu)) ,1._r8),0._r8)
+            mutrunc = max(min(mu,r_mu_max),r_mu_min)
+            kmu = max(min(1 + (mutrunc-r_mu_min)/(r_mu_max-r_mu_min)*(nmu-1),nmu-1._r8),1._r8)
+            wmu = max(min( (mutrunc -r_mu(kmu)) / (r_mu(kmu+1) - r_mu(kmu)) ,1._r8),0._r8)
 
-         END ASSOCIATE
+          END ASSOCIATE
 
-      end do
-   end do
+       end do
+    end do
 
   end function constructor
 
