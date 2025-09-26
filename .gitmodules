@@ -29,7 +29,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_17_002
+	fxtag = atmos_phys0_18_000
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -75,13 +75,6 @@
         fxtag = hemco-cesm2_2_0_hemco3_10_3
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
-
-[submodule "rte-rrtmgp"]
-	path = src/physics/rrtmgp/ext
-	url = https://github.com/earth-system-radiation/rte-rrtmgp.git
-        fxrequired = AlwaysRequired
-	fxtag = v1.9.2
-        fxDONOTUSEurl = https://github.com/earth-system-radiation/rte-rrtmgp.git
 
 [submodule "rrtmgp-data"]
 	path = src/physics/rrtmgp/data

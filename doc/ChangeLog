@@ -1,4 +1,215 @@
+===============================================================
 
+Tag name: cam6_4_120
+Originator(s): jimmielin
+Date: September 26, 2025
+One-line Summary: Complete CCPPization of HB PBL scheme and vertical diffusion solver (non-WACCM)
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1361
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Completes #1300 by CCPPizing compute_hb_diff, compute_hb_free_atm_diff, pblintd, trbintd
+- Cleanup, refactoring, and optimization of HB
+- Partially completes #1205; and completes #1314 by CCPPizing partial interstitial logic of vertical_diffusion_tend
+- Partially completes #1205; and completes #1314 by CCPPizing compute_vdiff in diffusion_solver.F90
+- Correctly update 'AST' field in physics buffer in RK stratiform CAM interface for snapshot consistency (bit-for-bit).
+- Adds snapshot points for orographic form drag stress (Beljaars in CAM6+ and TMS in CAM5) for future CCPPization work.
+
+Describe any changes made to build system:
+- add holtslag_boville CCPP scheme
+- add vertical_diffusion CCPP scheme
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+```
+D       src/physics/cam/hb_diff.F90
+  - moved to atmos_phys as CCPPized holstlag_boville scheme
+D       src/physics/cam/vdiff_lu_solver.F90
+  - moved to atmos_phys into to_be_ccppized (unchanged)
+```
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+R053    src/physics/cam/diffusion_solver.F90    src/physics/cam/diffusion_solver_cam.F90
+  - this is the "remnant" diffusion solver supporting WACCM with molecular diffusion.
+  - partial refactor to avoid excessive code divergence with CCPPized diffusion_solver.
+  - renamed to avoid name conflict with CCPPized diffusion_solver.
+
+M       bld/configure
+  - add holtslag_boville and diffusion_solver folders in atmos_phys/schemes to build.
+
+M       src/physics/cam/vertical_diffusion.F90
+  - use CCPPized subroutines for HB and vertical diffusion solver.
+
+M       src/physics/cam/eddy_diff_cam.F90
+  - use CCPPized vertical diffusion solver.
+
+M       src/physics/cam/molec_diff.F90
+  - dechunkize and use assumed dimensions for vd_lu_qdecomp.
+
+M       src/physics/cam/clubb_intr.F90
+  - use CCPPized HB boundary layer computation.
+
+M       src/physics/cam/ref_pres.F90
+M       src/utils/air_composition.F90
+  - comment updates for clarification of units/purpose.
+
+M       src/physics/cam/rk_stratiform_cam.F90
+  - Correctly update AST pbuf field in RK stratiform CAM interface for snapshot consistency (bit-for-bit).
+
+M       src/physics/cam7/physpkg.F90
+M       src/physics/cam/physpkg.F90
+M       bld/build-namelist
+M       bld/namelist_files/namelist_definition.xml
+  - move Beljaars, TMS drag call routines to physpkg level for snapshotting.
+  - add orographic_form_drag_stress snapshot point.
+
+M       src/control/cam_snapshot_common.F90
+  - expand size of cam_in snapshot output maximum because it needs to fit all constituents.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: ALL PASS
+
+  SMS_D_Ln9_P1280x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+    - This test continues to fail most of the time on lnd_set_decomp_and_domain.F90 line 497
+      despite the updated externals.
+      It can be re-run to eventually work (as it was done here).
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+    - pre-existing failure - See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: ALL PASS
+
+izumi/gnu/aux_cam: ALL PASS
+
+===============================================================
+
+Tag name: cam6_4_119
+Originator: peverwhee
+Date: 26 September, 2025
+One-line Summary: Bring in new atmospheric_physics tag and use CCPPized shortwave interfaces
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1372
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+Part of "Conversion of RRTMGP to CCPP" (#1192)
+- Modifies the interfaces in radiation.F90
+- Moves rrtmgp external to atmospheric_physics (schemes/rrtmgp/ext)
+
+Describe any changes made to build system:
+
+M    bld/configure
+- update paths to RRTMGP external
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+
+D    src/physics/rrtmgp/ext
+- move submodule to atmospheric_physics
+
+D    src/physics/rrtmgp/rad_solar_var.F90
+- ccppized and moved to schemes/rrtmgp/rrtmgp_sw_solar_var.F90
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M     src/atmos_phys
+- updated submodule
+
+M     src/physics/rrtmgp/radiation.F90
+- update interface to use CCPPized schemes
+
+M     src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+- ccppize and move sw gas optics and cloud optics
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+     - pre-existing failure- See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+
+Tag name: cam6_4_118
+Originator(s): cacraig, peverwhee, jimmielin
+Date: Sept 25, 2025
+One-line Summary: Update emission files to use relative path
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1401
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - use cases updated with emissions have incorrect path: https://github.com/ESCOMP/CAM/issues/1399
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: haipeng
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_mt.xml
+          - Use relative path for emission files
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+     - Answer changes due to different sorting of emission files because changed directory paths sort differently
+       See PR for more details
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+     - pre-existing failure- See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_117

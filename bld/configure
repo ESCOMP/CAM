@@ -2138,16 +2138,16 @@ sub write_filepath
     }
     elsif ($rad eq 'rrtmgp') {
         print $fh "$camsrcdir/src/physics/rrtmgp\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/gas-optics\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-frontend\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-frontend\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/extensions\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/gas-optics\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-frontend\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-frontend\n";
         if ($use_rrtmgp_gpu) {
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels/accel\n";
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels/accel\n";
+            print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-kernels/accel\n";
+            print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-kernels/accel\n";
         }
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-kernels\n";
         print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp\n";
         print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/objects\n";
     }
@@ -2187,8 +2187,9 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/gravity_wave_drag\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
-
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";

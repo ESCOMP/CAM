@@ -5280,6 +5280,7 @@ sub check_snapshot_settings {
             push (@validList_ac, ("'chem_timestep_tend'"));
         }
         push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'orographic_form_drag_stress'",
                               "'aero_model_drydep'", "'gw_tend'",
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
@@ -5295,6 +5296,7 @@ sub check_snapshot_settings {
             push (@validList_ac, ("'chem_timestep_tend'"));
         }
         push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'orographic_form_drag_stress'",
                               "'aero_model_drydep'", "'gw_tend'",
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));

@@ -43,8 +43,8 @@ real(r8), protected :: clim_modal_aero_top_press = 0._r8
 ! Top level for MAM processes that impact climate
 integer, protected :: clim_modal_aero_top_lev
 
-! Molecular diffusion is calculated only if the model top is below this
-! pressure (Pa).
+! Molecular diffusion is calculated only if the model top pressure
+! is less than do_molec_press (Pa):
 real(r8), protected :: do_molec_press = 0.1_r8
 ! Pressure used to set bottom of molecular diffusion region (Pa).
 real(r8), protected :: molec_diff_bot_press = 50._r8

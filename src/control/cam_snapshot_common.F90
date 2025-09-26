@@ -84,7 +84,7 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num
 type (snapshot_type)    ::  state_snapshot(30)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
-type (snapshot_type)    ::  cam_in_snapshot(30)
+type (snapshot_type)    ::  cam_in_snapshot(pcnst+31)   ! needs to be bigger than pcnst because cam_in is split by constituent.
 type (snapshot_type)    ::  cam_out_snapshot(30)
 type (snapshot_type_nd) ::  pbuf_snapshot(300)
 
@@ -1218,6 +1218,9 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
    real(r8), pointer, dimension(:,:,:,:)       :: tmpptr4d
    real(r8), pointer, dimension(:,:,:,:,:)     :: tmpptr5d
 
+   ! Special handling of integer type fields (output as real)
+   integer,  pointer, dimension(:,:)           :: tmpptr2d_int
+
 
    do i=1, npbuf_var
 
@@ -1227,28 +1230,40 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
          ! Turn on the writing for only the requested tape (file_num)
          call cam_history_snapshot_activate(trim(pbuf_snapshot(i)%standard_name), file_num)
 
-         ! Retrieve the pbuf data (dependent on the number of dimensions)
-         ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
-
-         select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
-
-         case (1)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+         ! Retrieve the pbuf data. Special handling for certain
+         ! integer-type fields.
+         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop') then
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d_int)
+            ! copy into real
+            allocate(tmpptr2d(size(tmpptr2d_int, 1), size(tmpptr2d_int, 2)))
+            tmpptr2d = real(tmpptr2d_int, r8)
             call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
+            deallocate(tmpptr2d)
+         else
+           ! For regular real-type data:
+           ! Retrieve the pbuf data (dependent on the number of dimensions)
+           ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
 
-         case (2)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
+           select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
 
-         case (3)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+           case (1)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
 
-         case (4)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+           case (2)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
-         end select
+           case (3)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+
+           case (4)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+
+           end select
+         endif
 
          ! Now that the field has been written, turn off the writing for field
          call cam_history_snapshot_deactivate(trim(pbuf_snapshot(i)%standard_name))
