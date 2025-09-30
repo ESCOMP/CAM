@@ -21,7 +21,9 @@ module nudging
 !    Some analyses products can have gaps in the available data, where values
 !    are missing for some interval of time. When files are missing, the nudging
 !    force is switched off for that interval of time, so we effectively 'coast'
-!    thru the gap.
+!    thru the gap. The default behavior is now for the model to error exit if there
+!    is a gap. Users with known gaps in their nuding data can manually change the 
+!    gap behavior to accomodate their needs.
 !
 !    Currently, the nudging module is set up to accomodate nudging of PS
 !    values, however that functionality requires forcing that is applied in
@@ -149,6 +151,20 @@ module nudging
 !                              0 -->  TimeScale = 1/Tdlt_Anal                      [DEFAULT]
 !                              1 -->  TimeScale = 1/(t'_next - t_curr )
 !
+!      Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to 
+!                                     the model state and target data so that nudging 
+!                                     tendencies are only applied to scales larger than
+!                                     the specified truncation.
+!
+!      Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used 
+!                                 for spectral filtering. The nominal horizontal scale of 
+!                                 the filtering can be estimated as:
+!
+!                                     Hscale = PI*6350/Nudge_SpectralNtrunc
+!
+!                                 i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal 
+!                                      nudging scale  Hscale~500km.
+!
 !      Nudge_Uprof         - INT index of profile structure to use for U.  [0,1,2]
 !      Nudge_Vprof         - INT index of profile structure to use for V.  [0,1,2]
 !      Nudge_Tprof         - INT index of profile structure to use for T.  [0,1,2]
@@ -202,6 +218,7 @@ module nudging
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
   use zonal_mean_mod, only: ZonalMean_t
+  use spherical_harmonic_mod, only: SphericalHarmonic_t
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -273,13 +290,20 @@ module nudging
   real(r8)          :: Nudge_Hwin_max
   real(r8)          :: Nudge_Hwin_min
 
-  ! Nudging Zonal Filter variables
-  !---------------------------------
+  ! Nudging Zonal/Spectral Filter variables
+  !-----------------------------------------
   logical             :: Nudge_ZonalFilter =.false.
   integer             :: Nudge_ZonalNbasis = -1
   type(ZonalMean_t)   :: ZM
   real(r8),allocatable:: Zonal_Bamp2d(:)
   real(r8),allocatable:: Zonal_Bamp3d(:,:)
+
+  logical             :: Nudge_SpectralFilter =.false.
+  integer             :: Nudge_SpectralNtrunc = -1
+  integer             :: Nudge_SpectralNbasis = -1
+  type(SphericalHarmonic_t):: SH
+  real(r8),allocatable:: Spectral_Bamp2d(:)
+  real(r8),allocatable:: Spectral_Bamp3d(:,:)
 
   ! Nudging State Arrays
   !-----------------------
@@ -343,6 +367,7 @@ contains
                          Nudge_File_Template, Nudge_Force_Opt,                &
                          Nudge_TimeScale_Opt,                                 &
                          Nudge_Times_Per_Day, Model_Times_Per_Day,            &
+                         Nudge_SpectralFilter, Nudge_SpectralNtrunc,          &
                          Nudge_Ucoef , Nudge_Uprof,                           &
                          Nudge_Vcoef , Nudge_Vprof,                           &
                          Nudge_Qcoef , Nudge_Qprof,                           &
@@ -583,6 +608,10 @@ contains
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalFilter')
    call MPI_bcast(Nudge_ZonalNbasis,   1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalNbasis')
+   call MPI_bcast(Nudge_SpectralFilter,   1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralFilter')
+   call MPI_bcast(Nudge_SpectralNtrunc,   1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralNtrunc')
 
    ! End Routine
    !------------
@@ -848,6 +877,8 @@ contains
      write(iulog,*) 'NUDGING: Model_Step=',Model_Step
      write(iulog,*) 'NUDGING: Nudge_ZonalFilter=',Nudge_ZonalFilter
      write(iulog,*) 'NUDGING: Nudge_ZonalNbasis=',Nudge_ZonalNbasis
+     write(iulog,*) 'NUDGING: Nudge_SpectralFilter=',Nudge_SpectralFilter
+     write(iulog,*) 'NUDGING: Nudge_SpectralNtrunc=',Nudge_SpectralNtrunc
      write(iulog,*) 'NUDGING: Nudge_Ucoef  =',Nudge_Ucoef
      write(iulog,*) 'NUDGING: Nudge_Vcoef  =',Nudge_Vcoef
      write(iulog,*) 'NUDGING: Nudge_Qcoef  =',Nudge_Qcoef
@@ -985,14 +1016,25 @@ contains
    endif
 !!DIAG
 
-   ! Initialize the Zonal Mean type if needed
-   !------------------------------------------
+   ! Initialize the Zonal Mean Spectral type if needed
+   !--------------------------------------------------
    if(Nudge_ZonalFilter) then
      call ZM%init(Nudge_ZonalNbasis)
      allocate(Zonal_Bamp2d(Nudge_ZonalNbasis),stat=istat)
      call alloc_err(istat,'nudging_init','Zonal_Bamp2d',Nudge_ZonalNbasis)
      allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver),stat=istat)
      call alloc_err(istat,'nudging_init','Zonal_Bamp3d',Nudge_ZonalNbasis*pver)
+   endif
+
+   if(Nudge_SpectralFilter) then
+     write(iulog,*) 'NUDGING: calling SH%init() Nudge_SpectralNtrunc =',Nudge_SpectralNtrunc
+     call SH%init(Nudge_SpectralNtrunc,Nudge_SpectralNbasis)
+     write(iulog,*) 'NUDGING: done    SH%init() Nudge_SpectralNbasis =',Nudge_SpectralNbasis
+     allocate(Spectral_Bamp2d(Nudge_SpectralNbasis),stat=istat)
+     call alloc_err(istat,'nudging_init','Spectral_Bamp2d',Nudge_SpectralNbasis)
+     allocate(Spectral_Bamp3d(Nudge_SpectralNbasis,pver),stat=istat)
+     call alloc_err(istat,'nudging_init','Spectral_Bamp3d',Nudge_SpectralNbasis*pver)
+     write(iulog,*) 'NUDGING: SH% Arrays allocated'
    endif
 
    ! Initialize the analysis filename at the NEXT time for startup.
@@ -1199,8 +1241,8 @@ contains
        end do
      endif
 
-     ! Optionally: Apply Zonal Filtering to Model state data
-     !-------------------------------------------------------
+     ! Optionally: Apply Zonal/Spectral Filtering to Model state data
+     !----------------------------------------------------------------
      if(Nudge_ZonalFilter) then
        call ZM%calc_amps(Model_U,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Model_U)
@@ -1219,6 +1261,26 @@ contains
 
        call ZM%calc_amps(Model_PS,Zonal_Bamp2d)
        call ZM%eval_grid(Zonal_Bamp2d,Model_PS)
+     endif
+
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Model_U,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Model_U)
+
+       call SH%calc_amps(Model_V,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Model_V)
+
+       call SH%calc_amps(Model_T,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Model_T)
+
+       call SH%calc_amps(Model_S,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Model_S)
+
+       call SH%calc_amps(Model_Q,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Model_Q)
+
+       call SH%calc_amps(Model_PS,Spectral_Bamp2d)
+       call SH%eval_grid(Spectral_Bamp2d,Model_PS)
      endif
    endif ! ((Before_End) .and. (Update_Model)) then
 
@@ -1286,9 +1348,11 @@ contains
      endif
      if(.not.Nudge_ON) then
        if(masterproc) then
-         write(iulog,*) 'NUDGING: WARNING - analyses file NOT FOUND. Switching '
-         write(iulog,*) 'NUDGING:           nudging OFF to coast thru the gap. '
+         write(iulog,*) 'NUDGING: WARNING - analyses file NOT FOUND. You can switch nudging '
+         write(iulog,*) 'NUDGING:           OFF to coast thru a known gap in your files '
+         write(iulog,*) 'NUDGING:           by commenting out the following endrun command.'
        endif
+       call endrun('nudging_timestep_init:: ERROR Missing Nudging File')
      endif
    else
      Nudge_ON=.false.
@@ -1556,6 +1620,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "U" is missing in '//trim(anal_file))
@@ -1568,6 +1636,10 @@ contains
      if(Nudge_ZonalFilter) then
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
      endif
      Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
@@ -1582,6 +1654,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "T" is missing in '//trim(anal_file))
@@ -1595,6 +1671,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "Q" is missing in '//trim(anal_file))
@@ -1607,6 +1687,10 @@ contains
      if(Nudge_ZonalFilter) then
        call ZM%calc_amps(Tmp2D,Zonal_Bamp2d)
        call ZM%eval_grid(Zonal_Bamp2d,Tmp2D)
+     endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp2D,Spectral_Bamp2d)
+       call SH%eval_grid(Spectral_Bamp2d,Tmp2D)
      endif
      Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
    else
@@ -1768,8 +1852,11 @@ contains
     if (allocated(Nobs_PS)) deallocate(Nobs_PS)
     if (allocated(Zonal_Bamp2d)) deallocate(Zonal_Bamp2d)
     if (allocated(Zonal_Bamp3d)) deallocate(Zonal_Bamp3d)
+    if (allocated(Spectral_Bamp2d)) deallocate(Spectral_Bamp2d)
+    if (allocated(Spectral_Bamp3d)) deallocate(Spectral_Bamp3d)
 
     call ZM%final()
+    call SH%final()
 
   end subroutine nudging_final
   !================================================================

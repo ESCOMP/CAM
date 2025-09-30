@@ -13,6 +13,8 @@
  Nudge_TimeScale_Opt = 0
  Nudge_Times_Per_Day=4
  Model_Times_Per_Day=48
+ Nudge_SpectralFilter=.false.
+ Nudge_SpectralNtrunc=-1
  Nudge_Uprof  =1
  Nudge_Ucoef  =1.00
  Nudge_Vprof  =1

@@ -220,6 +220,32 @@
        Default: FALSE
        </entry>
 
+<entry id="Nudge_SpectralFilter" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+	Toggle Spectral Filtering of Nudging Tendencies ON/OFF.
+
+        Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to
+                                       the model state and target data so that nudging
+                                       tendencies are only applied to scales larger than
+                                       the specified truncation.
+       Default: FALSE
+       </entry>
+
+<entry id="Nudge_SpectralNtrunc" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Set Horizonal Scale for Spectral Filtering
+
+       Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+                                  for spectral filtering. The nominal horizontal scale of
+                                  the filtering can be estimated as:
+
+                                     Hscale = PI*6350/Nudge_SpectralNtrunc
+
+                             i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal
+                                  nudging scale  Hscale~500km.
+       Default: -1
+       </entry>
+
 <entry id="Nudge_Path" type="char*256" input_pathname="abs" category="nudging"
        group="nudging_nl" valid_values="" >
        Full pathname of analyses data to use for nudging.
