@@ -38,7 +38,8 @@ module clubb_intr
 
   use clubb_api_module,    only: nparams
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad, clubb_mf_Lopt, &
-                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_cmt, do_clubb_mf_addtke
+                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_cmt, do_clubb_mf_addtke, &
+                                 clubb_mf_cldfrac_fac
   use cam_history_support, only: add_hist_coord
   use cloud_fraction,      only: dp1, dp2
 #endif
@@ -5939,8 +5940,7 @@ end subroutine clubb_init_cnst
         endif
 
         if (do_clubb_mf_rad) then
-          ! multiply mf cloud fraction by 10
-          shalcu(i,k) = 10._r8*mf_cloudfrac_output(i,k)
+          shalcu(i,k) = clubb_mf_cldfrac_fac*mf_cloudfrac_output(i,k)
           sh_icwmr(i,k) = mf_qc_output(i,k)
         end if
 

@@ -4483,6 +4483,11 @@ Default: 1.0
 Elevation power law exponent for downdrafts velocities in the subcloud layer
 Default: 3.0
 
+<entry id="clubb_mf_cldfrac_fac" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Factor to increase the ensemble MF plume cloud fractions
+Default: 1.0
+
 <entry id="do_clubb_mf_ustar" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. use ustar for initializing the plume ensemble

@@ -29,7 +29,8 @@ module clubb_mf
             clubb_mf_up_ndt, &
             clubb_mf_cp_ndt, &
             do_clubb_mf_cmt, &
-            do_clubb_mf_addtke
+            do_clubb_mf_addtke, &
+            clubb_mf_cldfrac_fac
 
   !
   ! Lopt 0 = fixed L0
@@ -53,6 +54,7 @@ module clubb_mf
   real(r8) :: clubb_mf_ddbeta  = 0._r8
   real(r8) :: clubb_mf_pwfac   = 0._r8
   real(r8) :: clubb_mf_ddexp   = 0._r8
+  real(r8) :: clubb_mf_cldfrac_fac = 1._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
   integer  :: clubb_mf_kseed = 1
@@ -97,7 +99,7 @@ module clubb_mf
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
                            do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
-                           do_clubb_mf_addtke, do_clubb_mf_aloft
+                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_cldfrac_fac
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -171,6 +173,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
     call mpi_bcast(do_clubb_mf_aloft, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aloft")
+    call mpi_bcast(clubb_mf_cldfrac_fac,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cldfrac_fac")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')

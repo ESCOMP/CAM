@@ -4467,16 +4467,17 @@ for my $i (0 .. $#interp_output) {
   }
 }
 
-# Currently, interpolated output does not work with the COSP fields that use
-# more than 1 mdims.
-my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
-if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
-if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
-    die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
-        " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
-        " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
-}
-
+#+++arh -- below is a bug, comment out for now
+## Currently, interpolated output does not work with the COSP fields that use
+## more than 1 mdims.
+#my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
+#if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
+#if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
+#    die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
+#        " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
+#        " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+#}
+#---arh
 
 my $offline_drv = $cfg->get('offline_drv');
 if ($offline_drv ne 'stub') {
