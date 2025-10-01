@@ -4,7 +4,7 @@
 <start_ymd>19790101</start_ymd>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_irrad_data_file>
 
 <!-- LBC Files -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
@@ -32,9 +32,54 @@
 
 <!-- External forcing -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+<ext_frc_specifier hgrid="ne30np4" npg="3">
+'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/bc_a4-em-AIR-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_bc_a4-em-AIR-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SO2-em-AIR-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/so4_a1_ene_vertical-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_so4_a1_ene_vertical-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc'
+</ext_frc_specifier>
+
 
 <!-- Surface emissions -->
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+<srf_emis_specifier hgrid="ne30np4" npg="3">
+'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/bc_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/bc_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/pom_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/pom_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_bc_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_bc_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_pom_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_pom_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'num_a1-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_so4_a1_ag-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a1-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_so4_a1_ship_slv-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'num_a2-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_so4_a2_res_trs-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'so4_a1-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/so4_a1_ag_ship_slv-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'so4_a2-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/so4_a2_res_trs-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'so4_a1-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SO4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'num_a1-> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/num_SO4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SO2-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SO2_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 0.5954D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/ISOP_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/BENZENE_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/BENZENE-VOC-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18-supplemental_gn_175001-202312.nc',
+'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/IVOC_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/IVOC-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SVOC_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/SVOC-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312.nc',
+'SOAE -> 8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/TOLUENE_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 8.2367D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/TOLUENE-VOC-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18-supplemental_gn_175001-202312.nc',
+'SOAE -> 6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/XYLENES_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc',
+'SOAE -> 6.5013D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/XYLENES-VOC-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18-supplemental_gn_175001-202312.nc',
+'SOAE -> 5.1004D0*$INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/MTERP_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112.nc'
+</srf_emis_specifier>
+
 <csw_time_type>SERIAL</csw_time_type>
 
 <!-- for prescribed nitrogen deposition fluxes -->

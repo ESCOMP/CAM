@@ -1114,7 +1114,7 @@ subroutine gw_init()
      ttend_dp_idx    = pbuf_get_index('TTEND_DP')
 
      ! Set the deep scheme specification components.
-     beres_dp_desc%storm_shift = .true.
+     beres_dp_desc%storm_shift = .false.
 
      do k = 0, pver
         ! 700 hPa index

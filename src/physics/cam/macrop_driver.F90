@@ -85,6 +85,10 @@
     cmeliq_idx,   &
     shfrc_idx
 
+  ! Physics buffer indices for convective_cloud_cover
+  integer :: sh_frac_idx   = 0
+  integer :: dp_frac_idx   = 0
+
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
@@ -326,6 +330,9 @@ end subroutine macrop_driver_readnl
     CC_qlst_idx = pbuf_get_index('CC_qlst')
     cmfmc_sh_idx = pbuf_get_index('CMFMC_SH')
 
+    sh_frac_idx = pbuf_get_index('SH_FRAC')
+    dp_frac_idx = pbuf_get_index('DP_FRAC')
+
     if (rhminl_opt > 0 .or. rhmini_opt > 0) then
        cmfr_det_idx = pbuf_get_index('cmfr_det', istat)
        if (istat < 0) call endrun(subname//': macrop option requires cmfr_det in pbuf')
@@ -394,7 +401,6 @@ end subroutine macrop_driver_readnl
   !                                                         !
   !-------------------------------------------------------- !
 
-  use cloud_fraction,   only: cldfrc
   use cloud_fraction_fice,  only: cloud_fraction_fice_run
   use physics_types,    only: physics_state, physics_ptend
   use physics_types,    only: physics_ptend_init, physics_update
@@ -403,10 +409,15 @@ end subroutine macrop_driver_readnl
   use cam_history,      only: outfld
   use constituents,     only: cnst_get_ind, pcnst
   use cldwat2m_macro,   only: mmacro_pcond
-  use physconst,        only: cpair, tmelt, gravit
+  use physconst,        only: cpair, tmelt, gravit, cappa, rair, pref, lapse_rate
   use time_manager,     only: get_nstep
 
   use ref_pres,         only: top_lev => trop_cloud_top_lev
+
+  ! CCPPized schemes
+  use convective_cloud_cover, only: convective_cloud_cover_run
+  use compute_cloud_fraction, only: compute_cloud_fraction_run
+  use ref_pres,         only: trop_cloud_top_lev ! bring in explicitly for CCPPized scheme
 
   !
   ! Input arguments
@@ -501,7 +512,6 @@ end subroutine macrop_driver_readnl
 
   real(r8)  cldst(pcols,pver)                       ! Stratus cloud fraction
   real(r8)  rhcloud(pcols,pver)                     ! Relative humidity cloud (last timestep)
-  real(r8)  clc(pcols)                              ! Column convective cloud amount
   real(r8)  rhu00(pcols,pver)                       ! RH threshold for cloud
   real(r8)  icecldf(pcols,pver)                     ! Ice cloud fraction
   real(r8)  liqcldf(pcols,pver)                     ! Liquid cloud fraction (combined into cloud)
@@ -598,6 +608,10 @@ end subroutine macrop_driver_readnl
 
   ! CloudSat equivalent ice mass mixing ratio (kg/kg)
   real(r8) :: cldsice(pcols,pver)
+
+  ! shallowcu, deepcu pbuf fields
+  real(r8), pointer, dimension(:,:) :: deepcu      ! deep convection cloud fraction
+  real(r8), pointer, dimension(:,:) :: shallowcu   ! shallow convection cloud fraction
 
   ! For CCPPized schemes
   character(len=512)   :: errmsg
@@ -848,14 +862,78 @@ end subroutine macrop_driver_readnl
 
    call t_startf("cldfrc")
 
-   call cldfrc( lchnk, ncol, pbuf,                                                 &
-                state_loc%pmid, state_loc%t, state_loc%q(:,:,1), state_loc%omega,  &
-                state_loc%phis, shfrc, use_shfrc,                                  &
-                cld, rhcloud, clc, state_loc%pdel,                                 &
-                cmfmc, cmfmc_sh, landfrac,snowh, concld, cldst,                    &
-                ts, sst, state_loc%pint(:,pverp), zdu, ocnfrac, rhu00,             &
-                state_loc%q(:,:,ixcldice), icecldf, liqcldf,                       &
-                relhum, 0 )
+   call pbuf_get_field(pbuf, sh_frac_idx, shallowcu )
+   call pbuf_get_field(pbuf, dp_frac_idx, deepcu )
+
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   shallowcu(:,:) = 0._r8
+   deepcu(:,:) = 0._r8
+   concld(:,:) = 0._r8
+   !REMOVECAM_END
+
+   ! compute convective cloud fraction using CCPP-ized subroutine
+   call convective_cloud_cover_run( &
+      ncol        = ncol, &
+      pver        = pver, &
+      top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
+      use_shfrc   = use_shfrc, &
+      shfrc       = shfrc(:ncol,:), &
+      cmfmc_total = cmfmc(:ncol,:), &
+      cmfmc_sh    = cmfmc_sh(:ncol,:), &
+      shallowcu   = shallowcu(:ncol,:), &
+      deepcu      = deepcu(:ncol,:), &
+      concld      = concld(:ncol,:), &
+      errmsg      = errmsg, &
+      errflg      = errflg)
+
+   ! write out convective cloud fraction diagnostic.
+   call outfld( 'SH_CLD  ', shallowcu   , pcols, lchnk )
+   call outfld( 'DP_CLD  ', deepcu      , pcols, lchnk )
+
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   cld(:,:) = 0._r8
+   rhcloud(:,:) = 0._r8
+   cldst(:,:) = 0._r8
+   rhu00(:,:) = 0._r8
+   icecldf(:,:) = 0._r8
+   liqcldf(:,:) = 0._r8
+   relhum(:,:) = 0._r8
+   !REMOVECAM_END
+
+   ! call CCPPized cloud fraction scheme
+   call compute_cloud_fraction_run( &
+      ncol = ncol, &
+      pver = pver, &
+      cappa = cappa, &
+      gravit = gravit, &
+      rair = rair, &
+      tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
+      top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
+      pmid = state_loc%pmid(:ncol,:), &
+      ps = state_loc%pint(:ncol,pverp), &
+      temp = state_loc%t(:ncol,:), &
+      sst = sst(:ncol), &
+      q = state_loc%q(:ncol,:,1), & ! note: assumes wv is at index 1.
+      cldice = state_loc%q(:ncol,:,ixcldice), &
+      phis = state_loc%phis(:ncol), &
+      shallowcu = shallowcu(:ncol,:), &
+      deepcu = deepcu(:ncol,:), &
+      concld = concld(:ncol,:), &
+      landfrac = landfrac(:ncol), &
+      ocnfrac = ocnfrac(:ncol), &
+      snowh = snowh(:ncol), &
+      rhpert_flag = .false., & ! below output:
+      cloud = cld(:ncol, :), &
+      rhcloud = rhcloud(:ncol, :), &
+      cldst = cldst(:ncol,:), &
+      rhu00 = rhu00(:ncol,:), &
+      icecldf = icecldf(:ncol,:), &
+      liqcldf = liqcldf(:ncol,:), &
+      relhum = relhum(:ncol,:), &
+      errmsg = errmsg, &
+      errflg = errflg)
 
    call t_stopf("cldfrc")
 

@@ -5,7 +5,6 @@ use ppgrid, only: pcols, pver, pverp
 use cam_logfile, only: iulog
 use cam_abortutils, only: endrun
 use physconst, only: gravit, cpair, rair, zvir, latvap, latice, karman
-use diffusion_solver, only: vdiff_selector
 use eddy_diff, only: ncvmax
 use time_manager, only: is_first_step
 use physics_buffer, only: physics_buffer_desc
@@ -27,10 +26,9 @@ logical :: unicon_is_on
 integer, parameter :: nturb = 5
 
 ! Logical switches for moist mixing ratio diffusion
-type(vdiff_selector) :: fieldlist_wet
-! Logical switches for molecular diffusion
-! (Molecular diffusion is not done here.)
-type(vdiff_selector) :: fieldlist_molec
+! (molecular diffusion is not done here)
+logical :: do_diffusion_const_wet(1)
+logical :: do_molecular_diffusion_const(1)
 
 integer :: ntop_eddy, nbot_eddy
 
@@ -152,7 +150,6 @@ subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
   use cam_history, only: addfld, add_default, horiz_only
   use constituents, only: cnst_get_ind
   use ref_pres, only: pref_mid
-  use diffusion_solver, only: new_fieldlist_vdiff, vdiff_select
   use eddy_diff, only: init_eddy_diff
   use physics_buffer, only: pbuf_set_field, pbuf_get_index
 
@@ -200,18 +197,10 @@ subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
   end do
   ml2(nbot_eddy+1:pver+1) = 0._r8
 
-  ! Get fieldlists to pass to diffusion solver.
-  fieldlist_wet   = new_fieldlist_vdiff(1)
-  fieldlist_molec = new_fieldlist_vdiff(1)
-
-  call handle_errmsg(vdiff_select(fieldlist_wet,'s'), &
-       subname="vdiff_select")
-  call handle_errmsg(vdiff_select(fieldlist_wet,'q',1), &
-       subname="vdiff_select")
-  call handle_errmsg(vdiff_select(fieldlist_wet,'u'), &
-       subname="vdiff_select")
-  call handle_errmsg(vdiff_select(fieldlist_wet,'v'), &
-       subname="vdiff_select")
+ ! Only diffuse water vapor (constituent 1) and disable molecular diffusion
+  do_diffusion_const_wet(:) = .false.
+  do_molecular_diffusion_const(:) = .false.
+  do_diffusion_const_wet(1) = .true.
 
   ! Cloud mass constituents
   call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -424,16 +413,17 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   !                       May.    2008.                                 !
   !-------------------------------------------------------------------- !
 
-  use diffusion_solver,     only: compute_vdiff
+  use diffusion_solver_cam, only: compute_vdiff
   use cam_history,          only: outfld
   use phys_debug_util,      only: phys_debug_col
-  use air_composition,      only: cpairv
+  use air_composition,      only: cpairv, rairv, mbarv
   use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_friction_velocity
   use error_messages,       only: handle_errmsg
   use coords_1d,            only: Coords1D
   use wv_saturation,        only: qsat
   use eddy_diff,            only: trbintd, caleddy
   use physics_buffer,       only: pbuf_get_field
+  use beljaars_drag_cam,    only: do_beljaars
 
   ! --------------- !
   ! Input Variables !
@@ -464,7 +454,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   real(r8), intent(in)    :: taux(pcols)               ! Zonal wind stress at surface [ N/m2 ]
   real(r8), intent(in)    :: tauy(pcols)               ! Meridional wind stress at surface [ N/m2 ]
   real(r8), intent(in)    :: shflx(pcols)              ! Sensible heat flux at surface [ unit ? ]
-  real(r8), intent(in)    :: qflx(pcols)               ! Water vapor flux at surface [ unit ? ]
+  real(r8), intent(in)    :: qflx(pcols,1)             ! Water vapor flux at surface [ kg/m2/s]
   real(r8), intent(in)    :: kvm_in(pcols,pver+1)      ! kvm saved from last timestep [ m2/s ]
   real(r8), intent(in)    :: kvh_in(pcols,pver+1)      ! kvh saved from last timestep [ m2/s ]
   real(r8), intent(in)    :: ksrftms(pcols)            ! Surface drag coefficient of turbulent mountain stress [ unit ? ]
@@ -546,7 +536,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   real(r8)                :: qvfd(pcols,pver)          ! Specific humidity for diffusion [ kg/kg ]
   real(r8)                :: tfd(pcols,pver)           ! Temperature for diffusion [ K ]
   real(r8)                :: slfd(pcols,pver)          ! Liquid static energy [ J/kg ]
-  real(r8)                :: qtfd(pcols,pver)          ! Total specific humidity [ kg/kg ]
+  real(r8)                :: qtfd(pcols,pver,1)        ! Total specific humidity [ kg/kg ]
   real(r8)                :: qlfd(pcols,pver)          ! Liquid water specific humidity for diffusion [ kg/kg ]
   real(r8)                :: ufd(pcols,pver)           ! U-wind for diffusion [ m/s ]
   real(r8)                :: vfd(pcols,pver)           ! V-wind for diffusion [ m/s ]
@@ -689,7 +679,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
      ! Only necessary for (qt,sl) not (u,v) because (qt,sl) are newly calculated variables.
 
      if( iturb == 1 ) then
-        qt(:ncol,:) = qtfd(:ncol,:)
+        qt(:ncol,:) = qtfd(:ncol,:,1)
         sl(:ncol,:) = slfd(:ncol,:)
      endif
 
@@ -790,24 +780,64 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
         ! Each time we diffuse the original state
 
         slfd(:ncol,:)  = sl(:ncol,:)
-        qtfd(:ncol,:)  = qt(:ncol,:)
+        qtfd(:ncol,:,1)= qt(:ncol,:)
         ufd(:ncol,:)   = u(:ncol,:)
         vfd(:ncol,:)   = v(:ncol,:)
 
+        ! TODO (hplin, 5/9/2025): after these are subset to ncol check if we
+        ! need to initialize some outs to 0; compute_vdiff did not do this before
+
         ! Diffuse initial profile of each time step using a given (kvh_out,kvm_out)
         ! In the below 'compute_vdiff', (slfd,qtfd,ufd,vfd) are 'inout' variables.
-
-        call compute_vdiff( lchnk   ,                                                  &
-                            pcols   , pver     , 1        , ncol         , tint, &
-                            p        , t        , rhoi, ztodt        , taux      , &
-                            tauy    , shflx    , qflx     , &
-                            kvh_out , kvm_out  , kvh_out  , cgs          , cgh       , &
-                            zi      , ksrftms  , dragblj  , & 
-                            zero    , fieldlist_wet, fieldlist_molec, &
-                            ufd     , vfd      , qtfd     , slfd         ,             &
-                            jnk1d   , jnk1d    , jnk2d    , jnk1d        , errstring , &
-                            tauresx , tauresy  , 0        , cpairv(:,:,lchnk), zero, &
-                            .false., .false. )
+        call compute_vdiff( &
+             ncol            = ncol,                                          &
+             pver            = pver,                                          &
+             pverp           = pverp,                                         &
+             ncnst           = 1,                                             &
+             ztodt           = ztodt,                                         &
+             do_diffusion_u_v= .true.,                                        & ! horizontal winds and
+             do_diffusion_s  = .true.,                                        & ! dry static energy are diffused
+             do_diffusion_const = do_diffusion_const_wet,                     & ! together with moist constituent
+             do_molecular_diffusion_const = do_molecular_diffusion_const,     &
+             itaures         = .false.,                                       &
+             t               = t(:ncol,:pver),                                &
+             tint            = tint(:ncol,:pverp),                            &
+             p               = p,                                             &
+             rhoi            = rhoi(:ncol,:pverp),                            &
+             taux            = taux(:ncol),                                   &
+             tauy            = tauy(:ncol),                                   &
+             shflx           = shflx(:ncol),                                  &
+             cflx            = qflx(:ncol,:1),                                & ! ncnst = 1
+             dse_top         = zero,                                          &
+             kvh             = kvh_out(:ncol,:pverp),                         &
+             kvm             = kvm_out(:ncol,:pverp),                         &
+             kvq             = kvh_out(:ncol,:pverp),                         & ! [sic] kvh_out is assigned to kvh, kvq
+             cgs             = cgs(:ncol,:pverp),                             &
+             cgh             = cgh(:ncol,:pverp),                             &
+             ksrftms         = ksrftms(:ncol),                                &
+             dragblj         = dragblj(:ncol,:pver),                          &
+             qmincg          = zero,                                          &
+             ! input/output
+             u               = ufd(:ncol,:pver),                              &
+             v               = vfd(:ncol,:pver),                              &
+             q               = qtfd(:ncol,:pver,:1),                          & ! ncnst = 1
+             dse             = slfd(:ncol,:pver),                             &
+             tauresx         = tauresx(:ncol),                                &
+             tauresy         = tauresy(:ncol),                                &
+             ! below output
+             dtk             = jnk2d(:ncol,:pver),                            &
+             tautmsx         = jnk1d(:ncol),                                  &
+             tautmsy         = jnk1d(:ncol),                                  &
+             topflx          = jnk1d(:ncol),                                  &
+             errmsg          = errstring,                                     &
+             ! arguments for Beljaars
+             do_beljaars     = do_beljaars,                                   &
+             ! arguments for molecular diffusion only.
+             do_molec_diff   = .false.,                                       &
+             use_temperature_molec_diff = .false.,                            &
+             cpairv          = cpairv(:ncol,:,lchnk),                         &
+             rairv           = rairv(:ncol,:,lchnk),                          &
+             mbarv           = mbarv(:ncol,:,lchnk))
 
         call handle_errmsg(errstring, subname="compute_vdiff", &
              extra_msg="compute_vdiff called from eddy_diff_cam")
@@ -827,16 +857,16 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
               templ     = ( slfd(i,k) - gravit*z(i,k) ) / cpair
               call qsat( templ, pmid(i,k), es, qs)
               ep2       =  .622_r8
-              temps     =   templ + ( qtfd(i,k) - qs ) / ( cpair / latvap + latvap * qs / ( rair * templ**2 ) )
+              temps     =   templ + ( qtfd(i,k,1) - qs ) / ( cpair / latvap + latvap * qs / ( rair * templ**2 ) )
               call qsat( temps, pmid(i,k), es, qs)
-              qlfd(i,k) =   max( qtfd(i,k) - qi(i,k) - qs ,0._r8 )
+              qlfd(i,k) =   max( qtfd(i,k,1) - qi(i,k) - qs ,0._r8 )
               ! Option.2 : Assume condensate is not diffused by the moist turbulence scheme.
               !            This should bs used if 'pseudodiff = .true.'  in vertical_diffusion.F90.
               ! qlfd(i,k) = ql(i,k)
               ! ----------------------------- !
               ! Compute the other 'qvfd, tfd' !
               ! ----------------------------- !
-              qvfd(i,k) = max( 0._r8, qtfd(i,k) - qi(i,k) - qlfd(i,k) )
+              qvfd(i,k) = max( 0._r8, qtfd(i,k,1) - qi(i,k) - qlfd(i,k) )
               tfd(i,k)  = ( slfd(i,k) + latvap * qlfd(i,k) + (latvap+latice) * qi(i,k) - gravit*z(i,k)) / cpair
            end do
         end do

@@ -1,0 +1,17 @@
+ ndens=1,1,1,1,1,1
+ nhtfrq=3,3,3,3,-2,3
+ mfilt=1,1,1,1,1,1
+
+ avgflag_pertape = 'I',' ','L','L','S'
+ lcltod_start = 0,0, 7200,82800,0
+ lcltod_stop  = 0,0,10800,7200,0
+
+ sathist_track_infile='$DIN_LOC_ROOT/atm/cam/sat/satellite_profilelist_20020125_20101030_c110204_noleap.nc'
+ sathist_fincl = 'Q','T','PS','U','V'
+
+ fincl2 = 'Q','T','PS','SOLIN'
+ fincl3 = 'Q','T','PS','SOLIN'
+ fincl4 = 'Q','T','PS','SOLIN'
+ fincl5 = 'Q','T','U','V','PS','AEROD_v','TOT_CLD_VISTAU','SOLIN'
+
+
