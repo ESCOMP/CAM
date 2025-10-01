@@ -1,3 +1,52 @@
+
+===============================================================
+
+Tag name: cam6_4_121
+Originator(s): jvrb (Rob von Behren), andrewgettelman, chihchen24, cacraigucar
+Date: Sept 30, 2025
+One-line Summary: Fixes for input interpolation routines (aircraft runs only)
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1349
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Fix number of erros in the input interpolation routine that are used in aircraft simulations, specifically contrails
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraig, andrewgettelman, chihchen24
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/utils/horizontal_interpolate.F90
+M       src/chemistry/utils/tracer_data.F90
+          - Interpolation fixes and rewrite
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB except:
+  ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - Answer changes expected for aircraft simulations
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+    - pre-existing failure - See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_120
