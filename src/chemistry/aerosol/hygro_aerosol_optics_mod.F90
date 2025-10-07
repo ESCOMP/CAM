@@ -1,5 +1,5 @@
 !-------------------------------------------------------------------------------
-! Short-wave hygroscopic aerosol, Long-wave non-hygroscopic
+! Short-wave hygroscopic aerosol, Long-wave non-hygroscopic (insoluble)
 ! aerosol optical properties
 !-------------------------------------------------------------------------------
 module hygro_aerosol_optics_mod
@@ -89,7 +89,7 @@ contains
          sw_hygroscopic_ext=newobj%ext_sw, &
          sw_hygroscopic_ssa=newobj%ssa_sw, &
          sw_hygroscopic_asm=newobj%asm_sw, &
-         lw_nonhygro_ext=newobj%abs_lw )
+         lw_insoluble_ext=newobj%abs_lw )
 
     call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 

@@ -826,9 +826,12 @@ contains
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
           case('hygro')
+             ! Short-wave hygroscopic aerosol, Long-wave non-hygroscopic
+             ! aerosol optical properties
              aero_optics=>hygro_aerosol_optics(aeroprops, aerostate, list_idx, &
-                                                     ibin, ncol, pver, numrh, relh(:ncol,:))
+                                               ibin, ncol, pver, numrh, relh(:ncol,:))
           case('hygroscopic')
+             ! Short-wave and long-wave hygroscopic aerosol properties
              aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                      ibin, ncol, pver, numrh, relh(:ncol,:))
 

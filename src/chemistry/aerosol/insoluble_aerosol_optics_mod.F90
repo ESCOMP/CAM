@@ -1,5 +1,5 @@
 !-------------------------------------------------------------------------------
-! Insoluble (non-hygrostatic) aerosol optical properties
+! Insoluble (non-hygroscopic) aerosol optical properties
 !-------------------------------------------------------------------------------
 module insoluble_aerosol_optics_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
@@ -59,10 +59,10 @@ contains
 
     ! get mode properties
     call aero_props%optics_params(ilist, ibin, &
-         sw_nonhygro_ext=newobj%sw_ext, &
-         sw_nonhygro_ssa=newobj%sw_ssa, &
-         sw_nonhygro_asm=newobj%sw_asm, &
-         lw_nonhygro_ext=newobj%lw_abs )
+         sw_insoluble_ext=newobj%sw_ext, &
+         sw_insoluble_ssa=newobj%sw_ssa, &
+         sw_insoluble_asm=newobj%sw_asm, &
+         lw_insoluble_ext=newobj%lw_abs )
 
     call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 

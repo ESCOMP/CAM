@@ -127,7 +127,7 @@ module aerosol_properties_mod
           sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
           corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
           sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
-          sw_nonhygro_ext, sw_nonhygro_ssa, sw_nonhygro_asm, lw_nonhygro_ext, &
+          sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
           r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
 
        import :: aerosol_properties, r8
@@ -174,16 +174,16 @@ module aerosol_properties_mod
        integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
 
        ! hygroscopic
-       real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:)
-       real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:)
-       real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:)
-       real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:)
+       real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:) ! short wave extinction table
+       real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:) ! short wave single-scatter albedo table
+       real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:) ! short wave asymmetry table
+       real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:) ! long wave absorption table
 
-       ! non-hygroscopic
-       real(r8),  optional, pointer :: sw_nonhygro_ext(:)
-       real(r8),  optional, pointer :: sw_nonhygro_ssa(:)
-       real(r8),  optional, pointer :: sw_nonhygro_asm(:)
-       real(r8),  optional, pointer :: lw_nonhygro_ext(:)
+       ! non-hygroscopic (insoluble)
+       real(r8),  optional, pointer :: sw_insoluble_ext(:) ! short wave extinction table
+       real(r8),  optional, pointer :: sw_insoluble_ssa(:) ! short wave single-scatter albedo table
+       real(r8),  optional, pointer :: sw_insoluble_asm(:) ! short wave asymmetry table
+       real(r8),  optional, pointer :: lw_insoluble_ext(:) ! long wave absorption table
 
        ! volcanic radius
        real(r8),  optional, pointer :: r_sw_ext(:,:)
