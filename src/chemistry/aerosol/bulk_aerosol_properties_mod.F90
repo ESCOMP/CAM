@@ -1,3 +1,7 @@
+!--------------------------------------------------------------------------------
+! For bulk aerosol representation.
+! Here each aerosol is treated as a separate bin.
+!--------------------------------------------------------------------------------
 module bulk_aerosol_properties_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use cam_abortutils, only: endrun
@@ -6,6 +10,7 @@ module bulk_aerosol_properties_mod
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
   use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_props, rad_cnst_get_aer_mmr
+  use infnan, only: nan, assignment(=)
 
   implicit none
 
@@ -74,6 +79,7 @@ contains
 
     call rad_cnst_get_info(0, naero=naero)
 
+    ! Here treat each aerosol as a separate bin
     allocate( nspecies(naero),stat=ierr )
     if( ierr /= 0 ) then
        nullify(newobj)
@@ -90,19 +96,26 @@ contains
        return
     end if
 
+    ! Bulk aerosols have 1 chemical species in each bin
     nspecies(:) = 1
 
+    ! Taken from CARMA -- not sure if it will be used for our purposes
     alogsig(:) = log(2._r8)
     f1(:) = 1._r8
 
-    call newobj%initialize(naero, naero, nspecies, nspecies, alogsig, f1, f1, ierr)
+    ! For bulk aerosols, the number of bins and total number of constituents are
+    ! the same (naero) -- one constituent (species and mass) per bin.
+    call newobj%initialize(nbin=naero, ncnst=naero, nspec=nspecies, nmasses=nspecies, &
+                           alogsig=alogsig, f1=f1, f2=f1, ierr=ierr)
+
+    deallocate(nspecies)
+    deallocate(alogsig)
+    deallocate(f1)
+
     if( ierr /= 0 ) then
        nullify(newobj)
        return
     end if
-    deallocate(nspecies)
-    deallocate(alogsig)
-    deallocate(f1)
 
   end function constructor
 
@@ -112,7 +125,6 @@ contains
     type(bulk_aerosol_properties), intent(inout) :: self
 
   end subroutine destructor
-
 
   !------------------------------------------------------------------------------
   ! returns number of transported aerosol constituents
@@ -381,7 +393,6 @@ contains
 
   end subroutine optics_params
 
-
   !------------------------------------------------------------------------------
   ! returns radius^3 (m3) of a given bin number
   !------------------------------------------------------------------------------
@@ -392,8 +403,7 @@ contains
     real(r8), intent(in) :: volconc ! volume conc (m3/m3)
     real(r8), intent(in) :: numconc ! number conc (1/m3)
 
-    !    call endrun('ERROR: bulk_aerosol_properties_mod%amcube not yet implemented')
-    amcube = -huge(1._r8)
+    amcube = nan  ! to be implemented later if needed
 
   end function amcube
 
@@ -409,6 +419,7 @@ contains
     real(r8),intent(out) :: fn       ! activation fraction for aerosol number
     real(r8),intent(out) :: fm       ! activation fraction for aerosol mass
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%actfracs not yet implemented')
 
   end subroutine actfracs
@@ -422,10 +433,10 @@ contains
     character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol number dens
     character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%num_names not yet implemented')
 
   end subroutine num_names
-
 
   !------------------------------------------------------------------------
   ! returns constituents names of aerosol mass mixing ratios
@@ -437,6 +448,7 @@ contains
     character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol MMR
     character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%mmr_names not yet implemented')
 
   end subroutine mmr_names
@@ -449,6 +461,7 @@ contains
     integer, intent(in) :: bin_ndx           ! bin number
     character(len=*), intent(out) :: name   ! constituent name of ambient aerosol number dens
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%amb_num_name not yet implemented')
 
   end subroutine amb_num_name
@@ -462,6 +475,7 @@ contains
     integer, intent(in) :: species_ndx       ! species number
     character(len=*), intent(out) :: name   ! constituent name of ambient aerosol MMR
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%amb_mmr_name not yet implemented')
 
   end subroutine amb_mmr_name
@@ -471,11 +485,11 @@ contains
   !------------------------------------------------------------------------
   subroutine species_type(self, bin_ndx, species_ndx, spectype)
     class(bulk_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx           ! bin number
-    integer, intent(in) :: species_ndx       ! species number
+    integer, intent(in) :: bin_ndx            ! bin number
+    integer, intent(in) :: species_ndx        ! species number
     character(len=*), intent(out) :: spectype ! species type
 
-    call endrun('ERROR: bulk_aerosol_properties_mod%species_type not yet implemented')
+    call self%get(bin_ndx, species_ndx, spectype=spectype)
 
   end subroutine species_type
 
@@ -487,6 +501,7 @@ contains
     integer, intent(in) :: bin_ndx           ! bin number
     logical :: res
 
+    ! to be implemented later if needed
     res = .false.
 
   end function icenuc_updates_num
@@ -500,6 +515,7 @@ contains
     integer, intent(in) :: species_ndx       ! species number
     logical :: res
 
+    ! to be implemented later if needed
     res = .false.
   end function icenuc_updates_mmr
 
@@ -529,6 +545,7 @@ contains
 
     logical :: res
 
+    ! to be implemented later if needed
     res = .false.
   end function hetfrz_species
 
@@ -539,10 +556,17 @@ contains
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
 
-    soluble=.false.
+    character(len=20) :: aername
+    logical :: primary_carbon ! primary carbons (CB1 and OC1) are hydrophobic
+
+    call rad_cnst_get_aer_props(0, bin_ndx, aername=aername)
+
+    aername = to_lower(aername)
+
+    primary_carbon = (aername=='bcpho') .or. (aername=='ocpho')
+    soluble = .not. primary_carbon
 
   end function soluble
-
 
   !------------------------------------------------------------------------------
   ! returns minimum mass mean radius (meters)
@@ -596,7 +620,8 @@ contains
 
     real(r8) :: res
 
-    res = -huge(1._r8)
+    ! to be implemented later if needed
+    res = nan
 
   end function alogsig_rlist
 
@@ -635,7 +660,7 @@ contains
 
     real(r8) :: diam
 
-    diam = -huge(1._r8)
+    diam = nan ! to be implemented later if needed
 
   end function scav_diam
 
@@ -648,7 +673,7 @@ contains
     class(bulk_aerosol_properties), intent(in) :: self
     real(r8), intent(inout) :: dcondt(:)
 
-    dcondt = -huge(1._r8)
+    dcondt = nan ! to be implemented later if needed
 
   end subroutine resuspension_resize
 
@@ -667,6 +692,7 @@ contains
     integer,  intent(out) :: error_code            ! error code (0 if no error)
     character(len=*), intent(out) :: error_string  ! error string
 
+    ! to be implemented later if needed
     call endrun('ERROR: bulk_aerosol_properties_mod%rebin_bulk_fluxes not yet implemented')
 
   end subroutine rebin_bulk_fluxes
@@ -678,7 +704,7 @@ contains
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx ! bin number
 
-    call endrun('ERROR: bulk_aerosol_properties_mod%hydrophilic not yet implemented')
+    hydrophilic = self%soluble(bin_ndx)
 
   end function hydrophilic
 
