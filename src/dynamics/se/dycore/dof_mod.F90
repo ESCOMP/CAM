@@ -394,7 +394,7 @@ contains
     if(present(fdofp)) then
        fdofp=-fdofp_local
     end if
-
+    call FreeEdgeBuffer(edge)
 
 
   end subroutine CreateMetaData
