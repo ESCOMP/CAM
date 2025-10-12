@@ -1417,7 +1417,6 @@ contains
     use iondrag,            only: iondrag_calc, do_waccm_ions
     use perf_mod
     use flux_avg,           only: flux_avg_run
-    use unicon_cam,         only: unicon_cam_org_diags
     use cam_history,        only: outfld
     use qneg_module,        only: qneg4
     use co2_cycle,          only: co2_cycle_set_ptend
@@ -1974,23 +1973,6 @@ contains
     !
     call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx), (/1,itim_old/),(/pcols,1/))
 
-    if (shallow_scheme .eq. 'UNICON') then
-
-       ! ------------------------------------------------------------------------
-       ! Insert the organization-related heterogeneities computed inside the
-       ! UNICON into the tracer arrays here before performing advection.
-       ! This is necessary to prevent any modifications of organization-related
-       ! heterogeneities by non convection-advection process, such as
-       ! dry and wet deposition of aerosols, MAM, etc.
-       ! Again, note that only UNICON and advection schemes are allowed to
-       ! changes to organization at this stage, although we can include the
-       ! effects of other physical processes in future.
-       ! ------------------------------------------------------------------------
-
-       call unicon_cam_org_diags(state, pbuf)
-
-    end if
-    !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
@@ -2940,8 +2922,6 @@ contains
        !  . Aerosol wet chemistry determines scavenging fractions, and transformations
        !  . Then do convective transport of all trace species except qv,ql,qi.
        !  . We needed to do the scavenging first to determine the interstitial fraction.
-       !  . When UNICON is used as unified convection, we should still perform
-       !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
        call t_startf('aerosol_wet_processes')

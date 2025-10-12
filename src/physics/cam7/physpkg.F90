@@ -1953,8 +1953,6 @@ contains
        !  . Aerosol wet chemistry determines scavenging fractions, and transformations
        !  . Then do convective transport of all trace species except qv,ql,qi.
        !  . We needed to do the scavenging first to determine the interstitial fraction.
-       !  . When UNICON is used as unified convection, we should still perform
-       !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
        call t_startf('aerosol_wet_processes')

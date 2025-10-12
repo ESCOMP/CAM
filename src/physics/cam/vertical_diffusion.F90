@@ -119,10 +119,6 @@ integer              :: ixq
 
 integer              :: pblh_idx, tpert_idx, qpert_idx
 
-! pbuf fields for unicon
-integer              :: qtl_flx_idx  = -1            ! for use in cloud macrophysics when UNICON is on
-integer              :: qti_flx_idx  = -1            ! for use in cloud macrophysics when UNICON is on
-
 ! pbuf fields for tms
 integer              :: ksrftms_idx  = -1
 integer              :: tautmsx_idx  = -1
@@ -233,11 +229,6 @@ subroutine vd_register()
 
   call pbuf_add_field('tpert', 'global', dtype_r8, (/pcols/),                       tpert_idx) ! convective_temperature_perturbation_due_to_pbl_eddies
   call pbuf_add_field('qpert', 'global', dtype_r8, (/pcols/),                       qpert_idx) ! convective_water_vapor_wrt_moist_air_and_condensed_water_perturbation_due_to_pbl_eddies
-
-  if (trim(shallow_scheme) == 'UNICON') then
-     call pbuf_add_field('qtl_flx',  'global', dtype_r8, (/pcols, pverp/), qtl_flx_idx)
-     call pbuf_add_field('qti_flx',  'global', dtype_r8, (/pcols, pverp/), qti_flx_idx)
-  end if
 
   ! diag_TKE fields
   if (eddy_scheme == 'diag_TKE') then
@@ -610,10 +601,6 @@ subroutine vertical_diffusion_init(pbuf2d)
      ! Initialization of pbuf fields tke, kvh, kvm are done in phys_inidat
      call pbuf_set_field(pbuf2d, tauresx_idx,  0.0_r8)
      call pbuf_set_field(pbuf2d, tauresy_idx,  0.0_r8)
-     if (trim(shallow_scheme) == 'UNICON') then
-        call pbuf_set_field(pbuf2d, qtl_flx_idx,  0.0_r8)
-        call pbuf_set_field(pbuf2d, qti_flx_idx,  0.0_r8)
-     end if
   end if
 end subroutine vertical_diffusion_init
 
@@ -751,9 +738,6 @@ subroutine vertical_diffusion_tend( &
 
   real(r8) :: dtk(pcols,pver)                                     ! T tendency from KE dissipation
   real(r8), pointer   :: tke(:,:)                                 ! Turbulent kinetic energy [ m2/s2 ]
-
-  real(r8), pointer   :: qtl_flx(:,:)                             ! overbar(w'qtl') where qtl = qv + ql
-  real(r8), pointer   :: qti_flx(:,:)                             ! overbar(w'qti') where qti = qv + qi
 
   real(r8) :: cgs(pcols,pverp)                                    ! Counter-gradient star  [ cg/flux ]
   real(r8) :: cgh(pcols,pverp)                                    ! Counter-gradient term for heat
@@ -1870,28 +1854,6 @@ subroutine vertical_diffusion_tend( &
         qtten                = qtten(:ncol, :pver), &
         tten                 = tten(:ncol, :pver), &
         rhten                = rhten(:ncol, :pver))
-
-     if (trim(shallow_scheme) == 'UNICON') then
-        call pbuf_get_field(pbuf, qtl_flx_idx,  qtl_flx)
-        call pbuf_get_field(pbuf, qti_flx_idx,  qti_flx)
-        qtl_flx(:ncol,1) = 0._r8
-        qti_flx(:ncol,1) = 0._r8
-        do k = 2, pver
-           do i = 1, ncol
-              ! For use in the cloud macrophysics
-              ! Note that density is not added here. Also, only consider local transport term.
-              qtl_flx(i,k) = - kvh(i,k)*(q_tmp(i,k-1,1)-q_tmp(i,k,1)+q_tmp(i,k-1,ixcldliq)-q_tmp(i,k,ixcldliq))/&
-                   (state%zm(i,k-1)-state%zm(i,k))
-              qti_flx(i,k) = - kvh(i,k)*(q_tmp(i,k-1,1)-q_tmp(i,k,1)+q_tmp(i,k-1,ixcldice)-q_tmp(i,k,ixcldice))/&
-                   (state%zm(i,k-1)-state%zm(i,k))
-           end do
-        end do
-        do i = 1, ncol
-           rhoair = state%pint(i,pverp)/(rair*((slv(i,pver)-gravit*state%zi(i,pverp))/cpair))
-           qtl_flx(i,pverp) = cam_in%cflx(i,1)/rhoair
-           qti_flx(i,pverp) = cam_in%cflx(i,1)/rhoair
-        end do
-     end if
 
   end if
 

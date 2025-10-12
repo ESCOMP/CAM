@@ -19,9 +19,6 @@ public :: eddy_diff_register
 public :: eddy_diff_init
 public :: eddy_diff_tend
 
-! Is UNICON switched on (and thus interacting with eddy_diff via pbuf)?
-logical :: unicon_is_on
-
 ! Number of iterations for solution
 integer, parameter :: nturb = 5
 
@@ -38,14 +35,6 @@ integer :: ixcldliq, ixcldice
 ! input pbuf field indices
 integer :: qrl_idx   = -1
 integer :: wsedl_idx = -1
-
-! output pbuf field indices for UNICON
-integer :: bprod_idx    = -1
-integer :: ipbl_idx     = -1
-integer :: kpblh_idx    = -1
-integer :: wstarPBL_idx = -1
-integer :: tkes_idx     = -1
-integer :: went_idx     = -1
 
 ! Mixing lengths squared.
 ! Used for computing free air diffusivity.
@@ -124,24 +113,6 @@ subroutine eddy_diff_readnl(nlfile)
 end subroutine eddy_diff_readnl
 
 subroutine eddy_diff_register()
-  use physics_buffer, only: pbuf_add_field, dtype_r8, dtype_i4
-
-  character(len=16) :: shallow_scheme
-
-  ! Check for UNICON and add relevant pbuf entries.
-  call phys_getopts(shallow_scheme_out=shallow_scheme)
-
-  unicon_is_on = (shallow_scheme == "UNICON")
-
-  if (unicon_is_on) then
-     call pbuf_add_field('bprod',    'global', dtype_r8, (/pcols,pverp/), bprod_idx)
-     call pbuf_add_field('ipbl',     'global', dtype_i4, (/pcols/),       ipbl_idx)
-     call pbuf_add_field('kpblh',    'global', dtype_i4, (/pcols/),       kpblh_idx)
-     call pbuf_add_field('wstarPBL', 'global', dtype_r8, (/pcols/),       wstarPBL_idx)
-     call pbuf_add_field('tkes',     'global', dtype_r8, (/pcols/),       tkes_idx)
-     call pbuf_add_field('went',     'global', dtype_r8, (/pcols/),       went_idx)
-  end if
-
 end subroutine eddy_diff_register
 
 subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
@@ -209,16 +180,6 @@ subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
   ! Input pbuf fields
   qrl_idx   = pbuf_get_index('QRL')
   wsedl_idx = pbuf_get_index('WSEDL')
-
-  ! Initialize output pbuf fields
-  if (is_first_step() .and. unicon_is_on) then
-     call pbuf_set_field(pbuf2d, bprod_idx,    1.0e-5_r8)
-     call pbuf_set_field(pbuf2d, ipbl_idx,     0    )
-     call pbuf_set_field(pbuf2d, kpblh_idx,    1    )
-     call pbuf_set_field(pbuf2d, wstarPBL_idx, 0.0_r8)
-     call pbuf_set_field(pbuf2d, tkes_idx,     0.0_r8)
-     call pbuf_set_field(pbuf2d, went_idx,     0.0_r8)
-  end if
 
   ! Scheme-specific default output.
   call phys_getopts(history_amwg_out=history_amwg)
@@ -494,22 +455,21 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   real(r8), pointer :: wsedl(:,:)                      ! Sedimentation velocity
                                                        ! of stratiform liquid cloud droplet [ m/s ]
 
-  real(r8), pointer :: bprod(:,:)                      ! Buoyancy production of tke [ m2/s3 ]
-  integer(i4), pointer :: ipbl(:)                      ! If 1, PBL is CL, while if 0, PBL is STL.
-  integer(i4), pointer :: kpblh(:)                     ! Layer index containing PBL top within or at the base interface
-  real(r8), pointer :: wstarPBL(:)                     ! Convective velocity within PBL [ m/s ]
-  real(r8), pointer :: tkes(:)                         ! TKE at surface interface [ m2/s2 ]
-  real(r8), pointer :: went(:)                         ! Entrainment rate at the PBL top interface [ m/s ]
-
   ! --------------- !
   ! Local Variables !
   ! --------------- !
 
   integer                    icol
   integer                    i, k, iturb, status
+  integer :: ipbl(pcols)     ! If 1, PBL is CL, while if 0, PBL is STL.
+  integer :: kpblh(pcols)    ! Layer index containing PBL top within or at the base interface (NOT USED)
 
   character(2048)         :: warnstring                ! Warning(s) to print
   character(128)          :: errstring                 ! Error message
+
+  real(r8) :: bprod(pcols,pverp) ! Buoyancy production of tke [ m2/s3 ]
+  real(r8) :: tkes(pcols)        ! TKE at surface interface [ m2/s2 ]
+  real(r8) :: went(pcols)        ! Entrainment rate at the PBL top interface [ m/s ] (NOT USED)
 
   real(r8)                :: kvf(pcols,pver+1)         ! Free atmospheric eddy diffusivity [ m2/s ]
   real(r8)                :: kvm(pcols,pver+1)         ! Eddy diffusivity for momentum [ m2/s ]
@@ -628,18 +588,6 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   ! ---------------------------------------------- !
   call pbuf_get_field(pbuf, qrl_idx,   qrl)
   call pbuf_get_field(pbuf, wsedl_idx, wsedl)
-
-  ! These fields are put into the pbuf for UNICON only.
-  if (unicon_is_on) then
-     call pbuf_get_field(pbuf, bprod_idx,    bprod)
-     call pbuf_get_field(pbuf, ipbl_idx,     ipbl)
-     call pbuf_get_field(pbuf, kpblh_idx,    kpblh)
-     call pbuf_get_field(pbuf, wstarPBL_idx, wstarPBL)
-     call pbuf_get_field(pbuf, tkes_idx,     tkes)
-     call pbuf_get_field(pbuf, went_idx,     went)
-  else
-     allocate(bprod(pcols,pverp), ipbl(pcols), kpblh(pcols), wstarPBL(pcols), tkes(pcols), went(pcols))
-  end if
 
   ! ----------------------- !
   ! Main Computation Begins !
@@ -876,16 +824,6 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
 
   kvq(:ncol,:) = kvh_out(:ncol,:)
 
-  ! Compute 'wstar' within the PBL for use in the future convection scheme.
-
-  do i = 1, ncol
-     if(ipbl(i) == 1) then
-        wstarPBL(i) = max( 0._r8, wstar(i,1) )
-     else
-        wstarPBL(i) = 0._r8
-     endif
-  end do
-
   ! --------------------------------------------------------------- !
   ! Writing for detailed diagnostic analysis of UW moist PBL scheme !
   ! --------------------------------------------------------------- !
@@ -976,10 +914,6 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   call outfld( 'UW_leng',        lengi,      pcols,   lchnk )
 
   call outfld( 'UW_wsed',        wsed,       pcols,   lchnk )
-
-  if (.not. unicon_is_on) then
-     deallocate(bprod, ipbl, kpblh, wstarPBL, tkes, went)
-  end if
 
 end subroutine compute_eddy_diff
 

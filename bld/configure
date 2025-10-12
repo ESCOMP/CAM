@@ -104,7 +104,6 @@ OPTIONS
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
-     -unicon            Switch to turn on the UNICON scheme. Default: off.
      -usr_mech_infile   Path and file name of the user supplied chemistry mechanism file.
      -waccm_phys        Switch enables the use of WACCM physics in any chemistry configuration.
                         The user does not need to set this if one of the waccm chemistry options
@@ -276,7 +275,6 @@ GetOptions(
     "nc_lib=s"                  => \$opts{'nc_lib'},
     "nc_mod=s"                  => \$opts{'nc_mod'},
     "nlev=s"                    => \$opts{'nlev'},
-    "ocn=s"                     => \$opts{'ocn'},
     "offline_dyn"               => \$opts{'offline_dyn'},
     "pbl=s"                     => \$opts{'pbl'},
     "pcols=s"                   => \$opts{'pcols'},
@@ -296,7 +294,6 @@ GetOptions(
     "smp!"                      => \$opts{'smp'},
     "spmd!"                     => \$opts{'spmd'},
     "target_os=s"               => \$opts{'target_os'},
-    "unicon"                    => \$opts{'unicon'},
     "usr_mech_infile=s"         => \$opts{'usr_mech_infile'},
     "usr_src=s"                 => \$opts{'usr_src'},
     "v|verbose"                 => \$opts{'verbose'},
@@ -947,27 +944,6 @@ $cfg_ref->set('pbl', $pbl_pkg);
 if ($print>=2) { print "PBL package: $pbl_pkg$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# UNICON
-
-if (defined $opts{'unicon'}) {
-    $cfg_ref->set('unicon', $opts{'unicon'});
-}
-my $unicon = $cfg_ref->get('unicon');
-
-# consistency checks...
-
-# UNICON assumes park macrophysics, uw pbl, and mg microphysics
-if ($unicon and
-    ($macrophys_pkg ne 'park' or $pbl_pkg ne 'uw' or $microphys_pkg !~ m/^mg/) ) {
-    die <<"EOF";
-**    ERROR: UNICON assumes macrophys='park', pbl='uw', microphys='mg*'.  Current values are:
-**    macrophys: $macrophys_pkg, pbl: $pbl_pkg, microphys: $microphys_pkg.
-EOF
-}
-
-if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
-
-#-----------------------------------------------------------------------------------------------
 # Radiation package
 
 # Set default
@@ -1052,25 +1028,6 @@ $cfg_ref->set('aquaplanet', $aquaplanet);
 
 my $aqua_mode = $aquaplanet ? "ON" : "OFF";
 if ($print>=2) { print "Aqua-planet mode: $aqua_mode$eol"; }
-
-#-----------------------------------------------------------------------------------------------
-# Ocean model
-my $ocn_pkg = 'socn';
-if ($aquaplanet) {
-    # Default for aquaplanet mode is to use an analytic expression for fixed SST.
-    $ocn_pkg = 'aquaplanet';
-}
-
-# Allow the user to override the default via the commandline.
-# For aquaplanet with SOM the option '-ocn som' should be used to override
-# aquaplanet's default ocean component setting.
-if (defined $opts{'ocn'}) {
-    $ocn_pkg = lc($opts{'ocn'});
-}
-
-$cfg_ref->set('ocn', $ocn_pkg);
-
-if ($print>=2) { print "Ocean package: $ocn_pkg$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Use modifications for perturbation growth testing?
@@ -1471,12 +1428,6 @@ else {
             if ($print>=2) { print "Advected constituents added by CARMA model $carma_pkg: $carma_nadv$eol"; }
         }
 
-        # UNICON tracers
-        if ($unicon) {
-            $nadv += 5;
-            if ($print>=2) { print "Advected constituents added by UNICON: 5$eol"; }
-        }
-
     }
 
     # Special case for Kessler physics, need ice and water tracers
@@ -1836,9 +1787,6 @@ if ($silhs == 1) {
 
 # Simple Models
 if ($simple_phys) { $cfg_cppdefs .= ' -DSIMPLE'; }
-
-# UNICON
-if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 
 # Harmonized Emissions Component (HEMCO)
 # These CPP definitions are used by HEMCO to recognize -

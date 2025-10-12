@@ -2,7 +2,7 @@
 	path = chem_proc
 	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
         fxrequired = AlwaysRequired
-        fxtag = chem_proc5_0_06
+        fxtag = chem_proc5_0_07
 	fxDONOTUSEurl = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
 
 [submodule "carma"]
@@ -29,7 +29,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_18_000
+	fxtag = atmos_phys0_18_002
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -138,7 +138,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.61
+fxtag = ccs_config_cesm1.0.63
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
@@ -204,4 +204,3 @@ url = https://github.com/NCAR/CUPiD.git
 fxtag = v0.3.1
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
-

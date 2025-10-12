@@ -50,8 +50,8 @@ OPTIONS
                            of the CAM executable.  Default: "config_cache.xml".
      -csmdata "dir"        Root directory of CESM input data.
                            Can also be set by using the CSMDATA environment variable.
-     -dir "directory"      Directory where output namelist files for each component will be
-                           written, i.e., atm_in, drv_in, ice_in, lnd_in, rof_in, and ocn_in.
+     -dir "directory"      Directory where output namelist files, "atm_in" and "drv_flds_in",
+                           will be written.
                            Default: current working directory.
      -help [or -h]         Print usage to STDOUT.
      -ignore_ic_date       Ignore the date of the initial condition files
@@ -4443,12 +4443,14 @@ for my $i (0 .. $#interp_output) {
 
 # Currently, interpolated output does not work with the COSP fields that use
 # more than 1 mdims.
-my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
-if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
-if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
-    die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
-        " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
-        " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+if ($docosp) {
+    my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
+    if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
+    if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
+        die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
+            " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
+            " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+    }
 }
 
 
