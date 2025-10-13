@@ -437,6 +437,7 @@ subroutine gw_drag_cam_init()
   use ioFileMod,        only: getfil
 
   use ref_pres,   only: pref_edge, pref_mid
+  use ref_pres,   only: nbot_gravity_wave_top_taper
   use physconst,  only: gravit, rair, rearth, pi
 
   use ppgrid, only: pcols
@@ -701,6 +702,7 @@ subroutine gw_drag_cam_init()
        amIRoot = masterproc, &
        iulog = iulog, &
        gw_top_taper = gw_top_taper, &
+       nbot_gravity_wave_top_taper = nbot_gravity_wave_top_taper, &
        pref_edge = pref_edge, &
        pref_mid = pref_mid, &
        vramp = vramp(:pver), &
