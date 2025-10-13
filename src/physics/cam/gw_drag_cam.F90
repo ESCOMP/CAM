@@ -589,6 +589,7 @@ subroutine gw_drag_cam_init()
        iulog                        = iulog, &
        pref_edge                    = pref_edge, &
        tau_0_ubc_in                 = tau_0_ubc, &
+       pi_in                        = pi, &
        gravit_in                    = gravit, &
        rair_in                      = rair, &
        prndl_in                     = gw_prndl, &
