@@ -5,7 +5,7 @@ module gw_drag_cam
   use shr_log_mod,    only: shr_errMsg => shr_log_errMsg
   use shr_assert_mod, only: shr_assert
 
-  use ppgrid,         only: pcols, pver, begchunk, endchunk
+  use ppgrid,         only: pcols, pver, pverp, begchunk, endchunk
   use constituents,   only: pcnst
   use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
   use spmd_utils,     only: masterproc
@@ -586,6 +586,7 @@ subroutine gw_drag_cam_init()
   ! Call the CCPPized initialization subroutines for the common module.
   call gravity_wave_drag_common_init( &
        pver_in                      = pver, &
+       pverp_in                     = pverp, &
        amIRoot                      = masterproc, &
        iulog                        = iulog, &
        pref_edge                    = pref_edge, &
@@ -1603,6 +1604,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call gravity_wave_drag_convection_deep_run( &
           ncol            = ncol, &
           pver            = pver, &
+          pverp           = pverp, &
           pcnst           = pcnst, &
           dt              = dt, &
           p               = p, &
@@ -1616,11 +1618,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           t               = state1%t(:ncol,:pver), &
           q               = state1%q(:ncol,:pver,:), &
           dse             = state1%s(:ncol,:pver), &
-          piln            = state1%lnpint(:ncol,:pver+1), &
-          rhoi            = rhoi(:ncol,:pver+1), &
+          piln            = state1%lnpint(:ncol,:pverp), &
+          rhoi            = rhoi(:ncol,:pverp), &
           nm              = nm(:ncol,:pver), &
-          ni              = ni(:ncol,:pver+1), &
-          kvt_gw          = kvt_gw(:ncol,:pver+1), &
+          ni              = ni(:ncol,:pverp), &
+          kvt_gw          = kvt_gw(:ncol,:pverp), &
           ttend_dp        = ttend_dp_arr(:ncol,:pver), &
           zm              = state1%zm(:ncol,:pver), &
           lat             = state1%lat(:ncol), &
@@ -1632,7 +1634,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           src_level       = src_level(:ncol), &
           tend_level      = tend_level(:ncol), &
           ubm             = ubm(:ncol,:pver), &
-          ubi             = ubi(:ncol,:pver+1), &
+          ubi             = ubi(:ncol,:pverp), &
           xv              = xv(:ncol), &
           yv              = yv(:ncol), &
           hdepth          = hdepth(:ncol), &
@@ -1641,13 +1643,13 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           vtgw            = vtgw(:ncol,:pver), &
           ttgw            = ttgw(:ncol,:pver), &
           qtgw            = qtgw(:ncol,:pver,:), &
-          egwdffi_tot     = egwdffi_tot(:ncol,:pver+1), &
+          egwdffi_tot     = egwdffi_tot(:ncol,:pverp), &
           dttdf           = dttdf(:ncol,:pver), &
           dttke           = dttke(:ncol,:pver), &
-          taucd_west      = taucd_west(:ncol,:pver+1), &
-          taucd_east      = taucd_east(:ncol,:pver+1), &
-          taucd_south     = taucd_south(:ncol,:pver+1), &
-          taucd_north     = taucd_north(:ncol,:pver+1), &
+          taucd_west      = taucd_west(:ncol,:pverp), &
+          taucd_east      = taucd_east(:ncol,:pverp), &
+          taucd_south     = taucd_south(:ncol,:pverp), &
+          taucd_north     = taucd_north(:ncol,:pverp), &
           errmsg          = errmsg, &
           errflg          = errflg)
 
@@ -1681,6 +1683,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call gravity_wave_drag_convection_shallow_run( &
           ncol            = ncol, &
           pver            = pver, &
+          pverp           = pverp, &
           pcnst           = pcnst, &
           dt              = dt, &
           p               = p, &
@@ -1694,11 +1697,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           t               = state1%t(:ncol,:pver), &
           q               = state1%q(:ncol,:pver,:), &
           dse             = state1%s(:ncol,:pver), &
-          piln            = state1%lnpint(:ncol,:pver+1), &
-          rhoi            = rhoi(:ncol,:pver+1), &
+          piln            = state1%lnpint(:ncol,:pverp), &
+          rhoi            = rhoi(:ncol,:pverp), &
           nm              = nm(:ncol,:pver), &
-          ni              = ni(:ncol,:pver+1), &
-          kvt_gw          = kvt_gw(:ncol,:pver+1), &
+          ni              = ni(:ncol,:pverp), &
+          kvt_gw          = kvt_gw(:ncol,:pverp), &
           ttend_sh        = ttend_sh_arr(:ncol,:pver), &
           zm              = state1%zm(:ncol,:pver), &
           lat             = state1%lat(:ncol), &
@@ -1710,7 +1713,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           src_level       = src_level(:ncol), &
           tend_level      = tend_level(:ncol), &
           ubm             = ubm(:ncol,:pver), &
-          ubi             = ubi(:ncol,:pver+1), &
+          ubi             = ubi(:ncol,:pverp), &
           xv              = xv(:ncol), &
           yv              = yv(:ncol), &
           hdepth          = hdepth(:ncol), &
@@ -1719,7 +1722,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           vtgw            = vtgw(:ncol,:pver), &
           ttgw            = ttgw(:ncol,:pver), &
           qtgw            = qtgw(:ncol,:pver,:), &
-          egwdffi_tot     = egwdffi_tot(:ncol,:pver+1), &
+          egwdffi_tot     = egwdffi_tot(:ncol,:pverp), &
           dttdf           = dttdf(:ncol,:pver), &
           dttke           = dttke(:ncol,:pver), &
           errmsg          = errmsg, &
