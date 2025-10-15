@@ -1251,9 +1251,6 @@ subroutine radiation_tend( &
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
                   !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs,atm_optics_sw%optical_props) &
-                  !$acc        copy(atm_optics_sw%optical_props%tau,                &
-                  !$acc             atm_optics_sw%optical_props%g, &
-                  !$acc             atm_optics_sw%optical_props%ssa) &
                   !$acc     copyout(toa_flux)
                   call rrtmgp_sw_gas_optics_run(dosw, 1, nday, nday, pmid_day, pint_day, t_day,  &
                                gas_concs_sw, atm_optics_sw, kdist_sw, toa_flux, errmsg, errflg)
