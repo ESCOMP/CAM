@@ -38,8 +38,6 @@ use cam_history_support,   only: fillvalue
 use cam_abortutils,   only: endrun
 use error_messages,   only: alloc_err
 use radiation_utils, only: get_sw_spectral_boundaries_ccpp
-use spmd_utils, only: masterproc
-use spmd_utils, only: iam
 
 implicit none
 private

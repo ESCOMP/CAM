@@ -1,4 +1,119 @@
+===============================================================
 
+Tag name: cam6_4_119
+Originator: peverwhee
+Date: 26 September, 2025
+One-line Summary: Bring in new atmospheric_physics tag and use CCPPized shortwave interfaces
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1372
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+Part of "Conversion of RRTMGP to CCPP" (#1192)
+- Modifies the interfaces in radiation.F90
+- Moves rrtmgp external to atmospheric_physics (schemes/rrtmgp/ext)
+
+Describe any changes made to build system:
+
+M    bld/configure
+- update paths to RRTMGP external
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+
+D    src/physics/rrtmgp/ext
+- move submodule to atmospheric_physics
+
+D    src/physics/rrtmgp/rad_solar_var.F90
+- ccppized and moved to schemes/rrtmgp/rrtmgp_sw_solar_var.F90
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M     src/atmos_phys
+- updated submodule
+
+M     src/physics/rrtmgp/radiation.F90
+- update interface to use CCPPized schemes
+
+M     src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+- ccppize and move sw gas optics and cloud optics
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+     - pre-existing failure- See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+
+Tag name: cam6_4_118
+Originator(s): cacraig, peverwhee, jimmielin
+Date: Sept 25, 2025
+One-line Summary: Update emission files to use relative path
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1401
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - use cases updated with emissions have incorrect path: https://github.com/ESCOMP/CAM/issues/1399
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: haipeng
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_mt.xml
+          - Use relative path for emission files
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+     - Answer changes due to different sorting of emission files because changed directory paths sort differently
+       See PR for more details
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+     - pre-existing failure- See issue: https://github.com/ESCOMP/CAM/issues/1383
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_117
