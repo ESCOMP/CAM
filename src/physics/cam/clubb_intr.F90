@@ -2105,7 +2105,7 @@ end subroutine clubb_init_cnst
     use perf_mod,       only: t_startf, t_stopf
 
 #ifdef CLUBB_SGS
-    use hb_diff,                   only: pblintd
+    use holtslag_boville_diff, only: hb_pbl_dependent_coefficients_run
     use clubb_api_module, only: &
       nparams, &
       setup_parameters_api, &
@@ -2598,6 +2598,10 @@ end subroutine clubb_init_cnst
       sclr, &
       edsclr, &
       n
+
+    ! dummy outputs for CCPP-ized subroutines
+    character(len=512)   :: errmsg
+    integer              :: errflg
 
 #endif
 
@@ -4699,16 +4703,37 @@ end subroutine clubb_init_cnst
     kbfs   (1:ncol) = calc_kinematic_buoyancy_flux(kinheat(1:ncol), zvir, th(1:ncol,pver), kinwat(1:ncol))
     obklen (1:ncol) = calc_obukhov_length(thv(1:ncol,pver), ustar2(1:ncol), gravit, karman, kbfs(1:ncol))
 
-    dummy2(:) = 0._r8
-    dummy3(:) = 0._r8
 
     where (kbfs(:ncol)  ==  -0.0_r8) kbfs(:ncol) = 0.0_r8
 
-    !  Compute PBL depth according to Holtslag-Boville Scheme
-    call pblintd(ncol, thv, state1%zm, state1%u, state1%v, &
-                ustar2, obklen, kbfs, pblh, dummy2, &
-                state1%zi, cloud_frac(:,1:pver), 1._r8-cam_in%landfrac, dummy3)
-
+    ! Compute PBL depth according to Holtslag-Boville Scheme -- only pblh is needed here
+    ! and other outputs are discarded
+    !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+    pblh(:) = 0._r8
+    dummy2(:) = 0._r8
+    dummy3(:) = 0._r8
+    !REMOVECAM_END
+    call hb_pbl_dependent_coefficients_run( &
+      ncol      = ncol,                                      &
+      pver      = pver,                                      &
+      pverp     = pverp,                                     &
+      gravit    = gravit,                                    &
+      z         = state1%zm(:ncol,:pver),                    &
+      zi        = state1%zi(:ncol,:pverp),                   &
+      u         = state1%u(:ncol,:pver),                     &
+      v         = state1%v(:ncol,:pver),                     &
+      cldn      = cloud_frac(:ncol,:pver),                   &
+      ! Inputs from CLUBB (not HB coefficients)
+      thv       = thv(:ncol,:pver),                          &
+      ustar     = ustar2(:ncol),                             &
+      kbfs      = kbfs(:ncol),                               &
+      obklen    = obklen(:ncol),                             &
+      ! Output variables
+      pblh      = pblh(:ncol),                               &
+      wstar     = dummy2(:ncol),                             &
+      bge       = dummy3(:ncol),                             &
+      errmsg    = errmsg,                                    &
+      errflg    = errflg)
 
     ! Assign the first pver levels of cloud_frac back to cld
     cld(:,1:pver) = cloud_frac(:,1:pver)

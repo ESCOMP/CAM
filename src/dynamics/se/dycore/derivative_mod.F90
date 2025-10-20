@@ -189,8 +189,7 @@ contains
 
     ! notice we deallocate this memory here even though it was allocated
     ! by the call to gausslobatto.
-    deallocate(gp%points)
-    deallocate(gp%weights)
+    call gp%finalize()
 
   end subroutine derivinit
 
@@ -256,11 +255,8 @@ contains
        end do
     end do
 
-    deallocate(gll%points)
-    deallocate(gll%weights)
-
-    deallocate(gs%points)
-    deallocate(gs%weights)
+    call gll%finalize()
+    call gs%finalize()
 
 end subroutine dmatinit
 
@@ -321,11 +317,8 @@ end do
        end do
     end do
 
-    deallocate(gll%points)
-    deallocate(gll%weights)
-
-    deallocate(gs%points)
-    deallocate(gs%weights)
+    call gll%finalize()
+    call gs%finalize()
 
   end subroutine dpvinit
 
@@ -400,8 +393,7 @@ end do
           v2p_new(l,j) = gll_pts%weights(l)*sum
        enddo
     enddo
-    deallocate(gll_pts%points)
-    deallocate(gll_pts%weights)
+    call gll_pts%finalize()
 
     v2p=v2p_new
   end subroutine v2pinit
@@ -934,8 +926,7 @@ end do
        enddo
        gll_edges(np+1)=1
        delta_a=gll_pts%weights
-       deallocate(gll_pts%points)
-       deallocate(gll_pts%weights)
+       call gll_pts%finalize()
 
        count=0
        x1=-1

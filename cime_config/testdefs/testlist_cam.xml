@@ -1542,7 +1542,7 @@
       <option name="comment">CAM7-LT aquaplanet</option>
     </options>
   </test>
-  <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="ERP_D_Ln9" testmods="cam/outfrq9s_cam7_presc_volc">
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>

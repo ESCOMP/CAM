@@ -5,8 +5,8 @@ module spacecurve_mod
   private
 
   type, public :: factor_t
-     integer                       :: numfact
-     integer, dimension(:),pointer :: factors => NULL()
+     integer                           :: numfact
+     integer, dimension(:),allocatable :: factors
   end type factor_t
 
 
@@ -978,7 +978,7 @@ contains
 
     logical  :: IsFactorable
 
-    if (associated(fact%factors)) then
+    if (allocated(fact%factors)) then
       call endrun("fact already allocated!!!")
     end if
     fact = Factor(n)

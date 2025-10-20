@@ -1336,6 +1336,12 @@ subroutine rk_stratiform_cam_tend( &
    call outfld( 'ICIMR'    , icimr,       pcols, lchnk )
    call outfld( 'ICWMR'    , icwmr,       pcols, lchnk )
 
+   ! Copy stratiform_cloud_fraction to pbuf for recording in snapshot
+   !REMOVECAM: this is no longer needed when CAM is retired and pcols no longer exists
+   ast(:, :) = 0._r8
+   !REMOVECAM_END
+   ast(:ncol, :) = cldst(:ncol, :)
+
    call t_stopf('stratiform_microphys')
 
    ! Save variables for use in the macrophysics at the next time step

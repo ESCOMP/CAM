@@ -47,6 +47,10 @@
 <ncdata hgrid="mpasa480" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L93_notopo_coords_c240814.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="93" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L93_notopo_coords_c240814.nc</ncdata>
+<!-- Next entries are mostly used in EarthWorks -->
+<ncdata hgrid="mpasa30"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L58_notopo_coords_c240814.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L58_notopo_coords_c240911.nc</ncdata>
+<!-- END EarthWorks specific -->
 
 <!-- FV Initial Conditions -->
 <ncdata hgrid="10x15" nlev="26"                    >atm/cam/inic/fv/cami_0000-01-01_10x15_L26_c030918.nc</ncdata>
@@ -233,13 +237,16 @@
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L58_CFSR_c240814.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa480_L58_cami_c250527.nc</ncdata>
-<ncdata hgrid="mpasa480" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L93_CFSR_c240814.nc</ncdata>
 
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c240508.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_CFSR_c240814.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="58" aquaplanet="1" >atm/cam/inic/mpas/QPC7_mpasa120_L58_cami_c250527.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120_L70.waccm_topography_SC_c240904.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="93" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L93_CFSR_c240814.nc</ncdata>
+<!-- Next entries are mostly used in EarthWorks, real-data ICs -->
+<ncdata hgrid="mpasa60"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L58_CFSR_c240905.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L58_CFSR_c240905.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L58_CFSR_c240905.nc</ncdata>
+<!-- END EarthWorks specific, real-data ICs -->
 
 <!-- FV3 Initial Conditions -->
 <ncdata hgrid="C24"  nlev="26"                  >atm/cam/inic/fv3/cami_0000-01-01_C24_L26_c200625.nc</ncdata>
@@ -293,20 +300,20 @@
 
 <bnd_topo hgrid="ne5np4"          >atm/cam/topo/se/ne5np4_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170515.nc</bnd_topo>
 <bnd_topo hgrid="ne16np4"         >atm/cam/topo/se/ne16np4_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"         >atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc</bnd_topo>
+<bnd_topo hgrid="ne30np4"         >atm/cam/topo/se/ne30np4_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250822.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"         >atm/cam/topo/se/ne60np4_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4"        >atm/cam/topo/se/ne120np4_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171011.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4"        >atm/cam/topo/se/ne240np4_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171014.nc</bnd_topo>
 
 <bnd_topo hgrid="ne5np4"   npg="2">atm/cam/topo/se/ne5pg2_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw060_20170706.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="2">atm/cam/topo/se/ne30pg2_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc</bnd_topo>
+<bnd_topo hgrid="ne30np4"  npg="2">atm/cam/topo/se/ne30pg2_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250825.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="2">atm/cam/topo/se/ne60pg2_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171014.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="2">atm/cam/topo/se/ne120pg2_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4" npg="2">atm/cam/topo/se/ne240pg2_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171014.nc</bnd_topo>
 <bnd_topo hgrid="ne3np4"          >atm/cam/topo/se/ne3np4_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230717.nc</bnd_topo>
 <bnd_topo hgrid="ne3np4"   npg="3">atm/cam/topo/se/ne3pg3_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230209.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
-<bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_20230202.nc</bnd_topo>
+<bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_noleak_greenlndantarcsgh30fac2.50_20250825.nc</bnd_topo>
 <bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250828.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
@@ -318,6 +325,11 @@
 
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
+<!-- Next entires are mostly used in EarthWorks, for real-data cases -->
+<bnd_topo hgrid="mpasa60" >atm/cam/topo/mpas/mpasa60_gmted2010_modis_bedmachine_nc3000_Laplace0050_noleak_20240507.nc</bnd_topo>
+<bnd_topo hgrid="mpasa30" >atm/cam/topo/mpas/mpasa30_gmted2010_modis_bedmachine_nc3000_Laplace0025_noleak_20240507.nc</bnd_topo>
+<bnd_topo hgrid="mpasa15" >atm/cam/topo/mpas/mpasa15_gmted2010_modis_bedmachine_nc3000_Laplace0013_noleak_20240507.nc</bnd_topo>
+<!-- END EarthWorks specific, for real-data cases -->
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
@@ -2017,8 +2029,11 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
-<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_c210511.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_c210601.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_c20210804.nc</drydep_srf_file>
 
 <!-- depvel data -->
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
@@ -2090,7 +2105,6 @@
 <conv_water_in_rad phys="cam7"      > 1 </conv_water_in_rad>
 
 <conv_water_frac_limit            > 0.01d0  </conv_water_frac_limit>
-<conv_water_frac_limit unicon="1" > 0.001d0 </conv_water_frac_limit>
 
 <!-- CLUBB_SGS -->
 <do_clubb_sgs                                 > .false. </do_clubb_sgs>
@@ -2294,6 +2308,14 @@
 <clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
 <clubb_mf_nup                      > 10      </clubb_mf_nup>
 
+<!-- Set radiation intervals based on mpas hgrids -->
+<iradlw hgrid="mpasa15"  > 10 </iradlw>
+<iradsw hgrid="mpasa15"  > 10 </iradsw>
+<iradlw hgrid="mpasa7p5" > 10 </iradlw>
+<iradsw hgrid="mpasa7p5" > 10 </iradsw>
+<iradlw hgrid="mpas3p75" > 10 </iradlw>
+<iradsw hgrid="mpas3p75" > 10 </iradsw>
+
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
 <micro_mg_do_graupel                    > .false. </micro_mg_do_graupel>
@@ -2466,7 +2488,6 @@
 <eddy_max_bot_pressure phys="cam7"    waccm_phys="1" >100.D0</eddy_max_bot_pressure>
 
 <eddy_moist_entrain_a2l           >30.D0</eddy_moist_entrain_a2l>
-<eddy_moist_entrain_a2l unicon="1">40.D0</eddy_moist_entrain_a2l>
 
 <diff_cnsrv_mass_check> .false. </diff_cnsrv_mass_check>
 
@@ -2548,10 +2569,8 @@
 <sol_facti_cloud_borne clubb_sgs="1" microphys="mg3"                  >1.0D0</sol_facti_cloud_borne>
 
 <sol_factb_interstitial                >0.1D0</sol_factb_interstitial>
-<sol_factb_interstitial unicon="1"     >1.0D0</sol_factb_interstitial>
 
 <sol_factic_interstitial                >0.4D0</sol_factic_interstitial>
-<sol_factic_interstitial unicon="1"     >1.0D0</sol_factic_interstitial>
 
 <!-- sub-column switches for physics packages -->
 <use_subcol_microp                  >.false.</use_subcol_microp>
@@ -2619,12 +2638,10 @@
 <!-- convection schemes -->
 <deep_scheme                     >ZM       </deep_scheme>
 <deep_scheme           silhs="1" >off      </deep_scheme>
-<deep_scheme unicon="1"          >UNICON   </deep_scheme>
 <deep_scheme pbl="none"          >NONE     </deep_scheme>
 
 <shallow_scheme pbl="none"         >NONE     </shallow_scheme>
 <shallow_scheme pbl="uw"           >UW       </shallow_scheme>
-<shallow_scheme pbl="uw" unicon="1">UNICON   </shallow_scheme>
 <shallow_scheme pbl="hb"           >Hack     </shallow_scheme>
 <shallow_scheme pbl="hbr"          >Hack     </shallow_scheme>
 <shallow_scheme pbl="clubb_sgs"    >CLUBB_SGS</shallow_scheme>
@@ -2639,8 +2656,6 @@
 
 <cldfrc_rhminl                                                        > 0.900D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam5" carma="cirrus"           > 0.910D0 </cldfrc_rhminl>
-<cldfrc_rhminl dyn="fv"          phys="cam5" unicon="1"               > 0.850D0 </cldfrc_rhminl>
-<cldfrc_rhminl dyn="se"          phys="cam5" unicon="1"               > 0.850D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam5" microphys="mg2"          > 0.950D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam5" microphys="mg3"          > 0.950D0 </cldfrc_rhminl>
 
@@ -2665,8 +2680,6 @@
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam4"                          > 0.910D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="0.9x1.25"  phys="cam4"                          > 0.920D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="0.47x0.63" phys="cam4"                          > 0.920D0 </cldfrc_rhminl>
-<!-- Note: the ocn attribute allows coupled and uncoupled configurations to have different tunings -->
-<cldfrc_rhminl hgrid="0.47x0.63" phys="cam4" ocn="docn"               > 0.913D0 </cldfrc_rhminl>
 <cldfrc_rhminl dyn="se"          phys="cam4"                          > 0.910D0 </cldfrc_rhminl>
 
 <cldfrc_rhminl_adj_land                                               > 0.100D0 </cldfrc_rhminl_adj_land>
@@ -2731,11 +2744,9 @@
 <cldfrc_icecrit phys="cam7"    carma="cirrus"> 0.70D0 </cldfrc_icecrit>
 
 <cldfrc2m_rhmini               >  0.80D0  </cldfrc2m_rhmini>
-<cldfrc2m_rhmini   unicon="1"  >  0.85D0  </cldfrc2m_rhmini>
 <cldfrc2m_rhmini clubb_sgs="1" >  0.80D0  </cldfrc2m_rhmini>
 
 <cldfrc2m_rhminis               >  1.0D0 </cldfrc2m_rhminis>
-<cldfrc2m_rhminis  unicon="1"   >  0.85D0 </cldfrc2m_rhminis>
 
 <cldfrc2m_rhmaxi                                     >  1.1D0  </cldfrc2m_rhmaxi>
 <cldfrc2m_rhmaxi    clubb_sgs="1"                    >  1.0D0  </cldfrc2m_rhmaxi>
@@ -2756,7 +2767,6 @@
 
 <!-- Cldwat -->
 <rk_strat_icritc                                                        >  5.0e-6  </rk_strat_icritc>
-<rk_strat_icritc  dyn="fv"           unicon="1"                         >  9.5e-6  </rk_strat_icritc>
 <rk_strat_icritc  hgrid="0.23x0.31"                                     > 45.0e-6  </rk_strat_icritc>
 <rk_strat_icritc  hgrid="0.47x0.63"                                     > 45.0e-6  </rk_strat_icritc>
 <rk_strat_icritc  hgrid="0.5x0.625"                                     > 45.0e-6  </rk_strat_icritc>
@@ -2931,7 +2941,7 @@
   'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
   'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
 </scm_relax_fincl>
-<scm_relax_fincl   phys="cam_dev"scam="1"  >
+<scm_relax_fincl   phys="cam7"   scam="1"  >
   'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
   'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
 </scm_relax_fincl>
@@ -3322,6 +3332,10 @@
 <mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
+<!-- With default ATM_NCPL, these next entries do 3 MPAS-A steps per CAM step instead of 2 -->
+<mpas_dt hgrid="mpasa15"      >   80.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa7p5"     >   40.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3p75"    >   20.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -3339,6 +3353,9 @@
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa15">  15000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7p5">  7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3p75"> 3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>

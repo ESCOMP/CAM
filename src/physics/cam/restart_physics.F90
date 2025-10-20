@@ -537,9 +537,8 @@ module restart_physics
      end if
 
      ! Reading the CFLX* components from the restart is optional for
-     ! backwards compatibility.  These fields were not needed for an
-     ! exact restart until the UNICON scheme was added.  More generally,
-     ! these components are only needed if they are not handled by the
+     ! backwards compatibility.
+     ! These components are only needed if they are not handled by the
      ! coupling layer restart (the ".rs." file), and if the values are
      ! used in the tphysbc physics before the tphysac code has a chance
      ! to update the values that are coming from boundary datasets.

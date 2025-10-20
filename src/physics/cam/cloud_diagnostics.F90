@@ -172,8 +172,8 @@ contains
     endif
 
     if(one_mom_clouds) then
-       call addfld ('rel_cloud',(/ 'lev' /),'I','1/meter','effective radius of liq in cloud', sampling_seq=sampling_seq)
-       call addfld ('rei_cloud',(/ 'lev' /),'I','1','effective radius of ice in cloud', sampling_seq=sampling_seq)
+       call addfld ('rel_cloud',(/ 'lev' /),'I','micrometers','effective radius of liq in cloud', sampling_seq=sampling_seq)
+       call addfld ('rei_cloud',(/ 'lev' /),'I','micrometers','effective radius of ice in cloud', sampling_seq=sampling_seq)
     endif
 
     call addfld ('SETLWP',(/ 'lev' /), 'A','gram/m2','Prescribed liquid water path'          , sampling_seq=sampling_seq)

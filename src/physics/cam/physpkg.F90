@@ -1387,6 +1387,8 @@ contains
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
+    use trb_mtn_stress_cam, only: trb_mtn_stress_tend
+    use beljaars_drag_cam,  only: beljaars_drag_tend
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction,  only: rayleigh_friction_run
     use constituents,       only: cnst_get_ind
@@ -1415,7 +1417,6 @@ contains
     use iondrag,            only: iondrag_calc, do_waccm_ions
     use perf_mod
     use flux_avg,           only: flux_avg_run
-    use unicon_cam,         only: unicon_cam_org_diags
     use cam_history,        only: outfld
     use qneg_module,        only: qneg4
     use co2_cycle,          only: co2_cycle_set_ptend
@@ -1660,10 +1661,33 @@ contains
 
     !===================================================
     ! Vertical diffusion/pbl calculation
-    ! Call vertical diffusion code (pbl, free atmosphere and molecular)
     !===================================================
-
     call t_startf('vertical_diffusion_tend')
+
+    !------------------------------------------
+    ! Compute orographic form drag stress
+    ! (Beljaars in CAM6+; TMS in CAM5)
+    !
+    ! Only the pbuf fields are updated in these routines (no ptend)
+    ! The computed stresses are used in the PBL scheme and the vertical diffusion solver
+    ! in the call to vertical_diffusion_tend below.
+    !------------------------------------------
+    if (trim(cam_take_snapshot_before) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+    end if
+
+    call trb_mtn_stress_tend(state, pbuf, cam_in)
+    call beljaars_drag_tend(state, pbuf, cam_in)
+
+    if (trim(cam_take_snapshot_after) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+    end if
+
+    !------------------------------------------
+    ! Call vertical diffusion code (pbl, free atmosphere and molecular)
+    !------------------------------------------
 
     if (trim(cam_take_snapshot_before) == "vertical_diffusion_section") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1675,9 +1699,9 @@ contains
     call vertical_diffusion_tend (ztodt ,state , cam_in, &
          surfric  ,obklen   ,ptend    ,ast    ,pbuf )
 
-   !------------------------------------------
-   ! Call major diffusion for extended model
-   !------------------------------------------
+    !------------------------------------------
+    ! Call major diffusion for extended model
+    !------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
     endif
@@ -1949,23 +1973,6 @@ contains
     !
     call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx), (/1,itim_old/),(/pcols,1/))
 
-    if (shallow_scheme .eq. 'UNICON') then
-
-       ! ------------------------------------------------------------------------
-       ! Insert the organization-related heterogeneities computed inside the
-       ! UNICON into the tracer arrays here before performing advection.
-       ! This is necessary to prevent any modifications of organization-related
-       ! heterogeneities by non convection-advection process, such as
-       ! dry and wet deposition of aerosols, MAM, etc.
-       ! Again, note that only UNICON and advection schemes are allowed to
-       ! changes to organization at this stage, although we can include the
-       ! effects of other physical processes in future.
-       ! ------------------------------------------------------------------------
-
-       call unicon_cam_org_diags(state, pbuf)
-
-    end if
-    !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
@@ -2915,8 +2922,6 @@ contains
        !  . Aerosol wet chemistry determines scavenging fractions, and transformations
        !  . Then do convective transport of all trace species except qv,ql,qi.
        !  . We needed to do the scavenging first to determine the interstitial fraction.
-       !  . When UNICON is used as unified convection, we should still perform
-       !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
        call t_startf('aerosol_wet_processes')

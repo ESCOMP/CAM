@@ -3520,10 +3520,10 @@ Default: 10
 <!-- Moist Convection and Microphysics -->
 
 <entry id="deep_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
+       group="phys_ctl_nl" valid_values="ZM,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
-'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON' or 'pbl=none'
+'off' for none.
+Default: 'ZM' unless using 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
@@ -3550,12 +3550,11 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
- 'UNICON' which doesn't distinquish shallow and deep.
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -3653,18 +3652,6 @@ Default: FALSE
 Logical switch to turn on implicit turbulent surface stress calculation in
 diffusion solver routine.
 Default: set by build-namelist
-</entry>
-
-<entry id="unicon_offline_dat_out" type="logical"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-Produce output for the offline unicon driver.
-Default: .false.
-</entry>
-
-<entry id="unicon_offline_dat_hfile" type="integer"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-History file number for offline unicon driver output.
-Default: 2 (i.e., h1 history file)
 </entry>
 
 <!-- CLUBB PBL Diff nl -->
@@ -5672,7 +5659,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5680,7 +5667,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
