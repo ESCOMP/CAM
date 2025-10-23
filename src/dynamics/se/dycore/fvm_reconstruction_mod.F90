@@ -79,7 +79,7 @@ contains
 
     real (kind=r8), dimension(1-nht:nc+nht,1-nht:nc+nht,3) :: f
 
-    integer :: i,j,in,h,itr
+    integer :: i,j,in,h,itr,k
     integer,               dimension(2,3)                              :: jx,jy
 
     if (present(irecons_actual_in)) then 
@@ -87,7 +87,6 @@ contains
     else
        irecons_actual = irecons
     end if
-    
 
     jx(1,1)=jx_min(1); jx(2,1)=jx_max(1)-1
     jx(1,2)=jx_min(2); jx(2,2)=jx_max(2)-1
@@ -119,42 +118,12 @@ contains
           end do
        end if
        if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#1')
-       if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#2')       
-       !
-       ! fill in non-existent (in physical space) corner values to simplify
-       ! logic in limiter code (min/max operation)
-       !
-       do itr=1,ntrac_in
-          if (llimiter(itr)) then
-             if (cubeboundary>4) then
-                select case(cubeboundary)
-                case (nwest)
-                   do h=1,nhe+1
-                      fcube(0,nc+h  ,k_in,itr) = fcube(1-h,nc  ,k_in,itr)
-                      fcube(1-h,nc+1,k_in,itr) = fcube(1  ,nc+h,k_in,itr)
-                   end do
-                case (swest)
-                   do h=1,nhe+1
-                      fcube(1-h,0,k_in,itr) = fcube(1,1-h,k_in,itr)
-                      fcube(0,1-h,k_in,itr) = fcube(1-h,1,k_in,itr)
-                   end do
-                case (seast)
-                   do h=1,nhe+1
-                      fcube(nc+h,0  ,k_in,itr) = fcube(nc,1-h,k_in,itr)
-                      fcube(nc+1,1-h,k_in,itr) = fcube(nc+h,1,k_in,itr)
-                   end do
-                case (neast)
-                   do h=1,nhe+1
-                      fcube(nc+h,nc+1,k_in,itr) = fcube(nc,nc+h,k_in,itr)
-                      fcube(nc+1,nc+h,k_in,itr) = fcube(nc+h,nc,k_in,itr)
-                   end do
-                end select
-             end if
-             call slope_limiter(nhe,nc,nhc,fcube(:,:,k_in,itr),jx,jy,irecons,recons(:,:,:,itr),&
-                  spherecentroid,&
-                  recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual)
-          end if
-       end do
+       if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#2')
+
+       call slope_limiter(nhe,nc,nhc,fcube,jx,jy,k_in,nlev_in,ntrac_in,irecons,recons,&
+            spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
+            recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual,llimiter,&
+            cubeboundary)
        if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#2')
     end if
     if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#3')
@@ -185,8 +154,6 @@ contains
       end do
     case(6)
       do itr=1,ntrac_in
-!        do j=1-nhe,nc+nhe
-!          do i=1-nhe,nc+nhe
         do in=1,3
           do j=jy(1,in),jy(2,in)
             do i=jx(1,in),jx(2,in)
@@ -331,31 +298,67 @@ contains
   end subroutine get_gradients
 
 
-  subroutine slope_limiter(nhe,nc,nhc,fcube,jx,jy,irecons,recons,spherecentroid,recons_metrics,&
-       vertex_recons_weights,vtx_cart,irecons_actual)
+  subroutine slope_limiter(nhe,nc,nhc,fcube,jx,jy,k,nlev,ntrac,irecons,recons,spherecentroid,recons_metrics,&
+       vertex_recons_weights,vtx_cart,irecons_actual,llimiter,cubeboundary)
     implicit none
-    integer                                                           , intent(in) :: irecons,nhe,nc,nhc,irecons_actual
-    real (kind=r8), dimension(1-nhc:, 1-nhc:)                         , intent(in) :: fcube
-    real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe)      , intent(inout):: recons
+    integer                                                           , intent(in) :: irecons_actual,k,nlev,ntrac
+    integer                                                           , intent(in) :: irecons,nhe,nc,nhc
+    real (kind=r8), dimension(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac)   , intent(inout) :: fcube
+    real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac), intent(inout):: recons
     integer,               dimension(2,3)                             , intent(in) :: jx,jy
     real (kind=r8), dimension(irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)    , intent(in) :: spherecentroid
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)            , intent(in) :: recons_metrics
     real (kind=r8), dimension(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(in) :: vertex_recons_weights
     real (kind=r8), dimension(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)          , intent(in) :: vtx_cart
+    logical,        dimension(ntrac)                                  , intent(in) :: llimiter
+    integer                                                           , intent(in) :: cubeboundary
 
     real (kind=r8):: minval_patch,maxval_patch
     real (kind=r8):: phi, min_val, max_val,disc
+    real (kind=r8):: v1,v2,v3,v4,vx1,vx2,vx3,vx4,vy1,vy2,vy3,vy4,r2,r3,r4,r5,r6,scx,scy,dx,dy,ex1,ex2,f0,val
+    real (kind=r8):: m1,m2,m3
 
     real (kind=r8):: min_phi
     real (kind=r8):: extrema(2), xminmax(2),yminmax(2),extrema_value(13)
 
     real(kind=r8) :: invtmp  ! temporary to pre-compute inverses
-    integer       :: itmp1,itmp2,i,j,in,vertex,n
+    integer       :: itmp1,itmp2,i,j,in,vertex,n,itr,h
 
-!    real (kind=r8), dimension(-1:5) :: diff_value
     real (kind=r8), dimension(-1:1) :: minval_array, maxval_array
     real (kind=r8), parameter :: threshold = 1.0E-40_r8
-    character(len=128)        :: errormsg 
+    character(len=128)        :: errormsg
+    integer :: im1,jm1,ip1,jp1
+           !
+       ! fill in non-existent (in physical space) corner values to simplify
+       ! logic in limiter code (min/max operation)
+       !
+    do itr=1,ntrac
+       if (.not. llimiter(itr)) cycle
+       if (cubeboundary>4) then
+          select case(cubeboundary)
+          case (nwest)
+             do h=1,nhe+1
+                fcube(0,nc+h  ,k,itr) = fcube(1-h,nc  ,k,itr)
+                fcube(1-h,nc+1,k,itr) = fcube(1  ,nc+h,k,itr)
+             end do
+          case (swest)
+             do h=1,nhe+1
+                fcube(1-h,0,k,itr) = fcube(1,1-h,k,itr)
+                fcube(0,1-h,k,itr) = fcube(1-h,1,k,itr)
+             end do
+          case (seast)
+             do h=1,nhe+1
+                fcube(nc+h,0  ,k,itr) = fcube(nc,1-h,k,itr)
+                fcube(nc+1,1-h,k,itr) = fcube(nc+h,1,k,itr)
+             end do
+          case (neast)
+             do h=1,nhe+1
+                fcube(nc+h,nc+1,k,itr) = fcube(nc,nc+h,k,itr)
+                fcube(nc+1,nc+h,k,itr) = fcube(nc+h,nc,k,itr)
+             end do
+          end select
+       end if
+    end do
 
     select case (irecons_actual)
        !
@@ -365,52 +368,51 @@ contains
        do in=1,3
           do j=jy(1,in),jy(2,in)
              do i=jx(1,in),jx(2,in)
-                !rck combined min/max and unrolled inner loop
-                !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
-                !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-                !DIR$ SIMD
-                do itmp2=-1,+1
-                   itmp1 = j+itmp2
-                   minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
-                   maxval_array(itmp2) = max(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
-                enddo
-                minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
-                maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
-                
-                min_phi=1.0_r8
-
-                !
-                ! coordinate bounds (could be pre-computed!)
-                !
-                xminmax(1) = min(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
-                xminmax(2) = max(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
-                yminmax(1) = min(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
-                yminmax(2) = max(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
-                
-                !rck restructured loop
-                !DIR$ SIMD
-                do vertex=1,4
-                  call recons_val_cart_plm(fcube(i,j), vtx_cart(vertex,1,i,j), vtx_cart(vertex,2,i,j), spherecentroid(:,i,j), &
-                       recons(1:3,i,j), extrema_value(vertex))                   
+                do itr = 1, ntrac
+                   if (.not. llimiter(itr)) cycle
+                   !rck combined min/max and unrolled inner loop
+                   !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
+                   !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
+                   !DIR$ SIMD
+                   do itmp2=-1,+1
+                      itmp1 = j+itmp2
+                      minval_array(itmp2) = min(fcube(i-1,itmp1,k,itr),fcube(i,itmp1,k,itr),fcube(i+1,itmp1,k,itr))
+                      maxval_array(itmp2) = max(fcube(i-1,itmp1,k,itr),fcube(i,itmp1,k,itr),fcube(i+1,itmp1,k,itr))
+                   enddo
+                   minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
+                   maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
+                   min_phi=1.0_r8
+                   !
+                   ! coordinate bounds (could be pre-computed!)
+                   !
+                   xminmax(1) = min(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                   xminmax(2) = max(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                   yminmax(1) = min(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                   yminmax(2) = max(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                   !rck restructured loop
+                   !DIR$ SIMD
+                   do vertex=1,4
+                      call recons_val_cart_plm(fcube(i,j,k,itr), vtx_cart(vertex,1,i,j), vtx_cart(vertex,2,i,j), spherecentroid(:,i,j), &
+                           recons(1:3,i,j,itr), extrema_value(vertex))
+                   end do
+                   max_val = MAXVAL(extrema_value(1:4))
+                   min_val = MINVAL(extrema_value(1:4))
+                   if (max_val>maxval_patch.and.abs(max_val-fcube(i,j,k,itr))>threshold) then
+                      phi = (maxval_patch-fcube(i,j,k,itr))/(max_val-fcube(i,j,k,itr))
+                      if (phi<min_phi) min_phi=phi
+                   end if
+                   if (min_val<minval_patch.and.abs(min_val-fcube(i,j,k,itr))>threshold) then
+                      phi = (minval_patch-fcube(i,j,k,itr))/(min_val-fcube(i,j,k,itr))
+                      if (phi<min_phi) min_phi=phi
+                   end if
+                   ! Apply monotone limiter to all reconstruction coefficients
+                   recons(2:3,i,j,itr)=min_phi*recons(2:3,i,j,itr)
                 end do
-                max_val = MAXVAL(extrema_value(1:4))
-                min_val = MINVAL(extrema_value(1:4))
-
-                if (max_val>maxval_patch.and.abs(max_val-fcube(i,j))>threshold) then
-                  phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
-                  if (phi<min_phi) min_phi=phi
-                end if
-                if (min_val<minval_patch.and.abs(min_val-fcube(i,j))>threshold) then
-                  phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
-                  if (phi<min_phi) min_phi=phi
-                end if
-                ! Apply monotone limiter to all reconstruction coefficients
-                recons(2:3,i,j)=min_phi*recons(2:3,i,j)                
-              end do
+             end do
           end do
        end do
        !
-       ! PPM limiter
+       ! PPM limiter (optimized)
        !
     case(6)
        !
@@ -419,127 +421,142 @@ contains
        do in=1,3
           do j=jy(1,in),jy(2,in)
              do i=jx(1,in),jx(2,in)
-                !rck combined min/max and unrolled inner loop
-                !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
-                !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-                !DIR$ SIMD
-                do itmp2=-1,+1
-                   itmp1 = j+itmp2
-                   minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
-                   maxval_array(itmp2) = max(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
-                enddo
-                minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
-                maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
-
-                min_phi=1.0_r8
-                !rck restructured loop
-
-                extrema_value(1:4) = fcube(i,j)
-!DIR$ SIMD
-                do vertex=1,4
-                  do itmp1=1,irecons-1
-                    extrema_value(vertex) = extrema_value(vertex) + &
-                         recons(itmp1+1,i,j)*vertex_recons_weights(vertex,itmp1,i,j)
-                  enddo
-                enddo
-                extrema_value(5:13) = extrema_value(1)
                 !
                 ! coordinate bounds (could be pre-computed!)
                 !
-                xminmax(1) = min(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
-                xminmax(2) = max(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
-                yminmax(1) = min(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
-                yminmax(2) = max(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                vx1 = vtx_cart(1,1,i,j);  vy1 = vtx_cart(1,2,i,j)
+                vx2 = vtx_cart(2,1,i,j);  vy2 = vtx_cart(2,2,i,j)
+                vx3 = vtx_cart(3,1,i,j);  vy3 = vtx_cart(3,2,i,j)
+                vx4 = vtx_cart(4,1,i,j);  vy4 = vtx_cart(4,2,i,j)
+                xminmax(1) = min(vx1,vx2,vx3,vx4)
+                xminmax(2) = max(vx1,vx2,vx3,vx4)
+                yminmax(1) = min(vy1,vy2,vy3,vy4)
+                yminmax(2) = max(vy1,vy2,vy3,vy4)
+                scx = spherecentroid(1,i,j)
+                scy = spherecentroid(2,i,j)
+                m1 = recons_metrics(1,i,j)
+                m2 = recons_metrics(2,i,j)
+                m3 = recons_metrics(3,i,j)
+                im1 = i-1; ip1 = i+1
+                jm1 = j-1; jp1 = j+1
+                do itr = 1, ntrac
+                   if (.not. llimiter(itr)) cycle
+                   !rck combined min/max and unrolled inner loop
+                   !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
+                   !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
+                   minval_patch = min( min( fcube(im1,jm1,k,itr), fcube(i ,jm1,k,itr), fcube(ip1,jm1,k,itr) ), &
+                                       min( fcube(im1,j  ,k,itr), fcube(i ,j  ,k,itr), fcube(ip1,j  ,k,itr) ), &
+                                       min( fcube(im1,jp1,k,itr), fcube(i ,jp1,k,itr), fcube(ip1,jp1,k,itr) ) )
+                   maxval_patch = max( max( fcube(im1,jm1,k,itr), fcube(i ,jm1,k,itr), fcube(ip1,jm1,k,itr) ), &
+                                       max( fcube(im1,j  ,k,itr), fcube(i ,j  ,k,itr), fcube(ip1,j  ,k,itr) ), &
+                                       max( fcube(im1,jp1,k,itr), fcube(i ,jp1,k,itr), fcube(ip1,jp1,k,itr) ) )
+                   min_phi=1.0_r8
 
-                ! Check if the quadratic is minimized within the element
-                ! Extrema in the interior of the element (there might be just one candidate)
-                ! DO NOT NEED ABS here, if disc<0 we have a saddle point (no maximum or minimum)
-                disc =  4.0_r8 * recons(4,i,j) * recons(5,i,j) - recons(6,i,j)**2
-                if (abs(disc) > threshold) then
-                   extrema(1) = recons(6,i,j) * recons(3,i,j) - 2.0_r8 * recons(5,i,j) * recons(2,i,j)
-                   extrema(2) = recons(6,i,j) * recons(2,i,j) - 2.0_r8 * recons(4,i,j) * recons(3,i,j)
-
-                   disc=1.0_r8/disc
-                   extrema(1) = extrema(1) * disc + spherecentroid(1,i,j)
-                   extrema(2) = extrema(2) * disc + spherecentroid(2,i,j)
-                   if ( (extrema(1) - xminmax(1) > -threshold) .and. &    !xmin
-                        (extrema(1) - xminmax(2) <  threshold) .and. &    !xmax
-                        (extrema(2) - yminmax(1) > -threshold) .and. &    !ymin
-                        (extrema(2) - yminmax(2) <  threshold)) then      !ymax
-                      call recons_val_cart(fcube(i,j), extrema(1), extrema(2), spherecentroid(:,i,j), &
-                           recons_metrics(:,i,j), recons(:,i,j), extrema_value(5))
+                   f0  = fcube(i,j,k,itr)
+                   min_val = f0; max_val = f0!initialize min/max
+                   !
+                   ! compute min/max value at cell corners
+                   !DIR$ SIMD
+                   do vertex=1,4
+                      val = f0
+                      do itmp1=1,irecons-1
+                         val = val + recons(itmp1+1,i,j,itr)*vertex_recons_weights(vertex,itmp1,i,j)
+                      enddo
+                      min_val = min(min_val,val)
+                      max_val = max(max_val,val)
+                   enddo
+                   r2 = recons(2,i,j,itr);  r3 = recons(3,i,j,itr)
+                   r4 = recons(4,i,j,itr);  r5 = recons(5,i,j,itr);  r6 = recons(6,i,j,itr)
+                   ! Check if the quadratic is minimized within the element
+                   ! Extrema in the interior of the element (there might be just one candidate)
+                   ! DO NOT NEED ABS here, if disc<0 we have a saddle point (no maximum or minimum)
+                   disc = 4.0_r8 * r4 *r5 - r6*r6
+                   if (abs(disc) > threshold) then
+!not b4b                      ex1 = (r6*r3 - 2.0_r8*r5*r2) / disc + scx
+!not b4b                      ex2 = (r6*r2 - 2.0_r8*r4*r3) / disc + scy
+                      ex1 = (r6*r3 - 2.0_r8*r5*r2)
+                      ex2 = (r6*r2 - 2.0_r8*r4*r3)
+                      disc = 1 /disc
+                      ex1 = ex1*disc+scx
+                      ex2 = ex2*disc+scy
+                     if ( ex1 > xminmax(1)-threshold .and. ex1 < xminmax(2)+threshold .and. &
+                           ex2 > yminmax(1)-threshold .and. ex2 < yminmax(2)+threshold ) then
+                         dx = ex1 - scx; dy = ex2 - scy
+                         v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
+                         max_val = max(max_val, v1)
+                         min_val = min(min_val, v1)
+                      end if
                    endif
-                endif
-                !
-                ! Check all potential minimizer points along element boundaries
-                !
-                if (abs(recons(6,i,j)) > threshold) then
-                   invtmp = 1.0_r8 / (recons(6,i,j) + spherecentroid(2,i,j))
-                   do n=1,2
-                      ! Left edge, intercept with du/dx = 0
-                      extrema(2) = invtmp * (-recons(2,i,j) - 2.0_r8 * recons(4,i,j) * (xminmax(n) - spherecentroid(1,i,j)))
-                      if ((extrema(2) > yminmax(1)-threshold) .and. (extrema(2) < yminmax(2)+threshold)) then
-                         call recons_val_cart(fcube(i,j), xminmax(n), extrema(2), spherecentroid(:,i,j), &
-                              recons_metrics(:,i,j), recons(:,i,j), extrema_value(5+n))
-                      endif
-                   enddo
-                   ! Top/bottom edge, intercept with du/dy = 0
-                   invtmp = 1.0_r8 / recons(6,i,j) + spherecentroid(1,i,j)
-                   do n = 1,2
-                      extrema(1) = invtmp * (-recons(3,i,j) - 2.0_r8 * recons(5,i,j) * (yminmax(n) - spherecentroid(2,i,j)))
-                      if ((extrema(1) > xminmax(1)-threshold) .and. (extrema(1) < xminmax(2)+threshold)) then
-                         call recons_val_cart(fcube(i,j), extrema(1), yminmax(n),spherecentroid(:,i,j), &
-                              recons_metrics(:,i,j), recons(:,i,j), extrema_value(7+n))
-                      endif
-                   enddo
-                endif
-
-                ! Top/bottom edge, y=const., du/dx=0
-                if (abs(recons(4,i,j)) > threshold) then
-                   invtmp = 1.0_r8 / (2.0_r8 * recons(4,i,j))! + spherecentroid(1,i,j)
-                   do n = 1,2
-                      extrema(1) = spherecentroid(1,i,j)+&
-                           invtmp * (-recons(2,i,j) - recons(6,i,j) * (yminmax(n) - spherecentroid(2,i,j)))
-
-                      if ((extrema(1) > xminmax(1)-threshold) .and. (extrema(1) < xminmax(2)+threshold)) then
-                         call recons_val_cart(fcube(i,j), extrema(1), yminmax(n), spherecentroid(:,i,j),&
-                              recons_metrics(:,i,j),recons(:,i,j), extrema_value(9+n))
-                      endif
-                   enddo
-                endif
-                ! Left/right edge, x=const., du/dy=0
-                if (abs(recons(5,i,j)) > threshold) then
-                   invtmp = 1.0_r8 / (2.0_r8 * recons(5,i,j))
-                   do n = 1,2
-                      extrema(2) = spherecentroid(2,i,j)+&
-                           invtmp * (-recons(3,i,j) - recons(6,i,j) * (xminmax(n) - spherecentroid(1,i,j)))
-
-                      if ((extrema(2)>yminmax(1)-threshold) .and. (extrema(2) < yminmax(2)+threshold)) then
-                         call recons_val_cart(fcube(i,j), xminmax(n), extrema(2), spherecentroid(:,i,j), &
-                              recons_metrics(:,i,j), recons(:,i,j), extrema_value(11+n))
-                      endif
-                   enddo
-                endif
-                !rck - combined min/max calculation and unrolled
-                !           max_val = MAXVAL(extrema_value)
-                !           min_val = MINVAL(extrema_value)
-                max_val = extrema_value(13)
-                min_val = extrema_value(13)
-                do itmp1 = 1,12,4
-                   max_val = max(max_val, extrema_value(itmp1),extrema_value(itmp1+1),extrema_value(itmp1+2),extrema_value(itmp1+3))
-                   min_val = min(min_val, extrema_value(itmp1),extrema_value(itmp1+1),extrema_value(itmp1+2),extrema_value(itmp1+3))
-                enddo
-                !rck
-
-                if (max_val>maxval_patch.and.abs(max_val-fcube(i,j))>threshold) then
-                   phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
-                   if (phi<min_phi) min_phi=phi
-                end if
-                if (min_val<minval_patch.and.abs(min_val-fcube(i,j))>threshold) then
-                   phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
-                   if (phi<min_phi) min_phi=phi
-                end if
-                recons(2:6,i,j)=min_phi*recons(2:6,i,j)
+                   !
+                   ! Check all potential minimizer points along element boundaries
+                   !
+                   if (abs(r6) > threshold) then
+                      invtmp = 1.0_r8 / (r6 + scy)
+                      do n=1,2
+                         ! Left edge, intercept with du/dx = 0
+                         ex2 = invtmp * (-r2 - 2.0_r8 * r4 * (xminmax(n) - scx))
+                         if ((ex2 > yminmax(1)-threshold) .and. (ex2 < yminmax(2)+threshold)) then
+                            dx = xminmax(n) - scx; dy = ex2 - scy
+                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
+                            max_val = max(max_val, v1)
+                            min_val = min(min_val, v1)
+                         endif
+                      enddo
+                      !
+                      ! Top/bottom edge, intercept with du/dy = 0
+                      !
+                      invtmp = 1.0_r8 / r6 + scx
+                      do n = 1,2
+                         ex1 = invtmp * (-r3 - 2.0_r8 * r5 * (yminmax(n) - scy))
+                         if ( (ex1 > xminmax(1)-threshold) .and. (ex1 < xminmax(2)+threshold) ) then
+                            dx = ex1 - scx; dy = yminmax(n) - scy
+                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
+                            max_val = max(max_val, v1)
+                            min_val = min(min_val, v1)
+                         endif
+                      enddo
+                   endif
+                   !
+                   ! Top/bottom edge, y=const., du/dx=0
+                   !
+                   if (abs(r4) > threshold) then
+                      invtmp = 1.0_r8 / (2.0_r8 * r4)! + spherecentroid(1,i,j)
+                      do n = 1,2
+                         ex1 = scx+invtmp * (-r2 - r6 * (yminmax(n) - scy))
+                         if ((ex1 > xminmax(1)-threshold) .and. (ex1 < xminmax(2)+threshold)) then
+                            dx = ex1 - scx; dy = yminmax(n) - scy
+                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
+                            max_val = max(max_val, v1)
+                            min_val = min(min_val, v1)
+                         endif
+                      enddo
+                   endif
+                   !
+                   ! Top/bottom edge, y=const., du/dx=0
+                   !
+                   if (abs(r5) > threshold) then
+                      invtmp = 1.0_r8 / (2.0_r8 * r5)! + spherecentroid(1,i,j)
+                      do n = 1,2
+                         ex1 = scy+invtmp * (-r3 - r6 * (xminmax(n) - scx))
+                         if ((ex1 > yminmax(1)-threshold) .and. (ex1 < yminmax(2)+threshold)) then
+                            dx = xminmax(n) - scx; dy = ex1 - scy
+                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
+                            max_val = max(max_val, v1)
+                            min_val = min(min_val, v1)
+                         endif
+                      enddo
+                   endif
+                   !
+                   if (max_val>maxval_patch.and.abs(max_val-fcube(i,j,k,itr))>threshold) then
+                      phi = (maxval_patch-fcube(i,j,k,itr))/(max_val-fcube(i,j,k,itr))
+                      if (phi<min_phi) min_phi=phi
+                   end if
+                   if (min_val<minval_patch.and.abs(min_val-fcube(i,j,k,itr))>threshold) then
+                      phi = (minval_patch-fcube(i,j,k,itr))/(min_val-fcube(i,j,k,itr))
+                      if (phi<min_phi) min_phi=phi
+                   end if
+                   recons(2:6,i,j,itr)=min_phi*recons(2:6,i,j,itr)
+                end do
              end do
           end do
        end do
@@ -549,8 +566,6 @@ contains
     end select
 
   end subroutine slope_limiter
-
-
 
   ! ----------------------------------------------------------------------------------!
   !SUBROUTINE RECONS_VAL_CART-----------------------------------------------CE-for FVM!
@@ -587,7 +602,6 @@ contains
          recons(5) * (pre_computed_metrics(2) + dy*dy) + &
          recons(6) * (pre_computed_metrics(3) + dx*dy)
   END subroutine recons_val_cart
-
     !DIR$ ATTRIBUTES FORCEINLINE :: recons_val_cart_plm
     subroutine recons_val_cart_plm(fcube, cartx, carty, centroid, recons, value)
     implicit none
@@ -642,7 +656,6 @@ contains
     endif
   end subroutine slopelimiter_val
   !END SUBROUTINE SLOPELIMITER_VAL------------------------------------------CE-for FVM!
-
   !DIR$ ATTRIBUTES FORCEINLINE :: dotproduct
   function dotproduct(w,f,ns)
     implicit none
