@@ -23,7 +23,6 @@ module gw_drag_cam
 
   implicit none
   private
-  save
 
 !
 ! PUBLIC: interfaces
@@ -176,8 +175,8 @@ module gw_drag_cam
   ! the "g" variants are used for Meso Gamma and stored in bnd_rdggm_file
   integer, parameter :: prdg = 16
   real(r8), pointer, dimension(:,:)   :: rdg_gbxar, rdg_gbxarg
-  real(r8), pointer, dimension(:,:)   :: rdg_isovar!, rdg_isovarg
-  real(r8), pointer, dimension(:,:)   :: rdg_isowgt!, rdg_isowgtg
+  real(r8), pointer, dimension(:,:)   :: rdg_isovar
+  real(r8), pointer, dimension(:,:)   :: rdg_isowgt
   real(r8), pointer, dimension(:,:,:) :: rdg_hwdth, rdg_hwdthg
   real(r8), pointer, dimension(:,:,:) :: rdg_clngt, rdg_clngtg
   real(r8), pointer, dimension(:,:,:) :: rdg_mxdis, rdg_mxdisg
