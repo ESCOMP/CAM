@@ -614,7 +614,6 @@ subroutine gw_drag_cam_init()
   if(use_gw_convect_dp) then
     call gravity_wave_drag_convection_deep_init( &
       pver                = pver, &
-      pi                  = pi, &
       masterproc          = masterproc, &
       iulog               = iulog, &
       gw_drag_file_dp     = gw_drag_file_loc, &
@@ -629,7 +628,6 @@ subroutine gw_drag_cam_init()
   if(use_gw_convect_sh) then
     call gravity_wave_drag_convection_shallow_init( &
       pver                = pver, &
-      pi                  = pi, &
       masterproc          = masterproc, &
       iulog               = iulog, &
       gw_drag_file_sh     = gw_drag_file_sh_loc, &
