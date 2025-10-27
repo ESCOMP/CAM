@@ -122,16 +122,26 @@ module dust_model
     allocate( dust_dmt_vwr(ndst) )
     allocate( dust_stk_crc(ndst) )
 
+    ! dmleung edited the mass fraction of the emitted dust size distribution. 27 Oct 2025 ++
+    ! The new mass fraction comes from Jun Meng et al. (2022) and MERRA-2. 
+    ! Jun Meng's table indicates 2 % mass for 0.1–1 um and 98 % mass for 1–10 um. 
+    ! ref: https://zenodo.org/records/6344524
+    ! MERRA-2 dust emissions indicate 6 % mass for 0.1–1 um (bin1) and 94 % for 1–10 um (bin2-5).
+    ! dmleung adopts 4 % mass for 0.1–1 um and 96 % mass for 1–10 um for dust tuning.
+    ! Distributing more mass to accumulation mode allows a longer lifetime of dust, reducing
+    ! low dust biases over remote oceans and reducing high dust biases over the Sahara.
+    ! This change impacts both Zender_2003 dust and Leung_2023 dust.
     if ( ntot_amode == 3 ) then
        dust_dmt_grd(:) = (/ 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8/)
-       dust_emis_sclfctr(:) = (/ 0.011_r8,0.989_r8 /)
+       dust_emis_sclfctr(:) = (/ 0.04_r8,0.96_r8 /)
     elseif ( ntot_amode == 4 .or. ntot_amode == 5 ) then
-       dust_dmt_grd(:) = (/ 0.01e-6_r8, 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8 /) ! Aitken dust
-       dust_emis_sclfctr(:) = (/ 1.65E-05_r8, 0.011_r8, 0.989_r8 /) ! Aitken dust
+       dust_dmt_grd(:) = (/ 0.01e-6_r8, 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8 /)
+       dust_emis_sclfctr(:) = (/ 1.65E-05_r8, 0.04_r8, 0.96_r8 /)
     else if( ntot_amode == 7 ) then
        dust_dmt_grd(:) = (/ 0.1e-6_r8, 2.0e-6_r8, 10.0e-6_r8/)
-       dust_emis_sclfctr(:) = (/ 0.13_r8, 0.87_r8 /)
+       dust_emis_sclfctr(:) = (/ 0.12_r8, 0.88_r8 /)
     endif
+    ! dmleung --
 
     ndx = 0
     do mm = 1, ntot_amode
