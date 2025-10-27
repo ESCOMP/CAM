@@ -128,8 +128,23 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
 
    end do
    
-   call addfld('PM25',     (/ 'lev' /), 'A', 'kg/m3', 'PM2.5 concentration')
-   call addfld('PM25_SRF', horiz_only,  'A', 'kg/m3', 'surface PM2.5 concentration')
+   call addfld('PM25',     (/ 'lev' /), 'A', 'kg/m3', 'PM2.5 mass concentration')
+   call addfld('PM25_SRF', horiz_only,  'A', 'kg/m3', 'surface PM2.5 mass concentration')
+   ! dmleung added a few more below, 20 Nov 2023
+   call addfld('PM25_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM2.5 mass mixing ratio')
+   call addfld('PM1_SRF',      horiz_only,  'A', 'kg/m3', 'surface PM1 mass concentration')
+   call addfld('PM1_MMR',      (/ 'lev' /), 'A', 'kg/kg', 'PM1 mass mixing ratio')
+   call addfld('PM10_SRF',      horiz_only,  'A', 'kg/m3', 'surface PM10 mass concentration')
+   call addfld('PM10_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM10 mass mixing ratio')
+   call addfld('PM20_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM20 mass mixing ratio')
+   call addfld('PMTOT_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'total PM mass mixing ratio')
+   call addfld('RHO_AIR',      (/ 'lev' /), 'A', 'kg/m3', 'air density')  ! I know RHO_CLUBB exists. Does this exist?
+
+   call add_default('RHO_AIR', 1, ' ')
+   call add_default('PM25_SRF', 1, ' ')
+   call add_default('PM25_MMR',  1, ' ')
+   call add_default('PM10_MMR',  1, ' ')
+   ! dmleung --
 
    if (is_first_step()) then
       ! initialize fields in physics buffer
@@ -234,7 +249,16 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    real(r8) :: qs(pcols)             ! saturation specific humidity
 
    real(r8) :: pm25(pcols,pver)      ! PM2.5 diagnostics     
-   real(r8) :: rhoair(pcols,pver) 
+   real(r8) :: rhoair(pcols,pver)
+   ! dmleung 20 Oct 2025 ++
+   real(r8) :: pm25_mmr(pcols,pver)      ! PM2.5 mass mixing ratio     dmleung, 20 Nov 2023
+   real(r8) :: pm1(pcols,pver)           ! PM1 mass conc
+   real(r8) :: pm1_mmr(pcols,pver)       ! PM1 mass mixing ratio     dmleung, 20 Nov 2023
+   real(r8) :: pm10(pcols,pver)          ! PM10 mass conc
+   real(r8) :: pm10_mmr(pcols,pver)      ! PM10 mass mixing ratio     dmleung, 20 Nov 2023
+   real(r8) :: pm20_mmr(pcols,pver)      ! PM20 mass mixing ratio
+   real(r8) :: pmtot_mmr(pcols,pver)      ! total PM mass mixing ratio
+   ! dmleung --
 
    character(len=3) :: trnum       ! used to hold mode number (as characters)
    character(len=32) :: spectype
@@ -442,6 +466,15 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    if (list_idx == 0) then
 
       pm25(:,:)=0._r8
+      ! dmleung 20 Oct 2025 ++
+      pm25_mmr(:,:)=0._r8
+      pm1(:,:)=0._r8
+      pm1_mmr(:,:)=0._r8
+      pm10(:,:)=0._r8
+      pm10_mmr(:,:)=0._r8
+      pm20_mmr(:,:)=0._r8
+      pmtot_mmr(:,:)=0._r8
+      ! dmleung --
 
       do m = 1, nmodes
          ! output to history
@@ -455,13 +488,37 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
             do i=1,ncol
                pm25(i,k) = pm25(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
                                                  (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
+               ! dmleung 20 Oct 2025: calculate other PM diagnostics ++
+               pm25_mmr(i,k) = pm25_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM2.5 mass mixing ratio, dmleung
+               pm1(i,k) = pm1(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))
+               pm1_mmr(i,k) = pm1_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM1 mass mixing ratio, dmleung
+               pm10(i,k) = pm10(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))
+               pm10_mmr(i,k) = pm10_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM10 mass mixing ratio, dmleung
+               pm20_mmr(i,k) = pm20_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(20.0e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM20 mass mixing ratio, dmleung
+               pmtot_mmr(i,k) = pmtot_mmr(i,k)+maer(i,k,m)                        ! toal PM mass mixing ratio, dmleung
+               ! dmleung --
             end do
          end do
       end do
 
-      call outfld('PM25',     pm25(:,:),    pcols, lchnk)
-      call outfld('PM25_SRF', pm25(:,pver), pcols, lchnk)
-
+      call outfld('PM25',     pm25(:,:),     pcols, lchnk)
+      call outfld('PM25_SRF', pm25(:,pver),  pcols, lchnk)
+      ! dmleung 20 Oct 2025 added history fields below ++
+      call outfld('PM25_MMR', pm25_mmr(:,:), pcols, lchnk)
+      call outfld('PM1_SRF',  pm1(:,:),  pcols, lchnk)
+      call outfld('PM1_MMR',  pm1_mmr(:,:),  pcols, lchnk)
+      call outfld('PM10_SRF', pm10(:,:),  pcols, lchnk)
+      call outfld('PM10_MMR', pm10_mmr(:,:), pcols, lchnk)
+      call outfld('PM20_MMR', pm20_mmr(:,:), pcols, lchnk)
+      call outfld('PMTOT_MMR',pmtot_mmr(:,:),pcols, lchnk)
+      call outfld('RHO_AIR',  rhoair(:,:),   pcols, lchnk)
+      ! dmleung --
    end if
 
    deallocate(maer, alnsg)
