@@ -575,12 +575,6 @@ subroutine radiation_init(pbuf2d)
                      'Shortwave cloud forcing', sampling_seq='rad_lwsw')
          call addfld('FSUTOA'//diag(icall),   horiz_only,   'A', 'W/m2', &
                      'Upwelling solar flux at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNIRTOA'//diag(icall), horiz_only,   'A', 'W/m2', &
-                     'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNRTOAC'//diag(icall), horiz_only,   'A', 'W/m2', &
-                      'Clearsky net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNRTOAS'//diag(icall), horiz_only,   'A', 'W/m2', &
-                     'Net near-infrared flux (>= 0.7 microns) at top of atmosphere', sampling_seq='rad_lwsw')
          call addfld('FSN200'//diag(icall),   horiz_only,   'A', 'W/m2', &
                      'Net shortwave flux at 200 mb', sampling_seq='rad_lwsw')
          call addfld('FSN200C'//diag(icall),  horiz_only,   'A', 'W/m2', &
@@ -1748,10 +1742,6 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('SWCF'//diag(icall),     ftem,          pcols, lchnk)
 
    call outfld('FSUTOA'//diag(icall),   rd%fsutoa,     pcols, lchnk)
-
-   call outfld('FSNIRTOA'//diag(icall), rd%fsnirt,     pcols, lchnk)
-   call outfld('FSNRTOAC'//diag(icall), rd%fsnrtc,     pcols, lchnk)
-   call outfld('FSNRTOAS'//diag(icall), rd%fsnirtsq,   pcols, lchnk)
 
    call outfld('FSN200'//diag(icall),   rd%fsn200,     pcols, lchnk)
    call outfld('FSN200C'//diag(icall),  rd%fsn200c,    pcols, lchnk)

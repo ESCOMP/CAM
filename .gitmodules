@@ -107,13 +107,6 @@
         fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
-[submodule "cism"]
-path = components/cism
-url = https://github.com/ESCOMP/CISM-wrapper
-fxtag = cismwrap_2_2_010
-fxrequired = ToplevelRequired
-fxDONOTUSEurl = https://github.com/ESCOMP/CISM-wrapper
-
 [submodule "rtm"]
 path = components/rtm
 url = https://github.com/ESCOMP/RTM
