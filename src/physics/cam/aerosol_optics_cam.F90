@@ -652,7 +652,8 @@ contains
     ! total species AOD
     real(r8) :: dustaod(pcols), sulfaod(pcols), bcaod(pcols), &
                 pomaod(pcols), soaaod(pcols), ssltaod(pcols)
-
+    real(r8) :: dustaod0(pcols) ! dust AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
+    real(r8) :: dopaer0(pcols)  ! total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025 
     real(r8) :: aodvisst(pcols) ! stratospheric extinction optical depth
     real(r8) :: aoduvst(pcols)  ! stratospheric extinction optical depth in uv
     real(r8) :: aodnirst(pcols) ! stratospheric extinction optical depth in nir
@@ -660,6 +661,11 @@ contains
     integer :: troplev(pcols)
 
     integer :: i, k
+
+    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025: Dust in reality generates 
+    ! Jasper Kok et al. (2017) FIg. 1D: 20-60 % higher mass extinction efficiency (scattering and absorption) because dust is aspherical. This is currently not captured by 
+    ! a spherical assumption in the optics calculation. So, we create a factor to represent asphericity 
+    ! for now. Asphericity is strong for D > 1 um (coarse mode).
 
     nullify(aero_optics)
 
@@ -700,6 +706,8 @@ contains
 
     aodabsbc = 0.0_r8
     dustaod = 0.0_r8
+    dustaod0 = 0.0_r8   ! dmleung added 20 Oct 2025
+    dopaer0 = 0.0_r8    ! dmleung added 20 Oct 2025
     sulfaod = 0.0_r8
     pomaod = 0.0_r8
     soaaod = 0.0_r8
@@ -790,13 +798,28 @@ contains
                    call init_diags
 
                    column: do icol = 1,ncol
+                      
                       dopaer(icol) = pext(icol)*mass(icol,ilev)
-                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
+
+                      ! dmleung 20 Oct 2025
+                      ! added dust asphericity impacts on enhancing dust AOD. Modified after Longlei Li & Natalie Mahowald (Cornell University).
+                      ! the theory is that coarse-mode dust is aspherical, with ~30 % enhanced extinction compared with spherical coarse-mode dust.
+                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017), Smaller desert dust cooling effect estimated from analysis of dust size and abundance
+
+                      !tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
                       wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)
                       ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
                       call update_diags
+
+                      ! dmleung: update_diags updated dopaer(icol) as a diagnostic. Then, in the following,
+                      ! aerosol optical and radiative properties are subsequently modified with dopaer.
+                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
+                      !wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)
+                      !ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
+                      !fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
+                      ! dmleung --
 
                    end do column
 
@@ -867,19 +890,22 @@ contains
          end if
 
       else if (iwav==idx_sw_diag) then ! vis
-         aodvis(icol) = aodvis(icol) + dopaer(icol)
-         aodabs(icol) = aodabs(icol) + pabs(icol)*mass(icol,ilev)
-         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         absorb(icol,ilev)  = absorb(icol,ilev) + pabs(icol)*air_density(icol,ilev)
-         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
-         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
-         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
 
-         aodbin(icol) = aodbin(icol) + dopaer(icol)
+         ! dmleung moved the following lines to the end of this code block. 20 Oct 2025
 
-         if (ilev<=troplev(icol)) then
-            aodvisst(icol) = aodvisst(icol) + dopaer(icol)
-         end if
+         !aodvis(icol) = aodvis(icol) + dopaer(icol)
+         !aodabs(icol) = aodabs(icol) + pabs(icol)*mass(icol,ilev)
+         !extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+         !absorb(icol,ilev)  = absorb(icol,ilev) + pabs(icol)*air_density(icol,ilev)
+         !ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
+         !asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
+         !asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+         !aodbin(icol) = aodbin(icol) + dopaer(icol)
+
+         !if (ilev<=troplev(icol)) then
+         !   aodvisst(icol) = aodvisst(icol) + dopaer(icol)
+         !end if
 
          ! loop over species ...
 
@@ -929,7 +955,12 @@ contains
 
          if (wetvol(icol,ilev)>1.e-40_r8 .and. vol(icol)>0._r8) then
 
+            ! dmleung edited 20 Oct 2025: scale up dust AOD for coarse mode ++
             dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
+            if (ibin == 3) then
+               dustaodbin(icol) = dustaodbin(icol) * dustaspherical_opts
+            end if
+            ! dmleung --
 
             ! partition optical depth into contributions from each constituent
             ! assume contribution is proportional to refractive index X volume
@@ -942,6 +973,7 @@ contains
                  absdust(icol) + abssslt(icol) + absh2o
             sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
                  hygrodust(icol) + hygrosslt(icol)
+
 
             scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
             absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
@@ -967,7 +999,15 @@ contains
 
 
             aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
-            dustaod(icol) = dustaod(icol) + aodc
+            dustaod(icol) = dustaod(icol) + aodc 
+            ! dmleung 20 Oct 2025 ++
+            ! dmleung edited 20 Oct 2025 for aspherical dust impact on optics: Aspherical dust exists in coarse mode, 
+            ! generating 30 % higher extinction and dust AOD.
+            dustaod0(icol) = dustaod0(icol) + aodc ! dust AOD given spherical dust. The spherical dustaod0 is created to combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
+            if (ibin == 3) then  ! if coarse mode, scale up dust AOD by 30 %.
+               dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust with asphericity effect on thickening AOD.
+            end if
+            ! dmleung --
 
             aodc          = (abssulf(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsulf(icol))*dopaer(icol)
             sulfaod(icol) = sulfaod(icol) + aodc
@@ -985,6 +1025,32 @@ contains
             ssltaod(icol) = ssltaod(icol) + aodc
 
          end if
+
+         ! dmleung 20 Oct 2025 ++
+         ! modify dust AOD, total AOD, and all other diagnostics.
+         dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
+         if (ibin == 3) then    ! if coarse-mode, then adjust asphericity impact on dust AOD and total AOD.
+            dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod(icol)  ! Total AOD accounting for dust asphericity
+         end if
+
+         ! Then, all these diagnostics are outputted based on the modified dust AOD.
+         ! These lines are copied from above, since dopaer has changed.
+         ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the two absorption diagnostics.
+         aodvis(icol) = aodvis(icol) + dopaer(icol)
+         aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol)*dopaer(icol)/dopaer0(icol) ! dmleung
+         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+         absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol)*dopaer(icol)/dopaer0(icol) ! dmleung
+         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
+         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
+         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+         aodbin(icol) = aodbin(icol) + dopaer(icol)
+
+         if (ilev<=troplev(icol)) then
+            aodvisst(icol) = aodvisst(icol) + dopaer(icol)
+         end if
+         ! dmleung --
+
       else if (iwav==idx_nir_diag) then
          aodnir(icol) = aodnir(icol) + dopaer(icol)
          extinctnir(icol,ilev) = extinctnir(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)

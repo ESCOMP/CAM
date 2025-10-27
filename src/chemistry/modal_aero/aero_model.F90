@@ -678,14 +678,35 @@ contains
              dens_aer(1:ncol,:) = wetdens(1:ncol,:,m)
              sg_aer(1:ncol,:) = sigmag_amode(m)
 
-             jvlc = 1
-             call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
-                        vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
-                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk)
-             jvlc = 2
-             call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
-                        vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
-                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk)
+             ! dmleung 20 Oct 2025 ++
+             ! dmleung: adding asphericity effect on slowing down gravitational settling velocity 
+             ! for internally mixed coarse-mode aerosols (Yue Huang et al., 2020)
+             ! Huang et al. (2020) showed that aspherical dust has reduced gravitational settling by 20 %.
+             ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also
+             ! aspherical, dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
+
+             if (m == 3) then   ! Q: coarse mode, should work for mam4/mam5. Is there a way to generalize to mam7?
+                jvlc = 1
+                call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
+                           vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
+                           rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk, aspherical=.True.)
+                jvlc = 2
+                call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
+                           vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
+                           rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk, aspherical=.True.)
+             else  ! dmleung: other modes. no specification of asphericity means aspherical=.False.
+                jvlc = 1
+                call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
+                           vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
+                           rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk)
+                jvlc = 2
+                call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
+                           vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
+                           rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk)
+             end if
+             ! dmleung --
+             
+
           end if
 
           do lspec = 0, nspec_amode(m)+1   ! loop over number + constituents + water
@@ -1443,7 +1464,7 @@ contains
   !===============================================================================
   !===============================================================================
   subroutine modal_aero_depvel_part( ncol, t, pmid, ram1, fv, vlc_dry, vlc_trb, vlc_grv,  &
-                                     radius_part, density_part, sig_part, moment, lchnk )
+                                     radius_part, density_part, sig_part, moment, lchnk, aspherical )   ! dmleung added aspherical flag 20 Oct 2025
 
 !    calculates surface deposition velocity of particles
 !    L. Zhang, S. Gong, J. Padro, and L. Barrie
@@ -1476,6 +1497,7 @@ contains
     real(r8), intent(out) :: vlc_trb(pcols)       !Turbulent deposn velocity (m/s)
     real(r8), intent(out) :: vlc_grv(pcols,pver)       !grav deposn velocity (m/s)
     real(r8), intent(out) :: vlc_dry(pcols,pver)       !dry deposn velocity (m/s)
+    logical,  intent(in), OPTIONAL :: aspherical   ! dmleung: asphericity is strong for coarse-mode interstitial aerosols only, mostly dust and seasalt. For coarse mode aerosols, asphericity reduces coarse-mode gravitational settling velocity by 20 % following Yue Huang et al. (2020). 
     !------------------------------------------------------------------------
 
     !------------------------------------------------------------------------
@@ -1505,6 +1527,9 @@ contains
     real(r8) :: wrk1, wrk2, wrk3
 
     ! constants
+
+     real(r8), parameter :: asphericaldust_drydep = 1.25 ! dmleung added 20 Oct 2025: aspherical dust reduces gravitational settling velocity by 20 %. Yue Huang et al. (2020)
+
     real(r8) gamma(11)      ! exponent of schmidt number
 !   data gamma/0.54d+00,  0.56d+00,  0.57d+00,  0.54d+00,  0.54d+00, &
 !              0.56d+00,  0.54d+00,  0.54d+00,  0.54d+00,  0.56d+00, &
@@ -1572,6 +1597,15 @@ contains
           vlc_grv(i,k) = (4.0_r8/18.0_r8) * radius_moment(i,k)*radius_moment(i,k)*density_part(i,k)* &
                   gravit*slp_crc(i,k) / vsc_dyn_atm(i,k) ![m s-1] Stokes' settling velocity SeP97 p. 466
           vlc_grv(i,k) = vlc_grv(i,k) * dispersion
+
+          ! dmleung edited 20 Oct 2025 based on Longlei Li's edits ++
+          ! asphericity reduces gravitational settling velocity of coarse-mode dust by 20 %.
+          ! scale flag is only true for coarse mode (m == 3).
+          if (present(aspherical) .and. aspherical) then
+             !vlc_grv(i,k) = 0.8_r8 * vlc_grv(i,k)
+             vlc_grv(i,k) = vlc_grv(i,k) / asphericaldust_drydep
+          end if
+          ! dmleung --
 
           vlc_dry(i,k)=vlc_grv(i,k)
        enddo
