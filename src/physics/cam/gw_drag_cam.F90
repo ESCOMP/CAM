@@ -195,7 +195,6 @@ contains
 subroutine gw_drag_cam_readnl(nlfile)
 
   use namelist_utils,  only: find_group_name
-  use units,           only: getunit, freeunit
   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, &
                              mpi_character, mpi_logical, mpi_integer
 
@@ -205,6 +204,7 @@ subroutine gw_drag_cam_readnl(nlfile)
   ! Local variables
   integer :: unitn, ierr
   character(len=*), parameter :: sub = 'gw_drag_cam_readnl'
+  character(len=256) :: errmsg
 
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
@@ -231,17 +231,15 @@ subroutine gw_drag_cam_readnl(nlfile)
   if (use_simple_phys) return
 
   if (masterproc) then
-     unitn = getunit()
-     open( unitn, file=trim(nlfile), status='old' )
+     open( newunit=unitn, file=trim(nlfile), status='old' )
      call find_group_name(unitn, 'gw_drag_nl', status=ierr)
      if (ierr == 0) then
-        read(unitn, gw_drag_nl, iostat=ierr)
+        read(unitn, gw_drag_nl, iostat=ierr, iomsg=errmsg)
         if (ierr /= 0) then
-           call endrun(sub // ':: ERROR reading namelist')
+           call endrun(sub // ':: ERROR reading namelist: ' // errmsg)
         end if
      end if
      close(unitn)
-     call freeunit(unitn)
   end if
 
   call mpi_bcast(pgwv, 1, mpi_integer, mstrid, mpicom, ierr)
@@ -355,18 +353,16 @@ subroutine gw_drag_cam_readnl(nlfile)
        shr_errMsg(__FILE__, __LINE__))
 
   if (use_gw_rdg_gamma .or. use_gw_rdg_beta) then
-     if (masterproc) then
-         unitn = getunit()
-         open( unitn, file=trim(nlfile), status='old' )
+      if (masterproc) then
+         open( newunit=unitn, file=trim(nlfile), status='old' )
          call find_group_name(unitn, 'gw_rdg_nl', status=ierr)
          if (ierr == 0) then
-            read(unitn, gw_rdg_nl, iostat=ierr)
+            read(unitn, gw_rdg_nl, iostat=ierr, iomsg=errmsg)
             if (ierr /= 0) then
-               call endrun(sub // ':: ERROR reading namelist')
+               call endrun(sub // ':: ERROR reading namelist: ' // errmsg)
             end if
          end if
          close(unitn)
-         call freeunit(unitn)
       end if
 
       ! Broadcast the local variables
@@ -598,6 +594,7 @@ subroutine gw_drag_cam_init()
        qbo_hdepth_scaling_in        = gw_qbo_hdepth_scaling, &
        errmsg                       = errmsg, &
        errflg                       = errflg)
+  if(errflg /= 0) call endrun(errmsg)
 
   ! Call the CCPPized initialization subroutines for individual parameterizations.
   if(use_gw_movmtn_pbl) then
