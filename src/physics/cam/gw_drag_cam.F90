@@ -1289,8 +1289,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! pbuf fields
   ! Molecular diffusivity
   real(r8), pointer :: kvt_in(:,:)
-  real(r8) :: kvtt(state%ncol,pver+1)
-  real(r8) :: kvt_gw(state%ncol,pver+1)
+  real(r8) :: kvtt(state%ncol,pverp)
+  real(r8) :: kvt_gw(state%ncol,pverp)
   real(r8) :: sgharr(state%ncol)
 
   ! Frontogenesis
@@ -1312,7 +1312,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: maxq0(pcols)
 
   ! Temporaries for output from individual gw schemes.
-  real(r8) :: ubi(state%ncol, pver+1)! projection of wind at interfaces
+  real(r8) :: ubi(state%ncol, pverp)! projection of wind at interfaces
   real(r8) :: ubm(state%ncol, pver)  ! projection of wind at midpoints
   real(r8) :: xv(state%ncol)         ! unit vector of source wind (x)
   real(r8) :: yv(state%ncol)         ! unit vector of source wind (y)
@@ -1323,30 +1323,30 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! effective gw diffusivity at interfaces needed for output
   ! sum from the two types of spectral GW
-  real(r8) :: egwdffi_tot(pcols,pver+1)
+  real(r8) :: egwdffi_tot(pcols,pverp)
 
   ! Which constituents are being affected by diffusion.
   logical  :: lq(pcnst)
 
   ! Temporaries for profiles from interstitial
   type(Coords1D) :: p
-  real(r8) :: rhoi(pcols, pver+1)
+  real(r8) :: rhoi(pcols, pverp)
   real(r8) :: nm(pcols, pver)
-  real(r8) :: ni(pcols, pver+1)
+  real(r8) :: ni(pcols, pverp)
 
   ! Temporaries for diagnostic outputs.
-  real(r8) :: taurx(state%ncol, pver + 1) ! wave stress in zonal direction
-  real(r8) :: taury(state%ncol, pver + 1) ! wave stress in meridional direction
-  real(r8) :: tauardgx(state%ncol, pver + 1) ! ridge based momentum profile
-  real(r8) :: tauardgy(state%ncol, pver + 1) ! ridge based momentum profile
+  real(r8) :: taurx(state%ncol, pverp) ! wave stress in zonal direction
+  real(r8) :: taury(state%ncol, pverp) ! wave stress in meridional direction
+  real(r8) :: tauardgx(state%ncol, pverp) ! ridge based momentum profile
+  real(r8) :: tauardgy(state%ncol, pverp) ! ridge based momentum profile
   real(r8) :: tau0x(pcols), tau0y(pcols)
-  real(r8) :: taua(pcols, pver+1), tau0(pcols, pver+1)
+  real(r8) :: taua(pcols, pverp), tau0(pcols, pverp)
   real(r8) :: gwut0(pcols, pver)
   ! Reynolds stress for waves propagating in each cardinal direction.
-  real(r8) :: taucd_west (pcols, pver+1)
-  real(r8) :: taucd_east (pcols, pver+1)
-  real(r8) :: taucd_south(pcols, pver+1)
-  real(r8) :: taucd_north(pcols, pver+1)
+  real(r8) :: taucd_west (pcols, pverp)
+  real(r8) :: taucd_east (pcols, pverp)
+  real(r8) :: taucd_south(pcols, pverp)
+  real(r8) :: taucd_north(pcols, pverp)
   real(r8) :: utend1(pcols, pver)
   real(r8) :: utend2(pcols, pver)
   real(r8) :: utend3(pcols, pver)
@@ -1385,7 +1385,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      !--------------------------------------------------------
      ! Initialize and calculate local molecular diffusivity
      !--------------------------------------------------------
-     call pbuf_get_field(pbuf, kvt_idx, kvt_in)  ! kvt_in(1:pcols,1:pver+1)
+     call pbuf_get_field(pbuf, kvt_idx, kvt_in)  ! kvt_in(1:pcols,1:pverp)
      kvtt = kvt_in(:ncol,:)
   else
      kvtt = 0._r8
@@ -1448,23 +1448,23 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        cpair   = cpair, &
        rair    = rair, &
        gravit  = gravit, &
-       pint    = state1%pint(:ncol,:pver+1), &
+       pint    = state1%pint(:ncol,:pverp), &
        t       = state1%t(:ncol,:pver), &
        do_molec_diff = do_molec_diff, &
        nbot_molec = nbot_molec, &
        cpairv  = cpairv(:ncol,:pver,lchnk), &
-       kvt     = kvtt(:ncol,:pver+1), &
+       kvt     = kvtt(:ncol,:pverp), &
        ! below output
        p       = p, &
-       rhoi    = rhoi(:ncol,:pver+1), &
+       rhoi    = rhoi(:ncol,:pverp), &
        nm      = nm(:ncol,:pver), &
-       ni      = ni(:ncol,:pver+1), &
-       egwdffi = egwdffi_tot(:ncol,:pver+1), &
+       ni      = ni(:ncol,:pverp), &
+       egwdffi = egwdffi_tot(:ncol,:pverp), &
        tend_q  = ptend%q(:ncol,:pver,:), &   ! to initialize tendencies.
        tend_u  = ptend%u(:ncol,:pver), &
        tend_v  = ptend%v(:ncol,:pver), &
        tend_s  = ptend%s(:ncol,:pver), &
-       kvt_gw  = kvt_gw(:ncol,:pver+1), &
+       kvt_gw  = kvt_gw(:ncol,:pverp), &
        flx_heat= flx_heat(:ncol), &
        scheme_name = scheme_name, &
        errmsg  = errmsg, &
@@ -1513,7 +1513,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       rhoi                = rhoi(:ncol,:), &
       nm                  = nm(:ncol,:), &
       ni                  = ni(:ncol,:), &
-      kvt_gw              = kvt_gw(:ncol,:pver+1), &
+      kvt_gw              = kvt_gw(:ncol,:pverp), &
       ttend_dp            = ttend_dp_arr(:ncol,:), &
       ttend_clubb         = ttend_clubb(:ncol,:), &
       upwp_clubb          = upwp_clubb_gw(:ncol,:), &
@@ -1533,7 +1533,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       src_level           = src_level(:ncol), &
       tend_level          = tend_level(:ncol), &
       ubm                 = ubm(:ncol,:pver), &
-      ubi                 = ubi(:ncol,:pver+1), &
+      ubi                 = ubi(:ncol,:pverp), &
       xv                  = xv(:ncol), &
       yv                  = yv(:ncol), &
       hdepth              = hdepth(:ncol), &
@@ -1541,10 +1541,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       vtgw                = vtgw(:ncol,:pver), &
       ttgw                = ttgw(:ncol,:pver), &
       qtgw                = qtgw(:ncol,:pver,:pcnst), &
-      egwdffi_tot         = egwdffi_tot(:ncol,:pver+1), &
+      egwdffi_tot         = egwdffi_tot(:ncol,:pverp), &
       dttdf               = dttdf(:ncol,:pver), &
       dttke               = dttke(:ncol,:pver), &
-      tau0                = tau0(:ncol,:pver+1), &
+      tau0                = tau0(:ncol,:pverp), &
       gwut0               = gwut0(:ncol,:pver), &
       usteer              = usteer(:ncol), &
       vsteer              = vsteer(:ncol), &
@@ -1770,9 +1770,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          p                = p, &
          vramp            = vramp, &
          piln             = state1%lnpint(:ncol,:), &
-         rhoi             = rhoi(:ncol,:pver+1), &
+         rhoi             = rhoi(:ncol,:pverp), &
          nm               = nm(:ncol,:pver), &
-         ni               = ni(:ncol,:pver+1), &
+         ni               = ni(:ncol,:pverp), &
          effgw_cm         = effgw_cm, &
          gw_polar_taper   = gw_polar_taper, &
          gw_apply_tndmax  = gw_apply_tndmax, &
@@ -1783,18 +1783,18 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          q                = state1%q(:ncol,:,:), &
          dse              = state1%s(:ncol,:), &
          frontgf          = frontgf(:ncol,:pver), &
-         kvt_gw           = kvt_gw(:ncol,:pver+1), &
+         kvt_gw           = kvt_gw(:ncol,:pverp), &
          ! below input/output (accummulated tendencies)
          tend_q           = ptend%q(:ncol,:,:), &
          tend_u           = ptend%u(:ncol,:), &
          tend_v           = ptend%v(:ncol,:), &
          tend_s           = ptend%s(:ncol,:), &
-         egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
+         egwdffi_tot      = egwdffi_tot(:ncol,:pverp), &
          ! below output
          src_level        = src_level(:ncol), &
          tend_level       = tend_level(:ncol), &
          ubm              = ubm(:ncol,:pver), &
-         ubi              = ubi(:ncol,:pver+1), &
+         ubi              = ubi(:ncol,:pverp), &
          xv               = xv(:ncol), &
          yv               = yv(:ncol), &
          utgw             = utgw(:ncol,:pver), &
@@ -1803,10 +1803,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          qtgw             = qtgw(:ncol,:pver,:), &
          dttdf            = dttdf(:ncol,:pver), &
          dttke            = dttke(:ncol,:pver), &
-         taucd_west       = taucd_west(:ncol,:pver+1), &
-         taucd_east       = taucd_east(:ncol,:pver+1), &
-         taucd_south      = taucd_south(:ncol,:pver+1), &
-         taucd_north      = taucd_north(:ncol,:pver+1), &
+         taucd_west       = taucd_west(:ncol,:pverp), &
+         taucd_east       = taucd_east(:ncol,:pverp), &
+         taucd_south      = taucd_south(:ncol,:pverp), &
+         taucd_north      = taucd_north(:ncol,:pverp), &
          utend1           = utend1(:ncol,:pver), &
          utend2           = utend2(:ncol,:pver), &
          utend3           = utend3(:ncol,:pver), &
@@ -1855,9 +1855,9 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          p                = p, &
          vramp            = vramp, &
          piln             = state1%lnpint(:ncol,:), &
-         rhoi             = rhoi(:ncol,:pver+1), &
+         rhoi             = rhoi(:ncol,:pverp), &
          nm               = nm(:ncol,:pver), &
-         ni               = ni(:ncol,:pver+1), &
+         ni               = ni(:ncol,:pverp), &
          effgw_cm_igw     = effgw_cm_igw, &
          gw_polar_taper   = gw_polar_taper, &
          gw_apply_tndmax  = gw_apply_tndmax, &
@@ -1868,18 +1868,18 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
          q                = state1%q(:ncol,:,:), &
          dse              = state1%s(:ncol,:), &
          frontgf          = frontgf(:ncol,:pver), &
-         kvt_gw           = kvt_gw(:ncol,:pver+1), &
+         kvt_gw           = kvt_gw(:ncol,:pverp), &
          ! below input/output (accummulated tendencies)
          tend_q           = ptend%q(:ncol,:,:), &
          tend_u           = ptend%u(:ncol,:), &
          tend_v           = ptend%v(:ncol,:), &
          tend_s           = ptend%s(:ncol,:), &
-         egwdffi_tot      = egwdffi_tot(:ncol,:pver+1), &
+         egwdffi_tot      = egwdffi_tot(:ncol,:pverp), &
          ! below output
          src_level        = src_level(:ncol), &
          tend_level       = tend_level(:ncol), &
          ubm              = ubm(:ncol,:pver), &
-         ubi              = ubi(:ncol,:pver+1), &
+         ubi              = ubi(:ncol,:pverp), &
          xv               = xv(:ncol), &
          yv               = yv(:ncol), &
          utgw             = utgw(:ncol,:pver), &
@@ -1910,10 +1910,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       rair              = rair, &
       p                 = p, &
       vramp             = vramp(:), &
-      piln              = state1%lnpint(:ncol,:pver+1), &
-      rhoi              = rhoi(:ncol,:pver+1), &
+      piln              = state1%lnpint(:ncol,:pverp), &
+      rhoi              = rhoi(:ncol,:pverp), &
       nm                = nm(:ncol,:pver), &
-      ni                = ni(:ncol,:pver+1), &
+      ni                = ni(:ncol,:pverp), &
       effgw_oro         = effgw_oro, &
       gw_lndscl_sgh     = gw_lndscl_sgh, &
       gw_oro_south_fac  = gw_oro_south_fac, &
@@ -1927,7 +1927,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dse               = state1%s(:ncol,:pver), &
       sgh               = sgharr(:ncol), &
       zm                = state1%zm(:ncol,:pver), &
-      kvt_gw            = kvt_gw(:ncol,:pver+1), &
+      kvt_gw            = kvt_gw(:ncol,:pverp), &
       cpairv            = cpairv(:ncol,:pver,lchnk), &
       tend_q            = ptend%q(:ncol,:pver,:pcnst), &
       tend_u            = ptend%u(:ncol,:pver), &
@@ -1936,7 +1936,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       src_level         = src_level(:ncol), &
       tend_level        = tend_level(:ncol), &
       ubm               = ubm(:ncol,:pver), &
-      ubi               = ubi(:ncol,:pver+1), &
+      ubi               = ubi(:ncol,:pverp), &
       xv                = xv(:ncol), &
       yv                = yv(:ncol), &
       utgw              = utgw(:ncol,:pver), &
@@ -1945,10 +1945,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       qtgw              = qtgw(:ncol,:pver,:), &
       dttdf             = dttdf(:ncol,:pver), &
       dttke             = dttke(:ncol,:pver), &
-      egwdffi_tot       = egwdffi_tot(:ncol,:pver+1), &
+      egwdffi_tot       = egwdffi_tot(:ncol,:pverp), &
       tau0x             = tau0x(:ncol), &
       tau0y             = tau0y(:ncol), &
-      taua              = taua(:ncol,:pver+1), &
+      taua              = taua(:ncol,:pverp), &
       flx_heat          = flx_heat(:ncol), &
       errmsg            = errmsg, &
       errflg            = errflg)
@@ -1995,11 +1995,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dse                     = state1%s(:ncol,:), &
       piln                    = state1%lnpint(:ncol,:), &
       zm                      = state1%zm(:ncol,:), &
-      zi                      = state1%zi(:ncol,:pver+1), &
+      zi                      = state1%zi(:ncol,:pverp), &
       nm                      = nm(:ncol,:), &
-      ni                      = ni(:ncol,:pver+1), &
-      rhoi                    = rhoi(:ncol,:pver+1), &
-      kvt_gw                  = kvt_gw(:ncol,:pver+1), &
+      ni                      = ni(:ncol,:pverp), &
+      rhoi                    = rhoi(:ncol,:pverp), &
+      kvt_gw                  = kvt_gw(:ncol,:pverp), &
       use_gw_rdg_resid        = use_gw_rdg_resid, &
       effgw_rdg_resid         = effgw_rdg_resid, &
       effgw_rdg_beta          = effgw_rdg_beta, &
@@ -2022,10 +2022,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       v_tend                  = ptend%v(:ncol,:pver), &
       ! Output arguments
       flx_heat                = flx_heat(:ncol), &
-      taurx                   = taurx(:ncol,:pver+1), &
-      taury                   = taury(:ncol,:pver+1), &
-      tauardgx                = tauardgx(:ncol,:pver+1), &
-      tauardgy                = tauardgy(:ncol,:pver+1), &
+      taurx                   = taurx(:ncol,:pverp), &
+      taury                   = taury(:ncol,:pverp), &
+      tauardgx                = tauardgx(:ncol,:pverp), &
+      tauardgy                = tauardgy(:ncol,:pverp), &
       utgw                    = utgw(:ncol,:pver), &
       vtgw                    = vtgw(:ncol,:pver), &
       ttgw                    = ttgw(:ncol,:pver), &
@@ -2036,8 +2036,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        call endrun("gravity_wave_drag_ridge_beta_run: " // errmsg)
     endif
 
-     call outfld('TAUGWX', taurx(:,pver+1), ncol, lchnk)
-     call outfld('TAUGWY', taury(:,pver+1), ncol, lchnk)
+     call outfld('TAUGWX', taurx(:,pverp), ncol, lchnk)
+     call outfld('TAUGWY', taury(:,pverp), ncol, lchnk)
      call outfld('UTGWORO', utgw, pcols, lchnk)
      call outfld('VTGWORO', vtgw, pcols, lchnk)
      call outfld('TTGWORO', ttgw, pcols, lchnk)
@@ -2075,11 +2075,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       dse                     = state1%s(:ncol,:), &
       piln                    = state1%lnpint(:ncol,:), &
       zm                      = state1%zm(:ncol,:), &
-      zi                      = state1%zi(:ncol,:pver+1), &
+      zi                      = state1%zi(:ncol,:pverp), &
       nm                      = nm(:ncol,:), &
-      ni                      = ni(:ncol,:pver+1), &
-      rhoi                    = rhoi(:ncol,:pver+1), &
-      kvt_gw                  = kvt_gw(:ncol,:pver+1), &
+      ni                      = ni(:ncol,:pverp), &
+      rhoi                    = rhoi(:ncol,:pverp), &
+      kvt_gw                  = kvt_gw(:ncol,:pverp), &
       effgw_rdg_resid         = effgw_rdg_resid, &
       use_gw_rdg_resid        = use_gw_rdg_resid, &
       effgw_rdg_gamma         = effgw_rdg_gamma, &
@@ -2100,10 +2100,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       v_tend                  = ptend%v(:ncol,:pver), &
       ! Output arguments
       flx_heat                = flx_heat(:ncol), &
-      taurx                   = taurx(:ncol,:pver+1), &
-      taury                   = taury(:ncol,:pver+1), &
-      tauardgx                = tauardgx(:ncol,:pver+1), &
-      tauardgy                = tauardgy(:ncol,:pver+1), &
+      taurx                   = taurx(:ncol,:pverp), &
+      taury                   = taury(:ncol,:pverp), &
+      tauardgx                = tauardgx(:ncol,:pverp), &
+      tauardgy                = tauardgy(:ncol,:pverp), &
       utgw                    = utgw(:ncol,:pver), &
       vtgw                    = vtgw(:ncol,:pver), &
       ttgw                    = ttgw(:ncol,:pver), &
@@ -2114,8 +2114,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        call endrun("gravity_wave_drag_ridge_gamma_run: " // errmsg)
     endif
 
-    call outfld('TAURDGGMX', taurx(:,pver+1), ncol, lchnk)
-    call outfld('TAURDGGMY', taury(:,pver+1), ncol, lchnk)
+    call outfld('TAURDGGMX', taurx(:,pverp), ncol, lchnk)
+    call outfld('TAURDGGMY', taury(:,pverp), ncol, lchnk)
     call outfld('UTRDGGM', utgw, pcols, lchnk)
     call outfld('VTRDGGM', vtgw, pcols, lchnk)
     call outfld('TTGWORO', ttgw, pcols, lchnk)
