@@ -718,13 +718,21 @@ subroutine gw_drag_cam_init()
 
   ! First, initialize the data to zeros to populate default values for unused columns
   allocate(rdg_gbxar(pcols, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_gbxar")
   allocate(rdg_isovar(pcols, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_isovar")
   allocate(rdg_isowgt(pcols, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_isowgt")
   allocate(rdg_hwdth(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_hwdth")
   allocate(rdg_clngt(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_clngt")
   allocate(rdg_mxdis(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_mxdis")
   allocate(rdg_anixy(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_anixy")
   allocate(rdg_angll(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_angll")
 
   rdg_gbxar(:,:) = 0._r8
   rdg_isovar(:,:) = 0._r8
@@ -736,11 +744,17 @@ subroutine gw_drag_cam_init()
   rdg_angll(:,:,:) = 0._r8
 
   allocate(rdg_gbxarg(pcols, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_gbxarg")
   allocate(rdg_hwdthg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_hwdthg")
   allocate(rdg_clngtg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_clngtg")
   allocate(rdg_mxdisg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_mxdisg")
   allocate(rdg_anixyg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_anixyg")
   allocate(rdg_angllg(pcols, prdg, begchunk:endchunk), stat=errflg)
+  if(errflg /= 0) call endrun(sub//": failed to allocate rdg_angllg")
 
   rdg_gbxarg(:,:) = 0._r8
   rdg_hwdthg(:,:,:) = 0._r8
@@ -1106,7 +1120,7 @@ subroutine gw_drag_cam_beres_diag_init(use_gw_convect_dp,use_gw_convect_sh, gw_d
 
   use physconst,       only: pi
   use ref_pres,        only: pref_edge
-  use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history, only: addfld, add_default
   use cam_history_support, only: horiz_only
 
   logical, intent(in)            :: use_gw_convect_dp,use_gw_convect_sh
@@ -1165,10 +1179,7 @@ end subroutine gw_drag_cam_beres_diag_init
 !==============================================================
 subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, plaunch, source)
 
-  use ioFileMod, only: getfil
-  use ref_pres,   only: pref_edge
-  use physics_buffer,   only: pbuf_get_index
-  use cam_history, only: addfld, add_default, register_vector_field
+  use cam_history, only: addfld
   use cam_history_support, only: horiz_only
 
   character(len=*), intent(in) :: file_name
@@ -1227,24 +1238,6 @@ subroutine gw_drag_cam_movmtn_diag_init(use_gw_movmtn_pbl, file_name, psteer, pl
   end if
 
 end subroutine gw_drag_cam_movmtn_diag_init
-!==========================================================================
-
-
-!==========================================================================
-
-! In fact, we'd usually expect PIO errors to abort the run before you can
-! even check the error code. But just in case, use this little assert.
-subroutine handle_pio_error(stat, message)
-  use pio, only: pio_noerr
-  integer, intent(in) :: stat
-  character(len=*) :: message
-
-  call shr_assert(stat == pio_noerr, &
-       "PIO error:"//trim(message)// &
-       shr_errMsg(__FILE__, __LINE__))
-
-end subroutine handle_pio_error
-
 !==========================================================================
 
 subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
@@ -1480,6 +1473,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
        errmsg  = errmsg, &
        errflg  = errflg)
 
+   if(errflg /= 0) then
+      call endrun("gravity_wave_drag_prepare_profiles_run: " // errmsg)
+   endif
+
   dttdf(:,:) = 0._r8
   dttke(:,:) = 0._r8
   utgw(:,:) = 0._r8
@@ -1559,6 +1556,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       xpwp_src            = xpwp_src(:ncol), &
       errmsg              = errmsg, &
       errflg              = errflg)
+
+    if(errflg /= 0) then
+       call endrun("gravity_wave_drag_moving_mountain_run: " // errmsg)
+    endif
 
     !-------------------------------------------------------------
     ! gw_movmtn_src returns wave-relative wind profiles ubm,ubi
@@ -1653,6 +1654,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           errmsg          = errmsg, &
           errflg          = errflg)
 
+    if(errflg /= 0) then
+       call endrun("gravity_wave_drag_convection_deep_run: " // errmsg)
+    endif
+
     call outfld(trim(beres_dp_pf) // 'TTGWSDF', dttdf / cpair, pcols, lchnk)
     call outfld(trim(beres_dp_pf) // 'TTGWSKE', dttke / cpair, pcols, lchnk)
 
@@ -1727,6 +1732,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           dttke           = dttke(:ncol,:pver), &
           errmsg          = errmsg, &
           errflg          = errflg)
+
+    if(errflg /= 0) then
+       call endrun("gravity_wave_drag_convection_shallow_run: " // errmsg)
+    endif
 
     call outfld(trim(beres_sh_pf) // 'TTGWSDF', dttdf / cpair, pcols, lchnk)
     call outfld(trim(beres_sh_pf) // 'TTGWSKE', dttke / cpair, pcols, lchnk)
@@ -2026,6 +2035,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       errmsg                  = errmsg, &
       errflg                  = errflg)
 
+    if(errflg /= 0) then
+       call endrun("gravity_wave_drag_ridge_beta_run: " // errmsg)
+    endif
+
      call outfld('TAUGWX', taurx(:,pver+1), ncol, lchnk)
      call outfld('TAUGWY', taury(:,pver+1), ncol, lchnk)
      call outfld('UTGWORO', utgw, pcols, lchnk)
@@ -2100,14 +2113,18 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
       errmsg                  = errmsg, &
       errflg                  = errflg)
 
-     call outfld('TAURDGGMX', taurx(:,pver+1), ncol, lchnk)
-     call outfld('TAURDGGMY', taury(:,pver+1), ncol, lchnk)
-     call outfld('UTRDGGM', utgw, pcols, lchnk)
-     call outfld('VTRDGGM', vtgw, pcols, lchnk)
-     call outfld('TTGWORO', ttgw, pcols, lchnk)
+    if(errflg /= 0) then
+       call endrun("gravity_wave_drag_ridge_gamma_run: " // errmsg)
+    endif
 
-     call outfld('TAUARDGGAMMAX', tauardgx, ncol, lchnk)
-     call outfld('TAUARDGGAMMAY', tauardgy, ncol, lchnk)
+    call outfld('TAURDGGMX', taurx(:,pver+1), ncol, lchnk)
+    call outfld('TAURDGGMY', taury(:,pver+1), ncol, lchnk)
+    call outfld('UTRDGGM', utgw, pcols, lchnk)
+    call outfld('VTRDGGM', vtgw, pcols, lchnk)
+    call outfld('TTGWORO', ttgw, pcols, lchnk)
+
+    call outfld('TAUARDGGAMMAX', tauardgx, ncol, lchnk)
+    call outfld('TAUARDGGAMMAY', tauardgy, ncol, lchnk)
   end if
 
   ! Call the CCPPized subroutine to clean up
@@ -2115,6 +2132,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     p      = p, &
     errmsg = errmsg, &
     errflg = errflg)
+
+  if(errflg /= 0) then
+     call endrun("gravity_wave_drag_prepare_profiles_timestep_final: " // errmsg)
+  endif
 
   ! Convert the tendencies for the dry constituents to dry air basis.
   do m = 1, pcnst
@@ -2253,223 +2274,6 @@ subroutine gw_spec_addflds(ngwv, dc, prefix, scheme, history_defaults)
   deallocate(cref)
 
 end subroutine gw_spec_addflds
-
-!==========================================================================
-
-! Outputs for spectral waves.
-subroutine gw_spec_outflds(prefix, lchnk, ncol, ngwv, phase_speeds, dc, u, v, xv, yv, &
-     gwut, dttdf, dttke, tau, utgw, vtgw, ttgw, taucd)
-
-  use gw_common, only: west, east, south, north
-
-  ! One-character prefix prepended to output fields.
-  character(len=1), intent(in) :: prefix
-  ! Chunk and number of columns in the chunk.
-  integer, intent(in) :: lchnk
-  integer, intent(in) :: ncol
-  integer, intent(in) :: ngwv
-  ! Wave speeds.
-!jt  type(GWBand), intent(in) :: band
-  ! Wave phase speeds for each column.
-  real(r8), intent(in) :: phase_speeds(ncol,-ngwv:ngwv)
-  real(r8), intent(in) :: dc
-  ! Winds at cell midpoints.
-  real(r8), intent(in) :: u(ncol,pver)
-  real(r8), intent(in) :: v(ncol,pver)
-  ! Unit vector in the direction of wind at source level.
-  real(r8), intent(in) :: xv(ncol)
-  real(r8), intent(in) :: yv(ncol)
-  ! Wind tendency for each wave.
-  real(r8), intent(in) :: gwut(ncol,pver,-ngwv:ngwv)
-  ! Temperature tendencies from diffusion and kinetic energy.
-  real(r8) :: dttdf(ncol,pver)
-  real(r8) :: dttke(ncol,pver)
-  ! Wave Reynolds stress.
-  real(r8), intent(in) :: tau(ncol,-ngwv:ngwv,pver)
-  ! Zonal and meridional total wind tendencies.
-  real(r8), intent(in) :: utgw(ncol,pver)
-  real(r8), intent(in) :: vtgw(ncol,pver)
-  ! Temperature tendencies.
-  real(r8), intent(in) :: ttgw(ncol,pver)
-  ! Reynolds stress for waves propagating in each cardinal direction.
-  real(r8), intent(in) :: taucd(ncol,pver+1,4)
-
-  ! Indices
-  integer :: i, k, l
-  integer :: ix(ncol, -ngwv:ngwv), iy(ncol, -ngwv:ngwv)
-  integer :: iu(ncol), iv(ncol)
-
-  ! Zonal wind tendency, broken up into five bins.
-  real(r8) :: utb(ncol, pver, 5)
-  ! Definition of the bin boundaries.
-  real(r8), parameter :: bounds(4) = (/ -40._r8, -15._r8, &
-       15._r8, 40._r8 /)
-
-  ! Momentum flux in the four cardinal directions.
-  real(r8) :: mf(ncol, pver, 4)
-
-  ! Wave stress in zonal/meridional direction
-  real(r8) :: taux(ncol,-ngwv:ngwv,pver)
-  real(r8) :: tauy(ncol,-ngwv:ngwv,pver)
-
-  ! Temporaries for output
-  real(r8) :: dummyx(ncol,pver)
-  real(r8) :: dummyy(ncol,pver)
-  ! Variable names
-  character(len=10) :: dumc1x, dumc1y
-
-
-  ! Accumulate wind tendencies binned according to phase speed.
-  utb = 0._r8
-
-  ! Find which output bin the phase speed corresponds to.
-  ix = find_bin(phase_speeds)
-
-  ! Put the wind tendency in that bin.
-  do l = -ngwv, ngwv
-     do k = 1, pver
-        do i = 1, ncol
-           utb(i,k,ix(i,l)) = utb(i,k,ix(i,l)) + gwut(i,k,l)
-        end do
-     end do
-  end do
-
-  ! Find just the zonal part.
-  do l = 1, 5
-     do k = 1, pver
-        utb(:, k, l) = utb(:, k, l) * xv
-     end do
-  end do
-
-  call outfld(trim(prefix)//'UTEND1', utb(:,:,1), ncol, lchnk)
-  call outfld(trim(prefix)//'UTEND2', utb(:,:,2), ncol, lchnk)
-  call outfld(trim(prefix)//'UTEND3', utb(:,:,3), ncol, lchnk)
-  call outfld(trim(prefix)//'UTEND4', utb(:,:,4), ncol, lchnk)
-  call outfld(trim(prefix)//'UTEND5', utb(:,:,5), ncol, lchnk)
-
-  ! Output temperature tendencies due to diffusion and from kinetic energy.
-  call outfld(trim(prefix)//'TTGWSDF', dttdf / cpair, ncol, lchnk)
-  call outfld(trim(prefix)//'TTGWSKE', dttke / cpair, ncol, lchnk)
-
-
-  ! Output tau broken down into zonal and meridional components.
-
-  taux = 0._r8
-  tauy = 0._r8
-
-  ! Project phase_speeds, and convert each component to a wavenumber index.
-  ! These are mappings from the wavenumber index of tau to those of taux
-  ! and tauy, respectively.
-  do l=-ngwv,ngwv
-     ix(:,l) = c_to_l(phase_speeds(:,l)*xv)
-     iy(:,l) = c_to_l(phase_speeds(:,l)*yv)
-  end do
-
-  ! Find projection of tau.
-  do k = 1, pver
-     do l = -ngwv,ngwv
-        do i = 1, ncol
-           taux(i,ix(i,l),k) = taux(i,ix(i,l),k) &
-                + abs(tau(i,l,k)*xv(i))
-           tauy(i,iy(i,l),k) = tauy(i,iy(i,l),k) &
-                + abs(tau(i,l,k)*yv(i))
-        end do
-     end do
-  end do
-
-  do l=-ngwv,ngwv
-
-     dummyx = taux(:,l,:)
-     dummyy = tauy(:,l,:)
-
-     dumc1x = tau_fld_name(l, prefix, x_not_y=.true.)
-     dumc1y = tau_fld_name(l, prefix, x_not_y=.false.)
-
-     call outfld(dumc1x,dummyx,ncol,lchnk)
-     call outfld(dumc1y,dummyy,ncol,lchnk)
-
-  enddo
-
-
-  ! Output momentum flux in each cardinal direction.
-  mf = 0._r8
-
-  do k = 1, pver
-
-     ! Convert wind speed components to wavenumber indices.
-     iu = c_to_l(u(:,k))
-     iv = c_to_l(v(:,k))
-
-     ! Sum tau components in each cardinal direction.
-     ! Split west/east and north/south based on whether wave speed exceeds
-     ! wind speed.
-     do l = -ngwv, ngwv
-
-        where (iu > l)
-           mf(:,k,west) = mf(:,k,west) + taux(:,l,k)
-        elsewhere
-           mf(:,k,east) = mf(:,k,east) + taux(:,l,k)
-        end where
-
-        where (iv > l)
-           mf(:,k,south) = mf(:,k,south) + tauy(:,l,k)
-        elsewhere
-           mf(:,k,north) = mf(:,k,north) + tauy(:,l,k)
-        end where
-
-     end do
-
-  end do
-
-  call outfld(trim(prefix)//'WMF',mf(:,:,west),ncol,lchnk)
-  call outfld(trim(prefix)//'EMF',mf(:,:,east),ncol,lchnk)
-  call outfld(trim(prefix)//'SMF',mf(:,:,south),ncol,lchnk)
-  call outfld(trim(prefix)//'NMF',mf(:,:,north),ncol,lchnk)
-
-  ! Simple output fields written to history file.
-  ! Total wind tendencies.
-  call outfld (trim(prefix)//'UTGWSPEC', utgw , ncol, lchnk)
-  call outfld (trim(prefix)//'VTGWSPEC', vtgw , ncol, lchnk)
-  call outfld (trim(prefix)//'TTGWSPEC', ttgw , ncol, lchnk)
-
-  ! Tau in each direction.
-  call outfld (trim(prefix)//'TAUE', taucd(:,:,east), ncol, lchnk)
-  call outfld (trim(prefix)//'TAUW', taucd(:,:,west), ncol, lchnk)
-  call outfld (trim(prefix)//'TAUN', taucd(:,:,north), ncol, lchnk)
-  call outfld (trim(prefix)//'TAUS', taucd(:,:,south), ncol, lchnk)
-
-  call outfld (trim(prefix)//'TAUNET', taucd(:,:,east)+taucd(:,:,west), &
-       ncol, lchnk)
-
-contains
-
-  ! Given a value, finds which bin marked by "bounds" the value falls
-  ! into.
-  elemental function find_bin(val) result(idx)
-    real(r8), intent(in) :: val
-
-    integer :: idx
-
-    ! We just have to count how many bounds are exceeded.
-    if (val >= 0._r8) then
-       idx = count(val > bounds) + 1
-    else
-       idx = count(val >= bounds) + 1
-    end if
-
-  end function find_bin
-
-  ! Convert a speed to a wavenumber between -ngwv and ngwv.
-  elemental function c_to_l(c) result(l)
-    real(r8), intent(in) :: c
-
-    integer :: l
-
-    l = min( max(int(c/dc),-ngwv), ngwv )
-
-  end function c_to_l
-
-end subroutine gw_spec_outflds
 
 !==========================================================================
 
