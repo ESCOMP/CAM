@@ -203,7 +203,7 @@ subroutine gw_drag_cam_readnl(nlfile)
   ! Local variables
   integer :: unitn, ierr
   character(len=*), parameter :: sub = 'gw_drag_cam_readnl'
-  character(len=256) :: errmsg
+  character(len=cl) :: errmsg
 
   namelist /gw_drag_nl/ pgwv, gw_dc, pgwv_long, gw_dc_long, tau_0_ubc, &
        effgw_beres_dp, effgw_beres_sh, effgw_cm, effgw_cm_igw, effgw_oro, &
