@@ -593,7 +593,7 @@ subroutine gw_drag_cam_init()
        qbo_hdepth_scaling_in        = gw_qbo_hdepth_scaling, &
        errmsg                       = errmsg, &
        errflg                       = errflg)
-  if(errflg /= 0) call endrun(errmsg)
+  if(errflg /= 0) call endrun("gravity_wave_drag_common_init: " // errmsg)
 
   ! Call the CCPPized initialization subroutines for individual parameterizations.
   if(use_gw_movmtn_pbl) then
