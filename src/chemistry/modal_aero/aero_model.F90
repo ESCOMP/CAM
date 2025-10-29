@@ -562,6 +562,7 @@ contains
     use modal_aero_data,   only: lmassptr_amode
     use modal_aero_data,   only: lmassptrcw_amode
     use aero_deposition_cam,only: aero_deposition_cam_setdry
+    use modal_aero_data,   only: ntot_amode  ! dmleung use this to determine the coarse mode for different MAM versions.  29 Oct 2025
 
   ! args
     type(physics_state),    intent(in)    :: state     ! Physics state variables
@@ -685,7 +686,7 @@ contains
              ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also
              ! aspherical, dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
 
-             if (m == 3) then   ! Q: coarse mode, should work for mam4/mam5. Is there a way to generalize to mam7?
+             if (m == ntot_amode) then   ! Q: coarse mode, should work for mam4/mam5. Is there a way to generalize to mam7?
                 jvlc = 1
                 call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                            vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
@@ -1528,7 +1529,7 @@ contains
 
     ! constants
 
-     real(r8), parameter :: asphericaldust_drydep = 1.25 ! dmleung added 20 Oct 2025: aspherical dust reduces gravitational settling velocity by 20 %. Yue Huang et al. (2020)
+     real(r8), parameter :: asphericaldust_drydep = 0.8_r8 ! dmleung added 20 Oct 2025: aspherical dust reduces gravitational settling velocity by 20 %. Yue Huang et al. (2020)
 
     real(r8) gamma(11)      ! exponent of schmidt number
 !   data gamma/0.54d+00,  0.56d+00,  0.57d+00,  0.54d+00,  0.54d+00, &
@@ -1602,7 +1603,7 @@ contains
           ! asphericity reduces gravitational settling velocity of coarse-mode dust by 20 %.
           ! scale flag is only true for coarse mode (m == 3).
           if (present(aspherical) .and. aspherical) then
-             vlc_grv(i,k) = vlc_grv(i,k) / asphericaldust_drydep
+             vlc_grv(i,k) = vlc_grv(i,k) * asphericaldust_drydep
           end if
           ! dmleung --
 

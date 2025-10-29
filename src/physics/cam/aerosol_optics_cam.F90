@@ -31,6 +31,8 @@ module aerosol_optics_cam
   use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
   use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
 
+  use modal_aero_data,  only: ntot_amode  ! dmleung use this to determine the coarse mode for different MAM versions. 29 Oct 2025
+
   implicit none
 
   private
@@ -982,11 +984,11 @@ contains
             ! generating 30 % higher extinction and dust AOD.
             dustaod0(icol) = dustaod0(icol) + aodc ! dust AOD given spherical dust. The spherical dustaod0 is created to 
             ! combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
-            if (ibin == 3) then  ! if coarse mode, scale up dust AOD by 30 %.
+            dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
+            if (modal_active .and. ibin == ntot_amode) then  ! if MAM and coarse mode, scale up dust AOD by 30 %.
                dustaodbin(icol) = dustaodbin(icol) * dustaspherical_opts ! update mode/bin-specific dust AOD
                dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust 
                !with asphericity effect on thickening AOD.
-               dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
                dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod(icol)  ! Total AOD accounting for dust asphericity
             end if
             ! dmleung --
