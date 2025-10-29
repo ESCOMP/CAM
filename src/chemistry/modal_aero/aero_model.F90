@@ -1602,7 +1602,6 @@ contains
           ! asphericity reduces gravitational settling velocity of coarse-mode dust by 20 %.
           ! scale flag is only true for coarse mode (m == 3).
           if (present(aspherical) .and. aspherical) then
-             !vlc_grv(i,k) = 0.8_r8 * vlc_grv(i,k)
              vlc_grv(i,k) = vlc_grv(i,k) / asphericaldust_drydep
           end if
           ! dmleung --
