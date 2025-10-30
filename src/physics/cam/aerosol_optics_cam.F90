@@ -18,7 +18,7 @@ module aerosol_optics_cam
   use tropopause, only : tropopause_findChemTrop
   use wv_saturation, only: qsat
 
-  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use modal_aerosol_properties_mod, only: modal_aerosol_properties
   use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
@@ -30,8 +30,7 @@ module aerosol_optics_cam
   use refractive_aerosol_optics_mod, only: refractive_aerosol_optics
   use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
   use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
-
-  use modal_aero_data,  only: ntot_amode  ! dmleung use this to determine the coarse mode for different MAM versions. 29 Oct 2025
+  use rad_constituents, only: rad_cnst_get_info
 
   implicit none
 
@@ -128,7 +127,6 @@ contains
 
   !===============================================================================
   subroutine aerosol_optics_cam_init
-    use rad_constituents, only: rad_cnst_get_info
     use phys_control,     only: phys_getopts
     use ioFileMod,        only: getfil
 
@@ -563,8 +561,10 @@ contains
     integer :: icol, istat
     integer :: lchnk, ncol
 
-    integer :: n_coarse_dust ! dmleung added n_coarse_dust to determine the index for the 
-    ! coarse dust mode for different MAM versions. 29 Oct 2025
+    integer :: nmodes=0
+    character(len=aero_name_len) :: modetype
+    integer :: n_coarse_dust = -1 ! dmleung added n_coarse_dust to determine the index for the
+                                  ! coarse dust mode for different MAM versions. 29 Oct 2025
 
     type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
                                                      ! multiple aerosol representations in the same sim
@@ -658,7 +658,7 @@ contains
     real(r8) :: dustaod(pcols), sulfaod(pcols), bcaod(pcols), &
                 pomaod(pcols), soaaod(pcols), ssltaod(pcols)
     real(r8) :: dustaod0(pcols) ! dust AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
-    real(r8) :: dopaer0(pcols)  ! total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025 
+    real(r8) :: dopaer0(pcols)  ! total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
     real(r8) :: aodvisst(pcols) ! stratospheric extinction optical depth
     real(r8) :: aoduvst(pcols)  ! stratospheric extinction optical depth in uv
     real(r8) :: aodnirst(pcols) ! stratospheric extinction optical depth in nir
@@ -667,10 +667,10 @@ contains
 
     integer :: i, k
 
-    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025: Dust in reality generates 
-    ! Jasper Kok et al. (2017) Fig. 1d: 20-60 % higher mass extinction efficiency (scattering and absorption) 
+    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025: Dust in reality generates
+    ! Jasper Kok et al. (2017) Fig. 1d: 20-60 % higher mass extinction efficiency (scattering and absorption)
     ! because dust is aspherical. This is currently not captured by a spherical assumption in the optical calculation
-    ! (the look up table is taken from the mode_defs namelist variable). So, we create a factor to represent 
+    ! (the look up table is taken from the mode_defs namelist variable). So, we create a factor to represent
     ! asphericity for now. Asphericity is strong for D > 1 um (coarse mode).
 
     nullify(aero_optics)
@@ -754,23 +754,24 @@ contains
        call endrun(prefix//'array allocation error: pasm')
     end if
 
+    n_coarse_dust = -1
+    if (modal_active) then
+       call rad_cnst_get_info(list_idx, nmodes=nmodes)
+       ! determine coarse dust mode number
+       do ibin = 1,nmodes
+          call rad_cnst_get_info(list_idx, ibin, mode_type=modetype)
+          if (modetype=='coarse' .or. modetype=='coarse_dust') then
+             n_coarse_dust = ibin
+          end if
+       end do
+    end if
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
        aerostate => aero_state(iaermod)%obj
 
        nbins=aeroprops%nbins(list_idx)
-
-       ! dmleung 29 Oct 2025 ++
-       ! determines which mode is the coarse dust mode given a MAM version
-       if (modal_active) then
-          if (ntot_amode == 4 .or. ntot_amode == 5) then ! if MAM4/MAM5
-             n_coarse_dust = 3   ! the 3rd mode is the coarse dust mode
-          else if (ntot_amode == 3 .or. ntot_amode == 7) then ! if MAM3/MAM7
-             n_coarse_dust = 2   ! the 2nd mode is the coarse dust mode
-          end if
-       end if
-       ! dmleung --
 
        sulfwtpct(:ncol,:pver) = aerostate%wgtpct(ncol,pver)
        call outfld('SULFWTPCT', sulfwtpct(1:ncol,:), ncol, lchnk)
@@ -810,14 +811,14 @@ contains
 
                 vertical: do ilev = 1, pver
 
-                   ! The function sw_props combines the Mie theory-generated lookup table and the volume-averaged refractive index to generate 
+                   ! The function sw_props combines the Mie theory-generated lookup table and the volume-averaged refractive index to generate
                    ! optical/radiative properties (pext, pabs, palb, pasm) of the aerosol mixture in this mode/bin.
                    call aero_optics%sw_props(ncol, ilev, iwav, pext, pabs, palb, pasm )
 
                    call init_diags
 
                    column: do icol = 1,ncol
-                      
+
                       dopaer(icol) = pext(icol)*mass(icol,ilev)     ! aerosol optical depth of layer ilev
 
                       ! dmleung 20 Oct 2025 ++
@@ -967,7 +968,6 @@ contains
             sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
                  hygrodust(icol) + hygrosslt(icol)
 
-
             scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
             absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
 
@@ -992,17 +992,17 @@ contains
 
 
             aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
-            dustaod(icol) = dustaod(icol) + aodc 
+            dustaod(icol) = dustaod(icol) + aodc
             ! dmleung 20 Oct 2025 ++
-            ! dmleung edited 20 Oct 2025 for aspherical dust impact on optics: Aspherical dust exists in coarse mode, 
+            ! dmleung edited 20 Oct 2025 for aspherical dust impact on optics: Aspherical dust exists in coarse mode,
             ! generating 30 % higher extinction and dust AOD.
-            dustaod0(icol) = dustaod0(icol) + aodc ! dust AOD given spherical dust. The spherical dustaod0 is created to 
+            dustaod0(icol) = dustaod0(icol) + aodc ! dust AOD given spherical dust. The spherical dustaod0 is created to
             ! combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
             dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
             if (modal_active .and. ibin == n_coarse_dust) then  ! if MAM and coarse dust mode, scale up dust AOD by 30 %.
             ! n_coarse_dust is 3 for MAM4/MAM5, and is 2 for MAM3/MAM7.
                dustaodbin(icol) = dustaodbin(icol) * dustaspherical_opts ! update mode/bin-specific dust AOD
-               dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust 
+               dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust
                !with asphericity effect on thickening AOD.
                dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod(icol)  ! Total AOD accounting for dust asphericity
             end if

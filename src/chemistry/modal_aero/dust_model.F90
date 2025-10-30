@@ -123,11 +123,11 @@ module dust_model
     allocate( dust_stk_crc(ndst) )
 
     ! dmleung edited the mass fraction of the emitted dust size distribution. 27 Oct 2025 ++
-    ! The new mass fraction comes from Jun Meng et al. (2022) and MERRA-2. 
-    ! Jun Meng's table indicates 2.1 % mass for 0.1–1 um and 97.9 % mass for 1–10 um. 
+    ! The new mass fraction comes from Jun Meng et al. (2022) and MERRA-2.
+    ! Jun Meng's table indicates 2.1 % mass for 0.1-1 um and 97.9 % mass for 1-10 um.
     ! ref: https://zenodo.org/records/6344524
-    ! MERRA-2 dust emissions indicate 6 % mass for 0.1–1 um (bin1) and 94 % for 1–10 um (bin2-5).
-    ! dmleung adopts 2.1 % mass for 0.1–1 um and 97.9 % mass for 1–10 um for dust.
+    ! MERRA-2 dust emissions indicate 6 % mass for 0.1-1 um (bin1) and 94 % for 1-10 um (bin2-5).
+    ! dmleung adopts 2.1 % mass for 0.1-1 um and 97.9 % mass for 1-10 um for dust.
     ! Distributing more mass to accumulation mode allows a longer lifetime of dust, reducing
     ! low dust biases over remote oceans and reducing high dust biases over the Sahara.
     ! This change impacts both Zender_2003 dust and Leung_2023 dust.
