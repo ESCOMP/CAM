@@ -136,7 +136,6 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
    call addfld('PM1_MMR',      (/ 'lev' /), 'A', 'kg/kg', 'PM1 mass mixing ratio')
    call addfld('PM10_SRF',      horiz_only,  'A', 'kg/m3', 'surface PM10 mass concentration')
    call addfld('PM10_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM10 mass mixing ratio')
-   call addfld('PM20_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'PM20 mass mixing ratio')
    call addfld('PMTOT_MMR',     (/ 'lev' /), 'A', 'kg/kg', 'total PM mass mixing ratio')
    call addfld('RHO_AIR',      (/ 'lev' /), 'A', 'kg/m3', 'air density')  ! I know RHO_CLUBB exists. Does this exist?
 
@@ -256,7 +255,6 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    real(r8) :: pm1_mmr(pcols,pver)       ! PM1 mass mixing ratio     dmleung, 20 Nov 2023
    real(r8) :: pm10(pcols,pver)          ! PM10 mass conc
    real(r8) :: pm10_mmr(pcols,pver)      ! PM10 mass mixing ratio     dmleung, 20 Nov 2023
-   real(r8) :: pm20_mmr(pcols,pver)      ! PM20 mass mixing ratio
    real(r8) :: pmtot_mmr(pcols,pver)      ! total PM mass mixing ratio
    ! dmleung --
 
@@ -492,15 +490,13 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
                pm25_mmr(i,k) = pm25_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
                                                  (2._r8**0.5_r8*alnsg(m)))))    ! PM2.5 mass mixing ratio, dmleung
                pm1(i,k) = pm1(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))
+                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
                pm1_mmr(i,k) = pm1_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(1.0e-6_r8/dgncur_a(i,k,m))/ &
                                                  (2._r8**0.5_r8*alnsg(m)))))    ! PM1 mass mixing ratio, dmleung
                pm10(i,k) = pm10(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))
+                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
                pm10_mmr(i,k) = pm10_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(10.0e-6_r8/dgncur_a(i,k,m))/ &
                                                  (2._r8**0.5_r8*alnsg(m)))))    ! PM10 mass mixing ratio, dmleung
-               pm20_mmr(i,k) = pm20_mmr(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(20.0e-6_r8/dgncur_a(i,k,m))/ &
-                                                 (2._r8**0.5_r8*alnsg(m)))))    ! PM20 mass mixing ratio, dmleung
                pmtot_mmr(i,k) = pmtot_mmr(i,k)+maer(i,k,m)                        ! toal PM mass mixing ratio, dmleung
                ! dmleung --
             end do
@@ -515,7 +511,6 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
       call outfld('PM1_MMR',  pm1_mmr(:,:),  pcols, lchnk)
       call outfld('PM10_SRF', pm10(:,:),  pcols, lchnk)
       call outfld('PM10_MMR', pm10_mmr(:,:), pcols, lchnk)
-      call outfld('PM20_MMR', pm20_mmr(:,:), pcols, lchnk)
       call outfld('PMTOT_MMR',pmtot_mmr(:,:),pcols, lchnk)
       call outfld('RHO_AIR',  rhoair(:,:),   pcols, lchnk)
       ! dmleung --

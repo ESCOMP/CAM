@@ -563,6 +563,9 @@ contains
     integer :: icol, istat
     integer :: lchnk, ncol
 
+    integer :: n_coarse_dust ! dmleung added n_coarse_dust to determine the index for the 
+    ! coarse dust mode for different MAM versions. 29 Oct 2025
+
     type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
                                                      ! multiple aerosol representations in the same sim
                                                      ! such as MAM and CARMA
@@ -757,6 +760,17 @@ contains
        aerostate => aero_state(iaermod)%obj
 
        nbins=aeroprops%nbins(list_idx)
+
+       ! dmleung 29 Oct 2025 ++
+       ! determines which mode is the coarse dust mode given a MAM version
+       if (modal_active) then
+          if (ntot_amode == 4 .or. ntot_amode == 5) then ! if MAM4/MAM5
+             n_coarse_dust = 3   ! the 3rd mode is the coarse dust mode
+          else if (ntot_amode == 3 .or. ntot_amode == 7) then ! if MAM3/MAM7
+             n_coarse_dust = 2   ! the 2nd mode is the coarse dust mode
+          end if
+       end if
+       ! dmleung --
 
        sulfwtpct(:ncol,:pver) = aerostate%wgtpct(ncol,pver)
        call outfld('SULFWTPCT', sulfwtpct(1:ncol,:), ncol, lchnk)
@@ -985,7 +999,8 @@ contains
             dustaod0(icol) = dustaod0(icol) + aodc ! dust AOD given spherical dust. The spherical dustaod0 is created to 
             ! combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
             dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
-            if (modal_active .and. ibin == ntot_amode) then  ! if MAM and coarse mode, scale up dust AOD by 30 %.
+            if (modal_active .and. ibin == n_coarse_dust) then  ! if MAM and coarse dust mode, scale up dust AOD by 30 %.
+            ! n_coarse_dust is 3 for MAM4/MAM5, and is 2 for MAM3/MAM7.
                dustaodbin(icol) = dustaodbin(icol) * dustaspherical_opts ! update mode/bin-specific dust AOD
                dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust 
                !with asphericity effect on thickening AOD.

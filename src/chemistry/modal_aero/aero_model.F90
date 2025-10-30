@@ -592,6 +592,9 @@ contains
     integer :: mm                      ! tracer index
     integer :: i
 
+    integer :: n_coarse_dust ! dmleung added n_coarse_dust to determine the index for the 
+    ! coarse dust mode for different MAM versions. 29 Oct 2025
+
     real(r8) :: tvs(pcols,pver)
     real(r8) :: rho(pcols,pver)      ! air density in kg/m3
     real(r8) :: sflx(pcols)          ! deposition flux
@@ -653,16 +656,23 @@ contains
     rad_drop(:,:) = 5.0e-6_r8
     dens_drop(:,:) = rhoh2o
     sg_drop(:,:) = 1.46_r8
-    jvlc = 3
+    jvlc = 3    ! dmleung: jvlc = 3, moment = 0 => dry dep velocity for number of cloud-borne aerosols
     call modal_aero_depvel_part( ncol,state%t(:,:), state%pmid(:,:), ram1, fv,  &
                      vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                      rad_drop(:,:), dens_drop(:,:), sg_drop(:,:), 0, lchnk)
-    jvlc = 4
+    jvlc = 4    ! jvlc = 4, moment = 3 => dry dep velocity for vol/mass of cloud-borne aerosols
     call modal_aero_depvel_part( ncol,state%t(:,:), state%pmid(:,:), ram1, fv,  &
                      vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                      rad_drop(:,:), dens_drop(:,:), sg_drop(:,:), 3, lchnk)
 
-
+    ! dmleung 29 Oct 2025 ++
+    ! determines which mode is the coarse dust mode given a MAM version
+    if (ntot_amode == 4 .or. ntot_amode == 5) then ! if MAM4/MAM5
+       n_coarse_dust = 3   ! the 3rd mode is the coarse dust mode
+    else if (ntot_amode == 3 .or. ntot_amode == 7) then ! if MAM3/MAM7
+       n_coarse_dust = 2   ! the 2nd mode is the coarse dust mode
+    end if
+    ! dmleung --
 
     do m = 1, ntot_amode   ! main loop over aerosol modes
 
@@ -685,12 +695,13 @@ contains
              ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also aspherical,
              ! for now dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
 
-             if (m == ntot_amode) then ! dmleung: if coarse mode use aspherical=True. This works for different MAM versions.
-                jvlc = 1
+             if (m == n_coarse_dust) then ! dmleung: if coarse dust mode use aspherical=True. 
+             ! This works for different MAM versions.
+                jvlc = 1   ! dmleung: jvlc = 1, moment = 0 => dry dep velocity for number of interstitial aerosols
                 call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                            vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                            rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk, aspherical=.True.)
-                jvlc = 2
+                jvlc = 2   ! jvlc = 2, moment = 3 => dry dep velocity for vol/mass of interstitial aerosols
                 call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                            vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                            rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk, aspherical=.True.)
@@ -1604,7 +1615,8 @@ contains
 
           ! dmleung edited 20 Oct 2025 based on Longlei Li's edits ++
           ! asphericity reduces gravitational settling velocity of coarse-mode dust by 20 %.
-          ! scale flag is only true for coarse mode (m == 3).
+          ! scale flag is only true for coarse mode (m == n_coarse_dust).
+          ! n_coarse_dust is 3 for MAM4/MAM5, and is 2 for MAM3/MAM7.
           if (present(aspherical) .and. aspherical) then
              vlc_grv(i,k) = vlc_grv(i,k) * asphericaldust_drydep
           end if
