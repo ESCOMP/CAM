@@ -562,7 +562,6 @@ contains
     use modal_aero_data,   only: lmassptr_amode
     use modal_aero_data,   only: lmassptrcw_amode
     use aero_deposition_cam,only: aero_deposition_cam_setdry
-    use modal_aero_data,   only: ntot_amode  ! dmleung use this to determine the coarse mode for different MAM versions.  29 Oct 2025
 
   ! args
     type(physics_state),    intent(in)    :: state     ! Physics state variables
@@ -682,11 +681,11 @@ contains
              ! dmleung 20 Oct 2025 ++
              ! dmleung: adding asphericity effect on slowing down gravitational settling velocity 
              ! for internally mixed coarse-mode aerosols (Yue Huang et al., 2020)
-             ! Huang et al. (2020) showed that aspherical dust has reduced gravitational settling by 20 %.
-             ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also
-             ! aspherical, dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
+             ! Huang et al. (2020) showed that aspherical dust has reduced gravitational settling by 15-20 %.
+             ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also aspherical,
+             ! for now dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
 
-             if (m == ntot_amode) then   ! Q: coarse mode, should work for mam4/mam5. Is there a way to generalize to mam7?
+             if (m == ntot_amode) then ! dmleung: if coarse mode use aspherical=True. This works for different MAM versions.
                 jvlc = 1
                 call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                            vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
@@ -1498,7 +1497,9 @@ contains
     real(r8), intent(out) :: vlc_trb(pcols)       !Turbulent deposn velocity (m/s)
     real(r8), intent(out) :: vlc_grv(pcols,pver)       !grav deposn velocity (m/s)
     real(r8), intent(out) :: vlc_dry(pcols,pver)       !dry deposn velocity (m/s)
-    logical,  intent(in), OPTIONAL :: aspherical   ! dmleung: asphericity is strong for coarse-mode interstitial aerosols only, mostly dust and seasalt. For coarse mode aerosols, asphericity reduces coarse-mode gravitational settling velocity by 20 % following Yue Huang et al. (2020). 
+    logical,  intent(in), OPTIONAL :: aspherical   ! dmleung: asphericity is strong for coarse-mode interstitial 
+    ! aerosols only, mostly dust and seasalt. For coarse mode aerosols, asphericity reduces coarse-mode gravitational 
+    ! settling velocity by 20 % following Fig. 4 of Yue Huang et al. (2020). 
     !------------------------------------------------------------------------
 
     !------------------------------------------------------------------------
@@ -1529,7 +1530,9 @@ contains
 
     ! constants
 
-     real(r8), parameter :: asphericaldust_drydep = 0.8_r8 ! dmleung added 20 Oct 2025: aspherical dust reduces gravitational settling velocity by 20 %. Yue Huang et al. (2020)
+     real(r8), parameter :: asphericaldust_drydep = 0.8_r8 ! dmleung added 20 Oct 2025: aspherical dust reduces 
+     ! gravitational settling velocity by 15-20 %. Yue Huang et al. (2020)
+     ! Climate Models and Remote Sensing Retrievals Neglect Substantial Desert Dust Asphericity
 
     real(r8) gamma(11)      ! exponent of schmidt number
 !   data gamma/0.54d+00,  0.56d+00,  0.57d+00,  0.54d+00,  0.54d+00, &
