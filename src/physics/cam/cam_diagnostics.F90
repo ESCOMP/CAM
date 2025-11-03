@@ -263,7 +263,10 @@ contains
     call addfld ('OMEGA850',   horiz_only,  'A', 'Pa/s',      'Vertical velocity at 850 mbar pressure surface')
     call addfld ('OMEGA500',   horiz_only,  'A', 'Pa/s',      'Vertical velocity at 500 mbar pressure surface')
 
-    call addfld ('PSL',        horiz_only,  'A', 'Pa','Sea level pressure')
+    call addfld ('PSL',        horiz_only,  'A', 'Pa', 'Sea level pressure')
+    call addfld ('PMID',       (/ 'lev' /), 'A', 'Pa', 'Pressure at layer midpoints')
+    call addfld ('PINT',      (/ 'ilev' /), 'A', 'Pa', 'Pressure at layer interfaces')
+    call addfld ('PDEL',       (/ 'lev' /), 'A', 'Pa', 'Pressure difference between levels')
 
     call addfld ('T1000',      horiz_only,  'A', 'K','Temperature at 1000 mbar pressure surface')
     call addfld ('T925',       horiz_only,  'A', 'K','Temperature at 925 mbar pressure surface')
@@ -323,6 +326,16 @@ contains
       call add_default ('UU      ', 1, ' ')
       call add_default ('OMEGAT  ', 1, ' ')
       call add_default ('PSL     ', 1, ' ')
+    end if
+
+    if (dycore_is('SE')) then
+      call add_default ('PMID', 1, ' ')
+    end if
+
+    if (dycore_is('MPAS')) then
+      call add_default ('PMID', 1, ' ')
+      call add_default ('PINT', 1, ' ')
+      call add_default ('PDEL', 1, ' ')
     end if
 
     if (history_vdiag) then
@@ -461,10 +474,7 @@ contains
     call addfld ('QBOT',       horiz_only,  'A', 'kg/kg','Lowest model level water vapor mixing ratio')
 
     call addfld ('PSDRY',      horiz_only,  'A', 'Pa', 'Dry surface pressure')
-    call addfld ('PMID',       (/ 'lev' /), 'A', 'Pa', 'Pressure at layer midpoints')
-    call addfld ('PINT',       (/ 'ilev' /), 'A', 'Pa', 'Pressure at layer interfaces')
     call addfld ('PDELDRY',    (/ 'lev' /), 'A', 'Pa', 'Dry pressure difference between levels')
-    call addfld ('PDEL',       (/ 'lev' /), 'A', 'Pa', 'Pressure difference between levels')
 
     ! outfld calls in diag_conv
 
@@ -603,13 +613,6 @@ contains
 
     if (dycore_is('SE')) then
       call add_default ('PSDRY', 1, ' ')
-      call add_default ('PMID',  1, ' ')
-   end if
-
-    if (dycore_is('MPAS')) then
-      call add_default ('PINT', 1, ' ')
-      call add_default ('PMID',  1, ' ')
-      call add_default ('PDEL',  1, ' ')
    end if
 
     if (history_eddy) then
@@ -1067,6 +1070,10 @@ contains
     call cpslec(ncol, state%pmid, state%phis, state%ps, state%t, psl, gravit, rair)
     call outfld('PSL', psl, pcols, lchnk)
 
+    call outfld('PMID', state%pmid, pcols, lchnk)
+    call outfld('PINT', state%pint, pcols, lchnk)
+    call outfld('PDEL', state%pdel, pcols, lchnk)
+
     ! Output T,u,v fields on pressure surfaces
     !
     if (hist_fld_active('T850')) then
@@ -1282,11 +1289,7 @@ contains
     call constituent_burden_comp(state)
 
     call outfld('PSDRY',   state%psdry,   pcols, lchnk)
-    call outfld('PMID',    state%pmid,    pcols, lchnk)
-    call outfld('PINT',    state%pint,    pcols, lchnk)
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
-    call outfld('PDEL',    state%pdel,    pcols, lchnk)
-
 
     ftem(:ncol,:) = state%u(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld ('UQ      ',ftem    ,pcols   ,lchnk     )
