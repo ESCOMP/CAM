@@ -1600,9 +1600,8 @@ contains
           vlc_grv(i,k) = vlc_grv(i,k) * dispersion
 
           ! dmleung edited 20 Oct 2025 based on Longlei Li's edits ++
-          ! asphericity reduces gravitational settling velocity of coarse-mode dust by 20 %.
+          ! asphericity reduces gravitational settling velocity of coarse-mode aerosols by 20 %.
           ! scale flag is only true for coarse mode (m == n_coarse_dust).
-          ! n_coarse_dust is 3 for MAM4/MAM5, and is 2 for MAM3/MAM7.
           if (present(aspherical)) then
              if(aspherical) then
                 vlc_grv(i,k) = vlc_grv(i,k) * asphericaldust_drydep

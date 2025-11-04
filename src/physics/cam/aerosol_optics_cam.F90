@@ -207,7 +207,7 @@ contains
           call addfld ('ABSORB'//diag(ilist),     (/ 'lev' /), 'A','/m',&
                'Aerosol absorption, day only', flag_xyfill=.true.)
           call addfld ('AODVIS'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODVISst'//diag(ilist), horiz_only,  'A','  ', &
                'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODNIRst'//diag(ilist), horiz_only,  'A','  ', &
@@ -228,33 +228,33 @@ contains
                'Aerosol optical depth summed over all sw wavelengths', flag_xyfill=.true.)
 
           call addfld ('EXTINCTdn'//diag(ilist),    (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 550 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTUVdn'//diag(ilist),  (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 350 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTNIRdn'//diag(ilist), (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('ABSORBdn'//diag(ilist),     (/ 'lev' /), 'A','/m',&
-               'Aerosol absorption, day only', flag_xyfill=.true.)
+               'Aerosol absorption, day night', flag_xyfill=.true.)
           call addfld ('AODVISdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODVISstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVstdn'//diag(ilist),  horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVdn'//diag(ilist),      horiz_only,  'A','  ', &
-               'Aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODABSdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol absorption optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol absorption optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODxASYMdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 * asymmetry factor, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 550 * asymmetry factor, day night', flag_xyfill=.true.)
           call addfld ('EXTxASYMdn'//diag(ilist),   (/ 'lev' /), 'A','  ', &
-               'extinction 550 nm * asymmetry factor, day only',  flag_xyfill=.true.)
+               'extinction 550 nm * asymmetry factor, day night',  flag_xyfill=.true.)
           call addfld ('AODTOTdn'//diag(ilist), horiz_only, 'A','1',&
-               'Aerosol optical depth summed over all sw wavelengths, day only')
+               'Aerosol optical depth summed over all sw wavelengths, day night')
 
           if (lw10um_indx>0) then
              call addfld('AODABSLW'//diag(ilist), (/ 'lev' /), 'A','/m',&
@@ -822,18 +822,23 @@ contains
                       dopaer(icol) = pext(icol)*mass(icol,ilev)     ! aerosol optical depth of layer ilev
 
                       ! dmleung 20 Oct 2025 ++
-                      ! added dust asphericity impacts on enhancing dust AOD. Modified after Longlei Li & Natalie Mahowald (Cornell University).
+                      ! added dust asphericity impacts on enhancing dust AOD. Modified after Longlei Li (Cornell University).
                       ! the theory is that coarse-mode dust is aspherical, with ~30 % enhanced extinction compared with spherical coarse-mode dust.
-                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017), Smaller desert dust cooling effect estimated from analysis of dust size and abundance
+                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017), 
+                      ! Smaller desert dust cooling effect estimated from analysis of dust size and abundance
 
                       call update_diags  ! dopaer is updated in update_diags.
 
                       ! dmleung: update_diags updated dopaer(icol) as a diagnostic.
                       ! Aerosol optical and radiative properties are subsequently modified given dopaer update in update_diags.
-                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)                           ! aerosol optical depth of layer ilev
-                      wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)                        ! single scattering albedo of layer ilev
-                      ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)             ! asymmetry factor of layer ilev
-                      fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)  ! forward scattered fraction of layer ilev
+                      ! To the first-order approximation, palb and pasm (SSA and asymmetry factor) remain roughly the same in the 
+                      ! 1-10 um upon introducing asphericity; changes in wa, ga, and fa are thus due to only AOD changes given dust asphericty.
+                      ! ref: Fig. 2a-d of Yue Huang et al. (2023),
+                      ! Single-scattering properties of ellipsoidal dust aerosols constrained by measured dust shape distributions
+                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)                           ! aerosol optical depth at layer ilev
+                      wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)                        ! single scattering albedo at layer ilev
+                      ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)             ! asymmetry factor at layer ilev
+                      fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)  ! forward scattered fraction at layer ilev
                       ! dmleung --
 
                    end do column
@@ -1000,7 +1005,6 @@ contains
             ! combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
             dopaer0(icol) = dopaer0(icol) + dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
             if (modal_active .and. ibin == n_coarse_dust) then  ! if MAM and coarse dust mode, scale up dust AOD by 30 %.
-            ! n_coarse_dust is 3 for MAM4/MAM5, and is 2 for MAM3/MAM7.
                dustaodbin(icol) = dustaodbin(icol) * dustaspherical_opts ! update mode/bin-specific dust AOD
                dustaod(icol) = dustaod0(icol) * dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust
                !with asphericity effect on thickening AOD.
