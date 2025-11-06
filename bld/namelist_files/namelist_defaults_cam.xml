@@ -2505,7 +2505,7 @@
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam5"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"                  >0.88D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam7"                  >4.00D0</dust_emis_fact>
-<dust_emis_fact                            phys="cam6"      silhs="1"   >0.30D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam6"      silhs="1"   >0.75D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam7"      silhs="1"   >4.00D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.47x0.63" phys="cam6"                  >1.13D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.47x0.63" phys="cam7"                  >4.00D0</dust_emis_fact>
