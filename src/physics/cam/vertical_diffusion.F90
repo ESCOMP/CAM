@@ -208,7 +208,6 @@ subroutine vd_register()
   use physics_buffer,      only : pbuf_add_field, dtype_r8
   use trb_mtn_stress_cam,  only : trb_mtn_stress_register
   use beljaars_drag_cam,   only : beljaars_drag_register
-  use eddy_diff_cam,       only : eddy_diff_register
 
   ! Add fields to physics buffer
 
@@ -229,11 +228,6 @@ subroutine vd_register()
 
   call pbuf_add_field('tpert', 'global', dtype_r8, (/pcols/),                       tpert_idx) ! convective_temperature_perturbation_due_to_pbl_eddies
   call pbuf_add_field('qpert', 'global', dtype_r8, (/pcols/),                       qpert_idx) ! convective_water_vapor_wrt_moist_air_and_condensed_water_perturbation_due_to_pbl_eddies
-
-  ! diag_TKE fields
-  if (eddy_scheme == 'diag_TKE') then
-     call eddy_diff_register()
-  end if
 
   ! TMS fields
   call trb_mtn_stress_register()
@@ -1083,7 +1077,7 @@ subroutine vertical_diffusion_tend( &
      p = Coords1D(state%pint(:ncol,:))
 
      call eddy_diff_tend(state, pbuf, cam_in, &
-          ztodt, p, tint, rhoi, cldn, wstarent, &
+          ztodt, do_iss, fv_am_correction, p, tint, rhoi, dpidz_sq, cldn, wstarent, &
           kvm_in, kvh_in, ksrftms, dragblj, tauresx, tauresy, &
           rrho, ustar, pblh, kvm, kvh, kvq, cgh, cgs, tpert, qpert, &
           tke, sprod, sfi)
