@@ -111,16 +111,15 @@ subroutine eddy_diff_readnl(nlfile)
 
 end subroutine eddy_diff_readnl
 
-subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
+subroutine eddy_diff_init(ntop_eddy_in, nbot_eddy_in)
 
   use error_messages, only: handle_errmsg
   use cam_history, only: addfld, add_default, horiz_only
   use constituents, only: cnst_get_ind
   use ref_pres, only: pref_mid
   use eddy_diff, only: init_eddy_diff
-  use physics_buffer, only: pbuf_set_field, pbuf_get_index
+  use physics_buffer, only: pbuf_get_index
 
-  type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
   integer,  intent(in) :: ntop_eddy_in ! Top interface level to which eddy vertical diffusivity is applied ( = 1 )
   integer,  intent(in) :: nbot_eddy_in ! Bottom interface level to which eddy vertical diffusivity is applied ( = pver )
 
@@ -334,6 +333,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        ztodt           = ztodt,                                        &
        do_iss          = do_iss,                                       &
        am_correction   = fv_am_correction,                             &
+       is_first_timestep= is_first_step(),                             &
        t               = state%t(:ncol,:pver),                         &
        tint            = tint(:ncol,:pverp),                           &
        qv              = state%q(:ncol,:pver,1),                       & ! assumes q_wv at 1
@@ -355,16 +355,23 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        shflx           = cam_in%shf(:ncol),                            &
        qflx            = cam_in%cflx(:ncol,:1),                        &
        wstarent        = wstarent,                                     & ! use wstar entrainment? logical
-       rrho            = rrho(:ncol),                                  &
-       ustar           = ustar(:ncol),                                 &
-       pblh            = pblh(:ncol),                                  &
-       kvm_in          = kvm_in(:ncol,:pverp),                         & ! TODO hplin why _in? diff from _out? from vdiff?
-       kvh_in          = kvh_in(:ncol,:pverp),                         & ! TODO hplin why _in? diff from _out? from vdiff?
-       qrl             = qrl(:ncol,:pver),                             & ! pbuf fields from above (in)
-       wsedl           = wsedl(:ncol,:pver),                           & ! pbuf fields from above (in)
+       kvm_in          = kvm_in(:ncol,:pverp),                         & ! from previous timestep
+       kvh_in          = kvh_in(:ncol,:pverp),                         & ! from previous timestep
+       ksrftms         = ksrftms(:ncol),                               &
+       dragblj         = dragblj(:ncol,:pver),                         &
+       qrl             = qrl(:ncol,:pver),                             &
+       wsedl           = wsedl(:ncol,:pver),                           &
+       ! below input/output
+       tauresx         = tauresx(:ncol),                               &
+       tauresy         = tauresy(:ncol),                               &
+       ! below output
+       ! TODO need to make kvm kvh inout as they are same qty.
        kvm_out         = kvm(:ncol,:pverp),                            &
        kvh_out         = kvh(:ncol,:pverp),                            &
        kvq             = kvq(:ncol,:pverp),                            &
+       rrho            = rrho(:ncol),                                  &
+       ustar           = ustar(:ncol),                                 &
+       pblh            = pblh(:ncol),                                  &
        cgh             = cgh(:ncol,:pverp),                            &
        cgs             = cgs(:ncol,:pverp),                            &
        tpert           = tpert(:ncol),                                 &
@@ -372,10 +379,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        tke             = tke(:ncol,:pverp),                            &
        sprod           = sprod(:ncol,:pverp),                          &
        sfi             = sfi(:ncol,:pverp),                            &
-       tauresx         = tauresx(:ncol),                               &
-       tauresy         = tauresy(:ncol),                               &
-       ksrftms         = ksrftms(:ncol),                               &
-       dragblj         = dragblj(:ncol,:pver),                         &
        errmsg          = errmsg,                                       &
        errflg          = errflg)
 
@@ -433,6 +436,7 @@ end subroutine eddy_diff_tend
 subroutine compute_eddy_diff( lchnk  ,                                                      &
                               pcols  , pver   , ncol     , &
                               do_iss, am_correction, &
+                              is_first_timestep, &
                               t       , tint, qv       , ztodt   ,   &
                               ql     , qi     , s        , p       , rhoi, dpidz_sq, cldn     ,             &
                               z      , zi     , pmid     , pi      , u        , v       ,         &
@@ -472,6 +476,7 @@ subroutine compute_eddy_diff( lchnk  ,                                          
   integer,        intent(in) :: ncol                ! Number of atmospheric columns [#]
   logical,        intent(in) :: do_iss              ! Use implicit turbulent surface stress computation [flag]
   logical,        intent(in) :: am_correction       ! Do angular momentum conservation correction [flag]
+  logical,        intent(in) :: is_first_timestep   ! is_first_timestep [flag]
   real(r8),       intent(in) :: t(:,:)              ! Temperature [K]
   real(r8),       intent(in) :: tint(:,:)           ! Temperature defined on interfaces [K]
   real(r8),       intent(in) :: qv(:,:)             ! Water vapor specific humidity [kg kg-1]
@@ -672,6 +677,58 @@ subroutine compute_eddy_diff( lchnk  ,                                          
   qvfd(:ncol,:) = qv(:ncol,:)
   qlfd(:ncol,:) = ql(:ncol,:)
 
+  ! Prepare invariant drag coefficients for diffusion solver
+  ! during the iterative process using CCPPized subroutines.
+  !
+  ! Calculate surface drag rate
+  ksrf(:ncol) = 0._r8
+  call implicit_surface_stress_add_drag_coefficient_run( &
+       ncol            = ncol,                         &
+       pver            = pver,                         &
+       do_iss          = do_iss,                       &
+       taux            = taux(:ncol),                  &
+       tauy            = tauy(:ncol),                  &
+       u0              = u(:ncol,:pver),               & ! use original state.
+       v0              = v(:ncol,:pver),               & ! use original state.
+       ! below input/output:
+       ksrf            = ksrf(:ncol),                  &
+       errmsg          = errmsg,                       &
+       errflg          = errflg)
+
+  if(errflg /= 0) then
+     call endrun('implicit_surface_stress_add_drag_coefficient_run: ' // errmsg)
+  endif
+
+  ! Add TMS surface drag rate
+  call turbulent_mountain_stress_add_drag_coefficient_run( &
+       ncol            = ncol,                         &
+       pver            = pver,                         &
+       ksrftms         = ksrftms(:ncol),               &
+       ! below input/output:
+       ksrf            = ksrf(:ncol),                  &
+       errmsg          = errmsg,                       &
+       errflg          = errflg)
+
+  if(errflg /= 0) then
+     call endrun('turbulent_mountain_stress_add_drag_coefficient_run: ' // errmsg)
+  endif
+
+  ! Based on the drag coefficients, calculate wind damping rates
+  call vertical_diffusion_wind_damping_rate_run( &
+       ncol            = ncol,                         &
+       pver            = pver,                         &
+       gravit          = gravit,                       &
+       p               = p,                            & ! Coords1D, pressure coordinates [Pa]
+       ksrf            = ksrf(:ncol),                  &
+       ! below output:
+       tau_damp_rate   = tau_damp_rate(:ncol,:pver),   &
+       errmsg          = errmsg,                       &
+       errflg          = errflg)
+
+  if(errflg /= 0) then
+     call endrun('vertical_diffusion_wind_damping_rate_run: ' // errmsg)
+  endif
+
   do iturb = 1, nturb
 
      ! Total stress includes 'tms'.
@@ -689,16 +746,14 @@ subroutine compute_eddy_diff( lchnk  ,                                          
      minpblh(:ncol) = 100.0_r8 * ustar(:ncol)   ! By construction, 'minpblh' is larger than 1 [m] when 'ustar_min = 0.01'.
 
      ! Calculate (qt,sl,n2,s2,ri) from a given set of (t,qv,ql,qi,u,v)
-
      call trbintd( &
-                   ncol    , pver    , ncol  , z       , ufd     , vfd     , tfd   , pmid    , &
+                   ncol     , pver    , z     , ufd     , vfd     , tfd   , pmid    , &
                    s2       , n2      , ri    , zi      , pi      , cldn    , qtfd  , qvfd    , &
                    qlfd     , qi      , sfi   , sfuh    , sflh    , slfd    , slv   , slslope , &
                    qtslope  , chs     , chu   , cms     , cmu     )
 
      ! Save initial (i.e., before iterative diffusion) profile of (qt,sl) at each iteration.
      ! Only necessary for (qt,sl) not (u,v) because (qt,sl) are newly calculated variables.
-
      if( iturb == 1 ) then
         qt(:ncol,:) = qtfd(:ncol,:,1)
         sl(:ncol,:) = slfd(:ncol,:)
@@ -719,17 +774,17 @@ subroutine compute_eddy_diff( lchnk  ,                                          
      ! Initialize kvh/kvm to send to caleddy, depending on model timestep and iteration number
      ! This is necessary for 'wstar-based' entrainment closure.
      if( iturb == 1 ) then
-        if( is_first_step() ) then
-           ! First iteration of first model timestep : Use free tropospheric value or zero.
+        if( is_first_timestep ) then
+           ! First iteration of first model timestep: Use free tropospheric value or zero.
            kvh(:ncol,:) = kvf(:ncol,:)
            kvm(:ncol,:) = kvf(:ncol,:)
         else
-           ! First iteration on any model timestep except the first : Use value from previous timestep
+           ! First iteration on any model timestep except the first: Use value from previous timestep
            kvh(:ncol,:) = kvh_in(:ncol,:)
            kvm(:ncol,:) = kvm_in(:ncol,:)
         endif
      else
-        ! Not the first iteration : Use from previous iteration
+        ! Not the first iteration: Use from previous iteration
         kvh(:ncol,:) = kvh_out(:ncol,:)
         kvm(:ncol,:) = kvm_out(:ncol,:)
      endif
@@ -738,10 +793,7 @@ subroutine compute_eddy_diff( lchnk  ,                                          
      ! a given (kvh,kvm) which are used only for initializing (bprod,sprod)  at
      ! the first part of caleddy. (bprod,sprod) are fully updated at the end of
      ! caleddy after calculating (kvh_out,kvm_out)
-
-     write(6, *) "b caleddy iturb = ", iturb
-
-     call caleddy( ncol      , pver      , ncol      ,                     &
+     call caleddy( ncol      , pver      ,                                 &
                    slfd      , qtfd      , qlfd      , slv      ,ufd     , &
                    vfd       , pi        , z         , zi       ,          &
                    qflx      , shflx     , slslope   , qtslope  ,          &
@@ -773,7 +825,6 @@ subroutine compute_eddy_diff( lchnk  ,                                          
      call handle_errmsg(errstring, subname="caleddy")
 
      ! Calculate errorPBL to check whether PBL produced convergent solutions or not.
-
      if( iturb == nturb ) then
         do i = 1, ncol
            errorPBL(i) = 0._r8
@@ -786,75 +837,22 @@ subroutine compute_eddy_diff( lchnk  ,                                          
 
      ! Eddy diffusivities which will be used for the initialization of (bprod,
      ! sprod) in 'caleddy' at the next iteration step.
-
      if( iturb > 1 .and. iturb < nturb ) then
         kvm_out(:ncol,:) = lambda * kvm_out(:ncol,:) + ( 1._r8 - lambda ) * kvm(:ncol,:)
         kvh_out(:ncol,:) = lambda * kvh_out(:ncol,:) + ( 1._r8 - lambda ) * kvh(:ncol,:)
      endif
 
      ! Set nonlocal terms to zero for flux diagnostics, since not used by caleddy.
-
      cgh(:ncol,:) = 0._r8
      cgs(:ncol,:) = 0._r8
 
      if( iturb < nturb ) then
 
         ! Each time we diffuse the original state
-
         slfd(:ncol,:)  = sl(:ncol,:)
         qtfd(:ncol,:,1)= qt(:ncol,:)
         ufd(:ncol,:)   = u(:ncol,:)
         vfd(:ncol,:)   = v(:ncol,:)
-
-        ! TODO hplin: calculation of k and drag coef could probably be moved to outside the iterative loop as u/v is orig flx
-        ! Calculate surface drag rate
-        ksrf(:ncol) = 0._r8
-        call implicit_surface_stress_add_drag_coefficient_run( &
-             ncol            = ncol,                         &
-             pver            = pver,                         &
-             do_iss          = do_iss,                       &
-             taux            = taux(:ncol),                  &
-             tauy            = tauy(:ncol),                  &
-             u0              = ufd(:ncol,:pver),             &
-             v0              = vfd(:ncol,:pver),             &
-             ! below input/output:
-             ksrf            = ksrf(:ncol),                  &
-             errmsg          = errmsg,                       &
-             errflg          = errflg)
-
-        if(errflg /= 0) then
-           call endrun('implicit_surface_stress_add_drag_coefficient_run: ' // errmsg)
-        endif
-
-        ! Add TMS surface drag rate
-        call turbulent_mountain_stress_add_drag_coefficient_run( &
-             ncol            = ncol,                         &
-             pver            = pver,                         &
-             ksrftms         = ksrftms(:ncol),               &
-             ! below input/output:
-             ksrf            = ksrf(:ncol),                  &
-             errmsg          = errmsg,                       &
-             errflg          = errflg)
-
-        if(errflg /= 0) then
-           call endrun('turbulent_mountain_stress_add_drag_coefficient_run: ' // errmsg)
-        endif
-
-        ! Based on the drag coefficients, calculate wind damping rates
-        call vertical_diffusion_wind_damping_rate_run( &
-             ncol            = ncol,                         &
-             pver            = pver,                         &
-             gravit          = gravit,                       &
-             p               = p,                            & ! Coords1D, pressure coordinates [Pa]
-             ksrf            = ksrf(:ncol),                  &
-             ! below output:
-             tau_damp_rate   = tau_damp_rate(:ncol,:pver),   &
-             errmsg          = errmsg,                       &
-             errflg          = errflg)
-
-        if(errflg /= 0) then
-           call endrun('vertical_diffusion_wind_damping_rate_run: ' // errmsg)
-        endif
 
         ! Diffuse initial profile of each time step using a given (kvh_out,kvm_out)
         ! Call the CCPPized subroutines for the diffusion solver

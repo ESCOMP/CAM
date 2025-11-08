@@ -353,7 +353,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   case ( 'diag_TKE' )
      if( masterproc ) write(iulog,*) &
           'vertical_diffusion_init: eddy_diffusivity scheme: UW Moist Turbulence Scheme by Bretherton and Park'
-     call eddy_diff_init(pbuf2d, ntop_eddy, nbot_eddy)
+     call eddy_diff_init(ntop_eddy, nbot_eddy)
   case ( 'HB', 'HBR')
      if( masterproc ) write(iulog,*) 'vertical_diffusion_init: eddy_diffusivity scheme:  Holtslag and Boville'
 
