@@ -1016,7 +1016,7 @@ contains
     ! 'kvm_in' [m2/s] are from the previous iteration or previous time step.
     ! This initially guessed 'bprod' and 'sprod' will be updated at the end of this 
     ! 'caleddy' subroutine for diagnostic output.
-    ! This computation of 'brpod,sprod' below is necessary for wstar-based entrainment closure.
+    ! This computation of 'bprod,sprod' below is necessary for wstar-based entrainment closure.
 
     do k = 2, pver
        do i = 1, ncol

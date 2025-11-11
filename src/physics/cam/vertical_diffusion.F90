@@ -1355,7 +1355,7 @@ subroutine vertical_diffusion_tend( &
   call pbuf_set_field(pbuf, kvh_idx, kvh)
 
   ! kvm (in pbuf) is only used as an initial guess in compute_eddy_diff on the next timestep.
-  ! The contributions for molecular diffusion made to kvm by the call to compute_vdiff below
+  ! The contributions for molecular diffusion made to kvm by the call to the diffusion solver below
   ! are not included in the pbuf as these are not needed in the initial guess by compute_eddy_diff.
   call pbuf_set_field(pbuf, kvm_idx, kvm)
 
