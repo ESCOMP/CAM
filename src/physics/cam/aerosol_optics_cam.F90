@@ -657,8 +657,8 @@ contains
     ! total species AOD
     real(r8) :: dustaod(pcols), sulfaod(pcols), bcaod(pcols), &
                 pomaod(pcols), soaaod(pcols), ssltaod(pcols)
-    real(r8) :: dustaod0(pcols) ! dust AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
-    real(r8) :: dopaer0(pcols)  ! total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
+    real(r8) :: dustaod0(pcols) ! single-level dust AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
+    real(r8) :: dopaer0(pcols)  ! single-level total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
     real(r8) :: aodvisst(pcols) ! stratospheric extinction optical depth
     real(r8) :: aoduvst(pcols)  ! stratospheric extinction optical depth in uv
     real(r8) :: aodnirst(pcols) ! stratospheric extinction optical depth in nir
@@ -667,7 +667,7 @@ contains
 
     integer :: i, k
 
-    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025: Dust in reality generates
+    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025
     ! Jasper Kok et al. (2017) Fig. 1d: 20-60 % higher mass extinction efficiency (scattering and absorption)
     ! because dust is aspherical. This is currently not captured by a spherical assumption in the optical calculation
     ! (the look up table is taken from the mode_defs namelist variable). So, we create a factor to represent
@@ -712,13 +712,17 @@ contains
 
     aodabsbc = 0.0_r8
     dustaod = 0.0_r8
-    dustaod0 = 0.0_r8   ! dmleung added 20 Oct 2025
-    dopaer0 = 0.0_r8    ! dmleung added 20 Oct 2025
     sulfaod = 0.0_r8
     pomaod = 0.0_r8
     soaaod = 0.0_r8
     bcaod = 0.0_r8
     ssltaod = 0.0_r8
+
+    ! dmleung ++
+    ! single-level variables
+    dustaod0 = 0.0_r8   ! dmleung added 20 Oct 2025
+    dopaer0 = 0.0_r8 
+    ! dmleung --
 
     if (num_aero_models<1) return
 
@@ -810,11 +814,6 @@ contains
              wavelength: do iwav = 1, nswbands
 
                 vertical: do ilev = 1, pver
-
-                   ! dmleung 6 Nov 2025 ++
-                   !dustaod0(:) = 0.0_r8
-                   !dopaer0(:) = 0.0_r8
-                   ! dmleung --
 
                    ! The function sw_props combines the Mie theory-generated lookup table and the volume-averaged refractive index to generate
                    ! optical/radiative properties (pext, pabs, palb, pasm) of the aerosol mixture in this mode/bin.
@@ -964,8 +963,6 @@ contains
 
          if (wetvol(icol,ilev)>1.e-40_r8 .and. vol(icol)>0._r8) then
 
-            ! dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
-
             ! partition optical depth into contributions from each constituent
             ! assume contribution is proportional to refractive index X volume
 
@@ -1017,10 +1014,7 @@ contains
 
             ! dmleung 20 Oct 2025 ++
             aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
-            ! dustaod0(icol) is a column-level dust AOD accumulator, aodc is single-level dust AOD.
             dustaod(icol) = dustaod(icol) + aodc
-            ! dmleung edited 20 Oct 2025 for aspherical dust impact on optics: Aspherical dust exists in coarse mode,
-            ! generating 30 % higher extinction and dust AOD.
 
             ! dustaod0(icol) is a single-level dust AOD, aodc is single-level dust AOD.
             dustaod0(icol) = aodc ! dust AOD accumulator given spherical dust. The spherical dustaod0 is created to
@@ -1035,13 +1029,12 @@ contains
                ! update column-level variables
                dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev) * dustaspherical_opts ! update mode/bin-specific dust AOD
 
-               ! dustaod is column-level dust AOD accumulator, while dustaod0 is the single-level spherical dust AOD
+               ! dustaod is a column-level dust AOD accumulator, while dustaod0 is the single-level spherical dust AOD
                dustaod(icol) = dustaod(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust
                !with asphericity effect on thickening AOD.
 
-               ! update single-layer variable
-               !dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod(icol)  ! Total AOD accounting for dust asphericity
-               dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts
+               ! update single-layer variable: dopaer
+               dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts   ! Total AOD accounting for dust asphericity
             else 
                ! update column-level dust AOD accumulator
                dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
