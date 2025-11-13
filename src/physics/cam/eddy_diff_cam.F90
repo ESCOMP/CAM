@@ -239,6 +239,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
 
   ! CCPPized subroutines
   use bretherton_park_diff,      only: bretherton_park_diff_run
+  use eddy_diffusivity_adjustment_above_pbl, only: eddy_diffusivity_adjustment_above_pbl_run
 
   type(physics_state), intent(in) :: state
   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
@@ -442,18 +443,24 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
 
   ! TODO reorder arguments of the subroutine such that in, inout, out (in this order)
   ! Call CCPPized run phase subroutine
-  call compute_eddy_diff( &
+  call bretherton_park_diff_run( &
        ncol            = ncol,                          &
        pver            = pver,                          &
        pverp           = pverp,                         &
        pcnst           = pcnst,                         &
        ncvmax          = ncvmax,                        & ! max # of CLs.
+       iulog           = iulog,                         &
        ztodt           = ztodt,                         &
        const_props     = ccpp_const_props,              &
        do_iss          = do_iss,                        &
        am_correction   = fv_am_correction,              &
        do_beljaars     = do_beljaars,                   &
        is_first_timestep= is_first_step(),              &
+       gravit          = gravit,                        &
+       cpair           = cpair,                         &
+       rair            = rair,                          &
+       latvap          = latvap,                        &
+       latice          = latice,                        &
        t               = state%t(:ncol,:pver),          &
        tint            = tint(:ncol,:pverp),            &
        qv              = state%q(:ncol,:pver,1),        & ! assumes q_wv at 1
@@ -649,9 +656,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   call outfld( 'UW_ria',         rii,        pcols,   lchnk )
   call outfld( 'UW_leng',        lengi,      pcols,   lchnk )
 
-  ! TODO this could be made into a CCPPized scheme to do the correction
-  ! (and it could do the read of kv_freetrop_scale kv_top-scale kv_top_pressure namelist options if unused elsewhere here.)
-
   ! The diffusivities from diag_TKE can be much larger than from HB in the free
   ! troposphere and upper atmosphere. These seem to be larger than observations,
   ! and in WACCM the gw_drag code is already applying an eddy diffusivity in the
@@ -660,26 +664,23 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   !
   ! NOTE: Further investigation should be done as to why the diffusivities are
   ! larger in diag_TKE.
-  if ((kv_freetrop_scale /= 1._r8) .or. ((kv_top_scale /= 1._r8) .and. (kv_top_pressure > 0._r8))) then
-     do i = 1, state%ncol
-        do k = 1, pverp
-           ! Outside of the boundary layer?
-           if (state%zi(i,k) > pblh(i)) then
-              ! In the upper atmosphere?
-              if (state%pint(i,k) <= kv_top_pressure) then
-                 kvh(i,k) = kvh(i,k) * kv_top_scale
-                 kvm(i,k) = kvm(i,k) * kv_top_scale
-                 kvq(i,k) = kvq(i,k) * kv_top_scale
-              else
-                 kvh(i,k) = kvh(i,k) * kv_freetrop_scale
-                 kvm(i,k) = kvm(i,k) * kv_freetrop_scale
-                 kvq(i,k) = kvq(i,k) * kv_freetrop_scale
-              end if
-           else
-              exit
-           end if
-        end do
-     end do
+  call eddy_diffusivity_adjustment_above_pbl_run( &
+       ncol = ncol, &
+       pverp = pverp, &
+       kv_top_pressure = kv_top_pressure, &
+       kv_freetrop_scale = kv_freetrop_scale, &
+       kv_top_scale = kv_top_scale, &
+       zi = state%zi(:ncol,:pverp), &
+       pint = state%pint(:ncol,:pverp), &
+       pblh = pblh(:ncol), &
+       ! below in/out
+       kvh = kvh(:ncol,:pverp), &
+       kvm = kvm(:ncol,:pverp), &
+       kvq = kvq(:ncol,:pverp), &
+       errmsg = errmsg, errflg = errflg)
+
+  if(errflg /= 0) then
+     call endrun('eddy_diffusivity_adjustment_above_pbl_run: ' // errmsg)
   end if
 
 end subroutine eddy_diff_tend
