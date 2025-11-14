@@ -1302,28 +1302,28 @@ subroutine vertical_diffusion_tend( &
          call endrun('hb_pbl_independent_coefficients_run: ' // errmsg)
       endif
 
-     call compute_kinematic_fluxes_and_obklen_run( &
-          ncol               = ncol, &
-          pver               = pver, &
-          pcnst              = pcnst, &
-          const_props        = ccpp_const_props,          &
-          zvir               = zvir, &
-          cpair              = cpair, &
-          gravit             = gravit, &
-          karman             = karman, &
-          shf_from_coupler   = cam_in%shf(:ncol),         &
-          cflx_from_coupler  = cam_in%cflx(:ncol,:pcnst), &
-          q_wv               = state%q(:ncol,:pver,ixq),  &
-      th                 = th(:ncol,:pver), &
-          rrho               = rrho(:ncol), &
-          ustar              = ustar(:ncol), &
-          khfs               = khfs(:ncol), &
-          kqfs               = kqfs(:ncol), &
-          kbfs               = kbfs(:ncol), &
-          obklen             = obklen(:ncol), &
-          errmsg             = errmsg, &
-          errflg             = errflg)
-     if(errflg /= 0) call endrun('compute_kinematic_fluxes_and_obklen_run: ' // errmsg)
+      call compute_kinematic_fluxes_and_obklen_run( &
+           ncol               = ncol, &
+           pver               = pver, &
+           pcnst              = pcnst, &
+           const_props        = ccpp_const_props,          &
+           zvir               = zvir, &
+           cpair              = cpair, &
+           gravit             = gravit, &
+           karman             = karman, &
+           shf_from_coupler   = cam_in%shf(:ncol),         &
+           cflx_from_coupler  = cam_in%cflx(:ncol,:pcnst), &
+           q_wv               = state%q(:ncol,:pver,ixq),  &
+           th                 = th(:ncol,:pver), &
+           rrho               = rrho(:ncol), &
+           ustar              = ustar(:ncol), &
+           khfs               = khfs(:ncol), &
+           kqfs               = kqfs(:ncol), &
+           kbfs               = kbfs(:ncol), &
+           obklen             = obklen(:ncol), &
+           errmsg             = errmsg, &
+           errflg             = errflg)
+      if(errflg /= 0) call endrun('compute_kinematic_fluxes_and_obklen_run: ' // errmsg)
 
       call pbuf_get_field(pbuf, clubbtop_idx, clubbtop)
       clubbtop_r = real(clubbtop, r8)
@@ -1363,17 +1363,31 @@ subroutine vertical_diffusion_tend( &
       ! PBL diffusion will happen before coupling, so vertical_diffusion
       ! is only handling other things, e.g. some boundary conditions, tms,
       ! and molecular diffusion.
-
-      ! Get potential temperature.
-      th(:ncol,:pver) = state%t(:ncol,:pver) * state%exner(:ncol,:pver)
-
-      thvs  (:ncol) = calc_virtual_temperature(th(:ncol,pver), state%q(:ncol,pver,1), zvir)
       rrho  (:ncol) = calc_ideal_gas_rrho(rair, state%t(:ncol,pver), state%pmid(:ncol,pver))
       ustar (:ncol) = calc_friction_velocity(cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol))
-      khfs  (:ncol) = calc_kinematic_heat_flux(cam_in%shf(:ncol), rrho(:ncol), cpair)
-      kqfs  (:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(:ncol,1), rrho(:ncol))
-      kbfs  (:ncol) = calc_kinematic_buoyancy_flux(khfs(:ncol), zvir, th(:ncol,pver), kqfs(:ncol))
-      obklen(:ncol) = calc_obukhov_length(thvs(:ncol), ustar(:ncol), gravit, karman, kbfs(:ncol))
+
+      call compute_kinematic_fluxes_and_obklen_run( &
+           ncol               = ncol, &
+           pver               = pver, &
+           pcnst              = pcnst, &
+           const_props        = ccpp_const_props,          &
+           zvir               = zvir, &
+           cpair              = cpair, &
+           gravit             = gravit, &
+           karman             = karman, &
+           shf_from_coupler   = cam_in%shf(:ncol),         &
+           cflx_from_coupler  = cam_in%cflx(:ncol,:pcnst), &
+           q_wv               = state%q(:ncol,:pver,ixq),  &
+           th                 = th(:ncol,:pver), &
+           rrho               = rrho(:ncol), &
+           ustar              = ustar(:ncol), &
+           khfs               = khfs(:ncol), &
+           kqfs               = kqfs(:ncol), &
+           kbfs               = kbfs(:ncol), &
+           obklen             = obklen(:ncol), &
+           errmsg             = errmsg, &
+           errflg             = errflg)
+      if(errflg /= 0) call endrun('compute_kinematic_fluxes_and_obklen_run: ' // errmsg)
 
       ! These tendencies all applied elsewhere.
       kvm = 0._r8
