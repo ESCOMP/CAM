@@ -3595,6 +3595,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_do_liqsupersat');
    add_default($nl, 'clubb_grid_adapt_in_time_method');
+   add_default($nl, 'clubb_fill_holes_type');
    add_default($nl, 'clubb_grid_remap_method');
    add_default($nl, 'clubb_ipdf_call_placement');
    add_default($nl, 'clubb_lambda0_stability_coef');

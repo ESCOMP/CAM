@@ -233,9 +233,11 @@ module clubb_intr
     clubb_grid_remap_method = unset_i, & ! Specifier for which method should be used to
                                          ! map values from one grid to another
                                          ! (starts at 1, so 0 is an invalid option for this flag)
-    clubb_grid_adapt_in_time_method = unset_i        ! Specifier for how the grid density method should
+    clubb_grid_adapt_in_time_method = unset_i,     & ! Specifier for how the grid density method should
                                                      ! be constructed if the grid should be adapted over time
                                                      ! (set to 0 for no adaptation)
+    clubb_fill_holes_type = unset_i                  ! Option for which type of hole filler to use in the 
+                                                     ! fill_holes_vertical procedure
 
 
   logical :: &
@@ -837,6 +839,7 @@ end subroutine clubb_init_cnst
          clubb_gamma_coef, &
          clubb_gamma_coefb, &
          clubb_grid_adapt_in_time_method, &
+         clubb_fill_holes_type, &
          clubb_grid_remap_method, &
          clubb_iiPDF_type, &
          clubb_ipdf_call_placement, &
@@ -926,6 +929,7 @@ end subroutine clubb_init_cnst
                                              clubb_saturation_equation, & ! Out
                                              clubb_grid_remap_method, & ! Out
                                              clubb_grid_adapt_in_time_method, & ! Out
+                                             clubb_fill_holes_type, & ! Out
                                              clubb_l_use_precip_frac, & ! Out
                                              clubb_l_predict_upwp_vpwp, & ! Out
                                              clubb_l_min_wp2_from_corr_wx, & ! Out
@@ -1247,6 +1251,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_grid_remap_method")
     call mpi_bcast(clubb_grid_adapt_in_time_method,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_grid_adapt_in_time_method")
+    call mpi_bcast(clubb_fill_holes_type,    1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_fill_holes_type")
     call mpi_bcast(clubb_l_intr_sfc_flux_smooth,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_intr_sfc_flux_smooth")
     call mpi_bcast(clubb_l_vary_convect_depth,    1, mpi_logical, mstrid, mpicom, ierr)
@@ -1355,6 +1361,7 @@ end subroutine clubb_init_cnst
     if(clubb_saturation_equation == unset_i) call endrun(sub//": FATAL: clubb_saturation_equation not set")
     if(clubb_grid_remap_method == unset_i) call endrun(sub//": FATAL: clubb_grid_remap_method not set")
     if(clubb_grid_adapt_in_time_method == unset_i) call endrun(sub//": FATAL: clubb_grid_adapt_in_time_method not set")
+    if(clubb_fill_holes_type == unset_i) call endrun(sub//": FATAL: clubb_fill_holes_type not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) &
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
@@ -1365,6 +1372,7 @@ end subroutine clubb_init_cnst
                                                  clubb_saturation_equation, & ! In
                                                  clubb_grid_remap_method, & ! In
                                                  clubb_grid_adapt_in_time_method, & ! In
+                                                 clubb_fill_holes_type, & ! In
                                                  clubb_l_use_precip_frac, & ! In
                                                  clubb_l_predict_upwp_vpwp, & ! In
                                                  clubb_l_min_wp2_from_corr_wx, & ! In
@@ -2885,7 +2893,7 @@ end subroutine clubb_init_cnst
     !$acc        copy( um, vm, upwp, vpwp, wpthvp, wp2thvp, rtpthvp, thlpthvp, up2, vp2, up3, vp3, &
     !$acc              wp2, wp3, rtp2, thlp2, rtp3, thlp3, thlm, rtm, rvm, wprtp, wpthlp, rtpthlp, &
     !$acc              pdf_zm_w_1, pdf_zm_w_2, pdf_zm_varnce_w_1, pdf_zm_varnce_w_2, pdf_zm_mixt_frac, &
-    !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef, wp4, wpup2, wpvp2, &
+    !$acc              cloud_frac, wp2rtp, wp2thlp, uprcp, vprcp, rc_coef_zm, wp4, wpup2, wpvp2, &
     !$acc              ttend_clubb_mc, upwp_clubb_gw_mc, vpwp_clubb_gw_mc, thlp2_clubb_gw_mc, wpthlp_clubb_gw_mc, &
     !$acc              ttend_clubb, upwp_clubb_gw, vpwp_clubb_gw, thlp2_clubb_gw, wpthlp_clubb_gw, &
     !$acc              wp2up2, wp2vp2, ice_supersat_frac, &
@@ -2911,7 +2919,7 @@ end subroutine clubb_init_cnst
     !$acc              invrs_rho_ds_zm, invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, &
     !$acc              radf, wpthlp_sfc, clubb_params, sfc_elevation, wprtp_sfc, upwp_sfc, vpwp_sfc, &
     !$acc              rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, p_in_Pa, exner, um_pert_inout, &
-    !$acc              thlprcp_out, deltaz, zi_g, zt_g, qrl_clubb, &
+    !$acc              thlprcp_out, deltaz, zi_g, zt_g, qrl_clubb, p_sfc, &
     !$acc              err_info%err_code, &
     !$acc              pdf_params_chnk(lchnk)%w_1, pdf_params_chnk(lchnk)%w_2, &
     !$acc              pdf_params_chnk(lchnk)%varnce_w_1, pdf_params_chnk(lchnk)%varnce_w_2, &
@@ -2972,9 +2980,9 @@ end subroutine clubb_init_cnst
     call t_startf('clubb_tend_cam:ACCR')
 
     !$acc parallel loop gang vector collapse(2) default(present)
-    do i = 1, ncol
-      do n = 1, nparams
-        clubb_params(i,:) = clubb_params_single_col(1,:)
+    do n = 1, nparams
+      do i = 1, ncol
+        clubb_params(i,n) = clubb_params_single_col(1,n)
       end do
     end do
 

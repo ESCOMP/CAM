@@ -3946,6 +3946,12 @@ Specifier for method to construct a grid density function to adapt grid to.
 Valid values: 0 (no grid adaptation), 1 (use Lscale and wp2)
 </entry>
 
+<entry id="clubb_fill_holes_type" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="0,1,2,3,4,5,6" >
+Selects which algorithm the fill_holes routine uses to correct 
+below threshold values in field solutions.
+</entry>
+
 <entry id="clubb_grid_remap_method" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="1" >
 Specifier for method to remap values from one grid to another.

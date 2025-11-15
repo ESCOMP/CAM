@@ -2181,6 +2181,7 @@
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_gamma_coefb phys="cam7"                    > 0.3     </clubb_gamma_coefb>
 <clubb_grid_adapt_in_time_method                  > 0       </clubb_grid_adapt_in_time_method>
+<clubb_fill_holes_type                            > 2       </clubb_fill_holes_type>
 <clubb_grid_remap_method                          > 1       </clubb_grid_remap_method>
 <clubb_ipdf_call_placement                        > 2       </clubb_ipdf_call_placement>
 <clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
