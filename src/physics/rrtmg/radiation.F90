@@ -107,7 +107,7 @@ type rad_out_t
    real(r8) :: aer_tau400(pcols,0:pver)
    real(r8) :: aer_tau550(pcols,0:pver)
    real(r8) :: aer_tau700(pcols,0:pver)
-   
+
 end type rad_out_t
 
 ! Namelist variables
@@ -126,19 +126,19 @@ logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
 ! Physics buffer indices
-integer :: qrs_idx      = 0 
-integer :: qrl_idx      = 0 
-integer :: su_idx       = 0 
-integer :: sd_idx       = 0 
-integer :: lu_idx       = 0 
-integer :: ld_idx       = 0 
+integer :: qrs_idx      = 0
+integer :: qrl_idx      = 0
+integer :: su_idx       = 0
+integer :: sd_idx       = 0
+integer :: lu_idx       = 0
+integer :: ld_idx       = 0
 integer :: fsds_idx     = 0
 integer :: fsns_idx     = 0
 integer :: fsnt_idx     = 0
 integer :: flns_idx     = 0
 integer :: flnt_idx     = 0
-integer :: cldfsnow_idx = 0 
-integer :: cld_idx      = 0 
+integer :: cldfsnow_idx = 0
+integer :: cld_idx      = 0
 
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ','_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
@@ -213,7 +213,7 @@ subroutine radiation_readnl(nlfile)
    if (iradlw      < 0) iradlw      = nint((-iradlw     *3600._r8)/dtime)
    if (irad_always < 0) irad_always = nint((-irad_always*3600._r8)/dtime)
 
-   !----------------------------------------------------------------------- 
+   !-----------------------------------------------------------------------
    ! Print runtime options to log.
    !-----------------------------------------------------------------------
 
@@ -239,8 +239,8 @@ subroutine radiation_register
    use physics_buffer, only: pbuf_add_field, dtype_r8
    use radiation_data, only: rad_data_register
 
-   call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
-   call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
+   call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate
+   call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate
 
    call pbuf_add_field('FSDS' , 'global',dtype_r8,(/pcols/), fsds_idx) ! Surface solar downward flux
    call pbuf_add_field('FSNS' , 'global',dtype_r8,(/pcols/), fsns_idx) ! Surface net shortwave flux
@@ -303,15 +303,15 @@ end function radiation_do
 !================================================================================================
 
 real(r8) function radiation_nextsw_cday()
-  
+
    ! Return calendar day of next sw radiation calculation
 
    ! Local variables
    integer :: nstep      ! timestep counter
-   logical :: dosw       ! true => do shosrtwave calc   
+   logical :: dosw       ! true => do shosrtwave calc
    integer :: offset     ! offset for calendar day calculation
    integer :: dTime      ! integer timestep size
-   real(r8):: calday     ! calendar day of 
+   real(r8):: calday     ! calendar day of
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -323,14 +323,14 @@ real(r8) function radiation_nextsw_cday()
       nstep = nstep + 1
       offset = offset + dtime
       if (radiation_do('sw', nstep)) then
-         radiation_nextsw_cday = get_curr_calday(offset=offset) 
+         radiation_nextsw_cday = get_curr_calday(offset=offset)
          dosw = .true.
       end if
    end do
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
    end if
-        
+
 end function radiation_nextsw_cday
 
 !================================================================================================
@@ -368,7 +368,7 @@ subroutine radiation_init(pbuf2d)
 
    integer :: dtime
    !-----------------------------------------------------------------------
-    
+
    call rad_solar_var_init()
    call rrtmg_state_init()
    call rad_data_init(pbuf2d) ! initialize output fields for offline driver
@@ -408,12 +408,12 @@ subroutine radiation_init(pbuf2d)
    end if
 
    if (docosp) call cospsimulator_intr_init
-    
+
    allocate(cosp_cnt(begchunk:endchunk))
    if (is_first_restart_step()) then
       cosp_cnt(begchunk:endchunk) = cosp_cnt_init
    else
-      cosp_cnt(begchunk:endchunk) = 0     
+      cosp_cnt(begchunk:endchunk) = 0
    end if
 
    call addfld('O3colAbove',    horiz_only,   'A', 'DU', 'Column O3 above model top', sampling_seq='rad_lwsw')
@@ -625,7 +625,7 @@ subroutine radiation_define_restart(file)
    end if
 
 end subroutine radiation_define_restart
-  
+
 !===============================================================================
 
 subroutine radiation_write_restart(file)
@@ -644,7 +644,7 @@ subroutine radiation_write_restart(file)
    end if
 
 end subroutine radiation_write_restart
-  
+
 !===============================================================================
 
 subroutine radiation_read_restart(file)
@@ -674,21 +674,21 @@ subroutine radiation_read_restart(file)
    end if
 
 end subroutine radiation_read_restart
-  
+
 !===============================================================================
 
 subroutine radiation_tend( &
    state, ptend, pbuf, cam_out, cam_in, net_flx, rd_out)
 
-   !----------------------------------------------------------------------- 
-   ! 
+   !-----------------------------------------------------------------------
+   !
    ! Driver for radiation computation.
-   ! 
+   !
    ! Revision history:
    ! 2007-11-05  M. Iacono        Install rrtmg_lw and sw as radiation model.
    ! 2007-12-27  M. Iacono        Modify to use CAM cloud optical properties with rrtmg.
    !-----------------------------------------------------------------------
-    
+
    use phys_grid,          only: get_rlat_all_p, get_rlon_all_p
    use cam_control_mod,    only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,        only: shr_orb_decl, shr_orb_cosz
@@ -718,7 +718,7 @@ subroutine radiation_tend( &
    ! Arguments
    type(physics_state), intent(in), target :: state
    type(physics_ptend), intent(out)        :: ptend
-    
+
    type(physics_buffer_desc), pointer      :: pbuf(:)
    type(cam_out_t),     intent(inout)      :: cam_out
    type(cam_in_t),      intent(in)         :: cam_in
@@ -731,7 +731,7 @@ subroutine radiation_tend( &
    type(rad_out_t), pointer :: rd  ! allow rd_out to be optional by allocating a local object
                                    ! if the argument is not present
    logical  :: write_output
-  
+
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
@@ -743,7 +743,7 @@ subroutine radiation_tend( &
    real(r8) :: clon(pcols)     ! current longitudes(radians)
    real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 
-   ! Gathered indices of day and night columns 
+   ! Gathered indices of day and night columns
    !  chunk_column_index = IdxDay(daylight_column_index)
    integer :: Nday           ! Number of daylight columns
    integer :: Nnite          ! Number of night columns
@@ -754,8 +754,8 @@ subroutine radiation_tend( &
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds- whatever they are"
-   real(r8), pointer :: qrs(:,:)      ! shortwave radiative heating rate 
-   real(r8), pointer :: qrl(:,:)      ! longwave  radiative heating rate 
+   real(r8), pointer :: qrs(:,:)      ! shortwave radiative heating rate
+   real(r8), pointer :: qrl(:,:)      ! longwave  radiative heating rate
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
    real(r8), pointer :: fsns(:)  ! Surface solar absorbed flux
    real(r8), pointer :: fsnt(:)  ! Net column abs solar flux at model top
@@ -809,7 +809,7 @@ subroutine radiation_tend( &
    real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
    real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
-   real(r8) :: sfac(1:nswbands)     ! time varying scaling factors due to Solar Spectral Irrad at 1 A.U. per band
+   real(r8) :: sfac(1:nswbands,pcols)     ! time varying scaling factors due to Solar Spectral Irrad at 1 A.U. per band
 
    integer :: icall                 ! index through climate/diagnostic radiation calls
    logical :: active_calls(0:N_DIAG)
@@ -825,7 +825,7 @@ subroutine radiation_tend( &
    real(r8) :: fcns(pcols,pverp)    ! net clear-sky shortwave flux
    real(r8) :: fnl(pcols,pverp)     ! net longwave flux
    real(r8) :: fcnl(pcols,pverp)    ! net clear-sky longwave flux
-  
+
    ! for COSP
    real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity
    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
@@ -934,8 +934,8 @@ subroutine radiation_tend( &
       else
          cldfprime(:ncol,:) = cld(:ncol,:)
       end if
-      
-      
+
+
       if (dosw) then
 
          if (oldcldoptics) then
@@ -965,7 +965,7 @@ subroutine radiation_tend( &
          cld_tau_w(:,:ncol,:)   =  liq_tau_w(:,:ncol,:)   + ice_tau_w(:,:ncol,:)
          cld_tau_w_g(:,:ncol,:) =  liq_tau_w_g(:,:ncol,:) + ice_tau_w_g(:,:ncol,:)
          cld_tau_w_f(:,:ncol,:) =  liq_tau_w_f(:,:ncol,:) + ice_tau_w_f(:,:ncol,:)
- 
+
          if (cldfsnow_idx > 0) then
             ! add in snow
             call get_snow_optics_sw(state, pbuf, snow_tau, snow_tau_w, snow_tau_w_g, snow_tau_w_f)
@@ -1081,7 +1081,7 @@ subroutine radiation_tend( &
 
       if (dosw) then
 
-         call get_variability(sfac)
+         call get_variability(lchnk,sfac)
 
          ! Get the active climate/diagnostic shortwave calculations
          call rad_cnst_get_call_list(active_calls)
@@ -1096,7 +1096,7 @@ subroutine radiation_tend( &
 
                call aer_rad_props_sw(icall, state, pbuf, nnite, idxnite, &
                                      aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
-               
+
                rd%cld_tau_cloudsim(:ncol,:) = cld_tau(rrtmg_sw_cloudsim_band,:ncol,:)
                rd%aer_tau550(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag)
                rd%aer_tau400(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag+1)
@@ -1133,7 +1133,7 @@ subroutine radiation_tend( &
 
       ! Output aerosol mmr
       call rad_cnst_out(0, state, pbuf)
-                 
+
       ! Longwave radiation computation
 
       if (dolw) then
@@ -1149,7 +1149,7 @@ subroutine radiation_tend( &
                call  rrtmg_state_update( state, pbuf, icall, r_state)
 
                call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
-                  
+
                call rad_rrtmg_lw( &
                   lchnk, ncol, num_rrtmg_levs, r_state, state%pmid,  &
                   aer_lw_abs, cldfprime, c_cld_lw_abs, qrl, rd%qrlc, &
@@ -1390,7 +1390,7 @@ subroutine radiation_output_lw(lchnk, ncol, icall, rd, pbuf, cam_out, freqclr, f
 
    call outfld('FLUT'//diag(icall),    rd%flut,       pcols, lchnk)
    call outfld('FLUTC'//diag(icall),   rd%flutc,      pcols, lchnk)
-   
+
    ftem(:ncol) = rd%flutc(:ncol) - rd%flut(:ncol)
    call outfld('LWCF'//diag(icall),    ftem,          pcols, lchnk)
 
@@ -1411,7 +1411,7 @@ end subroutine radiation_output_lw
 
 subroutine calc_col_mean(state, mmr_pointer, mean_value)
 
-   ! Compute the column mean mass mixing ratio.  
+   ! Compute the column mean mass mixing ratio.
 
    type(physics_state),        intent(in)  :: state
    real(r8), dimension(:,:),   pointer     :: mmr_pointer  ! mass mixing ratio (lev)
@@ -1440,4 +1440,3 @@ end subroutine calc_col_mean
 !===============================================================================
 
 end module radiation
-

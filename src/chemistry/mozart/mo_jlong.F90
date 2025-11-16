@@ -13,6 +13,8 @@
       use mpishorthand,     only : mpicom,mpiint,mpir8, mpilog, mpir4
 #endif
       use spmd_utils,       only : masterproc
+      use infnan, only : nan, assignment(=)
+      use ppgrid,           only : pcols, begchunk, endchunk
 
       implicit none
 
@@ -46,7 +48,7 @@
       real(r8), allocatable :: wc(:)
       real(r8), allocatable :: we(:)
       real(r8), allocatable :: wlintv(:)
-      real(r8), allocatable :: etfphot(:)
+      real(r8), allocatable :: etfphot(:,:,:)
       real(r8), allocatable :: bde_o2_b(:)
       real(r8), allocatable :: bde_o3_a(:)
       real(r8), allocatable :: bde_o3_b(:)
@@ -73,7 +75,6 @@
 
       use ppgrid,         only : pver
       use mo_util,        only : rebin
-      use solar_irrad_data,only : data_nw => nbins, data_we => we, data_etf => sol_etf
 
       implicit none
 
@@ -100,20 +101,8 @@
       we(:nw)  = wc(:nw) - .5_r8*wlintv(:nw)
       we(nw+1) = wc(nw) + .5_r8*wlintv(nw)
 
-      if (masterproc) then
-         write(iulog,*) ' '
-         write(iulog,*) '--------------------------------------------------'
-      endif
-      call rebin( data_nw, nw, data_we, we, data_etf, etfphot )
-      if (masterproc) then
-         write(iulog,*) 'jlong_init: etfphot after data rebin'
-         write(iulog,'(1p,5g15.7)') etfphot(:)
-         write(iulog,*) '--------------------------------------------------'
-         write(iulog,*) ' '
-      endif
-
       jlong_used = .true.
- 
+
       end subroutine jlong_init
 
       subroutine get_xsqy( xs_long_file, lng_indexer )
@@ -182,18 +171,18 @@
          do m = 1,phtcnt
             if( pht_alias_lst(m,2) == ' ' ) then
                iret = nf90_inq_varid( ncid, rxt_tag_lst(m), varid )
-               if( iret == nf90_noerr ) then 
+               if( iret == nf90_noerr ) then
                   lng_indexer(m) = varid
                end if
             else if( pht_alias_lst(m,2) == 'userdefined' ) then
                lng_indexer(m) = -1
             else
                iret = nf90_inq_varid( ncid, pht_alias_lst(m,2), varid )
-               if( iret == nf90_noerr ) then 
+               if( iret == nf90_noerr ) then
                   lng_indexer(m) = varid
                else
                   write(iulog,*) 'get_xsqy : ',rxt_tag_lst(m)(:len_trim(rxt_tag_lst(m))),' alias ', &
-                       pht_alias_lst(m,2)(:len_trim(pht_alias_lst(m,2))),' not in dataset'            
+                       pht_alias_lst(m,2)(:len_trim(pht_alias_lst(m,2))),' not in dataset'
                   call endrun
                end if
             end if
@@ -213,15 +202,15 @@
          !------------------------------------------------------------------------------
 
          allocate( xsqy(numj,nw,nt,np_xs),stat=iret )
-         if( iret /= 0 ) then 
+         if( iret /= 0 ) then
             call alloc_err( iret, 'get_xsqy', 'xsqy', numj*nt*np_xs*nw )
          end if
          allocate( prs(np_xs),dprs(np_xs-1),stat=iret )
-         if( iret /= 0 ) then 
+         if( iret /= 0 ) then
             call alloc_err( iret, 'get_xsqy', 'prs,dprs', np_xs )
          end if
          allocate( xs_o2b(nw,nt,np_xs),xs_o3a(nw,nt,np_xs),xs_o3b(nw,nt,np_xs),stat=iret )
-         if( iret /= 0 ) then 
+         if( iret /= 0 ) then
             call alloc_err( iret, 'get_xsqy', 'xs_o2b ... xs_o3b', np_xs )
          end if
          !------------------------------------------------------------------------------
@@ -281,17 +270,17 @@
          !       ... allocate arrays
          !------------------------------------------------------------------------------
          allocate( xsqy(numj,nw,nt,np_xs),stat=iret )
-         if( iret /= nf90_noerr) then 
+         if( iret /= nf90_noerr) then
             write(iulog,*) 'get_xsqy : failed to allocate xsqy ; error = ',iret
             call endrun
          end if
          allocate( prs(np_xs),dprs(np_xs-1),stat=iret )
-         if( iret /= nf90_noerr) then 
+         if( iret /= nf90_noerr) then
             write(iulog,*) 'get_xsqy : failed to allocate prs,dprs ; error = ',iret
             call endrun
          end if
          allocate( xs_o2b(nw,nt,np_xs),xs_o3a(nw,nt,np_xs),xs_o3b(nw,nt,np_xs),stat=iret )
-         if( iret /= 0 ) then 
+         if( iret /= 0 ) then
             call alloc_err( iret, 'get_xsqy', 'xs_o2b ... xs_o3b', np_xs )
          end if
       end if
@@ -384,39 +373,41 @@
 !       ... allocate arrays
 !------------------------------------------------------------------------------
       allocate( wc(nw),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'wc', nw )
       end if
-      allocate( wlintv(nw),we(nw+1),etfphot(nw),stat=iret )
-      if( iret /= 0 ) then 
+      allocate( wlintv(nw),we(nw+1),etfphot(nw,pcols,begchunk:endchunk),stat=iret )
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'wlintv,etfphot', nw )
       end if
+      etfphot = nan
+
       allocate( bde_o2_b(nw),bde_o3_a(nw),bde_o3_b(nw),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'bde', nw )
       end if
       allocate( p(nump),del_p(nump-1),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'p,delp', nump )
       end if
       allocate( sza(numsza),del_sza(numsza-1),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'sza,del_sza', numsza )
       end if
       allocate( alb(numalb),del_alb(numalb-1),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'alb,del_alb', numalb )
       end if
       allocate( o3rat(numcolo3),del_o3rat(numcolo3-1),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'o3rat,del_o3rat', numcolo3 )
       end if
       allocate( colo3(nump),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          call alloc_err( iret, 'get_rsf', 'colo3', nump )
       end if
       allocate( rsf_tab(nw,nump,numsza,numcolo3,numalb),stat=iret )
-      if( iret /= 0 ) then 
+      if( iret /= 0 ) then
          write(iulog,*) 'get_rsf : dimensions = ',nw,nump,numsza,numcolo3,numalb
          call alloc_err( iret, 'get_rsf', 'rsf_tab', numalb*numcolo3*numsza*nump )
       end if
@@ -441,7 +432,7 @@
          iret = nf90_get_var( ncid, varid, colo3 )
 
          iret = nf90_inq_varid( ncid, 'RSF', varid )
-         
+
          if (masterproc) then
             write(iulog,*) ' '
             write(iulog,*) '----------------------------------------------'
@@ -501,21 +492,32 @@
       use mo_util,        only : rebin
 
       use solar_irrad_data,only : data_nw => nbins, data_we => we, data_etf => sol_etf
+      use solar_shade, only: sun_shade
+      use phys_grid, only : get_ncols_p
 
       implicit none
 
+      integer :: i, c, ncols
+
       if (.not.jlong_used) return
 
-      call rebin( data_nw, nw, data_we, we, data_etf, etfphot )
+      do c = begchunk,endchunk
+         ncols = get_ncols_p(c)
+         do i = 1,ncols
+            ! apply sun shade factor to input ETF
+            call rebin( data_nw, nw, data_we, we, data_etf(:)*sun_shade(:,i,c), etfphot(:,i,c) )
+         end do
+      end do
+
 
       end subroutine jlong_timestep_init
 
-      subroutine jlong_hrates( nlev, sza_in, alb_in, p_in, t_in, &
+      subroutine jlong_hrates( icol, lchnk, nlev, sza_in, alb_in, p_in, t_in, &
                                mw, o2_vmr, o3_vmr, colo3_in, qrl_col, &
                                cparg, kbot )
 !==============================================================================
-!   Purpose:                                                                   
-!     To calculate the thermal heating rates longward of 200nm.        
+!   Purpose:
+!     To calculate the thermal heating rates longward of 200nm.
 !==============================================================================
 !   Approach:
 !     1) Reads the Cross Section*QY NetCDF file
@@ -539,6 +541,7 @@
 !------------------------------------------------------------------------------
 !    	... dummy arguments
 !------------------------------------------------------------------------------
+      integer, intent (in)     :: icol, lchnk
       integer, intent (in)     :: nlev               ! number vertical levels
       integer, intent (in)     :: kbot               ! heating levels
       real(r8), intent(in)     :: o2_vmr(nlev)       ! o2 conc (mol/mol)
@@ -581,7 +584,7 @@
 !----------------------------------------------------------------------
 !        ... interpolate table rsf to model variables
 !----------------------------------------------------------------------
-      call interpolate_rsf( alb_in, sza_in, p_in, colo3_in, kbot, rsf )
+      call interpolate_rsf( icol, lchnk, alb_in, sza_in, p_in, colo3_in, kbot, rsf )
 
 !------------------------------------------------------------------------------
 !     ... calculate thermal heating rates for wavelengths >200nm
@@ -641,11 +644,11 @@ level_loop_1 : &
 
       end subroutine jlong_hrates
 
-       subroutine jlong_photo( nlev, sza_in, alb_in, p_in, t_in, &
+       subroutine jlong_photo( icol, lchnk, nlev, sza_in, alb_in, p_in, t_in, &
                               colo3_in, j_long )
 !==============================================================================
-!   Purpose:                                                                   
-!     To calculate the total J for selective species longward of 200nm.        
+!   Purpose:
+!     To calculate the total J for selective species longward of 200nm.
 !==============================================================================
 !   Approach:
 !     1) Reads the Cross Section*QY NetCDF file
@@ -669,6 +672,7 @@ level_loop_1 : &
 !------------------------------------------------------------------------------
 !    	... dummy arguments
 !------------------------------------------------------------------------------
+      integer, intent (in)     :: icol, lchnk
       integer, intent (in)     :: nlev               ! number vertical levels
       real(r8), intent(in)     :: sza_in             ! solar zenith angle (degrees)
       real(r8), intent(in)     :: alb_in(nlev)       ! albedo
@@ -706,7 +710,7 @@ level_loop_1 : &
 !----------------------------------------------------------------------
 !        ... interpolate table rsf to model variables
 !----------------------------------------------------------------------
-      call interpolate_rsf( alb_in, sza_in, p_in, colo3_in, nlev, rsf )
+      call interpolate_rsf( icol, lchnk, alb_in, sza_in, p_in, colo3_in, nlev, rsf )
 
 !------------------------------------------------------------------------------
 !     ... calculate total Jlong for wavelengths >200nm
@@ -768,7 +772,7 @@ level_loop_1 : &
 !        ... interpolate table rsf to model variables
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-      subroutine interpolate_rsf( alb_in, sza_in, p_in, colo3_in, kbot, rsf )
+      subroutine interpolate_rsf( icol, lchnk, alb_in, sza_in, p_in, colo3_in, kbot, rsf )
 
         use error_messages, only : alloc_err
 
@@ -777,6 +781,7 @@ level_loop_1 : &
 !------------------------------------------------------------------------------
 !    	... dummy arguments
 !------------------------------------------------------------------------------
+      integer , intent(in)  :: icol, lchnk
       real(r8), intent(in)  :: alb_in(:)       ! albedo
       real(r8), intent(in)  :: sza_in          ! solar zenith angle (degrees)
       integer,  intent(in)  :: kbot            ! heating levels
@@ -947,9 +952,9 @@ Level_loop : &
          end do
 !------------------------------------------------------------------------------
 !      etfphot comes in as photons/cm^2/sec/nm  (rsf includes the wlintv factor -- nm)
-!     ... --> convert to photons/cm^2/s 
+!     ... --> convert to photons/cm^2/s
 !------------------------------------------------------------------------------
-         rsf(:,k) = etfphot(:) * rsf(:,k)
+         rsf(:,k) = etfphot(:,icol,lchnk) * rsf(:,k)
 
       end do Level_loop
 

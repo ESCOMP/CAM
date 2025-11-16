@@ -70,6 +70,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use prescribed_strataero,only: prescribed_strataero_readnl
    use aerodep_flx,         only: aerodep_flx_readnl
    use solar_data,          only: solar_data_readnl
+   use solar_shade,         only: solar_shade_readnl
    use tropopause,          only: tropopause_readnl
    use aoa_tracers,         only: aoa_tracers_readnl
    use prescribed_ozone,    only: prescribed_ozone_readnl
@@ -162,6 +163,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call prescribed_volcaero_readnl(nlfilename)
    call prescribed_strataero_readnl(nlfilename)
    call solar_data_readnl(nlfilename)
+   call solar_shade_readnl(nlfilename)
    call carma_readnl(nlfilename)
    call tropopause_readnl(nlfilename)
    call aoa_tracers_readnl(nlfilename)

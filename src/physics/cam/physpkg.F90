@@ -742,6 +742,7 @@ contains
     use sslt_rebin,         only: sslt_rebin_init
     use tropopause,         only: tropopause_init
     use solar_data,         only: solar_data_init
+    use solar_shade,        only: solar_shade_init
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
@@ -820,6 +821,7 @@ contains
 
     ! solar irradiance data modules
     call solar_data_init()
+    call solar_shade_init()
 
     ! Prognostic chemistry.
     call chem_init(phys_state,pbuf2d)

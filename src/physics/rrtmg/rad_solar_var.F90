@@ -1,12 +1,13 @@
 !-------------------------------------------------------------------------------
 ! This module uses the Lean solar irradiance data to provide a solar cycle
-! scaling factor used in heating rate calculations 
+! scaling factor used in heating rate calculations
 !-------------------------------------------------------------------------------
 module rad_solar_var
 
   use shr_kind_mod ,     only : r8 => shr_kind_r8
   use solar_irrad_data,  only : sol_irrad, we, nbins, has_spectrum, sol_tsi
   use solar_irrad_data,  only : do_spctrl_scaling
+  use solar_shade,       only : sun_shade
   use cam_abortutils,    only : endrun
 
   implicit none
@@ -18,7 +19,7 @@ module rad_solar_var
 
   real(r8), allocatable :: ref_band_irrad(:)  ! scaling will be relative to ref_band_irrad in each band
   real(r8), allocatable :: irrad(:)           ! solar irradiance at model timestep in each band
-  real(r8)              :: tsi_ref            ! total solar irradiance assumed by rrtmg                                                 
+  real(r8)              :: tsi_ref            ! total solar irradiance assumed by rrtmg
 
   real(r8), allocatable :: radbinmax(:)
   real(r8), allocatable :: radbinmin(:)
@@ -89,21 +90,31 @@ contains
 
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
-  subroutine get_variability( sfac )
+  subroutine get_variability( lchnk, sfac )
+    use ppgrid, only : pcols
+    use phys_grid, only: get_ncols_p
 
-    real(r8), intent(out) :: sfac(nradbins)       ! scaling factors for CAM heating
+    integer,  intent(in)  :: lchnk
+    real(r8), intent(out) :: sfac(nradbins,pcols)       ! scaling factors for CAM heating
 
     integer :: yr, mon, day, tod
+    integer :: icol, ncols
+
+    ncols = get_ncols_p(lchnk)
 
     if ( do_spctrl_scaling ) then
 
-      call integrate_spectrum( nbins, nradbins, we, radbinmin, radbinmax, sol_irrad, irrad)
+      sfac = 0._r8
 
-      sfac(:nradbins) = irrad(:nradbins)/ref_band_irrad(:nradbins)
+      ! apply the column-dependent sun shade factor before integrating to RRTMG bands
+      do icol = 1,ncols
+         call integrate_spectrum( nbins, nradbins, we, radbinmin, radbinmax, sol_irrad(:nbins)*sun_shade(:nbins,icol,lchnk), irrad)
+         sfac(:nradbins,icol) = irrad(:nradbins)/ref_band_irrad(:nradbins)
+      end do
 
     else
 
-       sfac(:nradbins) = sol_tsi/tsi_ref
+       sfac(:nradbins,:ncols) = sol_tsi/tsi_ref
 
     endif
 
@@ -129,7 +140,7 @@ contains
     real(r8), intent(in)  :: min_trg(ntrg)         ! target coordinates
     real(r8), intent(in)  :: src(nsrc)             ! source array
     real(r8), intent(out) :: trg(ntrg)             ! target array
- 
+
     !---------------------------------------------------------------
     !	... local variables
     !---------------------------------------------------------------

@@ -72,7 +72,7 @@ integer, parameter :: liqflag = 0 ! flag for liquid cloud parameterization metho
 
 ! Set iaer to select aerosol option
 ! iaer = 0, no aerosols
-! iaer = 10, input total aerosol optical depth, single scattering albedo 
+! iaer = 10, input total aerosol optical depth, single scattering albedo
 !            and asymmetry parameter (tauaer, ssaaer, asmaer) directly
 integer, parameter :: iaer = 10
 
@@ -104,28 +104,28 @@ subroutine rrtmg_sw &
 
 ! ------- Description -------
 
-! This program is the driver for RRTMG_SW, the AER SW radiation model for 
+! This program is the driver for RRTMG_SW, the AER SW radiation model for
 !  application to GCMs, that has been adapted from RRTM_SW for improved
 !  efficiency and to provide fractional cloudiness and cloud overlap
 !  capability using McICA.
 !
 ! This routine
 !    b) calls INATM_SW to read in the atmospheric profile;
-!       all layering in RRTMG is ordered from surface to toa. 
+!       all layering in RRTMG is ordered from surface to toa.
 !    c) calls CLDPRMC_SW to set cloud optical depth for McICA based
 !       on input cloud properties
-!    d) calls SETCOEF_SW to calculate various quantities needed for 
+!    d) calls SETCOEF_SW to calculate various quantities needed for
 !       the radiative transfer algorithm
-!    e) calls SPCVMC to call the two-stream model that in turn 
-!       calls TAUMOL to calculate gaseous optical depths for each 
+!    e) calls SPCVMC to call the two-stream model that in turn
+!       calls TAUMOL to calculate gaseous optical depths for each
 !       of the 16 spectral bands and to perform the radiative transfer
 !       using McICA, the Monte-Carlo Independent Column Approximation,
 !       to represent sub-grid scale cloud variability
 !    f) passes the calculated fluxes and cooling rates back to GCM
 !
 ! *** This version uses McICA ***
-!     Monte Carlo Independent Column Approximation (McICA, Pincus et al., 
-!     JC, 2003) method is applied to the forward model calculation 
+!     Monte Carlo Independent Column Approximation (McICA, Pincus et al.,
+!     JC, 2003) method is applied to the forward model calculation
 !     This method is valid for clear sky or partial cloud conditions.
 !
 ! This call to RRTMG_SW must be preceeded by a call to the module
@@ -134,7 +134,7 @@ subroutine rrtmg_sw &
 !     on the RRTMG quadrature point (ngptsw) dimension.
 !
 ! *** This version only allows input of cloud optical properties ***
-!     Input cloud fraction, cloud optical depth, single scattering albedo 
+!     Input cloud fraction, cloud optical depth, single scattering albedo
 !     and asymmetry parameter directly (inflg = 0)
 !
 ! *** This version only allows input of aerosol optical properties ***
@@ -145,7 +145,7 @@ subroutine rrtmg_sw &
 ! ------- Modifications -------
 !
 ! This version of RRTMG_SW has been modified from RRTM_SW to use a reduced
-! set of g-point intervals and a two-stream model for application to GCMs. 
+! set of g-point intervals and a two-stream model for application to GCMs.
 !
 !-- Original version (derived from RRTM_SW)
 !     2002: AER. Inc.
@@ -154,10 +154,10 @@ subroutine rrtmg_sw &
 !-- Additional modifications for GCM application
 !     Aug 2003: M. J. Iacono, AER Inc.
 !-- Total number of g-points reduced from 224 to 112.  Original
-!   set of 224 can be restored by exchanging code in module parrrsw.f90 
+!   set of 224 can be restored by exchanging code in module parrrsw.f90
 !   and in file rrtmg_sw_init.f90.
 !     Apr 2004: M. J. Iacono, AER, Inc.
-!-- Modifications to include output for direct and diffuse 
+!-- Modifications to include output for direct and diffuse
 !   downward fluxes.  There are output as "true" fluxes without
 !   any delta scaling applied.  Code can be commented to exclude
 !   this calculation in source file rrtmg_sw_spcvrt.f90.
@@ -166,7 +166,7 @@ subroutine rrtmg_sw &
 !     Nov 2005: M. J. Iacono, AER, Inc.
 !-- Reformatted for consistency with rrtmg_lw.
 !     Feb 2007: M. J. Iacono, AER, Inc.
-!-- Modifications to formatting to use assumed-shape arrays. 
+!-- Modifications to formatting to use assumed-shape arrays.
 !     Aug 2007: M. J. Iacono, AER, Inc.
 !-- Modified to output direct and diffuse fluxes either with or without
 !   delta scaling based on setting of idelm flag
@@ -178,7 +178,7 @@ subroutine rrtmg_sw &
 
    ! ----- Input -----
    integer, intent(in) :: lchnk                      ! chunk identifier
-   integer, intent(in) :: ncol                       ! Number of horizontal columns     
+   integer, intent(in) :: ncol                       ! Number of horizontal columns
    integer, intent(in) :: nlay                       ! Number of model layers
    integer, intent(in) :: icld                       ! Cloud overlap method
                                                      !    0: Clear only
@@ -221,7 +221,7 @@ subroutine rrtmg_sw &
    real(kind=r8), intent(in) :: adjes                ! Flux adjustment for Earth/Sun distance
    real(kind=r8), intent(in) :: coszen(:)            ! Cosine of solar zenith angle
                                                      !    Dimensions: (ncol)
-   real(kind=r8), intent(in) :: solvar(1:nbndsw)     ! Solar constant (Wm-2) scaling per band
+   real(kind=r8), intent(in) :: solvar(1:nbndsw,1:ncol) ! Solar constant (Wm-2) scaling per band
 
    real(kind=r8), intent(in) :: cldfmcl(:,:,:)       ! Cloud fraction
                                                      !    Dimensions: (ngptsw,ncol,nlay)
@@ -243,13 +243,13 @@ subroutine rrtmg_sw &
                                                      !    Dimensions: (ncol,nlay)
    real(kind=r8), intent(in) :: tauaer(:,:,:)        ! Aerosol optical depth (iaer=10 only)
                                                      !    Dimensions: (ncol,nlay,nbndsw)
-                                                     ! (non-delta scaled)      
+                                                     ! (non-delta scaled)
    real(kind=r8), intent(in) :: ssaaer(:,:,:)        ! Aerosol single scattering albedo (iaer=10 only)
                                                      !    Dimensions: (ncol,nlay,nbndsw)
-                                                     ! (non-delta scaled)      
+                                                     ! (non-delta scaled)
    real(kind=r8), intent(in) :: asmaer(:,:,:)        ! Aerosol asymmetry parameter (iaer=10 only)
                                                      !    Dimensions: (ncol,nlay,nbndsw)
-                                                     ! (non-delta scaled)      
+                                                     ! (non-delta scaled)
 
    ! ----- Output -----
 
@@ -371,13 +371,13 @@ subroutine rrtmg_sw &
    real(kind=r8) :: znifu(ncol,nlay+2)          ! temporary near-IR downward shortwave flux (w/m2)
    real(kind=r8) :: znicu(ncol,nlay+2)          ! temporary clear sky near-IR downward shortwave flux (w/m2)
 
-   ! Optional output fields 
+   ! Optional output fields
    real(kind=r8) :: swnflx(nlay+2)         ! Total sky shortwave net flux (W/m2)
    real(kind=r8) :: swnflxc(nlay+2)        ! Clear sky shortwave net flux (W/m2)
    real(kind=r8) :: dirdflux(nlay+2)       ! Direct downward shortwave surface flux
    real(kind=r8) :: difdflux(nlay+2)       ! Diffuse downward shortwave surface flux
-   real(kind=r8) :: uvdflx(nlay+2)         ! Total sky downward shortwave flux, UV/vis   
-   real(kind=r8) :: nidflx(nlay+2)         ! Total sky downward shortwave flux, near-IR  
+   real(kind=r8) :: uvdflx(nlay+2)         ! Total sky downward shortwave flux, UV/vis
+   real(kind=r8) :: nidflx(nlay+2)         ! Total sky downward shortwave flux, near-IR
 
    ! Initializations
 
@@ -588,7 +588,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
             taua, ssaa, asma)
 
    ! Input atmospheric profile from GCM, and prepare it for use in RRTMG_SW.
-   ! Set other RRTMG_SW input parameters.  
+   ! Set other RRTMG_SW input parameters.
 
    use parrrsw,  only: nbndsw, ngptsw, nmol, mxmol, &
                        jpband, jpb1, jpb2
@@ -626,7 +626,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
    integer, intent(in) :: dyofyr                     ! Day of the year (used to get Earth/Sun
                                                      !  distance if adjflx not provided)
    real(kind=r8), intent(in) :: adjes                ! Flux adjustment for Earth/Sun distance
-   real(kind=r8), intent(in) :: solvar(jpb1:jpb2)    ! Solar constant (Wm-2) scaling per band
+   real(kind=r8), intent(in) :: solvar(jpb1:jpb2,1:ncol)    ! Solar constant (Wm-2) scaling per band
 
    real(kind=r8), intent(in) :: cldfmcl(:,:,:)       ! Cloud fraction
                                                      ! Dimensions: (ngptsw,ncol,nlay)
@@ -719,7 +719,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
    real(kind=r8), parameter :: sbc = 5.67e-08_r8     ! Stefan-Boltzmann constant (W/m2K4)
 
    integer :: isp, l, ix, n, imol, ib, ig, iplon   ! Loop indices
-   real(kind=r8) :: amm, summol                      ! 
+   real(kind=r8) :: amm, summol                      !
    real(kind=r8) :: adjflx                           ! flux adjustment for Earth/Sun distance
    !-----------------------------------------------------------------------------------------
 
@@ -728,16 +728,16 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
    adjflx = adjes
 
    ! 2) Calculate Earth/Sun distance from DYOFYR, the cumulative day of the year.
-   !    (Set adjflx to 1. to use constant Earth/Sun distance of 1 AU). 
+   !    (Set adjflx to 1. to use constant Earth/Sun distance of 1 AU).
    if (dyofyr .gt. 0) then
       adjflx = earth_sun(dyofyr)
    endif
 
    ! Set incoming solar flux adjustment to include adjustment for
    ! current Earth/Sun distance (ADJFLX) and scaling of default internal
-   ! solar constant (rrsw_scon = 1368.22 Wm-2) by band (SOLVAR).  SOLVAR can be set 
-   ! to a single scaling factor as needed, or to a different value in each 
-   ! band, which may be necessary for paleoclimate simulations. 
+   ! solar constant (rrsw_scon = 1368.22 Wm-2) by band (SOLVAR).  SOLVAR can be set
+   ! to a single scaling factor as needed, or to a different value in each
+   ! band, which may be necessary for paleoclimate simulations.
 
    do iplon = 1 ,ncol
       adjflux(iplon,:) = 0._r8
@@ -745,7 +745,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
 
    do ib = jpb1,jpb2
       do iplon = 1, ncol
-         adjflux(iplon,ib) = adjflx * solvar(ib)
+         adjflux(iplon,ib) = adjflx * solvar(ib,iplon)
       end do
    end do
 
@@ -754,15 +754,15 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
       tbound(iplon) = tsfc(iplon)
 
       !  Install input GCM arrays into RRTMG_SW arrays for pressure, temperature,
-      !  and molecular amounts.  
+      !  and molecular amounts.
       !  Pressures are input in mb, or are converted to mb here.
-      !  Molecular amounts are input in volume mixing ratio, or are converted from 
+      !  Molecular amounts are input in volume mixing ratio, or are converted from
       !  mass mixing ratio (or specific humidity for h2o) to volume mixing ratio
-      !  here. These are then converted to molecular amount (molec/cm2) below.  
-      !  The dry air column COLDRY (in molec/cm2) is calculated from the level 
-      !  pressures, pz (in mb), based on the hydrostatic equation and includes a 
-      !  correction to account for h2o in the layer.  The molecular weight of moist 
-      !  air (amm) is calculated for each layer.  
+      !  here. These are then converted to molecular amount (molec/cm2) below.
+      !  The dry air column COLDRY (in molec/cm2) is calculated from the level
+      !  pressures, pz (in mb), based on the hydrostatic equation and includes a
+      !  correction to account for h2o in the layer.  The molecular weight of moist
+      !  air (amm) is calculated for each layer.
       !  Note: In RRTMG, layer indexing goes from bottom to top, and coding below
       !  assumes GCM input fields are also bottom to top. Input layer indexing
       !  from GCM fields should be reversed here if necessary.
@@ -790,8 +790,8 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
          wkl(iplon,4,l) = n2ovmr(iplon,nlay-l+1)
          wkl(iplon,5,l) = 0._r8
          wkl(iplon,6,l) = ch4vmr(iplon,nlay-l+1)
-         wkl(iplon,7,l) = o2vmr(iplon,nlay-l+1) 
-         amm = (1._r8 - wkl(iplon,1,l)) * amd + wkl(iplon,1,l) * amw            
+         wkl(iplon,7,l) = o2vmr(iplon,nlay-l+1)
+         amm = (1._r8 - wkl(iplon,1,l)) * amd + wkl(iplon,1,l) * amw
          coldry(iplon,l) = (pz(iplon,l-1)-pz(iplon,l)) * 1.e3_r8 * avogad / &
             (1.e2_r8 * grav * amm * (1._r8 + wkl(iplon,1,l)))
       end do
@@ -812,7 +812,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
    ! Transfer aerosol optical properties to RRTM variables;
    ! modify to reverse layer indexing here if necessary.
 
-   if (iaer .ge. 1) then 
+   if (iaer .ge. 1) then
       do l = 1, nlay-1
          do ib = 1, nbndsw
             do iplon = 1, ncol
@@ -827,7 +827,7 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
    ! Transfer cloud fraction and cloud optical properties to RRTM variables;
    ! modify to reverse layer indexing here if necessary.
 
-   if (icld .ge. 1) then 
+   if (icld .ge. 1) then
       ! Move incoming GCM cloud arrays to RRTMG cloud arrays.
       ! For GCM input, incoming reice is in effective radius; for Fu parameterization (iceflag = 3)
       ! convert effective radius to generalized effective size using method of Mitchell, JAS, 2002:
@@ -878,5 +878,3 @@ subroutine inatm_sw (ncol, nlay, icld, iaer, &
 end subroutine inatm_sw
 
 end module rrtmg_sw_rad
-
-

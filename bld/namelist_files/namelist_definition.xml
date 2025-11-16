@@ -4609,6 +4609,21 @@ Use spectral scaling in the radiation heating
 Default: set by build-namelist
 </entry>
 
+<entry id="soll0" type="real"  category="solar"
+       group="solar_shade_opts" valid_values="" >
+Solar shade insolation factor
+</entry>
+
+<entry id="soll1" type="real"  category="solar"
+       group="solar_shade_opts" valid_values="" >
+Solar shade insolation factor
+</entry>
+
+<entry id="soll2" type="real"  category="solar"
+       group="solar_shade_opts" valid_values="" >
+Solar shade insolation factor
+</entry>
+
 <!-- Test Tracers -->
 
 <entry id="test_tracer_names" type="char*16(30)" category="test_tracers"

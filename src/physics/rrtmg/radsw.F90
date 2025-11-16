@@ -1,7 +1,7 @@
 
 module radsw
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: Solar radiation calculations.
 !
 !-----------------------------------------------------------------------
@@ -44,7 +44,7 @@ CONTAINS
 subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
                     E_pmid   ,E_cld      ,                             &
                     E_aer_tau,E_aer_tau_w,E_aer_tau_w_g,E_aer_tau_w_f, &
-                    eccf     ,E_coszrs   ,solin        ,sfac         , &
+                    eccf     ,E_coszrs   ,solin        ,E_sfac         , &
                     E_asdir  ,E_asdif    ,E_aldir      ,E_aldif      , &
                     qrs      ,qrsc       ,fsnt         ,fsntc        ,fsntoa,fsutoa, &
                     fsntoac  ,fsnirtoa   ,fsnrtoac     ,fsnrtoaq     ,fsns    , &
@@ -57,33 +57,33 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 
 
 !-----------------------------------------------------------------------
-! 
-! Purpose: 
+!
+! Purpose:
 ! Solar radiation code
-! 
-! Method: 
+!
+! Method:
 ! mji/rrtmg
 ! RRTMG, two-stream, with McICA
-! 
+!
 ! Divides solar spectrum into 14 intervals from 0.2-12.2 micro-meters.
 ! solar flux fractions specified for each interval. allows for
 ! seasonally and diurnally varying solar input.  Includes molecular,
-! cloud, aerosol, and surface scattering, along with h2o,o3,co2,o2,cloud, 
+! cloud, aerosol, and surface scattering, along with h2o,o3,co2,o2,cloud,
 ! and surface absorption. Computes delta-eddington reflections and
-! transmissions assuming homogeneously mixed layers. Adds the layers 
-! assuming scattering between layers to be isotropic, and distinguishes 
+! transmissions assuming homogeneously mixed layers. Adds the layers
+! assuming scattering between layers to be isotropic, and distinguishes
 ! direct solar beam from scattered radiation.
-! 
+!
 ! Longitude loops are broken into 1 or 2 sections, so that only daylight
 ! (i.e. coszrs > 0) computations are done.
-! 
+!
 ! Note that an extra layer above the model top layer is added.
-! 
+!
 ! mks units are used.
-! 
+!
 ! Special diagnostic calculation of the clear sky surface and total column
 ! absorbed flux is also done for cloud forcing diagnostics.
-! 
+!
 !-----------------------------------------------------------------------
 
    use cmparray_mod,        only: CmpDayNite, ExpDayNite
@@ -91,8 +91,8 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    use mcica_subcol_gen_sw, only: mcica_subcol_sw
    use physconst,           only: cpair
    use rrtmg_state,         only: rrtmg_state_t
-   
-   ! Minimum cloud amount (as a fraction of the grid-box area) to 
+
+   ! Minimum cloud amount (as a fraction of the grid-box area) to
    ! distinguish from clear sky
    real(r8), parameter :: cldmin = 1.0e-80_r8
 
@@ -126,12 +126,12 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8), intent(in) :: E_aldir(pcols)     ! 0.7-5.0 micro-meter srfc alb: direct rad
    real(r8), intent(in) :: E_asdif(pcols)     ! 0.2-0.7 micro-meter srfc alb: diffuse rad
    real(r8), intent(in) :: E_aldif(pcols)     ! 0.7-5.0 micro-meter srfc alb: diffuse rad
-   real(r8), intent(in) :: sfac(nbndsw)            ! factor to account for solar variability in each band 
+   real(r8), intent(in) :: E_sfac(nbndsw,pcols) ! factor to account for solar variability in each band
 
    real(r8), optional, intent(in) :: E_cld_tau    (nbndsw, pcols, pver)      ! cloud optical depth
-   real(r8), optional, intent(in) :: E_cld_tau_w  (nbndsw, pcols, pver)      ! cloud optical 
-   real(r8), optional, intent(in) :: E_cld_tau_w_g(nbndsw, pcols, pver)      ! cloud optical 
-   real(r8), optional, intent(in) :: E_cld_tau_w_f(nbndsw, pcols, pver)      ! cloud optical 
+   real(r8), optional, intent(in) :: E_cld_tau_w  (nbndsw, pcols, pver)      ! cloud optical
+   real(r8), optional, intent(in) :: E_cld_tau_w_g(nbndsw, pcols, pver)      ! cloud optical
+   real(r8), optional, intent(in) :: E_cld_tau_w_f(nbndsw, pcols, pver)      ! cloud optical
    logical, optional, intent(in) :: old_convert
 
    ! Output arguments
@@ -175,6 +175,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: rel(pcols,rrtmg_levs-1)    ! Liquid effective drop size (microns)
    real(r8) :: rei(pcols,rrtmg_levs-1)    ! Ice effective drop size (microns)
 
+   real(r8) :: sfac(nbndsw,pcols)  ! factor to account for solar variability in each band
    real(r8) :: coszrs(pcols)    ! Cosine solar zenith angle
    real(r8) :: asdir(pcols)     ! 0.2-0.7 micro-meter srfc alb: direct rad
    real(r8) :: aldir(pcols)     ! 0.7-5.0 micro-meter srfc alb: direct rad
@@ -183,16 +184,16 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 
    real(r8) :: h2ovmr(pcols,rrtmg_levs)   ! h2o volume mixing ratio
    real(r8) :: o3vmr(pcols,rrtmg_levs)    ! o3 volume mixing ratio
-   real(r8) :: co2vmr(pcols,rrtmg_levs)   ! co2 volume mixing ratio 
-   real(r8) :: ch4vmr(pcols,rrtmg_levs)   ! ch4 volume mixing ratio 
-   real(r8) :: o2vmr(pcols,rrtmg_levs)    ! o2  volume mixing ratio 
-   real(r8) :: n2ovmr(pcols,rrtmg_levs)   ! n2o volume mixing ratio 
+   real(r8) :: co2vmr(pcols,rrtmg_levs)   ! co2 volume mixing ratio
+   real(r8) :: ch4vmr(pcols,rrtmg_levs)   ! ch4 volume mixing ratio
+   real(r8) :: o2vmr(pcols,rrtmg_levs)    ! o2  volume mixing ratio
+   real(r8) :: n2ovmr(pcols,rrtmg_levs)   ! n2o volume mixing ratio
 
    real(r8) :: tsfc(pcols)          ! surface temperature
 
    integer :: dyofyr                ! Set to day of year for Earth/Sun distance calculation in
                                     ! rrtmg_sw, or pass in adjustment directly into adjes
-   real(r8) :: solvar(nbndsw)       ! solar irradiance variability in each band
+   real(r8) :: solvar(nbndsw,pcols)       ! solar irradiance variability in each band
 
    integer, parameter :: nsubcsw = ngptsw           ! rrtmg_sw g-point (quadrature point) dimension
    integer :: permuteseed                           ! permute seed for sub-column generator
@@ -209,7 +210,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: asm_aer_sw(pcols, rrtmg_levs-1, nbndsw)      ! aer asymmetry parameter
 
    real(r8) :: cld_stosw(nsubcsw, pcols, rrtmg_levs-1)      ! stochastic cloud fraction
-   real(r8) :: rei_stosw(pcols, rrtmg_levs-1)               ! stochastic ice particle size 
+   real(r8) :: rei_stosw(pcols, rrtmg_levs-1)               ! stochastic ice particle size
    real(r8) :: rel_stosw(pcols, rrtmg_levs-1)               ! stochastic liquid particle size
    real(r8) :: cicewp_stosw(nsubcsw, pcols, rrtmg_levs-1)   ! stochastic cloud ice water path
    real(r8) :: cliqwp_stosw(nsubcsw, pcols, rrtmg_levs-1)   ! stochastic cloud liquid wter path
@@ -219,7 +220,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: fsfc_stosw(nsubcsw, pcols, rrtmg_levs-1)     ! stochastic cloud forward scattering fraction (optional)
 
    real(r8), parameter :: dps = 1._r8/86400._r8 ! Inverse of seconds per day
- 
+
    real(r8) :: swuflx(pcols,rrtmg_levs+1)       ! Total sky shortwave upward flux (W/m2)
    real(r8) :: swdflx(pcols,rrtmg_levs+1)       ! Total sky shortwave downward flux (W/m2)
    real(r8) :: swhr(pcols,rrtmg_levs)           ! Total sky shortwave radiative heating rate (K/d)
@@ -255,7 +256,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    ! Aerosol radiative property arrays
    real(r8) :: tauxar(pcols,0:pver) ! aerosol extinction optical depth
    real(r8) :: wa(pcols,0:pver) ! aerosol single scattering albedo
-   real(r8) :: ga(pcols,0:pver) ! aerosol assymetry parameter
+   real(r8) :: ga(pcols,0:pver) ! aerosol asymmetry parameter
    real(r8) :: fa(pcols,0:pver) ! aerosol forward scattered fraction
 
    ! CRM
@@ -304,7 +305,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    qrsc(1:ncol,1:pver) = 0.0_r8
    fns(1:ncol,1:pverp) = 0.0_r8
    fcns(1:ncol,1:pverp) = 0.0_r8
-   if (single_column.and.scm_crm_mode) then 
+   if (single_column.and.scm_crm_mode) then
       fus(1:ncol,1:pverp) = 0.0_r8
       fds(1:ncol,1:pverp) = 0.0_r8
       fusc(:ncol,:pverp) = 0.0_r8
@@ -330,6 +331,10 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    call CmpDayNite(r_state%h2ovmr, h2ovmr, Nday, IdxDay, Nnite, IdxNite, 1, pcols, 1, rrtmg_levs)
    call CmpDayNite(r_state%o3vmr,  o3vmr,  Nday, IdxDay, Nnite, IdxNite, 1, pcols, 1, rrtmg_levs)
    call CmpDayNite(r_state%co2vmr, co2vmr, Nday, IdxDay, Nnite, IdxNite, 1, pcols, 1, rrtmg_levs)
+
+   do i = 1,nbndsw
+      call CmpDayNite(E_sfac(i,:), sfac(i,:), Nday, IdxDay, Nnite, IdxNite, 1, pcols)
+   end do
 
    call CmpDayNite(E_coszrs, coszrs,    Nday, IdxDay, Nnite, IdxNite, 1, pcols)
    call CmpDayNite(E_asdir,  asdir,     Nday, IdxDay, Nnite, IdxNite, 1, pcols)
@@ -385,14 +390,14 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 
    ! Define solar incident radiation
    do i = 1, Nday
-      solin(i)  = sum(sfac(:)*solar_band_irrad(:)) * eccf * coszrs(i)
+      solin(i)  = sum(sfac(:,i)*solar_band_irrad(:)) * eccf * coszrs(i)
    end do
 
    ! Calculate cloud optical properties here if using CAM method, or if using one of the
-   ! methods in RRTMG_SW, then pass in cloud physical properties and zero out cloud optical 
+   ! methods in RRTMG_SW, then pass in cloud physical properties and zero out cloud optical
    ! properties here
 
-   ! Zero optional cloud optical property input arrays tauc_sw, ssac_sw, asmc_sw, 
+   ! Zero optional cloud optical property input arrays tauc_sw, ssac_sw, asmc_sw,
    ! if inputting cloud physical properties to RRTMG_SW
    !tauc_sw(:,:,:) = 0.0_r8
    !ssac_sw(:,:,:) = 1.0_r8
@@ -415,7 +420,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
               fsfc_sw(ns,i,k) = 0._r8
               asmc_sw(ns,i,k) = 0._r8
            endif
-   
+
            tauc_sw(ns,i,k)=E_cld_tau(ns,IdxDay(i),kk)
            if (tauc_sw(ns,i,k) > 0._r8) then
               ssac_sw(ns,i,k)=E_cld_tau_w(ns,IdxDay(i),kk)/tauc_sw(ns,i,k)
@@ -441,7 +446,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
               fsfc_sw(ns,i,k) = 0._r8
               asmc_sw(ns,i,k) = 0._r8
            endif
-   
+
            tauc_sw(ns,i,k)=E_cld_tau(ns,IdxDay(i),kk)
            if (tauc_sw(ns,i,k) > 0._r8) then
               ssac_sw(ns,i,k)=max(E_cld_tau_w(ns,IdxDay(i),kk),1.e-80_r8)/max(tauc_sw(ns,i,k),1.e-80_r8)
@@ -487,7 +492,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    ! Call sub-column generator for McICA in radiation
    call t_startf('mcica_subcol_sw')
 
-   ! Set permute seed (must be offset between LW and SW by at least 140 to insure 
+   ! Set permute seed (must be offset between LW and SW by at least 140 to insure
    ! effective randomization)
    permuteseed = 1
 
@@ -510,13 +515,13 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 
    tsfc(:ncol) = tlev(:ncol,rrtmg_levs+1)
 
-   solvar(1:nbndsw) = sfac(1:nbndsw)
+   solvar(1:nbndsw,1:ncol) = sfac(1:nbndsw,1:ncol)
 
    call rrtmg_sw(lchnk, Nday, rrtmg_levs, icld,         &
                  pmidmb, pintmb, tlay, tlev, tsfc, &
                  h2ovmr, o3vmr, co2vmr, ch4vmr, o2vmr, n2ovmr, &
                  asdir, asdif, aldir, aldif, &
-                 coszrs, eccf, dyofyr, solvar, &
+                 coszrs, eccf, dyofyr, solvar(1:nbndsw,1:Nday), &
                  cld_stosw, tauc_stosw, ssac_stosw, asmc_stosw, fsfc_stosw, &
                  cicewp_stosw, cliqwp_stosw, rei, rel, &
                  tau_aer_sw, ssa_aer_sw, asm_aer_sw, &
@@ -526,8 +531,8 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    ! Flux units are in W/m2 on output from rrtmg_sw and contain output for
    ! extra layer above model top with vertical indexing from bottom to top.
    !
-   ! Heating units are in J/kg/s on output from rrtmg_sw and contain output 
-   ! for extra layer above model top with vertical indexing from bottom to top.  
+   ! Heating units are in J/kg/s on output from rrtmg_sw and contain output
+   ! for extra layer above model top with vertical indexing from bottom to top.
    !
    ! Reverse vertical indexing to go from top to bottom for CAM output.
 
@@ -545,7 +550,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    fsnt(1:Nday) = swdflx(1:Nday,rrtmg_levs) - swuflx(1:Nday,rrtmg_levs)
    fsntc(1:Nday) = swdflxc(1:Nday,rrtmg_levs) - swuflxc(1:Nday,rrtmg_levs)
 
-   ! Set the downwelling flux at the surface 
+   ! Set the downwelling flux at the surface
    fsds(1:Nday) = swdflx(1:Nday,1)
    fsdsc(1:Nday) = swdflxc(1:Nday,1)
 
@@ -622,7 +627,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    end if
 
    !  these outfld calls don't work for spmd only outfield in scm mode (nonspmd)
-   if (single_column .and. scm_crm_mode) then 
+   if (single_column .and. scm_crm_mode) then
       ! Following outputs added for CRM
       call ExpDayNite(fus,Nday, IdxDay, Nnite, IdxNite, 1, pcols, 1, pverp)
       call ExpDayNite(fds,Nday, IdxDay, Nnite, IdxNite, 1, pcols, 1, pverp)
@@ -639,9 +644,9 @@ end subroutine rad_rrtmg_sw
 !-------------------------------------------------------------------------------
 
 subroutine radsw_init()
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Initialize various constants for radiation scheme.
 !
 !-----------------------------------------------------------------------
@@ -654,7 +659,7 @@ subroutine radsw_init()
 
    ! Initialize rrtmg_sw
    call rrtmg_sw_ini
- 
+
 end subroutine radsw_init
 
 
