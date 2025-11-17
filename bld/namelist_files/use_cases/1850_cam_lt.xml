@@ -8,7 +8,7 @@
 
 <!-- LBC Files : -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
-<flbc_cycle_yr>1850</flbc_cycle_yr>
+<flbc_cycle_yr>1852</flbc_cycle_yr>
 <flbc_type>'CYCLICAL'</flbc_type>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
@@ -16,7 +16,7 @@
 <ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
 <ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.1849-2014_c240604.nc</ubc_file_path>
 <ubc_file_input_type>CYCLICAL</ubc_file_input_type>
-<ubc_file_cycle_yr>1850</ubc_file_cycle_yr>
+<ubc_file_cycle_yr>1852</ubc_file_cycle_yr>
 
 <!-- ozone data :  -->
 <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'  </prescribed_ozone_datapath>
@@ -93,9 +93,9 @@
 </srf_emis_specifier>
 
 <csw_time_type>CYCLICAL</csw_time_type>
-<csw_cycle_yr>1850 </csw_cycle_yr>
+<csw_cycle_yr>1852 </csw_cycle_yr>
 
 <!-- for prescribed nitrogen deposition fluxes -->
-<sim_year>1850</sim_year>
+<sim_year>1852</sim_year>
 
 </namelist_defaults>
