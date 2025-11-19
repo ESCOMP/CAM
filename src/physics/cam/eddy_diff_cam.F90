@@ -294,7 +294,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8) :: chs(pcols,pverp)          ! Heat buoyancy coef for sat states, interfaces
   real(r8) :: cmu(pcols,pverp)          ! Moisture buoyancy coef for dry states, interfaces
   real(r8) :: cms(pcols,pverp)          ! Moisture buoyancy coef for sat states, interfaces
-  real(r8) :: errorPBL(pcols)           ! Error function showing whether PBL produced convergent solution or not [m2 s-1?]
+  real(r8) :: errorPBL(pcols)           ! Error function showing whether PBL produced convergent solution or not [m2 s-1]
   real(r8) :: pblhp(pcols)              ! PBL top pressure [Pa]
   real(r8) :: minpblh(pcols)            ! Minimum PBL height based on surface stress [m]
   real(r8) :: tkes(pcols)               ! TKE at surface interface [ m2/s2 ]
@@ -450,7 +450,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        pcnst           = pcnst,                         &
        ncvmax          = ncvmax,                        & ! max # of CLs.
        iulog           = iulog,                         &
-       ztodt           = ztodt,                         &
+       dt              = ztodt,                         &
        const_props     = ccpp_const_props,              &
        do_iss          = do_iss,                        &
        am_correction   = fv_am_correction,              &
@@ -563,10 +563,6 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   if(errflg /= 0) then
     call endrun('compute_eddy_diff: ' // errmsg)
   end if
-
-  ! TODO need to pass out all relevant history field arrays as intent(out) from compute_eddy_diff if not already
-  ! so that:
-  ! TODO need to add the history outflds here
 
   ! inputs into UW written out as debug:
   call outfld( 'UW_cldn',        cldn,       pcols,   lchnk )

@@ -1596,7 +1596,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'wpthlp_mc_zt           ','unset                  ',&
           'WPTHLP_nadv            ','unset                  ',&
           'WPTHVP                 ','unset                  ',&
-          'WSEDL                  ','unset                  ',&
+          'WSEDL                  ','m/s                    ',&
           'wstarPBL               ','unset                  ',&
           'ZM_DP                  ','unset                  '  /),                  (/2,100/))
 

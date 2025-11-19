@@ -3617,7 +3617,7 @@ Default: 100.e3 (hPa)
 <entry id="eddy_moist_entrain_a2l" type="real" category="pbl"
        group="eddy_diff_nl" valid_values="" >
 Moist entrainment enhancement parameter.
-Default: set by build-namelist
+Default: 30.D0
 </entry>
 
 <entry id="kv_top_pressure" type="real" category="pbl"
