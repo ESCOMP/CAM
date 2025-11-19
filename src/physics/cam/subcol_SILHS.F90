@@ -1723,7 +1723,7 @@ contains
 
     !----- Begin Code -----
     
-    call init_pdf_params_api( pver+1-top_lev, 1, pdf_params_single_col )
+    call init_pdf_params_api( nzt_clubb, 1, pdf_params_single_col )
 
     ! Don't do anything if this option isn't enabled.
     if ( .not. subcol_SILHS_var_covar_src ) return
@@ -1816,12 +1816,27 @@ contains
           end do ! k = 1, pver
 
           ! Flip inputs to CLUBB's grid. Note the dimension ordering change.
-          rt_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( rt_all(igrdcol,isubcol,1:pver) )
-          thl_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thl_all(igrdcol,isubcol,1:pver) )
-          w_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( w_all(igrdcol,isubcol,1:pver) )
-          qctend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( qctend(igrdcol,isubcol,1:pver) )
-          qvtend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( qvtend(igrdcol,isubcol,1:pver) )
-          thltend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thltend(igrdcol,isubcol,1:pver) )
+          ! rt_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( rt_all(igrdcol,isubcol,1:pver) )
+          ! thl_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thl_all(igrdcol,isubcol,1:pver) )
+          ! w_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( w_all(igrdcol,isubcol,1:pver) )
+          ! qctend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( qctend(igrdcol,isubcol,1:pver) )
+          ! qvtend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( qvtend(igrdcol,isubcol,1:pver) )
+          ! thltend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thltend(igrdcol,isubcol,1:pver) )
+          if ( l_ascending_grid ) then
+            rt_all_clubb(igrdcol,isubcol,1:pver)  = clubb_flip_grid( rt_all(igrdcol,isubcol,1:pver) )
+            thl_all_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thl_all(igrdcol,isubcol,1:pver) )
+            w_all_clubb(igrdcol,isubcol,1:pver)   = clubb_flip_grid( w_all(igrdcol,isubcol,1:pver) )
+            qctend_clubb(igrdcol,isubcol,1:pver)  = clubb_flip_grid( qctend(igrdcol,isubcol,1:pver) )
+            qvtend_clubb(igrdcol,isubcol,1:pver)  = clubb_flip_grid( qvtend(igrdcol,isubcol,1:pver) )
+            thltend_clubb(igrdcol,isubcol,1:pver) = clubb_flip_grid( thltend(igrdcol,isubcol,1:pver) )
+          else ! descending grid
+            rt_all_clubb(igrdcol,isubcol,1:pver)  = rt_all(igrdcol,isubcol,1:pver)
+            thl_all_clubb(igrdcol,isubcol,1:pver) = thl_all(igrdcol,isubcol,1:pver)
+            w_all_clubb(igrdcol,isubcol,1:pver)   = w_all(igrdcol,isubcol,1:pver)
+            qctend_clubb(igrdcol,isubcol,1:pver)  = qctend(igrdcol,isubcol,1:pver)
+            qvtend_clubb(igrdcol,isubcol,1:pver)  = qvtend(igrdcol,isubcol,1:pver)
+            thltend_clubb(igrdcol,isubcol,1:pver) = thltend(igrdcol,isubcol,1:pver)
+          endif
 
        end do ! isubcol = 1, nsubcol(igrdcol)
     end do ! igrdcol = 1, ngrdcol
@@ -1868,11 +1883,11 @@ contains
       ! pver - top_lev + 1 vertical levels.
       ! Fill the upper levels with 0s when necessary.
       if ( pver > nzt_clubb ) then
-         rtp2_mc_zt(igrdcol,pver-top_lev+2:pver) = 0.0_r8
-         thlp2_mc_zt(igrdcol,pver-top_lev+2:pver) = 0.0_r8
-         wprtp_mc_zt(igrdcol,pver-top_lev+2:pver) = 0.0_r8
-         wpthlp_mc_zt(igrdcol,pver-top_lev+2:pver) = 0.0_r8
-         rtpthlp_mc_zt(igrdcol,pver-top_lev+2:pver) = 0.0_r8
+         rtp2_mc_zt(igrdcol,nzt_clubb+1:pver)     = 0.0_r8
+         thlp2_mc_zt(igrdcol,nzt_clubb+1:pver)    = 0.0_r8
+         wprtp_mc_zt(igrdcol,nzt_clubb+1:pver)    = 0.0_r8
+         wpthlp_mc_zt(igrdcol,nzt_clubb+1:pver)   = 0.0_r8
+         rtpthlp_mc_zt(igrdcol,nzt_clubb+1:pver)  = 0.0_r8
       endif ! pver > nzt_clubb
 
     end do ! igrdcol = 1, ngrdcol

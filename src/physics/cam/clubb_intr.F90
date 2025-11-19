@@ -17,6 +17,8 @@ module clubb_intr
   !                                                                                                      !
   !----------------------------------------------------------------------------------------------------- !
 
+  use ref_pres,            only: trop_cloud_top_press
+
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
@@ -2358,7 +2360,6 @@ end subroutine clubb_init_cnst
       rtp2_in,                  & ! total water variance				[kg^2/kg^2]
       thlp2_in,                 & ! thetal variance				[K^2]
       rtpthlp_in,               & ! covariance of thetal and qt			[kg/kg K]
-      rcm_out_zm,               &
       wpthvp_in,                & ! w'th_v' (momentum levels)			[m/s K]
       rtpthvp_in,               & ! r_t'th_v' (momentum levels)			[kg/kg K]
       thlpthvp_in,              & ! th_l'th_v' (momentum levels)			[K^2]
@@ -2373,7 +2374,6 @@ end subroutine clubb_init_cnst
       wprtp_mc_out,             &
       wpthlp_mc_out,            &
       rtpthlp_mc_out,           &
-      qrl_zm,                   &
       uprcp_inout,              & ! < u' r_c' > (momentum levels)
       vprcp_inout,              & ! < v' r_c' > (momentum levels)
       rc_coef_zm_inout,            & ! Coef. of X'r_c' in Eq. (34) (t-levs.)
@@ -2459,7 +2459,7 @@ end subroutine clubb_init_cnst
     real(r8) :: rrho(pcols)                      ! Inverse of air density                        [1/kg/m^3]
     real(r8) :: kinwat(pcols)                    ! Kinematic water vapor flux                    [m/s]
     real(r8) :: latsub
-    real(r8) :: thlp2_rad_out(pcols,nzm_clubb)
+    real(r8) :: thlp2_rad_out(state%ncol,nzm_clubb)
     real(r8) :: apply_const, rtm_test
     real(r8) :: dl_rad, di_rad, dt_low
 
@@ -2600,29 +2600,29 @@ end subroutine clubb_init_cnst
                                             mf_thlflx_output,  mf_qtflx_output
     ! MF Plume
     ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
-    real(r8), dimension(pcols,pverp)     :: mf_dry_a,   mf_moist_a,    &
-                                            mf_dry_w,   mf_moist_w,    &
-                                            mf_dry_qt,  mf_moist_qt,   &
-                                            mf_dry_thl, mf_moist_thl,  &
-                                            mf_dry_u,   mf_moist_u,    &
-                                            mf_dry_v,   mf_moist_v,    &
-                                                        mf_moist_qc,   &
-                                            s_ae,       s_aw,          &
-                                            s_awthl,    s_awqt,        &
-                                            s_awql,     s_awqi,        &
-                                            s_awu,      s_awv,         &
-                                            mf_thlflx,  mf_qtflx
+    real(r8), dimension(state%ncol,nzm_clubb)  :: mf_dry_a,   mf_moist_a,    &
+                                                  mf_dry_w,   mf_moist_w,    &
+                                                  mf_dry_qt,  mf_moist_qt,   &
+                                                  mf_dry_thl, mf_moist_thl,  &
+                                                  mf_dry_u,   mf_moist_u,    &
+                                                  mf_dry_v,   mf_moist_v,    &
+                                                              mf_moist_qc,   &
+                                                  s_ae,       s_aw,          &
+                                                  s_awthl,    s_awqt,        &
+                                                  s_awql,     s_awqi,        &
+                                                  s_awu,      s_awv,         &
+                                                  mf_thlflx,  mf_qtflx
 
     real(r8) :: inv_rh2o ! To reduce the number of divisions in clubb_tend
 
     ! MF local vars
-    real(r8), dimension(pcols,pverp)     :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
-                                            kappa_zm,   p_in_Pa_zm,    & ! momentum grid
-                                                        invrs_exner_zm   ! momentum grid
+    real(r8), dimension(state%ncol,nzm_clubb) :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
+                                                 kappa_zm,   p_in_Pa_zm,    & ! momentum grid
+                                                             invrs_exner_zm   ! momentum grid
 
-    real(r8), dimension(pcols,pverp)     :: dzt,        invrs_dzt,     & ! thermodynamic grid
-                                                        invrs_exner_zt,& ! thermodynamic grid
-                                            kappa_zt,   qc_zt            ! thermodynamic grid
+    real(r8), dimension(state%ncol,nzt_clubb) :: dzt,        invrs_dzt,     & ! thermodynamic grid
+                                                             invrs_exner_zt,& ! thermodynamic grid
+                                                 kappa_zt,   qc_zt            ! thermodynamic grid
 
     real(r8) :: temp2d(pcols,pver)  ! temporary array for holding scaled outputs
 
@@ -2650,7 +2650,7 @@ end subroutine clubb_init_cnst
     real(r8), parameter :: rad2deg=180.0_r8/pi
     real(r8) :: tmp_lon1, tmp_lonN, invrs_hdtime
 
-    type(grid) :: gr
+    type(grid) :: gr, gr_a
 
     type(nu_vertical_res_dep) :: nu_vert_res_dep   ! Vertical resolution dependent nu values
     real(r8) :: lmin, mixt_frac_max_mag
@@ -2695,9 +2695,15 @@ end subroutine clubb_init_cnst
     end if
 #endif
 
+    print *, "do_clubb_mf = ", do_clubb_mf
+    print *, "do_rainturb = ", do_rainturb
+    print *, "do_cldcool = ", do_cldcool
+
     !-----------------------------------------------------------------------------------!
     !                           MAIN COMPUTATION BEGINS HERE                            !
     !-----------------------------------------------------------------------------------!
+    print *, "top_lev = ", top_lev 
+    print *, "trop_cloud_top_press = ", trop_cloud_top_press 
 
     call t_startf('clubb_tend_cam:NAR')
 
@@ -3368,16 +3374,6 @@ end subroutine clubb_init_cnst
       enddo
     enddo
 
-
-    ! Define the CLUBB momentum grid (in height, units of m)
-    !$acc parallel loop gang vector collapse(2) default(present)
-    do k=1, nzm_clubb
-      do i=1, ncol
-        k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
-        zi_g(i,k) = state1%zi(i,k_cam) - state1%zi(i,pverp)
-      end do
-    end do
-
     !  Compute thermodynamic stuff needed for CLUBB on thermo levels.
     !  Inputs for the momentum levels are set below setup_clubb core
     ! Flipped grid calcs
@@ -3385,20 +3381,20 @@ end subroutine clubb_init_cnst
     do k = 1, nzt_clubb
       do i = 1, ncol
 
-        k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k  
 
         ! Define the CLUBB thermodynamic grid (in units of m)
-        zt_g(i,k) = state1%zm(i,k_cam)-state1%zi(i,pverp)
+        zt_g(i,k) = state1%zm(i,k_cam) - state1%zi(i,pverp)
 
         ! base state (dry) variables
-        rho_ds_zt(i,k)       = rga*(state1%pdeldry(i,k_cam)/dz_g(i,k_cam))
-        invrs_rho_ds_zt(i,k) = 1._r8/(rho_ds_zt(i,k))
+        rho_ds_zt(i,k)       = rga * ( state1%pdeldry(i,k_cam) / dz_g(i,k_cam) )
+        invrs_rho_ds_zt(i,k) = 1._r8 / rho_ds_zt(i,k)
 
         ! full state (moist) variables
         p_in_Pa(i,k)         = state1%pmid(i,k_cam)
         exner(i,k)           = 1._r8/inv_exner_clubb(i,k_cam)
-        thv(i,k)             = state1%t(i,k_cam)*inv_exner_clubb(i,k_cam)*(1._r8+zvir*state1%q(i,k_cam,ixq) &
-                                   -state1%q(i,k_cam,ixcldliq))
+        thv(i,k)             = state1%t(i,k_cam) * inv_exner_clubb(i,k_cam)  &
+                               * (1._r8 + zvir * state1%q(i,k_cam,ixq) - state1%q(i,k_cam,ixcldliq))
         rho_zt(i,k)          = rga*state1%pdel(i,k_cam)/dz_g(i,k_cam)
 
         ! exception - setting this to moist thv
@@ -3406,7 +3402,7 @@ end subroutine clubb_init_cnst
 
         rfrzm(i,k)           = state1%q(i,k_cam,ixcldice)
         radf(i,k)            = radf_clubb(i,k_cam)
-        qrl_clubb(i,k)       = qrl(i,k_cam)/(cpairv(i,k,lchnk)*state1%pdeldry(i,k_cam))
+        qrl_clubb(i,k)       = qrl(i,k_cam) / ( cpairv(i,k,lchnk) * state1%pdeldry(i,k_cam) )
 
         !  Compute mean w wind on thermo grid, convert from omega to w
         wm_zt(i,k) = -1._r8*(state1%omega(i,k_cam)-state1%omega(i,pver))/(rho_zt(i,k)*gravit)
@@ -3428,21 +3424,31 @@ end subroutine clubb_init_cnst
     end do
 
 
-    !  Heights need to be set at each timestep.  Therefore, recall
-    !  setup_grid and check_parameters_api for this.
 
-    !  Set-up CLUBB core at each CLUBB call because heights can change
-    !  Important note:  do not make any calls that use CLUBB grid-height
+    ! Define the CLUBB momentum grid (in height, units of m)
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k=1, nzm_clubb
+      do i=1, ncol
+        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k  
+        zi_g(i,k) = state1%zi(i,k_cam) - state1%zi(i,pverp)
+      end do
+    end do
+
+
+    !  Heights need to be set at each timestep.  Therefore, recall
+    !  setup_grid and calc_derrived_params for this.
+    !  IMPORTANT NOTE:  do not make any calls that use CLUBB grid-height
     !                   operators (such as zt2zm_api, etc.) until AFTER the
     !                   call to setup_grid_heights_api.
-
     call t_stopf('clubb_tend_cam:ACCR')
     call t_startf('clubb_tend_cam:NAR')
     !$acc update host( deltaz, zi_g, zt_g, clubb_params, sfc_elevation )
 
+
     call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
-                         l_ascending_grid, grid_type,                     & ! intent(in)
-                         deltaz, zi_g(:,k_sfc_zm), zi_g(:,k_top_zm),            & ! intent(in)
+                         .false., grid_type,                     & ! intent(in)
+                         deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
                          zi_g, zt_g,                                      & ! intent(in)
                          gr, err_info )                                     ! intent(inout)
 
@@ -3465,6 +3471,8 @@ end subroutine clubb_init_cnst
                    'in CLUBB check_parameters_api')
     end if
 
+    ! CLUBB's grid data structure (gr) and nu_vert_res_dep contain arrays that need to
+    ! be copied to the GPU
     call t_stopf('clubb_tend_cam:NAR')
     call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( gr, gr%zm, gr%zt, gr%dzm, gr%dzt, gr%invrs_dzt, gr%invrs_dzm, &
@@ -3474,39 +3482,46 @@ end subroutine clubb_init_cnst
     !$acc              nu_vert_res_dep%nu6)
     call t_stopf('clubb_tend_cam:acc_copyin')
     call t_startf('clubb_tend_cam:ACCR')
-
+    
+!--- TODO: should these be all always zero if we aren't using SILHS? wrap in ifdef SILHS maybe?
     ! Add forcings for SILHS covariance contributions
-    rtp2_forcing    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtp2_mc_zt )
-    thlp2_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_mc_zt )
-    wprtp_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wprtp_mc_zt )
-    wpthlp_forcing  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wpthlp_mc_zt )
-    rtpthlp_forcing = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtpthlp_mc_zt )
+    ! rtp2_forcing    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtp2_mc_zt )
+    ! thlp2_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_mc_zt )
+    ! wprtp_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wprtp_mc_zt )
+    ! wpthlp_forcing  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wpthlp_mc_zt )
+    ! rtpthlp_forcing = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtpthlp_mc_zt )
 
-    ! Zero out SILHS covariance contribution terms
-    !$acc parallel loop gang vector collapse(2) default(present)
-    do k = 1, pver
-      do i = 1, pcols
-        rtp2_mc_zt(i,k)     = 0.0_r8
-        thlp2_mc_zt(i,k)    = 0.0_r8
-        wprtp_mc_zt(i,k)    = 0.0_r8
-        wpthlp_mc_zt(i,k)   = 0.0_r8
-        rtpthlp_mc_zt(i,k)  = 0.0_r8
-      end do
-    end do
+    ! ! Zero out SILHS covariance contribution terms
+    ! !$acc parallel loop gang vector collapse(2) default(present)
+    ! do k = 1, pver
+    !   do i = 1, pcols
+    !     rtp2_mc_zt(i,k)     = 0.0_r8
+    !     thlp2_mc_zt(i,k)    = 0.0_r8
+    !     wprtp_mc_zt(i,k)    = 0.0_r8
+    !     wpthlp_mc_zt(i,k)   = 0.0_r8
+    !     rtpthlp_mc_zt(i,k)  = 0.0_r8
+    !   end do
+    ! end do
+    rtp2_forcing    = 0._r8
+    thlp2_forcing   = 0._r8
+    wprtp_forcing   = 0._r8
+    wpthlp_forcing  = 0._r8
+    rtpthlp_forcing = 0._r8
+!-- END TODO
 
     ! Compute some inputs from the thermodynamic grid to the momentum grid
     rho_ds_zm       = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rho_ds_zt )
-    rho_zm          = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rho_zt )
     invrs_rho_ds_zm = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, invrs_rho_ds_zt )
+    rho_zm          = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rho_zt )
     thv_ds_zm       = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thv_ds_zt )
     wm_zm           = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wm_zt )
 
     ! Surface fluxes provided by host model
     !$acc parallel loop gang vector default(present)
     do i=1,ncol
-      wpthlp_sfc(i) = cam_in%shf(i) / ( cpairv(i,pver,lchnk) * rho_ds_zm(i,k_sfc_zm) ) ! Sensible heat flux
+      wpthlp_sfc(i) = cam_in%shf(i) / ( cpairv(i,pver,lchnk) * rho_ds_zm(i,nzm_clubb) ) ! Sensible heat flux
       wpthlp_sfc(i) = wpthlp_sfc(i) * inv_exner_clubb(i,pver)                          ! Potential temperature flux
-      wprtp_sfc(i)  = cam_in%cflx(i,1) / rho_ds_zm(i,k_sfc_zm)                         ! Moisture flux
+      wprtp_sfc(i)  = cam_in%cflx(i,1) / rho_ds_zm(i,nzm_clubb)                         ! Moisture flux
     end do
 
 
@@ -3588,8 +3603,8 @@ end subroutine clubb_init_cnst
 
       !$acc parallel loop gang vector default(present)
       do i=1,ncol
-        upwp_sfc(i)   = cam_in%wsx(i)/rho_ds_zm(i,k_sfc_zm)               ! Surface meridional momentum flux
-        vpwp_sfc(i)   = cam_in%wsy(i)/rho_ds_zm(i,k_sfc_zm)               ! Surface zonal momentum flux
+        upwp_sfc(i)   = cam_in%wsx(i)/rho_ds_zm(i,nzm_clubb)               ! Surface meridional momentum flux
+        vpwp_sfc(i)   = cam_in%wsy(i)/rho_ds_zm(i,nzm_clubb)               ! Surface zonal momentum flux
       end do
 
     endif
@@ -3600,7 +3615,8 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzt_clubb
       do i = 1, ncol
-        k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k
         um_in(i,k)      = um(i,k_cam)
         vm_in(i,k)      = vm(i,k_cam)
         wp2thvp_in(i,k) = wp2thvp(i,k_cam)
@@ -3627,7 +3643,8 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
       do i = 1, ncol
-        k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k
         upwp_in(i,k)    = upwp(i,k_cam)
         vpwp_in(i,k)    = vpwp(i,k_cam)
         wpthvp_in(i,k)  = wpthvp(i,k_cam)
@@ -3654,10 +3671,12 @@ end subroutine clubb_init_cnst
     ! we're calling pdf_closure at the end of advance_clubb_core
     if ( is_first_restart_step() &
          .and. clubb_config_flags%ipdf_call_placement .eq. ipdf_post_advance_fields ) then
+
       !$acc parallel loop gang vector collapse(2) default(present)
       do k = 1, nzm_clubb
         do i = 1, ncol
-          k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+          !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+          k_cam = top_lev - 1 + k
           pdf_params_zm_chnk(lchnk)%w_1(i,k)        = pdf_zm_w_1(i,k_cam)
           pdf_params_zm_chnk(lchnk)%w_2(i,k)        = pdf_zm_w_2(i,k_cam)
           pdf_params_zm_chnk(lchnk)%varnce_w_1(i,k) = pdf_zm_varnce_w_1(i,k_cam)
@@ -3665,6 +3684,7 @@ end subroutine clubb_init_cnst
           pdf_params_zm_chnk(lchnk)%mixt_frac(i,k)  = pdf_zm_mixt_frac(i,k_cam)
         end do
       end do
+
     end if
 
     ! pressure,exner on momentum grid needed for mass flux calc.
@@ -3672,18 +3692,20 @@ end subroutine clubb_init_cnst
 
       do k=1,nzt_clubb
         do i=1,ncol
-          k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+          !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+          k_cam = top_lev - 1 + k
           kappa_zt(i,k) = (rairv(i,k_cam,lchnk)/cpairv(i,k_cam,lchnk))
           qc_zt(i,k) = state1%q(i,k_cam,ixcldliq)
           invrs_exner_zt(i,k) = inv_exner_clubb(i,k_cam)
         end do
       end do
 
-      kappa_zm(1:ncol,:) = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, kappa_zt(1:ncol,:))
+      kappa_zm = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, kappa_zt )
 
-      do k=1,pverp
+      do k=1,nzm_clubb
         do i=1,ncol
-          k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+          !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+          k_cam = top_lev - 1 + k
           p_in_Pa_zm(i,k) = state1%pint(i,k_cam)
           invrs_exner_zm(i,k) = 1._r8/((p_in_Pa_zm(i,k)/p0_clubb)**(kappa_zm(i,k)))
         end do
@@ -3716,36 +3738,145 @@ end subroutine clubb_init_cnst
       end if
     end if
 
-    !  Do the same for tracers
-    icnt=0
-    do ixind=1,pcnst
-      if (lq(ixind))  then
+    if ( edsclr_dim > 0 ) then
 
-        icnt = icnt+1
+      !  Do the same for tracers
+      icnt=0
+      do ixind=1,pcnst
+        if (lq(ixind))  then
+
+          icnt = icnt+1
+
+          !$acc parallel loop gang vector collapse(2) default(present)
+          do k=1,nzt_clubb
+            do i=1,ncol
+              !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+              k_cam = top_lev - 1 + k
+              edsclr_in(i,k,icnt) = state1%q(i,k_cam,ixind)
+            end do
+          end do
+
+        end if
+      end do
+
+      if (clubb_l_do_expldiff_rtm_thlm) then
 
         !$acc parallel loop gang vector collapse(2) default(present)
         do k=1,nzt_clubb
-          do i=1,ncol
-            k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
-            edsclr_in(i,k,icnt) = state1%q(i,k_cam,ixind)
+          do i=1, ncol
+            !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+            k_cam = top_lev - 1 + k
+            edsclr_in(i,k,icnt+1) = thlm(i,k_cam)
+            edsclr_in(i,k,icnt+2) = rtm(i,k_cam)
           end do
         end do
 
+      endif
+
+    end if
+    
+    if ( l_ascending_grid ) then
+      p_in_Pa =         p_in_Pa(:,nzt_clubb:1:-1)
+      exner =           exner(:,nzt_clubb:1:-1)
+      thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
+      rfrzm =           rfrzm(:,nzt_clubb:1:-1)
+      radf =            radf(:,nzt_clubb:1:-1)
+      qrl_clubb =       qrl_clubb(:,nzt_clubb:1:-1)
+
+      um_in             = um_in(:,nzt_clubb:1:-1)
+      vm_in             = vm_in(:,nzt_clubb:1:-1)
+      wp2thvp_in        = wp2thvp_in(:,nzt_clubb:1:-1)
+      up3_in            = up3_in(:,nzt_clubb:1:-1)
+      vp3_in            = vp3_in(:,nzt_clubb:1:-1)
+      wp3_in            = wp3_in(:,nzt_clubb:1:-1)
+      rtp3_in           = rtp3_in(:,nzt_clubb:1:-1)
+      thlp3_in          = thlp3_in(:,nzt_clubb:1:-1)
+      thlm_in           = thlm_in(:,nzt_clubb:1:-1)
+      rtm_in            = rtm_in(:,nzt_clubb:1:-1)
+      rvm_in            = rvm_in(:,nzt_clubb:1:-1)
+      cloud_frac_inout  = cloud_frac_inout(:,nzt_clubb:1:-1)
+      rcm_inout         = rcm_inout(:,nzt_clubb:1:-1)
+      wp2rtp_inout      = wp2rtp_inout(:,nzt_clubb:1:-1)
+      wp2thlp_inout     = wp2thlp_inout(:,nzt_clubb:1:-1)
+      wpup2_inout       = wpup2_inout(:,nzt_clubb:1:-1)
+      wpvp2_inout       = wpvp2_inout(:,nzt_clubb:1:-1)
+      pre_in            = pre_in(:,nzt_clubb:1:-1)
+      ice_supersat_frac_inout = ice_supersat_frac_inout(:,nzt_clubb:1:-1)
+      upwp_in           = upwp_in(:,nzm_clubb:1:-1)
+      vpwp_in           = vpwp_in(:,nzm_clubb:1:-1)
+      wpthvp_in         = wpthvp_in(:,nzm_clubb:1:-1)
+      rtpthvp_in        = rtpthvp_in(:,nzm_clubb:1:-1)
+      thlpthvp_in       = thlpthvp_in(:,nzm_clubb:1:-1)
+      up2_in            = up2_in(:,nzm_clubb:1:-1)
+      vp2_in            = vp2_in(:,nzm_clubb:1:-1)
+      wp2_in            = wp2_in(:,nzm_clubb:1:-1)
+      rtp2_in           = rtp2_in(:,nzm_clubb:1:-1)
+      thlp2_in          = thlp2_in(:,nzm_clubb:1:-1)
+      wprtp_in          = wprtp_in(:,nzm_clubb:1:-1)
+      wpthlp_in         = wpthlp_in(:,nzm_clubb:1:-1)
+      rtpthlp_in        = rtpthlp_in(:,nzm_clubb:1:-1)
+      uprcp_inout       = uprcp_inout(:,nzm_clubb:1:-1)
+      vprcp_inout       = vprcp_inout(:,nzm_clubb:1:-1)
+      rc_coef_zm_inout  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
+      wp4_inout         = wp4_inout(:,nzm_clubb:1:-1)
+      wp2up2_inout      = wp2up2_inout(:,nzm_clubb:1:-1)
+      wp2vp2_inout      = wp2vp2_inout(:,nzm_clubb:1:-1)
+  
+      pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
+      
+      pdf_params_chnk(lchnk)%mixt_frac = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%rt_1 = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%rt_2 = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%varnce_rt_1 = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%varnce_rt_2 = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
+  
+      if (do_clubb_mf) then
+        kappa_zt          = kappa_zt(:,nzt_clubb:1:-1)
+        qc_zt             = qc_zt(:,nzm_clubb:1:-1)
+        invrs_exner_zt    = invrs_exner_zt(:,nzt_clubb:1:-1)
+        p_in_Pa_zm        = p_in_Pa_zm(:,nzm_clubb:1:-1)
+        invrs_exner_zm    = invrs_exner_zm(:,nzm_clubb:1:-1)
       end if
-    end do
 
-    if (clubb_l_do_expldiff_rtm_thlm) then
+            rho_ds_zt =       rho_ds_zt(:,nzt_clubb:1:-1)
+      invrs_rho_ds_zt = invrs_rho_ds_zt(:,nzt_clubb:1:-1)
+              rho_zt =          rho_zt(:,nzt_clubb:1:-1)
+            thv_ds_zt =       thv_ds_zt(:,nzt_clubb:1:-1)
+                wm_zt =           wm_zt(:,nzt_clubb:1:-1)
 
-      !$acc parallel loop gang vector collapse(2) default(present)
-      do k=1,nzt_clubb
-        do i=1, ncol
-          k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
-          edsclr_in(i,k,icnt+1) = thlm(i,k_cam)
-          edsclr_in(i,k,icnt+2) = rtm(i,k_cam)
-        end do
-      end do
+      rho_ds_zm       = rho_ds_zm(:,nzm_clubb:1:-1)
+      invrs_rho_ds_zm = invrs_rho_ds_zm(:,nzm_clubb:1:-1)
+      rho_zm          = rho_zm(:,nzm_clubb:1:-1)
+      thv_ds_zm       = thv_ds_zm(:,nzm_clubb:1:-1)
+      wm_zm           = wm_zm(:,nzm_clubb:1:-1)
 
-    endif
+      if ( edsclr_dim > 0 ) then
+        edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
+      end if
+
+      zt_g = zt_g(:,nzt_clubb:1:-1)
+      zi_g = zi_g(:,nzm_clubb:1:-1)
+
+      ! we are in ascending mode, need to calculate ascending grid
+      call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
+                          l_ascending_grid, grid_type,                     & ! intent(in)
+                          deltaz, zi_g(:,1), zi_g(:,nzm_clubb),            & ! intent(in)
+                          zi_g, zt_g,                                      & ! intent(in)
+                          gr_a, err_info )                                     ! intent(inout)-
+    else
+
+      ! not in ascending mode, so we calculate gr_a the same as gr
+      call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
+                          l_ascending_grid, grid_type,                     & ! intent(in)
+                          deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
+                          zi_g, zt_g,                                      & ! intent(in)
+                          gr_a, err_info )                                     ! intent(inout)-
+
+    end if
 
     call t_stopf('clubb_tend_cam:flip-index')
 
@@ -3763,23 +3894,20 @@ end subroutine clubb_init_cnst
       if (do_clubb_mf) then
         call t_startf('clubb_tend_cam:do_clubb_mf')
 
-        do k=1,pver
+        do k=1,nzt_clubb
           do i=1, ncol
             dzt(i,k) = zi_g(i,k+1) - zi_g(i,k)
+            invrs_dzt(i,k) = 1._r8/dzt(i,k)
           end do
         end do
 
-        do i=1, ncol
-          invrs_dzt(i,:) = 1._r8/dzt(i,:)
-        end do
-
-        rtm_zm_in(1:ncol,:)  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtm_in(1:ncol,:) )
-        thlm_zm_in(1:ncol,:) = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlm_in(1:ncol,:) )
+        rtm_zm_in  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr_a, rtm_in )
+        thlm_zm_in = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr_a, thlm_in )
 
         do i=1, ncol
-          call integrate_mf( pverp, pver, dzt(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
-                                                               p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
-                            um_in(i,:), vm_in(i,:), thlm_in(i,:),    rtm_in(i,:), thv(i,:),    & ! input
+          call integrate_mf( nzm_clubb, nzt_clubb, dzt(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
+                                                                        p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
+                            um_in(i,:), vm_in(i,:), thlm_in(i,:),    rtm_in(i,:), thv(i,1:nzt_clubb),    & ! input
                                                     thlm_zm_in(i,:), rtm_zm_in(i,:),                  & ! input
                                                     wpthlp_sfc(i), wprtp_sfc(i),  pblh(i),            & ! input
                             mf_dry_a(i,:),    mf_moist_a(i,:),                                        & ! output - plume diagnostics
@@ -3812,7 +3940,7 @@ end subroutine clubb_init_cnst
 
       !  Advance CLUBB CORE one timestep in the future
       call t_startf('clubb_tend_cam:advance_clubb_core_api')
-      call advance_clubb_core_api( gr, nzm_clubb, nzt_clubb, ncol, &
+      call advance_clubb_core_api( gr_a, nzm_clubb, nzt_clubb, ncol, &
           l_implemented, dtime, fcor, sfc_elevation, &
           hydromet_dim, &
           sclr_dim, sclr_tol, edsclr_dim, sclr_idx, &
@@ -3877,12 +4005,12 @@ end subroutine clubb_init_cnst
           end do
         end do
 
-        call update_xp2_mc_api( gr, nzm_clubb, nzt_clubb, ncol, dtime, cloud_frac_inout, &
-          rcm_inout, rvm_in, thlm_in, wm_zt, &
-          exner, pre_in, pdf_params_chnk(lchnk), &
-          rtp2_mc_out, thlp2_mc_out, &
-          wprtp_mc_out, wpthlp_mc_out, &
-          rtpthlp_mc_out)
+        call update_xp2_mc_api( gr_a, nzm_clubb, nzt_clubb, ncol, dtime, cloud_frac_inout, &
+                                rcm_inout, rvm_in, thlm_in, wm_zt, &
+                                exner, pre_in, pdf_params_chnk(lchnk), &
+                                rtp2_mc_out, thlp2_mc_out, &
+                                wprtp_mc_out, wpthlp_mc_out, &
+                                rtpthlp_mc_out)
 
         do k=1,nzm_clubb
           do i=1,ncol
@@ -3902,17 +4030,16 @@ end subroutine clubb_init_cnst
       if (do_cldcool) then
         call t_startf('clubb_tend_cam:do_cldcool')
 
-        rcm_out_zm = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rcm_inout )
-        qrl_zm     = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, qrl_clubb )
         thlp2_rad_out(:,:) = 0._r8
 
-        call calculate_thlp2_rad_api( ncol, nzm_clubb, nzt_clubb, gr, &
+        call calculate_thlp2_rad_api( ncol, nzm_clubb, nzt_clubb, gr_a, &
                                       rcm_inout, thlprcp_out, qrl_clubb, clubb_params, &
                                       thlp2_rad_out )
 
-        do i=1, ncol
-          thlp2_in(i,:) = thlp2_in(i,:) + thlp2_rad_out(i,:) * dtime
-          thlp2_in(i,:) = max(thl_tol**2,thlp2_in(i,:))
+        do k=1,nzm_clubb
+          do i=1, ncol
+            thlp2_in(i,k) = max( thl_tol**2, thlp2_in(i,k) + thlp2_rad_out(i,k) * dtime )
+          end do
         end do
         call t_stopf('clubb_tend_cam:do_cldcool')
 
@@ -3930,6 +4057,80 @@ end subroutine clubb_init_cnst
       end if
 
     enddo  ! end time loop
+
+    call t_startf('clubb_tend_cam:flip-index')
+    if ( l_ascending_grid ) then
+      
+      thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
+
+      um_in                  = um_in(:,nzt_clubb:1:-1)
+      vm_in                  = vm_in(:,nzt_clubb:1:-1)
+      wp2thvp_in                   = wp2thvp_in(:,nzt_clubb:1:-1)
+      up3_in                   = up3_in(:,nzt_clubb:1:-1)
+      vp3_in                   = vp3_in(:,nzt_clubb:1:-1)
+      thlm_in                  = thlm_in(:,nzt_clubb:1:-1)
+      rtm_in                   = rtm_in(:,nzt_clubb:1:-1)
+      wp3_in                   = wp3_in(:,nzt_clubb:1:-1)
+      rtp3_in                  = rtp3_in(:,nzt_clubb:1:-1)
+      thlp3_in                   = thlp3_in(:,nzt_clubb:1:-1)
+      rcm_inout                  = rcm_inout(:,nzt_clubb:1:-1)
+      cloud_frac_inout                   = cloud_frac_inout(:,nzt_clubb:1:-1)
+      rcm_in_layer_out                   = rcm_in_layer_out(:,nzt_clubb:1:-1)
+      cloud_cover_out                  = cloud_cover_out(:,nzt_clubb:1:-1)
+      zt_g                   = zt_g(:,nzt_clubb:1:-1)
+      wm_zt                  = wm_zt(:,nzt_clubb:1:-1)
+      wp2rtp_inout                   = wp2rtp_inout(:,nzt_clubb:1:-1)
+      wp2thlp_inout                  = wp2thlp_inout(:,nzt_clubb:1:-1)
+      wpup2_inout              = wpup2_inout(:,nzt_clubb:1:-1)
+      wpvp2_inout              = wpvp2_inout(:,nzt_clubb:1:-1)
+      ice_supersat_frac_inout  = ice_supersat_frac_inout(:,nzt_clubb:1:-1)
+      qclvar_out               = qclvar_out(:,nzt_clubb:1:-1)
+      rtp2_zt                  = rtp2_zt(:,nzt_clubb:1:-1)
+      thl2_zt                  = thl2_zt(:,nzt_clubb:1:-1)
+      wp2_zt                   = wp2_zt(:,nzt_clubb:1:-1)
+
+      upwp_in                   = upwp_in(:,nzm_clubb:1:-1)
+      vpwp_in                   = vpwp_in(:,nzm_clubb:1:-1)
+      wpthvp_in                   = wpthvp_in(:,nzm_clubb:1:-1)
+      rtpthvp_in                  = rtpthvp_in(:,nzm_clubb:1:-1)
+      thlpthvp_in                   = thlpthvp_in(:,nzm_clubb:1:-1)
+      up2_in                  = up2_in(:,nzm_clubb:1:-1)
+      vp2_in                  = vp2_in(:,nzm_clubb:1:-1)
+      wprtp_in                  = wprtp_in(:,nzm_clubb:1:-1)
+      wpthlp_in                   = wpthlp_in(:,nzm_clubb:1:-1)
+      wp2_in                  = wp2_in(:,nzm_clubb:1:-1)
+      rtp2_in                   = rtp2_in(:,nzm_clubb:1:-1)
+      thlp2_in                  = thlp2_in(:,nzm_clubb:1:-1)
+      rtpthlp_in                  = rtpthlp_in(:,nzm_clubb:1:-1)
+      wprcp_out                   = wprcp_out(:,nzm_clubb:1:-1)
+
+      pdf_params_zm_chnk(lchnk)%w_1         = pdf_params_zm_chnk(lchnk)%w_1(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%w_2         = pdf_params_zm_chnk(lchnk)%w_2(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%varnce_w_1  = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%varnce_w_2  = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
+      pdf_params_zm_chnk(lchnk)%mixt_frac   = pdf_params_zm_chnk(lchnk)%mixt_frac(:,nzm_clubb:1:-1)
+
+      pdf_params_chnk(lchnk)%mixt_frac = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%rt_1 = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%rt_2 = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%varnce_rt_1 = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
+      pdf_params_chnk(lchnk)%varnce_rt_2 = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
+
+
+      zi_g                  = zi_g(:,nzm_clubb:1:-1)
+      khzm_out                  = khzm_out(:,nzm_clubb:1:-1)
+      uprcp_inout                   = uprcp_inout(:,nzm_clubb:1:-1)
+      vprcp_inout                   = vprcp_inout(:,nzm_clubb:1:-1)
+      rc_coef_zm_inout                  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
+      wp4_inout                   = wp4_inout(:,nzm_clubb:1:-1)
+      wp2up2_inout                  = wp2up2_inout(:,nzm_clubb:1:-1)
+      wp2vp2_inout                  = wp2vp2_inout(:,nzm_clubb:1:-1)
+
+      if ( edsclr_dim > 0 ) then
+        edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
+      end if
+
+    end if
 
     if (clubb_do_adv) then
       if (macmic_it  ==  cld_macmic_num_steps) then
@@ -3961,13 +4162,12 @@ end subroutine clubb_init_cnst
     thl2_zt = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_in )
     wp2_zt  = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr, wp2_in )
 
-    call t_startf('clubb_tend_cam:flip-index')
-
     !  Arrays need to be "flipped" to CAM grid
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzt_clubb
       do i=1, ncol
-        k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k
         um(i,k_cam)           = um_in(i,k)
         vm(i,k_cam)           = vm_in(i,k)
         wp2thvp(i,k_cam)      = wp2thvp_in(i,k)
@@ -4000,7 +4200,8 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzm_clubb
       do i=1, ncol
-        k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k
         upwp(i,k_cam)         = upwp_in(i,k)
         vpwp(i,k_cam)         = vpwp_in(i,k)
         wpthvp(i,k_cam)       = wpthvp_in(i,k)
@@ -4030,18 +4231,20 @@ end subroutine clubb_init_cnst
         wp2vp2(i,k_cam)       = wp2vp2_inout(i,k)
       end do
     end do
-    
 
     if ( edsclr_dim > 0 ) then
+
       !$acc parallel loop gang vector collapse(3) default(present)
       do ixind=1,edsclr_dim
         do k=1, nzt_clubb
           do i=1, ncol
-            k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+            !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+            k_cam = top_lev - 1 + k
             edsclr_out(i,k_cam,ixind) = edsclr_in(i,k,ixind)
           end do
         end do
       end do
+
     end if
 
     if (do_clubb_mf) then
@@ -4086,7 +4289,8 @@ end subroutine clubb_init_cnst
                   + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
                     * pdf_params_chnk(lchnk)%rt_2(i,k)
 
-        k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
+        k_cam = top_lev - 1 + k
 
         pdfp_rtp2(i,k_cam) = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
                                 * ( ( pdf_params_chnk(lchnk)%rt_1(i,k) - mean_rt )**2 &
