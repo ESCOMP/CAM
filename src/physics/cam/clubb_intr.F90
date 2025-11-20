@@ -62,8 +62,13 @@ module clubb_intr
   type (sclr_idx_type) :: &
     sclr_idx
 
-  integer, parameter :: &
-    clubb_grid_dir = 1
+  logical, public, parameter :: &
+    l_ascending_grid = .true. ! Set clubb to ascending mode, which is opposite of the 
+                               ! cam grid the rest of this code uses, thus it requires
+                               ! an expensive array flipping step before calling clubb
+
+  integer :: &
+    clubb_grid_dir
 
   integer :: &
     nzm_clubb,          & ! Number of vertical levels used by CLUBB momentum variables
@@ -533,7 +538,6 @@ module clubb_intr
 
   type(implicit_coefs_terms), target, allocatable :: pdf_implicit_coefs_terms_chnk(:) ! PDF impl. coefs. & expl. terms      [units vary]
 
-  logical, public :: l_ascending_grid = .true. ! For now
 #endif
 
   contains
@@ -1581,7 +1585,7 @@ end subroutine clubb_init_cnst
     nzt_clubb = pver  + 1 - top_lev
     nzm_clubb = pverp + 1 - top_lev
 
-    if ( clubb_grid_dir == 1 ) then
+    if ( l_ascending_grid ) then
       ! if we are in ascending grid mode, then we start filling the clubb arrays with the 
       ! surface values (pverp for zm or pverp for zt) because they need to be flipped
       k1_clubb_in_cam_zm = pverp
@@ -1590,8 +1594,8 @@ end subroutine clubb_init_cnst
       k_sfc_zt   = 1
       k_top_zm   = nzm_clubb
       k_top_zt   = nzt_clubb
-      l_ascending_grid = .true.
-    else if ( clubb_grid_dir == -1 ) then
+      clubb_grid_dir = 1
+    else
       ! if we are in descending grid mode, then we start filling the clubb arrays with the 
       ! top level values (top_lev), because this is the maximum level clubb considers
       k1_clubb_in_cam_zm = top_lev
@@ -1600,9 +1604,7 @@ end subroutine clubb_init_cnst
       k_sfc_zt   = nzt_clubb
       k_top_zm   = 1
       k_top_zt   = 1
-      l_ascending_grid = .false.
-    else
-      call endrun('clubb_ini_cam: clubb_grid_dir can only be +1 or -1')
+      clubb_grid_dir = -1
     end if
 
     ! Allocate PDF parameters across columns and chunks
@@ -2335,7 +2337,8 @@ end subroutine clubb_init_cnst
       wp2thlp_inout,            & ! w'^2 thl' (thermodynamic levels)
       wpup2_inout,              & ! w'u'^2 (thermodynamic levels)
       wpvp2_inout,              & ! w'v'^2 (thermodynamic levels)
-      zt_g                        ! Thermodynamic grid of CLUBB		      	[m]
+      zt_g,                     & ! Thermodynamic grid of CLUBB		      	[m]
+      Lscale
 
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLES SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
@@ -2657,9 +2660,6 @@ end subroutine clubb_init_cnst
 
     real(r8), dimension(state%ncol,nparams) :: &
       clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
-
-    real(r8), dimension(state%ncol,nzt_clubb) :: &
-      Lscale
 
     integer :: &
       sclr, &
@@ -3046,13 +3046,7 @@ end subroutine clubb_init_cnst
         wp2_zt_out(i,k)  = 0._r8
         pdfp_rtp2(i,k)   = 0._r8
         wm_zt_out(i,k)   = 0._r8
-      end do
-    end do
-
-    !$acc parallel loop gang vector collapse(2) default(present)
-    do k = 1, pver
-      do i = 1, pcols
-        temp2d(i,k) = 0._r8
+        temp2d(i,k)      = 0._r8
       end do
     end do
 
@@ -3429,7 +3423,6 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzm_clubb
       do i=1, ncol
-        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k  
         zi_g(i,k) = state1%zi(i,k_cam) - state1%zi(i,pverp)
       end do
@@ -3445,7 +3438,8 @@ end subroutine clubb_init_cnst
     call t_startf('clubb_tend_cam:NAR')
     !$acc update host( deltaz, zi_g, zt_g, clubb_params, sfc_elevation )
 
-
+    ! Calculate grid assuming a descending grid (cam grid), since we want to
+    ! confine ascending behavior to advance_clubb_core
     call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
                          .false., grid_type,                     & ! intent(in)
                          deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
@@ -3566,7 +3560,7 @@ end subroutine clubb_init_cnst
          trim(scm_clubb_iop_name)  ==  'ARM_CC') then
 
           bflx22(1) = (gravit/theta0)*wpthlp_sfc(1)
-          ustar  = diag_ustar(zt_g(1,2),bflx22(1),ubar,zo(1))
+          ustar  = diag_ustar(zt_g(1,nzt_clubb-1),bflx22(1),ubar,zo(1))
       endif
 
       !  Compute the surface momentum fluxes, if this is a SCAM simulation
@@ -3615,7 +3609,6 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzt_clubb
       do i = 1, ncol
-        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k
         um_in(i,k)      = um(i,k_cam)
         vm_in(i,k)      = vm(i,k_cam)
@@ -3643,7 +3636,6 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzm_clubb
       do i = 1, ncol
-        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k
         upwp_in(i,k)    = upwp(i,k_cam)
         vpwp_in(i,k)    = vpwp(i,k_cam)
@@ -3675,7 +3667,6 @@ end subroutine clubb_init_cnst
       !$acc parallel loop gang vector collapse(2) default(present)
       do k = 1, nzm_clubb
         do i = 1, ncol
-          !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
           k_cam = top_lev - 1 + k
           pdf_params_zm_chnk(lchnk)%w_1(i,k)        = pdf_zm_w_1(i,k_cam)
           pdf_params_zm_chnk(lchnk)%w_2(i,k)        = pdf_zm_w_2(i,k_cam)
@@ -3692,7 +3683,6 @@ end subroutine clubb_init_cnst
 
       do k=1,nzt_clubb
         do i=1,ncol
-          !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
           k_cam = top_lev - 1 + k
           kappa_zt(i,k) = (rairv(i,k_cam,lchnk)/cpairv(i,k_cam,lchnk))
           qc_zt(i,k) = state1%q(i,k_cam,ixcldliq)
@@ -3704,7 +3694,6 @@ end subroutine clubb_init_cnst
 
       do k=1,nzm_clubb
         do i=1,ncol
-          !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
           k_cam = top_lev - 1 + k
           p_in_Pa_zm(i,k) = state1%pint(i,k_cam)
           invrs_exner_zm(i,k) = 1._r8/((p_in_Pa_zm(i,k)/p0_clubb)**(kappa_zm(i,k)))
@@ -3750,7 +3739,6 @@ end subroutine clubb_init_cnst
           !$acc parallel loop gang vector collapse(2) default(present)
           do k=1,nzt_clubb
             do i=1,ncol
-              !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
               k_cam = top_lev - 1 + k
               edsclr_in(i,k,icnt) = state1%q(i,k_cam,ixind)
             end do
@@ -3764,7 +3752,6 @@ end subroutine clubb_init_cnst
         !$acc parallel loop gang vector collapse(2) default(present)
         do k=1,nzt_clubb
           do i=1, ncol
-            !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
             k_cam = top_lev - 1 + k
             edsclr_in(i,k,icnt+1) = thlm(i,k_cam)
             edsclr_in(i,k,icnt+2) = rtm(i,k_cam)
@@ -3772,109 +3759,6 @@ end subroutine clubb_init_cnst
         end do
 
       endif
-
-    end if
-    
-    if ( l_ascending_grid ) then
-      p_in_Pa =         p_in_Pa(:,nzt_clubb:1:-1)
-      exner =           exner(:,nzt_clubb:1:-1)
-      thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
-      rfrzm =           rfrzm(:,nzt_clubb:1:-1)
-      radf =            radf(:,nzt_clubb:1:-1)
-      qrl_clubb =       qrl_clubb(:,nzt_clubb:1:-1)
-
-      um_in             = um_in(:,nzt_clubb:1:-1)
-      vm_in             = vm_in(:,nzt_clubb:1:-1)
-      wp2thvp_in        = wp2thvp_in(:,nzt_clubb:1:-1)
-      up3_in            = up3_in(:,nzt_clubb:1:-1)
-      vp3_in            = vp3_in(:,nzt_clubb:1:-1)
-      wp3_in            = wp3_in(:,nzt_clubb:1:-1)
-      rtp3_in           = rtp3_in(:,nzt_clubb:1:-1)
-      thlp3_in          = thlp3_in(:,nzt_clubb:1:-1)
-      thlm_in           = thlm_in(:,nzt_clubb:1:-1)
-      rtm_in            = rtm_in(:,nzt_clubb:1:-1)
-      rvm_in            = rvm_in(:,nzt_clubb:1:-1)
-      cloud_frac_inout  = cloud_frac_inout(:,nzt_clubb:1:-1)
-      rcm_inout         = rcm_inout(:,nzt_clubb:1:-1)
-      wp2rtp_inout      = wp2rtp_inout(:,nzt_clubb:1:-1)
-      wp2thlp_inout     = wp2thlp_inout(:,nzt_clubb:1:-1)
-      wpup2_inout       = wpup2_inout(:,nzt_clubb:1:-1)
-      wpvp2_inout       = wpvp2_inout(:,nzt_clubb:1:-1)
-      pre_in            = pre_in(:,nzt_clubb:1:-1)
-      ice_supersat_frac_inout = ice_supersat_frac_inout(:,nzt_clubb:1:-1)
-      upwp_in           = upwp_in(:,nzm_clubb:1:-1)
-      vpwp_in           = vpwp_in(:,nzm_clubb:1:-1)
-      wpthvp_in         = wpthvp_in(:,nzm_clubb:1:-1)
-      rtpthvp_in        = rtpthvp_in(:,nzm_clubb:1:-1)
-      thlpthvp_in       = thlpthvp_in(:,nzm_clubb:1:-1)
-      up2_in            = up2_in(:,nzm_clubb:1:-1)
-      vp2_in            = vp2_in(:,nzm_clubb:1:-1)
-      wp2_in            = wp2_in(:,nzm_clubb:1:-1)
-      rtp2_in           = rtp2_in(:,nzm_clubb:1:-1)
-      thlp2_in          = thlp2_in(:,nzm_clubb:1:-1)
-      wprtp_in          = wprtp_in(:,nzm_clubb:1:-1)
-      wpthlp_in         = wpthlp_in(:,nzm_clubb:1:-1)
-      rtpthlp_in        = rtpthlp_in(:,nzm_clubb:1:-1)
-      uprcp_inout       = uprcp_inout(:,nzm_clubb:1:-1)
-      vprcp_inout       = vprcp_inout(:,nzm_clubb:1:-1)
-      rc_coef_zm_inout  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
-      wp4_inout         = wp4_inout(:,nzm_clubb:1:-1)
-      wp2up2_inout      = wp2up2_inout(:,nzm_clubb:1:-1)
-      wp2vp2_inout      = wp2vp2_inout(:,nzm_clubb:1:-1)
-  
-      pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
-      
-      pdf_params_chnk(lchnk)%mixt_frac = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%rt_1 = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%rt_2 = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%varnce_rt_1 = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%varnce_rt_2 = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
-  
-      if (do_clubb_mf) then
-        kappa_zt          = kappa_zt(:,nzt_clubb:1:-1)
-        qc_zt             = qc_zt(:,nzm_clubb:1:-1)
-        invrs_exner_zt    = invrs_exner_zt(:,nzt_clubb:1:-1)
-        p_in_Pa_zm        = p_in_Pa_zm(:,nzm_clubb:1:-1)
-        invrs_exner_zm    = invrs_exner_zm(:,nzm_clubb:1:-1)
-      end if
-
-            rho_ds_zt =       rho_ds_zt(:,nzt_clubb:1:-1)
-      invrs_rho_ds_zt = invrs_rho_ds_zt(:,nzt_clubb:1:-1)
-              rho_zt =          rho_zt(:,nzt_clubb:1:-1)
-            thv_ds_zt =       thv_ds_zt(:,nzt_clubb:1:-1)
-                wm_zt =           wm_zt(:,nzt_clubb:1:-1)
-
-      rho_ds_zm       = rho_ds_zm(:,nzm_clubb:1:-1)
-      invrs_rho_ds_zm = invrs_rho_ds_zm(:,nzm_clubb:1:-1)
-      rho_zm          = rho_zm(:,nzm_clubb:1:-1)
-      thv_ds_zm       = thv_ds_zm(:,nzm_clubb:1:-1)
-      wm_zm           = wm_zm(:,nzm_clubb:1:-1)
-
-      if ( edsclr_dim > 0 ) then
-        edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
-      end if
-
-      zt_g = zt_g(:,nzt_clubb:1:-1)
-      zi_g = zi_g(:,nzm_clubb:1:-1)
-
-      ! we are in ascending mode, need to calculate ascending grid
-      call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
-                          l_ascending_grid, grid_type,                     & ! intent(in)
-                          deltaz, zi_g(:,1), zi_g(:,nzm_clubb),            & ! intent(in)
-                          zi_g, zt_g,                                      & ! intent(in)
-                          gr_a, err_info )                                     ! intent(inout)-
-    else
-
-      ! not in ascending mode, so we calculate gr_a the same as gr
-      call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
-                          l_ascending_grid, grid_type,                     & ! intent(in)
-                          deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
-                          zi_g, zt_g,                                      & ! intent(in)
-                          gr_a, err_info )                                     ! intent(inout)-
 
     end if
 
@@ -3894,15 +3778,39 @@ end subroutine clubb_init_cnst
       if (do_clubb_mf) then
         call t_startf('clubb_tend_cam:do_clubb_mf')
 
-        do k=1,nzt_clubb
+        do k = 1, nzt_clubb
           do i=1, ncol
-            dzt(i,k) = zi_g(i,k+1) - zi_g(i,k)
-            invrs_dzt(i,k) = 1._r8/dzt(i,k)
+            dzt(i,k)        = zi_g(i,k) - zi_g(i,k+1)
+            invrs_dzt(i,k)  = 1._r8 / dzt(i,k)
           end do
         end do
 
-        rtm_zm_in  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr_a, rtm_in )
-        thlm_zm_in = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr_a, thlm_in )
+        rtm_zm_in  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtm_in )
+        thlm_zm_in = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlm_in )
+
+        !--------------------------------------- integrate_mf call and flip ---------------------------------------
+        ! integrate_mf assumes an ascending grid, which is the opposide of the cam grid that
+        ! clubb_intr now mainly uses, so we need to flip the fields before calling integrate_mf
+        !
+        ! Ideally, integrate_mf would operate in descending mode, then we could remove the flipping.
+        ! If the column loop gets pushed into it, we can also avoid the array slicing.
+
+        dzt             = dzt(:,nzt_clubb:1:-1)
+        p_in_Pa         = p_in_Pa(:,nzt_clubb:1:-1)
+        invrs_exner_zt  = invrs_exner_zt(:,nzt_clubb:1:-1)
+        um_in           = um_in(:,nzt_clubb:1:-1)
+        vm_in           = vm_in(:,nzt_clubb:1:-1)
+        thlm_in         = thlm_in(:,nzt_clubb:1:-1)
+        rtm_in          = rtm_in(:,nzt_clubb:1:-1)
+
+        thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
+
+        ! Flip zm inputs
+        zi_g            = zi_g(:,nzm_clubb:1:-1)
+        p_in_Pa_zm      = p_in_Pa_zm(:,nzm_clubb:1:-1)
+        invrs_exner_zm  = invrs_exner_zm(:,nzm_clubb:1:-1)
+        thlm_zm_in      = thlm_zm_in(:,nzm_clubb:1:-1)
+        rtm_zm_in       = rtm_zm_in(:,nzm_clubb:1:-1)
 
         do i=1, ncol
           call integrate_mf( nzm_clubb, nzt_clubb, dzt(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
@@ -3923,15 +3831,61 @@ end subroutine clubb_init_cnst
                               s_awu(i,:),     s_awv(i,:),                                             & ! output - plume diagnostics
                               mf_thlflx(i,:), mf_qtflx(i,:) )                                 ! output - variables needed for solver
         end do
+        
+        ! Flip zt inputs back
+        dzt             = dzt(:,nzt_clubb:1:-1)
+        p_in_Pa         = p_in_Pa(:,nzt_clubb:1:-1)
+        invrs_exner_zt  = invrs_exner_zt(:,nzt_clubb:1:-1)
+        um_in           = um_in(:,nzt_clubb:1:-1)
+        vm_in           = vm_in(:,nzt_clubb:1:-1)
+        thlm_in         = thlm_in(:,nzt_clubb:1:-1)
+        rtm_in          = rtm_in(:,nzt_clubb:1:-1)
+
+        thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
+
+        ! Flip zm inputs back
+        zi_g            = zi_g(:,nzm_clubb:1:-1)
+        p_in_Pa_zm      = p_in_Pa_zm(:,nzm_clubb:1:-1)
+        invrs_exner_zm  = invrs_exner_zm(:,nzm_clubb:1:-1)
+        thlm_zm_in      = thlm_zm_in(:,nzm_clubb:1:-1)
+        rtm_zm_in       = rtm_zm_in(:,nzm_clubb:1:-1)
+        
+        ! Flip clubb_mf output, since it 
+        mf_dry_a     = mf_dry_a(:,nzm_clubb:1:-1)
+        mf_moist_a   = mf_moist_a(:,nzm_clubb:1:-1)
+        mf_dry_w     = mf_dry_w(:,nzm_clubb:1:-1)
+        mf_moist_w   = mf_moist_w(:,nzm_clubb:1:-1)
+        mf_dry_qt    = mf_dry_qt(:,nzm_clubb:1:-1)
+        mf_moist_qt  = mf_moist_qt(:,nzm_clubb:1:-1)
+        mf_dry_thl   = mf_dry_thl(:,nzm_clubb:1:-1)
+        mf_moist_thl = mf_moist_thl(:,nzm_clubb:1:-1)
+        mf_dry_u     = mf_dry_u(:,nzm_clubb:1:-1)
+        mf_moist_u   = mf_moist_u(:,nzm_clubb:1:-1)
+        mf_dry_v     = mf_dry_v(:,nzm_clubb:1:-1)
+        mf_moist_v   = mf_moist_v(:,nzm_clubb:1:-1)
+        mf_moist_qc  = mf_moist_qc(:,nzm_clubb:1:-1)
+        mf_thlflx    = mf_thlflx(:,nzm_clubb:1:-1)
+        mf_qtflx     = mf_qtflx(:,nzm_clubb:1:-1)
+        s_ae         = s_ae(:,nzm_clubb:1:-1)
+        s_aw         = s_aw(:,nzm_clubb:1:-1)
+        s_awthl      = s_awthl(:,nzm_clubb:1:-1)
+        s_awqt       = s_awqt(:,nzm_clubb:1:-1)
+        s_awql       = s_awql(:,nzm_clubb:1:-1)
+        s_awqi       = s_awqi(:,nzm_clubb:1:-1)
+        s_awu        = s_awu(:,nzm_clubb:1:-1)
+        s_awv        = s_awv(:,nzm_clubb:1:-1)
+        mf_thlflx    = mf_thlflx(:,nzm_clubb:1:-1)
+        mf_qtflx     = mf_qtflx(:,nzm_clubb:1:-1)
+        !--------------------------------------- END integrate_mf call and flip ---------------------------------------
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
         do k = 1, nzt_clubb
           do i = 1, ncol
             rtm_forcing(i,k)  = rtm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
-                              ((rho_ds_zm(i,k+1) * mf_qtflx(i,k+1)) - (rho_ds_zm(i,k) * mf_qtflx(i,k)))
+                              ((rho_ds_zm(i,k) * mf_qtflx(i,k)) - (rho_ds_zm(i,k+1) * mf_qtflx(i,k+1)))
 
             thlm_forcing(i,k) = thlm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dzt(i,k) * &
-                               ((rho_ds_zm(i,k+1) * mf_thlflx(i,k+1)) - (rho_ds_zm(i,k) * mf_thlflx(i,k)))
+                               ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k+1) * mf_thlflx(i,k+1)))
           end do
         end do
         call t_stopf('clubb_tend_cam:do_clubb_mf')
@@ -3940,6 +3894,164 @@ end subroutine clubb_init_cnst
 
       !  Advance CLUBB CORE one timestep in the future
       call t_startf('clubb_tend_cam:advance_clubb_core_api')
+      
+      if ( l_ascending_grid ) then
+
+        ! CLUBB is to be run in ascending mode, which has the surface at k=1, which is 
+        ! the opposite of the cam grid that the rest of clubb_intr uses, so
+        ! we need to flip the fields (in the vertical dimensions) before calling advance_clubb_core
+        !
+        ! NOTE: We do not neccesarily flip all arrays, only ones that are used within this
+        !       subroutine (clubb_tend_cam). For example, only the pdf_params fields that 
+        !       are used within this subroutine (or used in a subroutine we call) need to
+        !       be flipped. 
+
+        thlm_forcing              =              thlm_forcing(:,nzt_clubb:1:-1)
+        rtm_forcing               =               rtm_forcing(:,nzt_clubb:1:-1)
+        um_forcing                =                um_forcing(:,nzt_clubb:1:-1)
+        vm_forcing                =                vm_forcing(:,nzt_clubb:1:-1)
+        wm_zt                     =                     wm_zt(:,nzt_clubb:1:-1)
+        rho_zt                    =                    rho_zt(:,nzt_clubb:1:-1)
+        rho_ds_zt                 =                 rho_ds_zt(:,nzt_clubb:1:-1)
+        invrs_rho_ds_zt           =           invrs_rho_ds_zt(:,nzt_clubb:1:-1)
+        thv_ds_zt                 =                 thv_ds_zt(:,nzt_clubb:1:-1)
+        khzt_out                  =                  khzt_out(:,nzt_clubb:1:-1)
+        rtm_ref                   =                   rtm_ref(:,nzt_clubb:1:-1)
+        thlm_ref                  =                  thlm_ref(:,nzt_clubb:1:-1)
+        um_ref                    =                    um_ref(:,nzt_clubb:1:-1)
+        vm_ref                    =                    vm_ref(:,nzt_clubb:1:-1)
+        ug                        =                        ug(:,nzt_clubb:1:-1)
+        vg                        =                        vg(:,nzt_clubb:1:-1)
+        p_in_Pa                   =                   p_in_Pa(:,nzt_clubb:1:-1)
+        exner                     =                     exner(:,nzt_clubb:1:-1)
+        rfrzm                     =                     rfrzm(:,nzt_clubb:1:-1)
+        um_in                     =                     um_in(:,nzt_clubb:1:-1)
+        vm_in                     =                     vm_in(:,nzt_clubb:1:-1)
+        up3_in                    =                    up3_in(:,nzt_clubb:1:-1)
+        vp3_in                    =                    vp3_in(:,nzt_clubb:1:-1)
+        wp3_in                    =                    wp3_in(:,nzt_clubb:1:-1)
+        rtp3_in                   =                   rtp3_in(:,nzt_clubb:1:-1)
+        thlp3_in                  =                  thlp3_in(:,nzt_clubb:1:-1)
+        rcm_inout                 =                 rcm_inout(:,nzt_clubb:1:-1)
+        cloud_frac_inout          =          cloud_frac_inout(:,nzt_clubb:1:-1)
+        wpup2_inout               =               wpup2_inout(:,nzt_clubb:1:-1)
+        wpvp2_inout               =               wpvp2_inout(:,nzt_clubb:1:-1)
+        wp2rtp_inout              =              wp2rtp_inout(:,nzt_clubb:1:-1)
+        wp2thlp_inout             =             wp2thlp_inout(:,nzt_clubb:1:-1)
+        qclvar_out                =                qclvar_out(:,nzt_clubb:1:-1)
+        cloud_cover_out           =           cloud_cover_out(:,nzt_clubb:1:-1)
+        w_up_in_cloud_out         =         w_up_in_cloud_out(:,nzt_clubb:1:-1)
+        w_down_in_cloud_out       =       w_down_in_cloud_out(:,nzt_clubb:1:-1)
+        cloudy_updraft_frac_out   =   cloudy_updraft_frac_out(:,nzt_clubb:1:-1)
+        cloudy_downdraft_frac_out = cloudy_downdraft_frac_out(:,nzt_clubb:1:-1)
+        rcm_in_layer_out          =          rcm_in_layer_out(:,nzt_clubb:1:-1)
+        ice_supersat_frac_inout   =   ice_supersat_frac_inout(:,nzt_clubb:1:-1)
+        um_pert_inout             =             um_pert_inout(:,nzt_clubb:1:-1)
+        vm_pert_inout             =             vm_pert_inout(:,nzt_clubb:1:-1)
+        wp2thvp_in                =                wp2thvp_in(:,nzt_clubb:1:-1)
+        rtm_in                    =                    rtm_in(:,nzt_clubb:1:-1)
+        thlm_in                   =                   thlm_in(:,nzt_clubb:1:-1)
+        Lscale                    =                    Lscale(:,nzt_clubb:1:-1)
+
+        wprtp_forcing     =    wprtp_forcing(:,nzm_clubb:1:-1)
+        wpthlp_forcing    =   wpthlp_forcing(:,nzm_clubb:1:-1)
+        rtp2_forcing      =     rtp2_forcing(:,nzm_clubb:1:-1)
+        thlp2_forcing     =    thlp2_forcing(:,nzm_clubb:1:-1)
+        rtpthlp_forcing   =  rtpthlp_forcing(:,nzm_clubb:1:-1)
+        wm_zm             =            wm_zm(:,nzm_clubb:1:-1)
+        rho_zm            =           rho_zm(:,nzm_clubb:1:-1)
+        rho_ds_zm         =        rho_ds_zm(:,nzm_clubb:1:-1)
+        invrs_rho_ds_zm   =  invrs_rho_ds_zm(:,nzm_clubb:1:-1)
+        thv_ds_zm         =        thv_ds_zm(:,nzm_clubb:1:-1)
+        upwp_in           =          upwp_in(:,nzm_clubb:1:-1)
+        vpwp_in           =          vpwp_in(:,nzm_clubb:1:-1)
+        up2_in            =           up2_in(:,nzm_clubb:1:-1)
+        vp2_in            =           vp2_in(:,nzm_clubb:1:-1)
+        wprtp_in          =         wprtp_in(:,nzm_clubb:1:-1)
+        wpthlp_in         =        wpthlp_in(:,nzm_clubb:1:-1)
+        wp2_in            =           wp2_in(:,nzm_clubb:1:-1)
+        rtp2_in           =          rtp2_in(:,nzm_clubb:1:-1)
+        thlp2_in          =         thlp2_in(:,nzm_clubb:1:-1)
+        rtpthlp_in        =       rtpthlp_in(:,nzm_clubb:1:-1)
+        wpthvp_in         =        wpthvp_in(:,nzm_clubb:1:-1)
+        rtpthvp_in        =       rtpthvp_in(:,nzm_clubb:1:-1)
+        thlpthvp_in       =      thlpthvp_in(:,nzm_clubb:1:-1)
+        uprcp_inout       =      uprcp_inout(:,nzm_clubb:1:-1)
+        vprcp_inout       =      vprcp_inout(:,nzm_clubb:1:-1)
+        rc_coef_zm_inout  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
+        wp4_inout         =        wp4_inout(:,nzm_clubb:1:-1)
+        wp2up2_inout      =     wp2up2_inout(:,nzm_clubb:1:-1)
+        wp2vp2_inout      =     wp2vp2_inout(:,nzm_clubb:1:-1)
+        upwp_pert_inout   =  upwp_pert_inout(:,nzm_clubb:1:-1)
+        vpwp_pert_inout   =  vpwp_pert_inout(:,nzm_clubb:1:-1)
+        khzm_out          =         khzm_out(:,nzm_clubb:1:-1)
+        thlprcp_out       =      thlprcp_out(:,nzm_clubb:1:-1)
+        wprcp_out         =        wprcp_out(:,nzm_clubb:1:-1)
+        invrs_tau_zm_out  = invrs_tau_zm_out(:,nzm_clubb:1:-1)
+
+        if ( edsclr_dim > 0 ) then
+          edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
+          edsclrm_forcing = edsclrm_forcing(:,nzt_clubb:1:-1,:)
+        end if
+
+        if ( sclr_dim > 0 ) then
+          
+          sclrm_forcing = sclrm_forcing(:,nzt_clubb:1:-1,:)
+          sclrm         = sclrm(:,nzt_clubb:1:-1,:)
+          sclrp3        = sclrp3(:,nzt_clubb:1:-1,:)
+
+          sclrp2          = sclrp2(:,nzm_clubb:1:-1,:)
+          sclrprtp        = sclrprtp(:,nzm_clubb:1:-1,:)
+          sclrpthlp       = sclrpthlp(:,nzm_clubb:1:-1,:)
+          wpsclrp         = wpsclrp(:,nzm_clubb:1:-1,:)
+          sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
+        end if
+    
+        pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
+        
+        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
+
+        pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
+
+        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
+  
+        if ( t == 1 ) then
+
+          ! we are in ascending mode, need to calculate ascending grid
+          call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
+                              l_ascending_grid, grid_type,                     & ! intent(in)
+                              deltaz, zi_g(:,1), zi_g(:,nzm_clubb),            & ! intent(in)
+                              zi_g(:,nzm_clubb:1:-1), zt_g(:,nzt_clubb:1:-1),   & ! intent(in)
+                              gr_a, err_info )                                     ! intent(inout)
+        end if
+      else
+  
+        if ( t == 1 ) then
+          ! not in ascending mode, so we calculate gr_a the same as gr
+          call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
+                              l_ascending_grid, grid_type,                     & ! intent(in)
+                              deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
+                              zi_g, zt_g,                                      & ! intent(in)
+                              gr_a, err_info )                                     ! intent(inout)
+        end if
+  
+      end if
+
+
       call advance_clubb_core_api( gr_a, nzm_clubb, nzt_clubb, ncol, &
           l_implemented, dtime, fcor, sfc_elevation, &
           hydromet_dim, &
@@ -3987,6 +4099,139 @@ end subroutine clubb_init_cnst
           cloudy_updraft_frac_out, cloudy_downdraft_frac_out, &
           rcm_in_layer_out, cloud_cover_out, invrs_tau_zm_out, &
           Lscale )
+          
+
+      if ( l_ascending_grid ) then
+
+        ! If running in ascending mode, we flip the arrays before calling advance_clubb_core
+        ! so we need to flip them back. This section should flip every array that was flipped 
+        ! before the advance_clubb_core call.
+
+        thlm_forcing              =              thlm_forcing(:,nzt_clubb:1:-1)
+        rtm_forcing               =               rtm_forcing(:,nzt_clubb:1:-1)
+        um_forcing                =                um_forcing(:,nzt_clubb:1:-1)
+        vm_forcing                =                vm_forcing(:,nzt_clubb:1:-1)
+        wm_zt                     =                     wm_zt(:,nzt_clubb:1:-1)
+        rho_zt                    =                    rho_zt(:,nzt_clubb:1:-1)
+        rho_ds_zt                 =                 rho_ds_zt(:,nzt_clubb:1:-1)
+        invrs_rho_ds_zt           =           invrs_rho_ds_zt(:,nzt_clubb:1:-1)
+        thv_ds_zt                 =                 thv_ds_zt(:,nzt_clubb:1:-1)
+        khzt_out                  =                  khzt_out(:,nzt_clubb:1:-1)
+        rtm_ref                   =                   rtm_ref(:,nzt_clubb:1:-1)
+        thlm_ref                  =                  thlm_ref(:,nzt_clubb:1:-1)
+        um_ref                    =                    um_ref(:,nzt_clubb:1:-1)
+        vm_ref                    =                    vm_ref(:,nzt_clubb:1:-1)
+        ug                        =                        ug(:,nzt_clubb:1:-1)
+        vg                        =                        vg(:,nzt_clubb:1:-1)
+        p_in_Pa                   =                   p_in_Pa(:,nzt_clubb:1:-1)
+        exner                     =                     exner(:,nzt_clubb:1:-1)
+        rfrzm                     =                     rfrzm(:,nzt_clubb:1:-1)
+        um_in                     =                     um_in(:,nzt_clubb:1:-1)
+        vm_in                     =                     vm_in(:,nzt_clubb:1:-1)
+        up3_in                    =                    up3_in(:,nzt_clubb:1:-1)
+        vp3_in                    =                    vp3_in(:,nzt_clubb:1:-1)
+        wp3_in                    =                    wp3_in(:,nzt_clubb:1:-1)
+        rtp3_in                   =                   rtp3_in(:,nzt_clubb:1:-1)
+        thlp3_in                  =                  thlp3_in(:,nzt_clubb:1:-1)
+        rcm_inout                 =                 rcm_inout(:,nzt_clubb:1:-1)
+        cloud_frac_inout          =          cloud_frac_inout(:,nzt_clubb:1:-1)
+        wpup2_inout               =               wpup2_inout(:,nzt_clubb:1:-1)
+        wpvp2_inout               =               wpvp2_inout(:,nzt_clubb:1:-1)
+        wp2rtp_inout              =              wp2rtp_inout(:,nzt_clubb:1:-1)
+        wp2thlp_inout             =             wp2thlp_inout(:,nzt_clubb:1:-1)
+        qclvar_out                =                qclvar_out(:,nzt_clubb:1:-1)
+        cloud_cover_out           =           cloud_cover_out(:,nzt_clubb:1:-1)
+        w_up_in_cloud_out         =         w_up_in_cloud_out(:,nzt_clubb:1:-1)
+        w_down_in_cloud_out       =       w_down_in_cloud_out(:,nzt_clubb:1:-1)
+        cloudy_updraft_frac_out   =   cloudy_updraft_frac_out(:,nzt_clubb:1:-1)
+        cloudy_downdraft_frac_out = cloudy_downdraft_frac_out(:,nzt_clubb:1:-1)
+        rcm_in_layer_out          =          rcm_in_layer_out(:,nzt_clubb:1:-1)
+        ice_supersat_frac_inout   =   ice_supersat_frac_inout(:,nzt_clubb:1:-1)
+        um_pert_inout             =             um_pert_inout(:,nzt_clubb:1:-1)
+        vm_pert_inout             =             vm_pert_inout(:,nzt_clubb:1:-1)
+        wp2thvp_in                =                wp2thvp_in(:,nzt_clubb:1:-1)
+        rtm_in                    =                    rtm_in(:,nzt_clubb:1:-1)
+        thlm_in                   =                   thlm_in(:,nzt_clubb:1:-1)
+        Lscale                    =                    Lscale(:,nzt_clubb:1:-1)
+
+        wprtp_forcing     =    wprtp_forcing(:,nzm_clubb:1:-1)
+        wpthlp_forcing    =   wpthlp_forcing(:,nzm_clubb:1:-1)
+        rtp2_forcing      =     rtp2_forcing(:,nzm_clubb:1:-1)
+        thlp2_forcing     =    thlp2_forcing(:,nzm_clubb:1:-1)
+        rtpthlp_forcing   =  rtpthlp_forcing(:,nzm_clubb:1:-1)
+        wm_zm             =            wm_zm(:,nzm_clubb:1:-1)
+        rho_zm            =           rho_zm(:,nzm_clubb:1:-1)
+        rho_ds_zm         =        rho_ds_zm(:,nzm_clubb:1:-1)
+        invrs_rho_ds_zm   =  invrs_rho_ds_zm(:,nzm_clubb:1:-1)
+        thv_ds_zm         =        thv_ds_zm(:,nzm_clubb:1:-1)
+        upwp_in           =          upwp_in(:,nzm_clubb:1:-1)
+        vpwp_in           =          vpwp_in(:,nzm_clubb:1:-1)
+        up2_in            =           up2_in(:,nzm_clubb:1:-1)
+        vp2_in            =           vp2_in(:,nzm_clubb:1:-1)
+        wprtp_in          =         wprtp_in(:,nzm_clubb:1:-1)
+        wpthlp_in         =        wpthlp_in(:,nzm_clubb:1:-1)
+        wp2_in            =           wp2_in(:,nzm_clubb:1:-1)
+        rtp2_in           =          rtp2_in(:,nzm_clubb:1:-1)
+        thlp2_in          =         thlp2_in(:,nzm_clubb:1:-1)
+        rtpthlp_in        =       rtpthlp_in(:,nzm_clubb:1:-1)
+        wpthvp_in         =        wpthvp_in(:,nzm_clubb:1:-1)
+        rtpthvp_in        =       rtpthvp_in(:,nzm_clubb:1:-1)
+        thlpthvp_in       =      thlpthvp_in(:,nzm_clubb:1:-1)
+        uprcp_inout       =      uprcp_inout(:,nzm_clubb:1:-1)
+        vprcp_inout       =      vprcp_inout(:,nzm_clubb:1:-1)
+        rc_coef_zm_inout  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
+        wp4_inout         =        wp4_inout(:,nzm_clubb:1:-1)
+        wp2up2_inout      =     wp2up2_inout(:,nzm_clubb:1:-1)
+        wp2vp2_inout      =     wp2vp2_inout(:,nzm_clubb:1:-1)
+        upwp_pert_inout   =  upwp_pert_inout(:,nzm_clubb:1:-1)
+        vpwp_pert_inout   =  vpwp_pert_inout(:,nzm_clubb:1:-1)
+        khzm_out          =         khzm_out(:,nzm_clubb:1:-1)
+        thlprcp_out       =      thlprcp_out(:,nzm_clubb:1:-1)
+        wprcp_out         =        wprcp_out(:,nzm_clubb:1:-1)
+        invrs_tau_zm_out  = invrs_tau_zm_out(:,nzm_clubb:1:-1)
+
+        if ( edsclr_dim > 0 ) then
+          edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
+          edsclrm_forcing = edsclrm_forcing(:,nzt_clubb:1:-1,:)
+        end if
+
+        if ( sclr_dim > 0 ) then
+          
+          sclrm_forcing = sclrm_forcing(:,nzt_clubb:1:-1,:)
+          sclrm         = sclrm(:,nzt_clubb:1:-1,:)
+          sclrp3        = sclrp3(:,nzt_clubb:1:-1,:)
+
+          sclrp2          = sclrp2(:,nzm_clubb:1:-1,:)
+          sclrprtp        = sclrprtp(:,nzm_clubb:1:-1,:)
+          sclrpthlp       = sclrpthlp(:,nzm_clubb:1:-1,:)
+          wpsclrp         = wpsclrp(:,nzm_clubb:1:-1,:)
+          sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
+        end if
+    
+        pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
+        pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
+        
+        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
+
+        pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
+
+        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
+  
+      end if
+
       call t_stopf('clubb_tend_cam:advance_clubb_core_api')
 
       ! Note that CLUBB does not produce an error code specific to any column, and
@@ -3997,6 +4242,7 @@ end subroutine clubb_init_cnst
       end if
 
       if ( do_rainturb ) then
+
         call t_startf('clubb_tend_cam:do_rainturb')
 
         do k=1,nzt_clubb
@@ -4005,7 +4251,7 @@ end subroutine clubb_init_cnst
           end do
         end do
 
-        call update_xp2_mc_api( gr_a, nzm_clubb, nzt_clubb, ncol, dtime, cloud_frac_inout, &
+        call update_xp2_mc_api( gr, nzm_clubb, nzt_clubb, ncol, dtime, cloud_frac_inout, &
                                 rcm_inout, rvm_in, thlm_in, wm_zt, &
                                 exner, pre_in, pdf_params_chnk(lchnk), &
                                 rtp2_mc_out, thlp2_mc_out, &
@@ -4025,14 +4271,16 @@ end subroutine clubb_init_cnst
         end do
 
         call t_stopf('clubb_tend_cam:do_rainturb')
+
       end if
 
       if (do_cldcool) then
+
         call t_startf('clubb_tend_cam:do_cldcool')
 
         thlp2_rad_out(:,:) = 0._r8
 
-        call calculate_thlp2_rad_api( ncol, nzm_clubb, nzt_clubb, gr_a, &
+        call calculate_thlp2_rad_api( ncol, nzm_clubb, nzt_clubb, gr, &
                                       rcm_inout, thlprcp_out, qrl_clubb, clubb_params, &
                                       thlp2_rad_out )
 
@@ -4041,6 +4289,7 @@ end subroutine clubb_init_cnst
             thlp2_in(i,k) = max( thl_tol**2, thlp2_in(i,k) + thlp2_rad_out(i,k) * dtime )
           end do
         end do
+
         call t_stopf('clubb_tend_cam:do_cldcool')
 
       end if
@@ -4059,78 +4308,6 @@ end subroutine clubb_init_cnst
     enddo  ! end time loop
 
     call t_startf('clubb_tend_cam:flip-index')
-    if ( l_ascending_grid ) then
-      
-      thv(:,top_lev:pver) =             thv(:,pver:top_lev:-1)
-
-      um_in                  = um_in(:,nzt_clubb:1:-1)
-      vm_in                  = vm_in(:,nzt_clubb:1:-1)
-      wp2thvp_in                   = wp2thvp_in(:,nzt_clubb:1:-1)
-      up3_in                   = up3_in(:,nzt_clubb:1:-1)
-      vp3_in                   = vp3_in(:,nzt_clubb:1:-1)
-      thlm_in                  = thlm_in(:,nzt_clubb:1:-1)
-      rtm_in                   = rtm_in(:,nzt_clubb:1:-1)
-      wp3_in                   = wp3_in(:,nzt_clubb:1:-1)
-      rtp3_in                  = rtp3_in(:,nzt_clubb:1:-1)
-      thlp3_in                   = thlp3_in(:,nzt_clubb:1:-1)
-      rcm_inout                  = rcm_inout(:,nzt_clubb:1:-1)
-      cloud_frac_inout                   = cloud_frac_inout(:,nzt_clubb:1:-1)
-      rcm_in_layer_out                   = rcm_in_layer_out(:,nzt_clubb:1:-1)
-      cloud_cover_out                  = cloud_cover_out(:,nzt_clubb:1:-1)
-      zt_g                   = zt_g(:,nzt_clubb:1:-1)
-      wm_zt                  = wm_zt(:,nzt_clubb:1:-1)
-      wp2rtp_inout                   = wp2rtp_inout(:,nzt_clubb:1:-1)
-      wp2thlp_inout                  = wp2thlp_inout(:,nzt_clubb:1:-1)
-      wpup2_inout              = wpup2_inout(:,nzt_clubb:1:-1)
-      wpvp2_inout              = wpvp2_inout(:,nzt_clubb:1:-1)
-      ice_supersat_frac_inout  = ice_supersat_frac_inout(:,nzt_clubb:1:-1)
-      qclvar_out               = qclvar_out(:,nzt_clubb:1:-1)
-      rtp2_zt                  = rtp2_zt(:,nzt_clubb:1:-1)
-      thl2_zt                  = thl2_zt(:,nzt_clubb:1:-1)
-      wp2_zt                   = wp2_zt(:,nzt_clubb:1:-1)
-
-      upwp_in                   = upwp_in(:,nzm_clubb:1:-1)
-      vpwp_in                   = vpwp_in(:,nzm_clubb:1:-1)
-      wpthvp_in                   = wpthvp_in(:,nzm_clubb:1:-1)
-      rtpthvp_in                  = rtpthvp_in(:,nzm_clubb:1:-1)
-      thlpthvp_in                   = thlpthvp_in(:,nzm_clubb:1:-1)
-      up2_in                  = up2_in(:,nzm_clubb:1:-1)
-      vp2_in                  = vp2_in(:,nzm_clubb:1:-1)
-      wprtp_in                  = wprtp_in(:,nzm_clubb:1:-1)
-      wpthlp_in                   = wpthlp_in(:,nzm_clubb:1:-1)
-      wp2_in                  = wp2_in(:,nzm_clubb:1:-1)
-      rtp2_in                   = rtp2_in(:,nzm_clubb:1:-1)
-      thlp2_in                  = thlp2_in(:,nzm_clubb:1:-1)
-      rtpthlp_in                  = rtpthlp_in(:,nzm_clubb:1:-1)
-      wprcp_out                   = wprcp_out(:,nzm_clubb:1:-1)
-
-      pdf_params_zm_chnk(lchnk)%w_1         = pdf_params_zm_chnk(lchnk)%w_1(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%w_2         = pdf_params_zm_chnk(lchnk)%w_2(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%varnce_w_1  = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%varnce_w_2  = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
-      pdf_params_zm_chnk(lchnk)%mixt_frac   = pdf_params_zm_chnk(lchnk)%mixt_frac(:,nzm_clubb:1:-1)
-
-      pdf_params_chnk(lchnk)%mixt_frac = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%rt_1 = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%rt_2 = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%varnce_rt_1 = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
-      pdf_params_chnk(lchnk)%varnce_rt_2 = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
-
-
-      zi_g                  = zi_g(:,nzm_clubb:1:-1)
-      khzm_out                  = khzm_out(:,nzm_clubb:1:-1)
-      uprcp_inout                   = uprcp_inout(:,nzm_clubb:1:-1)
-      vprcp_inout                   = vprcp_inout(:,nzm_clubb:1:-1)
-      rc_coef_zm_inout                  = rc_coef_zm_inout(:,nzm_clubb:1:-1)
-      wp4_inout                   = wp4_inout(:,nzm_clubb:1:-1)
-      wp2up2_inout                  = wp2up2_inout(:,nzm_clubb:1:-1)
-      wp2vp2_inout                  = wp2vp2_inout(:,nzm_clubb:1:-1)
-
-      if ( edsclr_dim > 0 ) then
-        edsclr_in = edsclr_in(:,nzt_clubb:1:-1,:)
-      end if
-
-    end if
 
     if (clubb_do_adv) then
       if (macmic_it  ==  cld_macmic_num_steps) then
@@ -4166,7 +4343,6 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzt_clubb
       do i=1, ncol
-        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k
         um(i,k_cam)           = um_in(i,k)
         vm(i,k_cam)           = vm_in(i,k)
@@ -4200,7 +4376,6 @@ end subroutine clubb_init_cnst
     !$acc parallel loop gang vector collapse(2) default(present)
     do k=1, nzm_clubb
       do i=1, ncol
-        !k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k
         upwp(i,k_cam)         = upwp_in(i,k)
         vpwp(i,k_cam)         = vpwp_in(i,k)
@@ -4238,7 +4413,6 @@ end subroutine clubb_init_cnst
       do ixind=1,edsclr_dim
         do k=1, nzt_clubb
           do i=1, ncol
-            !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
             k_cam = top_lev - 1 + k
             edsclr_out(i,k_cam,ixind) = edsclr_in(i,k,ixind)
           end do
@@ -4250,7 +4424,7 @@ end subroutine clubb_init_cnst
     if (do_clubb_mf) then
       do k=1, nzm_clubb
         do i=1, ncol
-          k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
+          k_cam = top_lev - 1 + k
           mf_dry_a_output(i,k_cam)     = mf_dry_a(i,k)
           mf_moist_a_output(i,k_cam)   = mf_moist_a(i,k)
           mf_dry_w_output(i,k_cam)     = mf_dry_w(i,k)
@@ -4289,7 +4463,6 @@ end subroutine clubb_init_cnst
                   + ( 1.0_r8 - pdf_params_chnk(lchnk)%mixt_frac(i,k) ) &
                     * pdf_params_chnk(lchnk)%rt_2(i,k)
 
-        !k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
         k_cam = top_lev - 1 + k
 
         pdfp_rtp2(i,k_cam) = pdf_params_chnk(lchnk)%mixt_frac(i,k) &
@@ -5807,7 +5980,7 @@ end function diag_ustar
 
     ! Local Variables
 
-    integer :: i, k, k_cam
+    integer :: i, k
     logical :: l_error
 
     !  Check if it is time to write to file
@@ -5833,34 +6006,62 @@ end function diag_ustar
    !  in the vertical level to be the same as CAM output.
     do i = 1, stats_zt%num_output_fields
       do k = 1, stats_zt%kk
-        k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
-        out_zt(thecol,k_cam,i) = stats_zt%accum_field_values(1,1,k,i)
+
+        ! The data stored in stats types are ascending if l_ascending_grid = .true.
+        if ( l_ascending_grid ) then
+          out_zt(thecol,pver+1-k,i) = stats_zt%accum_field_values(1,1,k,i)
+        else
+          out_zt(thecol,top_lev-1+k,i) = stats_zt%accum_field_values(1,1,k,i)
+        end if
+
         if(is_nan(out_zt(thecol,k,i))) out_zt(thecol,k,i) = 0.0_r8
+
       enddo
     enddo
 
     do i = 1, stats_zm%num_output_fields
       do k = 1, stats_zm%kk
-        k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
-        out_zm(thecol,k_cam,i) = stats_zm%accum_field_values(1,1,k,i)
+
+        ! The data stored in stats types are ascending if l_ascending_grid = .true.
+        if ( l_ascending_grid ) then
+          out_zm(thecol,pverp+1-k,i) = stats_zm%accum_field_values(1,1,k,i)
+        else
+          out_zm(thecol,top_lev-1+k,i) = stats_zm%accum_field_values(1,1,k,i)
+        end if
+
         if(is_nan(out_zm(thecol,k,i))) out_zm(thecol,k,i) = 0.0_r8
+
       enddo
     enddo
 
     if (stats_metadata%l_output_rad_files) then
       do i = 1, stats_rad_zt%num_output_fields
         do k = 1, stats_rad_zt%kk
-          k_cam = k1_clubb_in_cam_zt - ( k - 1 ) * clubb_grid_dir
-          out_radzt(thecol,k_cam,i) = stats_rad_zt%accum_field_values(1,1,k,i)
+
+          ! The data stored in stats types are ascending if l_ascending_grid = .true.
+          if ( l_ascending_grid ) then
+            out_radzt(thecol,pver+1-k,i) = stats_rad_zt%accum_field_values(1,1,k,i)
+          else
+            out_radzt(thecol,top_lev-1+k,i) = stats_rad_zt%accum_field_values(1,1,k,i)
+          end if
+
           if(is_nan(out_radzt(thecol,k,i))) out_radzt(thecol,k,i) = 0.0_r8
+
         enddo
       enddo
 
       do i = 1, stats_rad_zm%num_output_fields
         do k = 1, stats_rad_zm%kk
-          k_cam = k1_clubb_in_cam_zm - ( k - 1 ) * clubb_grid_dir
-          out_radzm(thecol,k_cam,i) = stats_rad_zm%accum_field_values(1,1,k,i)
+
+          ! The data stored in stats types are ascending if l_ascending_grid = .true.
+          if ( l_ascending_grid ) then
+            out_radzm(thecol,pverp+1-k,i) = stats_rad_zm%accum_field_values(1,1,k,i)
+          else
+            out_radzm(thecol,top_lev-1+k,i) = stats_rad_zm%accum_field_values(1,1,k,i)
+          end if
+
           if(is_nan(out_radzm(thecol,k,i))) out_radzm(thecol,k,i) = 0.0_r8
+
         enddo
       enddo
 
