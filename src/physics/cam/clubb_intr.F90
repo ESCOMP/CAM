@@ -63,22 +63,13 @@ module clubb_intr
     sclr_idx
 
   logical, public, parameter :: &
-    l_ascending_grid = .true. ! Set clubb to ascending mode, which is opposite of the 
+    l_ascending_grid = .false. ! Set clubb to ascending mode, which is opposite of the 
                                ! cam grid the rest of this code uses, thus it requires
                                ! an expensive array flipping step before calling clubb
 
   integer :: &
-    clubb_grid_dir
-
-  integer :: &
     nzm_clubb,          & ! Number of vertical levels used by CLUBB momentum variables
-    nzt_clubb,          & ! Number of vertical levels used by CLUBB thermodynamic variables
-    k1_clubb_in_cam_zm, &
-    k1_clubb_in_cam_zt, &
-    k_sfc_zm,           &
-    k_sfc_zt,           &
-    k_top_zm,           &
-    k_top_zt
+    nzt_clubb             ! Number of vertical levels used by CLUBB thermodynamic variables
 
 #endif
 
@@ -97,15 +88,8 @@ module clubb_intr
             stats_zt, stats_zm, stats_sfc, &
             stats_rad_zt, stats_rad_zm, &
             stats_end_timestep_clubb, &
-            clubb_grid_dir, &
             nzm_clubb,          &
-            nzt_clubb,          &
-            k1_clubb_in_cam_zm, &
-            k1_clubb_in_cam_zt, &
-            k_sfc_zm, &
-            k_sfc_zt, &
-            k_top_zm, &
-            k_top_zt, &
+            nzt_clubb, &
 #endif
             clubb_readnl, &
             clubb_init_cnst, &
@@ -531,7 +515,7 @@ module clubb_intr
   logical            :: do_cnst=.false.
 
 #ifdef CLUBB_SGS
-  type(pdf_parameter), target, allocatable, public, protected :: &
+  type(pdf_parameter), target, allocatable, public :: &
                               pdf_params_chnk(:)    ! PDF parameters (thermo. levs.) [units vary]
 
   type(pdf_parameter), target, allocatable :: pdf_params_zm_chnk(:) ! PDF parameters on momentum levs. [units vary]
@@ -1584,28 +1568,6 @@ end subroutine clubb_init_cnst
     ! and momentum variables are nzm_clubb
     nzt_clubb = pver  + 1 - top_lev
     nzm_clubb = pverp + 1 - top_lev
-
-    if ( l_ascending_grid ) then
-      ! if we are in ascending grid mode, then we start filling the clubb arrays with the 
-      ! surface values (pverp for zm or pverp for zt) because they need to be flipped
-      k1_clubb_in_cam_zm = pverp
-      k1_clubb_in_cam_zt = pver
-      k_sfc_zm   = 1
-      k_sfc_zt   = 1
-      k_top_zm   = nzm_clubb
-      k_top_zt   = nzt_clubb
-      clubb_grid_dir = 1
-    else
-      ! if we are in descending grid mode, then we start filling the clubb arrays with the 
-      ! top level values (top_lev), because this is the maximum level clubb considers
-      k1_clubb_in_cam_zm = top_lev
-      k1_clubb_in_cam_zt = top_lev
-      k_sfc_zm   = nzm_clubb
-      k_sfc_zt   = nzt_clubb
-      k_top_zm   = 1
-      k_top_zt   = 1
-      clubb_grid_dir = -1
-    end if
 
     ! Allocate PDF parameters across columns and chunks
     allocate( &
@@ -3479,28 +3441,23 @@ end subroutine clubb_init_cnst
     
 !--- TODO: should these be all always zero if we aren't using SILHS? wrap in ifdef SILHS maybe?
     ! Add forcings for SILHS covariance contributions
-    ! rtp2_forcing    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtp2_mc_zt )
-    ! thlp2_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_mc_zt )
-    ! wprtp_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wprtp_mc_zt )
-    ! wpthlp_forcing  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wpthlp_mc_zt )
-    ! rtpthlp_forcing = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtpthlp_mc_zt )
+    rtp2_forcing    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtp2_mc_zt(1:ncol,top_lev:pver) )
+    thlp2_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_mc_zt(1:ncol,top_lev:pver) )
+    wprtp_forcing   = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wprtp_mc_zt(1:ncol,top_lev:pver) )
+    wpthlp_forcing  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, wpthlp_mc_zt(1:ncol,top_lev:pver) )
+    rtpthlp_forcing = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, rtpthlp_mc_zt(1:ncol,top_lev:pver) )
 
-    ! ! Zero out SILHS covariance contribution terms
-    ! !$acc parallel loop gang vector collapse(2) default(present)
-    ! do k = 1, pver
-    !   do i = 1, pcols
-    !     rtp2_mc_zt(i,k)     = 0.0_r8
-    !     thlp2_mc_zt(i,k)    = 0.0_r8
-    !     wprtp_mc_zt(i,k)    = 0.0_r8
-    !     wpthlp_mc_zt(i,k)   = 0.0_r8
-    !     rtpthlp_mc_zt(i,k)  = 0.0_r8
-    !   end do
-    ! end do
-    rtp2_forcing    = 0._r8
-    thlp2_forcing   = 0._r8
-    wprtp_forcing   = 0._r8
-    wpthlp_forcing  = 0._r8
-    rtpthlp_forcing = 0._r8
+    ! Zero out SILHS covariance contribution terms
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k = 1, pver
+      do i = 1, pcols
+        rtp2_mc_zt(i,k)     = 0.0_r8
+        thlp2_mc_zt(i,k)    = 0.0_r8
+        wprtp_mc_zt(i,k)    = 0.0_r8
+        wpthlp_mc_zt(i,k)   = 0.0_r8
+        rtpthlp_mc_zt(i,k)  = 0.0_r8
+      end do
+    end do
 !-- END TODO
 
     ! Compute some inputs from the thermodynamic grid to the momentum grid
@@ -4007,28 +3964,53 @@ end subroutine clubb_init_cnst
           sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid
+        ! only because these are need to be stored for restarts
         pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
         
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! only for pdfp_rtp2 calc 
         pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
-        pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
-
-        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! only for update_xp2_mc_api call
+        pdf_params_chnk(lchnk)%w_1          = pdf_params_chnk(lchnk)%w_1         (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%w_2          = pdf_params_chnk(lchnk)%w_2         (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_1   = pdf_params_chnk(lchnk)%varnce_w_1  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_2   = pdf_params_chnk(lchnk)%varnce_w_2  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1            (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2            (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
   
+        ! These are flipped for silhs, which uses a cam grid
+        pdf_params_chnk(lchnk)%rc_1                 = pdf_params_chnk(lchnk)%rc_1               (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rc_2                 = pdf_params_chnk(lchnk)%rc_2               (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cloud_frac_1         = pdf_params_chnk(lchnk)%cloud_frac_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cloud_frac_2         = pdf_params_chnk(lchnk)%cloud_frac_2       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%chi_1                = pdf_params_chnk(lchnk)%chi_1              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%chi_2                = pdf_params_chnk(lchnk)%chi_2              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%stdev_chi_1          = pdf_params_chnk(lchnk)%stdev_chi_1        (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%stdev_chi_2          = pdf_params_chnk(lchnk)%stdev_chi_2        (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%crt_1                = pdf_params_chnk(lchnk)%crt_1              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%crt_2                = pdf_params_chnk(lchnk)%crt_2              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cthl_1               = pdf_params_chnk(lchnk)%cthl_1             (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cthl_2               = pdf_params_chnk(lchnk)%cthl_2             (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%ice_supersat_frac_1  = pdf_params_chnk(lchnk)%ice_supersat_frac_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%ice_supersat_frac_2  = pdf_params_chnk(lchnk)%ice_supersat_frac_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_chi_eta_1       = pdf_params_chnk(lchnk)%corr_chi_eta_1     (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_chi_eta_2       = pdf_params_chnk(lchnk)%corr_chi_eta_2     (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_w_chi_1         = pdf_params_chnk(lchnk)%corr_w_chi_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_w_chi_2         = pdf_params_chnk(lchnk)%corr_w_chi_2       (:,nzt_clubb:1:-1)
+          
         if ( t == 1 ) then
 
           ! we are in ascending mode, need to calculate ascending grid
@@ -4208,28 +4190,52 @@ end subroutine clubb_init_cnst
           sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid
+        ! only because these are need to be stored for restarts
         pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%w_2        = pdf_params_zm_chnk(lchnk)%w_2       (:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%varnce_w_1 = pdf_params_zm_chnk(lchnk)%varnce_w_1(:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%varnce_w_2 = pdf_params_zm_chnk(lchnk)%varnce_w_2(:,nzm_clubb:1:-1)
         pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
         
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! only for pdfp_rtp2 calc 
         pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
+        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! only for update_xp2_mc_api call
         pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
-
         pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
   
+        ! These are flipped for silhs, which uses a cam grid
+        pdf_params_chnk(lchnk)%rc_1                 = pdf_params_chnk(lchnk)%rc_1               (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rc_2                 = pdf_params_chnk(lchnk)%rc_2               (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cloud_frac_1         = pdf_params_chnk(lchnk)%cloud_frac_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cloud_frac_2         = pdf_params_chnk(lchnk)%cloud_frac_2       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%chi_1                = pdf_params_chnk(lchnk)%chi_1              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%chi_2                = pdf_params_chnk(lchnk)%chi_2              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%stdev_chi_1          = pdf_params_chnk(lchnk)%stdev_chi_1        (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%stdev_chi_2          = pdf_params_chnk(lchnk)%stdev_chi_2        (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%crt_1                = pdf_params_chnk(lchnk)%crt_1              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%crt_2                = pdf_params_chnk(lchnk)%crt_2              (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cthl_1               = pdf_params_chnk(lchnk)%cthl_1             (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%cthl_2               = pdf_params_chnk(lchnk)%cthl_2             (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%ice_supersat_frac_1  = pdf_params_chnk(lchnk)%ice_supersat_frac_1(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%ice_supersat_frac_2  = pdf_params_chnk(lchnk)%ice_supersat_frac_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_chi_eta_1       = pdf_params_chnk(lchnk)%corr_chi_eta_1     (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_chi_eta_2       = pdf_params_chnk(lchnk)%corr_chi_eta_2     (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_w_chi_1         = pdf_params_chnk(lchnk)%corr_w_chi_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%corr_w_chi_2         = pdf_params_chnk(lchnk)%corr_w_chi_2       (:,nzt_clubb:1:-1)
       end if
 
       call t_stopf('clubb_tend_cam:advance_clubb_core_api')
