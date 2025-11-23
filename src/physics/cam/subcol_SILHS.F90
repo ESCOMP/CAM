@@ -86,9 +86,9 @@ module subcol_SILHS
      ixnumsnow= 0
   
   ! Pbuf indicies
-  integer :: thlm_idx, rtm_idx, ice_supersat_idx, &
+  integer :: rtm_idx, ice_supersat_idx, &
              alst_idx, cld_idx, qrain_idx, qsnow_idx, &
-             nrain_idx, nsnow_idx, ztodt_idx, tke_idx, kvh_idx, &
+             nrain_idx, nsnow_idx, tke_idx, kvh_idx, &
              prec_pcw_idx, snow_pcw_idx, prec_str_idx, snow_str_idx, &
              qcsedten_idx, qrsedten_idx, qisedten_idx, qssedten_idx, &
              vtrmc_idx, umr_idx, vtrmi_idx, ums_idx, qcsevap_idx, qisevap_idx
@@ -118,7 +118,6 @@ module subcol_SILHS
 !               subcol_SILHS_c11b, subcol_SILHS_gamma_coef, &
 !               subcol_SILHS_mult_coef, subcol_SILHS_mu
 
-  real(r8) :: ztodt  ! model timestep
 #ifdef CLUBB_SGS
 #ifdef SILHS
    type(hmp2_ip_on_hmm2_ip_slope_type) :: subcol_SILHS_hmp2_ip_on_hmm2_ip_slope    
@@ -417,11 +416,9 @@ contains
      call cnst_get_ind('NUMSNO', ixnumsnow, abort=.false.)
 
      ! Get physics buffer indexes
-     thlm_idx = pbuf_get_index('THLM')
      rtm_idx = pbuf_get_index('RTM')
      cld_idx = pbuf_get_index('CLD')
      alst_idx = pbuf_get_index('ALST')  ! SILHS expects clubb's cloud_frac liq stratus fraction
-     ztodt_idx = pbuf_get_index('ZTODT')
      ice_supersat_idx = pbuf_get_index('ISS_FRAC')
      tke_idx = pbuf_get_index('tke')
      kvh_idx = pbuf_get_index('kvh')
@@ -530,8 +527,6 @@ contains
                  'Monte Carlo estimate of Kessler autoconversion')
     call addfld('INVS_EXNER', (/ 'lev' /), 'I', 'none', &
                  'inverse EXNER function from state in subcol_SILHS')
-    call addfld('SILHS_ZTODT', horiz_only, 'I', 's', & 
-                 'Length of Physics timestep (for debugging)')
     if ( subcol_SILHS_constrainmn ) then
        call addfld('SILHS_MSC_CLDICE', (/ 'lev' /), 'A', 'kg/kg', &
                    'Mean Cloud Ice across subcolumns')
@@ -607,6 +602,9 @@ contains
 
 #ifdef CLUBB_SGS
 #ifdef SILHS
+     use clubb_intr, only: , &
+        ztodt ! model timestep
+        
      use clubb_api_module,       only : setup_pdf_parameters_api, &
 
                                         zm2zt_api, setup_grid_heights_api, &
@@ -692,7 +690,6 @@ contains
                          corr_cholesky_mtx_1, corr_cholesky_mtx_2  ! Transposed corr cholesky mtx
                                    
      real(r8), dimension(state%ngrdcol, nzt_clubb) :: Nc_in_cloud
-     real(r8), dimension(state%ngrdcol, nzt_clubb) :: ice_supersat_frac_in
      real(r8), dimension(state%ngrdcol, nzm_clubb, hydromet_dim) :: hydrometp2
 
 
@@ -825,8 +822,6 @@ contains
      !----------------
      ! Pointers
      !----------------
-     real(r8), pointer, dimension(:) :: ztodt_ptr
-     real(r8), pointer, dimension(:,:) :: thlm      ! Mean temperature
      real(r8), pointer, dimension(:,:) :: ice_supersat_frac ! ice cloud fraction
      real(r8), pointer, dimension(:,:) :: rtm       ! mean moisture mixing ratio
      real(r8), pointer, dimension(:,:) :: cld       ! CAM cloud fraction
@@ -842,7 +837,7 @@ contains
      logical, parameter :: l_est_kessler_microphys = .false.
      logical, parameter :: l_outfld_subcol         = .false.
      
-     type(grid) :: gr, gr_a
+     type(grid) :: gr
      
      type(precipitation_fractions) :: precip_fracs      
 
@@ -922,8 +917,6 @@ contains
      !----------------
      ! Establish associations between pointers and physics buffer fields
      !----------------
-     call pbuf_get_field(pbuf, thlm_idx, thlm)
-     call pbuf_get_field(pbuf, ztodt_idx, ztodt_ptr)
      call pbuf_get_field(pbuf, ice_supersat_idx, ice_supersat_frac)
      call pbuf_get_field(pbuf, rtm_idx, rtm)
      call pbuf_get_field(pbuf, alst_idx, alst)
@@ -948,7 +941,6 @@ contains
      !----------------
      ! Copy state and populate numbers and values of sub-columns
      !----------------
-     ztodt = ztodt_ptr(1)
      num_subcols = subcol_SILHS_numsubcol
 
      ! Calculate sample weights separately at all grid levels when
@@ -1078,10 +1070,7 @@ contains
           k_cam = top_lev - 1 + k  
 
           Ncm(i,k) = state%q(i,k_cam,ixnumliq)
-      
-          ! Convert from CAM vertical grid to CLUBB
-          ice_supersat_frac_in(i,k) = ice_supersat_frac(i,k_cam)
-       
+
           cld_frac_in(i,k) = alst(i,k_cam)
     
           ! Call setup_pdf_parameters to get the CLUBB PDF ready for SILHS
@@ -1103,72 +1092,9 @@ contains
        end do
      end do
 
-
-      !======================================== ASCENDING MODE CODE ======================================== 
-      
-      !---------------------------------- FLIPPING ----------------------------------
-      ! ice_supersat_frac_in  = ice_supersat_frac_in(:,nzt_clubb:1:-1)
-      ! cld_frac_in           = cld_frac_in         (:,nzt_clubb:1:-1)
-      ! Nc_in_cloud           = Nc_in_cloud         (:,nzt_clubb:1:-1)
-
-      ! khzm                  = khzm                (:,nzm_clubb:1:-1)
-      ! tke                   = tke                 (:,nzm_clubb:1:-1)
-
-      ! if ( hydromet_dim > 0 ) then
-      !   hydromet = hydromet                       (:,nzt_clubb:1:-1,:)
-      ! end if
-
-
-      ! ! These need always be flipped, as they are always in descending mode
-      ! pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
-
-      ! pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
-
-      ! pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
-
-      ! if ( l_ascending_grid ) then
-      !   ! These only need flip these to descending mode
-      !   pdf_params_chnk(lchnk)%rc_1 = pdf_params_chnk(lchnk)%rc_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%rc_2 = pdf_params_chnk(lchnk)%rc_2(:,nzt_clubb:1:-1)
-
-      !   pdf_params_chnk(lchnk)%cloud_frac_1 = pdf_params_chnk(lchnk)%cloud_frac_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%cloud_frac_2 = pdf_params_chnk(lchnk)%cloud_frac_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%chi_1 = pdf_params_chnk(lchnk)%chi_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%chi_2 = pdf_params_chnk(lchnk)%chi_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%stdev_chi_1 = pdf_params_chnk(lchnk)%stdev_chi_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%stdev_chi_2 = pdf_params_chnk(lchnk)%stdev_chi_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%crt_1 = pdf_params_chnk(lchnk)%crt_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%cthl_1 = pdf_params_chnk(lchnk)%cthl_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%crt_2 = pdf_params_chnk(lchnk)%crt_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%cthl_2 = pdf_params_chnk(lchnk)%cthl_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%ice_supersat_frac_1 = pdf_params_chnk(lchnk)%ice_supersat_frac_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%ice_supersat_frac_2 = pdf_params_chnk(lchnk)%ice_supersat_frac_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%corr_chi_eta_1 = pdf_params_chnk(lchnk)%corr_chi_eta_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%corr_chi_eta_2 = pdf_params_chnk(lchnk)%corr_chi_eta_2(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%corr_w_chi_1 = pdf_params_chnk(lchnk)%corr_w_chi_1(:,nzt_clubb:1:-1)
-      !   pdf_params_chnk(lchnk)%corr_w_chi_2 = pdf_params_chnk(lchnk)%corr_w_chi_2(:,nzt_clubb:1:-1)
-      ! end if
-
-      ! zi_g = zi_g(:,nzm_clubb:1:-1)
-      ! zt_g = zt_g(:,nzt_clubb:1:-1)
-
-      ! ! we are in ascending mode, need to calculate ascending grid
-      ! call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,   & ! intent(in)
-      !                     .true., grid_type,                     & ! intent(in)
-      !                     deltaz, zi_g(:,1), zi_g(:,nzm_clubb),            & ! intent(in)
-      !                     zi_g, zt_g,   & ! intent(in)
-      !                     gr_a, err_info )                                     ! intent(inout)
-      !---------------------------------- FLIPPING ----------------------------------
-     
      call setup_pdf_parameters_api( gr, nzm_clubb, nzt_clubb, ngrdcol, pdf_dim, &       ! In
                                     hydromet_dim, ztodt, Nc_in_cloud, cld_frac_in, khzm, &         ! In
-                                    ice_supersat_frac_in, hydromet, wphydrometp, &                 ! In
+                                    ice_supersat_frac, hydromet, wphydrometp, &                    ! In
                                     corr_array_n_cloud, corr_array_n_below, &                      ! In
                                     hm_metadata, &                                                 ! In
                                     pdf_params_chnk(lchnk), &                                      ! In
@@ -1242,7 +1168,7 @@ contains
      
      ! Set the seed to the random number generator based on a quantity that
      ! will be reproducible for restarts.
-     lh_seed = int( 1.0e4_r8 * rtm(1,pver), kind = genrand_intg )
+     lh_seed = int( 1.0e4_r8 * rtm(1,nzt_clubb), kind = genrand_intg )
      
      ! Let's generate some subcolumns!!!!!
      call generate_silhs_sample_api( &
@@ -1281,63 +1207,6 @@ contains
      if ( l_est_kessler_microphys ) then
        call endrun('subcol_SILHS: l_est_kessler_microphys = T is not currently supported')
      end if
-
-      !---------------------------------- FLIPPING ----------------------------------
-      ! Flip to descending 
-      ! lh_rt_clipped  =  lh_rt_clipped(:,:,nzt_clubb:1:-1)
-      ! lh_rc_clipped  =  lh_rc_clipped(:,:,nzt_clubb:1:-1)
-      ! lh_Nc_clipped  =  lh_Nc_clipped(:,:,nzt_clubb:1:-1)
-      ! lh_rv_clipped  =  lh_rv_clipped(:,:,nzt_clubb:1:-1)
-      ! lh_thl_clipped = lh_thl_clipped(:,:,nzt_clubb:1:-1)
-      
-      ! X_nl_all_levs = X_nl_all_levs(:,:,nzt_clubb:1:-1,:)
-
-      ! lh_sample_point_weights = lh_sample_point_weights(:,:,nzt_clubb:1:-1)
-      
-      ! precip_fracs%precip_frac = precip_fracs%precip_frac(:,nzt_clubb:1:-1)
-
-      ! ! These need always be flipped, as they are always in descending mode
-      ! pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
-
-      ! pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
-
-      ! pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
-      ! pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
-
-        ! ! Flip these back to avoid making ascending clubb sad
-        ! pdf_params_chnk(lchnk)%rc_1 = pdf_params_chnk(lchnk)%rc_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%rc_2 = pdf_params_chnk(lchnk)%rc_2(:,nzt_clubb:1:-1)
-
-        ! pdf_params_chnk(lchnk)%cloud_frac_1                 = pdf_params_chnk(lchnk)%cloud_frac_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%cloud_frac_2                 = pdf_params_chnk(lchnk)%cloud_frac_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%chi_1                = pdf_params_chnk(lchnk)%chi_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%chi_2                = pdf_params_chnk(lchnk)%chi_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%stdev_chi_1                = pdf_params_chnk(lchnk)%stdev_chi_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%stdev_chi_2                = pdf_params_chnk(lchnk)%stdev_chi_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%crt_1                = pdf_params_chnk(lchnk)%crt_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%crt_2                = pdf_params_chnk(lchnk)%crt_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%cthl_1                 = pdf_params_chnk(lchnk)%cthl_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%cthl_2                 = pdf_params_chnk(lchnk)%cthl_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%ice_supersat_frac_1                = pdf_params_chnk(lchnk)%ice_supersat_frac_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%ice_supersat_frac_2                = pdf_params_chnk(lchnk)%ice_supersat_frac_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%corr_chi_eta_1                 = pdf_params_chnk(lchnk)%corr_chi_eta_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%corr_chi_eta_2                 = pdf_params_chnk(lchnk)%corr_chi_eta_2(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%corr_w_chi_1                 = pdf_params_chnk(lchnk)%corr_w_chi_1(:,nzt_clubb:1:-1)
-        ! pdf_params_chnk(lchnk)%corr_w_chi_2                 = pdf_params_chnk(lchnk)%corr_w_chi_2(:,nzt_clubb:1:-1)
-  
-      ! Flip these that are never used...
-      ! if ( l_est_kessler_microphys ) then
-      !   AKm = AKm(:,nzt_clubb:1:-1)
-      !   lh_AKm = lh_AKm(:,nzt_clubb:1:-1)
-      ! end if
-      !---------------------------------- FLIPPING ----------------------------------
-
-    !======================================== END ASCENDING MODE CODE ======================================== 
 
      !$acc parallel loop collapse(3) default(present) 
      do k = 1, nzt_clubb
@@ -1690,8 +1559,6 @@ contains
        call outfld( 'SILHS_NRAIN_SCOL', NRAIN_lh_out, pcols*psubcols, lchnk )
        call outfld( 'SILHS_WEIGHT_SCOL', weights, pcols*psubcols, lchnk )
        call outfld( 'NR_IN_LH', nrain, pcols, lchnk )
-       call outfld( 'SILHS_RTM', rtm, pcols, lchnk )
-       call outfld( 'SILHS_THLM', thlm, pcols, lchnk )
        call outfld( 'SILHS_QC_IN', state%q(:,:,ixcldliq), pcols, lchnk )
        call outfld( 'SILHS_QI_IN', state%q(:,:,ixcldice), pcols, lchnk )
        call outfld( 'SILHS_NC_IN', state%q(:,:,ixnumliq), pcols, lchnk )
@@ -1703,7 +1570,6 @@ contains
        end if
 
        call outfld( 'INVS_EXNER', invs_exner, pcols, lchnk )
-       call outfld( 'SILHS_ZTODT', ztodt_ptr, pcols, lchnk )
 
        if ( subcol_SILHS_constrainmn ) then
          call outfld( 'SILHS_MSC_CLDICE', meansc_ice, pcols, lchnk )
@@ -1718,7 +1584,6 @@ contains
        
        call outfld( 'SILHS_EFF_CLDFRAC', eff_cldfrac, pcols, lchnk )
        call outfld( 'SILHS_CLUBB_PRECIP_FRAC', precip_frac_out, pcols, lchnk )
-       call outfld( 'SILHS_CLUBB_ICE_SS_FRAC', ice_supersat_frac, pcols, lchnk )
      end if
      
      !$acc end data
@@ -1954,21 +1819,12 @@ contains
              w_all_clubb(igrdcol,1:ns,top_lev:pver), qctend_clubb(igrdcol,1:ns,top_lev:pver), &
              qvtend_clubb(igrdcol,1:ns,top_lev:pver), thltend_clubb(igrdcol,1:ns,top_lev:pver), &
              silhs_config_flags%l_lh_instant_var_covar_src, &
-             rtp2_mc_zt(igrdcol,top_lev:pver), thlp2_mc_zt(igrdcol,top_lev:pver), &
-             wprtp_mc_zt(igrdcol,top_lev:pver), wpthlp_mc_zt(igrdcol,top_lev:pver), &
-             rtpthlp_mc_zt(igrdcol,top_lev:pver) )
+             rtp2_mc_zt(igrdcol,:), thlp2_mc_zt(igrdcol,:), &
+             wprtp_mc_zt(igrdcol,:), wpthlp_mc_zt(igrdcol,:), &
+             rtpthlp_mc_zt(igrdcol,:) )
 
       ! The *_mc_zt microphysics tendencies are passed out of SILHS and back
       ! to CLUBB without being used at all in the rest of the host model code.
-
-      ! CLUBB used pver (thermodynamic) vertical levels, but SILHS only uses
-      ! nzt_clubb (pver-top_lev+1) vertical levels.
-      ! Fill the upper levels with 0s when necessary.
-      rtp2_mc_zt(igrdcol,1:top_lev-1)     = 0.0_r8
-      thlp2_mc_zt(igrdcol,1:top_lev-1)    = 0.0_r8
-      wprtp_mc_zt(igrdcol,1:top_lev-1)    = 0.0_r8
-      wpthlp_mc_zt(igrdcol,1:top_lev-1)   = 0.0_r8
-      rtpthlp_mc_zt(igrdcol,1:top_lev-1)  = 0.0_r8
       
     end do ! igrdcol = 1, ngrdcol
 

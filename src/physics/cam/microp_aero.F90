@@ -658,9 +658,10 @@ subroutine microp_aero_run ( &
       call pbuf_get_field(pbuf, tke_idx, tke)
    case ('CLUBB_SGS')
       itim_old = pbuf_old_tim_idx()
-      call pbuf_get_field(pbuf, wp2_idx, wp2, start=(/1,1,itim_old/),kount=(/pcols,pverp,1/))
+      call pbuf_get_field(pbuf, wp2_idx, wp2 )
       allocate(tke(pcols,pverp))
-      tke(:ncol,:) = (3._r8/2._r8)*wp2(:ncol,:)
+      tke(:ncol,top_lev:pverp) = (3._r8/2._r8)*wp2(:ncol,1:pverp-top_lev+1)
+      tke(:ncol,1:top_lev-1) = 0._r8
 
    case default
       call pbuf_get_field(pbuf, kvh_idx, kvh)
