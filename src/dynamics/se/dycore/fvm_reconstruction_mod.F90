@@ -472,8 +472,6 @@ contains
                    ! DO NOT NEED ABS here, if disc<0 we have a saddle point (no maximum or minimum)
                    disc = 4.0_r8 * r4 *r5 - r6*r6
                    if (abs(disc) > threshold) then
-!not b4b                      ex1 = (r6*r3 - 2.0_r8*r5*r2) / disc + scx
-!not b4b                      ex2 = (r6*r2 - 2.0_r8*r4*r3) / disc + scy
                       ex1 = (r6*r3 - 2.0_r8*r5*r2)
                       ex2 = (r6*r2 - 2.0_r8*r4*r3)
                       disc = 1 /disc
@@ -490,37 +488,12 @@ contains
                    !
                    ! Check all potential minimizer points along element boundaries
                    !
-                   if (abs(r6) > threshold) then
-                      invtmp = 1.0_r8 / (r6 + scy)
-                      do n=1,2
-                         ! Left edge, intercept with du/dx = 0
-                         ex2 = invtmp * (-r2 - 2.0_r8 * r4 * (xminmax(n) - scx))
-                         if ((ex2 > yminmax(1)-threshold) .and. (ex2 < yminmax(2)+threshold)) then
-                            dx = xminmax(n) - scx; dy = ex2 - scy
-                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
-                            max_val = max(max_val, v1)
-                            min_val = min(min_val, v1)
-                         endif
-                      enddo
-                      !
-                      ! Top/bottom edge, intercept with du/dy = 0
-                      !
-                      invtmp = 1.0_r8 / r6 + scx
-                      do n = 1,2
-                         ex1 = invtmp * (-r3 - 2.0_r8 * r5 * (yminmax(n) - scy))
-                         if ( (ex1 > xminmax(1)-threshold) .and. (ex1 < xminmax(2)+threshold) ) then
-                            dx = ex1 - scx; dy = yminmax(n) - scy
-                            v1 = f0 + r2*dx + r3*dy + r4*(m1+dx*dx) + r5*(m2+dy*dy) + r6*(m3+dx*dy)
-                            max_val = max(max_val, v1)
-                            min_val = min(min_val, v1)
-                         endif
-                      enddo
-                   endif
+
                    !
                    ! Top/bottom edge, y=const., du/dx=0
                    !
                    if (abs(r4) > threshold) then
-                      invtmp = 1.0_r8 / (2.0_r8 * r4)! + spherecentroid(1,i,j)
+                      invtmp = 1.0_r8 / (2.0_r8 * r4)
                       do n = 1,2
                          ex1 = scx+invtmp * (-r2 - r6 * (yminmax(n) - scy))
                          if ((ex1 > xminmax(1)-threshold) .and. (ex1 < xminmax(2)+threshold)) then
@@ -532,10 +505,10 @@ contains
                       enddo
                    endif
                    !
-                   ! Top/bottom edge, y=const., du/dx=0
+                   ! Left/right edge, x=const., du/dy=0
                    !
                    if (abs(r5) > threshold) then
-                      invtmp = 1.0_r8 / (2.0_r8 * r5)! + spherecentroid(1,i,j)
+                      invtmp = 1.0_r8 / (2.0_r8 * r5)
                       do n = 1,2
                          ex1 = scy+invtmp * (-r3 - r6 * (xminmax(n) - scx))
                          if ((ex1 > yminmax(1)-threshold) .and. (ex1 < yminmax(2)+threshold)) then
