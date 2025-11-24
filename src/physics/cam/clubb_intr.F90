@@ -88,7 +88,7 @@ module clubb_intr
     sclr_idx
 
   logical, public, parameter :: &
-    l_ascending_grid = .true. ! Set clubb to ascending mode, which is opposite of the 
+    l_ascending_grid = .false. ! Set clubb to ascending mode, which is opposite of the 
                                ! cam grid the rest of this code uses, thus it requires
                                ! an expensive array flipping step before calling clubb
 
