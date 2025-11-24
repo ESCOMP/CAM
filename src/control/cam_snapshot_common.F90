@@ -1432,7 +1432,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ipbl                   ','unset                  ',&
           'ISS_FRAC               ','unset                  ',&
           'kpblh                  ','unset                  ',&
-          'ksrftms                ','unset                  ',&
+          'ksrftms                ','kg/m2/s                ',&
           'kvh                    ','m2/s                   ',&
           'kvm                    ','m2/s                   ',&
           'kvt                    ','m2/s                   ',&

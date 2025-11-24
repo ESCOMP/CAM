@@ -480,7 +480,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
        taux            = cam_in%wsx(:ncol),             &
        tauy            = cam_in%wsy(:ncol),             &
        shflx           = cam_in%shf(:ncol),             &
-       qflx            = cam_in%cflx(:ncol,:1),         &
+       qflx            = cam_in%cflx(:ncol,:pcnst),     & ! will be subsetted to wv in run phase.
        wstarent        = wstarent,                      & ! use wstar entrainment? logical
        ksrftms         = ksrftms(:ncol),                &
        dragblj         = dragblj(:ncol,:pver),          &
