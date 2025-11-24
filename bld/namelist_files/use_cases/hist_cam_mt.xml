@@ -49,7 +49,7 @@
 <!-- Surface emissions -->
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 <srf_emis_specifier hgrid="ne30np4" npg="3">
-a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/bc_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312_c20251030.nc',
+'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/bc_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312_c20251030.nc',
 'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/bc_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251102.nc',
 'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/pom_a4-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312_c20251030.nc',
 'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/pom_a4_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251102.nc',
@@ -69,7 +69,7 @@ a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030
 'SOAE -> 0.5954D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/ISOP_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251102.nc',
 'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/BENZENE_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251102.nc',
 'SOAE -> 2.5592D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/BENZENE-VOC-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18-supplemental_gn_175001-202312_c20251030.nc',
-'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/IVOC_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251118.nc',
+'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251118/IVOC_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251118.nc',
 'SOAE -> 8.5371D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/IVOC-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312_c20251030.nc',
 'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/DRES-CMIP-BB4CMIP7-2-0_smoothed_20251102/SVOC_smoothed_input4MIPs_emissions_CMIP_DRES-CMIP-BB4CMIP7-2-0_gn_175001-202112_c20251102.nc',
 'SOAE -> 16.650D0*$INPUTDATA_ROOT/atm/cam/chem/emis/cmip7/ne30/CEDS-CMIP-2025-04-18_20251030/SVOC-em-anthro_input4MIPs_emissions_CMIP_CEDS-CMIP-2025-04-18_gn_175001-202312_c20251030.nc',
