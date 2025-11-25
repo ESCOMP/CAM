@@ -138,21 +138,21 @@ fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.126
+fxtag = cime6.1.135
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
 [submodule "cmeps"]
 path = components/cmeps
 url = https://github.com/ESCOMP/CMEPS.git
-fxtag = cmeps1.1.16
+fxtag = cmeps1.1.23
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CMEPS.git
 
 [submodule "cdeps"]
 path = components/cdeps
 url = https://github.com/ESCOMP/CDEPS.git
-fxtag = cdeps1.0.80
+fxtag = cdeps1.0.83
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CDEPS.git
 
@@ -173,7 +173,7 @@ fxDONOTUSEurl = https://github.com/NCAR/ParallelIO
 [submodule "cice"]
 path = components/cice
 url = https://github.com/ESCOMP/CESM_CICE
-fxtag = cesm3_cice6_6_0_13
+fxtag = cesm3_cice6_6_1_6
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
