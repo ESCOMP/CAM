@@ -37,6 +37,7 @@
 <ncdata nlev="58" analytic_ic="1" >atm/cam/inic/cam_vcoords_L58_c250227.nc</ncdata>
 
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
+<ncdata hgrid="mpasa120" nlev="26" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L26_notopo_coords_c251105.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c240507.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c240507.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c240507.nc</ncdata>
