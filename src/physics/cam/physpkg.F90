@@ -40,6 +40,8 @@ module physpkg
 
   use carma_diags_mod, only: carma_diags_t
 
+  use offline_driver,  only: offline_driver_dorun
+
   implicit none
   private
   save
@@ -162,6 +164,7 @@ contains
     use upper_bc,           only: ubc_fixed_conc
     use surface_emissions_mod, only: surface_emissions_reg
     use elevated_emissions_mod, only: elevated_emissions_reg
+    use ctem_diags_mod, only: ctem_diags_reg
 
     !---------------------------Local variables-----------------------------
     !
@@ -352,6 +355,9 @@ contains
         ! initialize harmonized emissions component (HEMCO)
         call HCOI_Chunk_Init()
     endif
+
+    ! TEM diagnostics
+    call ctem_diags_reg()
 
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
@@ -775,6 +781,7 @@ contains
     use elevated_emissions_mod, only: elevated_emissions_init
 
     use ccpp_constituent_prop_mod, only: ccpp_const_props_init
+    use ctem_diags_mod, only: ctem_diags_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -860,23 +867,27 @@ contains
 
     ! initialize carma
     call carma_init(pbuf2d)
-    call surface_emissions_init(pbuf2d)
-    call elevated_emissions_init(pbuf2d)
 
-    ! Prognostic chemistry.
-    call chem_init(phys_state,pbuf2d)
+    if (.not. offline_driver_dorun) then
 
-    ! Lightning flash frq and NOx prod
-    call lightning_init( pbuf2d )
+       call surface_emissions_init(pbuf2d)
+       call elevated_emissions_init(pbuf2d)
 
-    ! Prescribed tracers
-    call prescribed_ozone_init()
-    call prescribed_ghg_init()
-    call prescribed_aero_init()
-    call aerodep_flx_init()
-    call aircraft_emit_init()
-    call prescribed_volcaero_init()
-    call prescribed_strataero_init()
+       ! Prognostic chemistry.
+       call chem_init(phys_state,pbuf2d)
+
+       ! Lightning flash frq and NOx prod
+       call lightning_init( pbuf2d )
+
+       ! Prescribed tracers
+       call prescribed_ozone_init()
+       call prescribed_ghg_init()
+       call prescribed_aero_init()
+       call aerodep_flx_init()
+       call aircraft_emit_init()
+       call prescribed_volcaero_init()
+       call prescribed_strataero_init()
+    end if
 
     ! co2 cycle
     if (co2_transport()) then
@@ -1053,6 +1064,8 @@ contains
     dtcore_idx = pbuf_get_index('DTCORE')
     dqcore_idx = pbuf_get_index('DQCORE')
 
+    call ctem_diags_init()
+
   end subroutine phys_init
 
   !
@@ -1077,6 +1090,7 @@ contains
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
+    use ctem_diags_mod, only: ctem_diags_calc
     !
     ! Input arguments
     !
@@ -1120,6 +1134,9 @@ contains
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
+
+    ! TEM diagnostics
+    call ctem_diags_calc(phys_state)
 
     !-----------------------------------------------------------------------
     ! Advance time information
@@ -1310,6 +1327,7 @@ contains
     use microp_aero, only : microp_aero_final
     use phys_grid_ctem, only : phys_grid_ctem_final
     use nudging, only: Nudge_Model, nudging_final
+    use ctem_diags_mod, only: ctem_diags_final
 
     !-----------------------------------------------------------------------
     !
@@ -1340,6 +1358,8 @@ contains
         call HCOI_Chunk_Final
     endif
 
+    call ctem_diags_final()
+
   end subroutine phys_final
 
 
@@ -1367,6 +1387,8 @@ contains
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
+    use trb_mtn_stress_cam, only: trb_mtn_stress_tend
+    use beljaars_drag_cam,  only: beljaars_drag_tend
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction,  only: rayleigh_friction_run
     use constituents,       only: cnst_get_ind
@@ -1395,7 +1417,6 @@ contains
     use iondrag,            only: iondrag_calc, do_waccm_ions
     use perf_mod
     use flux_avg,           only: flux_avg_run
-    use unicon_cam,         only: unicon_cam_org_diags
     use cam_history,        only: outfld
     use qneg_module,        only: qneg4
     use co2_cycle,          only: co2_cycle_set_ptend
@@ -1640,10 +1661,33 @@ contains
 
     !===================================================
     ! Vertical diffusion/pbl calculation
-    ! Call vertical diffusion code (pbl, free atmosphere and molecular)
     !===================================================
-
     call t_startf('vertical_diffusion_tend')
+
+    !------------------------------------------
+    ! Compute orographic form drag stress
+    ! (Beljaars in CAM6+; TMS in CAM5)
+    !
+    ! Only the pbuf fields are updated in these routines (no ptend)
+    ! The computed stresses are used in the PBL scheme and the vertical diffusion solver
+    ! in the call to vertical_diffusion_tend below.
+    !------------------------------------------
+    if (trim(cam_take_snapshot_before) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+    end if
+
+    call trb_mtn_stress_tend(state, pbuf, cam_in)
+    call beljaars_drag_tend(state, pbuf, cam_in)
+
+    if (trim(cam_take_snapshot_after) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+    end if
+
+    !------------------------------------------
+    ! Call vertical diffusion code (pbl, free atmosphere and molecular)
+    !------------------------------------------
 
     if (trim(cam_take_snapshot_before) == "vertical_diffusion_section") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1655,9 +1699,9 @@ contains
     call vertical_diffusion_tend (ztodt ,state , cam_in, &
          surfric  ,obklen   ,ptend    ,ast    ,pbuf )
 
-   !------------------------------------------
-   ! Call major diffusion for extended model
-   !------------------------------------------
+    !------------------------------------------
+    ! Call major diffusion for extended model
+    !------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
     endif
@@ -1929,23 +1973,6 @@ contains
     !
     call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx), (/1,itim_old/),(/pcols,1/))
 
-    if (shallow_scheme .eq. 'UNICON') then
-
-       ! ------------------------------------------------------------------------
-       ! Insert the organization-related heterogeneities computed inside the
-       ! UNICON into the tracer arrays here before performing advection.
-       ! This is necessary to prevent any modifications of organization-related
-       ! heterogeneities by non convection-advection process, such as
-       ! dry and wet deposition of aerosols, MAM, etc.
-       ! Again, note that only UNICON and advection schemes are allowed to
-       ! changes to organization at this stage, although we can include the
-       ! effects of other physical processes in future.
-       ! ------------------------------------------------------------------------
-
-       call unicon_cam_org_diags(state, pbuf)
-
-    end if
-    !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
@@ -2895,8 +2922,6 @@ contains
        !  . Aerosol wet chemistry determines scavenging fractions, and transformations
        !  . Then do convective transport of all trace species except qv,ql,qi.
        !  . We needed to do the scavenging first to determine the interstitial fraction.
-       !  . When UNICON is used as unified convection, we should still perform
-       !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
        call t_startf('aerosol_wet_processes')

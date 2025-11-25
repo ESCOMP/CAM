@@ -1,0 +1,10 @@
+ offline_driver_infile = '$DIN_LOC_ROOT/atm/cam/port/PC7-ne3.3-L58-data_c250422.nc'
+ iradsw=1 iradlw=1
+ empty_htapes = .true.
+ ndens=1 nhtfrq=1 mfilt=10
+ avgflag_pertape = 'I'
+ fincl1='SOLIN','SOLS','SOLL','SOLSD','SOLLD',
+ 'SWCF','QRS','QRSC','FSNT','FSNTC','FSNTOA','FSNTOAC',
+ 'FSUTOA','FSNS','FSNSC','FSDS','FSDSC','FSN200','FSN200C','FSNR',
+ 'QRL','QRLC','FLNT','FLNTC','FLUT','FLUTC','LWCF','FLN200',
+ 'FLN200C','FLNR','FLNS','FLNSC','FLDS','FLDSC'

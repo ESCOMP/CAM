@@ -84,7 +84,7 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num
 type (snapshot_type)    ::  state_snapshot(30)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
-type (snapshot_type)    ::  cam_in_snapshot(30)
+type (snapshot_type)    ::  cam_in_snapshot(pcnst+31)   ! needs to be bigger than pcnst because cam_in is split by constituent.
 type (snapshot_type)    ::  cam_out_snapshot(30)
 type (snapshot_type_nd) ::  pbuf_snapshot(300)
 
@@ -433,9 +433,16 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
 ! This subroutine does the addfld calls for cam_in fields
 !--------------------------------------------------------
 
+   use constituents, only: cnst_name
+
    type(cam_in_t), intent(in) :: cam_in
 
-   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+   integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   ! for constituent loop.
+   integer :: mcnst
+   character(len=64)  :: fname
+   character(len=128) :: lname
 
    ncam_in_var = 0
 
@@ -464,8 +471,15 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%shf',             'cam_in_shf',               'unset',          horiz_only)
 
-   call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
+   ! cam_in%cflx is sized (pcols, pcnst); because the constituent indices at the model that reads this
+   ! data may not match the indices in the model outputting the snapshot,
+   ! cam_in%cflx is split into a series of snapshot variables cam_in_cflx_(constituent name).
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      lname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+      call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+                            fname, lname, 'kg m-2 s-1', horiz_only)
+   enddo
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_in%wsx',             'cam_in_wsx',               'unset',          horiz_only)
@@ -988,11 +1002,15 @@ end subroutine tend_snapshot_all_outfld
 
 subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
+   use constituents, only: cnst_name
+
    integer,         intent(in)  :: lchnk
    integer,         intent(in)  :: file_num
    type(cam_in_t),  intent(in)  :: cam_in
 
    integer :: i
+   integer :: mcnst
+   character(len=64) :: fname
 
    do i=1, ncam_in_var
 
@@ -1057,12 +1075,25 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
          call outfld(cam_in_snapshot(i)%standard_name, cam_in%dstflx, pcols, lchnk)
 
       case default
-         call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         if (cam_in_snapshot(i)%ddt_string(1:12) == 'cam_in_cflx_') then
+            ! This case is handled below in a loop (not looked up here as it would be i*pcnst iterations)
+         else
+            call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
+         endif
 
       end select
 
       call cam_history_snapshot_deactivate(trim(cam_in_snapshot(i)%standard_name))
 
+   end do
+
+   ! Handle cam_in%cflx constituent loop
+   do mcnst = 1, pcnst
+      fname = 'cam_in_cflx_'//trim(cnst_name(mcnst))
+
+      call cam_history_snapshot_activate(trim(fname), file_num)
+      call outfld(fname, cam_in%cflx(:,mcnst), pcols, lchnk)
+      call cam_history_snapshot_deactivate(trim(fname))
    end do
 
 end subroutine cam_in_snapshot_all_outfld
@@ -1187,6 +1218,9 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
    real(r8), pointer, dimension(:,:,:,:)       :: tmpptr4d
    real(r8), pointer, dimension(:,:,:,:,:)     :: tmpptr5d
 
+   ! Special handling of integer type fields (output as real)
+   integer,  pointer, dimension(:,:)           :: tmpptr2d_int
+
 
    do i=1, npbuf_var
 
@@ -1196,28 +1230,40 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
          ! Turn on the writing for only the requested tape (file_num)
          call cam_history_snapshot_activate(trim(pbuf_snapshot(i)%standard_name), file_num)
 
-         ! Retrieve the pbuf data (dependent on the number of dimensions)
-         ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
-
-         select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
-
-         case (1)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+         ! Retrieve the pbuf data. Special handling for certain
+         ! integer-type fields.
+         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop') then
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d_int)
+            ! copy into real
+            allocate(tmpptr2d(size(tmpptr2d_int, 1), size(tmpptr2d_int, 2)))
+            tmpptr2d = real(tmpptr2d_int, r8)
             call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
+            deallocate(tmpptr2d)
+         else
+           ! For regular real-type data:
+           ! Retrieve the pbuf data (dependent on the number of dimensions)
+           ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
 
-         case (2)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
+           select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
 
-         case (3)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+           case (1)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
 
-         case (4)
-            call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
-            call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+           case (2)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
-         end select
+           case (3)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+
+           case (4)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
+              call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+
+           end select
+         endif
 
          ! Now that the field has been written, turn off the writing for field
          call cam_history_snapshot_deactivate(trim(pbuf_snapshot(i)%standard_name))

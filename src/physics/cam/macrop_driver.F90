@@ -96,12 +96,6 @@
 
 
   integer :: &
-    tke_idx = -1,       &! tke defined at the model interfaces
-    qtl_flx_idx = -1,   &! overbar(w'qtl' where qtl = qv + ql) from the PBL scheme
-    qti_flx_idx = -1,   &! overbar(w'qti' where qti = qv + qi) from the PBL scheme
-    cmfr_det_idx = -1,  &! detrained convective mass flux from UNICON
-    qlr_det_idx = -1,   &! detrained convective ql from UNICON
-    qir_det_idx = -1,   &! detrained convective qi from UNICON
     cmfmc_sh_idx = -1
 
   contains
@@ -224,7 +218,6 @@ end subroutine macrop_driver_readnl
     !-----------------------------------------------------------------------
 
     ! Initialization routine for cloud macrophysics
-    if (shallow_scheme .eq. 'UNICON') rhminl_opt = 1
     call ini_macro(rhminl_opt, rhmini_opt)
 
     call phys_getopts(history_aerosol_out              = history_aerosol      , &
@@ -332,31 +325,6 @@ end subroutine macrop_driver_readnl
 
     sh_frac_idx = pbuf_get_index('SH_FRAC')
     dp_frac_idx = pbuf_get_index('DP_FRAC')
-
-    if (rhminl_opt > 0 .or. rhmini_opt > 0) then
-       cmfr_det_idx = pbuf_get_index('cmfr_det', istat)
-       if (istat < 0) call endrun(subname//': macrop option requires cmfr_det in pbuf')
-       if (rhminl_opt > 0) then
-          qlr_det_idx  = pbuf_get_index('qlr_det', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qlr_det in pbuf')
-       end if
-       if (rhmini_opt > 0) then
-          qir_det_idx  = pbuf_get_index('qir_det', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qir_det in pbuf')
-       end if
-    end if
-
-    if (rhminl_opt == 2 .or. rhmini_opt == 2) then
-       tke_idx = pbuf_get_index('tke')
-       if (rhminl_opt == 2) then
-          qtl_flx_idx = pbuf_get_index('qtl_flx', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qtl_flx in pbuf')
-       end if
-       if (rhmini_opt == 2) then
-          qti_flx_idx = pbuf_get_index('qti_flx', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qti_flx in pbuf')
-       end if
-    end if
 
     ! Init pbuf fields.  Note that the fields CLD, CONCLD, QCWAT, LCWAT,
     ! ICCWAT, and TCWAT are initialized in phys_inidat.
@@ -483,13 +451,6 @@ end subroutine macrop_driver_readnl
   real(r8), pointer, dimension(:,:) :: cmfmc_sh     ! Shallow convective mass flux (pcols,pverp) [ kg/s/m^2 ]
 
   real(r8), pointer, dimension(:,:) :: cmeliq
-
-  real(r8), pointer, dimension(:,:) :: tke
-  real(r8), pointer, dimension(:,:) :: qtl_flx
-  real(r8), pointer, dimension(:,:) :: qti_flx
-  real(r8), pointer, dimension(:,:) :: cmfr_det
-  real(r8), pointer, dimension(:,:) :: qlr_det
-  real(r8), pointer, dimension(:,:) :: qir_det
 
   ! Convective cloud to the physics buffer for purposes of ql contrib. to radn.
 
@@ -831,14 +792,6 @@ end subroutine macrop_driver_readnl
 
    concld_old(:ncol,top_lev:pver) = concld(:ncol,top_lev:pver)
 
-   nullify(tke, qtl_flx, qti_flx, cmfr_det, qlr_det, qir_det)
-   if (tke_idx      > 0) call pbuf_get_field(pbuf, tke_idx, tke)
-   if (qtl_flx_idx  > 0) call pbuf_get_field(pbuf, qtl_flx_idx,  qtl_flx)
-   if (qti_flx_idx  > 0) call pbuf_get_field(pbuf, qti_flx_idx,  qti_flx)
-   if (cmfr_det_idx > 0) call pbuf_get_field(pbuf, cmfr_det_idx, cmfr_det)
-   if (qlr_det_idx  > 0) call pbuf_get_field(pbuf, qlr_det_idx,  qlr_det)
-   if (qir_det_idx  > 0) call pbuf_get_field(pbuf, qir_det_idx,  qir_det)
-
    clrw_old(:ncol,:top_lev-1) = 0._r8
    clri_old(:ncol,:top_lev-1) = 0._r8
    do k = top_lev, pver
@@ -1041,7 +994,6 @@ end subroutine macrop_driver_readnl
                       CC_T, CC_qv, CC_ql, CC_qi, CC_nl, CC_ni, CC_qlst,          &
                       dlf_T, dlf_qv, dlf_ql, dlf_qi, dlf_nl, dlf_ni,             &
                       concld_old, concld, clrw_old, clri_old, landfrac, snowh,   &
-                      tke, qtl_flx, qti_flx, cmfr_det, qlr_det, qir_det,         &
                       tlat, qvlat, qcten, qiten, ncten, niten,                   &
                       cmeliq, qvadj, qladj, qiadj, qllim, qilim,                 &
                       cld, alst, aist, qlst, qist, do_cldice )
