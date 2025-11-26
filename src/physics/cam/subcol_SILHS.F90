@@ -602,7 +602,7 @@ contains
 
 #ifdef CLUBB_SGS
 #ifdef SILHS
-     use clubb_intr, only: , &
+     use clubb_intr, only: &
         ztodt ! model timestep
         
      use clubb_api_module,       only : setup_pdf_parameters_api, &
