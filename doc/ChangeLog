@@ -1,13 +1,13 @@
 ===============================================================
 
-Tag name: cam6_
-Originator(s): johnmauff, pel
-Date: April 28, 2025
-One-line Summary:
-Github PR URL: https://github.com/ESCOMP/CAM/pull/
+Tag name: cam6_4_131
+Originator(s): johnmauff, pel, cacraig, nusbaume
+Date: Nov 26, 2025
+One-line Summary: Performance improvements for CSLAM
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1365
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
-   Excessive data movement in extend_panel_interpolate (CSLAM): https://github.com/ESCOMP/CAM/issues/1316
+   Excessive data movement in extend_panel_interpolate (CSLAM): https://github.com/ESCOMP/CAM/issues/1360
 
    The subroutine extend_panel_interpolate is written such that the compiler will generate more data movement than is necessary.
    This excessive data movement intensifies a computational load imbalance in the CSLAM advection. While it is impossible to eliminate
@@ -22,7 +22,7 @@ List any changes to the defaults for the boundary datasets: N/A
 
 Describe any substantial timing or memory changes: N/A
 
-Code reviewed by:
+Code reviewed by: nusbaume
 
 List all files eliminated: N/A
 
@@ -30,10 +30,57 @@ List all files added and what they do: N/A
 
 List all existing files that have been modified, and describe the changes:
 
-....
+M       cime_config/config_pes.xml
+          - remove dead config code originally used by Eulerian dycore
+
+M       src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+M       src/dynamics/se/dycore/fvm_reconstruction_mod.F90
+          - mods for SE dycore as described above
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL) details:
+      - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: DIFF) details:
+      - answer differences for CSLAM runs
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+     - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                      reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                      but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam:
+  ERC_D_Ln27.ne3pg3_ne3pg3_mt232.FKESSLER.izumi_nag.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+      - answer differences for CSLAM runs
+
+
+izumi/gnu/aux_cam: all BFB
 
 Summarize any changes to answers:
-	No answer changes, all b4b
+	Answer changing, bug not climate changing as reported by pel
 
 ===============================================================
 
