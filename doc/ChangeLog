@@ -1,5 +1,329 @@
 ===============================================================
 
+Tag name: cam6_4_132
+Originator(s): peverwhee, jimmielin, cacraigucar, nusbaume
+Date: Nov 26, 2025
+One-line Summary: Remove extraneous log messages
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1442
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+   Remove extraneous log messages from GEOS-Chem and RRTMGP
+   Add new MPAS 120 km L26 analytic ICs.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+  M   bld/namelist_files/namelist_defaults_cam.xml
+       - Add new MPAS 120km L26 analystic ics
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+  M    .gitmodules
+  M    src/atmos_phys/
+  M    src/physics/rrtmgp/radiation.F90
+         - update atmospheric physics tag and rrtmgp_inputs_run interface to remove RRTMGP messages
+
+  M    src/chemistry/geoschem/chemistry.F90
+         - remove extraneous geoschem messages
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL) details:
+      - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+     - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                      reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                      but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+Summarize any changes to answers: n/a
+
+===============================================================
+Tag name: cam6_4_131
+Originator(s): johnmauff, pel, cacraig, nusbaume
+Date: Nov 26, 2025
+One-line Summary: Performance improvements for CSLAM
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1365
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+   Excessive data movement in extend_panel_interpolate (CSLAM): https://github.com/ESCOMP/CAM/issues/1360
+
+   The subroutine extend_panel_interpolate is written such that the compiler will generate more data movement than is necessary.
+   This excessive data movement intensifies a computational load imbalance in the CSLAM advection. While it is impossible to eliminate
+   the load imbalance that is caused by the special treatment of panels at the corners of the cubed sphere, it is possible to reduce
+   the cost of this subroutine by changing the way that the subroutine is written.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       cime_config/config_pes.xml
+          - remove dead config code originally used by Eulerian dycore
+
+M       src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+M       src/dynamics/se/dycore/fvm_reconstruction_mod.F90
+          - mods for SE dycore as described above
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL) details:
+      - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: DIFF) details:
+      - answer differences for CSLAM runs
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+     - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                      reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                      but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam:
+  ERC_D_Ln27.ne3pg3_ne3pg3_mt232.FKESSLER.izumi_nag.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+      - answer differences for CSLAM runs
+
+
+izumi/gnu/aux_cam: all BFB
+
+Summarize any changes to answers:
+	Answer changing, bug not climate changing as reported by pel
+
+===============================================================
+
+Tag name: cam6_4_130
+Originator(s): cacraig
+Date: Nov 25, 2025
+One-line Summary: Update emissions for CMIP7
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1439
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update emissions datasets: https://github.com/ESCOMP/CAM/issues/1432
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: Updated emission datasets for ne30 LT and MT runs
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: Cecile, nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_mt.xml
+         - update emission files for ne30 LT and MT compsets
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+     - all ne30 LT/MT runs have answer changes
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+     - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                      reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                      but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam: all BFB (no ne30 LT/MT runs)
+
+izumi/gnu/aux_cam: all BFB (no ne30 LT/MT runs)
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_129
+Originator(s): cacraig
+Date: Nov 18, 2025
+One-line Summary: Update externals to match cesm3_0_alpha07g
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1436
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals to match alpha07g externals: https://github.com/ESCOMP/CAM/issues/1418
+  - ne0CONUSne30x8 prealpha test failing: https://github.com/ESCOMP/CAM/issues/1434
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       cime
+M       components/cdeps
+M       components/cice
+M       components/cmeps
+         - update externals to match alpha07g
+
+M       cime_config/testdefs/testlist_cam.xml
+         - Increase nodes for CONUS tests
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+** All test suites have namelist changes
+
+derecho/intel/aux_cam: all BFB except:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+     - new baseline due to change in processor count in directory name
+
+derecho/nvhpc/aux_cam:
+     - timing issue - will increase timing in next tag
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_128
+Originator(s): jshaw35, fvitt, cacraig, nusbaume
+Date: Oct 30, 2025
+One-line Summary: Correct allocation and assignment error for 'hgt_matrix_half' field in cospsimulator_intr.F90
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1355
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Fix bug where CAM height interfaces were incorrectly passed to COSP (requires COSP update):
+    https://github.com/ESCOMP/CAM/issues/1354
+  - Bring in an updated default WACCM IC file for the ne30 grid:
+    https://github.com/ESCOMP/CAM/issues/1425
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: eaton, brianpm, jedwards
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+M       src/physics/cosp2/src
+ - Update COSP submodule to version 2.1.9
+
+M       src/physics/cam/cospsimulator_intr.F90
+ - Fix 'hgt_matrix_half' bug, and add new COSP diagnostic fields to
+   CAM history output.
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - Use spun-up default WACCM IC file for the ne30 grid.
+
+M       cime_config/testdefs/testmods_dirs/cam/cosp_rad_diags/user_nl_cam
+ - Add 'CS_WR_CFODD_REFF_LARGE' to fexcl list in COSP ERC test in order
+   to allow tests to pass (CloudSat variables appear to be task-dependent).
+
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+  ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp (Overall: DIFF)
+ - COSP answer changes due to bug fix and new COSP submodule
+
+derecho/nvhpc/aux_cam: ALL PASS
+
+izumi/nag/aux_cam:
+
+ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: DIFF)
+ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF)
+ - COSP answer changes due to bug fix and new COSP submodule
+
+izumi/gnu/aux_cam:
+
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: DIFF)
+ - COSP answer changes due to bug fix and new COSP submodule
+
+Summarize any changes to answers: COSP answer changes validated by Brian Medeiros (brianpm)
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_127
 Originator(s):  courtneyp, jedwards
 Date: Oct 24, 2025
