@@ -13,8 +13,8 @@ Purpose of changes (include the issue number and title text for each relevant Gi
 Describe any changes made to build system: N/A
 
 Describe any changes made to the namelist:
-M   bld/namelist_files/namelist_defaults_cam.xml
-- Add new MPAS 120km L26 analystic ics
+  M   bld/namelist_files/namelist_defaults_cam.xml
+       - Add new MPAS 120km L26 analystic ics
 
 List any changes to the defaults for the boundary datasets: N/A
 
@@ -27,14 +27,13 @@ List all files eliminated: N/A
 List all files added and what they do: N/A
 
 List all existing files that have been modified, and describe the changes:
-M    .gitmodules
-M    src/atmos_phys/
-M    src/physics/rrtmgp/radiation.F90
-- update atmospheric physics tag and rrtmgp_inputs_run interface to remove
-   RRTMGP messages
+  M    .gitmodules
+  M    src/atmos_phys/
+  M    src/physics/rrtmgp/radiation.F90
+         - update atmospheric physics tag and rrtmgp_inputs_run interface to remove RRTMGP messages
 
-M    src/chemistry/geoschem/chemistry.F90
-- remove extraneous geoschem messages
+  M    src/chemistry/geoschem/chemistry.F90
+         - remove extraneous geoschem messages
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
@@ -51,9 +50,9 @@ derecho/nvhpc/aux_cam:
                       reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
                       but answer changes are expected starting with cam6_4_130
 
-izumi/nag/aux_cam:
+izumi/nag/aux_cam: all BFB
 
-izumi/gnu/aux_cam:
+izumi/gnu/aux_cam: all BFB
 
 Summarize any changes to answers: n/a
 
