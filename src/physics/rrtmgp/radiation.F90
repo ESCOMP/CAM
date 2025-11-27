@@ -1172,7 +1172,7 @@ subroutine radiation_tend( &
       ! Prepare state variables, daylit columns, albedos for RRTMGP
       ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
-                  masterproc, iulog, is_mpas, state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
+                  is_mpas, state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
                   nday, idxday, cldfprime(:ncol,:), coszrs(:ncol), kdist_sw, t_sfc,       &
                   emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
                   pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup(:ncol), stebol,  &
