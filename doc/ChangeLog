@@ -1,5 +1,195 @@
 ===============================================================
 
+Tag name: cam6_4_133
+Originator(s): jimmielin, jtruesdal
+Date: Nov 28, 2025
+One-line Summary: Complete CCPPization of all gravity wave drag
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1380
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Completes #416:
+- Move all gravity wave parameterizations to atmos_phys.
+- Complete CCPPization of necessary interstitials.
+- Complete CCPPization of orographic gravity wave drag for CAM4.
+- Complete CCPPization of Ridge (beta/gamma), Moving Mountain, Beres convection (deep/shallow), and Frontogenesis gravity wave drag for CAM6/7.
+
+Describe any changes made to build system:
+- Add gravity wave drag scheme subdirectory to atmos_phys.
+
+Describe any changes made to the namelist:
+- Minor typo fixes; removal of certain unused parameters
+
+List any changes to the defaults for the boundary datasets:
+- Topo file for ne3np4
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+D       src/physics/cam/gw_common.F90
+D       src/physics/cam/gw_convect.F90
+D       src/physics/cam/gw_diffusion.F90
+D       src/physics/cam/gw_front.F90
+D       src/physics/cam/gw_movmtn.F90
+D       src/physics/cam/gw_oro.F90
+D       src/physics/cam/gw_rdg.F90
+D       src/physics/cam/gw_utils.F90
+  - moved to atmos_phys, cleaned up, CCPPized, renamed.
+
+D       src/physics/cam/vdiff_lu_solver.F90
+  - moved to atmos_phys/to_be_ccppized.
+
+D       src/physics/cam/gw_drag.F90
+  - moved to gw_drag_cam and made into a CAM interface to CCPPized subroutines.
+
+List all files added and what they do:
+A       src/physics/cam/gw_drag_cam.F90
+  - new CAM interface to CCPPized subroutines.
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       bld/configure
+  - add new gw_drag subdir in atmos_phys.
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+  - new ne3np4 topo file
+
+M       bld/namelist_files/namelist_definition.xml
+M       bld/build-namelist
+  - minor typo fixes
+  - removal of unused parameters in namelist.
+
+M       src/control/runtime_opts.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+  - change to use gw_drag_cam CAM interfaces.
+
+M       src/utils/cam_pio_utils.F90
+  - remove trailing whitespace
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: NLFAIL) details:
+  ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h (Overall: NLFAIL) details:
+  ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: NLFAIL) details:
+  ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: NLFAIL) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep (Overall: NLFAIL) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+  SMS_D_Ld5.f19_f19_mt232.PC4.derecho_intel.cam-cam4_port5d (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7 (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+  SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+  SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s (Overall: NLFAIL) details:
+  SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs (Overall: NLFAIL) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: NLFAIL) details:
+    - removed unused namelist parameter leading to NLCOMP failure:
+      missing variable: 'gw_limit_tau_without_eff'
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - baselines from previous tag cam6_4_132 were missing due to pre-existing failure:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+    - pre-existing failure:
+    - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                     reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                     but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC4.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: NLFAIL) details:
+  SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: NLFAIL) details:
+  SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: NLFAIL) details:
+    - removed unused namelist parameter leading to NLCOMP failure:
+      missing variable: 'gw_limit_tau_without_eff'
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: NLFAIL) details:
+  ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 (Overall: NLFAIL) details:
+  ERP_Ln9_P24x2.f45_f45_mg37.QPWmaC6.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: NLFAIL) details:
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: NLFAIL) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: NLFAIL) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6 (Overall: NLFAIL) details:
+  SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+  SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee (Overall: NLFAIL) details:
+  SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    - removed unused namelist parameter leading to NLCOMP failure:
+      missing variable: 'gw_limit_tau_without_eff'
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: nvhpc has failed after Derecho update so using cam6_4_128 baselines.
+
+Summarize any changes to answers: All B4B
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+===============================================================
+
 Tag name: cam6_4_132
 Originator(s): peverwhee, jimmielin, cacraigucar, nusbaume
 Date: Nov 26, 2025
