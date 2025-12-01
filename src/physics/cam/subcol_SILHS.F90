@@ -86,7 +86,7 @@ module subcol_SILHS
      ixnumsnow= 0
   
   ! Pbuf indicies
-  integer :: rtm_idx, ice_supersat_idx, &
+  integer :: ice_supersat_idx, &
              alst_idx, cld_idx, qrain_idx, qsnow_idx, &
              nrain_idx, nsnow_idx, tke_idx, kvh_idx, &
              prec_pcw_idx, snow_pcw_idx, prec_str_idx, snow_str_idx, &
@@ -416,7 +416,6 @@ contains
      call cnst_get_ind('NUMSNO', ixnumsnow, abort=.false.)
 
      ! Get physics buffer indexes
-     rtm_idx = pbuf_get_index('RTM')
      cld_idx = pbuf_get_index('CLD')
      alst_idx = pbuf_get_index('ALST')  ! SILHS expects clubb's cloud_frac liq stratus fraction
      ice_supersat_idx = pbuf_get_index('ISS_FRAC')
@@ -509,8 +508,6 @@ contains
 
      call addfld('NR_IN_LH', (/ 'lev' /), 'I', 'm^-3', &
                  'Num Rain Conc as input to SILHS')
-    call addfld('SILHS_RTM', (/ 'ilev' /), 'I', 'kg/kg', &
-                 'Input total water mixing ratio')
     call addfld('SILHS_THLM', (/ 'ilev' /), 'I', 'K', &
                  'Input liquid water potential temperature')
     call addfld('SILHS_QC_IN', (/ 'lev' /), 'I', 'kg/kg', &
@@ -823,7 +820,6 @@ contains
      ! Pointers
      !----------------
      real(r8), pointer, dimension(:,:) :: ice_supersat_frac ! ice cloud fraction
-     real(r8), pointer, dimension(:,:) :: rtm       ! mean moisture mixing ratio
      real(r8), pointer, dimension(:,:) :: cld       ! CAM cloud fraction
      real(r8), pointer, dimension(:,:) :: alst      ! CLUBB liq cloud fraction
      real(r8), pointer, dimension(:,:) :: qrain     ! micro_mg rain from previous step
@@ -918,7 +914,6 @@ contains
      ! Establish associations between pointers and physics buffer fields
      !----------------
      call pbuf_get_field(pbuf, ice_supersat_idx, ice_supersat_frac)
-     call pbuf_get_field(pbuf, rtm_idx, rtm)
      call pbuf_get_field(pbuf, alst_idx, alst)
      call pbuf_get_field(pbuf, cld_idx, cld)
      call pbuf_get_field(pbuf, qrain_idx, qrain)
@@ -1168,7 +1163,7 @@ contains
      
      ! Set the seed to the random number generator based on a quantity that
      ! will be reproducible for restarts.
-     lh_seed = int( 1.0e4_r8 * rtm(1,nzt_clubb), kind = genrand_intg )
+     lh_seed = int( 1.0e4_r8 * tke(1,nzm_clubb), kind = genrand_intg )
      
      ! Let's generate some subcolumns!!!!!
      call generate_silhs_sample_api( &
