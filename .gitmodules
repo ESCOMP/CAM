@@ -29,9 +29,9 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_18_002
+	fxtag = atmos_phys0_19_000
         fxrequired = AlwaysRequired
-	fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
+        fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
 [submodule "cam-sima"]
         path = src/utils/cam-sima

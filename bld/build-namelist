@@ -3885,7 +3885,6 @@ if (!$simple_phys) {
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
     add_default($nl, 'gw_lndscl_sgh');
     add_default($nl, 'gw_oro_south_fac');
-    add_default($nl, 'gw_limit_tau_without_eff');
     add_default($nl, 'gw_apply_tndmax');
 
     # Gravity wave ridge settings

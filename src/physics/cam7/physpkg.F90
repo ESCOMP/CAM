@@ -733,7 +733,7 @@ contains
     use convect_deep,       only: convect_deep_init
     use convect_diagnostics,only: convect_diagnostics_init
     use cam_diagnostics,    only: diag_init
-    use gw_drag,            only: gw_init
+    use gw_drag_cam,        only: gw_drag_cam_init
     use radheat,            only: radheat_init
     use radiation,          only: radiation_init
     use cloud_diagnostics,  only: cloud_diagnostics_init
@@ -890,7 +890,7 @@ contains
        call co2_init()
     end if
 
-    call gw_init()
+    call gw_drag_cam_init()
 
     call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
          iulog, errmsg, errflg)
@@ -1382,7 +1382,7 @@ contains
     use physics_buffer, only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
-    use gw_drag,            only: gw_tend
+    use gw_drag_cam,        only: gw_drag_cam_tend
     use beljaars_drag_cam,  only: beljaars_drag_tend
     use trb_mtn_stress_cam, only: trb_mtn_stress_tend ! only used as a stub to set to zero - TMS is not used in CAM7
     use vertical_diffusion, only: vertical_diffusion_tend
@@ -2320,7 +2320,7 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
 
-    call gw_tend(state, pbuf, ztodt, ptend, cam_in, flx_heat)
+    call gw_drag_cam_tend(state, pbuf, ztodt, ptend, cam_in, flx_heat)
 
     if ( (trim(cam_take_snapshot_after) == "gw_tend") .and.                   &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
