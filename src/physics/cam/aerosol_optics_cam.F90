@@ -874,13 +874,13 @@ contains
                       ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
                       fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
-                      if (.not.aeroprops%is_bulk()) then
+                      if (.not.aeroprops%model_is('BAM')) then
                          call update_diags()
                       end if
 
                    end do column
 
-                   if (aeroprops%is_bulk().and.iwav==idx_sw_diag) then
+                   if (aeroprops%model_is('BAM').and.iwav==idx_sw_diag) then
                       taubam(:ncol,ilev) = dopaer(:ncol)
                    end if
 
@@ -895,7 +895,7 @@ contains
           deallocate(aero_optics)
           nullify(aero_optics)
 
-          if (aeroprops%is_bulk()) then
+          if (aeroprops%model_is('BAM')) then
              bam_cnt = bam_cnt+1
              call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
                   list_idx, troplev)
