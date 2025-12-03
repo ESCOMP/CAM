@@ -3458,10 +3458,10 @@ end subroutine clubb_init_cnst
         dz_g              = dz_g(:,nzt_clubb:1:-1)
         p_in_Pa           = p_in_Pa(:,nzt_clubb:1:-1)
         invrs_exner_zt    = invrs_exner_zt(:,nzt_clubb:1:-1)
-        um           = um(:,nzt_clubb:1:-1)
-        vm           = vm(:,nzt_clubb:1:-1)
-        thlm         = thlm(:,nzt_clubb:1:-1)
-        rtm          = rtm(:,nzt_clubb:1:-1)
+        um                = um(:,nzt_clubb:1:-1)
+        vm                = vm(:,nzt_clubb:1:-1)
+        thlm              = thlm(:,nzt_clubb:1:-1)
+        rtm               = rtm(:,nzt_clubb:1:-1)
 
         thv_ds_zt          = thv_ds_zt(:,nzt_clubb:1:-1)
 
@@ -3473,11 +3473,11 @@ end subroutine clubb_init_cnst
         rtm_zm_in       = rtm_zm_in(:,nzm_clubb:1:-1)
 
         do i = 1, ncol
-          call integrate_mf( nzm_clubb, nzt_clubb, dz_g(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
-                                                                            p_in_Pa(i,:), invrs_exner_zt(i,:), & ! input
-                            um(i,:), vm(i,:), thlm(i,:),  rtm(i,:), thv_ds_zt(i,:),        & ! input
-                                                       thlm_zm_in(i,:),  rtm_zm_in(i,:),                       & ! input
-                                                        wpthlp_sfc(i), wprtp_sfc(i),  pblh_pbuf(i),            & ! input
+          call integrate_mf( nzm_clubb, nzt_clubb, dz_g(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:),  & ! input
+                                                                            p_in_Pa(i,:), invrs_exner_zt(i,:),  & ! input
+                            um(i,:), vm(i,:), thlm(i,:),        rtm(i,:), thv_ds_zt(i,:),                       & ! input
+                                                         thlm_zm_in(i,:), rtm_zm_in(i,:),                       & ! input
+                                                         wpthlp_sfc(i), wprtp_sfc(i),  pblh_pbuf(i),            & ! input
                             mf_dry_a(i,:),    mf_moist_a(i,:),                                        & ! output - plume diagnostics
                             mf_dry_w(i,:),    mf_moist_w(i,:),                                        & ! output - plume diagnostics
                             mf_dry_qt(i,:),   mf_moist_qt(i,:),                                       & ! output - plume diagnostics
@@ -4249,8 +4249,7 @@ end subroutine clubb_init_cnst
     do k = top_lev, pver
       do i = 1, ncol
         k_clubb     = k + 1 - top_lev
-        cld_pbuf (i,k)    = cloud_frac_inout(i,k_clubb)
-        alst_pbuf(i,k)    = cld_pbuf(i,k)
+        alst_pbuf(i,k)    = cloud_frac_inout(i,k_clubb)
         qlst_pbuf(i,k)    = rcm(i,k_clubb) / max( 0.01_r8, alst_pbuf(i,k) )  ! Incloud stratus condensate mixing ratio
       enddo
     enddo
@@ -4330,9 +4329,9 @@ end subroutine clubb_init_cnst
         ptend_loc%u(i,k)          = ( um(i,k_clubb) - state_loc%u(i,k))           * invrs_hdtime ! east-west wind
         ptend_loc%v(i,k)          = ( vm(i,k_clubb) - state_loc%v(i,k))           * invrs_hdtime ! north-south wind
         ptend_loc%q(i,k,ixq)      = ( rtm(i,k_clubb) - rcm(i,k_clubb) &
-                                      -state_loc%q(i,k,ixq) )                          * invrs_hdtime ! water vapor
+                                      -state_loc%q(i,k,ixq) )                     * invrs_hdtime ! water vapor
         ptend_loc%q(i,k,ixcldliq) = ( rcm(i,k_clubb) - state_loc%q(i,k,ixcldliq)) * invrs_hdtime ! Tendency of liquid water
-        ptend_loc%s(i,k)          = ( clubb_s(i,k) - state_loc%s(i,k))                 * invrs_hdtime ! Tendency of static energy
+        ptend_loc%s(i,k)          = ( clubb_s(i,k) - state_loc%s(i,k))            * invrs_hdtime ! Tendency of static energy
       end do
     end do
 !--------------------------------- END TODO ---------------------------------
