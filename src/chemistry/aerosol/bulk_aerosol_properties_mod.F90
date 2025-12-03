@@ -635,12 +635,13 @@ contains
 
     character(len=aero_name_len) :: name
     character(len=64), allocatable :: names(:)
-    integer :: naer
+    integer :: naer, astat
 
 
     call rad_cnst_get_info(list_ndx, naero=naer)
 
-    allocate( names(naer))
+    allocate( names(naer), stat=astat)
+    if( astat/= 0 ) call endrun('bulk_aerosol_properties_mod%bin_name: names allocate error')
 
     call rad_cnst_get_info(list_ndx, aernames=names)
 

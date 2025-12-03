@@ -3,11 +3,12 @@
 !-------------------------------------------------------------------------------
 module aer_vis_diag_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use cam_history, only: fieldname_len, addfld, outfld, add_default, horiz_only
+  use cam_history, only: fieldname_len, addfld, outfld, add_default, horiz_only, hist_fld_active
   use cam_history_support, only : fillvalue
   use rad_constituents, only: rad_cnst_get_info
   use ppgrid, only: pcols, pver
   use phys_control, only: phys_getopts
+  use cam_abortutils, only: endrun
 
   implicit none
 
@@ -23,7 +24,7 @@ contains
   !==============================================================================
   subroutine aer_vis_diag_init()
 
-    integer :: i
+    integer :: i, astat
     character(len=64), allocatable :: aernames(:)
     logical :: history_aero_optics  ! Output aerosol optics diagnostics
 
@@ -33,14 +34,18 @@ contains
     if (numaerosols<1) return
 
     ! get names of bulk aerosols
-    allocate(aernames(numaerosols))
+    allocate(aernames(numaerosols),stat=astat)
+    if( astat/= 0 ) call endrun('aer_vis_diag_init: aernames allocate error')
+
     call rad_cnst_get_info(0, aernames=aernames)
 
     call phys_getopts( history_aero_optics_out = history_aero_optics )
 
     ! diagnostic output for bulk aerosols
     ! create outfld names for visible OD
-    allocate(odv_names(numaerosols))
+    allocate(odv_names(numaerosols),stat=astat)
+    if( astat/= 0 ) call endrun('aer_vis_diag_init: odv_names allocate error')
+
     do i = 1, numaerosols
        odv_names(i) = 'ODV_'//trim(aernames(i))
        call addfld (odv_names(i), horiz_only, 'A', '1', &
@@ -68,26 +73,39 @@ contains
     ! Local variables
     integer  :: i
     real(r8) :: tmp(pcols), tmp2(pcols)
+    logical :: do_calc
     !-----------------------------------------------------------------------------
 
     ! currently only implemented for climate calc
     if (diag_idx > 0) return
 
-    ! compute total column aerosol optical depth
-    tmp(1:ncol) = sum(tau(1:ncol,:), 2)
-    ! use fillvalue to indicate night columns
-    do i = 1, nnite
-       tmp(idxnite(i)) = fillvalue
-    end do
+    do_calc = .false.
+    if (iaer > 0) then
+       do_calc = hist_fld_active(odv_names(iaer))
+    else
+       do_calc = hist_fld_active('AEROD_v')
+    end if
+
+    if (do_calc) then
+       ! compute total column aerosol optical depth
+       tmp(1:ncol) = sum(tau(1:ncol,:), 2)
+       ! use fillvalue to indicate night columns
+       do i = 1, nnite
+          tmp(idxnite(i)) = fillvalue
+       end do
+    end if
 
     if (iaer > 0) then
        call outfld(odv_names(iaer), tmp, pcols, lchnk)
     else
        call outfld('AEROD_v', tmp, pcols, lchnk)
-       do i = 1, ncol
-          tmp2(i) = sum(tau(i,:troplev(i)))
-       end do
-       call outfld('AODvstrt', tmp2, pcols, lchnk)
+
+       if (hist_fld_active('AODvstrt')) then
+          do i = 1, ncol
+             tmp2(i) = sum(tau(i,:troplev(i)))
+          end do
+          call outfld('AODvstrt', tmp2, pcols, lchnk)
+       end if
     end if
 
   end subroutine aer_vis_diag_out
