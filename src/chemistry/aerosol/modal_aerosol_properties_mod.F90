@@ -52,6 +52,7 @@ module modal_aerosol_properties_mod
      procedure :: resuspension_resize
      procedure :: rebin_bulk_fluxes
      procedure :: hydrophilic
+     procedure :: model_is
 
      final :: destructor
   end type modal_aerosol_properties
@@ -1107,5 +1108,22 @@ contains
     hydrophilic = (trim(modetype) == 'accum')
 
   end function hydrophilic
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if modal aerosol representation
+  !------------------------------------------------------------------------------
+  pure logical function model_is(self, query)
+    class(modal_aerosol_properties), intent(in) :: self
+    character(len=*),               intent(in) :: query
+
+    if (trim(query) == 'MAM' .or. trim(query) == 'mam') then
+       model_is = .true.
+    else if (trim(query) == 'modal') then
+       model_is = .true.
+    else
+       model_is = .false.
+    end if
+
+  end function model_is
 
 end module modal_aerosol_properties_mod

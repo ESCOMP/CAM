@@ -74,7 +74,7 @@ module aerosol_properties_mod
      procedure(aero_resuspension_resize), deferred :: resuspension_resize
      procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
      procedure(aero_hydrophilic), deferred :: hydrophilic
-     procedure(aero_id_query) :: aerosol_is
+     procedure(aero_id_query), deferred :: model_is
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -741,16 +741,5 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
-
-  !------------------------------------------------------------------------------
-  ! returns TRUE if aerosol model matches query
-  !------------------------------------------------------------------------------
-  pure logical function aerosol_is(self, query)
-    class(aerosol_properties), intent(in) :: self
-    character(len=*),          intent(in) :: query
-
-    aerosol_is = .false.
-
-  end function aerosol_is
 
 end module aerosol_properties_mod

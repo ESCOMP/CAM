@@ -48,7 +48,7 @@ module bulk_aerosol_properties_mod
      procedure :: resuspension_resize
      procedure :: rebin_bulk_fluxes
      procedure :: hydrophilic
-     procedure :: aerosol_is
+     procedure :: model_is
 
      final :: destructor
 
@@ -712,18 +712,18 @@ contains
   !------------------------------------------------------------------------------
   ! returns TRUE if bulk aerosol representation
   !------------------------------------------------------------------------------
-  pure logical function aerosol_is(self, query)
+  pure logical function model_is(self, query)
     class(bulk_aerosol_properties), intent(in) :: self
     character(len=*),               intent(in) :: query
 
-    if (trim(query) == 'BAM') then
-       aerosol_is = .true.
+    if (trim(query) == 'BAM' .or. trim(query) == 'bam') then
+       model_is = .true.
     else if (trim(query) == 'bulk_model') then
-       aerosol_is = .true.
+       model_is = .true.
     else
-       aerosol_is = .false.
+       model_is = .false.
     end if
 
-  end function aerosol_is
+  end function model_is
 
 end module bulk_aerosol_properties_mod
