@@ -1,3 +1,93 @@
+
+===============================================================
+
+Tag name: cam6_4_134
+Originator(s): cacraig
+Date: Dec 4, 2025
+One-line Summary: Update externals to match cesm3_0_alpha07h
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1446
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals to match alpha07h: https://github.com/ESCOMP/CAM/issues/1433
+  - Include update of git-fleximod to v1.1.1
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       ccs_config
+M       cime
+M       components/cdeps
+M       components/cmeps
+M       components/mizuRoute
+M       doc/ChangeLog
+M       share
+M       tools/CUPiD
+          - update externals to match alpha07h
+
+M       .lib/git-fleximod/.github/workflows/pytest.yaml
+M       .lib/git-fleximod/.pre-commit-config.yaml
+M       .lib/git-fleximod/CODE_OF_CONDUCT.md
+M       .lib/git-fleximod/git_fleximod/cli.py
+M       .lib/git-fleximod/git_fleximod/git_fleximod.py
+M       .lib/git-fleximod/git_fleximod/gitinterface.py
+M       .lib/git-fleximod/git_fleximod/gitmodules.py
+M       .lib/git-fleximod/git_fleximod/metoflexi.py
+M       .lib/git-fleximod/git_fleximod/submodule.py
+M       .lib/git-fleximod/git_fleximod/utils.py
+M       .lib/git-fleximod/poetry.lock
+M       .lib/git-fleximod/pyproject.toml
+M       .lib/git-fleximod/tbump.toml
+M       .lib/git-fleximod/tests/conftest.py
+M       .lib/git-fleximod/tests/test_a_import.py
+M       .lib/git-fleximod/tests/test_b_update.py
+M       .lib/git-fleximod/tests/test_c_required.py
+M       .lib/git-fleximod/tests/test_d_complex.py
+M       .lib/git-fleximod/tests/test_e_complex_update.py
+A       .lib/git-fleximod/tests/utils_for_tests.py
+          - update git-fleximod to v1.1.1
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+** All tests have namelist changes due to changes in externals
+
+derecho/intel/aux_cam:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - Answer changes due to updated externals
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+    - This test failed the first time but passed on a retry.  Keeping this in the ChangeLog until CTSM makes a fix
+
+derecho/nvhpc/aux_cam:
+    - pre-existing failure:
+    - timing issue - Jian has determined this is due to changes on derecho with the the last upgrade.  He has
+                     reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with baselines to use for comparison
+                     but answer changes are expected starting with cam6_4_130
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_133
