@@ -74,7 +74,7 @@ module aerosol_properties_mod
      procedure(aero_resuspension_resize), deferred :: resuspension_resize
      procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
      procedure(aero_hydrophilic), deferred :: hydrophilic
-     procedure :: is_bulk
+     procedure(aero_id_query), deferred :: model_is
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -457,6 +457,15 @@ module aerosol_properties_mod
        integer, intent(in) :: bin_ndx ! bin number
      end function aero_hydrophilic
 
+     !------------------------------------------------------------------------------
+     ! Returns TRUE if the aerosol model matches the query, otherwise FALSE
+     !------------------------------------------------------------------------------
+     logical function aero_id_query(self, query)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       character(len=*),          intent(in) :: query
+    end function aero_id_query
+
   end interface
 
 contains
@@ -732,15 +741,5 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
-
-  !------------------------------------------------------------------------------
-  ! returns TRUE if bulk aerosol representation
-  !------------------------------------------------------------------------------
-  pure logical function is_bulk(self)
-    class(aerosol_properties), intent(in) :: self
-
-    is_bulk = .false.
-
-  end function is_bulk
 
 end module aerosol_properties_mod

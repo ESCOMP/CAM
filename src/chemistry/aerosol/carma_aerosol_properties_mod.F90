@@ -40,6 +40,7 @@ module carma_aerosol_properties_mod
      procedure :: resuspension_resize
      procedure :: rebin_bulk_fluxes
      procedure :: hydrophilic
+     procedure :: model_is
 
      final :: destructor
   end type carma_aerosol_properties
@@ -943,5 +944,20 @@ contains
     hydrophilic = .true.
 
   end function hydrophilic
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if CARMA aerosol representation
+  !------------------------------------------------------------------------------
+  pure logical function model_is(self, query)
+    class(carma_aerosol_properties), intent(in) :: self
+    character(len=*),               intent(in) :: query
+
+    if (trim(query) == 'CARMA' .or. trim(query) == 'carma') then
+       model_is = .true.
+    else
+       model_is = .false.
+    end if
+
+  end function model_is
 
 end module carma_aerosol_properties_mod
