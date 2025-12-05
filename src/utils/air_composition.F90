@@ -103,7 +103,7 @@ module air_composition
    real(r8), public, protected, allocatable :: rairv(:,:,:)
    ! cappav: rairv / cpairv
    real(r8), public, protected, allocatable :: cappav(:,:,:)
-   ! mbarv: composition dependent atmosphere mean mass
+   ! mbarv: composition dependent atmosphere mean molar mass [kg mol-1]
    real(r8), public, protected, allocatable :: mbarv(:,:,:)
    ! cp_or_cv_dycore:  enthalpy or internal energy scaling factor for 
    !                   energy consistency

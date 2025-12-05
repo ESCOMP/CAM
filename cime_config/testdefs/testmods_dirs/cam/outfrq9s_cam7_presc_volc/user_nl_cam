@@ -1,0 +1,24 @@
+mfilt=1,1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9,9,9,9,9
+write_nstep0=.true.
+inithist='ENDOFRUN'
+
+ prescribed_strataero_datapath = '$DIN_LOC_ROOT/atm/cam/volc'
+ prescribed_strataero_file     = 'TEST_ONLY_strataero_mam5_1980_2014_c20250826.nc'
+ prescribed_strataero_type     = 'SERIAL'
+ prescribed_strataero_use_chemtrop = .true.
+
+rad_climate =
+ 'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'N:ozone:O3', 'A:N2O:N2O', 'A:CH4:CH4', 'N:CFC11STAR:CFC11', 'A:CFC12:CFC12',
+ 'M:mam4_mode1:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc',
+ 'M:mam4_mode2:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
+ 'M:mam4_mode3:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc',
+ 'M:mam4_mode4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc',
+ 'N:VOLC_MMR1:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc',
+ 'N:VOLC_MMR2:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc',
+ 'N:VOLC_MMR3:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc',
+ 'N:VOLC_MMR5:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc'
+
+ fincl2 = 'VOLC_MMR1','VOLC_MMR2','VOLC_MMR3','VOLC_MMR5','VOLC_RAD_GEOM1','VOLC_RAD_GEOM2','VOLC_RAD_GEOM3','VOLC_RAD_GEOM5',
+          'VOLC_SAD'

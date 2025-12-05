@@ -33,7 +33,6 @@ CONTAINS
     use microp_driver, only: microp_driver_implements_cnst, microp_driver_init_cnst
     use rk_stratiform_cam, only: rk_stratiform_cam_implements_cnst, rk_stratiform_cam_init_cnst
     use tracers,       only: tracers_implements_cnst,       tracers_init_cnst
-    use unicon_cam,    only: unicon_implements_cnst,        unicon_init_cnst
 
     !-----------------------------------------------------------------------
     !
@@ -133,11 +132,6 @@ CONTAINS
       call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q, z=z)
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "tracers_init_cnst"'
-      end if
-    else if (unicon_implements_cnst(trim(name))) then
-      call unicon_init_cnst(trim(name), latvals, lonvals, mask_use, q)
-      if(masterproc .and. verbose_use) then
-        write(iulog,*) '          ', trim(name), ' initialized by "unicon_init_cnst"'
       end if
     else
       if(masterproc .and. verbose_use) then

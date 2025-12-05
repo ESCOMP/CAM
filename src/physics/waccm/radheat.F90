@@ -293,7 +293,7 @@ contains
 !================================================================================================
 
   subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
-       fsnt, flns, flnt, asdir, net_flx)
+       fsnt, flns, flnt, asdir, coszrs, net_flx)
 !-----------------------------------------------------------------------
 ! Compute net radiative heating from qrs and qrl, and the associated net
 ! boundary flux.
@@ -322,6 +322,7 @@ contains
     real(r8),            intent(in)  :: flns(pcols)       ! Srf longwave cooling (up-down) flux
     real(r8),            intent(in)  :: flnt(pcols)       ! Net outgoing lw flux at model top
     real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
+    real(r8),            intent(in)  :: coszrs(pcols)     ! cosine solar zenith angle
     real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables

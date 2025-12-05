@@ -40,10 +40,14 @@ module radheat
   public :: radheat_disable_waccm ! disable waccm heating in the upper atm
 
   real(r8), public :: p_top_for_equil_rad = 0._r8
+  real(r8), public :: p_top_for_radmrg = 0._r8
+  real(r8), public :: p_bot_for_radmrg = 1._r8
+  real(r8), public :: qrsmlt_scaling = 1.0_r8 ! Scaling for "M/LT" SW heating
 
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
   real(r8):: qrl_wt(pver)             ! merge weight for cam long wave heating
+  real(r8):: zref_mid_7km(pver)       ! Zref profile based on 7km scale height
 
   ! lw merge region
   ! highest altitude (lowest  pressure) of merge region (Pa)
@@ -70,7 +74,7 @@ subroutine radheat_readnl(nlfile)
    character(len=32) :: errmsg
    character(len=*), parameter :: sub = 'radheat_readnl'
 
-   namelist /radheat_nl/ p_top_for_equil_rad
+   namelist /radheat_nl/ p_top_for_equil_rad, p_top_for_radmrg, p_bot_for_radmrg, qrsmlt_scaling
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -87,6 +91,12 @@ subroutine radheat_readnl(nlfile)
 
    call mpi_bcast(p_top_for_equil_rad, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: p_top_for_equil_rad")
+   call mpi_bcast(p_top_for_radmrg, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: p_top_for_radmrg")
+   call mpi_bcast(p_bot_for_radmrg, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: p_bot_for_radmrg")
+   call mpi_bcast(qrsmlt_scaling, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast:  qrsmlt_scaling ")
 
 end subroutine radheat_readnl
 
@@ -104,13 +114,14 @@ end subroutine radheat_readnl
 
   subroutine radheat_init(pref_mid)
 
-    
+
     use nlte_fomichev,    only: nlte_fomichev_init
     use phys_control,     only: phys_getopts
+    use cam_history,      only: addfld
 
     ! args
 
-    real(r8),          intent(in) :: pref_mid(pver) ! mid point reference pressure
+    real(r8),          intent(in) :: pref_mid(pver) ! mid point reference pressure (Pa)
     ! local vars
     real(r8) :: co2_mw, o1_mw, o2_mw, o3_mw, no_mw, n2_mw ! molecular weights
 
@@ -127,6 +138,7 @@ end subroutine radheat_readnl
 
 !-----------------------------------------------------------------------
 
+    zref_mid_7km = -7.0_r8 * log( pref_mid/100000._r8 )
 
     call phys_getopts(radiation_scheme_out=rad_pkg, &
                       history_waccm_out=history_waccm, &
@@ -139,8 +151,8 @@ end subroutine radheat_readnl
        min_pressure_lw = 1e5_r8*exp(-10._r8)
        max_pressure_lw = 1e5_r8*exp(-8.57_r8)
     else
-       min_pressure_lw = p_top_for_equil_rad
-       max_pressure_lw = 50._r8
+       min_pressure_lw = p_top_for_radmrg
+       max_pressure_lw = p_bot_for_radmrg
     endif
 
     delta_merge_lw = max_pressure_lw - min_pressure_lw
@@ -168,7 +180,7 @@ end subroutine radheat_readnl
        endif
 
     end do
-    
+
     co2_mw = mwco2
     o1_mw  = 16._r8
     o2_mw  = 32._r8
@@ -178,13 +190,17 @@ end subroutine radheat_readnl
     nlte_limit_co2 = .true.
 ! Initialize Fomichev parameterization
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
-    
+
 
     ! determine upppermost level that is purely solar heating (no MLT chem heating)
     ntop_qrs_cam = 0
     do k=pver,1,-1
        if (qrs_wt(k)==1._r8) ntop_qrs_cam = k
     enddo
+
+    ! Add history variables to master field list
+    call addfld ('QRL_TOT',(/ 'lev' /), 'A','K/s','Merged LW heating: QRL+QRL_MLT')
+    call addfld ('QRS_TOT',(/ 'lev' /), 'A','K/s','Merged SW heating: QRS+QRS_MLT')
 
   end subroutine radheat_init
 
@@ -206,7 +222,7 @@ end subroutine radheat_readnl
 !================================================================================================
 
   subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
-       fsnt, flns, flnt, asdir, net_flx)
+       fsnt, flns, flnt, asdir, coszrs, net_flx)
 !-----------------------------------------------------------------------
 ! Compute net radiative heating from qrs and qrl, and the associated net
 ! boundary flux.
@@ -240,15 +256,20 @@ end subroutine radheat_readnl
     real(r8),            intent(in)  :: flns(pcols)       ! Srf longwave cooling (up-down) flux
     real(r8),            intent(in)  :: flnt(pcols)       ! Net outgoing lw flux at model top
     real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
+    real(r8),            intent(in)  :: coszrs(pcols)     ! cosine solar zenith angle
     real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables
-    integer  :: k 
+    integer  :: k
     integer  :: ncol                                ! number of atmospheric columns
     integer  :: lchnk                               ! chunk identifier
     real(r8) :: qrl_mrg(pcols,pver)                 ! merged LW heating
     real(r8) :: qrl_mlt(pcols,pver)                 ! M/LT longwave heating rates
     real(r8) :: qrs_mrg(pcols,pver)                 ! merged SW heating
+    real(r8) :: qrs_mlt(pcols,pver)                 ! M/LT shortwave heating rates
+    real(r8) :: qout(pcols,pver)                    ! temp for outfld call
+
+    real(r8) :: qrs_mlt_prof(pver)                  ! Base profile for QRS_MLT (K/day)
 
     real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate ! (K/s)
     real(r8) :: o3cool(pcols,pver) ! Fomichev cooling rate ! (K/s)
@@ -264,6 +285,8 @@ end subroutine radheat_readnl
     real(r8), parameter :: N2_mass      = 28.0134_r8 ! g/mol
     real(r8), parameter :: mass_dry_air = 28.9647_r8 ! g/mol
 
+    !real(r8), parameter :: mlt_rad_scaling = 1.0_r8 ! Scaling for "M/LT" SW heating
+
     integer  :: icall
     real(r8), pointer  :: gas_mmr(:,:)
     character(len=512) :: errmsg
@@ -273,10 +296,16 @@ end subroutine radheat_readnl
 
     ncol  = state%ncol
     lchnk = state%lchnk
+    qrs_mlt(:,:) = 0._r8
+
     call physics_ptend_init(ptend, state%psetcols, 'radheat', ls=.true.)
- 
-! Shortwave heating is RRTMG solar heating only
-    qrs_mrg(:,:) = qrs(:,:)
+
+   ! Setting idealized M/LT SW to scaled cosine solar zenith angle
+
+   qrs_mlt_prof = qrs_mlt_profile_a( zref_mid_7km )
+   do k = 1,pver
+      qrs_mlt(:ncol,k) = qrsmlt_scaling * qrs_mlt_prof(k) * max( coszrs(:ncol) , 0._r8 ) / 86400._r8
+   end do
 
    icall = 0
 
@@ -290,7 +319,7 @@ end subroutine radheat_readnl
    xo3mmr(:pcols,:pver) = gas_mmr(:pcols,:pver)
    nullify(gas_mmr)
 
-! Using standard US N2_VMR(0.78084) converted to N2_MMR
+   ! Using standard US N2_VMR(0.78084) converted to N2_MMR
    xn2mmr(:pcols,:pver) =  N2_VMR * (N2_mass / mass_dry_air)
 
    call rad_cnst_get_gas(icall,'CO2  ', state, pbuf, gas_mmr)
@@ -301,8 +330,19 @@ end subroutine radheat_readnl
         xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlfomichev,co2cool,o3cool,c2scool)
    qrl_mlt = qrlfomichev
 
-!  Merge cam long wave heating for lower atmosphere with M/LT (nlte) heating
-   call merge_qrl (ncol, qrl, qrl_mlt, qrl_mrg)
+   !  Merge cam long wave heating for lower atmosphere with M/LT (nlte) heating
+   call merge_qrx (ncol, qrl, qrl_mlt, qrl_mrg)
+   !  Merge cam short wave heating for lower atmosphere with M/LT (nlte) heating
+   call merge_qrx (ncol, qrs, qrs_mlt, qrs_mrg)
+
+    qout(:ncol,:) = qrs_mrg(:ncol,:)/cpair
+    call outfld ('QRS_TOT', qout, pcols, lchnk)
+    qout(:ncol,:) = qrl_mrg(:ncol,:)/cpair
+    call outfld ('QRL_TOT', qout, pcols, lchnk)
+
+
+
+
 
    ! REMOVECAM no longer need once CAM is retired and pcols doesn't exist
    net_flx = 0._r8
@@ -330,9 +370,9 @@ end subroutine radheat_readnl
   subroutine radheat_disable_waccm()
   end subroutine radheat_disable_waccm
 
-  subroutine merge_qrl (ncol, hcam, hmlt, hmrg)
+  subroutine merge_qrx (ncol, hcam, hmlt, hmrg)
 !
-!  Merges long wave heating rates
+!  Merges  heating rates
 !
 !-----------------Input arguments-----------------------------------
     integer ncol
@@ -351,6 +391,91 @@ end subroutine radheat_readnl
        hmrg(:ncol,k) = qrl_wt(k) * hcam(:ncol,k) + (1._r8-qrl_wt(k)) * hmlt(:ncol,k)
     end do
 
-  end subroutine merge_qrl
+  end subroutine merge_qrx
+
+!--------------------------------------------------------------------
+!--------------------------------------------------------------------
+  ! Elemental: works on scalars and arrays
+  pure elemental function qrs_mlt_profile_b(z) result(x)
+    !---------------------------------------------------------------
+    ! Returns profile of SW heating (K/day) based on curve
+    ! fitting to equatorial mean profile of QRS_TOT in:
+    !
+    !        SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc
+    !----------------------------------------------------------------
+    real(r8), intent(in) :: z ! height in km
+    real(r8) :: x             ! heating in K/day
+
+
+    ! Named parameters
+    real(r8) :: c0, c1, a1, z1, s1, a2, z2, s2
+
+    ! Assign values from popt
+
+    ! --------------------
+    ! Values from are from fitting to mean equatorial WACCM QRS_TOT in
+    !
+    ! SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc
+    !
+    ! using function 'curve_fit' in scipy.optimize:
+    ! https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
+    !
+    ! applied to the functional form:
+    ! c0 + c1*z + a1 * tanh( (z - z1)/s1 ) + a2 * tanh( (z - z2)/s2 )
+    !
+    ! z is in the range 0 to 100km
+    ! --------------------
+
+    c0 = 32.45612064_r8
+    c1 = -0.50124861_r8
+    a1 = 19.11626479_r8
+    z1 = 30.41572125_r8
+    s1 = 20.90525292_r8
+    a2 = 13.50543681_r8
+    z2 = 87.95888464_r8
+    s2 =  9.94346974_r8
+
+    x = c0 + c1*z + a1 * tanh( (z - z1)/s1 ) + a2 * tanh( (z - z2)/s2 )
+
+  end function qrs_mlt_profile_b
+!-----------------------------------------------------------------------
+! Pure elemental function: works on scalars or arrays, side-effect free.
+!-----------------------------------------------------------------------
+  pure elemental function qrs_mlt_profile_a(z) result(x)
+    !---------------------------------------------------------------
+    ! Returns profile of SW heating (K/day) based on curve
+    ! fitting to equatorial mean profile of QRS_TOT in:
+    !
+    !        SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc
+    !----------------------------------------------------------------
+    implicit none
+    real(r8), intent(in) :: z ! reference height profile
+    real(r8) :: x             ! heating in K/day
+
+    ! ---- Best-fit parameters ----
+    ! Values from are from fitting to mean equatorial WACCM QRS_TOT in
+    !
+    ! SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc
+    ! https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
+    !
+    ! applied to the functional form:
+    ! c0_1 + c1_1z + a1_1sin( (z - z1_1)/s1_1 )
+    !
+    ! z is in the range 40 to 100km
+    ! ----------
+    real(r8), parameter :: c0_1 = -11.839696742958163_r8
+    real(r8), parameter :: c1_1 =   0.23077408652259085_r8
+    real(r8), parameter :: a1_1 =   3.741649559788312_r8
+    real(r8), parameter :: z1_1 =  36.50366034343402_r8
+    real(r8), parameter :: s1_1 =   8.696300405188122_r8
+
+    ! Set heating rate profile to zero below 40km.  Above 40km, use funtional form
+    if (z < 40._r8 ) then
+       x = 0._r8
+    else
+       x = c0_1 + c1_1*z + a1_1*sin( (z - z1_1)/s1_1 )
+    end if
+
+  end function qrs_mlt_profile_a
 
 end module radheat
