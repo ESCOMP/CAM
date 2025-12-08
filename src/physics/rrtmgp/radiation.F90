@@ -447,7 +447,6 @@ subroutine radiation_init(pbuf2d)
                                           ! liquid budgets.
    integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr, istat, errflg
-   character(len=5) :: gaslist_tmp(8)
 
    integer :: dtime
    real(r8) :: dtime_r8
@@ -456,7 +455,7 @@ subroutine radiation_init(pbuf2d)
    !-----------------------------------------------------------------------
    
    ! Initialize available_gases object
-   call rrtmgp_pre_init(nradgas, available_gases, gaslist_tmp, gaslist_lc, errmsg, errflg)
+   call rrtmgp_pre_init(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
