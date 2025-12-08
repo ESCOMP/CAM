@@ -2,10 +2,10 @@ module cospsimulator_intr
   ! ######################################################################################
   ! Purpose: CAM interface to
   !         Name:         CFMIP Observational Simulator Package Version 2 (COSP2)
-  !         What:         Simulate ISCCP/CloudSat/CALIPSO/MISR/MODIS cloud products from 
+  !         What:         Simulate ISCCP/CloudSat/CALIPSO/MISR/MODIS cloud products from
   !                       GCM inputs
-  !         Version:      v2.1.4 (August 2019)
-  !         Authors:      Dustin Swales (dustin.swales@noaa.gov)
+  !         Version:      v2.1.9 (October 2025)
+  !         Authors:      Dustin Swales (dustin.swales@noaa.gov), Jonah Shaw (jonah.shaw@colorado.edu)
   !
   ! Modifications:
   !
@@ -30,11 +30,17 @@ module cospsimulator_intr
        numMODISTauBins, numMODISPresBins, numMODISReffIceBins, numMODISReffLiqBins,    &
        numISCCPTauBins, numISCCPPresBins, numMISRTauBins, reffICE_binEdges,            &
        reffICE_binCenters, reffLIQ_binEdges, reffLIQ_binCenters, LIDAR_NTYPE,          &
-       nCloudsatPrecipClass, &
+       nCloudsatPrecipClass, CFODD_NDBZE, CFODD_NICOD, CFODD_BNDRE, CFODD_NCLASS,      &
+       CFODD_DBZE_MIN, CFODD_DBZE_MAX, CFODD_ICOD_MIN, CFODD_ICOD_MAX,                 &
+       CFODD_DBZE_WIDTH, CFODD_ICOD_WIDTH, WR_NREGIME, CFODD_HISTDBZE,                 &
+       CFODD_HISTDBZEcenters, CFODD_HISTICOD, CFODD_HISTICODcenters,LWP_binBounds,     &
+       IWP_binBounds,LWP_binEdges,IWP_binEdges,LWP_binCenters,IWP_binCenters,          &
        nsza_cosp         => PARASOL_NREFL,       &
        nprs_cosp         => npres,               &
        ntau_cosp         => ntau,                &
        ntau_cosp_modis   => ntau,                &
+       nlwp_cosp_modis   => nLWP,                &
+       niwp_cosp_modis   => nIWP,                &
        nsr_cosp          => SR_BINS,             &
        nhtmisr_cosp      => numMISRHgtBins,      &
        nhydro            => N_HYDRO, &
@@ -44,7 +50,7 @@ module cospsimulator_intr
   implicit none
   private
   save
-   
+
   ! Public functions/subroutines
   public :: &
        cospsimulator_intr_readnl,  &
@@ -55,26 +61,26 @@ module cospsimulator_intr
   ! ######################################################################################
   ! Public declarations
   ! ######################################################################################
-  ! Whether to do COSP calcs and I/O, default is false. If docosp is specified in 
+  ! Whether to do COSP calcs and I/O, default is false. If docosp is specified in
   ! the atm_in namelist, this value is overwritten and cosp is run
-  logical, public, protected :: docosp = .false.  
+  logical, public, protected :: docosp = .false.
 
   ! Frequency at which cosp is called, every cosp_nradsteps radiation timestep
   integer, public, protected :: cosp_nradsteps = 1
-  
+
 #ifdef USE_COSP
 
-  ! ######################################################################################  
+  ! ######################################################################################
   ! Local declarations
   ! ######################################################################################
   integer ::  &
        nlay,        &     ! Number of CAM layers used by COSP.
        nlayp,       &     ! Number of CAM layer interfaces used by COSP.
        nscol_cosp,  &     ! Number of subcolumns, allow namelist input to set.
-       nht_cosp           ! Number of height for COSP radar and calipso simulator outputs.  
+       nht_cosp           ! Number of height for COSP radar and calipso simulator outputs.
                           !  *set to 40 if csat_vgrid=.true., else set to Nlr*
 
-  
+
   ! ######################################################################################
   ! Bin-boundaries for mixed dimensions. Calculated in cospsetupvales OR in cosp_config.F90
   ! ######################################################################################
@@ -82,7 +88,7 @@ module cospsimulator_intr
   real(r8), target :: prslim_cosp(2,nprs_cosp)
   real(r8), target :: taumid_cosp(ntau_cosp)            ! optical depth midpoints of COSP ISCCP output
   real(r8), target :: taulim_cosp(2,ntau_cosp)
-  real(r8), target :: srmid_cosp(nsr_cosp)              ! sr midpoints of COSP lidar output     
+  real(r8), target :: srmid_cosp(nsr_cosp)              ! sr midpoints of COSP lidar output
   real(r8), target :: srlim_cosp(2,nsr_cosp)
   real(r8), target :: sza_cosp(nsza_cosp)
   real(r8), target :: dbzemid_cosp(CLOUDSAT_DBZE_BINS)          ! dbze midpoints of COSP radar output
@@ -95,6 +101,12 @@ module cospsimulator_intr
   real(r8), target :: reffLIQ_binEdges_cosp(2,numMODISReffLiqBins)
   real(r8), target :: reffICE_binCenters_cosp(numMODISReffIceBins)
   real(r8), target :: reffLIQ_binCenters_cosp(numMODISReffLiqBins)
+  real(r8), target :: LWP_binEdges_cosp(2,nlwp_cosp_modis)
+  real(r8), target :: IWP_binEdges_cosp(2,niwp_cosp_modis)
+  real(r8), target :: LWP_binCenters_cosp(nlwp_cosp_modis)
+  real(r8), target :: IWP_binCenters_cosp(niwp_cosp_modis)   
+  real(r8), target :: cfodd_histdbze_cosp(CFODD_NDBZE)
+  real(r8), target :: cfodd_histicod_cosp(CFODD_NICOD)
 
   integer  :: prstau_cosp(nprs_cosp*ntau_cosp)             ! ISCCP mixed output dimension index
   integer  :: prstau_cosp_modis(nprs_cosp*ntau_cosp_modis) ! MODIS mixed output dimension index
@@ -114,7 +126,7 @@ module cospsimulator_intr
   real(r8),allocatable         :: htsr_htmid_cosp(:)       ! (nht_cosp*nsr_cosp)
   real(r8),allocatable         :: htsr_srmid_cosp(:)       ! (nht_cosp*nsr_cosp)
   real(r8),allocatable         :: htmlscol_htmlmid_cosp(:) ! (nlay*nscol_cosp)
-  real(r8),allocatable         :: htmlscol_scol_cosp(:)    ! (nlay*nscol_cosp) 
+  real(r8),allocatable         :: htmlscol_scol_cosp(:)    ! (nlay*nscol_cosp)
   integer, allocatable, target :: scol_cosp(:)             ! sub-column number (nscol_cosp)
   integer, allocatable         :: htdbze_cosp(:)           ! radar CFAD mixed output dimension index (nht_cosp*CLOUDSAT_DBZE_BINS)
   integer, allocatable         :: htsr_cosp(:)             ! lidar CFAD mixed output dimension index (nht_cosp*nsr_cosp)
@@ -139,7 +151,7 @@ module cospsimulator_intr
   integer :: cosp_ncolumns         = 50
   integer :: cosp_histfile_num     =  1
   integer :: cosp_histfile_aux_num = -1
-  
+
   ! COSP
   logical :: lradar_sim       = .false.
   logical :: llidar_sim       = .false.
@@ -152,16 +164,16 @@ module cospsimulator_intr
   logical :: lrttov_sim       = .false.
   logical :: lfrac_out        = .false.
 
-  ! ######################################################################################  
+  ! ######################################################################################
   ! COSP parameters
   ! ######################################################################################
   integer, parameter :: Npoints_it = 10000       ! Max # gridpoints to be processed in one iteration (10,000)
   integer :: ncolumns = 50                       ! Number of subcolumns in SCOPS (50)
-  integer :: nlr = 40                            ! Number of levels in statistical outputs 
+  integer :: nlr = 40                            ! Number of levels in statistical outputs
                                                  ! (only used if USE_VGRID=.true.)  (40)
-  logical :: use_vgrid = .true.                  ! Use fixed vertical grid for outputs? 
+  logical :: use_vgrid = .true.                  ! Use fixed vertical grid for outputs?
                                                  ! (if .true. then define # of levels with nlr)  (.true.)
-  logical :: csat_vgrid = .true.                 ! CloudSat vertical grid? 
+  logical :: csat_vgrid = .true.                 ! CloudSat vertical grid?
 
   ! Variables for COSP input related to radar simulator
   real(r8) :: radar_freq = 94.0_r8               ! CloudSat radar frequency (GHz) (94.0)
@@ -206,7 +218,7 @@ module cospsimulator_intr
 
   ! ######################################################################################
   ! Other variables
-  ! ######################################################################################  
+  ! ######################################################################################
   logical,allocatable :: first_run_cosp(:)      !.true. if run_cosp has been populated (allocatable->begchunk:endchunk)
   logical,allocatable :: run_cosp(:,:)          !.true. if cosp should be run by column and
                                                 !       chunk (allocatable->1:pcols,begchunk:endchunk)
@@ -217,7 +229,7 @@ module cospsimulator_intr
   integer :: dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx
-  
+
   ! ######################################################################################
   ! Declarations specific to COSP2
   ! ######################################################################################
@@ -226,7 +238,7 @@ module cospsimulator_intr
   type(size_distribution)              :: sd       ! Size distribution used by radar simulator
   type(size_distribution), allocatable :: sd_cs(:) ! chunked version of sd
   character(len=64)         :: cloudsat_micro_scheme = 'MMF_v3.5_single_moment'
-  
+
   integer,parameter :: &
        I_LSCLIQ = 1, & ! Large-scale (stratiform) liquid
        I_LSCICE = 2, & ! Large-scale (stratiform) ice
@@ -237,12 +249,12 @@ module cospsimulator_intr
        I_CVRAIN = 7, & ! Convective rain
        I_CVSNOW = 8, & ! Convective snow
        I_LSGRPL = 9    ! Large-scale (stratiform) groupel
-  
+
   ! Stratiform and convective clouds in frac_out (scops output).
   integer, parameter :: &
        I_LSC = 1, & ! Large-scale clouds
-       I_CVC = 2    ! Convective clouds    
-  
+       I_CVC = 2    ! Convective clouds
+
   ! Microphysical settings for the precipitation flux to mixing ratio conversion
   real(r8),parameter,dimension(nhydro) :: &
                  !  LSL     LSI         LSR         LSS       CVL     CVI        CVR          CVS          LSG
@@ -257,7 +269,7 @@ module cospsimulator_intr
        gamma_1 = (/-1._r8, -1._r8, 17.83725_r8, 8.284701_r8, -1._r8, -1._r8, 17.83725_r8, 8.284701_r8, 11.63230_r8/),&
        gamma_2 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/),&
        gamma_3 = (/-1._r8, -1._r8,      2.0_r8,      2.0_r8, -1._r8, -1._r8,      2.0_r8,      2.0_r8,      2.0_r8/),&
-       gamma_4 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/)       
+       gamma_4 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/)
 #endif
 
 CONTAINS
@@ -284,12 +296,12 @@ CONTAINS
        cosp_lfrac_out, cosp_lradar_sim, cosp_llidar_sim, cosp_lisccp_sim,        &
        cosp_lmisr_sim, cosp_lmodis_sim,                                          &
        cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num
-    
+
     !! read in the namelist
     if (masterproc) then
        unitn = getunit()
        open( unitn, file=trim(nlfile), status='old' )
-       call find_group_name(unitn, 'cospsimulator_nl', status=ierr)   
+       call find_group_name(unitn, 'cospsimulator_nl', status=ierr)
        if (ierr == 0) then
           read(unitn, cospsimulator_nl, iostat=ierr)
           if (ierr /= 0) then
@@ -299,7 +311,7 @@ CONTAINS
        close(unitn)
        call freeunit(unitn)
     end if
-    
+
 #ifdef SPMD
     ! Broadcast namelist variables
     call mpibcast(docosp,               1,  mpilog, 0, mpicom)
@@ -320,8 +332,8 @@ CONTAINS
     call mpibcast(cosp_histfile_aux_num,1,  mpiint, 0, mpicom)
     call mpibcast(cosp_histfile_aux,    1,  mpilog, 0, mpicom)
     call mpibcast(cosp_nradsteps,       1,  mpiint, 0, mpicom)
-#endif   
-    
+#endif
+
     if (cosp_lfrac_out) then
        lfrac_out = .true.
     end if
@@ -341,11 +353,11 @@ CONTAINS
     if (cosp_lmodis_sim) then
        lmodis_sim = .true.
     end if
-    
+
     if (cosp_histfile_aux .and. cosp_histfile_aux_num == -1) then
        cosp_histfile_aux_num = cosp_histfile_num
     end if
-    
+
     if (cosp_lite) then
        llidar_sim = .true.
        lparasol_sim = .true.
@@ -355,7 +367,7 @@ CONTAINS
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
-    
+
     if (cosp_passive) then
        lisccp_sim = .true.
        lmisr_sim = .true.
@@ -363,7 +375,7 @@ CONTAINS
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
-    
+
     if (cosp_active) then
        lradar_sim = .true.
        llidar_sim = .true.
@@ -371,13 +383,13 @@ CONTAINS
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
-    
+
     if (cosp_isccp) then
        lisccp_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
-    
+
     if (cosp_runall) then
        lradar_sim = .true.
        llidar_sim = .true.
@@ -387,7 +399,7 @@ CONTAINS
        lmodis_sim = .true.
        lfrac_out = .true.
     end if
-    
+
     !! if no simulators are turned on at all and docosp is, set cosp_amwg = .true.
     if((docosp) .and. (.not.lradar_sim) .and. (.not.llidar_sim) .and. (.not.lisccp_sim) .and. &
          (.not.lmisr_sim) .and. (.not.lmodis_sim)) then
@@ -403,13 +415,13 @@ CONTAINS
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
-    
+
     ! Set number of sub-columns, from namelist
     ncolumns   = cosp_ncolumns
     nscol_cosp = cosp_ncolumns
-        
+
     if (masterproc) then
-       if (docosp) then 
+       if (docosp) then
           write(iulog,*)'COSP configuration:'
           write(iulog,*)'  Number of COSP subcolumns                = ', cosp_ncolumns
           write(iulog,*)'  COSP frequency in radiation steps        = ', cosp_nradsteps
@@ -441,7 +453,7 @@ CONTAINS
 
     use cam_history_support, only: add_hist_coord
     !---------------------------------------------------------------------------
-    
+
 #ifdef USE_COSP
     ! Set number of levels used by COSP to the number of levels used by
     ! CAM's cloud macro/microphysics parameterizations.
@@ -454,71 +466,82 @@ CONTAINS
     ! Define coordinate variables for COSP outputs.
     if (lisccp_sim .or. lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
-            'hPa', prsmid_cosp, bounds_name='cosp_prs_bnds', bounds=prslim_cosp)
+            'Pa', prsmid_cosp, bounds_name='cosp_prs_bnds', bounds=prslim_cosp)
     end if
-    
+
     if (lisccp_sim .or. lmisr_sim) then
        call add_hist_coord('cosp_tau', ntau_cosp,                              &
             'COSP Mean ISCCP optical depth', '1', taumid_cosp,                 &
             bounds_name='cosp_tau_bnds', bounds=taulim_cosp)
     end if
-    
+
     if (lisccp_sim .or. llidar_sim .or. lradar_sim .or. lmisr_sim) then
        call add_hist_coord('cosp_scol', nscol_cosp, 'COSP subcolumn',          &
             values=scol_cosp)
     end if
-    
+
     if (llidar_sim .or. lradar_sim) then
        call add_hist_coord('cosp_ht', nht_cosp,                                &
             'COSP Mean Height for calipso and radar simulator outputs', 'm',   &
             htmid_cosp, bounds_name='cosp_ht_bnds', bounds=htlim_cosp,         &
             vertical_coord=.true.)
     end if
-    
+
     if (llidar_sim) then
        call add_hist_coord('cosp_sr', nsr_cosp,                                &
             'COSP Mean Scattering Ratio for calipso simulator CFAD output', '1', &
             srmid_cosp, bounds_name='cosp_sr_bnds', bounds=srlim_cosp)
     end if
-    
+
     if (llidar_sim) then
        call add_hist_coord('cosp_sza', nsza_cosp, 'COSP Parasol SZA',          &
             'degrees', sza_cosp)
     end if
-    
+
     if (lradar_sim) then
        call add_hist_coord('cosp_dbze', CLOUDSAT_DBZE_BINS,                    &
             'COSP Mean dBZe for radar simulator CFAD output', 'dBZ',           &
             dbzemid_cosp, bounds_name='cosp_dbze_bnds', bounds=dbzelim_cosp)
+       call add_hist_coord('cosp_cfodd_dbze', CFODD_NDBZE,                     &
+            'COSP Mean dBZe for radar simulator CFODD output', 'dBZ',          &
+            cfodd_histdbze_cosp)
+       call add_hist_coord('cosp_cfodd_icod', CFODD_NICOD,                            &
+            'COSP Mean in-cloud optical depth for radar simulator CFODD output', '1', &
+            cfodd_histicod_cosp)
     end if
-    
+
     if (lmisr_sim) then
        call add_hist_coord('cosp_htmisr', nhtmisr_cosp, 'COSP MISR height', &
             'km', htmisrmid_cosp,                                           &
             bounds_name='cosp_htmisr_bnds', bounds=htmisrlim_cosp)
     end if
-    
+
     if (lmodis_sim) then
        call add_hist_coord('cosp_tau_modis', ntau_cosp_modis,                  &
             'COSP Mean MODIS optical depth', '1', taumid_cosp_modis,           &
             bounds_name='cosp_tau_modis_bnds', bounds=taulim_cosp_modis)
        call add_hist_coord('cosp_reffice',numMODISReffIceBins,                 &
-            'COSP Mean MODIS effective radius (ice)', 'microns', reffICE_binCenters_cosp, &
+            'COSP Mean MODIS effective radius (ice)', 'm', reffICE_binCenters_cosp, &
             bounds_name='cosp_reffice_bnds',bounds=reffICE_binEdges_cosp)
        call add_hist_coord('cosp_reffliq',numMODISReffLiqBins,                 &
-            'COSP Mean MODIS effective radius (liquid)', 'microns', reffLIQ_binCenters_cosp, &
-            bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges_cosp)      
+            'COSP Mean MODIS effective radius (liquid)', 'm', reffLIQ_binCenters_cosp, &
+            bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges_cosp)
+       call add_hist_coord('cosp_lwp_modis',nlwp_cosp_modis,                              &
+            'COSP MODIS liquid water path', 'kg m-2', LWP_binCenters_cosp,     &
+            bounds_name='cosp_lwp_modis_bnds',bounds=LWP_binEdges_cosp)
+       call add_hist_coord('cosp_iwp_modis',niwp_cosp_modis,                              &
+            'COSP MODIS ice water path', 'kg m-2', IWP_binCenters_cosp,        &
+            bounds_name='cosp_iwp_modis_bnds',bounds=IWP_binEdges_cosp)
     end if
-    
 #endif
   end subroutine cospsimulator_intr_register
-  
+
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_init
   ! ######################################################################################
   subroutine cospsimulator_intr_init()
 
-#ifdef USE_COSP     
+#ifdef USE_COSP
 
     use cam_history,         only: addfld, add_default, horiz_only
     use physics_buffer,      only: pbuf_get_index
@@ -526,7 +549,7 @@ CONTAINS
     integer :: i, ierr, istat
     character(len=*), parameter :: sub = 'cospsimulator_intr_init'
     !---------------------------------------------------------------------------
-    
+
     ! The COSP init method (setcosp2values) was run from cospsimulator_intr_register in order to add
     ! the history coordinate variables earlier as needed for the restart time sequencing.
 
@@ -558,7 +581,7 @@ CONTAINS
        call add_default('MEANTAU_ISCCP',cosp_histfile_num,' ')
        call add_default('MEANTB_ISCCP',cosp_histfile_num,' ')
        call add_default('MEANTBCLR_ISCCP',cosp_histfile_num,' ')
-      
+
     end if
 
     ! CALIPSO SIMULATOR OUTPUTS
@@ -619,7 +642,7 @@ CONTAINS
             'Calipso Low-level Liquid Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDLOW_CAL_UN', horiz_only, 'A', 'percent', &
             'Calipso Low-level Undefined-Phase Cloud Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-    
+
        call add_default('CLDLOW_CAL',cosp_histfile_num,' ')
        call add_default('CLDMED_CAL',cosp_histfile_num,' ')
        call add_default('CLDHGH_CAL',cosp_histfile_num,' ')
@@ -697,6 +720,14 @@ CONTAINS
        call addfld('CS_PIA',       horiz_only, 'A', 'dBZ', &
             'CloudSat Radar Path Integrated Attenuation', flag_xyfill=.true., fill_value=R_UNDEF)
 
+       ! CloudSat warm rain diagnostics (Michibata et al. 2019, GMD)
+       call addfld('CS_WR_NOPRECIP',  horiz_only, 'A', '1', &
+            'Frequency of non-precipitating single-layer warm clouds', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CS_WR_DRIZ',  horiz_only, 'A', '1', &
+            'Frequency of drizzling single-layer warm clouds', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CS_WR_PRECIP',  horiz_only, 'A', '1', &
+            'Frequency of precipitating single-layer warm clouds', flag_xyfill=.true., fill_value=R_UNDEF)
+
        call add_default('CFAD_DBZE94_CS',cosp_histfile_num,' ')
        call add_default('CLD_CAL_NOTCS', cosp_histfile_num,' ')
        call add_default('CLDTOT_CALCS',  cosp_histfile_num,' ')
@@ -713,8 +744,24 @@ CONTAINS
        call add_default('CS_RAINHARD',   cosp_histfile_num,' ')
        call add_default('CS_UN',         cosp_histfile_num,' ')
        call add_default('CS_PIA',        cosp_histfile_num,' ')
+       call add_default('CS_WR_NOPRECIP',         cosp_histfile_num,' ')
+       call add_default('CS_WR_DRIZ',             cosp_histfile_num,' ')
+       call add_default('CS_WR_PRECIP',           cosp_histfile_num,' ')
     end if
-    
+
+   if (lradar_sim) then
+       call addfld('CS_WR_CFODD_REFF_SMALL',(/'cosp_cfodd_dbze','cosp_cfodd_icod'/), 'A', '1', &
+            '# of CFODD (05 < Reff < 12 micron)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CS_WR_CFODD_REFF_MEDIUM',(/'cosp_cfodd_dbze','cosp_cfodd_icod'/), 'A', '1', &
+            '# of CFODD (12 < Reff < 18 micron)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CS_WR_CFODD_REFF_LARGE',(/'cosp_cfodd_dbze','cosp_cfodd_icod'/), 'A', '1', &
+            '# of CFODD (18 < Reff < 35 micron)', flag_xyfill=.true., fill_value=R_UNDEF)
+
+       call add_default('CS_WR_CFODD_REFF_SMALL', cosp_histfile_num,' ')
+       call add_default('CS_WR_CFODD_REFF_MEDIUM',cosp_histfile_num,' ')
+       call add_default('CS_WR_CFODD_REFF_LARGE', cosp_histfile_num,' ')
+
+    end if
     ! MISR SIMULATOR OUTPUTS
     if (lmisr_sim) then
        call addfld('CLD_MISR', (/'cosp_tau   ','cosp_htmisr'/), 'A', 'percent', &
@@ -761,11 +808,18 @@ CONTAINS
             'MODIS Cloud Ice Water Path*CLIMODIS', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLMODIS', (/'cosp_tau_modis','cosp_prs      '/), 'A', '%', &
             'MODIS Cloud Area Fraction (tau-pressure histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLMODIS_LIQ', (/'cosp_tau_modis','cosp_prs      '/), 'A', '%', &
+            'MODIS Liquid Cloud Area Fraction (tau-pressure histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLMODIS_ICE', (/'cosp_tau_modis','cosp_prs      '/), 'A', '%', &
+            'MODIS Ice Cloud Area Fraction (tau-pressure histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLRIMODIS', (/'cosp_tau_modis','cosp_reffice  '/), 'A', '%', &
             'MODIS Cloud Area Fraction (tau-reffice histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLRLMODIS', (/'cosp_tau_modis','cosp_reffliq  '/), 'A', '%', &
             'MODIS Cloud Area Fraction (tau-reffliq histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
-       
+       call addfld('LWP_REFFCLW_MODIS', (/'cosp_lwp_modis','cosp_reffliq  '/), 'A', '%', &
+            'MODIS Cloud Area Fraction (lwp-reffclw histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('IWP_REFFCLI_MODIS', (/'cosp_iwp_modis','cosp_reffice  '/), 'A', '%', &
+            'MODIS Cloud Area Fraction (iwp-reffcli histogram)', flag_xyfill=.true., fill_value=R_UNDEF)
        call add_default('CLTMODIS',cosp_histfile_num,' ')
        call add_default('CLWMODIS',cosp_histfile_num,' ')
        call add_default('CLIMODIS',cosp_histfile_num,' ')
@@ -784,10 +838,14 @@ CONTAINS
        call add_default('LWPMODIS',cosp_histfile_num,' ')
        call add_default('IWPMODIS',cosp_histfile_num,' ')
        call add_default('CLMODIS',cosp_histfile_num,' ')
+       call add_default('CLMODIS_LIQ',cosp_histfile_num,' ')
+       call add_default('CLMODIS_ICE',cosp_histfile_num,' ')
        call add_default('CLRIMODIS',cosp_histfile_num,' ')
        call add_default('CLRLMODIS',cosp_histfile_num,' ')
+       call add_default('LWP_REFFCLW_MODIS',cosp_histfile_num,' ')
+       call add_default('IWP_REFFCLI_MODIS',cosp_histfile_num,' ')
     end if
-    
+
     ! SUB-COLUMN OUTPUT
     if (lfrac_out) then
        call addfld('SCOPS_OUT', (/'cosp_scol','trop_pref'/), 'I', '0=nocld,1=strcld,2=cnvcld', &
@@ -808,7 +866,7 @@ CONTAINS
           call add_default('DBZE_CS',cosp_histfile_num,' ')
        end if
     end if
-    
+
     !! ADDFLD, ADD_DEFAULT, OUTFLD CALLS FOR COSP OUTPUTS IF RUNNING COSP OFF-LINE
     if (cosp_histfile_aux) then
        call addfld ('PS_COSP',         horiz_only,            'I','Pa', &
@@ -821,7 +879,7 @@ CONTAINS
           'COSP Pressure (layer interface)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('ZLEV_COSP',       (/            'trop_pref'/), 'I','m',  &
           'COSP Height (layer midpoint)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('ZLEV_HALF_COSP',  (/            'trop_prefi'/), 'I','m',  &
+       call addfld ('ZLEV_HALF_COSP',  (/            'trop_pref'/), 'I','m',  &
           'COSP Height (layer interface)', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('T_COSP',          (/            'trop_pref'/), 'I','K',  &
           'COSP Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
@@ -862,7 +920,7 @@ CONTAINS
        call add_default('CS_kr_vol',       cosp_histfile_aux_num,' ')
        call add_default('CS_g_vol',        cosp_histfile_aux_num,' ')
     end if
-    
+
     rei_idx        = pbuf_get_index('REI')
     rel_idx        = pbuf_get_index('REL')
     cld_idx        = pbuf_get_index('CLD')
@@ -879,14 +937,14 @@ CONTAINS
     shflxsnw_idx   = pbuf_get_index('SH_FLXSNW', errcode=ierr)
     lsflxprc_idx   = pbuf_get_index('LS_FLXPRC')
     lsflxsnw_idx   = pbuf_get_index('LS_FLXSNW')
-    
+
     allocate(first_run_cosp(begchunk:endchunk), run_cosp(1:pcols,begchunk:endchunk), &
        stat=istat)
     call handle_allocate_error(istat, sub, '*run_cosp')
     first_run_cosp(begchunk:endchunk)=.true.
     run_cosp(1:pcols,begchunk:endchunk)=.false.
 
-#endif    
+#endif
   end subroutine cospsimulator_intr_init
 
   ! ######################################################################################
@@ -894,10 +952,10 @@ CONTAINS
   ! ######################################################################################
 #ifdef USE_COSP
   subroutine setcosp2values()
-    use mod_cosp,             only: cosp_init 
+    use mod_cosp,             only: cosp_init
     use mod_cosp_config,      only: vgrid_zl, vgrid_zu, vgrid_z
     use mod_quickbeam_optics, only: hydro_class_init, quickbeam_optics_init
-    
+
     ! Local
     logical :: ldouble=.false.
     logical :: lsingle=.true. ! Default is to use single moment
@@ -923,17 +981,23 @@ CONTAINS
     reffICE_binEdges_cosp   = reffICE_binEdges
     reffLIQ_binCenters_cosp = reffLIQ_binCenters
     reffLIQ_binEdges_cosp   = reffLIQ_binEdges
-                                  
+    LWP_binEdges_cosp       = LWP_binEdges
+    IWP_binEdges_cosp       = IWP_binEdges
+    LWP_binCenters_cosp     = LWP_binCenters
+    IWP_binCenters_cosp     = IWP_binCenters
+    cfodd_histdbze_cosp     = CFODD_HISTDBZEcenters
+    cfodd_histicod_cosp     = CFODD_HISTICODcenters
+
     ! Initialize the distributional parameters for hydrometeors in radar simulator. In COSPv1.4, this was declared in
     ! cosp_defs.f.
     if (cloudsat_micro_scheme == 'MMF_v3.5_two_moment')  then
-       ldouble = .true. 
+       ldouble = .true.
        lsingle = .false.
     endif
     call hydro_class_init(lsingle,ldouble,sd)
     call quickbeam_optics_init()
 
-    ! DS2017: The setting up of the vertical grid for regridding the CALIPSO and Cloudsat products is 
+    ! DS2017: The setting up of the vertical grid for regridding the CALIPSO and Cloudsat products is
     !         now done in cosp_init, but these fields are stored in cosp_config.F90.
     !         Additionally all static fields used by the individual simulators are set up by calls
     !         to _init functions in cosp_init.
@@ -951,9 +1015,9 @@ CONTAINS
           nht_cosp = Nlr
        endif
     endif
-    
+
     ! DJS2017: In COSP2, most of the bin boundaries, centers, and edges are declared in src/cosp_config.F90.
-    !          Above I just assign them accordingly in the USE statement. Other bin bounds needed by CAM 
+    !          Above I just assign them accordingly in the USE statement. Other bin bounds needed by CAM
     !          are calculated here.
 
     allocate( &
@@ -972,7 +1036,7 @@ CONTAINS
        htsr_cosp(nht_cosp*nsr_cosp), &
        htmlscol_cosp(nlay*nscol_cosp), stat=istat)
     call handle_allocate_error(istat, sub, 'htmlmid_cosp,..,htmlscol_cosp')
-    
+
     ! DJS2017: Just pull from cosp_config
     if (use_vgrid) then
        htlim_cosp_1d(1)            = vgrid_zu(1)
@@ -983,10 +1047,10 @@ CONTAINS
     htlim_cosp(2,:) = vgrid_zl
 
     scol_cosp(:) = (/(k,k=1,nscol_cosp)/)
-    
+
     !  Just using an index here, model height is a prognostic variable
     htmlmid_cosp(:) = (/(k,k=1,nlay)/)
-    
+
     ! assign mixed dimensions an integer index for cam_history.F90
     do k=1,nprs_cosp*ntau_cosp
        prstau_cosp(k) = k
@@ -1006,7 +1070,7 @@ CONTAINS
     do k=1,nhtmisr_cosp*ntau_cosp
        htmisrtau_cosp(k) = k
     end do
-    
+
     ! next, assign collapsed reference vectors for cam_history.F90
     ! convention for saving output = prs1,tau1 ... prs1,tau7 ; prs2,tau1 ... prs2,tau7 etc.
     ! actual output is specified in cospsimulator_intr_init.
@@ -1016,35 +1080,35 @@ CONTAINS
        prstau_taumid_cosp_modis(ntau_cosp_modis*(k-1)+1:k*ntau_cosp_modis)=taumid_cosp_modis(1:ntau_cosp_modis)
        prstau_prsmid_cosp_modis(ntau_cosp_modis*(k-1)+1:k*ntau_cosp_modis)=prsmid_cosp(k)
     enddo
-    
+
     do k=1,nht_cosp
        htdbze_dbzemid_cosp(CLOUDSAT_DBZE_BINS*(k-1)+1:k*CLOUDSAT_DBZE_BINS)=dbzemid_cosp(1:CLOUDSAT_DBZE_BINS)
        htdbze_htmid_cosp(CLOUDSAT_DBZE_BINS*(k-1)+1:k*CLOUDSAT_DBZE_BINS)=htmid_cosp(k)
     enddo
-    
+
     do k=1,nht_cosp
        htsr_srmid_cosp(nsr_cosp*(k-1)+1:k*nsr_cosp)=srmid_cosp(1:nsr_cosp)
        htsr_htmid_cosp(nsr_cosp*(k-1)+1:k*nsr_cosp)=htmid_cosp(k)
     enddo
-    
+
     do k=1,nlay
        htmlscol_scol_cosp(nscol_cosp*(k-1)+1:k*nscol_cosp)=scol_cosp(1:nscol_cosp)
        htmlscol_htmlmid_cosp(nscol_cosp*(k-1)+1:k*nscol_cosp)=htmlmid_cosp(k)
     enddo
-    
+
     do k=1,nhtmisr_cosp
        htmisrtau_taumid_cosp(ntau_cosp*(k-1)+1:k*ntau_cosp)=taumid_cosp(1:ntau_cosp)
        htmisrtau_htmisrmid_cosp(ntau_cosp*(k-1)+1:k*ntau_cosp)=htmisrmid_cosp(k)
     enddo
-    
+
   end subroutine setcosp2values
-#endif    
+#endif
 
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_run
   ! ######################################################################################
   subroutine cospsimulator_intr_run(state, pbuf, cam_in, emis, coszrs,     &
-                                    cld_swtau_in, snow_tau_in, snow_emis_in)    
+                                    cld_swtau_in, snow_tau_in, snow_emis_in)
 
     use physics_types,        only: physics_state
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
@@ -1053,7 +1117,7 @@ CONTAINS
     use rad_constituents,     only: rad_cnst_get_gas
     use interpolate_data,     only: lininterp_init,lininterp,lininterp_finish,interp_type
     use physconst,            only: pi, inverse_gravit => rga
-    use cam_history,          only: outfld,hist_fld_col_active 
+    use cam_history,          only: outfld,hist_fld_col_active
     use cam_history_support,  only: max_fieldname_len
 
 #ifdef USE_COSP
@@ -1071,8 +1135,8 @@ CONTAINS
     real(r8), intent(in) :: emis(pcols,pver)                  ! cloud longwave emissivity
     real(r8), intent(in) :: coszrs(pcols)                     ! cosine solar zenith angle (to tell if day or night)
     real(r8), intent(in),optional :: cld_swtau_in(pcols,pver) ! RRTM cld_swtau_in, read in using this variable
-    real(r8), intent(in),optional :: snow_tau_in(pcols,pver)  ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
-    real(r8), intent(in),optional :: snow_emis_in(pcols,pver) ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
+    real(r8), intent(in),optional :: snow_tau_in(pcols,pver)  ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations
+    real(r8), intent(in),optional :: snow_emis_in(pcols,pver) ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations
 
 #ifdef USE_COSP
     ! ######################################################################################
@@ -1090,20 +1154,20 @@ CONTAINS
     integer :: id
 
     real(r8), parameter :: rad2deg = 180._r8/pi
-    
+
     ! Microphysics variables
     integer :: ixcldliq                                   ! cloud liquid amount index for state%q
     integer :: ixcldice                                   ! cloud ice amount index
-    
+
     ! COSP-related local vars
     type(cosp_outputs)        :: cospOUT                  ! COSP simulator outputs
     type(cosp_optical_inputs) :: cospIN                   ! COSP optical (or derived?) fields needed by simulators
     type(cosp_column_inputs)  :: cospstateIN              ! COSP model fields needed by simulators
-    
+
     ! COSP input variables that depend on CAM
     integer :: Npoints                                    ! Number of gridpoints COSP will process
-    real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns 
-    
+    real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns
+
     ! Local vars related to calculations to go from CAM input to COSP input
     ! cosp convective value includes both deep and shallow convection
     real(r8), allocatable :: &
@@ -1132,24 +1196,26 @@ CONTAINS
 
     integer :: cam_sunlit(pcols) ! cam_sunlit - Sunlit flag(1-sunlit/0-dark).
     integer :: nSunLit           ! Number of sunlit (not sunlit) scenes.
-    
+
     ! ######################################################################################
     ! Simulator output info
     ! ######################################################################################
-    integer, parameter :: nf_radar=17                    ! number of radar outputs
+    integer, parameter :: nf_radar=23                    ! number of radar outputs
     integer, parameter :: nf_calipso=28                  ! number of calipso outputs
     integer, parameter :: nf_isccp=9                     ! number of isccp outputs
     integer, parameter :: nf_misr=1                      ! number of misr outputs
-    integer, parameter :: nf_modis=20                    ! number of modis outputs
-    
+    integer, parameter :: nf_modis=24                    ! number of modis outputs
+
     ! Cloudsat outputs
     character(len=max_fieldname_len),dimension(nf_radar),parameter ::          &
-         fname_radar = (/'CFAD_DBZE94_CS', 'CLD_CAL_NOTCS ', 'DBZE_CS       ', &
-                         'CLDTOT_CALCS  ', 'CLDTOT_CS     ', 'CLDTOT_CS2    ', &
-                         'CS_NOPRECIP   ', 'CS_RAINPOSS   ', 'CS_RAINPROB   ', &
-                         'CS_RAINCERT   ', 'CS_SNOWPOSS   ', 'CS_SNOWCERT   ', &
-                         'CS_MIXPOSS    ', 'CS_MIXCERT    ', 'CS_RAINHARD   ', &
-                         'CS_UN         ', 'CS_PIA        '/)
+          fname_radar = (/'CFAD_DBZE94_CS         ', 'CLD_CAL_NOTCS          ', 'DBZE_CS                ', &
+                          'CLDTOT_CALCS           ', 'CLDTOT_CS              ', 'CLDTOT_CS2             ', &
+                          'CS_NOPRECIP            ', 'CS_RAINPOSS            ', 'CS_RAINPROB            ', &
+                          'CS_RAINCERT            ', 'CS_SNOWPOSS            ', 'CS_SNOWCERT            ', &
+                          'CS_MIXPOSS             ', 'CS_MIXCERT             ', 'CS_RAINHARD            ', &
+                          'CS_UN                  ', 'CS_PIA                 ', 'CS_WR_NOPRECIP         ', &
+                          'CS_WR_DRIZ             ', 'CS_WR_PRECIP           ', 'CS_WR_CFODD_REFF_SMALL ', &
+                          'CS_WR_CFODD_REFF_MEDIUM', 'CS_WR_CFODD_REFF_LARGE '/)
 
     ! CALIPSO outputs
     character(len=max_fieldname_len),dimension(nf_calipso),parameter :: &
@@ -1164,27 +1230,28 @@ CONTAINS
          fname_isccp=(/'FISCCP1_COSP    ','CLDTOT_ISCCP    ','MEANCLDALB_ISCCP',&
                        'MEANPTOP_ISCCP  ','TAU_ISCCP       ','CLDPTOP_ISCCP   ','MEANTAU_ISCCP   ',&
                        'MEANTB_ISCCP    ','MEANTBCLR_ISCCP '/)
-    ! MISR outputs 
+    ! MISR outputs
     character(len=max_fieldname_len),dimension(nf_misr),parameter :: &
          fname_misr=(/'CLD_MISR '/)
     ! MODIS outputs
     character(len=max_fieldname_len),dimension(nf_modis) :: &
-         fname_modis=(/'CLTMODIS    ','CLWMODIS    ','CLIMODIS    ','CLHMODIS    ','CLMMODIS    ',&
-                       'CLLMODIS    ','TAUTMODIS   ','TAUWMODIS   ','TAUIMODIS   ','TAUTLOGMODIS',&
-                       'TAUWLOGMODIS','TAUILOGMODIS','REFFCLWMODIS','REFFCLIMODIS',&
-                       'PCTMODIS    ','LWPMODIS    ','IWPMODIS    ','CLMODIS     ','CLRIMODIS   ',&
-                       'CLRLMODIS   '/)
-    
+         fname_modis=(/'CLTMODIS         ','CLWMODIS         ','CLIMODIS         ','CLHMODIS         ',&
+                       'CLMMODIS         ','CLLMODIS         ','TAUTMODIS        ','TAUWMODIS        ',&
+                       'TAUIMODIS        ','TAUTLOGMODIS     ','TAUWLOGMODIS     ','TAUILOGMODIS     ',&
+                       'REFFCLWMODIS     ','REFFCLIMODIS     ','PCTMODIS         ','LWPMODIS         ',&
+                       'IWPMODIS         ','CLMODIS          ','CLRIMODIS        ','CLRLMODIS        ',&
+                       'CLMODIS_LIQ      ','CLMODIS_ICE      ','LWP_REFFCLW_MODIS','IWP_REFFCLI_MODIS'/)
+
     logical :: run_radar(nf_radar,pcols)                 ! logical telling you if you should run radar simulator
     logical :: run_calipso(nf_calipso,pcols)             ! logical telling you if you should run calipso simulator
     logical :: run_isccp(nf_isccp,pcols)                 ! logical telling you if you should run isccp simulator
     logical :: run_misr(nf_misr,pcols)                   ! logical telling you if you should run misr simulator
     logical :: run_modis(nf_modis,pcols)                 ! logical telling you if you should run modis simulator
-    
+
     ! CAM pointers to get variables from radiation interface (get from rad_cnst_get_gas)
     real(r8), pointer, dimension(:,:) :: q               ! specific humidity (kg/kg)
     real(r8), pointer, dimension(:,:) :: o3              ! Mass mixing ratio 03
-    
+
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
     real(r8), pointer, dimension(:,:) :: concld          ! concld fraction, cca - convective_cloud_amount (0-1)
@@ -1194,20 +1261,20 @@ CONTAINS
     real(r8), pointer, dimension(:,:) :: ls_reffsnow     ! snow effective drop size (microns)
     real(r8), pointer, dimension(:,:) :: cv_reffliq      ! convective cld liq effective drop radius (microns)
     real(r8), pointer, dimension(:,:) :: cv_reffice      ! convective cld ice effective drop size (microns)
-    
+
     !! precip flux pointers
     real(r8), target, dimension(pcols,pverp) :: zero_ifc ! zero array for interface fields not in the pbuf
     real(r8), pointer, dimension(:,:) :: dp_flxprc       ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
-    real(r8), pointer, dimension(:,:) :: dp_flxsnw       ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1) 
-    real(r8), pointer, dimension(:,:) :: sh_flxprc       ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1) 
+    real(r8), pointer, dimension(:,:) :: dp_flxsnw       ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
+    real(r8), pointer, dimension(:,:) :: sh_flxprc       ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
     real(r8), pointer, dimension(:,:) :: sh_flxsnw       ! shallow interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
-    real(r8), pointer, dimension(:,:) :: ls_flxprc       ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1) 
+    real(r8), pointer, dimension(:,:) :: ls_flxprc       ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1)
     real(r8), pointer, dimension(:,:) :: ls_flxsnw       ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
-    
+
     !! grid box total cloud mixing ratio (large-scale + convective)
     real(r8), pointer, dimension(:,:) :: totg_liq       ! gbm total cloud liquid water (kg/kg)
     real(r8), pointer, dimension(:,:) :: totg_ice       ! gbm total cloud ice water (kg/kg)
-    
+
     ! Output CAM variables
     ! Multiple "mdims" are collapsed because CAM history buffers only support one mdim.
     ! MIXED DIMS: ntau_cosp*nprs_cosp, CLOUDSAT_DBZE_BINS*nht_cosp, nsr_cosp*nht_cosp, nscol_cosp*nlay,
@@ -1268,6 +1335,12 @@ CONTAINS
     real(r8) :: ptcloudsatflag8(pcols)
     real(r8) :: ptcloudsatflag9(pcols)
     real(r8) :: cloudsatpia(pcols)
+    real(r8) :: wr_ocfreq_noprecip_cs(pcols)
+    real(r8) :: wr_ocfreq_drizzle_cs(pcols)
+    real(r8) :: wr_ocfreq_precip_cs(pcols)
+    real(r8) :: cfodd_ntotal_small_cs(pcols,CFODD_NDBZE,CFODD_NICOD)
+    real(r8) :: cfodd_ntotal_medium_cs(pcols,CFODD_NDBZE,CFODD_NICOD)
+    real(r8) :: cfodd_ntotal_large_cs(pcols,CFODD_NDBZE,CFODD_NICOD)
     real(r8) :: cld_cal_notcs(pcols,nht_cosp)
     real(r8) :: atb532_cal(pcols,nlay*nscol_cosp)
     real(r8) :: mol532_cal(pcols,nlay)
@@ -1293,16 +1366,20 @@ CONTAINS
     real(r8) :: iwpmodis(pcols)
     real(r8) :: clmodis_cam(pcols,ntau_cosp_modis*nprs_cosp)
     real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
+    real(r8) :: clmodis_liq(pcols,ntau_cosp_modis,nprs_cosp) ! JKS Not sure if I need to duplicate clmodis here.
+    real(r8) :: clmodis_ice(pcols,ntau_cosp_modis,nprs_cosp)
     real(r8) :: clrimodis_cam(pcols,ntau_cosp*numMODISReffIceBins)
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
     real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
+    real(r8) :: lwp_reffliq_modis(pcols,nlwp_cosp_modis,numMODISReffLiqBins)
+    real(r8) :: iwp_reffice_modis(pcols,niwp_cosp_modis,numMODISReffIceBins)
     real(r8), dimension(pcols,nlay*nscol_cosp) :: &
        tau067_out, emis11_out, fracliq_out, asym34_out, ssa34_out
 
     type(interp_type)  :: interp_wgts
     integer, parameter :: extrap_method = 1   ! sets extrapolation method to boundary value (1)
-    
+
     ! COSPv2 stuff
     character(len=256),dimension(100) :: cosp_status
     integer :: nerror
@@ -1319,7 +1396,7 @@ CONTAINS
     lchnk = state%lchnk    ! chunk ID
     ncol  = state%ncol     ! number of columns in the chunk
     Npoints = ncol         ! number of COSP gridpoints
-    
+
     zero_ifc = 0._r8
 
     ! Initialize CAM variables as R_UNDEF, important for history files because it will exclude these from averages
@@ -1331,7 +1408,7 @@ CONTAINS
     atb532(1:pcols,1:nscol_cosp,1:nlay)           = R_UNDEF
     clMISR(1:pcols,ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
     frac_out(1:pcols,1:nscol_cosp,1:nlay)         = R_UNDEF
-    
+
     ! (all CAM output variables. including collapsed variables)
     cldtot_isccp(1:pcols)                            = R_UNDEF
     meancldalb_isccp(1:pcols)                        = R_UNDEF
@@ -1366,19 +1443,19 @@ CONTAINS
     cldptop_isccp(1:pcols,1:nscol_cosp)              = R_UNDEF
     meantau_isccp(1:pcols)                           = R_UNDEF
     meantb_isccp(1:pcols)                            = R_UNDEF
-    meantbclr_isccp(1:pcols)                         = R_UNDEF     
+    meantbclr_isccp(1:pcols)                         = R_UNDEF
     dbze_cs(1:pcols,1:nlay*nscol_cosp)               = R_UNDEF
-    ptcloudsatflag0(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag1(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag2(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag3(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag4(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag5(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag6(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag7(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag8(1:pcols)                         = R_UNDEF 
-    ptcloudsatflag9(1:pcols)                         = R_UNDEF 
-    cloudsatpia(1:pcols)                             = R_UNDEF 
+    ptcloudsatflag0(1:pcols)                         = R_UNDEF
+    ptcloudsatflag1(1:pcols)                         = R_UNDEF
+    ptcloudsatflag2(1:pcols)                         = R_UNDEF
+    ptcloudsatflag3(1:pcols)                         = R_UNDEF
+    ptcloudsatflag4(1:pcols)                         = R_UNDEF
+    ptcloudsatflag5(1:pcols)                         = R_UNDEF
+    ptcloudsatflag6(1:pcols)                         = R_UNDEF
+    ptcloudsatflag7(1:pcols)                         = R_UNDEF
+    ptcloudsatflag8(1:pcols)                         = R_UNDEF
+    ptcloudsatflag9(1:pcols)                         = R_UNDEF
+    cloudsatpia(1:pcols)                             = R_UNDEF
     cldtot_calcs(1:pcols)                            = R_UNDEF
     cldtot_cs(1:pcols)                               = R_UNDEF
     cldtot_cs2(1:pcols)                              = R_UNDEF
@@ -1407,10 +1484,14 @@ CONTAINS
     iwpmodis(1:pcols)                                = R_UNDEF
     clmodis_cam(1:pcols,1:ntau_cosp_modis*nprs_cosp) = R_UNDEF
     clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
+    clmodis_liq(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
+    clmodis_ice(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
     clrimodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffIceBins) = R_UNDEF ! +cosp2
     clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
     clrlmodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffLiqBins) = R_UNDEF ! +cosp2
     clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
+    lwp_reffliq_modis(1:pcols,1:nlwp_cosp_modis,1:numMODISReffLiqBins) = R_UNDEF
+    iwp_reffice_modis(1:pcols,1:niwp_cosp_modis,1:numMODISReffIceBins) = R_UNDEF
     tau067_out(1:pcols,1:nlay*nscol_cosp)            = R_UNDEF ! +cosp2
     emis11_out(1:pcols,1:nlay*nscol_cosp)            = R_UNDEF ! +cosp2
     asym34_out(1:pcols,1:nlay*nscol_cosp)            = R_UNDEF ! +cosp2
@@ -1420,7 +1501,7 @@ CONTAINS
     ! ######################################################################################
     ! DECIDE WHICH COLUMNS YOU ARE GOING TO RUN COSP ON....
     ! ######################################################################################
-    
+
     !! run_cosp is set for each column in each chunk in the first timestep of the run
     !! hist_fld_col_active in cam_history.F90 is used to decide if you need to run cosp.
     if (first_run_cosp(lchnk)) then
@@ -1431,7 +1512,7 @@ CONTAINS
        run_isccp(1:nf_isccp,1:ncol)=.false.
        run_misr(1:nf_misr,1:ncol)=.false.
        run_modis(1:nf_modis,1:ncol)=.false.
-       
+
        if (lradar_sim) then
           do i=1,nf_radar
              run_radar(i,1:pcols)=hist_fld_col_active(fname_radar(i),lchnk,pcols)
@@ -1457,23 +1538,23 @@ CONTAINS
              run_modis(i,1:pcols)=hist_fld_col_active(fname_modis(i),lchnk,pcols)
           end do
        end if
-       
+
        do i=1,ncol
           if ((any(run_radar(:,i))) .or. (any(run_calipso(:,i))) .or. (any(run_isccp(:,i))) &
                .or. (any(run_misr(:,i))) .or. (any(run_modis(:,i)))) then
              run_cosp(i,lchnk)=.true.
           end if
        end do
-       
+
        first_run_cosp(lchnk)=.false.
     endif
-    
+
     ! ######################################################################################
     ! GET CAM GEOPHYSICAL VARIABLES NEEDED FOR COSP INPUT
     ! ######################################################################################
     ! state variables (prognostic variables, see physics_types.F90)
-    ! state%lat   ! lat (radians) 
-    ! state%lon   ! lon (radians) 
+    ! state%lat   ! lat (radians)
+    ! state%lon   ! lon (radians)
     ! state%t     ! temperature (K)
     ! state%ps    ! surface pressure (Pa)
     ! state%pint  ! p - p_in_full_levels (Pa)
@@ -1485,15 +1566,15 @@ CONTAINS
     ! quantities for the stratiform clouds only.  stratiform water * stratiform cloud fraction
     ! state%q(:,:,ixcldliq) ! for CAM4: cldliq = stratiform incld water content * total cloud fraction
     ! state%q(:,:,ixcldice) ! for CAM4: cldice = stratiform incld ice content * total cloud fraction
-    
+
     ! advected constiutent indices
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
-    
+
     ! radiative constituents (prognostic or data)
-    call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)                     
+    call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)
     call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
-    
+
     ! fields from physics buffer
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, cld_idx,    cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -1504,11 +1585,11 @@ CONTAINS
     call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow  )
     call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq   )
     call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice   )
-    
+
     !! grid box total cloud mixing ratios
     call pbuf_get_field(pbuf, gb_totcldliqmr_idx, totg_liq)
     call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)
-    
+
     !! precipitation fluxes
     call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc  )
     call pbuf_get_field(pbuf, dpflxsnw_idx, dp_flxsnw  )
@@ -1524,7 +1605,7 @@ CONTAINS
     end if
     call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc  )
     call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw  )
-   
+
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! CALCULATE COSP INPUT VARIABLES FROM CAM VARIABLES, done for all columns within chunk
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1555,7 +1636,7 @@ CONTAINS
        dem_c(ncol,nlay), &
        dem_s_snow(ncol,nlay), stat=istat)
     call handle_allocate_error(istat, sub, 'zmid,..,dem_s_snow')
-    
+
     ! add surface height (surface geopotential/gravity) to convert CAM heights based on
     ! geopotential above surface into height above sea level
     surf_hgt = state%phis(:ncol)*inverse_gravit
@@ -1569,13 +1650,13 @@ CONTAINS
     do i = 1, ncol
        if (cam_in%landfrac(i) > 0.01_r8) landmask(i)= 1
     end do
-    
+
     ! Add together deep and shallow convection precipitation fluxes.
     ! Note: sh_flxprc and dp_flxprc variables are rain+snow
     rain_cv = (sh_flxprc(:ncol,ktop:pverp) - sh_flxsnw(:ncol,ktop:pverp)) + &
               (dp_flxprc(:ncol,ktop:pverp) - dp_flxsnw(:ncol,ktop:pverp))
     snow_cv = sh_flxsnw(:ncol,ktop:pverp) + dp_flxsnw(:ncol,ktop:pverp)
-    
+
     ! interpolate interface precip fluxes to mid points
     do i = 1, ncol
        ! find weights
@@ -1608,9 +1689,9 @@ CONTAINS
           end if
        end do
     end do
-    
+
     grpl_ls_interp = 0._r8
-    
+
     ! subroutine subsample_and_optics provides separate arguments to pass
     ! the large scale and convective cloud condensate.  Below the grid box
     ! total cloud water mixing ratios are passed in the arrays for the
@@ -1630,7 +1711,7 @@ CONTAINS
           end if
        end do
     end do
-    
+
     !! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011.
     !! The values from the physics buffer are in microns... convert to meters for COSP.
     reff_cosp(:,:,I_LSCLIQ) = rel(:ncol,ktop:pver)*1.e-6_r8
@@ -1642,9 +1723,9 @@ CONTAINS
     reff_cosp(:,:,I_CVRAIN) = ls_reffrain(:ncol,ktop:pver)*1.e-6_r8  !! same as stratiform per Andrew
     reff_cosp(:,:,I_CVSNOW) = ls_reffsnow(:ncol,ktop:pver)*1.e-6_r8  !! same as stratiform per Andrew
     reff_cosp(:,:,I_LSGRPL) = 0._r8                                  !! using radar default reff
- 
+
     ! assign optical depths and emissivities
-    ! CAM4 assumes same radiative properties for stratiform and convective clouds, 
+    ! CAM4 assumes same radiative properties for stratiform and convective clouds,
     !   (see ISCCP_CLOUD_TYPES subroutine call in cloudsimulator.F90)
     !   Assume CAM5 is doing the same thing based on the ISCCP simulator calls within RRTM's radiation.F90
     ! COSP wants in-cloud values.  CAM5 values cld_swtau are in-cloud.
@@ -1678,16 +1759,16 @@ CONTAINS
     ! Construct COSP output derived type.
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
-    call construct_cosp_outputs(ncol, nscol_cosp, nlay, Nlvgrid, cospOUT)
+    call construct_cosp_outputs(ncol, nscol_cosp, nlay, Nlvgrid, use_vgrid, cospOUT)
     call t_stopf("construct_cosp_outputs")
-    
+
     ! ######################################################################################
     ! Construct and populate COSP input types
     ! ######################################################################################
     ! Model state
     call t_startf("construct_cospstateIN")
 
-    call construct_cospstateIN(ncol, nlay, 0, cospstateIN)      
+    call construct_cospstateIN(ncol, nlay, 0, cospstateIN)
 
     ! convert to degrees.  Lat in range [-90,..,90], Lon in range [0,..,360]
     cospstateIN%lat             = state%lat(:ncol)*rad2deg
@@ -1701,7 +1782,7 @@ CONTAINS
     cospstateIN%pfull           = state%pmid(:ncol,ktop:pver)
     cospstateIN%phalf           = state%pint(:ncol,ktop:pverp)
     cospstateIN%hgt_matrix      = zmid
-    cospstateIN%hgt_matrix_half = zint
+    cospstateIN%hgt_matrix_half = zint(1:ncol,2:nlayp) ! COSP wants half levels without model top
     cospstateIN%surfelev        = surf_hgt
     call t_stopf("construct_cospstateIN")
 
@@ -1719,14 +1800,14 @@ CONTAINS
     ! need to pass the correct section (:ncol,ktop:pver).
     call subsample_and_optics( &
        ncol, nlay, nscol_cosp, nhydro, overlap, &
-       lidar_ice_type, sd_cs(lchnk), &
+       use_vgrid, lidar_ice_type, sd_cs(lchnk), &
        cld(:ncol,ktop:pver), concld(:ncol,ktop:pver), &
        rain_ls_interp, snow_ls_interp, grpl_ls_interp, rain_cv_interp, &
        snow_cv_interp, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
        reff_cosp, dtau_c, dtau_s ,dem_c, dem_s, dtau_s_snow, &
        dem_s_snow, state%ps(:ncol), cospstateIN, cospIN)
     call t_stopf("subsample_and_optics")
-    
+
     ! ######################################################################################
     ! Call COSP
     ! ######################################################################################
@@ -1745,7 +1826,7 @@ CONTAINS
        call endrun('cospsimulator_intr_run: error return from cosp_simulator')
     end if
     call t_stopf("cosp_simulator")
-  
+
     ! ######################################################################################
     ! Write COSP inputs to output file for offline use.
     ! ######################################################################################
@@ -1754,7 +1835,7 @@ CONTAINS
        ! 1D outputs
        call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
        call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
-       
+
        ! 2D outputs
        call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
        call outfld('PH_COSP',        cospstateIN%phalf,            ncol,lchnk)
@@ -1767,7 +1848,7 @@ CONTAINS
        do i=1,ncol
           do ihml=1,nlay
              do isc=1,nscol_cosp
-                ihsc = (ihml-1)*nscol_cosp+isc                 
+                ihsc = (ihml-1)*nscol_cosp+isc
                 tau067_out(i,ihsc)  = cospIN%tau_067(i,isc,ihml)
                 emis11_out(i,ihsc)  = cospIN%emiss_11(i,isc,ihml)
                 ssa34_out(i,ihsc)   = cospIN%ss_alb(i,isc,ihml)
@@ -1854,7 +1935,9 @@ CONTAINS
           do i=1,ntau_cosp_modis
              do k=1,nprs_cosp
                 where(cam_sunlit(1:ncol) .eq. 0)
-                   cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure(1:ncol,i,k) = R_UNDEF 
+                   cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure(1:ncol,i,k) = R_UNDEF
+                   cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq(1:ncol,i,k) = R_UNDEF
+                   cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice(1:ncol,i,k) = R_UNDEF
                 end where
              enddo
              do k=1,numMODISReffIceBins
@@ -1868,6 +1951,20 @@ CONTAINS
                 end where
              enddo
           enddo
+          do i=1,nlwp_cosp_modis
+             do k=1,numMODISReffLiqBins
+                where(cam_sunlit(1:ncol) .eq. 0)
+                   cospOUT%modis_LWP_vs_ReffLIQ(1:ncol,i,k) = R_UNDEF
+                end where
+             enddo
+          enddo
+          do i=1,niwp_cosp_modis
+             do k=1,numMODISReffIceBins
+                where(cam_sunlit(1:ncol) .eq. 0)
+                   cospOUT%modis_IWP_vs_ReffICE(1:ncol,i,k) = R_UNDEF
+                end where
+             enddo
+          enddo
        end if
     end if
     call t_stopf("sunlit_passive")
@@ -1878,9 +1975,9 @@ CONTAINS
     call t_startf("output_copying")
     if (allocated(cospIN%frac_out)) &
          frac_out(1:ncol,1:nscol_cosp,1:nlay) = cospIN%frac_out
-    
+
     ! Cloudsat
-    if (lradar_sim) then 
+    if (lradar_sim) then
        cfad_dbze94(1:ncol,1:CLOUDSAT_DBZE_BINS,1:nht_cosp) = cospOUT%cloudsat_cfad_ze
        dbze94(1:ncol,1:nscol_cosp,1:nlay)    = cospOUT%cloudsat_Ze_tot
        cldtot_cs(1:ncol)  = 0._r8
@@ -1902,9 +1999,16 @@ CONTAINS
        ptcloudsatflag8(1:ncol) = cospOUT%cloudsat_precip_cover(:,9)
        ptcloudsatflag9(1:ncol) = cospOUT%cloudsat_precip_cover(:,10)
        cloudsatpia(1:ncol)     = cospOUT%cloudsat_pia
-       
+
+       ! CloudSat warm rain diagnostics
+       wr_ocfreq_noprecip_cs(1:ncol)                              = cospOUT%wr_occfreq_ntotal(:,1)
+       wr_ocfreq_drizzle_cs(1:ncol)                               = cospOUT%wr_occfreq_ntotal(:,2)
+       wr_ocfreq_precip_cs(1:ncol)                                = cospOUT%wr_occfreq_ntotal(:,3)
+       cfodd_ntotal_small_cs(1:ncol,1:CFODD_NDBZE,1:CFODD_NICOD)  = cospOUT%cfodd_ntotal(:,:,:,1)
+       cfodd_ntotal_medium_cs(1:ncol,1:CFODD_NDBZE,1:CFODD_NICOD) = cospOUT%cfodd_ntotal(:,:,:,2)
+       cfodd_ntotal_large_cs(1:ncol,1:CFODD_NDBZE,1:CFODD_NICOD)  = cospOUT%cfodd_ntotal(:,:,:,3)
     endif
-    
+
     ! CALIPSO
     if (llidar_sim) then
        cldlow_cal(1:ncol)                = cospOUT%calipso_cldlayer(:,1)
@@ -1936,7 +2040,7 @@ CONTAINS
        cfad_lidarsr532(1:ncol,1:nsr_cosp,1:nht_cosp) = cospOUT%calipso_cfad_sr(:,:,:)
        refl_parasol(1:ncol,1:nsza_cosp)  = cospOUT%parasolGrid_refl
     endif
-    
+
     ! ISCCP
     if (lisccp_sim) then
        clisccp2(1:ncol,1:ntau_cosp,1:nprs_cosp) = cospOUT%isccp_fq
@@ -1949,12 +2053,12 @@ CONTAINS
        meantb_isccp(1:ncol)                     = cospOUT%isccp_meantb
        meantbclr_isccp(1:ncol)                  = cospOUT%isccp_meantbclr
     endif
-    
+
     ! MISR
     if (lmisr_sim) then
        clMISR(1:ncol,1:ntau_cosp,1:nhtmisr_cosp) = cospOUT%misr_fq
     endif
-    
+
     ! MODIS
     if (lmodis_sim) then
        cltmodis(1:ncol)     = cospOUT%modis_Cloud_Fraction_Total_Mean
@@ -1974,52 +2078,56 @@ CONTAINS
        pctmodis(1:ncol)     = cospOUT%modis_Cloud_Top_Pressure_Total_Mean
        lwpmodis(1:ncol)     = cospOUT%modis_Liquid_Water_Path_Mean
        iwpmodis(1:ncol)     = cospOUT%modis_Ice_Water_Path_Mean
-       clmodis(1:ncol,1:ntau_cosp_modis,1:nprs_cosp)  = cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure 
+       clmodis(1:ncol,1:ntau_cosp_modis,1:nprs_cosp)  = cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure
+       clmodis_liq(1:ncol,1:ntau_cosp_modis,1:nprs_cosp)  = cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq
+       clmodis_ice(1:ncol,1:ntau_cosp_modis,1:nprs_cosp)  = cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice
        clrimodis(1:ncol,1:ntau_cosp_modis,1:numMODISReffIceBins) = cospOUT%modis_Optical_Thickness_vs_ReffICE
        clrlmodis(1:ncol,1:ntau_cosp_modis,1:numMODISReffLiqBins) = cospOUT%modis_Optical_Thickness_vs_ReffLIQ
+       lwp_reffliq_modis(1:ncol,1:nlwp_cosp_modis,1:numMODISReffLiqBins) = cospOUT%modis_LWP_vs_ReffLIQ
+       iwp_reffice_modis(1:ncol,1:niwp_cosp_modis,1:numMODISReffIceBins) = cospOUT%modis_IWP_vs_ReffICE
     endif
-    
+
     ! Use COSP output to populate CAM collapsed output variables
     do i=1,ncol
        if (lradar_sim) then
           do ih=1,nht_cosp
              do id=1,CLOUDSAT_DBZE_BINS
-                ihd=(ih-1)*CLOUDSAT_DBZE_BINS+id                     
+                ihd=(ih-1)*CLOUDSAT_DBZE_BINS+id
                 cfad_dbze94_cs(i,ihd) = cfad_dbze94(i,id,ih)
              end do
           end do
           do ihml=1,nlay
              do isc=1,nscol_cosp
-                ihsc=(ihml-1)*nscol_cosp+isc                 
+                ihsc=(ihml-1)*nscol_cosp+isc
                 dbze_cs(i,ihsc) = dbze94(i,isc,ihml)
              end do
           end do
        endif
-       
+
        if (llidar_sim) then
           do ih=1,nht_cosp
              do is=1,nsr_cosp
-                ihs=(ih-1)*nsr_cosp+is                       
+                ihs=(ih-1)*nsr_cosp+is
                 cfad_sr532_cal(i,ihs) = cfad_lidarsr532(i,is,ih)
              end do
           end do
           do ihml=1,nlay
              do isc=1,nscol_cosp
-                ihsc=(ihml-1)*nscol_cosp+isc                 
+                ihsc=(ihml-1)*nscol_cosp+isc
                 atb532_cal(i,ihsc) = atb532(i,isc,ihml)
              end do
           end do
        endif
-       
+
        if (lmisr_sim) then
           do ihm=1,nhtmisr_cosp
              do it=1,ntau_cosp
-                ihmt=(ihm-1)*ntau_cosp+it                    
-                cld_misr(i,ihmt) = clMISR(i,it,ihm) 
+                ihmt=(ihm-1)*ntau_cosp+it
+                cld_misr(i,ihmt) = clMISR(i,it,ihm)
              end do
           end do
        endif
-       
+
        if (lmodis_sim) then
           do ip=1,nprs_cosp
              do it=1,ntau_cosp_modis
@@ -2040,14 +2148,14 @@ CONTAINS
              end do
           end do
        endif
-       
-       ! Subcolums 
+
+       ! Subcolums
        do ihml=1,nlay
           do isc=1,nscol_cosp
-             ihsc=(ihml-1)*nscol_cosp+isc                 
+             ihsc=(ihml-1)*nscol_cosp+isc
              scops_out(i,ihsc) = frac_out(i,isc,ihml)
           end do
-       end do   
+       end do
     end do
     call t_stopf("output_copying")
 
@@ -2061,9 +2169,9 @@ CONTAINS
     call destroy_cospstateIN(cospstateIN)
     call t_stopf("destroy_cospstateIN")
     call t_startf("destroy_cospOUT")
-    call destroy_cosp_outputs(cospOUT) 
+    call destroy_cosp_outputs(cospOUT)
     call t_stopf("destroy_cospOUT")
-    
+
     ! ######################################################################################
     ! OUTPUT
     ! ######################################################################################
@@ -2093,7 +2201,7 @@ CONTAINS
        call outfld('MEANTB_ISCCP',    meantb_isccp,    pcols,lchnk)
        call outfld('MEANTBCLR_ISCCP', meantbclr_isccp, pcols,lchnk)
     end if
-    
+
     ! CALIPSO SIMULATOR OUTPUTS
     if (llidar_sim) then
        call outfld('CLDLOW_CAL',    cldlow_cal,     pcols,lchnk)
@@ -2113,74 +2221,74 @@ CONTAINS
        call outfld('CLDLOW_CAL_LIQ',cldlow_cal_liq, pcols,lchnk)
        call outfld('CLDLOW_CAL_UN', cldlow_cal_un,  pcols,lchnk) !+1.4
        where (cld_cal(:ncol,:nht_cosp) .eq. R_UNDEF)
-          !! setting missing values to 0 (clear air).  
+          !! setting missing values to 0 (clear air).
           !! I'm not sure why COSP produces a mix of R_UNDEF and realvalue in the nht_cosp dimension.
           cld_cal(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL',        cld_cal,       pcols,lchnk)  !! fails check_accum if 'A'
        call outfld('MOL532_CAL',     mol532_cal,    pcols,lchnk)
-       
+
        where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) .eq. R_UNDEF)
           !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
           !!            cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = R_UNDEF
           cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
        end where
        call outfld('CFAD_SR532_CAL',cfad_sr532_cal    ,pcols,lchnk)
-       
+
        where (refl_parasol(:ncol,:nsza_cosp) .eq. R_UNDEF)
-          !! setting missing values to 0 (clear air).  
+          !! setting missing values to 0 (clear air).
           refl_parasol(:ncol,:nsza_cosp) = 0
        end where
        call outfld('RFL_PARASOL',refl_parasol   ,pcols,lchnk) !!
-       
+
        where (cld_cal_liq(:ncol,:nht_cosp) .eq. R_UNDEF) !+cosp1.4
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_liq(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_LIQ',cld_cal_liq    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_ice(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_ice(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_ICE',cld_cal_ice    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_un(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_un(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_UN',cld_cal_un    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmp(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmp(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMP',cld_cal_tmp    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpliq(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpliq(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPLIQ',cld_cal_tmpliq    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpice(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpice(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPICE',cld_cal_tmpice    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpun(:ncol,:nht_cosp) .eq. R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpun(:ncol,:nht_cosp) = 0.0_r8
        end where
-       call outfld('CLD_CAL_TMPUN',cld_cal_tmpun    ,pcols,lchnk)  !!  !+cosp1.4 
+       call outfld('CLD_CAL_TMPUN',cld_cal_tmpun    ,pcols,lchnk)  !!  !+cosp1.4
 
     end if
-    
+
     ! RADAR SIMULATOR OUTPUTS
     if (lradar_sim) then
        where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) .eq. R_UNDEF)
-          !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue 
+          !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
           !           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = R_UNDEF
           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = 0.0_r8
        end where
@@ -2200,13 +2308,22 @@ CONTAINS
        call outfld('CS_RAINHARD',   ptcloudsatflag8,  pcols, lchnk)
        call outfld('CS_UN',         ptcloudsatflag9,  pcols, lchnk)
        call outfld('CS_PIA',        cloudsatpia,      pcols, lchnk)
+       call outfld('CS_WR_NOPRECIP',wr_ocfreq_noprecip_cs,   pcols, lchnk)
+       call outfld('CS_WR_DRIZ',    wr_ocfreq_drizzle_cs,    pcols, lchnk)
+       call outfld('CS_WR_PRECIP',  wr_ocfreq_precip_cs,     pcols, lchnk)
     end if
-    
+
+    if (lradar_sim) then
+       call outfld('CS_WR_CFODD_REFF_SMALL', cfodd_ntotal_small_cs, pcols, lchnk)
+       call outfld('CS_WR_CFODD_REFF_MEDIUM',cfodd_ntotal_medium_cs,pcols, lchnk)
+       call outfld('CS_WR_CFODD_REFF_LARGE', cfodd_ntotal_large_cs, pcols, lchnk)
+    end if
+
     ! MISR SIMULATOR OUTPUTS
     if (lmisr_sim) then
        call outfld('CLD_MISR',cld_misr    ,pcols,lchnk)
     end if
-    
+
     ! MODIS SIMULATOR OUTPUTS
     if (lmodis_sim) then
        call outfld('CLTMODIS',cltmodis    ,pcols,lchnk)
@@ -2215,8 +2332,8 @@ CONTAINS
        call outfld('CLHMODIS',clhmodis    ,pcols,lchnk)
        call outfld('CLMMODIS',clmmodis    ,pcols,lchnk)
        call outfld('CLLMODIS',cllmodis    ,pcols,lchnk)
-       
-       !! where there is no cloud fraction or no retrieval, set to R_UNDEF, 
+
+       !! where there is no cloud fraction or no retrieval, set to R_UNDEF,
        !! otherwise weight retrieval by cloud fraction
        where ((cltmodis(:ncol) .eq. R_UNDEF) .or. (tautmodis(:ncol) .eq. R_UNDEF))
           tautmodis(:ncol) = R_UNDEF
@@ -2225,7 +2342,7 @@ CONTAINS
           tautmodis(:ncol) = tautmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('TAUTMODIS',tautmodis    ,pcols,lchnk)
-       
+
        where ((tauwmodis(:ncol) .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
           tauwmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2233,7 +2350,7 @@ CONTAINS
           tauwmodis(:ncol) = tauwmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('TAUWMODIS',tauwmodis    ,pcols,lchnk)
-       
+
        where ((tauimodis(:ncol) .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
           tauimodis(:ncol) = R_UNDEF
        elsewhere
@@ -2241,7 +2358,7 @@ CONTAINS
           tauimodis(:ncol) = tauimodis(:ncol)*climodis(:ncol)
        end where
        call outfld('TAUIMODIS',tauimodis    ,pcols,lchnk)
-       
+
        where ((tautlogmodis(:ncol)  .eq. R_UNDEF) .or. (cltmodis(:ncol) .eq. R_UNDEF))
           tautlogmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2249,7 +2366,7 @@ CONTAINS
           tautlogmodis(:ncol) = tautlogmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('TAUTLOGMODIS',tautlogmodis    ,pcols,lchnk)
-       
+
        where ((tauwlogmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
           tauwlogmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2257,23 +2374,23 @@ CONTAINS
           tauwlogmodis(:ncol) = tauwlogmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('TAUWLOGMODIS',tauwlogmodis    ,pcols,lchnk)
-       
-       where ((tauilogmodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF)) 
+
+       where ((tauilogmodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
           tauilogmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
           tauilogmodis(:ncol) = tauilogmodis(:ncol)*climodis(:ncol)
        end where
        call outfld('TAUILOGMODIS',tauilogmodis    ,pcols,lchnk)
-       
-       where ((reffclwmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF)) 
+
+       where ((reffclwmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
           reffclwmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
           reffclwmodis(:ncol) = reffclwmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('REFFCLWMODIS',reffclwmodis    ,pcols,lchnk)
-       
+
        where ((reffclimodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
           reffclimodis(:ncol) = R_UNDEF
        elsewhere
@@ -2281,7 +2398,7 @@ CONTAINS
           reffclimodis(:ncol) = reffclimodis(:ncol)*climodis(:ncol)
        end where
        call outfld('REFFCLIMODIS',reffclimodis    ,pcols,lchnk)
-       
+
        where ((pctmodis(:ncol)  .eq. R_UNDEF) .or. ( cltmodis(:ncol) .eq. R_UNDEF))
           pctmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2289,7 +2406,7 @@ CONTAINS
           pctmodis(:ncol) = pctmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('PCTMODIS',pctmodis    ,pcols,lchnk)
-       
+
        where ((lwpmodis(:ncol)  .eq. R_UNDEF) .or. (clwmodis(:ncol) .eq. R_UNDEF))
           lwpmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2297,7 +2414,7 @@ CONTAINS
           lwpmodis(:ncol) = lwpmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('LWPMODIS',lwpmodis    ,pcols,lchnk)
-       
+
        where ((iwpmodis(:ncol)  .eq. R_UNDEF) .or. (climodis(:ncol) .eq. R_UNDEF))
           iwpmodis(:ncol) = R_UNDEF
        elsewhere
@@ -2305,12 +2422,16 @@ CONTAINS
           iwpmodis(:ncol) = iwpmodis(:ncol)*climodis(:ncol)
        end where
        call outfld('IWPMODIS',iwpmodis    ,pcols,lchnk)
-       
-       call outfld('CLMODIS',clmodis_cam  ,pcols,lchnk) 
-       call outfld('CLRIMODIS',clrimodis_cam  ,pcols,lchnk) 
-       call outfld('CLRLMODIS',clrlmodis_cam  ,pcols,lchnk) 
+
+       call outfld('CLMODIS',clmodis_cam  ,pcols,lchnk)
+       call outfld('CLMODIS_LIQ',clmodis_liq  ,pcols,lchnk)
+       call outfld('CLMODIS_ICE',clmodis_ice  ,pcols,lchnk)
+       call outfld('CLRIMODIS',clrimodis_cam  ,pcols,lchnk)
+       call outfld('CLRLMODIS',clrlmodis_cam  ,pcols,lchnk)
+       call outfld('LWP_REFFCLW_MODIS',lwp_reffliq_modis,pcols,lchnk)
+       call outfld('IWP_REFFCLI_MODIS',iwp_reffice_modis,pcols,lchnk)
     end if
-    
+
     ! SUB-COLUMN OUTPUT
     if (lfrac_out) then
        call outfld('SCOPS_OUT',scops_out   ,pcols,lchnk)!!!-1.00000E+30 !! fails check_accum if 'A'
@@ -2334,7 +2455,7 @@ CONTAINS
   ! SUBROUTINE subsample_and_optics
   ! ######################################################################################
   subroutine subsample_and_optics(nPoints, nLevels, nColumns, nHydro,overlap,            &
-                                  lidar_ice_type, sd, tca, cca,                          &
+                                  use_vgrid, lidar_ice_type, sd, tca, cca,               &
                                   fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN,    &
                                   fl_ccsnowIN, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice,   &
                                   reffIN, dtau_c, dtau_s, dem_c, dem_s, dtau_s_snow,     &
@@ -2375,26 +2496,29 @@ CONTAINS
          fl_lsgrplIN,  & ! Precipitation flux
          fl_ccrainIN,  & ! Precipitation flux
          fl_ccsnowIN     ! Precipitation flux
-    real(wp),intent(inout),dimension(nPoints,nLevels) :: &    
+    real(wp),intent(inout),dimension(nPoints,nLevels) :: &
          dtau_s_snow,  & ! 0.67-micron optical depth (snow)
          dem_s_snow      ! 11-micron emissivity (snow)
     real(wp),intent(in),dimension(nPoints,nLevels,nHydro) :: &
          reffIN          !
     real(wp),intent(in),dimension(nPoints) :: &
-         sfcP            ! Surface pressure 
+         sfcP            ! Surface pressure
     type(size_distribution),intent(inout) :: &
          sd
-    
+    logical,intent(in) :: &
+         use_vgrid       ! .false.: outputs on model levels
+                         ! .true.:  outputs on evenly-spaced vertical levels.
+
     ! Outputs
     type(cosp_optical_inputs),intent(inout) :: cospIN
     type(cosp_column_inputs),intent(inout)  :: cospstateIN
-    
+
     ! Local variables
     integer :: i, j, k, istat
     real(wp),dimension(nPoints,nLevels)      :: column_frac_out,column_prec_out,         &
                                                 fl_lsrain,fl_lssnow,fl_lsgrpl,fl_ccrain, &
                                                 fl_ccsnow
-    real(wp),dimension(nPoints,nLevels,nHydro) :: ReffTemp                                                
+    real(wp),dimension(nPoints,nLevels,nHydro) :: ReffTemp
     type(rng_state),allocatable,dimension(:) :: rngs  ! Seeds for random number generator
     integer,dimension(:),allocatable         :: seed
     real(wp),dimension(:,:),allocatable      :: ls_p_rate,cv_p_rate,frac_ls,frac_cv,     &
@@ -2411,7 +2535,7 @@ CONTAINS
 
     character(len=*), parameter :: sub = 'subsample_and_optics'
     !--------------------------------------------------------------------------------------
-             
+
     call t_startf("scops")
     if (Ncolumns .gt. 1) then
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2421,25 +2545,25 @@ CONTAINS
        allocate(rngs(nPoints), seed(nPoints), stat=istat)
        call handle_allocate_error(istat, sub, 'rngs, seed')
        seed = int(sfcP)
-       if (Npoints .gt. 1) seed=(sfcP-int(sfcP))*1000000 
+       if (Npoints .gt. 1) seed=(sfcP-int(sfcP))*1000000
        call init_rng(rngs, seed)
-   
+
        ! Call scops
        call scops(NPoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
        deallocate(seed,rngs)
-       
+
        ! Sum up precipitation rates.
        allocate(ls_p_rate(nPoints,nLevels), cv_p_rate(nPoints,Nlevels), stat=istat)
        call handle_allocate_error(istat, sub, 'ls_p_rate, cv_p_rate')
        ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
        cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
-       
+
        ! Call PREC_SCOPS
        allocate(frac_prec(nPoints,nColumns,nLevels), stat=istat)
        call handle_allocate_error(istat, sub, 'frac_prec')
        call prec_scops(nPoints,nLevels,nColumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
        deallocate(ls_p_rate,cv_p_rate)
-             
+
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        ! Compute precipitation fraction in each gridbox
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2470,7 +2594,7 @@ CONTAINS
              ! Adjust grid-box mean snow properties to local properties
              ! Convert longwave optical depth to longwave emissivity
              if (prec_ls(j,k) .ne. 0._r8 .and. dtau_s_snow(j,k) .gt. 0._r8) then
-                dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k) 
+                dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k)
              end if
              if (prec_ls(j,k) .ne. 0._r8 .and. dem_s_snow(j,k) .gt. 0._r8) then
                 dem_s_snow(j,k) = dem_s_snow(j,k)/prec_ls(j,k)
@@ -2478,7 +2602,7 @@ CONTAINS
              end if !!+JEK
           enddo
        enddo
-             
+
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        ! Compute mixing ratios, effective radii and precipitation fluxes for clouds
        ! and precipitation
@@ -2492,25 +2616,25 @@ CONTAINS
        mr_hydro(:,:,:,:) = 0._wp
        Reff(:,:,:,:)     = 0._wp
        Np(:,:,:,:)       = 0._wp
-       
+
        do k=1,nColumns
           ! Subcolumn clouds
           column_frac_out = cospIN%frac_out(:,k,:)
-               
+
           ! LS clouds
           where (column_frac_out == I_LSC)
              mr_hydro(:,k,:,I_LSCLIQ) = mr_lsliq
              mr_hydro(:,k,:,I_LSCICE) = mr_lsice
              Reff(:,k,:,I_LSCLIQ)     = ReffIN(:,:,I_LSCLIQ)
              Reff(:,k,:,I_LSCICE)     = ReffIN(:,:,I_LSCICE)
-          ! CONV clouds   
+          ! CONV clouds
           elsewhere (column_frac_out == I_CVC)
              mr_hydro(:,k,:,I_CVCLIQ) = mr_ccliq
              mr_hydro(:,k,:,I_CVCICE) = mr_ccice
              Reff(:,k,:,I_CVCLIQ)     = ReffIN(:,:,I_CVCLIQ)
              Reff(:,k,:,I_CVCICE)     = ReffIN(:,:,I_CVCICE)
           end where
-          
+
           ! Subcolumn precipitation
           column_prec_out = frac_prec(:,k,:)
 
@@ -2519,7 +2643,7 @@ CONTAINS
              Reff(:,k,:,I_LSRAIN) = ReffIN(:,:,I_LSRAIN)
              Reff(:,k,:,I_LSSNOW) = ReffIN(:,:,I_LSSNOW)
              Reff(:,k,:,I_LSGRPL) = ReffIN(:,:,I_LSGRPL)
-          ! CONV precipitation   
+          ! CONV precipitation
           elsewhere ((column_prec_out == 2) .or. (column_prec_out == 3))
              Reff(:,k,:,I_CVRAIN) = ReffIN(:,:,I_CVRAIN)
              Reff(:,k,:,I_CVSNOW) = ReffIN(:,:,I_CVSNOW)
@@ -2541,7 +2665,7 @@ CONTAINS
                 mr_hydro(j,:,k,I_CVCLIQ) = mr_hydro(j,:,k,I_CVCLIQ)/frac_cv(j,k)
                 mr_hydro(j,:,k,I_CVCICE) = mr_hydro(j,:,k,I_CVCICE)/frac_cv(j,k)
              endif
-             
+
              ! Precipitation
              if (prec_ls(j,k) .ne. 0._r8) then
                 fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
@@ -2554,7 +2678,7 @@ CONTAINS
              endif
           enddo
        enddo
-             
+
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        ! Convert precipitation fluxes to mixing ratios
        !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2596,7 +2720,7 @@ CONTAINS
             mr_hydro(:,:,:,I_LSGRPL), Reff(:,:,:,I_LSGRPL))
 
     else
-       cospIN%frac_out(:,:,:) = 1  
+       cospIN%frac_out(:,:,:) = 1
        allocate(mr_hydro(nPoints, 1,nLevels,nHydro),Reff(nPoints,1,nLevels,nHydro),      &
                 Np(nPoints,1,nLevels,nHydro), stat=istat)
        call handle_allocate_error(istat, sub, 'mr_hydro,Reff,Np')
@@ -2653,19 +2777,22 @@ CONTAINS
        enddo
 
        ! Regrid frozen fraction to Cloudsat/Calipso statistical grid
-       allocate(fracPrecipIce_statGrid(nPoints,nColumns,Nlvgrid), stat=istat)
-       call handle_allocate_error(istat, sub, 'fracPrecipIce_statGrid')
-       fracPrecipIce_statGrid(:,:,:) = 0._wp
-       call cosp_change_vertical_grid(Npoints, Ncolumns, Nlevels, cospstateIN%hgt_matrix(:,Nlevels:1:-1), &
-            cospstateIN%hgt_matrix_half(:,Nlevels:1:-1), fracPrecipIce(:,:,Nlevels:1:-1), Nlvgrid,  &
-            vgrid_zl(Nlvgrid:1:-1),  vgrid_zu(Nlvgrid:1:-1), fracPrecipIce_statGrid(:,:,Nlvgrid:1:-1))
+       if (use_vgrid) then
+         allocate(fracPrecipIce_statGrid(nPoints,nColumns,Nlvgrid), stat=istat)
+         call handle_allocate_error(istat, sub, 'fracPrecipIce_statGrid')
+         fracPrecipIce_statGrid(:,:,:) = 0._wp
+         call cosp_change_vertical_grid(Npoints, Ncolumns, Nlevels, cospstateIN%hgt_matrix(:,Nlevels:1:-1), &
+               cospstateIN%hgt_matrix_half(:,Nlevels:1:-1), fracPrecipIce(:,:,Nlevels:1:-1), Nlvgrid,  &
+               vgrid_zl(Nlvgrid:1:-1),  vgrid_zu(Nlvgrid:1:-1), fracPrecipIce_statGrid(:,:,Nlvgrid:1:-1))
 
-       ! For near-surface diagnostics, we only need the frozen fraction at one layer.
-       cospIN%fracPrecipIce(:,:) = fracPrecipIce_statGrid(:,:,cloudsat_preclvl)
-       
+         ! For near-surface diagnostics, we only need the frozen fraction at one layer.
+         cospIN%fracPrecipIce(:,:) = fracPrecipIce_statGrid(:,:,cloudsat_preclvl)
+         deallocate(fracPrecipIce_statGrid)
+       endif
+
     endif
     call t_stopf("cloudsat_optics")
-    
+
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ! CALIPSO Polarized optics
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2681,7 +2808,7 @@ CONTAINS
                          ReffTemp(1:nPoints,1:nLevels,I_LSCLIQ),                         &
                          ReffTemp(1:nPoints,1:nLevels,I_LSCICE),                         &
                          ReffTemp(1:nPoints,1:nLevels,I_CVCLIQ),                         &
-                         ReffTemp(1:nPoints,1:nLevels,I_CVCICE),                         & 
+                         ReffTemp(1:nPoints,1:nLevels,I_CVCICE),                         &
                          ReffTemp(1:nPoints,1:nLevels,I_LSSNOW),                         &
                          cospstateIN%pfull(1:nPoints,1:nLevels),                         &
                          cospstateIN%phalf(1:nPoints,1:nLevels+1),                       &
@@ -2695,11 +2822,11 @@ CONTAINS
                          cospIN%betatot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),     &
                          cospIN%betatot_liq_calipso(1:nPoints,1:nColumns,1:nLevels),     &
                          cospIN%tautot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),      &
-                         cospIN%tautot_liq_calipso(1:nPoints,1:nColumns,1:nLevels)) 
+                         cospIN%tautot_liq_calipso(1:nPoints,1:nColumns,1:nLevels))
     endif
     call t_stopf("calipso_optics")
 
-    
+
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ! Compute optical fields for passive simulators (i.e. only sunlit points)
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2711,7 +2838,7 @@ CONTAINS
     if (Lisccp_sim) then
        call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dem_c,dem_s,  &
             cospIN%emiss_11)
-       ! Add in contributions from radiative snow 
+       ! Add in contributions from radiative snow
        do j=1,nColumns
           where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
              cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_s_snow)
@@ -2719,7 +2846,7 @@ CONTAINS
        enddo
     endif
     call t_stopf("11micron_emissivity")
-    
+
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ! 0.67 micron optical depth (needed by ISCCP, MISR and MODIS simulators)
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2727,8 +2854,8 @@ CONTAINS
     if (Lisccp_sim .or. Lmisr_sim .or. Lmodis_sim) then
        call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dtau_c,dtau_s,&
             cospIN%tau_067)
-       
-       ! Add in contributions from snow 
+
+       ! Add in contributions from snow
        do j=1,nColumns
           where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
                Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
@@ -2759,15 +2886,15 @@ CONTAINS
             mr_hydro(:,:,:,I_CVCLIQ),mr_hydro(:,:,:,I_LSCLIQ),MODIS_cloudWater)
        ! Cloud ice
        call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
-            mr_hydro(:,:,:,I_CVCICE),mr_hydro(:,:,:,I_LSCICE),MODIS_cloudIce)  
+            mr_hydro(:,:,:,I_CVCICE),mr_hydro(:,:,:,I_LSCICE),MODIS_cloudIce)
        ! Cloud water droplet size
        call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
             Reff(:,:,:,I_CVCLIQ),Reff(:,:,:,I_LSCLIQ),MODIS_waterSize)
        ! Cloud ice crystal size
        call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
             Reff(:,:,:,I_CVCICE),Reff(:,:,:,I_LSCICE),MODIS_iceSize)
-       
-       ! Cloud snow and size	
+
+       ! Cloud snow and size
        MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
        do j=1,nColumns
           where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
@@ -2779,14 +2906,14 @@ CONTAINS
              MODIS_cloudSnow(:,j,:) = 0._wp
           endwhere
        enddo
-       
+
        ! Partition optical thickness into liquid and ice parts
        call modis_optics_partition(nPoints, nLevels, nColumns, MODIS_cloudWater,     &
             MODIS_cloudIce, MODIS_cloudSnow, MODIS_waterSize, MODIS_iceSize,         &
             MODIS_snowSize, cospIN%tau_067, MODIS_opticalThicknessLiq,               &
-            MODIS_opticalThicknessIce, MODIS_opticalThicknessSnow)                            
-       
-       ! Compute asymmetry parameter and single scattering albedo 
+            MODIS_opticalThicknessIce, MODIS_opticalThicknessSnow)
+
+       ! Compute asymmetry parameter and single scattering albedo
        call modis_optics(nPoints, nLevels, nColumns, MODIS_opticalThicknessLiq,      &
             MODIS_waterSize*1.0e6_wp, MODIS_opticalThicknessIce,                     &
             MODIS_iceSize*1.0e6_wp, MODIS_opticalThicknessSnow,                      &
@@ -2796,7 +2923,7 @@ CONTAINS
     call t_stopf("modis_optics")
 
   end subroutine subsample_and_optics
-  
+
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2806,21 +2933,21 @@ CONTAINS
          npoints,  & ! Number of horizontal gridpoints
          ncolumns, & ! Number of subcolumns
          nlevels     ! Number of vertical levels
-    ! Outputs 
+    ! Outputs
     type(cosp_optical_inputs),intent(out) :: y
 
     ! local
     integer :: istat
     character(len=*), parameter :: sub = 'construct_cospIN'
     !--------------------------------------------------------------------------------------
-    
+
     ! Dimensions
     y%Npoints  = Npoints
     y%Ncolumns = Ncolumns
     y%Nlevels  = Nlevels
     y%Npart    = 4
     y%Nrefl    = PARASOL_NREFL
-    
+
     allocate(y%tau_067(            npoints, ncolumns, nlevels),&
              y%emiss_11(           npoints, ncolumns, nlevels),&
              y%frac_out(           npoints, ncolumns, nlevels),&
@@ -2844,10 +2971,10 @@ CONTAINS
     call handle_allocate_error(istat, sub, 'tau_067,..,fracPrecipIce')
 
   end subroutine construct_cospIN
-  
+
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospstateIN
-  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     
+  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine construct_cospstateIN(npoints,nlevels,nchan,y)
     ! Inputs
     integer,intent(in) :: &
@@ -2856,7 +2983,7 @@ CONTAINS
          nchan      ! Number of channels
     ! Outputs
     type(cosp_column_inputs),intent(out) :: y
-    
+
     ! local
     integer :: istat
     character(len=*), parameter :: sub = 'construct_cospstateIN'
@@ -2869,7 +2996,7 @@ CONTAINS
        y%phalf(npoints,nlevels+1), &
        y%qv(npoints,nlevels), &
        y%hgt_matrix(npoints,nlevels), &
-       y%hgt_matrix_half(npoints,nlevels+1), &
+       y%hgt_matrix_half(npoints,nlevels), &
        y%land(npoints), &
        y%skt(npoints), &
        y%surfelev(nPoints), &
@@ -2888,28 +3015,31 @@ CONTAINS
     call handle_allocate_error(istat, sub, 'sunlit,..,fl_snow')
 
   end subroutine construct_cospstateIN
+
   ! ######################################################################################
   ! SUBROUTINE construct_cosp_outputs
   !
   ! This subroutine allocates output fields based on input logical flag switches.
-  ! ######################################################################################  
-  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,x)
+  ! ######################################################################################
+  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,use_vgrid,x)
     ! Inputs
     integer,intent(in) :: &
          Npoints,         & ! Number of sampled points
          Ncolumns,        & ! Number of subgrid columns
          Nlevels,         & ! Number of model levels
          Nlvgrid            ! Number of levels in L3 stats computation
-    
+
+    logical,intent(in) :: use_vgrid ! Logical to indicate if using variable vertical grid
+
     ! Outputs
     type(cosp_outputs),intent(out) :: &
-         x           ! COSP output structure  
+         x           ! COSP output structure
 
     ! local
     integer :: istat
     character(len=*), parameter :: sub = 'construct_cosp_outputs'
     !--------------------------------------------------------------------------------------
-  
+
      ! ISCCP simulator outputs
     if (lisccp_sim) then
        allocate( &
@@ -2926,7 +3056,7 @@ CONTAINS
     endif
 
     ! MISR simulator
-    if (lmisr_sim) then 
+    if (lmisr_sim) then
        allocate( &
           x%misr_fq(Npoints,numMISRTauBins,numMISRHgtBins), &
           ! *NOTE* These 3 fields are not output, but were part of the v1.4.0 cosp_misr, so
@@ -2937,7 +3067,7 @@ CONTAINS
           x%misr_cldarea(Npoints), stat=istat)
        call handle_allocate_error(istat, sub, 'misr_*')
     endif
-    
+
     ! MODIS simulator
     if (lmodis_sim) then
        allocate( &
@@ -2959,12 +3089,16 @@ CONTAINS
           x%modis_Liquid_Water_Path_Mean(Npoints), &
           x%modis_Ice_Water_Path_Mean(Npoints), &
           x%modis_Optical_Thickness_vs_Cloud_Top_Pressure(nPoints,numModisTauBins,numMODISPresBins), &
-          x%modis_Optical_thickness_vs_ReffLIQ(nPoints,numMODISTauBins,numMODISReffLiqBins), &   
+          x%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq(nPoints,numModisTauBins,numMODISPresBins), &
+          x%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice(nPoints,numModisTauBins,numMODISPresBins), &
+          x%modis_Optical_thickness_vs_ReffLIQ(nPoints,numMODISTauBins,numMODISReffLiqBins), &
           x%modis_Optical_Thickness_vs_ReffICE(nPoints,numMODISTauBins,numMODISReffIceBins), &
+          x%modis_LWP_vs_ReffLIQ(nPoints,nlwp_cosp_modis,numMODISReffLiqBins), &
+          x%modis_IWP_vs_ReffICE(nPoints,niwp_cosp_modis,numMODISReffIceBins), &
           stat=istat)
        call handle_allocate_error(istat, sub, 'modis_*')
     endif
-    
+
     ! CALIPSO simulator
     if (llidar_sim) then
        allocate( &
@@ -2972,17 +3106,17 @@ CONTAINS
           x%calipso_beta_tot(Npoints,Ncolumns,Nlevels), &
           x%calipso_srbval(SR_BINS+1), &
           x%calipso_cfad_sr(Npoints,SR_BINS,Nlvgrid), &
-          x%calipso_betaperp_tot(Npoints,Ncolumns,Nlevels), &  
+          x%calipso_betaperp_tot(Npoints,Ncolumns,Nlevels), &
           x%calipso_lidarcld(Npoints,Nlvgrid), &
-          x%calipso_cldlayer(Npoints,LIDAR_NCAT), &        
+          x%calipso_cldlayer(Npoints,LIDAR_NCAT), &
           x%calipso_lidarcldphase(Npoints,Nlvgrid,6), &
           x%calipso_lidarcldtmp(Npoints,LIDAR_NTEMP,5), &
-          x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &     
-          x%calipso_tau_tot(Npoints,Ncolumns,Nlevels), &       
-          x%calipso_temp_tot(Npoints,Nlevels), stat=istat)               
+          x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &
+          x%calipso_tau_tot(Npoints,Ncolumns,Nlevels), &
+          x%calipso_temp_tot(Npoints,Nlevels), stat=istat)
        call handle_allocate_error(istat, sub, 'calipso_*')
-    endif 
-      
+    endif
+
     ! PARASOL
     if (lparasol_sim) then
        allocate( &
@@ -2994,19 +3128,29 @@ CONTAINS
     ! Cloudsat simulator
     if (lradar_sim) then
        allocate( &
-          x%cloudsat_Ze_tot(Npoints,Ncolumns,Nlevels), &
-          x%cloudsat_cfad_ze(Npoints,CLOUDSAT_DBZE_BINS,Nlvgrid), &
-          x%lidar_only_freq_cloud(Npoints,Nlvgrid), &
-          x%radar_lidar_tcc(Npoints), &
-          x%cloudsat_precip_cover(Npoints,nCloudsatPrecipClass), &
-          x%cloudsat_pia(Npoints), stat=istat)
+          x%cloudsat_Ze_tot(Npoints,Ncolumns,Nlevels),                  &
+          x%cloudsat_cfad_ze(Npoints,CLOUDSAT_DBZE_BINS,Nlvgrid),       &
+          x%lidar_only_freq_cloud(Npoints,Nlvgrid),                     &
+          x%radar_lidar_tcc(Npoints),                                   &
+          x%wr_occfreq_ntotal(Npoints,WR_NREGIME),                      &
+          x%cfodd_ntotal(Npoints,CFODD_NDBZE,CFODD_NICOD,CFODD_NCLASS), &
+          stat=istat)
        call handle_allocate_error(istat, sub, 'cloudsat*')
+       if (use_vgrid) then
+          ! CLOUDSAT Precipitation occurrence diagnostics not available when use_vgrid=FALSE.'
+          ! Turning CLOUDSAT Precipitation occurrence diagnostcs OFF'
+          allocate( &
+             x%cloudsat_precip_cover(Npoints,nCloudsatPrecipClass), &
+             x%cloudsat_pia(Npoints), &
+             stat=istat)
+       endif
+       call handle_allocate_error(istat, sub, 'cloudsat_precip_*')
     endif
 
   end subroutine construct_cosp_outputs
 
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  ! SUBROUTINE destroy_cospIN     
+  ! SUBROUTINE destroy_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine destroy_cospIN(y)
     type(cosp_optical_inputs),intent(inout) :: y
@@ -3031,10 +3175,20 @@ CONTAINS
     if (allocated(y%ss_alb))              deallocate(y%ss_alb)
     if (allocated(y%fracLiq))             deallocate(y%fracLiq)
     if (allocated(y%fracPrecipIce))       deallocate(y%fracPrecipIce)
+    if (allocated(y%rcfg_cloudsat%N_scale_flag))       deallocate(y%rcfg_cloudsat%N_scale_flag)
+    if (allocated(y%rcfg_cloudsat%Z_scale_flag))       deallocate(y%rcfg_cloudsat%Z_scale_flag)
+    if (allocated(y%rcfg_cloudsat%Z_scale_added_flag)) deallocate(y%rcfg_cloudsat%Z_scale_added_flag)
+    if (allocated(y%rcfg_cloudsat%Ze_scaled))          deallocate(y%rcfg_cloudsat%Ze_scaled)
+    if (allocated(y%rcfg_cloudsat%Zr_scaled))          deallocate(y%rcfg_cloudsat%Zr_scaled)
+    if (allocated(y%rcfg_cloudsat%kr_scaled))          deallocate(y%rcfg_cloudsat%kr_scaled)
+    if (allocated(y%rcfg_cloudsat%fc))                 deallocate(y%rcfg_cloudsat%fc)
+    if (allocated(y%rcfg_cloudsat%rho_eff))            deallocate(y%rcfg_cloudsat%rho_eff)
+    if (allocated(y%rcfg_cloudsat%base_list))          deallocate(y%rcfg_cloudsat%base_list)
+    if (allocated(y%rcfg_cloudsat%step_list))          deallocate(y%rcfg_cloudsat%step_list)
   end subroutine destroy_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  ! SUBROUTINE destroy_cospstateIN     
-  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+  ! SUBROUTINE destroy_cospstateIN
+  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine destroy_cospstateIN(y)
     type(cosp_column_inputs),intent(inout) :: y
 
@@ -3059,13 +3213,13 @@ CONTAINS
     if (allocated(y%fl_rain))         deallocate(y%fl_rain)
     if (allocated(y%fl_snow))         deallocate(y%fl_snow)
     if (allocated(y%tca))             deallocate(y%tca)
-    if (allocated(y%hgt_matrix_half)) deallocate(y%hgt_matrix_half)    
-    
+    if (allocated(y%hgt_matrix_half)) deallocate(y%hgt_matrix_half)
+
   end subroutine destroy_cospstateIN
-  
+
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE destroy_cosp_outputs
-  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+  !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine destroy_cosp_outputs(y)
      type(cosp_outputs),intent(inout) :: y
 
@@ -3076,59 +3230,59 @@ CONTAINS
      endif
      if (associated(y%calipso_temp_tot))          then
         deallocate(y%calipso_temp_tot)
-        nullify(y%calipso_temp_tot)     
+        nullify(y%calipso_temp_tot)
      endif
      if (associated(y%calipso_betaperp_tot))      then
         deallocate(y%calipso_betaperp_tot)
-        nullify(y%calipso_betaperp_tot)     
+        nullify(y%calipso_betaperp_tot)
      endif
      if (associated(y%calipso_beta_tot))          then
-        deallocate(y%calipso_beta_tot)    
-        nullify(y%calipso_beta_tot)     
+        deallocate(y%calipso_beta_tot)
+        nullify(y%calipso_beta_tot)
      endif
      if (associated(y%calipso_tau_tot))           then
-        deallocate(y%calipso_tau_tot) 
-        nullify(y%calipso_tau_tot)     
+        deallocate(y%calipso_tau_tot)
+        nullify(y%calipso_tau_tot)
      endif
      if (associated(y%calipso_lidarcldphase))     then
         deallocate(y%calipso_lidarcldphase)
-        nullify(y%calipso_lidarcldphase)     
+        nullify(y%calipso_lidarcldphase)
      endif
      if (associated(y%calipso_cldlayerphase))     then
         deallocate(y%calipso_cldlayerphase)
-        nullify(y%calipso_cldlayerphase)     
+        nullify(y%calipso_cldlayerphase)
      endif
      if (associated(y%calipso_lidarcldtmp))       then
         deallocate(y%calipso_lidarcldtmp)
-        nullify(y%calipso_lidarcldtmp)     
+        nullify(y%calipso_lidarcldtmp)
      endif
      if (associated(y%calipso_cldlayer))          then
         deallocate(y%calipso_cldlayer)
-        nullify(y%calipso_cldlayer)     
+        nullify(y%calipso_cldlayer)
      endif
      if (associated(y%calipso_lidarcld))         then
         deallocate(y%calipso_lidarcld)
-        nullify(y%calipso_lidarcld)     
+        nullify(y%calipso_lidarcld)
      endif
      if (associated(y%calipso_srbval))            then
         deallocate(y%calipso_srbval)
-        nullify(y%calipso_srbval)     
+        nullify(y%calipso_srbval)
      endif
      if (associated(y%calipso_cfad_sr))          then
         deallocate(y%calipso_cfad_sr)
-        nullify(y%calipso_cfad_sr)     
+        nullify(y%calipso_cfad_sr)
      endif
      if (associated(y%parasolPix_refl))           then
         deallocate(y%parasolPix_refl)
-        nullify(y%parasolPix_refl)     
+        nullify(y%parasolPix_refl)
      endif
      if (associated(y%parasolGrid_refl))          then
-        deallocate(y%parasolGrid_refl) 
-        nullify(y%parasolGrid_refl)     
+        deallocate(y%parasolGrid_refl)
+        nullify(y%parasolGrid_refl)
      endif
      if (associated(y%cloudsat_Ze_tot))           then
-        deallocate(y%cloudsat_Ze_tot) 
-        nullify(y%cloudsat_Ze_tot)  
+        deallocate(y%cloudsat_Ze_tot)
+        nullify(y%cloudsat_Ze_tot)
      endif
      if (associated(y%cloudsat_precip_cover)) then
         deallocate(y%cloudsat_precip_cover)
@@ -3140,143 +3294,151 @@ CONTAINS
      endif
      if (associated(y%cloudsat_cfad_ze))          then
         deallocate(y%cloudsat_cfad_ze)
-        nullify(y%cloudsat_cfad_ze)     
+        nullify(y%cloudsat_cfad_ze)
      endif
      if (associated(y%radar_lidar_tcc))           then
-        deallocate(y%radar_lidar_tcc) 
-        nullify(y%radar_lidar_tcc)  
+        deallocate(y%radar_lidar_tcc)
+        nullify(y%radar_lidar_tcc)
      endif
      if (associated(y%lidar_only_freq_cloud))     then
         deallocate(y%lidar_only_freq_cloud)
-        nullify(y%lidar_only_freq_cloud)     
+        nullify(y%lidar_only_freq_cloud)
      endif
      if (associated(y%isccp_totalcldarea))        then
-        deallocate(y%isccp_totalcldarea) 
-        nullify(y%isccp_totalcldarea)  
+        deallocate(y%isccp_totalcldarea)
+        nullify(y%isccp_totalcldarea)
      endif
      if (associated(y%isccp_meantb))              then
-        deallocate(y%isccp_meantb) 
-        nullify(y%isccp_meantb)     
+        deallocate(y%isccp_meantb)
+        nullify(y%isccp_meantb)
      endif
      if (associated(y%isccp_meantbclr))           then
         deallocate(y%isccp_meantbclr)
-        nullify(y%isccp_meantbclr)  
+        nullify(y%isccp_meantbclr)
      endif
      if (associated(y%isccp_meanptop))            then
         deallocate(y%isccp_meanptop)
-        nullify(y%isccp_meanptop)     
+        nullify(y%isccp_meanptop)
      endif
      if (associated(y%isccp_meantaucld))          then
-        deallocate(y%isccp_meantaucld) 
-        nullify(y%isccp_meantaucld)       
+        deallocate(y%isccp_meantaucld)
+        nullify(y%isccp_meantaucld)
      endif
      if (associated(y%isccp_meanalbedocld))       then
         deallocate(y%isccp_meanalbedocld)
-        nullify(y%isccp_meanalbedocld)     
+        nullify(y%isccp_meanalbedocld)
      endif
      if (associated(y%isccp_boxtau))              then
         deallocate(y%isccp_boxtau)
-        nullify(y%isccp_boxtau)       
+        nullify(y%isccp_boxtau)
      endif
      if (associated(y%isccp_boxptop))             then
         deallocate(y%isccp_boxptop)
-        nullify(y%isccp_boxptop)     
+        nullify(y%isccp_boxptop)
      endif
      if (associated(y%isccp_fq))                  then
         deallocate(y%isccp_fq)
-        nullify(y%isccp_fq)       
+        nullify(y%isccp_fq)
      endif
      if (associated(y%misr_fq))                   then
-        deallocate(y%misr_fq) 
-        nullify(y%misr_fq)     
+        deallocate(y%misr_fq)
+        nullify(y%misr_fq)
      endif
      if (associated(y%misr_dist_model_layertops)) then
         deallocate(y%misr_dist_model_layertops)
-        nullify(y%misr_dist_model_layertops)       
+        nullify(y%misr_dist_model_layertops)
      endif
      if (associated(y%misr_meanztop))             then
         deallocate(y%misr_meanztop)
-        nullify(y%misr_meanztop)     
+        nullify(y%misr_meanztop)
      endif
      if (associated(y%misr_cldarea))              then
         deallocate(y%misr_cldarea)
-        nullify(y%misr_cldarea)      
+        nullify(y%misr_cldarea)
      endif
      if (associated(y%rttov_tbs))                 then
         deallocate(y%rttov_tbs)
-        nullify(y%rttov_tbs)     
+        nullify(y%rttov_tbs)
      endif
      if (associated(y%modis_Cloud_Fraction_Total_Mean))                      then
-        deallocate(y%modis_Cloud_Fraction_Total_Mean)       
-        nullify(y%modis_Cloud_Fraction_Total_Mean)       
+        deallocate(y%modis_Cloud_Fraction_Total_Mean)
+        nullify(y%modis_Cloud_Fraction_Total_Mean)
      endif
      if (associated(y%modis_Cloud_Fraction_Ice_Mean))                        then
-        deallocate(y%modis_Cloud_Fraction_Ice_Mean)     
-        nullify(y%modis_Cloud_Fraction_Ice_Mean)     
+        deallocate(y%modis_Cloud_Fraction_Ice_Mean)
+        nullify(y%modis_Cloud_Fraction_Ice_Mean)
      endif
      if (associated(y%modis_Cloud_Fraction_Water_Mean))                      then
-        deallocate(y%modis_Cloud_Fraction_Water_Mean)           
-        nullify(y%modis_Cloud_Fraction_Water_Mean)           
+        deallocate(y%modis_Cloud_Fraction_Water_Mean)
+        nullify(y%modis_Cloud_Fraction_Water_Mean)
      endif
      if (associated(y%modis_Cloud_Fraction_High_Mean))                       then
-        deallocate(y%modis_Cloud_Fraction_High_Mean)     
-        nullify(y%modis_Cloud_Fraction_High_Mean)     
+        deallocate(y%modis_Cloud_Fraction_High_Mean)
+        nullify(y%modis_Cloud_Fraction_High_Mean)
      endif
      if (associated(y%modis_Cloud_Fraction_Mid_Mean))                        then
-        deallocate(y%modis_Cloud_Fraction_Mid_Mean)       
-        nullify(y%modis_Cloud_Fraction_Mid_Mean)       
+        deallocate(y%modis_Cloud_Fraction_Mid_Mean)
+        nullify(y%modis_Cloud_Fraction_Mid_Mean)
      endif
      if (associated(y%modis_Cloud_Fraction_Low_Mean))                        then
-        deallocate(y%modis_Cloud_Fraction_Low_Mean)     
-        nullify(y%modis_Cloud_Fraction_Low_Mean)     
+        deallocate(y%modis_Cloud_Fraction_Low_Mean)
+        nullify(y%modis_Cloud_Fraction_Low_Mean)
      endif
      if (associated(y%modis_Optical_Thickness_Total_Mean))                   then
-        deallocate(y%modis_Optical_Thickness_Total_Mean)  
-        nullify(y%modis_Optical_Thickness_Total_Mean)  
+        deallocate(y%modis_Optical_Thickness_Total_Mean)
+        nullify(y%modis_Optical_Thickness_Total_Mean)
      endif
      if (associated(y%modis_Optical_Thickness_Water_Mean))                   then
-        deallocate(y%modis_Optical_Thickness_Water_Mean)     
-        nullify(y%modis_Optical_Thickness_Water_Mean)     
+        deallocate(y%modis_Optical_Thickness_Water_Mean)
+        nullify(y%modis_Optical_Thickness_Water_Mean)
      endif
      if (associated(y%modis_Optical_Thickness_Ice_Mean))                     then
-        deallocate(y%modis_Optical_Thickness_Ice_Mean)       
-        nullify(y%modis_Optical_Thickness_Ice_Mean)       
+        deallocate(y%modis_Optical_Thickness_Ice_Mean)
+        nullify(y%modis_Optical_Thickness_Ice_Mean)
      endif
      if (associated(y%modis_Optical_Thickness_Total_LogMean))                then
-        deallocate(y%modis_Optical_Thickness_Total_LogMean)    
-        nullify(y%modis_Optical_Thickness_Total_LogMean)    
+        deallocate(y%modis_Optical_Thickness_Total_LogMean)
+        nullify(y%modis_Optical_Thickness_Total_LogMean)
      endif
      if (associated(y%modis_Optical_Thickness_Water_LogMean))                then
-        deallocate(y%modis_Optical_Thickness_Water_LogMean)     
-        nullify(y%modis_Optical_Thickness_Water_LogMean)     
+        deallocate(y%modis_Optical_Thickness_Water_LogMean)
+        nullify(y%modis_Optical_Thickness_Water_LogMean)
      endif
      if (associated(y%modis_Optical_Thickness_Ice_LogMean))                  then
-        deallocate(y%modis_Optical_Thickness_Ice_LogMean)     
-        nullify(y%modis_Optical_Thickness_Ice_LogMean)     
+        deallocate(y%modis_Optical_Thickness_Ice_LogMean)
+        nullify(y%modis_Optical_Thickness_Ice_LogMean)
      endif
      if (associated(y%modis_Cloud_Particle_Size_Water_Mean))                 then
-        deallocate(y%modis_Cloud_Particle_Size_Water_Mean)       
-        nullify(y%modis_Cloud_Particle_Size_Water_Mean)       
+        deallocate(y%modis_Cloud_Particle_Size_Water_Mean)
+        nullify(y%modis_Cloud_Particle_Size_Water_Mean)
      endif
      if (associated(y%modis_Cloud_Particle_Size_Ice_Mean))                   then
-        deallocate(y%modis_Cloud_Particle_Size_Ice_Mean)     
-        nullify(y%modis_Cloud_Particle_Size_Ice_Mean)     
+        deallocate(y%modis_Cloud_Particle_Size_Ice_Mean)
+        nullify(y%modis_Cloud_Particle_Size_Ice_Mean)
      endif
      if (associated(y%modis_Cloud_Top_Pressure_Total_Mean))                  then
-        deallocate(y%modis_Cloud_Top_Pressure_Total_Mean)           
-        nullify(y%modis_Cloud_Top_Pressure_Total_Mean)           
+        deallocate(y%modis_Cloud_Top_Pressure_Total_Mean)
+        nullify(y%modis_Cloud_Top_Pressure_Total_Mean)
      endif
      if (associated(y%modis_Liquid_Water_Path_Mean))                         then
-        deallocate(y%modis_Liquid_Water_Path_Mean)     
-        nullify(y%modis_Liquid_Water_Path_Mean)     
+        deallocate(y%modis_Liquid_Water_Path_Mean)
+        nullify(y%modis_Liquid_Water_Path_Mean)
      endif
      if (associated(y%modis_Ice_Water_Path_Mean))                            then
-        deallocate(y%modis_Ice_Water_Path_Mean)       
-        nullify(y%modis_Ice_Water_Path_Mean)       
+        deallocate(y%modis_Ice_Water_Path_Mean)
+        nullify(y%modis_Ice_Water_Path_Mean)
      endif
      if (associated(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure))        then
-        deallocate(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure)     
-        nullify(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure)     
+        deallocate(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure)
+        nullify(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure)
+     endif
+     if (associated(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq))        then
+        deallocate(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq)
+        nullify(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Liq)
+     endif
+     if (associated(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice))        then
+        deallocate(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice)
+        nullify(y%modis_Optical_Thickness_vs_Cloud_Top_Pressure_Ice)
      endif
      if (associated(y%modis_Optical_thickness_vs_ReffLIQ))                   then
         deallocate(y%modis_Optical_thickness_vs_ReffLIQ)
@@ -3286,21 +3448,37 @@ CONTAINS
         deallocate(y%modis_Optical_thickness_vs_ReffICE)
         nullify(y%modis_Optical_thickness_vs_ReffICE)
      endif
+     if (associated(y%modis_LWP_vs_ReffLIQ))                                 then
+        deallocate(y%modis_LWP_vs_ReffLIQ)
+        nullify(y%modis_LWP_vs_ReffLIQ)
+     endif
+     if (associated(y%modis_IWP_vs_ReffICE))                                 then
+        deallocate(y%modis_IWP_vs_ReffICE)
+        nullify(y%modis_IWP_vs_ReffICE)
+     endif
+     if (associated(y%cfodd_ntotal)) then
+        deallocate(y%cfodd_ntotal)
+        nullify(y%cfodd_ntotal)
+     endif
+     if (associated(y%wr_occfreq_ntotal)) then
+        deallocate(y%wr_occfreq_ntotal)
+        nullify(y%wr_occfreq_ntotal)
+     endif
      if (associated(y%calipso_cldtype)) then
         deallocate(y%calipso_cldtype)
         nullify(y%calipso_cldtype)
      endif
      if (associated(y%calipso_cldtypetemp)) then
-        deallocate(y%calipso_cldtypetemp) 
-        nullify(y%calipso_cldtypetemp) 
+        deallocate(y%calipso_cldtypetemp)
+        nullify(y%calipso_cldtypetemp)
      endif
      if (associated(y%calipso_cldtypemeanz)) then
-        deallocate(y%calipso_cldtypemeanz) 
-        nullify(y%calipso_cldtypemeanz) 
+        deallocate(y%calipso_cldtypemeanz)
+        nullify(y%calipso_cldtypemeanz)
      endif
      if (associated(y%calipso_cldtypemeanzse)) then
-        deallocate(y%calipso_cldtypemeanzse) 
-        nullify(y%calipso_cldtypemeanzse) 
+        deallocate(y%calipso_cldtypemeanzse)
+        nullify(y%calipso_cldtypemeanzse)
      endif
      if (associated(y%calipso_cldthinemis)) then
         deallocate(y%calipso_cldthinemis)
@@ -3310,7 +3488,7 @@ CONTAINS
         deallocate(y%calipso_lidarcldtype)
         nullify(y%calipso_lidarcldtype)
      endif
-        
+
    end subroutine destroy_cosp_outputs
 #endif
 
