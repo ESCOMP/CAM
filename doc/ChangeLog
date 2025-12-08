@@ -1,6 +1,6 @@
 ===============================================================
 
-Tag name: cam6_4_134
+Tag name: cam6_4_135
 Originator(s): fvitt
 Date: 8 Dec 2025
 One-line Summary: Aerosol optics interfaces for bulk and volcanic aerosols
@@ -90,6 +90,11 @@ derecho/intel/aux_cam:
   DIFF SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09
   - volcanic aerosol optics roundoff level differences
 
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+    - This test failed the first time but passed on a retry.  Keeping this in the ChangeLog until CTSM makes a fix
+
 derecho/nvhpc/aux_cam:
   FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
   -pre-existing failure -- exceeds wallclock time limit
@@ -133,29 +138,7 @@ izumi/gnu/aux_cam:
   DIFF SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6
   - volcanic aerosol optics roundoff level differences
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
-
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+Summarize any changes to answers: roundoff
 
 ===============================================================
 ===============================================================
