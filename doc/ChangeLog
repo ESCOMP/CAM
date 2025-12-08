@@ -21,6 +21,10 @@ Describe any substantial timing or memory changes: N/A
 Code reviewed by: jimmielin, gold2718
 
 List all files eliminated:
+D       cime_config/testdefs/testmods_dirs/cam/rad_diag/user_nl_cpl
+ - reprosum_ namelist settings allowed roundoff level differences in
+   summations across MPI tasks which was caused failure of this restart
+   test: ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag
 
 List all files added and what they do:
 A       src/chemistry/aerosol/bulk_aerosol_properties_mod.F90
@@ -108,19 +112,14 @@ izumi/nag/aux_cam:
   - volcanic aerosol optics roundoff level differences
 
 izumi/gnu/aux_cam:
-  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag COMPARE_base_rest
-  - new failure
-  ERS_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag passes restart test.
-  Should change to ERS ?? -- this is not a CAM only test -- active CLM and CICE
-  are inlcuded in this compset
-
   DIFF ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags
   DIFF SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee
   DIFF SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc
   DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp
   DIFF SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s
   DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf
-  -  bulk aerosol optics roundoff level differences
+  DIFF ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag
+  - bulk aerosol optics roundoff level differences
 
   DIFF ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags
   DIFF ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
