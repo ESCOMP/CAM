@@ -4,6 +4,7 @@
       use shr_kind_mod,      only : r8 => shr_kind_r8
       use cam_logfile,       only : iulog
       use physics_buffer,    only : pbuf_get_index, pbuf_get_field
+      use spmd_utils,  only : masterproc
 
       implicit none
 
@@ -26,7 +27,7 @@
       integer :: ele_temp_ndx, ion_temp_ndx
 
       contains
-   
+
       subroutine init_hrates( )
         use mo_chem_utls, only : get_spc_ndx
         use cam_history,  only : addfld
@@ -51,6 +52,12 @@
         ids = (/ id_co2, id_o2, id_o3, id_o2_1d, id_o2_1s, id_o1d, id_h2o, id_o, id_h /)
 
         has_hrates = all( ids(:) > 0 ) .and. ptop_ref < 0.0004_r8 * psurf_ref
+
+        if (masterproc) then
+           write(iulog,*) 'init_hrates: ids: ',ids
+           write(iulog,*) 'init_hrates: ptop_ref: ',ptop_ref,' psurf_ref: ',psurf_ref
+           write(iulog,*) 'init_hrates: hrates active: ', has_hrates
+        end if
 
         if (.not. has_hrates) return
 
@@ -81,7 +88,7 @@
         attr = 'total jo2 euv photolysis rate'
         call addfld( 'JO2_EUV',    (/ 'lev' /), 'I', '/s', trim(attr) )
 
-        ele_temp_ndx = pbuf_get_index('TElec',errcode=err)! electron temperature index 
+        ele_temp_ndx = pbuf_get_index('TElec',errcode=err)! electron temperature index
         ion_temp_ndx = pbuf_get_index('TIon',errcode=err) ! ion temperature index
 
       end subroutine init_hrates
@@ -206,41 +213,41 @@
 
       qrs_tot(:ncol,:) = 0._r8
       if (.not. has_hrates) return
-      
-!-------------------------------------------------------------------------      
+
+!-------------------------------------------------------------------------
 !        ... set maximum zenith angle - higher value for higher top model
-!-------------------------------------------------------------------------      
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
+!-------------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
          max_zen_angle = 116._r8
       else
          max_zen_angle = 97.01_r8 ! degrees
       endif
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... get chunk latitudes and longitudes
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       lchnk = state%lchnk
 
       call get_rlat_all_p( lchnk, ncol, rlats )
       call get_rlon_all_p( lchnk, ncol, rlons )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... set lower limit for heating rates which is now dictated by radheat module
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       kbot_hrates = bot_mlt_lev
       kbot_hrates = min( kbot_hrates,pver )
 !     write(iulog,*) 'hrates: kbot_hrates = ',kbot_hrates
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... calculate cosine of zenith angle then cast back to angle
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       calday = get_curr_calday()
       call zenith( calday, rlats, rlons, zen_angle, ncol )
       zen_angle(:) = acos( zen_angle(:) )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... map incoming concentrations to working array
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       do m = 1,pcnst
          n = map2chm(m)
          if( n > 0 ) then
@@ -251,49 +258,49 @@
       end do
       call get_short_lived_species( mmr, lchnk, ncol, pbuf )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... set atmosphere mean mass
-!-----------------------------------------------------------------------      
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
+!-----------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
         do k = 1,pver
           mbar(:ncol,k) = mbarv(:ncol,k,lchnk)
         enddo
-      else      
+      else
         call set_mean_mass( ncol, mmr, mbar )
       endif
 !
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... xform from mmr to vmr
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call mmr2vmr( mmr(:ncol,:,:), vmr(:ncol,:,:), mbar(:ncol,:), ncol )
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... xform water vapor from mmr to vmr
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       do k = 1,pver
          h2ovmr(:ncol,k) = vmr(:ncol,k,id_h2o)
       end do
-!-----------------------------------------------------------------------      
-!        ... xform geopotential height from m to km 
+!-----------------------------------------------------------------------
+!        ... xform geopotential height from m to km
 !            and pressure from Pa to mb
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       zsurf(:ncol) = rga * state%phis(:ncol)
       do k = 1,pver
          zmid(:ncol,k) = m2km * (state%zm(:ncol,k) + zsurf(:ncol))
       end do
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... set the "invariants"
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call setinv( invariants, state%t, h2ovmr, vmr, state%pmid, ncol, lchnk, pbuf )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !        ... set the column densities at the upper boundary
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call set_ub_col( col_delta, vmr, invariants, state%pint(:,1), state%pdel, ncol, lchnk )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !       ...  set rates for "tabular" and user specified reactions
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       do m = 1,rxntot
          do k = 1,pver
             reaction_rates(:,k,m) = 0._r8
@@ -303,15 +310,15 @@
       call usrrxt_hrates( reaction_rates, state%t, ele_temp_fld, ion_temp_fld, &
                           h2ovmr, invariants(:,:,indexm), ncol, kbot_hrates )
       call adjrxt( reaction_rates, invariants, invariants(1,1,indexm), ncol,pver )
-      
-!-----------------------------------------------------------------------      
+
+!-----------------------------------------------------------------------
 !     	... set cp array
-!-----------------------------------------------------------------------      
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
+!-----------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
         do k = 1, pver
            cpair(:ncol,k) = cpairv(:ncol,k,lchnk)
         enddo
-      else      
+      else
         call calc_cp( ncol, vmr, cpair )
       endif
 
@@ -325,18 +332,18 @@
       write(iulog,*) ' '
 #endif
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... set the earth-sun distance factor
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
                          delta, esfact )
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... set the column densities
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call setcol( col_delta, col_dens )
 !-----------------------------------------------------------------------
 !        ... compute the thermal heating rates
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       do m = 1,4
          do k = 1,pver
             qrs(:,k,m) = 0._r8
@@ -360,7 +367,7 @@ column_loop : &
             o2_line(:)  = vmr(i,:,id_o2)
             co2_line(:) = vmr(i,:,id_co2)
             n2_line(:)  = 1._r8 - (o_line(:) + o2_line(:) + vmr(i,:,id_h))
-            where( n2_line(:) < n2min ) 
+            where( n2_line(:) < n2min )
                n2_line = n2min
             end where
             o3_line(:)  = vmr(i,:,id_o3)
@@ -418,15 +425,15 @@ column_loop : &
       call outfld( 'QRS_EUV', euv_hrate(:,:), ncol, lchnk )
       call outfld( 'QRS_CO2NIR', co2_hrate(:,:), ncol, lchnk )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... chemical pot heating rate
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call cph( cphrate, vmr, reaction_rates, cpair, mbar, &
                 kbot_hrates, ncol, lchnk )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... auroral ion production
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call aurora( state%t, mbar, rlats, &
                    aur_hrate, cpair, state%pmid, lchnk, calday, &
                    ncol, rlons, pbuf )
@@ -435,15 +442,15 @@ column_loop : &
       end do
       call outfld( 'QRS_AUR', aur_hrate(:,:), ncol, lchnk )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... airglow heating rate
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       call airglow( aghrate, vmr(1,1,id_o2_1s), vmr(1,1,id_o2_1d), vmr(1,1,id_o1d), reaction_rates, cpair, &
                     ncol, lchnk )
 
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
 !     	... form total heating rate
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       do k = 1,kbot_hrates
          qrs_tot(:ncol,k) = qrs(:,k,1) + qrs(:,k,2) + qrs(:,k,3) + qrs(:,k,4) &
                           + qrl(:,k,1) + qrl(:,k,2) + qrl(:,k,3) + qrl(:,k,4)
