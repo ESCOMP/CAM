@@ -17,8 +17,6 @@ module clubb_intr
   !                                                                                                      !
   !----------------------------------------------------------------------------------------------------- !
 
-  use ref_pres,            only: trop_cloud_top_press
-
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
@@ -2538,6 +2536,7 @@ end subroutine clubb_init_cnst
 
 #ifdef _OPENACC
     ! These options have not been GPUized
+    if ( l_ascending_grid )   call endrun(subr//': l_ascending_grid=.true. not available when compiling with OpenACC')
     if ( do_clubb_mf )        call endrun(subr//': do_clubb_mf=.true. not available when compiling with OpenACC')
     if ( do_rainturb )        call endrun(subr//': do_rainturb=.true. not available when compiling with OpenACC')
     if ( do_cldcool )         call endrun(subr//': do_cldcool=.true. not available when compiling with OpenACC')
@@ -2550,8 +2549,6 @@ end subroutine clubb_init_cnst
     !-----------------------------------------------------------------------------------!
     !                           MAIN COMPUTATION BEGINS HERE                            !
     !-----------------------------------------------------------------------------------!
-    print *, "top_lev = ", top_lev 
-    print *, "trop_cloud_top_press = ", trop_cloud_top_press 
 
     call t_startf('clubb_tend_cam:NAR')
 
@@ -3584,57 +3581,57 @@ end subroutine clubb_init_cnst
         p_in_Pa                   =                   p_in_Pa(:,nzt_clubb:1:-1)
         exner                     =                     exner(:,nzt_clubb:1:-1)
         rfrzm                     =                     rfrzm(:,nzt_clubb:1:-1)
-        um                     =                     um(:,nzt_clubb:1:-1)
-        vm                     =                     vm(:,nzt_clubb:1:-1)
-        up3_pbuf                    =                    up3_pbuf(:,nzt_clubb:1:-1)
-        vp3_pbuf                    =                    vp3_pbuf(:,nzt_clubb:1:-1)
-        wp3_pbuf                    =                    wp3_pbuf(:,nzt_clubb:1:-1)
-        rtp3_pbuf                   =                   rtp3_pbuf(:,nzt_clubb:1:-1)
-        thlp3_pbuf                  =                  thlp3_pbuf(:,nzt_clubb:1:-1)
-        rcm                 =                 rcm(:,nzt_clubb:1:-1)
+        um                        =                        um(:,nzt_clubb:1:-1)
+        vm                        =                        vm(:,nzt_clubb:1:-1)
+        up3_pbuf                  =                  up3_pbuf(:,nzt_clubb:1:-1)
+        vp3_pbuf                  =                  vp3_pbuf(:,nzt_clubb:1:-1)
+        wp3_pbuf                  =                  wp3_pbuf(:,nzt_clubb:1:-1)
+        rtp3_pbuf                 =                 rtp3_pbuf(:,nzt_clubb:1:-1)
+        thlp3_pbuf                =                thlp3_pbuf(:,nzt_clubb:1:-1)
+        rcm                       =                       rcm(:,nzt_clubb:1:-1)
         cloud_frac_inout          =          cloud_frac_inout(:,nzt_clubb:1:-1)
-        wpup2_pbuf               =               wpup2_pbuf(:,nzt_clubb:1:-1)
-        wpvp2_pbuf               =               wpvp2_pbuf(:,nzt_clubb:1:-1)
-        wp2rtp_pbuf              =              wp2rtp_pbuf(:,nzt_clubb:1:-1)
-        wp2thlp_pbuf             =             wp2thlp_pbuf(:,nzt_clubb:1:-1)
-        ice_supersat_frac_pbuf   =   ice_supersat_frac_pbuf(:,nzt_clubb:1:-1)
+        wpup2_pbuf                =                wpup2_pbuf(:,nzt_clubb:1:-1)
+        wpvp2_pbuf                =                wpvp2_pbuf(:,nzt_clubb:1:-1)
+        wp2rtp_pbuf               =               wp2rtp_pbuf(:,nzt_clubb:1:-1)
+        wp2thlp_pbuf              =              wp2thlp_pbuf(:,nzt_clubb:1:-1)
+        ice_supersat_frac_pbuf    =    ice_supersat_frac_pbuf(:,nzt_clubb:1:-1)
         um_pert_inout             =             um_pert_inout(:,nzt_clubb:1:-1)
         vm_pert_inout             =             vm_pert_inout(:,nzt_clubb:1:-1)
-        wp2thvp_pbuf                =                wp2thvp_pbuf(:,nzt_clubb:1:-1)
-        rtm                    =                    rtm(:,nzt_clubb:1:-1)
-        thlm                   =                   thlm(:,nzt_clubb:1:-1)
+        wp2thvp_pbuf              =              wp2thvp_pbuf(:,nzt_clubb:1:-1)
+        rtm                       =                       rtm(:,nzt_clubb:1:-1)
+        thlm                      =                      thlm(:,nzt_clubb:1:-1)
 
-        wprtp_forcing     =    wprtp_forcing(:,nzm_clubb:1:-1)
-        wpthlp_forcing    =   wpthlp_forcing(:,nzm_clubb:1:-1)
-        rtp2_forcing      =     rtp2_forcing(:,nzm_clubb:1:-1)
-        thlp2_forcing     =    thlp2_forcing(:,nzm_clubb:1:-1)
-        rtpthlp_forcing   =  rtpthlp_forcing(:,nzm_clubb:1:-1)
-        wm_zm             =            wm_zm(:,nzm_clubb:1:-1)
-        rho_zm            =           rho_zm(:,nzm_clubb:1:-1)
-        rho_ds_zm         =        rho_ds_zm(:,nzm_clubb:1:-1)
-        invrs_rho_ds_zm   =  invrs_rho_ds_zm(:,nzm_clubb:1:-1)
-        thv_ds_zm         =        thv_ds_zm(:,nzm_clubb:1:-1)
-        upwp_pbuf           =          upwp_pbuf(:,nzm_clubb:1:-1)
-        vpwp_pbuf           =          vpwp_pbuf(:,nzm_clubb:1:-1)
-        up2_pbuf            =           up2_pbuf(:,nzm_clubb:1:-1)
-        vp2_pbuf            =           vp2_pbuf(:,nzm_clubb:1:-1)
-        wprtp_pbuf          =         wprtp_pbuf(:,nzm_clubb:1:-1)
-        wpthlp_pbuf         =        wpthlp_pbuf(:,nzm_clubb:1:-1)
-        wp2_pbuf            =           wp2_pbuf(:,nzm_clubb:1:-1)
-        rtp2_pbuf           =          rtp2_pbuf(:,nzm_clubb:1:-1)
-        thlp2_pbuf          =         thlp2_pbuf(:,nzm_clubb:1:-1)
-        rtpthlp_pbuf        =       rtpthlp_pbuf(:,nzm_clubb:1:-1)
-        wpthvp_pbuf         =        wpthvp_pbuf(:,nzm_clubb:1:-1)
-        rtpthvp_pbuf        =       rtpthvp_pbuf(:,nzm_clubb:1:-1)
-        thlpthvp_pbuf       =      thlpthvp_pbuf(:,nzm_clubb:1:-1)
-        uprcp_pbuf       =      uprcp_pbuf(:,nzm_clubb:1:-1)
-        vprcp_pbuf       =      vprcp_pbuf(:,nzm_clubb:1:-1)
-        rc_coef_zm_pbuf  = rc_coef_zm_pbuf(:,nzm_clubb:1:-1)
-        wp4_pbuf         =        wp4_pbuf(:,nzm_clubb:1:-1)
-        wp2up2_pbuf      =     wp2up2_pbuf(:,nzm_clubb:1:-1)
-        wp2vp2_pbuf      =     wp2vp2_pbuf(:,nzm_clubb:1:-1)
-        upwp_pert_inout   =  upwp_pert_inout(:,nzm_clubb:1:-1)
-        vpwp_pert_inout   =  vpwp_pert_inout(:,nzm_clubb:1:-1)
+        wprtp_forcing             =             wprtp_forcing(:,nzm_clubb:1:-1)
+        wpthlp_forcing            =            wpthlp_forcing(:,nzm_clubb:1:-1)
+        rtp2_forcing              =              rtp2_forcing(:,nzm_clubb:1:-1)
+        thlp2_forcing             =             thlp2_forcing(:,nzm_clubb:1:-1)
+        rtpthlp_forcing           =           rtpthlp_forcing(:,nzm_clubb:1:-1)
+        wm_zm                     =                     wm_zm(:,nzm_clubb:1:-1)
+        rho_zm                    =                    rho_zm(:,nzm_clubb:1:-1)
+        rho_ds_zm                 =                 rho_ds_zm(:,nzm_clubb:1:-1)
+        invrs_rho_ds_zm           =           invrs_rho_ds_zm(:,nzm_clubb:1:-1)
+        thv_ds_zm                 =                 thv_ds_zm(:,nzm_clubb:1:-1)
+        upwp_pbuf                 =                 upwp_pbuf(:,nzm_clubb:1:-1)
+        vpwp_pbuf                 =                 vpwp_pbuf(:,nzm_clubb:1:-1)
+        up2_pbuf                  =                  up2_pbuf(:,nzm_clubb:1:-1)
+        vp2_pbuf                  =                  vp2_pbuf(:,nzm_clubb:1:-1)
+        wprtp_pbuf                =                wprtp_pbuf(:,nzm_clubb:1:-1)
+        wpthlp_pbuf               =               wpthlp_pbuf(:,nzm_clubb:1:-1)
+        wp2_pbuf                  =                  wp2_pbuf(:,nzm_clubb:1:-1)
+        rtp2_pbuf                 =                 rtp2_pbuf(:,nzm_clubb:1:-1)
+        thlp2_pbuf                =                thlp2_pbuf(:,nzm_clubb:1:-1)
+        rtpthlp_pbuf              =              rtpthlp_pbuf(:,nzm_clubb:1:-1)
+        wpthvp_pbuf               =               wpthvp_pbuf(:,nzm_clubb:1:-1)
+        rtpthvp_pbuf              =              rtpthvp_pbuf(:,nzm_clubb:1:-1)
+        thlpthvp_pbuf             =             thlpthvp_pbuf(:,nzm_clubb:1:-1)
+        uprcp_pbuf                =                uprcp_pbuf(:,nzm_clubb:1:-1)
+        vprcp_pbuf                =                vprcp_pbuf(:,nzm_clubb:1:-1)
+        rc_coef_zm_pbuf           =           rc_coef_zm_pbuf(:,nzm_clubb:1:-1)
+        wp4_pbuf                  =                  wp4_pbuf(:,nzm_clubb:1:-1)
+        wp2up2_pbuf               =               wp2up2_pbuf(:,nzm_clubb:1:-1)
+        wp2vp2_pbuf               =               wp2vp2_pbuf(:,nzm_clubb:1:-1)
+        upwp_pert_inout           =           upwp_pert_inout(:,nzm_clubb:1:-1)
+        vpwp_pert_inout           =           vpwp_pert_inout(:,nzm_clubb:1:-1)
 
         if ( edsclr_dim > 0 ) then
           edsclr_inout = edsclr_inout(:,nzt_clubb:1:-1,:)
@@ -3642,16 +3639,16 @@ end subroutine clubb_init_cnst
         end if
 
         if ( sclr_dim > 0 ) then
-          
-          sclrm_forcing = sclrm_forcing(:,nzt_clubb:1:-1,:)
-          sclrm         = sclrm(:,nzt_clubb:1:-1,:)
-          sclrp3        = sclrp3(:,nzt_clubb:1:-1,:)
-
-          sclrp2          = sclrp2(:,nzm_clubb:1:-1,:)
-          sclrprtp        = sclrprtp(:,nzm_clubb:1:-1,:)
-          sclrpthlp       = sclrpthlp(:,nzm_clubb:1:-1,:)
-          wpsclrp         = wpsclrp(:,nzm_clubb:1:-1,:)
-          sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
+            
+          sclrm_forcing    =    sclrm_forcing(:,nzt_clubb:1:-1,:)
+          sclrm            =            sclrm(:,nzt_clubb:1:-1,:)
+          sclrp3           =           sclrp3(:,nzt_clubb:1:-1,:)
+  
+          sclrp2           =           sclrp2(:,nzm_clubb:1:-1,:)
+          sclrprtp         =         sclrprtp(:,nzm_clubb:1:-1,:)
+          sclrpthlp        =        sclrpthlp(:,nzm_clubb:1:-1,:)
+          wpsclrp          =          wpsclrp(:,nzm_clubb:1:-1,:)
+          sclrpthvp_inout  =  sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
         ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid.
@@ -3666,9 +3663,9 @@ end subroutine clubb_init_cnst
         
         ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid.
         ! only for pdfp_rtp2_output calc 
-        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2       (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
@@ -3678,8 +3675,8 @@ end subroutine clubb_init_cnst
         pdf_params_chnk(lchnk)%w_2          = pdf_params_chnk(lchnk)%w_2         (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_w_1   = pdf_params_chnk(lchnk)%varnce_w_1  (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_w_2   = pdf_params_chnk(lchnk)%varnce_w_2  (:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1            (:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2            (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2       (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
   
@@ -3715,13 +3712,17 @@ end subroutine clubb_init_cnst
   
       end if
 
-      if ( pcols /= ncol ) then
-        print *, "pcols /= ncol", pcols, ncol
-      else
-        print *, "pcols == ncol", pcols, ncol
-      end if
+      ! These updates are required because the pbuf variables are dimensioned with pcols, when
+      ! we only need ncol. This requires us to slice the arrays when inputting to advance_clubb_core_api,
+      ! which happens on the CPU, so we need the CPU version of these to be correct.
+      ! REMOVECAM: This will be unnecessary once pbuf is gone and these are dimensioned ncol.
+      !$acc update host(  upwp_pbuf, vpwp_pbuf, up2_pbuf, vp2_pbuf, up3_pbuf, vp3_pbuf, wprtp_pbuf, &
+      !$acc               wpthlp_pbuf, wp2_pbuf, wp3_pbuf, rtp2_pbuf, rtp3_pbuf, thlp2_pbuf, thlp3_pbuf, &
+      !$acc               rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
+      !$acc               wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, &
+      !$acc               wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
 
-      call advance_clubb_core_api( gr, nzm_clubb, nzt_clubb, ncol, &        ! ins
+      call advance_clubb_core_api( gr, nzm_clubb, nzt_clubb, ncol, &        ! Inputs
           l_implemented, dtime, fcor, sfc_elevation, &
           hydromet_dim, &
           sclr_dim, sclr_tol, edsclr_dim, sclr_idx, &
@@ -3745,8 +3746,8 @@ end subroutine clubb_init_cnst
           rtm_min, rtm_nudge_max_altitude, &
           clubb_config_flags, &
           stats_metadata, &
-          stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &                 ! inouts
-          um(:ncol,:), vm(:ncol,:), upwp_pbuf(:ncol,:), vpwp_pbuf(:ncol,:), &
+          stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &                 ! InOuts
+          um, vm, upwp_pbuf(:ncol,:), vpwp_pbuf(:ncol,:), &
           up2_pbuf(:ncol,:), vp2_pbuf(:ncol,:), up3_pbuf(:ncol,:), vp3_pbuf(:ncol,:), &
           thlm(:ncol,:), rtm(:ncol,:), wprtp_pbuf(:ncol,:), wpthlp_pbuf(:ncol,:), &
           wp2_pbuf(:ncol,:), wp3_pbuf(:ncol,:), rtp2_pbuf(:ncol,:), rtp3_pbuf(:ncol,:), &
@@ -3764,12 +3765,20 @@ end subroutine clubb_init_cnst
           um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
           pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
           pdf_implicit_coefs_terms_chnk(lchnk), &
-          khzm_out, khzt_out, &                                                  ! outs
+          khzm_out, khzt_out, &                                                  ! Outputs
           qclvar_out, thlprcp_out, &
           wprcp_out, w_up_in_cloud_out, w_down_in_cloud_out,  &
           cloudy_updraft_frac_out, cloudy_downdraft_frac_out, &
           rcm_in_layer, cloud_cover_out, invrs_tau_zm_out, &
           Lscale )
+
+      ! The "unslice" copyback step updates the CPU (host) variables, so we need to copy those back to GPU.
+      ! REMOVECAM: This will be unnecessary once pbuf is gone and these are dimensioned ncol.
+      !$acc update device( upwp_pbuf, vpwp_pbuf, up2_pbuf, vp2_pbuf, up3_pbuf, vp3_pbuf, wprtp_pbuf, &
+      !$acc                wpthlp_pbuf, wp2_pbuf, wp3_pbuf, rtp2_pbuf, rtp3_pbuf, thlp2_pbuf, thlp3_pbuf, &
+      !$acc                rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
+      !$acc                wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, &
+      !$acc                wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
           
 
       if ( l_ascending_grid ) then
@@ -3778,104 +3787,104 @@ end subroutine clubb_init_cnst
         ! so we need to flip them back. This section should flip every array that was flipped 
         ! before the advance_clubb_core call.
 
-        thlm_forcing              =              thlm_forcing(:,nzt_clubb:1:-1)
-        rtm_forcing               =               rtm_forcing(:,nzt_clubb:1:-1)
-        um_forcing                =                um_forcing(:,nzt_clubb:1:-1)
-        vm_forcing                =                vm_forcing(:,nzt_clubb:1:-1)
-        wm_zt                     =                     wm_zt(:,nzt_clubb:1:-1)
-        rho_zt                    =                    rho_zt(:,nzt_clubb:1:-1)
-        rho_ds_zt                 =                 rho_ds_zt(:,nzt_clubb:1:-1)
-        invrs_rho_ds_zt           =           invrs_rho_ds_zt(:,nzt_clubb:1:-1)
-        thv_ds_zt                 =                 thv_ds_zt(:,nzt_clubb:1:-1)
-        khzt_out                  =                  khzt_out(:,nzt_clubb:1:-1)
-        rtm_ref                   =                   rtm_ref(:,nzt_clubb:1:-1)
-        thlm_ref                  =                  thlm_ref(:,nzt_clubb:1:-1)
-        um_ref                    =                    um_ref(:,nzt_clubb:1:-1)
-        vm_ref                    =                    vm_ref(:,nzt_clubb:1:-1)
-        ug                        =                        ug(:,nzt_clubb:1:-1)
-        vg                        =                        vg(:,nzt_clubb:1:-1)
-        p_in_Pa                   =                   p_in_Pa(:,nzt_clubb:1:-1)
-        exner                     =                     exner(:,nzt_clubb:1:-1)
-        rfrzm                     =                     rfrzm(:,nzt_clubb:1:-1)
-        um                     =                     um(:,nzt_clubb:1:-1)
-        vm                     =                     vm(:,nzt_clubb:1:-1)
-        up3_pbuf                    =                    up3_pbuf(:,nzt_clubb:1:-1)
-        vp3_pbuf                    =                    vp3_pbuf(:,nzt_clubb:1:-1)
-        wp3_pbuf                    =                    wp3_pbuf(:,nzt_clubb:1:-1)
-        rtp3_pbuf                   =                   rtp3_pbuf(:,nzt_clubb:1:-1)
-        thlp3_pbuf                  =                  thlp3_pbuf(:,nzt_clubb:1:-1)
-        rcm                 =                 rcm(:,nzt_clubb:1:-1)
-        cloud_frac_inout          =          cloud_frac_inout(:,nzt_clubb:1:-1)
-        wpup2_pbuf               =               wpup2_pbuf(:,nzt_clubb:1:-1)
-        wpvp2_pbuf               =               wpvp2_pbuf(:,nzt_clubb:1:-1)
-        wp2rtp_pbuf              =              wp2rtp_pbuf(:,nzt_clubb:1:-1)
-        wp2thlp_pbuf             =             wp2thlp_pbuf(:,nzt_clubb:1:-1)
-        qclvar_out                =                qclvar_out(:,nzt_clubb:1:-1)
-        cloud_cover_out           =           cloud_cover_out(:,nzt_clubb:1:-1)
-        w_up_in_cloud_out         =         w_up_in_cloud_out(:,nzt_clubb:1:-1)
-        w_down_in_cloud_out       =       w_down_in_cloud_out(:,nzt_clubb:1:-1)
-        cloudy_updraft_frac_out   =   cloudy_updraft_frac_out(:,nzt_clubb:1:-1)
-        cloudy_downdraft_frac_out = cloudy_downdraft_frac_out(:,nzt_clubb:1:-1)
-        rcm_in_layer          =          rcm_in_layer(:,nzt_clubb:1:-1)
-        ice_supersat_frac_pbuf   =   ice_supersat_frac_pbuf(:,nzt_clubb:1:-1)
-        um_pert_inout             =             um_pert_inout(:,nzt_clubb:1:-1)
-        vm_pert_inout             =             vm_pert_inout(:,nzt_clubb:1:-1)
-        wp2thvp_pbuf                =                wp2thvp_pbuf(:,nzt_clubb:1:-1)
-        rtm                    =                    rtm(:,nzt_clubb:1:-1)
-        thlm                   =                   thlm(:,nzt_clubb:1:-1)
-        Lscale                    =                    Lscale(:,nzt_clubb:1:-1)
+        thlm_forcing               =               thlm_forcing(:,nzt_clubb:1:-1)
+        rtm_forcing                =                rtm_forcing(:,nzt_clubb:1:-1)
+        um_forcing                 =                 um_forcing(:,nzt_clubb:1:-1)
+        vm_forcing                 =                 vm_forcing(:,nzt_clubb:1:-1)
+        wm_zt                      =                      wm_zt(:,nzt_clubb:1:-1)
+        rho_zt                     =                     rho_zt(:,nzt_clubb:1:-1)
+        rho_ds_zt                  =                  rho_ds_zt(:,nzt_clubb:1:-1)
+        invrs_rho_ds_zt            =            invrs_rho_ds_zt(:,nzt_clubb:1:-1)
+        thv_ds_zt                  =                  thv_ds_zt(:,nzt_clubb:1:-1)
+        khzt_out                   =                   khzt_out(:,nzt_clubb:1:-1)
+        rtm_ref                    =                    rtm_ref(:,nzt_clubb:1:-1)
+        thlm_ref                   =                   thlm_ref(:,nzt_clubb:1:-1)
+        um_ref                     =                     um_ref(:,nzt_clubb:1:-1)
+        vm_ref                     =                     vm_ref(:,nzt_clubb:1:-1)
+        ug                         =                         ug(:,nzt_clubb:1:-1)
+        vg                         =                         vg(:,nzt_clubb:1:-1)
+        p_in_Pa                    =                    p_in_Pa(:,nzt_clubb:1:-1)
+        exner                      =                      exner(:,nzt_clubb:1:-1)
+        rfrzm                      =                      rfrzm(:,nzt_clubb:1:-1)
+        um                         =                         um(:,nzt_clubb:1:-1)
+        vm                         =                         vm(:,nzt_clubb:1:-1)
+        up3_pbuf                   =                   up3_pbuf(:,nzt_clubb:1:-1)
+        vp3_pbuf                   =                   vp3_pbuf(:,nzt_clubb:1:-1)
+        wp3_pbuf                   =                   wp3_pbuf(:,nzt_clubb:1:-1)
+        rtp3_pbuf                  =                  rtp3_pbuf(:,nzt_clubb:1:-1)
+        thlp3_pbuf                 =                 thlp3_pbuf(:,nzt_clubb:1:-1)
+        rcm                        =                        rcm(:,nzt_clubb:1:-1)
+        cloud_frac_inout           =           cloud_frac_inout(:,nzt_clubb:1:-1)
+        wpup2_pbuf                 =                 wpup2_pbuf(:,nzt_clubb:1:-1)
+        wpvp2_pbuf                 =                 wpvp2_pbuf(:,nzt_clubb:1:-1)
+        wp2rtp_pbuf                =                wp2rtp_pbuf(:,nzt_clubb:1:-1)
+        wp2thlp_pbuf               =               wp2thlp_pbuf(:,nzt_clubb:1:-1)
+        qclvar_out                 =                 qclvar_out(:,nzt_clubb:1:-1)
+        cloud_cover_out            =            cloud_cover_out(:,nzt_clubb:1:-1)
+        w_up_in_cloud_out          =          w_up_in_cloud_out(:,nzt_clubb:1:-1)
+        w_down_in_cloud_out        =        w_down_in_cloud_out(:,nzt_clubb:1:-1)
+        cloudy_updraft_frac_out    =    cloudy_updraft_frac_out(:,nzt_clubb:1:-1)
+        cloudy_downdraft_frac_out  =  cloudy_downdraft_frac_out(:,nzt_clubb:1:-1)
+        rcm_in_layer               =               rcm_in_layer(:,nzt_clubb:1:-1)
+        ice_supersat_frac_pbuf     =     ice_supersat_frac_pbuf(:,nzt_clubb:1:-1)
+        um_pert_inout              =              um_pert_inout(:,nzt_clubb:1:-1)
+        vm_pert_inout              =              vm_pert_inout(:,nzt_clubb:1:-1)
+        wp2thvp_pbuf               =               wp2thvp_pbuf(:,nzt_clubb:1:-1)
+        rtm                        =                        rtm(:,nzt_clubb:1:-1)
+        thlm                       =                       thlm(:,nzt_clubb:1:-1)
+        Lscale                     =                     Lscale(:,nzt_clubb:1:-1)
 
-        wprtp_forcing     =    wprtp_forcing(:,nzm_clubb:1:-1)
-        wpthlp_forcing    =   wpthlp_forcing(:,nzm_clubb:1:-1)
-        rtp2_forcing      =     rtp2_forcing(:,nzm_clubb:1:-1)
-        thlp2_forcing     =    thlp2_forcing(:,nzm_clubb:1:-1)
-        rtpthlp_forcing   =  rtpthlp_forcing(:,nzm_clubb:1:-1)
-        wm_zm             =            wm_zm(:,nzm_clubb:1:-1)
-        rho_zm            =           rho_zm(:,nzm_clubb:1:-1)
-        rho_ds_zm         =        rho_ds_zm(:,nzm_clubb:1:-1)
-        invrs_rho_ds_zm   =  invrs_rho_ds_zm(:,nzm_clubb:1:-1)
-        thv_ds_zm         =        thv_ds_zm(:,nzm_clubb:1:-1)
-        upwp_pbuf           =          upwp_pbuf(:,nzm_clubb:1:-1)
-        vpwp_pbuf           =          vpwp_pbuf(:,nzm_clubb:1:-1)
-        up2_pbuf            =           up2_pbuf(:,nzm_clubb:1:-1)
-        vp2_pbuf            =           vp2_pbuf(:,nzm_clubb:1:-1)
-        wprtp_pbuf          =         wprtp_pbuf(:,nzm_clubb:1:-1)
-        wpthlp_pbuf         =        wpthlp_pbuf(:,nzm_clubb:1:-1)
-        wp2_pbuf            =           wp2_pbuf(:,nzm_clubb:1:-1)
-        rtp2_pbuf           =          rtp2_pbuf(:,nzm_clubb:1:-1)
-        thlp2_pbuf          =         thlp2_pbuf(:,nzm_clubb:1:-1)
-        rtpthlp_pbuf        =       rtpthlp_pbuf(:,nzm_clubb:1:-1)
-        wpthvp_pbuf         =        wpthvp_pbuf(:,nzm_clubb:1:-1)
-        rtpthvp_pbuf        =       rtpthvp_pbuf(:,nzm_clubb:1:-1)
-        thlpthvp_pbuf       =      thlpthvp_pbuf(:,nzm_clubb:1:-1)
-        uprcp_pbuf       =      uprcp_pbuf(:,nzm_clubb:1:-1)
-        vprcp_pbuf       =      vprcp_pbuf(:,nzm_clubb:1:-1)
-        rc_coef_zm_pbuf  = rc_coef_zm_pbuf(:,nzm_clubb:1:-1)
-        wp4_pbuf         =        wp4_pbuf(:,nzm_clubb:1:-1)
-        wp2up2_pbuf      =     wp2up2_pbuf(:,nzm_clubb:1:-1)
-        wp2vp2_pbuf      =     wp2vp2_pbuf(:,nzm_clubb:1:-1)
-        upwp_pert_inout   =  upwp_pert_inout(:,nzm_clubb:1:-1)
-        vpwp_pert_inout   =  vpwp_pert_inout(:,nzm_clubb:1:-1)
-        khzm_out          =         khzm_out(:,nzm_clubb:1:-1)
-        thlprcp_out       =      thlprcp_out(:,nzm_clubb:1:-1)
-        wprcp_out         =        wprcp_out(:,nzm_clubb:1:-1)
-        invrs_tau_zm_out  = invrs_tau_zm_out(:,nzm_clubb:1:-1)
+        wprtp_forcing              =              wprtp_forcing(:,nzm_clubb:1:-1)
+        wpthlp_forcing             =             wpthlp_forcing(:,nzm_clubb:1:-1)
+        rtp2_forcing               =               rtp2_forcing(:,nzm_clubb:1:-1)
+        thlp2_forcing              =              thlp2_forcing(:,nzm_clubb:1:-1)
+        rtpthlp_forcing            =            rtpthlp_forcing(:,nzm_clubb:1:-1)
+        wm_zm                      =                      wm_zm(:,nzm_clubb:1:-1)
+        rho_zm                     =                     rho_zm(:,nzm_clubb:1:-1)
+        rho_ds_zm                  =                  rho_ds_zm(:,nzm_clubb:1:-1)
+        invrs_rho_ds_zm            =            invrs_rho_ds_zm(:,nzm_clubb:1:-1)
+        thv_ds_zm                  =                  thv_ds_zm(:,nzm_clubb:1:-1)
+        upwp_pbuf                  =                  upwp_pbuf(:,nzm_clubb:1:-1)
+        vpwp_pbuf                  =                  vpwp_pbuf(:,nzm_clubb:1:-1)
+        up2_pbuf                   =                   up2_pbuf(:,nzm_clubb:1:-1)
+        vp2_pbuf                   =                   vp2_pbuf(:,nzm_clubb:1:-1)
+        wprtp_pbuf                 =                 wprtp_pbuf(:,nzm_clubb:1:-1)
+        wpthlp_pbuf                =                wpthlp_pbuf(:,nzm_clubb:1:-1)
+        wp2_pbuf                   =                   wp2_pbuf(:,nzm_clubb:1:-1)
+        rtp2_pbuf                  =                  rtp2_pbuf(:,nzm_clubb:1:-1)
+        thlp2_pbuf                 =                 thlp2_pbuf(:,nzm_clubb:1:-1)
+        rtpthlp_pbuf               =               rtpthlp_pbuf(:,nzm_clubb:1:-1)
+        wpthvp_pbuf                =                wpthvp_pbuf(:,nzm_clubb:1:-1)
+        rtpthvp_pbuf               =               rtpthvp_pbuf(:,nzm_clubb:1:-1)
+        thlpthvp_pbuf              =              thlpthvp_pbuf(:,nzm_clubb:1:-1)
+        uprcp_pbuf                 =                 uprcp_pbuf(:,nzm_clubb:1:-1)
+        vprcp_pbuf                 =                 vprcp_pbuf(:,nzm_clubb:1:-1)
+        rc_coef_zm_pbuf            =            rc_coef_zm_pbuf(:,nzm_clubb:1:-1)
+        wp4_pbuf                   =                   wp4_pbuf(:,nzm_clubb:1:-1)
+        wp2up2_pbuf                =                wp2up2_pbuf(:,nzm_clubb:1:-1)
+        wp2vp2_pbuf                =                wp2vp2_pbuf(:,nzm_clubb:1:-1)
+        upwp_pert_inout            =            upwp_pert_inout(:,nzm_clubb:1:-1)
+        vpwp_pert_inout            =            vpwp_pert_inout(:,nzm_clubb:1:-1)
+        khzm_out                   =                   khzm_out(:,nzm_clubb:1:-1)
+        thlprcp_out                =                thlprcp_out(:,nzm_clubb:1:-1)
+        wprcp_out                  =                  wprcp_out(:,nzm_clubb:1:-1)
+        invrs_tau_zm_out           =           invrs_tau_zm_out(:,nzm_clubb:1:-1)
 
         if ( edsclr_dim > 0 ) then
-          edsclr_inout = edsclr_inout(:,nzt_clubb:1:-1,:)
-          edsclrm_forcing = edsclrm_forcing(:,nzt_clubb:1:-1,:)
+          edsclr_inout     =     edsclr_inout(:,nzt_clubb:1:-1,:)
+          edsclrm_forcing  =  edsclrm_forcing(:,nzt_clubb:1:-1,:)
         end if
 
         if ( sclr_dim > 0 ) then
           
-          sclrm_forcing = sclrm_forcing(:,nzt_clubb:1:-1,:)
-          sclrm         = sclrm(:,nzt_clubb:1:-1,:)
-          sclrp3        = sclrp3(:,nzt_clubb:1:-1,:)
+          sclrm_forcing   =   sclrm_forcing(:,nzt_clubb:1:-1,:)
+          sclrm           =           sclrm(:,nzt_clubb:1:-1,:)
+          sclrp3          =          sclrp3(:,nzt_clubb:1:-1,:)
 
-          sclrp2          = sclrp2(:,nzm_clubb:1:-1,:)
-          sclrprtp        = sclrprtp(:,nzm_clubb:1:-1,:)
-          sclrpthlp       = sclrpthlp(:,nzm_clubb:1:-1,:)
-          wpsclrp         = wpsclrp(:,nzm_clubb:1:-1,:)
+          sclrp2          =          sclrp2(:,nzm_clubb:1:-1,:)
+          sclrprtp        =        sclrprtp(:,nzm_clubb:1:-1,:)
+          sclrpthlp       =       sclrpthlp(:,nzm_clubb:1:-1,:)
+          wpsclrp         =         wpsclrp(:,nzm_clubb:1:-1,:)
           sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
@@ -3891,20 +3900,20 @@ end subroutine clubb_init_cnst
         
         ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
         ! only for pdfp_rtp2_output calc 
-        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%rt_2         = pdf_params_chnk(lchnk)%rt_2       (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
         ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
         ! only for update_xp2_mc_api call
-        pdf_params_chnk(lchnk)%w_1        = pdf_params_chnk(lchnk)%w_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%w_2        = pdf_params_chnk(lchnk)%w_2(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%varnce_w_1 = pdf_params_chnk(lchnk)%varnce_w_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%varnce_w_2 = pdf_params_chnk(lchnk)%varnce_w_2(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1(:,nzt_clubb:1:-1)
-        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2(:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%w_1          = pdf_params_chnk(lchnk)%w_1         (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%w_2          = pdf_params_chnk(lchnk)%w_2         (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_1   = pdf_params_chnk(lchnk)%varnce_w_1  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%varnce_w_2   = pdf_params_chnk(lchnk)%varnce_w_2  (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_1        = pdf_params_chnk(lchnk)%thl_1       (:,nzt_clubb:1:-1)
+        pdf_params_chnk(lchnk)%thl_2        = pdf_params_chnk(lchnk)%thl_2       (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_1 = pdf_params_chnk(lchnk)%varnce_thl_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_thl_2 = pdf_params_chnk(lchnk)%varnce_thl_2(:,nzt_clubb:1:-1)
   
