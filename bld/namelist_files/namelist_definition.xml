@@ -3950,6 +3950,14 @@ Valid values: 0 (no grid adaptation), 1 (use Lscale and wp2)
        group="clubb_params_nl" valid_values="0,1,2,3,4,5,6" >
 Selects which algorithm the fill_holes routine uses to correct 
 below threshold values in field solutions.
+0: off - Skip the mass conservative hole filling step, rely on blunt clipping
+1: global - Fast but minimally local, most methods use this as a fallback step
+2: sliding_window - Expensive but highly local when possible, falls back to global fill if needed
+3: widening_windows - Slightly parallelizable, local when possible, falls back to global if needed
+4: smart_window - Uses hueristics to determine ranges to fill, fast and highly local when possible, falls back to global if needed
+5: smart_window_smooth - Same as smart_window, but with experimental smoothing features that slightly increases cost, NO GLOBAL FALLBACK
+6: parallel_fill - Highly local when possible, completely parallelizable but computationally wasteful, falls back to global if needed
+See CLUBB_core/model_flags.F90 or CLUBB_core/fill_holes.F90 for more detail.
 </entry>
 
 <entry id="clubb_grid_remap_method" type="integer" category="pblrad"
