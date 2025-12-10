@@ -802,6 +802,7 @@
 
 <effgw_beres_dp                                               >0.7D0</effgw_beres_dp>
 <effgw_beres_dp model_top="lt"                                >0.15D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"  waccm_phys="1"                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp model_top="mt"                                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp model_top="ht" phys="cam7"                    >0.25D0</effgw_beres_dp>
 <effgw_beres_dp model_top="xt" phys="cam7"                    >0.25D0</effgw_beres_dp>
@@ -840,6 +841,7 @@
 <gw_prndl     chem="trop_strat_mam5_vbs">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_vbsext">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
+<gw_oro_south_fac waccm_phys="1" model_top="mt">1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         model_top="ht">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
@@ -850,6 +852,7 @@
 <gw_oro_south_fac carma="trop_strat_soa1">2.D0</gw_oro_south_fac>
 <gw_oro_south_fac carma="trop_strat_soa5">2.D0</gw_oro_south_fac>
 <gw_lndscl_sgh                          >.true. </gw_lndscl_sgh>
+<gw_lndscl_sgh waccm_phys="1" model_top="mt">.true. </gw_lndscl_sgh>
 <gw_lndscl_sgh            waccm_phys="1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh            model_top="ht">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
@@ -3045,6 +3048,7 @@
 <history_eddy>                 .false.  </history_eddy>
 <history_budget>               .false.  </history_budget>
 <history_waccm>                .false.  </history_waccm>
+<history_waccm waccm_phys="1" model_top="mt">.false.</history_waccm>
 <history_waccm waccm_phys="1"> .true.   </history_waccm>
 <history_waccmx>               .false.  </history_waccmx>
 <history_waccmx waccmx="1">    .true.   </history_waccmx>
@@ -3198,6 +3202,7 @@
 
 <se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="mt" waccm_phys="1"> 3  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"> 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"> 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                                > 20 </se_hypervis_subcycle_sponge>
@@ -3249,6 +3254,7 @@
 <se_sponge_del4_nu_div_fac model_top="ht"                           > 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+<se_sponge_del4_lev waccm_phys="1" model_top="mt"> -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="ht"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
@@ -3282,6 +3288,7 @@
 <se_nsplit waccmx="1" hgrid="ne120np4" nlev="273" > 10 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
+<se_rsplit waccm_phys="1" model_top="mt"            > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
 <se_rsplit model_top="ht"                           > 2 </se_rsplit>
 <se_rsplit waccmx="1"                               > 4 </se_rsplit>
