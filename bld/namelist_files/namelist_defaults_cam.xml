@@ -2120,6 +2120,7 @@
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 <clubb_do_icesuper                                > .false. </clubb_do_icesuper>
+<clubb_l_ascending_grid                           > .false. </clubb_l_ascending_grid>
 
 
 <!-- Lscale_from_tau set by clubb_opts config option -->

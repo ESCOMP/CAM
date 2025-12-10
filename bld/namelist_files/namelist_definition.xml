@@ -3672,6 +3672,13 @@ Switch for CLUBB_ADV parameter that turns on advection of CLUBB pdf moments by
 the dynamics core. Very experimental.
 </entry>
 
+<entry id="clubb_l_ascending_grid" type="logical" category="pblrad"
+       group="clubbpbl_diff_nl" valid_values="" >
+Causes advance_clubb_core to run in ascending mode, where the surface is at k=1, which is opposite
+of the descending cam grid. This is mainly a testing/debugging option - it requires an expensive 
+data flipping step and should not change answers significantly.
+</entry>
+
 <!-- Clubb timestep -->
 <entry id="clubb_timestep" type="real" category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >

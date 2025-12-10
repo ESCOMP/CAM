@@ -85,12 +85,6 @@ module clubb_intr
   type (sclr_idx_type), public :: &
     sclr_idx
 
-  logical, public, parameter :: &
-    l_ascending_grid = .false. ! Set clubb to ascending mode, which is opposite of the 
-                               ! cam grid the rest of this code uses, thus it requires
-                               ! an expensive array flipping step before calling clubb.
-                               ! This is mainly for testing
-
   integer, public :: &
     nzm_clubb,          & ! Number of vertical levels used by CLUBB momentum variables
     nzt_clubb             ! Number of vertical levels used by CLUBB thermodynamic variables
@@ -166,6 +160,12 @@ module clubb_intr
   logical :: &
     clubb_l_intr_sfc_flux_smooth = .false. ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
+  logical :: &
+    clubb_l_ascending_grid = .false.  ! Run clubb in ascending mode, which is opposite of the 
+                                      ! cam grid the rest of this code uses, thus it requires
+                                      ! an expensive array flipping step before calling advance_clubb_core.
+                                      ! This is mainly for testing, it should not significantly change answers
+  
   logical            :: lq(pcnst)
   logical            :: do_rainturb
   logical            :: clubb_do_adv
@@ -770,7 +770,8 @@ end subroutine clubb_init_cnst
     namelist /clubb_his_nl/ clubb_history, clubb_rad_history
     namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, &
                                 clubb_do_adv, clubb_timestep,  &
-                                clubb_rnevap_effic,clubb_do_icesuper
+                                clubb_rnevap_effic, clubb_do_icesuper, &
+                                clubb_l_ascending_grid
     namelist /clubb_params_nl/ clubb_beta, &
          clubb_bv_efold, &
          clubb_c1, &
@@ -899,6 +900,7 @@ end subroutine clubb_init_cnst
     stats_metadata%l_output_rad_files = .false.   ! Initialize to false
     do_cldcool                        = .false.   ! Initialize to false
     do_rainturb                       = .false.   ! Initialize to false
+    clubb_l_ascending_grid            = .false.   ! Initialize to false
 
     ! Initialize namelist variables to clubb defaults
     call set_default_clubb_config_flags_api( clubb_iiPDF_type, & ! Out
@@ -1018,6 +1020,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_rainevap_turb")
     call mpi_bcast(clubb_do_adv,                 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_adv")
+    call mpi_bcast(clubb_l_ascending_grid,       1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_ascending_grid")
     call mpi_bcast(clubb_timestep,               1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_timestep")
     call mpi_bcast(clubb_rnevap_effic,           1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1882,7 +1886,7 @@ end subroutine clubb_init_cnst
        call add_default('WPRTP_CLUBB',              1, ' ')
        call add_default('RTP2_CLUBB',               1, ' ')
        call add_default('RTP2_ZT_CLUBB',            1, ' ')
-       call add_default('PDFP_RTP2_CLUBB',   1, ' ')
+       call add_default('PDFP_RTP2_CLUBB',          1, ' ')
        call add_default('THLP2_CLUBB',              1, ' ')
        call add_default('THLP2_ZT_CLUBB',           1, ' ')
        call add_default('RTPTHLP_CLUBB',            1, ' ')
@@ -2537,11 +2541,11 @@ end subroutine clubb_init_cnst
 
 #ifdef _OPENACC
     ! These options have not been GPUized
-    if ( l_ascending_grid )   call endrun(subr//': l_ascending_grid=.true. not available when compiling with OpenACC')
-    if ( do_clubb_mf )        call endrun(subr//': do_clubb_mf=.true. not available when compiling with OpenACC')
-    if ( do_rainturb )        call endrun(subr//': do_rainturb=.true. not available when compiling with OpenACC')
-    if ( do_cldcool )         call endrun(subr//': do_cldcool=.true. not available when compiling with OpenACC')
-    if ( clubb_do_icesuper )  call endrun(subr//': clubb_do_icesuper=.true. not available when compiling with OpenACC')
+    if ( clubb_l_ascending_grid ) call endrun(subr//': clubb_l_ascending_grid=.true. not available when compiling with OpenACC')
+    if ( do_clubb_mf )            call endrun(subr//': do_clubb_mf=.true. not available when compiling with OpenACC')
+    if ( do_rainturb )            call endrun(subr//': do_rainturb=.true. not available when compiling with OpenACC')
+    if ( do_cldcool )             call endrun(subr//': do_cldcool=.true. not available when compiling with OpenACC')
+    if ( clubb_do_icesuper )      call endrun(subr//': clubb_do_icesuper=.true. not available when compiling with OpenACC')
     if ( single_column .and. .not. scm_cambfb_mode )  then
       call endrun(subr//': (single_column && !scm_cambfb_mode)=.true. not available when compiling with OpenACC')
     end if
@@ -3546,7 +3550,7 @@ end subroutine clubb_init_cnst
       !  Advance CLUBB CORE one timestep in the future
       call t_startf('clubb_tend_cam:advance_clubb_core_api')
       
-      if ( l_ascending_grid ) then
+      if ( clubb_l_ascending_grid ) then
 
         ! CLUBB is to be run in ascending mode, which has the surface at k=1, which is 
         ! the opposite of the cam grid that the rest of clubb_intr uses, so
@@ -3645,7 +3649,7 @@ end subroutine clubb_init_cnst
           sclrpthvp_inout  =  sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid.
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid.
         ! only because these are need to be stored for restarts
         if ( clubb_config_flags%l_call_pdf_closure_twice ) then
           pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
@@ -3655,7 +3659,7 @@ end subroutine clubb_init_cnst
           pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
         end if
         
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid.
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid.
         ! only for pdfp_rtp2_output calc 
         pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac  (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1       (:,nzt_clubb:1:-1)
@@ -3663,7 +3667,7 @@ end subroutine clubb_init_cnst
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid.
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid.
         ! only for update_xp2_mc_api call
         pdf_params_chnk(lchnk)%w_1          = pdf_params_chnk(lchnk)%w_1         (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%w_2          = pdf_params_chnk(lchnk)%w_2         (:,nzt_clubb:1:-1)
@@ -3699,7 +3703,7 @@ end subroutine clubb_init_cnst
 
         ! we are in ascending mode, need to recalculate gr in ascending mode
         call setup_grid_api( nzm_clubb, ncol, sfc_elevation, l_implemented,    & ! intent(in)
-                             l_ascending_grid, grid_type,                      & ! intent(in)
+                             clubb_l_ascending_grid, grid_type,                & ! intent(in)
                              deltaz, zi_g(:,1), zi_g(:,nzm_clubb),             & ! intent(in)
                              zi_g(:,nzm_clubb:1:-1), zt_g(:,nzt_clubb:1:-1),   & ! intent(in)
                              gr, err_info )                                      ! intent(inout)
@@ -3775,7 +3779,7 @@ end subroutine clubb_init_cnst
       !$acc                wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
           
 
-      if ( l_ascending_grid ) then
+      if ( clubb_l_ascending_grid ) then
 
         ! If running in ascending mode, we flip the arrays before calling advance_clubb_core
         ! so we need to flip them back. This section should flip every array that was flipped 
@@ -3882,7 +3886,7 @@ end subroutine clubb_init_cnst
           sclrpthvp_inout = sclrpthvp_inout(:,nzm_clubb:1:-1,:)
         end if
     
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid
         ! only because these are need to be stored for restarts
         if ( clubb_config_flags%l_call_pdf_closure_twice ) then
           pdf_params_zm_chnk(lchnk)%w_1        = pdf_params_zm_chnk(lchnk)%w_1       (:,nzm_clubb:1:-1)
@@ -3892,7 +3896,7 @@ end subroutine clubb_init_cnst
           pdf_params_zm_chnk(lchnk)%mixt_frac  = pdf_params_zm_chnk(lchnk)%mixt_frac (:,nzm_clubb:1:-1)
         end if
         
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid 
         ! only for pdfp_rtp2_output calc 
         pdf_params_chnk(lchnk)%mixt_frac    = pdf_params_chnk(lchnk)%mixt_frac  (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%rt_1         = pdf_params_chnk(lchnk)%rt_1       (:,nzt_clubb:1:-1)
@@ -3900,7 +3904,7 @@ end subroutine clubb_init_cnst
         pdf_params_chnk(lchnk)%varnce_rt_1  = pdf_params_chnk(lchnk)%varnce_rt_1(:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%varnce_rt_2  = pdf_params_chnk(lchnk)%varnce_rt_2(:,nzt_clubb:1:-1)
 
-        ! These are flipped, ensuring these are stored in descending mode, regardless of l_ascending_grid 
+        ! These are flipped, ensuring these are stored in descending mode, regardless of clubb_l_ascending_grid 
         ! only for update_xp2_mc_api call
         pdf_params_chnk(lchnk)%w_1          = pdf_params_chnk(lchnk)%w_1         (:,nzt_clubb:1:-1)
         pdf_params_chnk(lchnk)%w_2          = pdf_params_chnk(lchnk)%w_2         (:,nzt_clubb:1:-1)
@@ -5717,8 +5721,8 @@ end subroutine ice_macro_tend
     do i = 1, stats_zt%num_output_fields
       do k = 1, stats_zt%kk
 
-        ! The data stored in stats types are ascending if l_ascending_grid = .true.
-        if ( l_ascending_grid ) then
+        ! The data stored in stats types are ascending if clubb_l_ascending_grid = .true.
+        if ( clubb_l_ascending_grid ) then
           out_zt(thecol,pver+1-k,i) = stats_zt%accum_field_values(1,1,k,i)
         else
           out_zt(thecol,top_lev-1+k,i) = stats_zt%accum_field_values(1,1,k,i)
@@ -5732,8 +5736,8 @@ end subroutine ice_macro_tend
     do i = 1, stats_zm%num_output_fields
       do k = 1, stats_zm%kk
 
-        ! The data stored in stats types are ascending if l_ascending_grid = .true.
-        if ( l_ascending_grid ) then
+        ! The data stored in stats types are ascending if clubb_l_ascending_grid = .true.
+        if ( clubb_l_ascending_grid ) then
           out_zm(thecol,pverp+1-k,i) = stats_zm%accum_field_values(1,1,k,i)
         else
           out_zm(thecol,top_lev-1+k,i) = stats_zm%accum_field_values(1,1,k,i)
@@ -5748,8 +5752,8 @@ end subroutine ice_macro_tend
       do i = 1, stats_rad_zt%num_output_fields
         do k = 1, stats_rad_zt%kk
 
-          ! The data stored in stats types are ascending if l_ascending_grid = .true.
-          if ( l_ascending_grid ) then
+          ! The data stored in stats types are ascending if clubb_l_ascending_grid = .true.
+          if ( clubb_l_ascending_grid ) then
             out_radzt(thecol,pver+1-k,i) = stats_rad_zt%accum_field_values(1,1,k,i)
           else
             out_radzt(thecol,top_lev-1+k,i) = stats_rad_zt%accum_field_values(1,1,k,i)
@@ -5763,8 +5767,8 @@ end subroutine ice_macro_tend
       do i = 1, stats_rad_zm%num_output_fields
         do k = 1, stats_rad_zm%kk
 
-          ! The data stored in stats types are ascending if l_ascending_grid = .true.
-          if ( l_ascending_grid ) then
+          ! The data stored in stats types are ascending if clubb_l_ascending_grid = .true.
+          if ( clubb_l_ascending_grid ) then
             out_radzm(thecol,pverp+1-k,i) = stats_rad_zm%accum_field_values(1,1,k,i)
           else
             out_radzm(thecol,top_lev-1+k,i) = stats_rad_zm%accum_field_values(1,1,k,i)

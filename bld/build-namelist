@@ -3503,6 +3503,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
      die "$ProgName - ERROR: clubb_history = .true. with multiple threads is not supported. \n";
    }
 
+   add_default($nl, 'clubb_l_ascending_grid');
    add_default($nl, 'clubb_do_icesuper');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');

@@ -26,7 +26,6 @@ module subcol_SILHS
        hm_metadata, &
        hydromet_dim, &
        pdf_dim, &
-       l_ascending_grid, &
        nzm_clubb, &
        nzt_clubb
        
