@@ -160,7 +160,7 @@
 <ncdata hgrid="ne3np4"   nlev="32"  aquaplanet="1" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
 <ncdata hgrid="ne3np4"   nlev="58"             >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
 <ncdata hgrid="ne3np4"   nlev="93"             >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
-<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FHISTC_MTt4s_ne3pg3_02_spinup01.cam.i.1980-01-01_c251210.nc</ncdata>
 
 <ncdata hgrid="ne5np4"   nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
 <ncdata hgrid="ne5np4"   nlev="30"                 >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
