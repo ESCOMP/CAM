@@ -107,6 +107,14 @@
         fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
+[submodule "src/physics/ext_co2_cooling"]
+	path = src/physics/ext_co2_cooling
+	url = https://github.com/fedef17/CO2_cool_fort.git
+	fxrequired = AlwaysRequired
+	fxsparse = ../.ext_co2_cooling_sparse_checkout
+	fxtag = v1.1
+	fxDONOTUSEurl = https://github.com/fedef17/CO2_cool_fort.git
+
 [submodule "rtm"]
 path = components/rtm
 url = https://github.com/ESCOMP/RTM
