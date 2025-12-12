@@ -120,6 +120,12 @@ contains
     call mpi_bcast(p_top_for_equil_rad, 1, mpi_real8, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: p_top_for_equil_rad")
 
+#ifndef EXT_CO2_COOL
+    if (nlte_use_extco2) then
+       call endrun(subname // ':: model not configured for extended non-LTE CO2 coooling')
+    end if
+#endif
+    
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
 

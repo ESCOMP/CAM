@@ -9,6 +9,9 @@ ctem_diags_numlats = 90
 
 fincl2 = 'THtem','Utem','Vtem','Wtem','VTHtem','WTHtem','UVtem', 'UWtem', 'MSKtem', 'PStem'
 fincl3 = 'Uzm', 'Vzm','Wzm', 'THzm','VTHzm','WTHzm','UVzm', 'UWzm', 'PSzm'
+fincl4 = 'QRL_TOT','QRLNLTE','QCO2','QO3','QHC2S','QNO','QO3P',
+         'QCO2ext','TCO2ext','PCO2ext','CO2_ext','N2_ext','O_ext','O2_ext'
 
 do_circulation_diags = .false.
 fincl7 = ' '
+nlte_use_extco2 = .true.
