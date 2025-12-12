@@ -46,6 +46,7 @@ module radheat
   logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Fomichev scheme
   logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS for the cooling rate calculation
   integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
+  logical :: nlte_use_extco2 = .false. ! If true, use the extended CO2 scheme of Lopez-Puertas et al. 2024
   real(r8), public :: p_top_for_equil_rad = 0._r8 ! Pressure top for blending layer
 
 ! Private variables for merging heating rates
@@ -88,7 +89,8 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X, p_top_for_equil_rad
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X, &
+                          nlte_use_extco2, p_top_for_equil_rad
 
     if (masterproc) then
        unitn = getunit()
@@ -113,6 +115,8 @@ contains
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
     call mpi_bcast (nlte_aliarms_every_X, 1, mpi_integer, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_aliarms_every_X")
+    call mpi_bcast (nlte_use_extco2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_extco2")
     call mpi_bcast(p_top_for_equil_rad, 1, mpi_real8, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: p_top_for_equil_rad")
 
@@ -246,7 +250,8 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms, &
+                      nlte_aliarms_every_X, nlte_use_extco2)
     endif
 
 ! Add history variables to master field list

@@ -11,9 +11,11 @@ module nlte_lw
 
   use nlte_fomichev,      only: nlte_fomichev_init, nlte_fomichev_calc, nocooling, o3pcooling
   use nlte_aliarms,       only: nlte_aliarms_init, nlte_aliarms_calc
+  use nlte_extco2,        only: nlte_extco2_init, nlte_extco2_hrate
 
   use waccm_forcing,      only: waccm_forcing_init, waccm_forcing_adv,  get_cnst
   use cam_logfile,        only: iulog
+  use cam_abortutils,     only: endrun
 
   implicit none
   private
@@ -35,6 +37,8 @@ module nlte_lw
 
   logical :: nlte_use_aliarms = .false.
   integer :: nlte_aliarms_every_X = 0
+
+  logical :: nlte_use_extco2 = .false.
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -68,7 +72,8 @@ contains
 
 !================================================================================================
 
-  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in, nlte_aliarms_every_X_in)
+  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in, &
+       nlte_aliarms_every_X_in , nlte_use_extco2_in)
 !
 ! Initialize the nlte parameterizations and tgcm forcing data, if required
 !------------------------------------------------------------------------
@@ -84,6 +89,7 @@ contains
     logical,          intent(in) :: nlte_limit_co2
     logical,          intent(in) :: nlte_use_aliarms_in
     integer,          intent(in) :: nlte_aliarms_every_X_in
+    logical,          intent(in) :: nlte_use_extco2_in
 
 
     real(r8) :: o1_mw = -huge(1.0_r8)      ! O molecular weight
@@ -106,6 +112,11 @@ contains
     nlte_use_mo          = nlte_use_mo_in
     nlte_use_aliarms     = nlte_use_aliarms_in
     nlte_aliarms_every_X = nlte_aliarms_every_X_in
+    nlte_use_extco2      = nlte_use_extco2_in
+
+    if (nlte_use_aliarms .and. nlte_use_extco2) then
+       call endrun('nlte_init: cannot set both nlte_use_aliarms and nlte_use_extco2 set to TRUE')
+    end if
 
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
@@ -178,6 +189,8 @@ contains
 ! Initialize ALI-ARMS parameterization
     if (nlte_use_aliarms) then
        call nlte_aliarms_init (max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
+    else if (nlte_use_extco2) then
+       call nlte_extco2_init(co2_mw,n2_mw,o1_mw,o2_mw)
     end if
 
 ! Initialize waccm forcing data
@@ -288,6 +301,7 @@ contains
 
     integer :: k
     integer :: nstep
+    real(r8) :: co2cooling(pcols,pver)
 
 !------------------------------------------------------------------------
 
@@ -350,6 +364,16 @@ contains
        qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
 
        call t_stopf('nlte_aliarms_calc')
+
+    else if (nlte_use_extco2) then
+
+       call t_startf('nlte_extco2_hrate')
+
+       call nlte_extco2_hrate(lchnk, ncol, state%t, state%pmid, xco2mmr, xn2mmr, xommr, xo2mmr, co2cooling)
+
+       qrlf(:ncol,:) = o3cool(:ncol,:) + co2cooling(:ncol,:) * cpairv(:ncol,:,lchnk)
+
+       call t_stopf('nlte_extco2_hrate')
 
     else
        qrlf(:ncol,:) = qrlfomichev(:ncol,:)
