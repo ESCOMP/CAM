@@ -461,11 +461,11 @@ subroutine radiation_init(pbuf2d)
    end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
-   call rrtmgp_lw_gas_optics_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
+   call rrtmgp_lw_gas_optics_init(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': lw '//errmsg)
    end if
-   call rrtmgp_sw_gas_optics_init(kdist_sw, coefs_sw_file, available_gases, errmsg, errflg)
+   call rrtmgp_sw_gas_optics_init(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': sw '//errmsg)
    end if
@@ -474,12 +474,12 @@ subroutine radiation_init(pbuf2d)
    dtime_r8 = real(dtime, r8)
 
    ! Set up inputs to RRTMGP
-   call rrtmgp_inputs_setup_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
-                   pref_edge, nlay, pver, pverp, kdist_sw, kdist_lw, qrl_unused, is_first_step(), use_rad_dt_cosz, &
-                   dtime_r8, get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(),                    &
-                   p_top_for_equil_rad, nlwbands, nradgas, gasnamelength, idx_sw_diag, idx_nir_diag, idx_uv_diag,  &
-                   idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, changeseed, nlayp, nextsw_cday, &
-                   get_curr_calday(), band2gpt_sw, irad_always_modified, errmsg, errflg)
+   call rrtmgp_inputs_setup_init(nswbands, nlwbands, pref_edge, pver, pverp, kdist_sw, kdist_lw, qrl_unused, &
+                   is_first_step(), use_rad_dt_cosz, dtime_r8, get_nstep(), iradsw, dt_avg, irad_always,     &
+                   is_first_restart_step(), p_top_for_equil_rad, nradgas, gasnamelength, get_curr_calday(),  &
+                   ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag,      &
+                   idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, changeseed, &
+                   nlay, nlayp, nextsw_cday, band2gpt_sw, irad_always_modified, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1069,9 +1069,8 @@ subroutine radiation_tend( &
    ! Determine if we're running radiation (sw and/or lw) this timestep,
    !  find daylight and nighttime indices, and initialize fluxes
    call rrtmgp_pre_run(coszrs(:ncol), get_nstep(), dtime_r8, iradsw, iradlw, irad_always_modified, &
-           ncol, next_cday, idxday, nday, idxnite, nnite, dosw, dolw, dosw_heat, dolw_heat, &
-           nlay, nlwbands, nswbands, spectralflux, nextsw_cday, fsw, fswc, flw, flwc, &
-           errmsg, errflg)
+           ncol, next_cday, idxday, nday, idxnite, nnite, nlay, nlwbands, nswbands, spectralflux,  &
+           nextsw_cday, dosw, dolw, dosw_heat, dolw_heat, fsw, fswc, flw, flwc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1188,15 +1187,13 @@ subroutine radiation_tend( &
       ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
                   (.not. is_mpas), state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
-                  nday, idxday, cldfprime(:ncol,:), coszrs(:ncol), kdist_sw, t_sfc,       &
-                  emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
-                  pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup(:ncol), stebol,  &
+                  nday, idxday, coszrs(:ncol), kdist_sw, kdist_lw, cam_in%lwup(:ncol), stebol, &
                   ncol, ktopcam, ktoprad, nswbands, cam_in%asdir(:ncol), cam_in%asdif(:ncol), &
                   sw_low_bounds, sw_high_bounds, cam_in%aldir(:ncol), cam_in%aldif(:ncol), nlay, &
-                  pverp, pver, cld(:ncol,:), cldfsnow_in, cldfgrau_in, &
-                  graupel_in_rad, gasnamelength, gaslist_lc, gas_concs_lw, aer_lw, atm_optics_lw, &
-                  kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
-                  errmsg, errflg)
+                  pverp, pver, cld(:ncol,:), cldfsnow_in, cldfgrau_in, graupel_in_rad, gaslist_lc, &
+                  cldfprime(:ncol,:), t_sfc, emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
+                  pint_day, coszrs_day, alb_dir, alb_dif, gas_concs_lw, aer_lw, atm_optics_lw, &
+                  sources_lw, aer_sw, atm_optics_sw, gas_concs_sw, errmsg, errflg)
       if (errflg /= 0) then
          call endrun(sub//': '//errmsg)
       end if
@@ -1214,9 +1211,9 @@ subroutine radiation_tend( &
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_sw_cloud_optics_run(dosw, ncol, pver, ktopcam, ktoprad, nswgpts, nday, idxday,         &
              fillvalue, nswbands, iulog, mu(:ncol,:), lambda(:ncol,:), nnite, idxnite, cld, cldfsnow_in,    &
-             cldfgrau_in, cldfprime(:ncol,:), cld_tau(:,:ncol,:), grau_tau(:,:ncol,:), snow_tau(:,:ncol,:), &
-             degrau(:ncol,:), dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:), iciwp(:ncol,:), icswp(:ncol,:),   &
-             icgrauwp(:ncol,:), tiny, idx_sw_diag, do_graupel, do_snow, kdist_sw, c_cld_tau(:,:ncol,:),     &
+             cldfgrau_in, cldfprime(:ncol,:), degrau(:ncol,:), dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:),  &
+             iciwp(:ncol,:), icswp(:ncol,:), icgrauwp(:ncol,:), tiny, idx_sw_diag, do_graupel, do_snow,     &
+             kdist_sw, cld_tau(:,:ncol,:), grau_tau(:,:ncol,:), snow_tau(:,:ncol,:), c_cld_tau(:,:ncol,:),  &
              c_cld_tau_w(:,:ncol,:), c_cld_tau_w_g(:,:ncol,:), rd%tot_cld_vistau(:ncol,:),                  &
              rd%tot_icld_vistau(:ncol,:), rd%liq_icld_vistau(:ncol,:), rd%ice_icld_vistau(:ncol,:),         &
              rd%snow_icld_vistau(:ncol,:), rd%grau_icld_vistau(:ncol,:), errmsg, errflg)
@@ -1231,7 +1228,7 @@ subroutine radiation_tend( &
 
          call rrtmgp_sw_mcica_subcol_gen_run(dosw, kdist_sw, nswbands, nswgpts, nday, nlay, &
                  pver, tiny, idxday, ktopcam, ktoprad, cldfprime, c_cld_tau,   &
-                 c_cld_tau_w, c_cld_tau_w_g, cloud_sw, pmid_day, errmsg, errflg)
+                 c_cld_tau_w, c_cld_tau_w_g, pmid_day, cloud_sw, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
@@ -1321,10 +1318,10 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &
-             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), mu(:ncol,:),    &
+             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, lambda(:ncol,:), mu(:ncol,:),    &
              iclwp(:ncol,:), iciwp(:ncol,:), tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:),     &
              icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver, ktopcam,     &
-             cld_lw_abs, snow_lw_abs, grau_lw_abs, c_cld_lw_abs, errmsg, errflg)
+             cloud_lw, cld_lw_abs, snow_lw_abs, grau_lw_abs, c_cld_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
