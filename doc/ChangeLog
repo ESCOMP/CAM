@@ -10,6 +10,7 @@ Github PR URL: https://github.com/ESCOMP/CAM/pull/
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 	remove increased divergence damping in SE dycore: https://github.com/ESCOMP/CAM/issues/1449
 	fix bug in frontogenesis function for FV dycore: https://github.com/ESCOMP/CAM/issues/1414
+	(science tested by ACOM; there will be namelist changes to re-tune QBO with the fixed frontogenesis function)
 	remove failing WACCM6 70 level CAM6 test with SE dycore:
 	SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp
 	https://github.com/ESCOMP/CAM/issues/1450
