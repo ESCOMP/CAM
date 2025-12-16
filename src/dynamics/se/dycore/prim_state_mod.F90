@@ -292,7 +292,9 @@ CONTAINS
 101 format (A12,A23,A23,A23,A23)
 
 #ifdef waccm_debug
-    call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+    if (use_cslam) then
+       call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+    end if
 #endif
     call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
   end subroutine prim_printstate
