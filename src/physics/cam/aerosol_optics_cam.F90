@@ -563,8 +563,7 @@ contains
 
     integer :: nmodes=0
     character(len=aero_name_len) :: modetype
-    integer :: n_coarse_dust = -1 ! dmleung added n_coarse_dust to determine the index for the
-                                  ! coarse dust mode for different MAM versions. 29 Oct 2025
+    logical :: coarse_dust_mode ! coarse dust mode for different MAM versions
 
     type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
                                                      ! multiple aerosol representations in the same sim
@@ -721,7 +720,7 @@ contains
     ! dmleung ++
     ! single-level variables
     dustaod0 = 0.0_r8   ! dmleung added 20 Oct 2025
-    dopaer0 = 0.0_r8 
+    dopaer0 = 0.0_r8
     ! dmleung --
 
     if (num_aero_models<1) return
@@ -758,18 +757,6 @@ contains
        call endrun(prefix//'array allocation error: pasm')
     end if
 
-    n_coarse_dust = -1
-    if (modal_active) then
-       call rad_cnst_get_info(list_idx, nmodes=nmodes)
-       ! determine coarse dust mode number
-       do ibin = 1,nmodes
-          call rad_cnst_get_info(list_idx, ibin, mode_type=modetype)
-          if (modetype=='coarse' .or. modetype=='coarse_dust') then
-             n_coarse_dust = ibin
-          end if
-       end do
-    end if
-
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -781,6 +768,10 @@ contains
        call outfld('SULFWTPCT', sulfwtpct(1:ncol,:), ncol, lchnk)
 
        binloop: do ibin = 1, nbins
+
+          ! MAM coarse mode
+          modetype = aeroprops%bin_name(list_idx, ibin)
+          coarse_dust_mode = (modetype=='coarse' .or. modetype=='coarse_dust')
 
           dustaodbin(:) = 0._r8
           burden(:) = 0._r8
@@ -828,14 +819,14 @@ contains
                       ! dmleung 20 Oct 2025 ++
                       ! added dust asphericity impacts on enhancing dust AOD. Modified after Longlei Li (Cornell University).
                       ! the theory is that coarse-mode dust is aspherical, with ~30 % enhanced extinction compared with spherical coarse-mode dust.
-                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017), 
+                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017),
                       ! Smaller desert dust cooling effect estimated from analysis of dust size and abundance
 
-                      call update_diags  ! dopaer is updated in update_diags.
+                      call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
 
                       ! dmleung: update_diags updated dopaer(icol) as a diagnostic.
                       ! Aerosol optical and radiative properties are subsequently modified given dopaer update in update_diags.
-                      ! To the first-order approximation, palb and pasm (SSA and asymmetry factor) remain roughly the same in the 
+                      ! To the first-order approximation, palb and pasm (SSA and asymmetry factor) remain roughly the same in the
                       ! 1-10 um upon introducing asphericity; changes in wa, ga, and fa are thus due to only AOD changes given dust asphericty.
                       ! ref: Fig. 2a-d of Yue Huang et al. (2023),
                       ! Single-scattering properties of ellipsoidal dust aerosols constrained by measured dust shape distributions
@@ -902,7 +893,9 @@ contains
     end subroutine init_diags
 
     !===============================================================================
-    subroutine update_diags
+    subroutine update_diags( is_coarse_dust )
+
+      logical, intent(in) :: is_coarse_dust
 
       integer :: ispec
 
@@ -1024,7 +1017,7 @@ contains
             dopaer0(icol) = dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
 
             ! if we are using MAM and this is a coarse dust mode, scale up dust AOD by 30 %.
-            if (modal_active .and. ibin == n_coarse_dust) then
+            if (is_coarse_dust) then
 
                ! update column-level variables
                dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev) * dustaspherical_opts ! update mode/bin-specific dust AOD
@@ -1035,7 +1028,7 @@ contains
 
                ! update single-layer variable: dopaer
                dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts   ! Total AOD accounting for dust asphericity
-            else 
+            else
                ! update column-level dust AOD accumulator
                dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
             end if
