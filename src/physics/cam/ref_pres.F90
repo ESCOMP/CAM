@@ -57,6 +57,12 @@ integer, protected :: nbot_molec = 0
 real(r8), private, allocatable, target :: trop_pref(:)
 real(r8), private, allocatable, target :: trop_prefi(:)
 
+! Pressure limit used to set gravity wave tapering at top of model (Pa)
+real(r8), parameter :: gravity_wave_taper_bot_press = 0.6E-02_r8
+
+! Bottom level for tapering gravity waves at top of model
+integer, protected :: nbot_gravity_wave_top_taper = 0
+
 !====================================================================================
 contains
 !====================================================================================
@@ -149,6 +155,11 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
       nbot_molec = press_lim_idx(molec_diff_bot_press, &
          top=.false.)
    end if
+
+   ! Find level corresponding to the bottom for tapering gravity waves
+   ! at the top of model.
+   nbot_gravity_wave_top_taper = press_lim_idx(gravity_wave_taper_bot_press, &
+      top=.true.)
 
    ! Add vertical coordinates to history file for use with outputs that are only
    ! computed in the subdomain bounded by the top of troposphere clouds.
