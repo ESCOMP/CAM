@@ -916,6 +916,8 @@ subroutine radiation_tend( &
    real(r8), pointer :: icswp(:,:)
    real(r8), pointer :: icgrauwp(:,:)
    real(r8), pointer :: degrau(:,:)
+   real(r8), pointer :: icgrauwp_in(:,:)
+   real(r8), pointer :: degrau_in(:,:)
 
    real(r8), pointer, dimension(:,:,:) :: su => NULL()  ! shortwave spectral flux up
    real(r8), pointer, dimension(:,:,:) :: sd => NULL()  ! shortwave spectral flux down
@@ -1173,9 +1175,15 @@ subroutine radiation_tend( &
       call pbuf_get_field(pbuf, des_idx,   des)
       if (icgrauwp_idx > 0) then
          call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp)
+         icgrauwp_in => icgrauwp(:ncol,:)
+      else
+         icgrauwp_in => zero_variable
       end if
       if (degrau_idx > 0) then
          call pbuf_get_field(pbuf, degrau_idx,   degrau)
+         degrau_in => degrau(:ncol,:)
+      else
+         degrau_in => zero_variable
       end if
 
       do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau)) .and. graupel_in_rad
@@ -1211,8 +1219,8 @@ subroutine radiation_tend( &
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_sw_cloud_optics_run(dosw, ncol, pver, ktopcam, ktoprad, nswgpts, nday, idxday,         &
              fillvalue, nswbands, iulog, mu(:ncol,:), lambda(:ncol,:), nnite, idxnite, cld, cldfsnow_in,    &
-             cldfgrau_in, cldfprime(:ncol,:), degrau(:ncol,:), dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:),  &
-             iciwp(:ncol,:), icswp(:ncol,:), icgrauwp(:ncol,:), tiny, idx_sw_diag, do_graupel, do_snow,     &
+             cldfgrau_in, cldfprime(:ncol,:), degrau_in, dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:),        &
+             iciwp(:ncol,:), icswp(:ncol,:), icgrauwp_in, tiny, idx_sw_diag, do_graupel, do_snow,     &
              kdist_sw, cld_tau(:,:ncol,:), grau_tau(:,:ncol,:), snow_tau(:,:ncol,:), c_cld_tau(:,:ncol,:),  &
              c_cld_tau_w(:,:ncol,:), c_cld_tau_w_g(:,:ncol,:), rd%tot_cld_vistau(:ncol,:),                  &
              rd%tot_icld_vistau(:ncol,:), rd%liq_icld_vistau(:ncol,:), rd%ice_icld_vistau(:ncol,:),         &
@@ -1320,7 +1328,7 @@ subroutine radiation_tend( &
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &
              cldfgrau_in, cldfprime(:ncol,:), kdist_lw, lambda(:ncol,:), mu(:ncol,:),    &
              iclwp(:ncol,:), iciwp(:ncol,:), tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:),     &
-             icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver, ktopcam,     &
+             icgrauwp_in, degrau_in, nlwbands, do_snow, do_graupel, pver, ktopcam,     &
              cloud_lw, cld_lw_abs, snow_lw_abs, grau_lw_abs, c_cld_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
