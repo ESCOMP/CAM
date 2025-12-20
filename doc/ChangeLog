@@ -1,3 +1,75 @@
+===============================================================
+
+Tag name: cam6_4_137
+Originator(s): peverwhee
+Date: Dec 19, 2025
+One-line Summary: Incorporate final RRTMGP mods to complete CPU-ized ccppization
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1424
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Brings in latest atmospheric physics tag, which contains all fortran and
+metadata for RRTMGP schemes
+- Add missing snapshot field (cam_out%flwds)
+- Modify constituents stubs to include new necessary interfaces so schemes can
+build
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+D    utils/cam_ccpp/machine.F90
+- using ccpp_kinds instead
+
+List all files added and what they do:
+A    utils/cam_ccpp/ccpp_scheme_utils.F90
+- stubs so the interstitial CAM-SIMA schemes will build
+
+List all existing files that have been modified, and describe the changes:
+M    .gitmodules
+M    src/atmos_phys
+M    src/physics/rrtmgp/radiation.F90
+M    src/physics/cam/radheat.F90
+M    src/utils/cam_ccpp/ccpp_constituent_prop_mod.F90
+- Bring in updated atmos_phys tag; bring in mods to constituent utils and
+rrtmgp interfaces
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all b4b
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+    - This test passed on the first try during this run.
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+  -pre-existing failure -- exceeds wallclock time limit
+   NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+         He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+	 baselines to use for comparison but answer changes are expected starting with
+	 cam6_4_130.
+
+izumi/nag/aux_cam: all b4b
+
+izumi/gnu/aux_cam: all b4b
+
+Summarize any changes to answers, i.e.,
+- what code configurations:  All which use moving mountain gravity wave
+- what platforms/compilers: all
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
 
 ===============================================================
 
