@@ -53,16 +53,6 @@ public :: &
 ! This value is to match the arbitrary small value used in RRTMG to decide
 ! when a quantity is effectively zero.
 real(r8), parameter :: tiny = 1.0e-80_r8
-real(r8) :: sw_low_bounds(nswbands)
-real(r8) :: sw_high_bounds(nswbands)
-integer :: ktopcam
-integer :: ktoprad
-integer :: idx_sw_diag
-integer :: idx_nir_diag
-integer :: idx_uv_diag
-integer :: idx_sw_cloudsim
-integer :: idx_lw_diag
-integer :: idx_lw_cloudsim
 
 ! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
 ! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
@@ -73,43 +63,6 @@ integer, parameter, dimension(14) :: rrtmg_to_rrtmgp_swbands = &
 !==================================================================================================
 contains
 !==================================================================================================
-
-!==================================================================================================
-subroutine rrtmgp_inputs_cam_init(ktcam, ktrad, idx_sw_diag_in, idx_nir_diag_in, idx_uv_diag_in, &
-               idx_sw_cloudsim_in, idx_lw_diag_in, idx_lw_cloudsim_in)
-      
-   ! Note that this routine must be called after the calls to set_wavenumber_bands which set
-   ! the sw/lw band boundaries in the radconstants module.
-
-   integer, intent(in) :: ktcam
-   integer, intent(in) :: ktrad
-   integer, intent(in) :: idx_sw_diag_in
-   integer, intent(in) :: idx_nir_diag_in
-   integer, intent(in) :: idx_uv_diag_in
-   integer, intent(in) :: idx_sw_cloudsim_in
-   integer, intent(in) :: idx_lw_diag_in
-   integer, intent(in) :: idx_lw_cloudsim_in
-   character(len=512) :: errmsg
-   integer :: errflg
-
-   ktopcam = ktcam
-   ktoprad = ktrad
-   idx_sw_diag = idx_sw_diag_in
-   idx_nir_diag = idx_nir_diag_in
-   idx_uv_diag = idx_uv_diag_in
-   idx_sw_cloudsim = idx_sw_cloudsim_in
-   idx_lw_diag = idx_lw_diag_in
-   idx_lw_cloudsim = idx_lw_cloudsim_in
-
-   ! Initialize the module data containing the SW band boundaries.
-   call get_sw_spectral_boundaries_ccpp(sw_low_bounds, sw_high_bounds, 'cm^-1', errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun('rrtmgp_inputs_cam_init: error during get_sw_spectral_boundaries_ccpp - message: '//errmsg)
-   end if
-
-end subroutine rrtmgp_inputs_cam_init
-
-!=========================================================================================
 
 subroutine rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
 
@@ -137,11 +90,13 @@ end subroutine rrtmgp_get_gas_mmrs
 
 !==================================================================================================
 
-subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+subroutine rrtmgp_set_aer_lw(ktopcam, ktoprad, icall, state, pbuf, aer_lw)
 
    ! Load LW aerosol optical properties into the RRTMGP object.
 
    ! Arguments
+   integer,                     intent(in) :: ktopcam
+   integer,                     intent(in) :: ktoprad
    integer,                     intent(in) :: icall
    type(physics_state), target, intent(in) :: state
    type(physics_buffer_desc),   pointer    :: pbuf(:)
@@ -178,11 +133,13 @@ end subroutine rrtmgp_set_aer_lw
 !==================================================================================================
 
 subroutine rrtmgp_set_aer_sw( &
-   icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
+   ktopcam, ktoprad, icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
 
    ! Load SW aerosol optical properties into the RRTMGP object.
 
    ! Arguments
+   integer,                     intent(in) :: ktopcam
+   integer,                     intent(in) :: ktoprad
    integer,                     intent(in) :: icall
    type(physics_state), target, intent(in) :: state
    type(physics_buffer_desc), pointer      :: pbuf(:)

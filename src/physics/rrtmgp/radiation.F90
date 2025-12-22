@@ -413,7 +413,6 @@ end function radiation_do
 subroutine radiation_init(pbuf2d)
    use rrtmgp_pre,                only: rrtmgp_pre_init
    use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
-   use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
    use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
    use rrtmgp_sw_solar_var_setup, only: rrtmgp_sw_solar_var_setup_init
    use solar_irrad_data,          only: do_spctrl_scaling, has_spectrum
@@ -483,10 +482,6 @@ subroutine radiation_init(pbuf2d)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
-
-   ! Set up CAM-side RRTMGP inputs - will go away once SW radiation is CCPPized
-   call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
-           idx_lw_cloudsim)
 
    ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
@@ -1282,8 +1277,7 @@ subroutine radiation_tend( &
                ! Set SW aerosol optical properties in the aer_sw object.
                ! This call made even when no daylight columns because it does some
                ! diagnostic aerosol output.
-               call rrtmgp_set_aer_sw( &
-                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
+               call rrtmgp_set_aer_sw(ktopcam, ktoprad, icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
                   
                if (nday > 0) then
 
@@ -1360,7 +1354,7 @@ subroutine radiation_tend( &
                end if
 
                ! Set LW aerosol optical properties in the aer_lw object.
-               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+               call rrtmgp_set_aer_lw(ktopcam, ktoprad, icall, state, pbuf, aer_lw)
 
                ! Call the main rrtmgp_lw driver
                call rrtmgp_lw_rte_run(dolw, dolw, .false., .false., .false., &
