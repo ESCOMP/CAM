@@ -37,6 +37,7 @@
 <ncdata nlev="58" analytic_ic="1" >atm/cam/inic/cam_vcoords_L58_c250227.nc</ncdata>
 
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
+<ncdata hgrid="mpasa120" nlev="26" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L26_notopo_coords_c251105.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c240507.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c240507.nc</ncdata>
 <ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c240507.nc</ncdata>
@@ -297,6 +298,7 @@
 <bnd_topo hgrid="C192" >atm/cam/topo/fv3_C192_nc3000_Co030_Fi001_MulG_PF_Nsw021_c200625.nc</bnd_topo>
 <bnd_topo hgrid="C384" >atm/cam/topo/fv3_C384_nc3000_Co015_Fi001_MulG_PF_nullRR_Nsw011_c200625.nc</bnd_topo>
 
+<bnd_topo hgrid="ne3np4"          >atm/cam/topo/se/ne3np4_gmted2010_modis_bedmachine_nc0540_Laplace1000_noleak_20230717.nc</bnd_topo>
 <bnd_topo hgrid="ne5np4"          >atm/cam/topo/se/ne5np4_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170515.nc</bnd_topo>
 <bnd_topo hgrid="ne16np4"         >atm/cam/topo/se/ne16np4_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
 <bnd_topo hgrid="ne30np4"         >atm/cam/topo/se/ne30np4_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250822.nc</bnd_topo>
@@ -792,6 +794,7 @@
 
 <gw_top_taper>.false.</gw_top_taper>
 <gw_top_taper waccmx="1">.true.</gw_top_taper>
+
 <pgwv>32</pgwv>
 <pgwv waccmx="1">18</pgwv>
 
@@ -856,16 +859,6 @@
 <gw_lndscl_sgh chem="trop_strat_mam5_vbsext">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa5">.false.</gw_lndscl_sgh>
-<gw_limit_tau_without_eff               >.false.</gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff waccm_phys="1">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff model_top="ht">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="geoschem_mam4">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam4_vbs">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff carma="trop_strat_soa1">.true. </gw_limit_tau_without_eff>
-<gw_limit_tau_without_eff carma="trop_strat_soa5">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                          >.true. </gw_apply_tndmax>
 <gw_apply_tndmax chem="geoschem_mam4"     >.false.</gw_apply_tndmax>
 <gw_apply_tndmax phys="cam7"              >.false.</gw_apply_tndmax>
@@ -2953,7 +2946,7 @@
 <scm_relax_tau_top_sec           scam="1"                  > 172800.D0  </scm_relax_tau_top_sec>
 
 
-<!-- IOP SCAM defaults (The Single Column Atmosphere Model Version 6 (SCAM6), J. Adv. Model. Earth Sy., 11, 1381–1401, https://doi.org/10.1029/2018MS001578-->
+<!-- IOP SCAM defaults (The Single Column Atmosphere Model Version 6 (SCAM6), J. Adv. Model. Earth Sy., 11, 1381-1401, https://doi.org/10.1029/2018MS001578-->
 
 <!-- IOP ARM95/ARM Southern Great Plains/lat:36/lon:263/Jul 1995/18d/M. Zhang et al. (2016)/Land convection -->
 <ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
