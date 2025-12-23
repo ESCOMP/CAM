@@ -948,13 +948,6 @@ contains
        sol_factb = solmmr/totmmr
     end where
 
-    where ( sol_factb > 0.8_r8 )
-       sol_factb = 0.8_r8
-    end where
-    where ( sol_factb < 0.1_r8 )
-       sol_factb = 0.1_r8
-    end where
-
   end function sol_factb_interstitial
 
 
