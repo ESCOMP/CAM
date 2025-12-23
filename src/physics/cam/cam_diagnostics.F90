@@ -230,9 +230,12 @@ contains
     call register_vector_field('UTEND_TOT','VTEND_TOT')
 
     ! Debugging negative water output fields
-    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
-    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
-    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', &
+                                 'Cloud ice tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', &
+                                 'Cloud liq tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
+    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', &
+                                 'Vapor tendency due to clipping neg values after microp', sampled_on_subcycle=.true.)
 
     call addfld ('Z3',         (/ 'lev' /), 'A', 'm',         'Geopotential Height (above sea level)')
     call addfld ('Z1000',      horiz_only,  'A', 'm',         'Geopotential Z at 1000 mbar pressure surface')
@@ -402,16 +405,26 @@ contains
 
        ! Create budgets that are a sum/dif of 2 stages
 
-       call cam_budget_em_register('dEdt_param_efix_physE','phAP','phBF','phy','dif',longname='dE/dt CAM physics + energy fixer using physics E formula (phAP-phBF)')
-       call cam_budget_em_register('dEdt_param_efix_dynE' ,'dyAP','dyBF','phy','dif',longname='dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)')
-       call cam_budget_em_register('dEdt_param_physE'     ,'phAP','phBP','phy','dif',longname='dE/dt CAM physics using physics E formula (phAP-phBP)')
-       call cam_budget_em_register('dEdt_param_dynE'      ,'dyAP','dyBP','phy','dif',longname='dE/dt CAM physics using dycore E (dyAP-dyBP)')
-       call cam_budget_em_register('dEdt_dme_adjust_physE','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment using physics E formula (phAM-phAP)')
-       call cam_budget_em_register('dEdt_dme_adjust_dynE' ,'dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
-       call cam_budget_em_register('dEdt_efix_physE'      ,'phBP','phBF','phy','dif',longname='dE/dt energy fixer using physics E formula (phBP-phBF)')
-       call cam_budget_em_register('dEdt_efix_dynE'       ,'dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E formula (dyBP-dyBF)')
-       call cam_budget_em_register('dEdt_phys_tot_physE'  ,'phAM','phBF','phy','dif',longname='dE/dt physics total using physics E formula (phAM-phBF)')
-       call cam_budget_em_register('dEdt_phys_tot_dynE'   ,'dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
+       call cam_budget_em_register('dEdt_param_efix_physE','phAP','phBF','phy','dif',&
+                                    longname='dE/dt CAM physics + energy fixer using physics E formula (phAP-phBF)')
+       call cam_budget_em_register('dEdt_param_efix_dynE' ,'dyAP','dyBF','phy','dif',&
+                                    longname='dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)')
+       call cam_budget_em_register('dEdt_param_physE'     ,'phAP','phBP','phy','dif',&
+                                    longname='dE/dt CAM physics using physics E formula (phAP-phBP)')
+       call cam_budget_em_register('dEdt_param_dynE'      ,'dyAP','dyBP','phy','dif',&
+                                    longname='dE/dt CAM physics using dycore E (dyAP-dyBP)')
+       call cam_budget_em_register('dEdt_dme_adjust_physE','phAM','phAP','phy','dif',&
+                                    longname='dE/dt dry mass adjustment using physics E formula (phAM-phAP)')
+       call cam_budget_em_register('dEdt_dme_adjust_dynE' ,'dyAM','dyAP','phy','dif',&
+                                    longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+       call cam_budget_em_register('dEdt_efix_physE'      ,'phBP','phBF','phy','dif',&
+                                    longname='dE/dt energy fixer using physics E formula (phBP-phBF)')
+       call cam_budget_em_register('dEdt_efix_dynE'       ,'dyBP','dyBF','phy','dif',&
+                                    longname='dE/dt energy fixer using dycore E formula (dyBP-dyBF)')
+       call cam_budget_em_register('dEdt_phys_tot_physE'  ,'phAM','phBF','phy','dif',&
+                                    longname='dE/dt physics total using physics E formula (phAM-phBF)')
+       call cam_budget_em_register('dEdt_phys_tot_dynE'   ,'dyAM','dyBF','phy','dif',&
+                                    longname='dE/dt physics total using dycore E (dyAM-dyBF)')
     endif
   end subroutine diag_init_dry
 
