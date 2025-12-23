@@ -3660,7 +3660,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 # Tuning for wet scavenging of modal aerosols
 if ($chem =~ /_mam/) {
     add_default($nl, 'sol_facti_cloud_borne');
-    add_default($nl, 'sol_factb_interstitial');
     add_default($nl, 'sol_factic_interstitial');
 }
 if ($carma =~ /trop_strat/) {
