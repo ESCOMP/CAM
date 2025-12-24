@@ -1,6 +1,79 @@
 
 ===============================================================
 
+Tag name: cam6_4_140
+Originator(s): cacraigucar, hannay
+Date: Dec 24, 2025
+One-line Summary: Update LBC file for CAM7 use_cases
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1465
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Add CMIP7 LBC file as default:  https://github.com/ESCOMP/CAM/issues/1463
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: fvitt
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_mt.xml
+M       bld/namelist_files/use_cases/waccm_ma_hist_cam7.xml
+M       bld/namelist_files/use_cases/waccm_sc_hist_cam7.xml
+            - update the LBC file used in CAM7 runs
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository):
+- platform/compilers:
+- configure commandline:
+- build-namelist command (or complete namelist):
+- MSS location of output:
+
+MSS location of control simulations used to validate new climate:
+
+URL for AMWG diagnostics output used to validate new climate:
+
+===============================================================
+
+===============================================================
+
 Tag name: cam6_4_139
 Originator(s): cacraigucar, kuanchihwang, gold2718, jedwards4b
 Date: Dec 24, 2025
