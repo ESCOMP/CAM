@@ -7,7 +7,7 @@
 <solar_data_type>    FIXED            </solar_data_type>
 
 <!-- LBC Files : -->
-<flbc_file>atm/waccm/lb/LBC_17500116-20221216_CMIP7_0p5degLat_c250326.nc</flbc_file>
+<flbc_file>atm/waccm/lb/CMIP7/LBC_17500116-20221216_CMIP7_0p5degLat_c250326.nc</flbc_file>
 <flbc_cycle_yr>1850</flbc_cycle_yr>
 <flbc_type>'CYCLICAL'</flbc_type>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
