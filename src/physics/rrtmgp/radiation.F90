@@ -24,7 +24,6 @@ use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_out
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist, radconstants_init
-use rad_solar_var,       only: rad_solar_var_init, get_variability
 
 use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
                                cospsimulator_intr_run, cosp_nradsteps
@@ -50,6 +49,7 @@ use ccpp_optical_props,      only: ty_optical_props_1scl_ccpp, ty_optical_props_
 use ccpp_source_functions,   only: ty_source_func_lw_ccpp
 use ccpp_fluxes,             only: ty_fluxes_broadband_ccpp
 use ccpp_fluxes_byband,    only: ty_fluxes_byband_ccpp
+use mo_rte_kind,           only: wl
 
 use string_utils,        only: to_lower
 use cam_abortutils,      only: endrun, handle_allocate_error
@@ -220,6 +220,8 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
 
 integer :: nlwgpts
 integer :: nswgpts
+integer :: changeseed
+integer :: irad_always_modified
 
 real(kind=r8) :: tiny
 
@@ -412,6 +414,9 @@ subroutine radiation_init(pbuf2d)
    use rrtmgp_pre,                only: rrtmgp_pre_init
    use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
    use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
+   use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
+   use rrtmgp_sw_solar_var_setup, only: rrtmgp_sw_solar_var_setup_init
+   use solar_irrad_data,          only: do_spctrl_scaling, has_spectrum
    use cloud_rad_props,           only: cloud_rad_props_init
    use rad_constituents,          only: iceopticsfile, liqopticsfile
    use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_init
@@ -444,33 +449,37 @@ subroutine radiation_init(pbuf2d)
    integer :: ierr, istat, errflg
 
    integer :: dtime
+   real(r8) :: dtime_r8
 
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
    ! Initialize available_gases object
-   call rrtmgp_pre_init(nradgas, gaslist, available_gases, gaslist_lc, errmsg, errflg)
+   call rrtmgp_pre_init(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
-   call rrtmgp_lw_gas_optics_init(kdist_lw, coefs_lw_file, available_gases, errmsg, errflg)
+   call rrtmgp_lw_gas_optics_init(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': lw '//errmsg)
    end if
-   call rrtmgp_sw_gas_optics_init(kdist_sw, coefs_sw_file, available_gases, errmsg, errflg)
+   call rrtmgp_sw_gas_optics_init(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': sw '//errmsg)
    end if
 
+   dtime = get_step_size()
+   dtime_r8 = real(dtime, r8)
+
    ! Set up inputs to RRTMGP
-   call rrtmgp_inputs_setup_init(ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, nswbands,               &
-                   pref_edge, nlay, pver, pverp, kdist_sw, kdist_lw, qrl_unused, is_first_step(), use_rad_dt_cosz, &
-                   get_step_size(), get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(),             &
-                   p_top_for_equil_rad, nlwbands, nradgas, gasnamelength, idx_sw_diag, idx_nir_diag, idx_uv_diag,  &
-                   idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, nlayp, nextsw_cday,            &
-                   get_curr_calday(), band2gpt_sw, errmsg, errflg)
+   call rrtmgp_inputs_setup_init(nswbands, nlwbands, pref_edge, pver, pverp, kdist_sw, kdist_lw, qrl_unused, &
+                   is_first_step(), use_rad_dt_cosz, dtime_r8, get_nstep(), iradsw, dt_avg, irad_always,     &
+                   is_first_restart_step(), p_top_for_equil_rad, nradgas, gasnamelength, get_curr_calday(),  &
+                   ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag,      &
+                   idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, changeseed, &
+                   nlay, nlayp, nextsw_cday, band2gpt_sw, irad_always_modified, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -482,7 +491,10 @@ subroutine radiation_init(pbuf2d)
    ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
 
-   call rad_solar_var_init(nswbands)
+   call rrtmgp_sw_solar_var_setup_init(nswbands, do_spctrl_scaling, has_spectrum, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
    ! initialize output fields for offline driver
    call rad_data_init(pbuf2d)
@@ -569,12 +581,6 @@ subroutine radiation_init(pbuf2d)
                      'Shortwave cloud forcing', sampling_seq='rad_lwsw')
          call addfld('FSUTOA'//diag(icall),   horiz_only,   'A', 'W/m2', &
                      'Upwelling solar flux at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNIRTOA'//diag(icall), horiz_only,   'A', 'W/m2', &
-                     'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNRTOAC'//diag(icall), horiz_only,   'A', 'W/m2', &
-                      'Clearsky net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
-         call addfld('FSNRTOAS'//diag(icall), horiz_only,   'A', 'W/m2', &
-                     'Net near-infrared flux (>= 0.7 microns) at top of atmosphere', sampling_seq='rad_lwsw')
          call addfld('FSN200'//diag(icall),   horiz_only,   'A', 'W/m2', &
                      'Net shortwave flux at 200 mb', sampling_seq='rad_lwsw')
          call addfld('FSN200C'//diag(icall),  horiz_only,   'A', 'W/m2', &
@@ -805,7 +811,7 @@ subroutine radiation_tend( &
    use phys_grid,                         only: get_rlat_all_p, get_rlon_all_p
    use cam_control_mod,                   only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,                       only: shr_orb_decl, shr_orb_cosz
-
+   
    ! CCPPized schemes
    use rrtmgp_inputs,                     only: rrtmgp_inputs_run
    use rrtmgp_pre,                        only: rrtmgp_pre_run, rrtmgp_pre_timestep_init
@@ -813,12 +819,17 @@ subroutine radiation_tend( &
    use rrtmgp_lw_mcica_subcol_gen,        only: rrtmgp_lw_mcica_subcol_gen_run
    use rrtmgp_lw_gas_optics_pre,          only: rrtmgp_lw_gas_optics_pre_run
    use rrtmgp_lw_gas_optics,              only: rrtmgp_lw_gas_optics_run
-   use rrtmgp_lw_main,                    only: rrtmgp_lw_main_run
+   use rrtmgp_lw_rte,                     only: rrtmgp_lw_rte_run
    use rrtmgp_dry_static_energy_tendency, only: rrtmgp_dry_static_energy_tendency_run
    use rrtmgp_post,                       only: rrtmgp_post_run
+   use rrtmgp_sw_solar_var,               only: rrtmgp_sw_solar_var_run
+   use rrtmgp_sw_mcica_subcol_gen,        only: rrtmgp_sw_mcica_subcol_gen_run
+   use rrtmgp_sw_cloud_optics,            only: rrtmgp_sw_cloud_optics_run
+   use rrtmgp_sw_gas_optics_pre,          only: rrtmgp_sw_gas_optics_pre_run
+   use rrtmgp_sw_gas_optics,              only: rrtmgp_sw_gas_optics_run
+   use rrtmgp_sw_rte,                     only: rrtmgp_sw_rte_run
 
    use rrtmgp_inputs_cam,                 only: rrtmgp_get_gas_mmrs, rrtmgp_set_aer_lw, &
-                                                rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
                                                 rrtmgp_set_aer_sw
 
    ! RRTMGP drivers for flux calculations.
@@ -828,10 +839,13 @@ subroutine radiation_tend( &
    use radheat,                           only: radheat_tend
 
    use radiation_data,                    only: rad_data_write
+   use solar_irrad_data,                  only: sol_irrad, we, nbins, sol_tsi, do_spctrl_scaling
 
    use interpolate_data,                  only: vertinterp
    use tropopause,                        only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
    use cospsimulator_intr,                only: docosp, cospsimulator_intr_run, cosp_nradsteps
+   use cam_history_support,               only: fillvalue
+   use dycore,                            only: dycore_is
 
 
    ! Arguments
@@ -876,6 +890,13 @@ subroutine radiation_tend( &
    real(r8)          :: cld_lw_abs(nlwbands,state%ncol,pver)  ! Cloud absorption optics depth
    real(r8)          :: snow_lw_abs(nlwbands,state%ncol,pver) ! Snow absorption optics depth
    real(r8)          :: grau_lw_abs(nlwbands,state%ncol,pver) ! Graupel absorption optics depth
+   real(r8)          :: c_cld_lw_abs(nlwbands,state%ncol,pver)
+   real(r8)          :: cld_tau(nswbands,state%ncol,pver)  ! Cloud absorption optical depth (sw)
+   real(r8)          :: snow_tau(nswbands,state%ncol,pver) ! Snow absorption optical depth (sw)
+   real(r8)          :: grau_tau(nswbands,state%ncol,pver) ! Graupel absorption optical depth (sw)
+   real(r8)          :: c_cld_tau(nswbands,state%ncol,pver)
+   real(r8)          :: c_cld_tau_w(nswbands,state%ncol,pver)
+   real(r8)          :: c_cld_tau_w_g(nswbands,state%ncol,pver)
    real(r8), pointer :: qrs(:,:) ! shortwave radiative heating rate adjusted by air pressure thickness
    real(r8), pointer :: qrl(:,:) ! longwave  radiative heating rate adjusted by air pressure thickness
    real(r8)          :: qrs_prime(pcols, pver) ! shortwave heating rate
@@ -895,6 +916,8 @@ subroutine radiation_tend( &
    real(r8), pointer :: icswp(:,:)
    real(r8), pointer :: icgrauwp(:,:)
    real(r8), pointer :: degrau(:,:)
+   real(r8), pointer :: icgrauwp_in(:,:)
+   real(r8), pointer :: degrau_in(:,:)
 
    real(r8), pointer, dimension(:,:,:) :: su => NULL()  ! shortwave spectral flux up
    real(r8), pointer, dimension(:,:,:) :: sd => NULL()  ! shortwave spectral flux down
@@ -929,9 +952,6 @@ subroutine radiation_tend( &
    real(r8) :: cld_lw_abs_cloudsim(pcols,pver) ! liq + ice
    real(r8) :: snow_lw_abs_cloudsim(pcols,pver)! snow
    real(r8) :: grau_lw_abs_cloudsim(pcols,pver)! graupel
-
-   ! Set vertical indexing in RRTMGP to be the same as CAM (top to bottom).
-   logical, parameter :: top_at_1 = .true.
 
    logical :: do_graupel, do_snow
 
@@ -987,10 +1007,14 @@ subroutine radiation_tend( &
    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
    real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
 
+   logical :: is_mpas ! Flag for whether the dycore is MPAS
+   logical :: dosw_heat, dolw_heat
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
    real(r8), target :: zero_variable(1,1)
+   integer  :: dtime
+   real(r8) :: dtime_r8
 
-   character(len=128) :: errmsg
+   character(len=512) :: errmsg
    integer            :: errflg, err
    character(len=*), parameter :: sub = 'radiation_tend'
    !--------------------------------------------------------------------------------------
@@ -1030,8 +1054,12 @@ subroutine radiation_tend( &
       end do
    end if
 
+   dtime = get_step_size()
+   dtime_r8 = real(dtime, r8)
+
    ! Get next SW radiation timestep
-   call rrtmgp_pre_timestep_init(get_nstep(), get_step_size(), iradsw, irad_always, offset, errmsg, errflg)
+   call rrtmgp_pre_timestep_init(ncol, coszrs, get_nstep(), dtime_r8, iradsw, &
+           irad_always_modified, offset, idxday, nday, idxnite, nnite, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1042,9 +1070,9 @@ subroutine radiation_tend( &
 
    ! Determine if we're running radiation (sw and/or lw) this timestep,
    !  find daylight and nighttime indices, and initialize fluxes
-   call rrtmgp_pre_run(coszrs(:ncol), get_nstep(), get_step_size(), iradsw, iradlw, irad_always, &
-           ncol, next_cday, idxday, nday, idxnite, nnite, dosw, dolw, nlay, nlwbands,   &
-           nswbands, spectralflux, nextsw_cday, fsw, fswc, flw, flwc, errmsg, errflg)
+   call rrtmgp_pre_run(coszrs(:ncol), get_nstep(), dtime_r8, iradsw, iradlw, irad_always_modified, &
+           ncol, next_cday, idxday, nday, idxnite, nnite, nlay, nlwbands, nswbands, spectralflux,  &
+           nextsw_cday, dosw, dolw, dosw_heat, dolw_heat, fsw, fswc, flw, flwc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
@@ -1126,19 +1154,54 @@ subroutine radiation_tend( &
       else
          cldfsnow_in => zero_variable
       end if
+
+      ! Grab additional pbuf fields for LW cloud optics
+      dei_idx = pbuf_get_index('DEI')
+      mu_idx  = pbuf_get_index('MU')
+      lambda_idx = pbuf_get_index('LAMBDAC')
+      des_idx    = pbuf_get_index('DES')
+      icswp_idx  = pbuf_get_index('ICSWP')
+      ! Below fields are optional
+      iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
+      iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
+      icgrauwp_idx  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
+      degrau_idx    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
+      call pbuf_get_field(pbuf, lambda_idx,  lambda)
+      call pbuf_get_field(pbuf, mu_idx,      mu)
+      call pbuf_get_field(pbuf, iclwp_idx,   iclwp)
+      call pbuf_get_field(pbuf, iciwp_idx, iciwp)
+      call pbuf_get_field(pbuf, dei_idx,   dei)
+      call pbuf_get_field(pbuf, icswp_idx, icswp)
+      call pbuf_get_field(pbuf, des_idx,   des)
+      if (icgrauwp_idx > 0) then
+         call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp)
+         icgrauwp_in => icgrauwp(:ncol,:)
+      else
+         icgrauwp_in => zero_variable
+      end if
+      if (degrau_idx > 0) then
+         call pbuf_get_field(pbuf, degrau_idx,   degrau)
+         degrau_in => degrau(:ncol,:)
+      else
+         degrau_in => zero_variable
+      end if
+
+      do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau)) .and. graupel_in_rad
+      do_snow = associated(cldfsnow)
+
+      is_mpas = dycore_is('MPAS')
+
       ! Prepare state variables, daylit columns, albedos for RRTMGP
       ! Also calculate modified cloud fraction
       call rrtmgp_inputs_run(dosw, dolw, associated(cldfsnow), associated(cldfgrau), &
-                  state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
-                  nday, idxday, cldfprime(:ncol,:), coszrs(:ncol), kdist_sw, t_sfc,       &
-                  emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
-                  pint_day, coszrs_day, alb_dir, alb_dif, cam_in%lwup(:ncol), stebol,  &
+                  (.not. is_mpas), state%pmid(:ncol,:), state%pint(:ncol,:), state%t(:ncol,:), &
+                  nday, idxday, coszrs(:ncol), kdist_sw, kdist_lw, cam_in%lwup(:ncol), stebol, &
                   ncol, ktopcam, ktoprad, nswbands, cam_in%asdir(:ncol), cam_in%asdif(:ncol), &
                   sw_low_bounds, sw_high_bounds, cam_in%aldir(:ncol), cam_in%aldif(:ncol), nlay, &
-                  pverp, pver, cld(:ncol,:), cldfsnow_in, cldfgrau_in, &
-                  graupel_in_rad, gasnamelength, gaslist_lc, gas_concs_lw, aer_lw, atm_optics_lw, &
-                  kdist_lw, sources_lw, aer_sw, atm_optics_sw, gas_concs_sw,   &
-                  errmsg, errflg)
+                  pverp, pver, cld(:ncol,:), cldfsnow_in, cldfgrau_in, graupel_in_rad, gaslist_lc, &
+                  cldfprime(:ncol,:), t_sfc, emis_sfc, t_rad, pmid_rad, pint_rad, t_day, pmid_day,   &
+                  pint_day, coszrs_day, alb_dir, alb_dif, gas_concs_lw, aer_lw, atm_optics_lw, &
+                  sources_lw, aer_sw, atm_optics_sw, gas_concs_sw, errmsg, errflg)
       if (errflg /= 0) then
          call endrun(sub//': '//errmsg)
       end if
@@ -1154,13 +1217,29 @@ subroutine radiation_tend( &
       if (dosw) then
 
          ! Set cloud optical properties in cloud_sw object.
-         call rrtmgp_set_cloud_sw( &
-            state, pbuf, nlay, nday, idxday, nswgpts,            &
-            nnite, idxnite, pmid_day, cld, cldfsnow,                      &
-            cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw,      &
-            rd%tot_cld_vistau, rd%tot_icld_vistau, rd%liq_icld_vistau,    &
-            rd%ice_icld_vistau, rd%snow_icld_vistau, rd%grau_icld_vistau, &
-            cld_tau_cloudsim, snow_tau_cloudsim, grau_tau_cloudsim )
+         call rrtmgp_sw_cloud_optics_run(dosw, ncol, pver, ktopcam, ktoprad, nswgpts, nday, idxday,         &
+             fillvalue, nswbands, iulog, mu(:ncol,:), lambda(:ncol,:), nnite, idxnite, cld, cldfsnow_in,    &
+             cldfgrau_in, cldfprime(:ncol,:), degrau_in, dei(:ncol,:), des(:ncol,:), iclwp(:ncol,:),        &
+             iciwp(:ncol,:), icswp(:ncol,:), icgrauwp_in, tiny, idx_sw_diag, do_graupel, do_snow,     &
+             kdist_sw, cld_tau(:,:ncol,:), grau_tau(:,:ncol,:), snow_tau(:,:ncol,:), c_cld_tau(:,:ncol,:),  &
+             c_cld_tau_w(:,:ncol,:), c_cld_tau_w_g(:,:ncol,:), rd%tot_cld_vistau(:ncol,:),                  &
+             rd%tot_icld_vistau(:ncol,:), rd%liq_icld_vistau(:ncol,:), rd%ice_icld_vistau(:ncol,:),         &
+             rd%snow_icld_vistau(:ncol,:), rd%grau_icld_vistau(:ncol,:), errmsg, errflg)
+         if (errflg /= 0) then
+            call endrun(sub//': '//errmsg)
+         end if
+
+         ! Cloud optics for COSP
+         cld_tau_cloudsim(:ncol,:) = cld_tau(idx_sw_cloudsim,:,:)
+         snow_tau_cloudsim(:ncol,:) = snow_tau(idx_sw_cloudsim,:,:)
+         grau_tau_cloudsim(:ncol,:) = grau_tau(idx_sw_cloudsim,:,:)
+
+         call rrtmgp_sw_mcica_subcol_gen_run(dosw, kdist_sw, nswbands, nswgpts, nday, nlay, &
+                 pver, tiny, idxday, ktopcam, ktoprad, cldfprime, c_cld_tau,   &
+                 c_cld_tau_w, c_cld_tau_w_g, pmid_day, cloud_sw, errmsg, errflg)
+         if (errflg /= 0) then
+            call endrun(sub//': '//errmsg)
+         end if
 
          if (write_output) then
             call radiation_output_cld(lchnk, rd)
@@ -1172,25 +1251,34 @@ subroutine radiation_tend( &
 
                if (nday > 0) then
 
+                  ! Grab the gas mass mixing ratios from rad_constituents
+                  gas_mmrs = 0._r8
+                  call rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
+
                   ! Set gas volume mixing ratios for this call in gas_concs_sw.
-                  call rrtmgp_set_gases_sw( &
-                     icall, state, pbuf, nlay, nday, &
-                     idxday, gas_concs_sw)
+                  call rrtmgp_sw_gas_optics_pre_run(gas_mmrs, state%pmid(:ncol,:), state%pint(:ncol,:), nlay, nday, gaslist, idxday, &
+                                    pverp, ktoprad, ktopcam, dosw, nradgas, gas_concs_sw, errmsg, errflg)
+                  if (errflg /= 0) then
+                     call endrun(sub//': '//errmsg)
+                  end if
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
-                  !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs) &
-                  !$acc        copy(atm_optics_sw%optical_props) &
+                  !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs,atm_optics_sw%optical_props) &
                   !$acc     copyout(toa_flux)
-                  errmsg = kdist_sw%gas_props%gas_optics( &
-                     pmid_day, pint_day, t_day, gas_concs_sw%gas_concs, atm_optics_sw%optical_props, &
-                     toa_flux)
-                  call stop_on_err(errmsg, sub, 'kdist_sw%gas_props%gas_optics')
+                  call rrtmgp_sw_gas_optics_run(dosw, 1, nday, nday, pmid_day, pint_day, t_day,  &
+                               gas_concs_sw, atm_optics_sw, kdist_sw, toa_flux, errmsg, errflg)
+                  if (errflg /= 0) then
+                     call endrun(sub//': '//errmsg)
+                  end if
                   !$acc end data
 
                   ! Scale the solar source
-                  call get_variability(toa_flux, sfac, band2gpt_sw, nswbands)
-                  toa_flux = toa_flux * sfac * eccf
+                  call rrtmgp_sw_solar_var_run(toa_flux, 2, band2gpt_sw, nswbands, sol_irrad, we, nbins, sol_tsi, &
+                          nday, dosw, do_spctrl_scaling, sfac, eccf, errmsg, errflg)
+                  if (errflg /= 0) then
+                     call endrun(sub//': '//errmsg)
+                  end if
 
                end if
 
@@ -1211,24 +1299,11 @@ subroutine radiation_tend( &
                   !$acc             cloud_sw%optical_props%g)                                         &
                   !$acc        copy(fswc%fluxes, fswc%fluxes%flux_net,fswc%fluxes%flux_up,fswc%fluxes%flux_dn,     &
                   !$acc             fsw%fluxes, fsw%fluxes%flux_net,fsw%fluxes%flux_up,fsw%fluxes%flux_dn)
-                  errmsg = aer_sw%optical_props%increment(atm_optics_sw%optical_props)
-                  call stop_on_err(errmsg, sub, 'aer_sw%optical_props%increment')
-
-                  ! Compute clear-sky fluxes.
-                  errmsg = rte_sw(&
-                     atm_optics_sw%optical_props, top_at_1, coszrs_day, toa_flux, &
-                     alb_dir, alb_dif, fswc%fluxes)
-                  call stop_on_err(errmsg, sub, 'clear-sky rte_sw')
-
-                  ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
-                  errmsg = cloud_sw%optical_props%increment(atm_optics_sw%optical_props)
-                  call stop_on_err(errmsg, sub, 'cloud_sw%optical_props%increment')
-
-                  ! Compute all-sky fluxes.
-                  errmsg = rte_sw(&
-                     atm_optics_sw%optical_props, top_at_1, coszrs_day, toa_flux, &
-                     alb_dir, alb_dif, fsw%fluxes)
-                  call stop_on_err(errmsg, sub, 'all-sky rte_sw')
+                  call rrtmgp_sw_rte_run(dosw, .true., .true., nday, 1, nday, atm_optics_sw, cloud_sw,  &
+                                 aer_sw, coszrs_day, toa_flux, alb_dir, alb_dif, fswc, fsw, errmsg, errflg)
+                  if (errflg /= 0) then
+                     call endrun(sub//': '//errmsg)
+                  end if
                   !$acc end data
                end if
 
@@ -1249,39 +1324,12 @@ subroutine radiation_tend( &
 
       if (dolw) then
 
-         ! Grab additional pbuf fields for LW cloud optics
-         dei_idx = pbuf_get_index('DEI',errcode=err)
-         mu_idx  = pbuf_get_index('MU',errcode=err)
-         lambda_idx = pbuf_get_index('LAMBDAC',errcode=err)
-         iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
-         iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
-         des_idx    = pbuf_get_index('DES',errcode=err)
-         icswp_idx  = pbuf_get_index('ICSWP',errcode=err)
-         icgrauwp_idx  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
-         degrau_idx    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
-         call pbuf_get_field(pbuf, lambda_idx,  lambda)
-         call pbuf_get_field(pbuf, mu_idx,      mu)
-         call pbuf_get_field(pbuf, iclwp_idx,   iclwp)
-         call pbuf_get_field(pbuf, iciwp_idx, iciwp)
-         call pbuf_get_field(pbuf, dei_idx,   dei)
-         call pbuf_get_field(pbuf, icswp_idx, icswp)
-         call pbuf_get_field(pbuf, des_idx,   des)
-         if (icgrauwp_idx > 0) then
-            call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp)
-         end if
-         if (degrau_idx > 0) then
-            call pbuf_get_field(pbuf, degrau_idx,   degrau)
-         end if
-
-         do_graupel = ((icgrauwp_idx > 0) .and. (degrau_idx > 0) .and. associated(cldfgrau)) .and. graupel_in_rad
-         do_snow = associated(cldfsnow)
-
          ! Set cloud optical properties in cloud_lw object.
-         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, nlaycam, cld(:ncol,:), cldfsnow_in,     &
-             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, cloud_lw, lambda(:ncol,:), mu(:ncol,:),    &
+         call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &
+             cldfgrau_in, cldfprime(:ncol,:), kdist_lw, lambda(:ncol,:), mu(:ncol,:),    &
              iclwp(:ncol,:), iciwp(:ncol,:), tiny, dei(:ncol,:), icswp(:ncol,:), des(:ncol,:),     &
-             icgrauwp(:ncol,:), degrau(:ncol,:), nlwbands, do_snow, do_graupel, pver, ktopcam,     &
-             tauc, cldf, cld_lw_abs, snow_lw_abs, grau_lw_abs, errmsg, errflg)
+             icgrauwp_in, degrau_in, nlwbands, do_snow, do_graupel, pver, ktopcam,     &
+             cloud_lw, cld_lw_abs, snow_lw_abs, grau_lw_abs, c_cld_lw_abs, errmsg, errflg)
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
@@ -1292,9 +1340,9 @@ subroutine radiation_tend( &
          grau_lw_abs_cloudsim(:ncol,:) = grau_lw_abs(idx_lw_cloudsim,:,:)
 
          ! Create McICA stochastic arrays for lw cloud optical properties
-         call rrtmgp_lw_mcica_subcol_gen_run(dolw, ktoprad, &
-                 kdist_lw, nlwbands, nlwgpts, ncol, pver, nlaycam, nlwgpts, &
-                 state%pmid(:ncol,:), cldf, tauc, cloud_lw, errmsg, errflg )
+         call rrtmgp_lw_mcica_subcol_gen_run(dolw, ktoprad, ktopcam, &
+                 kdist_lw, nlwbands, changeseed, ncol, pver, nlaycam, cldfprime(:ncol,:), &
+                 c_cld_lw_abs, nlwgpts, state%pmid(:ncol,:), cloud_lw, errmsg, errflg )
          if (errflg /= 0) then
             call endrun(sub//': '//errmsg)
          end if
@@ -1310,19 +1358,18 @@ subroutine radiation_tend( &
 
                ! Set gas volume mixing ratios for this call in gas_concs_lw
                call rrtmgp_lw_gas_optics_pre_run(gas_mmrs, state%pmid(:ncol,:), state%pint(:ncol,:), nlay, ncol, gaslist, &
-                  idxday, pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
+                  pverp, ktoprad, ktopcam, dolw, nradgas, gas_concs_lw, errmsg, errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
 
                ! Compute the gas optics and Planck sources.
                !$acc data copyin(kdist_lw%gas_props, pmid_rad, pint_rad, t_rad,  &
-               !$acc             t_sfc, gas_concs_lw%gas_concs)                  &
-               !$acc        copy(atm_optics_lw%optical_props, atm_optics_lw%optical_props%tau,                &
+               !$acc             t_sfc, gas_concs_lw%gas_concs, atm_optics_lw%optical_props)         &
+               !$acc        copy(atm_optics_lw%optical_props%tau,                &
                !$acc             sources_lw%sources, sources_lw%sources%lay_source,                  &
                !$acc             sources_lw%sources%sfc_source,                  &
-               !$acc             sources_lw%sources%lev_source_inc,              &
-               !$acc             sources_lw%sources%lev_source_dec,              &
+               !$acc             sources_lw%sources%lev_source,                  &
                !$acc             sources_lw%sources%sfc_source_jac)
                call rrtmgp_lw_gas_optics_run(dolw, 1, ncol, ncol, pmid_rad, pint_rad, t_rad,  &
                   t_sfc, gas_concs_lw, atm_optics_lw, sources_lw, t_rad, .false., kdist_lw, errmsg, &
@@ -1341,18 +1388,17 @@ subroutine radiation_tend( &
                !$acc             cloud_lw%optical_props, cloud_lw%optical_props%tau,        &
                !$acc             sources_lw%sources,sources_lw%sources%lay_source,     &
                !$acc             sources_lw%sources%sfc_source,     &
-               !$acc             sources_lw%sources%lev_source_inc, &
-               !$acc             sources_lw%sources%lev_source_dec, &
+               !$acc             sources_lw%sources%lev_source,     &
                !$acc             sources_lw%sources%sfc_source_jac, &
                !$acc             emis_sfc)                          &
                !$acc        copy(flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, &
                !$acc             flwc%fluxes%flux_dn, flw%fluxes, flw%fluxes%flux_net,  &
                !$acc             flw%fluxes%flux_up, flw%fluxes%flux_dn,    &
                !$acc             lw_ds)
-               call rrtmgp_lw_main_run(dolw, dolw, .false., .false., .false., &
-                                 0, ncol, 1, ncol, atm_optics_lw, &
-                                 cloud_lw, top_at_1, sources_lw, emis_sfc, kdist_lw, &
-                                 aer_lw, fluxlwup_jac, lw_ds, flwc, flw, errmsg, errflg)
+               call rrtmgp_lw_rte_run(dolw, dolw, .false., .false., .false., &
+                                 0, atm_optics_lw, cloud_lw, sources_lw, emis_sfc, &
+                                 kdist_lw, aer_lw, fluxlwup_jac, lw_ds, flwc, flw, &
+                                 errmsg, errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
@@ -1440,7 +1486,7 @@ subroutine radiation_tend( &
    ! of radheat_tend merges upper atmosphere heating rates with those calculated
    ! by RRTMGP.
    call radheat_tend(state, pbuf,  ptend, qrl_prime, qrs_prime, fsns, &
-                     fsnt, flns, flnt, cam_in%asdir, net_flx)
+                     fsnt, flns, flnt, cam_in%asdir, coszrs, net_flx)
 
    if (write_output) then
       ! Compute heating rate for dtheta/dt
@@ -1459,9 +1505,9 @@ subroutine radiation_tend( &
    cam_out%netsw(:) = 0._r8
 
    ! Calculate radiative heating (Q*dp), set netsw flux, and do object cleanup
-   call rrtmgp_post_run(qrs_prime(:ncol,:), qrl_prime(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), atm_optics_sw, cloud_sw, &
-           aer_sw, fsw, fswc, atm_optics_lw, sources_lw, cloud_lw, aer_lw, flw, flwc, qrs(:ncol,:), qrl(:ncol,:),          &
-           cam_out%netsw(:ncol), errmsg, errflg)
+   call rrtmgp_post_run(nlay, dolw, qrs_prime(:ncol,:), qrl_prime(:ncol,:), fsns(:ncol), state%pdel(:ncol,:), &
+           atm_optics_sw, cloud_sw, aer_sw, fsw, fswc, atm_optics_lw, sources_lw, cloud_lw, aer_lw, flw, flwc,&
+           cam_out%flwds(:ncol), qrs(:ncol,:), qrl(:ncol,:), cam_out%netsw(:ncol), errmsg, errflg)
    if (errflg /= 0) then
      call endrun(sub//': '//errmsg)
    end if
@@ -1716,10 +1762,6 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('SWCF'//diag(icall),     ftem,          pcols, lchnk)
 
    call outfld('FSUTOA'//diag(icall),   rd%fsutoa,     pcols, lchnk)
-
-   call outfld('FSNIRTOA'//diag(icall), rd%fsnirt,     pcols, lchnk)
-   call outfld('FSNRTOAC'//diag(icall), rd%fsnrtc,     pcols, lchnk)
-   call outfld('FSNRTOAS'//diag(icall), rd%fsnirtsq,   pcols, lchnk)
 
    call outfld('FSN200'//diag(icall),   rd%fsn200,     pcols, lchnk)
    call outfld('FSN200C'//diag(icall),  rd%fsn200c,    pcols, lchnk)

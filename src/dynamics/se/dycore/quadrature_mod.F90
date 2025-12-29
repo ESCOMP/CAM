@@ -6,8 +6,11 @@ module quadrature_mod
   private
 
   type, public :: quadrature_t
-    real (kind=r8), dimension(:), pointer :: points
-    real (kind=r8), dimension(:), pointer :: weights
+    real (kind=r8), dimension(:), allocatable :: points
+    real (kind=r8), dimension(:), allocatable :: weights
+  contains
+    procedure :: finalize
+    final :: finalize_quadrature_t
   end type quadrature_t
 
   public  :: gausslobatto
@@ -32,6 +35,19 @@ module quadrature_mod
 
 
 contains
+  subroutine finalize(this)
+    class(quadrature_t), intent(inout) :: this
+    call finalize_quadrature_t(this)
+  end subroutine finalize
+
+! Deallocate and reset to initial state.
+subroutine finalize_quadrature_t(this)
+  type(quadrature_t) :: this
+
+  if(allocated(this%points))   deallocate(this%points)
+  if(allocated(this%weights))  deallocate(this%weights)
+
+end subroutine finalize_quadrature_t
 
   ! ==============================================================
   ! gauss:
@@ -219,7 +235,7 @@ contains
     beta  = c0
     n     = np1-1
 
-    djac=jacobi_derivatives(np1,alpha,beta,np1,gpts)     
+    djac=jacobi_derivatives(np1,alpha,beta,np1,gpts)
 
     do i=1,np1
        wts(i)=c2/((c1-gpts(i)**2)*djac(i)*djac(i))
@@ -258,8 +274,7 @@ contains
     print *,"sum of Gaussian weights=",gssum
     print *,"============================================"
 
-    deallocate(gs%points)
-    deallocate(gs%weights)
+    call gs%finalize()
 
   end subroutine test_gauss
 
@@ -287,7 +302,7 @@ contains
   ! ==============================================================
   ! gausslobatto_pts:
   !
-  ! Compute the Gauss-Lobatto Collocation points 
+  ! Compute the Gauss-Lobatto Collocation points
   ! for Jacobi Polynomials
   !
   ! ==============================================================
@@ -306,10 +321,10 @@ contains
     real (kind=r8) :: jacm1(0:np1)
     real (kind=r8) :: djac(0:np1)
 
-    integer  prec                    ! number of mantissa bits 
+    integer  prec                    ! number of mantissa bits
     real (kind=r8) eps      ! machine epsilon
-    real (kind=r8), parameter :: convthresh = 10  ! convergence threshold relative 
-    ! to machine epsilon 
+    real (kind=r8), parameter :: convthresh = 10  ! convergence threshold relative
+    ! to machine epsilon
     integer, parameter :: kstop = 30 ! max iterations for polynomial deflation
 
     real (kind=r8) :: a,b,det
@@ -336,7 +351,7 @@ contains
 
     ! =========================================================
     ! compute machine precision and set the convergence
-    ! threshold thresh to 10 times that level 
+    ! threshold thresh to 10 times that level
     ! =========================================================
 
     prec   = PRECISION(c10)
@@ -355,7 +370,7 @@ contains
     ! ============================================================
 
     ! ============================================================
-    ! compute the parameters in the polynomial whose 
+    ! compute the parameters in the polynomial whose
     ! roots are desired...
     ! ============================================================
 
@@ -375,7 +390,7 @@ contains
     nh  = (n+1)/2
 
     do j=1,nh-1
-       x=cs          ! first guess at root 
+       x=cs          ! first guess at root
        k=0
        delx=c1
        do while(k<kstop .and. ABS(delx) > thresh)
@@ -401,16 +416,16 @@ contains
        !  cs = cs(theta) => cs(theta+2*dth)
        ! =====================================================
 
-       cstmp=cs*cd-ss*sd      
-       ss=cs*sd+ss*cd    
-       cs=cstmp          
+       cstmp=cs*cd-ss*sd
+       ss=cs*sd+ss*cd
+       cs=cstmp
     end do
 
     ! ================================================
     ! compute the second half of the roots by symmetry
     ! ================================================
 
-    do j=1,nh 
+    do j=1,nh
        xjac(n-j) = -xjac(j)
     end do
 
@@ -418,7 +433,7 @@ contains
 
     ! ====================================================
     ! Reverse the sign of everything so that indexing
-    ! increases with position          
+    ! increases with position
     ! ====================================================
 
     do j=0,n
@@ -428,8 +443,8 @@ contains
   end function gausslobatto_pts
 
   ! ================================================
-  ! Gauss Lobatto Legendre Weights   
-  ! ================================================ 
+  ! Gauss Lobatto Legendre Weights
+  ! ================================================
 
   function gausslobatto_wts(np1, glpts) result(wts)
 
@@ -487,8 +502,7 @@ contains
     print *,"sum of Gauss-Lobatto weights=",gllsum
     print *,"============================================"
 
-    deallocate(gll%points)
-    deallocate(gll%weights)
+    call gll%finalize()
 
   end subroutine test_gausslobatto
 
@@ -497,11 +511,11 @@ contains
   ! subroutine jacobi:
   !
   !  Computes the Jacobi Polynomials (jac) and their
-  !  first derivatives up to and including degree n 
+  !  first derivatives up to and including degree n
   !  at point x on the interval (-1,1).
   !
-  !    See for example the recurrence relations 
-  !    in equation 2.5.4 (page 70) in 
+  !    See for example the recurrence relations
+  !    in equation 2.5.4 (page 70) in
   !
   !    "Spectral Methods in Fluid Dynamics",
   !    by C. Canuto, M.Y. Hussaini, A. Quarteroni, T.A.Zang
@@ -544,19 +558,19 @@ contains
        a2k      = ( c2*k + alpha + beta + c1 )*( alpha*alpha - beta*beta ) + x*da2kdx
        a3k      = c2*(k + alpha)*( k + beta )*( c2*k + alpha + beta + c2 )
        jac(k+1) = ( a2k*jac(k)-a3k*jac(k-1) )/a1k
-       djac(k+1)= ( a2k*djac(k) + da2kdx*jac(k) - a3k*djac(k-1) )/a1k          
+       djac(k+1)= ( a2k*djac(k) + da2kdx*jac(k) - a3k*djac(k-1) )/a1k
     end do
 
   end subroutine jacobi
 
 
   ! ==========================================================
-  ! This routine computes the Nth order Jacobi Polynomials 
+  ! This routine computes the Nth order Jacobi Polynomials
   ! (jac) for a vector of positions x on the interval (-1,1),
   ! of length npoints.
   !
-  !    See for example the recurrence relations 
-  !    in equation 2.5.4 (page 70) in 
+  !    See for example the recurrence relations
+  !    in equation 2.5.4 (page 70) in
   !
   !     "Spectral Methods in Fluid Dynamics",
   !     by C. Canuto, M.Y. Hussaini, A. Quarteroni, T.A.Zang
@@ -567,7 +581,7 @@ contains
   function jacobi_polynomials(n, alpha, beta, npoints, x) result(jac)
 
     integer, intent(in)     :: n         ! order of the Jacobi Polynomial
-    real (kind=r8) :: alpha 
+    real (kind=r8) :: alpha
     real (kind=r8) :: beta
     integer, intent(in)     :: npoints
     real (kind=r8) :: x(npoints)
@@ -617,11 +631,11 @@ contains
 
   ! ================================================
   ! This routine computes the first derivatives of Nth
-  ! order Jacobi Polynomials (djac) for a vector of 
+  ! order Jacobi Polynomials (djac) for a vector of
   ! positions x on the interval (-1,1), of length npoints.
   !
-  ! See for example the recurrence relations 
-  ! in equation 2.5.4 (page 70) in 
+  ! See for example the recurrence relations
+  ! in equation 2.5.4 (page 70) in
   !
   ! "Spectral Methods in Fluid Dynamics",
   ! by C. Canuto, M.Y. Hussaini, A. Quarteroni, T.A.Zang
@@ -632,7 +646,7 @@ contains
   function jacobi_derivatives(n, alpha, beta, npoints, x) result(djac)
 
     integer                , intent(in) :: n         ! order of the Jacobi Polynomial
-    real (kind=r8), intent(in) :: alpha 
+    real (kind=r8), intent(in) :: alpha
     real (kind=r8), intent(in) :: beta
     integer                , intent(in) :: npoints
     real (kind=r8), intent(in) :: x(npoints)
@@ -740,7 +754,7 @@ contains
   ! ===========================================
   ! quad_norm:
   !
-  ! compute normalization constants 
+  ! compute normalization constants
   ! for k=1,N order Legendre polynomials
   !
   ! e.g. gamma(k) in Canuto, page 58.
@@ -807,13 +821,13 @@ contains
           x=x+del
        end do
        s=0.5_r8*(s + del*ssum)
-       it=2*it  
+       it=2*it
     end if
 
   end subroutine trapN
 
   ! ==========================================
-  ! Trapezoid Rule for integrating functions 
+  ! Trapezoid Rule for integrating functions
   ! from a to b with residual error eps
   ! ==========================================
 
@@ -857,7 +871,7 @@ contains
   end function trapezoid
 
   ! ==========================================
-  ! Simpsons Rule for integrating functions 
+  ! Simpsons Rule for integrating functions
   ! from a to b with residual error eps
   ! ==========================================
 
@@ -910,9 +924,9 @@ contains
   ! ==========================================
   ! gaussian_int:
   !
-  ! Gaussian Quadrature Rule for integrating 
-  ! function f from a to b  with gs weights and 
-  ! points with precomputed gaussian quadrature 
+  ! Gaussian Quadrature Rule for integrating
+  ! function f from a to b  with gs weights and
+  ! points with precomputed gaussian quadrature
   ! and weights.
   ! ==========================================
 

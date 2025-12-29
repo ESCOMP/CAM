@@ -74,6 +74,7 @@ module aerosol_properties_mod
      procedure(aero_resuspension_resize), deferred :: resuspension_resize
      procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
      procedure(aero_hydrophilic), deferred :: hydrophilic
+     procedure(aero_id_query), deferred :: model_is
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -101,7 +102,7 @@ module aerosol_properties_mod
      !  species morphology
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                               spectype, specname, specmorph, refindex_sw, refindex_lw)
+          spectype, specname, specmorph, refindex_sw, refindex_lw)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -124,7 +125,10 @@ module aerosol_properties_mod
           refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
           sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
           sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-          corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh )
+          corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
+          sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
+          sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
+          r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
 
        import :: aerosol_properties, r8
 
@@ -168,6 +172,25 @@ module aerosol_properties_mod
        integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
        integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
        integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
+
+       ! hygroscopic
+       real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:) ! short wave extinction table
+       real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:) ! short wave single-scatter albedo table
+       real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:) ! short wave asymmetry table
+       real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:) ! long wave absorption table
+
+       ! non-hygroscopic (insoluble)
+       real(r8),  optional, pointer :: sw_insoluble_ext(:) ! short wave extinction table
+       real(r8),  optional, pointer :: sw_insoluble_ssa(:) ! short wave single-scatter albedo table
+       real(r8),  optional, pointer :: sw_insoluble_asm(:) ! short wave asymmetry table
+       real(r8),  optional, pointer :: lw_insoluble_ext(:) ! long wave absorption table
+
+       ! volcanic radius
+       real(r8),  optional, pointer :: r_sw_ext(:,:)
+       real(r8),  optional, pointer :: r_sw_scat (:,:)
+       real(r8),  optional, pointer :: r_sw_ascat(:,:)
+       real(r8),  optional, pointer :: r_mu(:)
+       real(r8),  optional, pointer :: r_lw_abs(:,:)
 
      end subroutine aero_optics_params
 
@@ -375,12 +398,12 @@ module aerosol_properties_mod
      ! returns name for a given radiation list number and aerosol bin
      !------------------------------------------------------------------------------
      function aero_bin_name(self, list_ndx,  bin_ndx) result(name)
-       import :: aerosol_properties, r8
+       import :: aerosol_properties, r8, aero_name_len
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: list_ndx ! radiation list number
        integer, intent(in) :: bin_ndx  ! bin number
 
-       character(len=32) name
+       character(len=aero_name_len) :: name
 
      end function aero_bin_name
 
@@ -433,6 +456,15 @@ module aerosol_properties_mod
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx ! bin number
      end function aero_hydrophilic
+
+     !------------------------------------------------------------------------------
+     ! Returns TRUE if the aerosol model matches the query, otherwise FALSE
+     !------------------------------------------------------------------------------
+     logical function aero_id_query(self, query)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       character(len=*),          intent(in) :: query
+    end function aero_id_query
 
   end interface
 

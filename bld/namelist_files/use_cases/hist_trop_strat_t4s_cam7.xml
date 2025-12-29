@@ -6,7 +6,7 @@
 <ncdata hgrid="ne30np4">atm/cam/inic/se/f.cam6_3_153.FCMTnudged_climate_chemistry_ne30.factor_fix.cam.i.1996-01-01-00000_c220522.nc</ncdata>
 
 <!-- Solar data -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_irrad_data_file>
 <solar_data_type>SERIAL</solar_data_type>
 
 <!-- Emissions -->

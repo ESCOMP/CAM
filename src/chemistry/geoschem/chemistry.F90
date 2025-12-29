@@ -949,8 +949,6 @@ contains
     ! Purpose: return true if specified constituent is implemented by this package
     ! Author: B. Eaton
 
-    IMPLICIT NONE
-
     CHARACTER(LEN=*), INTENT(IN) :: name   ! constituent name
     LOGICAL :: chem_implements_cnst        ! return value
     INTEGER :: M
@@ -4640,11 +4638,7 @@ contains
     use tracer_cnst,      only : init_tracer_cnst_restart
     use tracer_srcs,      only : init_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'chem_init_restart: init restarts for tracer sources and offline fields'
 
     !
     ! data for offline tracers
@@ -4665,11 +4659,7 @@ contains
     use tracer_cnst, only : write_tracer_cnst_restart
     use tracer_srcs, only : write_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'chem_write_restart: writing restarts for tracer sources and offline fields'
 
     ! data for offline tracers
     call write_tracer_cnst_restart(File)
@@ -4687,11 +4677,7 @@ contains
     use tracer_cnst, only : read_tracer_cnst_restart
     use tracer_srcs, only : read_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
 
     ! data for offline tracers
     call read_tracer_cnst_restart(File)

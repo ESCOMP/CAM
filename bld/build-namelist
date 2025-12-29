@@ -50,8 +50,8 @@ OPTIONS
                            of the CAM executable.  Default: "config_cache.xml".
      -csmdata "dir"        Root directory of CESM input data.
                            Can also be set by using the CSMDATA environment variable.
-     -dir "directory"      Directory where output namelist files for each component will be
-                           written, i.e., atm_in, drv_in, ice_in, lnd_in, rof_in, and ocn_in.
+     -dir "directory"      Directory where output namelist files, "atm_in" and "drv_flds_in",
+                           will be written.
                            Default: current working directory.
      -help [or -h]         Print usage to STDOUT.
      -ignore_ic_date       Ignore the date of the initial condition files
@@ -740,7 +740,11 @@ elsif ($rad_pkg =~ m/rrtmgp/) {
     $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_sw_file', $abs_path);
 
     add_default($nl, 'p_top_for_equil_rad');
-
+}
+if (not $waccm_phys) {
+    add_default($nl, 'qrsmlt_scaling');
+    add_default($nl, 'p_top_for_radmrg');
+    add_default($nl, 'p_bot_for_radmrg');
 }
 
 # Solar irradiance
@@ -3373,7 +3377,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';
         }
         elsif ($phys eq 'cam7') {
-            $micro_mg_dcs = '500.D-6';
+            $micro_mg_dcs = '600.D-6';
         }
     }
 
@@ -3881,7 +3885,6 @@ if (!$simple_phys) {
     add_default($nl, 'use_gw_convect_sh', 'val'=>'.false.');
     add_default($nl, 'gw_lndscl_sgh');
     add_default($nl, 'gw_oro_south_fac');
-    add_default($nl, 'gw_limit_tau_without_eff');
     add_default($nl, 'gw_apply_tndmax');
 
     # Gravity wave ridge settings
@@ -4440,12 +4443,14 @@ for my $i (0 .. $#interp_output) {
 
 # Currently, interpolated output does not work with the COSP fields that use
 # more than 1 mdims.
-my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
-if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
-if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
-    die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
-        " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
-        " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+if ($docosp) {
+    my $cosp_histfile_num = $nl->get_value('cosp_histfile_num');
+    if (!defined $cosp_histfile_num) {$cosp_histfile_num = 1;}
+    if ($interp_output[$cosp_histfile_num-1] =~ /$TRUE/io) {
+        die "$ProgName - ERROR: interpolate_output does not work with COSP.  Use cosp_histfile_num\n" .
+            " to direct COSP output to a history file that is not interpolated.  COSP output is\n" .
+            " currently on cosp_histfile_num=$cosp_histfile_num which contains interpolated output.";
+    }
 }
 
 
@@ -5277,6 +5282,7 @@ sub check_snapshot_settings {
             push (@validList_ac, ("'chem_timestep_tend'"));
         }
         push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'orographic_form_drag_stress'",
                               "'aero_model_drydep'", "'gw_tend'",
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));
@@ -5292,6 +5298,7 @@ sub check_snapshot_settings {
             push (@validList_ac, ("'chem_timestep_tend'"));
         }
         push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'orographic_form_drag_stress'",
                               "'aero_model_drydep'", "'gw_tend'",
                               "'qbo_relax'", "'iondrag_calc_section'",
                               "'physics_dme_adjust'"));

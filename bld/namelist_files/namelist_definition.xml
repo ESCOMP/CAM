@@ -1270,13 +1270,6 @@ In the low-top model, this helps to conserve momentum and produce a QBO.
 Default: set by build-namelist.
 </entry>
 
-<entry id="gw_limit_tau_without_eff" type="logical" category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Apply limiters to tau before applying the efficiency factor, rather than
-afterward.
-Default: set by build-namelist
-</entry>
-
 <entry id="gw_apply_tndmax" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Apply limiter on maximum wind tendency from stress divergence in gravity wave drag scheme.
@@ -1533,7 +1526,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_do_adjust_tauoro" type="logical" category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-If true, then adujust tauoro
+If true, then adjust tauoro
 Default: set by build-namelist.
 </entry>
 
@@ -1575,7 +1568,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_Fr_c" type="real"  category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-Critical inverse4 Froude number
+Critical inverse Froude number
 Default: set by build-namelist.
 </entry>
 
@@ -2346,7 +2339,7 @@ COSP will not run unless this is set to .true. in the namelist!
 Turn on the desired simulators using lXXX_sim namelist vars
 If no specific simulators are specified, all of the simulators
 are run on all columns and all output is saved. (useful for testing).
-COSP is available with CAM4, CAM5 and CAM6 physics.
+COSP is available with CAM4, CAM5, CAM6 and CAM7 physics.
 This default logical is set in cospsimulator_intr.F90.
 Default: FALSE
 </entry>
@@ -2755,7 +2748,7 @@ Default: .true., except for carma=cirrus and carma=carma_dust
        group="micro_mg_nl" valid_values="" >
 Version number for MG microphysics.  This value is set automatically based
 on settings in configure and passed to build-namelist
-Default: 1 for CAM5 and 2 for CAM6
+Default: 1 for CAM5, 2 for CAM6 and 3 for CAM7
 </entry>
 
 <entry id="micro_mg_sub_version" type="integer" category="microphys"
@@ -3128,7 +3121,7 @@ Default: 0.05
 <entry id="use_preexisting_ice" type="logical" category="microphys"
        group="nucleate_ice_nl" valid_values="" >
 Switch to turn on treatment of pre-existing ice in the ice nucleation code.
-Default: .false., except .true. for CAM6
+Default: .false., except .true. for CAM6 and CAM7
 </entry>
 
 <entry id="hist_preexisting_ice" type="logical" category="microphys"
@@ -3159,7 +3152,7 @@ Default: set by build-namelist
 Switch to determine whether ice nucleation happens using the incloud (true) or
 the gridbox average (false) relative humidity.  When true, it is assumed that
 the incloud relative humidity for nucleation is 1.
-Default: .true., except .false. for CAM6
+Default: .true., except .false. for CAM6 and CAM7
 </entry>
 
 <entry id="nucleate_ice_strat" type="real" category="microphys"
@@ -3215,7 +3208,7 @@ Default: .true.
 <entry id="cldfrc_ice" type="logical" category="cldfrc"
        group="cldfrc_nl" valid_values="" >
 Switch for ice cloud fraction calculation.
-Default: .true. for CAM5 and CAM6, otherwise .false.
+Default: .true. for CAM5, CAM6 and CAM7, otherwise .false.
 </entry>
 
 <entry id="cldfrc_rhminl" type="real" category="cldfrc"
@@ -3227,7 +3220,7 @@ Default: set by build-namelist
 <entry id="cldfrc_rhminl_adj_land" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Adjustment to rhminl for land without snow cover.
-Default: 0.0 for CAM6;
+Default: 0.0 for CAM6 and CAM7;
          all others =&gt; 0.10
 </entry>
 
@@ -3270,7 +3263,7 @@ Default: set by build-namelist
 <entry id="cldfrc_premib" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Bottom height (Pa) for mid-level liquid stratus fraction.
-Default: 700.e2 for CAM5 and CAM6; all others=&gt; 750.e2
+Default: 700.e2 for CAM5, CAM6 and CAM7; all others=&gt; 750.e2
 </entry>
 
 <entry id="cldfrc_iceopt" type="integer" category="conv"
@@ -3326,7 +3319,7 @@ Default: set by build-namelist
        group="cldfrc2m_nl" valid_values="" >
 Use cloud fraction to determine whether to do growth of ice clouds below
 RHice of 1 down to RHice = rhmini.
-Default: .true. for CAM6; all others =&gt; .false.
+Default: .true. for CAM6 and CAM7; all others =&gt; .false.
 </entry>
 
 <entry id="cldfrc2m_do_avg_aist_algs" type="logical" category="conv"
@@ -3375,7 +3368,7 @@ Default: set by build-namelist
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
-Default: =&gt; 1 for CAM6;
+Default: =&gt; 1 for CAM6 and CAM7;
          =&gt; 5 for all other
 </entry>
 
@@ -3692,10 +3685,10 @@ Default: 10
 <!-- Moist Convection and Microphysics -->
 
 <entry id="deep_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
+       group="phys_ctl_nl" valid_values="ZM,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
-'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON' or 'pbl=none'
+'off' for none.
+Default: 'ZM' unless using 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
@@ -3722,12 +3715,11 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
- 'UNICON' which doesn't distinquish shallow and deep.
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -3825,18 +3817,6 @@ Default: FALSE
 Logical switch to turn on implicit turbulent surface stress calculation in
 diffusion solver routine.
 Default: set by build-namelist
-</entry>
-
-<entry id="unicon_offline_dat_out" type="logical"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-Produce output for the offline unicon driver.
-Default: .false.
-</entry>
-
-<entry id="unicon_offline_dat_hfile" type="integer"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-History file number for offline unicon driver output.
-Default: 2 (i.e., h1 history file)
 </entry>
 
 <!-- CLUBB PBL Diff nl -->
@@ -5324,7 +5304,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,cam7,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5844,7 +5824,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5852,7 +5832,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -5945,10 +5925,25 @@ Default: FALSE
 
 <entry id="p_top_for_equil_rad" type="real"  category="radiation"
        group="radheat_nl" valid_values="" >
-Top pressure level for non-LTE blending region
+Top valid pressure level LTE radiation scheme
 Default: 1.0 for WACCM/WACCMX
          2. for all other RRTMGP runs
          0.0 for all other runs
+</entry>
+
+<entry id="p_top_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="p_bot_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Bottom pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="qrsmlt_scaling" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Scaling factor for simplified QRS MLT heating in CAM
 </entry>
 
 <entry id="use_rad_dt_cosz" type="logical"  category="radiation"

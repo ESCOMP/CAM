@@ -214,11 +214,11 @@ contains
   !============================================================================ !
 
   function vd_lu_qdecomp( &
-       pcols , pver   , ncol       , fixed_ubc  , mw     , &
+       ncol, pver, fixed_ubc  , mw     , &
        kv    , kq_scal, mw_facm    , dpidz_sq   , p      , &
        interface_boundary, molec_boundary, &
        tint  , ztodt  , nbot_molec , &
-       lchnk , t          , m      , no_molec_decomp)      result(decomp)
+       t          , m      , no_molec_decomp, mbarv)      result(decomp)
 
     use coords_1d,           only: Coords1D
     use linear_1d_operators, only: BoundaryType, TriDiagDecomp
@@ -234,27 +234,26 @@ contains
     ! Input-Output Arguments !
     ! ---------------------- !
 
-    integer,  intent(in)    :: pcols
-    integer,  intent(in)    :: pver
     integer,  intent(in)    :: ncol                  ! Number of atmospheric columns
+    integer,  intent(in)    :: pver
 
     integer,  intent(in)    :: nbot_molec
 
     logical,  intent(in)    :: fixed_ubc             ! Fixed upper boundary condition flag
-    real(r8), intent(in)    :: kv(pcols,pver+1)      ! Eddy diffusivity
-    real(r8), intent(in)    :: kq_scal(pcols,pver+1) ! Molecular diffusivity ( kq_fac*sqrt(T)*m_d/rho )
+    real(r8), intent(in)    :: kv(:,:)      ! Eddy diffusivity, interfaces
+    real(r8), intent(in)    :: kq_scal(:,:) ! Molecular diffusivity ( kq_fac*sqrt(T)*m_d/rho ), interfaces
     real(r8), intent(in)    :: mw                    ! Molecular weight for this constituent
-    real(r8), intent(in)    :: mw_facm(pcols,pver+1) ! composition dependent sqrt(1/M_q + 1/M_d) for this constituent
-    real(r8), intent(in)    :: dpidz_sq(ncol,pver+1) ! (g*rho)**2 (square of vertical derivative of pint)
+    real(r8), intent(in)    :: mw_facm(:,:) ! composition dependent sqrt(1/M_q + 1/M_d) for this constituent, interfaces
+    real(r8), intent(in)    :: dpidz_sq(:,:) ! (g*rho)**2 (square of vertical derivative of pint), interfaces
     type(Coords1D), intent(in) :: p                  ! Pressure coordinates
     type(BoundaryType), intent(in) :: interface_boundary ! Boundary on grid edge.
     type(BoundaryType), intent(in) :: molec_boundary ! Boundary at edge of molec_diff region.
-    real(r8), intent(in)    :: tint(pcols,pver+1)    ! Interface temperature [ K ]
+    real(r8), intent(in)    :: tint(:,:)    ! Air temperature [ K ], interfaces
     real(r8), intent(in)    :: ztodt                 ! 2 delta-t [ s ]
 
-    integer,  intent(in)    :: lchnk		    ! Chunk number
-    real(r8), intent(in)    :: t(pcols,pver)	    ! temperature
+    real(r8), intent(in)    :: t(:,:)	    ! Air temperature [ K ]
     integer,  intent(in)    :: m 		    ! cnst index
+    real(r8), intent(in)    :: mbarv(:,:)  ! composition dependent molar mass of dry air [ kg mol-1 ]
 
     ! Decomposition covering levels without vertical diffusion.
     type(TriDiagDecomp), intent(in) :: no_molec_decomp
@@ -312,12 +311,12 @@ contains
 
        ! Top level first.
        k = 1
-       mbarvi = .75_r8*mbarv(:ncol,k,lchnk)+0.5_r8*mbarv(:ncol,k+1,lchnk) &
-            -.25_r8*mbarv(:ncol,k+2,lchnk)
+       mbarvi = .75_r8*mbarv(:ncol,k)+0.5_r8*mbarv(:ncol,k+1) &
+            -.25_r8*mbarv(:ncol,k+2)
        mw_term(:,k) = (mw/mbarvi - 1._r8) / p%ifc(:,k)
-       gradm(:,k) = (mbarv(:ncol,k,lchnk)-mbarvi)/ &
+       gradm(:,k) = (mbarv(:ncol,k)-mbarvi)/ &
             (p%mid(:,k)-p%ifc(:,k))/ &
-            (mbarv(:ncol,k,lchnk)+mbarvi)*2._r8
+            (mbarv(:ncol,k)+mbarvi)*2._r8
 
        if (alphath(m) /= 0._r8) then
           gradt(:,k) = alphath(m)*(t(:ncol,k)-tint(:ncol,k))/ &
@@ -327,9 +326,9 @@ contains
 
        ! Interior of molecular diffusion region.
        do k = 2, nbot_molec
-          mbarvi = 0.5_r8 * (mbarv(:ncol,k-1,lchnk)+mbarv(:ncol,k,lchnk))
+          mbarvi = 0.5_r8 * (mbarv(:ncol,k-1)+mbarv(:ncol,k))
           mw_term(:,k) = (mw/mbarvi - 1._r8) / p%ifc(:,k)
-          gradm(:,k) = (mbarv(:ncol,k,lchnk)-mbarv(:ncol,k-1,lchnk)) * &
+          gradm(:,k) = (mbarv(:ncol,k)-mbarv(:ncol,k-1)) * &
                p%rdst(:,k-1)/mbarvi
        enddo
 
