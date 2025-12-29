@@ -626,6 +626,9 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
      'cam_out%solld',               'cam_out_solld',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'cam_out%flwds',               'cam_out_flwds',           'W m-2',          horiz_only)
+
+   call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_out%netsw',               'cam_out_netsw',           'unset',          horiz_only)
 
 end subroutine cam_out_snapshot_init
