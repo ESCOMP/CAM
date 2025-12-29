@@ -3,7 +3,7 @@
 
 Tag name: cam6_4_140
 Originator(s): cacraigucar, hannay
-Date: Dec 24, 2025
+Date: Dec 29, 2025
 One-line Summary: Update LBC file for CAM7 use_cases
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1465
 
@@ -33,45 +33,46 @@ M       bld/namelist_files/use_cases/waccm_ma_hist_cam7.xml
 M       bld/namelist_files/use_cases/waccm_sc_hist_cam7.xml
             - update the LBC file used in CAM7 runs
 
+M       .gitmodules
+M       cime
+            - update cime to get the new inputdata location for wget
+
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+     - Answer changes for CAM7 runs due to new LBC file
 
-derecho/nvhpc/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+     - This test appears to no longer fail after the last derecho downtime.  Will no longer track this failure in the ChangeLog.
+
+derecho/nvhpc/aux_cam: (not run as nothing has changed with the file system)
 
 izumi/nag/aux_cam:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF) details:
+     - Answer changes for CAM7 runs due to new LBC file
 
 izumi/gnu/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: DIFF) details:
+     - Answer changes for CAM7 runs due to new LBC file
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
-
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
 
 ===============================================================
-
 ===============================================================
 
 Tag name: cam6_4_139
