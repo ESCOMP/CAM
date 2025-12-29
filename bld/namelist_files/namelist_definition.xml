@@ -5943,6 +5943,14 @@ Calculate radiative effect of graupel/hail (using snow optics)
 Default: FALSE
 </entry>
 
+<entry id="p_top_for_equil_rad" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top pressure level for non-LTE blending region
+Default: 1.0 for WACCM/WACCMX
+         2. for all other RRTMGP runs
+         0.0 for all other runs
+</entry>
+
 <entry id="use_rad_dt_cosz" type="logical"  category="radiation"
        group="radiation_nl" valid_values="" >
 If true, then average the zenith angle over the radiation timestep rather
@@ -8367,6 +8375,14 @@ If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then
 the molecular diffusion and thermal conductivity coefficients will be
 multiplied by a factor of se_molecular_diff.
 
+Default: 0.
+</entry>
+
+<entry id="se_min_temperature" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Used by spectral element dynamical core to apply floor to temperature.
+If set to a value greater than zero the floor is applied.
+Otherwise, no floor is applied.
 Default: 0.
 </entry>
 

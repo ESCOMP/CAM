@@ -1,9 +1,13 @@
 mfilt=1,1,1,1,1,1
 ndens=1,1,1,1,1,1
 nhtfrq=9,9,9,9,9,9
-inithist='ENDOFRUN'
 
-fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP',
+interpolate_output=.true.,.false.,.false.
+
+cosp_histfile_num=2
+cosp_histfile_aux=.true.
+cosp_histfile_aux_num=3
+fexcl2='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP',
        'CS_PIA','CS_RAINPOSS','CS_RAINPROB','CS_RAINCERT','CS_RAINHARD','CS_SNOWCERT','CS_SNOWPOSS',
        'CS_UN'
 

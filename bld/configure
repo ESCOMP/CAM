@@ -1247,7 +1247,9 @@ if ($phys_pkg eq 'cam7') {
     }
 }
 elsif ($waccmx) {
-    if ($phys_pkg eq 'cam6') {
+    if ($hgrid =~ /ne120/) {
+        $nlev = 273;
+    } elsif ($phys_pkg eq 'cam6') {
         $nlev = 130;
     } else {
         $nlev = 126;
@@ -2175,6 +2177,8 @@ sub write_filepath
         }
         print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
         print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/objects\n";
     }
 
     if ($clubb_sgs) {
@@ -2186,7 +2190,7 @@ sub write_filepath
     }
 
     if ($phys_pkg eq 'cam7') {
-	print $fh "$camsrcdir/src/physics/pumas\n";
+	print $fh "$camsrcdir/src/atmos_phys/schemes/pumas/pumas\n";
     } else {
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
     }
@@ -2197,6 +2201,7 @@ sub write_filepath
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
     print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
+    print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized/radiation_utils\n";
     print $fh "$camsrcdir/src/atmos_phys/phys_utils\n";
 
     # Add the CCPP'ized subdirectories
@@ -2206,6 +2211,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/utils\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
@@ -2231,6 +2237,9 @@ sub write_filepath
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
     print $fh "$camsrcdir/src/utils/cam_ccpp\n";
+
+    # Routines from CAM-SIMA
+    print $fh "$camsrcdir/src/utils/cam-sima/src/physics/utils\n";
 
     $fh->close;
 }
