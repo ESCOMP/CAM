@@ -91,6 +91,14 @@
         fxtag = v8.2.1
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
+[submodule "cosp2"]
+        path = src/physics/cosp2/src
+        url = https://github.com/CFMIP/COSPv2.0
+        fxrequired = AlwaysRequired
+        fxsparse = ../.cosp_sparse_checkout
+        fxtag = v2.2.0
+        fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
+
 [submodule "clubb"]
 	path = src/physics/clubb
 	url = https://github.com/larson-group/clubb_release
