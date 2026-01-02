@@ -52,7 +52,7 @@ contains
     call addfld ('O_ext',     (/ 'lev' /), 'A','mol/mol','O vmr used in Extended CO2 cooling')
     call addfld ('O2_ext',    (/ 'lev' /), 'A','mol/mol','O2 vmr used in Extended CO2 cooling')
 
-#endif    
+#endif
   end subroutine nlte_extco2_init
 
 
@@ -98,9 +98,9 @@ contains
 
     real(r8), parameter :: day_per_sec = 1._r8/86400._r8
 
-#ifdef EXT_CO2_COOL
     co2cooling = 0._r8
 
+#ifdef EXT_CO2_COOL
     do icol=1,ncol
 
        ! Convert to VMR from mmr
