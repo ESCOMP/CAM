@@ -58,6 +58,11 @@ module gravity_waves_sources
       real(r8) ::  ug(grid%ifirstxy-1:grid%ilastxy+1,plev,grid%jfirstxy-1:grid%jlastxy+1)  ! U-wind ghosted
       real(r8) ::  vg(grid%ifirstxy-1:grid%ilastxy+1,plev,grid%jfirstxy-1:grid%jlastxy+1)  ! V-wind ghosted
 
+      real(r8) :: pmg(grid%ifirstxy-1:grid%ilastxy+1,plev,grid%jfirstxy-1:grid%jlastxy+1)  ! mid-point pressure ghosted
+      real(r8) :: dptdp(grid%ifirstxy:grid%ilastxy,plev,grid%jfirstxy:grid%jlastxy)
+      real(r8) :: dudp(grid%ifirstxy:grid%ilastxy,plev,grid%jfirstxy:grid%jlastxy)
+      real(r8) :: dvdp(grid%ifirstxy:grid%ilastxy,plev,grid%jfirstxy:grid%jlastxy)
+
       real(r8) :: tglat                               ! tangent-latitude
       integer  :: i,j,k
       integer  :: im, ip
@@ -100,6 +105,12 @@ module gravity_waves_sources
       call ghost_array(grid, u3, ug)
       call ghost_array(grid, v3, vg)
 
+      call ghost_array(grid, pm, pmg)
+
+      call compute_vertical_derivative(grid,pe,pm,ptemp,dptdp)
+      call compute_vertical_derivative(grid,pe,pm,u3,dudp)
+      call compute_vertical_derivative(grid,pe,pm,v3,dvdp)
+
       !$omp parallel do private (i,j,k)
       do k=1, plev
          do i=beglonxy, endlonxy
@@ -108,14 +119,29 @@ module gravity_waves_sources
                ! Pot. Temperature
                pty(i,k,j) = ( ptg(i,k,j+1) - ptg(i,k,j-1) ) / (2._r8 * grid%dp)
                pty(i,k,j) = pty(i,k,j) / aearth
+               !
+               ! Topography correction term:
+               ! Horizontal temperature gradient for fronotogenesis function was originally computed over
+               ! terrain-following coordinate. The correction terms are added so horizontal temperature
+               ! gradient is on isobaric coordinate. This applies for all "correction" terms below.
+               pty(i,k,j) = pty(i,k,j) - dptdp(i,k,j) * &
+                            ( pmg(i,k,j+1) - pmg(i,k,j-1) ) / (2._r8 * grid%dp) / aearth
 
                ! U-wind
                uy(i,k,j) = ( ug(i,k,j+1) - ug(i,k,j-1) ) / (2._r8 * grid%dp)
                uy(i,k,j) = uy(i,k,j) / aearth
 
+               ! Topography correction term
+               uy(i,k,j) = uy(i,k,j) - dudp(i,k,j) * &
+                           ( pmg(i,k,j+1) - pmg(i,k,j-1) ) / (2._r8 * grid%dp) / aearth
+
                ! V-wind
                vy(i,k,j) = ( vg(i,k,j+1) - vg(i,k,j-1) ) / (2._r8 * grid%dp)
                vy(i,k,j) = vy(i,k,j) / aearth
+
+               ! Topography correction term
+               vy(i,k,j) = vy(i,k,j) - dvdp(i,k,j) * &
+                           ( pmg(i,k,j+1) - pmg(i,k,j-1) ) / (2._r8 * grid%dp) / aearth
 
             end do
          end do
@@ -135,14 +161,26 @@ module gravity_waves_sources
                ptx(i,k,j) = ( ptg(ip,k,j) - ptg(im,k,j) ) / (2._r8 * grid%dl)
                ptx(i,k,j) = ptx(i,k,j) / (aearth * (grid%cosp(j)+1.e-3_r8))
 
+               ! Topography correction
+               ptx(i,k,j) = ptx(i,k,j) - dptdp(i,k,j) * &
+                            ( pmg(ip,k,j) - pmg(im,k,j) )/(2._r8 * grid%dl)/(aearth * (grid%cosp(j)+1.e-3_r8))
+
                ! U-wind
                ux(i,k,j) = ( ug(ip,k,j) - ug(im,k,j) ) / (2._r8 *grid%dl)
+               ! Topography correction
                ux(i,k,j) = ux(i,k,j) / (aearth * (grid%cosp(j)+1.e-3_r8))
+
+               ! Topography correction
+               ux(i,k,j) = ux(i,k,j) - dudp(i,k,j) * &
+                           ( pmg(ip,k,j) - pmg(im,k,j) )/(2._r8 * grid%dl)/(aearth * (grid%cosp(j)+1.e-3_r8))
 
                ! V-wind
                vx(i,k,j) = ( vg(ip,k,j) - vg(im,k,j) ) / (2._r8 *grid%dl)
                vx(i,k,j) = vx(i,k,j) / (aearth * (grid%cosp(j)+1.e-3_r8))
 
+               ! Topography correction
+               vx(i,k,j) = vx(i,k,j) - dvdp(i,k,j) * &
+                           ( pmg(ip,k,j) - pmg(im,k,j) )/(2._r8 * grid%dl)/(aearth * (grid%cosp(j)+1.e-3_r8))
             end do
          end do
       end do
@@ -179,6 +217,66 @@ module gravity_waves_sources
       return
 
     end subroutine gws_src_fnct
+
+  subroutine compute_vertical_derivative(grid,pint,pmid,data,ddata_dp)
+    !---------------------------------------------------------------------------
+    use dynamics_vars, only: t_fvdycore_grid
+
+    type (t_fvdycore_grid), intent(in) :: grid    ! grid for XY decomp
+    real(r8),   intent(in ) :: pint(grid%ifirstxy:grid%ilastxy,plevp,grid%jfirstxy:grid%jlastxy)         ! interface pressure
+    real(r8),   intent(in ) :: pmid(grid%ifirstxy:grid%ilastxy   ,plev,grid%jfirstxy:grid%jlastxy)       ! mid-point pressure
+    real(r8),   intent(in ) :: data(grid%ifirstxy:grid%ilastxy   ,plev,grid%jfirstxy:grid%jlastxy)
+    real(r8),   intent(out) :: ddata_dp(grid%ifirstxy:grid%ilastxy   ,plev,grid%jfirstxy:grid%jlastxy)
+    !---------------------------------------------------------------------------
+    integer :: i,j,k
+    real(r8) :: pint_above ! pressure interpolated to interface above the current k mid-point
+    real(r8) :: pint_below ! pressure interpolated to interface below the current k mid-point
+    real(r8) :: dint_above ! data interpolated to interface above the current k mid-point
+    real(r8) :: dint_below ! data interpolated to interface below the current k mid-point
+    integer :: beglatxy, endlatxy, beglonxy, endlonxy
+    !---------------------------------------------------------------------------
+    beglatxy = grid%jfirstxy
+    endlatxy = grid%jlastxy
+    beglonxy = grid%ifirstxy
+    endlonxy = grid%ilastxy
+
+    !$omp parallel do private (i,j,k,pint_above,pint_below,dint_above,dint_below)
+    do j = beglatxy, endlatxy
+         do k = 2, plev-1
+            do i = beglonxy, endlonxy
+              pint_above = pint(i,k,j)
+              pint_below = pint(i,k+1,j)
+              dint_above = ( data(i,k-1,j) + data(i,k,j) ) / 2.0_r8
+              dint_below = ( data(i,k+1,j) + data(i,k,j) ) / 2.0_r8
+              ddata_dp(i,k,j) = ( dint_above - dint_below ) / ( pint_above - pint_below )
+            end do
+         end do
+    end do
+
+    k = 1
+    !$omp parallel do private (i,j,pint_above,pint_below,dint_above,dint_below)
+    do j = beglatxy, endlatxy
+         do i = beglonxy, endlonxy
+              pint_above = pmid(i,k,j)
+              pint_below = pint(i,k+1,j)
+              dint_above = data(i,k,j)
+              dint_below = ( data(i,k+1,j) + data(i,k,j) ) / 2.0_r8
+              ddata_dp(i,k,j) = ( dint_above - dint_below ) / ( pint_above - pint_below )
+         end do
+    end do
+
+    k = plev
+    !$omp parallel do private (i,j,pint_above,pint_below,dint_above,dint_below)
+    do j = beglatxy, endlatxy
+         do i = beglonxy, endlonxy
+                pint_above = pint(i,k,j)
+                pint_below = pmid(i,k,j)
+                dint_above = ( data(i,k-1,j) + data(i,k,j) ) / 2.0_r8
+                dint_below = data(i,k,j)
+                ddata_dp(i,k,j) = ( dint_above - dint_below ) / ( pint_above - pint_below )
+         end do
+    end do
+  end subroutine compute_vertical_derivative
 
     subroutine ghost_array(grid, x, xg)
 
