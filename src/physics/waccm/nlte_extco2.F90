@@ -37,8 +37,6 @@ contains
     real(r8), intent(in) :: co2_mw    ! CO2 molecular weight
     real(r8), intent(in) :: n2_mw     ! N2 molecular weight
 
-#ifdef EXT_CO2_COOL
-
     co2_mw_inv = 1._r8/co2_mw
     o1_mw_inv  = 1._r8/o1_mw
     o2_mw_inv  = 1._r8/o2_mw
@@ -52,9 +50,7 @@ contains
     call addfld ('O_ext',     (/ 'lev' /), 'A','mol/mol','O vmr used in Extended CO2 cooling')
     call addfld ('O2_ext',    (/ 'lev' /), 'A','mol/mol','O2 vmr used in Extended CO2 cooling')
 
-#endif
   end subroutine nlte_extco2_init
-
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
@@ -64,6 +60,7 @@ contains
 #ifdef EXT_CO2_COOL
     use co2cool, only: co2_nlte_cool
 #endif
+
     ! Input variables
     integer, intent(in) :: ncol           ! number of atmospheric columns
     integer, intent(in) :: lchnk          ! chunk identifier
@@ -98,9 +95,8 @@ contains
 
     real(r8), parameter :: day_per_sec = 1._r8/86400._r8
 
-    co2cooling = 0._r8
+    co2cooling(:,:) = 0._r8
 
-#ifdef EXT_CO2_COOL
     do icol=1,ncol
 
        ! Convert to VMR from mmr
@@ -120,10 +116,11 @@ contains
 
        heatrate(:) = 0._r8
 
+#ifdef EXT_CO2_COOL
        ! Units: Temperature in K, pressure in hPa, vmrs in mol/mol, heating rate in K/day
        call co2_nlte_cool(temp(icol,:), hPa, co2vmr, ovmr, o2vmr, n2vmr, pver, &
                           surf_temp, heatrate) !   (K day-1)
-
+#endif
        co2cooling(icol,:) = heatrate(:) * day_per_sec ! K day-1 --> K sec-1
 
     end do
@@ -135,7 +132,7 @@ contains
     call outfld ('O_ext',   o_out(:ncol,:),   ncol, lchnk)
     call outfld ('O2_ext',  o2_out(:ncol,:),  ncol, lchnk)
     call outfld ('N2_ext',  n2_out(:ncol,:),  ncol, lchnk)
-#endif
+
   end subroutine nlte_extco2_hrate
 
 end module nlte_extco2
