@@ -2559,7 +2559,7 @@ end subroutine clubb_init_cnst
     !                           MAIN COMPUTATION BEGINS HERE                            !
     !-----------------------------------------------------------------------------------!
 
-    call t_startf('clubb_tend_cam:NAR')
+    call t_startf('clubb_tend_cam:non_acc_region')
 
     !  Get indicees for cloud and ice mass and cloud and ice number
     call cnst_get_ind('Q',ixq)
@@ -2779,7 +2779,7 @@ end subroutine clubb_init_cnst
     ! everything within should be functional with the OpenACC code, or be prevented from running 
     ! with using OpenACC, see the "ifdef _OPENACC" section above for restriction examples
 
-    call t_stopf('clubb_tend_cam:NAR')
+    call t_stopf('clubb_tend_cam:non_acc_region')
     call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), sclr_idx, &
     !$acc              state_loc, state_loc%q, state_loc%u, state_loc%v, state_loc%t, state_loc%pmid, &
@@ -2869,7 +2869,7 @@ end subroutine clubb_init_cnst
     !$acc      copyin( hm_metadata, hm_metadata%l_mix_rat_hm ) &
     !$acc      create( wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt )
     call t_stopf('clubb_tend_cam:acc_copyin')
-    call t_startf('clubb_tend_cam:ACCR')
+    call t_startf('clubb_tend_cam:acc_region')
 
     !----------------------------------------- Zeroing -----------------------------------------
 
@@ -3213,8 +3213,8 @@ end subroutine clubb_init_cnst
     !  IMPORTANT NOTE:  do not make any calls that use CLUBB grid-height
     !                   operators (such as zt2zm_api, etc.) until AFTER the
     !                   call to setup_grid_heights_api.
-    call t_stopf('clubb_tend_cam:ACCR')
-    call t_startf('clubb_tend_cam:NAR')
+    call t_stopf('clubb_tend_cam:acc_region')
+    call t_startf('clubb_tend_cam:non_acc_region')
     !$acc update host( deltaz, zi_g, zt_g, clubb_params, sfc_elevation )
 
     ! Calculate grid assuming a descending grid (cam grid), since we want to
@@ -3246,7 +3246,7 @@ end subroutine clubb_init_cnst
 
     ! CLUBB's grid data structure (gr) and nu_vert_res_dep contain arrays that need to
     ! be copied to the GPU
-    call t_stopf('clubb_tend_cam:NAR')
+    call t_stopf('clubb_tend_cam:non_acc_region')
     call t_startf('clubb_tend_cam:acc_copyin')
     !$acc data copyin( gr, gr%zm, gr%zt, gr%dzm, gr%dzt, gr%invrs_dzt, gr%invrs_dzm, &
     !$acc              gr%weights_zt2zm, gr%weights_zm2zt, &
@@ -3254,7 +3254,7 @@ end subroutine clubb_init_cnst
     !$acc              nu_vert_res_dep%nu1, nu_vert_res_dep%nu8, nu_vert_res_dep%nu10, &
     !$acc              nu_vert_res_dep%nu6)
     call t_stopf('clubb_tend_cam:acc_copyin')
-    call t_startf('clubb_tend_cam:ACCR')
+    call t_startf('clubb_tend_cam:acc_region')
     !----------------------------------------- END CLUBB grid initialization -----------------------------------------
     
 #ifdef SILHS
@@ -3359,8 +3359,8 @@ end subroutine clubb_init_cnst
     !  Other Surface fluxes provided by host model
     if( (cld_macmic_num_steps > 1) .and. clubb_l_intr_sfc_flux_smooth ) then
 
-      call t_stopf('clubb_tend_cam:ACCR')
-      call t_startf('clubb_tend_cam:NAR')
+      call t_stopf('clubb_tend_cam:acc_region')
+      call t_startf('clubb_tend_cam:non_acc_region')
       !$acc update host( state_loc%u, state_loc%v, state_loc%t, state_loc%pmid, cam_in%wsx, cam_in%wsy )
 
       ! Adjust surface stresses using winds from the prior macmic iteration
@@ -3376,8 +3376,8 @@ end subroutine clubb_init_cnst
       end do
 
       !$acc update device( upwp_sfc, vpwp_sfc )
-      call t_stopf('clubb_tend_cam:NAR')
-      call t_startf('clubb_tend_cam:ACCR')
+      call t_stopf('clubb_tend_cam:non_acc_region')
+      call t_startf('clubb_tend_cam:acc_region')
 
     else
 
@@ -3577,8 +3577,6 @@ end subroutine clubb_init_cnst
 
       end if
 
-      !  Advance CLUBB CORE one timestep in the future
-      call t_startf('clubb_tend_cam:advance_clubb_core_api')
       
       if ( clubb_l_ascending_grid ) then
 
@@ -3590,6 +3588,8 @@ end subroutine clubb_init_cnst
         !       subroutine (advance_clubb_core). For example, only the pdf_params fields that 
         !       are used within this subroutine (or used in a subroutine we call) need to
         !       be flipped. 
+        
+        call t_startf('clubb_tend_cam:ascending_grid_flip')
 
         thlm_forcing              =              thlm_forcing(:,nzt_clubb:1:-1)
         rtm_forcing               =               rtm_forcing(:,nzt_clubb:1:-1)
@@ -3738,7 +3738,12 @@ end subroutine clubb_init_cnst
                              zi_g(:,nzm_clubb:1:-1), zt_g(:,nzt_clubb:1:-1),   & ! intent(in)
                              gr, err_info )                                      ! intent(inout)
   
+        call t_stopf('clubb_tend_cam:ascending_grid_flip')
+
       end if
+
+      !  Advance CLUBB CORE one timestep in the future
+      call t_startf('clubb_tend_cam:advance_clubb_core_api')
 
       ! These updates are required because the pbuf variables are dimensioned with pcols, when
       ! we only need ncol. This requires us to slice the arrays when inputting to advance_clubb_core_api,
@@ -3807,9 +3812,13 @@ end subroutine clubb_init_cnst
       !$acc                rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
       !$acc                wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, &
       !$acc                wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
+
+      call t_stopf('clubb_tend_cam:advance_clubb_core_api')
           
 
       if ( clubb_l_ascending_grid ) then
+
+        call t_startf('clubb_tend_cam:ascending_grid_flip')
 
         ! If running in ascending mode, we flip the arrays before calling advance_clubb_core
         ! so we need to flip them back. This section should flip every array that was flipped 
@@ -3973,9 +3982,11 @@ end subroutine clubb_init_cnst
                              deltaz, zi_g(:,nzm_clubb), zi_g(:,1),            & ! intent(in)
                              zi_g, zt_g,                                      & ! intent(in)
                              gr, err_info )                                     ! intent(inout)
+
+        call t_stopf('clubb_tend_cam:ascending_grid_flip')
+
       end if
 
-      call t_stopf('clubb_tend_cam:advance_clubb_core_api')
 
       ! Note that CLUBB does not produce an error code specific to any column, and
       ! one value only for the entire chunk
@@ -4220,7 +4231,7 @@ end subroutine clubb_init_cnst
 
     endif
 
-    call t_stopf('clubb_tend_cam:ACCR')
+    call t_stopf('clubb_tend_cam:acc_region')
 
     call t_startf('clubb_tend_cam:acc_copyout')
     !$acc end data
@@ -4231,7 +4242,7 @@ end subroutine clubb_init_cnst
     !$acc end data
     call t_stopf('clubb_tend_cam:acc_copyout')
 
-    call t_startf('clubb_tend_cam:NAR')
+    call t_startf('clubb_tend_cam:non_acc_region')
 
     ! ------------------------------------------------- !
     ! Diagnose relative cloud water variance            !
@@ -5093,7 +5104,7 @@ end subroutine clubb_init_cnst
       enddo
 
     endif
-    call t_stopf('clubb_tend_cam:NAR')
+    call t_stopf('clubb_tend_cam:non_acc_region')
 
     ! Cleanup err_info
     call cleanup_err_info_api(err_info)
