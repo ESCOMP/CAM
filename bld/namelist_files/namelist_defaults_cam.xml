@@ -2090,6 +2090,10 @@
 <do_iss phys="cam6"      > .true.  </do_iss>
 <do_iss phys="cam7"      > .true.  </do_iss>
 
+<!-- Sponge layer vertical diffusion factor -->
+<diff_sponge_fac               > 0.0D0 </diff_sponge_fac>
+<diff_sponge_fac waccm_phys="1"> 1.0D0 </diff_sponge_fac>
+
 <!-- Use convective water in radiation calculation -->
 <conv_water_in_rad                  > 0 </conv_water_in_rad>
 <conv_water_in_rad phys="cam5"      > 1 </conv_water_in_rad>
