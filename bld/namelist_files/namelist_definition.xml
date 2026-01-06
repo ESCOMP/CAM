@@ -3649,8 +3649,33 @@ Default: set by build-namelist
 
 <entry id="diff_sponge_fac" type="real" category="pbl"
        group="vert_diff_nl" valid_values="" >
-Factor to add sponge layer vertical diffusion based on model top pressure.
-Default: 1.0 for WACCM and WACCM-X, 0.0 otherwise.
+Factor to add sponge layer vertical diffusion of zonal and meridional components
+of the wind verctor (following the profile for del2 damping in the spectral-element dycore).
+
+Sponge layer interface coeficients for model tops above ptop=1E-3Pa (e.g. WACCM):
+
+        kvm_sponge(1) = 2.e5*diff_sponge_fac
+        kvm_sponge(2) = 2.e5*diff_sponge_fac
+        kvm_sponge(3) = 1.5e5*diff_sponge_fac
+        kvm_sponge(4) = 1.0e5*diff_sponge_fac
+        kvm_sponge(5) = 0.5e5*diff_sponge_fac
+        kvm_sponge(6) = 0.1e5*diff_sponge_fac
+
+Else:
+
+	kvm_sponge(1) = 2.e4*diff_sponge_fac
+        kvm_sponge(2) = 2.e4*diff_sponge_fac
+        kvm_sponge(3) = 0.4e*diff_sponge_fac
+        kvm_sponge(4) = 0.1e4*diff_sponge_fac
+
+Vertical diffusion in configurations with model tops below ~80km
+(e.g., LT and MT) is only recommended for spin-up with diff_sponge_fac=1.
+For higher tops diff_sponge_fac=1 can improve model stability in general.
+
+A too large diff_sponge_fac value can lead to "stove pipes" in the
+the zonally averaged zonal wind in the sponge layer.
+
+Default: 0.0
 </entry>
 
 <!-- CLUBB PBL Diff nl -->
