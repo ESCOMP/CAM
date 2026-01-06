@@ -5149,10 +5149,10 @@ Default: set by build-namelist
 
 <entry id="cam_chempkg" type="char*32" category="build" group="phys_ctl_nl"
        valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
-		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
+		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam4_slh,trop_strat_mam5_slh,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
 		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
 		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
-		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem">
+		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam4_slh,waccm_tsmlt_mam5_slh,waccm_tsmlt_mam5_vbsext,geoschem">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -6293,6 +6293,53 @@ Default: NEU
 List of gas-phase species that undergo wet deposition via the wet deposition scheme.
 Default: NONE
 </entry>
+
+<entry id="gas_wetdep_ice_uptake_list" type="char*16(1000)" category="cam_chem"
+       group="wetdep_inparm" valid_values="" >
+List of gas-phase species that undergo ice scavenging in the NEU
+wet deposition scheme.
+Default: set by build-namelist
+</entry>
+
+<!-- RPF: New Short-Lived Halogen (SLH) Namelist Definitions -->
+
+<entry id="SSAdehal_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Resolution-dependent scaling-factor for SSA-dehalogenation efficiency
+Default: set by build-namelist
+</entry>
+
+<entry id="SSAhno3_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH Halocarbon surface emissions
+Default: set by build-namelist
+</entry>
+
+<entry id="SSAn2o5_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH Halocarbon surface emissions
+Default: set by build-namelist
+</entry>
+
+<entry id="LIQfraprx_ScalingFactor_I" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH Halocarbon surface emissions
+Default: set by build-namelist
+</entry>
+
+<entry id="ICEfraprx_ScalingFactor_I" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH Halocarbon surface emissions
+Default: set by build-namelist
+</entry>
+
+<entry id="ICEfraprx_ScalingFactor_Br" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH Halocarbon surface emissions
+Default: set by build-namelist
+</entry>
+
+<!-- RPF: New Short-Lived Halogen (SLH) Namelist Definitions -->
 
 <entry id="modal_accum_coarse_exch" type="logical" category="cam_chem"
        group="aerosol_nl" valid_values="" >

@@ -13,7 +13,10 @@ module gas_wetdep_opts
 
   implicit none
 
+!rpf_CESM2_SLH
   character(len=16), protected :: gas_wetdep_list(pcnst) = ' '
+  character(len=16), protected :: gas_wetdep_ice_uptake_list(pcnst) = ' '
+!rpf_CESM2_SLH
   character(len=3), protected :: gas_wetdep_method = 'MOZ'
   integer,          protected :: gas_wetdep_cnt = 0
 
@@ -37,7 +40,10 @@ contains
 
     integer :: unitn, i, ierr
 
+!rpf_CESM2_SLH
     namelist /wetdep_inparm/ gas_wetdep_list
+    namelist /wetdep_inparm/ gas_wetdep_ice_uptake_list
+!rpf_CESM2_SLH
     namelist /wetdep_inparm/ gas_wetdep_method
 
     if (masterproc) then
@@ -55,7 +61,10 @@ contains
     end if
 
 #ifdef SPMD
+!rpf_CESM2_SLH
     call mpibcast (gas_wetdep_list, len(gas_wetdep_list(1))*pcnst, mpichar, 0, mpicom)
+    call mpibcast (gas_wetdep_ice_uptake_list, len(gas_wetdep_ice_uptake_list(1))*pcnst, mpichar, 0, mpicom)
+!rpf_CESM2_SLH
     call mpibcast (gas_wetdep_method, len(gas_wetdep_method), mpichar, 0, mpicom)
 #endif
 
@@ -65,6 +74,11 @@ contains
           gas_wetdep_cnt = gas_wetdep_cnt + 1
        endif
     enddo
+
+!rpf_CESM2_SLH
+! Should we include a counter also for ice_uptake list?? 
+! No additional condition was implemented in original ccmi34_vsl02 version
+!rpf_CESM2_SLH
 
     if (( gas_wetdep_cnt>0 ).and.( .not.(gas_wetdep_method=='MOZ' .or. gas_wetdep_method=='NEU' &
          .or. gas_wetdep_method=='OFF') )) then

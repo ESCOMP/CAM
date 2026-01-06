@@ -14,6 +14,7 @@
       public  :: sad_inti
       public  :: sad_strat_calc
       public  :: sad_top
+      public  :: icesad_trop_calc
 
       save
 
@@ -28,18 +29,13 @@
     contains
 
 
-      subroutine sad_inti(pbuf2d)
+      subroutine sad_inti()
 !----------------------------------------------------------------------
 !     ... initialize the sad module
 !----------------------------------------------------------------------
 
       use ref_pres,     only : pref_mid_norm
       use cam_history,  only : addfld
-      use physics_buffer, only : physics_buffer_desc, pbuf_set_field
-
-      implicit none
-
-      type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 !----------------------------------------------------------------------
 !	... Local variables
@@ -540,6 +536,122 @@ sts_nat_sad : &
       call outfld( 'H2SO4M_C', h2so4m(:ncol,:), ncol, lchnk )
 
       end subroutine sad_strat_calc
+
+
+      subroutine icesad_trop_calc( lchnk, m, press, temper, h2o_cond, sad_sage, &
+                                   radius_trop, sad_trop, ncol, troplev, pbuf )
+
+      use cam_history, only : outfld
+      use physics_buffer, only : physics_buffer_desc
+
+      implicit none
+
+!-------------------------------------------------------------------------------
+!	... dummy arguments
+!-------------------------------------------------------------------------------
+      integer,  intent(in)    ::  lchnk                      ! chnk id
+      integer,  intent(in)    ::  ncol                       ! columns in chunk
+      real(r8), intent(in)    ::  m           (ncol,pver)    ! Air density (molecules cm-3)
+      real(r8), intent(in)    ::  sad_sage    (ncol,pver)    ! SAGEII surface area density (cm2 aer. cm-3 air)
+      real(r8), intent(in)    ::  press       (ncol,pver)    ! Pressure, hPa
+      real(r8), intent(in)    ::  temper      (pcols,pver)   ! Temperature (K)
+      real(r8), intent(in)    ::  h2o_cond    (ncol,pver)    ! H2O condensed phase  (mole fraction)
+      real(r8), intent(out)   ::  radius_trop (ncol,pver)    ! Radius of Sulfate, NAT, and ICE (cm)
+      real(r8), intent(out)   ::  sad_trop    (ncol,pver)    ! Surface area density of Sulfate, NAT, ICE (cm2 cm-3)
+      integer,  intent(in)    ::  troplev     (pcols)
+
+!-------------------------------------------------------------------------------
+!	... local variables
+!-------------------------------------------------------------------------------
+      real(r8), parameter :: temp_floor = 0._r8
+
+      type(physics_buffer_desc), pointer :: pbuf(:)
+
+!rpf_liqsad ==> Should keep in mind that the variable names *_ice are used for both liquid or ice fields
+!rpf_liqsad --- Wether is ice or liq it depends on the array h2o_cond(ncol,pver) passed by the calling routine
+!----------------------------------------------------------------------
+!	... local variables
+!----------------------------------------------------------------------
+      logical  ::  mask_lbs        (ncol,pver)   ! LBS mask T: Free_Trop??
+      logical  ::  mask_ice        (ncol,pver)   ! ICE mask T: Free_Trop??
+      real(r8) ::  lcl_h2o_avail   (ncol,pver)   ! H2O temporary arrays
+      real(r8) ::  lcl_sad_ice     (ncol,pver)   ! SAD of ICE aerosol        (cm2 cm-3)
+      real(r8) ::  lcl_radius_ice  (ncol,pver)   ! Radius of ICE aerosol     (cm)
+      integer  ::  i, k
+      real(r8) ::  temp            (pcols,pver)     ! wrk temperature array
+      integer  ::  kk_tropo
+
+!----------------------------------------------------------------------
+!     ... limit temperature
+!----------------------------------------------------------------------
+      do k = 1,pver
+         temp(:ncol,k)    = max( temp_floor,temper(:ncol,k) )
+      end do
+
+!rpf --- from upper
+         do k = 1,pver
+            radius_trop     (:,k) = 0._r8
+            sad_trop        (:,k) = 0._r8
+            lcl_h2o_avail   (:,k) = 0._r8
+            lcl_sad_ice     (:,k) = 0._r8
+            lcl_radius_ice  (:,k) = 0._r8
+            mask_ice        (:,k) = .false.
+            mask_lbs        (:,k) = .false.
+         end do
+!rpf --- from upper
+!======================================================================
+!======================================================================
+!     ... Logic for deriving ICE
+!         Ice formation occurs here if condensed phase H2O exists.
+!
+!         mask_lbs  = false.... T > 200K or SAD_SULF < 1e-15 or
+!                               P >2hPa or P <300hPa
+!         mask_ice  = true .... H2O_COND > 0.0
+!======================================================================
+!======================================================================
+      do k = sad_topp,pver
+	 do i = 1,ncol
+	    if( .not. mask_lbs(i,k) ) then
+               mask_ice(i,k) = h2o_cond(i,k) > 0._r8
+	    else
+	       mask_ice(i,k) = .false.
+	    end if
+         end do
+      end do
+
+!rpf  Allow computation only in troposphere
+      do i = 1,ncol
+         kk_tropo = troplev(i)
+         do k = pver, 1, -1
+           if ( k < kk_tropo ) then
+             mask_ice(i,k) = .false.
+           endif
+         enddo
+      enddo
+
+all_ice : &
+      if( any( mask_ice(:,sad_topp:pver) ) ) then
+         do k = sad_topp,pver
+            where( mask_ice(:,k) )
+	       lcl_h2o_avail(:,k) = h2o_cond(:,k)
+            endwhere
+         end do
+!----------------------------------------------------------------------
+!        ... ICE
+!----------------------------------------------------------------------
+         call ice_sad_calc( ncol, press, temp, m, lcl_h2o_avail, &
+			    lcl_sad_ice, lcl_radius_ice, mask_ice )
+
+         do k = sad_topp,pver
+            where( mask_ice(:,k) )
+               sad_trop   (:,k) = lcl_sad_ice       (:,k)
+               radius_trop(:,k) = lcl_radius_ice    (:,k)
+            endwhere
+         end do
+      end if all_ice
+
+
+      end subroutine icesad_trop_calc
 
       subroutine nat_sat_temp( ncol, hno3_total, h2o_avail, press, tsat_nat, mask )
 

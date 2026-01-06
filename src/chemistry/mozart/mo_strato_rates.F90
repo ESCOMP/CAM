@@ -8,6 +8,7 @@
 !  15 August 2002
 !  11 April  2008
 !  15 December 2014
+!  08 December 2020 - R. Fernandez - Merge vsl03 chemistry (AC2-CSIC-Madrid - A. Saiz-Lopez) ! rpf_CESM2_SLH
 !
 !  Programmed by...
 !   Douglas E. Kinnison
@@ -85,6 +86,16 @@
            rid_het11, rid_het12, rid_het13, rid_het14, rid_het15, &
            rid_het16, rid_het17
 
+!rpf_CESM2_SLH
+      integer :: rid_het5_hbr,   rid_het6_hbr,   rid_het5_hi,   rid_het6_hi
+      integer :: rid_het10_hbr,  rid_het10bhbr,  rid_het10_hi,  rid_het10bhi, rid_het10b
+      integer :: rid_het16_hbr,  rid_het17_hbr,  rid_het16_hi,  rid_het17_hi
+      integer :: id_hbr, id_hi, id_iono2, id_hoi
+      integer :: rid_ice_str_i_1,   rid_ice_str_i_2,   rid_ice_str_i_3,   rid_ice_str_i_4
+      integer :: rid_slf_str_i_1,   rid_slf_str_i_2,   rid_slf_str_i_3,   rid_slf_str_i_4
+      integer :: rid_nat_str_i_1,   rid_nat_str_i_2,   rid_nat_str_i_3,   rid_nat_str_i_4
+!rpf_CESM2_SLH
+
       logical :: has_strato_chem 
 
       contains
@@ -117,13 +128,49 @@
           rid_het16 = get_rxt_ndx( 'het16' )
           rid_het17 = get_rxt_ndx( 'het17' )
 
+!rpf_CESM2_SLH
+          rid_het5_hbr     = get_rxt_ndx( 'het5_hbr'  )
+          rid_het6_hbr     = get_rxt_ndx( 'het6_hbr'  )
+          rid_het5_hi      = get_rxt_ndx( 'het5_hi'   )
+          rid_het6_hi      = get_rxt_ndx( 'het6_hi'   )
+          rid_het10b       = get_rxt_ndx( 'het10b'    )
+          rid_het10_hbr    = get_rxt_ndx( 'het10_hbr' )
+          rid_het10bhbr    = get_rxt_ndx( 'het10bhbr' )
+          rid_het10_hi     = get_rxt_ndx( 'het10_hi'  )
+          rid_het10bhi     = get_rxt_ndx( 'het10bhi'  )
+          rid_het16_hbr    = get_rxt_ndx( 'het16_hbr' )
+          rid_het17_hbr    = get_rxt_ndx( 'het17_hbr' )
+          rid_het16_hi     = get_rxt_ndx( 'het16_hi'  )
+          rid_het17_hi     = get_rxt_ndx( 'het17_hi'  )
+
+          rid_ice_str_i_1  = get_rxt_ndx( 'ice_str_i_1' )
+          rid_ice_str_i_2  = get_rxt_ndx( 'ice_str_i_2' )
+          rid_ice_str_i_3  = get_rxt_ndx( 'ice_str_i_3' )
+          rid_ice_str_i_4  = get_rxt_ndx( 'ice_str_i_4' )
+          rid_slf_str_i_1  = get_rxt_ndx( 'slf_str_i_1' )
+          rid_slf_str_i_2  = get_rxt_ndx( 'slf_str_i_2' )
+          rid_slf_str_i_3  = get_rxt_ndx( 'slf_str_i_3' )
+          rid_slf_str_i_4  = get_rxt_ndx( 'slf_str_i_4' )
+          rid_nat_str_i_1  = get_rxt_ndx( 'nat_str_i_1' )
+          rid_nat_str_i_2  = get_rxt_ndx( 'nat_str_i_2' )
+          rid_nat_str_i_3  = get_rxt_ndx( 'nat_str_i_3' )
+          rid_nat_str_i_4  = get_rxt_ndx( 'nat_str_i_4' )
+
+          id_hbr    = get_spc_ndx( 'HBR' )
+          id_hi     = get_spc_ndx( 'HI' )
+          id_iono2  = get_spc_ndx( 'IONO2' )
+          id_hoi    = get_spc_ndx( 'HOI' )
           id_brono2 = get_spc_ndx( 'BRONO2' )
           id_clono2 = get_spc_ndx( 'CLONO2' )
           id_hcl    = get_spc_ndx( 'HCL' )
           id_hocl   = get_spc_ndx( 'HOCL' )
           id_hobr   = get_spc_ndx( 'HOBR' )
           id_n2o5   = get_spc_ndx( 'N2O5' )
+!rpf_CESM2_SLH
 
+!rpf_CESM2_SLH
+! I do not include the new rid_# into ids(:) so has_strato_chem condition is not afected
+!rpf_CESM2_SLH
           ids(:) = (/ rid_het1, rid_het2, rid_het3, rid_het4, rid_het5, rid_het6, rid_het7, rid_het8, &
                rid_het9, rid_het10, rid_het11, rid_het12, rid_het13, rid_het14, rid_het15, &
                rid_het16, rid_het17, id_brono2, id_clono2, id_hcl, id_hocl, id_hobr, id_n2o5 /)
@@ -212,6 +259,23 @@
         av_brono2, &                            ! BrONO2Mean Velocity (cm s-1)
         av_hocl, &                              ! HOCl Mean Velocity (cm s-1)
         av_hobr                                 ! HOBr Mean Velocity (cm s-1)
+
+!rpf_CESM2_SLH
+      real(r8) :: &
+        hbrvmr, &                               ! HBr Volume Mixing Ratio
+        hivmr, &                                ! HI Volume Mixing Ratio        CAC 2020 RPF
+        hoivmr, &                               ! HOI Volume Mixing Ratio
+        iono2vmr, &                             ! IONO2 Volume Mixing Ratio
+        hbrdeni, &                              ! inverse of HBr density
+        hideni, &                               ! inverse of HBr density        CAC 2020 RPF
+        hoideni                                 ! inverse of HOI density	CAC 20150223 implementation of HOI reaction for O3 hole study
+        
+        real(r8) :: &
+        av_iono2, &                             ! IONO2Mean Velocity (cm s-1)
+        av_hoi, &                               ! HOI Mean Velocity (cm s-1)
+        av_hbr, &                               ! HBr Mean Velocity (cm s-1)
+        av_hi                                   ! HI  Mean Velocity (cm s-1)
+!rpf_CESM2_SLH
 
       real(r8) :: &
         pzero_h2o, &                            ! H2O sat vapor press (mbar)
@@ -339,6 +403,36 @@
          rxt(:,k,rid_het16) = 0._r8
          rxt(:,k,rid_het17) = 0._r8
 
+!rpf_CESM2_SLH
+!rpf implementation of sensitive reactions from VSL on stratosphere
+    if ( rid_het5_hbr > 0 )    rxt(:,k,rid_het5_hbr)  = 0._r8
+    if ( rid_het6_hbr > 0 )    rxt(:,k,rid_het6_hbr)  = 0._r8
+    if ( rid_het5_hi > 0 )     rxt(:,k,rid_het5_hi)   = 0._r8
+    if ( rid_het6_hi > 0 )     rxt(:,k,rid_het6_hi)   = 0._r8
+    if ( rid_het10b > 0 )      rxt(:,k,rid_het10b)    = 0._r8
+    if ( rid_het10_hbr > 0 )   rxt(:,k,rid_het10_hbr) = 0._r8
+    if ( rid_het10bhbr > 0 )   rxt(:,k,rid_het10bhbr) = 0._r8
+    if ( rid_het10_hi > 0 )    rxt(:,k,rid_het10_hi)  = 0._r8
+    if ( rid_het10bhi > 0 )    rxt(:,k,rid_het10bhi)  = 0._r8
+    if ( rid_het16_hbr > 0 )   rxt(:,k,rid_het16_hbr) = 0._r8
+    if ( rid_het17_hbr > 0 )   rxt(:,k,rid_het17_hbr) = 0._r8
+    if ( rid_het16_hi > 0 )    rxt(:,k,rid_het16_hi)  = 0._r8
+    if ( rid_het17_hi > 0 )    rxt(:,k,rid_het17_hi)  = 0._r8
+
+    if ( rid_ice_str_i_1 > 0 ) rxt(:,k,rid_ice_str_i_1) = 0._r8
+    if ( rid_ice_str_i_2 > 0 ) rxt(:,k,rid_ice_str_i_2) = 0._r8
+    if ( rid_ice_str_i_3 > 0 ) rxt(:,k,rid_ice_str_i_3) = 0._r8
+    if ( rid_ice_str_i_4 > 0 ) rxt(:,k,rid_ice_str_i_4) = 0._r8
+    if ( rid_slf_str_i_1 > 0 ) rxt(:,k,rid_slf_str_i_1) = 0._r8
+    if ( rid_slf_str_i_2 > 0 ) rxt(:,k,rid_slf_str_i_2) = 0._r8
+    if ( rid_slf_str_i_3 > 0 ) rxt(:,k,rid_slf_str_i_3) = 0._r8
+    if ( rid_slf_str_i_4 > 0 ) rxt(:,k,rid_slf_str_i_4) = 0._r8
+    if ( rid_nat_str_i_1 > 0 ) rxt(:,k,rid_nat_str_i_1) = 0._r8
+    if ( rid_nat_str_i_2 > 0 ) rxt(:,k,rid_nat_str_i_2) = 0._r8
+    if ( rid_nat_str_i_3 > 0 ) rxt(:,k,rid_nat_str_i_3) = 0._r8
+    if ( rid_nat_str_i_4 > 0 ) rxt(:,k,rid_nat_str_i_4) = 0._r8
+!rpf_CESM2_SLH
+
          gprob_n2o5(:,k)    = 0._r8
          gprob_cnt_h2o(:,k) = 0._r8
          gprob_cnt_hcl(:,k) = 0._r8
@@ -382,6 +476,30 @@ column_loop : &
             pmb          = pa2mb*pmid(i,k)
             atmos        = pmb/1013.25_r8
 
+!rpf_CESM2_SLH
+            if ( id_hbr>0 ) then
+              hbrvmr       = vmr(i,k,id_hbr)
+              if( hbrvmr > 0._r8 ) then
+                hbrdeni  = 1._r8/(hbrvmr*ad(i,k))
+              end if
+            endif
+            if ( id_iono2>0 ) then
+              iono2vmr     = vmr(i,k,id_iono2)
+            endif
+            if ( id_hi>0 ) then
+              hivmr       = vmr(i,k,id_hi)
+              if( hivmr > 0._r8 ) then
+                hideni  = 1._r8/(hivmr*ad(i,k))
+              end if
+            endif
+            if ( id_hoi>0 ) then            
+              hoivmr       = vmr(i,k,id_hoi)
+              if( hoivmr > 0._r8 ) then
+                hoideni  = 1._r8/(hoivmr*ad(i,k))
+              end if
+            endif
+!rpf_CESM2_SLH
+
 !-----------------------------------------------------------------------
 !  	... setup for stratospheric aerosols
 !           data range set: 185K - 240K;    Tabazedeh GRL, 24, 1931, 1997
@@ -401,6 +519,14 @@ column_loop : &
             av_brono2 = sqrt( wrk/adv_mass(id_brono2) )*m2cm
             av_hocl   = sqrt( wrk/adv_mass(id_hocl) )*m2cm
             av_hobr   = sqrt( wrk/adv_mass(id_hobr) )*m2cm
+
+!rpf_CESM2_SLH
+            if ( id_hbr>0 )   av_hbr   = sqrt( wrk/adv_mass(id_hbr) )  *m2cm
+            if ( id_hi>0 )    av_hi    = sqrt( wrk/adv_mass(id_hi) )   *m2cm
+            if ( id_iono2>0 ) av_iono2 = sqrt( wrk/adv_mass(id_iono2) )*m2cm
+            if ( id_hoi>0 )   av_hoi   = sqrt( wrk/adv_mass(id_hoi) )  *m2cm
+!rpf_CESM2_SLH
+
 has_sadsulf : &
             if( sadsulf > 0._r8 ) then
 !-----------------------------------------------------------------------
@@ -614,6 +740,16 @@ has_sadsulf : &
                   gprob_bnt_h2o(i,k) = 1._r8 / (term1 + term2)
                   rxt(i,k,rid_het3) = max( 0._r8,wrk*av_brono2*gprob_bnt_h2o(i,k) )
 
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!  	... IONO2 + H2O(liq) =  HOI + HNO3   Sulfate Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for IODINE species is mapped to gprob_bnt_h2o 
+                  if ( rid_slf_str_i_1 > 0 ) then
+                     rxt(i,k,rid_slf_str_i_1) = max( 0._r8,wrk*av_iono2*gprob_bnt_h2o(i,k) )
+                  endif
+!rpf_CESM2_SLH
+
 !-----------------------------------------------------------------------
 !     	... ClONO2 + HCl(liq) =  Cl2  + HNO3  Sulfate Aerosol Reaction
 !-----------------------------------------------------------------------
@@ -662,7 +798,33 @@ has_sadsulf : &
                          rxt(i,k,rid_het5) = max( 0._r8,wrk*av_hocl*gprob_hocl_hcl(i,k) )*hocldeni
                        end if
                      end if
-	          end if
+
+!rpf_CESM2_SLH
+! CAC 2020 RPF START OF implmentation of the HOCl + HBr(liq) =  BrCl + H2O   Sulfate Aerosol Reaction
+! NOTE: gprob for HBR and HI species is mapped to gprob_hocl_hcl 
+                     if ( rid_het5_hbr > 0 ) then
+                        if( hbrvmr > small_div .and. hoclvmr > small_div ) then
+                           if ( hbrvmr > hoclvmr ) then
+                              rxt(i,k,rid_het5_hbr) = max( 0._r8,wrk*av_hocl*gprob_hocl_hcl(i,k) )*hbrdeni
+                           else
+                              rxt(i,k,rid_het5_hbr) = max( 0._r8,wrk*av_hocl*gprob_hocl_hcl(i,k) )*hocldeni
+                           end if           
+                        end if
+                     end if
+! CAC 2020 RPF START OF implmentation of the HOCl + HI(liq)  =  ICl  + H2O   Sulfate Aerosol Reaction
+! NOTE: gprob for HBR and HI species is mapped to gprob_hocl_hcl 
+                     if ( rid_het5_hi > 0 ) then
+                        if( hivmr > small_div .and. hoclvmr > small_div ) then
+                           if ( hivmr > hoclvmr ) then
+                              rxt(i,k,rid_het5_hi) = max( 0._r8,wrk*av_hocl*gprob_hocl_hcl(i,k) )*hideni
+                           else
+                              rxt(i,k,rid_het5_hi) = max( 0._r8,wrk*av_hocl*gprob_hocl_hcl(i,k) )*hocldeni
+                           end if           
+                        end if
+                     end if
+!rpf_CESM2_SLH
+
+	          end if   !pCNT_atm
 
 !-----------------------------------------------------------------------
 !     	... HOBr + HCl(liq) =  BrCl + H2O  Sulfate Aerosol Reaction
@@ -714,6 +876,7 @@ has_sadsulf : &
                      else
                         gprob_hobr_hcl(i,k)= 0._r8
                      end if
+
                      if( hclvmr > small_div .and. hobrvmr > small_div ) then
                        if ( hclvmr > hobrvmr ) then
                           rxt(i,k,rid_het6) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hcldeni
@@ -721,8 +884,82 @@ has_sadsulf : &
                           rxt(i,k,rid_het6) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hobrdeni    
                        end if           
                      end if
-		  end if
- 
+
+!rpf_CESM2_SLH                  
+! CAC 2020 RPF END OF   implmentation of the HOBr + HBr(liq) =  Br2  + H2O   Sulfate Aerosol Reaction
+! NOTE: gprob for HBR and HI species is mapped to gprob_hobr_hcl 
+                     if ( rid_het6_hbr > 0 ) then
+                        if( hbrvmr > small_div .and. hobrvmr > small_div ) then
+                           if ( hbrvmr > hobrvmr ) then
+                              rxt(i,k,rid_het6_hbr) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hbrdeni
+                           else
+                              rxt(i,k,rid_het6_hbr) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hobrdeni    
+                           end if           
+                        end if
+                     end if
+! CAC 2020 RPF END OF   implmentation of the HOBr + HI(liq)  =  IBr  + H2O   Sulfate Aerosol Reaction
+! NOTE: gprob for HBR and HI species is mapped to gprob_hobr_hcl 
+                     if ( rid_het6_hi > 0 ) then
+                        if( hivmr > small_div .and. hobrvmr > small_div ) then
+                           if ( hivmr > hobrvmr ) then
+                              rxt(i,k,rid_het6_hi) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hideni
+                           else
+                              rxt(i,k,rid_het6_hi) = max( 0._r8,wrk*av_hobr*gprob_hobr_hcl(i,k) )*hobrdeni    
+                           end if           
+                        end if
+                     end if
+!rpf_CESM2_SLH                  
+
+!rpf_CESM2_SLH
+                     if ( rid_slf_str_i_2 > 0 ) then
+                        if( hclvmr > small_div .and. hoivmr > small_div ) then
+! CAC 2020 RPF START OF implmentation of the HOI + HCl(liq) =  ICl + H2O  Sulfate Aerosol Reaction
+! NOTE: gprob for HOI species is mapped to gprob_hobr_hcl 
+                           if ( rid_slf_str_i_2 > 0 ) then
+                              if ( hclvmr > hoivmr ) then
+                                 rxt(i,k,rid_slf_str_i_2) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hcldeni
+                              else
+                                 rxt(i,k,rid_slf_str_i_2) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hoideni    
+                              end if           
+                           end if
+                        end if
+                     end if
+
+                     if ( rid_slf_str_i_3 > 0 ) then
+                        if( hbrvmr > small_div .and. hoivmr > small_div ) then
+! CAC 2020 RPF START OF implmentation of the HOI + HBr(liq) =  IBr + H2O  Sulfate Aerosol Reaction
+! NOTE: gprob for HOI species is mapped to gprob_hobr_hcl 
+                           if ( rid_slf_str_i_3 > 0 ) then
+                              if( hbrvmr > small_div .and. hoivmr > small_div ) then
+                                 if ( hbrvmr > hoivmr ) then
+                                    rxt(i,k,rid_slf_str_i_3) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hbrdeni
+                                 else
+                                    rxt(i,k,rid_slf_str_i_3) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hoideni    
+                                 end if           
+                              end if
+                           end if
+                        end if
+                     end if
+
+                     if ( rid_slf_str_i_4 > 0 ) then
+                        if( hivmr > small_div .and. hoivmr > small_div ) then
+! CAC 2020 RPF START OF implmentation of the HOI + HI (liq) =  I2  + H2O  Sulfate Aerosol Reaction
+! NOTE: gprob for HOI species is mapped to gprob_hobr_hcl 
+                           if ( rid_slf_str_i_4 > 0 ) then
+                              if( hivmr > small_div .and. hoivmr > small_div ) then
+                                 if ( hivmr > hoivmr ) then
+                                    rxt(i,k,rid_slf_str_i_4) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hideni
+                                 else
+                                    rxt(i,k,rid_slf_str_i_4) = max( 0._r8,wrk*av_hoi*gprob_hobr_hcl(i,k) )*hoideni    
+                                 end if           
+                              end if
+                           end if
+                        end if
+                     end if
+!rpf_CESM2_SLH                  
+
+		  end if   !M_hcl 
+
             end if has_sadsulf
 
 has_sadnat : &
@@ -781,6 +1018,89 @@ has_sadnat : &
                    end if
                end if
 
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!     	... HOCl + HBr(s) => H2O + BrCl, NAT Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het10_hbr > 0 ) then
+                     if( hoclvmr > small_div .and. hbrvmr > small_div ) then
+                        if ( hbrvmr > hoclvmr ) then
+                           rxt(i,k,rid_het10_hbr) = wrk*av_hocl*0.1_r8*hbrdeni
+                        else
+                           rxt(i,k,rid_het10_hbr) = wrk*av_hocl*0.1_r8*hocldeni
+                        end if
+                     endif
+                  endif
+!-----------------------------------------------------------------------
+!     	... HOCl + HI (s) => H2O + ICl,  NAT Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het10_hi > 0 ) then
+                     if( hoclvmr > small_div .and. hivmr > small_div ) then
+                        if ( hivmr > hoclvmr ) then
+                           rxt(i,k,rid_het10_hi) = wrk*av_hocl*0.1_r8*hideni
+                        else
+                           rxt(i,k,rid_het10_hi) = wrk*av_hocl*0.1_r8*hocldeni
+                        end if
+                     endif
+                  endif
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+!***********************************************************************
+! This reaction is not included in the original strat_chem scheme from DEK
+! Mapped here for completenes following Saiz-Lopez recommendation
+! NOTE: gprob for HOBR [het10b] is mapped to gprob_tot for [het10]
+!***********************************************************************
+!-----------------------------------------------------------------------
+!     	... HOBr + HCl(s) => H2O + BrCl, NAT Aerosol Reaction
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     ... gprob based on JPL10-6 for NAT.
+!         see Hanson and Ravi, JPC, 96, 2682-2691, 1992.
+!         and Abbatt and Molina, GRL, 19, 461-464, 1992.
+!                 gprob_tot   = 0.1
+!-----------------------------------------------------------------------
+                  if ( rid_het10b > 0 ) then
+                     if( hclvmr > small_div .and. hobrvmr > small_div ) then
+                         if ( hclvmr > hobrvmr ) then
+                            rxt(i,k,rid_het10b) = wrk*av_hobr*0.1_r8*hcldeni
+                         else
+                            rxt(i,k,rid_het10b) = wrk*av_hobr*0.1_r8*hobrdeni
+                         end if
+                     end if
+                  end if
+!-----------------------------------------------------------------------
+!     HOBr + HBr(s) => H2O + Br2, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het10bhbr > 0 ) then
+                     if( hobrvmr > small_div .and. hbrvmr > small_div ) then
+                        if ( hbrvmr > hobrvmr ) then
+                           rxt(i,k,rid_het10bhbr) = wrk*av_hobr*0.1_r8*hbrdeni
+                        else
+                           rxt(i,k,rid_het10bhbr) = wrk*av_hobr*0.1_r8*hobrdeni
+                        end if
+            
+                     endif
+                  endif
+!-----------------------------------------------------------------------
+!     HOBr + HI (s) => H2O + IBr, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het10bhi > 0 ) then
+                     if( hobrvmr > small_div .and. hivmr > small_div ) then
+                        if ( hivmr > hobrvmr ) then
+                           rxt(i,k,rid_het10bhi) = wrk*av_hobr*0.1_r8*hideni
+                        else
+                           rxt(i,k,rid_het10bhi) = wrk*av_hobr*0.1_r8*hobrdeni
+                        end if
+            
+                     endif
+                  endif
+!rpf_CESM2_SLH
+
 !-----------------------------------------------------------------------
 !     	... BrONO2 + H2O(s) => HOBr + HNO3  NAT Aerosol Reaction
 !-----------------------------------------------------------------------
@@ -790,6 +1110,66 @@ has_sadnat : &
 !                 gprob_tot   = 0.006
 !-----------------------------------------------------------------------
                   rxt(i,k,rid_het11) = wrk*av_brono2*0.006_r8
+
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!     	... IONO2 + H2O(s) => HOI + HNO3  NAT Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for IODINE species is mapped to gprob_tot
+                  if ( rid_nat_str_i_1 > 0 ) then
+                     rxt(i,k,rid_nat_str_i_1) = wrk*av_iono2*0.006_r8
+                  endif
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+                  if ( rid_nat_str_i_2 > 0 ) then
+                     if( hclvmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HCl(s) => H2O + ICl, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_nat_str_i_2 > 0 ) then
+                           if ( hclvmr > hoivmr ) then
+                              rxt(i,k,rid_nat_str_i_2) = wrk*av_hoi*0.1_r8*hcldeni
+                           else
+                              rxt(i,k,rid_nat_str_i_2) = wrk*av_hoi*0.1_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+
+                  if ( rid_nat_str_i_3 > 0 ) then
+                     if( hbrvmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HBr(s) => H2O + IBr, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_nat_str_i_3 > 0 ) then
+                           if ( hbrvmr > hoivmr ) then
+                              rxt(i,k,rid_nat_str_i_3) = wrk*av_hoi*0.1_r8*hbrdeni
+                           else
+                              rxt(i,k,rid_nat_str_i_3) = wrk*av_hoi*0.1_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+
+                  if ( rid_nat_str_i_4 > 0 ) then
+                     if( hivmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HI(s) => H2O + I2,  ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_nat_str_i_4 > 0 ) then
+                           if ( hivmr > hoivmr ) then
+                              rxt(i,k,rid_nat_str_i_4) = wrk*av_hoi*0.1_r8*hideni
+                           else
+                              rxt(i,k,rid_nat_str_i_4) = wrk*av_hoi*0.1_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+!rpf_CESM2_SLH
 
             end if has_sadnat
 
@@ -827,6 +1207,16 @@ has_sadice : &
 !-----------------------------------------------------------------------
                   rxt(i,k,rid_het14) = wrk*av_brono2*0.3_r8
 
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!     	... IONO2 + H2O(s) => HNO3 + HOBr  ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for IODINE species is mapped to gprob_tot for BRONO2
+                  if ( rid_ice_str_i_1 > 0 ) then
+                     rxt(i,k,rid_ice_str_i_1) = wrk*av_iono2*0.3_r8         ! CAC 20150223 in the O3 hole study
+                  endif
+!rpf_CESM2_SLH
+
 !-----------------------------------------------------------------------
 !     ClONO2 + HCl(s) => HNO3 + Cl2, ICE Aerosol Reaction
 !-----------------------------------------------------------------------
@@ -861,6 +1251,35 @@ has_sadice : &
                      end if
                   end if
 
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!     	... HOCl + HBr(s) => H2O + BrCl, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het16_hbr > 0 ) then
+                     if( hoclvmr > small_div .and. hbrvmr > small_div ) then
+                        if ( hbrvmr > hoclvmr ) then
+                           rxt(i,k,rid_het16_hbr) = wrk*av_hocl*0.2_r8*hbrdeni
+                        else
+                           rxt(i,k,rid_het16_hbr) = wrk*av_hocl*0.2_r8*hocldeni
+                        end if
+                     endif
+                  endif
+!-----------------------------------------------------------------------
+!     	... HOCl + HI (s) => H2O + ICl,  ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het16_hi > 0 ) then
+                     if( hoclvmr > small_div .and. hivmr > small_div ) then
+                        if ( hivmr > hoclvmr ) then
+                           rxt(i,k,rid_het16_hi) = wrk*av_hocl*0.2_r8*hideni
+                        else
+                           rxt(i,k,rid_het16_hi) = wrk*av_hocl*0.2_r8*hocldeni
+                        end if
+                     endif
+                  endif
+!rpf_CESM2_SLH
+
 !-----------------------------------------------------------------------
 !     HOBr + HCl(s) => H2O + BrCl, ICE Aerosol Reaction
 !-----------------------------------------------------------------------
@@ -876,6 +1295,87 @@ has_sadice : &
                         rxt(i,k,rid_het17) = wrk*av_hobr*0.3_r8*hobrdeni
                      end if
                   end if
+
+!rpf_CESM2_SLH
+!-----------------------------------------------------------------------
+!     HOBr + HBr(s) => H2O + Br2, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het17_hbr > 0 ) then
+                     if( hobrvmr > small_div .and. hbrvmr > small_div ) then
+                        if ( hbrvmr > hobrvmr ) then
+                           rxt(i,k,rid_het17_hbr) = wrk*av_hobr*0.3_r8*hbrdeni
+                        else
+                           rxt(i,k,rid_het17_hbr) = wrk*av_hobr*0.3_r8*hobrdeni
+                        end if
+            
+                     endif
+                  endif
+!-----------------------------------------------------------------------
+!     HOBr + HI (s) => H2O + IBr, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HBR and HI species is mapped to gprob_tot
+                  if ( rid_het17_hi > 0 ) then
+                     if( hobrvmr > small_div .and. hivmr > small_div ) then
+                        if ( hivmr > hobrvmr ) then
+                           rxt(i,k,rid_het17_hi) = wrk*av_hobr*0.3_r8*hideni
+                        else
+                           rxt(i,k,rid_het17_hi) = wrk*av_hobr*0.3_r8*hobrdeni
+                        end if
+            
+                     endif
+                  endif
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+                  if ( rid_ice_str_i_2 > 0 ) then
+                     if( hclvmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HCl(s) => H2O + ICl, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_ice_str_i_2 > 0 ) then
+                           if ( hclvmr > hoivmr ) then
+                              rxt(i,k,rid_ice_str_i_2) = wrk*av_hoi*0.3_r8*hcldeni
+                           else
+                              rxt(i,k,rid_ice_str_i_2) = wrk*av_hoi*0.3_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+
+                  if ( rid_ice_str_i_3 > 0 ) then
+                     if( hbrvmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HBr(s) => H2O + IBr, ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_ice_str_i_3 > 0 ) then
+                           if ( hbrvmr > hoivmr ) then
+                              rxt(i,k,rid_ice_str_i_3) = wrk*av_hoi*0.3_r8*hbrdeni
+                           else
+                              rxt(i,k,rid_ice_str_i_3) = wrk*av_hoi*0.3_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+
+                  if ( rid_ice_str_i_4 > 0 ) then
+                     if( hivmr > small_div .and. hoivmr > small_div ) then
+!-----------------------------------------------------------------------
+!     HOI + HI(s) => H2O + I2,  ICE Aerosol Reaction
+!-----------------------------------------------------------------------
+! NOTE: gprob for HOI species is mapped to gprob_tot HOBr + HCl
+                        if ( rid_ice_str_i_4 > 0 ) then
+                           if ( hivmr > hoivmr ) then
+                              rxt(i,k,rid_ice_str_i_4) = wrk*av_hoi*0.3_r8*hideni
+                           else
+                              rxt(i,k,rid_ice_str_i_4) = wrk*av_hoi*0.3_r8*hoideni
+                           end if
+                        endif
+                     end if
+                  end if
+!rpf_CESM2_SLH
 
             end if has_sadice
          end do column_loop

@@ -1,6 +1,7 @@
 module mo_srf_emissions
   !---------------------------------------------------------------
   ! 	... surface emissions module
+  !     2020-Dec-08 - R. Fernandez - Merge vsl03 chemistry (AC2-CSIC-Madrid - A. Saiz-Lopez) ! rpf_CESM2_SLH
   !---------------------------------------------------------------
 
   use shr_kind_mod,  only : r8 => shr_kind_r8
@@ -36,6 +37,19 @@ module mo_srf_emissions
   type(emission), allocatable :: emissions(:)
   integer                     :: n_emis_files
   integer :: c10h16_ndx, isop_ndx
+
+!rpf_CESM2_SLH
+! -------------------------------------------------------------------------------  
+! Apply diurnal cycle to the emission of VSL halocarbons
+! -------------------------------------------------------------------------------
+  integer :: chbr3_ndx, ch2br2_ndx, ch2brcl_ndx, chbr2cl_ndx, chbrcl2_ndx, &
+             ch2i2_ndx, ch2icl_ndx, ch2ibr_ndx,  ch3i_ndx
+
+  integer :: ch2cl2_ndx, c2cl4_ndx
+!rpf Now all the online iodine emissions is directly called in mo_slh_routines.F90 routine
+! This is just to force input emissions from srf_emis_specifier in user_nl_cam to be ZERO
+  integer :: hoi_ndx, i2_ndx
+!rpf_CESM2_SLH
 
 contains
 
@@ -286,6 +300,28 @@ contains
     c10h16_ndx = get_spc_ndx('C10H16')
     isop_ndx = get_spc_ndx('ISOP')
 
+!rpf_CESM2_SLH
+! -------------------
+! WSY: VSLS chemistry
+! -------------------													   
+    chbr3_ndx   = get_spc_ndx('CHBR3'  )
+    ch2br2_ndx  = get_spc_ndx('CH2BR2' )
+    ch2brcl_ndx = get_spc_ndx('CH2BRCL')
+    chbr2cl_ndx = get_spc_ndx('CHBR2CL')
+    chbrcl2_ndx = get_spc_ndx('CHBRCL2')
+    ch2i2_ndx   = get_spc_ndx('CH2I2'  )
+    ch2icl_ndx  = get_spc_ndx('CH2ICL' )
+    ch2ibr_ndx  = get_spc_ndx('CH2IBR' )
+    ch3i_ndx    = get_spc_ndx('CH3I'   )
+
+    ch2cl2_ndx  = get_spc_ndx('CH2CL2' )
+    c2cl4_ndx   = get_spc_ndx('C2CL4'  )
+!rpf Now all the online iodine emissions is directly called in mo_slh_routines.F90 routine
+! This is just to force input emissions from srf_emis_specifier in user_nl_cam to be ZERO
+    i2_ndx      = get_spc_ndx('I2'     )
+    hoi_ndx     = get_spc_ndx('HOI'    )
+!rpf_CESM2_SLH
+
   end subroutine srf_emissions_inti
 
   subroutine set_srf_emissions_time( pbuf2d, state )
@@ -324,6 +360,11 @@ contains
     use time_manager, only : get_curr_calday
     use string_utils, only : to_lower, GLC
     use phys_grid,    only : get_rlat_all_p, get_rlon_all_p
+
+!rpf_CESM2_SLH
+!     SLHemiss_ScalingFactor = 1.0 always. If needed emissions should be modified directly in srf_emis_specifier file (rpf)
+!     use mo_slh_routines,  only : SLHemiss_ScalingFactor
+!rpf_CESM2_SLH
 
     implicit none
 
@@ -368,6 +409,10 @@ contains
     character(len=12) :: units
 
     real(r8), dimension(ncol) :: rlats, rlons
+
+!rpf_CESM2_SLH
+    integer :: hal_ndx, n_hal
+!rpf_CESM2_SLH
 
     sflx(:,:) = 0._r8
 
@@ -472,6 +517,116 @@ contains
              end if
           end if
        end if
+
+!rpf_CESM2_SLH
+       !--------------------------------------------------------
+       !   ... adjust CH2I2 for diurnal variation
+       !   (by adding a cycle similar to that of alpha-pinene)
+       !   This yielded a better agreement with obs. than 
+       !   the cycle used fo the rest of VSL halocarbons
+       !   (see Fig 11 of Ordonez et al., ACP, 2012).
+       !--------------------------------------------------------
+       if( ch2i2_ndx > 0 ) then
+          if( has_emis(ch2i2_ndx) ) then
+             if( .not. polar_night .and. .not. polar_day ) then
+                dayfrac = sunoff / pi
+                sflx(i,ch2i2_ndx) = sflx(i,ch2i2_ndx) / (.5_r8 + .5_r8*dayfrac)
+!               sflx(i,ch2i2_ndx) = SLHemiss_ScalingFactor * sflx(i,ch2i2_ndx) / (.5_r8 + .5_r8*dayfrac)
+                if( loc_angle >= sunoff .and. loc_angle <= sunon ) then
+                   sflx(i,ch2i2_ndx) = sflx(i,ch2i2_ndx) * .5_r8
+!                  sflx(i,ch2i2_ndx) = SLHemiss_ScalingFactor * sflx(i,ch2i2_ndx) * .5_r8
+                endif
+             end if
+          end if
+       end if 
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+       !--------------------------------------------------------
+       !  ... adjust VSL halocarbons (except CH2I2, done above)
+       !      for diurnal variation. Done here as for isoprene.
+       !--------------------------------------------------------
+       do n_hal = 1, 8
+         select case (n_hal)
+         case ( 1 )
+           hal_ndx = chbr3_ndx
+         case ( 2 )
+           hal_ndx = ch2br2_ndx
+         case ( 3 )
+           hal_ndx = ch2brcl_ndx
+         case ( 4 )
+           hal_ndx = chbr2cl_ndx
+         case ( 5 )
+           hal_ndx = chbrcl2_ndx
+         case ( 6 )
+           hal_ndx = ch2icl_ndx
+         case ( 7 )
+           hal_ndx = ch2ibr_ndx
+         case ( 8 )
+           hal_ndx = ch3i_ndx
+         end select
+         if( hal_ndx > 0) then
+            if( has_emis(hal_ndx) ) then
+               if( .not. polar_night ) then
+                  if( polar_day ) then
+                     iso_off = .8_r8 * pi
+                     iso_on  = 1.2_r8 * pi
+                  else
+                     iso_off = .8_r8 * sunoff
+                     iso_on  = 2._r8 * pi - iso_off
+                  end if
+                  if( loc_angle >= iso_off .and. loc_angle <= iso_on ) then
+                     sflx(i,hal_ndx) = 0._r8
+                  else
+                     factor = loc_angle - iso_on
+                     if( factor <= 0._r8 ) then
+                        factor = factor + 2._r8*pi
+                     end if
+                     factor = factor / (2._r8*iso_off + 1.e-6_r8)
+                     sflx(i,hal_ndx) = sflx(i,hal_ndx) * 2._r8 / iso_off * pi * (sin(pi*factor))**2
+!                    sflx(i,hal_ndx) = SLHemiss_ScalingFactor * sflx(i,hal_ndx) * 2._r8 / iso_off * pi * (sin(pi*factor))**2
+                  end if
+               else
+                  sflx(i,hal_ndx) = 0._r8                  
+               end if
+            end if
+         end if
+       end do
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+       do n_hal = 1, 2
+         select case (n_hal)
+         case ( 1 )
+           hal_ndx = ch2cl2_ndx
+         case ( 2 )
+           hal_ndx = c2cl4_ndx
+         end select
+         if( hal_ndx > 0) then
+            if( has_emis(hal_ndx) ) then
+               sflx(i,hal_ndx) = sflx(i,hal_ndx)
+!              sflx(i,hal_ndx) = SLHemiss_ScalingFactor * sflx(i,hal_ndx)
+            end if
+         end if
+       end do
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+! This is just to force input emissions from srf_emis_specifier in user_nl_cam to be ZERO
+! Note that I2 and HOI emissions are computed online within mo_slh_routines.F90 routine
+! If not forced to ZERO, then SFHOI and SFI2 output is larger than FLX_I2 and FLX_HOI
+       if ( i2_ndx > 0 ) then
+         if( has_emis(i2_ndx)  ) then
+           sflx(i,i2_ndx) = 0._r8
+         endif
+       endif
+
+       if ( hoi_ndx > 0 ) then
+         if( has_emis(hoi_ndx)  ) then
+           sflx(i,hoi_ndx) = 0._r8
+         endif
+       endif
+!rpf_CESM2_SLH
 
     end do
 

@@ -20,7 +20,7 @@ module mo_gas_phase_chemdr
 
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
-  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, cldice_ndx, snow_ndx
+  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, cldice_ndx, snow_ndx, cldliq_ndx
   integer :: o3_ndx, o3s_ndx, o3_inv_ndx, srf_ozone_pbf_ndx=-1
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
@@ -128,6 +128,7 @@ contains
     h2o_ndx = get_spc_ndx('H2O')
     hno3_ndx = get_spc_ndx('HNO3')
     hcl_ndx  = get_spc_ndx('HCL')
+    call cnst_get_ind( 'CLDLIQ', cldliq_ndx ) ! WSY
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
@@ -195,6 +196,18 @@ contains
     call addfld( 'HCL_TOTAL',  (/ 'lev' /), 'I', 'mol/mol', 'total hcl' )
     call addfld( 'HCL_GAS',    (/ 'lev' /), 'I', 'mol/mol', 'gas-phase hcl' )
     call addfld( 'HCL_STS',    (/ 'lev' /), 'I', 'mol/mol', 'STS condensed HCL' )
+
+!rpf_CESM2_SLH
+    call addfld( 'SAD_ICETROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing Tropospheric ICE SAD' )
+    call addfld( 'SAD_ICEORIG',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing ICE SAD without abovetropopause mask' )
+    call addfld( 'SAD_LIQTROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing Tropospheric LIQ SAD' )
+    call addfld( 'SAD_SSLT',        (/ 'lev' /), 'I', 'cm2/cm3', 'surface area density for seasalt' )
+    call addfld( 'SAD_SSLT_EFF',    (/ 'lev' /), 'I', 'cm2/cm3', 'effective surface area density for seasalt' )
+    call addfld( 'SAD_TOTAL',       (/ 'lev' /), 'I', 'cm2/cm3', 'surface area density for sulf + nit + oc + soa + bc' )
+    call addfld( 'CLNO2_YIELD',     (/ 'lev' /), 'I', 'unitless', 'CLNO2 yield for N2O5 on aerosols' )
+    call addfld( 'CLNO2_YIELD_SRF',  horiz_only, 'I', 'unitless', 'CLNO2 yield for N2O5 on aerosols at Surface' )
+    call addfld( 'TROPLEV',          horiz_only, 'I', 'index',    'Tropopause level vertical index' )
+!rpf_CESM2_SLH
 
     if (het1_ndx>0) then
        call addfld( 'het1_total', (/ 'lev' /), 'I', '/s', 'total N2O5 + H2O het rate constant' )
@@ -284,7 +297,7 @@ contains
     use mo_setrxt,         only : setrxt
     use mo_adjrxt,         only : adjrxt
     use mo_phtadj,         only : phtadj
-    use mo_usrrxt,         only : usrrxt
+    use mo_usrrxt,         only : usrrxt, has_ice_trp_rxts
     use mo_setinv,         only : setinv
     use mo_negtrc,         only : negtrc
     use mo_sulf,           only : sulf_interp
@@ -301,6 +314,7 @@ contains
     use constituents,      only : cnst_mw, cnst_type
     use mo_ghg_chem,       only : ghg_chem_set_rates, ghg_chem_set_flbc
     use mo_sad,            only : sad_strat_calc
+    use mo_sad,            only : icesad_trop_calc
     use charge_neutrality, only : charge_balance
     use mo_strato_rates,   only : ratecon_sfstrat
     use mo_aero_settling,  only : strat_aer_settling
@@ -457,6 +471,21 @@ contains
   ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
     real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
 
+!rpf_CESM2_SLH
+    real(r8) :: radius_trop(ncol,pver)         ! radius of sulfate, nat, & ice ( cm )
+    real(r8) :: sad_ice_trop(ncol,pver)         ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 )
+    real(r8) :: sad_ice_trop_orig(ncol,pver)    ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 )
+
+    real(r8) :: h2o_liq(ncol,pver)              ! h2o condensed phase concentration (mol/mol) (only liquid)
+    real(r8) :: sad_liq_trop(ncol,pver)         ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 ) (only liquid)
+    real(r8) :: cldliq(ncol,pver)               ! cloud water "liquid" (kg/kg)
+
+    real(r8) :: sad_sslt(ncol,pver)             ! surf area density of sea-salt ( cm^2/cm^3 )
+    real(r8) :: sad_sslt_eff(ncol,pver)         ! surf area density of sea-salt ( cm^2/cm^3 )
+    real(r8) :: clno2_yield (ncol,pver)         ! originally implemented by jfl
+
+!rpf_CESM2_SLH
+
 !
 ! CCMI
 !
@@ -493,6 +522,10 @@ contains
 
     ! initialize to NaN to hopefully catch user defined rxts that go unset
     reaction_rates(:,:,:) = nan
+
+    sad_ice_trop_orig(:,:) = nan
+    sad_ice_trop(:,:) = nan
+    sad_liq_trop(:,:) = nan
 
     delt_inverse = 1._r8 / delt
     !-----------------------------------------------------------------------
@@ -664,6 +697,7 @@ contains
           else
              cldice(:ncol,k) = q(:ncol,k,cldice_ndx)
           endif
+          cldliq(:ncol,k) = q(:ncol,k,cldliq_ndx)
        end do
        do m = 1,2
           do k = 1,pver
@@ -672,6 +706,7 @@ contains
        end do
 
        call mmr2vmri( cldice(:ncol,:), h2o_cond(:ncol,:), mbar(:ncol,:), cnst_mw(cldice_ndx), ncol )
+       call mmr2vmri( cldliq(:ncol,:), h2o_liq(:ncol,:),  mbar(:ncol,:), cnst_mw(cldliq_ndx), ncol )
 
        !-----------------------------------------------------------------------
        !        ... call SAD routine
@@ -729,6 +764,30 @@ contains
 
     endif stratochem
 
+    !rpf_CESM2_SLH
+    if ( has_ice_trp_rxts ) then
+       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_cond, strato_sad(:ncol,:), &
+            radius_trop, sad_ice_trop, ncol, troplev, pbuf )
+       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_liq,  strato_sad(:ncol,:), &
+            radius_trop, sad_liq_trop, ncol, troplev, pbuf )
+
+       sad_ice_trop_orig(:,:) = sad_ice_trop(:,:)
+       do k = 1,pver
+          do i = 1,ncol
+             !Check that we will not duplicate het reactions in the stratosphere and troposphere.
+             if( sad_strat(i,k,3) > 0._r8 .and. sad_ice_trop(i,k) > 0._r8 ) then
+                sad_ice_trop(i,k) = 0._r8
+             end if
+          end do
+       end do
+
+       call outfld( 'SAD_ICETROP',  sad_ice_trop(:,:),      ncol, lchnk )
+       call outfld( 'SAD_ICEORIG',  sad_ice_trop_orig(:,:), ncol, lchnk )
+       call outfld( 'SAD_LIQTROP',  sad_liq_trop(:,:),      ncol, lchnk )
+    endif
+    !rpf_CESM2_SLH
+
+
 !      NOTE: For gas-phase solver only.
 !            ratecon_sfstrat needs total hcl.
     if (hcl_ndx>0) then
@@ -782,8 +841,14 @@ contains
     cwat(:ncol,:pver) = cldw(:ncol,:pver)
 
     call usrrxt( state, reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
-                 pmid, invariants(:,:,indexm), sulfate, mmr, relhum, strato_sad, &
-                 troplevchem, dlats, ncol, sad_trop, reff, cwat, mbar, pbuf )
+                 pmid, invariants(:,:,indexm), sulfate, mmr, relhum, strato_sad,           &
+                 troplevchem, dlats, ncol, sad_trop, reff, cwat, mbar, pbuf,               &
+!rpf_CESM2_SLH
+                 sad_sslt, sad_sslt_eff,                                                   &
+                 clno2_yield,                                                              &
+                 vmr, ocnfrac, icefrac,                                                    &
+                 sad_ice_trop, sad_liq_trop, sad_ice_trop_orig )
+!rpf_CESM2_SLH
 
     call outfld( 'SAD_TROP', sad_trop(:ncol,:), ncol, lchnk )
 
@@ -796,6 +861,14 @@ contains
     call outfld( 'REFF_STRAT', reff_strat(:ncol,:), ncol, lchnk )
     reff(:ncol,:)=reff(:ncol,:)+reff_strat(:ncol,:)
     call outfld( 'REFF_AERO', reff(:ncol,:), ncol, lchnk )
+
+!rpf_CESM2_SLH
+    call outfld('SAD_SSLT'    ,    sad_sslt(:ncol,:)    ,        ncol,lchnk)
+    call outfld('SAD_SSLT_EFF',    sad_sslt_eff(:ncol,:),        ncol,lchnk)
+    call outfld('SAD_TOTAL'   ,    sad_trop (:ncol,:)   ,        ncol,lchnk)
+    call outfld('CLNO2_YIELD',     clno2_yield(:ncol,:),         ncol,lchnk)
+    call outfld('CLNO2_YIELD_SRF', clno2_yield(:ncol,pver),      ncol,lchnk)
+!rpf_CESM2_SLH
 
     if (het1_ndx>0) then
        call outfld( 'het1_total', reaction_rates(:,:,het1_ndx), ncol, lchnk )
@@ -1123,6 +1196,8 @@ contains
                     nhx_nitrogen_flx(:ncol), noy_nitrogen_flx(:ncol) )
 
     call rate_diags_calc( reaction_rates(:,:,:), vmr(:,:,:), invariants(:,:,indexm), ncol, lchnk )
+
+    call outfld('TROPLEV', real(troplev(:ncol),r8), ncol, lchnk )
 !
 ! jfl
 !

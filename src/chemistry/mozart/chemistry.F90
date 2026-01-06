@@ -348,6 +348,7 @@ end function chem_is
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
     use ocean_emis,       only: ocean_emis_readnl
+    use mo_slh_routines,  only: slh_readnl
 
     ! args
 
@@ -560,6 +561,7 @@ end function chem_is
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
+   call slh_readnl(nlfile)
 
  end subroutine chem_readnl
 
@@ -651,6 +653,7 @@ end function chem_is_active
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init, ocean_emis_species
     use mo_srf_emissions,    only : has_emis
+    use mo_slh_routines,     only : iodine_emissions_init
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -785,6 +788,8 @@ end function chem_is_active
 
     call ocean_emis_init()
 
+    call iodine_emissions_init( srf_emis_specifier )
+
     !-----------------------------------------------------------------------
     ! Set names of chemistry variable tendencies and declare them as history variables
     !-----------------------------------------------------------------------
@@ -856,6 +861,7 @@ end function chem_is_active
     use hco_cc_emissions, only: hco_set_srf_emissions
     use fire_emissions,   only: fire_emissions_srf
     use ocean_emis,       only: ocean_emis_getflux
+    use mo_slh_routines,  only: iodine_emissions_srf
 
     ! Arguments:
 
@@ -931,6 +937,9 @@ end function chem_is_active
 
     ! air-sea exchange of trace gases
     call ocean_emis_getflux(lchnk, ncol, state, cam_in%u10, cam_in%sst, cam_in%ocnfrac, cam_in%icefrac, cam_in%cflx)
+
+    ! I2 and HOI surface emissions
+    call iodine_emissions_srf( state, cam_in )
 
   end subroutine chem_emissions
 

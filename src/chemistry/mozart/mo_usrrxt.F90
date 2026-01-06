@@ -9,6 +9,7 @@ module mo_usrrxt
 
   private
   public :: usrrxt, usrrxt_inti, usrrxt_hrates
+  public :: has_ice_trp_rxts
 
   save
 
@@ -229,6 +230,82 @@ module mo_usrrxt
   integer :: usr_CO42_OH_ndx
 !lke--
 
+!rpf_CESM2_SLH
+! ================================================
+! Halogen recycling on seasalts
+! orginally from ordc
+! ================================================
+  integer :: het_ss_0_ndx
+  integer :: het_ss_1_ndx
+  integer :: het_ss_2_ndx
+  integer :: het_ss_3_ndx
+  integer :: het_ss_4_ndx
+  integer :: het_ss_5_ndx
+  integer :: het_ss_6_ndx
+  integer :: het_ss_7_ndx
+  integer :: het_ss_8_ndx
+  integer :: het_ss_9_ndx
+  integer :: het_ss_10_ndx
+  integer :: het_ss_11_ndx
+  integer :: het_ss_12_ndx
+
+  integer :: ss_ixoy_2_ndx
+  integer :: ss_ixoy_3_ndx
+  integer :: ss_ixoy_4_ndx
+  integer :: sslt1_ndx,sslt2_ndx,sslt3_ndx,sslt4_ndx
+
+  integer :: id_hocl
+  integer :: id_hcl
+  integer :: id_hbr
+  integer :: id_hi
+  integer :: id_hobr
+  integer :: id_hoi
+  integer :: id_clono2
+  integer :: id_brono2
+  integer :: id_iono2
+  integer :: id_n2o5
+
+  integer :: usr_N2O5_aer1_ndx
+  integer :: usr_N2O5_aer2_ndx
+  integer :: usr_N2O5_HCL_ndx
+
+  integer :: ice_trp_cl_1_ndx
+  integer :: ice_trp_br_1_ndx
+  integer :: ice_trp_i_1_ndx
+  integer :: ice_trp_i_2_ndx
+  integer :: ice_trp_i_3_ndx
+  integer :: ice_trp_i_4_ndx
+  integer :: ice_trp_hbr_5_ndx
+  integer :: ice_trp_hbr_6_ndx
+  integer :: ice_trp_hcl_5_ndx
+  integer :: ice_trp_hcl_6_ndx
+  integer :: ice_trp_hi_5_ndx
+  integer :: ice_trp_hi_6_ndx
+
+  integer :: ice_fr_hoi_ndx
+  integer :: liq_fr_hoi_ndx
+  integer :: ice_fr_hi_ndx
+  integer :: liq_fr_hi_ndx
+  integer :: ice_fr_iono2_ndx
+  integer :: liq_fr_iono2_ndx
+  integer :: ice_fr_brono2_ndx
+
+  integer :: usr_IO_IO_a_ndx
+  integer :: usr_IO_IO_b_ndx
+  integer :: usr_IO_OIO_ndx
+  integer :: usr_OIO_OIO_ndx
+  integer :: usr_HOI_NO3_ndx
+  integer :: usr_I2O2_a_ndx
+  integer :: usr_I2O2_b_ndx
+  integer :: usr_I2O4_ndx
+  integer :: usr_IONO2_ndx
+
+  logical, protected :: has_ice_trp_rxts
+  logical :: has_het_ss_rxts
+  logical :: has_ss_ixoy_rxts
+  logical :: has_aerosols
+!rpf_CESM2_SLH
+
   real(r8), parameter :: t0     = 300._r8                ! K
   real(r8), parameter :: trlim2 = 17._r8/3._r8           ! K
   real(r8), parameter :: trlim3 = 15._r8/3._r8           ! K
@@ -260,6 +337,11 @@ contains
     usr_HNO3_OH_ndx      = get_rxt_ndx( 'usr_HNO3_OH' )
     usr_HO2NO2_M_ndx     = get_rxt_ndx( 'usr_HO2NO2_M' )
     usr_N2O5_aer_ndx     = get_rxt_ndx( 'usr_N2O5_aer' )
+!rpf_CESM2_SLH
+    usr_N2O5_aer1_ndx    = get_rxt_ndx( 'usr_N2O5_aer1' )
+    usr_N2O5_aer2_ndx    = get_rxt_ndx( 'usr_N2O5_aer2' )
+    usr_N2O5_HCL_ndx     = get_rxt_ndx( 'usr_N2O5_HCL' )
+!rpf_CESM2_SLH
     usr_NO3_aer_ndx      = get_rxt_ndx( 'usr_NO3_aer' )
     usr_NO2_aer_ndx      = get_rxt_ndx( 'usr_NO2_aer' )
     usr_CO_OH_ndx        = get_rxt_ndx( 'usr_CO_OH' )
@@ -447,6 +529,99 @@ contains
     elec2_ndx  = get_rxt_ndx( 'elec2' )
     elec3_ndx  = get_rxt_ndx( 'elec3' )
 
+!rpf_CESM2_SLH
+! ================================================
+! VSLS Halogen recycling on seasalts
+! orginally from ordc
+! ================================================
+    het_ss_0_ndx         = get_rxt_ndx( 'het_ss_0' )
+    het_ss_1_ndx         = get_rxt_ndx( 'het_ss_1' )
+    het_ss_2_ndx         = get_rxt_ndx( 'het_ss_2' )
+    het_ss_3_ndx         = get_rxt_ndx( 'het_ss_3' )
+    het_ss_4_ndx         = get_rxt_ndx( 'het_ss_4' )
+    het_ss_5_ndx         = get_rxt_ndx( 'het_ss_5' )
+    het_ss_6_ndx         = get_rxt_ndx( 'het_ss_6' )
+    het_ss_7_ndx         = get_rxt_ndx( 'het_ss_7' )
+    het_ss_8_ndx         = get_rxt_ndx( 'het_ss_8' )
+    het_ss_9_ndx         = get_rxt_ndx( 'het_ss_9'  )
+    het_ss_10_ndx        = get_rxt_ndx( 'het_ss_10' )
+    het_ss_11_ndx        = get_rxt_ndx( 'het_ss_11' )
+    het_ss_12_ndx        = get_rxt_ndx( 'het_ss_12' )
+
+    ss_ixoy_2_ndx        = get_rxt_ndx( 'ss_ixoy_2' )
+    ss_ixoy_3_ndx        = get_rxt_ndx( 'ss_ixoy_3' )
+    ss_ixoy_4_ndx        = get_rxt_ndx( 'ss_ixoy_4' )
+
+!   sslt1_ndx = get_spc_ndx( 'SSLT01' )
+!   sslt2_ndx = get_spc_ndx( 'SSLT02' )
+!   sslt3_ndx = get_spc_ndx( 'SSLT03' )
+!   sslt4_ndx = get_spc_ndx( 'SSLT04' )
+    sslt1_ndx = get_spc_ndx( 'ncl_a1' )
+    sslt2_ndx = get_spc_ndx( 'ncl_a2' )
+    sslt3_ndx = get_spc_ndx( 'ncl_a3' )
+    sslt4_ndx = get_spc_ndx( 'ncl_a4' )
+
+    ice_trp_cl_1_ndx     = get_rxt_ndx( 'ice_trp_cl_1' )
+    ice_trp_br_1_ndx     = get_rxt_ndx( 'ice_trp_br_1' )
+    ice_trp_i_1_ndx      = get_rxt_ndx( 'ice_trp_i_1'  )
+    ice_trp_i_2_ndx      = get_rxt_ndx( 'ice_trp_i_2' )
+    ice_trp_i_3_ndx      = get_rxt_ndx( 'ice_trp_i_3' )
+    ice_trp_i_4_ndx      = get_rxt_ndx( 'ice_trp_i_4' )
+    ice_trp_hbr_5_ndx    = get_rxt_ndx( 'ice_trp_hbr_5' )
+    ice_trp_hbr_6_ndx    = get_rxt_ndx( 'ice_trp_hbr_6' )
+    ice_trp_hcl_5_ndx    = get_rxt_ndx( 'ice_trp_hcl_5' )
+    ice_trp_hcl_6_ndx    = get_rxt_ndx( 'ice_trp_hcl_6' )
+    ice_trp_hi_5_ndx     = get_rxt_ndx( 'ice_trp_hi_5'  )
+    ice_trp_hi_6_ndx     = get_rxt_ndx( 'ice_trp_hi_6'  )
+
+    ice_fr_hoi_ndx       = get_rxt_ndx( 'ice_fr_hoi' )
+    liq_fr_hoi_ndx       = get_rxt_ndx( 'liq_fr_hoi' )
+    ice_fr_hi_ndx        = get_rxt_ndx( 'ice_fr_hi' )
+    liq_fr_hi_ndx        = get_rxt_ndx( 'liq_fr_hi' )
+    ice_fr_iono2_ndx     = get_rxt_ndx( 'ice_fr_iono2' )
+    liq_fr_iono2_ndx     = get_rxt_ndx( 'liq_fr_iono2' )
+    ice_fr_brono2_ndx    = get_rxt_ndx( 'ice_fr_brono2' )
+
+    usr_IO_IO_a_ndx      = get_rxt_ndx ( 'usr_IO_IO_a' )
+    usr_IO_IO_b_ndx      = get_rxt_ndx ( 'usr_IO_IO_b' )
+    usr_IO_OIO_ndx       = get_rxt_ndx ( 'usr_IO_OIO ' )
+    usr_OIO_OIO_ndx      = get_rxt_ndx ( 'usr_OIO_OIO' )
+    usr_HOI_NO3_ndx      = get_rxt_ndx ( 'usr_HOI_NO3' )
+    usr_I2O2_a_ndx       = get_rxt_ndx ( 'usr_I2O2_a' )
+    usr_I2O2_b_ndx       = get_rxt_ndx ( 'usr_I2O2_b' )
+    usr_I2O4_ndx         = get_rxt_ndx ( 'usr_I2O4' )
+    usr_IONO2_ndx        = get_rxt_ndx ( 'usr_IONO2' )
+
+    id_hocl              = get_spc_ndx( 'HOCL' )
+    id_hcl               = get_spc_ndx( 'HCL' )
+    id_hbr               = get_spc_ndx( 'HBR' )
+    id_hi                = get_spc_ndx( 'HI' )
+    id_hobr              = get_spc_ndx( 'HOBR' )
+    id_hoi               = get_spc_ndx( 'HOI' )
+    id_clono2            = get_spc_ndx( 'CLONO2' )
+    id_brono2            = get_spc_ndx( 'BRONO2' )
+    id_iono2             = get_spc_ndx( 'IONO2' )
+
+    id_n2o5              = get_spc_ndx( 'N2O5' )
+
+    has_het_ss_rxts  = het_ss_0_ndx  > 0  .or.  het_ss_1_ndx  > 0  .or.  het_ss_2_ndx  > 0 .or.    &
+                       het_ss_3_ndx  > 0  .or.  het_ss_4_ndx  > 0  .or.  het_ss_5_ndx  > 0 .or.    &
+                       het_ss_6_ndx  > 0  .or.  het_ss_7_ndx  > 0  .or.  het_ss_8_ndx  > 0 .or.    &
+                       het_ss_9_ndx  > 0  .or.  het_ss_10_ndx > 0  .or.  het_ss_11_ndx > 0 .or. het_ss_12_ndx > 0
+
+    has_ss_ixoy_rxts = ss_ixoy_2_ndx  > 0  .or.  ss_ixoy_3_ndx  > 0  .or.  ss_ixoy_4_ndx  > 0
+
+    has_ice_trp_rxts = ice_trp_cl_1_ndx > 0  .or.  ice_trp_br_1_ndx > 0  .or.  ice_trp_i_1_ndx  > 0  .or. &
+                       ice_trp_i_2_ndx  > 0  .or.  ice_trp_i_3_ndx  > 0  .or.  ice_trp_i_4_ndx  > 0  .or. &
+                       ice_trp_hbr_5_ndx > 0 .or.  ice_trp_hbr_6_ndx > 0 .or.  &
+                       ice_trp_hcl_5_ndx > 0 .or.  ice_trp_hcl_6_ndx > 0 .or.  &
+                       ice_trp_hi_5_ndx > 0  .or.  ice_trp_hi_6_ndx > 0  .or.  &
+                       ice_fr_hoi_ndx > 0    .or.  liq_fr_hoi_ndx > 0    .or.  &
+                       ice_fr_hi_ndx > 0     .or.  liq_fr_hi_ndx > 0     .or.  &
+                       ice_fr_iono2_ndx > 0  .or.  liq_fr_iono2_ndx > 0  .or.  &
+                       ice_fr_brono2_ndx > 0
+!rpf_CESM2_SLH
+
     do i = 1,nean
       write (xchar,'(i4)') i
       rxtname = 'ean'//trim(adjustl(xchar))
@@ -594,15 +769,36 @@ contains
                             ,usr_TERPNT1_aer_ndx,usr_TERPNPT_aer_ndx,usr_TERPNPT1_aer_ndx,usr_TERPFDN_aer_ndx,usr_SQTN_aer_ndx &
                             ,usr_TERPHFN_aer_ndx,usr_TERPDHDP_aer_ndx,usr_TERPACID_aer_ndx,tag_TERPACO3_NO2_ndx &
                             ,usr_TERPAPAN_M_ndx,tag_TERPA3CO3_NO2_ndx, usr_TERPA3PAN_M_ndx,usr_ICHE_aer_ndx,usr_ISOPFNC_aer_ndx &
-                            ,usr_ISOPFDNC_aer_ndx
+!rpf_CESM2_SLH
+                            ,usr_ISOPFDNC_aer_ndx                                                     &
+                            ,usr_IO_IO_a_ndx, usr_IO_IO_b_ndx, usr_IO_OIO_ndx, usr_OIO_OIO_ndx        &
+                            ,usr_HOI_NO3_ndx                                                          &
+                            ,usr_I2O2_a_ndx,  usr_I2O2_b_ndx,  usr_I2O4_ndx,   usr_IONO2_ndx          &
+                            ,id_hocl,id_hcl,id_hbr,id_hi,id_hobr,id_hoi,id_clono2,id_brono2,id_iono2  &
+                            ,usr_N2O5_HCL_ndx                                                         &
+                            ,id_n2o5
+!rpf_CESM2_SLH
+       write(iulog,*) 'usrrxt_inti: has_het_ss_rxts : ',has_het_ss_rxts
+       write(iulog,*) 'usrrxt_inti: has_ice_trp_rxts : ',has_ice_trp_rxts
+       write(iulog,*) 'usrrxt_inti: has_ss_ixoy_rxts : ',has_ss_ixoy_rxts
 
     end if
 
   end subroutine usrrxt_inti
 
-  subroutine usrrxt( state, rxt, temp, tempi, tempe, invariants, h2ovmr,  &
-                     pmid, m, sulfate, mmr, relhum, strato_sad, &
-                     tropchemlev, dlat, ncol, sad_trop, reff_trop, cwat, mbar, pbuf )
+
+!rpf_CESM2_SLH
+  ! ============================================
+  ! VSLS Halogen chemistry incorporated
+  ! ============================================
+  subroutine usrrxt( state, rxt, temp, tempi, tempe, invariants, h2ovmr,                   &
+                     pmid, m, sulfate, mmr, relhum, strato_sad,                            &
+                     tropchemlev, dlat, ncol, sad_trop, reff_trop, cwat, mbar, pbuf,       &
+                     sad_sslt, sad_sslt_eff,                                               &
+                     clno2_yield,                                                          &
+                     vmr, ocnfrac, icefrac,                                         &
+                     sad_ice_trop, sad_liq_trop, sad_ice_trop_orig )
+!rpf_CESM2_SLH
 
 !-----------------------------------------------------------------
 !        ... set the user specified reaction rates
@@ -616,6 +812,12 @@ contains
     use carma_flags_mod, only : carma_hetchem_feedback
     use aero_model,      only : aero_model_surfarea
     use rad_constituents,only : rad_cnst_get_info
+!rpf_CESM2_SLH
+    use time_manager,     only : get_curr_calday
+    use infnan,           only : nan
+    use mo_slh_routines,  only : SSAdehal_ScalingFactor, SSAhno3_ScalingFactor, SSAn2o5_ScalingFactor, &
+                                 ICEfraprx_ScalingFactor_I, ICEfraprx_ScalingFactor_Br, LIQfraprx_ScalingFactor_I
+!rpf_CESM2_SLH
 
     implicit none
 
@@ -642,6 +844,23 @@ contains
     real(r8), intent(out)   :: sad_trop(pcols,pver)       ! tropospheric surface area density (cm2/cm3)
     real(r8), intent(out)   :: reff_trop(pcols,pver)      ! tropospheric effective radius (cm)
     type(physics_state),    intent(in) :: state           ! Physics state variables
+
+!rpf_CESM2_SLH
+  ! --------------------------------
+  ! VSLS Halogen chemistry incorporated
+  ! --------------------------------
+    real(r8), intent(in)    :: vmr(ncol ,pver,gas_pcnst)  ! species mixing ratio (mol/mol)
+    real(r8), intent(in)    :: ocnfrac(pcols)             ! ocean fraction
+    real(r8), intent(in)    :: icefrac(pcols)             ! sea-ice fraction
+    real(r8), intent(in)    :: sad_ice_trop(ncol,pver)    ! surf area density of ice ( cm^2/cm^3 ) in Troposphere
+    real(r8), intent(in)    :: sad_ice_trop_orig(ncol,pver)    ! surf area density of ice ( cm^2/cm^3 ) in Troposphere
+    real(r8), intent(in)    :: sad_liq_trop(ncol,pver)    ! surf area density of liquid water ( cm^2/cm^3 ) in Troposphere
+    real(r8), intent(inout) :: sad_sslt    (ncol,pver)    ! surf area density of ice ( cm^2/cm^3 ) in Troposphere
+    real(r8), intent(inout) :: sad_sslt_eff(ncol,pver)    ! surf area density of ice ( cm^2/cm^3 ) in Troposphere
+    real(r8), intent(inout) :: clno2_yield (ncol,pver)    ! originally implemented by jfl
+!rpf_CESM2_SLH
+
+
     type(physics_buffer_desc), pointer :: pbuf(:)
 
 !-----------------------------------------------------------------
@@ -722,6 +941,95 @@ contains
     real(r8) ::  c_iche, c_isopfnc, c_isopfdnc
     real(r8) ::  c_terpnt, c_terpnt1, c_terpnpt, c_terpnpt1, c_terpfdn, c_sqtn, c_terphfn, c_terpdhdp, c_terpacid
 
+
+!rpf_CESM2_SLH
+!****************************************************************
+  ! --------------------------------------
+  ! VSLS Halogen chemistry incorporated
+  ! -------------------------------------
+    real(r8), parameter :: gamma_brono2_ss    = 0.01_r8    ! originally 0.08_r8 in CESM1 (ordc) ! originaly in CESM2 0.020_r8, now x0.5 (jv)
+    real(r8), parameter :: gamma_brno2_ss     = 0.005_r8   ! originally 0.04_r8 in CESM1 (ordc) ! originaly in CESM2 0.010_r8, now x0.5 (jv)
+    real(r8), parameter :: gamma_hobr_ss      = 0.0125_r8  ! originally 0.1_r8  in CESM1 (ordc) ! originaly in CESM2 0.025_r8, now x0.5 (jv)
+    real(r8), parameter :: gamma_clono2_ss    = 0.006_r8   ! originally 0.02_r8 in CESM1 (ordc)
+    real(r8), parameter :: gamma_clno2_ss     = 0.006_r8   ! originally 0.02_r8 in CESM1 (ordc)
+    real(r8), parameter :: gamma_hocl_ss      = 0.03_r8    ! originally 0.1_r8  in CESM1 (ordc)
+    real(r8), parameter :: gamma_iono2_ss     = 0.003_r8   ! originally 0.01_r8 in CESM1 (ordc)
+    real(r8), parameter :: gamma_ino2_ss      = 0.006_r8   ! originally 0.02_r8 in CESM1 (ordc)
+    real(r8), parameter :: gamma_hoi_ss       = 0.0018_r8  ! originally 0.06_r8 in CESM1 (ordc)
+
+    real(r8), parameter :: gamma_ss_ixoy_2    = 0.0025_r8  ! originally 0.01_r8 in CESM1 (rpf)
+    real(r8), parameter :: gamma_ss_ixoy_3    = 0.0025_r8  ! originally 0.01_r8 in CESM1 (rpf)
+    real(r8), parameter :: gamma_ss_ixoy_4    = 0.0025_r8  ! originally 0.01_r8 in CESM1 (rpf)
+
+    real(r8), parameter :: gamma_hno3_ss      = 0.010_r8   ! originally 0.05_r8 in CESM1 (liqy)
+    real(r8), parameter :: gamma_n2o5_ss      = 0.0143_r8  ! identical to CESM1 (jfl)
+    real(r8), parameter :: gamma_hcln2o5_aerosol = 0.0143_r8
+
+    real(r8), parameter :: gamma_clno2_sul  = 0.1_r8
+    real(r8), parameter :: gamma_brno2_sul  = 0.1_r8
+    real(r8), parameter :: gamma_iono2_sul  = 0.1_r8
+    real(r8), parameter :: gamma_ino2_sul   = 0.1_r8
+    real(r8), parameter :: gamma_brono2_sul = 0.2_r8
+    real(r8), parameter :: gamma_hbr_wet    = 0.1_r8
+    real(r8), parameter :: gamma_hcl_wet    = 0.1_r8
+    real(r8), parameter :: gamma_hi_wet     = 0.1_r8
+
+    !rpf: Now we implemented ScalingFactors in user_nl_cam (&slh_nl)
+    real(r8), parameter :: gamma_fr_hoi_ice   = 3.0e-4_r8 ! originally 3.0e-4 for 2x2.5(26L) and 1.6e-4 for 1x1(56L) in CESM1 - Use ICEfraprx_ScalingFactor_I (rpf)
+    real(r8), parameter :: gamma_fr_hoi_liq   = 3.0e-4_r8 ! originally 1.0e-4_r8 in CESM1 (rpf) - up to 3.0e-3_r8 in CESM2 - Use LIQfraprx_ScalingFactor_I (rpf)
+    real(r8), parameter :: gamma_fr_iono2_ice = 0.02_r8   ! originally 0.005_r8 in CESM1 (rpf)
+    real(r8), parameter :: gamma_fr_iono2_liq = 0.03_r8   ! identical to CESM1 (rpf)
+    real(r8), parameter :: gamma_fr_hi_ice = 0.02_r8      ! identical to CESM1 (rpf)
+    real(r8), parameter :: gamma_fr_hi_liq = 0.02_r8      ! identical to CESM1 (rpf)
+
+    real(r8), parameter :: gamma_fr_brono2_ice = 1.0e-2_r8  ! in CESM1 BrONO2 washout was based on NEU routine (rpf) - from 1.0e-2_r8 up to 0.030_r8 in CESM2 - Use ICEfraprx_ScalingFactor_Br (rpf)
+
+    real(r8), parameter :: gamma_hclhocl_ice = 0.2_r8     ! copied values from stratosphere
+    real(r8), parameter :: gamma_hclhobr_ice = 0.3_r8     ! copied values from stratosphere
+    real(r8), parameter :: gamma_hbrhocl_ice = 0.2_r8
+    real(r8), parameter :: gamma_hbrhobr_ice = 0.12_r8
+    real(r8), parameter :: gamma_hihocl_ice  = 0.12_r8
+    real(r8), parameter :: gamma_hihobr_ice  = 0.12_r8
+    real(r8), parameter :: gamma_hbrhoi_ice  = 0.12_r8
+    real(r8), parameter :: gamma_hihoi_ice   = 0.12_r8
+    real(r8), parameter :: gamma_hclhoi_ice  = 0.12_r8
+    real(r8), parameter :: gamma_clono2_ice  = 0.3_r8
+    real(r8), parameter :: gamma_brono2_ice  = 0.1_r8
+    real(r8), parameter :: gamma_iono2_ice   = 0.1_r8
+    real(r8), parameter :: gamma_hoi_ice     = 0.3_r8
+    real(r8), parameter :: gamma_hbrhocl_add = 0.25_r8
+    real(r8), parameter :: gamma_hbrhobr_add = 0.25_r8
+    real(r8), parameter :: gamma_clono2_add  = 0.3_r8
+    real(r8), parameter :: gamma_brono2_add  = 0.3_r8
+
+    real(r8)            :: hclvmr, hcldeni
+    real(r8)            :: hoclvmr, hocldeni
+    real(r8)            :: hbrvmr, hbrdeni
+    real(r8)            :: hobrvmr, hobrdeni
+    real(r8)            :: clono2vmr, brono2vmr, iono2vmr
+    real(r8)            :: hivmr, hoivmr, hoideni, hideni
+    real(r8)            :: n2o5vmr, n2o5deni
+
+    real(r8), parameter :: small = 1.e-16_r8
+
+    real(r8)            :: latitude, DF     ! DF is the Depletion Factor (Yang et al., JGR 2005)
+    real(r8), parameter :: rad2deg = 180.0_r8/pi  ! radians to degrees
+    real(r8), parameter :: dfmax = 0.9_r8   ! originally 0.7_r8 in CESM1 (rpf)
+    real(r8), parameter :: dfmin = 0.3_r8   ! originally 0.1_r8 in CESM1 (rpf)
+    real(r8)            :: calday
+    real(r8)            :: press_lev            ! Mid-point pressure (hPa)
+    real(r8)            :: logical_sslt         ! Logical condition to avoid SSLT_recycling in the Stratosphere
+    real(r8)            :: sad_sslt_mask        ! Logical condition to avoid SSLT_recycling above continents
+    real(r8)            :: ssur_tot
+    real(r8) ::  press_1d(ncol)                 ! Mid-point pressure (hPa)
+    real(r8) ::  temp_1d (ncol)                 ! and temperature (K).
+    real(r8) ::  work1 (ncol), work2 (ncol)     ! A & pre-exponential factors.
+                                                ! Used for some user-defined iodine reacs.
+                                                ! (some of them based on RRKM theory)
+!rpf_CESM2_SLH
+!**************************************************************
+
+
     real(r8) ::  amas
     !-----------------------------------------------------------------
     !	... density of sulfate aerosol
@@ -778,6 +1086,23 @@ contains
     real(r8) ::  exp_natom
     character(len=*), parameter :: subname = 'usrrxt'
 
+!rpf_CESM2_SLH
+    real(r8) :: total_sslt_mass
+    real(r8) :: xmin,xmax,ymin,ymax,clno2_a,clno2_b
+    real(r8) :: clno2_yield_Erin
+    real(r8) :: dummy_n2o5_clno2_rate
+    ! jfl: parameters for clno2 yield
+    xmin = 5.e-10_r8
+    xmax = 1.e-9_r8
+    ymin = 0.0_r8
+    ymax = 1.0_r8
+    clno2_a = (ymax-ymin)/(xmax-xmin)
+    clno2_b = ymax - clno2_a * xmax
+    clno2_yield = 0._r8
+    clno2_yield_Erin = 0.138_r8
+    dummy_n2o5_clno2_rate = 0._r8
+!rpf_CESM2_SLH
+
     ! get info about the modal aerosols
     ! get ntot_amode
     call rad_cnst_get_info(0, nmodes=ntot_amode)
@@ -786,6 +1111,10 @@ contains
     if (ntot_amode>0.and.nbins>0) then
       call endrun(subname // ':: ERROR running with MAM and CARMA simultaneously not supported.')
     end if
+
+!rpf_CESM2_SLH
+    calday = get_curr_calday()
+!rpf_CESM2_SLH
 
     if (ntot_amode>0) then
        allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
@@ -796,9 +1125,13 @@ contains
     endif
 
     sfc_array(:,:,:) = 0._r8
-    dm_array(:,:,:) = 0._r8
-    sad_trop(:,:) = 0._r8
-    reff_trop(:,:) = 0._r8
+    dm_array (:,:,:) = 0._r8
+    sad_trop (:,:)   = 0._r8
+    reff_trop(:,:)   = 0._r8
+!rpf_CESM2_SLH
+    sad_sslt     (:,:) = 0._r8
+    sad_sslt_eff (:,:) = 0._r8
+!rpf_CESM2_SLH
 
     if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 ) then
 
@@ -807,18 +1140,71 @@ contains
           sad_trop(:ncol,:pver)=strato_sad(:ncol,:pver)
        else
 
+!rpf_CESM2_SLH
           call aero_model_surfarea( &
                state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
-               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
+               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop, sad_sslt )
+!rpf_CESM2_SLH
 
        endif
     endif
+
+!rpf_CESM2_SLH
+    hoclvmr   = 0._r8
+    hocldeni  = 0._r8 !rpf check if hocldeni values (and all #deni) need to be set to zero or NAN
+    hbrvmr    = 0._r8
+    hbrdeni   = 0._r8
+    hobrvmr   = 0._r8
+    hobrdeni  = 0._r8
+    clono2vmr = 0._r8
+    brono2vmr = 0._r8
+    iono2vmr  = 0._r8
+    hoivmr    = 0._r8
+    hoideni   = 0._r8
+    !-----------------------------------------------------------------------
+    !     	... intialize rate constants
+    !-----------------------------------------------------------------------
+    if ( ss_ixoy_2_ndx > 0 ) rxt(:,:,ss_ixoy_2_ndx) = 0._r8
+    if ( ss_ixoy_3_ndx > 0 ) rxt(:,:,ss_ixoy_3_ndx) = 0._r8
+    if ( ss_ixoy_4_ndx > 0 ) rxt(:,:,ss_ixoy_4_ndx) = 0._r8
+
+    if ( ice_trp_i_2_ndx > 0 )   rxt(:,:,ice_trp_i_2_ndx)   = 0._r8
+    if ( ice_trp_i_3_ndx > 0 )   rxt(:,:,ice_trp_i_3_ndx)   = 0._r8
+    if ( ice_trp_i_4_ndx > 0 )   rxt(:,:,ice_trp_i_4_ndx)   = 0._r8
+
+    if ( ice_trp_cl_1_ndx > 0 )  rxt(:,:,ice_trp_cl_1_ndx)  = 0._r8
+    if ( ice_trp_br_1_ndx > 0 )  rxt(:,:,ice_trp_br_1_ndx)  = 0._r8
+    if ( ice_trp_i_1_ndx > 0 )   rxt(:,:,ice_trp_i_1_ndx)   = 0._r8
+
+    if ( ice_trp_hbr_5_ndx > 0 ) rxt(:,:,ice_trp_hbr_5_ndx) = 0._r8
+    if ( ice_trp_hbr_6_ndx > 0 ) rxt(:,:,ice_trp_hbr_6_ndx) = 0._r8
+    if ( ice_trp_hcl_5_ndx > 0 ) rxt(:,:,ice_trp_hcl_5_ndx) = 0._r8
+    if ( ice_trp_hcl_6_ndx > 0 ) rxt(:,:,ice_trp_hcl_6_ndx) = 0._r8
+    if ( ice_trp_hi_5_ndx > 0 )  rxt(:,:,ice_trp_hi_5_ndx)  = 0._r8
+    if ( ice_trp_hi_6_ndx > 0 )  rxt(:,:,ice_trp_hi_6_ndx)  = 0._r8
+
+    if ( ice_fr_hoi_ndx > 0 )    rxt(:,:,ice_fr_hoi_ndx)    = 0._r8
+    if ( liq_fr_hoi_ndx > 0 )    rxt(:,:,liq_fr_hoi_ndx)    = 0._r8
+    if ( ice_fr_hi_ndx > 0 )     rxt(:,:,ice_fr_hi_ndx)     = 0._r8
+    if ( liq_fr_hi_ndx > 0 )     rxt(:,:,liq_fr_hi_ndx)     = 0._r8
+    if ( ice_fr_iono2_ndx > 0 )  rxt(:,:,ice_fr_iono2_ndx)  = 0._r8
+    if ( liq_fr_iono2_ndx > 0 )  rxt(:,:,liq_fr_iono2_ndx)  = 0._r8
+
+    if ( ice_fr_brono2_ndx > 0 ) rxt(:,:,ice_fr_brono2_ndx) = 0._r8
+
+    if (usr_N2O5_HCL_ndx > 0 )   rxt(:,:,usr_N2O5_HCL_ndx)  = 0._r8
+!rpf_CESM2_SLH
+
 
     level_loop : do k = 1,pver
        tinv(:)           = 1._r8 / temp(:ncol,k)
        tp(:)             = 300._r8 * tinv(:)
        sqrt_t(:)         = sqrt( temp(:ncol,k) )
        sqrt_t_58(:)      = sqrt( temp(:ncol,k) / 58.0_r8 )
+!rpf_CESM2_SLH
+       press_1d(:)       = pmid (:ncol,k) / 100.  !hPa
+       temp_1d (:)       = temp (:ncol,k)
+!rpf_CESM2_SLH
 
 !-----------------------------------------------------------------
 !	... o + o2 + m --> o3 + m (JPL15-10)
@@ -891,7 +1277,11 @@ contains
        if( usr_NO2XNO3_M_ndx > 0 ) then
           if( tag_NO2_NO3_ndx > 0 ) then
              call comp_exp( exp_fac, -10840.0_r8*tinv, ncol )
-             rxt(:,k,usr_NO2XNO3_M_ndx) = rxt(:,k,tag_NO2_NO3_ndx) * 1.734138e26_r8 * exp_fac(:)
+!rpf_CESM2_SLH
+! Is there a typo in the pre-exponential factor? (1.72 instead of 1.73?) Which one is correct?
+!            rxt(:,k,usr_NO2XNO3_M_ndx) = rxt(:,k,tag_NO2_NO3_ndx) * 1.734138e26_r8 * exp_fac(:)
+             rxt(:,k,usr_NO2XNO3_M_ndx) = rxt(:,k,tag_NO2_NO3_ndx) * 1.724138e26_r8 * exp_fac(:)
+!rpf_CESM2_SLH
           else
              rxt(:,k,usr_NO2XNO3_M_ndx) = 0._r8
           end if
@@ -1110,7 +1500,7 @@ contains
           call comp_exp( exp_fac, -2557._r8*tinv, ncol )
           rxt(:,k,usr_N_O2_ndx) = 2.0e-18_r8 * temp(:ncol,k)**2.15_r8 * exp_fac(:)
        end if
-       
+
 !-----------------------------------------------------------------
 !       ... N2D + O2 -> NO + O
 ! "On the rate coefficient of the N(2D)+O2->NO+O reaction in the terrestrial thermosphere"
@@ -1130,13 +1520,17 @@ contains
        if( usr_N2D_e_ndx > 0 ) then
           rxt(:,k,usr_N2D_e_ndx) = 3.6e-10_r8 * sqrt(tempe(:ncol,k)/300.0_r8)
        end if
-       
+
 !-----------------------------------------------------------------
 !       ... DMS + OH  --> .5 * SO2
 !       JPL15-10 (use [O2] = 0.21*[M])
 !       k = 8.2E-39 * exp(5376/T) * [O2] / (1 + 1.05E-5 *([O2]/[M]) * exp(3644/T))
 !-----------------------------------------------------------------
        if( usr_DMS_OH_ndx > 0 ) then
+!          call comp_exp( exp_fac, 7460._r8*tinv, ncol )
+!          ko(:) = 1._r8 + 5.5e-31_r8 * exp_fac * m(:,k) * 0.21_r8
+!          call comp_exp( exp_fac, 7810._r8*tinv, ncol )
+!          rxt(:,k,usr_DMS_OH_ndx) = 1.7e-42_r8 * exp_fac * m(:,k) * 0.21_r8 / ko(:)
           call comp_exp( exp_fac, 3644._r8*tinv, ncol )
           ko(:) = 1._r8 + 1.05e-5_r8 * exp_fac * 0.21_r8
           call comp_exp( exp_fac, 5376._r8*tinv, ncol )
@@ -1534,16 +1928,132 @@ contains
           rxt(:,k,usr_XO2N_HO2_ndx) = rxt(:,k,tag_XO2N_NO_ndx)*rxt(:,k,tag_XO2_HO2_ndx)/(rxt(:,k,tag_XO2_NO_ndx)+1.e-36_r8)
        end if
 
+!rpf_CESM2_SLH
+!------------------------------------------------------------------------------------
+! WSY: iodine chemistry incorporated. originally from ordc (May 09, 2012)
+!      based on experimental and theoretical data from Juan Carlos Gomez Martin)
+!------------------------------------------------------------------------------------
+       if ( usr_IO_IO_a_ndx > 0 ) then
+          rxt(:,k,usr_IO_IO_a_ndx) = 2.13e-11_r8 * exp (180.0_r8 * tinv(:)) * (1._r8 + exp (- press_1d(:) / 191.42_r8))
+       endif
+
+       if ( usr_IO_IO_b_ndx > 0 ) then
+          rxt(:,k,usr_IO_IO_b_ndx) = 3.27e-11_r8 * exp (180.0_r8 * tinv(:)) * (1._r8 - 0.65_r8 * exp (-press_1d(:)/191.42_r8))
+       endif
+
+       if ( usr_IO_OIO_ndx > 0 ) then
+          work1 (:) = 4.687e-10_r8   - 1.3855e-5_r8 * exp (- press_1d(:) * 0.75_r8 / 1.62265_r8)       &
+                    + 5.51868e-10_r8 * exp (- press_1d(:) * 0.75_r8 / 199.328_r8)
+          work2 (:) = 0.00331_r8 + 0.00514_r8   * exp(- press_1d(:) * 0.75_r8 / 325.68711_r8)          &
+                    + 0.00444_r8 * exp (- press_1d(:) * 0.75_r8 / 40.81609_r8)
+          rxt (:,k, usr_IO_OIO_ndx) = work1(:) * exp (- work2(:) * temp_1d(:))
+
+          !There might be some negative values for low pressures. We set them
+          !to a low value (done also for other iodine reactions below)
+          where (rxt (:,k, usr_IO_OIO_ndx) < 0.) rxt (:,k, usr_IO_OIO_ndx) = 3.0e-11
+       endif
+
+       if ( usr_OIO_OIO_ndx > 0 ) then
+          work1 (:) = 1.1659e-9_r8  - 7.79644e-10_r8 * exp(-press_1d(:)*0.75_r8/22.09281_r8)           &
+                    + 1.03779e-9_r8 * exp (- press_1d(:) * 0.75_r8 / 568.15381_r8)
+          work2 (:) = 0.00813_r8    + 0.00382_r8 * exp(- press_1d(:) * 0.75_r8 / 45.57591_r8)          &
+                    + 0.00643_r8    * exp (-press_1d(:) * 0.75_r8 / 417.95061_r8)
+          rxt (:,k, usr_OIO_OIO_ndx) = work1(:) * exp (- work2(:) * temp_1d(:))
+          where (rxt (:,k, usr_OIO_OIO_ndx) < 0.) rxt (:,k, usr_OIO_OIO_ndx) = 2.0e-11
+       endif
+
+       ! 20150325-CAC update with HOI+NO3-->IO+HNO3
+       if ( usr_HOI_NO3_ndx > 0 ) then
+          rxt(:,k,usr_HOI_NO3_ndx) = 2.7e-12_r8 * (300.0_r8 * tinv(:))**2.66_r8
+       endif
+
+       if ( usr_I2O2_a_ndx > 0 ) then
+          work1 (:) =  3.54288e10_r8 + 1.8523e11_r8 * press_1d(:) * 0.75_r8 -1.45435e8_r8 * (press_1d(:) * 0.75_r8)**2._r8  &
+                    +  60799.4344_r8 * (press_1d(:)*0.75_r8)**3._r8
+          work2 (:) = -9681.65989_r8 + 346.95538_r8 * exp (-press_1d(:) * 0.75_r8 / 343.25322_r8)                           &
+                    +   251.78032_r8 * exp (-press_1d(:) * 0.75_r8 / 44.1466_r8)
+          rxt (:,k, usr_I2O2_a_ndx) =  work1(:) * exp (work2(:) * tinv (:))
+          where (rxt (:,k, usr_I2O2_a_ndx) < 0.) rxt (:,k, usr_I2O2_a_ndx) = 4.0e-6
+       endif
+
+       if ( usr_I2O2_b_ndx > 0 ) then
+          work1 (:) = 255335000000._r8 - 4418880000._r8 * press_1d(:) * 0.75_r8                                             &
+                    + 85618600._r8 * (press_1d(:) * 0.75_r8)**2._r8 + 14218.81_r8 * (press_1d(:) * 0.75_r8)**3._r8
+          work2 (:) = -11466.82304_r8 + 597.01334_r8  * exp (-press_1d(:) * 0.75_r8 / 1382.62325_r8)                        &
+                    - 167.3391_r8 * exp (- press_1d(:) * 0.75_r8 / 43.75089_r8)
+          rxt (:,k, usr_I2O2_b_ndx) =  work1(:) * exp (work2(:) * tinv (:))
+          where (rxt (:,k, usr_I2O2_b_ndx) < 0.) rxt (:,k, usr_I2O2_b_ndx) = 4.5e-10
+       endif
+
+      if ( usr_I2O4_ndx > 0 ) then
+          work1 (:) = -1.92626e14_r8 + 4.67414e13_r8 * press_1d(:) * 0.75_r8                                                &
+                    -  3.68651e8_r8  * (press_1d(:) * 0.75_r8)**2._r8 - 3.09109e6_r8 * (press_1d(:) * 0.75_r8)**3._r8
+          work2 (:) = -12302.15294_r8 + 252.78367_r8 * exp (- press_1d(:) * 0.75_r8 / 46.12733_r8)                          &
+                    +  437.62868_r8   * exp (-press_1d(:) * 0.75_r8 / 428.4413_r8)
+          rxt (:,k, usr_I2O4_ndx) =  work1(:) * exp (work2(:) * tinv (:))
+          where (rxt (:,k, usr_I2O4_ndx) < 0.) rxt (:,k, usr_I2O4_ndx) = 3.0e-9
+       endif
+
+       if ( usr_IONO2_ndx > 0 ) then
+          work1 (:) = -2.63544e13_r8  + 4.32845e12_r8 * (press_1d(:) * 0.75_r8)                                             &
+                    +  3.73758e8_r8   * (press_1d(:) * 0.75_r8)**2._r8 - 628468.76313_r8 * (press_1d(:) * 0.75_r8)**3._r8
+          work2 (:) = -13847.85015_r8 + 240.34465_r8 * exp (- press_1d(:) * 0.75_r8 / 49.27141_r8)                          &
+                    + 451.35864_r8    * exp (- press_1d(:) * 0.75_r8 / 436.87605_r8)
+          rxt (:,k, usr_IONO2_ndx) =  work1(:) * exp (work2(:) * tinv (:))
+          where (rxt (:,k, usr_IONO2_ndx) < 0.) rxt (:,k, usr_IONO2_ndx) = 6.0e-13
+       endif
+!rpf_CESM2_SLH
+
+
 !
 ! hydrolysis reactions on wetted aerosols
 !
-       if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 &
-         .or. usr_GLYOXAL_aer_ndx > 0 ) then
+!rpf_CESM2_SLH
+       if( usr_NO2_aer_ndx > 0 .or. usr_N2O5_HCL_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0  &
+         .or. usr_GLYOXAL_aer_ndx > 0 &
+         .or. has_het_ss_rxts .or. has_ice_trp_rxts .or. has_ss_ixoy_rxts ) then
+!rpf_CESM2_SLH
 
           long_loop : do i = 1,ncol
 
              sfc    => sfc_array(i,k,:)
              dm_aer => dm_array(i,k,:)
+
+!rpf_CESM2_SLH
+             press_lev   = pmid(i,k) / 100._r8   !hPa
+
+             if ( id_hocl>0 ) then
+                hoclvmr   = vmr(i,k,id_hocl)
+                hocldeni  = 1._r8/(hoclvmr*m(i,k))
+             endif
+             if ( id_hcl>0 ) then
+                hclvmr    = vmr(i,k,id_hcl)
+                hcldeni  = 1._r8/(hclvmr*m(i,k))
+             endif
+             if ( id_hbr>0 ) then
+                hbrvmr    = vmr(i,k,id_hbr)
+                hbrdeni  = 1._r8/(hbrvmr*m(i,k))
+             endif
+             if ( id_hi>0 ) then
+                hivmr     = vmr(i,k,id_hi)
+                hideni  = 1._r8/(hivmr*m(i,k))
+             endif
+             if ( id_hobr>0 ) then
+                hobrvmr   = vmr(i,k,id_hobr)
+                hobrdeni  = 1._r8/(hobrvmr*m(i,k))
+             endif
+             if ( id_hoi>0 ) then
+                hoivmr  = vmr(i,k,id_hoi)
+                hoideni = 1._r8/(hoivmr*m(i,k))
+             endif
+             if ( id_n2o5>0 ) then
+                n2o5vmr    = vmr(i,k,id_n2o5)
+                n2o5deni  = 1._r8/(n2o5vmr*m(i,k))
+             endif
+             if ( id_clono2>0 ) clono2vmr   = vmr(i,k,id_clono2)
+             if ( id_brono2>0 ) brono2vmr   = vmr(i,k,id_brono2)
+             if ( id_iono2>0 )  iono2vmr    = vmr(i,k,id_iono2)
+!rpf_CESM2_SLH
 
              c_n2o5 = 1.40e3_r8 * sqrt_t(i)         ! mean molecular speed of n2o5
              c_no3  = 1.85e3_r8 * sqrt_t(i)         ! mean molecular speed of no3
@@ -1590,7 +2100,49 @@ contains
              ! 	... n2o5 -> 2 hno3  (on sulfate, nh4no3, oc2, soa)
              !-------------------------------------------------------------------------
              if( usr_N2O5_aer_ndx > 0 ) then
-                rxt(i,k,usr_N2O5_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_n2o5, gamma_n2o5 )
+!rpf_CESM2_SLH
+                if( .NOT. usr_N2O5_aer1_ndx > 0 .AND. (.NOT. usr_N2O5_aer2_ndx > 0) ) then
+                   rxt(i,k,usr_N2O5_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_n2o5, gamma_n2o5 )
+                else
+       ! --------------------------------
+       ! VSLS Halogen chemistry incorporated
+       ! --------------------------------
+!                  total_sslt_mass = mmr(i,k,sslt1_ndx) + mmr(i,k,sslt2_ndx) + mmr(i,k,sslt3_ndx) + mmr(i,k,sslt4_ndx)
+                   total_sslt_mass = 0._r8
+                   if (sslt1_ndx>0) total_sslt_mass = total_sslt_mass + mmr(i,k,sslt1_ndx)
+                   if (sslt2_ndx>0) total_sslt_mass = total_sslt_mass + mmr(i,k,sslt2_ndx)
+                   if (sslt3_ndx>0) total_sslt_mass = total_sslt_mass + mmr(i,k,sslt3_ndx)
+                   if (sslt4_ndx>0) total_sslt_mass = total_sslt_mass + mmr(i,k,sslt4_ndx)
+
+                   if ( total_sslt_mass <= xmin ) then
+                      clno2_yield(i,k) = ymin
+                   elseif ( total_sslt_mass >= xmax ) then
+                      clno2_yield(i,k) = ymax
+                   else
+                      clno2_yield(i,k) = (ymax-ymin) * ((total_sslt_mass-xmin)/(xmax-xmin))**3 + ymin
+                   end if
+
+                   dummy_n2o5_clno2_rate      =                              hetrxtrate( sfc, dm_aer, dg, c_n2o5, gamma_n2o5 ) ! original
+                   rxt(i,k,usr_N2O5_aer_ndx ) =                              dummy_n2o5_clno2_rate
+                   rxt(i,k,usr_N2O5_aer1_ndx) = (1._r8 - clno2_yield_Erin) * dummy_n2o5_clno2_rate
+                   if( n2o5vmr > small ) then
+                      if( hclvmr > small ) then
+                         if ( n2o5vmr > hclvmr ) then
+                            rxt(i,k,usr_N2O5_aer2_ndx) =          clno2_yield_Erin  * dummy_n2o5_clno2_rate * n2o5deni
+                         else
+                            rxt(i,k,usr_N2O5_aer2_ndx) =          clno2_yield_Erin  * dummy_n2o5_clno2_rate * hcldeni
+                         end if
+                      else
+                           rxt(i,k,usr_N2O5_aer1_ndx) = 1._r8 * dummy_n2o5_clno2_rate
+                           rxt(i,k,usr_N2O5_aer2_ndx) = 0._r8
+                      endif
+                   else
+                           rxt(i,k,usr_N2O5_aer1_ndx) = 1._r8 * dummy_n2o5_clno2_rate
+                           rxt(i,k,usr_N2O5_aer2_ndx) = 0._r8
+                   endif
+                end if
+!rpf_CESM2_SLH
+
              end if
              if( usr_XNO2NO3_aer_ndx > 0 ) then
                 rxt(i,k,usr_XNO2NO3_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_n2o5, gamma_n2o5 )
@@ -1822,6 +2374,372 @@ contains
              if( usr_TERPACID_aer_ndx > 0 ) then
                 rxt(i,k,usr_TERPACID_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpacid, gamma_terpacid )
              end if
+
+
+!************************************************************************
+!************************************************************************
+!rpf_CESM2_SLH
+!-------------------------------------------------------------------------
+!  ... WSY: VSLS chemistry incorporated
+!-------------------------------------------------------------------------
+             ssur_tot  = sad_sslt(i,k)
+             ssur_tot  = min(3.0e-7_r8, ssur_tot)   ! ssur_tot is not longer used ... using sad_sslt_mask
+             sad_sslt_mask  = sad_sslt(i,k)
+
+             latitude = dlat(i)
+             if ( ocnfrac(i) + icefrac(i) <= 0._r8 ) then
+               if (latitude > -60.0_r8) then
+                 ssur_tot      = 0._r8
+                 sad_sslt_mask = 0._r8
+               endif
+             end if
+
+             !rpf (Sept 18, 2012)_CAM-Chem_3.6.x_polar update: Apply Yang DF to cuped SSLT (ssur_tot) and not sad_sslt:
+             ! The cup physical meaning is to avoid overestimation of SSLT production over the Southern Ocean
+             ! The DF physical meaning is that the seasonal change in acidity modifies efficiency of recycling
+             if (latitude > -30.0_r8) then
+                DF = 0.5_r8
+             else
+                DF = dfmax + 0.5_r8  * (dfmin - dfmax) * (sin ((calday/(365.0_r8/2.0_r8) - 0.5_r8 ) * pi) + 1.0_r8 )
+             endif
+
+             !rpf (Feb 17, 2013): introduce logical condition to avoid SSLT_recycling in the UTLS and lower stratosphere
+             if (press_lev < 300._r8) then
+                logical_sslt = 0.0_r8
+             else
+                logical_sslt = 1.0_r8
+             endif
+
+             sad_sslt_eff(i,k) = sad_sslt_mask * DF * logical_sslt   ! for SSLT SAD Output
+
+             !**********************************************************************************
+             ! Here the uptake of halogen species is considered to be the rate limiting step
+             ! of the recycling on seasalt aerosols (see Supplement of Ordonez et al., ACP, 2012).
+             ! Therefore the reaction rates are given by the transfer coefs. k:
+             !    k = (gamma / 4) * c * A
+             !  where
+             !    gamma = uptake coefficient
+             !    A     = aerosol surface area
+             !    c     = 100 * sqrt {(8*R*T)/pi*M} = root-mean square of molecular speed
+             !            (the factor 100 converts to cm s-1)
+             !
+             ! Note that in the formulation below 100 * sqrt {(8*R)/pi*M} has already been calculated
+             ! for the molecular masses M of the species uptaken
+             !
+             ! Unlike in CAMChem 3.6.x, the recycling of halogens on seasalt and any other tropospheric
+             ! aerosols is now calculated even if the available aerosol surface area density is null.
+             ! This is needed because the reaction rates are now initilized with NANs in gas_phase_chemdr.
+             !
+             ! In addition, for the heterog release of BR2 and BRCL we follow a similar approach
+             ! to that of Yang et al., JGR, 2005:
+             ! * Try to keep the total SAD of sea-salt (not the effective one)
+             ! * Use bromine depletion factors (DF) of 0.5 North of 30 S and a sinusoidal formula
+             !   to the south (average DF of 0.4 but with strong seasonality there)
+             !**********************************************************************************
+
+             if ( het_ss_0_ndx > 0 ) then
+!              rxt(i,k,het_ss_0_ndx) = 0.25_r8 * gamma_brono2_ss * sad_sslt_mask * 1.22e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_0_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_brono2_ss * sad_sslt_mask * 1.22e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_1_ndx > 0 ) then
+!              rxt(i,k,het_ss_1_ndx) = 0.25_r8 * gamma_brno2_ss  * sad_sslt_mask * 1.29e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_1_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_brno2_ss  * sad_sslt_mask * 1.29e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_2_ndx > 0 ) then
+!              rxt(i,k,het_ss_2_ndx) = 0.25_r8 * gamma_hobr_ss   * sad_sslt_mask * 1.47e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_2_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_hobr_ss   * sad_sslt_mask * 1.47e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_3_ndx > 0 ) then
+!              rxt(i,k,het_ss_3_ndx) = 0.25_r8 * gamma_clono2_ss * sad_sslt_mask * 1.47e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_3_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_clono2_ss * sad_sslt_mask * 1.47e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_4_ndx > 0 ) then
+!              rxt(i,k,het_ss_4_ndx) = 0.25_r8 * gamma_clno2_ss  * sad_sslt_mask * 1.61e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_4_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_clno2_ss  * sad_sslt_mask * 1.61e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_5_ndx > 0 ) then
+!              rxt(i,k,het_ss_5_ndx) = 0.25_r8 * gamma_hocl_ss   * sad_sslt_mask * 2.01e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_5_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_hocl_ss   * sad_sslt_mask * 2.01e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_6_ndx > 0 ) then
+!              rxt(i,k,het_ss_6_ndx) = 0.25_r8 * gamma_iono2_ss  * sad_sslt_mask * 1.05e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_6_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_iono2_ss  * sad_sslt_mask * 1.05e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_7_ndx > 0 ) then
+!              rxt(i,k,het_ss_7_ndx) = 0.25_r8 * gamma_ino2_ss   * sad_sslt_mask * 1.10e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_7_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_ino2_ss   * sad_sslt_mask * 1.10e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_8_ndx > 0 ) then
+!              rxt(i,k,het_ss_8_ndx) = 0.25_r8 * gamma_hoi_ss    * sad_sslt_mask * 1.21e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_8_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_hoi_ss    * sad_sslt_mask * 1.21e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( het_ss_9_ndx > 0 ) then
+!              rxt(i,k,het_ss_9_ndx) = 0.25_r8 * gamma_hno3_ss   * sad_sslt_mask * 1.83e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,het_ss_9_ndx) = SSAhno3_ScalingFactor  * 0.25_r8 * gamma_hno3_ss   * sad_sslt_mask * 1.83e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+
+
+             if ( het_ss_10_ndx > 0 ) then
+!              rxt(i,k,het_ss_10_ndx)=                               0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+               rxt(i,k,het_ss_10_ndx)= SSAn2o5_ScalingFactor  *                              0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+             endif
+             if ( het_ss_11_ndx > 0 ) then
+!              rxt(i,k,het_ss_11_ndx) = (1._r8 - clno2_yield(i,k)) * 0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+               rxt(i,k,het_ss_11_ndx) = SSAn2o5_ScalingFactor * (1._r8 - clno2_yield(i,k)) * 0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+             endif
+             if ( het_ss_12_ndx > 0 ) then
+!              rxt(i,k,het_ss_12_ndx) =           clno2_yield(i,k) * 0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+               rxt(i,k,het_ss_12_ndx) = SSAn2o5_ScalingFactor *           clno2_yield(i,k) * 0.25_r8 * gamma_n2o5_ss   * sad_sslt_mask * 1.4e3_r8  * sqrt(temp(i,k)) * logical_sslt
+             endif
+
+
+             if ( ss_ixoy_2_ndx > 0 ) then
+!              rxt(i,k,ss_ixoy_2_ndx) = 0.25 * gamma_ss_ixoy_2 * sad_sslt_mask * 0.8607e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_2_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_2 * sad_sslt_mask * 0.8607e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( ss_ixoy_3_ndx > 0 ) then
+!              rxt(i,k,ss_ixoy_3_ndx) = 0.25 * gamma_ss_ixoy_3 * sad_sslt_mask * 0.8376e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_3_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_3 * sad_sslt_mask * 0.8376e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+             if ( ss_ixoy_4_ndx > 0 ) then
+!              rxt(i,k,ss_ixoy_4_ndx) = 0.25 * gamma_ss_ixoy_4 * sad_sslt_mask * 0.8162e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_4_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_4 * sad_sslt_mask * 0.8162e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+             endif
+
+
+             !*********************************************************************************************
+             !  ICE_SAD reactions
+             !*********************************************************************************************
+             if ( ice_trp_hcl_5_ndx > 0 ) then     ! [ice_trp_hcl_5]    HOCL + HCL -> CL2 + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hoclvmr > small ) then
+                      if( hclvmr > small ) then
+                         ! I will aways consider velocity (c = 2.01e3) of HOCL (HOBR) to keep the mechanism similar to
+                         ! how it was implemented in mo_strato_rates.F90
+                         if ( hoclvmr > hclvmr ) then
+                            rxt(i,k,ice_trp_hcl_5_ndx) = 0.25_r8 * gamma_hclhocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hocldeni
+                         else
+                            rxt(i,k,ice_trp_hcl_5_ndx) = 0.25_r8 * gamma_hclhocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hcldeni
+                         end if
+! This is another way of implementing, considering the limiting rate instead of the limiting vmr when computing rxt(i,k)
+!                    half_rate_1 = 0.25 * gamma_hbrhobr_ice * sad_ice_trop(i,k) * 1.6e3_r8  * sqrt(temp(i,k)) * hobrdeni  ! limiting reactant is HBR
+!                    half_rate_2 = 0.25 * gamma_hbrhobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hbrdeni   ! limiting reactant is HOBR
+!                    rxt(i,k,het_ice_6_ndx) = min (half_rate_1,half_rate_2)
+                      endif
+                   endif
+                endif
+             endif
+             if ( ice_trp_hcl_6_ndx > 0 ) then     ! [ice_trp_hcl_6]    HOBR + HCL -> BRCL + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hobrvmr > small ) then
+                      if( hclvmr > small ) then
+                         if ( hobrvmr > hclvmr ) then
+                            rxt(i,k,ice_trp_hcl_6_ndx) = 0.25_r8 * gamma_hclhobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hobrdeni
+                         else
+                            rxt(i,k,ice_trp_hcl_6_ndx) = 0.25_r8 * gamma_hclhobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hcldeni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+
+             if ( usr_N2O5_HCL_ndx > 0 ) then     ! [usr_N2O5_HCL]    N2O5 + HCL -> CLNO2+HNO3
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( n2o5vmr > small ) then
+                      if( hclvmr > small ) then
+                         if ( n2o5vmr > hclvmr ) then
+                            rxt(i,k,usr_N2O5_HCL_ndx) = clno2_yield_Erin * 0.25_r8 * gamma_hcln2o5_aerosol * sad_ice_trop(i,k) * 1.40e3_r8 * sqrt(temp(i,k)) * n2o5deni
+                         else
+                            rxt(i,k,usr_N2O5_HCL_ndx) = clno2_yield_Erin * 0.25_r8 * gamma_hcln2o5_aerosol * sad_ice_trop(i,k) * 1.40e3_r8 * sqrt(temp(i,k)) * hcldeni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+
+             if ( ice_trp_hbr_5_ndx > 0 ) then     ! [ice_trp_hbr_5]    HOCL + HBR -> BRCL + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hoclvmr > small ) then
+                      if( hbrvmr > small ) then
+                         if ( hoclvmr > hbrvmr ) then
+                            rxt(i,k,ice_trp_hbr_5_ndx) = 0.25_r8 * gamma_hbrhocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hocldeni
+                         else
+                            rxt(i,k,ice_trp_hbr_5_ndx) = 0.25_r8 * gamma_hbrhocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hbrdeni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+             if ( ice_trp_hbr_6_ndx > 0 ) then     ! [ice_trp_hbr_6]    HOBR + HBR -> BR2 + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hobrvmr > small ) then
+                      if( hbrvmr > small ) then
+                         if ( hobrvmr > hbrvmr ) then
+                            rxt(i,k,ice_trp_hbr_6_ndx) = 0.25_r8 * gamma_hbrhobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hobrdeni
+                         else
+                            rxt(i,k,ice_trp_hbr_6_ndx) = 0.25_r8 * gamma_hbrhobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hbrdeni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+
+             if ( ice_trp_hi_5_ndx > 0 ) then     ! [ice_trp_hi_5]    HOCL + HI  -> ICL + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hoclvmr > small ) then
+                      if( hivmr > small ) then
+                         if ( hoclvmr > hivmr ) then
+                            rxt(i,k,ice_trp_hi_5_ndx) = 0.25_r8 * gamma_hihocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hocldeni
+                         else
+                            rxt(i,k,ice_trp_hi_5_ndx) = 0.25_r8 * gamma_hihocl_ice * sad_ice_trop(i,k) * 2.01e3_r8 * sqrt(temp(i,k)) * hideni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+             if ( ice_trp_hi_6_ndx > 0 ) then     ! [ice_trp_hi_6]    HOBR + HI  -> IBR + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hobrvmr > small ) then
+                      if( hivmr > small ) then
+                         if ( hobrvmr > hivmr ) then
+                            rxt(i,k,ice_trp_hi_6_ndx) = 0.25_r8 * gamma_hihobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hobrdeni
+                         else
+                            rxt(i,k,ice_trp_hi_6_ndx) = 0.25_r8 * gamma_hihobr_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k)) * hideni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+
+             if ( ice_trp_i_2_ndx > 0 ) then     ! [ice_trp_i_2]    HOI + HCL -> ICL + H2O
+             if ( sad_ice_trop(i,k) > 0 ) then
+               if( hoivmr > small ) then
+                 if( hclvmr > small ) then
+                   if ( hoivmr > hclvmr ) then
+                     rxt(i,k,ice_trp_i_2_ndx) = 0.25 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
+                   else
+                     rxt(i,k,ice_trp_i_2_ndx) = 0.25 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hcldeni
+                   end if
+                 endif
+               endif
+             endif
+             endif
+             if ( ice_trp_i_3_ndx > 0 ) then     ! [ice_trp_i_3]    HOI + HBR -> IBR + H2O
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hoivmr > small ) then
+                      if( hbrvmr > small ) then
+                         if ( hoivmr > hbrvmr ) then
+                            rxt(i,k,ice_trp_i_3_ndx) = 0.25_r8 * gamma_hbrhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
+                         else
+                            rxt(i,k,ice_trp_i_3_ndx) = 0.25_r8 * gamma_hbrhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hbrdeni
+                         end if
+                      endif
+                   endif
+                endif
+             endif
+             if ( ice_trp_i_4_ndx > 0 ) then     ! [ice_trp_i_4]    HOI + HI -> I2 + H2O
+             if ( sad_ice_trop(i,k) > 0 ) then
+               if( hoivmr > small ) then
+                 if( hivmr > small ) then
+                   if ( hoivmr > hivmr ) then
+                     rxt(i,k,ice_trp_i_4_ndx) = 0.25 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
+                   else
+                     rxt(i,k,ice_trp_i_4_ndx) = 0.25 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hideni
+                   end if
+                 endif
+               endif
+             endif
+             endif
+
+             if ( ice_trp_cl_1_ndx > 0 ) then     ! [ice_trp_cl_1]    CLONO2 -> HOCL + HNO3
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( clono2vmr > small ) then
+                      rxt(i,k,ice_trp_cl_1_ndx) = 0.25_r8 * gamma_clono2_ice * sad_ice_trop(i,k) * 1.47e3_r8 * sqrt(temp(i,k))
+                   endif
+                endif
+             endif
+             if ( ice_trp_br_1_ndx > 0 ) then     ! [ice_trp_br_1]    BRONO2 -> HOBR + HNO3
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( brono2vmr > small ) then
+                      rxt(i,k,ice_trp_br_1_ndx) = 0.25_r8 * gamma_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
+                   endif
+                endif
+             endif
+             if ( ice_trp_i_1_ndx > 0 ) then     ! [ice_trp_i_1]    IONO2 -> HOI + HNO3   .or.   IONO2 -> deposition
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( iono2vmr > small ) then
+                      rxt(i,k,ice_trp_i_1_ndx) = 0.25_r8 * gamma_iono2_ice * sad_ice_trop(i,k) * 1.06e3_r8 * sqrt(temp(i,k))
+                   endif
+                endif
+             endif
+
+             !*********************************************************************************************
+             !  HOI removal on liquid and ice in the Troposphere. Also applied to HI and IONO2
+             !*********************************************************************************************
+             if ( ice_fr_hoi_ndx > 0 ) then     ! [ice_fr_hoi]      HOI ->
+                if ( sad_ice_trop(i,k) > 0._r8 ) then
+                   if( hoivmr > small ) then
+!                     rxt(i,k,ice_fr_hoi_ndx) = 0.25_r8 * gamma_fr_hoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k))
+                      rxt(i,k,ice_fr_hoi_ndx) = ICEfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_hoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k))
+                   endif
+                endif
+             endif
+             if ( liq_fr_hoi_ndx > 0 ) then     ! [ice_fr_hoi]      HOI ->
+                if ( sad_liq_trop(i,k) > 0._r8 ) then
+                   if( hoivmr > small ) then
+!                     rxt(i,k,liq_fr_hoi_ndx) = 0.25_r8 * gamma_fr_hoi_liq * sad_liq_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k))
+                      rxt(i,k,liq_fr_hoi_ndx) = LIQfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_hoi_liq * sad_liq_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k))
+                   endif
+                endif
+             endif
+             if ( ice_fr_hi_ndx > 0 ) then     ! [ice_fr_hi]      HI ->
+             if ( sad_ice_trop(i,k) > 0 ) then
+               if( hivmr > small ) then
+!                rxt(i,k,ice_fr_hi_ndx) = 0.25 * gamma_fr_hi_ice * sad_ice_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_hi_ndx) = ICEfraprx_ScalingFactor_I * 0.25 * gamma_fr_hi_ice * sad_ice_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+               endif
+             endif
+             endif
+             if ( liq_fr_hi_ndx > 0 ) then     ! [liq_fr_hi]      HI ->
+             if ( sad_liq_trop(i,k) > 0 ) then
+               if( hivmr > small ) then
+!                rxt(i,k,liq_fr_hi_ndx) = 0.25 * gamma_fr_hi_liq * sad_liq_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,liq_fr_hi_ndx) = LIQfraprx_ScalingFactor_I * 0.25 * gamma_fr_hi_liq * sad_liq_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+               endif
+             endif
+             endif
+             if ( ice_fr_iono2_ndx > 0 ) then     ! [ice_fr_iono2]      IONO2 ->
+             if ( sad_ice_trop(i,k) > 0 ) then
+               if( iono2vmr > small ) then
+!                rxt(i,k,ice_fr_iono2_ndx) = 0.25 * gamma_fr_iono2_ice * sad_ice_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_iono2_ndx) = ICEfraprx_ScalingFactor_I * 0.25 * gamma_fr_iono2_ice * sad_ice_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+               endif
+             endif
+             endif
+             if ( liq_fr_iono2_ndx > 0 ) then     ! [liq_fr_iono2]      IONO2 ->
+             if ( sad_liq_trop(i,k) > 0 ) then
+               if( iono2vmr > small ) then
+!                rxt(i,k,liq_fr_iono2_ndx) = 0.25 * gamma_fr_iono2_liq * sad_liq_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,liq_fr_iono2_ndx) = LIQfraprx_ScalingFactor_I * 0.25 * gamma_fr_iono2_liq * sad_liq_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+               endif
+             endif
+             endif
+
+             !*********************************************************************************************
+             !  BRONO2 removal on ice in the Troposphere
+             !*********************************************************************************************
+             if ( ice_fr_brono2_ndx > 0 ) then     ! [ice_fr_brono2]      BRONO2 ->
+             if ( sad_ice_trop(i,k) > 0 ) then
+               if( brono2vmr > small ) then
+!                rxt(i,k,ice_fr_brono2_ndx) = 0.25 * gamma_fr_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_brono2_ndx) = ICEfraprx_ScalingFactor_Br * 0.25 * gamma_fr_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
+               endif
+             endif
+             endif
+!rpf_CESM2_SLH
+!************************************************************************
+!************************************************************************
+
 
           end do long_loop
        end if

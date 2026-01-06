@@ -1,0 +1,283 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>00010101</start_ymd>
+
+<!-- Initial conditions -->
+<ncdata dyn="fv" hgrid="1.9x2.5">atm/cam/inic/fv/FC.f19_f19_mg17.L32.cesm2.2-asdbranch_slh_released.FCHIST_slh.Historical_SLH.cam.i.2000-01-01-00000_c241214.nc</ncdata>
+<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/FC.f09_f09_mg17.L32.cesm2.2-asdbranch_slh_released.FCHIST_slh.Setup_SLH_HistorLNOx.cam.i.2000-01-01-00000_c250626.nc</ncdata>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- LBC, UBC Files -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_HIST_c170126_VSL_Cl_CHCL3x1p15_C2H4CL2x1p15_c20251117.nc</flbc_file>
+<flbc_list>'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2', 'HCFC22',
+           'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'H2402', 'OCS', 'SF6', 'CHCL3', 'C2H4CL2'</flbc_list>
+
+<prescribed_strataero_type>SERIAL</prescribed_strataero_type>
+
+<!-- emissions -->
+
+<!-- <lght_no_prd_factor hgrid="0.9x1.25">2.70D0</lght_no_prd_factor> -->
+<!-- RPF: We need to run simulations with CAM6dev to be sure about the -->
+<!-- RPF: best valur for lght_no_prd_factor for 1deg and 2deg -->
+<lght_no_prd_factor hgrid="0.9x1.25">1.00D0</lght_no_prd_factor>
+<lght_no_prd_factor hgrid="1.9x2.5">4.50D0</lght_no_prd_factor>
+<dust_emis_fact hgrid="0.9x1.25"> 0.38D0</dust_emis_fact>
+<csw_time_type>SERIAL</csw_time_type>
+
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+<!-- RPF: Following hist_trop_strat_vbs_cam6.xml for 1deg we should use SSPs -->
+<!-- RPF: This condition should be valid not only for trop_strat_mam4_slh -->
+<!-- RPF: but also for trop_strat_mam5_slh -->
+<ext_frc_specifier chem="trop_strat_mam4_slh" hgrid="0.9x1.25">
+         'bc_a4  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_bc_a4_aircraft_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_NO2_aircraft_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_bc_a4_aircraft_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SO2_aircraft_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_ext_1deg_ZeroTrop_c181020.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'
+</ext_frc_specifier>
+
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+<!-- RPF: Following hist_trop_strat_vbs_cam6.xml for 1deg we should use SSPs -->
+<!-- RPF: This condition should be valid not only for trop_strat_mam4_slh -->
+<!-- RPF: but also for trop_strat_mam5_slh -->
+<srf_emis_specifier chem="trop_strat_mam4_slh" hgrid="0.9x1.25">
+         'BENZENE  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BENZENE_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'BENZENE  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BENZENE_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'BIGALK   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BIGALK_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'BIGALK   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BIGALK_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'BIGENE   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BIGENE_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'BIGENE   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_BIGENE_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H2     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H2_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H2     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H2_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H4     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H4     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H4     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_C2H4_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H5OH   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H5OH_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H5OH   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H5OH_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H6_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C2H6_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_C2H6_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C3H6_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C3H6_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H6     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_C3H6_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H8     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C3H8_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H8     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_C3H8_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C3H8     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_C3H8_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH2O     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH2O_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH2O     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH2O_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3CHO   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3CHO_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3CHO   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3CHO_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3CN    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3CN_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3CN    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3CN_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3COCH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3COCH3_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3COCH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3COCH3_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3COCHO -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3COCHO_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3COOH  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3COOH_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3COOH  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3COOH_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3OH    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3OH_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CH3OH    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CH3OH_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CO_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_CO_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'CO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_CO_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'E90      -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions_E90global_surface_175001-210101_0.9x1.25_c20190224.nc',
+         'GLYALD   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_GLYALD_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'HCN      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_HCN_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'HCN      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_HCN_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'HCOOH    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_HCOOH_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'HCOOH    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_HCOOH_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'ISOP     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_ISOP_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'IVOC     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_IVOC_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'IVOC     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_IVOC_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'MEK      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_MEK_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'MEK      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_MEK_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'MTERP    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_MTERP_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NH3      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_NH3_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NH3      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_NH3_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NH3      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_NH3_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_NO_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_NO_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'NO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-SSP_NO_other_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SVOC     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SVOC_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SVOC     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SVOC_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'TOLUENE  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_TOLUENE_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'TOLUENE  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_TOLUENE_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'XYLENES  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_XYLENES_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'XYLENES  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_XYLENES_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'C2CL4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_C2Cl4_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc',
+         'CH2BR2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Br2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CH2BRCL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2BrCl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CH2CL2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Cl2_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc',
+         'CH2I2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2I2_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CH2IBR   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2IBr_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CH2ICL   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2ICl_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CH3I     -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH3I_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CHBR2CL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr2Cl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CHBR3    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr3_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'CHBRCL2  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBrCl2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'HOI      -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_HOI_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc',
+         'I2       -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_I2_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_pom_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_pom_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SO2_anthro-ag-ship-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SO2_anthro-ene_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SO2_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc'
+</srf_emis_specifier>
+
+<dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208_SLH_char16_c20240925.nc</dep_data_file>
+
+<!-- slh_nl -->
+<SSAdehal_ScalingFactor     hgrid="1.9x2.5">  1.70D0  </SSAdehal_ScalingFactor>
+<SSAhno3_ScalingFactor      hgrid="1.9x2.5">  1.00D0  </SSAhno3_ScalingFactor>
+<SSAn2o5_ScalingFactor      hgrid="1.9x2.5">  1.00D0  </SSAn2o5_ScalingFactor>
+<LIQfraprx_ScalingFactor_I  hgrid="1.9x2.5">  1.00D0  </LIQfraprx_ScalingFactor_I>
+<ICEfraprx_ScalingFactor_I  hgrid="1.9x2.5">  1.70D0  </ICEfraprx_ScalingFactor_I>
+<ICEfraprx_ScalingFactor_Br hgrid="1.9x2.5">  2.00D0  </ICEfraprx_ScalingFactor_Br>
+<!-- RPF: Similar to Lightning NOx, We need to run simulations with CAM6dev -->
+<!-- RPF: to obtain the best ScalingFactors for SLH species using 1deg and 2deg -->
+<SSAdehal_ScalingFactor     hgrid="0.9x1.25"> 1.50D0  </SSAdehal_ScalingFactor>
+<SSAhno3_ScalingFactor      hgrid="0.9x1.25"> 1.00D0  </SSAhno3_ScalingFactor>
+<SSAn2o5_ScalingFactor      hgrid="0.9x1.25"> 1.00D0  </SSAn2o5_ScalingFactor>
+<LIQfraprx_ScalingFactor_I  hgrid="0.9x1.25"> 1.00D0  </LIQfraprx_ScalingFactor_I>
+<ICEfraprx_ScalingFactor_I  hgrid="0.9x1.25"> 0.90D0  </ICEfraprx_ScalingFactor_I>
+<ICEfraprx_ScalingFactor_Br hgrid="0.9x1.25"> 1.00D0  </ICEfraprx_ScalingFactor_Br>
+
+<!-- History Files -->
+
+<mfilt           >  1,  30 </mfilt>
+<nhtfrq          >  0, -24 </nhtfrq>
+<avgflag_pertape >'A', 'A' </avgflag_pertape>
+
+<history_amwg>.true.</history_amwg>
+<history_aerosol>.false.</history_aerosol>
+<history_carma>.false.</history_carma>
+<history_chemistry>.true.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_waccm>.false.</history_waccm>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+
+<!-- Monthly -->
+<fincl1>
+   'ACTREL', 'AQ_SO2', 'AREA', 'BROX', 'BROY', 'BRY', 'CLOX', 'CLOY', 'CLY',  'NOX', 'NOY', 'TBRY', 'TCLY',  'CFC11STAR',
+   'BTTGWSPEC', 'BTTGWSDF', 'BTTGWSKE', 'CONCLD', 'CME', 'CMFDQ', 'CMFMC', 'CMFMC_DP',
+   'CH3CCL3_CHML', 'CH4_CHML', 'CO2_CHML', 'CO_CHML', 'IVOC_CHML', 'N2O_CHML', 'O3_CHML', 'SO2_CHML',
+   'CO_CHMP', 'O3_CHMP', 'SO2_CHMP',  'TMDMS', 'TMOCS', 'TMSO2','TMso4_a1', 'TMso4_a2', 'TMso4_a3',
+   'soa1_a1_CHML', 'soa1_a2_CHML', 'soa2_a1_CHML', 'soa2_a2_CHML', 'soa3_a1_CHML', 'soa3_a2_CHML',
+   'soa4_a1_CHML', 'soa4_a2_CHML', 'soa5_a1_CHML', 'soa5_a2_CHML', 'SVOC_CHML',
+   'so4_a1_CHMP','so4_a2_CHMP', 'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP', 'TOTH', 'TOT_CLD_VISTAU',
+   'TREFHTMN', 'TREFHTMX', 'TROP_P', 'TROP_T', 'TROP_Z', 'TTEND_TOT',  'TTGWORO',  'TTGWSDF', 'TTGWSDFORO', 'TTGWSKE', 'TTGWSKEORO',
+   'BURDENBCdn', 'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSEASALTdn', 'BURDENSO4dn', 'BURDENSOAdn',
+   'ABSORB', 'AODABSdn', 'AODBCdn', 'AODdnDUST01', 'AODdnDUST02', 'AODdnDUST03', 'AODdn_aitken', 'AODdn_accum', 'AODdn_coarse',
+   'AODDUST02', 'AODDUST', 'AODNIRstdn', 'AODPOMdn', 'AODSO4dn', 'AODSOAdn', 'AODSSdn', 'AODUVdn', 'AODUVstdn', 'AODVIS',
+   'AODVISdn', 'AODVISstdn', 'EXTINCTdn', 'EXTINCTNIRdn', 'EXTINCTUVdn', 'EXTxASYMdn', 'FLDSC', 'FLNR', 'FSNR',
+   'CME', 'CMFDQ', 'CMFMC','CMFMC_DP', 'SOLLD', 'SOLSD', 'SSAVIS', 'SST','TAQ',
+   'DCOCHM','DH2O2CHM', 'DHNO3CHM', 'DO3CHM', 'Dso4_a1CHM', 'Dso4_a2CHM', 'Dso4_a3CHM',
+   'FLASHFRQ', 'LNO_COL_PROD', 'LNO_PROD','KVH_CLUBB','MASS', 'PDELDRY', 'NITROP_PD','PM25', 'PRECT', 'PTEQ', 'PTTEND',
+   'QRLC', 'QRSC', 'QSNOW', 'QRAIN','GS_SO2', 'HNO3_GAS', 'HNO3_NAT', 'HNO3_STS','H2SO4M_C', 'H2SO4_sfnnuc1','HCL_GAS',
+   'SAD_AERO', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'SAD_TROP' 'RAD_ICE', 'RAD_LNAT', 'RAD_SULFC', 'REFF_AERO', 'RHREFHT',
+   'EVAPPREC', 'EVAPQZM', 'EVAPTZM', 'FCTL','FREQZM', 'ZMDQ', 'ZMDT', 'ZMMTT', 'ZMMU','VEL_NAT2',
+   'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'bc_c1DDF', 'bc_c4DDF', 'dst_c1DDF',  'dst_c2DDF',  'dst_c3DDF',
+   'ncl_c1DDF', 'ncl_c2DDF', 'ncl_c3DDF', 'pom_c1DDF', 'pom_c4DDF',   'num_c1DDF','num_c2DDF','num_c3DDF','num_c4DDF',
+   'so4_a1_sfgaex1', 'so4_c1AQH2SO4', 'so4_c1AQSO4', 'so4_c1DDF', 'so4_a2_sfgaex1', 'so4_c2AQH2SO4', 'so4_c2AQSO4', 'so4_c2DDF',
+   'so4_a3_sfgaex1', 'so4_c3AQH2SO4', 'so4_c3AQSO4', 'so4_c3DDF', 'so4_a2_sfnnuc1', 'num_a2_sfnnuc1',
+   'soa1_a1_sfgaex1','soa1_c1DDF', 'soa1_a2_sfgaex1','soa1_c2DDF', 'soa2_a1_sfgaex1','soa2_c1DDF', 'soa2_a2_sfgaex1','soa2_c2DDF',
+   'soa3_a1_sfgaex1','soa3_c1DDF', 'soa3_a2_sfgaex1','soa3_c2DDF', 'soa4_a1_sfgaex1','soa4_c1DDF', 'soa4_a2_sfgaex1','soa4_c2DDF',
+   'soa5_a1_sfgaex1','soa5_c1DDF', 'soa5_a2_sfgaex1','soa5_c2DDF', 'jcl2o2', 'jh2o2', 'jno2', 'jo2_a', 'jo2_b', 'jo3_a', 'jo3_b', 'jpan',
+   'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6', 'r_het7', 'r_het8', 'r_het9', 'r_het10', 'r_het11', 'r_het12', 'r_het13',
+   'r_het15', 'r_het16', 'r_het17', 'r_jsoa1_a1', 'r_jsoa1_a2', 'r_jsoa2_a1', 'r_jsoa2_a2', 'r_jsoa3_a1', 'r_jsoa3_a2', 'r_jsoa4_a1',
+   'r_jsoa4_a2', 'r_jsoa5_a1', 'r_jsoa5_a2', 'r_GLYOXAL_aer',  'r_HO2_O3', 'r_N2O5_aer', 'r_NO2_aer', 'r_NO3_aer', 'r_O1D_H2O', 'r_OH_O3', 'r_OH_O',
+   'O3_Prod','O3_Loss','O3S_Loss','RO2_NO_sum','O3_alkenes','RO2_NO3_sum','RO2_HO2_sum','RO2_RO2_sum','RCO2_NO2_sum',
+   'OddOx_Ox_Loss','OddOx_HOx_Loss','OddOx_NOx_Loss','OddOx_CLOxBROx_Loss','OddOx_Loss_Tot','OddOx_Prod_Tot', 'Ox_Prod','Ox_Loss'
+</fincl1>
+
+<rxn_rate_sums>
+  'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + ',
+           ' MACRO2_NOa + MCO3_NO + MEKO2_NO + ALKO2_NO + .92*ISOPAO2_NO + .92*ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ACBZO2_NO + ',
+           ' BENZO2_NO + BZOO_NO + C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + XYLOLO2_NO + ',
+           ' NTERPO2_NO + .9*TERP2O2_NO + .8*TERPO2_NO + jalknit + jhonitr + jisopnooh + jnc4cho + jnoa + jnterpooh + jonitr + jterpnit + ',
+           ' ALKNIT_OH + 0.7*ISOPNITA_OH + NOA_OH + TERPNIT_OH',
+  'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3 + S_O3 + SO_O3',
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O3 + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + ',
+            ' 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3 + SO_O3 + ',
+            ' C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3'
+  'O3_alkenes = C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3',
+  'RO2_NO_sum = CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + ENEO2_NOb + MACRO2_NOa + ',
+              ' MACRO2_NOb + MCO3_NO + MEKO2_NO + ALKO2_NO + ALKO2_NOb + ISOPAO2_NO + ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
+              ' C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + XYLOLO2_NO + NTERPO2_NO + TERP2O2_NO + TERPO2_NO',
+  'RO2_NO3_sum = MACRO2_NO3 + MCO3_NO3 + ISOPAO2_NO3 + ISOPBO2_NO3 + ISOPNO3_NO3 + XO2_NO3 + NTERPO2_NO3',
+  'RO2_HO2_sum = CH3O2_HO2 + HOCH2OO_HO2 + C2H5O2_HO2 + CH3CO3_HO2 + EO2_HO2 + C3H7O2_HO2 + PO2_HO2 + RO2_HO2 +  MACRO2_HO2 + ',
+               ' MCO3_HO2 + MEKO2_HO2 + ALKO2_HO2 + ISOPAO2_HO2 + ISOPBO2_HO2 + ISOPNO3_HO2 + XO2_HO2 + ACBZO2_HO2 + BENZO2_HO2 + BZOO_HO2 + ',
+               ' C6H5O2_HO2 + DICARBO2_HO2 + MALO2_HO2 + MDIALO2_HO2 + PHENO2_HO2 + TOLO2_HO2 + XYLENO2_HO2 + XYLOLO2_HO2 + NTERPO2_HO2 + ',
+               ' TERP2O2_HO2 + TERPO2_HO2',
+  'RO2_RO2_sum = CH3O2_CH3O2a + CH3O2_CH3O2b + C2H5O2_CH3O2 + C2H5O2_C2H5O2 + CH3CO3_CH3O2 + CH3CO3_CH3CO3 + C3H7O2_CH3O2 + ',
+               ' RO2_CH3O2 + MACRO2_CH3O2 + MACRO2_CH3CO3 + MCO3_CH3O2 + MCO3_CH3CO3 + MCO3_MCO3 + ISOPAO2_CH3O2 + ISOPBO2_CH3O2 + ',
+               ' ISOPAO2_CH3CO3 + ISOPBO2_CH3CO3 + ISOPNO3_CH3O2 + XO2_CH3O2 + XO2_CH3CO3 + NTERPO2_CH3O2 + TERP2O2_CH3O2',
+  'RCO2_NO2_sum = CH3CO3_NO2 + MCO3_NO2 + ACBZO2_NO2',
+
+  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O + 2*O_O',
+  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
+  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
+  'OddOx_CLOx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + CLO_HO2',
+  'OddOx_CLOxBROx_Loss = 2.0*BRO_CLOb + 2.0*BRO_CLOc',
+  'OddOx_BROx_Loss = 2.0*BRO_BRO + 2.0*BRO_O + BRO_HO2',
+  'OddOx_IOx_Loss = 2.0*IO_O + 2.0*joio + 2*IO_BROa + 2.0*IO_CLOb + 2*IO_CLOc + IO_HO2',
+  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + 2*O_O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb +',
+                  ' 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + 2.0*IO_O + 2.0*joio + 2*IO_BROa + 2.0*IO_CLOb + 2*IO_CLOc + IO_HO2',
+
+  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b',
+  'Ox_Prod = 2.0*jo2_a + 2.0*jo2_b + NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
+           ' RO2_NO + ENEO2_NO + MACRO2_NOa + MCO3_NO + MEKO2_NO + ALKO2_NO + .92*ISOPAO2_NO + .92*ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ',
+           ' ACBZO2_NO + BENZO2_NO + BZOO_NO + C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + ',
+           ' XYLOLO2_NO + NTERPO2_NO + .9*TERP2O2_NO + .8*TERPO2_NO + jalknit + jhonitr + jisopnooh + jnc4cho + jnoa + jnterpooh + ',
+           ' jonitr + jterpnit + ALKNIT_OH + 0.7*ISOPNITA_OH + NOA_OH + TERPNIT_OH',
+  'Ox_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+           ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + C2H4_O3 + ',
+           ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3 + S_O3 + SO_O3'
+</rxn_rate_sums>
+
+<vmr_sums>
+ 'NOy_sums = N + NO + NO2 + NO3 + 2*N2O5 + HNO3 + HO2NO2 + ',
+           'CLONO2 + CLNO2 + BRNO2 + BRONO2 + INO + INO2 + IONO2 +',
+           'PAN + MPAN + ISOPNO3 + ONITR +', 'HONITR + ALKNIT + ISOPNITA + ISOPNITB + ISOPNOOH + NC4CH2OH +',
+           'NC4CHO + NOA + NTERPOOH + PBZNIT + TERPNIT',
+ 'IOy_sums  = I + 2*I2 + IO + OIO + HI + HOI + IONO2 + INO2  + 2*I2O2 + 2*I2O3 + 2*I2O4 + INO + IBR + ICL',
+ 'BROy_sums = BR + BRO + 2*BR2 + BRCL + BRNO2 + BRONO2 + HBR + HOBR + IBR',
+ 'CLOy_sums = CL + OCLO + 2*CL2 + 2*CL2O2 + CLNO2 + CLO + CLONO2 + HCL + HOCL + ICL + BRCL + 2*CHCL2O2 + 2*COCL2 + COFCL',
+ 'SLHi_sums  = CH3I + 2*CH2I2 + CH2IBR + CH2ICL', 'SLHbr_sums = 3*CHBR3 + 2*CH2BR2 + CH2BRCL + 2*CHBR2CL + CHBRCL2 + CH2IBR',
+ 'SLHcl_sumsNat = CH2BRCL + CHBR2CL + 2*CHBRCL2 + CH2ICL', 'SLHcl_sumsAnt = 3*CHCL3 + 2*CH2CL2 + 4*C2CL4 + 2*C2H4CL2',
+ 'LLHbr_sums = CF2CLBR + CF3BR + 2*H2402  ', 'LLHcl_sums = 4*CCL4 + CF2CLBR + 3*CFC11 + 3*CFC113 + 2*CFC114 + CFC115 + 2*CFC12 + 2*HCFC141B + HCFC142B + HCFC22 + 3*CH3CCL3'
+</vmr_sums>
+
+</namelist_defaults>

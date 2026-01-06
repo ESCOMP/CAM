@@ -31,21 +31,41 @@ module mo_chm_diags
   integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
   integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
   integer :: id_ndep,id_nhdep
+!rpf_CESM2_SLH
+  integer :: id_clno2,id_brno2,id_br2
+  integer :: id_i,id_i2,id_io,id_oio,id_hi,id_hoi,id_ino,id_ino2,id_iono2,id_ibr,id_icl,id_i2o2,id_i2o3,id_i2o4
+  integer :: id_chbr2cl,id_chbrcl2,id_ch2brcl
+  integer :: id_ch3i,id_ch2icl,id_ch2ibr,id_ch2i2
+  integer :: id_ch2cl2, id_chcl3, id_c2cl4, id_c2h4cl2, id_chcl2o2, id_cocl2, id_c2hcl3
+!rpf_CESM2_SLH
 
   integer, parameter :: NJEUV = neuv
   integer :: rid_jeuv(NJEUV), rid_jno_i, rid_jno
 
   logical :: has_jeuvs, has_jno_i, has_jno
 
+!rpf_CESM2_SLH
+!rpf Now #_species(:) and #_specvsl(:) arrays are duplicated so we can use the same chm_diag routine independently of using VSLs or not
+!rpf #_species(:) arrays are the original ones, and #_specvsl(:) are the ones indluding VSL chemistry
   integer :: nox_species(3),  noy_species(56)
   integer :: clox_species(6), cloy_species(9), tcly_species(21)
   integer :: brox_species(4), broy_species(6), tbry_species(13)
+!rpf_CESM2_SLH
   integer :: foy_species(4),  tfy_species(16)
   integer :: hox_species(4)
   integer :: toth_species(3)
   integer :: sox_species(3)
   integer :: nhx_species(2)
   integer :: aer_species(gas_pcnst)
+
+!rpf_CESM2_SLH
+!rpf Now #_species(:) and #_specvsl(:) arrays are duplicated so we can use the same chm_diag routine independently of using VSLs or not
+!rpf #_species(:) arrays are the original ones, and #_specvsl(:) are the ones indluding VSL chemistry
+  integer :: nox_specvsl(3),  noy_specvsl(61)
+  integer :: clox_specvsl(6), cloy_specvsl(14), tcly_specvsl(35) ! RPF-->WSY: 2 new ClOy species added, 6 new tCly species added; 2 new CLOy and 5 new TCly for Athro_VSL_Cl
+  integer :: brox_specvsl(2), broy_specvsl(9),  tbry_specvsl(20) ! RPF-->WSY: 3 new BrOy species added, 7 new tBry species added. Not considering HOBr nor BrCl in BrOx
+  integer :: ioy_specvsl(14), tiy_specvsl(18)                    ! RPF-->WSY: newly added
+!rpf_CESM2_SLH
 
   character(len=fieldname_len) :: dtchem_name(gas_pcnst)
   character(len=fieldname_len) :: depvel_name(gas_pcnst)
@@ -55,6 +75,11 @@ module mo_chm_diags
 
   real(r8), parameter :: N_molwgt = 14.00674_r8
   real(r8), parameter :: S_molwgt = 32.066_r8
+!rpf_CESM2_SLH
+  real(r8), parameter :: Cl_molwgt = 35.453_r8
+  real(r8), parameter :: Br_molwgt = 79.904_r8
+  real(r8), parameter :: I_molwgt  = 126.90447_r8
+!rpf_CESM2_SLH
 
   logical, protected :: chm_prod_ndep_flx =.false.
 
@@ -191,12 +216,48 @@ contains
     id_o2      = get_spc_ndx( 'O2' )
     id_h       = get_spc_ndx( 'H' )
 
+!rpf_CESM2_SLH
+    id_clno2   = get_spc_ndx( 'CLNO2' )
+    id_br2     = get_spc_ndx( 'BR2' )
+    id_brno2   = get_spc_ndx( 'BRNO2' )
+    id_i       = get_spc_ndx( 'I' )
+    id_i2      = get_spc_ndx( 'I2' )
+    id_io      = get_spc_ndx( 'IO' )
+    id_oio     = get_spc_ndx( 'OIO' )
+    id_hi      = get_spc_ndx( 'HI' )
+    id_hoi     = get_spc_ndx( 'HOI' )
+    id_ino     = get_spc_ndx( 'INO' )
+    id_ino2    = get_spc_ndx( 'INO2' )
+    id_iono2   = get_spc_ndx( 'IONO2' )
+    id_ibr     = get_spc_ndx( 'IBR' )
+    id_icl     = get_spc_ndx( 'ICL' )
+    id_i2o2    = get_spc_ndx( 'I2O2' )
+    id_i2o3    = get_spc_ndx( 'I2O3' )
+    id_i2o4    = get_spc_ndx( 'I2O4' )
+    ! id_chbr3   = get_spc_ndx( 'CHBR3' )  !rpf Already implemented above
+    ! id_ch2br2  = get_spc_ndx( 'CH2BR2' ) !rpf Already implemented above
+    id_ch2brcl = get_spc_ndx( 'CH2BRCL' )
+    id_chbrcl2 = get_spc_ndx( 'CHBRCL2' )
+    id_chbr2cl = get_spc_ndx( 'CHBR2CL' )
+    id_ch3i    = get_spc_ndx( 'CH3I' )
+    id_ch2icl  = get_spc_ndx( 'CH2ICL' )
+    id_ch2ibr  = get_spc_ndx( 'CH2IBR' )
+    id_ch2i2   = get_spc_ndx( 'CH2I2' )
+    id_ch2cl2  = get_spc_ndx( 'CH2CL2' )
+    id_chcl3   = get_spc_ndx( 'CHCL3' )
+    id_c2cl4   = get_spc_ndx( 'C2CL4' )
+    id_c2h4cl2 = get_spc_ndx( 'C2H4CL2' )
+    id_chcl2o2 = get_spc_ndx( 'CHCL2O2' )
+    id_cocl2   = get_spc_ndx( 'COCL2' )
+    id_c2hcl3  = get_spc_ndx( 'C2HCL3' )
+!rpf_CESM2_SLH
+
     id_pan     = get_spc_ndx( 'PAN' )
     id_onit    = get_spc_ndx( 'ONIT' )
     id_mpan    = get_spc_ndx( 'MPAN' )
     id_isopno3 = get_spc_ndx( 'ISOPNO3' )
     id_onitr   = get_spc_ndx( 'ONITR' )
-    id_nh4no3  = get_spc_ndx( 'NH4NO3' )
+!   id_nh4no3  = get_spc_ndx( 'NH4NO3' ) !rpf Also implemented below
 
     id_honitr    = get_spc_ndx( 'HONITR' )
     id_alknit    = get_spc_ndx( 'ALKNIT' )
@@ -289,15 +350,47 @@ contains
                      id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps, &
                      id_terpnpt1, id_terpnps1, id_sqtn, id_terphfn, &
                      id_terpapan, id_terpa2pan, id_terpa3pan /)
+!rpf_CESM2_SLH
+    if ( id_clno2>0 .and. id_brno2>0 .and. id_iono2>0 ) then
+    nox_specvsl = (/ id_n, id_no, id_no2 /)
+    noy_specvsl = (/ id_n, id_no, id_no2, id_no3, id_n2o5, id_hno3, id_ho2no2,            &    ! removed id_clono2 here and inserted below
+                                id_pan, id_onit, id_mpan, id_isopno3, id_onitr, id_nh4no3, &   ! removed id_brono2 here and inserted below
+                     id_honitr, id_alknit, id_isopnita, id_isopnitb, id_isopnooh, id_nc4ch2oh, &
+                     id_nc4cho, id_noa, id_nterpooh, id_pbznit, id_terpnit, &
+                     id_isopn2b, id_isopn3b, id_isopn1d, id_isopn4d, id_isopnbno3, &
+                     id_isopfdn, id_isopfdnc, id_terpfdn, &
+                     id_isopfnp, id_isopnoohb, id_isopnoohd, id_inheb, id_inhed, &
+                     id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns, &
+                     id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps, &
+                     id_terpnpt1, id_terpnps1, id_sqtn, id_terphfn, &
+                     id_terpapan, id_terpa2pan, id_terpa3pan, &
+                     id_clono2, id_brono2, id_iono2, id_clno2, id_brno2, id_ino2, id_ino /)
+    endif
+!rpf_CESM2_SLH
+
 !... HOX species
     hox_species = (/ id_h, id_oh, id_ho2, id_h2o2 /)
 
 !... CLOY species
     clox_species = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo /)
+!rpf_CESM2_SLH
     cloy_species = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo, id_hcl, id_clono2, id_brcl /)
     tcly_species = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo, id_hcl, id_clono2, id_brcl, &
                       id_ccl4, id_cfc11, id_cfc113, id_cfc114, id_cfc115, id_ch3ccl3, id_cfc12, id_ch3cl, &
                       id_hcfc22, id_hcfc141b, id_hcfc142b, id_cf2clbr /)
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+    if ( id_clno2>0 .and. id_ch2brcl>0 ) then
+    clox_specvsl = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo /)
+    cloy_specvsl = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo, id_hcl, id_clono2, id_brcl, id_clno2, id_icl, id_chcl2o2, id_cocl2, id_cofcl /)
+    tcly_specvsl = (/ id_cl, id_clo, id_hocl, id_cl2, id_cl2o2, id_oclo, id_hcl, id_clono2, id_brcl, id_clno2, id_icl, id_chcl2o2, id_cocl2, id_cofcl, &
+                      id_ccl4, id_cfc11, id_cfc113, id_cfc114, id_cfc115, id_ch3ccl3, id_cfc12, id_ch3cl, &
+                      id_hcfc22, id_hcfc141b, id_hcfc142b, id_cf2clbr, &
+                      id_ch2brcl, id_chbrcl2, id_chbr2cl, id_ch2icl, &
+                      id_ch2cl2, id_chcl3, id_c2cl4, id_c2h4cl2, id_c2hcl3 /)
+    endif
+!rpf_CESM2_SLH
 
 !... FOY species
     foy_species = (/ id_F, id_hf, id_cofcl, id_cof2 /)
@@ -309,6 +402,26 @@ contains
     broy_species = (/ id_br, id_bro, id_hbr, id_brono2, id_brcl, id_hobr /)
     tbry_species = (/ id_br, id_bro, id_hbr, id_brono2, id_brcl, id_hobr, id_cf2clbr, id_cf3br, id_ch3br, id_h1202, &
                       id_h2402, id_ch2br2, id_chbr3 /)
+
+!rpf_CESM2_SLH
+    if ( id_brno2>0 .and. id_ch2brcl>0 ) then
+!   brox_specvsl = (/ id_br, id_bro, id_brcl, id_hobr /)
+    brox_specvsl = (/ id_br, id_bro /)
+    broy_specvsl = (/ id_br, id_bro, id_hbr, id_brono2, id_brcl, id_hobr, id_br2, id_brno2, id_ibr /)
+    tbry_specvsl = (/ id_br, id_bro, id_hbr, id_brono2, id_brcl, id_hobr, id_br2, id_brno2, id_ibr, &
+                      id_cf2clbr, id_cf3br, id_ch3br, id_h1202, id_h2402, &
+                      id_ch2br2, id_chbr3, id_ch2brcl, id_chbrcl2, id_chbr2cl, id_ch2ibr /)
+    endif
+!rpf_CESM2_SLH
+
+!rpf_CESM2_SLH
+!... IOY species
+    if ( id_io>0 .and. id_ch3i>0 ) then
+    ioy_specvsl  = (/ id_i, id_i2, id_io, id_oio, id_hi, id_hoi, id_ino, id_ino2, id_iono2, id_icl, id_ibr, id_i2o2, id_i2o3, id_i2o4 /)
+    tiy_specvsl  = (/ id_i, id_i2, id_io, id_oio, id_hi, id_hoi, id_ino, id_ino2, id_iono2, id_icl, id_ibr, id_i2o2, id_i2o3, id_i2o4, &
+                      id_ch3i, id_ch2icl, id_ch2ibr, id_ch2i2 /)
+    endif
+!rpf_CESM2_SLH
 
     sox_species = (/ id_so2, id_so4, id_h2so4 /)
     nhx_species = (/ id_nh3, id_nh4 /)
@@ -336,21 +449,51 @@ contains
     chm_prod_ndep_flx = any(noy_species>0) .or. any(nhx_species>0)
 
     call addfld( 'NOX',     (/ 'lev' /), 'A', 'mol/mol', 'nox (N+NO+NO2)' )
-    call addfld( 'NOY',     (/ 'lev' /), 'A', 'mol/mol', &
-                 'noy = total nitrogen (N+NO+NO2+NO3+2N2O5+HNO3+HO2NO2+ORGNOY+NH4NO3)' )
+!rpf_CESM2_SLH
+!rpf Chlorine and Bromine nitrites (XNO2) are only considered in VSL scheme
+    if ( id_clno2>0 .and. id_brno2>0 ) then
+       call addfld( 'NOY',     (/ 'lev' /), 'A', 'mol/mol', &
+                    'noy = total nitrogen (N+NO+NO2+NO3+2N2O5+HNO3+HO2NO2+ORGNOY+NH4NO3+HALOGEN_NOY)' )
+    else
+       call addfld( 'NOY',     (/ 'lev' /), 'A', 'mol/mol', &
+                    'noy = total nitrogen (N+NO+NO2+NO3+2N2O5+HNO3+HO2NO2+ORGNOY+NH4NO3)' )
+    endif
+!rpf_CESM2_SLH
+
     call addfld( 'NOY_SRF', horiz_only,  'A', 'mol/mol', 'surface noy volume mixing ratio' )
     call addfld( 'HOX',     (/ 'lev' /), 'A', 'mol/mol', 'HOx (H+OH+HO2+2H2O2)' )
 
     call addfld( 'BROX',    (/ 'lev' /), 'A', 'mol/mol', 'brox (Br+BrO+BRCl+HOBr)' )
-    call addfld( 'BROY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic bromine (Br+BrO+HOBr+BrONO2+HBr+BrCl)' )
+!rpf_CESM2_SLH
+!rpf Chlorine and Bromine nitrites (XNO2) are only considered in VSL scheme
+    if ( id_brno2>0 .and. id_ch2brcl>0 ) then
+       call addfld( 'BROY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic bromine (Br+BrO+HOBr+BrONO2+HBr+BrCl+2Br2+BrNO2+IBr)' )
+    else
+       call addfld( 'BROY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic bromine (Br+BrO+HOBr+BrONO2+HBr+BrCl)' )
+    endif
+!rpf_CESM2_SLH
     call addfld( 'TBRY',    (/ 'lev' /), 'A', 'mol/mol', 'total Br (ORG+INORG) volume mixing ratio' )
 
     call addfld( 'CLOX',    (/ 'lev' /), 'A', 'mol/mol', 'clox (Cl+CLO+HOCl+2Cl2+2Cl2O2+OClO)' )
-    call addfld( 'CLOY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic chlorine (Cl+ClO+2Cl2+2Cl2O2+OClO+HOCl+ClONO2+HCl+BrCl)' )
+!rpf_CESM2_SLH
+!rpf Chlorine and Bromine nitrites (XNO2) are only considered in VSL scheme
+    if ( id_clno2>0 .and. id_ch2brcl>0 ) then
+       call addfld( 'CLOY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic chlorine (Cl+ClO+2Cl2+2Cl2O2+OClO+HOCl+ClONO2+HCl+BrCl+ClNO2+ICl)' )
+    else
+       call addfld( 'CLOY',    (/ 'lev' /), 'A', 'mol/mol', 'total inorganic chlorine (Cl+ClO+2Cl2+2Cl2O2+OClO+HOCl+ClONO2+HCl+BrCl)' )
+    endif
+!rpf_CESM2_SLH
     call addfld( 'TCLY',    (/ 'lev' /), 'A', 'mol/mol', 'total Cl (ORG+INORG) volume mixing ratio' )
 
     call addfld( 'FOY',     (/ 'lev' /), 'A', 'mol/mol', 'total inorganic fluorine (F+HF+COFCL+2COF2)' )
     call addfld( 'TFY',     (/ 'lev' /), 'A', 'mol/mol', 'total F (ORG+INORG) volume mixing ratio' )
+
+!rpf_CESM2_SLH
+    if ( id_io>0 .and. id_ch3i>0 ) then
+       call addfld( 'IOY',     (/ 'lev' /), 'A', 'mol/mol', 'total inorganic iodine (I+2I2+IO+OIO+HI+HOI+INO+INO2+IONO2+IBr+ICl+2I2O2+2I2O3+2I2O4)')
+       call addfld( 'TIY',     (/ 'lev' /), 'A', 'mol/mol', 'total I volume mixing ratio')
+    endif
+!rpf_CESM2_SLH
 
     call addfld( 'TOTH',    (/ 'lev' /), 'A', 'mol/mol', 'total H2 volume mixing ratio' )
 
@@ -490,14 +633,25 @@ contains
     call addfld( 'AREA', horiz_only,  'A', 'm2', 'area of grid box' )
 
     call addfld( 'dry_deposition_NOy_as_N', horiz_only, 'I', 'kg/m2/s', 'NOy dry deposition flux ' )
-    call addfld( 'DF_SOX', horiz_only, 'I', 'kg/m2/s', 'SOx dry deposition flux ' )
+    call addfld( 'DF_SOX',                  horiz_only, 'I', 'kg/m2/s', 'SOx dry deposition flux ' )
     call addfld( 'dry_deposition_NHx_as_N', horiz_only, 'I', 'kg/m2/s', 'NHx dry deposition flux ' )
+!rpf_CESM2_SLH
+    call addfld( 'dry_dep_ClOy_as_Cl',      horiz_only, 'I', 'kg/m2/s', 'ClOy dry deposition flux ' )
+    call addfld( 'dry_dep_BrOy_as_Br',      horiz_only, 'I', 'kg/m2/s', 'BrOy dry deposition flux ' )
+    call addfld( 'dry_dep_IOy_as_I',        horiz_only, 'I', 'kg/m2/s', 'IOy  dry deposition flux ' )
+!rpf_CESM2_SLH
+
     if (gas_wetdep_method=='NEU') then
        call addfld( 'wet_deposition_NOy_as_N', horiz_only, 'A', 'kg/m2/s', 'NOy wet deposition' )
        call addfld( 'wet_deposition_NHx_as_N', horiz_only, 'A', 'kg/m2/s', 'NHx wet deposition' )
+!rpf_CESM2_SLH
+       call addfld( 'wet_dep_ClOy_as_Cl',      horiz_only, 'A', 'kg/m2/s', 'ClOy wet deposition' )
+       call addfld( 'wet_dep_BrOy_as_Br',      horiz_only, 'A', 'kg/m2/s', 'BrOy wet deposition' )
+       call addfld( 'wet_dep_IOy_as_I',        horiz_only, 'A', 'kg/m2/s', 'IOy  wet deposition' )
+!rpf_CESM2_SLH
     elseif (gas_wetdep_method=='MOZ') then
        call addfld( 'wet_deposition_NOy_as_N', horiz_only, 'A', 'kg/s', 'NOy wet deposition' )
-       call addfld( 'WD_SOX', horiz_only, 'A', 'kg/s', 'SOx wet deposition' )
+       call addfld( 'WD_SOX',                  horiz_only, 'A', 'kg/s', 'SOx wet deposition' )
        call addfld( 'wet_deposition_NHx_as_N', horiz_only, 'A', 'kg/s', 'NHx wet deposition' )
     endif
     if ( history_cesm_forcing ) then
@@ -505,6 +659,15 @@ contains
        call add_default('dry_deposition_NHx_as_N', 1, ' ')
        call add_default('wet_deposition_NOy_as_N', 1, ' ')
        call add_default('wet_deposition_NHx_as_N', 1, ' ')
+!rpf_CESM2_SLH
+!rpf Not sure if these lines should be commented or not
+!      call add_default('dry_deposition_ClOy_as_Cl', 1, ' ')
+!      call add_default('dry_deposition_BrOy_as_Br', 1, ' ')
+!      call add_default('dry_deposition_IOy_as_I'  , 1, ' ')
+!      call add_default('wet_deposition_ClOy_as_Cl', 1, ' ')
+!      call add_default('wet_deposition_BrOy_as_Br', 1, ' ')
+!      call add_default('wet_deposition_IOy_as_I'  , 1, ' ')
+!rpf_CESM2_SLH
     endif
 
     call species_sums_init()
@@ -554,14 +717,24 @@ contains
     real(r8)    :: un2(ncol)
 
     real(r8), dimension(ncol,pver) :: vmr_nox, vmr_noy, vmr_clox, vmr_cloy, vmr_tcly, vmr_brox, vmr_broy, vmr_toth
+!rpf_CESM2_SLH
     real(r8), dimension(ncol,pver) :: vmr_tbry, vmr_foy, vmr_tfy
+    real(r8), dimension(ncol,pver) :: vmr_ioy, vmr_tiy
+!rpf_CESM2_SLH
     real(r8), dimension(ncol,pver) :: mmr_noy, mmr_sox, mmr_nhx, net_chem
     real(r8), dimension(ncol)      :: df_noy, df_sox, df_nhx, do3chm_trp, do3chm_lms
     real(r8), dimension(ncol)      :: wd_noy, wd_nhx
     real(r8), dimension(ncol,pver) :: vmr_hox
+!rpf_CESM2_SLH
+    real(r8), dimension(ncol)      :: df_cloy, df_broy, df_ioy
+    real(r8), dimension(ncol)      :: wd_cloy, wd_broy, wd_ioy
+!rpf_CESM2_SLH
 
     real(r8) :: area(ncol), mass(ncol,pver)
-    real(r8) :: wgt
+!rpf_CESM2_SLH
+!   real(r8) :: wgt
+    real(r8) :: wgt, wgt1, wgt2
+!rpf_CESM2_SLH
 
     !--------------------------------------------------------------------
     !	... "diagnostic" groups
@@ -575,6 +748,10 @@ contains
     vmr_brox(:ncol,:) = 0._r8
     vmr_broy(:ncol,:) = 0._r8
     vmr_tbry(:ncol,:) = 0._r8
+!rpf_CESM2_SLH
+    vmr_ioy(:ncol,:)  = 0._r8
+    vmr_tiy(:ncol,:)  = 0._r8
+!rpf_CESM2_SLH
     vmr_foy(:ncol,:)  = 0._r8
     vmr_tfy(:ncol,:)  = 0._r8
     vmr_toth(:ncol,:) = 0._r8
@@ -587,6 +764,15 @@ contains
 
     wd_noy(:ncol) = 0._r8
     wd_nhx(:ncol) = 0._r8
+
+!rpf_CESM2_SLH
+    df_cloy(:ncol) = 0._r8
+    df_broy(:ncol) = 0._r8
+    df_ioy (:ncol) = 0._r8
+    wd_cloy(:ncol) = 0._r8
+    wd_broy(:ncol) = 0._r8
+    wd_ioy (:ncol) = 0._r8
+!rpf_CESM2_SLH
 
     call get_area_all_p(lchnk, ncol, area)
     area = area * rearth**2
@@ -620,10 +806,16 @@ contains
           vmr_tfy(:ncol,:) = vmr_tfy(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
 
-!... counting chlorine and bromines, etc... (and total H2 species)
+!rpf_CESM2_SLH
+!... WSY: why is ch4 here? wgt = 2?
+!... counting chlorine and bromines, and iodines, etc... (and total H2 species)
        if ( m == id_ch4 .or. m == id_n2o5 .or. m == id_cfc12 .or. m == id_cl2 .or. m == id_cl2o2 .or. m==id_h2o2  ) then
           wgt = 2._r8
        elseif (m == id_cfc114 .or. m == id_hcfc141b .or. m == id_h1202 .or. m == id_h2402 .or. m == id_ch2br2 ) then
+          wgt = 2._r8
+       elseif (m == id_br2    .or. m == id_i2    .or. m == id_i2o2  .or. m == id_i2o3 .or. m == id_i2o4 ) then
+          wgt = 2._r8
+       elseif (m == id_ch2i2 ) then
           wgt = 2._r8
        elseif (m == id_isopfdn .or. m == id_isopfdnc .or. m == id_terpfdn ) then
           wgt = 2._r8
@@ -631,20 +823,62 @@ contains
           wgt = 3._r8
        elseif ( m == id_ccl4 ) then
           wgt = 4._r8
+       elseif ( m == id_ch2cl2 .or. m == id_c2h4cl2 .or. m == id_chcl2o2 .or. m == id_cocl2 ) then
+          wgt = 2._r8
+       elseif ( m == id_chcl3 .or. m == id_c2hcl3 ) then
+          wgt = 3._r8
+       elseif ( m == id_c2cl4 ) then
+          wgt = 4._r8
        else
           wgt = 1._r8
        endif
+!WSY: moved these here:
+!In the case of CHBr2Cl and CHBrCl2 the weight will be different
+!depending on if we are calculating TCLY or TBRY
+!(use wgt1 for chlorine and wgt2 for bromine)
+       if ( m == id_chbr2cl ) then
+          wgt1 = 1._r8
+          wgt2 = 2._r8
+       elseif ( m == id_chbrcl2 ) then
+          wgt1 = 2._r8
+          wgt2 = 1._r8
+       else
+          wgt1 = wgt
+          wgt2 = wgt
+       endif
+!rpf_CESM2_SLH
+
 !...NOY
+!rpf_CESM2_SLH
+    if ( id_clno2>0 .and. id_brno2>0 .and. id_iono2>0 ) then
+       if ( any( nox_specvsl == m ) ) then
+          vmr_nox(:ncol,:) = vmr_nox(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( noy_specvsl == m ) ) then
+          vmr_noy(:ncol,:) = vmr_noy(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( noy_specvsl == m ) ) then
+          mmr_noy(:ncol,:) = mmr_noy(:ncol,:) +  wgt * mmr(:ncol,:,m)
+       endif
+    else
        if ( any( nox_species == m ) ) then
           vmr_nox(:ncol,:) = vmr_nox(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
        if ( any( noy_species == m ) ) then
           vmr_noy(:ncol,:) = vmr_noy(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
-!...NOY, SOX, NHX
        if ( any( noy_species == m ) ) then
           mmr_noy(:ncol,:) = mmr_noy(:ncol,:) +  wgt * mmr(:ncol,:,m)
        endif
+    endif
+!rpf_CESM2_SLH
+
+!...NOY, SOX, NHX
+!rpf_CESM2_SLH ... Computed above on the id_clno2 condition for noy
+!        if ( any( noy_species == m ) ) then
+!           mmr_noy(:ncol,:) = mmr_noy(:ncol,:) +  wgt * mmr(:ncol,:,m)
+!        endif
+!rpf_CESM2_SLH
        if ( any( sox_species == m ) ) then
           mmr_sox(:ncol,:) = mmr_sox(:ncol,:) +  wgt * mmr(:ncol,:,m)
        endif
@@ -652,6 +886,18 @@ contains
           mmr_nhx(:ncol,:) = mmr_nhx(:ncol,:) +  wgt * mmr(:ncol,:,m)
        endif
 !...CLOY
+!rpf_CESM2_SLH
+    if ( id_clno2>0 .and. id_ch2brcl>0 ) then
+       if ( any( clox_specvsl == m ) ) then
+          vmr_clox(:ncol,:) = vmr_clox(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( cloy_specvsl == m ) ) then
+          vmr_cloy(:ncol,:) = vmr_cloy(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( tcly_specvsl == m ) ) then
+          vmr_tcly(:ncol,:) = vmr_tcly(:ncol,:) +  wgt1 * vmr(:ncol,:,m) !rpf NOTE: must use wgt1 for chlorine instead of wgt
+       endif
+    else
        if ( any( clox_species == m ) ) then
           vmr_clox(:ncol,:) = vmr_clox(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
@@ -660,8 +906,23 @@ contains
        endif
        if ( any( tcly_species == m ) ) then
           vmr_tcly(:ncol,:) = vmr_tcly(:ncol,:) +  wgt * vmr(:ncol,:,m)
+!         vmr_tcly(:ncol,:) = vmr_tcly(:ncol,:) +  wgt1 * vmr(:ncol,:,m) !rpf wgt1 applies to tcly_specvsl but not to tcly_species
        endif
+    endif
+!rpf_CESM2_SLH
 !...BROY
+!rpf_CESM2_SLH
+    if ( id_brno2>0 .and. id_ch2brcl>0 ) then
+       if ( any( brox_specvsl == m ) ) then
+          vmr_brox(:ncol,:) = vmr_brox(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( broy_specvsl == m ) ) then
+          vmr_broy(:ncol,:) = vmr_broy(:ncol,:) +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( tbry_specvsl == m ) ) then
+          vmr_tbry(:ncol,:) = vmr_tbry(:ncol,:) +  wgt2 * vmr(:ncol,:,m) !rpf NOTE: must use wgt2 for bromine instead of wgt
+       endif
+    else
        if ( any( brox_species == m ) ) then
           vmr_brox(:ncol,:) = vmr_brox(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
@@ -670,7 +931,23 @@ contains
        endif
        if ( any( tbry_species == m ) ) then
           vmr_tbry(:ncol,:) = vmr_tbry(:ncol,:) +  wgt * vmr(:ncol,:,m)
+!         vmr_tbry(:ncol,:) = vmr_tbry(:ncol,:) +  wgt2 * vmr(:ncol,:,m) !rpf wgt2 applies to tbry_specvsl but not to tbry_species
        endif
+    endif
+!!rpf_CESM2_SLH
+
+!...IOY:
+!rpf_CESM2_SLH
+    if ( id_io>0 .and. id_ch3i>0 ) then
+       if ( any( ioy_specvsl == m ) ) then
+          vmr_ioy(:ncol,:) = vmr_ioy(:ncol,:)   +  wgt * vmr(:ncol,:,m)
+       endif
+       if ( any( tiy_specvsl == m ) ) then
+          vmr_tiy(:ncol,:) = vmr_tiy(:ncol,:)   +  wgt * vmr(:ncol,:,m)
+       endif
+    endif
+!rpf_CESM2_SLH
+
 !...HOY
        if ( any ( toth_species == m ) ) then
           vmr_toth(:ncol,:) = vmr_toth(:ncol,:) +  wgt * vmr(:ncol,:,m)
@@ -718,6 +995,37 @@ contains
        if ( id_nhdep == m ) then
           wd_nhx(:ncol) = wd_nhx(:ncol) +  wgt * wetdepflx(:ncol,m)*N_molwgt/adv_mass(m)
        end if
+
+!rpf_CESM2_SLH
+    if ( id_clno2>0 ) then
+       if ( any( cloy_specvsl == m ) ) then
+          df_cloy(:ncol) = df_cloy(:ncol) +  wgt * depflx   (:ncol,m)*Cl_molwgt/adv_mass(m)
+          wd_cloy(:ncol) = wd_cloy(:ncol) +  wgt * wetdepflx(:ncol,m)*Cl_molwgt/adv_mass(m)
+       endif
+    else
+       if ( any( cloy_species == m ) ) then
+          df_cloy(:ncol) = df_cloy(:ncol) +  wgt * depflx   (:ncol,m)*Cl_molwgt/adv_mass(m)
+          wd_cloy(:ncol) = wd_cloy(:ncol) +  wgt * wetdepflx(:ncol,m)*Cl_molwgt/adv_mass(m)
+       endif
+    endif
+    if ( id_brno2>0 ) then
+       if ( any( broy_specvsl == m ) ) then
+          df_broy(:ncol) = df_broy(:ncol) +  wgt * depflx   (:ncol,m)*Br_molwgt/adv_mass(m)
+          wd_broy(:ncol) = wd_broy(:ncol) +  wgt * wetdepflx(:ncol,m)*Br_molwgt/adv_mass(m)
+       endif
+    else
+       if ( any( broy_species == m ) ) then
+          df_broy(:ncol) = df_broy(:ncol) +  wgt * depflx   (:ncol,m)*Br_molwgt/adv_mass(m)
+          wd_broy(:ncol) = wd_broy(:ncol) +  wgt * wetdepflx(:ncol,m)*Br_molwgt/adv_mass(m)
+       endif
+    endif
+    if ( id_ino2>0 ) then
+       if ( any( ioy_specvsl == m  ) ) then
+          df_ioy (:ncol) = df_ioy (:ncol) +  wgt * depflx   (:ncol,m)*I_molwgt /adv_mass(m)
+          wd_ioy (:ncol) = wd_ioy (:ncol) +  wgt * wetdepflx(:ncol,m)*I_molwgt /adv_mass(m)
+       endif
+    endif
+!rpf_CESM2_SLH
 
        do k=1,pver
           do i=1,ncol
@@ -768,19 +1076,40 @@ contains
     call outfld( 'TBRY', vmr_tbry (:ncol,:), ncol, lchnk )
     call outfld( 'FOY',  vmr_foy  (:ncol,:), ncol, lchnk )
     call outfld( 'TFY',  vmr_tfy  (:ncol,:), ncol, lchnk )
+!rpf_CESM2_SLH
+    if ( id_io>0 .and. id_ch3i>0 ) then
+       call outfld( 'IOY',  vmr_ioy(:ncol,:),  ncol, lchnk )
+       call outfld( 'TIY',  vmr_tiy(:ncol,:),  ncol, lchnk )
+    endif
+!rpf_CESM2_SLH
     call outfld( 'TOTH', vmr_toth (:ncol,:), ncol, lchnk )
 
     call outfld( 'NOY_mmr', mmr_noy(:ncol,:), ncol ,lchnk )
     call outfld( 'SOX_mmr', mmr_sox(:ncol,:), ncol ,lchnk )
     call outfld( 'NHX_mmr', mmr_nhx(:ncol,:), ncol ,lchnk )
     call outfld( 'dry_deposition_NOy_as_N', df_noy(:ncol), ncol ,lchnk )
-    call outfld( 'DF_SOX', df_sox(:ncol), ncol ,lchnk )
+!   call outfld( 'DF_SOX', df_sox(:ncol), ncol ,lchnk )
+    call outfld( 'DF_SOX',                  df_sox(:ncol), ncol ,lchnk )
     call outfld( 'dry_deposition_NHx_as_N', df_nhx(:ncol), ncol ,lchnk )
+!rpf_CESM2_SLH
+    call outfld( 'dry_dep_ClOy_as_Cl',      df_cloy(:ncol), ncol ,lchnk )
+    call outfld( 'dry_dep_BrOy_as_Br',      df_broy(:ncol), ncol ,lchnk )
+    call outfld( 'dry_dep_IOy_as_I',        df_ioy (:ncol), ncol ,lchnk )
+!rpf_CESM2_SLH
+
     if (gas_wetdep_method=='NEU') then
       wd_noy(:ncol) = -wd_noy(:ncol) ! downward is possitive
       wd_nhx(:ncol) = -wd_nhx(:ncol)
       call outfld( 'wet_deposition_NOy_as_N', wd_noy(:ncol), ncol, lchnk )
       call outfld( 'wet_deposition_NHx_as_N', wd_nhx(:ncol), ncol, lchnk )
+!rpf_CESM2_SLH
+      wd_cloy(:ncol) = -wd_cloy(:ncol) ! downward is possitive
+      wd_broy(:ncol) = -wd_broy(:ncol)
+      wd_ioy (:ncol) = -wd_ioy (:ncol)
+      call outfld( 'wet_dep_ClOy_as_Cl',      wd_cloy(:ncol), ncol, lchnk )
+      call outfld( 'wet_dep_BrOy_as_Br',      wd_broy(:ncol), ncol, lchnk )
+      call outfld( 'wet_dep_IOy_as_I',        wd_ioy (:ncol), ncol, lchnk )
+!rpf_CESM2_SLH
     end if
 
     nhx_nitrogen_flx = df_nhx + wd_nhx

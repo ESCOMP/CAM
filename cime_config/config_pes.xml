@@ -326,7 +326,7 @@
 	  <nthrds_cpl>1</nthrds_cpl>
 	</nthrds>
       </pes>
-      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|WC)">
+      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|CSLH|WC|WSLH)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-8</ntasks_atm>
@@ -607,7 +607,7 @@
 	  <rootpe_cpl>0</rootpe_cpl>
 	</rootpe>
       </pes>
-      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|WC|WX|CARMA)">
+      <pes pesize="any" compset="_CAM\d0%(CT|CV|CF|CSLH|WC|WX|WSLH|CARMA)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-4</ntasks_atm>
@@ -954,7 +954,7 @@
   </grid>
   <grid name="a%0.9x1.25">
     <mach name="derecho">
-      <pes pesize="any" compset="_(CAM50|CAM60)%(CT|CV|CF|WC|CARMA)">
+      <pes pesize="any" compset="_(CAM50|CAM60)%(CT|CV|CF|CSLH|WC|WSLH|CARMA)">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>-8</ntasks_atm>
