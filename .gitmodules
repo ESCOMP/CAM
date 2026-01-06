@@ -107,7 +107,7 @@
         fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
-[submodule "src/physics/ext_co2_cooling"]
+[submodule "ext_co2_cooling"]
 	path = src/physics/ext_co2_cooling
 	url = https://github.com/fedef17/CO2_cool_fort.git
 	fxrequired = AlwaysRequired
