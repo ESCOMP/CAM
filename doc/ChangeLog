@@ -1,4 +1,90 @@
+===============================================================
 
+Tag name: cam6_4_143
+Originator(s): fvitt
+Date: 7 Jan 2026
+One-line Summary: Optional non-LTE CO2 cooling method in the upper atmosphere
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1457
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ Provide an option to use an extended parameterization of CO2 cooling described in
+ https://doi.org/10.5194/egusphere-2023-2424, by Manuel Lopez-Puertas, et al.
+ Issue # 1358
+
+ NOTE: This external CO2 cooling package does not compile with the NAG Fortran compiler.
+       Hence, a CAM configure option to include the pacakage in the build has been implemented.
+
+Describe any changes made to build system:
+ - new CAM configure option ext_co2_cooling (as noted above)
+
+Describe any changes made to the namelist:
+ - new namelist option nlte_use_extco2
+    If TRUE, then use the extended CO2 scheme of Lopez-Puertas et al. 2024 as an alernative method
+    of computing non-LTE CO2 cooling rates in the upper atmosphere. (DOI:10.5194/gmd-17-4401-2024)
+    Default: FALSE
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+
+A       src/physics/.ext_co2_cooling_sparse_checkout
+A       src/physics/ext_co2_cooling
+ - for extended CO2 cooling submodule inclusion
+
+A       src/physics/waccm/nlte_extco2.F90
+ - cam interface module to the extended CO2 cooling package
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+ - include the extended CO2 cooling package external submodule
+
+M       bld/config_files/definition.xml
+M       bld/configure
+ - ext_co2_cooling cam config option
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - update default IC file for waccmx ne16 130-level
+
+M       bld/namelist_files/namelist_definition.xml
+ - new run-time switch -- nlte_use_extco2
+
+M       src/physics/waccm/nlte_lw.F90
+M       src/physics/waccm/radheat.F90
+ - mods to invoke the extended CO2 cooling package
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/user_nl_cam
+ - for testing the extended CO2 cooling package
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 NLCOMP
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_141_intel: DIFF
+ - expected differences -- extended nonLTE CO2 cooling package turned on in this test
+
+derecho/nvhpc/aux_cam: (not run as nothing has changed with the file system)
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:  cam6_4_141
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_142
