@@ -80,6 +80,7 @@
         character(len=2) :: mstring
         character(len=7) :: jstring
         logical :: do_jeuv
+        logical, save :: is_initialized = .false.
 
         do_jeuv=.false.
         do_heating=.false.
@@ -96,6 +97,11 @@
              do_heating(m) = .true.
            endif
         enddo
+
+        ! If the module has already been initialized, return after
+        ! computing index map
+        if( is_initialized ) return
+        is_initialized = .true.
 
         if (.not.do_jeuv) return
 

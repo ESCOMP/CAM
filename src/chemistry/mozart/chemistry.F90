@@ -164,6 +164,7 @@ end function chem_is
     use short_lived_species, only : slvd_index, short_lived_map=>map, register_short_lived_species
     use cfc11star,           only : register_cfc11star
     use mo_photo,            only : photo_register
+    use mo_tuvx,             only : tuvx_register, tuvx_active
     use mo_aurora,           only : aurora_register
     use aero_model,          only : aero_model_register
     use physics_buffer,      only : pbuf_add_field, dtype_r8
@@ -320,9 +321,12 @@ end function chem_is
     call register_cfc11star()
 
     if ( waccmx_is('ionosphere') ) then
-       call photo_register()
+       if( .not. tuvx_active ) then
+         call photo_register( )
+       end if
        call aurora_register()
     endif
+    call tuvx_register( )
 
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
@@ -348,6 +352,7 @@ end function chem_is
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
     use ocean_emis,       only: ocean_emis_readnl
+    use mo_tuvx,          only: tuvx_readnl
 
     ! args
 
@@ -560,6 +565,7 @@ end function chem_is
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
+   call tuvx_readnl(nlfile)
 
  end subroutine chem_readnl
 
@@ -1040,6 +1046,7 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
+    use mo_tuvx,           only : tuvx_active, tuvx_timestep_init
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
@@ -1110,6 +1117,11 @@ end function chem_is_active
     !   ... setup the time interpolation for mo_photo
     !-----------------------------------------------------------------------------
     call photo_timestep_init( calday )
+
+    !-----------------------------------------------------------------------------
+    !   ... setup the TUV-x profiles for this timestep
+    !-----------------------------------------------------------------------------
+    if( tuvx_active ) call tuvx_timestep_init( )
 
     call update_cfc11star( pbuf2d, phys_state )
 
@@ -1261,14 +1273,14 @@ end function chem_is_active
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
 
-    call gas_phase_chemdr(state,lchnk, ncol, imozart, state%q, &
+    call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
-                          nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf )
+                          nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf, state )
     if (.not.ndep_stream_active) then
        if (associated(cam_out%nhx_nitrogen_flx)) then
           cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
@@ -1345,11 +1357,13 @@ end function chem_is_active
     use mee_ionization, only: mee_ion_final
     use rate_diags, only: rate_diags_final
     use species_sums_diags, only: species_sums_final
+    use mo_tuvx, only: tuvx_finalize
     use short_lived_species, only: short_lived_species_final
 
     call mee_ion_final()
     call rate_diags_final()
     call species_sums_final()
+    call tuvx_finalize()
     call short_lived_species_final()
 
   end subroutine chem_final

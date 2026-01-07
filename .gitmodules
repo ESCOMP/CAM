@@ -205,3 +205,10 @@ url = https://github.com/NCAR/CUPiD.git
 fxtag = v0.4.0
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
+
+[submodule "tuv-x"]
+	path = libraries/tuv-x
+	url = https://github.com/NCAR/tuv-x.git
+fxtag = 5c64595a4abce
+fxrequired = ToplevelRequired
+fxDONOTUSEurl = https://github.com/NCAR/tuv-x.git

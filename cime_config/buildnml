@@ -203,7 +203,7 @@ def buildnml(case, caseroot, compname):
         # -----------------------------------------------------
         # copy geos-chem config files to rundir if using geos-chem chemistry
         # -----------------------------------------------------
-
+        
         if os.path.isdir(rundir) \
             and os.path.exists(os.path.join(caseroot, "species_database.yml"))\
             and '-chem geoschem' in CAM_CONFIG_OPTS:
@@ -213,6 +213,13 @@ def buildnml(case, caseroot, compname):
                    file2 = os.path.join(rundir, fname)
                    logger.info("GEOS-Chem config file copy: file1 %s file2 %s ", file1, file2)
                    shutil.copy(file1,file2)
+
+        # Copy TUV-x data to rundir
+        dest_data = os.path.join(rundir, "data")
+        if os.path.exists(dest_data):
+            shutil.rmtree(dest_data)
+        shutil.copytree(os.path.join(srcroot, "libraries", "tuv-x", "data"), \
+                                              dest_data)
 
 ###############################################################################
 def _main_func():

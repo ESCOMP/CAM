@@ -7,7 +7,7 @@ create the cam library
 # pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
 # pylint: disable=invalid-name
 import sys, os, filecmp, shutil
-
+from glob import glob
 
 _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
@@ -22,12 +22,13 @@ from CIME.utils import run_sub_or_cmd, expect, run_cmd
 from CIME.utils import import_from_file
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
+from CIME.XML.env_build import EnvBuild
 
 logger = logging.getLogger(__name__)
 
 ###############################################################################
 def _build_fms(caseroot, libroot, bldroot):
-    ###############################################################################
+###############################################################################
 
     with Case(caseroot) as case:
 
@@ -71,7 +72,7 @@ def _build_fms(caseroot, libroot, bldroot):
 
 ###############################################################################
 def _build_cam(caseroot, libroot, bldroot):
-    ###############################################################################
+###############################################################################
 
     with Case(caseroot, read_only=False) as case:
 
@@ -157,12 +158,184 @@ def _build_cam(caseroot, libroot, bldroot):
         logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n", cmd, out, err)
         expect(rc == 0, "Command %s failed with rc=%s" % (cmd, rc))
 
+###############################################################################
+def _run_cmd(command, working_dir):
+###############################################################################
+
+    rc, out, err = run_cmd(command, from_dir=working_dir, verbose=True)
+    expect(rc == 0, "Command {} failed with rc={}".format(command, rc))
+
+###############################################################################
+def _cmake_default_args(caseroot):
+###############################################################################
+# Returns a dictionary of CMake variables based on the Macros.cmake file for
+# the build.
+
+    build = EnvBuild(case_root=caseroot)
+    with Case(caseroot) as case:
+        macro_path = os.path.abspath(os.path.join(caseroot, "cmake_macros", ""))
+        args = "-DCONVERT_TO_MAKE=ON "
+        args += "-DCASEROOT={} ".format(caseroot)
+        args += "-DCOMPILER={} ".format(build.get_value("COMPILER"))
+        args += "-DOS={} ".format(build.get_value("OS"))
+        args += "-DMACH={} ".format(case.get_value("MACH"))
+        args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+        args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        args += "-DDEBUG={} ".format(build.get_value("DEBUG"))
+        cmd = "cmake {} .".format(args)
+        rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
+        expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
+
+        arg_dict = {}
+        for line in out.splitlines():
+            if ":=" in line:
+                key, val = line.split(":=")
+                arg_dict[key.replace('CIME_SET_MAKEFILE_VAR','').strip()] = val.strip()
+
+        return arg_dict
+
+###############################################################################
+def _build_tuvx(caseroot, libroot, bldroot):
+###############################################################################
+# Builds the TUV-x library and updates the case variables used to set the
+# include paths and linked libraries
+
+    build = EnvBuild(case_root=caseroot)
+    with Case(caseroot) as case:
+        bldpath = os.path.join(bldroot, "tuv-x")
+        if not os.path.exists(bldpath):
+            os.makedirs(bldpath)
+        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+                                               "libraries", "tuv-x", ""))
+        logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
+
+        arg_dict = _cmake_default_args(caseroot)
+        if build.get_value("MPILIB") == "mpi-serial":
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        else:
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+            cmake_args += "-DTUVX_ENABLE_MPI:BOOL=TRUE "
+        if case.get_value("DEBUG"):
+            cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
+        else:
+            cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DCMAKE_VERBOSE_MAKEFILE=ON "
+        cmake_args += "-DCMAKE_Fortran_COMPILER=mpif90 "
+        cmake_args += "-DCMAKE_C_COMPILER=mpicc "
+        cmake_args += "-DCMAKE_CXX_COMPILER=mpicxx "
+        cmake_args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        if (case.get_value("MACH") == "izumi") :
+            cmake_args += "-DCMAKE_PREFIX_PATH={} ".format(arg_dict["NETCDF_PATH"])
+            cmake_args += "-DCMAKE_IGNORE_PATH={} ".format(os.environ.get('PYTHONHOME'))
+        if (case.get_value("MACH") == "izumi") and (case.get_value("COMPILER") == "nag") :
+            netcdf_path = arg_dict["NETCDF_PATH"]
+            cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format("-I"+netcdf_path+"/include -C=all -g ")
+            cmake_args += "-DCMAKE_C_FLAGS='-std=gnu99 -g -Wl,--as-needed,--allow-shlib-undefined' "
+            cmake_args += "-DTUVX_USER_LDFLAGS='{}' ".format("-L"+netcdf_path+"/lib -lnetcdff -lnetcdf "+netcdf_path+"/lib/libnetcdff.a")
+        else :
+            cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
+
+        cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
+        cmake_args += "-DTUVX_ENABLE_TESTS=OFF "
+        cmake_args += "-DTUVX_ENABLE_COVERAGE=OFF "
+        cmake_args += "-DTUVX_INSTALL_INCLUDE_DIR='{}' ".format(_tuvx_include_dir(libroot))
+        cmake_args += "-DTUVX_INSTALL_MOD_DIR='{}' ".format(_tuvx_include_dir(libroot))
+        cmake_args += srcpath
+
+        _run_cmd("cmake {}".format(cmake_args), bldpath)
+        _run_cmd(case.get_value("GMAKE"), bldpath)
+        _run_cmd("{} install".format(case.get_value("GMAKE")), bldpath)
+
+        # add TUV-x to include paths
+        incldir = os.environ.get('USER_INCLDIR')
+        if incldir is None:
+            incldir = ''
+        os.environ['USER_INCLDIR'] = incldir + \
+            " -I{} ".format(_tuvx_include_dir(libroot))
+
+        # create simlink to library in folder CIME expects libraries to be in
+        dst = os.path.join(libroot, "libtuvx.a")
+        if os.path.isfile(dst):
+            os.remove(dst)
+        os.symlink(_tuvx_lib_path(libroot), dst)
+        dst = os.path.join(libroot, "libyaml-cpp.a")
+        if os.path.isfile(dst):
+            os.remove(dst)
+        os.symlink(_yaml_cpp_lib_path(libroot), dst)
+
+###############################################################################
+def _tuvx_include_dir(libroot):
+###############################################################################
+# Returns the path to the TUV-x include directory
+
+    coreinc = os.path.join(libroot, "include", "")
+    expect(os.path.exists(coreinc), \
+           "TUV-x include directory not found at {}".format(coreinc))
+    return coreinc
+
+###############################################################################
+def _yaml_cpp_lib_path(libroot):
+###############################################################################
+# Returns the path to the yaml-cpp library
+
+    corelib = os.path.join(libroot, "lib64", "libyaml-cpp.a")
+    if not os.path.exists(corelib):
+        corelib = os.path.join(libroot, "lib64", "libyaml-cppd.a")
+    if not os.path.exists(corelib):
+        corelib = os.path.join(libroot, "lib", "libyaml-cpp.a")
+    expect(os.path.exists(corelib), \
+           "yaml-cpp library not found at {}".format(corelib))
+    return corelib
+
+###############################################################################
+def _tuvx_lib_path(libroot):
+###############################################################################
+# Returns the path to the TUV-x library
+
+    corelib = os.path.join(_tuvx_install_dir(libroot), "lib64", "libtuvx.a")
+    if not os.path.exists(corelib):
+        corelib = os.path.join(_tuvx_install_dir(libroot), "lib", "libtuvx.a")
+    expect(os.path.exists(corelib), \
+           "TUV-x library not found at {}".format(corelib))
+    return corelib
+
+###############################################################################
+def _tuvx_install_dir(libroot):
+###############################################################################
+# Returns the path to the TUV-x install directory
+
+    corepaths = glob(os.path.join(libroot, "tuvx*"))
+    expect(len(corepaths)>0, \
+           "TUV-x not found at {}".format(libroot))
+    expect(len(corepaths)<2, \
+           "Multiple TUV-x versions found at {}".format(libroot))
+    expect(os.path.exists(corepaths[0]), \
+           "TUV-x install directory not found at {}".format(corepaths[0]))
+    return corepaths[0]
+
+###############################################################################
+def _tuvx_package_dir(libroot):
+###############################################################################
+# Returns the path to the TUV-x CMake package
+
+    paths = glob(os.path.join(libroot, "tuvx*", "cmake", "tuvx*" ))
+    expect(len(paths)>0, \
+           "TUV-x package not found at {}".format(libroot))
+    expect(len(paths)<2, \
+           "Multiple TUV-x versions found at {}".format(libroot))
+    expect(os.path.exists(paths[0]), \
+           "TUV-x package directory not found at {}".format(paths[0]))
+    return paths[0]
 
 ###############################################################################
 
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
+    _build_tuvx(caseroot, libroot, bldroot)
     _build_fms(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
 
