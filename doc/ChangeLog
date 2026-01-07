@@ -2,7 +2,7 @@
 
 Tag name: cam6_4_143
 Originator(s): fvitt
-Date: 6 Jan 2026
+Date: 7 Jan 2026
 One-line Summary: Optional non-LTE CO2 cooling method in the upper atmosphere
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1457
 
@@ -59,8 +59,8 @@ M       src/physics/waccm/nlte_lw.F90
 M       src/physics/waccm/radheat.F90
  - mods to invoke the extended CO2 cooling package
 
-M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_ctem/shell_commands
-M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_ctem/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/user_nl_cam
  - for testing the extended CO2 cooling package
 
 If there were any failures reported from running test_driver.sh on any test
@@ -69,36 +69,20 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 NLCOMP
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_141_intel: DIFF
+ - expected differences -- extended nonLTE CO2 cooling package turned on in this test
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: (not run as nothing has changed with the file system)
 
-izumi/nag/aux_cam:
+izumi/nag/aux_cam: All PASS
 
-izumi/gnu/aux_cam:
+izumi/gnu/aux_cam: All PASS
 
 CAM tag used for the baseline comparison tests if different than previous
-tag:
+tag:  cam6_4_141
 
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+Summarize any changes to answers: bit-for-bit unchanged
 
 ===============================================================
 ===============================================================
