@@ -268,6 +268,8 @@ contains
 
       call addfld (trim(name)//'SFWET', &
            horiz_only,  'A',baseunits//'/m2/s ','Wet deposition flux at surface')
+      call addfld (trim(name)//'SFWETC', &
+           horiz_only,  'A',baseunits//'/m2/s ','Wet deposition flux (convective) at surface')
       call addfld (trim(name)//'SFSIC', &
            horiz_only,  'A',baseunits//'/m2/s ','Wet deposition flux (incloud, convective) at surface')
       call addfld (trim(name)//'SFSIS', &
@@ -666,8 +668,8 @@ contains
                 call outfld( trim(name)//'SFWET', sflx, pcols, lchnk)
                 if (ndx>0) aerdepwetcw(:ncol,ndx) = sflx(:ncol)
              else
-                if (.not.convproc_do_aer) call outfld( trim(name)//'SFWET', sflx, pcols, lchnk)
                 if (ndx>0) aerdepwetis(:ncol,ndx) = aerdepwetis(:ncol,ndx) + sflx(:ncol)
+                call outfld( trim(name)//'SFWET', aerdepwetis(:ncol,ndx), ncol, lchnk)
              end if
 
              sflx(:)=0._r8

@@ -12,6 +12,7 @@ module restart_dynamics
 ! grid format may also be used for an initial run.
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
+use shr_kind_mod,     only: i8 => shr_kind_i8
 use spmd_utils,       only: iam, masterproc
 
 use constituents,     only: cnst_name
@@ -284,9 +285,9 @@ contains
 subroutine write_elem()
 
    ! local variables
-   integer          :: i, ie, j, k
-   integer          :: ierr
-   integer, pointer :: ldof(:)
+   integer              :: i, ie, j, k
+   integer              :: ierr
+   integer(i8), pointer :: ldof(:)
 
    type(io_desc_t)  :: iodesc2d, iodesc3d
 
@@ -707,7 +708,7 @@ subroutine read_elem()
    integer :: ncol
    integer :: i, ie, ii, j, k, m
 
-   integer, pointer :: ldof(:)
+   integer(i8), pointer :: ldof(:)
 
    type(io_desc_t) :: iodesc2d, iodesc3d
    real(r8), allocatable :: var3d(:), var2d(:)
@@ -999,13 +1000,14 @@ end subroutine read_restart_dynamics
 
 function get_restart_decomp(elem, lev) result(ldof)
 
+
    ! Get the integer mapping of a variable in the dynamics decomp in memory.
    ! The canonical ordering is as on the file. A 0 value indicates that the
    ! variable is not on the file (eg halo or boundary values)
 
    type(element_t), intent(in) :: elem(:)
    integer,         intent(in) :: lev
-   integer,         pointer    :: ldof(:)
+   integer(i8),     pointer    :: ldof(:)
 
    integer :: i, j, k, ie
    !----------------------------------------------------------------------------
@@ -1030,7 +1032,7 @@ function get_restart_decomp_fvm(elem, lev) result(ldof)
 
    type(element_t), intent(in) :: elem(:)
    integer,         intent(in) :: lev
-   integer,         pointer    :: ldof(:)
+   integer(i8),     pointer    :: ldof(:)
 
    integer :: i, j, k, ie
    !----------------------------------------------------------------------------

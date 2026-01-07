@@ -34,8 +34,6 @@ def buildcpp(case):
     atm_grid = case.get_value("ATM_GRID")
     pts_mode = case.get_value("PTS_MODE")
     cam_dycore = case.get_value("CAM_DYCORE")
-    comp_ocn = case.get_value("COMP_OCN")
-    docn_mode = case.get_value("DOCN_MODE")
     mpilib = case.get_value("MPILIB")
     compiler = case.get_value("COMPILER") # for chem preprocessor
     nthrds_atm = case.get_value("NTHRDS_ATM")
@@ -78,16 +76,13 @@ def buildcpp(case):
 
     if cam_dycore == 'fv3':
          config_opts += ["-fv3core_libdir", os.path.join(exeroot,"atm","obj","atmos_cubed_sphere")]
-
-    # The ocean component setting is only used by CAM to do attribute matching for
-    # setting default tuning parameter values.  In SOM mode we want to use the same
-    # tunings as the fully coupled B compset, so set the ocean component to pop in
-    # that case.
-
-    if docn_mode == 'som':
-        config_opts += ["-ocn", "pop"]
-    else:
-        config_opts += ["-ocn", comp_ocn]
+         try:
+             libs = case.get_values("CASE_SUPPORT_LIBRARIES")
+             if libs is not None and "FMS" not in libs:
+                 libs.extend(["gptl","pio","csm_share","FMS"])
+                 case.set_value("CASE_SUPPORT_LIBRARIES", ",".join(libs))
+         except:
+             pass
 
     # Add user options.
     config_opts += cam_config_opts.split(" ")

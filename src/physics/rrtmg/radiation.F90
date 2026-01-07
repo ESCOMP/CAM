@@ -382,6 +382,8 @@ subroutine radiation_init(pbuf2d)
    integer :: history_budget_histfile_num ! output history file number for budget fields
    integer :: err
 
+   real(kind=r8) :: tiny
+
    integer :: dtime
    !-----------------------------------------------------------------------
 
@@ -390,7 +392,7 @@ subroutine radiation_init(pbuf2d)
    call rad_data_init(pbuf2d) ! initialize output fields for offline driver
    call radsw_init()
    call radlw_init()
-   call cloud_rad_props_init()
+   call cloud_rad_props_init(tiny)
 
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=err)
@@ -1358,7 +1360,7 @@ subroutine radiation_tend( &
 
    ! Compute net radiative heating tendency
    call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
-                     fsnt, flns, flnt, cam_in%asdir, net_flx)
+                     fsnt, flns, flnt, cam_in%asdir, coszrs, net_flx)
 
    if (write_output) then
       ! Compute heating rate for dtheta/dt

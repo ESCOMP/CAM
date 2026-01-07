@@ -616,6 +616,13 @@ contains
         v_phys(i,2,k)=D(2,1,i)*v1 + D(2,2,i)*v2
       end do
     end do
+
+    ! Cleanup interp_p 
+    call interp_p%finalize()
+
+    ! Cleanup interpdata
+    call interpdata%finalize()
+
   end function dyn2phys_vector
 
   subroutine setup_interpdata_for_gll_to_phys_vec_mapping(interpdata,interp_p)
@@ -660,8 +667,11 @@ contains
         ioff=ioff+1
       enddo
     enddo
-  end subroutine setup_interpdata_for_gll_to_phys_vec_mapping
 
+    ! Cleanup gp_quadrature
+    call gp_quadrature%finalize()
+
+  end subroutine setup_interpdata_for_gll_to_phys_vec_mapping
 
   function lagrange_1d(src_grid,src_val,ngrid,dst_point,iwidth) result(val)
     integer              , intent(in)  :: ngrid,iwidth

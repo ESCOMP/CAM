@@ -5,7 +5,7 @@
 ! Auroral oval parameterization. See reference:
 ! R.G. Roble, E.C. Ridley
 ! An auroral model for the NCAR thermospheric general circulation model (TGCM)
-! Annales Geophysicae,5A, (6), 369-382, 1987. 
+! Annales Geophysicae,5A, (6), 369-382, 1987.
 !
 ! The aurora oval is a circle in auroral circle coordinates.  Auroral circle
 !  coordinates are offset from magnetic coordinates by offa degrees (radians)
@@ -46,7 +46,7 @@
 !   1) sub aurora_cons called once per time step from advance.
 !   2) sub aurora called from dynamics, inside parallel latitude scan.
 !   3) subs aurora_cusp and aurora_heat called from sub aurora.
-!   4) sub aurora_ions called from sub aurora. 
+!   4) sub aurora_ions called from sub aurora.
 !
 !-----------------------------------------------------------------------
 
@@ -71,7 +71,7 @@
       private
       public :: aurora_inti, aurora_timestep_init, aurora
       public :: aurora_register
-      
+
       integer, parameter  :: isouth = 1
       integer, parameter  :: inorth = 2
 
@@ -143,7 +143,6 @@
 
       contains
 
-        
       !----------------------------------------------------------------------
       !----------------------------------------------------------------------
       subroutine aurora_register
@@ -197,8 +196,13 @@
          call pbuf_set_field(pbuf2d, indxKev, x_nan)
       endif
 
+      ! initialize these fields to zero here since some chunks of colunms not near
+      ! the poles will not get set to real values
       if (indxAIPRS>0) then
          call pbuf_set_field(pbuf2d, indxAIPRS, 0._r8)
+      endif
+      if (indxQTe>0) then
+         call pbuf_set_field(pbuf2d, indxQTe, 0._r8)
       endif
 
       theta0(:) = nan
@@ -347,9 +351,9 @@
 !-----------------------------------------------------------------------
 
       rh = (h2 - h1) / (h1 + h2)
-      h0     = 0.5_r8 * (h1 + h2) * d2r   
-      
-      
+      h0     = 0.5_r8 * (h1 + h2) * d2r
+
+
 ! roth = MLT of max width of aurora in hours
 ! rote = MLT of max energy flux of aurora in hours
 
@@ -459,7 +463,6 @@
       logical  :: do_aurora(ncol)
 
       real(r8) :: dayfrac, rotation
-      real(r8), pointer :: qteaur(:)    ! for electron temperature
 
       if (.not. aurora_active) return
 
@@ -479,11 +482,6 @@
       call outfld( 'ALONM', r2d*alonm(:ncol,lchnk), ncol, lchnk )
       call outfld( 'ALATM', r2d*alatm(:ncol,lchnk), ncol, lchnk )
 
-      if (indxQTe>0) then
-        call pbuf_get_field(pbuf, indxQTe, qteaur)
-        qteaur(:) = 0._r8
-     endif
-     
 !-----------------------------------------------------------------------
 !    aurora is active for columns poleward of 30 deg
 !-----------------------------------------------------------------------
@@ -501,7 +499,7 @@
       do i = 1,ncol
         if( do_aurora(i) ) then
           dlat_aur(i) = alatm(i,lchnk)
-          dlon_aur(i) = alonm(i,lchnk) + rotation ! rotate it 
+          dlon_aur(i) = alonm(i,lchnk) + rotation ! rotate it
           if( dlon_aur(i) > pi ) then
              dlon_aur(i) = dlon_aur(i) - twopi
           else if( dlon_aur(i) < -pi ) then
@@ -659,7 +657,7 @@
       do i = 1,ncol
         if( do_aurora(i) ) then
           dlat_aur(i) = alatm(i,lchnk)
-          dlon_aur(i) = alonm(i,lchnk) + rotation ! rotate it 
+          dlon_aur(i) = alonm(i,lchnk) + rotation ! rotate it
           if( dlon_aur(i) > pi ) then
              dlon_aur(i) = dlon_aur(i) - twopi
           else if( dlon_aur(i) < -pi ) then
@@ -714,7 +712,7 @@
       call aurora_heat( flux, flux2, alfa, alfa2, &
                         drizl, do_aurora, hemis, &
                         alon, colat, ncol, pbuf )
- 
+
 !-----------------------------------------------------------------------
 ! 	... auroral additions to ionization rates
 !-----------------------------------------------------------------------
@@ -763,7 +761,7 @@
          cusp(:) = 0._r8
       endwhere
 
-      end subroutine aurora_cusp 
+      end subroutine aurora_cusp
 
       subroutine aurora_heat( flux, flux2, alfa, alfa2, &
                               drizl, do_aurora, hemis, &
@@ -772,7 +770,7 @@
 ! 	... calculate alfa, flux, and drizzle
 !-----------------------------------------------------------------------
       use physics_buffer,only: physics_buffer_desc,pbuf_get_field
-      
+
       implicit none
 
 !-----------------------------------------------------------------------
@@ -798,12 +796,12 @@
         halfwidth, &                            ! oval half-width
         wrk, &                                  ! temp wrk array
         dtheta                                  ! latitudinal variation (Gaussian)
-      real(r8) :: ekev 
+      real(r8) :: ekev
       real(r8), pointer   :: pr_efx(:) ! Pointer to pbuf prescribed energy flux (mW m-2)
       real(r8), pointer   :: pr_kev(:) ! Pointer to pbuf prescribed mean energy (keV)
       real(r8), pointer   :: qteaur(:)    ! for electron temperature
       integer  :: n
-      
+
 !-----------------------------------------------------------------------
 ! Low-energy protons:
 !
@@ -850,7 +848,7 @@
       endwhere
 
 !-----------------------------------------------------------------------
-! 	... for electron temperature (used in settei):  
+! 	... for electron temperature (used in settei):
 !-----------------------------------------------------------------------
       if (indxQTe>0) then
          call pbuf_get_field(pbuf, indxQTe, qteaur)
@@ -954,14 +952,14 @@
       real(r8) :: wrk(ncol,pver)
 
       real(r8), pointer   :: aurIPRateSum(:,:) ! Pointer to pbuf auroral ion production sum for O2+,O+,N2+ (s-1 cm-3)
-      
+
       qia(:) = 0._r8
       wrk(:,:) = 0._r8
 
       !-----------------------------------------------------------
-      !  Point to production rates array in physics buffer where 
-      !  rates will be stored for ionosphere module access.  Also, 
-      !  initialize rates to zero before column loop since only 
+      !  Point to production rates array in physics buffer where
+      !  rates will be stored for ionosphere module access.  Also,
+      !  initialize rates to zero before column loop since only
       !  daylight values are filled
       !-----------------------------------------------------------
       if (indxAIPRS>0) then
@@ -1041,15 +1039,15 @@ level_loop : &
       end do level_loop
 
       !----------------------------------------------------------------
-      !  Store the sum of the ion production rates in pbuf to be used 
-      !  in the ionosx module 
+      !  Store the sum of the ion production rates in pbuf to be used
+      !  in the ionosx module
       !----------------------------------------------------------------
       if (indxAIPRS>0) then
-      
-        aurIPRateSum(1:ncol,1:pver) = wrk(1:ncol,1:pver) 
-      
+
+        aurIPRateSum(1:ncol,1:pver) = wrk(1:ncol,1:pver)
+
       endif
-  
+
       call outfld( 'QSUM', wrk, ncol, lchnk )
 
       end subroutine aurora_ions
@@ -1165,9 +1163,9 @@ level_loop : &
 !-----------------------------------------------------------------------
 ! Calculates integrated f(x) needed for total auroral ionization.
 ! See equations (10-12) in Roble,1987.
-! Coefficients for equation (12) of Roble,1987 are in variable cc 
+! Coefficients for equation (12) of Roble,1987 are in variable cc
 ! (revised since 1987):
-! Uses the identity x**y = exp(y*ln(x)) for performance 
+! Uses the identity x**y = exp(y*ln(x)) for performance
 ! (fewer (1/2) trancendental functions are required).
 !------------------------------------------------------------------------
 

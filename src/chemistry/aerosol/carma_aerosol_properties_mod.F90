@@ -40,6 +40,7 @@ module carma_aerosol_properties_mod
      procedure :: resuspension_resize
      procedure :: rebin_bulk_fluxes
      procedure :: hydrophilic
+     procedure :: model_is
 
      final :: destructor
   end type carma_aerosol_properties
@@ -318,7 +319,10 @@ contains
        refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
        sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
        sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh )
+       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
+       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
+       sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
+       r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
 
     class(carma_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
@@ -360,6 +364,25 @@ contains
     integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
     integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
     integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
+
+    ! hygroscopic
+    real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:) ! short wave extinction table
+    real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:) ! short wave asymmetry table
+    real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:) ! long wave absorption table
+
+    ! non-hygroscopic (insoluble)
+    real(r8),  optional, pointer :: sw_insoluble_ext(:) ! short wave extinction table
+    real(r8),  optional, pointer :: sw_insoluble_ssa(:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer :: sw_insoluble_asm(:) ! short wave asymmetry table
+    real(r8),  optional, pointer :: lw_insoluble_ext(:) ! long wave absorption table
+
+    ! volcanic radius
+    real(r8),  optional, pointer :: r_sw_ext(:,:)
+    real(r8),  optional, pointer :: r_sw_scat (:,:)
+    real(r8),  optional, pointer :: r_sw_ascat(:,:)
+    real(r8),  optional, pointer :: r_mu(:)
+    real(r8),  optional, pointer :: r_lw_abs(:,:)
 
     if (present(extpsw)) then
        nullify(extpsw)
@@ -415,6 +438,52 @@ contains
                                 nkap=nkap, &
                                 nrelh=nrelh, &
                                 nfrac=nfrac )
+
+
+    ! hygroscopic
+    if (present(sw_hygroscopic_ext)) then
+       nullify(sw_hygroscopic_ext)
+    end if
+    if (present(sw_hygroscopic_ssa)) then
+       nullify(sw_hygroscopic_ssa)
+    end if
+    if (present(sw_hygroscopic_asm)) then
+       nullify(sw_hygroscopic_asm)
+    end if
+    if (present(lw_hygroscopic_ext)) then
+       nullify(lw_hygroscopic_ext)
+    end if
+
+    ! non-hygroscopic (insoluble)
+    if (present(sw_insoluble_ext)) then
+       nullify(sw_insoluble_ext)
+    end if
+    if (present(sw_insoluble_ssa)) then
+       nullify(sw_insoluble_ssa)
+    end if
+    if (present(sw_insoluble_asm)) then
+       nullify(sw_insoluble_asm)
+    end if
+    if (present(lw_insoluble_ext)) then
+       nullify(lw_insoluble_ext)
+    end if
+
+    ! volcanic radius
+    if (present(r_sw_ext)) then
+       nullify(r_sw_ext)
+    end if
+    if (present(r_sw_scat)) then
+       nullify(r_sw_scat)
+    end if
+    if (present(r_sw_ascat)) then
+       nullify(r_sw_ascat)
+    end if
+    if (present(r_lw_abs)) then
+       nullify(r_lw_abs)
+    end if
+    if (present(r_mu)) then
+       nullify(r_mu)
+    end if
 
   end subroutine optics_params
 
@@ -875,5 +944,20 @@ contains
     hydrophilic = .true.
 
   end function hydrophilic
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if CARMA aerosol representation
+  !------------------------------------------------------------------------------
+  pure logical function model_is(self, query)
+    class(carma_aerosol_properties), intent(in) :: self
+    character(len=*),               intent(in) :: query
+
+    if (trim(query) == 'CARMA' .or. trim(query) == 'carma') then
+       model_is = .true.
+    else
+       model_is = .false.
+    end if
+
+  end function model_is
 
 end module carma_aerosol_properties_mod
