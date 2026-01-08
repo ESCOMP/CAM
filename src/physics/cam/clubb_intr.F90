@@ -3549,8 +3549,6 @@ end subroutine clubb_init_cnst
         mf_dry_v     = mf_dry_v(:,nzm_clubb:1:-1)
         mf_moist_v   = mf_moist_v(:,nzm_clubb:1:-1)
         mf_moist_qc  = mf_moist_qc(:,nzm_clubb:1:-1)
-        mf_thlflx    = mf_thlflx(:,nzm_clubb:1:-1)
-        mf_qtflx     = mf_qtflx(:,nzm_clubb:1:-1)
         s_ae         = s_ae(:,nzm_clubb:1:-1)
         s_aw         = s_aw(:,nzm_clubb:1:-1)
         s_awthl      = s_awthl(:,nzm_clubb:1:-1)
