@@ -3473,29 +3473,9 @@ end subroutine clubb_init_cnst
         rtm_zm_in  = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr,  rtm(:ncol,:) )
         thlm_zm_in = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlm(:ncol,:) )
 
-        !--------------------------------------- integrate_mf call and flip ---------------------------------------
-        ! integrate_mf assumes an ascending grid, which is the opposide of the cam grid that
-        ! clubb_intr now mainly uses, so we need to flip the fields before calling integrate_mf
-        !
-        ! Ideally, integrate_mf would operate in descending mode, then we could remove the flipping.
+        !--------------------------------------- integrate_mf call ---------------------------------------
+        ! integrate_mf expects arguments of individual columns.
         ! If the column loop gets pushed into it, we can also avoid the array slicing.
-
-        dz_g              = dz_g(:,nzt_clubb:1:-1)
-        p_in_Pa           = p_in_Pa(:,nzt_clubb:1:-1)
-        invrs_exner_zt    = invrs_exner_zt(:,nzt_clubb:1:-1)
-        um                = um(:,nzt_clubb:1:-1)
-        vm                = vm(:,nzt_clubb:1:-1)
-        thlm              = thlm(:,nzt_clubb:1:-1)
-        rtm               = rtm(:,nzt_clubb:1:-1)
-
-        thv_ds_zt          = thv_ds_zt(:,nzt_clubb:1:-1)
-
-        ! Flip zm inputs
-        zi_g            = zi_g(:,nzm_clubb:1:-1)
-        p_in_Pa_zm      = p_in_Pa_zm(:,nzm_clubb:1:-1)
-        invrs_exner_zm  = invrs_exner_zm(:,nzm_clubb:1:-1)
-        thlm_zm_in      = thlm_zm_in(:,nzm_clubb:1:-1)
-        rtm_zm_in       = rtm_zm_in(:,nzm_clubb:1:-1)
 
         do i = 1, ncol
           call integrate_mf( nzm_clubb, nzt_clubb, dz_g(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:),  & ! input
@@ -3510,56 +3490,14 @@ end subroutine clubb_init_cnst
                             mf_dry_u(i,:),    mf_moist_u(i,:),                                        & ! output - plume diagnostics
                             mf_dry_v(i,:),    mf_moist_v(i,:),                                        & ! output - plume diagnostics
                                               mf_moist_qc(i,:),                                       & ! output - plume diagnostics
-                              s_ae(i,:),      s_aw(i,:),                                              & ! output - plume diagnostics
-                              s_awthl(i,:),   s_awqt(i,:),                                            & ! output - plume diagnostics
-                              s_awql(i,:),    s_awqi(i,:),                                            & ! output - plume diagnostics
-                              s_awu(i,:),     s_awv(i,:),                                             & ! output - plume diagnostics
-                              mf_thlflx(i,:), mf_qtflx(i,:) )                                 ! output - variables needed for solver
+                            s_ae(i,:),        s_aw(i,:),                                              & ! output - plume diagnostics
+                            s_awthl(i,:),     s_awqt(i,:),                                            & ! output - plume diagnostics
+                            s_awql(i,:),      s_awqi(i,:),                                            & ! output - plume diagnostics
+                            s_awu(i,:),       s_awv(i,:),                                             & ! output - plume diagnostics
+                            mf_thlflx(i,:),   mf_qtflx(i,:) )                                 ! output - variables needed for solver
         end do
-        
-        ! Flip zt inputs back
-        dz_g            = dz_g(:,nzt_clubb:1:-1)
-        p_in_Pa         = p_in_Pa(:,nzt_clubb:1:-1)
-        invrs_exner_zt  = invrs_exner_zt(:,nzt_clubb:1:-1)
-        um           = um(:,nzt_clubb:1:-1)
-        vm           = vm(:,nzt_clubb:1:-1)
-        thlm         = thlm(:,nzt_clubb:1:-1)
-        rtm          = rtm(:,nzt_clubb:1:-1)
 
-        thv_ds_zt          = thv_ds_zt(:,nzt_clubb:1:-1)
-
-        ! Flip zm inputs back
-        zi_g            = zi_g(:,nzm_clubb:1:-1)
-        p_in_Pa_zm      = p_in_Pa_zm(:,nzm_clubb:1:-1)
-        invrs_exner_zm  = invrs_exner_zm(:,nzm_clubb:1:-1)
-        thlm_zm_in      = thlm_zm_in(:,nzm_clubb:1:-1)
-        rtm_zm_in       = rtm_zm_in(:,nzm_clubb:1:-1)
-        
-        ! Flip clubb_mf output, since it assumes an ascending grid currently
-        mf_dry_a     = mf_dry_a(:,nzm_clubb:1:-1)
-        mf_moist_a   = mf_moist_a(:,nzm_clubb:1:-1)
-        mf_dry_w     = mf_dry_w(:,nzm_clubb:1:-1)
-        mf_moist_w   = mf_moist_w(:,nzm_clubb:1:-1)
-        mf_dry_qt    = mf_dry_qt(:,nzm_clubb:1:-1)
-        mf_moist_qt  = mf_moist_qt(:,nzm_clubb:1:-1)
-        mf_dry_thl   = mf_dry_thl(:,nzm_clubb:1:-1)
-        mf_moist_thl = mf_moist_thl(:,nzm_clubb:1:-1)
-        mf_dry_u     = mf_dry_u(:,nzm_clubb:1:-1)
-        mf_moist_u   = mf_moist_u(:,nzm_clubb:1:-1)
-        mf_dry_v     = mf_dry_v(:,nzm_clubb:1:-1)
-        mf_moist_v   = mf_moist_v(:,nzm_clubb:1:-1)
-        mf_moist_qc  = mf_moist_qc(:,nzm_clubb:1:-1)
-        s_ae         = s_ae(:,nzm_clubb:1:-1)
-        s_aw         = s_aw(:,nzm_clubb:1:-1)
-        s_awthl      = s_awthl(:,nzm_clubb:1:-1)
-        s_awqt       = s_awqt(:,nzm_clubb:1:-1)
-        s_awql       = s_awql(:,nzm_clubb:1:-1)
-        s_awqi       = s_awqi(:,nzm_clubb:1:-1)
-        s_awu        = s_awu(:,nzm_clubb:1:-1)
-        s_awv        = s_awv(:,nzm_clubb:1:-1)
-        mf_thlflx    = mf_thlflx(:,nzm_clubb:1:-1)
-        mf_qtflx     = mf_qtflx(:,nzm_clubb:1:-1)
-        !--------------------------------------- END integrate_mf call and flip ---------------------------------------
+        !--------------------------------------- END integrate_mf call ---------------------------------------
 
         ! pass MF turbulent advection term as CLUBB explicit forcing term
         do k = 1, nzt_clubb

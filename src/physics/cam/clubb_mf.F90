@@ -281,7 +281,7 @@ module clubb_mf
        zcb       = zcb_unset
   
        pblh = max(pblh,pblhmin)
-       wthv = wthl+zvir*thv(1)*wqt
+       wthv = wthl+zvir*thv(nzt)*wqt
   
        ! if surface buoyancy is positive then do mass-flux
        if ( wthv > 0._r8 ) then
@@ -290,28 +290,29 @@ module clubb_mf
            ! overide stochastic entrainment with fixent
            ent(:,:) = fixent
          else
-  
+           
            ! get entrainment coefficient, dz/L0
            do i=1,clubb_mf_nup
-             do k=1,nzt
+             !do k=1,nzt
+             do k=nzt,1,-1
                entf(k,i) = dzt(k) / clubb_mf_L0
              enddo
            enddo
-  
+           
            ! get poisson, P(dz/L0)
-           call poisson( nzt, clubb_mf_nup, entf, enti, u(1:4))
-  
+           call poisson( nzt, clubb_mf_nup, entf, enti, u(nzt:nzt-3:-1))
+           
            ! get entrainment, ent=ent0/dz*P(dz/L0)
            do i=1,clubb_mf_nup
-             do k=1,nzt
+             do k=nzt,1,-1
                ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
              enddo
            enddo
-  
+            
          end if
   
          ! get surface conditions
-         wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1._r8/3._r8) )
+         wstar   = max( wstarmin, (gravit/thv(nzt)*wthv*pblh)**(1._r8/3._r8) )
          qstar   = wqt / wstar
          thvstar = wthv / wstar
   
@@ -327,68 +328,68 @@ module clubb_mf
            wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
            wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
   
-           upw(1,i) = 0.5_r8 * (wlv+wtv)
-           upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
+           upw(nzm,i) = 0.5_r8 * (wlv+wtv)
+           upa(nzm,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
                       - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
   
-           upu(1,i) = u(1)
-           upv(1,i) = v(1)
+           upu(nzm,i) = u(nzt)
+           upv(nzm,i) = v(nzt)
   
-           upqt(1,i)  = qt(1)  + cwqt * upw(1,i) * sigmaqt/sigmaw
-           upthv(1,i) = thv(1) + cwthv * upw(1,i) * sigmathv/sigmaw
-           upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
+           upqt(nzm,i)  = qt(nzt)  + cwqt * upw(nzm,i) * sigmaqt/sigmaw
+           upthv(nzm,i) = thv(nzt) + cwthv * upw(nzm,i) * sigmathv/sigmaw
+           upthl(nzm,i) = upthv(nzm,i) / (1._r8+zvir*upqt(nzm,i))
   
            ! get cloud, lowest momentum level 
            if (do_condensation) then
-             call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
+             call condensation_mf(upqt(nzm,i), upthl(nzm,i), p_zm(nzm), iexner_zm(nzm), &
                                   thvn, qcn, thn, qln, qin, qsn, lmixn)
-             upthv(1,i) = thvn
-             upqc(1,i)  = qcn
-             upql(1,i)  = qln
-             upqi(1,i)  = qin
-             upqs(1,i)  = qsn
-             if (qcn > 0._r8) zcb(i) = zm(1)
+             upthv(nzm,i) = thvn
+             upqc(nzm,i)  = qcn
+             upql(nzm,i)  = qln
+             upqi(nzm,i)  = qin
+             upqs(nzm,i)  = qsn
+             if (qcn > 0._r8) zcb(i) = zm(nzm)
            else
              ! assume no cldliq
-             upqc(1,i)  = 0._r8
+             upqc(nzm,i)  = 0._r8
            end if
   
          enddo
   
          ! get updraft properties
          do i=1,clubb_mf_nup
-           do k=1,nzm-1
-  
+           do k=nzm,2,-1
+
              ! get microphysics, autoconversion
              if (do_precip .and. upqc(k,i) > 0._r8) then
-               call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k),zm(k+1)-zcb(i),supqt)
+               call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k-1),zm(k-1)-zcb(i),supqt)
   
-               supthl = -1._r8*lmixn*supqt*iexner_zt(k)/cpair
+               supthl = -1._r8*lmixn*supqt*iexner_zt(k-1)/cpair
              else
                supqt  = 0._r8
                supthl = 0._r8
              end if
   
              ! integrate updraft
-             entexp  = exp(-ent(k,i)*dzt(k))
-             entexpu = exp(-ent(k,i)*dzt(k)/3._r8)
+             entexp  = exp(-ent(k-1,i)*dzt(k-1))
+             entexpu = exp(-ent(k-1,i)*dzt(k-1)/3._r8)
              
-             qtn  = qt(k) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt
-             thln = thl(k)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl
-             un   = u(k)  *(1._r8-entexpu) + upu  (k,i)*entexpu
-             vn   = v(k)  *(1._r8-entexpu) + upv  (k,i)*entexpu
+             qtn  = qt(k-1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt
+             thln = thl(k-1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl
+             un   = u(k-1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
+             vn   = v(k-1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
   
              ! get cloud, momentum levels
              if (do_condensation) then
-               call condensation_mf(qtn, thln, p_zm(k+1), iexner_zm(k+1), &
+               call condensation_mf(qtn, thln, p_zm(k-1), iexner_zm(k-1), &
                                     thvn, qcn, thn, qln, qin, qsn, lmixn)
-               if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(k+1)
+               if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(k-1)
              else
                thvn = thln*(1._r8+zvir*qtn)
              end if
   
              ! get buoyancy
-             B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k)-1._r8)
+             B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k-1)-1._r8)
              if (debug) then
                if ( masterproc ) then
                  write(iulog,*) "B(k,i), k, i ", B, k, i
@@ -396,27 +397,27 @@ module clubb_mf
              end if
   
              ! get wn^2
-             wp = wb*ent(k,i)
+             wp = wb*ent(k-1,i)
              if (wp==0._r8) then
-               wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k)
+               wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k-1)
              else
-               entw = exp(-2._r8*wp*dzt(k))
-               wn2 = entw*upw(k,i)**2._r8+wa*B/(wb*ent(k,i))*(1._r8-entw)
+               entw = exp(-2._r8*wp*dzt(k-1))
+               wn2 = entw*upw(k,i)**2._r8+wa*B/(wb*ent(k-1,i))*(1._r8-entw)
              end if
   
              if (wn2>0._r8) then
-               upw(k+1,i)   = sqrt(wn2)
-               upthv(k+1,i) = thvn
-               upthl(k+1,i) = thln
-               upqt(k+1,i)  = qtn
-               upqc(k+1,i)  = qcn
-               upqs(k+1,i)  = qsn
-               upu(k+1,i)   = un
-               upv(k+1,i)   = vn
-               upa(k+1,i)   = upa(k,i)
-               upql(k+1,i)  = qln
-               upqi(k+1,i)  = qin
-               upqv(k+1,i)  = qtn - qcn
+               upw(k-1,i)   = sqrt(wn2)
+               upthv(k-1,i) = thvn
+               upthl(k-1,i) = thln
+               upqt(k-1,i)  = qtn
+               upqc(k-1,i)  = qcn
+               upqs(k-1,i)  = qsn
+               upu(k-1,i)   = un
+               upv(k-1,i)   = vn
+               upa(k-1,i)   = upa(k,i)
+               upql(k-1,i)  = qln
+               upqi(k-1,i)  = qin
+               upqv(k-1,i)  = qtn - qcn
              else
                exit
              end if
@@ -424,8 +425,8 @@ module clubb_mf
          enddo
   
          ! writing updraft properties for output
-         do k=1,nzm
-  
+         do k=nzm,1,-1
+
            ! first sum over all i-updrafts
            do i=1,clubb_mf_nup
              if (upqc(k,i)>0._r8) then
@@ -478,7 +479,7 @@ module clubb_mf
   
          enddo
   
-         do k=1,nzm
+         do k=nzm,1,-1
            do i=1,clubb_mf_nup
              ae  (k) = ae  (k) - upa(k,i)
              aw  (k) = aw  (k) + upa(k,i)*upw(k,i)
@@ -492,7 +493,7 @@ module clubb_mf
            enddo
          enddo
   
-         do k=1,nzm
+         do k=nzm,1,-1
            thlflx(k)= awthl(k) - aw(k)*thl_zm(k)
            qtflx(k)= awqt(k) - aw(k)*qt_zm(k)
          enddo
@@ -643,7 +644,7 @@ module clubb_mf
          ! Set seed
          kiss_gen = ShrKissRandGen(tmpseed)
   
-         do i=1,nz
+         do i=nz,1,-1
            do j=1,nup
              call knuth(kiss_gen,lambda(i,j),poi(i,j))
            enddo
