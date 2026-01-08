@@ -293,7 +293,6 @@ module clubb_mf
            
            ! get entrainment coefficient, dz/L0
            do i=1,clubb_mf_nup
-             !do k=1,nzt
              do k=nzt,1,-1
                entf(k,i) = dzt(k) / clubb_mf_L0
              enddo
