@@ -4185,6 +4185,18 @@ horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
 calculated by down-gradient diffusion.
 </entry>
 
+<entry id="clubb_l_ho_nontrad_coriolis" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to implement the nontraditional Coriolis terms in the 
+prognostic equations of w'w', u'w', and u'u.
+</entry>
+
+<entry id="clubb_l_ho_trad_coriolis" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to implement the traditional Coriolis terms in the
+prognostic equations of v'w' and u'w'.
+</entry>
+
 <entry id="clubb_l_prescribed_avg_deltaz" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 used in adj_low_res_nu. If .true., avg_deltaz = deltaz

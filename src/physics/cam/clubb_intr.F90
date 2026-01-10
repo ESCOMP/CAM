@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi, rair, omega
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len
 
@@ -292,6 +292,10 @@ module clubb_intr
                                                       ! advance_xm_wpxp.  Otherwise, <u'w'> and <v'w'> are still
                                                       ! approximated by eddy diffusivity when <u> and <v> are
                                                       ! advanced in subroutine advance_windm_edsclrm.
+    clubb_l_ho_nontrad_coriolis,                    & ! Flag to implement the nontraditional Coriolis terms in the
+                                                      ! prognostic equations of <w'w'>, <u'w'>, and <u'u'>.
+    clubb_l_ho_trad_coriolis,                       & ! Flag to implement the traditional Coriolis terms in the
+                                                      ! prognostic equations of <v'w'> and <u'w'>.
     clubb_l_min_wp2_from_corr_wx,                   & ! Flag to base the threshold minimum value of wp2 on keeping
                                                       ! the overall correlation of w and x (w and rt, as well as w
                                                       ! and theta-l) within the limits of -max_mag_correlation_flux
@@ -423,6 +427,7 @@ module clubb_intr
     vpwp_idx, &        	! north-south momentum flux
     wpthvp_idx, &       ! buoyancy flux
     wp2thvp_idx, &      ! second order buoyancy term
+    wp2up_idx, &        ! w'^2 u'
     rtpthvp_idx, &      ! moisture buoyancy correlation
     thlpthvp_idx, &     ! temperature buoyancy correlation
     wp2rtp_idx, &       ! w'^2 rt'
@@ -615,6 +620,7 @@ module clubb_intr
     call pbuf_add_field('WPTHLP_CLUBB_GW_MC', 'physpkg', dtype_r8, (/pcols,nzm_clubb/), wpthlp_clubb_gw_mc_idx)
 
     call pbuf_add_field('WP2THVP',    'global',  dtype_r8, (/pcols,nzt_clubb/), wp2thvp_idx)
+    call pbuf_add_field('WP2UP',      'global',  dtype_r8, (/pcols,nzt_clubb/), wp2up_idx)
     call pbuf_add_field('WP2RTP',     'global',  dtype_r8, (/pcols,nzt_clubb/), wp2rtp_idx)
     call pbuf_add_field('WP2THLP',    'global',  dtype_r8, (/pcols,nzt_clubb/), wp2thlp_idx)
     call pbuf_add_field('WPUP2',      'global',  dtype_r8, (/pcols,nzt_clubb/), wpup2_idx)
@@ -857,6 +863,8 @@ end subroutine clubb_init_cnst
          clubb_l_mono_flux_lim_vm, &
          clubb_l_partial_upwind_wp3, &
          clubb_l_predict_upwp_vpwp, &
+         clubb_l_ho_nontrad_coriolis, &
+         clubb_l_ho_trad_coriolis, &
          clubb_l_prescribed_avg_deltaz, &
          clubb_l_rcm_supersat_adj, &
          clubb_l_rtm_nudge, &
@@ -914,6 +922,8 @@ end subroutine clubb_init_cnst
                                              clubb_fill_holes_type, & ! Out
                                              clubb_l_use_precip_frac, & ! Out
                                              clubb_l_predict_upwp_vpwp, & ! Out
+                                             clubb_l_ho_nontrad_coriolis, & ! Out
+                                             clubb_l_ho_trad_coriolis, & ! Out
                                              clubb_l_min_wp2_from_corr_wx, & ! Out
                                              clubb_l_min_xp2_from_corr_wx, & ! Out
                                              clubb_l_C2_cloud_frac, & ! Out
@@ -1165,6 +1175,10 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp3_Skw_squared")
     call mpi_bcast(clubb_l_predict_upwp_vpwp,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_predict_upwp_vpwp")
+    call mpi_bcast(clubb_l_ho_nontrad_coriolis,         1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_ho_nontrad_coriolis")
+    call mpi_bcast(clubb_l_ho_trad_coriolis,         1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_ho_trad_coriolis")
     call mpi_bcast(clubb_l_min_wp2_from_corr_wx,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_min_wp2_from_corr_wx")
     call mpi_bcast(clubb_l_min_xp2_from_corr_wx,         1, mpi_logical, mstrid, mpicom, ierr)
@@ -1358,7 +1372,9 @@ end subroutine clubb_init_cnst
                                                  clubb_grid_adapt_in_time_method, &         ! In                      
                                                  clubb_fill_holes_type, &                   ! In            
                                                  clubb_l_use_precip_frac, &                 ! In              
-                                                 clubb_l_predict_upwp_vpwp, &               ! In                
+                                                 clubb_l_predict_upwp_vpwp, &               ! In   
+                                                 clubb_l_ho_nontrad_coriolis, &             ! In
+                                                 clubb_l_ho_trad_coriolis, &                ! In             
                                                  clubb_l_min_wp2_from_corr_wx, &            ! In                    
                                                  clubb_l_min_xp2_from_corr_wx, &            ! In                    
                                                  clubb_l_C2_cloud_frac, &                   ! In            
@@ -2167,6 +2183,7 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: vpwp_pbuf                  ! north-south momentum flux			[m^2/s^2]
     real(r8), pointer, dimension(:,:) :: wpthvp_pbuf                ! w'th_v' (momentum levels)			[m/s K]
     real(r8), pointer, dimension(:,:) :: wp2thvp_pbuf               ! w'^2 th_v' (thermodynamic levels)		[m^2/s^2 K]
+    real(r8), pointer, dimension(:,:) :: wp2up_pbuf                 ! w'^2 u' (thermodynamic levels)		[m^3/s^3]
     real(r8), pointer, dimension(:,:) :: rtpthvp_pbuf               ! r_t'th_v' (momentum levels)			[kg/kg K]
     real(r8), pointer, dimension(:,:) :: thlpthvp_pbuf              ! th_l'th_v' (momentum levels)			[K^2]
     real(r8), pointer, dimension(:,:) :: pdf_zm_w_1_pbuf            ! work pointer for pdf_params_zm
@@ -2259,6 +2276,7 @@ end subroutine clubb_init_cnst
     real(r8), dimension(state%ncol) :: &
       deltaz, &
       fcor, &                             ! Coriolis forcing 			      	              [s^-1]
+      fcor_y, &                           ! Non-traditional coriolis forcing 			      [s^-1]
       sfc_elevation, &    		            ! Elevation of ground			      	            [m AMSL][m]
       wpthlp_sfc, &                       ! w' theta_l' at surface                      [(m K)/s]
       wprtp_sfc, &                        ! w' r_t' at surface                          [(kg m)/( kg s)]
@@ -2591,6 +2609,7 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, vpwp_idx,       vpwp_pbuf )
     call pbuf_get_field(pbuf, wpthvp_idx,     wpthvp_pbuf)
     call pbuf_get_field(pbuf, wp2thvp_idx,    wp2thvp_pbuf)
+    call pbuf_get_field(pbuf, wp2up_idx,      wp2up_pbuf)
     call pbuf_get_field(pbuf, rtpthvp_idx,    rtpthvp_pbuf)
     call pbuf_get_field(pbuf, thlpthvp_idx,   thlpthvp_pbuf)
 
@@ -2784,7 +2803,7 @@ end subroutine clubb_init_cnst
     !$acc data copyin( pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), sclr_idx, &
     !$acc              state_loc, state_loc%q, state_loc%u, state_loc%v, state_loc%t, state_loc%pmid, &
     !$acc              state_loc%zm, state_loc%phis, state_loc%pdel, state_loc%pdeldry, state_loc%s, &
-    !$acc              state_loc%pint, state_loc%zi, state_loc%omega, &
+    !$acc              state_loc%pint, state_loc%zi, state_loc%omega, state_loc%lat, &
     !$acc              cam_in, cam_in%wsx, cam_in%wsy, cam_in%cflx, cam_in%shf, &
     !$acc              err_info, err_info%err_header, &
     !$acc              cpairv, rairv, se_dis, eleak, cld_pbuf, clubb_params_single_col, grid_dx, grid_dy ) &
@@ -2796,13 +2815,13 @@ end subroutine clubb_init_cnst
     !$acc              pdf_params_chnk(lchnk)%mixt_frac ) &
     !$acc        copy( khzm_pbuf, upwp_pbuf, vpwp_pbuf, up2_pbuf, vp2_pbuf, up3_pbuf, vp3_pbuf, wprtp_pbuf, &
     !$acc              wpthlp_pbuf, wp2_pbuf, wp3_pbuf, rtp2_pbuf, rtp3_pbuf, thlp2_pbuf, thlp3_pbuf, &
-    !$acc              rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, ice_supersat_frac_pbuf, &
+    !$acc              rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, wp2up_pbuf, ice_supersat_frac_pbuf, &
     !$acc              rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, &
     !$acc              rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, wp2up2_pbuf, wp2vp2_pbuf ) &
     !$acc      create( um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, khzm_out, &
     !$acc              khzt_out, thlprcp_out, w_up_in_cloud_out, w_down_in_cloud_out, cloudy_updraft_frac_out, &
     !$acc              cloudy_downdraft_frac_out, cloud_cover_out, invrs_tau_zm_out, Lscale, &
-    !$acc              invrs_exner_zt, fcor, sfc_elevation, thlm_forcing, rtm_forcing, um_forcing, &
+    !$acc              invrs_exner_zt, fcor, fcor_y, sfc_elevation, thlm_forcing, rtm_forcing, um_forcing, &
     !$acc              vm_forcing, wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
     !$acc              rtpthlp_forcing, wm_zm, wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc, &
     !$acc              p_sfc, upwp_sfc_pert, vpwp_sfc_pert, rtm_ref, thlm_ref, um_ref, vm_ref, &
@@ -2912,10 +2931,16 @@ end subroutine clubb_init_cnst
       upwp_sfc_pert(i) = 0.0_r8
       vpwp_sfc_pert(i) = 0.0_r8
 
-      ! Determine Coriolis force at given latitude. This is never used
-      ! when CLUBB is implemented in a host model, therefore just set
-      ! to zero.
-      fcor(i) = 0._r8
+      ! When run in host models, CLUBB does not apply Coriolis tendencies to the
+      ! mean horizontal wind components (this is controlled by the `l_implemented`
+      ! flag, which should be hardcoded to .true. in this file).
+      !
+      ! However, enabling `clubb_l_ho_nontrad_coriolis` or `clubb_l_ho_trad_coriolis`
+      ! introduces Coriolis effects in higher-order moments (e.g., wp2up).
+      ! Therefore, we still compute the Coriolis parameters here for potential
+      ! use by those higher-order terms.
+      fcor(i)   = 2._r8 * omega * sin( state_loc%lat(i) )
+      fcor_y(i) = 2._r8 * omega * cos( state_loc%lat(i) )
     end do
 
     if ( sclr_dim > 0 ) then
@@ -3562,6 +3587,7 @@ end subroutine clubb_init_cnst
         um_pert_inout             =             um_pert_inout(:,nzt_clubb:1:-1)
         vm_pert_inout             =             vm_pert_inout(:,nzt_clubb:1:-1)
         wp2thvp_pbuf              =              wp2thvp_pbuf(:,nzt_clubb:1:-1)
+        wp2up_pbuf                =                wp2up_pbuf(:,nzt_clubb:1:-1)
         rtm                       =                       rtm(:,nzt_clubb:1:-1)
         thlm                      =                      thlm(:,nzt_clubb:1:-1)
 
@@ -3687,12 +3713,12 @@ end subroutine clubb_init_cnst
       ! REMOVECAM: This will be unnecessary once pbuf is gone and these are dimensioned ncol.
       !$acc update host(  upwp_pbuf, vpwp_pbuf, up2_pbuf, vp2_pbuf, up3_pbuf, vp3_pbuf, wprtp_pbuf, &
       !$acc               wpthlp_pbuf, wp2_pbuf, wp3_pbuf, rtp2_pbuf, rtp3_pbuf, thlp2_pbuf, thlp3_pbuf, &
-      !$acc               rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
+      !$acc               rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, wp2up_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
       !$acc               wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, &
       !$acc               wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
 
       call advance_clubb_core_api( gr, nzm_clubb, nzt_clubb, ncol, &        ! Inputs
-          l_implemented, dtime, fcor, sfc_elevation, &
+          l_implemented, dtime, fcor, fcor_y, sfc_elevation, &
           hydromet_dim, &
           sclr_dim, sclr_tol, edsclr_dim, sclr_idx, &
           thlm_forcing, rtm_forcing, um_forcing, vm_forcing, &
@@ -3725,7 +3751,7 @@ end subroutine clubb_init_cnst
           sclrp2, sclrp3, sclrprtp, sclrpthlp, &
           wpsclrp, edsclr_inout, err_info, &
           rcm, cloud_frac_inout, &
-          wpthvp_pbuf(:ncol,:), wp2thvp_pbuf(:ncol,:), rtpthvp_pbuf(:ncol,:), thlpthvp_pbuf(:ncol,:), &
+          wpthvp_pbuf(:ncol,:), wp2thvp_pbuf(:ncol,:), wp2up_pbuf(:ncol,:), rtpthvp_pbuf(:ncol,:), thlpthvp_pbuf(:ncol,:), &
           sclrpthvp_inout, &
           wp2rtp_pbuf(:ncol,:), wp2thlp_pbuf(:ncol,:), uprcp_pbuf(:ncol,:), &
           vprcp_pbuf(:ncol,:), rc_coef_zm_pbuf(:ncol,:), &
@@ -3745,7 +3771,7 @@ end subroutine clubb_init_cnst
       ! REMOVECAM: This will be unnecessary once pbuf is gone and these are dimensioned ncol.
       !$acc update device( upwp_pbuf, vpwp_pbuf, up2_pbuf, vp2_pbuf, up3_pbuf, vp3_pbuf, wprtp_pbuf, &
       !$acc                wpthlp_pbuf, wp2_pbuf, wp3_pbuf, rtp2_pbuf, rtp3_pbuf, thlp2_pbuf, thlp3_pbuf, &
-      !$acc                rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
+      !$acc                rtpthlp_pbuf, wpthvp_pbuf, wp2thvp_pbuf, wp2up_pbuf, rtpthvp_pbuf, thlpthvp_pbuf, wp2rtp_pbuf, &
       !$acc                wp2thlp_pbuf, uprcp_pbuf, vprcp_pbuf, rc_coef_zm_pbuf, wp4_pbuf, wpup2_pbuf, wpvp2_pbuf, &
       !$acc                wp2up2_pbuf, wp2vp2_pbuf, ice_supersat_frac_pbuf )
 
@@ -3803,6 +3829,7 @@ end subroutine clubb_init_cnst
         um_pert_inout              =              um_pert_inout(:,nzt_clubb:1:-1)
         vm_pert_inout              =              vm_pert_inout(:,nzt_clubb:1:-1)
         wp2thvp_pbuf               =               wp2thvp_pbuf(:,nzt_clubb:1:-1)
+        wp2up_pbuf                 =                 wp2up_pbuf(:,nzt_clubb:1:-1)
         rtm                        =                        rtm(:,nzt_clubb:1:-1)
         thlm                       =                       thlm(:,nzt_clubb:1:-1)
         Lscale                     =                     Lscale(:,nzt_clubb:1:-1)

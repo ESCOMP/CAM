@@ -2220,6 +2220,8 @@
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_predict_upwp_vpwp phys="cam7"            > .true.  </clubb_l_predict_upwp_vpwp>
+<clubb_l_ho_nontrad_coriolis                      > .false. </clubb_l_ho_nontrad_coriolis>
+<clubb_l_ho_trad_coriolis                         > .false. </clubb_l_ho_trad_coriolis>
 <clubb_l_prescribed_avg_deltaz                    > .false. </clubb_l_prescribed_avg_deltaz>
 <clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_rtm_nudge                                > .false. </clubb_l_rtm_nudge>
