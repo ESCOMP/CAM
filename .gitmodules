@@ -207,8 +207,8 @@ fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/CUPiD.git
 
 [submodule "tuv-x"]
-	path = libraries/tuv-x
-	url = https://github.com/NCAR/tuv-x.git
-fxtag = 5c64595a4abce
+path = libraries/tuv-x
+url = https://github.com/NCAR/tuv-x.git
+fxtag = ecf768a2b66
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/NCAR/tuv-x.git
