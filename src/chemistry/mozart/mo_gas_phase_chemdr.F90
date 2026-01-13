@@ -457,7 +457,7 @@ contains
     real(r8) :: hcl_cond(ncol,pver)            ! hcl condensed phase concentration (mol/mol)
     real(r8) :: h2o_gas(ncol,pver)             ! h2o gas phase concentration (mol/mol)
     real(r8) :: h2o_cond(ncol,pver)            ! h2o condensed phase concentration (mol/mol)
-    real(r8) :: cldice(pcols,pver)             ! cloud water "ice" (kg/kg)
+    real(r8) :: cldice(pcols,pver)             ! cloud water "ice + snow" (kg/kg)
     real(r8) :: radius_strat(ncol,pver,3)      ! radius of sulfate, nat, & ice ( cm )
     real(r8) :: sad_strat(ncol,pver,3)         ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 )
     real(r8) :: mmr_tend(pcols,pver,gas_pcnst) ! chemistry species tendencies (kg/kg/s)
@@ -478,7 +478,9 @@ contains
 
     real(r8) :: h2o_liq(ncol,pver)              ! h2o condensed phase concentration (mol/mol) (only liquid)
     real(r8) :: sad_liq_trop(ncol,pver)         ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 ) (only liquid)
-    real(r8) :: cldliq(ncol,pver)               ! cloud water "liquid" (kg/kg)
+    real(r8) :: cldliq   (ncol,pver)            ! cloud water "liquid" (kg/kg)
+    real(r8) :: onlyice  (ncol,pver)            ! cloud water "ice" (kg/kg) ... used for SLH washout and recyclig
+    real(r8) :: h2o_ice  (ncol,pver)            ! h2o only ice concentration (mol/mol)
 
     real(r8) :: sad_sslt(ncol,pver)             ! surf area density of sea-salt ( cm^2/cm^3 )
     real(r8) :: sad_sslt_eff(ncol,pver)         ! surf area density of sea-salt ( cm^2/cm^3 )
@@ -687,15 +689,22 @@ contains
        !-----------------------------------------------------------------------
        hcl_cond(:,:)      = 0.0_r8
        hcl_gas (:,:)      = 0.0_r8
+       h2o_ice (:,:)      = 0.0_r8
+       h2o_liq (:,:)      = 0.0_r8
+       onlyice (:,:)      = 0.0_r8
+       cldice  (:,:)      = 0.0_r8
+       cldliq  (:,:)      = 0.0_r8
        do k = 1,pver
           hno3_gas(:,k)   = vmr(:,k,hno3_ndx)
           h2o_gas(:,k)    = h2ovmr(:,k)
           hcl_gas(:,k)    = vmr(:,k,hcl_ndx)
           wrk(:,k)        = h2ovmr(:,k)
           if (snow_ndx>0) then
-             cldice(:ncol,k) = q(:ncol,k,cldice_ndx) + q(:ncol,k,snow_ndx)
+             cldice(:ncol,k)  = q(:ncol,k,cldice_ndx) + q(:ncol,k,snow_ndx)
+             onlyice(:ncol,k) = q(:ncol,k,cldice_ndx)
           else
-             cldice(:ncol,k) = q(:ncol,k,cldice_ndx)
+             cldice(:ncol,k)  = q(:ncol,k,cldice_ndx)
+             onlyice(:ncol,k) = q(:ncol,k,cldice_ndx)
           endif
           cldliq(:ncol,k) = q(:ncol,k,cldliq_ndx)
        end do
@@ -705,6 +714,7 @@ contains
           end do
        end do
 
+       call mmr2vmri( onlyice(:ncol,:), h2o_ice(:ncol,:), mbar(:ncol,:), cnst_mw(cldice_ndx), ncol )
        call mmr2vmri( cldice(:ncol,:), h2o_cond(:ncol,:), mbar(:ncol,:), cnst_mw(cldice_ndx), ncol )
        call mmr2vmri( cldliq(:ncol,:), h2o_liq(:ncol,:),  mbar(:ncol,:), cnst_mw(cldliq_ndx), ncol )
 
@@ -766,9 +776,9 @@ contains
 
     !rpf_CESM2_SLH
     if ( has_ice_trp_rxts ) then
-       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_cond, strato_sad(:ncol,:), &
+       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_ice, strato_sad(:ncol,:), &
             radius_trop, sad_ice_trop, ncol, troplev, pbuf )
-       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_liq,  strato_sad(:ncol,:), &
+       call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_liq, strato_sad(:ncol,:), &
             radius_trop, sad_liq_trop, ncol, troplev, pbuf )
 
        sad_ice_trop_orig(:,:) = sad_ice_trop(:,:)

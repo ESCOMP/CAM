@@ -922,6 +922,10 @@ end function chem_is_active
        call set_srf_emissions( lchnk, ncol, sflx(:,:) )
     endif
 
+    ! Iodine emissions must be called here before the outfld loop is called below
+    ! SFI2 and SFHOI surface emissions are computed and assigned to cam_in%cflx(:,:) here
+    call iodine_emissions_srf( state, cam_in )
+
     do m = 1,pcnst
        n = map2chm(m)
        if ( n /= h2o_ndx .and. n > 0 ) then
@@ -937,9 +941,6 @@ end function chem_is_active
 
     ! air-sea exchange of trace gases
     call ocean_emis_getflux(lchnk, ncol, state, cam_in%u10, cam_in%sst, cam_in%ocnfrac, cam_in%icefrac, cam_in%cflx)
-
-    ! I2 and HOI surface emissions
-    call iodine_emissions_srf( state, cam_in )
 
   end subroutine chem_emissions
 
