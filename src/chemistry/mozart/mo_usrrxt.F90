@@ -1202,7 +1202,7 @@ contains
        sqrt_t(:)         = sqrt( temp(:ncol,k) )
        sqrt_t_58(:)      = sqrt( temp(:ncol,k) / 58.0_r8 )
 !rpf_CESM2_SLH
-       press_1d(:)       = pmid (:ncol,k) / 100.  !hPa
+       press_1d(:)       = pmid (:ncol,k) / 100._r8  !hPa
        temp_1d (:)       = temp (:ncol,k)
 !rpf_CESM2_SLH
 
@@ -1950,7 +1950,7 @@ contains
 
           !There might be some negative values for low pressures. We set them
           !to a low value (done also for other iodine reactions below)
-          where (rxt (:,k, usr_IO_OIO_ndx) < 0.) rxt (:,k, usr_IO_OIO_ndx) = 3.0e-11
+          where (rxt (:,k, usr_IO_OIO_ndx) < 0._r8) rxt (:,k, usr_IO_OIO_ndx) = 3.0e-11_r8
        endif
 
        if ( usr_OIO_OIO_ndx > 0 ) then
@@ -1959,7 +1959,7 @@ contains
           work2 (:) = 0.00813_r8    + 0.00382_r8 * exp(- press_1d(:) * 0.75_r8 / 45.57591_r8)          &
                     + 0.00643_r8    * exp (-press_1d(:) * 0.75_r8 / 417.95061_r8)
           rxt (:,k, usr_OIO_OIO_ndx) = work1(:) * exp (- work2(:) * temp_1d(:))
-          where (rxt (:,k, usr_OIO_OIO_ndx) < 0.) rxt (:,k, usr_OIO_OIO_ndx) = 2.0e-11
+          where (rxt (:,k, usr_OIO_OIO_ndx) < 0._r8) rxt (:,k, usr_OIO_OIO_ndx) = 2.0e-11_r8
        endif
 
        ! 20150325-CAC update with HOI+NO3-->IO+HNO3
@@ -1973,7 +1973,7 @@ contains
           work2 (:) = -9681.65989_r8 + 346.95538_r8 * exp (-press_1d(:) * 0.75_r8 / 343.25322_r8)                           &
                     +   251.78032_r8 * exp (-press_1d(:) * 0.75_r8 / 44.1466_r8)
           rxt (:,k, usr_I2O2_a_ndx) =  work1(:) * exp (work2(:) * tinv (:))
-          where (rxt (:,k, usr_I2O2_a_ndx) < 0.) rxt (:,k, usr_I2O2_a_ndx) = 4.0e-6
+          where (rxt (:,k, usr_I2O2_a_ndx) < 0._r8) rxt (:,k, usr_I2O2_a_ndx) = 4.0e-6_r8
        endif
 
        if ( usr_I2O2_b_ndx > 0 ) then
@@ -1982,7 +1982,7 @@ contains
           work2 (:) = -11466.82304_r8 + 597.01334_r8  * exp (-press_1d(:) * 0.75_r8 / 1382.62325_r8)                        &
                     - 167.3391_r8 * exp (- press_1d(:) * 0.75_r8 / 43.75089_r8)
           rxt (:,k, usr_I2O2_b_ndx) =  work1(:) * exp (work2(:) * tinv (:))
-          where (rxt (:,k, usr_I2O2_b_ndx) < 0.) rxt (:,k, usr_I2O2_b_ndx) = 4.5e-10
+          where (rxt (:,k, usr_I2O2_b_ndx) < 0._r8) rxt (:,k, usr_I2O2_b_ndx) = 4.5e-10_r8
        endif
 
       if ( usr_I2O4_ndx > 0 ) then
@@ -1991,7 +1991,7 @@ contains
           work2 (:) = -12302.15294_r8 + 252.78367_r8 * exp (- press_1d(:) * 0.75_r8 / 46.12733_r8)                          &
                     +  437.62868_r8   * exp (-press_1d(:) * 0.75_r8 / 428.4413_r8)
           rxt (:,k, usr_I2O4_ndx) =  work1(:) * exp (work2(:) * tinv (:))
-          where (rxt (:,k, usr_I2O4_ndx) < 0.) rxt (:,k, usr_I2O4_ndx) = 3.0e-9
+          where (rxt (:,k, usr_I2O4_ndx) < 0._r8) rxt (:,k, usr_I2O4_ndx) = 3.0e-9_r8
        endif
 
        if ( usr_IONO2_ndx > 0 ) then
@@ -2000,7 +2000,7 @@ contains
           work2 (:) = -13847.85015_r8 + 240.34465_r8 * exp (- press_1d(:) * 0.75_r8 / 49.27141_r8)                          &
                     + 451.35864_r8    * exp (- press_1d(:) * 0.75_r8 / 436.87605_r8)
           rxt (:,k, usr_IONO2_ndx) =  work1(:) * exp (work2(:) * tinv (:))
-          where (rxt (:,k, usr_IONO2_ndx) < 0.) rxt (:,k, usr_IONO2_ndx) = 6.0e-13
+          where (rxt (:,k, usr_IONO2_ndx) < 0._r8) rxt (:,k, usr_IONO2_ndx) = 6.0e-13_r8
        endif
 !rpf_CESM2_SLH
 
@@ -2495,15 +2495,15 @@ contains
 
              if ( ss_ixoy_2_ndx > 0 ) then
 !              rxt(i,k,ss_ixoy_2_ndx) = 0.25 * gamma_ss_ixoy_2 * sad_sslt_mask * 0.8607e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
-               rxt(i,k,ss_ixoy_2_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_2 * sad_sslt_mask * 0.8607e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_2_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_ss_ixoy_2 * sad_sslt_mask * 0.8607e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
              endif
              if ( ss_ixoy_3_ndx > 0 ) then
 !              rxt(i,k,ss_ixoy_3_ndx) = 0.25 * gamma_ss_ixoy_3 * sad_sslt_mask * 0.8376e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
-               rxt(i,k,ss_ixoy_3_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_3 * sad_sslt_mask * 0.8376e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_3_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_ss_ixoy_3 * sad_sslt_mask * 0.8376e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
              endif
              if ( ss_ixoy_4_ndx > 0 ) then
 !              rxt(i,k,ss_ixoy_4_ndx) = 0.25 * gamma_ss_ixoy_4 * sad_sslt_mask * 0.8162e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
-               rxt(i,k,ss_ixoy_4_ndx) = SSAdehal_ScalingFactor * 0.25 * gamma_ss_ixoy_4 * sad_sslt_mask * 0.8162e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
+               rxt(i,k,ss_ixoy_4_ndx) = SSAdehal_ScalingFactor * 0.25_r8 * gamma_ss_ixoy_4 * sad_sslt_mask * 0.8162e3_r8 * sqrt(temp(i,k)) * DF * logical_sslt
              endif
 
 
@@ -2616,9 +2616,9 @@ contains
                if( hoivmr > small ) then
                  if( hclvmr > small ) then
                    if ( hoivmr > hclvmr ) then
-                     rxt(i,k,ice_trp_i_2_ndx) = 0.25 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
+                     rxt(i,k,ice_trp_i_2_ndx) = 0.25_r8 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
                    else
-                     rxt(i,k,ice_trp_i_2_ndx) = 0.25 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hcldeni
+                     rxt(i,k,ice_trp_i_2_ndx) = 0.25_r8 * gamma_hclhoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hcldeni
                    end if
                  endif
                endif
@@ -2642,9 +2642,9 @@ contains
                if( hoivmr > small ) then
                  if( hivmr > small ) then
                    if ( hoivmr > hivmr ) then
-                     rxt(i,k,ice_trp_i_4_ndx) = 0.25 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
+                     rxt(i,k,ice_trp_i_4_ndx) = 0.25_r8 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hoideni
                    else
-                     rxt(i,k,ice_trp_i_4_ndx) = 0.25 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hideni
+                     rxt(i,k,ice_trp_i_4_ndx) = 0.25_r8 * gamma_hihoi_ice * sad_ice_trop(i,k) * 1.21e3_r8 * sqrt(temp(i,k)) * hideni
                    end if
                  endif
                endif
@@ -2696,7 +2696,7 @@ contains
              if ( sad_ice_trop(i,k) > 0 ) then
                if( hivmr > small ) then
 !                rxt(i,k,ice_fr_hi_ndx) = 0.25 * gamma_fr_hi_ice * sad_ice_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
-                 rxt(i,k,ice_fr_hi_ndx) = ICEfraprx_ScalingFactor_I * 0.25 * gamma_fr_hi_ice * sad_ice_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_hi_ndx) = ICEfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_hi_ice * sad_ice_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
                endif
              endif
              endif
@@ -2704,7 +2704,7 @@ contains
              if ( sad_liq_trop(i,k) > 0 ) then
                if( hivmr > small ) then
 !                rxt(i,k,liq_fr_hi_ndx) = 0.25 * gamma_fr_hi_liq * sad_liq_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
-                 rxt(i,k,liq_fr_hi_ndx) = LIQfraprx_ScalingFactor_I * 0.25 * gamma_fr_hi_liq * sad_liq_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,liq_fr_hi_ndx) = LIQfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_hi_liq * sad_liq_trop(i,k) * 1.287e3_r8 * sqrt(temp(i,k))
                endif
              endif
              endif
@@ -2712,7 +2712,7 @@ contains
              if ( sad_ice_trop(i,k) > 0 ) then
                if( iono2vmr > small ) then
 !                rxt(i,k,ice_fr_iono2_ndx) = 0.25 * gamma_fr_iono2_ice * sad_ice_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
-                 rxt(i,k,ice_fr_iono2_ndx) = ICEfraprx_ScalingFactor_I * 0.25 * gamma_fr_iono2_ice * sad_ice_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_iono2_ndx) = ICEfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_iono2_ice * sad_ice_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
                endif
              endif
              endif
@@ -2720,7 +2720,7 @@ contains
              if ( sad_liq_trop(i,k) > 0 ) then
                if( iono2vmr > small ) then
 !                rxt(i,k,liq_fr_iono2_ndx) = 0.25 * gamma_fr_iono2_liq * sad_liq_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
-                 rxt(i,k,liq_fr_iono2_ndx) = LIQfraprx_ScalingFactor_I * 0.25 * gamma_fr_iono2_liq * sad_liq_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,liq_fr_iono2_ndx) = LIQfraprx_ScalingFactor_I * 0.25_r8 * gamma_fr_iono2_liq * sad_liq_trop(i,k) * 1.059e3_r8 * sqrt(temp(i,k))
                endif
              endif
              endif
@@ -2732,7 +2732,7 @@ contains
              if ( sad_ice_trop(i,k) > 0 ) then
                if( brono2vmr > small ) then
 !                rxt(i,k,ice_fr_brono2_ndx) = 0.25 * gamma_fr_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
-                 rxt(i,k,ice_fr_brono2_ndx) = ICEfraprx_ScalingFactor_Br * 0.25 * gamma_fr_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
+                 rxt(i,k,ice_fr_brono2_ndx) = ICEfraprx_ScalingFactor_Br * 0.25_r8 * gamma_fr_brono2_ice * sad_ice_trop(i,k) * 1.22e3_r8 * sqrt(temp(i,k))
                endif
              endif
              endif
