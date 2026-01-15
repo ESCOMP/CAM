@@ -3,7 +3,7 @@
 
 Tag name: cam6_4_144
 Originator(s): alperaltuntas, cacraigucar
-Date: Jan 13, 2026
+Date: Jan 15, 2026
 One-line Summary: Receive and pass --non-local option in cam.case_setup.py
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1456
 
@@ -47,8 +47,6 @@ derecho/intel/aux_cam:
       FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri COMPARE_base_hybrid
         - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
 
-
-
 derecho/nvhpc/aux_cam:
   FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
     -pre-existing failure -- exceeds wallclock time limit
@@ -57,7 +55,7 @@ derecho/nvhpc/aux_cam:
 	baselines to use for comparison but answer changes are expected starting with
 	cam6_4_130.
 
-	Check that the end of the atm_log is: (If not, please report to Jian as CISL is supposed to make a change on derecho)
+	Check that the end of the cesm_log is: (If not, please report to Jian as CISL is supposed to make a change on derecho)
 
 	deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  4  2  25  26
 	deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  1  19  20
