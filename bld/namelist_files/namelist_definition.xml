@@ -1270,13 +1270,6 @@ In the low-top model, this helps to conserve momentum and produce a QBO.
 Default: set by build-namelist.
 </entry>
 
-<entry id="gw_limit_tau_without_eff" type="logical" category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Apply limiters to tau before applying the efficiency factor, rather than
-afterward.
-Default: set by build-namelist
-</entry>
-
 <entry id="gw_apply_tndmax" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Apply limiter on maximum wind tendency from stress divergence in gravity wave drag scheme.
@@ -1533,7 +1526,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_do_adjust_tauoro" type="logical" category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-If true, then adujust tauoro
+If true, then adjust tauoro
 Default: set by build-namelist.
 </entry>
 
@@ -1575,7 +1568,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_Fr_c" type="real"  category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-Critical inverse4 Froude number
+Critical inverse Froude number
 Default: set by build-namelist.
 </entry>
 
@@ -2346,7 +2339,7 @@ COSP will not run unless this is set to .true. in the namelist!
 Turn on the desired simulators using lXXX_sim namelist vars
 If no specific simulators are specified, all of the simulators
 are run on all columns and all output is saved. (useful for testing).
-COSP is available with CAM4, CAM5 and CAM6 physics.
+COSP is available with CAM4, CAM5, CAM6 and CAM7 physics.
 This default logical is set in cospsimulator_intr.F90.
 Default: FALSE
 </entry>
@@ -2583,7 +2576,7 @@ Default: .true., except for carma=cirrus and carma=carma_dust
        group="micro_mg_nl" valid_values="" >
 Version number for MG microphysics.  This value is set automatically based
 on settings in configure and passed to build-namelist
-Default: 1 for CAM5 and 2 for CAM6
+Default: 1 for CAM5, 2 for CAM6 and 3 for CAM7
 </entry>
 
 <entry id="micro_mg_sub_version" type="integer" category="microphys"
@@ -2956,7 +2949,7 @@ Default: 0.05
 <entry id="use_preexisting_ice" type="logical" category="microphys"
        group="nucleate_ice_nl" valid_values="" >
 Switch to turn on treatment of pre-existing ice in the ice nucleation code.
-Default: .false., except .true. for CAM6
+Default: .false., except .true. for CAM6 and CAM7
 </entry>
 
 <entry id="hist_preexisting_ice" type="logical" category="microphys"
@@ -2987,7 +2980,7 @@ Default: set by build-namelist
 Switch to determine whether ice nucleation happens using the incloud (true) or
 the gridbox average (false) relative humidity.  When true, it is assumed that
 the incloud relative humidity for nucleation is 1.
-Default: .true., except .false. for CAM6
+Default: .true., except .false. for CAM6 and CAM7
 </entry>
 
 <entry id="nucleate_ice_strat" type="real" category="microphys"
@@ -3043,7 +3036,7 @@ Default: .true.
 <entry id="cldfrc_ice" type="logical" category="cldfrc"
        group="cldfrc_nl" valid_values="" >
 Switch for ice cloud fraction calculation.
-Default: .true. for CAM5 and CAM6, otherwise .false.
+Default: .true. for CAM5, CAM6 and CAM7, otherwise .false.
 </entry>
 
 <entry id="cldfrc_rhminl" type="real" category="cldfrc"
@@ -3055,7 +3048,7 @@ Default: set by build-namelist
 <entry id="cldfrc_rhminl_adj_land" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Adjustment to rhminl for land without snow cover.
-Default: 0.0 for CAM6;
+Default: 0.0 for CAM6 and CAM7;
          all others =&gt; 0.10
 </entry>
 
@@ -3098,7 +3091,7 @@ Default: set by build-namelist
 <entry id="cldfrc_premib" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Bottom height (Pa) for mid-level liquid stratus fraction.
-Default: 700.e2 for CAM5 and CAM6; all others=&gt; 750.e2
+Default: 700.e2 for CAM5, CAM6 and CAM7; all others=&gt; 750.e2
 </entry>
 
 <entry id="cldfrc_iceopt" type="integer" category="conv"
@@ -3154,7 +3147,7 @@ Default: set by build-namelist
        group="cldfrc2m_nl" valid_values="" >
 Use cloud fraction to determine whether to do growth of ice clouds below
 RHice of 1 down to RHice = rhmini.
-Default: .true. for CAM6; all others =&gt; .false.
+Default: .true. for CAM6 and CAM7; all others =&gt; .false.
 </entry>
 
 <entry id="cldfrc2m_do_avg_aist_algs" type="logical" category="conv"
@@ -3203,7 +3196,7 @@ Default: set by build-namelist
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
-Default: =&gt; 1 for CAM6;
+Default: =&gt; 1 for CAM6 and CAM7;
          =&gt; 5 for all other
 </entry>
 
@@ -5139,7 +5132,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,cam7,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -7999,6 +7992,13 @@ Default: FALSE
        group="radheat_nl" valid_values="" >
 Call ALI-ARMS every X timesteps
 Default: 1
+</entry>
+
+<entry id="nlte_use_extco2" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the extended CO2 scheme of Lopez-Puertas et al. 2024 as an alernative method of computing non-LTE
+CO2 cooling rates in the upper atmosphere. (DOI:10.5194/gmd-17-4401-2024)
+Default: FALSE
 </entry>
 
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"
