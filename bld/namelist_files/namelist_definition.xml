@@ -3652,7 +3652,7 @@ Default: set by build-namelist
 Factor to add sponge layer vertical diffusion of zonal and meridional components
 of the wind verctor (following the profile for del2 damping in the spectral-element dycore).
 
-Sponge layer interface coeficients for model tops above ptop=1E-3Pa (e.g. WACCM):
+Sponge layer interface coefficients for model tops above ptop=1E-3Pa (e.g. WACCM):
 
         kvm_sponge(1) = 2.e5*diff_sponge_fac
         kvm_sponge(2) = 2.e5*diff_sponge_fac
