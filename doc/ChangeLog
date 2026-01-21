@@ -34,6 +34,9 @@ M       bld/namelist_files/namelist_defaults_cam.xml
 M       bld/namelist_files/namelist_definition.xml
 M       src/physics/cam/vertical_diffusion.F90
   - new diff_sponge_fac namelist option
+
+M       cime_config/testdefs/testlist_cam.xml
+  - set GPU test times to 45 minutes
 ```
 
 If there were any failures reported from running test_driver.sh on any test
@@ -44,10 +47,30 @@ appropriate machine below.  All failed tests must be justified.
 derecho/intel/aux_cam:
 
 derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+    - pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+        baselines to use for comparison but answer changes are expected starting with
+        cam6_4_130.
+
+        Check that the end of the cesm.log is: (If not, please report to Jian as CISL is supposed to make a change on derecho)
+
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  4  2  25  26
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  1  19  20
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+        deg0020.hsn.de.hpc.ucar.edu 1:  Opened file
+        deg0020.hsn.de.hpc.ucar.edu 1:
+        ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.GC.aux_cam_nvhpc_20260108161835.cam.r.1979-01-01-09000.nc
+        deg0020.hsn.de.hpc.ucar.edu 1:   to write          316
+        deg0020.hsn.de.hpc.ucar.edu: rank 62 died from signal 15
 
 izumi/nag/aux_cam:
 
 izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: for nvhpc test used cam6_4_128 (last available baseline for nvhpc)
 
 ===============================================================
 
