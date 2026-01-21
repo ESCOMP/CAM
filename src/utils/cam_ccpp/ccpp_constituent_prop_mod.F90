@@ -23,11 +23,17 @@ module ccpp_constituent_prop_mod
 
    end type ccpp_constituent_prop_ptr_t
 
+   type, public :: ccpp_constituent_properties_t
+      contains
+      procedure :: instantiate
+   end type ccpp_constituent_properties_t
+
    ! CCPP properties init routine
    public :: ccpp_const_props_init
 
    ! Public properties DDT variable:
    type(ccpp_constituent_prop_ptr_t), allocatable, public :: ccpp_const_props(:)
+   integer, public, parameter :: int_unassigned = HUGE(-1)
 
 contains
 
@@ -274,5 +280,32 @@ subroutine ccpp_const_props_init(ix_qv)
     call ccpp_const_props(ix_qv)%set_standard_name('water_vapor_mixing_ratio_wrt_moist_air_and_condensed_water')
 
 end subroutine ccpp_const_props_init
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!CAM-equivalent stub so dynamic constituents register routines can build
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine instantiate(this, std_name, long_name, units, vertical_dim,  &
+        advected, default_value, min_value, molar_mass, water_species,         &
+        mixing_ratio_type, errcode, errmsg)
+      use ccpp_kinds, only: kind_phys
+
+      ! Dummy arguments
+      class(ccpp_constituent_properties_t), intent(inout) :: this
+      character(len=*),                     intent(in)    :: std_name
+      character(len=*),                     intent(in)    :: long_name
+      character(len=*),                     intent(in)    :: units
+      character(len=*),                     intent(in)    :: vertical_dim
+      logical, optional,                    intent(in)    :: advected
+      real(kind_phys), optional,            intent(in)    :: default_value
+      real(kind_phys), optional,            intent(in)    :: min_value
+      real(kind_phys), optional,            intent(in)    :: molar_mass
+      logical, optional,                    intent(in)    :: water_species
+      character(len=*), optional,           intent(in)    :: mixing_ratio_type
+      integer,                              intent(out)   :: errcode
+      character(len=*),                     intent(out)   :: errmsg
+
+      ! STUB DOES NOTHING
+
+end subroutine instantiate
 
 end module ccpp_constituent_prop_mod
