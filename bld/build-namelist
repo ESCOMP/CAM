@@ -3703,6 +3703,11 @@ if (!$simple_phys) {
     add_default($nl, 'do_iss');
 }
 
+# Sponge layer vertical diffusion
+if (!$simple_phys) {
+    add_default($nl, 'diff_sponge_fac');
+}
+
 # Convective water in radiation
 if (!$simple_phys) {
     add_default($nl, 'conv_water_in_rad');
