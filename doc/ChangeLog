@@ -1,5 +1,83 @@
 ===============================================================
 
+Tag name: cam6_4_146
+Originator(s): fvitt
+Date:
+One-line Summary: Update CARMA submodule to tag carma4_10
+
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1458
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Update CARMA base external submodule to tag carma4_10 -- Issue #1181
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/physics/carma/base
+ - update carma base tag to carma4_10
+
+M       src/physics/carma/cam/carma_intr.F90
+M       src/physics/carma/models/trop_strat_soa1/carma_model_mod.F90
+M       src/physics/carma/models/trop_strat_soa5/carma_model_mod.F90
+ - getwetr interface change
+
+M       cime_config/testdefs/testlist_cam.xml
+ - added CARMA trop_strat tests
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository):
+- platform/compilers:
+- configure commandline:
+- build-namelist command (or complete namelist):
+- MSS location of output:
+
+MSS location of control simulations used to validate new climate:
+
+URL for AMWG diagnostics output used to validate new climate:
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_145
 Originator(s): PeterHjortLauritzen, jimmielin
 Date: January 20, 2026
