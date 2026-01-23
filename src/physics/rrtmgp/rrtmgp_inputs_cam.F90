@@ -44,7 +44,6 @@ private
 save
 
 public :: &
-   rrtmgp_inputs_cam_init, &
    rrtmgp_get_gas_mmrs, &
    rrtmgp_set_aer_lw,   &
    rrtmgp_set_aer_sw
