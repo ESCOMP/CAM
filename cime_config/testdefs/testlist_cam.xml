@@ -324,6 +324,17 @@
     </options>
   </test>
 
+  <test compset="FCARMA2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA trop_strat model test</option>
+    </options>
+  </test>
+
   <test compset="FHIST_C5" grid="f10_f10_mt232" name="TMC_D_Ln9" testmods="cam/mc_ttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
@@ -801,6 +812,16 @@
     <options>
       <option name="comment" >CARMA particle swelling test</option>
       <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--             WACCM carma trop_strat model    -->
+  <test compset="FWmaCARMAHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA WACCM trop_strat model test</option>
     </options>
   </test>
 <!-- TEM diagnostics and zonal-average output -->
