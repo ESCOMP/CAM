@@ -9,7 +9,7 @@ module esmf_lonlat_grid_mod
 
   use ESMF, only: ESMF_Grid, ESMF_GridCreate1PeriDim, ESMF_GridAddCoord
   use ESMF, only: ESMF_GridGetCoord, ESMF_GridDestroy
-  use ESMF, only: ESMF_KIND_R8, ESMF_INDEX_GLOBAL, ESMF_STAGGERLOC_CENTER
+  use ESMF, only: ESMF_KIND_R8, ESMF_INDEX_GLOBAL, ESMF_STAGGERLOC_CENTER, ESMF_STAGGERLOC_CORNER
   use esmf_check_error_mod, only: check_esmf_error
 
   implicit none
@@ -287,6 +287,7 @@ contains
 
     ! Set coordinates:
 
+    ! cell centers
     call ESMF_GridAddCoord(lonlat_grid, staggerloc=ESMF_STAGGERLOC_CENTER, rc=ierr)
     call check_esmf_error(ierr, subname//'ESMF_GridAddCoord ERROR')
 
@@ -312,6 +313,38 @@ contains
        do i = lbnd_lat, ubnd_lat
           coordY(i) = glats(i)
        end do
+    end if
+
+    ! cell corners
+    call ESMF_GridAddCoord(lonlat_grid, staggerloc=ESMF_STAGGERLOC_CORNER, rc=ierr)
+    call check_esmf_error(ierr, subname//'ESMF_GridAddCoord CORNER ERROR')
+
+    if (mytid<npes) then
+       call ESMF_GridGetCoord(lonlat_grid, coordDim=1, &
+            computationalLBound=lbnd, computationalUBound=ubnd,  &
+            farrayPtr=coordX, staggerloc=ESMF_STAGGERLOC_CORNER, rc=ierr)
+       call check_esmf_error(ierr, subname//'ESMF_GridGetCoord for longitude corner coords ERROR')
+
+       lbnd_lon = lbnd(1)
+       ubnd_lon = ubnd(1)
+       do i = lbnd_lon, ubnd_lon
+          coordX(i) = glons(i) - (0.5_r8 * delx)
+       end do
+
+       call ESMF_GridGetCoord(lonlat_grid, coordDim=2, &
+            computationalLBound=lbnd, computationalUBound=ubnd, &
+            farrayPtr=coordY, staggerloc=ESMF_STAGGERLOC_CORNER, rc=ierr)
+       call check_esmf_error(ierr, subname//'ESMF_GridGetCoord for latitude corner coords ERROR')
+
+       lbnd_lat = lbnd(1)
+       ubnd_lat = min( ubnd(1), nlat)
+       do i = lbnd_lat, ubnd_lat
+          coordY(i) = glats(i) - (0.5_r8 * dely)
+       end do
+       if (ubnd(1) == nlat+1) then
+          coordY(nlat+1) = 90._r8
+       end if
+
     end if
 
     deallocate(nlons_task)
