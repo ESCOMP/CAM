@@ -98,11 +98,12 @@ cosp_modis_interface.o     : cosp_kinds.o cosp_config.o modis_simulator.o    \
 							 cosp_stats.o
 cosp_rttov_interfaceSTUB.o : cosp_kinds.o cosp_config.o cosp_rttovSTUB.o     \
 							 cosp_rttov_utilSTUB.o
-cosp_rttov_interface_v13.o : cosp_kinds.o cosp_config.o cosp_rttov_v13.o     \
-							 cosp_rttov_util.o
+cosp_rttov_interface_v13.o : cosp_kinds.o cosp_config.o cosp_errorHandling.o \
+							 cosp_rttov_v13.o  cosp_rttov_util.o
 cosp_parasol_interface.o   : cosp_kinds.o cosp_stats.o
 cosp_rttovSTUB.o           : cosp_kinds.o cosp_config.o cosp_constants.o
-cosp_rttov_v13.o           : cosp_kinds.o cosp_config.o cosp_constants.o
+cosp_rttov_v13.o           : cosp_kinds.o cosp_config.o cosp_errorHandling.o \
+							 cosp_constants.o
 MISR_simulator.o           : cosp_kinds.o cosp_config.o cosp_stats.o
 modis_simulator.o          : cosp_kinds.o cosp_config.o cosp_stats.o
 lidar_simulator.o          : cosp_kinds.o cosp_config.o cosp_stats.o
