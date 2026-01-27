@@ -1079,7 +1079,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x2" testmods="cam/outfrq9s_mee_fluxes" supported="false">
+  <test compset="FWmaHIST" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s_mee_fluxes" supported="false">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
