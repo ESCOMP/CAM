@@ -1,3 +1,84 @@
+
+===============================================================
+
+Tag name: cam6_4_147
+Originator(s): kdraeder, cacraigucar
+Date: Jan 28, 2026
+One-line Summary: Made ERI test check for Gregorian+spinup compset incompatibility
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1473
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - ERI test; consistency of compset and calendar: https://github.com/ESCOMP/CAM/issues/1447
+
+Describe any changes made to build system:
+  - Now checks that a user is not using the gregorian calendar with a spinup compset since the stream handling
+    has issues with leap days
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/user_nl_mosart
+          - add output frequency for mosart
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/buildnml
+          - add check to prevent gregorian calendar to be used with spinup compsets
+
+M       cime_config/testdefs/testlist_cam.xml
+          - change test which was using gregorian calendaro with a spinup compset to a working configuration
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/user_nl_clm
+          - mods  to better test leapday
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+    SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+      FAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday NLCOMP
+      FAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday BASELINE /glade/campaign/cesm/community/amwg/cam_base
+         - Changed namelist settings for the leapday test
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+   - pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+	baselines to use for comparison but answer changes are expected starting with
+	cam6_4_130.
+
+    End of cesm.log file:
+deg0049.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+deg0049.hsn.de.hpc.ucar.edu 1:  Opened file
+deg0049.hsn.de.hpc.ucar.edu 1:  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.G.aux_cam_nvhpc_20260123064354.cam.r.1979-01-01-09000.nc
+deg0049.hsn.de.hpc.ucar.edu 1:   to write          316
+deg0051.hsn.de.hpc.ucar.edu: rank 64 died from signal 15
+
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam:
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+      FAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes NLCOMP
+      FAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes BASELINE
+         - Introduced new test
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_146
