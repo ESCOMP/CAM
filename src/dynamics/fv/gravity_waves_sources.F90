@@ -120,10 +120,12 @@ module gravity_waves_sources
                pty(i,k,j) = ( ptg(i,k,j+1) - ptg(i,k,j-1) ) / (2._r8 * grid%dp)
                pty(i,k,j) = pty(i,k,j) / aearth
                !
-               ! Topography correction term:
-               ! Horizontal temperature gradient for fronotogenesis function was originally computed over
-               ! terrain-following coordinate. The correction terms are added so horizontal temperature
-               ! gradient is on isobaric coordinate. This applies for all "correction" terms below.
+               ! Topography/isobaric correction term:
+               ! The horizontal temperature gradient for the frontogenesis function is initially
+               ! computed in terrain-following coordinates. Correction terms are then applied to
+               ! convert it to an isobaric (pressure) surface reference. The same correction is
+               ! performed for the wind component terms.
+               !
                pty(i,k,j) = pty(i,k,j) - dptdp(i,k,j) * &
                             ( pmg(i,k,j+1) - pmg(i,k,j-1) ) / (2._r8 * grid%dp) / aearth
 
