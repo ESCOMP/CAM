@@ -3660,7 +3660,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 # Tuning for wet scavenging of modal aerosols
 if ($chem =~ /_mam/) {
     add_default($nl, 'sol_facti_cloud_borne');
-    add_default($nl, 'sol_factb_interstitial');
     add_default($nl, 'sol_factic_interstitial');
 }
 if ($carma =~ /trop_strat/) {
@@ -3702,6 +3701,11 @@ if (!$simple_phys) {
 # Implicit Turbulent Surface Stress
 if (!$simple_phys) {
     add_default($nl, 'do_iss');
+}
+
+# Sponge layer vertical diffusion
+if (!$simple_phys) {
+    add_default($nl, 'diff_sponge_fac');
 }
 
 # Convective water in radiation

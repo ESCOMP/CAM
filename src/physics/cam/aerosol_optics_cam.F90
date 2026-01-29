@@ -1129,21 +1129,20 @@ contains
             end if
             ! dmleung --
 
+            ! dmleung 20 Oct 2025 ++
+            ! Then, all these diagnostics are outputted based on the modified dust AOD.
+            ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the absorption diagnostics.
+            aodvis(icol) = aodvis(icol) + dopaer(icol)
+            aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+            absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
+            asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
+            asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+            aodbin(icol) = aodbin(icol) + dopaer(icol)
 
          end if
-
-         ! dmleung 20 Oct 2025 ++
-         ! Then, all these diagnostics are outputted based on the modified dust AOD.
-         ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the absorption diagnostics.
-         aodvis(icol) = aodvis(icol) + dopaer(icol)
-         aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
-         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
-         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
-         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
-         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
-
-         aodbin(icol) = aodbin(icol) + dopaer(icol)
 
          if (ilev<=troplev(icol)) then
             aodvisst(icol) = aodvisst(icol) + dopaer(icol)
