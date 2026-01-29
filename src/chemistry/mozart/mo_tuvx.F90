@@ -49,15 +49,13 @@ module mo_tuvx
    integer, parameter :: PROFILE_INDEX_AIR          = 4 ! Air density profile index
    integer, parameter :: PROFILE_INDEX_O3           = 5 ! Ozone profile index
    integer, parameter :: PROFILE_INDEX_O2           = 6 ! Molecular oxygen profile index
-   integer, parameter :: PROFILE_INDEX_SO2          = 7 ! Sulfur dioxide profile index
-   integer, parameter :: PROFILE_INDEX_NO2          = 8 ! Nitrogen dioxide profile index
 
    ! Indices for radiator updaters
    integer, parameter :: NUM_RADIATORS = 2          ! number of radiators that CAM will update at runtime
    integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
    integer, parameter :: RADIATOR_INDEX_CLOUDS  = 2 ! Cloud radiator index
 
-   ! Definition of the MS93 wavelength grid  TODO add description of this
+   ! Definition of the MS93 wavelength grid for use with jno calculations
    integer,       parameter :: NUM_BINS_MS93 = 4
    real(kind=r8), parameter :: WAVELENGTH_EDGES_MS93(NUM_BINS_MS93+1) = &
       (/ 181.6_r8, 183.1_r8, 184.6_r8, 190.2_r8, 192.5_r8 /)
@@ -367,7 +365,7 @@ contains
       if( is_main_task ) then
          call tuvx_config%from_file( config_path%to_char( ) )
          call tuvx_config%get( "__CAM options", cam_config, my_name )
-         call assert_msg( 973680295, &
+         call assert_msg( 973680295, & ! random error number consistent with how MUSICA error handling
             cam_config%validate( required_keys, optional_keys ), &
             "Bad configuration for CAM TUV-x options." )
          call cam_config%get( "disable aerosols", disable_aerosols, my_name, &
@@ -448,10 +446,10 @@ contains
       allocate(wc(nwave))
       wc(1:nwave) = (wavelength%edge_(1:nwave) + wavelength%edge_(2:nwave+1))*0.5_r8
 
+      deallocate( wavelength )
       deallocate( cam_grids     )
       deallocate( cam_profiles  )
       deallocate( cam_radiators )
-      deallocate( wavelength )
       deallocate( buffer )
 
       ! =============================================
@@ -476,6 +474,8 @@ contains
       ! ====================================================
       ! make sure extraterrestrial flux values are available
       ! ====================================================
+      ! the random error number is consistent with how MUSICA
+      ! handles errors and don't have any particular meaning
       call assert_msg( 170693514, has_spectrum, &
          "Solar irradiance spectrum needed for TUV-x" )
 
@@ -583,7 +583,7 @@ contains
    !-----------------------------------------------------------------------
    ! Calculates and returns photolysis rate constants
    !-----------------------------------------------------------------------
-   subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
+   subroutine tuvx_get_photo_rates( pbuf, ncol, lchnk, height_mid, &
       height_int, temperature_mid, surface_temperature, fixed_species_conc, &
       species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
       earth_sun_distance, pressure_delta, cloud_fraction, liquid_water_content, &
@@ -595,13 +595,11 @@ contains
                                    nfs,       & ! number of fixed species
                                    nabscol,   & ! number of absorbing species (radiators)
                                    rxt_tag_lst  ! labels for all chemical reactions
-      use physics_types,    only : physics_state
       use physics_buffer,   only : physics_buffer_desc
       use physics_buffer,   only : pbuf_get_field
       use ppgrid,           only : pcols        ! maximum number of columns
       use shr_const_mod,    only : pi => shr_const_pi
 
-      type(physics_state),       target,  intent(in)    :: state
       type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
       integer,  intent(in)    :: ncol                        ! number of active columns on this thread
       integer,  intent(in)    :: lchnk                       ! identifier for this thread
@@ -676,7 +674,7 @@ contains
          ! ==============================================
 
 
-         call get_aerosol_optical_properties( tuvx, pbuf, state%ncol, &
+         call get_aerosol_optical_properties( tuvx, pbuf, ncol, &
               optical_depth, single_scattering_albedo, asymmetry_factor, &
               optical_depth_cld, single_scattering_albedo_cld, asymmetry_factor_cld )
 
@@ -1472,7 +1470,7 @@ contains
    !        ||                                     ||
    !                                               ||
    ! ----------------- i_int = pver
-   ! ================= i_imd = pver        ------------------ i_int = 2
+   ! ================= i_mid = pver        ------------------ i_int = 2
    !                                       ================== i_mid = 1
    ! -----(ground)---- i_int = pver+1      -----(ground)----- i_int = 1
    !
@@ -1668,8 +1666,9 @@ contains
       real(r8) :: tau(pver+1, this%n_wavelength_bins_)
       real(r8) :: edges(pver+2), densities(pver+1)
       real(r8) :: exo_val
-      real(r8), parameter :: rgrav = 1.0_r8 / 9.80616_r8 ! reciprocal of acceleration by gravity (s/m)
       real(r8), parameter :: km2cm = 1.0e5_r8 ! conversion from km to cm
+      real(r8), parameter :: SCALE_HEIGHT_AIR = 8.01_r8 ! tropopause scale height (km)
+      real(r8), parameter :: SCALE_HEIGHT_OX = 7._r8 ! ozone and O2 scale height (km)
 
       ! ===========
       ! air profile
@@ -1681,7 +1680,7 @@ contains
          sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
       call this%profiles_( PROFILE_INDEX_AIR )%update( &
          edge_values = edges, layer_densities = densities, &
-         scale_height = 8.01_r8 ) ! scale height in [km]
+         scale_height = SCALE_HEIGHT_AIR )
 
       ! ==========
       ! O2 profile
@@ -1704,7 +1703,7 @@ contains
          sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
       call this%profiles_( PROFILE_INDEX_O2 )%update( &
          edge_values = edges, layer_densities = densities, &
-         scale_height = 7.0_r8 )
+         scale_height = SCALE_HEIGHT_OX )
 
       ! ==========
       ! O3 profile
@@ -1737,7 +1736,7 @@ contains
             ( edges(1:pver+1) + edges(2:pver+2) ) * 0.5_r8
          call this%profiles_( PROFILE_INDEX_O3 )%update( &
             edge_values = edges, layer_densities = densities, &
-            scale_height = 7.0_r8 )
+            scale_height = SCALE_HEIGHT_OX )
       end if
 
       ! ===============
@@ -1883,27 +1882,6 @@ contains
 !================================================================================================
 
    !-----------------------------------------------------------------------
-   ! Reorders elements of an optical property array for conversion
-   !   from wavenumber to wavelength grid and out-of-order final
-   !   element in CAM wavenumber grid
-   !-----------------------------------------------------------------------
-   subroutine reorder_optics_array( optics_array )
-
-      use ppgrid,           only : pcols    ! maximum number of columns
-      use radconstants,     only : nswbands ! Number of CAM shortwave radiation bands
-
-      real(r8), intent(inout) :: optics_array(pcols,0:pver,nswbands) ! optics array to reorder
-
-      real(r8) :: working(pcols,0:pver,nswbands) ! working array
-
-      working(:,:,:) = optics_array(:,:,:)
-      optics_array(:,:,1:nswbands-1) = working(:,:,nswbands-1:1:-1)
-
-   end subroutine reorder_optics_array
-
-!================================================================================================
-
-   !-----------------------------------------------------------------------
    ! Calculates extreme-UV ionization rates
    !
    ! NOTE This never includes an above-column layer
@@ -1926,7 +1904,7 @@ contains
       real(r8), intent(in)  :: height_int(pver+1)   ! height at interfaces (km)
       real(r8), intent(out) :: euv_rates(pver,neuv) ! calculated extreme-UV rates
 
-      real(r8) :: o_dens(pver), o2_dens(pver), n2_dens(pver), height_arg(pver)
+      real(r8) :: o_dens(pver), o2_dens(pver), n2_dens(pver)
 
       ! ==========
       ! N2 density
@@ -1955,12 +1933,7 @@ contains
          o2_dens(:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
       end if
 
-      ! =======================
-      ! special height argument
-      ! =======================
-      height_arg(:) = height_mid(:)
-
-      call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_arg, &
+      call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_mid, &
                  euv_rates(pver:1:-1,:) )
 
    end subroutine calculate_euv_rates
