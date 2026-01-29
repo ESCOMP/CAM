@@ -34,7 +34,7 @@
       clscnt(:) = (/      2,     0,     0,   141,     0 /)
 
       cls_rxt_cnt(:,1) = (/      5,     0,     0,     2 /)
-      cls_rxt_cnt(:,4) = (/      0,   113,   259,   141 /)
+      cls_rxt_cnt(:,4) = (/      0,   115,   258,   141 /)
 
       solsym(:143) = (/ 'bc_a1           ','bc_a4           ','BIGALK          ','BR              ','BRCL            ', &
                         'BRO             ','BRONO2          ','BRY             ','C2H4            ','C2H5OH          ', &
@@ -249,150 +249,151 @@
                                       'jocs                            ', 'jso                             ', &
                                       'jso2                            ', 'jso3                            ', &
                                       'jsoa_a1                         ', 'jsoa_a2                         ', &
+                                      'ag1                             ', 'ag2                             ', &
                                       'O1D_H2                          ', 'O1D_H2O                         ', &
                                       'O1D_N2                          ', 'O1D_O2                          ', &
-                                      'O1D_O2ab                        ', 'O1D_O2b                         ', &
-                                      'O1D_O3                          ', 'O1D_O3a                         ', &
-                                      'O2_1D_N2                        ', 'O2_1D_O                         ', &
-                                      'O2_1D_O2                        ', 'O2_1S_CO2                       ', &
-                                      'O2_1S_N2                        ', 'O2_1S_O                         ', &
-                                      'O2_1S_O2                        ', 'O2_1S_O3                        ', &
-                                      'O_O3                            ', 'usr_O_O                         ', &
-                                      'usr_O_O2                        ', 'H2_O                            ', &
-                                      'H2O2_O                          ', 'H_HO2                           ', &
-                                      'H_HO2a                          ', 'H_HO2b                          ', &
-                                      'H_O2                            ', 'HO2_O                           ', &
-                                      'HO2_O3                          ', 'H_O3                            ', &
-                                      'OH_H2                           ', 'OH_H2O2                         ', &
-                                      'OH_HO2                          ', 'OH_O                            ', &
-                                      'OH_O3                           ', 'OH_OH                           ', &
-                                      'OH_OH_M                         ', 'usr_HO2_HO2                     ', &
-                                      'HO2NO2_OH                       ', 'N_NO                            ', &
-                                      'N_NO2a                          ', 'N_NO2b                          ', &
-                                      'N_NO2c                          ', 'N_O2                            ', &
-                                      'NO2_O                           ', 'NO2_O3                          ', &
-                                      'NO2_O_M                         ', 'NO3_HO2                         ', &
-                                      'NO3_NO                          ', 'NO3_O                           ', &
-                                      'NO3_OH                          ', 'N_OH                            ', &
-                                      'NO_HO2                          ', 'NO_O3                           ', &
-                                      'NO_O_M                          ', 'O1D_N2Oa                        ', &
-                                      'O1D_N2Ob                        ', 'tag_NO2_HO2                     ', &
-                                      'tag_NO2_NO3                     ', 'tag_NO2_OH                      ', &
-                                      'usr_HNO3_OH                     ', 'usr_HO2NO2_M                    ', &
-                                      'usr_N2O5_M                      ', 'CL_CH2O                         ', &
-                                      'CL_CH4                          ', 'CL_H2                           ', &
-                                      'CL_H2O2                         ', 'CL_HO2a                         ', &
-                                      'CL_HO2b                         ', 'CL_O3                           ', &
-                                      'CLO_CH3O2                       ', 'CLO_CLOa                        ', &
-                                      'CLO_CLOb                        ', 'CLO_CLOc                        ', &
-                                      'CLO_HO2                         ', 'CLO_NO                          ', &
-                                      'CLONO2_CL                       ', 'CLO_NO2_M                       ', &
-                                      'CLONO2_O                        ', 'CLONO2_OH                       ', &
-                                      'CLO_O                           ', 'CLO_OHa                         ', &
-                                      'CLO_OHb                         ', 'HCL_O                           ', &
-                                      'HCL_OH                          ', 'HOCL_CL                         ', &
-                                      'HOCL_O                          ', 'HOCL_OH                         ', &
-                                      'O1D_CCL4                        ', 'O1D_CF2CLBR                     ', &
-                                      'O1D_CFC11                       ', 'O1D_CFC113                      ', &
-                                      'O1D_CFC114                      ', 'O1D_CFC115                      ', &
-                                      'O1D_CFC12                       ', 'O1D_HCLa                        ', &
-                                      'O1D_HCLb                        ', 'tag_CLO_CLO_M                   ', &
-                                      'usr_CL2O2_M                     ', 'BR_CH2O                         ', &
-                                      'BR_HO2                          ', 'BR_O3                           ', &
-                                      'BRO_BRO                         ', 'BRO_CLOa                        ', &
-                                      'BRO_CLOb                        ', 'BRO_CLOc                        ', &
-                                      'BRO_HO2                         ', 'BRO_NO                          ', &
-                                      'BRO_NO2_M                       ', 'BRONO2_O                        ', &
-                                      'BRO_O                           ', 'BRO_OH                          ', &
-                                      'HBR_O                           ', 'HBR_OH                          ', &
-                                      'HOBR_O                          ', 'O1D_CF3BR                       ', &
-                                      'O1D_CHBR3                       ', 'O1D_H2402                       ' /)
-      rxt_tag_lst(   201:   372) = (/ 'O1D_HBRa                        ', 'O1D_HBRb                        ', &
-                                      'CH2BR2_CL                       ', 'CH2BR2_OH                       ', &
-                                      'CH3BR_CL                        ', 'CH3BR_OH                        ', &
-                                      'CH3CCL3_OH                      ', 'CH3CL_CL                        ', &
-                                      'CH3CL_OH                        ', 'CHBR3_CL                        ', &
-                                      'CHBR3_OH                        ', 'HCFC141B_OH                     ', &
-                                      'HCFC142B_OH                     ', 'HCFC22_OH                       ', &
-                                      'O1D_CH2BR2                      ', 'O1D_CH3BR                       ', &
-                                      'O1D_HCFC141B                    ', 'O1D_HCFC142B                    ', &
-                                      'O1D_HCFC22                      ', 'CH2O_NO3                        ', &
-                                      'CH2O_O                          ', 'CH2O_OH                         ', &
-                                      'CH3O2_CH3O2a                    ', 'CH3O2_CH3O2b                    ', &
-                                      'CH3O2_HO2                       ', 'CH3O2_NO                        ', &
-                                      'CH3OH_OH                        ', 'CH3OOH_OH                       ', &
-                                      'CH4_OH                          ', 'O1D_CH4a                        ', &
-                                      'O1D_CH4b                        ', 'O1D_CH4c                        ', &
-                                      'usr_CO_OH                       ', 'C2H4_CL_M                       ', &
-                                      'C2H4_O3                         ', 'C2H5O2_C2H5O2                   ', &
-                                      'C2H5O2_CH3O2                    ', 'C2H5O2_HO2                      ', &
-                                      'C2H5O2_NO                       ', 'C2H5OH_OH                       ', &
-                                      'C2H5OOH_OH                      ', 'C2H6_CL                         ', &
-                                      'C2H6_OH                         ', 'CH3CHO_NO3                      ', &
-                                      'CH3CHO_OH                       ', 'CH3CO3_CH3CO3                   ', &
-                                      'CH3CO3_CH3O2                    ', 'CH3CO3_HO2                      ', &
-                                      'CH3CO3_NO                       ', 'CH3COOH_OH                      ', &
-                                      'CH3COOOH_OH                     ', 'EO2_HO2                         ', &
-                                      'EO2_NO                          ', 'EO_M                            ', &
-                                      'EO_O2                           ', 'GLYALD_OH                       ', &
-                                      'GLYOXAL_OH                      ', 'PAN_OH                          ', &
-                                      'tag_C2H4_OH                     ', 'tag_CH3CO3_NO2                  ', &
-                                      'usr_PAN_M                       ', 'C3H6_NO3                        ', &
-                                      'C3H6_O3                         ', 'C3H7O2_CH3O2                    ', &
-                                      'C3H7O2_HO2                      ', 'C3H7O2_NO                       ', &
-                                      'C3H7OOH_OH                      ', 'C3H8_OH                         ', &
-                                      'CH3COCHO_NO3                    ', 'CH3COCHO_OH                     ', &
-                                      'HYAC_OH                         ', 'NOA_OH                          ', &
-                                      'PO2_HO2                         ', 'PO2_NO                          ', &
-                                      'POOH_OH                         ', 'RO2_CH3O2                       ', &
-                                      'RO2_HO2                         ', 'RO2_NO                          ', &
-                                      'ROOH_OH                         ', 'tag_C3H6_OH                     ', &
-                                      'usr_CH3COCH3_OH                 ', 'MACRO2_CH3CO3                   ', &
-                                      'MACRO2_CH3O2                    ', 'MACRO2_HO2                      ', &
-                                      'MACRO2_NO3                      ', 'MACRO2_NOa                      ', &
-                                      'MACRO2_NOb                      ', 'MACR_O3                         ', &
-                                      'MACR_OH                         ', 'MACROOH_OH                      ', &
-                                      'MCO3_CH3CO3                     ', 'MCO3_CH3O2                      ', &
-                                      'MCO3_HO2                        ', 'MCO3_MCO3                       ', &
-                                      'MCO3_NO                         ', 'MCO3_NO3                        ', &
-                                      'MPAN_OH_M                       ', 'MVK_O3                          ', &
-                                      'MVK_OH                          ', 'tag_MCO3_NO2                    ', &
-                                      'usr_MPAN_M                      ', 'BIGALK_OH                       ', &
-                                      'HYDRALD_OH                      ', 'ISOP_NO3                        ', &
-                                      'ISOPNO3_HO2                     ', 'ISOPNO3_NO                      ', &
-                                      'ISOPNO3_NO3                     ', 'ISOPO2_CH3CO3                   ', &
-                                      'ISOPO2_CH3O2                    ', 'ISOPO2_HO2                      ', &
-                                      'ISOPO2_NO                       ', 'ISOPO2_NO3                      ', &
-                                      'ISOP_O3                         ', 'ISOP_OH                         ', &
-                                      'ISOPOOH_OH                      ', 'ONITR_NO3                       ', &
-                                      'ONITR_OH                        ', 'XO2_CH3CO3                      ', &
-                                      'XO2_CH3O2                       ', 'XO2_HO2                         ', &
-                                      'XO2_NO                          ', 'XO2_NO3                         ', &
-                                      'XOOH_OH                         ', 'TERP_NO3                        ', &
-                                      'TERP_O3                         ', 'TERP_OH                         ', &
-                                      'DMS_NO3                         ', 'DMS_OHa                         ', &
-                                      'OCS_O                           ', 'OCS_OH                          ', &
-                                      'S_O2                            ', 'SO2_OH_M                        ', &
-                                      'S_O3                            ', 'SO_BRO                          ', &
-                                      'SO_CLO                          ', 'S_OH                            ', &
-                                      'SO_NO2                          ', 'SO_O2                           ', &
-                                      'SO_O3                           ', 'SO_OCLO                         ', &
-                                      'SO_OH                           ', 'usr_DMS_OH                      ', &
-                                      'usr_SO3_H2O                     ', 'NH3_OH                          ', &
-                                      'usr_HO2_aer                     ', 'usr_N2O5_aer                    ', &
-                                      'usr_NH4_strat_tau               ', 'usr_NO2_aer                     ', &
-                                      'usr_NO3_aer                     ', 'usr_ONITR_aer                   ', &
-                                      'SOAE_tau                        ', 'het1                            ', &
-                                      'het10                           ', 'het11                           ', &
-                                      'het12                           ', 'het13                           ', &
-                                      'het14                           ', 'het15                           ', &
-                                      'het16                           ', 'het17                           ', &
-                                      'het2                            ', 'het3                            ', &
-                                      'het4                            ', 'het5                            ', &
-                                      'het6                            ', 'het7                            ', &
-                                      'het8                            ', 'het9                            ', &
-                                      'E90_tau                         ', 'NH_50_tau                       ', &
-                                      'NH_5_tau                        ', 'ST80_25_tau                     ' /)
+                                      'O1D_O2b                         ', 'O1D_O3                          ', &
+                                      'O1D_O3a                         ', 'O2_1D_N2                        ', &
+                                      'O2_1D_O                         ', 'O2_1D_O2                        ', &
+                                      'O2_1S_CO2                       ', 'O2_1S_N2                        ', &
+                                      'O2_1S_O                         ', 'O2_1S_O2                        ', &
+                                      'O2_1S_O3                        ', 'O_O3                            ', &
+                                      'usr_O_O                         ', 'usr_O_O2                        ', &
+                                      'H2_O                            ', 'H2O2_O                          ', &
+                                      'H_HO2                           ', 'H_HO2a                          ', &
+                                      'H_HO2b                          ', 'H_O2                            ', &
+                                      'HO2_O                           ', 'HO2_O3                          ', &
+                                      'H_O3                            ', 'OH_H2                           ', &
+                                      'OH_H2O2                         ', 'OH_HO2                          ', &
+                                      'OH_O                            ', 'OH_O3                           ', &
+                                      'OH_OH                           ', 'OH_OH_M                         ', &
+                                      'usr_HO2_HO2                     ', 'HO2NO2_OH                       ', &
+                                      'N_NO                            ', 'N_NO2a                          ', &
+                                      'N_NO2b                          ', 'N_NO2c                          ', &
+                                      'N_O2                            ', 'NO2_O                           ', &
+                                      'NO2_O3                          ', 'NO2_O_M                         ', &
+                                      'NO3_HO2                         ', 'NO3_NO                          ', &
+                                      'NO3_O                           ', 'NO3_OH                          ', &
+                                      'N_OH                            ', 'NO_HO2                          ', &
+                                      'NO_O3                           ', 'NO_O_M                          ', &
+                                      'O1D_N2Oa                        ', 'O1D_N2Ob                        ', &
+                                      'tag_NO2_HO2                     ', 'tag_NO2_NO3                     ', &
+                                      'tag_NO2_OH                      ', 'usr_HNO3_OH                     ', &
+                                      'usr_HO2NO2_M                    ', 'usr_N2O5_M                      ', &
+                                      'CL_CH2O                         ', 'CL_CH4                          ', &
+                                      'CL_H2                           ', 'CL_H2O2                         ', &
+                                      'CL_HO2a                         ', 'CL_HO2b                         ', &
+                                      'CL_O3                           ', 'CLO_CH3O2                       ', &
+                                      'CLO_CLOa                        ', 'CLO_CLOb                        ', &
+                                      'CLO_CLOc                        ', 'CLO_HO2                         ', &
+                                      'CLO_NO                          ', 'CLONO2_CL                       ', &
+                                      'CLO_NO2_M                       ', 'CLONO2_O                        ', &
+                                      'CLONO2_OH                       ', 'CLO_O                           ', &
+                                      'CLO_OHa                         ', 'CLO_OHb                         ', &
+                                      'HCL_O                           ', 'HCL_OH                          ', &
+                                      'HOCL_CL                         ', 'HOCL_O                          ', &
+                                      'HOCL_OH                         ', 'O1D_CCL4                        ', &
+                                      'O1D_CF2CLBR                     ', 'O1D_CFC11                       ', &
+                                      'O1D_CFC113                      ', 'O1D_CFC114                      ', &
+                                      'O1D_CFC115                      ', 'O1D_CFC12                       ', &
+                                      'O1D_HCLa                        ', 'O1D_HCLb                        ', &
+                                      'tag_CLO_CLO_M                   ', 'usr_CL2O2_M                     ', &
+                                      'BR_CH2O                         ', 'BR_HO2                          ', &
+                                      'BR_O3                           ', 'BRO_BRO                         ', &
+                                      'BRO_CLOa                        ', 'BRO_CLOb                        ', &
+                                      'BRO_CLOc                        ', 'BRO_HO2                         ', &
+                                      'BRO_NO                          ', 'BRO_NO2_M                       ', &
+                                      'BRONO2_O                        ', 'BRO_O                           ', &
+                                      'BRO_OH                          ', 'HBR_O                           ', &
+                                      'HBR_OH                          ', 'HOBR_O                          ', &
+                                      'O1D_CF3BR                       ', 'O1D_CHBR3                       ' /)
+      rxt_tag_lst(   201:   373) = (/ 'O1D_H2402                       ', 'O1D_HBRa                        ', &
+                                      'O1D_HBRb                        ', 'CH2BR2_CL                       ', &
+                                      'CH2BR2_OH                       ', 'CH3BR_CL                        ', &
+                                      'CH3BR_OH                        ', 'CH3CCL3_OH                      ', &
+                                      'CH3CL_CL                        ', 'CH3CL_OH                        ', &
+                                      'CHBR3_CL                        ', 'CHBR3_OH                        ', &
+                                      'HCFC141B_OH                     ', 'HCFC142B_OH                     ', &
+                                      'HCFC22_OH                       ', 'O1D_CH2BR2                      ', &
+                                      'O1D_CH3BR                       ', 'O1D_HCFC141B                    ', &
+                                      'O1D_HCFC142B                    ', 'O1D_HCFC22                      ', &
+                                      'CH2O_NO3                        ', 'CH2O_O                          ', &
+                                      'CH2O_OH                         ', 'CH3O2_CH3O2a                    ', &
+                                      'CH3O2_CH3O2b                    ', 'CH3O2_HO2                       ', &
+                                      'CH3O2_NO                        ', 'CH3OH_OH                        ', &
+                                      'CH3OOH_OH                       ', 'CH4_OH                          ', &
+                                      'O1D_CH4a                        ', 'O1D_CH4b                        ', &
+                                      'O1D_CH4c                        ', 'usr_CO_OH                       ', &
+                                      'C2H4_CL_M                       ', 'C2H4_O3                         ', &
+                                      'C2H5O2_C2H5O2                   ', 'C2H5O2_CH3O2                    ', &
+                                      'C2H5O2_HO2                      ', 'C2H5O2_NO                       ', &
+                                      'C2H5OH_OH                       ', 'C2H5OOH_OH                      ', &
+                                      'C2H6_CL                         ', 'C2H6_OH                         ', &
+                                      'CH3CHO_NO3                      ', 'CH3CHO_OH                       ', &
+                                      'CH3CO3_CH3CO3                   ', 'CH3CO3_CH3O2                    ', &
+                                      'CH3CO3_HO2                      ', 'CH3CO3_NO                       ', &
+                                      'CH3COOH_OH                      ', 'CH3COOOH_OH                     ', &
+                                      'EO2_HO2                         ', 'EO2_NO                          ', &
+                                      'EO_M                            ', 'EO_O2                           ', &
+                                      'GLYALD_OH                       ', 'GLYOXAL_OH                      ', &
+                                      'PAN_OH                          ', 'tag_C2H4_OH                     ', &
+                                      'tag_CH3CO3_NO2                  ', 'usr_PAN_M                       ', &
+                                      'C3H6_NO3                        ', 'C3H6_O3                         ', &
+                                      'C3H7O2_CH3O2                    ', 'C3H7O2_HO2                      ', &
+                                      'C3H7O2_NO                       ', 'C3H7OOH_OH                      ', &
+                                      'C3H8_OH                         ', 'CH3COCHO_NO3                    ', &
+                                      'CH3COCHO_OH                     ', 'HYAC_OH                         ', &
+                                      'NOA_OH                          ', 'PO2_HO2                         ', &
+                                      'PO2_NO                          ', 'POOH_OH                         ', &
+                                      'RO2_CH3O2                       ', 'RO2_HO2                         ', &
+                                      'RO2_NO                          ', 'ROOH_OH                         ', &
+                                      'tag_C3H6_OH                     ', 'usr_CH3COCH3_OH                 ', &
+                                      'MACRO2_CH3CO3                   ', 'MACRO2_CH3O2                    ', &
+                                      'MACRO2_HO2                      ', 'MACRO2_NO3                      ', &
+                                      'MACRO2_NOa                      ', 'MACRO2_NOb                      ', &
+                                      'MACR_O3                         ', 'MACR_OH                         ', &
+                                      'MACROOH_OH                      ', 'MCO3_CH3CO3                     ', &
+                                      'MCO3_CH3O2                      ', 'MCO3_HO2                        ', &
+                                      'MCO3_MCO3                       ', 'MCO3_NO                         ', &
+                                      'MCO3_NO3                        ', 'MPAN_OH_M                       ', &
+                                      'MVK_O3                          ', 'MVK_OH                          ', &
+                                      'tag_MCO3_NO2                    ', 'usr_MPAN_M                      ', &
+                                      'BIGALK_OH                       ', 'HYDRALD_OH                      ', &
+                                      'ISOP_NO3                        ', 'ISOPNO3_HO2                     ', &
+                                      'ISOPNO3_NO                      ', 'ISOPNO3_NO3                     ', &
+                                      'ISOPO2_CH3CO3                   ', 'ISOPO2_CH3O2                    ', &
+                                      'ISOPO2_HO2                      ', 'ISOPO2_NO                       ', &
+                                      'ISOPO2_NO3                      ', 'ISOP_O3                         ', &
+                                      'ISOP_OH                         ', 'ISOPOOH_OH                      ', &
+                                      'ONITR_NO3                       ', 'ONITR_OH                        ', &
+                                      'XO2_CH3CO3                      ', 'XO2_CH3O2                       ', &
+                                      'XO2_HO2                         ', 'XO2_NO                          ', &
+                                      'XO2_NO3                         ', 'XOOH_OH                         ', &
+                                      'TERP_NO3                        ', 'TERP_O3                         ', &
+                                      'TERP_OH                         ', 'DMS_NO3                         ', &
+                                      'DMS_OHa                         ', 'OCS_O                           ', &
+                                      'OCS_OH                          ', 'S_O2                            ', &
+                                      'SO2_OH_M                        ', 'S_O3                            ', &
+                                      'SO_BRO                          ', 'SO_CLO                          ', &
+                                      'S_OH                            ', 'SO_NO2                          ', &
+                                      'SO_O2                           ', 'SO_O3                           ', &
+                                      'SO_OCLO                         ', 'SO_OH                           ', &
+                                      'usr_DMS_OH                      ', 'usr_SO3_H2O                     ', &
+                                      'NH3_OH                          ', 'usr_HO2_aer                     ', &
+                                      'usr_N2O5_aer                    ', 'usr_NH4_strat_tau               ', &
+                                      'usr_NO2_aer                     ', 'usr_NO3_aer                     ', &
+                                      'usr_ONITR_aer                   ', 'SOAE_tau                        ', &
+                                      'het1                            ', 'het10                           ', &
+                                      'het11                           ', 'het12                           ', &
+                                      'het13                           ', 'het14                           ', &
+                                      'het15                           ', 'het16                           ', &
+                                      'het17                           ', 'het2                            ', &
+                                      'het3                            ', 'het4                            ', &
+                                      'het5                            ', 'het6                            ', &
+                                      'het7                            ', 'het8                            ', &
+                                      'het9                            ', 'E90_tau                         ', &
+                                      'NH_50_tau                       ', 'NH_5_tau                        ', &
+                                      'ST80_25_tau                     ' /)
       rxt_tag_map(:rxt_tag_cnt) = (/    1,   2,   3,   4,   5,   6,   7,   8,   9,  10, &
                                        11,  12,  13,  14,  15,  16,  17,  18,  19,  20, &
                                        21,  22,  23,  24,  25,  26,  27,  28,  29,  30, &
@@ -430,7 +431,7 @@
                                       341, 342, 343, 344, 345, 346, 347, 348, 349, 350, &
                                       351, 352, 353, 354, 355, 356, 357, 358, 359, 360, &
                                       361, 362, 363, 364, 365, 366, 367, 368, 369, 370, &
-                                      371, 372 /)
+                                      371, 372, 373 /)
       if( allocated( pht_alias_lst ) ) then
          deallocate( pht_alias_lst )
       end if
@@ -533,12 +534,12 @@
          write(iulog,*) 'set_sim_dat: failed to allocate cph_rid; error = ',ios
          call endrun
       end if
-      cph_rid(:)      = (/              87,             88,             90,             93,             94, &
-                                        95,             97,             98,             99,            100, &
-                                       101,            102,            103,            106,            109, &
-                                       110,            111,            112,            115,            116, &
-                                       117,            120,            122,            126,            127, &
-                                       135,            136 /)
+      cph_rid(:)      = (/              89,             90,             91,             94,             95, &
+                                        96,             98,             99,            100,            101, &
+                                       102,            103,            104,            107,            110, &
+                                       111,            112,            113,            116,            117, &
+                                       118,            121,            123,            127,            128, &
+                                       136,            137 /)
       cph_enthalpy(:) = (/   189.810000_r8,   32.910000_r8,  189.810000_r8,   94.300000_r8,   94.300000_r8, &
                               94.300000_r8,   62.600000_r8,   62.600000_r8,   62.600000_r8,   62.600000_r8, &
                              392.190000_r8,  493.580000_r8,  101.390000_r8,  232.590000_r8,  203.400000_r8, &
@@ -550,35 +551,35 @@
          write(iulog,*) 'set_sim_dat: failed to allocate num_rnts; error = ',ios
          call endrun
       end if
-      num_rnts(:) = (/      2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     3,     3,     2, &
-                            2,     2,     2,     2,     3,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     3,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     3,     2,     2,     2,     2,     2, &
-                            2,     2,     3,     2,     2,     3,     3,     3,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+      num_rnts(:) = (/      1,     1,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     3,     3, &
                             2,     2,     2,     2,     2,     3,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
                             2,     2,     2,     2,     2,     3,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     3,     2,     2,     2,     2, &
+                            2,     2,     2,     3,     2,     2,     3,     3,     3,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
                             2,     2,     2,     2,     2,     2,     3,     2,     2,     2, &
                             2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     3, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     1, &
-                            2,     2,     2,     2,     3,     3,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     3,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     3,     2,     2,     3,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     3,     2,     2,     2, &
                             2,     2,     2,     2,     2,     2,     2,     3,     2,     2, &
                             2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
-                            1,     1,     1,     1,     1,     1,     1,     1,     2,     1, &
-                            1,     1,     1,     2,     2,     2,     1,     1,     2,     2, &
-                            2,     1,     1,     2,     1,     1,     1,     1 /)
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            3,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            1,     2,     2,     2,     2,     3,     3,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     3,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     3,     2,     2,     3,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     3,     2, &
+                            2,     2,     2,     2,     2,     2,     2,     2,     2,     2, &
+                            2,     1,     1,     1,     1,     1,     1,     1,     1,     2, &
+                            1,     1,     1,     1,     2,     2,     2,     1,     1,     2, &
+                            2,     2,     1,     1,     2,     1,     1,     1,     1 /)
 
       end subroutine set_sim_dat
 
