@@ -413,7 +413,6 @@ end function radiation_do
 subroutine radiation_init(pbuf2d)
    use rrtmgp_pre,                only: rrtmgp_pre_init
    use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
-   use rrtmgp_inputs_cam,         only: rrtmgp_inputs_cam_init
    use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
    use rrtmgp_sw_solar_var_setup, only: rrtmgp_sw_solar_var_setup_init
    use solar_irrad_data,          only: do_spctrl_scaling, has_spectrum
@@ -483,10 +482,6 @@ subroutine radiation_init(pbuf2d)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
-
-   ! Set up CAM-side RRTMGP inputs - will go away once SW radiation is CCPPized
-   call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
-           idx_lw_cloudsim)
 
    ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
@@ -1264,14 +1259,11 @@ subroutine radiation_tend( &
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
-                  !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs,atm_optics_sw%optical_props) &
-                  !$acc     copyout(toa_flux)
                   call rrtmgp_sw_gas_optics_run(dosw, 1, nday, nday, pmid_day, pint_day, t_day,  &
                                gas_concs_sw, atm_optics_sw, kdist_sw, toa_flux, errmsg, errflg)
                   if (errflg /= 0) then
                      call endrun(sub//': '//errmsg)
                   end if
-                  !$acc end data
 
                   ! Scale the solar source
                   call rrtmgp_sw_solar_var_run(toa_flux, 2, band2gpt_sw, nswbands, sol_irrad, we, nbins, sol_tsi, &
@@ -1285,26 +1277,16 @@ subroutine radiation_tend( &
                ! Set SW aerosol optical properties in the aer_sw object.
                ! This call made even when no daylight columns because it does some
                ! diagnostic aerosol output.
-               call rrtmgp_set_aer_sw( &
-                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
+               call rrtmgp_set_aer_sw(ktopcam, ktoprad, icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
                   
                if (nday > 0) then
 
                   ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
-                  !$acc data copyin(coszrs_day, toa_flux, alb_dir, alb_dif, &
-                  !$acc             atm_optics_sw%optical_props, atm_optics_sw%optical_props%tau, atm_optics_sw%optical_props%ssa, &
-                  !$acc             atm_optics_sw%optical_props%g, aer_sw%optical_props%tau,          &
-                  !$acc             aer_sw%optical_props, aer_sw%optical_props%ssa, aer_sw%optical_props%g,                 &
-                  !$acc             cloud_sw%optical_props, cloud_sw%optical_props%tau, cloud_sw%optical_props%ssa,           &
-                  !$acc             cloud_sw%optical_props%g)                                         &
-                  !$acc        copy(fswc%fluxes, fswc%fluxes%flux_net,fswc%fluxes%flux_up,fswc%fluxes%flux_dn,     &
-                  !$acc             fsw%fluxes, fsw%fluxes%flux_net,fsw%fluxes%flux_up,fsw%fluxes%flux_dn)
                   call rrtmgp_sw_rte_run(dosw, .true., .true., nday, 1, nday, atm_optics_sw, cloud_sw,  &
                                  aer_sw, coszrs_day, toa_flux, alb_dir, alb_dif, fswc, fsw, errmsg, errflg)
                   if (errflg /= 0) then
                      call endrun(sub//': '//errmsg)
                   end if
-                  !$acc end data
                end if
 
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
@@ -1364,37 +1346,17 @@ subroutine radiation_tend( &
                end if
 
                ! Compute the gas optics and Planck sources.
-               !$acc data copyin(kdist_lw%gas_props, pmid_rad, pint_rad, t_rad,  &
-               !$acc             t_sfc, gas_concs_lw%gas_concs, atm_optics_lw%optical_props)         &
-               !$acc        copy(atm_optics_lw%optical_props%tau,                &
-               !$acc             sources_lw%sources, sources_lw%sources%lay_source,                  &
-               !$acc             sources_lw%sources%sfc_source,                  &
-               !$acc             sources_lw%sources%lev_source,                  &
-               !$acc             sources_lw%sources%sfc_source_jac)
                call rrtmgp_lw_gas_optics_run(dolw, 1, ncol, ncol, pmid_rad, pint_rad, t_rad,  &
                   t_sfc, gas_concs_lw, atm_optics_lw, sources_lw, t_rad, .false., kdist_lw, errmsg, &
                   errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
-               !$acc end data
 
                ! Set LW aerosol optical properties in the aer_lw object.
-               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+               call rrtmgp_set_aer_lw(ktopcam, ktoprad, icall, state, pbuf, aer_lw)
 
                ! Call the main rrtmgp_lw driver
-               !$acc data copyin(atm_optics_lw%optical_props,atm_optics_lw%optical_props%tau,   &
-               !$acc             aer_lw%optical_props,aer_lw%optical_props%tau,          &
-               !$acc             cloud_lw%optical_props, cloud_lw%optical_props%tau,        &
-               !$acc             sources_lw%sources,sources_lw%sources%lay_source,     &
-               !$acc             sources_lw%sources%sfc_source,     &
-               !$acc             sources_lw%sources%lev_source,     &
-               !$acc             sources_lw%sources%sfc_source_jac, &
-               !$acc             emis_sfc)                          &
-               !$acc        copy(flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, &
-               !$acc             flwc%fluxes%flux_dn, flw%fluxes, flw%fluxes%flux_net,  &
-               !$acc             flw%fluxes%flux_up, flw%fluxes%flux_dn,    &
-               !$acc             lw_ds)
                call rrtmgp_lw_rte_run(dolw, dolw, .false., .false., .false., &
                                  0, atm_optics_lw, cloud_lw, sources_lw, emis_sfc, &
                                  kdist_lw, aer_lw, fluxlwup_jac, lw_ds, flwc, flw, &
@@ -1402,7 +1364,6 @@ subroutine radiation_tend( &
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
-               !$acc end data
                
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
                call set_lw_diags()
