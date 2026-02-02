@@ -1506,7 +1506,7 @@ CONTAINS
     ! ######################################################################################
     ! Simulator output info
     ! ######################################################################################
-    integer, parameter :: nf_radar=17                    ! number of radar outputs
+    integer, parameter :: nf_radar=23                    ! number of radar outputs
     integer, parameter :: nf_calipso=44                  ! number of calipso outputs (28 w/o OPAQ, 44 w/ OPAQ)
     integer, parameter :: nf_isccp=9                     ! number of isccp outputs
     integer, parameter :: nf_misr=1                      ! number of misr outputs
@@ -2282,9 +2282,9 @@ CONTAINS
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
     if (allocated(rttov_configs)) then
-        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT,rttov_configs)
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,use_vgrid,cospOUT,rttov_configs)
     else
-        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT)
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,use_vgrid,cospOUT)
     end if
     call t_stopf("construct_cosp_outputs")
 
@@ -2375,7 +2375,7 @@ CONTAINS
        ! need to pass the correct section (:ncol,ktop:pver).
        call subsample_and_optics( &
           ncol, nlay, nscol_cosp, nhydro, overlap, &
-          lidar_ice_type, sd_cs(lchnk), &
+          use_vgrid, lidar_ice_type, sd_cs(lchnk), &
           cld(:ncol,ktop:pver), concld(:ncol,ktop:pver), &
           rain_ls_interp, snow_ls_interp, grpl_ls_interp, rain_cv_interp, &
           snow_cv_interp, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
@@ -3784,7 +3784,7 @@ CONTAINS
   !
   ! This subroutine allocates output fields based on input logical flag switches.
   ! ######################################################################################  
-  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,N_rttov_instruments,x,rttov_configs)
+  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,N_rttov_instruments,use_vgrid,x,rttov_configs)
     ! Inputs
     integer,intent(in) :: &
          Npoints,         &   ! Number of sampled points
@@ -3880,8 +3880,6 @@ CONTAINS
           x%calipso_lidarcldphase(Npoints,Nlvgrid,6), &
           x%calipso_lidarcldtmp(Npoints,LIDAR_NTEMP,5), &
           x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &     
-          x%calipso_tau_tot(Npoints,Ncolumns,Nlevels), &       
-          x%calipso_temp_tot(Npoints,Nlevels),  &
           ! Calipso opaque cloud diagnostics
           x%calipso_cldtype(Npoints,LIDAR_NTYPE), &
           x%calipso_cldtypetemp(Npoints,LIDAR_NTYPE), &
@@ -4001,17 +3999,7 @@ CONTAINS
     if (allocated(y%beta_mol_atlid))      deallocate(y%beta_mol_atlid)
     if (allocated(y%tau_mol_grLidar532))  deallocate(y%tau_mol_grLidar532)
     if (allocated(y%tau_mol_atlid))       deallocate(y%tau_mol_atlid)
-    if (allocated(y%rcfg_cloudsat%N_scale_flag))       deallocate(y%rcfg_cloudsat%N_scale_flag)
-    if (allocated(y%rcfg_cloudsat%Z_scale_flag))       deallocate(y%rcfg_cloudsat%Z_scale_flag)
-    if (allocated(y%rcfg_cloudsat%Z_scale_added_flag)) deallocate(y%rcfg_cloudsat%Z_scale_added_flag)
-    if (allocated(y%rcfg_cloudsat%Ze_scaled))          deallocate(y%rcfg_cloudsat%Ze_scaled)
-    if (allocated(y%rcfg_cloudsat%Zr_scaled))          deallocate(y%rcfg_cloudsat%Zr_scaled)
-    if (allocated(y%rcfg_cloudsat%kr_scaled))          deallocate(y%rcfg_cloudsat%kr_scaled)
-    if (allocated(y%rcfg_cloudsat%fc))                 deallocate(y%rcfg_cloudsat%fc)
-    if (allocated(y%rcfg_cloudsat%rho_eff))            deallocate(y%rcfg_cloudsat%rho_eff)
-    if (allocated(y%rcfg_cloudsat%base_list))          deallocate(y%rcfg_cloudsat%base_list)
-    if (allocated(y%rcfg_cloudsat%step_list))          deallocate(y%rcfg_cloudsat%step_list)
-    if (associated(y%cfg_rttov))                       nullify(y%cfg_rttov)
+    if (associated(y%cfg_rttov))          nullify(y%cfg_rttov)
 
   end subroutine destroy_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4068,10 +4056,6 @@ CONTAINS
         deallocate(y%calipso_beta_mol)
         nullify(y%calipso_beta_mol)
      endif
-     if (associated(y%calipso_temp_tot))          then
-        deallocate(y%calipso_temp_tot)
-        nullify(y%calipso_temp_tot)
-     endif
      if (associated(y%calipso_betaperp_tot))      then
         deallocate(y%calipso_betaperp_tot)
         nullify(y%calipso_betaperp_tot)
@@ -4079,10 +4063,6 @@ CONTAINS
      if (associated(y%calipso_beta_tot))          then
         deallocate(y%calipso_beta_tot)
         nullify(y%calipso_beta_tot)
-     endif
-     if (associated(y%calipso_tau_tot))           then
-        deallocate(y%calipso_tau_tot)
-        nullify(y%calipso_tau_tot)
      endif
      if (associated(y%calipso_lidarcldphase))     then
         deallocate(y%calipso_lidarcldphase)
