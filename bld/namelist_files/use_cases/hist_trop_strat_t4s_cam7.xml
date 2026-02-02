@@ -2,9 +2,6 @@
 
 <namelist_defaults>
 
-<!-- Initial conditions -->
-<ncdata hgrid="ne30np4">atm/cam/inic/se/FHISTC_MTt4s_O2_ne30pg3_spinup02.cam.i.1980-01-01_c251209.nc</ncdata>
-
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_irrad_data_file>
 <solar_data_type>SERIAL</solar_data_type>

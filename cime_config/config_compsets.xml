@@ -482,7 +482,7 @@
 
   <compset>
     <alias>FCts2nudged</alias>
-    <lname>HIST_CAM60%CT2S%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%CT2S1%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCnudged_HCO</alias>
@@ -490,7 +490,7 @@
   </compset>
   <compset>
     <alias>FCts2nudged_HCO</alias>
-    <lname>HIST_CAM60%CT2S%NUDG%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%CT2S1%NUDG%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -499,7 +499,7 @@
   </compset>
   <compset>
     <alias>FCts2SD</alias>
-    <lname>HIST_CAM60%CT2S%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%CT2S1%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCSD_HCO</alias>
