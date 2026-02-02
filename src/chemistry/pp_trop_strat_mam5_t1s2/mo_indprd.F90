@@ -20,11 +20,11 @@
 ! ... "independent" production for Explicit species
 !--------------------------------------------------------------------
       if( class == 1 ) then
-         prod(:,1) = (rxt(:,424)*y(:,203) +rxt(:,427)*y(:,214) +rxt(:,430)*y(:,216) + &
+         prod(:,1) =rxt(:,491)*y(:,221)*y(:,119) +rxt(:,499)*y(:,120)
+         prod(:,2) = (rxt(:,424)*y(:,203) +rxt(:,427)*y(:,214) +rxt(:,430)*y(:,216) + &
                  rxt(:,434)*y(:,144))*y(:,124) +.500_r8*rxt(:,363)*y(:,221)*y(:,108) &
                   +.200_r8*rxt(:,459)*y(:,219)*y(:,123) +.500_r8*rxt(:,471)*y(:,181) &
                  *y(:,125)
-         prod(:,2) =rxt(:,491)*y(:,221)*y(:,119) +rxt(:,499)*y(:,120)
 !--------------------------------------------------------------------
 ! ... "independent" production for Implicit species
 !--------------------------------------------------------------------
@@ -89,7 +89,7 @@
          prod(:,229) = 0._r8
          prod(:,185) = 0._r8
          prod(:,4) = 0._r8
-         prod(:,199) = + extfrc(:,7)
+         prod(:,199) = + extfrc(:,2)
          prod(:,189) = 0._r8
          prod(:,87) = 0._r8
          prod(:,91) = 0._r8
@@ -151,15 +151,15 @@
          prod(:,12) = 0._r8
          prod(:,13) = 0._r8
          prod(:,14) = 0._r8
-         prod(:,230) = + extfrc(:,12)
-         prod(:,217) = + extfrc(:,9)
+         prod(:,230) = + extfrc(:,13)
+         prod(:,217) = + extfrc(:,4)
          prod(:,226) = 0._r8
          prod(:,174) = 0._r8
          prod(:,117) = 0._r8
-         prod(:,15) = + extfrc(:,10)
-         prod(:,16) = + extfrc(:,11)
+         prod(:,15) = + extfrc(:,5)
+         prod(:,16) = + extfrc(:,6)
          prod(:,17) = 0._r8
-         prod(:,18) = + extfrc(:,1)
+         prod(:,18) = + extfrc(:,7)
          prod(:,19) = 0._r8
          prod(:,223) = 0._r8
          prod(:,215) = 0._r8
@@ -176,16 +176,16 @@
          prod(:,75) = 0._r8
          prod(:,108) = 0._r8
          prod(:,21) = 0._r8
-         prod(:,22) = + extfrc(:,2)
+         prod(:,22) = + extfrc(:,8)
          prod(:,139) = 0._r8
          prod(:,118) = 0._r8
          prod(:,161) = 0._r8
          prod(:,23) = 0._r8
          prod(:,211) = 0._r8
-         prod(:,179) = + extfrc(:,8)
+         prod(:,179) = + extfrc(:,9)
          prod(:,94) = 0._r8
-         prod(:,24) = + extfrc(:,5)
-         prod(:,25) = + extfrc(:,6)
+         prod(:,24) = + extfrc(:,10)
+         prod(:,25) = + extfrc(:,11)
          prod(:,26) = 0._r8
          prod(:,27) = 0._r8
          prod(:,28) = 0._r8
@@ -204,7 +204,7 @@
          prod(:,41) = 0._r8
          prod(:,42) = 0._r8
          prod(:,43) = 0._r8
-         prod(:,44) = + extfrc(:,4)
+         prod(:,44) = + extfrc(:,1)
          prod(:,80) = 0._r8
          prod(:,153) = 0._r8
          prod(:,150) = 0._r8
@@ -259,7 +259,7 @@
          prod(:,164) = 0._r8
          prod(:,52) = 0._r8
          prod(:,135) = 0._r8
-         prod(:,231) = 0._r8
+         prod(:,231) = + extfrc(:,12)
       end if
       end subroutine indprd
       end module mo_indprd

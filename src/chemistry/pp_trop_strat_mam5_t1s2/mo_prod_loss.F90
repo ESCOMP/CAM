@@ -27,9 +27,9 @@
 ! ... loss and production for Explicit method
 !--------------------------------------------------------------------
       do k = ofl,ofu
-         loss(k,1) = ( + het_rates(k,191))* y(k,191)
+         loss(k,1) = ( + het_rates(k,190))* y(k,190)
          prod(k,1) = 0._r8
-         loss(k,2) = ( + het_rates(k,190))* y(k,190)
+         loss(k,2) = ( + het_rates(k,191))* y(k,191)
          prod(k,2) = 0._r8
       end do
       end subroutine exp_prod_loss

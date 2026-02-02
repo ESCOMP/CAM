@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: T4S_mam5
-* Tag database identifier : MZ386_TS4_20260121
+* User-given Tag Description: T4S2_midtop_mam5
+* Tag database identifier : MZ390_T4S2_20260129
 * Tag created by : lke
-* Tag created from branch : TS4
-* Tag created on : 2026-01-21 16:50:34.859459-07
+* Tag created from branch : T4S2
+* Tag created on : 2026-01-29 13:31:39.754816-07
 * Comments for this tag follow:
-*     lke : 2026-01-21 : T4S with O2 chemistry for mid-top model; MAM5, MAM-SOA.
+*     lke : 2026-01-29 : T4 with S2 (adding O2_1S, O2_1D), for mid-top CESM3; MAM5; MAM-SOA; prognostic O2.
 
       SPECIES
 
@@ -92,12 +92,10 @@
  ncl_a1 -> NaCl,
  ncl_a2 -> NaCl,
  ncl_a3 -> NaCl,
- NDEP -> N,
  NH3,
  NH4,
  NH_5 -> CO,
  NH_50 -> CO,
- NHDEP -> N,
  NO,
  NO2,
  NO3,
@@ -137,6 +135,8 @@
  ST80_25 -> CO,
  TERP -> C10H16,
  XOOH -> HOCH2COOHCH3CHOHCHO,
+ NDEP -> N,
+ NHDEP -> N,
  C2H5O2,
  C3H7O2,
  CH3CO3,
@@ -790,14 +790,14 @@
       End Reactions
 
       Ext Forcing
- num_a4 <- dataset 
- bc_a4 <- dataset 
- SO2 <- dataset 
  H2O <- dataset 
- NO2 <- dataset 
  CO <- dataset 
+ bc_a4 <- dataset 
+ NO2 <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
+ num_a4 <- dataset 
+ SO2 <- dataset 
  so4_a1 <- dataset 
  so4_a2 <- dataset 
  NO 

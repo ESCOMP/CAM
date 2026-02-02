@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: T1S_midtop_mam5
-* Tag database identifier : MZ387_TS1.2_20260121
+* User-given Tag Description: T1S2_midtop_mam5
+* Tag database identifier : MZ391_T1S2_20260129
 * Tag created by : lke
-* Tag created from branch : TS1.2
-* Tag created on : 2026-01-21 16:53:54.035117-07
+* Tag created from branch : T1S2
+* Tag created on : 2026-01-29 13:39:37.357515-07
 * Comments for this tag follow:
-*     lke : 2026-01-21 : T1S (TS1.2) with O2 chemistry for mid-top model; MAM5, simple SOA.
+*     lke : 2026-01-29 : T1 with S2 (adding O2_1S, O2_1D), for mid-top CESM3; MAM5; VBS-SOA; prognostic O2.
 
       SPECIES
 
@@ -305,8 +305,8 @@
 
    Solution classes
       Explicit
- NDEP
  NHDEP
+ NDEP
       End Explicit
 
       Implicit
@@ -1185,17 +1185,18 @@
       End Reactions
 
       Ext Forcing
- num_a4 <- dataset 
- pom_a4 <- dataset 
- bc_a4 <- dataset 
  SVOC <- dataset 
- so4_a1 <- dataset 
- so4_a2 <- dataset 
  CO <- dataset 
- SO2 <- dataset 
+ bc_a4 <- dataset 
  NO2 <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
+ num_a4 <- dataset 
+ pom_a4 <- dataset 
+ SO2 <- dataset 
+ so4_a1 <- dataset 
+ so4_a2 <- dataset 
+ H2O <- dataset
  NO 
       End Ext Forcing
 

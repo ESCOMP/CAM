@@ -182,7 +182,7 @@
 
       fix_mass(:  2) = (/ 0.00000000_r8, 28.0134800_r8 /)
 
-      clsmap(:  2,1) = (/  191, 190 /)
+      clsmap(:  2,1) = (/  190, 191 /)
       clsmap(:231,4) = (/    1,   2,   3,   4,   5,   6,   7,   8,   9,  10, &
                             11,  12,  13,  14,  15,  16,  17,  18,  19,  20, &
                             21,  22,  23,  24,  25,  26,  27,  28,  29,  30, &
@@ -258,13 +258,13 @@
                           1919,1985,2020,2041,2066,2128,2182,2224,2252,2346, &
                           2374 /)
 
-      extfrc_lst(: 12) = (/ 'num_a4          ','pom_a4          ','bc_a4           ','SVOC            ','so4_a1          ', &
-                            'so4_a2          ','CO              ','SO2             ','NO2             ','num_a1          ', &
-                            'num_a2          ','NO              ' /)
+      extfrc_lst(: 13) = (/ 'SVOC            ','CO              ','bc_a4           ','NO2             ','num_a1          ', &
+                            'num_a2          ','num_a4          ','pom_a4          ','SO2             ','so4_a1          ', &
+                            'so4_a2          ','H2O             ','NO              ' /)
 
-      frc_from_dataset(: 12) = (/ .true., .true., .true., .true., .true., &
+      frc_from_dataset(: 13) = (/ .true., .true., .true., .true., .true., &
                                   .true., .true., .true., .true., .true., &
-                                  .true., .false. /)
+                                  .true., .true., .false. /)
 
       inv_lst(:  2) = (/ 'M               ', 'N2              ' /)
 

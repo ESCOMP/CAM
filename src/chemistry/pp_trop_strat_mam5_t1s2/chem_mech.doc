@@ -249,8 +249,8 @@ Class List
 ==========
  Explicit  
  --------
-      (  1)  NDEP            
-      (  2)  NHDEP           
+      (  1)  NHDEP           
+      (  2)  NDEP            
   
  Implicit  
  --------
@@ -1172,18 +1172,19 @@ Class List
   ST80_25_tau      (430)   ST80_25 -> (No products)                                             rate = 4.63E-07                   (553)
   
 Extraneous prod/loss species
- ( 1)   num_a4   (dataset)
- ( 2)   pom_a4   (dataset)
+ ( 1)   SVOC   (dataset)
+ ( 2)   CO   (dataset)
  ( 3)   bc_a4   (dataset)
- ( 4)   SVOC   (dataset)
- ( 5)   so4_a1   (dataset)
- ( 6)   so4_a2   (dataset)
- ( 7)   CO   (dataset)
- ( 8)   SO2   (dataset)
- ( 9)   NO2   (dataset)
- (10)   num_a1   (dataset)
- (11)   num_a2   (dataset)
- (12)   NO
+ ( 4)   NO2   (dataset)
+ ( 5)   num_a1   (dataset)
+ ( 6)   num_a2   (dataset)
+ ( 7)   num_a4   (dataset)
+ ( 8)   pom_a4   (dataset)
+ ( 9)   SO2   (dataset)
+ (10)   so4_a1   (dataset)
+ (11)   so4_a2   (dataset)
+ (12)   H2O   (dataset)
+ (13)   NO
   
   
  Equation Report
