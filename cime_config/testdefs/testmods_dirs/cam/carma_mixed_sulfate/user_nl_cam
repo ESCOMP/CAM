@@ -12,4 +12,4 @@ solar_data_ymd=20000101
 carma_maxretries = 40
 ubc_specifier = 'T->MSIS', 'Q->2.d-8vmr', 'CH4->2.d-10vmr', 'H->MSIS', 'N->MSIS', 'O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
 tuvx_active = .true.
-tuvx_config_path = '$SRCROOT/src/chemistry/pp_waccm_ma_sulfur/tuvx_config.json'
+tuvx_config_path = '$COMPCOMP_ROOT_DIR_ATM/src/chemistry/pp_waccm_ma_sulfur/tuvx_config.json'
