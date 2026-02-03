@@ -40,6 +40,7 @@
 
        real(r8), pointer :: solar_etf(:)
        logical :: do_heating(13)
+       logical :: is_initialized = .false.
 
        contains
 
@@ -80,7 +81,6 @@
         character(len=2) :: mstring
         character(len=7) :: jstring
         logical :: do_jeuv
-        logical, save :: is_initialized = .false.
 
         do_jeuv=.false.
         do_heating=.false.

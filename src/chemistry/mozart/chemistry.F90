@@ -326,7 +326,9 @@ end function chem_is
        end if
        call aurora_register()
     endif
-    call tuvx_register( )
+    if (tuvx_active) then
+       call tuvx_register( )
+    endif
 
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
