@@ -22,7 +22,6 @@ from CIME.utils import run_sub_or_cmd, expect, run_cmd
 from CIME.utils import import_from_file
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
-from CIME.XML.env_build import EnvBuild
 
 logger = logging.getLogger(__name__)
 
@@ -171,18 +170,17 @@ def _cmake_default_args(caseroot):
 # Returns a dictionary of CMake variables based on the Macros.cmake file for
 # the build.
 
-    build = EnvBuild(case_root=caseroot)
     with Case(caseroot) as case:
         macro_path = os.path.abspath(os.path.join(caseroot, "cmake_macros", ""))
         args = "-DCONVERT_TO_MAKE=ON "
         args += f"-DCASEROOT={caseroot} "
-        args += f"-DCOMPILER={build.get_value('COMPILER')} "
-        args += f"-DOS={build.get_value('OS')} "
+        args += f"-DCOMPILER={case.get_value('COMPILER')} "
+        args += f"-DOS={case.get_value('OS')} "
         args += f"-DMACH={case.get_value('MACH')} "
         args += "-DCMAKE_C_COMPILER_WORKS=1 "
         args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
         args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
-        args += f"-DDEBUG={build.get_value('DEBUG')} "
+        args += f"-DDEBUG={case.get_value('DEBUG')} "
         cmd = f"cmake {args} ."
         rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
         expect(rc == 0, f"Command {cmd} failed with rc={rc} out={out} err={err}")
@@ -201,7 +199,6 @@ def _build_tuvx(caseroot, libroot, bldroot):
 # Builds the TUV-x library and updates the case variables used to set the
 # include paths and linked libraries
 
-    build = EnvBuild(case_root=caseroot)
     with Case(caseroot) as case:
         bldpath = os.path.join(bldroot, "tuv-x")
         if not os.path.exists(bldpath):
@@ -212,7 +209,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
 
         arg_dict = _cmake_default_args(caseroot)
         cmake_args = "-DCMAKE_VERBOSE_MAKEFILE=ON "
-        if build.get_value("MPILIB") != "mpi-serial":
+        if case.get_value("MPILIB") != "mpi-serial":
             cmake_args += "-DTUVX_ENABLE_MPI:BOOL=TRUE "
         if case.get_value("DEBUG"):
             cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
