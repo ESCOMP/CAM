@@ -23,6 +23,7 @@ module mo_tuvx
    use spmd_utils, only : main_task_id => masterprocid
    use spmd_utils, only : mpicom, mpi_character, mpi_integer, mpi_logical, mpi_success
    use cam_abortutils, only : endrun
+   use cam_logfile, only : iulog ! log info output unit
 
    implicit none
 
@@ -198,8 +199,6 @@ contains
    !-----------------------------------------------------------------------
    subroutine tuvx_readnl(nlfile)
 
-      use cam_abortutils, only : endrun
-      use cam_logfile,    only : iulog ! log file output unit
       use namelist_utils, only : find_group_name
 
       character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
@@ -253,11 +252,9 @@ contains
    !-----------------------------------------------------------------------
    subroutine tuvx_init( photon_file, electron_file, max_solar_zenith_angle, pbuf2d )
 
-      use cam_logfile,             only : iulog ! log file output unit
       use infnan,                  only : nan, assignment(=)
       use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
       use mo_jeuv,                 only : neuv ! number of extreme-UV rates
-      use musica_assert,           only : assert_msg, die_msg
       use musica_config,           only : config_t
       use musica_mpi,              only : musica_mpi_rank, &
                                           musica_mpi_pack_size, &
@@ -343,7 +340,7 @@ contains
       ! ===============================================================
       max_sza = max_solar_zenith_angle
       if( max_sza <= 0.0_r8 .or. max_sza > 180.0_r8 ) then
-         call die_msg( 723815691, "TUV-x max solar zenith angle must be between 0 and 180 degress" )
+         call endrun(subname//': TUV-x max solar zenith angle must be between 0 and 180 degress')
       end if
 
       ! =================================
@@ -365,9 +362,9 @@ contains
       if( is_main_task ) then
          call tuvx_config%from_file( config_path%to_char( ) )
          call tuvx_config%get( "__CAM options", cam_config, my_name )
-         call assert_msg( 973680295, & ! random error number consistent with how MUSICA error handling
-            cam_config%validate( required_keys, optional_keys ), &
-            "Bad configuration for CAM TUV-x options." )
+         if (.not.cam_config%validate(required_keys, optional_keys)) then
+            call endrun(subname//': Bad configuration for CAM TUV-x options.')
+         end if
          call cam_config%get( "disable aerosols", disable_aerosols, my_name, &
             default = .false. )
          call cam_config%get( "disable clouds", disable_clouds, my_name, &
@@ -474,10 +471,9 @@ contains
       ! ====================================================
       ! make sure extraterrestrial flux values are available
       ! ====================================================
-      ! the random error number is consistent with how MUSICA
-      ! handles errors and don't have any particular meaning
-      call assert_msg( 170693514, has_spectrum, &
-         "Solar irradiance spectrum needed for TUV-x" )
+      if (.not.has_spectrum) then
+         call endrun(subname//': Solar irradiance spectrum needed for TUV-x')
+      end if
 
       ! ============================================
       ! set up diagnostic output of photolysis rates
@@ -513,13 +509,12 @@ contains
                         trim(label)//' chemical potential energy')
          end select
       end do
-      call assert_msg( 398372957, &
-                       number_of_heating_rates == size( labels ), &
-                       "TUV-x heating rate mismatch. Expected "// &
-                       trim( to_char( size( labels ) )// &
-                       " rates, but only matched "// &
-                       trim( to_char( number_of_heating_rates ) )//"." ) )
-
+      if (number_of_heating_rates /= size(labels)) then
+         call endrun( subname//': TUV-x heating rate mismatch. Expected '// &
+                      trim(to_char(size(labels)))// &
+                      ' rates, but only matched '// &
+                      trim(to_char(number_of_heating_rates)) )
+      end if
       if( is_first_step( ) ) then
         call pbuf_set_field( pbuf2d, swaertau_idx, 0.0_r8 )
         call pbuf_set_field( pbuf2d, swaertauw_idx, 0.0_r8 )
@@ -589,7 +584,6 @@ contains
       earth_sun_distance, pressure_delta, cloud_fraction, liquid_water_content, &
       photolysis_rates )
 
-      use cam_logfile,      only : iulog        ! log info output unit
       use chem_mods,        only : phtcnt,    & ! number of photolysis reactions
                                    gas_pcnst, & ! number of non-fixed species
                                    nfs,       & ! number of fixed species
@@ -887,7 +881,6 @@ contains
    !-----------------------------------------------------------------------
    subroutine log_initialization( heating_rate_labels )
 
-      use cam_logfile,    only : iulog ! log info output unit
       use musica_string,  only : to_char
 
       type(string_t), intent(in) :: heating_rate_labels(:) ! heating rate labels
@@ -970,7 +963,6 @@ contains
    !-----------------------------------------------------------------------
    subroutine initialize_diagnostics( this )
 
-      use musica_assert, only : assert
       use musica_string, only : string_t
       use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
                                 rxt_tag_lst ! labels for all chemical reactions
@@ -1012,7 +1004,9 @@ contains
          i_label = i_label + 1
       end if
 
-      call assert( 522515214, i_label == size( all_labels ) + 1 )
+      if (i_label /= size( all_labels ) + 1) then
+         call endrun('diagnostics: incorrect label count')
+      end if
       allocate( diagnostics( size( all_labels ) ) )
       do i_label = 1, size( all_labels )
          diagnostics( i_label )%name_  = trim( all_labels( i_label )%to_char( ) )
@@ -1035,7 +1029,6 @@ contains
    !-----------------------------------------------------------------------
    subroutine set_photo_rate_map( core, config, do_euv, do_jno, jno_index, map )
 
-      use cam_logfile,   only : iulog       ! log info output unit
       use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
                                 rxt_tag_lst ! labels for all chemical reactions
                                             ! NOTE photolysis reactions are
@@ -1170,7 +1163,6 @@ contains
    !-----------------------------------------------------------------------
    function get_cam_grids( wavelength_path ) result( grids )
 
-      use musica_assert,       only : assert_msg
       use musica_config,       only : config_t
       use tuvx_grid,           only : grid_t
       use tuvx_grid_factory,   only : grid_builder
@@ -1338,7 +1330,6 @@ contains
 
       use ppgrid,                  only : pcols ! maximum number of columns
       use rad_constituents,        only : rad_cnst_get_info
-      use musica_assert,           only : assert
       use tuvx_grid,               only : grid_t
       use tuvx_grid_from_host,     only : grid_updater_t
       use tuvx_grid_warehouse,     only : grid_warehouse_t
@@ -1368,7 +1359,7 @@ contains
 
       height => grids%get_grid( "height", "km" )
       this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( height, found )
-      call assert( 213798815, found )
+      if (.not.found) call endrun('create_updaters: height not found')
 
       ! ============================================
       ! wavelength grid cannot be updated at runtime
@@ -1387,32 +1378,32 @@ contains
 
       host_profile => profiles%get_profile( "temperature", "K" )
       this%profiles_( PROFILE_INDEX_TEMPERATURE ) = this%core_%get_updater( host_profile, found )
-      call assert( 418735162, found )
+      if (.not.found) call endrun('create_updaters: temperature not found')
       deallocate( host_profile )
 
       host_profile => profiles%get_profile( "surface albedo", "none" )
       this%profiles_( PROFILE_INDEX_ALBEDO ) = this%core_%get_updater( host_profile, found )
-      call assert( 720785186, found )
+      if (.not.found) call endrun('create_updaters: surface albedo not found')
       deallocate( host_profile )
 
       host_profile => profiles%get_profile( "extraterrestrial flux", "photon cm-2 s-1" )
       this%profiles_( PROFILE_INDEX_ET_FLUX ) = this%core_%get_updater( host_profile, found )
-      call assert( 550628282, found )
+      if (.not.found) call endrun('create_updaters: extraterrestrial flux not found')
       deallocate( host_profile )
 
       host_profile => profiles%get_profile( "air", "molecule cm-3" )
       this%profiles_( PROFILE_INDEX_AIR ) = this%core_%get_updater( host_profile, found )
-      call assert( 380471378, found )
+      if (.not.found) call endrun('create_updaters: air not found')
       deallocate( host_profile )
 
       host_profile => profiles%get_profile( "O3", "molecule cm-3" )
       this%profiles_( PROFILE_INDEX_O3 ) = this%core_%get_updater( host_profile, found )
-      call assert( 210314474, found )
+      if (.not.found) call endrun('create_updaters: O3 not found')
       deallocate( host_profile )
 
       host_profile => profiles%get_profile( "O2", "molecule cm-3" )
       this%profiles_( PROFILE_INDEX_O2 ) = this%core_%get_updater( host_profile, found )
-      call assert( 105165970, found )
+      if (.not.found) call endrun('create_updaters: O2 not found')
       deallocate( host_profile )
 
       ! =================
@@ -1426,7 +1417,7 @@ contains
 
       host_radiator => radiators%get_radiator( "aerosol" )
       this%radiators_( RADIATOR_INDEX_AEROSOL ) = this%core_%get_updater( host_radiator, found )
-      call assert( 675200430, found )
+      if (.not.found) call endrun('create_updaters: aerosol not found')
       nullify( host_radiator )
 
       ! =====================================
@@ -1436,7 +1427,7 @@ contains
 
       host_radiator => radiators%get_radiator( "clouds" )
       this%radiators_( RADIATOR_INDEX_CLOUDS ) = this%core_%get_updater( host_radiator, found )
-      call assert( 993715720, found )
+      if (.not.found) call endrun('create_updaters: clouds not found')
       nullify( host_radiator )
 
    end subroutine create_updaters
