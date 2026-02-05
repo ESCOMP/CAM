@@ -21,13 +21,14 @@ from CIME.case import Case
 
 logger = logging.getLogger(__name__)
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
     raise SystemExit(f"Incorrect call to {sys.argv[0]}, need CAM root and case root")
 # end if
 cam_root = sys.argv[1]
 case_root = sys.argv[2]
+non_local = sys.argv[3] == 'True'
 
-with Case(case_root) as case:
+with Case(case_root, non_local=non_local) as case:
     cam_config = case.get_value('CAM_CONFIG_OPTS')
     # Gather case information (from _build_usernl_files in case_setup.py)
     comp_interface = case.get_value("COMP_INTERFACE")

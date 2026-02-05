@@ -4,9 +4,9 @@ module aerosol_optics_cam
   use cam_logfile,  only: iulog
   use radconstants, only: nswbands, nlwbands, idx_sw_diag, idx_uv_diag, idx_nir_diag
   use radconstants, only: get_lw_spectral_boundaries
-  use phys_prop,    only: ot_length
+  use phys_prop,    only: ot_length, numrh=>nrh
   use physics_types,only: physics_state
-  use physics_buffer,only: physics_buffer_desc
+  use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use ppgrid, only: pcols, pver
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun
@@ -15,21 +15,31 @@ module aerosol_optics_cam
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
 
+  use ref_pres, only: clim_modal_aero_top_lev
   use tropopause, only : tropopause_findChemTrop
   use wv_saturation, only: qsat
 
-  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use modal_aerosol_properties_mod, only: modal_aerosol_properties
   use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use bulk_aerosol_properties_mod, only: bulk_aerosol_properties
 
   use aerosol_state_mod,      only: aerosol_state
   use modal_aerosol_state_mod,only: modal_aerosol_state
   use carma_aerosol_state_mod,only: carma_aerosol_state
+  use bulk_aerosol_state_mod, only: bulk_aerosol_state
 
   use aerosol_optics_mod,     only: aerosol_optics
   use refractive_aerosol_optics_mod, only: refractive_aerosol_optics
   use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
   use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
+  use rad_constituents, only: rad_cnst_get_info
+  use hygroscopic_aerosol_optics_mod, only: hygroscopic_aerosol_optics
+  use hygro_aerosol_optics_mod, only: hygro_aerosol_optics
+  use insoluble_aerosol_optics_mod, only: insoluble_aerosol_optics
+  use volcrad_aerosol_optics_mod, only: volcrad_aerosol_optics
+
+  use aer_vis_diag_mod, only: aer_vis_diag_out
 
   implicit none
 
@@ -59,6 +69,8 @@ module aerosol_optics_cam
 
   logical :: carma_active = .false.
   logical :: modal_active = .false.
+  logical :: bulk_active = .false.
+
   integer :: num_aero_models = 0
   integer :: lw10um_indx = -1            ! wavelength index corresponding to 10 microns
   real(r8), parameter :: lw10um = 10._r8 ! microns
@@ -75,6 +87,8 @@ module aerosol_optics_cam
   type(out_name), allocatable :: burdendn_fields(:) ! num_aero_models
   type(out_name), allocatable :: aodbindn_fields(:)
   type(out_name), allocatable :: aoddustdn_fields(:)
+
+  integer :: top_lev = 1
 
 contains
 
@@ -126,40 +140,53 @@ contains
 
   !===============================================================================
   subroutine aerosol_optics_cam_init
-    use rad_constituents, only: rad_cnst_get_info
     use phys_control,     only: phys_getopts
     use ioFileMod,        only: getfil
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_init: '
     integer :: nmodes=0, nbins=0, iaermod, istat, ilist, i
+    integer :: nbulk_aerosols=0
 
     logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
-    integer :: m, n
+    integer :: m, n, cnt
 
     character(len=fieldname_len) :: fldname
     character(len=128) :: lngname
     logical :: history_aero_optics     ! output aerosol optics diagnostics
     logical :: history_amwg            ! output the variables used by the AMWG diag package
     logical :: history_dust            ! output dust diagnostics
+    logical :: prog_modal_aero         ! prognostic modal aerosols present
 
     character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
                       history_aero_optics_out = history_aero_optics, &
-                      history_dust_out        = history_dust )
+                      history_dust_out        = history_dust, &
+                      prog_modal_aero_out     = prog_modal_aero )
+
+    ! Limit modal aerosols with top_lev here.
+    if (prog_modal_aero) then
+       top_lev = clim_modal_aero_top_lev
+    else
+       top_lev = 1
+    endif
 
     num_aero_models = 0
 
-    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
+    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins, naero=nbulk_aerosols)
     modal_active = nmodes>0
     carma_active = nbins>0
+    bulk_active = nbulk_aerosols>0
 
     ! count aerosol models
     if (modal_active) then
        num_aero_models = num_aero_models+1
     end if
     if (carma_active) then
+       num_aero_models = num_aero_models+1
+    end if
+    if (bulk_active) then
        num_aero_models = num_aero_models+1
     end if
 
@@ -180,9 +207,15 @@ contains
        iaermod = iaermod+1
        aero_props(iaermod)%obj => carma_aerosol_properties()
     end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_props(iaermod)%obj => bulk_aerosol_properties()
+    end if
 
     if (water_refindex_file=='NONE') then
-       call endrun(prefix//'water_refindex_file must be specified')
+       if (modal_active .or. carma_active) then
+          call endrun(prefix//'water_refindex_file must be specified')
+       end if
     else
        call getfil(water_refindex_file, locfile)
        call read_water_refindex(locfile)
@@ -207,7 +240,7 @@ contains
           call addfld ('ABSORB'//diag(ilist),     (/ 'lev' /), 'A','/m',&
                'Aerosol absorption, day only', flag_xyfill=.true.)
           call addfld ('AODVIS'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODVISst'//diag(ilist), horiz_only,  'A','  ', &
                'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODNIRst'//diag(ilist), horiz_only,  'A','  ', &
@@ -228,33 +261,33 @@ contains
                'Aerosol optical depth summed over all sw wavelengths', flag_xyfill=.true.)
 
           call addfld ('EXTINCTdn'//diag(ilist),    (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 550 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTUVdn'//diag(ilist),  (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 350 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTNIRdn'//diag(ilist), (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('ABSORBdn'//diag(ilist),     (/ 'lev' /), 'A','/m',&
-               'Aerosol absorption, day only', flag_xyfill=.true.)
+               'Aerosol absorption, day night', flag_xyfill=.true.)
           call addfld ('AODVISdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODVISstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVstdn'//diag(ilist),  horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVdn'//diag(ilist),      horiz_only,  'A','  ', &
-               'Aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODABSdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol absorption optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol absorption optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODxASYMdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 * asymmetry factor, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 550 * asymmetry factor, day night', flag_xyfill=.true.)
           call addfld ('EXTxASYMdn'//diag(ilist),   (/ 'lev' /), 'A','  ', &
-               'extinction 550 nm * asymmetry factor, day only',  flag_xyfill=.true.)
+               'extinction 550 nm * asymmetry factor, day night',  flag_xyfill=.true.)
           call addfld ('AODTOTdn'//diag(ilist), horiz_only, 'A','1',&
-               'Aerosol optical depth summed over all sw wavelengths, day only')
+               'Aerosol optical depth summed over all sw wavelengths, day night')
 
           if (lw10um_indx>0) then
              call addfld('AODABSLW'//diag(ilist), (/ 'lev' /), 'A','/m',&
@@ -302,6 +335,8 @@ contains
           call endrun(prefix//'array allocation error: aoddustdn_fields')
        end if
 
+       cnt=0
+
        do n = 1,num_aero_models
 
           allocate(burden_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
@@ -332,7 +367,9 @@ contains
 
           do m = 1, aero_props(n)%obj%nbins()
 
-             write(fldname,'(a,i2.2)') 'BURDEN', m
+             cnt = cnt+1
+
+             write(fldname,'(a,i2.2)') 'BURDEN', cnt
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -348,7 +385,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODDUST', m
+             write(fldname,'(a,i2.2)') 'AODDUST', cnt
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -356,7 +393,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'BURDENdn', m
+             write(fldname,'(a,i2.2)') 'BURDENdn', cnt
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -372,7 +409,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODdnDUST', m
+             write(fldname,'(a,i2.2)') 'AODdnDUST', cnt
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -554,12 +591,17 @@ contains
     real(r8), intent(inout) :: ga(pcols,0:pver,nswbands)     ! asymmetry factor
     real(r8), intent(inout) :: fa(pcols,0:pver,nswbands)     ! forward scattered fraction
 
+    real(r8) :: taubam(pcols,0:pver)
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_sw: '
 
     integer :: ibin, nbins
     integer :: iwav, ilev
     integer :: icol, istat
     integer :: lchnk, ncol
+
+    integer :: nmodes=0
+    character(len=aero_name_len) :: modetype
+    logical :: coarse_dust_mode ! coarse dust mode for different MAM versions
 
     type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
                                                      ! multiple aerosol representations in the same sim
@@ -652,14 +694,25 @@ contains
     ! total species AOD
     real(r8) :: dustaod(pcols), sulfaod(pcols), bcaod(pcols), &
                 pomaod(pcols), soaaod(pcols), ssltaod(pcols)
-
+    real(r8) :: dustaod0(pcols) ! single-level dust AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
+    real(r8) :: dopaer0(pcols)  ! single-level total AOD assuming spherical dust in coarse mode. dmleung 20 Oct 2025
     real(r8) :: aodvisst(pcols) ! stratospheric extinction optical depth
     real(r8) :: aoduvst(pcols)  ! stratospheric extinction optical depth in uv
     real(r8) :: aodnirst(pcols) ! stratospheric extinction optical depth in nir
     real(r8) :: ssavis(pcols)
     integer :: troplev(pcols)
 
-    integer :: i, k
+    integer :: bam_cnt
+
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
+
+    real(r8), parameter :: dustaspherical_opts = 1.3_r8 ! dmleung 20 Oct 2025
+    ! Jasper Kok et al. (2017) Fig. 1d: 20-60 % higher mass extinction efficiency (scattering and absorption)
+    ! because dust is aspherical. This is currently not captured by a spherical assumption in the optical calculation
+    ! (the look up table is taken from the mode_defs namelist variable). So, we create a factor to represent
+    ! asphericity for now. Asphericity is strong for D > 1 um (coarse mode).
 
     nullify(aero_optics)
 
@@ -681,6 +734,9 @@ contains
     absorb = 0._r8
     aodtot = 0._r8
     tauxar = 0._r8
+    wa = 0._r8
+    ga = 0._r8
+    fa = 0._r8
     extinct = 0._r8
     extinctnir = 0._r8
     extinctuv = 0._r8
@@ -706,6 +762,12 @@ contains
     bcaod = 0.0_r8
     ssltaod = 0.0_r8
 
+    ! dmleung ++
+    ! single-level variables
+    dustaod0 = 0.0_r8   ! dmleung added 20 Oct 2025
+    dopaer0 = 0.0_r8
+    ! dmleung --
+
     if (num_aero_models<1) return
 
     allocate(aero_state(num_aero_models), stat=istat)
@@ -721,6 +783,10 @@ contains
     if (carma_active) then
        iaermod = iaermod+1
        aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
+    end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_state(iaermod)%obj => bulk_aerosol_state( state, pbuf )
     end if
 
     allocate(pext(ncol), stat=istat)
@@ -740,6 +806,13 @@ contains
        call endrun(prefix//'array allocation error: pasm')
     end if
 
+    ! calculate relative humidity for table lookup into rh grid
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
+
+    bam_cnt = 0
+
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aero_props(iaermod)%obj
@@ -752,9 +825,18 @@ contains
 
        binloop: do ibin = 1, nbins
 
+          ! MAM coarse mode
+          if (aeroprops%model_is('MAM')) then
+             modetype = aeroprops%bin_name(list_idx, ibin)
+             coarse_dust_mode = (modetype=='coarse' .or. modetype=='coarse_dust')
+          else
+             coarse_dust_mode = .false.
+          end if
+
           dustaodbin(:) = 0._r8
           burden(:) = 0._r8
           aodbin(:) = 0.0_r8
+          taubam(:,:) = 0._r8
 
           call aeroprops%optics_params(list_idx, ibin, opticstype=opticstype)
 
@@ -763,17 +845,38 @@ contains
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
           case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
              aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                         ibin, ncol, pver, relh(:ncol,:))
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
+          case('hygro')
+             ! Short-wave hygroscopic aerosol, Long-wave non-hygroscopic
+             ! aerosol optical properties
+             aero_optics=>hygro_aerosol_optics(aeroprops, aerostate, list_idx, &
+                                               ibin, ncol, pver, numrh, relh(:ncol,:))
+          case('hygroscopic')
+             ! Short-wave and long-wave hygroscopic aerosol properties
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, &
+                                                     ibin, ncol, pver, numrh, relh(:ncol,:))
+
+          case('nonhygro', 'insoluble')
+             aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
+
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             ! get microphysical properties for volcanic aerosols
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius )
+
+             aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
+                  ibin, ncol, pver, geometric_radius(:ncol,:))
+
           case default
-             call endrun(prefix//'optics method not recognized')
+             call endrun(prefix//'optics method not recognized: '//trim(opticstype))
           end select
 
           if (associated(aero_optics)) then
@@ -783,24 +886,48 @@ contains
 
              wavelength: do iwav = 1, nswbands
 
-                vertical: do ilev = 1, pver
+                vertical: do ilev = top_lev, pver
 
+                   ! The function sw_props combines the Mie theory-generated lookup table and the volume-averaged refractive index to generate
+                   ! optical/radiative properties (pext, pabs, palb, pasm) of the aerosol mixture in this mode/bin.
                    call aero_optics%sw_props(ncol, ilev, iwav, pext, pabs, palb, pasm )
 
                    call init_diags
 
                    column: do icol = 1,ncol
-                      dopaer(icol) = pext(icol)*mass(icol,ilev)
-                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
-                      wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)
-                      ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
-                      fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
 
-                      call update_diags
+                      dopaer(icol) = pext(icol)*mass(icol,ilev)     ! aerosol optical depth of layer ilev
+
+                      ! dmleung 20 Oct 2025 ++
+                      ! added dust asphericity impacts on enhancing dust AOD. Modified after Longlei Li (Cornell University).
+                      ! the theory is that coarse-mode dust is aspherical, with ~30 % enhanced extinction compared with spherical coarse-mode dust.
+                      ! ref: Fig. 1d of Jasper F. Kok et al. (2017),
+                      ! Smaller desert dust cooling effect estimated from analysis of dust size and abundance
+
+                      if (.not.aeroprops%model_is('BAM')) then
+                         call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
+                      end if
+
+                      ! dmleung: update_diags updated dopaer(icol) as a diagnostic.
+                      ! Aerosol optical and radiative properties are subsequently modified given dopaer update in update_diags.
+                      ! To the first-order approximation, palb and pasm (SSA and asymmetry factor) remain roughly the same in the
+                      ! 1-10 um upon introducing asphericity; changes in wa, ga, and fa are thus due to only AOD changes given dust asphericty.
+                      ! ref: Fig. 2a-d of Yue Huang et al. (2023),
+                      ! Single-scattering properties of ellipsoidal dust aerosols constrained by measured dust shape distributions
+                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)                           ! aerosol optical depth at layer ilev
+                      wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)                        ! single scattering albedo at layer ilev
+                      ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)             ! asymmetry factor at layer ilev
+                      fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)  ! forward scattered fraction at layer ilev
+                      ! dmleung --
 
                    end do column
 
+                   if (aeroprops%model_is('BAM').and.iwav==idx_sw_diag) then
+                      taubam(:ncol,ilev) = dopaer(:ncol)
+                   end if
+
                 end do vertical
+
              end do wavelength
 
           else
@@ -810,7 +937,13 @@ contains
           deallocate(aero_optics)
           nullify(aero_optics)
 
-          call output_bin_diags
+          if (aeroprops%model_is('BAM')) then
+             bam_cnt = bam_cnt+1
+             call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
+                  list_idx, troplev)
+          else
+             call output_bin_diags()
+          end if
 
        end do binloop
     end do aeromodel
@@ -855,7 +988,9 @@ contains
     end subroutine init_diags
 
     !===============================================================================
-    subroutine update_diags
+    subroutine update_diags( is_coarse_dust )
+
+      logical, intent(in) :: is_coarse_dust
 
       integer :: ispec
 
@@ -867,19 +1002,6 @@ contains
          end if
 
       else if (iwav==idx_sw_diag) then ! vis
-         aodvis(icol) = aodvis(icol) + dopaer(icol)
-         aodabs(icol) = aodabs(icol) + pabs(icol)*mass(icol,ilev)
-         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         absorb(icol,ilev)  = absorb(icol,ilev) + pabs(icol)*air_density(icol,ilev)
-         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
-         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
-         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
-
-         aodbin(icol) = aodbin(icol) + dopaer(icol)
-
-         if (ilev<=troplev(icol)) then
-            aodvisst(icol) = aodvisst(icol) + dopaer(icol)
-         end if
 
          ! loop over species ...
 
@@ -929,8 +1051,6 @@ contains
 
          if (wetvol(icol,ilev)>1.e-40_r8 .and. vol(icol)>0._r8) then
 
-            dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
-
             ! partition optical depth into contributions from each constituent
             ! assume contribution is proportional to refractive index X volume
 
@@ -965,10 +1085,6 @@ contains
             aodabsbc(icol) = aodabsbc(icol) + absbc(icol)*dopaer(icol)*(1.0_r8-palb(icol))
 
 
-
-            aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
-            dustaod(icol) = dustaod(icol) + aodc
-
             aodc          = (abssulf(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsulf(icol))*dopaer(icol)
             sulfaod(icol) = sulfaod(icol) + aodc
 
@@ -984,7 +1100,55 @@ contains
             aodc          = (abssslt(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsslt(icol))*dopaer(icol)
             ssltaod(icol) = ssltaod(icol) + aodc
 
+            ! dmleung 20 Oct 2025 ++
+            aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
+            dustaod(icol) = dustaod(icol) + aodc
+
+            ! dustaod0(icol) is a single-level dust AOD, aodc is single-level dust AOD.
+            dustaod0(icol) = aodc ! dust AOD accumulator given spherical dust. The spherical dustaod0 is created to
+            ! combine with aspherical dustaod to modify dopaer in aerosol_optics_cam_sw.
+
+            ! use single-layer dopaer(icol) to update single-layer dopaer0(icol).
+            dopaer0(icol) = dopaer(icol)   ! dopaer0 stores total AOD assuming aspherical dust.
+
+            ! if we are using MAM and this is a coarse dust mode, scale up dust AOD by 30 %.
+            if (is_coarse_dust) then
+
+               ! update column-level variables
+               dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev) * dustaspherical_opts ! update mode/bin-specific dust AOD
+
+               ! dustaod is a column-level dust AOD accumulator, while dustaod0 is the single-level spherical dust AOD
+               dustaod(icol) = dustaod(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts  ! dustaod is now dust AOD based on aspherical dust
+               !with asphericity effect on thickening AOD.
+
+               ! update single-layer variable: dopaer
+               dopaer(icol) = dopaer(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts   ! Total AOD accounting for dust asphericity
+            else
+               ! update column-level dust AOD accumulator
+               dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
+            end if
+            ! dmleung --
+
+            ! dmleung 20 Oct 2025 ++
+            ! Then, all these diagnostics are outputted based on the modified dust AOD.
+            ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the absorption diagnostics.
+            aodvis(icol) = aodvis(icol) + dopaer(icol)
+            aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+            absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
+            asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
+            asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+            aodbin(icol) = aodbin(icol) + dopaer(icol)
+
          end if
+
+         if (ilev<=troplev(icol)) then
+            aodvisst(icol) = aodvisst(icol) + dopaer(icol)
+         end if
+         ! dmleung --
+
       else if (iwav==idx_nir_diag) then
          aodnir(icol) = aodnir(icol) + dopaer(icol)
          extinctnir(icol,ilev) = extinctnir(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
@@ -1190,6 +1354,10 @@ contains
     character(len=32) :: opticstype
     integer :: iaermod
 
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
+
     real(r8) :: lwabs(pcols,pver)
     lwabs = 0._r8
     tauxar = 0._r8
@@ -1210,6 +1378,10 @@ contains
        iaermod = iaermod+1
        aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
+    if (bulk_active) then
+       iaermod = iaermod+1
+       aero_state(iaermod)%obj => bulk_aerosol_state( state, pbuf )
+    end if
 
     ncol = state%ncol
 
@@ -1219,6 +1391,11 @@ contains
     if (istat/=0) then
        call endrun(prefix//'array allocation error: pabs')
     end if
+
+    ! calculate relative humidity for table lookup into rh grid
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
     aeromodel: do iaermod = 1,num_aero_models
 
@@ -1238,17 +1415,37 @@ contains
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
           case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
              aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                         ibin, ncol, pver, relh(:ncol,:))
           case('hygroscopic_wtp')
              aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
                                                       ibin, ncol, pver, sulfwtpct(:ncol,:))
+
+          case('hygroscopic')
+             aero_optics=>hygroscopic_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
+                                                     ncol, pver, numrh, relh(:ncol,:))
+
+          case('hygro')
+             aero_optics=>hygro_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
+                                                     ncol, pver, numrh, relh(:ncol,:))
+
+          case('nonhygro', 'insoluble')
+             aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
+
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             ! get microphysical properties for volcanic aerosols
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius )
+
+             aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
+                  ibin, ncol, pver, geometric_radius(:ncol,:))
+
           case default
-             call endrun(prefix//'optics method not recognized')
+             call endrun(prefix//'optics method not recognized: '//trim(opticstype))
           end select
 
           if (associated(aero_optics)) then
@@ -1259,7 +1456,7 @@ contains
                    call aero_optics%lw_props(ncol, ilev, iwav, pabs )
 
                    column: do icol = 1, ncol
-                      dopaer(icol) = pabs(icol)*mass(icol,ilev)
+                      dopaer(icol) = pabs(icol) * mass(icol,ilev)
                       tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
                       lwabs(icol,ilev) = lwabs(icol,ilev) + pabs(icol)
                    end do column

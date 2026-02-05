@@ -9,7 +9,7 @@
 	path = src/physics/carma/base
 	url = https://github.com/ESCOMP/CARMA_base.git
         fxrequired = AlwaysRequired
-        fxtag = carma4_09
+        fxtag = carma4_10
         fxDONOTUSEurl = https://github.com/ESCOMP/CARMA_base.git
 
 [submodule "pumas-frozen"]
@@ -29,7 +29,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_19_000
+	fxtag = atmos_phys0_21_000
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -107,6 +107,14 @@
         fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
+[submodule "ext_co2_cooling"]
+	path = src/physics/ext_co2_cooling
+	url = https://github.com/fedef17/CO2_cool_fort.git
+	fxrequired = AlwaysRequired
+	fxsparse = ../.ext_co2_cooling_sparse_checkout
+	fxtag = v1.1
+	fxDONOTUSEurl = https://github.com/fedef17/CO2_cool_fort.git
+
 [submodule "rtm"]
 path = components/rtm
 url = https://github.com/ESCOMP/RTM
@@ -131,14 +139,14 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.65
+fxtag = ccs_config_cesm1.0.72
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
 [submodule "cime"]
 path = cime
 url = https://github.com/ESMCI/cime
-fxtag = cime6.1.144
+fxtag = cime6.1.155
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/cime
 
