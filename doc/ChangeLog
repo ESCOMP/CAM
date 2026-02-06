@@ -1,5 +1,110 @@
 ===============================================================
 
+Tag name: cam6_4_149
+Originator(s): fvitt, tilmes, lkemmons
+Date: 6 Feb 2026
+One-line Summary: Include chemical heating in mid-top configurations
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1478
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ - Include chemical heating in mid-top configurations by turning on WACCM physics in
+   the mid-top (MT) chemistry compsets -- Issue #1476
+
+ - Update tropospheric chemistry
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets:
+
+Describe any substantial timing or memory changes:
+
+Code reviewed by:
+
+List all files eliminated:
+D       src/chemistry/pp_trop_strat_mam5_ts4
+D       src/chemistry/pp_trop_strat_mam5_vbs
+ - replaced by the "s1" mechanisms
+
+List all files added and what they do:
+A       src/chemistry/pp_trop_strat_mam5_t4s2
+A       src/chemistry/pp_trop_strat_mam5_t1s1
+A       src/chemistry/pp_trop_strat_mam5_t1s2
+ - low-top (s1) and mid-top mechanisms (s2)
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/use_cases/hist_trop_strat_nudged_cam6.xml
+ - key off of new mechanism names
+
+M       bld/configure
+M       bld/config_files/definition.xml
+M       bld/namelist_files/namelist_definition.xml
+ - update chem names
+
+M       bld/namelist_files/use_cases/hist_trop_strat_t4s_cam7.xml
+ - update mid-top IC file
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - update mid-top IC files
+ - key off of new mechanism names
+
+M       cime_config/config_component.xml
+M       cime_config/config_compsets.xml
+ - include -waccm_phys configure option in mid-top chemistry compsets (S2)
+ - replace longname chemistry specifiers as follows
+    CT1S -> CT1S1, CT1S2 (low-top and mid-top)
+    CT4S -> CT4S2 (mid-top)
+
+M       src/chemistry/mozart/mo_jeuv.F90
+ - set euv_heating to zero when no EUV photo reactions are in mechanism (mid-top)
+
+M       src/chemistry/mozart/mo_waccm_hrates.F90
+ - output chemical heating info to atm.log file
+
+M       src/chemistry/pp_waccm_t4ma_mam5
+ - tropospheric chemistry updates
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+   - expected namelist change -- chem name change
+
+  DIFF ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  DIFF SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+   - expected baseline failures due to updates to chemical mechanisms
+
+  DIFF ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  DIFF SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+   - expected baseline failures due to updates to chemical mechanisms
+     and inclusion of waccm physics in mid-top compsets
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers:
+ larger than roundoff for cam-chem compsets, otherwise bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_148
 Originator(s): peverwhee, sjsprecious
 Date: 29 January 2026
