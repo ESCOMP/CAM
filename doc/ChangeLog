@@ -1,5 +1,748 @@
 ===============================================================
 
+Tag name: cam6_4_149
+Originator(s): fvitt, tilmes, lkemmons
+Date: 6 Feb 2026
+One-line Summary: Include chemical heating in mid-top configurations
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1478
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ - Include chemical heating in mid-top configurations by turning on WACCM physics in
+   the mid-top (MT) chemistry compsets -- Issue #1476
+
+ - Update tropospheric chemistry
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets:
+
+Describe any substantial timing or memory changes:
+
+Code reviewed by:
+
+List all files eliminated:
+D       src/chemistry/pp_trop_strat_mam5_ts4
+D       src/chemistry/pp_trop_strat_mam5_vbs
+ - replaced by the "s1" mechanisms
+
+List all files added and what they do:
+A       src/chemistry/pp_trop_strat_mam5_t4s2
+A       src/chemistry/pp_trop_strat_mam5_t1s1
+A       src/chemistry/pp_trop_strat_mam5_t1s2
+ - low-top (s1) and mid-top mechanisms (s2)
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/use_cases/hist_trop_strat_nudged_cam6.xml
+ - key off of new mechanism names
+
+M       bld/configure
+M       bld/config_files/definition.xml
+M       bld/namelist_files/namelist_definition.xml
+ - update chem names
+
+M       bld/namelist_files/use_cases/hist_trop_strat_t4s_cam7.xml
+ - update mid-top IC file
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - update mid-top IC files
+ - key off of new mechanism names
+
+M       cime_config/config_component.xml
+M       cime_config/config_compsets.xml
+ - include -waccm_phys configure option in mid-top chemistry compsets (S2)
+ - replace longname chemistry specifiers as follows
+    CT1S -> CT1S1, CT1S2 (low-top and mid-top)
+    CT4S -> CT4S2 (mid-top)
+
+M       src/chemistry/mozart/mo_jeuv.F90
+ - set euv_heating to zero when no EUV photo reactions are in mechanism (mid-top)
+
+M       src/chemistry/mozart/mo_waccm_hrates.F90
+ - output chemical heating info to atm.log file
+
+M       src/chemistry/pp_waccm_t4ma_mam5
+ - tropospheric chemistry updates
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+   - expected namelist change -- chem name change
+
+  DIFF ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  DIFF SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+   - expected baseline failures due to updates to chemical mechanisms
+
+  DIFF ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  DIFF SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+   - expected baseline failures due to updates to chemical mechanisms
+     and inclusion of waccm physics in mid-top compsets
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers:
+ larger than roundoff for cam-chem compsets, otherwise bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_148
+Originator(s): peverwhee, sjsprecious
+Date: 29 January 2026
+One-line Summary: Move GPU directives to atmospheric physics for RRTMGP
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1461
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Moves acc directives for RRTMGP from src/physics/rrtmgp/radiation.F90 to
+   atmospheric_physics (src/atmos_phys/schemes/rrtmgp/)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes:
+- GPU test now runs thanks to Jian Sun's workaround in ccs_config, but GPU
+test now takes longer (until we have a better fix from CISL)
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/testdefs/testlist_cam.xml
+- Up the wallclock time for all nvhpc tests to 2:00:00
+
+M       src/physics/rrtmgp/radiation.F90
+- remove acc directives
+
+M       src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+- clean-up unused code that has been moved to atmos_phys
+
+M       .gitmodules
+M       src/atmos_phys
+M       ccs_config
+- update atmospheric_physics and ccs_config tags
+  - atmospheric_physics tag includes new directives in rrtmgp schemes
+  - ccs_config tag changes nvhpc optimization to allow the GPU test to run AND
+  updates the list of source code to compile with GPU flags
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: PASS) details:
+   - TEST PASSES AS OF THIS TAG
+   - generated baselines (with cam6_4_147 + the ccs_config mod) to confirm that
+     the mods in this tag (cam6_4_148) do not change answers
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+
+Tag name: cam6_4_147
+Originator(s): kdraeder, cacraigucar
+Date: Jan 28, 2026
+One-line Summary: Made ERI test check for Gregorian+spinup compset incompatibility
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1473
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - ERI test; consistency of compset and calendar: https://github.com/ESCOMP/CAM/issues/1447
+
+Describe any changes made to build system:
+  - Now checks that a user is not using the gregorian calendar with a spinup compset since the stream handling
+    has issues with leap days
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/user_nl_mosart
+          - add output frequency for mosart
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/buildnml
+          - add check to prevent gregorian calendar to be used with spinup compsets
+
+M       cime_config/testdefs/testlist_cam.xml
+          - change test which was using gregorian calendaro with a spinup compset to a working configuration
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_leapday/user_nl_clm
+          - mods  to better test leapday
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+    SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+      FAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday NLCOMP
+      FAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday BASELINE /glade/campaign/cesm/community/amwg/cam_base
+         - Changed namelist settings for the leapday test
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+   - pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+	baselines to use for comparison but answer changes are expected starting with
+	cam6_4_130.
+
+    End of cesm.log file:
+deg0049.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+deg0049.hsn.de.hpc.ucar.edu 1:  Opened file
+deg0049.hsn.de.hpc.ucar.edu 1:  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.G.aux_cam_nvhpc_20260123064354.cam.r.1979-01-01-09000.nc
+deg0049.hsn.de.hpc.ucar.edu 1:   to write          316
+deg0051.hsn.de.hpc.ucar.edu: rank 64 died from signal 15
+
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam:
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+      FAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes NLCOMP
+      FAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes BASELINE
+         - Introduced new test
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_146
+Originator(s): fvitt
+Date: 23 Jan 2026
+One-line Summary: Update CARMA submodule to tag carma4_10
+
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1458
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Update CARMA base external submodule to tag carma4_10 -- Issue #1435
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/physics/carma/base
+ - update carma base tag to carma4_10
+
+M       src/physics/carma/cam/carma_intr.F90
+M       src/physics/carma/models/trop_strat_soa1/carma_model_mod.F90
+M       src/physics/carma/models/trop_strat_soa5/carma_model_mod.F90
+ - getwetr interface change
+
+M       src/physics/cam/aerosol_optics_cam.F90
+ - fix divide by zero issue which occurred for some CARMA configurations
+   -- where aerosol concentrations are quite small dopaer0 array was
+      initialized to zero and not set to the dopaer values
+
+M       cime_config/testdefs/testlist_cam.xml
+ - added CARMA trop_strat tests
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+   - pre-existing failure
+   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+   - new test -- no baseline to compare to
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+   - pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+	baselines to use for comparison but answer changes are expected starting with
+	cam6_4_130.
+
+    End of cesm.log file:
+deg0049.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+deg0049.hsn.de.hpc.ucar.edu 1:  Opened file
+deg0049.hsn.de.hpc.ucar.edu 1:  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.G.aux_cam_nvhpc_20260123064354.cam.r.1979-01-01-09000.nc
+deg0049.hsn.de.hpc.ucar.edu 1:   to write          316
+deg0051.hsn.de.hpc.ucar.edu: rank 64 died from signal 15
+
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_145
+Originator(s): PeterHjortLauritzen, jimmielin
+Date: January 20, 2026
+One-line Summary: Sponge layer vertical diffusion bug fix
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1468
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1182 (Physics-side sponge layer diffusion coefficients are not being applied)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: new diff_sponge_fac namelist option
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+```
+M       .gitmodules
+M       src/atmos_phys
+  - new atmos_phys submodule to bring in updated vertical_diffusion_sponge_layer scheme.
+
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+M       src/physics/cam/vertical_diffusion.F90
+  - new diff_sponge_fac namelist option
+
+M       cime_config/testdefs/testlist_cam.xml
+  - set GPU test times to 45 minutes
+```
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s NLCOMP
+  ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s NLCOMP
+  ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp NLCOMP
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s NLCOMP
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s NLCOMP
+  ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s NLCOMP
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+    FAIL ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri NLCOMP
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+    FAIL ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri NLCOMP
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+    FAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri NLCOMP
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s NLCOMP
+  ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s NLCOMP
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
+    FAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d NLCOMP
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: NLFAIL) details:
+    FAIL ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa NLCOMP
+  ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h (Overall: NLFAIL) details:
+    FAIL ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h NLCOMP
+  ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s NLCOMP
+  ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s NLCOMP
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s NLCOMP
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s NLCOMP
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: NLFAIL) details:
+    FAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic NLCOMP
+  ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s NLCOMP
+  ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s NLCOMP
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: NLFAIL) details:
+    FAIL ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem NLCOMP
+  SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep (Overall: NLFAIL) details:
+    FAIL SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep NLCOMP
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09 (Overall: NLFAIL) details:
+    FAIL SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09 NLCOMP
+  SMS_D_Ld5.f19_f19_mt232.PC4.derecho_intel.cam-cam4_port5d (Overall: NLFAIL) details:
+    FAIL SMS_D_Ld5.f19_f19_mt232.PC4.derecho_intel.cam-cam4_port5d NLCOMP
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday NLCOMP
+  SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 NLCOMP
+  SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase NLCOMP
+  SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7 (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7 NLCOMP
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie NLCOMP
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust NLCOMP
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s NLCOMP
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+    FAIL SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d NLCOMP
+  SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+    FAIL SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d NLCOMP
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: NLFAIL) details:
+    FAIL SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d NLCOMP
+  SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h (Overall: NLFAIL) details:
+    FAIL SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h NLCOMP
+  SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging (Overall: NLFAIL) details:
+    FAIL SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging NLCOMP
+  SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s (Overall: NLFAIL) details:
+    FAIL SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s NLCOMP
+  SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs (Overall: NLFAIL) details:
+    FAIL SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs NLCOMP
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: NLFAIL) details:
+    FAIL SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp NLCOMP
+    - new namelist option diff_sponge_fac
+
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+    FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri NLCOMP
+    FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri COMPARE_base_hybrid
+    - pre-existing failure:
+    - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+    - pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+        baselines to use for comparison but answer changes are expected starting with
+        cam6_4_130.
+
+        Check that the end of the cesm.log is: (If not, please report to Jian as CISL is supposed to make a change on derecho)
+
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  4  2  25  26
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  1  19  20
+        deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+        deg0020.hsn.de.hpc.ucar.edu 1:  Opened file
+        deg0020.hsn.de.hpc.ucar.edu 1:
+        ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.GC.aux_cam_nvhpc_20260108161835.cam.r.1979-01-01-09000.nc
+        deg0020.hsn.de.hpc.ucar.edu 1:   to write          316
+        deg0020.hsn.de.hpc.ucar.edu: rank 62 died from signal 15
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s NLCOMP
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol NLCOMP
+  ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist NLCOMP
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC4.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC4.izumi_nag.cam-outfrq9s NLCOMP
+  SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port (Overall: NLFAIL) details:
+    FAIL SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port NLCOMP
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s NLCOMP
+  SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem NLCOMP
+  SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s NLCOMP
+  TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: NLFAIL) details:
+    FAIL TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac NLCOMP
+    - new namelist option diff_sponge_fac
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s NLCOMP
+  ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags NLCOMP
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag NLCOMP
+  ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags NLCOMP
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s NLCOMP
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s NLCOMP
+  ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 (Overall: NLFAIL) details:
+    FAIL ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 NLCOMP
+  ERP_Ln9_P24x2.f45_f45_mg37.QPWmaC6.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: NLFAIL) details:
+    FAIL ERP_Ln9_P24x2.f45_f45_mg37.QPWmaC6.izumi_gnu.cam-outfrq9s_mee_fluxes NLCOMP
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: NLFAIL) details:
+    FAIL ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 NLCOMP
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: NLFAIL) details:
+    FAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 NLCOMP
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: NLFAIL) details:
+    FAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 NLCOMP
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: NLFAIL) details:
+    FAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 NLCOMP
+  SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6 (Overall: NLFAIL) details:
+    FAIL SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6 NLCOMP
+  SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc NLCOMP
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 NLCOMP
+  SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee NLCOMP
+  SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s NLCOMP
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+    FAIL SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s NLCOMP
+    - new namelist option diff_sponge_fac
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: for nvhpc test used cam6_4_128 (last available baseline for nvhpc)
+
+===============================================================
+
+Tag name: cam6_4_144
+Originator(s): alperaltuntas, cacraigucar
+Date: Jan 15, 2026
+One-line Summary: Receive and pass --non-local option in cam.case_setup.py
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1456
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Allow users to create and set up a case on one machine and run on another (this fix enables CAM to do that):no issue made
+  - update cime external to bring in the change required in it and the fix for multi-instance jobs
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       cime
+           - update CIME external
+
+M       cime_config/cam.case_setup.py
+           - mods to support the --non-local option
+
+M       cime_config/testdefs/testlist_cam.xml
+           - Set timing of GPU tests back to 45 minutes and resume running test
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+      FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri COMPARE_base_hybrid
+        - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+    -pre-existing failure -- exceeds wallclock time limit
+       NOTE: Jian has determined this is due to changes on derecho with the the last upgrade.
+        He has reported the issue to CISL.  Note cam6_4_128 is the last CAM tag with
+	baselines to use for comparison but answer changes are expected starting with
+	cam6_4_130.
+
+	Check that the end of the cesm_log is: (If not, please report to Jian as CISL is supposed to make a change on derecho)
+
+	deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  4  2  25  26
+	deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  1  19  20
+	deg0020.hsn.de.hpc.ucar.edu 0: calcsize j,iq,jac, lsfrm,lstoo  2  5  2  19  20
+	deg0020.hsn.de.hpc.ucar.edu 1:  Opened file
+	deg0020.hsn.de.hpc.ucar.edu 1:
+	ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default.GC.aux_cam_nvhpc_20260108161835.cam.r.1979-01-01-09000.nc
+	deg0020.hsn.de.hpc.ucar.edu 1:   to write          316
+	deg0020.hsn.de.hpc.ucar.edu: rank 62 died from signal 15
+
+izumi/nag/aux_cam: all BFB
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_143
+Originator(s): fvitt
+Date: 7 Jan 2026
+One-line Summary: Optional non-LTE CO2 cooling method in the upper atmosphere
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1457
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ Provide an option to use an extended parameterization of CO2 cooling described in
+ https://doi.org/10.5194/egusphere-2023-2424, by Manuel Lopez-Puertas, et al.
+ Issue # 1358
+
+ NOTE: This external CO2 cooling package does not compile with the NAG Fortran compiler.
+       Hence, a CAM configure option to include the pacakage in the build has been implemented.
+
+Describe any changes made to build system:
+ - new CAM configure option ext_co2_cooling (as noted above)
+
+Describe any changes made to the namelist:
+ - new namelist option nlte_use_extco2
+    If TRUE, then use the extended CO2 scheme of Lopez-Puertas et al. 2024 as an alernative method
+    of computing non-LTE CO2 cooling rates in the upper atmosphere. (DOI:10.5194/gmd-17-4401-2024)
+    Default: FALSE
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+
+A       src/physics/.ext_co2_cooling_sparse_checkout
+A       src/physics/ext_co2_cooling
+ - for extended CO2 cooling submodule inclusion
+
+A       src/physics/waccm/nlte_extco2.F90
+ - cam interface module to the extended CO2 cooling package
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+ - include the extended CO2 cooling package external submodule
+
+M       bld/config_files/definition.xml
+M       bld/configure
+ - ext_co2_cooling cam config option
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - update default IC file for waccmx ne16 130-level
+
+M       bld/namelist_files/namelist_definition.xml
+ - new run-time switch -- nlte_use_extco2
+
+M       src/physics/waccm/nlte_lw.F90
+M       src/physics/waccm/radheat.F90
+ - mods to invoke the extended CO2 cooling package
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/user_nl_cam
+ - for testing the extended CO2 cooling package
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 NLCOMP
+    FAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_141_intel: DIFF
+ - expected differences -- extended nonLTE CO2 cooling package turned on in this test
+
+derecho/nvhpc/aux_cam: (not run as nothing has changed with the file system)
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:  cam6_4_141
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_142
 Originator(s): cacraigucaqr
 Date: Dec 30, 2025

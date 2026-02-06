@@ -24,4 +24,5 @@
 hist_nhtfrq = 9
 hist_mfilt  = 1
 hist_ndens  = 1
-
+check_finidat_year_consistency = .false.
+for_testing_allow_non_annual_changes = .true.

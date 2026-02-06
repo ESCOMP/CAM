@@ -47,6 +47,23 @@ def buildnml(case, caseroot, compname):
     RUN_REFDATE         = case.get_value("RUN_REFDATE")
     RUN_REFTOD          = case.get_value("RUN_REFTOD")
     COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
+    CALENDAR            = case.get_value("CALENDAR")
+    COMPSET             = case.get_value("COMPSET")
+ 
+# The Gregorian calendar currently can't be used with spinup compsets
+# because CAM's stream-handling code can't handle a request for data
+# for Feb 29 (possibly specified in a leapday testmod) from a non-leap-year
+# in the stream(s) data (specified in a use_case, e.g. 1850_cam_lt.xml).
+# This limitation can be removed when CAM's stream-handling is switched to
+# using CDEPS, which appears to handle this situation. (See discussion in
+# https://github.com/ESCOMP/CAM/issues/1447 for details.)
+    if CALENDAR.startswith("GREGORIAN"):
+        spinup_po = re.compile('\d{4}')
+        spinup = spinup_po.match(COMPSET)
+        expect(spinup == None,
+            "Gregorian calendar (modifier _cG) cannot be used with spinup compset \n  {}".format(COMPSET)
+        )
+
 
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
