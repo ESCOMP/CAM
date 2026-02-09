@@ -28,7 +28,7 @@
        integer, parameter :: lmax = 23               ! number of wavelength bins in EUV
 
        real(r8), parameter :: heat_eff_fac = .08_r8  ! heating efficiency factor
-       ! Solar EUV direct heating was increased from 5% to 8% to bring it closer to the 
+       ! Solar EUV direct heating was increased from 5% to 8% to bring it closer to the
        ! TIE-GCM value (5% applied twice for a total of 10%) -- Hanli Liu & Stan Solomon
 
        real(r8), parameter :: hc = 6.62608e-34_r8 * 2.9979e8_r8 / 1.e-9_r8
@@ -48,7 +48,7 @@
 !==============================================================================
 !   Purpose:
 !      read tabulated data:
-!           (1) thermosphere neutral species' absorption cross sections, 
+!           (1) thermosphere neutral species' absorption cross sections,
 !               photoionization/dissociation branching ratios
 !           (2) read photoelectron enhancement factor, photoelectron ionization/
 !               dissociation/excitation branching ratios
@@ -111,7 +111,7 @@
            solar_etf => euvac_etf
         endif
 
-        if ( size(solar_etf) /= lmax ) then 
+        if ( size(solar_etf) /= lmax ) then
            write(iulog,*) 'jeuv_init: the size of solar_etf is incorrect '
            write(iulog,*) ' ... size(solar_etf) = ',size(solar_etf)
            write(iulog,*) ' .............. lmax = ',lmax
@@ -120,12 +120,12 @@
 
 !------------------------------------------------------------------------------
 !       read from data file the absorption cross sections for neutral species,
-!       braching ratios for photoionization/dissociation, and braching ratios 
+!       braching ratios for photoionization/dissociation, and braching ratios
 !       for photoelectron ionization/dissociation/excitation
 !------------------------------------------------------------------------------
-        master: if (masterproc) then ! read in ascii data only on master task then b-cast 
+        master: if (masterproc) then ! read in ascii data only on master task then b-cast
            !------------------------------------------------------------------------------
-           ! read neutral species' absorption cross section and 
+           ! read neutral species' absorption cross section and
            ! photoionization/dissociation branching ratio
            !------------------------------------------------------------------------------
            unit = getunit()
@@ -138,12 +138,12 @@
            !------------------------------------------------------------------------------
            ! read O
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -159,12 +159,12 @@
            !------------------------------------------------------------------------------
            ! read O2
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -180,12 +180,12 @@
            !------------------------------------------------------------------------------
            ! read N2
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -200,12 +200,12 @@
            !------------------------------------------------------------------------------
            ! read N
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -222,12 +222,12 @@
            !------------------------------------------------------------------------------
            ! read CO2
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -261,12 +261,12 @@
            !------------------------------------------------------------------------------
            ! read O
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -282,12 +282,12 @@
            !------------------------------------------------------------------------------
            ! read O2
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -303,12 +303,12 @@
            !------------------------------------------------------------------------------
            ! read N2
            !------------------------------------------------------------------------------
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
            end if
-           read(unit,*,iostat=istat) str 
+           read(unit,*,iostat=istat) str
            if( istat /= 0 ) then
               write(iulog,*) 'jeuv_init: failed to read ',trim(locfn),'; error = ',istat
               call endrun
@@ -353,7 +353,7 @@
 !       euv_prates: array for EUV photolysis/ionization rates
 !==============================================================================
 !   Approach:
-!       call sphers 
+!       call sphers
 !            input: zenith angle
 !            output: dsdh and nid used in slant column routine
 !       call slant_col
@@ -400,11 +400,11 @@
 !------------------------------------------------------------------------------
 	integer, intent(in)     :: nlev                        ! model vertical levels
 	real(r8), intent(in)    :: zen	                       ! Zenith  angle in degree
-        real(r8), intent(in)    :: occ(nlev)                   ! atmic oxygen number density (#/cm3) 
-	real(r8), intent(in)    :: o2cc(nlev)		       ! Molecular oxygen number density (#/cm3) 
-	real(r8), intent(in)    :: n2cc(nlev)		       ! molecular nitrogen number density(#/cm3) 
+        real(r8), intent(in)    :: occ(nlev)                   ! atmic oxygen number density (#/cm3)
+	real(r8), intent(in)    :: o2cc(nlev)		       ! Molecular oxygen number density (#/cm3)
+	real(r8), intent(in)    :: n2cc(nlev)		       ! molecular nitrogen number density(#/cm3)
 	real(r8), intent(in)    :: zkm(nlev)		       ! Altitude, km,from top to bottom
-	real(r8), intent(out)   :: euv_prates(:,:)             ! EUV photolysis/ionization rates (s-1)   
+	real(r8), intent(out)   :: euv_prates(:,:)             ! EUV photolysis/ionization rates (s-1)
 
 !------------------------------------------------------------------------------
 !       local variables
@@ -418,11 +418,11 @@
 	real(r8) :: wrk(nmaj)               ! temporary array for photoabsorption rate
 	real(r8) :: absorp(nlev,lmax)       ! temporary array for photoabsorption rate
 	real(r8) :: ioniz(nlev,lmax)        ! temporary array for photoionization rate
-	real(r8) :: dsdh(0:nlev,nlev)       ! Slant path of direct beam through each layer 
-	                                    ! crossed  when travelling from the top of the atmosphere 
+	real(r8) :: dsdh(0:nlev,nlev)       ! Slant path of direct beam through each layer
+	                                    ! crossed  when travelling from the top of the atmosphere
 				            ! to layer i; dsdh(i,j), i = 0..NZ-1, j = 1..NZ-1
         integer :: nid(0:nlev)              ! Number of layers crossed by the direct
-	                                    ! beam when travelling from the top of the 
+	                                    ! beam when travelling from the top of the
                                             ! atmosphere to layer i; NID(i), i = 0..NZ-1
         real(r8) :: p_photon(nlev,nstat,nspecies)   !  photoionization/dissociation rates(s-1) (O,O2,N2,N)
         real(r8) :: p_electron(nlev,nstat,nmaj) !  photoelectron ionization/dissociation rates(s-1) (O,O2,N2)
@@ -477,7 +477,7 @@
 !------------------------------------------------------------------------------
 ! set photolysis/ionization rate for each reaction
 !------------------------------------------------------------------------------
-       prates(:,1)  = p_photon(:,2,1)  
+       prates(:,1)  = p_photon(:,2,1)
        prates(:,2)  = p_photon(:,3,1)
        prates(:,3)  = p_photon(:,4,1)
        prates(:,4)  = p_photon(:,1,4)
@@ -502,8 +502,8 @@
        prates(:,23) = .8_r8*p_electron(:,4,3)
        prates(:,24) = p_electron(:,5,2)
        prates(:,25) = p_electron(:,5,3)
-       prates(:,26) = p_photon(:,1,5) 
- 
+       prates(:,26) = p_photon(:,1,5)
+
        do m = 1,neuv
           euv_prates(:,m) = prates(nlev:1:-1,m)
        enddo
@@ -527,7 +527,7 @@
 !       euv_prates: array for EUV photolysis/ionization rates
 !==============================================================================
 !   Approach:
-!       call sphers 
+!       call sphers
 !            input: zenith angle
 !            output: dsdh and nid used in slant column routine
 !       call slant_col
@@ -586,14 +586,18 @@
 	real(r8) :: prates(kbot,13)         ! working photorates array
 	real(r8) :: wrk(nmaj)               ! temporary array for photoabsorption rate
 	real(r8) :: absorp(kbot,lmax)       ! temporary array for photoabsorption rate
-	real(r8) :: dsdh(0:nlev,nlev)       ! Slant path of direct beam through each layer 
-	                                    ! crossed  when travelling from the top of the atmosphere 
+	real(r8) :: dsdh(0:nlev,nlev)       ! Slant path of direct beam through each layer
+	                                    ! crossed  when travelling from the top of the atmosphere
 				            ! to layer i; dsdh(i,j), i = 0..NZ-1, j = 1..NZ-1
         integer :: nid(0:nlev)              ! Number of layers crossed by the direct
-	                                    ! beam when travelling from the top of the 
+	                                    ! beam when travelling from the top of the
                                             ! atmosphere to layer i; NID(i), i = 0..NZ-1
         real(r8) :: p_photon(kbot,nstat,nspecies)   !  photoionization/dissociation rates(s-1) (O,O2,N2,N)
 
+        if (.not.any(do_heating)) then
+           euv_hrates(:) = 0._r8
+           return
+        end if
 !------------------------------------------------------------------------------
 ! zero arrays
 !------------------------------------------------------------------------------

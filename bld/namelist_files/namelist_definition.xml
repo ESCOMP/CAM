@@ -3647,6 +3647,37 @@ diffusion solver routine.
 Default: set by build-namelist
 </entry>
 
+<entry id="diff_sponge_fac" type="real" category="pbl"
+       group="vert_diff_nl" valid_values="" >
+Factor to add sponge layer vertical diffusion of zonal and meridional components
+of the wind verctor (following the profile for del2 damping in the spectral-element dycore).
+
+Sponge layer interface coefficients for model tops above ptop=1E-3Pa (e.g. WACCM):
+
+        kvm_sponge(1) = 2.e5*diff_sponge_fac
+        kvm_sponge(2) = 2.e5*diff_sponge_fac
+        kvm_sponge(3) = 1.5e5*diff_sponge_fac
+        kvm_sponge(4) = 1.0e5*diff_sponge_fac
+        kvm_sponge(5) = 0.5e5*diff_sponge_fac
+        kvm_sponge(6) = 0.1e5*diff_sponge_fac
+
+Else:
+
+	kvm_sponge(1) = 2.e4*diff_sponge_fac
+        kvm_sponge(2) = 2.e4*diff_sponge_fac
+        kvm_sponge(3) = 0.4e*diff_sponge_fac
+        kvm_sponge(4) = 0.1e4*diff_sponge_fac
+
+Vertical diffusion in configurations with model tops below ~80km
+(e.g., LT and MT) is only recommended for spin-up with diff_sponge_fac=1.
+For higher tops diff_sponge_fac=1 can improve model stability in general.
+
+A too large diff_sponge_fac value can lead to "stove pipes" in the
+the zonally averaged zonal wind in the sponge layer.
+
+Default: 0.0
+</entry>
+
 <!-- CLUBB PBL Diff nl -->
 
 <entry id="clubb_cloudtop_cooling" type="logical"  category="pblrad"
@@ -5149,10 +5180,11 @@ Default: set by build-namelist
 
 <entry id="cam_chempkg" type="char*32" category="build" group="phys_ctl_nl"
        valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
-		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
-		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
-		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
-		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem">
+                     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_t1s1,trop_strat_mam5_t1s2,
+                     trop_strat_mam5_t2s1,trop_strat_mam5_t4s2,trop_strat_mam5_vbsext,trop_strat_noaero,
+                     waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,
+                     waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,
+                     waccm_tsmlt_mam5_vbsext,waccm_t4ma_mam5,waccm_ma_noaero,geoschem_mam4">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.

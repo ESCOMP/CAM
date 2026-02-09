@@ -62,10 +62,10 @@
 <ncdata hgrid="10x15" nlev="30" aquaplanet="1"     >atm/cam/inic/fv/aqua_0000-01-01_10x15_L30_c170103.nc</ncdata>
 <ncdata hgrid="10x15" nlev="30" chem="trop_mozart" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L30_c081104.nc</ncdata>
 <ncdata hgrid="10x15" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
-<ncdata hgrid="10x15" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
+<ncdata hgrid="10x15" nlev="30" chem="trop_strat_mam5_t1s1" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_10x15_L30_c121015.nc</ncdata>
 <ncdata hgrid="10x15" nlev="32"                    >atm/cam/inic/fv/cami-mam4_0000-01-01_10x15_L32_c170914.nc</ncdata>
 <ncdata hgrid="10x15" nlev="32" aquaplanet="1"     >atm/cam/inic/fv/aqua_0000-01-01_10x15_L32_c170103.nc</ncdata>
-<ncdata hgrid="10x15" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
+<ncdata hgrid="10x15" nlev="32" chem="trop_strat_mam5_t1s1">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
 <ncdata hgrid="10x15" nlev="32" carma="trop_strat_soa5"   >atm/cam/inic/fv/carma_trop_strat_2000_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
 <ncdata hgrid="10x15" nlev="32" carma="trop_strat_soa5" aquaplanet="1">atm/cam/inic/fv/aqua_carma_trop_strat_10x15_spinup01.cam.i.0002-01-01-00000_c211027.nc</ncdata>
 <ncdata hgrid="10x15" nlev="66"                    >atm/waccm/ic/cami_2000-01-01_10x15_L66_c041121.nc</ncdata>
@@ -79,7 +79,7 @@
 <ncdata hgrid="4x5" nlev="30"                      >atm/cam/inic/fv/cami_0000-01-01_4x5_L30_c090108.nc</ncdata>
 <ncdata hgrid="4x5" nlev="30" chem="trop_mozart"   >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L30_c081104.nc</ncdata>
 <ncdata hgrid="4x5" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
-<ncdata hgrid="4x5" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
+<ncdata hgrid="4x5" nlev="30" chem="trop_strat_mam5_t1s1" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
 <ncdata hgrid="4x5" nlev="66"                      >atm/waccm/ic/wa3_4x5_1950_spinup.cam2.i.1960-01-01-00000.nc</ncdata>
 <ncdata hgrid="4x5" nlev="66"  chem="waccm_ma_sulfur" >atm/waccm/ic/f40.2000.4deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
 <ncdata hgrid="4x5" nlev="70"                      >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
@@ -101,7 +101,7 @@
 <ncdata hgrid="1.9x2.5" nlev="30" ic_ymd="901"     >atm/cam/inic/fv/cami_0000-09-01_1.9x2.5_L30_c070109.nc</ncdata>
 <ncdata hgrid="1.9x2.5" nlev="30" aquaplanet="1"   >atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L30_c161020.nc</ncdata>
 <ncdata hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam4_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
-<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam5_vbs" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
+<ncdata hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam5_t1s1" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
 <ncdata hgrid="1.9x2.5" nlev="30" chem="trop_mozart"                   >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L30_c081104.nc</ncdata>
 <ncdata hgrid="1.9x2.5" nlev="30" chem="trop_mozart" ic_ymd="19900101" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L30_c080215.nc</ncdata>
 <ncdata hgrid="1.9x2.5" nlev="32"                  >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L32_c150407.nc</ncdata>
@@ -132,8 +132,8 @@
 <ncdata hgrid="0.9x1.25" nlev="32" aquaplanet="1"  >atm/cam/inic/fv/aqua_0006-01-01_0.9x1.25_L32_c161020.nc</ncdata>
 <ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
-<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_t1s1">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata hgrid="0.9x1.25" nlev="32" chem="trop_strat_mam5_t2s1">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata hgrid="0.9x1.25" nlev="66"                 >atm/waccm/ic/cami_2000-02-01_0.9x1.25_L66_c040928.nc</ncdata>
 <ncdata hgrid="0.9x1.25" nlev="70"                 >atm/waccm/ic/FWT2000_f09_spinup01.cam.i.0001-01-02-00000_c160315.nc</ncdata>
 <ncdata hgrid="0.9x1.25" nlev="70" carma="trop_strat_soa1">atm/waccm/ic/FWmaCARMAHIST_f09_spinup01.cam.i.1980-01-01-00000_c220128.nc</ncdata>
@@ -160,7 +160,8 @@
 <ncdata hgrid="ne3np4"   nlev="32"  aquaplanet="1" >atm/cam/inic/se/cam6_QPC6_aqua_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
 <ncdata hgrid="ne3np4"   nlev="58"             >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
 <ncdata hgrid="ne3np4"   nlev="93"             >atm/cam/inic/se/cam6_FMTHIST_ne3pg3_mg37_L93_79-02-01_c240517.nc</ncdata>
-<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_ts4" >atm/cam/inic/se/FCts4MTHIST_ne3pg3_spinup02.cam.i.1980-01-01_c240702.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_t1s2">atm/cam/inic/se/FHISTC_MTt1s_ne3pg3_O2_spinup01.cam.i.1980-01-01_c260201.nc</ncdata>
+<ncdata hgrid="ne3np4"   nlev="93" chem="trop_strat_mam5_t4s2">atm/cam/inic/se/FHISTC_MTt1s_ne3pg3_O2_spinup01.cam.i.1980-01-01_c260201.nc</ncdata>
 
 <ncdata hgrid="ne5np4"   nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
 <ncdata hgrid="ne5np4"   nlev="30"                 >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
@@ -192,15 +193,16 @@
 <ncdata hgrid="ne30np4"  nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne30np4_L32_c170509.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_vbs" npg="3">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
-<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_vbs" npg="3">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_t1s1">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_t1s1" npg="3">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
-<ncdata hgrid="ne30np4"  nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="32" chem="trop_strat_mam5_t2s1">atm/cam/inic/se/f.e22.FC2010climo.ne30_ne30_mg17.cam6_2_032.001.cam.i.0006-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="58" chem="trop_strat_mam5_t1s1">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="58"                 >atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="70" waccm_phys="1"  >atm/waccm/ic/FW2000.ne30pg3_ne30pg3_nlev70_c230906.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="93"                           >atm/cam/inic/se/c153_ne30pg3_FMTHIST_x02.cam.i.1990-01-01-00000_c240618.nc</ncdata>
-<ncdata hgrid="ne30np4"  nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.cam6_3_160.FCMT_ne30.moving_mtn.001.cam.i.1996-01-01-00000_c240618.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="93" chem="trop_strat_mam5_t1s2">atm/cam/inic/se/FHISTC_MTt1s_ne30pg3_O2_spinup01.cam.i.1980-01-01_c260201.nc</ncdata>
+<ncdata hgrid="ne30np4"  nlev="93" chem="trop_strat_mam5_t4s2">atm/cam/inic/se/FHISTC_MTt1s_ne30pg3_O2_spinup01.cam.i.1980-01-01_c260201.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="110"                >atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="130" waccmx="1"         >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="130" waccmx="1" npg="3" >atm/waccm/ic/waccmx_ne30pg3_L130_c250307.nc</ncdata>
@@ -226,7 +228,7 @@
 
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" >atm/cam/inic/se/F2000climo_CONUS_30x8_mt12_mg3_01-01-00000_c200421.nc</ncdata>
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
-<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_t1s1">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="70" >atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
@@ -802,6 +804,7 @@
 
 <effgw_beres_dp                                               >0.7D0</effgw_beres_dp>
 <effgw_beres_dp model_top="lt"                                >0.15D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"  waccm_phys="1"                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp model_top="mt"                                >0.15D0</effgw_beres_dp>
 <effgw_beres_dp model_top="ht" phys="cam7"                    >0.25D0</effgw_beres_dp>
 <effgw_beres_dp model_top="xt" phys="cam7"                    >0.25D0</effgw_beres_dp>
@@ -810,7 +813,7 @@
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="ne30np4"                >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="geoschem_mam4" hgrid="0.9x1.25"         >0.5D0</effgw_beres_dp>
-<effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
+<effgw_beres_dp chem="trop_strat_mam5_t1s1" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_beres_dp carma="trop_strat_soa1" hgrid="0.9x1.25"      >0.5D0</effgw_beres_dp>
 <effgw_beres_dp carma="trop_strat_soa5" hgrid="0.9x1.25"      >0.5D0</effgw_beres_dp>
@@ -837,7 +840,7 @@
 <gw_prndl     chem="geoschem_mam4">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam4_vbs">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam4_vbsext">0.5d0  </gw_prndl>
-<gw_prndl     chem="trop_strat_mam5_vbs">0.5d0  </gw_prndl>
+<gw_prndl     chem="trop_strat_mam5_t1s1">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_vbsext">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
@@ -845,7 +848,7 @@
 <gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbs">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbsext">2.d0   </gw_oro_south_fac>
-<gw_oro_south_fac chem="trop_strat_mam5_vbs">2.d0   </gw_oro_south_fac>
+<gw_oro_south_fac chem="trop_strat_mam5_t1s1">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam5_vbsext">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac carma="trop_strat_soa1">2.D0</gw_oro_south_fac>
 <gw_oro_south_fac carma="trop_strat_soa5">2.D0</gw_oro_south_fac>
@@ -855,7 +858,7 @@
 <gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbs">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbsext">.false.</gw_lndscl_sgh>
-<gw_lndscl_sgh chem="trop_strat_mam5_vbs">.false.</gw_lndscl_sgh>
+<gw_lndscl_sgh chem="trop_strat_mam5_t1s1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam5_vbsext">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh carma="trop_strat_soa5">.false.</gw_lndscl_sgh>
@@ -865,7 +868,7 @@
 <gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
-<gw_apply_tndmax chem="trop_strat_mam5_vbs">.false.</gw_apply_tndmax>
+<gw_apply_tndmax chem="trop_strat_mam5_t1s1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam5_vbsext">.false.</gw_apply_tndmax>
 <gw_apply_tndmax carma="trop_strat_soa1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax carma="trop_strat_soa5">.false.</gw_apply_tndmax>
@@ -1519,13 +1522,13 @@
 <num_a2_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</num_a2_cv_ext_file>
 <so2_cv_ext_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so2_cv_ext_file>
 
-<so4_a1_an_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a1_anthro-ene_vertical_v3.1_c20191104.nc</so4_a1_an_ext_file>
-<num_a1_an_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a1_anthro-ene_vertical_v3.1_c20191104.nc</num_a1_an_ext_file>
-<so4_a1_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so4_a1_cv_ext_file>
-<num_a1_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</num_a1_cv_ext_file>
-<so4_a2_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so4_a2_cv_ext_file>
-<num_a2_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</num_a2_cv_ext_file>
-<so2_cv_ext_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so2_cv_ext_file>
+<so4_a1_an_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a1_anthro-ene_vertical_v3.1_c20191104.nc</so4_a1_an_ext_file>
+<num_a1_an_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a1_anthro-ene_vertical_v3.1_c20191104.nc</num_a1_an_ext_file>
+<so4_a1_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so4_a1_cv_ext_file>
+<num_a1_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</num_a1_cv_ext_file>
+<so4_a2_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so4_a2_cv_ext_file>
+<num_a2_cv_ext_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</num_a2_cv_ext_file>
+<so2_cv_ext_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne0CONUSne30x8_c20191202.nc</so2_cv_ext_file>
 
 <bc_a4_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_bc_a4_v3.1_c20191103.nc</bc_a4_an_srf_file>
 <num_a4_bc_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_num_bc_a4_v3.1_c20191103.nc</num_a4_bc_srf_file>
@@ -1540,18 +1543,18 @@
 <so4_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a2_anthro-res_surface_v3.1_c20191103.nc</so4_a2_an_srf_file>
 <num_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a2_anthro-res_surface_v3.1_c20191103.nc</num_a2_an_srf_file>
 
-<bc_a4_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_bc_a4_v3.1_c20191103.nc</bc_a4_an_srf_file>
-<num_a4_bc_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_num_bc_a4_v3.1_c20191103.nc</num_a4_bc_srf_file>
-<bc_a4_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_bc_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</bc_a4_bb_srf_file>
-<num_a4_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_num_bc_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</num_a4_bb_srf_file>
-<pom_a4_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_pom_a4_v3.1_c20191103.nc</pom_a4_an_srf_file>
-<num_a4_oc_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_num_pom_a4_v3.1_c20191103.nc</num_a4_oc_srf_file>
-<pom_a4_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_pom_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</pom_a4_bb_srf_file>
-<num_pom_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_num_pom_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</num_pom_bb_srf_file>
-<so4_a1_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a1_anthro-ag-ship_surface_v3.1_c20191103.nc</so4_a1_an_srf_file>
-<num_a1_sh_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a1_anthro-ag-ship_surface_v3.1_c20191103.nc</num_a1_sh_srf_file>
-<so4_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a2_anthro-res_surface_v3.1_c20191103.nc</so4_a2_an_srf_file>
-<num_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a2_anthro-res_surface_v3.1_c20191103.nc</num_a2_an_srf_file>
+<bc_a4_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_bc_a4_v3.1_c20191103.nc</bc_a4_an_srf_file>
+<num_a4_bc_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_num_bc_a4_v3.1_c20191103.nc</num_a4_bc_srf_file>
+<bc_a4_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_bc_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</bc_a4_bb_srf_file>
+<num_a4_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_num_bc_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</num_a4_bb_srf_file>
+<pom_a4_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_pom_a4_v3.1_c20191103.nc</pom_a4_an_srf_file>
+<num_a4_oc_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_num_pom_a4_v3.1_c20191103.nc</num_a4_oc_srf_file>
+<pom_a4_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_pom_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</pom_a4_bb_srf_file>
+<num_pom_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_num_pom_a4_bb_surface_20100101-20171231_ne0conus_c200619.nc</num_pom_bb_srf_file>
+<so4_a1_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a1_anthro-ag-ship_surface_v3.1_c20191103.nc</so4_a1_an_srf_file>
+<num_a1_sh_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a1_anthro-ag-ship_surface_v3.1_c20191103.nc</num_a1_sh_srf_file>
+<so4_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_so4_a2_anthro-res_surface_v3.1_c20191103.nc</so4_a2_an_srf_file>
+<num_a2_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_num_so4_a2_anthro-res_surface_v3.1_c20191103.nc</num_a2_an_srf_file>
 
 <BENZENE_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_BENZENE_v3.1_c20191103.nc</BENZENE_an_srf_file>
 <BENZENE_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BENZENE_bb_surface_20100101-20171231_ne0conus_c200619.nc</BENZENE_bb_srf_file>
@@ -1628,78 +1631,78 @@
 <XYLENES_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_XYLENES_v3.1_c20191103.nc</XYLENES_an_srf_file>
 <XYLENES_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam4_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_XYLENES_bb_surface_20100101-20171231_ne0conus_c200619.nc</XYLENES_bb_srf_file>
 
-<BIGALD_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGALD_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGALD_bb_srf_file>
-<BIGALK_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_BIGALK_v3.1_c20191103.nc</BIGALK_an_srf_file>
-<BIGALK_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGALK_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGALK_bb_srf_file>
-<BIGENE_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_BIGENE_v3.1_c20191103.nc</BIGENE_an_srf_file>
-<BIGENE_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGENE_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGENE_bb_srf_file>
-<C2H2_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H2_v3.1_c20191103.nc</C2H2_an_srf_file>
-<C2H2_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H2_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H2_bb_srf_file>
-<C2H4_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H4_v3.1_c20191103.nc</C2H4_an_srf_file>
-<C2H4_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H4_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H4_bb_srf_file>
-<C2H4_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C2H4_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C2H4_ot_srf_file>
-<C2H5OH_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H5OH_v3.1_c20191103.nc</C2H5OH_an_srf_file>
-<C2H5OH_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H5OH_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H5OH_bb_srf_file>
-<C2H6_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H6_v3.1_c20191103.nc</C2H6_an_srf_file>
-<C2H6_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H6_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H6_bb_srf_file>
-<C2H6_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C2H6_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C2H6_ot_srf_file>
-<C3H6_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C3H6_v3.1_c20191103.nc</C3H6_an_srf_file>
-<C3H6_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C3H6_bb_surface_20100101-20171231_ne0conus_c200619.nc</C3H6_bb_srf_file>
-<C3H6_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C3H6_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C3H6_ot_srf_file>
-<C3H8_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C3H8_v3.1_c20191103.nc</C3H8_an_srf_file>
-<C3H8_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C3H8_bb_surface_20100101-20171231_ne0conus_c200619.nc</C3H8_bb_srf_file>
-<C3H8_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C3H8_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C3H8_ot_srf_file>
-<CH2O_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH2O_v3.1_c20191103.nc</CH2O_an_srf_file>
-<CH2O_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH2O_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH2O_bb_srf_file>
-<CH3CHO_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3CHO_v3.1_c20191103.nc</CH3CHO_an_srf_file>
-<CH3CHO_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3CHO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3CHO_bb_srf_file>
-<CH3CN_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3CN_v3.1_c20191103.nc</CH3CN_an_srf_file>
-<CH3CN_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3CN_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3CN_bb_srf_file>
-<CH3COCH3_an_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3COCH3_v3.1_c20191103.nc</CH3COCH3_an_srf_file>
-<CH3COCH3_bb_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COCH3_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COCH3_bb_srf_file>
-<CH3COCHO_bb_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COCHO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COCHO_bb_srf_file>
-<CH3COOH_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3COOH_v3.1_c20191103.nc</CH3COOH_an_srf_file>
-<CH3COOH_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COOH_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COOH_bb_srf_file>
-<CH3OH_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3OH_v3.1_c20191103.nc</CH3OH_an_srf_file>
-<CH3OH_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3OH_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3OH_bb_srf_file>
-<CO_an_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CO_v3.1_c20191103.nc</CO_an_srf_file>
-<CO_bb_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CO_bb_srf_file>
-<CO_ot_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_CO_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</CO_ot_srf_file>
-<CRESOL_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CRESOL_bb_surface_20100101-20171231_ne0conus_c200619.nc</CRESOL_bb_srf_file>
-<dms_ot_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_DMS_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</dms_ot_srf_file>
-<GLYALD_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_GLYALD_bb_surface_20100101-20171231_ne0conus_c200619.nc</GLYALD_bb_srf_file>
-<HCN_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_HCN_v3.1_c20191103.nc</HCN_an_srf_file>
-<HCN_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HCN_bb_surface_20100101-20171231_ne0conus_c200619.nc</HCN_bb_srf_file>
-<HCOOH_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_HCOOH_v3.1_c20191103.nc</HCOOH_an_srf_file>
-<HCOOH_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HCOOH_bb_surface_20100101-20171231_ne0conus_c200619.nc</HCOOH_bb_srf_file>
-<HYAC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HYAC_bb_surface_20100101-20171231_ne0conus_c200619.nc</HYAC_bb_srf_file>
-<ISOP_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_ISOP_v3.1_c20191103.nc</ISOP_an_srf_file>
-<ISOP_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_ISOP_bb_surface_20100101-20171231_ne0conus_c200619.nc</ISOP_bb_srf_file>
-<IVOC_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_IVOC_v3.1_c20191103.nc</IVOC_an_srf_file>
-<IVOC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_IVOC_bb_surface_20100101-20171231_ne0conus_c200619.nc</IVOC_bb_srf_file>
-<MACR_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MACR_bb_surface_20100101-20171231_ne0conus_c200619.nc</MACR_bb_srf_file>
-<MEK_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_MEK_v3.1_c20191103.nc</MEK_an_srf_file>
-<MEK_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MEK_bb_surface_20100101-20171231_ne0conus_c200619.nc</MEK_bb_srf_file>
-<MTERP_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_MTERP_v3.1_c20191103.nc</MTERP_an_srf_file>
-<MTERP_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_TERPENES_bb_surface_20100101-20171231_ne0conus_c200619.nc</MTERP_bb_srf_file>
-<MVK_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MVK_bb_surface_20100101-20171231_ne0conus_c200619.nc</MVK_bb_srf_file>
-<NH3_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_NH3_v3.1_c20191103.nc</NH3_an_srf_file>
-<NH3_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NH3_bb_surface_20100101-20171231_ne0conus_c200619.nc</NH3_bb_srf_file>
-<NH3_ot_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_NH3_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</NH3_ot_srf_file>
-<NO_an_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_NOx_v3.1_c20191103.nc</NO_an_srf_file>
-<NO_bb_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NO_bb_surface_20100101-20171231_ne0conus_c200619.nc</NO_bb_srf_file>
-<NO_ot_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_NO_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</NO_ot_srf_file>
-<NO2_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NO2_bb_surface_20100101-20171231_ne0conus_c200619.nc</NO2_bb_srf_file>
-<so2_ag_sh_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_SO2_anthro-ag-ship-res_surface_v3.1_c20191103.nc</so2_ag_sh_file>
-<so2_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_SO2_anthro-ene_surface_v3.1_c20191103.nc</so2_an_srf_file>
-<so2_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_SO2_bb_surface_20100101-20171231_ne0conus_c200619.nc</so2_bb_srf_file>
-<SOAG_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_SOAGx1.5_v3.1_c20191103.nc</SOAG_an_srf_file>
-<SVOC_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_SVOC_v3.1_c20191103.nc</SVOC_an_srf_file>
-<SVOC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_SVOC_bb_surface_20100101-20171231_ne0conus_c200619.nc</SVOC_bb_srf_file>
-<TOLUENE_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_TOLUENE_v3.1_c20191103.nc</TOLUENE_an_srf_file>
-<TOLUENE_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_TOLUENE_bb_surface_20100101-20171231_ne0conus_c200619.nc</TOLUENE_bb_srf_file>
-<XYLENES_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_XYLENES_v3.1_c20191103.nc</XYLENES_an_srf_file>
-<XYLENES_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_vbs" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_XYLENES_bb_surface_20100101-20171231_ne0conus_c200619.nc</XYLENES_bb_srf_file>
+<BIGALD_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGALD_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGALD_bb_srf_file>
+<BIGALK_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_BIGALK_v3.1_c20191103.nc</BIGALK_an_srf_file>
+<BIGALK_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGALK_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGALK_bb_srf_file>
+<BIGENE_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_BIGENE_v3.1_c20191103.nc</BIGENE_an_srf_file>
+<BIGENE_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_BIGENE_bb_surface_20100101-20171231_ne0conus_c200619.nc</BIGENE_bb_srf_file>
+<C2H2_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H2_v3.1_c20191103.nc</C2H2_an_srf_file>
+<C2H2_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H2_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H2_bb_srf_file>
+<C2H4_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H4_v3.1_c20191103.nc</C2H4_an_srf_file>
+<C2H4_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H4_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H4_bb_srf_file>
+<C2H4_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C2H4_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C2H4_ot_srf_file>
+<C2H5OH_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H5OH_v3.1_c20191103.nc</C2H5OH_an_srf_file>
+<C2H5OH_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H5OH_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H5OH_bb_srf_file>
+<C2H6_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C2H6_v3.1_c20191103.nc</C2H6_an_srf_file>
+<C2H6_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C2H6_bb_surface_20100101-20171231_ne0conus_c200619.nc</C2H6_bb_srf_file>
+<C2H6_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C2H6_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C2H6_ot_srf_file>
+<C3H6_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C3H6_v3.1_c20191103.nc</C3H6_an_srf_file>
+<C3H6_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C3H6_bb_surface_20100101-20171231_ne0conus_c200619.nc</C3H6_bb_srf_file>
+<C3H6_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C3H6_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C3H6_ot_srf_file>
+<C3H8_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_C3H8_v3.1_c20191103.nc</C3H8_an_srf_file>
+<C3H8_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_C3H8_bb_surface_20100101-20171231_ne0conus_c200619.nc</C3H8_bb_srf_file>
+<C3H8_ot_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_C3H8_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</C3H8_ot_srf_file>
+<CH2O_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH2O_v3.1_c20191103.nc</CH2O_an_srf_file>
+<CH2O_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH2O_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH2O_bb_srf_file>
+<CH3CHO_an_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3CHO_v3.1_c20191103.nc</CH3CHO_an_srf_file>
+<CH3CHO_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3CHO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3CHO_bb_srf_file>
+<CH3CN_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3CN_v3.1_c20191103.nc</CH3CN_an_srf_file>
+<CH3CN_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3CN_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3CN_bb_srf_file>
+<CH3COCH3_an_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3COCH3_v3.1_c20191103.nc</CH3COCH3_an_srf_file>
+<CH3COCH3_bb_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COCH3_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COCH3_bb_srf_file>
+<CH3COCHO_bb_srf_file hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COCHO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COCHO_bb_srf_file>
+<CH3COOH_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3COOH_v3.1_c20191103.nc</CH3COOH_an_srf_file>
+<CH3COOH_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3COOH_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3COOH_bb_srf_file>
+<CH3OH_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CH3OH_v3.1_c20191103.nc</CH3OH_an_srf_file>
+<CH3OH_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CH3OH_bb_surface_20100101-20171231_ne0conus_c200619.nc</CH3OH_bb_srf_file>
+<CO_an_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_CO_v3.1_c20191103.nc</CO_an_srf_file>
+<CO_bb_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CO_bb_surface_20100101-20171231_ne0conus_c200619.nc</CO_bb_srf_file>
+<CO_ot_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_CO_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</CO_ot_srf_file>
+<CRESOL_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_CRESOL_bb_surface_20100101-20171231_ne0conus_c200619.nc</CRESOL_bb_srf_file>
+<dms_ot_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_DMS_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</dms_ot_srf_file>
+<GLYALD_bb_srf_file   hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_GLYALD_bb_surface_20100101-20171231_ne0conus_c200619.nc</GLYALD_bb_srf_file>
+<HCN_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_HCN_v3.1_c20191103.nc</HCN_an_srf_file>
+<HCN_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HCN_bb_surface_20100101-20171231_ne0conus_c200619.nc</HCN_bb_srf_file>
+<HCOOH_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_HCOOH_v3.1_c20191103.nc</HCOOH_an_srf_file>
+<HCOOH_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HCOOH_bb_surface_20100101-20171231_ne0conus_c200619.nc</HCOOH_bb_srf_file>
+<HYAC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_HYAC_bb_surface_20100101-20171231_ne0conus_c200619.nc</HYAC_bb_srf_file>
+<ISOP_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_ISOP_v3.1_c20191103.nc</ISOP_an_srf_file>
+<ISOP_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_ISOP_bb_surface_20100101-20171231_ne0conus_c200619.nc</ISOP_bb_srf_file>
+<IVOC_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_IVOC_v3.1_c20191103.nc</IVOC_an_srf_file>
+<IVOC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_IVOC_bb_surface_20100101-20171231_ne0conus_c200619.nc</IVOC_bb_srf_file>
+<MACR_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MACR_bb_surface_20100101-20171231_ne0conus_c200619.nc</MACR_bb_srf_file>
+<MEK_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_MEK_v3.1_c20191103.nc</MEK_an_srf_file>
+<MEK_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MEK_bb_surface_20100101-20171231_ne0conus_c200619.nc</MEK_bb_srf_file>
+<MTERP_an_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_MTERP_v3.1_c20191103.nc</MTERP_an_srf_file>
+<MTERP_bb_srf_file    hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_TERPENES_bb_surface_20100101-20171231_ne0conus_c200619.nc</MTERP_bb_srf_file>
+<MVK_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_MVK_bb_surface_20100101-20171231_ne0conus_c200619.nc</MVK_bb_srf_file>
+<NH3_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_NH3_v3.1_c20191103.nc</NH3_an_srf_file>
+<NH3_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NH3_bb_surface_20100101-20171231_ne0conus_c200619.nc</NH3_bb_srf_file>
+<NH3_ot_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_NH3_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</NH3_ot_srf_file>
+<NO_an_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_NOx_v3.1_c20191103.nc</NO_an_srf_file>
+<NO_bb_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NO_bb_surface_20100101-20171231_ne0conus_c200619.nc</NO_bb_srf_file>
+<NO_ot_srf_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/historical_ne0CONUSne30x8/emissions-cmip6_NO_other_surface_1750_2015_historical_ne0CONUSne30x8_c20191028.nc</NO_ot_srf_file>
+<NO2_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_NO2_bb_surface_20100101-20171231_ne0conus_c200619.nc</NO2_bb_srf_file>
+<so2_ag_sh_file       hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_SO2_anthro-ag-ship-res_surface_v3.1_c20191103.nc</so2_ag_sh_file>
+<so2_an_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_SO2_anthro-ene_surface_v3.1_c20191103.nc</so2_an_srf_file>
+<so2_bb_srf_file      hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_SO2_bb_surface_20100101-20171231_ne0conus_c200619.nc</so2_bb_srf_file>
+<SOAG_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_SOAGx1.5_v3.1_c20191103.nc</SOAG_an_srf_file>
+<SVOC_an_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_SVOC_v3.1_c20191103.nc</SVOC_an_srf_file>
+<SVOC_bb_srf_file     hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_SVOC_bb_surface_20100101-20171231_ne0conus_c200619.nc</SVOC_bb_srf_file>
+<TOLUENE_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_TOLUENE_v3.1_c20191103.nc</TOLUENE_an_srf_file>
+<TOLUENE_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_TOLUENE_bb_surface_20100101-20171231_ne0conus_c200619.nc</TOLUENE_bb_srf_file>
+<XYLENES_an_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/CAMS_Anthro_ne0CONUSne30x8/CAMS-GLOB-ANT_Glb_ne0CONUSne30x8_anthro_surface_XYLENES_v3.1_c20191103.nc</XYLENES_an_srf_file>
+<XYLENES_bb_srf_file  hgrid="ne0np4CONUS.ne30x8" chem="trop_strat_mam5_t1s1" ver="cam6">atm/cam/chem/emis/finn1.5/CONUSne30x8/emissions-finnv1.5_XYLENES_bb_surface_20100101-20171231_ne0conus_c200619.nc</XYLENES_bb_srf_file>
 
 <!-- SCAM CMIP emissions - lightweight set of emissions files for single column -->
 
@@ -2089,6 +2092,9 @@
 <do_iss phys="cam5"      > .true.  </do_iss>
 <do_iss phys="cam6"      > .true.  </do_iss>
 <do_iss phys="cam7"      > .true.  </do_iss>
+
+<!-- Sponge layer vertical diffusion factor -->
+<diff_sponge_fac               > 0.0D0 </diff_sponge_fac>
 
 <!-- Use convective water in radiation calculation -->
 <conv_water_in_rad                  > 0 </conv_water_in_rad>
@@ -2513,18 +2519,10 @@
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_vbs">4.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">2.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_vbs">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_ts1">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_ts1">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_tst">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_tst">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_vbs">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_vbs">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_vbs">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_vbs">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_ts1">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_ts1">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_tst">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_tst">4.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_t1s1">2.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_t1s1">4.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_t1s1">2.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_t1s1">4.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             waccm_phys="1">2.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             waccm_phys="1">4.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    waccm_phys="1">2.0D0</dust_emis_fact>
@@ -3047,6 +3045,7 @@
 <history_eddy>                 .false.  </history_eddy>
 <history_budget>               .false.  </history_budget>
 <history_waccm>                .false.  </history_waccm>
+<history_waccm waccm_phys="1" model_top="mt">.false.</history_waccm>
 <history_waccm waccm_phys="1"> .true.   </history_waccm>
 <history_waccmx>               .false.  </history_waccmx>
 <history_waccmx waccmx="1">    .true.   </history_waccmx>
@@ -3182,6 +3181,7 @@
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  waccm_phys="1"  model_top="mt"                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1"            model_top="none"> 10 </se_hypervis_subcycle>
@@ -3200,6 +3200,7 @@
 
 <se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="mt" waccm_phys="1"> 3  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"> 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"> 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                                > 20 </se_hypervis_subcycle_sponge>
@@ -3251,6 +3252,7 @@
 <se_sponge_del4_nu_div_fac model_top="ht"                           > 7.5 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+<se_sponge_del4_lev waccm_phys="1" model_top="mt"> -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="ht"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
@@ -3284,6 +3286,7 @@
 <se_nsplit waccmx="1" hgrid="ne120np4" nlev="273" > 10 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
+<se_rsplit waccm_phys="1" model_top="mt"            > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
 <se_rsplit model_top="ht"                           > 2 </se_rsplit>
 <se_rsplit waccmx="1"                               > 4 </se_rsplit>
@@ -3418,7 +3421,7 @@
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
                    'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
 </rxn_rate_sums>
-<rxn_rate_sums chem="trop_strat_mam5_ts2">
+<rxn_rate_sums chem="trop_strat_mam5_t2s1">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
                'MCO3_NO + MEKO2_NO + ALKO2_NO + jalknit + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
@@ -3529,7 +3532,7 @@
               'APIN_O3 + BPIN_O3 + LIMON_O3 + MYRC_O3 + ',
               'ISOPN1D_O3 + ISOPN4D_O3 + ISOPNOOHD_O3 + NC4CHO_O3 + TERPF1_O3 + TERPF2_O3'
 </rxn_rate_sums>
-<rxn_rate_sums chem="trop_strat_mam5_ts4">
+<rxn_rate_sums chem="trop_strat_mam5_t4s2">
   'O3_Prod = NO_HO2 + CH3O2_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ',
            ' MACRO2_NOa + MCO3_NO + .92*ISOPO2_NO + ISOPNO3_NO + XO2_NO + jnoa + jonitr + NOA_OH ',
            'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3',
@@ -3557,6 +3560,11 @@
   'Ox_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
            ' 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + C2H4_O3 + ',
            ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3 + S_O3 + SO_O3'
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_t4ma_mam5">
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O3 + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + ',
+            ' 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3 + SO_O3 + ',
+            ' C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + TERP_O3'
 </rxn_rate_sums>
 <rxn_rate_sums>
   'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + ',
