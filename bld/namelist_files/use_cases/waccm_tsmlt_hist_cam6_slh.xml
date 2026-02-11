@@ -15,11 +15,11 @@
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="1.9x2.5"  nlev="70">atm/waccm/ic/BW.f19_g16.L70.cesm2.2-asdbranch_slh_released.BWSSPGENcmip6_slh.AllHAL5_ssp370.cam.i.2000-01-01-00000_c250116.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5"  nlev="70">atm/waccm/ic/SLH/BW.f19_g16.L70.cesm2.2-asdbranch_slh_released.BWSSPGENcmip6_slh.AllHAL5_ssp370.cam.i.2000-01-01-00000_c260206.nc</ncdata>
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_HIST_c170126_VSL_Cl_CHCL3x1p15_C2H4CL2x1p15_c20251117.nc</flbc_file>
+<flbc_file>atm/waccm/lb/SLH/LBC_1750-2014_CMIP6_0p5degLat_HIST_c170126_VSL_Cl_CHCL3x1p15_C2H4CL2x1p15_c20251117.nc</flbc_file>
 <flbc_list>'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2', 'HCFC22',
            'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'H2402', 'OCS', 'SF6', 'CHCL3', 'C2H4CL2'</flbc_list>
 <!-- RPF: 'CFC11eq' is included in default WACCM namelists ... should we include it for SLH? -->

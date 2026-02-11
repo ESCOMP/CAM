@@ -5,8 +5,8 @@
 <start_ymd>00010101</start_ymd>
 
 <!-- Initial conditions -->
-<ncdata dyn="fv" hgrid="1.9x2.5">atm/cam/inic/fv/FC.f19_f19_mg17.L32.cesm2.2-asdbranch_slh_released.FCHIST_slh.Historical_SLH.cam.i.2000-01-01-00000_c241214.nc</ncdata>
-<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/FC.f09_f09_mg17.L32.cesm2.2-asdbranch_slh_released.FCHIST_slh.Setup_SLH_HistorLNOx.cam.i.2000-01-01-00000_c250626.nc</ncdata>
+<ncdata dyn="fv" hgrid="1.9x2.5">atm/cam/chem/ic/SLH/FC.f19_f19_mg17.L32.cesm2.2-asdbranch_slh_released.FCnudged_slh.Historic_SLH.cam.i.2000-01-01-00000_c260206.nc</ncdata>
+<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/chem/ic/SLH/FC.f09_f09_mg17.L32.cesm2.2-asdbranch_slh_released.FCnudged_slh.Setup_SLH_HistLNOx.cam.i.2000-01-01-00000_c260206.nc</ncdata>
 
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
@@ -19,7 +19,7 @@
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_HIST_c170126_VSL_Cl_CHCL3x1p15_C2H4CL2x1p15_c20251117.nc</flbc_file>
+<flbc_file>atm/waccm/lb/SLH/LBC_1750-2014_CMIP6_0p5degLat_HIST_c170126_VSL_Cl_CHCL3x1p15_C2H4CL2x1p15_c20251117.nc</flbc_file>
 <flbc_list>'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2', 'HCFC22',
            'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'H2402', 'OCS', 'SF6', 'CHCL3', 'C2H4CL2'</flbc_list>
 
@@ -123,20 +123,20 @@
          'XYLENES  -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_XYLENES_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
-         'C2CL4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_C2Cl4_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc',
-         'CH2BR2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Br2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CH2BRCL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2BrCl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CH2CL2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Cl2_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc',
-         'CH2I2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2I2_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CH2IBR   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2IBr_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CH2ICL   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2ICl_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CH3I     -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH3I_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CHBR2CL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr2Cl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CHBR3    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr3_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'CHBRCL2  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBrCl2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc',
-         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
-         'HOI      -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_HOI_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc',
-         'I2       -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_I2_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc',
+         'C2CL4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_C2Cl4_NoNeg_surface_Claxton2020_flx1p15_serial_1750-2100_1.9x2.5_c251203.nc',
+         'CH2BR2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Br2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CH2BRCL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2BrCl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CH2CL2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Cl2_NoNeg_surface_Claxton2020_flx1p15_serial_1750-2100_1.9x2.5_c251203.nc',
+         'CH2I2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2I2_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CH2IBR   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2IBr_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CH2ICL   -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH2ICl_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CH3I     -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_CH3I_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CHBR2CL  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr2Cl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CHBR3    -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr3_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'CHBRCL2  -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBrCl2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'HOI      -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_HOI_ocean_surface_PradosRoman2015_online_1750-2100_1.9x2.5_c251204.nc',
+         'I2       -> $INPUTDATA_ROOT/atm/cam/chem/emis/EMIS_SLH/emissions_I2_ocean_surface_PradosRoman2015_online_1750-2100_1.9x2.5_c251204.nc',
          'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'num_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc',

@@ -1033,19 +1033,19 @@
 <so4_vrt_emis_file >atm/cam/chem/trop_mozart_aero/emis/aerocom_SO4_vertical_2000.c080807.nc</so4_vrt_emis_file>
 
 <!-- SLH chemistry emissions -->
-<c2cl4_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_C2Cl4_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc</c2cl4_slh_emis_file>
-<ch2br2_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Br2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc</ch2br2_slh_emis_file>
-<ch2brcl_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2BrCl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc</ch2brcl_slh_emis_file>
-<ch2cl2_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Cl2_NoNeg_surface_Claxton2020_flx1p15_serial_1850-2100_1.9x2.5_c240722.nc</ch2cl2_slh_emis_file>
-<ch2i2_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/emissions_CH2I2_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc</ch2i2_slh_emis_file>
-<ch2ibr_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/emissions_CH2IBr_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc</ch2ibr_slh_emis_file>
-<ch2icl_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/emissions_CH2ICl_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc</ch2icl_slh_emis_file>
-<ch3i_slh_emis_file   >atm/cam/chem/emis/EMIS_SLH/emissions_CH3I_chlorophyll_surface_Ordonez2012_cyclical_1850-2100_1.9x2.5_c240804.nc</ch3i_slh_emis_file>
-<chbr2cl_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr2Cl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc</chbr2cl_slh_emis_file>
-<chbr3_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr3_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc</chbr3_slh_emis_file>
-<chbrcl2_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBrCl2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1850-2100_1.9x2.5_c240804.nc</chbrcl2_slh_emis_file>
-<hoi_slh_emis_file    >atm/cam/chem/emis/EMIS_SLH/emissions_HOI_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc</hoi_slh_emis_file>
-<i2_slh_emis_file     >atm/cam/chem/emis/EMIS_SLH/emissions_I2_ocean_surface_PradosRoman2015_online_1850-2100_1.9x2.5_c240804.nc</i2_slh_emis_file>
+<c2cl4_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_C2Cl4_NoNeg_surface_Claxton2020_flx1p15_serial_1750-2100_1.9x2.5_c251203.nc</c2cl4_slh_emis_file>
+<ch2br2_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Br2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc</ch2br2_slh_emis_file>
+<ch2brcl_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2BrCl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc</ch2brcl_slh_emis_file>
+<ch2cl2_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CH2Cl2_NoNeg_surface_Claxton2020_flx1p15_serial_1750-2100_1.9x2.5_c251203.nc</ch2cl2_slh_emis_file>
+<ch2i2_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/emissions_CH2I2_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc</ch2i2_slh_emis_file>
+<ch2ibr_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/emissions_CH2IBr_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc</ch2ibr_slh_emis_file>
+<ch2icl_slh_emis_file >atm/cam/chem/emis/EMIS_SLH/emissions_CH2ICl_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc</ch2icl_slh_emis_file>
+<ch3i_slh_emis_file   >atm/cam/chem/emis/EMIS_SLH/emissions_CH3I_chlorophyll_surface_Ordonez2012_cyclical_1750-2100_1.9x2.5_c251204.nc</ch3i_slh_emis_file>
+<chbr2cl_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr2Cl_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc</chbr2cl_slh_emis_file>
+<chbr3_slh_emis_file  >atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBr3_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc</chbr3_slh_emis_file>
+<chbrcl2_slh_emis_file>atm/cam/chem/emis/EMIS_SLH/flxSLH1p15/emissions_CHBrCl2_chlorophyll_surface_Ordonez2012_flx1p15_cyclical_1750-2100_1.9x2.5_c251204.nc</chbrcl2_slh_emis_file>
+<hoi_slh_emis_file    >atm/cam/chem/emis/EMIS_SLH/emissions_HOI_ocean_surface_PradosRoman2015_online_1750-2100_1.9x2.5_c251204.nc</hoi_slh_emis_file>
+<i2_slh_emis_file     >atm/cam/chem/emis/EMIS_SLH/emissions_I2_ocean_surface_PradosRoman2015_online_1750-2100_1.9x2.5_c251204.nc</i2_slh_emis_file>
 
 <!-- modal aerosol emissions -->
 <nh3_emis_file     ver="mam">atm/cam/chem/trop_mozart_aero/emis/emis_NH3_2000_c111014.nc</nh3_emis_file>
