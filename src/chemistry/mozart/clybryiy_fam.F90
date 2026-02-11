@@ -14,7 +14,7 @@
 !
 ! Updated by Rafa Fernandez
 ! Now it includes a logical condition in case iodine is not present
-! so no need to maintain two different routines (clybry_fam and clybryiy_fam) 
+! so no need to maintain two different routines (clybry_fam and clybryiy_fam)
 ! Date: Aug 2020
 !-----------------------------------------------------------------------
 
@@ -37,10 +37,7 @@ module clybryiy_fam
 
   integer :: id_cly,id_bry,id_iy
 
-!rpf_CESM2_SLH
   integer :: id_cl,id_clo,id_hocl,id_cl2,id_cl2o2,id_oclo,id_hcl,id_clono2,id_clno2,id_cocl2,id_chcl2o2,id_cofcl
-!rpf_CESM2_SLH
-
   integer :: id_br,id_bro,id_hbr,id_brono2,id_brcl,id_hobr,id_br2,id_brno2
   integer :: id_i,id_i2,id_io,id_oio,id_hi,id_hoi,id_ino,id_ino2,id_iono2,id_ibr,id_icl,id_i2o2,id_i2o3,id_i2o4
 
@@ -53,12 +50,9 @@ contains
   subroutine clybryiy_fam_init
 
     use mo_chem_utls, only : get_spc_ndx
-    implicit none
 
-!rpf_CESM2_SLH
     integer :: ids_clybry(16)
     integer :: ids_clybryiy(34)
-!rpf_CESM2_SLH
 
     id_cly = get_spc_ndx('CLY')
     id_bry = get_spc_ndx('BRY')
@@ -98,7 +92,6 @@ contains
     id_i2o3   = get_spc_ndx('I2O3')
     id_i2o4   = get_spc_ndx('I2O4')
 
-!rpf_CESM2_SLH
     ids_clybry   = (/ id_cly,id_bry, &
              id_cl,id_clo,id_hocl,id_cl2,id_cl2o2,id_oclo,id_hcl,id_clono2, &
              id_br,id_bro,id_hbr,id_brono2,id_brcl,id_hobr /)
@@ -113,7 +106,6 @@ contains
     else
       has_clybryiy = all( ids_clybry(:) > 0 )
     endif
-!rpf_CESM2_SLH
 
   endsubroutine clybryiy_fam_init
 
@@ -155,19 +147,15 @@ contains
 !--------------------------------------------------------------
     wrk(:,:,1) = cloy( mmr, pcols, ncol )
     wrk(:,:,2) = broy( mmr, pcols, ncol )
-!rpf_CESM2_SLH
-    if ( id_iy>0 ) then   
+    if ( id_iy>0 ) then
        wrk(:,:,3) = ioy ( mmr, pcols, ncol )
     endif
-!rpf_CESM2_SLH
 
     mmr(:ncol,:,id_cly) = wrk(:,:,1)
     mmr(:ncol,:,id_bry) = wrk(:,:,2)
-!rpf_CESM2_SLH
-    if ( id_iy>0 ) then   
+    if ( id_iy>0 ) then
        mmr(:ncol,:,id_iy)  = wrk(:,:,3)
     endif
-!rpf_CESM2_SLH
 
     call set_short_lived_species( mmr, lchnk, ncol, pbuf )
     do n = 1,pcnst
@@ -180,7 +168,7 @@ contains
   end subroutine clybryiy_fam_set
 
 !--------------------------------------------------------------
-! adjust the ClOy, BrOy and IOy individual family members 
+! adjust the ClOy, BrOy and IOy individual family members
 !  - this is call after advection
 !--------------------------------------------------------------
   subroutine clybryiy_fam_adj( ncol, lchnk, map2chm, q, pbuf )
@@ -228,7 +216,11 @@ contains
     if ( id_cly>0 ) then
        wrk(:,:) = cloy( mmr, pcols, ncol )
 
-       factor(:ncol,:) = mmr(:ncol,:,id_cly) / wrk(:ncol,:)
+       where( wrk(:ncol,:)>0._r8 )
+          factor(:ncol,:) = mmr(:ncol,:,id_cly) / wrk(:ncol,:)
+       elsewhere
+          factor(:ncol,:) = 0._r8
+       end where
        !--------------------------------------------------------------
        !       ... adjust "group" members
        !--------------------------------------------------------------
@@ -240,12 +232,11 @@ contains
        mmr(:ncol,:,id_oclo)   = factor(:ncol,:)*mmr(:ncol,:,id_oclo)
        mmr(:ncol,:,id_hcl)    = factor(:ncol,:)*mmr(:ncol,:,id_hcl)
        mmr(:ncol,:,id_clono2) = factor(:ncol,:)*mmr(:ncol,:,id_clono2)
-!rpf_CESM2_SLH
+
        if (id_clno2>0)   mmr(:ncol,:,id_clno2)    = factor(:ncol,:)*mmr(:ncol,:,id_clno2)
        if (id_chcl2o2>0) mmr(:ncol,:,id_chcl2o2)  = factor(:ncol,:)*mmr(:ncol,:,id_chcl2o2)
        if (id_cocl2>0)   mmr(:ncol,:,id_cocl2)    = factor(:ncol,:)*mmr(:ncol,:,id_cocl2)
        if (id_cofcl>0)   mmr(:ncol,:,id_cofcl)    = factor(:ncol,:)*mmr(:ncol,:,id_cofcl)
-!rpf_CESM2_SLH
     endif
 
     !--------------------------------------------------------------
@@ -254,7 +245,11 @@ contains
     if ( id_bry>0 ) then
        wrk(:,:) = broy( mmr, pcols, ncol )
 
-       factor(:ncol,:) = mmr(:ncol,:,id_bry) / wrk(:ncol,:)
+       where( wrk(:ncol,:)>0._r8 )
+          factor(:ncol,:) = mmr(:ncol,:,id_bry) / wrk(:ncol,:)
+       elsewhere
+          factor(:ncol,:) = 0._r8
+       end where
        !--------------------------------------------------------------
        !       ... adjust "group" members
        !--------------------------------------------------------------
@@ -268,14 +263,17 @@ contains
        if (id_brno2>0) mmr(:ncol,:,id_brno2)  = factor(:ncol,:)*mmr(:ncol,:,id_brno2)
     endif
 
-!rpf_CESM2_SLH
     !--------------------------------------------------------------
     !        ... form updated iodine atom mass mixing ratio
     !--------------------------------------------------------------
     if ( id_iy>0 ) then
        wrk(:,:) = ioy( mmr, pcols, ncol )
 
-       factor(:ncol,:) = mmr(:ncol,:,id_iy) / wrk(:ncol,:)
+       where( wrk(:ncol,:)>0._r8 )
+          factor(:ncol,:) = mmr(:ncol,:,id_iy) / wrk(:ncol,:)
+       elsewhere
+          factor(:ncol,:) = 0._r8
+       end where
        !--------------------------------------------------------------
        !       ... adjust "group" members
        !--------------------------------------------------------------
@@ -294,7 +292,6 @@ contains
        mmr(:ncol,:,id_i2o3)   = factor(:ncol,:)*mmr(:ncol,:,id_i2o3)
        mmr(:ncol,:,id_i2o4)   = factor(:ncol,:)*mmr(:ncol,:,id_i2o4)
     endif
-!rpf_CESM2_SLH
 
     call set_short_lived_species( mmr, lchnk, ncol, pbuf )
     do n = 1,pcnst
@@ -347,7 +344,6 @@ contains
           wrk(:) =  wrk(:) &
               + q(:ncol,k,id_clno2)        /adv_mass(id_clno2)
        endif
-!rpf_CESM2_SLH
        if (id_chcl2o2>0) then
           wrk(:) =  wrk(:) &
               + 2._r8*q(:ncol,k,id_chcl2o2)/adv_mass(id_chcl2o2)
@@ -360,7 +356,6 @@ contains
           wrk(:) =  wrk(:) &
               + q(:ncol,k,id_cofcl)        /adv_mass(id_cofcl)
        endif
-!rpf_CESM2_SLH
 
        cloy(:,k) = adv_mass(id_cl) * wrk(:)
     end do
@@ -396,7 +391,7 @@ contains
               + q(:ncol,k,id_hbr)        /adv_mass(id_hbr)     &
               + q(:ncol,k,id_brono2)     /adv_mass(id_brono2)  &
               + q(:ncol,k,id_brcl)       /adv_mass(id_brcl)    &
-              + q(:ncol,k,id_hobr)       /adv_mass(id_hobr) 
+              + q(:ncol,k,id_hobr)       /adv_mass(id_hobr)
        if (id_br2>0) then
           wrk(:) = wrk(:) &
               + 2._r8*q(:ncol,k,id_br2)  /adv_mass(id_br2)
@@ -404,7 +399,7 @@ contains
 
        if (id_brno2>0) then
           wrk(:) = wrk(:) &
-              + q(:ncol,k,id_brno2)      /adv_mass(id_brno2)   
+              + q(:ncol,k,id_brno2)      /adv_mass(id_brno2)
        endif
 
        broy(:,k) = adv_mass(id_br) * wrk(:)
@@ -412,7 +407,6 @@ contains
 
   end function broy
 
-!rpf_CESM2_SLH
 !--------------------------------------------------------------
 ! compute the mass mixing ratio of IOy
 !--------------------------------------------------------------
@@ -456,6 +450,5 @@ contains
     end do
 
   end function ioy
-!rpf_CESM2_SLH
 
 end module clybryiy_fam
