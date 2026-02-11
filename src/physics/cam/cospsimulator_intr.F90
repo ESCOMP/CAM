@@ -427,9 +427,6 @@ CONTAINS
     if (cosp_lfrac_out) then
        lfrac_out = .true.
     end if
-    if (cosp_lradar_sim) then
-       lradar_sim = .true.
-    end if
     if (cosp_llidar_sim) then
        llidar_sim = .true.
        lparasol_sim = .true.
@@ -442,6 +439,20 @@ CONTAINS
     end if
     if (cosp_lmodis_sim) then
        lmodis_sim = .true.
+    end if
+    if (cosp_lradar_sim) then
+       lradar_sim = .true.
+       ! Joint CloudSat-MODIS diagnostics require MODIS so add it and swathing if it will not otherwise be used.
+       if ((.not.lmodis_sim) .and. (.not.cosp_lite) .and. (.not.cosp_passive) .and. &
+             (.not.cosp_active) .and. (.not.cosp_runall)) then
+          lmodis_sim = .true. 
+          cospswathsIN(6)%N_inst_swaths                                  = COSP_N_SWATHS_CSCAL
+          cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL)   = COSP_SWATH_WIDTHS_CSCAL
+          cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)         = COSP_SWATH_LOCALTIMES_CSCAL
+       end if
+       ! CloudSat tcc requires CALIPSO so add it if it will not otherwise be used. Swathing is shared by default.
+       llidar_sim = .true.
+       lparasol_sim = .true. ! Parasol is tied to CALIPSO in this interface.
     end if
     if ((cosp_rttov_Ninstruments > 0) .and. cosp_lrttov_sim) then
        lrttov_sim = .true.
@@ -471,6 +482,7 @@ CONTAINS
 
     if (cosp_active) then
        lradar_sim = .true.
+       lmodis_sim = .true. ! Joint CloudSat-MODIS diagnostics require MODIS
        llidar_sim = .true.
        lparasol_sim = .true.
        cosp_ncolumns = 10
@@ -1704,13 +1716,10 @@ CONTAINS
     real(r8) :: pctmodis(pcols)
     real(r8) :: lwpmodis(pcols)
     real(r8) :: iwpmodis(pcols)
-    real(r8) :: clmodis_cam(pcols,ntau_cosp_modis*nprs_cosp)
     real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
-    real(r8) :: clmodis_liq(pcols,ntau_cosp_modis,nprs_cosp) ! JKS Not sure if I need to duplicate clmodis here.
+    real(r8) :: clmodis_liq(pcols,ntau_cosp_modis,nprs_cosp)
     real(r8) :: clmodis_ice(pcols,ntau_cosp_modis,nprs_cosp)
-    real(r8) :: clrimodis_cam(pcols,ntau_cosp*numMODISReffIceBins)
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
-    real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
     real(r8) :: lwp_reffliq_modis(pcols,nlwp_cosp_modis,numMODISReffLiqBins)
     real(r8) :: iwp_reffice_modis(pcols,niwp_cosp_modis,numMODISReffIceBins)
@@ -1908,13 +1917,10 @@ CONTAINS
     pctmodis(1:pcols)                                = R_UNDEF
     lwpmodis(1:pcols)                                = R_UNDEF
     iwpmodis(1:pcols)                                = R_UNDEF
-    clmodis_cam(1:pcols,1:ntau_cosp_modis*nprs_cosp) = R_UNDEF
     clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
     clmodis_liq(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
     clmodis_ice(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
-    clrimodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffIceBins) = R_UNDEF ! +cosp2
     clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
-    clrlmodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffLiqBins) = R_UNDEF ! +cosp2
     clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
     lwp_reffliq_modis(1:pcols,1:nlwp_cosp_modis,1:numMODISReffLiqBins) = R_UNDEF
     iwp_reffice_modis(1:pcols,1:niwp_cosp_modis,1:numMODISReffIceBins) = R_UNDEF
@@ -2770,26 +2776,6 @@ CONTAINS
           end do
        endif
 
-       if (lmodis_sim) then
-          do ip=1,nprs_cosp
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clmodis_cam(i,ipt) = clmodis(i,it,ip)
-             end do
-          end do
-          do ip=1,numMODISReffIceBins
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clrimodis_cam(i,ipt) = clrimodis(i,it,ip)
-             end do
-          end do
-          do ip=1,numMODISReffLiqBins
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clrlmodis_cam(i,ipt) = clrlmodis(i,it,ip)
-             end do
-          end do
-       endif
 
        ! Subcolums
        do ihml=1,nlay
@@ -3120,11 +3106,11 @@ CONTAINS
           iwpmodis(:ncol) = iwpmodis(:ncol)*climodis(:ncol)
        end where
        call outfld('IWPMODIS',iwpmodis    ,pcols,lchnk)
-       call outfld('CLMODIS',clmodis_cam  ,pcols,lchnk)
+       call outfld('CLMODIS',clmodis  ,pcols,lchnk)
        call outfld('CLMODIS_LIQ',clmodis_liq  ,pcols,lchnk)
        call outfld('CLMODIS_ICE',clmodis_ice  ,pcols,lchnk)
-       call outfld('CLRIMODIS',clrimodis_cam  ,pcols,lchnk)
-       call outfld('CLRLMODIS',clrlmodis_cam  ,pcols,lchnk)
+       call outfld('CLRIMODIS',clrimodis  ,pcols,lchnk)
+       call outfld('CLRLMODIS',clrlmodis  ,pcols,lchnk)
        call outfld('LWP_REFFCLW_MODIS',lwp_reffliq_modis,pcols,lchnk)
        call outfld('IWP_REFFCLI_MODIS',iwp_reffice_modis,pcols,lchnk)
     end if  
