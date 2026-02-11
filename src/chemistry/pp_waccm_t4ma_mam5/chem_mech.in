@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: T4MA
-* Tag database identifier : MZ363_T4MA_20250224
-* Tag created by : jz
+* User-given Tag Description: T4MA_MAM5
+* Tag database identifier : MZ385_T4MA_20251208
+* Tag created by : lke
 * Tag created from branch : T4MA
-* Tag created on : 2025-02-24 16:09:18.005168-07
+* Tag created on : 2025-12-08 14:26:20.334094-07
 * Comments for this tag follow:
-*     jz : 2025-02-24 : added extra five nitrogen reactions (3 of them are user reactions)
+*     lke : 2025-12-08 : T4 simpler tropospheric chemistry with full Middle Atmosphere (Strat, Meso, Lower Therm), with MAM5 aerosols, simple MAM-SOA
 
       SPECIES
 
@@ -19,12 +19,10 @@
  BRONO2 -> BrONO2,
  BRY,
  C2H4,
- C2H5O2,
  C2H5OH,
  C2H5OOH,
  C2H6,
  C3H6,
- C3H7O2,
  C3H7OOH,
  C3H8,
  CCL4 -> CCl4,
@@ -41,7 +39,6 @@
  CH3CCL3 -> CH3CCl3,
  CH3CHO,
  CH3CL -> CH3Cl,
- CH3CO3,
  CH3COCH3,
  CH3COCHO,
  CH3COOH,
@@ -65,8 +62,6 @@
  dst_a1 -> AlSiO5,
  dst_a2 -> AlSiO5,
  dst_a3 -> AlSiO5,
- EO -> HOCH2CH2O,
- EO2 -> HOCH2CH2O2,
  EOOH -> HOCH2CH2OOH,
  F,
  GLYALD -> HOCH2CHO,
@@ -90,12 +85,9 @@
  HYDRALD -> HOCH2CCH3CHCHO,
  ISOP -> C5H8,
  ISOPNO3 -> CH2CHCCH3OOCH2ONO2,
- ISOPO2 -> HOCH2COOCH3CHCH2,
  ISOPOOH -> HOCH2COOHCH3CHCH2,
  MACR -> CH2CCH3CHO,
- MACRO2 -> CH3COCHO2CH2OH,
  MACROOH -> CH3COCHOOHCH2OH,
- MCO3 -> CH2CCH3CO3,
  MPAN -> CH2CCH3CO3NO2,
  MVK -> CH2CHCOCH3,
  N,
@@ -104,8 +96,10 @@
  ncl_a1 -> NaCl,
  ncl_a2 -> NaCl,
  ncl_a3 -> NaCl,
+ NDEP -> N,
  NH3,
  NH4,
+ NHDEP -> N,
  NO,
  NO2,
  NO3,
@@ -118,16 +112,15 @@
  O,
  O2,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  OH,
  ONITR -> C4H7NO4,
  PAN -> CH3CO3NO2,
- PO2 -> C3H6OHO2,
  pom_a1 -> C,
  pom_a4 -> C,
  POOH -> C3H6OHOOH,
- RO2 -> CH3COCH2O2,
  ROOH -> CH3COCH2OOH,
  S -> S,
  SF6,
@@ -143,12 +136,17 @@
  SOAE -> C,
  SOAG -> C,
  TERP -> C10H16,
- XO2 -> HOCH2COOCH3CHOHCHO,
  XOOH -> HOCH2COOHCH3CHOHCHO,
- NHDEP -> N,
- NDEP -> N,
+ C2H5O2,
+ C3H7O2,
+ CH3CO3,
  e -> E,
+ EO -> HOCH2CH2O,
+ EO2 -> HOCH2CH2O2,
  HO2,
+ ISOPO2 -> HOCH2COOCH3CHCH2,
+ MACRO2 -> CH3COCHO2CH2OH,
+ MCO3 -> CH2CCH3CO3,
  N2D -> N,
  N2p -> N2,
  NOp -> NO,
@@ -160,6 +158,9 @@
  Op -> O,
  Op2D -> O,
  Op2P -> O,
+ PO2 -> C3H6OHO2,
+ RO2 -> CH3COCH2O2,
+ XO2 -> HOCH2COOCH3CHOHCHO,
  H2O
 
       End Solution
@@ -175,8 +176,16 @@
       End Col-int
 
       Not-Transported
+ C2H5O2,
+ C3H7O2,
+ CH3CO3,
  e,
+ EO,
+ EO2,
  HO2,
+ ISOPO2,
+ MACRO2,
+ MCO3,
  N2D,
  N2p,
  NOp,
@@ -187,7 +196,10 @@
  O2p,
  Op,
  Op2D,
- Op2P
+ Op2P,
+ PO2,
+ RO2,
+ XO2
       End Not-Transported
 
    END Species
@@ -195,8 +207,8 @@
 
    Solution classes
       Explicit
- NHDEP
  NDEP
+ NHDEP
       End Explicit
 
       Implicit
@@ -209,12 +221,10 @@
  BRONO2
  BRY
  C2H4
- C2H5O2
  C2H5OH
  C2H5OOH
  C2H6
  C3H6
- C3H7O2
  C3H7OOH
  C3H8
  CCL4
@@ -231,7 +241,6 @@
  CH3CCL3
  CH3CHO
  CH3CL
- CH3CO3
  CH3COCH3
  CH3COCHO
  CH3COOH
@@ -255,8 +264,6 @@
  dst_a1
  dst_a2
  dst_a3
- EO
- EO2
  EOOH
  F
  GLYALD
@@ -280,12 +287,9 @@
  HYDRALD
  ISOP
  ISOPNO3
- ISOPO2
  ISOPOOH
  MACR
- MACRO2
  MACROOH
- MCO3
  MPAN
  MVK
  N
@@ -308,16 +312,15 @@
  O
  O2
  O3
+ O3S
  OCLO
  OCS
  OH
  ONITR
  PAN
- PO2
  pom_a1
  pom_a4
  POOH
- RO2
  ROOH
  S
  SF6
@@ -333,10 +336,17 @@
  SOAE
  SOAG
  TERP
- XO2
  XOOH
+ C2H5O2
+ C3H7O2
+ CH3CO3
  e
+ EO
+ EO2
  HO2
+ ISOPO2
+ MACRO2
+ MCO3
  N2D
  N2p
  NOp
@@ -348,6 +358,9 @@
  Op
  Op2D
  Op2P
+ PO2
+ RO2
+ XO2
  H2O
       End Implicit
 
@@ -715,8 +728,8 @@
 *********************************
 [C3H6_NO3]             C3H6 + NO3  -> NOA                                       ; 4.6e-13, -1156
 [C3H6_O3]              C3H6 + O3  -> 0.5*CH2O + 0.12*HCOOH + 0.12*CH3COOH + 0.5*CH3CHO + 0.56*CO + 0.28*CH3O2 + 0.1*CH4 + 0.2*CO2 + 0.28*HO2 + 0.36*OH ; 6.5e-15, -1900
-[C3H7O2_CH3O2]         C3H7O2 + CH3O2  -> CH2O + HO2 + 0.82*CH3COCH3            ; 3.75e-13, -40
-[C3H7O2_HO2]           C3H7O2 + HO2  -> C3H7OOH + O2                            ; 7.5e-13, 700
+[C3H7O2_CH3O2]         C3H7O2 + CH3O2  -> CH2O + HO2 + 0.82*CH3COCH3            ; 1e-13, 557
+[C3H7O2_HO2]           C3H7O2 + HO2  -> C3H7OOH + O2                            ; 1.41e-13, 1300
 [C3H7O2_NO]            C3H7O2 + NO  -> 0.82*CH3COCH3 + NO2 + HO2 + 0.27*CH3CHO  ; 2.7e-12, 360
 [C3H7OOH_OH]           C3H7OOH + OH  -> H2O + C3H7O2                            ; 3.8e-12, 200
 [C3H8_OH]              C3H8 + OH  -> C3H7O2 + H2O                               ; 9.19e-12, -630
@@ -876,10 +889,10 @@
 
       Ext Forcing
  CO <- dataset
- pom_a4 <- dataset
  so4_a5 <- dataset
  bc_a4 <- dataset
  SO2 <- dataset
+ H2O <- dataset
  NO2 <- dataset
  NO <- dataset
  num_a1 <- dataset
@@ -888,13 +901,14 @@
  so4_a2 <- dataset
  num_a5 <- dataset
  num_a4 <- dataset
- O2p
+ pom_a4 <- dataset
+ e
  N2p
  Np
  N2D
- Op
  N
- e
+ O2p
+ Op
  OH
       End Ext Forcing
 
