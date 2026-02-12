@@ -2341,10 +2341,12 @@ contains
           P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
           IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_cnst_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           IF ( K > 0 ) State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = 0.0e+00_fp
        ENDDO
@@ -2361,10 +2363,12 @@ contains
           ! species (with cnst index P, which corresponds to index K in
           ! State_Chm)
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_cnst_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
@@ -2573,9 +2577,9 @@ contains
                                              + REAL(state%q(:nY,nZ:1:-1,N),fp) *         &
                                                 adv_mass(l_SO4) / adv_mass(mapCnst(N))
        ! SO4_gasRatio is in mol/mol
-       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
-                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
-                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1)
+       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &       ! kg(H2SO4) kg-1 air
+                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &       ! g(SO4) mol(SO4)-1 / g(H2SO4) mol(H2SO4)-1
+                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1) ! kg(SO4) kg-1 air
        MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ)
     ENDIF
 #endif
