@@ -710,7 +710,7 @@
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>
 	<value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
- 	<value  compset="_CAM.*%NUDG"                   >2000-01-01</value>
+	<value  compset="_CAM.*%NUDG"                   >2010-01-01</value>
 	<value  compset="_CAM60%(C|W)SLH%NUDG"          >1980-01-01</value>
  	<value  compset="CAM60%CARMA.*%NUDG"            >1990-01-01</value>
  	<value  compset="_CAM.*%SDYN"                   >2005-01-01</value>

@@ -1277,11 +1277,7 @@ contains
        if( usr_NO2XNO3_M_ndx > 0 ) then
           if( tag_NO2_NO3_ndx > 0 ) then
              call comp_exp( exp_fac, -10840.0_r8*tinv, ncol )
-!rpf_CESM2_SLH
-! Is there a typo in the pre-exponential factor? (1.72 instead of 1.73?) Which one is correct?
-!            rxt(:,k,usr_NO2XNO3_M_ndx) = rxt(:,k,tag_NO2_NO3_ndx) * 1.734138e26_r8 * exp_fac(:)
              rxt(:,k,usr_NO2XNO3_M_ndx) = rxt(:,k,tag_NO2_NO3_ndx) * 1.724138e26_r8 * exp_fac(:)
-!rpf_CESM2_SLH
           else
              rxt(:,k,usr_NO2XNO3_M_ndx) = 0._r8
           end if
