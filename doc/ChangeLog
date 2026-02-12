@@ -1,3 +1,59 @@
+===============================================================
+
+Tag name: cam6_4_151
+Originator(s): Haipeng Lin
+Date: Feb 12, 2026
+One-line Summary: GEOS-Chem within CESM: fix MAM4 mapping for SO4 in default configuration
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1481
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Fixes #1480 - incorrect sulfate mapping from MAM4 to GEOS-Chem chemistry
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: lizziel, cacraig
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/geoschem/chemistry.F90
+  - fixes #1480 (incorrect sulfate mapping from MAM4 to GEOS-Chem chemistry)
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+     - pre-existing failure
+     - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+     - expected baseline change due to change in GEOS-Chem chemistry interface for bug-fix.
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers:
+  Answer differences in GEOS-Chem compset only due to bug fix.
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
 
 ===============================================================
 
