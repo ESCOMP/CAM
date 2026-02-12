@@ -6305,37 +6305,38 @@ Default: set by build-namelist
 
 <entry id="SSAdehal_ScalingFactor" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Resolution-dependent scaling-factor for SSA-dehalogenation efficiency
+Scaling-factor for SLH dehalogenation reaction (XONO2,XNO2,HOX-->X2,XY ... X,Y=Br,Cl,I)
+on Sea-Salt Aerosols.
 Default: set by build-namelist
 </entry>
 
 <entry id="SSAhno3_ScalingFactor" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH Halocarbon surface emissions
+Scaling-factor for SLH acid displacement reaction (HNO3-->HCl) on Sea-Salt Aerosols.
 Default: set by build-namelist
 </entry>
 
 <entry id="SSAn2o5_ScalingFactor" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH Halocarbon surface emissions
-Default: set by build-namelist
+Scaling-factor for SLH dinitrogen pentoxide reaction (N2O5-->HNO3+CLNO2) on Sea-Salt Aerosols
+Default: set by build-namelist.
 </entry>
 
 <entry id="LIQfraprx_ScalingFactor_I" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH Halocarbon surface emissions
+Scaling-factor for SLH washout (Iodine) on liquid droplets based on Free-Regime Approx.
 Default: set by build-namelist
 </entry>
 
 <entry id="ICEfraprx_ScalingFactor_I" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH Halocarbon surface emissions
+Scaling-factor for SLH washout (Iodine) on ice crystals based on Free-Regime Approx.
 Default: set by build-namelist
 </entry>
 
 <entry id="ICEfraprx_ScalingFactor_Br" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH Halocarbon surface emissions
+Scaling-factor for SLH washout (Bromine) on ice crystals based on Free-Regime Approx.
 Default: set by build-namelist
 </entry>
 
