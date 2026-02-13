@@ -47,7 +47,7 @@ derecho/intel/aux_cam:
      ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
 
   DIFF ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
-   - differences TEM diagnostics output, otherwise bit-for-bit
+   - differences in TEM diagnostics output, otherwise bit-for-bit
 
 derecho/nvhpc/aux_cam: All PASS
 
