@@ -219,7 +219,7 @@ contains
        where( wrk(:ncol,:)>0._r8 )
           factor(:ncol,:) = mmr(:ncol,:,id_cly) / wrk(:ncol,:)
        elsewhere
-          factor(:ncol,:) = 0._r8
+          factor(:ncol,:) = 1._r8
        end where
        !--------------------------------------------------------------
        !       ... adjust "group" members
@@ -248,7 +248,7 @@ contains
        where( wrk(:ncol,:)>0._r8 )
           factor(:ncol,:) = mmr(:ncol,:,id_bry) / wrk(:ncol,:)
        elsewhere
-          factor(:ncol,:) = 0._r8
+          factor(:ncol,:) = 1._r8
        end where
        !--------------------------------------------------------------
        !       ... adjust "group" members
@@ -272,7 +272,7 @@ contains
        where( wrk(:ncol,:)>0._r8 )
           factor(:ncol,:) = mmr(:ncol,:,id_iy) / wrk(:ncol,:)
        elsewhere
-          factor(:ncol,:) = 0._r8
+          factor(:ncol,:) = 1._r8
        end where
        !--------------------------------------------------------------
        !       ... adjust "group" members

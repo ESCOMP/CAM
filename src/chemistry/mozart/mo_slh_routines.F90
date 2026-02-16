@@ -201,7 +201,7 @@ contains
     ws_mask(:ncol) = sqrt( state%u(:ncol,pver)*state%u(:ncol,pver) &
                          + state%v(:ncol,pver)*state%v(:ncol,pver) )
 
-!rpf and cac: This threshold is required to aviod huge iodine emissions for low wind speeds
+!rpf and cac: This threshold is required to aviod large iodine emissions for low wind speeds
     where ( ws_mask(:ncol) < 3._r8 )
       ws_mask(:ncol) = 3._r8
     endwhere
@@ -245,11 +245,11 @@ contains
     flx_hoi(:) = nan
 
     do i = 1,ncol
-       !!! Be CAREFULL that if SST = 0 then the division is not possible. Should it be forced to zero?
        if (ocnfrac(i) == 0) then
           ! Actually it should be landfrac = 1 ... but we do not want to bring landfrac as an additional agrument
           iodide_aq(i) = 0._r8
        else
+!         iodide_aq(i) = 1.46e6_r8 * exp( -9134._r8 / sst(i) ) * ocnfrac(i)
           iodide_aq(i) = 1.46e6_r8 * exp( -9134._r8 / sst(i) )
        end if
 

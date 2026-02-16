@@ -6305,8 +6305,7 @@ Default: set by build-namelist
 
 <entry id="SSAdehal_ScalingFactor" type="real" category="cam_chem"
        group="slh_nl" valid_values="" >
-Scaling-factor for SLH dehalogenation reaction (XONO2,XNO2,HOX-->X2,XY ... X,Y=Br,Cl,I)
-on Sea-Salt Aerosols.
+Scaling-factor for SLH dehalogenation reaction (XONO2,XNO2,HOX) on Sea-Salt Aerosols.
 Default: set by build-namelist
 </entry>
 
