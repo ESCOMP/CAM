@@ -99,9 +99,6 @@ subroutine neu_wetdep_init
          test_name = 'H2O2'
       case ( 'SO2t' )
          test_name = 'SO2'
-!rpf_CESM2_SLH
-!     case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR', 'Pb', 'HF', 'COF2', 'COFCL')
-!      case ( 'Pb', 'HF', 'COF2', 'COFCL') !rpf: SLH reservoir species are not mapped any longer to HNO3
       case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR' )
          if ( .not. any(species_name_table == test_name)) then
             test_name = 'HNO3'
@@ -196,7 +193,6 @@ subroutine neu_wetdep_init
 !
   end do
 
-!rpf_CESM2_SLH
   do m = 1,pcnst
 
      if ( len_trim(gas_wetdep_ice_uptake_list(m)) > 0 ) then
@@ -219,8 +215,6 @@ subroutine neu_wetdep_init
 
      endif
   enddo
-!rpf_CESM2_SLH
-
 !
 ! indices for cloud quantities
 !

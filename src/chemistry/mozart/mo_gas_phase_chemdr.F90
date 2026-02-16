@@ -196,8 +196,6 @@ contains
     call addfld( 'HCL_TOTAL',  (/ 'lev' /), 'I', 'mol/mol', 'total hcl' )
     call addfld( 'HCL_GAS',    (/ 'lev' /), 'I', 'mol/mol', 'gas-phase hcl' )
     call addfld( 'HCL_STS',    (/ 'lev' /), 'I', 'mol/mol', 'STS condensed HCL' )
-
-!rpf_CESM2_SLH
     call addfld( 'SAD_ICETROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing Tropospheric ICE SAD' )
     call addfld( 'SAD_ICEORIG',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing ICE SAD without abovetropopause mask' )
     call addfld( 'SAD_LIQTROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Developing Tropospheric LIQ SAD' )
@@ -207,7 +205,6 @@ contains
     call addfld( 'CLNO2_YIELD',     (/ 'lev' /), 'I', 'unitless', 'CLNO2 yield for N2O5 on aerosols' )
     call addfld( 'CLNO2_YIELD_SRF',  horiz_only, 'I', 'unitless', 'CLNO2 yield for N2O5 on aerosols at Surface' )
     call addfld( 'TROPLEV',          horiz_only, 'I', 'index',    'Tropopause level vertical index' )
-!rpf_CESM2_SLH
 
     if (het1_ndx>0) then
        call addfld( 'het1_total', (/ 'lev' /), 'I', '/s', 'total N2O5 + H2O het rate constant' )
@@ -471,7 +468,6 @@ contains
   ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
     real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
 
-!rpf_CESM2_SLH
     real(r8) :: radius_trop(ncol,pver)         ! radius of sulfate, nat, & ice ( cm )
     real(r8) :: sad_ice_trop(ncol,pver)         ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 )
     real(r8) :: sad_ice_trop_orig(ncol,pver)    ! surf area density of sulfate, nat, & ice ( cm^2/cm^3 )
@@ -485,8 +481,6 @@ contains
     real(r8) :: sad_sslt(ncol,pver)             ! surf area density of sea-salt ( cm^2/cm^3 )
     real(r8) :: sad_sslt_eff(ncol,pver)         ! surf area density of sea-salt ( cm^2/cm^3 )
     real(r8) :: clno2_yield (ncol,pver)         ! originally implemented by jfl
-
-!rpf_CESM2_SLH
 
 !
 ! CCMI
@@ -774,7 +768,6 @@ contains
 
     endif stratochem
 
-    !rpf_CESM2_SLH
     if ( has_ice_trp_rxts ) then
        call icesad_trop_calc( lchnk, invariants(:ncol,:,indexm), pmb, tfld, h2o_ice, strato_sad(:ncol,:), &
             radius_trop, sad_ice_trop, ncol, troplev, pbuf )
@@ -795,7 +788,6 @@ contains
        call outfld( 'SAD_ICEORIG',  sad_ice_trop_orig(:,:), ncol, lchnk )
        call outfld( 'SAD_LIQTROP',  sad_liq_trop(:,:),      ncol, lchnk )
     endif
-    !rpf_CESM2_SLH
 
 
 !      NOTE: For gas-phase solver only.
@@ -853,12 +845,10 @@ contains
     call usrrxt( state, reaction_rates, tfld, ion_temp_fld, ele_temp_fld, invariants, h2ovmr, &
                  pmid, invariants(:,:,indexm), sulfate, mmr, relhum, strato_sad,           &
                  troplevchem, dlats, ncol, sad_trop, reff, cwat, mbar, pbuf,               &
-!rpf_CESM2_SLH
                  sad_sslt, sad_sslt_eff,                                                   &
                  clno2_yield,                                                              &
                  vmr, ocnfrac, icefrac,                                                    &
                  sad_ice_trop, sad_liq_trop, sad_ice_trop_orig )
-!rpf_CESM2_SLH
 
     call outfld( 'SAD_TROP', sad_trop(:ncol,:), ncol, lchnk )
 
@@ -872,13 +862,11 @@ contains
     reff(:ncol,:)=reff(:ncol,:)+reff_strat(:ncol,:)
     call outfld( 'REFF_AERO', reff(:ncol,:), ncol, lchnk )
 
-!rpf_CESM2_SLH
     call outfld('SAD_SSLT'    ,    sad_sslt(:ncol,:)    ,        ncol,lchnk)
     call outfld('SAD_SSLT_EFF',    sad_sslt_eff(:ncol,:),        ncol,lchnk)
     call outfld('SAD_TOTAL'   ,    sad_trop (:ncol,:)   ,        ncol,lchnk)
     call outfld('CLNO2_YIELD',     clno2_yield(:ncol,:),         ncol,lchnk)
     call outfld('CLNO2_YIELD_SRF', clno2_yield(:ncol,pver),      ncol,lchnk)
-!rpf_CESM2_SLH
 
     if (het1_ndx>0) then
        call outfld( 'het1_total', reaction_rates(:,:,het1_ndx), ncol, lchnk )

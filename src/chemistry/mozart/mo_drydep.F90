@@ -43,27 +43,17 @@ module mo_drydep
 
   integer :: pan_ndx, mpan_ndx, o3_ndx, ch4_ndx, co_ndx, h2_ndx, ch3cooh_ndx
   integer :: sogm_ndx, sogi_ndx, sogt_ndx, sogb_ndx, sogx_ndx
-
-!!$!rpf_CESM2_SLH
-!!$  integer :: o3s_ndx
-!!$!rpf_CESM2_SLH
-
   integer :: so2_ndx, ch3cn_ndx, hcn_ndx, hcooh_ndx
-
   integer :: o3a_ndx,xpan_ndx,xmpan_ndx
 
-!rpf_CESM2_SLH
   ! ========================================================================================
   ! WSY: reactive halogen species added
   ! ----------------------------------------------------------------------------------------
   integer :: hcl_ndx,  hocl_ndx, clono2_ndx, hbr_ndx,  hobr_ndx, brono2_ndx,           &
              hi_ndx,   hoi_ndx,  iono2_ndx,  ino2_ndx, i2o2_ndx, i2o3_ndx, i2o4_ndx, br2_ndx
-!rpf_CESM2_SLH
   integer :: brcl_ndx,ibr_ndx,icl_ndx,brno2_ndx,clno2_ndx
-! integer :: ipart_nx
   integer :: chcl2o2_ndx, cocl2_ndx
   ! ========================================================================================
-!rpf_CESM2_SLH
 
   integer :: cohc_ndx=-1, come_ndx=-1
   integer, parameter :: NTAGS = 50
@@ -265,14 +255,6 @@ contains
        end if
     end if
 
-!rpf_CESM2_SLH
-! rpf: Implemented here follwoing CCMI implementation in CESM1. Not sure if needed
-!!$    if( o3s_ndx>0 .and. o3_ndx>0 ) then
-!!$       if( has_dvel(o3s_ndx) ) then
-!!$          dvelocity(:ncol,o3s_ndx) = dvelocity(:ncol,o3_ndx)
-!!$       endif
-!!$    endif
-!rpf_CESM2_SLH
        !
        ! ordc (May 17, 2012):
        ! Overwrite dry deposition velocities for halogen species.
@@ -346,7 +328,6 @@ contains
        dvelocity(:ncol,clno2_ndx) = 0.50_r8
     endif
 ! ========================================================================
-!rpf_CESM2_SLH
 
     !-------------------------------------------------------------------------------------
     !        ... assign CO tags to CO
@@ -464,7 +445,6 @@ contains
     hcn_ndx     = get_spc_ndx( 'HCN')
     ch3cn_ndx   = get_spc_ndx( 'CH3CN')
 
-!rpf_CESM2_SLH
 ! =============================
 ! WSY: reactive halogen species
 ! -----------------------------
@@ -482,7 +462,6 @@ contains
     i2o3_ndx   = get_spc_ndx('I2O3')
     i2o4_ndx   = get_spc_ndx('I2O4')
     br2_ndx    = get_spc_ndx('BR2' )
-!     ipart_ndx  = get_spc_ndx('IPART')
     chcl2o2_ndx= get_spc_ndx('CHCL2O2')
     cocl2_ndx  = get_spc_ndx('COCL2')
     brcl_ndx   = get_spc_ndx('BRCL')
@@ -491,7 +470,6 @@ contains
     brno2_ndx  = get_spc_ndx('BRNO2')
     clno2_ndx  = get_spc_ndx('CLNO2')
 ! =============================
-!rpf_CESM2_SLH
 
     cohc_ndx     = get_spc_ndx( 'COhc' )
     come_ndx     = get_spc_ndx( 'COme' )
@@ -506,10 +484,6 @@ contains
           cotag_ndx(tag_cnt) = ndx
        endif
     enddo
-
-!!$!rpf_CESM2_SLH
-!!$    o3s_ndx      = get_spc_ndx( 'O3S' )
-!!$!rpf_CESM2_SLH
 
     do i=1,nddvels
        if ( mapping(i) > 0 ) then
@@ -1572,7 +1546,6 @@ contains
              end select
           end do lt_loop
 
-!rpf_CESM2_SLH
 ! ========================================================================
 ! WSY: reactive halogen species added (original code from D. Kinnison)
 !      added a few new species (BrCl, IBr, ICl, BrNO2, ClNO2, IO, and OIO)
@@ -1599,8 +1572,6 @@ contains
              wrk(:ncol) = 1.00e-2_r8
           case( 'HOI', 'IONO2', 'INO2' )
              wrk(:ncol) = 0.75e-2_r8
-!           case( 'IPART' )
-!              wrk(:ncol) = 1.00e-2_r8
           case( 'CHCL2O2')
              wrk(:ncol) = 1.00e-2_r8
           case ( 'COCL2')
@@ -1614,7 +1585,6 @@ contains
           ! ordc
           !
 ! ========================================================================
-!rpf_CESM2_SLH
 
           dvel(:ncol,ispec) = wrk(:ncol) * scaling_to_cm_per_s
           dflx(:ncol,ispec) = term(:ncol) * dvel(:ncol,ispec) * mmr(:ncol,plev,ispec)

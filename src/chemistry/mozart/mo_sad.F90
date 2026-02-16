@@ -544,10 +544,8 @@ sts_nat_sad : &
       use cam_history, only : outfld
       use physics_buffer, only : physics_buffer_desc
 
-      implicit none
-
 !-------------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !-------------------------------------------------------------------------------
       integer,  intent(in)    ::  lchnk                      ! chnk id
       integer,  intent(in)    ::  ncol                       ! columns in chunk
@@ -561,7 +559,7 @@ sts_nat_sad : &
       integer,  intent(in)    ::  troplev     (pcols)
 
 !-------------------------------------------------------------------------------
-!	... local variables
+!       ... local variables
 !-------------------------------------------------------------------------------
       real(r8), parameter :: temp_floor = 0._r8
 
@@ -570,7 +568,7 @@ sts_nat_sad : &
 !rpf_liqsad ==> Should keep in mind that the variable names *_ice are used for both liquid or ice fields
 !rpf_liqsad --- Wether is ice or liq it depends on the array h2o_cond(ncol,pver) passed by the calling routine
 !----------------------------------------------------------------------
-!	... local variables
+!       ... local variables
 !----------------------------------------------------------------------
       logical  ::  mask_lbs        (ncol,pver)   ! LBS mask T: Free_Trop??
       logical  ::  mask_ice        (ncol,pver)   ! ICE mask T: Free_Trop??
@@ -588,17 +586,16 @@ sts_nat_sad : &
          temp(:ncol,k)    = max( temp_floor,temper(:ncol,k) )
       end do
 
-!rpf --- from upper
-         do k = 1,pver
-            radius_trop     (:,k) = 0._r8
-            sad_trop        (:,k) = 0._r8
-            lcl_h2o_avail   (:,k) = 0._r8
-            lcl_sad_ice     (:,k) = 0._r8
-            lcl_radius_ice  (:,k) = 0._r8
-            mask_ice        (:,k) = .false.
-            mask_lbs        (:,k) = .false.
-         end do
-!rpf --- from upper
+      do k = 1,pver
+         radius_trop     (:,k) = 0._r8
+         sad_trop        (:,k) = 0._r8
+         lcl_h2o_avail   (:,k) = 0._r8
+         lcl_sad_ice     (:,k) = 0._r8
+         lcl_radius_ice  (:,k) = 0._r8
+         mask_ice        (:,k) = .false.
+         mask_lbs        (:,k) = .false.
+      end do
+
 !======================================================================
 !======================================================================
 !     ... Logic for deriving ICE
@@ -610,37 +607,36 @@ sts_nat_sad : &
 !======================================================================
 !======================================================================
       do k = sad_topp,pver
-	 do i = 1,ncol
-	    if( .not. mask_lbs(i,k) ) then
+         do i = 1,ncol
+            if( .not. mask_lbs(i,k) ) then
                mask_ice(i,k) = h2o_cond(i,k) > 0._r8
-	    else
-	       mask_ice(i,k) = .false.
-	    end if
+            else
+               mask_ice(i,k) = .false.
+            end if
          end do
       end do
 
-!rpf  Allow computation only in troposphere
+      !rpf  Allow computation only in troposphere
       do i = 1,ncol
          kk_tropo = troplev(i)
          do k = pver, 1, -1
-           if ( k < kk_tropo ) then
-             mask_ice(i,k) = .false.
-           endif
+            if ( k < kk_tropo ) then
+               mask_ice(i,k) = .false.
+            endif
          enddo
       enddo
 
-all_ice : &
-      if( any( mask_ice(:,sad_topp:pver) ) ) then
+      all_ice : if( any( mask_ice(:,sad_topp:pver) ) ) then
          do k = sad_topp,pver
             where( mask_ice(:,k) )
-	       lcl_h2o_avail(:,k) = h2o_cond(:,k)
+               lcl_h2o_avail(:,k) = h2o_cond(:,k)
             endwhere
          end do
-!----------------------------------------------------------------------
-!        ... ICE
-!----------------------------------------------------------------------
+         !----------------------------------------------------------------------
+         !        ... ICE
+         !----------------------------------------------------------------------
          call ice_sad_calc( ncol, press, temp, m, lcl_h2o_avail, &
-			    lcl_sad_ice, lcl_radius_ice, mask_ice )
+              lcl_sad_ice, lcl_radius_ice, mask_ice )
 
          do k = sad_topp,pver
             where( mask_ice(:,k) )
@@ -649,7 +645,6 @@ all_ice : &
             endwhere
          end do
       end if all_ice
-
 
       end subroutine icesad_trop_calc
 
