@@ -249,7 +249,9 @@ contains
           ! Actually it should be landfrac = 1 ... but we do not want to bring landfrac as an additional agrument
           iodide_aq(i) = 0._r8
        else
-!         iodide_aq(i) = 1.46e6_r8 * exp( -9134._r8 / sst(i) ) * ocnfrac(i)
+          ! this was the original computation in CESM1 but the multiplication
+          ! by ocnfrac(i) is incorrect:
+          ! iodide_aq(i) = 1.46e6_r8 * exp( -9134._r8 / sst(i) ) * ocnfrac(i)
           iodide_aq(i) = 1.46e6_r8 * exp( -9134._r8 / sst(i) )
        end if
 
