@@ -2535,6 +2535,62 @@
     </options>
   </test>
 
+  <test compset="FC2000climo_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FCHIST_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FCnudged_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FW2000climo_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FWHIST_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FWnudged_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
+    </options>
+  </test>
+
 <!-- PORT (offline radiation driver) -->
 
   <test compset="PC4" grid="f19_f19_mt232" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
