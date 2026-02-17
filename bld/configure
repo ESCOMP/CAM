@@ -64,11 +64,11 @@ OPTIONS
                         Default: none.
     -chem <name>        Build CAM with specified prognostic chemistry package
                         [ none | ghg_mam4 | terminator | trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_ts2 |
-			  trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam4_slh | trop_strat_mam5_slh | trop_strat_mam5_ts2 |
-			  trop_strat_mam5_ts4 | trop_strat_mam5_vbs | trop_strat_noaero | trop_strat_mam5_vbsext |
+			  trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam4_slh | trop_strat_mam5_slh | trop_strat_mam5_t1s1 |
+			  trop_strat_mam5_t2s2 | trop_strat_mam5_t2s1 | trop_strat_mam5_t4s2 | trop_strat_noaero | trop_strat_mam5_vbsext |
 			  waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_mad_mam4 | waccm_ma_mam4 |
-			  waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 | waccm_ma_mam5 | waccm_tsmlt_mam5 |
-			  waccm_tsmlt_mam4_slh | waccm_tsmlt_mam5_slh | waccm_tsmlt_mam5_vbsext | waccm_ma_noaero | geoschem_mam4 ].
+			  waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 | waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam4_slh |
+			  waccm_tsmlt_mam5_slh | waccm_tsmlt_mam5_vbsext | waccm_t4ma_mam5 | waccm_ma_noaero | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6 and cam7, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
@@ -81,6 +81,7 @@ OPTIONS
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
      -dyn <name>        Dynamical core option: [fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
+     -ext_co2_cool      Switch on extended non-LTE CO2 cooling
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
@@ -301,6 +302,7 @@ GetOptions(
     "version"                   => \$opts{'version'},
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
+    "ext_co2_cool"              => \$opts{'ext_co2_cool'},
 )  or usage();
 
 # Give usage message.
@@ -706,6 +708,12 @@ if (defined $opts{'waccmx'}) {
 }
 my $waccmx = $cfg_ref->get('waccmx');
 my $ionos  = $cfg_ref->get('ionosphere');
+
+# Extended CO2 non-LTE option
+if (defined $opts{'ext_co2_cool'}) {
+    $cfg_ref->set('ext_co2_cool', $opts{'ext_co2_cool'});
+}
+my $ext_co2_cool = $cfg_ref->get('ext_co2_cool');
 
 #-----------------------------------------------------------------------------------------------
 
@@ -1769,6 +1777,11 @@ if ($waccmx) {
     $cfg_cppdefs .= ' -DWACCMX_PHYS';
 }
 
+# Extended Non-LTE CO2 cooling
+if ($ext_co2_cool) {
+    $cfg_cppdefs .= ' -DEXT_CO2_COOL';
+}
+
 # PIO
 my $pio2_build = (defined $opts{'pio2'}) ? 1 : 0;
 
@@ -1968,6 +1981,7 @@ sub write_filepath
     my $spmd          = $cfg_ref->get('spmd');
     my $offline_drv   = $cfg_ref->get('offline_drv');
     my $inic_val      = $cfg_ref->get('analytic_ic');
+    my $ext_co2_cool  = $cfg_ref->get('ext_co2_cool');
 
     # Root directory
     my $camsrcdir = $cfg_ref->get('cam_dir');
@@ -2059,6 +2073,10 @@ sub write_filepath
 	print $fh "$camsrcdir/src/physics/ali_arms/subs\n";
 	print $fh "$camsrcdir/src/physics/ali_arms/include\n";
     }
+    if ($ext_co2_cool) {
+        print $fh "$camsrcdir/src/physics/ext_co2_cooling/source/modules\n";
+    }
+
     print $fh "$camsrcdir/src/ionosphere\n";
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";

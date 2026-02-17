@@ -324,6 +324,17 @@
     </options>
   </test>
 
+  <test compset="FCARMA2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA trop_strat model test</option>
+    </options>
+  </test>
+
   <test compset="FHIST_C5" grid="f10_f10_mt232" name="TMC_D_Ln9" testmods="cam/mc_ttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
@@ -803,6 +814,16 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+<!--             WACCM carma trop_strat model    -->
+  <test compset="FWmaCARMAHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA WACCM trop_strat model test</option>
+    </options>
+  </test>
 <!-- TEM diagnostics and zonal-average output -->
   <test compset="QPWmaC4" grid="ne5_ne5_mg37" name="SMS_D_Ln6" testmods="cam/outfrq3s_physgrid_tem">
     <machines>
@@ -1058,7 +1079,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x2" testmods="cam/outfrq9s_mee_fluxes" supported="false">
+  <test compset="FWmaHIST" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s_mee_fluxes" supported="false">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
