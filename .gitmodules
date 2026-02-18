@@ -124,8 +124,8 @@ fxDONOTUSEurl = https://github.com/ESCOMP/RTM
 
 [submodule "mosart"]
 path = components/mosart
-url = https://github.com/ESCOMP/MOSART
-fxtag = mosart1.1.12
+url = https://github.com/billsacks/MOSART
+fxtag = 7aa48b1
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/MOSART
 
@@ -139,7 +139,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.72
+fxtag = ccs_config_cesm1.0.75
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 
@@ -187,8 +187,8 @@ fxDONOTUSEurl = https://github.com/ESCOMP/CESM_CICE
 
 [submodule "clm"]
 path = components/clm
-url = https://github.com/ESCOMP/CTSM
-fxtag = alpha-ctsm5.4.CMIP7.09.ctsm5.3.068
+url = https://github.com/billsacks/CTSM
+fxtag = c7230f0
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESCOMP/CTSM
 
