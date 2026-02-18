@@ -19,9 +19,8 @@
 # -----------------------------------------------------------------------------
 
 
-# Derecho build with HDF5 + openmp (03/27/2024)
+# Update RTTOVDIR to point to your RTTOV installation directory containing: bin  build  include  lib  mod  obj
 RTTOVDIR=/glade/u/home/jonahshaw/w/RTTOV2/hdf_build
-FC=ifort
 FFLAGS= -I$(RTTOVDIR)/mod -I$(RTTOVDIR)/include -fPIC -O3 -fopenmp
 LDFLAGS_ARCH=-fopenmp
 
