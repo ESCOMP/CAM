@@ -25,6 +25,14 @@ FC=ifort
 FFLAGS= -I$(RTTOVDIR)/mod -I$(RTTOVDIR)/include -fPIC -O3 -fopenmp
 LDFLAGS_ARCH=-fopenmp
 
+# Use the same HDF5 and NETCDF flags here as are used in Makefile.inc or Makefile.local in the RTTOV build
+HDF5_PREFIX  = ${NCAR_ROOT_HDF5}
+FFLAGS_HDF5  = -D_RTTOV_HDF $(FFLAG_MOD)$(HDF5_PREFIX)/include
+LDFLAGS_HDF5 = -L$(HDF5_PREFIX)/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz
+NETCDF_PREFIX  = ${NCAR_ROOT_NETCDF}
+FFLAGS_NETCDF  = -D_RTTOV_NETCDF -I$(NETCDF_PREFIX)/include
+LDFLAGS_NETCDF = -L$(NETCDF_PREFIX)/lib -lnetcdff
+
 RTTOV_VERSION=13
 EXT_BIN=.exe
 EXT_OBJ=.o
@@ -35,7 +43,6 @@ BINDIR=$(RTTOVDIR)/bin
 
 #### Do not edit beyond this line ####
 
-include $(RTTOVDIR)/build/Makefile.local
 
 LIBDIR=$(RTTOVDIR)/lib
 
