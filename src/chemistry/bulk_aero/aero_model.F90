@@ -702,7 +702,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
                   state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_total, reff_trop )
+                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_total, reff_trop, sad_ssa )
 
     use mo_constants, only : pi, avo => avogadro
 
@@ -726,6 +726,7 @@ contains
     real(r8), intent(inout) :: dm_aer(:,:,:)
     real(r8), intent(inout) :: sad_total(:,:)
     real(r8), intent(out)   :: reff_trop(:,:)
+    real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
 
@@ -770,6 +771,8 @@ contains
     !           (no growth effect for mineral dust)
     !-----------------------------------------------------------------
     real(r8), dimension(7) :: table_rh, table_rfac_sulf, table_rfac_bc, table_rfac_oc, table_rfac_ss
+
+    sad_ssa = -huge(1._r8)
 
     data table_rh(1:7)        / 0.0_r8, 0.5_r8, 0.7_r8, 0.8_r8, 0.9_r8, 0.95_r8, 0.99_r8/
     data table_rfac_sulf(1:7) / 1.0_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8, 1.9_r8,  2.2_r8/

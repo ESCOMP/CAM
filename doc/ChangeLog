@@ -1,5 +1,338 @@
 ===============================================================
 
+Tag name: cam6_4_153
+Originator(s): fvitt, RafaPedroFernandez
+Date: 18 Feb 2026
+One-line Summary: Short lived halogen chemistry
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1470
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Issue #1469
+ - Bring in short-lived halogen (SLH) chemistry developed by Rafael Pedro Fernandez et al.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+
+ New namelist options for SLH chemistry:
+
+  gas_wetdep_ice_uptake_list
+    List of gas-phase species that undergo ice scavenging in the NEU
+    wet deposition scheme.
+
+  SSAdehal_ScalingFactor
+    Scaling-factor for SLH dehalogenation reaction (XONO2,XNO2,HOX) on Sea-Salt Aerosols.
+
+  SSAhno3_ScalingFactor
+    Scaling-factor for SLH acid displacement reaction (HNO3-->HCl) on Sea-Salt Aerosols.
+
+  SSAn2o5_ScalingFactor
+    Scaling-factor for SLH dinitrogen pentoxide reaction (N2O5-->HNO3+CLNO2) on Sea-Salt Aerosols
+
+  LIQfraprx_ScalingFactor_I
+    Scaling-factor for SLH washout (Iodine) on liquid droplets based on Free-Regime Approx.
+
+  ICEfraprx_ScalingFactor_I
+    Scaling-factor for SLH washout (Iodine) on ice crystals based on Free-Regime Approx.
+
+  ICEfraprx_ScalingFactor_Br
+    Scaling-factor for SLH washout (Bromine) on ice crystals based on Free-Regime Approx.
+
+List any changes to the defaults for the boundary datasets:
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin cacraigucar
+
+List all files eliminated:
+D       src/chemistry/mozart/clybry_fam.F90
+ - replaced by clybryiy_fam.F90
+
+List all files added and what they do:
+
+A       src/chemistry/mozart/clybryiy_fam.F90
+ - expanded for Iy chemical family
+
+A       src/chemistry/mozart/mo_slh_routines.F90
+ - recycling effiencies for SLH chemistry
+
+A       bld/namelist_files/gas_wetdep_ice_uptake_list.xml
+ - for default ice uptake lists
+
+A       bld/namelist_files/slh_master_gas_drydep_list.xml
+A       bld/namelist_files/slh_master_gas_wetdep_list.xml
+ - deposition species lists for SLH chemistry
+
+A       bld/namelist_files/use_cases/2000_trop_strat_cam6_slh.xml
+A       bld/namelist_files/use_cases/hist_trop_strat_cam6_slh.xml
+A       bld/namelist_files/use_cases/hist_trop_strat_nudged_cam6_slh.xml
+A       bld/namelist_files/use_cases/waccm_tsmlt_2000_cam6_slh.xml
+A       bld/namelist_files/use_cases/waccm_tsmlt_hist_cam6_slh.xml
+A       bld/namelist_files/use_cases/waccm_tsmlt_nudged_cam6_slh.xml
+ - use cases for SLH chemistry compsets
+
+A       src/chemistry/pp_trop_strat_mam4_slh/chem_mech.doc
+A       src/chemistry/pp_trop_strat_mam4_slh/chem_mech.in
+A       src/chemistry/pp_trop_strat_mam4_slh/chem_mods.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/m_rxt_id.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/m_spc_id.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_adjrxt.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_exp_sol.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_imp_sol.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_indprd.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_lin_matrix.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_lu_factor.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_lu_solve.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_nln_matrix.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_phtadj.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_prod_loss.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_rxt_rates_conv.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_setrxt.F90
+A       src/chemistry/pp_trop_strat_mam4_slh/mo_sim_dat.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/chem_mech.doc
+A       src/chemistry/pp_trop_strat_mam5_slh/chem_mech.in
+A       src/chemistry/pp_trop_strat_mam5_slh/chem_mods.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/m_rxt_id.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/m_spc_id.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_adjrxt.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_exp_sol.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_imp_sol.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_indprd.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_lin_matrix.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_lu_factor.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_lu_solve.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_nln_matrix.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_phtadj.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_prod_loss.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_rxt_rates_conv.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_setrxt.F90
+A       src/chemistry/pp_trop_strat_mam5_slh/mo_sim_dat.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/chem_mech.doc
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/chem_mech.in
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/chem_mods.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/m_rxt_id.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/m_spc_id.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_adjrxt.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_exp_sol.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_imp_sol.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_indprd.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_lin_matrix.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_lu_factor.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_lu_solve.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_nln_matrix.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_phtadj.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_prod_loss.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_rxt_rates_conv.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_setrxt.F90
+A       src/chemistry/pp_waccm_tsmlt_mam4_slh/mo_sim_dat.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/chem_mech.doc
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/chem_mech.in
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/chem_mods.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/m_rxt_id.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/m_spc_id.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_adjrxt.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_exp_sol.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_imp_sol.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_indprd.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_lin_matrix.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_lu_factor.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_lu_solve.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_nln_matrix.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_phtadj.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_prod_loss.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_rxt_rates_conv.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_setrxt.F90
+A       src/chemistry/pp_waccm_tsmlt_mam5_slh/mo_sim_dat.F90
+ - SLH chemistry preprocessor files
+
+A       cime_config/testdefs/testmods_dirs/cam/ts_slh_mam4_outfrq9s/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/ts_slh_mam4_outfrq9s/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/ts_slh_mam4_outfrq9s/user_nl_clm
+A       cime_config/testdefs/testmods_dirs/cam/wa_slh_mam4_outfrq9s/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/wa_slh_mam4_outfrq9s/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/wa_slh_mam4_outfrq9s/user_nl_clm
+ - testing SLH chemistry with MAM4 aerosols
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - set ice_uptake_list for SLH chemistry
+ - set default SLH chemistry emissions files
+ - include default megan emissions for SLH chemistry
+
+M       bld/config_files/definition.xml
+ - include slh chemistry mechanisms as valid chem names
+
+M       bld/configure
+ - include slh chemistry mechanisms as valid chem options
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - default setting for SLH chemistry
+
+M       bld/namelist_files/namelist_definition.xml
+ - new namelist options for SLH chemistry (see above)
+
+M       bld/perl5lib/Build/ChemNamelist.pm
+ - get default ice uptake species lists
+
+M       cime_config/config_component.xml
+M       cime_config/config_compsets.xml
+ - new SLH chemistry compsets
+
+M       cime_config/config_pes.xml
+ - default PE-layouts for SLH chemistry compsets on derecho
+
+M       cime_config/testdefs/testlist_cam.xml
+ - include SLH chemistry regression tests
+ - increase wallclock time on 2 izumi tests
+
+M       src/chemistry/bulk_aero/aero_model.F90
+M       src/chemistry/carma_aero/aero_model.F90
+ - interface change for sea salt surface area
+
+M       src/chemistry/modal_aero/aero_model.F90
+ - changes for sea salt surface area
+
+M       src/chemistry/mozart/chemistry.F90
+ - invoke iodine surface emissions routine
+
+M       src/chemistry/mozart/gas_wetdep_opts.F90
+ - species ice uptake list
+
+M       src/chemistry/mozart/mo_chemini.F90
+ - initialize clybryiy_fam module
+
+M       src/chemistry/mozart/mo_chm_diags.F90
+ - SLH chemsitry diagnostics
+
+M       src/chemistry/mozart/mo_drydep.F90
+ - for dry deposition of SLH species
+
+M       src/chemistry/mozart/mo_gas_phase_chemdr.F90
+ - changes for ice reactions in SLH chemistry mechanisms
+
+M       src/chemistry/mozart/mo_neu_wetdep.F90
+ - for wet deposition of SLH species
+
+M       src/chemistry/mozart/mo_sad.F90
+ - new routin for ice SAD
+
+M       src/chemistry/mozart/mo_srf_emissions.F90
+ - apply diurnal cycle to SLH species emission
+
+M       src/chemistry/mozart/mo_strato_rates.F90
+ - heterogeneous reaction rates for SHL chemistry
+
+M       src/chemistry/mozart/mo_usrrxt.F90
+ - user defined reaction rates for SHL chemistry
+
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+ - invoke clybryiy_fam routines
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
+   - pre-existing failure
+     ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  DIFF SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s
+   - new regression test for SLH chemistry
+
+  NLFAIL ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s
+  NLFAIL ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s
+  NLFAIL ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  NLFAIL ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  NLFAIL ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h
+  NLFAIL ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  NLFAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  NLFAIL ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s
+  NLFAIL ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s
+  NLFAIL ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
+  NLFAIL SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep
+  NLFAIL SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  NLFAIL SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7
+  NLFAIL SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie
+  NLFAIL SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+  NLFAIL SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d
+  NLFAIL SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  NLFAIL SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+  NLFAIL SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging
+  NLFAIL SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s
+  NLFAIL SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs
+  NLFAIL SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp
+   - updates in xs_long_file and xs_short_file files (SLH photolysis) -- otherwise bit-for-bit
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: NLFAIL) details:
+   - updates in xs_long_file and xs_short_file files (SLH photolysis) -- otherwise bit-for-bit
+
+izumi/nag/aux_cam:
+  NLFAIL ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s
+  NLFAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+  NLFAIL ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+  NLFAIL SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port
+  NLFAIL SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s
+  NLFAIL SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem
+  NLFAIL SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s
+  NLFAIL TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac
+   - updates in xs_long_file and xs_short_file files (SLH photolysis) -- otherwise bit-for-bit
+
+izumi/gnu/aux_cam:
+  NLFAIL ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s
+  NLFAIL ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3
+  NLFAIL SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6
+  NLFAIL SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+  NLFAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  NLFAIL SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee
+  NLFAIL SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s
+  NLFAIL SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s
+   - updates in xs_long_file and xs_short_file files (SLH photolysis) -- otherwise bit-for-bit
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_152
 Originator(s): fvitt
 Date: 13 Feb 2026

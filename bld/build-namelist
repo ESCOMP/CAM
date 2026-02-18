@@ -583,13 +583,16 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     my $chem_proc_src = $cfg->get('chem_proc_src');
     my $chem_src_dir = $cfg->get('chem_src_dir');
 
-    my ( $gas_wetdep_list, $aer_wetdep_list, $aer_sol_facti, $aer_sol_factb, $aer_scav_coef,
-         $aer_drydep_list, $gas_drydep_list ) =
+    my ( $gas_wetdep_list, $gas_wetdep_ice_uptake_list, $aer_wetdep_list,
+	 $aer_sol_facti, $aer_sol_factb, $aer_scav_coef, $gas_drydep_list, $aer_drydep_list ) =
            set_dep_lists( $chem, $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print );
 
     if (length($gas_wetdep_list)>2){
       add_default($nl, 'gas_wetdep_method' );
       add_default($nl, 'gas_wetdep_list', 'val'=>$gas_wetdep_list );
+      if (($chem =~ /_slh/) and (length($gas_wetdep_ice_uptake_list)>2)) {
+        add_default($nl, 'gas_wetdep_ice_uptake_list', 'val'=>$gas_wetdep_ice_uptake_list );
+      }
     }
 
     if (length($aer_wetdep_list)>2){
@@ -2357,6 +2360,25 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
                     'soag_bb_srf_file'    => 'SOAG' );
     }
 
+    # for short-lived halogen (SLH) chemistry
+    if ($chem =~ /_slh/) {
+        %species = (%species,
+		    'c2cl4_slh_emis_file'   => 'C2CL4',
+		    'ch2br2_slh_emis_file'  => 'CH2BR2',
+		    'ch2brcl_slh_emis_file' => 'CH2BRCL',
+		    'ch2cl2_slh_emis_file'  => 'CH2CL2',
+		    'ch2i2_slh_emis_file'   => 'CH2I2',
+		    'ch2ibr_slh_emis_file'  => 'CH2IBR',
+		    'ch2icl_slh_emis_file'  => 'CH2ICL',
+		    'ch3i_slh_emis_file'    => 'CH3I',
+		    'chbr2cl_slh_emis_file' => 'CHBR2CL',
+		    'chbr3_slh_emis_file'   => 'CHBR3',
+		    'chbrcl2_slh_emis_file' => 'CHBRCL2',
+		    'hoi_slh_emis_file'     => 'HOI',
+		    'i2_slh_emis_file'      => 'I2' );
+    }
+
+
     # for mid-atmos gas-phase chemistry
     if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_t4ma/) {
         %species = (%species,
@@ -2370,7 +2392,7 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
                     'CH2O_bb_srf_file' => 'CH2O' );
     }
 
-     # for troposphere gas-phase chemistry
+    # for troposphere gas-phase chemistry
     if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/ or $chem =~ /_t4ma/) {
         %species = (%species,
                     'BIGALK_an_srf_file' => 'BIGALK',
@@ -2657,7 +2679,7 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_vbs/ or $chem =~ /trop_strat_mam5_vbsext/ or $chem =~ /trop_strat_mam5_t1s/) {
+    if ($chem =~ /trop_strat_mam4_vbs/ or $chem =~ /trop_strat_mam5_vbsext/ or $chem =~ /trop_strat_mam5_t1s/ or $chem =~ /trop_strat_mam5_slh/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
                 . "+ myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a "
