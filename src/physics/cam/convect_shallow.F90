@@ -320,14 +320,12 @@
 
    use constituents,    only : pcnst, cnst_get_ind, cnst_get_type_byind
    use hk_conv,         only : cmfmca_cam
-   use uwshcu,          only : compute_uwshcu_inv
+
+   use uwshcu, only: uwshcu_cam
 
    use time_manager,    only : get_nstep
    use wv_saturation,   only : qsat
    use physconst,       only : latice, latvap, rhoh2o, tmelt, gravit
-
-   use spmd_utils, only : iam
-   implicit none
 
    ! ---------------------- !
    ! Input-Output Arguments !
@@ -545,21 +543,26 @@
       lq(:) = .TRUE.
       call physics_ptend_init( ptend_loc, state%psetcols, 'UWSHCU', ls=.true., lu=.true., lv=.true., lq=lq  )
 
+      ! pbuf field setup:
+      ! cush - convective scale height (inout)
       call pbuf_get_field(pbuf, cush_idx, cush  ,(/1,itim_old/),  (/pcols,1/))
+      ! tke - in [m2 s-2]
       call pbuf_get_field(pbuf, tke_idx,  tke)
 
-
+      ! shallow convective precip (rain + snow) flux (out from uwshcu)
       call pbuf_get_field(pbuf, sh_flxprc_idx, flxprec)
+      ! shallow convective snow flux (out from uwshcu)
       call pbuf_get_field(pbuf, sh_flxsnw_idx, flxsnow)
+      ! shallow convective (entrainment)/(entrainment+detrainment) ratio (out from uwshcu)
       call pbuf_get_field(pbuf, sh_e_ed_ratio_idx, sh_e_ed_ratio)
 
-      call compute_uwshcu_inv( pcols     , pver    , ncol           , pcnst         , ztodt         ,                   &
+      call uwshcu_cam( pcols     , pver    , ncol           , pcnst         , ztodt         ,                   &
                                state%pint, state%zi, state%pmid     , state%zm      , state%pdel    ,                   &
                                state%u   , state%v , state%q(:,:,1) , state%q(:,:,ixcldliq), state%q(:,:,ixcldice),     &
                                state%t   , state%s , state%q(:,:,:) ,                                                   &
                                tke       , cld     , concld         , pblh          , cush          ,                   &
                                cmfmc2    , slflx   , qtflx          , 							&
-			       flxprec, flxsnow, 			         					&
+                               flxprec, flxsnow, 			         					&
                                ptend_loc%q(:,:,1)  , ptend_loc%q(:,:,ixcldliq), ptend_loc%q(:,:,ixcldice),              &
                                ptend_loc%s         , ptend_loc%u    , ptend_loc%v   , ptend_tracer  ,                   &
                                rprdsh              , cmfdqs         , precc         , snow          ,                   &
