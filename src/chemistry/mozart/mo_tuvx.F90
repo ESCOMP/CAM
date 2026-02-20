@@ -24,6 +24,7 @@ module mo_tuvx
    use spmd_utils, only : mpicom, mpi_character, mpi_integer, mpi_logical, mpi_success
    use cam_abortutils, only : endrun
    use cam_logfile, only : iulog ! log info output unit
+   use shr_const_mod, only : pi => shr_const_pi
 
    implicit none
 
@@ -264,7 +265,6 @@ contains
       use physics_buffer,          only : physics_buffer_desc
       use physics_buffer,          only : pbuf_set_field
       use ppgrid,                  only : pcols ! maximum number of columns
-      use shr_const_mod,           only : pi => shr_const_pi
       use solar_irrad_data,        only : has_spectrum
       use tuvx_grid,               only : grid_t
       use tuvx_grid_warehouse,     only : grid_warehouse_t
@@ -592,7 +592,6 @@ contains
       use physics_buffer,   only : physics_buffer_desc
       use physics_buffer,   only : pbuf_get_field
       use ppgrid,           only : pcols        ! maximum number of columns
-      use shr_const_mod,    only : pi => shr_const_pi
 
       type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
       integer,  intent(in)    :: ncol                        ! number of active columns on this thread

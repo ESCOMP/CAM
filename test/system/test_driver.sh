@@ -269,7 +269,8 @@ cat > ${submit_script_cime} << EOF
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
 #PBS -l walltime=$wallclock_limit
-#PBS -l select=1:ncpus=128:mpiprocs=128
+#PBS -l select=1:ncpus=128:mem=235GB
+#PBS -l job_priority=premium
 #PBS -j oe
 
 EOF
