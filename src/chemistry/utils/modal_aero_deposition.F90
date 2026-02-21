@@ -21,7 +21,8 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use camsrfexch,       only: cam_out_t     
 use constituents,     only: cnst_get_ind, pcnst
 use cam_abortutils,   only: endrun
-use rad_constituents, only: rad_cnst_get_info
+use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
 implicit none
 private
@@ -293,24 +294,37 @@ subroutine get_indices( type, modes, indices, count )
   integer, intent(out) :: indices(:)
   integer, intent(out) :: count
 
-  integer :: l, n, ndx, nmodes, nspec
-  character(len=32) :: spec_type, spec_name, mode_type
+  integer :: l, n, ndx, nmodes, nspec, iaermod
+  character(len=aero_name_len) :: spec_type, spec_name, mode_type
+  class(aerosol_properties), pointer :: aero_props_modal
 
-  call rad_cnst_get_info(0, nmodes=nmodes)
+  ! Find modal properties object from factory
+  aero_props_modal => null()
+  do iaermod = 1, aerosol_instances_get_num_models()
+     aero_props_modal => aerosol_instances_get_props(iaermod, 0)
+     if (aero_props_modal%model_is('MAM')) exit
+     aero_props_modal => null()
+  end do
 
   count = 0
   indices(:) = -1
+
+  if (.not. associated(aero_props_modal)) return
+
+  nmodes = aero_props_modal%nbins()
 
   if (nmodes==7) return ! historically turned off for mam7
 
   do n = 1, nmodes
 
-     call rad_cnst_get_info(0, n, mode_type=mode_type, nspec=nspec)
+     mode_type = aero_props_modal%bin_name(n)
+     nspec = aero_props_modal%nspecies(n)
 
      if ( any(modes==trim(mode_type)) ) then
 
         do l = 1,nspec
-           call rad_cnst_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
+           call aero_props_modal%species_type(n, l, spectype=spec_type)
+           call aero_props_modal%get(n, l, specname=spec_name)
            call cnst_get_ind(spec_name, ndx, abort=.false.)
            if (ndx>0) then
               if (trim(spec_type) == trim(type)) then

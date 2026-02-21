@@ -17,9 +17,12 @@ use physconst,           only: cappa, cpair
 use time_manager,        only: get_nstep, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, &
-                               rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
-                               liqcldoptics, icecldoptics
+use radiative_aerosol_definitions, only: N_DIAG
+use rad_constituents,    only: rad_cnst_get_gas, rad_cnst_out, oldcldoptics, liqcldoptics, icecldoptics
+use radiative_aerosol, only: rad_aer_get_call_list
+!REMOVECAM
+use aerosol_mmr_cam, only: rad_aer_diag_out
+!REMOVECAM_END
 
 use radconstants,        only: nswbands, nlwbands, rrtmg_sw_cloudsim_band, rrtmg_lw_cloudsim_band, &
                                idx_sw_diag
@@ -456,7 +459,7 @@ subroutine radiation_init(pbuf2d)
    endif
 
    ! get list of active radiation calls
-   call rad_cnst_get_call_list(active_calls)
+   call rad_aer_get_call_list(active_calls)
 
    ! Add shortwave radiation fields to history master field list.
 
@@ -1197,7 +1200,7 @@ subroutine radiation_tend( &
          call get_variability(sfac)
 
          ! Get the active climate/diagnostic shortwave calculations
-         call rad_cnst_get_call_list(active_calls)
+         call rad_aer_get_call_list(active_calls)
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
@@ -1244,14 +1247,15 @@ subroutine radiation_tend( &
 
       end if
 
-      ! Output aerosol mmr
+      ! Output gas and aerosol diagnostics
       call rad_cnst_out(0, state, pbuf)
+      call rad_aer_diag_out(0, state, pbuf)
 
       ! Longwave radiation computation
 
       if (dolw) then
 
-         call rad_cnst_get_call_list(active_calls)
+         call rad_aer_get_call_list(active_calls)
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1

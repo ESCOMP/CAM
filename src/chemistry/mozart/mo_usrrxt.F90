@@ -797,7 +797,7 @@ contains
     use physics_types,   only : physics_state
     use carma_flags_mod, only : carma_hetchem_feedback
     use aero_model,      only : aero_model_surfarea
-    use rad_constituents,only : rad_cnst_get_info
+    use radiative_aerosol,only : rad_aer_get_info
     use time_manager,     only : get_curr_calday
     use infnan,           only : nan
     use mo_slh_routines,  only : SSAdehal_ScalingFactor, SSAhno3_ScalingFactor, SSAn2o5_ScalingFactor, &
@@ -1078,8 +1078,8 @@ contains
 
     ! get info about the modal aerosols
     ! get ntot_amode
-    call rad_cnst_get_info(0, nmodes=ntot_amode)
-    call rad_cnst_get_info(0, nbins=nbins)
+    call rad_aer_get_info(0, nmodes=ntot_amode)
+    call rad_aer_get_info(0, nbins=nbins)
 
     if (ntot_amode>0.and.nbins>0) then
       call endrun(subname // ':: ERROR running with MAM and CARMA simultaneously not supported.')

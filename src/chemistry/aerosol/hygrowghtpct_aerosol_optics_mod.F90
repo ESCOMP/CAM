@@ -45,11 +45,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ilist, ibin, ncol, nlev, wgtpct_in) result(newobj)
+  function constructor(aero_props, aero_state, ibin, ncol, nlev, wgtpct_in) result(newobj)
 
     class(aerosol_properties),intent(in) :: aero_props ! aerosol_properties object
     class(aerosol_state),intent(in) :: aero_state      ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncol   ! number of columns
     integer, intent(in) :: nlev   ! number of levels
@@ -84,20 +83,20 @@ contains
     ! weight precent of H2SO4/H2O solution
     newobj%wgtpct(:ncol,:nlev) = wgtpct_in(:ncol,:nlev)
 
-    call aero_props%optics_params(ilist, ibin, wgtpct=newobj%tbl_wgtpct, nwtp=newobj%nwtp)
+    call aero_props%optics_params(ibin, wgtpct=newobj%tbl_wgtpct, nwtp=newobj%nwtp)
 
-    nspec = aero_props%nspecies(ilist, ibin)
+    nspec = aero_props%nspecies(ibin)
 
     newobj%totalmmr(:,:) = 0._r8
 
     do ispec = 1,nspec
 
-       call aero_state%get_ambient_mmr(ilist,ispec,ibin,specmmr)
+       call aero_state%get_ambient_mmr(species_ndx=ispec,bin_ndx=ibin,mmr=specmmr)
        newobj%totalmmr(:ncol,:nlev) = newobj%totalmmr(:ncol,:nlev) + specmmr(:ncol,:nlev)
 
     end do
 
-    call aero_props%optics_params(ilist, ibin,  &
+    call aero_props%optics_params(ibin,  &
          sw_hygro_ext_wtp=newobj%sw_hygro_ext_wtp, &
          sw_hygro_ssa_wtp=newobj%sw_hygro_ssa_wtp, &
          sw_hygro_asm_wtp=newobj%sw_hygro_asm_wtp, &

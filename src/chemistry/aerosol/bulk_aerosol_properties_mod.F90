@@ -9,7 +9,7 @@ module bulk_aerosol_properties_mod
 
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
-  use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_props, rad_cnst_get_aer_mmr
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_props
   use infnan, only: nan, assignment(=)
 
   implicit none
@@ -38,9 +38,6 @@ module bulk_aerosol_properties_mod
      procedure :: apply_number_limits
      procedure :: hetfrz_species
      procedure :: optics_params
-     procedure :: nbins_rlist
-     procedure :: nspecies_per_bin_rlist
-     procedure :: alogsig_rlist
      procedure :: soluble
      procedure :: min_mass_mean_rad
      procedure :: bin_name
@@ -62,14 +59,20 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor() result(newobj)
+  function constructor(list_idx) result(newobj)
 
+    integer, optional, intent(in) :: list_idx ! radiation list index (0=climate)
     type(bulk_aerosol_properties), pointer :: newobj
 
     integer,allocatable :: nspecies(:)
     real(r8),allocatable :: alogsig(:)
     real(r8),allocatable :: f1(:)
-    integer :: ierr, naero
+    integer :: ierr, naero, i
+    integer :: list_idx_loc
+    real(r8) :: dispersion_val
+
+    list_idx_loc = 0
+    if (present(list_idx)) list_idx_loc = list_idx
 
     allocate(newobj,stat=ierr)
     if( ierr /= 0 ) then
@@ -77,7 +80,7 @@ contains
        return
     end if
 
-    call rad_cnst_get_info(0, naero=naero)
+    call rad_aer_get_info(list_idx_loc, naero=naero)
 
     ! Here treat each aerosol as a separate bin
     allocate( nspecies(naero),stat=ierr )
@@ -99,14 +102,17 @@ contains
     ! Bulk aerosols have 1 chemical species in each bin
     nspecies(:) = 1
 
-    ! Taken from CARMA -- not sure if it will be used for our purposes
-    alogsig(:) = log(2._r8)
+    ! Read actual dispersion (sigma_logr) from physprop files
+    do i = 1, naero
+       call rad_aer_get_props(list_idx_loc, i, dispersion_aer=dispersion_val)
+       alogsig(i) = log(dispersion_val)
+    end do
     f1(:) = 1._r8
 
     ! For bulk aerosols, the number of bins and total number of constituents are
     ! the same (naero) -- one constituent (species and mass) per bin.
     call newobj%initialize(nbin=naero, ncnst=naero, nspec=nspecies, nmasses=nspecies, &
-                           alogsig=alogsig, f1=f1, f2=f1, ierr=ierr)
+                           alogsig=alogsig, f1=f1, f2=f1, ierr=ierr, list_idx=list_idx_loc)
 
     deallocate(nspecies)
     deallocate(alogsig)
@@ -146,13 +152,13 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                 spectype, specname, specmorph, refindex_sw, refindex_lw)
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
+                 spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
+                 dryrad)
 
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
     integer, intent(in) :: species_ndx         ! species index
-    integer, optional, intent(in) :: list_ndx  ! climate or a diagnostic list number
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
     character(len=*), optional, intent(out) :: spectype  ! species type
@@ -160,26 +166,21 @@ contains
     character(len=*), optional, intent(out) :: specmorph ! species morphology
     complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
+    real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
+    real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
 
-    integer :: ilist
     character(len=20) :: aername
 
-    if (present(list_ndx)) then
-       ilist = list_ndx
-    else
-       ilist = 0
-    end if
-
     if (present(density)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  density_aer=density)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  density_aer=density)
     end if
 
     if (present(hygro)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  hygro_aer=hygro)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  hygro_aer=hygro)
     end if
     if (present(spectype)) then
 
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  aername=aername)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  aername=aername)
 
        select case ( to_lower( aername(:4) ) )
        case('dust')
@@ -202,13 +203,19 @@ contains
       call endrun('ERROR: bulk_aerosol_properties_mod%get specmorph not yet implemented')
     end if
     if (present(specname)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  aername=specname)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  aername=specname)
     end if
     if (present(refindex_sw)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  refindex_aer_sw=refindex_sw)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  refindex_aer_sw=refindex_sw)
     end if
     if (present(refindex_lw)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx,  refindex_aer_lw=refindex_lw)
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  refindex_aer_lw=refindex_lw)
+    end if
+    if (present(num_to_mass_aer)) then
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  num_to_mass_aer=num_to_mass_aer)
+    end if
+    if (present(dryrad)) then
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  dryrad_aer=dryrad)
     end if
 
   end subroutine get
@@ -216,7 +223,7 @@ contains
   !------------------------------------------------------------------------
   ! returns optics type and table parameters
   !------------------------------------------------------------------------
-  subroutine optics_params(self, list_ndx, bin_ndx, opticstype, extpsw, abspsw, asmpsw, absplw, &
+  subroutine optics_params(self, bin_ndx, opticstype, extpsw, abspsw, asmpsw, absplw, &
        refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
        sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
        sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
@@ -228,7 +235,6 @@ contains
 
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
-    integer, intent(in) :: list_ndx            ! rad climate/diags list
 
     character(len=*), optional, intent(out) :: opticstype
 
@@ -287,7 +293,9 @@ contains
     real(r8),  optional, pointer :: r_lw_abs(:,:)
 
     ! refactive index table parameters
-    call rad_cnst_get_aer_props(list_ndx, bin_ndx, &
+    call rad_aer_get_props( &
+         list_idx=self%list_idx_, &
+         aer_idx=bin_ndx, &
          opticstype=opticstype, &
          sw_hygro_ext=sw_hygroscopic_ext, &
          sw_hygro_ssa=sw_hygroscopic_ssa, &
@@ -559,7 +567,7 @@ contains
     character(len=20) :: aername
     logical :: primary_carbon ! primary carbons (CB1 and OC1) are hydrophobic
 
-    call rad_cnst_get_aer_props(0, bin_ndx, aername=aername)
+    call rad_aer_get_props(self%list_idx_, bin_ndx, aername=aername)
 
     aername = to_lower(aername)
 
@@ -583,67 +591,22 @@ contains
   end function min_mass_mean_rad
 
   !------------------------------------------------------------------------------
-  ! returns the total number of bins for a given radiation list index
+  ! returns name for a given aerosol bin
   !------------------------------------------------------------------------------
-  function nbins_rlist(self, list_ndx)  result(res)
+  function bin_name(self, bin_ndx) result(name)
     class(bulk_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: list_ndx  ! radiation list number
-
-    integer :: res
-
-    call rad_cnst_get_info(list_ndx, naero=res)
-
-  end function nbins_rlist
-
-  !------------------------------------------------------------------------------
-  ! returns number of species in a bin for a given radiation list index
-  !------------------------------------------------------------------------------
-  function nspecies_per_bin_rlist(self, list_ndx,  bin_ndx)  result(res)
-    class(bulk_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: list_ndx ! radiation list number
-    integer, intent(in) :: bin_ndx  ! bin number
-
-    integer :: res
-
-    res = 1
-
-  end function nspecies_per_bin_rlist
-
-  !------------------------------------------------------------------------------
-  ! returns the natural log of geometric standard deviation of the number
-  ! distribution for radiation list number and aerosol bin
-  !------------------------------------------------------------------------------
-  function alogsig_rlist(self, list_ndx,  bin_ndx)  result(res)
-    class(bulk_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: list_ndx ! radiation list number
-    integer, intent(in) :: bin_ndx  ! bin number
-
-    real(r8) :: res
-
-    ! to be implemented later if needed
-    res = nan
-
-  end function alogsig_rlist
-
-  !------------------------------------------------------------------------------
-  ! returns name for a given radiation list number and aerosol bin
-  !------------------------------------------------------------------------------
-  function bin_name(self, list_ndx,  bin_ndx) result(name)
-    class(bulk_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: list_ndx ! radiation list number
     integer, intent(in) :: bin_ndx  ! bin number
 
     character(len=aero_name_len) :: name
     character(len=64), allocatable :: names(:)
     integer :: naer, astat
 
-
-    call rad_cnst_get_info(list_ndx, naero=naer)
+    call rad_aer_get_info(self%list_idx_, naero=naer)
 
     allocate( names(naer), stat=astat)
     if( astat/= 0 ) call endrun('bulk_aerosol_properties_mod%bin_name: names allocate error')
 
-    call rad_cnst_get_info(list_ndx, aernames=names)
+    call rad_aer_get_info(self%list_idx_, aernames=names)
 
     name = names(bin_ndx)
 

@@ -5,7 +5,8 @@ module aer_vis_diag_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use cam_history, only: fieldname_len, addfld, outfld, add_default, horiz_only, hist_fld_active
   use cam_history_support, only : fillvalue
-  use rad_constituents, only: rad_cnst_get_info
+  use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+  use aerosol_properties_mod, only: aerosol_properties
   use ppgrid, only: pcols, pver
   use phys_control, only: phys_getopts
   use cam_abortutils, only: endrun
@@ -24,12 +25,27 @@ contains
   !==============================================================================
   subroutine aer_vis_diag_init()
 
-    integer :: i, astat
+    integer :: i, iaermod, astat
     character(len=64), allocatable :: aernames(:)
     logical :: history_aero_optics  ! Output aerosol optics diagnostics
+    class(aerosol_properties), pointer :: aero_props_bam
+
+    ! Find BAM properties object from factory
+    aero_props_bam => null()
+    do iaermod = 1, aerosol_instances_get_num_models()
+       aero_props_bam => aerosol_instances_get_props(iaermod, 0)
+       if (associated(aero_props_bam)) then
+          if (aero_props_bam%model_is('BAM')) exit
+       end if
+       aero_props_bam => null()
+    end do
 
     ! number of bulk aerosols in climate list
-    call rad_cnst_get_info(0, naero=numaerosols)
+    if (associated(aero_props_bam)) then
+       numaerosols = aero_props_bam%nbins()
+    else
+       numaerosols = 0
+    end if
 
     if (numaerosols<1) return
 
@@ -37,7 +53,9 @@ contains
     allocate(aernames(numaerosols),stat=astat)
     if( astat/= 0 ) call endrun('aer_vis_diag_init: aernames allocate error')
 
-    call rad_cnst_get_info(0, aernames=aernames)
+    do i = 1, numaerosols
+       aernames(i) = aero_props_bam%bin_name(i)
+    end do
 
     call phys_getopts( history_aero_optics_out = history_aero_optics )
 

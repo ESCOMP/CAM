@@ -20,7 +20,12 @@ use physconst,           only: cappa, cpair, gravit, stebol
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_out
+use radiative_aerosol_definitions, only: N_DIAG
+use rad_constituents,    only: rad_cnst_out
+use radiative_aerosol, only: rad_aer_get_call_list
+!REMOVECAM
+use aerosol_mmr_cam, only: rad_aer_diag_out
+!REMOVECAM_END
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist, radconstants_init
@@ -550,7 +555,7 @@ subroutine radiation_init(pbuf2d)
    endif
 
    ! get list of active radiation calls
-   call rad_cnst_get_call_list(active_calls)
+   call rad_aer_get_call_list(active_calls)
 
    ! Add shortwave radiation fields to history master field list.
 
@@ -1204,6 +1209,7 @@ subroutine radiation_tend( &
       ! Output the mass per layer, and total column burdens for gas and aerosol
       ! constituents in the climate list.
       call rad_cnst_out(0, state, pbuf)
+      call rad_aer_diag_out(0, state, pbuf)
 
       !========================!
       ! SHORTWAVE calculations !
