@@ -184,6 +184,8 @@
 <ncdata hgrid="ne16np4"  nlev="126" waccmx="1" aquaplanet="1"                  >atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
 <ncdata hgrid="ne16np4"  nlev="130" waccmx="1"     >atm/waccm/ic/FX2000_ne16pg3_spinup01.cam.i.0002-01-01_c251215.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="58"                 >atm/cam/inic/se/FHISTC_LTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
+<ncdata hgrid="ne16np4"  nlev="93"                 >atm/cam/inic/se/FHISTC_MTso_ne16pg3_ne16pg3_mg17.i.c260220.nc</ncdata>
 
 <ncdata hgrid="ne30np4"  nlev="26"                 >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
 <ncdata hgrid="ne30np4"  nlev="26"  aquaplanet="1" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
@@ -3207,7 +3209,8 @@
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"  model_top="mt"                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"                                          > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"  model_top="lt"                          > 1 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1"            model_top="none"> 10 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0" model_top="none"> 9 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0" model_top="none"> 8 </se_hypervis_subcycle>
@@ -3249,16 +3252,16 @@
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
 
 <se_nu>-1</se_nu>
-<se_nu hgrid="ne16np4" waccm_phys="1" waccmx="0">6.e15</se_nu>
-<se_nu hgrid="ne16np4" model_top="ht"           >6.e15</se_nu>
+<se_nu hgrid="ne16np4">6.e15</se_nu>
 <se_nu waccmx="1">5.e15</se_nu>
 
 <se_nu_div> -1 </se_nu_div>
-<se_nu_div hgrid="ne16np4" waccm_phys="1" waccmx="0">6.e15</se_nu_div>
-<se_nu_div hgrid="ne16np4" model_top="ht"           >6.e15</se_nu_div>
+<se_nu_div hgrid="ne16np4">6.e15</se_nu_div>
 <se_nu_div waccmx="1"> 10.e15 </se_nu_div>
 
 <se_nu_p>-1 </se_nu_p>
+<se_nu_p hgrid="ne16np4">6.e15</se_nu_p>
+<se_nu_p waccmx="1">5.e15</se_nu_p>
 
 <se_nu_top                                   > 1.25e5 </se_nu_top>
 <se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>

@@ -1,3 +1,23 @@
+Tag name: cam6_4_???
+Originator(s): pel
+Date: 20 Feb 2026
+One-line Summary: MT & LT ne16pg3 namelist defaults for dycore and inic
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1470
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Issue #1487
+ - 2 degree (ne16pg3) out-of-the-box LT and MT functionality
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+
+	Change ncdata and dycore parameters
+	Fix se_nu_p bug for ne16pg3 in namelist
+
+Answer changes expected for all ne16 regression tests.
+
 ===============================================================
 
 Tag name: cam6_4_153
