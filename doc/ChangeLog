@@ -1,23 +1,65 @@
-Tag name: cam6_4_???
-Originator(s): pel
-Date: 20 Feb 2026
-One-line Summary: MT & LT ne16pg3 namelist defaults for dycore and inic
-Github PR URL: https://github.com/ESCOMP/CAM/pull/1470
+Tag name: cam6_4_154
+Originator(s): pel, cacraig
+Date: Feb 24, 2026
+One-line Summary:  Bring in a couple of misc changes: MT & LT ne16pg3 namelist defaults for dycore and inic; remove unused routines
+
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1489
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Closes PR: remove unused routines: https://github.com/ESCOMP/CAM/pull/1485
+      Part of issue #986 - Update some older math routines
 
- Issue #1487
- - 2 degree (ne16pg3) out-of-the-box LT and MT functionality
+  - Closes PR: ne16pg3 configuration LT and MT out-of-the-box: https://github.com/ESCOMP/CAM/pull/1488
+      Issue #1487 - 2 degree (ne16pg3) out-of-the-box LT and MT functionality
 
 Describe any changes made to build system: N/A
 
 Describe any changes made to the namelist:
+    Change ncdata and dycore parameters
+    Fix se_nu_p bug for ne16pg3 in namelist
 
-	Change ncdata and dycore parameters
-	Fix se_nu_p bug for ne16pg3 in namelist
+List any changes to the defaults for the boundary datasets: N/A
 
-Answer changes expected for all ne16 regression tests.
+Describe any substantial timing or memory changes: N/A
 
+Code reviewed by: cacraigucar, nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_defaults_cam.xml
+            - namelist changes as descibed above
+
+M       src/dynamics/se/dycore/quadrature_mod.F90
+            - three routines which are not used are being deleted
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
+     - pre-existing failure
+          ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: DIFF) details:
+     - Answer changes expected for all ne16 regression tests and WACCM-X
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+     - Answer changes expected for all ne16 regression tests and WACCM-X
+
+izumi/gnu/aux_cam: all BFB
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_153
