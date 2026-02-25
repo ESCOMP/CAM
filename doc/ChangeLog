@@ -1,3 +1,56 @@
+===============================================================
+
+Tag name: cam6_4_155
+Originator(s): cacraig, jimmielin
+Date: Feb 24, 2026
+One-line Summary: Fixes to CAM for the ifx compiler
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1490
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1484 Changing to the ifx compiler - prealpha tests are failing
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraig, jimmielin, fvitt (reviewed edyn_mpi.F90 changes via email)
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       src/dynamics/se/dyn_comp.F90
+M       src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+  - short-circuiting is not permitted in Fortran standard leading to comparisons against NaN
+  - resolves #1484 (FHISTC_LTso, rrtmgp regression test failures)
+
+M       src/ionosphere/waccmx/edyn_mpi.F90
+  - ifx enforces maximum MPI tag size
+  - resolves #1484 (WACCM-X regression test failure)
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: FAIL) details:
+     - pre-existing failure
+          ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam: All PASS
+
+izumi/gnu/aux_cam: All PASS
+
+===============================================================
+
 Tag name: cam6_4_154
 Originator(s): pel, cacraig
 Date: Feb 24, 2026
