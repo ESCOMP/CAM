@@ -43,7 +43,7 @@ derecho/intel/aux_cam:
      - pre-existing failure
           ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam: All PASS
 
