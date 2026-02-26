@@ -927,7 +927,7 @@ contains
     real(r8) :: totmmr(ncol,nlev)
     real(r8) :: solmmr(ncol,nlev)
     integer :: ispc
-    character(len=aero_name_len) :: spectype
+    real(r8) :: spechygro
 
     sol_factb(:,:) = 0.0_r8
 
@@ -936,38 +936,16 @@ contains
 
     do ispc = 1, aero_props%nspecies(bin_ndx)
 
-       call aero_props%species_type(bin_ndx, ispc, spectype)
+       call aero_props%get(bin_ndx, ispc, hygro=spechygro)
        call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
 
        totmmr(:ncol,:) = totmmr(:ncol,:) + aer_mmr(:ncol,:)
-
-       if (trim(spectype) == 'sulfate') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.5_r8
-       end if
-       if (trim(spectype) == 'p-organic') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
-       end if
-       if (trim(spectype) == 's-organic') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
-       end if
-       if (trim(spectype) == 'dust') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.1_r8
-       end if
-       if (trim(spectype) == 'seasalt') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.8_r8
-       end if
+       solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*spechygro
 
     end do   !nspec
 
     where ( totmmr > 0._r8 )
        sol_factb = solmmr/totmmr
-    end where
-
-    where ( sol_factb > 0.8_r8 )
-       sol_factb = 0.8_r8
-    end where
-    where ( sol_factb < 0.1_r8 )
-       sol_factb = 0.1_r8
     end where
 
   end function sol_factb_interstitial

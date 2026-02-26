@@ -5,13 +5,13 @@
 <start_ymd>19790101</start_ymd>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_irrad_data_file>
 
 <!-- Kp and F10.7 -->
-<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_parms_data_file>
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</solar_parms_data_file>
 
 <!-- Energetic Particle Precipitation -->
-<epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</epp_all_filepath>
+<epp_all_filepath>atm/cam/solar/SolarForcingCMIP7-4.6_18491230-20240101_sumEPP_c20250630.nc</epp_all_filepath>
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
@@ -22,7 +22,7 @@
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_file>atm/waccm/lb/CMIP7/LBC_17500116-20221216_CMIP7_0p5degLat_c250326.nc</flbc_file>
 <flbc_list>
  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'CFC11eq'

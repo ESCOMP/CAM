@@ -733,7 +733,7 @@ contains
     use convect_deep,       only: convect_deep_init
     use convect_diagnostics,only: convect_diagnostics_init
     use cam_diagnostics,    only: diag_init
-    use gw_drag,            only: gw_init
+    use gw_drag_cam,        only: gw_drag_cam_init
     use radheat,            only: radheat_init
     use radiation,          only: radiation_init
     use cloud_diagnostics,  only: cloud_diagnostics_init
@@ -890,7 +890,7 @@ contains
        call co2_init()
     end if
 
-    call gw_init()
+    call gw_drag_cam_init()
 
     call rayleigh_friction_init(pver, rf_nl_tau0, rf_nl_krange, rf_nl_k0, masterproc, &
          iulog, errmsg, errflg)
@@ -1382,7 +1382,9 @@ contains
     use physics_buffer, only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
-    use gw_drag,            only: gw_tend
+    use gw_drag_cam,        only: gw_drag_cam_tend
+    use beljaars_drag_cam,  only: beljaars_drag_tend
+    use trb_mtn_stress_cam, only: trb_mtn_stress_tend ! only used as a stub to set to zero - TMS is not used in CAM7
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction,  only: rayleigh_friction_run
     use physics_types,      only: physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
@@ -1400,7 +1402,7 @@ contains
     use dycore,             only: dycore_is
     use cam_control_mod,    only: aqua_planet
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_set
+    use clybryiy_fam,       only: clybryiy_fam_set
     use charge_neutrality,  only: charge_balance
     use qbo,                only: qbo_relax
     use iondrag,            only: iondrag_calc, do_waccm_ions
@@ -1951,8 +1953,6 @@ contains
        !  . Aerosol wet chemistry determines scavenging fractions, and transformations
        !  . Then do convective transport of all trace species except qv,ql,qi.
        !  . We needed to do the scavenging first to determine the interstitial fraction.
-       !  . When UNICON is used as unified convection, we should still perform
-       !    wet scavenging but not 'convect_deep_tend2'.
        ! -------------------------------------------------------------------------------
 
        call t_startf('aerosol_wet_processes')
@@ -2151,10 +2151,35 @@ contains
 
     !===================================================
     ! Vertical diffusion/pbl calculation
-    ! Call vertical diffusion (apply tracer emissions, molecular diffusion and pbl form drag)
     !===================================================
-
     call t_startf('vertical_diffusion_tend')
+
+    !------------------------------------------
+    ! Compute orographic form drag stress (Beljaars)
+    !
+    ! Only the pbuf fields are updated in these routines (no ptend)
+    ! The computed stresses are used in the PBL scheme and the vertical diffusion solver
+    ! in the call to vertical_diffusion_tend below.
+    !------------------------------------------
+    if (trim(cam_take_snapshot_before) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+    end if
+
+    call beljaars_drag_tend(state, pbuf, cam_in)
+
+    ! TMS is not active in CAM7 (it is only for CAM5), but the tms tend subroutine
+    ! will initialize the pbuf fields to zero - no logic is computed below:
+    call trb_mtn_stress_tend(state, pbuf, cam_in)
+
+    if (trim(cam_take_snapshot_after) == "orographic_form_drag_stress") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+    end if
+
+    !------------------------------------------
+    ! Call vertical diffusion (apply tracer emissions, molecular diffusion and pbl form drag)
+    !------------------------------------------
 
     if (trim(cam_take_snapshot_before) == "vertical_diffusion_section") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2164,9 +2189,9 @@ contains
     call vertical_diffusion_tend (ztodt ,state , cam_in, &
          surfric  ,obklen   ,ptend    ,ast    ,pbuf )
 
-   !------------------------------------------
-   ! Call major diffusion for extended model
-   !------------------------------------------
+    !------------------------------------------
+    ! Call major diffusion for extended model
+    !------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
     endif
@@ -2295,7 +2320,7 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
 
-    call gw_tend(state, pbuf, ztodt, ptend, cam_in, flx_heat)
+    call gw_drag_cam_tend(state, pbuf, ztodt, ptend, cam_in, flx_heat)
 
     if ( (trim(cam_take_snapshot_after) == "gw_tend") .and.                   &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -2531,7 +2556,7 @@ contains
 
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, cldliqini, cldiceini)
 
-    call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
     ! output these here -- after updates by chem_timestep_tend or export_fields within the current time step
     if (associated(cam_out%nhx_nitrogen_flx)) then
@@ -2595,7 +2620,7 @@ contains
     use radiation,       only: radiation_tend
     use perf_mod
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_adj
+    use clybryiy_fam,       only: clybryiy_fam_adj
     use cam_abortutils,  only: endrun
     use subcol_utils,    only: is_subcol_on
     use qneg_module,     only: qneg3
@@ -2742,16 +2767,16 @@ contains
        call physics_state_check(state, name="before tphysbc (dycore?)")
     end if
 
-    call clybry_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
 
-    ! Since clybry_fam_adj operates directly on the tracers, and has no
+    ! Since clybryiy_fam_adj operates directly on the tracers, and has no
     ! physics_update call, re-run qneg3.
     call qneg3('TPHYSBCc',lchnk  ,ncol    ,pcols   ,pver    , &
          1, pcnst, qmin  ,state%q )
 
-    ! Validate output of clybry_fam_adj.
+    ! Validate output of clybryiy_fam_adj.
     if (state_debug_checks) then
-       call physics_state_check(state, name="clybry_fam_adj")
+       call physics_state_check(state, name="clybryiy_fam_adj")
     end if
     !
     ! Dump out "before physics" state

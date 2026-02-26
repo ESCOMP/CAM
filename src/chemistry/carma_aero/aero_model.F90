@@ -425,7 +425,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
                   state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop )
+                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
@@ -447,10 +447,13 @@ contains
     real(r8), intent(inout) :: dm_aer(:,:,:)
     real(r8), intent(inout) :: sad_trop(:,:)  ! aerosol surface area density (cm2/cm3), zeroed above the tropopause
     real(r8), intent(out)   :: reff_trop(:,:) ! aerosol effective radius (cm), zeroed above the tropopause
+    real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
     integer :: beglev(ncol)
     integer :: endlev(ncol)
+
+    sad_ssa = -huge(1._r8)
 
     beglev(:ncol)=ltrop(:ncol)+1
     endlev(:ncol)=pver
@@ -678,6 +681,7 @@ contains
 
     if( has_sox ) then
          call setsox( state,  &
+              pbuf,     &
               ncol,     &
               lchnk,    &
               loffset,  &
@@ -689,7 +693,6 @@ contains
               cwat,     &
               cldfr,    &
               cldnum,   &
-              airdens,  &
               invariants, &
               vmrcw,    &
               vmr,      &

@@ -448,11 +448,11 @@ contains
 
        end do
 
-       qin(:,k,id_so2) =  MAX( qin(:,k,id_so2),    small_value )
-
-       if ( id_nh3 > 0 ) then
-          qin(:,k,id_nh3) =  MAX( qin(:,k,id_nh3),    small_value )
-       endif
+       qin(:,k,id_so2)   = MAX( qin(:,k,id_so2),   small_value )
+       qin(:,k,id_h2o2)  = MAX( qin(:,k,id_h2o2),  small_value )
+       qin(:,k,id_h2so4) = MAX( qin(:,k,id_h2so4), small_value )
+       if ( id_msa > 0 ) qin(:,k,id_msa) = MAX( qin(:,k,id_msa), small_value )
+       if ( id_nh3 > 0 ) qin(:,k,id_nh3) = MAX( qin(:,k,id_nh3), small_value )
 
     end do
 

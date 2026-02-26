@@ -173,12 +173,6 @@ integer :: &
    cmeliq_idx,         &
    accre_enhan_idx
 
-! Fields for UNICON
-integer :: &
-     am_evp_st_idx,      &! Evaporation area of stratiform precipitation
-     evprain_st_idx,     &! Evaporation rate of stratiform rain [kg/kg/s]. >= 0.
-     evpsnow_st_idx       ! Evaporation rate of stratiform snow [kg/kg/s]. >= 0.
-
 ! Fields needed as inputs to COSP
 integer :: &
      ls_mrprc_idx,    ls_mrsnw_idx,    &
@@ -701,11 +695,6 @@ subroutine micro_pumas_cam_register
    call pbuf_add_field('CC_nl',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_nl_idx)
    call pbuf_add_field('CC_ni',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_ni_idx)
    call pbuf_add_field('CC_qlst',  'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_qlst_idx)
-
-   ! Fields for UNICON
-   call pbuf_add_field('am_evp_st',  'global', dtype_r8, (/pcols,pver/), am_evp_st_idx)
-   call pbuf_add_field('evprain_st', 'global', dtype_r8, (/pcols,pver/), evprain_st_idx)
-   call pbuf_add_field('evpsnow_st', 'global', dtype_r8, (/pcols,pver/), evpsnow_st_idx)
 
    ! Register subcolumn pbuf fields
    if (use_subcol_microp) then
@@ -1426,9 +1415,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
       call pbuf_set_field(pbuf2d, acnum_idx,  0)
       call pbuf_set_field(pbuf2d, relvar_idx, 2._r8)
       call pbuf_set_field(pbuf2d, accre_enhan_idx, 1._r8)
-      call pbuf_set_field(pbuf2d, am_evp_st_idx,  0._r8)
-      call pbuf_set_field(pbuf2d, evprain_st_idx, 0._r8)
-      call pbuf_set_field(pbuf2d, evpsnow_st_idx, 0._r8)
       call pbuf_set_field(pbuf2d, prer_evap_idx,  0._r8)
       call pbuf_set_field(pbuf2d, bergso_idx, 0._r8)
       call pbuf_set_field(pbuf2d, icswp_idx, 0._r8)
@@ -1513,9 +1499,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: npccn(:,:)     ! liquid activation number tendency
    real(r8), pointer :: rndst(:,:,:)
    real(r8), pointer :: nacon(:,:,:)
-   real(r8), pointer :: am_evp_st_grid(:,:)    ! Evaporation area of stratiform precipitation. 0<= am_evp_st <=1.
-   real(r8), pointer :: evprain_st_grid(:,:)   ! Evaporation rate of stratiform rain [kg/kg/s]
-   real(r8), pointer :: evpsnow_st_grid(:,:)   ! Evaporation rate of stratiform snow [kg/kg/s]
 
    real(r8), pointer :: prec_str(:)          ! [Total] Sfc flux of precip from stratiform [ m/s ]
    real(r8), pointer :: snow_str(:)          ! [Total] Sfc flux of snow from stratiform   [ m/s ]
@@ -1545,7 +1528,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !proc_rates DDT in order for the subcolumn averaging
    !routine to work properly when writing out diagnostic
    !fields.
-   real(r8) :: evapsnow_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: bergstot_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: qcrestot_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: melttot_sc(state%psetcols,pver-top_lev+1)
@@ -2087,7 +2069,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! initialize subcolumn variables
    if (use_subcol_microp) then
-      evapsnow_sc = 0.0_r8
       bergstot_sc = 0.0_r8
       qcrestot_sc = 0.0_r8
       melttot_sc = 0.0_r8
@@ -2267,10 +2248,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, acnum_idx,       acnum_grid)
    call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq_grid)
    call pbuf_get_field(pbuf, ast_idx,         ast_grid, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
-   call pbuf_get_field(pbuf, evprain_st_idx,  evprain_st_grid)
-   call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
-   call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
    !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle
@@ -2782,12 +2759,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
 
-      evapsnow_sc(:ncol,:) = proc_rates%evapsnow(:ncol,1:nlev)
-      call subcol_field_avg(evapsnow_sc,  ngrdcol, lchnk, evpsnow_st_grid(:,top_lev:))
       bergstot_sc(:ncol,:) = proc_rates%bergstot(:ncol,1:nlev)
       call subcol_field_avg(bergstot_sc,    ngrdcol, lchnk, bergso_grid(:,top_lev:))
-
-      call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
       ! Average fields which are not in pbuf
       call subcol_field_avg(qrout,     ngrdcol, lchnk, qrout_grid)
@@ -2965,9 +2938,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       prain_grid      => prain
 
       bergso_grid(:ncol,top_lev:)    =  proc_rates%bergstot
-      am_evp_st_grid  = am_evp_st
 
-      evpsnow_st_grid(:ncol,top_lev:) = proc_rates%evapsnow
       qrout_grid      = qrout
       qsout_grid      = qsout
       nsout_grid      = nsout
@@ -3484,15 +3455,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
             fcti_grid(i)  = icecldf_grid(i,k)
             exit
          end if
-      end do
-   end do
-
-   ! Evaporation of stratiform precipitation fields for UNICON
-   evprain_st_grid(:ngrdcol,:pver) = nevapr_grid(:ngrdcol,:pver) - evpsnow_st_grid(:ngrdcol,:pver)
-   do k = top_lev, pver
-      do i = 1, ngrdcol
-         evprain_st_grid(i,k) = max(evprain_st_grid(i,k), 0._r8)
-         evpsnow_st_grid(i,k) = max(evpsnow_st_grid(i,k), 0._r8)
       end do
    end do
 

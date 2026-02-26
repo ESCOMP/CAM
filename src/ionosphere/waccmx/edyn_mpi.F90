@@ -1684,7 +1684,7 @@ contains
       integer :: ier,njneed,i,j,n,nj,idest, &
            icount,len,nlons,isrc,msgid,ifld,sndbuf_cntr
       integer :: tij ! rank in cols_comm (0 to nmagtaskj-1)
-      integer :: jhave(mxneed),njhave,wid
+      integer :: jhave(mxneed),njhave
       integer :: peersneed(mxneed,0:nmagtaskj-1)
       integer :: jneedall (mxneed,0:nmagtaskj-1)
       real(r8) :: sndbuf(mxmaglon+2,mxneed,nf,sndbuf_cntr_max)
@@ -1730,7 +1730,6 @@ contains
                njhave = njhave+1
                jhave(njhave) = peersneed(j,n)
                idest = n
-               wid = itask_table_geo(mytidi,idest)
             endif
          enddo
          if (njhave > 0) then
@@ -1749,7 +1748,9 @@ contains
                enddo
             enddo
             len = nlons*njhave*nf
-            msgid = mytid+wid*10000
+            ! sending tag uniquely identifies sender - tij is comm. rank
+            ! within this communicator only.
+            msgid = tij
             call mpi_ibsend(sndbuf(1:nlons,1:njhave,:,sndbuf_cntr),len,MPI_REAL8, &
                  idest,msgid,cols_comm,ibsend_requests(sndbuf_cntr),ier)
             if (ier /= 0) &
@@ -1783,7 +1784,8 @@ contains
                isrc = tasks(n)%magtidj ! task id in cols_comm to recv from
                nlons = mlon11-mlon00+1
                len = nlons*njhave*nf
-               msgid = mytid*10000+n
+               ! receive tag is sender rank (tij from sender == magtidj)
+               msgid = isrc
                rcvbuf = 0._r8
                call mpi_recv(rcvbuf(1:nlons,1:njhave,:),len,MPI_REAL8, &
                     isrc,msgid,cols_comm,irstat,ier)
