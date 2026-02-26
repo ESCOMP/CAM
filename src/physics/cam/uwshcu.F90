@@ -292,7 +292,7 @@ end subroutine uwshcu_readnl
     integer              :: errflg
 
     ! call the underlying CCPPized subroutine (dechunkized)
-    ! to subset to pcols TODO wip wip
+    ! to subset to ncol TODO wip wip
     call uw_convect_shallow_run(mix      , mkx        , iend          , ncnst     , dt       ,  &
                         ps0_inv  , zs0_inv    , p0_inv        , z0_inv    , dp0_inv  ,  &
                         u0_inv   , v0_inv     , qv0_inv       , ql0_inv   , qi0_inv  ,  &

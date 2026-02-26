@@ -97,7 +97,7 @@ contains
     integer, intent(in)    :: mkx
     integer, intent(in)    :: iend
     integer, intent(in)    :: ncnst
-    real(kind_phys), intent(in)    :: dt                       !  Time step : 2*delta_t [ s ]
+    real(kind_phys), intent(in)    :: dt                       !  Physics time step [s]
     real(kind_phys), intent(in)    :: ps0_inv(mix, mkx + 1)       !  Environmental pressure at the interfaces [ Pa ]
     real(kind_phys), intent(in)    :: zs0_inv(mix, mkx + 1)       !  Environmental height at the interfaces   [ m ]
     real(kind_phys), intent(in)    :: p0_inv(mix, mkx)          !  Environmental pressure at the layer mid-point [ Pa ]
@@ -200,9 +200,9 @@ contains
     real(kind_phys)                :: fdr_out(mix, mkx)         !  Fractional lateral detrainment rate [ 1/Pa ]
 
     integer                 :: i
-    integer                 :: k                        !  Vertical index for local fields [ no ]
-    integer                 :: k_inv                    !  Vertical index for incoming fields [ no ]
-    integer                 :: m                        !  Tracer index [ no ]
+    integer                 :: k                        ! Vertical index for local fields (1 is lowest) [count]
+    integer                 :: k_inv                    ! Vertical index for model fields (1 is TOA) [count]
+    integer                 :: m                        ! Tracer index [count]
 
     errmsg = ''
     errflg = 0
@@ -254,7 +254,6 @@ contains
     end if
 
     ! Reverse cloud top/base interface indices
-
     cnt_inv(:iend) = mkx + 1 - cnt(:iend)
     cnb_inv(:iend) = mkx + 1 - cnb(:iend)
 
@@ -822,7 +821,6 @@ contains
     ! years later suggests that this option needs to be           !
     ! fixed or abandoned.                                         !
     ! ----------------------------------------------------------- !
-
     logical, parameter              :: use_CINcin = .true.
 
     ! --------------------------------------------------------------- !
@@ -836,27 +834,23 @@ contains
     ! of two iter_cin steps is likely not so good. Except that,   all !
     ! the other combinations of  'use_CINcin'  & 'iter_cin' are OK.   !
     ! --------------------------------------------------------------- !
-
     integer, parameter              :: iter_cin = 2
 
     ! ---------------------------------------------------------------- !
     ! Choice of 'self-detrainment' by negative buoyancy in calculating !
     ! cumulus updraft mass flux at the top interface in each layer.    !
     ! ---------------------------------------------------------------- !
-
     logical, parameter              :: use_self_detrain = .false.
 
     ! --------------------------------------------------------- !
     ! Cumulus momentum flux : turn-on (.true.) or off (.false.) !
     ! --------------------------------------------------------- !
-
     logical, parameter              :: use_momenflx = .true.
 
     ! ----------------------------------------------------------------------------------------- !
     ! Penetrative Entrainment : Cumulative ( .true. , original ) or Non-Cumulative ( .false. )  !
     ! This option ( .false. ) is designed to reduce the sensitivity to the vertical resolution. !
     ! ----------------------------------------------------------------------------------------- !
-
     logical, parameter              :: use_cumpenent = .true.
 
     ! --------------------------------------------------------------------------------------------------------------- !
@@ -864,7 +858,6 @@ contains
     !     use_expconten = .true.  : explcitly compute tendency by condensate detrainment and compensating subsidence  !
     !     use_expconten = .false. : use the original proportional condensate tendency equation. ( original )          !
     ! --------------------------------------------------------------------------------------------------------------- !
-
     logical, parameter              :: use_expconten = .true.
 
     ! --------------------------------------------------------------------------------------------------------------- !
@@ -872,7 +865,6 @@ contains
     !     use_unicondet = .true.  : detrain condensate uniformly over the environment ( original )                    !
     !     use_unicondet = .false. : detrain condensate into the pre-existing stratus                                  !
     ! --------------------------------------------------------------------------------------------------------------- !
-
     logical, parameter              :: use_unicondet = .false.
 
     ! ----------------------- !
@@ -1044,9 +1036,7 @@ contains
     ind_delcin(:iend) = 0.0_kind_phys
 
     !--------------------------------------------------------------!
-    !                                                              !
     ! Start the column i loop where i is a horizontal column index !
-    !                                                              !
     !--------------------------------------------------------------!
 
     ! Compute wet-bulb temperature and specific humidity
@@ -1058,8 +1048,7 @@ contains
                      tw0_in(:iend, k), qw0_in(:iend, k))
     end do
 
-    do i = 1, iend
-
+    column_loop: do i = 1, iend
       id_exit = .false.
 
       ! -------------------------------------------- !
@@ -1295,14 +1284,13 @@ contains
         ! of 5 [m] in the below 'kinv' finding block.                             !
         ! ----------------------------------------------------------------------- !
 
-        do k = mkx - 1, 1, -1
+        kinv = 1
+        find_kinv: do k = mkx - 1, 1, -1
           if ((pblh + 5._kind_phys - zs0(k))*(pblh + 5._kind_phys - zs0(k + 1)) .lt. 0._kind_phys) then
             kinv = k + 1
-            go to 15
+            exit find_kinv
           end if
-        end do
-        kinv = 1
-15      continue
+        end do find_kinv
 
         if (kinv .le. 1) then
           exit_kinv1(i) = 1._kind_phys
@@ -1374,14 +1362,13 @@ contains
         ! ------------------------------------------------------------------ !
 
         plcl = qsinvert(qtsrc, thlsrc, ps0(0))
-        do k = 0, mkx
+        klcl = mkx
+        find_klcl: do k = 0, mkx
           if (ps0(k) .lt. plcl) then
             klcl = k
-            go to 25
+            exit find_klcl
           end if
-        end do
-        klcl = mkx
-25      continue
+        end do find_klcl
         klcl = max(1, klcl)
 
         if (plcl .lt. 30000._kind_phys) then
@@ -1393,7 +1380,7 @@ contains
 
         ! ------------------------------------------------------------- !
         ! Calculate environmental virtual potential temperature at LCL, !
-        !'thv0lcl' which is solely used in the 'cin' calculation. Note  !
+        ! 'thv0lcl' which is solely used in the 'cin' calculation. Note !
         ! that 'thv0lcl' is calculated first by calculating  'thl0lcl'  !
         ! and 'qt0lcl' at the LCL, and performing 'conden' afterward,   !
         ! in fully consistent with the other parts of the code.         !
@@ -1442,9 +1429,9 @@ contains
         ! ------------------------------------------------------------------------- !
 
         if (klcl .ge. kinv) then
-
-          do k = kinv, mkx - 1
+          find_klfc_case1: do k = kinv, mkx - 1
             if (k .lt. klcl) then
+              ! accumulate cin
               thvubot = thvlsrc
               thvutop = thvlsrc
               cin = cin + single_cin(ps0(k - 1), thv0bot(k), ps0(k), thv0top(k), thvubot, thvutop)
@@ -1468,7 +1455,7 @@ contains
               call getbuoy(plcl, thv0lcl, ps0(k), thv0top(k), thvubot, thvutop, plfc, cin)
               if (plfc .gt. 0._kind_phys) then
                 klfc = k
-                go to 35
+                exit find_klfc_case1
               end if
             else
               thvubot = thvutop
@@ -1482,10 +1469,10 @@ contains
               call getbuoy(ps0(k - 1), thv0bot(k), ps0(k), thv0top(k), thvubot, thvutop, plfc, cin)
               if (plfc .gt. 0._kind_phys) then
                 klfc = k
-                go to 35
+                exit find_klfc_case1
               end if
             end if
-          end do
+          end do find_klfc_case1
 
           ! ----------------------------------------------------------------------- !
           ! Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)' ) !
@@ -1493,7 +1480,7 @@ contains
 
         else
           cinlcl = 0._kind_phys
-          do k = kinv, mkx - 1
+          find_klfc_case2: do k = kinv, mkx - 1
             call conden(ps0(k - 1), thlsrc, qtsrc, thj, qvj, qlj, qij, qse, id_check)
             if (id_check .eq. 1) then
               exit_conden(i) = 1._kind_phys
@@ -1511,12 +1498,11 @@ contains
             call getbuoy(ps0(k - 1), thv0bot(k), ps0(k), thv0top(k), thvubot, thvutop, plfc, cin)
             if (plfc .gt. 0._kind_phys) then
               klfc = k
-              go to 35
+              exit find_klfc_case2
             end if
-          end do
+          end do find_klfc_case2
         end if  ! End of CIN case selection
 
-35      continue
         if (cin .lt. 0._kind_phys) limit_cin(i) = 1._kind_phys
         cin = max(0._kind_phys, cin)
         if (klfc .ge. mkx) then
@@ -2219,17 +2205,14 @@ contains
           ! satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.   !
           ! ----------------------------------------------------------------------- !
 
-          do k = krel, mkx - 1 ! Here, 'k' is a layer index.
-
+          updraft_loop: do k = krel, mkx - 1 ! Here, 'k' is a layer index.
             km1 = k - 1
-
             thlue = thlu(km1)
             qtue = qtu(km1)
             wue = wu(km1)
             wtwb = wtw
 
-            do iter_xc = 1, niter_xc
-
+            iter_xc_loop: do iter_xc = 1, niter_xc
               wtw = wu(km1)*wu(km1)
 
               ! ---------------------------------------------------------------- !
@@ -2312,8 +2295,15 @@ contains
               ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
               ! ----------------------------------------------------------------- !
 
-          if( ( excessu .le. 0._kind_phys .and. excess0 .le. 0._kind_phys ) .or. ( excessu .ge. 0._kind_phys .and. excess0 .ge. 0._kind_phys ) ) then
- xc = min(1._kind_phys, max(0._kind_phys, 1._kind_phys - 2._kind_phys*rbuoy*g*cridis/wue**2._kind_phys*(1._kind_phys - thvj/thv0j)))
+              if( ( excessu .le. 0._kind_phys .and. excess0 .le. 0._kind_phys ) .or. &
+                  ( excessu .ge. 0._kind_phys .and. excess0 .ge. 0._kind_phys ) ) then
+                xc = min(1._kind_phys, &
+                         max(0._kind_phys, &
+                             1._kind_phys - &
+                             2._kind_phys*rbuoy*g*cridis/wue**2._kind_phys*(1._kind_phys - thvj/thv0j) &
+                            ) &
+                         )
+
                 ! Below 3 lines are diagnostic output not influencing
                 ! numerical calculations.
                 aquad = 0._kind_phys
@@ -2387,7 +2377,11 @@ contains
               ud2 = 1._kind_phys - 2._kind_phys*xc + xc**2
               ! rei(k) = ( rkm / scaleh / g / rho0j )        ! Default.
               rei(k) = (0.5_kind_phys*rkm/z0(k)/g/rho0j) ! Alternative.
-          if( xc .gt. 0.5_kind_phys ) rei(k) = min(rei(k),0.9_kind_phys*log(dp0(k)/g/dt/umf(km1) + 1._kind_phys)/dpe/(2._kind_phys*xc-1._kind_phys))
+
+              if( xc .gt. 0.5_kind_phys ) then
+                rei(k) = min(rei(k),0.9_kind_phys*log(dp0(k)/g/dt/umf(km1) + 1._kind_phys)/dpe/(2._kind_phys*xc-1._kind_phys))
+              end if
+
               fer(k) = rei(k)*ee2
               fdr(k) = rei(k)*ud2
 
@@ -2539,12 +2533,10 @@ contains
                 qtue = 0.5_kind_phys*(qtu(km1) + qtu(k))
                 wue = 0.5_kind_phys*sqrt(max(wtwb + wtw, 0._kind_phys))
               else
-                go to 111
+                exit iter_xc_loop
               end if
 
-            end do ! End of 'iter_xc' loop
-
-111         continue
+            end do iter_xc_loop ! End of 'iter_xc' loop
 
             ! --------------------------------------------------------------------------- !
             ! Add the contribution of self-detrainment  to vertical variations of cumulus !
@@ -2603,7 +2595,7 @@ contains
 
             if (wtw .le. 0._kind_phys) then
               kpen = k
-              go to 45
+              exit updraft_loop
             end if
 
             wu(k) = sqrt(wtw)
@@ -2659,7 +2651,8 @@ contains
               tre(m) = tr0(k + 1, m)
             end do
 
-          end do   ! End of cumulus updraft loop from the 'krel' layer to 'kpen' layer.
+          end do updraft_loop
+          ! ^^ End of cumulus updraft loop from the 'krel' layer to 'kpen' layer.
 
           ! ------------------------------------------------------------------------------- !
           ! Up to this point, we finished all of buoyancy sorting processes from the 'krel' !
@@ -2691,8 +2684,6 @@ contains
           ! fer(kpen:mkx), fdr(kpen+1:mkx), ufrc(kpen:mkx) ] to be zero after 'iter_scaleh'!
           ! do loop.                                                                       !
           ! ------------------------------------------------------------------------------ !
-
-45        continue
 
           ! ------------------------------------------------------------------------------ !
           ! Calculate 'ppen( < 0 )', updarft penetrative distance from the lower interface !
@@ -3792,7 +3783,7 @@ contains
           qiten(k) = qiten(k) - qc_i(k)
           slten(k) = slten(k) + (xlv*qc_l(k) + xls*qc_i(k))
           ! ---------------------------------------------------------------------- !
-          ! Since all reserved condensates will be treated  as liquid water in the !
+          ! Since all reserved condensates will be treated as liquid water in the  !
           ! 'check_energy_chng' & 'stratiform_tend' without an explicit conversion !
           ! algorithm, I should consider explicitly the energy conversions between !
           ! 'ice' and 'liquid' - i.e., I should convert 'ice' to 'liquid'  and the !
@@ -3828,10 +3819,12 @@ contains
         ! Tendencies of tracers !
         ! --------------------- !
 
-        do m = 4, ncnst
-
+        ! NOTE hplin need to investigate why this is a 4
+        ! first 3 are: Q, ?, ?, in CAM5
+        ! The presence of this loop means that we have to be able to access all
+        ! constituents, not just predefined cldliq/cldice/numliq/numice/Q.
+        tracer_loop: do m = 4, ncnst
           if (m .ne. ixnumliq .and. m .ne. ixnumice) then
-
             trmin = qmin(m)
             trflx_d(0:mkx) = 0._kind_phys
             trflx_u(0:mkx) = 0._kind_phys
@@ -3869,10 +3862,8 @@ contains
                              trflx_d(km1) - trflx_d(k) + &
                              trflx_u(km1) - trflx_u(k))*g/pdelx
             end do
-
           end if
-
-        end do
+        end do tracer_loop
 
         ! ---------------------------------------------------------------- !
         ! Cumpute default diagnostic outputs                               !
@@ -3952,7 +3943,7 @@ contains
 
         ! ------------------------------------------------------------------------- !
         ! End of formal calculation. Below blocks are for implicit CIN calculations !
-        ! with re-initialization and save variables at iter_cin = 1._kind_phys             !
+        ! with re-initialization and save variables at iter_cin = 1._kind_phys      !
         ! ------------------------------------------------------------------------- !
 
         ! --------------------------------------------------------------- !
@@ -4228,8 +4219,11 @@ contains
         tru_emf_out(i, mkx:0:-1, m) = tru_emf(0:mkx, m)
       end do
 
+      ! NOTE (hplin): when bringing this code to CAM-SIMA, it was discussed whether
+      ! it was worth untangling this 333 go to. We later agreed this is one of the
+      ! legitimate uses of the go to construct without introducing an unnecessary
+      ! main loop and flags to exit, so this was kept here.
 333   if (id_exit) then ! Exit without cumulus convection
-
         exit_UWCu(i) = 1._kind_phys
 
         ! --------------------------------------------------------------------- !
@@ -4325,10 +4319,8 @@ contains
           tru_out(i, mkx:0:-1, m) = 0._kind_phys
           tru_emf_out(i, mkx:0:-1, m) = 0._kind_phys
         end do
-
       end if
-
-    end do                  ! end of big i loop for each column.
+    end do column_loop                 ! end of big i loop for each column.
 
   end subroutine compute_uwshcu
 
