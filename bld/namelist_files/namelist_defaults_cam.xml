@@ -222,6 +222,8 @@
 <ncdata hgrid="ne120np4" nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"                 >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="58"                 >/glade/work/aherring/grids/uniform-res/ne120np4.pg3/inic/betacast_ERA5ml_20100101_ne120np4_L58_c260225.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="93"                 >/glade/work/aherring/grids/uniform-res/ne120np4.pg3/inic/betacast_ERA5ml_20100101_ne120np4_L93_c260225.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="273" waccmx="1"     >atm/waccm/ic/fx2000_ne120pg3L273.001.cam.i.0002-01-01-00000.noBRCL_c250522.nc</ncdata>
 
 <ncdata hgrid="ne240np4" nlev="26"                 >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
@@ -238,12 +240,16 @@
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" >atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
 <ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L32_c250620.nc</ncdata>
-
 <ncdata hgrid="ne0np4CONUS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20200101_CONUS_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20200101_ARCTIC_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20200101_ARCTICGRIS_c250617.nc</ncdata>
 <ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
 <ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L58_c250618.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20100101_CONUS_ne30x8_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20100101_ARCTIC_ne30x4_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20100101_ARCTICGRIS_ne30x8_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20100101_POLARCAP_ne30x4_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20100101_NATL_ne30x8_L93_c260225.nc</ncdata>
 
 <!-- MPAS Initial Conditions -->
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
@@ -3238,21 +3244,29 @@
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  waccmx="1" hgrid="ne120np4" nlev="273"                   > 30</se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne120np4"  model_top="mt"                         > 2 </se_hypervis_subcycle>
 
-<se_hypervis_subcycle_sponge                                           > 1  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"           > 3  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="mt" waccm_phys="1"> 3  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"> 2  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"> 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccmx="1"                                > 20 </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1" model_top="none"> 60 </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne120np4"                          > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge se_refined_mesh="1"                       > 2  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne16np4" model_top="ht"            > 2  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="ht"            > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"            > 40 </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccmx="1" hgrid="ne120np4" nlev="273"    > 180</se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge                                                 > 1  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4"  model_top="mt"                 > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="mt" waccm_phys="1"   > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"      > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"      > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccmx="1"                                      > 20 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1" model_top="none"     > 60 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne120np4"                                > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge se_refined_mesh="1"                             > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"       > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne16np4" model_top="ht"                  > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="ht"                  > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"                  > 40 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccmx="1" hgrid="ne120np4" nlev="273"          > 180</se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne120np4"  model_top="mt"                > 10 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4" model_top="mt"     > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.POLARCAP.ne30x4" model_top="mt"   > 3  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" model_top="mt"       > 6  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8" model_top="mt" > 6  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.NATL.ne30x8" model_top="mt"       > 6  </se_hypervis_subcycle_sponge>
+
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -3313,29 +3327,40 @@
 <se_nsplit>                   2 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
-<se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"   >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  model_top="ht"                >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  model_top="xt"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne5np4"   waccm_phys="1"                 > 3 </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccmx="1" model_top="none"    > 3 </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" model_top="none"> 2 </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="ht"                 > 3 </se_nsplit>
+<se_nsplit hgrid="ne16np4"  model_top="xt"                 > 3 </se_nsplit>
 <se_nsplit hgrid="ne30np4" waccm_phys="1" waccmx="1" model_top="none">  4  </se_nsplit>
-<se_nsplit hgrid="ne30np4"                                >  2  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" model_top="none"> 4  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  model_top="ht"                >  4  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  model_top="xt"                >  5  </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
+<se_nsplit hgrid="ne30np4"                                 > 2 </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" model_top="none"> 4 </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="ht"                 > 4 </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="xt"                 > 5 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"       > 10 </se_nsplit>
+<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"                    > 7 </se_nsplit>
+<se_nsplit waccmx="1" hgrid="ne120np4" nlev="273"          > 10 </se_nsplit>
+<se_nsplit hgrid="ne120np4"  model_top="mt"                > 8 </se_nsplit>
+<se_nsplit hgrid="ne0np4.ARCTIC.ne30x4" model_top="mt"     > 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4.POLARCAP.ne30x4" model_top="mt"   > 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" model_top="mt"       > 4 </se_nsplit>
+<se_nsplit hgrid="ne0np4.ARCTICGRIS.ne30x8" model_top="mt" > 4 </se_nsplit>
+<se_nsplit hgrid="ne0np4.NATL.ne30x8" model_top="mt"       > 4 </se_nsplit>
 
-<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
-<se_nsplit waccmx="1" hgrid="ne120np4" nlev="273" > 10 </se_nsplit>
-
-<se_rsplit                                          > 3 </se_rsplit>
-<se_rsplit waccm_phys="1" model_top="mt"            > 3 </se_rsplit>
-<se_rsplit waccm_phys="1" waccmx="0"                > 2 </se_rsplit>
-<se_rsplit model_top="ht"                           > 2 </se_rsplit>
-<se_rsplit waccmx="1"                               > 4 </se_rsplit>
-<se_rsplit hgrid="ne16np4" waccmx="1" model_top="none"> 2 </se_rsplit>
-<se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
-<se_rsplit waccmx="1" hgrid="ne120np4" nlev="273"   > 5 </se_rsplit>
+<se_rsplit                                                 > 3 </se_rsplit>
+<se_rsplit waccm_phys="1" model_top="mt"                   > 3 </se_rsplit>
+<se_rsplit waccm_phys="1" waccmx="0"                       > 2 </se_rsplit>
+<se_rsplit model_top="ht"                                  > 2 </se_rsplit>
+<se_rsplit waccmx="1"                                      > 4 </se_rsplit>
+<se_rsplit hgrid="ne16np4" waccmx="1" model_top="none"     > 2 </se_rsplit>
+<se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"       > 3 </se_rsplit>
+<se_rsplit waccmx="1" hgrid="ne120np4" nlev="273"          > 5 </se_rsplit>
+<se_rsplit hgrid="ne120np4"  model_top="mt"                > 3 </se_rsplit>
+<se_rsplit hgrid="ne0np4.ARCTIC.ne30x4" model_top="mt"     > 6 </se_rsplit>
+<se_rsplit hgrid="ne0np4.POLARCAP.ne30x4" model_top="mt"   > 6 </se_rsplit>
+<se_rsplit hgrid="ne0np4CONUS.ne30x8" model_top="mt"       > 5 </se_rsplit>
+<se_rsplit hgrid="ne0np4.ARCTICGRIS.ne30x8" model_top="mt" > 5 </se_rsplit>
+<se_rsplit hgrid="ne0np4.NATL.ne30x8" model_top="mt"       > 5 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
 <se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>
