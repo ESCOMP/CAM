@@ -71,7 +71,7 @@ def _build_fms(caseroot, libroot, bldroot):
 
 ###############################################################################
 def _build_cam(caseroot, libroot, bldroot):
-    ###############################################################################
+###############################################################################
 
     with Case(caseroot, read_only=False) as case:
 
@@ -91,15 +91,40 @@ def _build_cam(caseroot, libroot, bldroot):
         except:
             raise RuntimeError("CAM's 'buildcpp' script failed to run properly.")
 
+        #--------------------------------------------------------
+        # Check if RTTOV is being requested by the user,
+        # and if so, set a needed environment variable
+        # and update the CAM_LINKED_LIBS list:
+        #--------------------------------------------------------
+
+        env_vars = ''
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
+
+        if "-rttov" in config_opts:
+            # Set environment variable needed by COSP Makefile
+            env_vars = "env RTTOV=true "
+
+            hdf5_lib_path = os.environ.get("NCAR_LDFLAGS_HDF5")
+
+            # Add HDF5 library to CAM linked library list:
+            linked_libs = case.get_value("CAM_LINKED_LIBS",
+                                        subgroup="build_component_cam")
+            hdf5_link_opts = f"-L{hdf5_lib_path}"
+            hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
+            case.set_value("CAM_LINKED_LIBS",
+                           linked_libs + hdf5_link_opts)
+
+
     with Case(caseroot) as case:
 
-        casetools = case.get_value("CASETOOLS")
-        srcroot = case.get_value("SRCROOT")
-        gmake_j = case.get_value("GMAKE_J")
-        gmake = case.get_value("GMAKE")
-        mach = case.get_value("MACH")
+        casetools    = case.get_value("CASETOOLS")
+        srcroot      = case.get_value("SRCROOT")
+        gmake_j      = case.get_value("GMAKE_J")
+        gmake        = case.get_value("GMAKE")
+        mach         = case.get_value("MACH")
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
         user_incldir = None
-        cam_dycore = case.get_value("CAM_DYCORE")
+        cam_dycore   = case.get_value("CAM_DYCORE")
         if cam_dycore == "fv3":
             slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
             compiler = case.get_value("COMPILER")
@@ -138,14 +163,32 @@ def _build_cam(caseroot, libroot, bldroot):
             expect(os.path.isfile(libfms), "FMS library not found {}".format(libfms))
             shutil.copy(libfms, libroot)
 
+        #--------------------------------------------------------
+        # Check if RTTOV is being requested by the user,
+        # and if so, set a needed environment variable
+        # and update the CAM_LINKED_LIBS list:
+        #--------------------------------------------------------
+
+        #env_vars = ''
+        #if "-rttov" in config_opts:
+            # Set environment variable needed by COSP Makefile
+        #    env_vars = "env RTTOV=true "
+
+            # Add HDF5 library to CAM linked library list:
+        #    hdf5_link_opts = "-L$(NCAR_LDFLAGS_HDF5)"
+        #    hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
+        #    case.set_value("CAM_LINKED_LIBS",
+        #                   case.get_value("CAM_LINKED_LIBS") + hdf5_link_opts)
+
         # -------------------------------------------------------
         # build the library
         # -------------------------------------------------------
         complib = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
 
-        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
-            gmake, gmake_j, complib, makefile, get_standard_makefile_args(case)
+        cmd = "{}{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
+            env_vars, gmake, gmake_j, complib, makefile,
+            get_standard_makefile_args(case)
         )
         if cam_cppdefs:
             cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)
