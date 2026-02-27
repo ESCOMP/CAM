@@ -563,7 +563,6 @@
                                tke       , cld     , concld         , pblh          , cush          ,                   &
                                cmfmc2    , slflx   , qtflx          , 							&
                                flxprec, flxsnow, 			         					&
-                               ptend_loc%q(:,:,1)  , ptend_loc%q(:,:,ixcldliq), ptend_loc%q(:,:,ixcldice),              &
                                ptend_loc%s         , ptend_loc%u    , ptend_loc%v   , ptend_tracer  ,                   &
                                rprdsh              , cmfdqs         , precc         , snow          ,                   &
                                evapcsh             , shfrc          , iccmr_UW      , icwmr_UW      ,                   &
@@ -578,7 +577,7 @@
 
       icwmr(:ncol,:)  = iccmr_UW(:ncol,:)
       rprdsh(:ncol,:) = rprdsh(:ncol,:) + cmfdqs(:ncol,:)
-      do m = 4, pcnst
+      do m = 1, pcnst
          ptend_loc%q(:ncol,:pver,m) = ptend_tracer(:ncol,:pver,m)
       enddo
 

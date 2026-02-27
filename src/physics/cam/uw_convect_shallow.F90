@@ -78,225 +78,308 @@ contains
 
   end subroutine uw_convect_shallow_init
 
-  subroutine uw_convect_shallow_run(mix, mkx, iend, ncnst, dt, &
-                                    ps0_inv, zs0_inv, p0_inv, z0_inv, dp0_inv, &
-                                    u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv, &
-                                    t0_inv, s0_inv, tr0_inv, &
-                                    tke_inv, cldfrct_inv, concldfrct_inv, pblh, cush, &
-                                    umf_inv, slflx_inv, qtflx_inv, &
-                                    flxprc1_inv, flxsnow1_inv, &
-                                    qvten_inv, qlten_inv, qiten_inv, &
-                                    sten_inv, uten_inv, vten_inv, trten_inv, &
-                                    qrten_inv, qsten_inv, precip, snow, evapc_inv, &
-                                    cufrc_inv, qcu_inv, qlu_inv, qiu_inv, &
-                                    cbmf, qc_inv, rliq, &
-                                    cnt_inv, cnb_inv, dpdry0_inv, &
-                                    sh_e_ed_ratio, &
-                                    errmsg, errflg)
-    integer, intent(in)    :: mix
-    integer, intent(in)    :: mkx
-    integer, intent(in)    :: iend
-    integer, intent(in)    :: ncnst
-    real(kind_phys), intent(in)    :: dt                       !  Physics time step [s]
-    real(kind_phys), intent(in)    :: ps0_inv(mix, mkx + 1)       !  Environmental pressure at the interfaces [ Pa ]
-    real(kind_phys), intent(in)    :: zs0_inv(mix, mkx + 1)       !  Environmental height at the interfaces   [ m ]
-    real(kind_phys), intent(in)    :: p0_inv(mix, mkx)          !  Environmental pressure at the layer mid-point [ Pa ]
-    real(kind_phys), intent(in)    :: z0_inv(mix, mkx)          !  Environmental height at the layer mid-point [ m ]
-    real(kind_phys), intent(in)    :: dp0_inv(mix, mkx)         !  Environmental layer pressure thickness [ Pa ] > 0.
-    real(kind_phys), intent(in)    :: dpdry0_inv(mix, mkx)      !  Environmental dry layer pressure thickness [ Pa ]
-    real(kind_phys), intent(in)    :: u0_inv(mix, mkx)          !  Environmental zonal wind [ m/s ]
-    real(kind_phys), intent(in)    :: v0_inv(mix, mkx)          !  Environmental meridional wind [ m/s ]
-    real(kind_phys), intent(in)    :: qv0_inv(mix, mkx)         !  Environmental water vapor specific humidity [ kg/kg ]
-    real(kind_phys), intent(in)    :: ql0_inv(mix, mkx)         !  Environmental liquid water specific humidity [ kg/kg ]
-    real(kind_phys), intent(in)    :: qi0_inv(mix, mkx)         !  Environmental ice specific humidity [ kg/kg ]
-    real(kind_phys), intent(in)    :: t0_inv(mix, mkx)          !  Environmental temperature [ K ]
-    real(kind_phys), intent(in)    :: s0_inv(mix, mkx)          !  Environmental dry static energy [ J/kg ]
-    real(kind_phys), intent(in)    :: tr0_inv(mix, mkx, ncnst)   !  Environmental tracers [ #, kg/kg ]
-    real(kind_phys), intent(in)    :: tke_inv(mix, mkx + 1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
-    real(kind_phys), intent(in)    :: cldfrct_inv(mix, mkx)     !  Total cloud fraction at the previous time step [ fraction ]
-    real(kind_phys), intent(in)    :: concldfrct_inv(mix, mkx)  !  Total convective ( shallow + deep ) cloud fraction
-    !  at the previous time step [ fraction ]
-    real(kind_phys), intent(in)    :: pblh(mix)                !  Height of PBL [ m ]
-    real(kind_phys), intent(inout) :: cush(mix)                !  Convective scale height [ m ]
-    real(kind_phys), intent(out)   :: umf_inv(mix, mkx + 1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
-    real(kind_phys), intent(out)   :: qvten_inv(mix, mkx)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: qlten_inv(mix, mkx)       !  Tendency of liquid water specific humidity [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: qiten_inv(mix, mkx)       !  Tendency of ice specific humidity [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: sten_inv(mix, mkx)        !  Tendency of dry static energy [ J/kg/s ]
-    real(kind_phys), intent(out)   :: uten_inv(mix, mkx)        !  Tendency of zonal wind [ m/s2 ]
-    real(kind_phys), intent(out)   :: vten_inv(mix, mkx)        !  Tendency of meridional wind [ m/s2 ]
-    real(kind_phys), intent(out)   :: trten_inv(mix, mkx, ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
-    real(kind_phys), intent(out)   :: qrten_inv(mix, mkx)       !  Tendency of rain water specific humidity [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: qsten_inv(mix, mkx)       !  Tendency of snow specific humidity [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: precip(mix)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
-    real(kind_phys), intent(out)   :: snow(mix)                !  Snow flux at the surface [ m/s ]
-    real(kind_phys), intent(out)   :: evapc_inv(mix, mkx)       !  Evaporation of precipitation [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: rliq(mix)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
-    real(kind_phys), intent(out)   :: slflx_inv(mix, mkx + 1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
-    real(kind_phys), intent(out)   :: qtflx_inv(mix, mkx + 1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
-    real(kind_phys), intent(out)   :: flxprc1_inv(mix, mkx + 1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
-    real(kind_phys), intent(out)   :: flxsnow1_inv(mix, mkx + 1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
-    real(kind_phys), intent(out)   :: cufrc_inv(mix, mkx)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-    real(kind_phys), intent(out)   :: qcu_inv(mix, mkx)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
-    real(kind_phys), intent(out)   :: qlu_inv(mix, mkx)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
-    real(kind_phys), intent(out)   :: qiu_inv(mix, mkx)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-    real(kind_phys), intent(out)   :: qc_inv(mix, mkx)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-    real(kind_phys), intent(out)   :: cbmf(mix)                !  Cumulus base mass flux [ kg/m2/s ]
-    real(kind_phys), intent(out)   :: cnt_inv(mix)             !  Cumulus top  interface index, cnt = kpen [ no ]
-    real(kind_phys), intent(out)   :: cnb_inv(mix)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
+!> \section arg_table_uw_convect_shallow_run Argument Table
+!! \htmlinclude uw_convect_shallow_run.html
+  subroutine uw_convect_shallow_run( &
+    ncol, pver, ncnst, dt, &
+    const_props, &
+    pint, zi, pmid, zm, pdel, &
+    u, v, qv0, ql0, qi0, &
+    t, s, tr0, &
+    tke, cld, concld, pblh, cush, &
+    cmfmc_sh, slflx, qtflx, &
+    flxprc_sh, flxsnw_sh, &
+    sten, uten, vten, trten, &
+    qrten, qsten, precip_sh, snow_sh, evapc_sh, &
+    shfrc, qcu, qlu, qiu, &
+    cbmf, qc, rliq, &
+    cnt, cnb, pdeldry, &
+    sh_e_ed_ratio, &
+    errmsg, errflg)
 
-    real(kind_phys), intent(out)   :: sh_e_ed_ratio(mix, mkx)   !  shallow conv [ent/(ent+det)] ratio
+    ! framework dependency for const_props
+    use ccpp_constituent_prop_mod, only: ccpp_constituent_prop_ptr_t
 
-    character(len=512), intent(out) :: errmsg
-    integer, intent(out) :: errflg
+    ! Input arguments
+    integer,            intent(in)    :: ncol
+    integer,            intent(in)    :: pver
+    integer,            intent(in)    :: ncnst               ! # of constituents [count]
+    real(kind_phys),    intent(in)    :: dt                  ! Physics time step [s]
+    type(ccpp_constituent_prop_ptr_t), &
+                        intent(in)    :: const_props(:)      ! ccpp constituent properties pointer
 
-    real(kind_phys)                :: ps0(mix, 0:mkx)           !  Environmental pressure at the interfaces [ Pa ]
-    real(kind_phys)                :: zs0(mix, 0:mkx)           !  Environmental height at the interfaces   [ m ]
-    real(kind_phys)                :: p0(mix, mkx)              !  Environmental pressure at the layer mid-point [ Pa ]
-    real(kind_phys)                :: z0(mix, mkx)              !  Environmental height at the layer mid-point [ m ]
-    real(kind_phys)                :: dp0(mix, mkx)             !  Environmental layer pressure thickness [ Pa ] > 0.
-    real(kind_phys)                :: dpdry0(mix, mkx)          !  Environmental dry layer pressure thickness [ Pa ]
-    real(kind_phys)                :: u0(mix, mkx)              !  Environmental zonal wind [ m/s ]
-    real(kind_phys)                :: v0(mix, mkx)              !  Environmental meridional wind [ m/s ]
-    real(kind_phys)                :: tke(mix, 0:mkx)           !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
-    real(kind_phys)                :: cldfrct(mix, mkx)         !  Total cloud fraction at the previous time step [ fraction ]
-    real(kind_phys)                :: concldfrct(mix, mkx)      !  Total convective ( shallow + deep ) cloud fraction
-    ! at the previous time step [ fraction ]
-    real(kind_phys)                :: qv0(mix, mkx)             !  Environmental water vapor specific humidity [ kg/kg ]
-    real(kind_phys)                :: ql0(mix, mkx)             !  Environmental liquid water specific humidity [ kg/kg ]
-    real(kind_phys)                :: qi0(mix, mkx)             !  Environmental ice specific humidity [ kg/kg ]
-    real(kind_phys)                :: t0(mix, mkx)              !  Environmental temperature [ K ]
-    real(kind_phys)                :: s0(mix, mkx)              !  Environmental dry static energy [ J/kg ]
-    real(kind_phys)                :: tr0(mix, mkx, ncnst)       !  Environmental tracers [ #, kg/kg ]
-    real(kind_phys)                :: umf(mix, 0:mkx)           !  Updraft mass flux at the interfaces [ kg/m2/s ]
-    real(kind_phys)                :: qvten(mix, mkx)           !  Tendency of water vapor specific humidity [ kg/kg/s ]
-    real(kind_phys)                :: qlten(mix, mkx)           !  Tendency of liquid water specific humidity [ kg/kg/s ]
-    real(kind_phys)                :: qiten(mix, mkx)           !  tendency of ice specific humidity [ kg/kg/s ]
-    real(kind_phys)                :: sten(mix, mkx)            !  Tendency of static energy [ J/kg/s ]
-    real(kind_phys)                :: uten(mix, mkx)            !  Tendency of zonal wind [ m/s2 ]
-    real(kind_phys)                :: vten(mix, mkx)            !  Tendency of meridional wind [ m/s2 ]
-    real(kind_phys)                :: trten(mix, mkx, ncnst)     !  Tendency of tracers [ #/s, kg/kg/s ]
-    real(kind_phys)                :: qrten(mix, mkx)           !  Tendency of rain water specific humidity [ kg/kg/s ]
-    real(kind_phys)                :: qsten(mix, mkx)           !  Tendency of snow speficif humidity [ kg/kg/s ]
-    real(kind_phys)                :: evapc(mix, mkx)           !  Tendency of evaporation of precipitation [ kg/kg/s ]
-    real(kind_phys)                :: slflx(mix, 0:mkx)         !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
-    real(kind_phys)                :: qtflx(mix, 0:mkx)         !  Updraft total water flux [ kg/kg * kg/m2/s ]
-    real(kind_phys)                :: flxprc1(mix, 0:mkx)       ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
-    ! for physics buffer calls in convect_shallow.F90
-    real(kind_phys)                :: flxsnow1(mix, 0:mkx)      ! uw grid-box mean snow flux (kg m^-2 s^-1)
-    ! for physics buffer calls in convect_shallow.F90
-    real(kind_phys)                :: cufrc(mix, mkx)           !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-    real(kind_phys)                :: qcu(mix, mkx)             !  Condensate water specific humidity within cumulus updraft
-    ! at the layer mid-point [ kg/kg ]
-    real(kind_phys)                :: qlu(mix, mkx)             !  Liquid water specific humidity within cumulus updraft
-    ! at the layer mid-point [ kg/kg ]
-    real(kind_phys)                :: qiu(mix, mkx)             !  Ice specific humidity within cumulus updraft
-    ! at the layer mid-point [ kg/kg ]
-    real(kind_phys)                :: qc(mix, mkx)              !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-    real(kind_phys)                :: cnt(mix)                 !  Cumulus top  interface index, cnt = kpen [ no ]
-    real(kind_phys)                :: cnb(mix)                 !  Cumulus base interface index, cnb = krel - 1 [ no ]
+    ! Model state on model levels (1 is TOA)
+    real(kind_phys),    intent(in)    :: pint(:, :)          ! Pressure at interfaces [Pa]
+    real(kind_phys),    intent(in)    :: zi(:, :)            ! Geopotential height wrt surface at interfaces [m]
+    real(kind_phys),    intent(in)    :: pmid(:, :)          ! Pressure at layer midpoints [Pa]
+    real(kind_phys),    intent(in)    :: zm(:, :)            ! Geopotential height wrt surface at layer midpoints [m]
+    real(kind_phys),    intent(in)    :: pdel(:, :)          ! Layer pressure thickness [Pa]
+    real(kind_phys),    intent(in)    :: pdeldry(:, :)       ! Dry layer pressure thickness [Pa]
+    real(kind_phys),    intent(in)    :: u(:, :)             ! Zonal wind [m s-1]
+    real(kind_phys),    intent(in)    :: v(:, :)             ! Meridional wind [m s-1]
+    real(kind_phys),    intent(in)    :: qv0(:, :)           ! q_wv [kg kg-1]
+    real(kind_phys),    intent(in)    :: ql0(:, :)           ! cldliq [kg kg-1]
+    real(kind_phys),    intent(in)    :: qi0(:, :)           ! cldice [kg kg-1]
+    real(kind_phys),    intent(in)    :: t(:, :)             ! Temperature [K]
+    real(kind_phys),    intent(in)    :: s(:, :)             ! Dry static energy [J kg-1]
+    real(kind_phys),    intent(in)    :: tr0(:, :, :)        ! Tracer mixing ratios [kg kg-1]
 
-    real(kind_phys)                :: fer_out(mix, mkx)         !  Fractional lateral entrainment rate [ 1/Pa ]
-    real(kind_phys)                :: fdr_out(mix, mkx)         !  Fractional lateral detrainment rate [ 1/Pa ]
+    real(kind_phys),    intent(in)    :: tke(:, :)           ! Turbulent kinetic energy at interfaces [m2 s-2]
 
-    integer                 :: i
-    integer                 :: k                        ! Vertical index for local fields (1 is lowest) [count]
-    integer                 :: k_inv                    ! Vertical index for model fields (1 is TOA) [count]
-    integer                 :: m                        ! Tracer index [count]
+    ! Cloud state from previous timestep
+    real(kind_phys),    intent(in)    :: cld(:, :)           ! Total cloud fraction at previous timestep [fraction]
+    real(kind_phys),    intent(in)    :: concld(:, :)        ! Convective cloud fraction at previous timestep [fraction]
+
+    ! Boundary layer
+    real(kind_phys),    intent(in)    :: pblh(:)             ! Planetary boundary layer height [m]
+    real(kind_phys),    intent(inout) :: cush(:)             ! Convective scale height [m]
+
+    ! Updraft mass flux and fluxes at interfaces
+    real(kind_phys),    intent(out)   :: cmfmc_sh(:, :)      ! Shallow convective mass flux at interfaces [kg m-2 s-1]
+    real(kind_phys),    intent(out)   :: slflx(:, :)         ! Updraft liquid static energy flux at interfaces [J m-2 s-1]
+    real(kind_phys),    intent(out)   :: qtflx(:, :)         ! Updraft total water flux at interfaces [kg m-2 s-1]
+    real(kind_phys),    intent(out)   :: flxprc_sh(:, :)     ! Grid-box mean rain+snow flux at interfaces [kg m-2 s-1]
+    real(kind_phys),    intent(out)   :: flxsnw_sh(:, :)     ! Grid-box mean snow flux at interfaces [kg m-2 s-1]
+
+    ! Tendencies at layer midpoints
+    real(kind_phys),    intent(out)   :: sten(:, :)          ! Tendency of dry static energy [J kg-1 s-1]
+    real(kind_phys),    intent(out)   :: uten(:, :)          ! Tendency of zonal wind [m s-2]
+    real(kind_phys),    intent(out)   :: vten(:, :)          ! Tendency of meridional wind [m s-2]
+    real(kind_phys),    intent(out)   :: trten(:, :, :)      ! Tendency of constituents [kg kg-1 s-1]
+    real(kind_phys),    intent(out)   :: qrten(:, :)         ! Tendency of rain specific humidity [kg kg-1 s-1]
+    real(kind_phys),    intent(out)   :: qsten(:, :)         ! Tendency of snow specific humidity [kg kg-1 s-1]
+
+    ! Surface precipitation
+    real(kind_phys),    intent(out)   :: precip_sh(:)        ! Precipitation (rain+snow) rate at surface [m s-1]
+    real(kind_phys),    intent(out)   :: snow_sh(:)          ! Snow rate at surface [m s-1]
+
+    ! Precipitation evaporation and cloud properties at midpoints
+    real(kind_phys),    intent(out)   :: evapc_sh(:, :)      ! Evaporation of precipitation [kg kg-1 s-1]
+    real(kind_phys),    intent(out)   :: shfrc(:, :)         ! Shallow cumulus cloud fraction [fraction]
+    real(kind_phys),    intent(out)   :: qcu(:, :)           ! Liquid+ice specific humidity in cumulus updraft [kg kg-1]
+    real(kind_phys),    intent(out)   :: qlu(:, :)           ! Liquid specific humidity in cumulus updraft [kg kg-1]
+    real(kind_phys),    intent(out)   :: qiu(:, :)           ! Ice specific humidity in cumulus updraft [kg kg-1]
+    real(kind_phys),    intent(out)   :: qc(:, :)            ! Tendency of detrained cumulus condensate [kg kg-1 s-1]
+    real(kind_phys),    intent(out)   :: cbmf(:)             ! Cloud base mass flux [kg m-2 s-1]
+    real(kind_phys),    intent(out)   :: rliq(:)             ! Vertically integrated detrained cloud condensate tendency [m s-1]
+
+    ! Cloud top/base indices (TOA-to-surface indexing)
+    real(kind_phys),    intent(out)   :: cnt(:)              ! Cumulus top interface index [index]
+    real(kind_phys),    intent(out)   :: cnb(:)              ! Cumulus base interface index [index]
+
+    ! Entrainment/detrainment diagnostics
+    real(kind_phys),    intent(out)   :: sh_e_ed_ratio(:, :) ! Shallow convection entrainment / (entrainment + detrainment) ratio [fraction]
+
+    character(len=512), intent(out)   :: errmsg
+    integer,            intent(out)   :: errflg
+
+    !--------------------------------------------------------------------------
+    ! Local variables: reversed-vertical copies for compute_uwshcu
+    ! compute_uwshcu uses bottom-to-top ordering (k=1 is surface)
+    !--------------------------------------------------------------------------
+    real(kind_phys) :: ps0_rev(ncol, 0:pver)            ! Pressure at interfaces (bottom-to-top) [Pa]
+    real(kind_phys) :: zs0_rev(ncol, 0:pver)            ! Height at interfaces (bottom-to-top) [m]
+    real(kind_phys) :: p0_rev(ncol, pver)               ! Pressure at midpoints (bottom-to-top) [Pa]
+    real(kind_phys) :: z0_rev(ncol, pver)               ! Height at midpoints (bottom-to-top) [m]
+    real(kind_phys) :: dp0_rev(ncol, pver)              ! Layer pressure thickness (bottom-to-top) [Pa]
+    real(kind_phys) :: dpdry0_rev(ncol, pver)           ! Dry layer pressure thickness (bottom-to-top) [Pa]
+    real(kind_phys) :: u0_rev(ncol, pver)               ! Zonal wind (bottom-to-top) [m s-1]
+    real(kind_phys) :: v0_rev(ncol, pver)               ! Meridional wind (bottom-to-top) [m s-1]
+    real(kind_phys) :: qv0_rev(ncol, pver)              ! Water vapor specific humidity (bottom-to-top) [kg kg-1]
+    real(kind_phys) :: ql0_rev(ncol, pver)              ! Cloud liquid specific humidity (bottom-to-top) [kg kg-1]
+    real(kind_phys) :: qi0_rev(ncol, pver)              ! Cloud ice specific humidity (bottom-to-top) [kg kg-1]
+    real(kind_phys) :: t0_rev(ncol, pver)               ! Temperature (bottom-to-top) [K]
+    real(kind_phys) :: s0_rev(ncol, pver)               ! Dry static energy (bottom-to-top) [J kg-1]
+    real(kind_phys) :: tr0_rev(ncol, pver, ncnst)       ! Tracer mixing ratios (bottom-to-top) [kg kg-1]
+    real(kind_phys) :: tke_rev(ncol, 0:pver)            ! TKE at interfaces (bottom-to-top) [m2 s-2]
+    real(kind_phys) :: cld_rev(ncol, pver)              ! Total cloud fraction (bottom-to-top) [fraction]
+    real(kind_phys) :: concld_rev(ncol, pver)           ! Convective cloud fraction (bottom-to-top) [fraction]
+
+    ! Local output from compute_uwshcu (bottom-to-top ordering)
+    real(kind_phys) :: umf_rev(ncol, 0:pver)            ! Updraft mass flux at interfaces [kg m-2 s-1]
+    real(kind_phys) :: qvten_rev(ncol, pver)            ! Tendency of water vapor [kg kg-1 s-1]
+    real(kind_phys) :: qlten_rev(ncol, pver)            ! Tendency of cloud liquid [kg kg-1 s-1]
+    real(kind_phys) :: qiten_rev(ncol, pver)            ! Tendency of cloud ice [kg kg-1 s-1]
+    real(kind_phys) :: sten_rev(ncol, pver)             ! Tendency of dry static energy [J kg-1 s-1]
+    real(kind_phys) :: uten_rev(ncol, pver)             ! Tendency of zonal wind [m s-2]
+    real(kind_phys) :: vten_rev(ncol, pver)             ! Tendency of meridional wind [m s-2]
+    real(kind_phys) :: trten_rev(ncol, pver, ncnst)     ! Tendency of tracers [kg kg-1 s-1]
+    real(kind_phys) :: qrten_rev(ncol, pver)            ! Tendency of rain [kg kg-1 s-1]
+    real(kind_phys) :: qsten_rev(ncol, pver)            ! Tendency of snow [kg kg-1 s-1]
+    real(kind_phys) :: evapc_rev(ncol, pver)            ! Evaporation of precipitation [kg kg-1 s-1]
+    real(kind_phys) :: slflx_rev(ncol, 0:pver)          ! Liquid static energy flux at interfaces [J m-2 s-1]
+    real(kind_phys) :: qtflx_rev(ncol, 0:pver)          ! Total water flux at interfaces [kg m-2 s-1]
+    real(kind_phys) :: flxprc_rev(ncol, 0:pver)         ! Rain+snow flux at interfaces [kg m-2 s-1]
+    real(kind_phys) :: flxsnw_rev(ncol, 0:pver)         ! Snow flux at interfaces [kg m-2 s-1]
+    real(kind_phys) :: cufrc_rev(ncol, pver)            ! Shallow cumulus cloud fraction [fraction]
+    real(kind_phys) :: qcu_rev(ncol, pver)              ! Condensate in cumulus updraft [kg kg-1]
+    real(kind_phys) :: qlu_rev(ncol, pver)              ! Liquid in cumulus updraft [kg kg-1]
+    real(kind_phys) :: qiu_rev(ncol, pver)              ! Ice in cumulus updraft [kg kg-1]
+    real(kind_phys) :: qc_rev(ncol, pver)               ! Detrained condensate tendency [kg kg-1 s-1]
+    real(kind_phys) :: cnt_rev(ncol)                    ! Cumulus top index (bottom-to-top) [index]
+    real(kind_phys) :: cnb_rev(ncol)                    ! Cumulus base index (bottom-to-top) [index]
+
+    real(kind_phys) :: fer_out(ncol, pver)              ! Fractional lateral entrainment rate [Pa-1]
+    real(kind_phys) :: fdr_out(ncol, pver)              ! Fractional lateral detrainment rate [Pa-1]
+
+    integer :: i
+    integer :: k                                        ! Vertical index for local (bottom-to-top) fields [count]
+    integer :: k_inv                                    ! Vertical index for model (TOA-to-surface) fields [count]
+    integer :: m                                        ! Tracer index [count]
 
     errmsg = ''
     errflg = 0
 
-    do k = 1, mkx
-      k_inv = mkx + 1 - k
-      p0(:iend, k) = p0_inv(:iend, k_inv)
-      u0(:iend, k) = u0_inv(:iend, k_inv)
-      v0(:iend, k) = v0_inv(:iend, k_inv)
-      z0(:iend, k) = z0_inv(:iend, k_inv)
-      dp0(:iend, k) = dp0_inv(:iend, k_inv)
-      dpdry0(:iend, k) = dpdry0_inv(:iend, k_inv)
-      qv0(:iend, k) = qv0_inv(:iend, k_inv)
-      ql0(:iend, k) = ql0_inv(:iend, k_inv)
-      qi0(:iend, k) = qi0_inv(:iend, k_inv)
-      t0(:iend, k) = t0_inv(:iend, k_inv)
-      s0(:iend, k) = s0_inv(:iend, k_inv)
-      cldfrct(:iend, k) = cldfrct_inv(:iend, k_inv)
-      concldfrct(:iend, k) = concldfrct_inv(:iend, k_inv)
+    !--------------------------------------------------------------------------
+    ! Reverse vertical ordering from model (TOA-to-surface) to
+    ! compute_uwshcu convention (bottom-to-top, k=1 is surface)
+    !--------------------------------------------------------------------------
+
+    ! Layer midpoint fields
+    do k = 1, pver
+      k_inv = pver + 1 - k
+      p0_rev(:ncol, k)       = pmid(:ncol, k_inv)
+      u0_rev(:ncol, k)       = u(:ncol, k_inv)
+      v0_rev(:ncol, k)       = v(:ncol, k_inv)
+      z0_rev(:ncol, k)       = zm(:ncol, k_inv)
+      dp0_rev(:ncol, k)      = pdel(:ncol, k_inv)
+      dpdry0_rev(:ncol, k)   = pdeldry(:ncol, k_inv)
+      qv0_rev(:ncol, k)      = qv0(:ncol, k_inv)
+      ql0_rev(:ncol, k)      = ql0(:ncol, k_inv)
+      qi0_rev(:ncol, k)      = qi0(:ncol, k_inv)
+      t0_rev(:ncol, k)       = t(:ncol, k_inv)
+      s0_rev(:ncol, k)       = s(:ncol, k_inv)
+      cld_rev(:ncol, k)      = cld(:ncol, k_inv)
+      concld_rev(:ncol, k)   = concld(:ncol, k_inv)
       do m = 1, ncnst
-        tr0(:iend, k, m) = tr0_inv(:iend, k_inv, m)
+        tr0_rev(:ncol, k, m) = tr0(:ncol, k_inv, m)
       end do
     end do
 
-    do k = 0, mkx
-      k_inv = mkx + 1 - k
-      ps0(:iend, k) = ps0_inv(:iend, k_inv)
-      zs0(:iend, k) = zs0_inv(:iend, k_inv)
-      tke(:iend, k) = tke_inv(:iend, k_inv)
+    ! Interface fields (0:pver in bottom-to-top = 1:pver+1 in TOA-to-surface)
+    do k = 0, pver
+      k_inv = pver + 1 - k
+      ps0_rev(:ncol, k) = pint(:ncol, k_inv)
+      zs0_rev(:ncol, k) = zi(:ncol, k_inv)
+      tke_rev(:ncol, k) = tke(:ncol, k_inv)
     end do
 
-    call compute_uwshcu(mix, mkx, iend, ncnst, dt, &
-                        ps0, zs0, p0, z0, dp0, &
-                        u0, v0, qv0, ql0, qi0, &
-                        t0, s0, tr0, &
-                        tke, cldfrct, concldfrct, pblh, cush, &
-                        umf, slflx, qtflx, &
-                        flxprc1, flxsnow1, &
-                        qvten, qlten, qiten, &
-                        sten, uten, vten, trten, &
-                        qrten, qsten, precip, snow, evapc, &
-                        cufrc, qcu, qlu, qiu, &
-                        cbmf, qc, rliq, &
-                        cnt, cnb, dpdry0, &
-                        fer_out, fdr_out, errmsg, errflg)
+    !--------------------------------------------------------------------------
+    ! Call the UW shallow convection driver (bottom-to-top ordering)
+    !--------------------------------------------------------------------------
+    call compute_uwshcu( &
+      mix             = ncol,         &
+      mkx             = pver,         &
+      iend            = ncol,         &
+      ncnst           = ncnst,        &
+      dt              = dt,           &
+      const_props     = const_props,  &
+      ps0_in          = ps0_rev,      &
+      zs0_in          = zs0_rev,      &
+      p0_in           = p0_rev,       &
+      z0_in           = z0_rev,       &
+      dp0_in          = dp0_rev,      &
+      u0_in           = u0_rev,       &
+      v0_in           = v0_rev,       &
+      qv0_in          = qv0_rev,      &
+      ql0_in          = ql0_rev,      &
+      qi0_in          = qi0_rev,      &
+      t0_in           = t0_rev,       &
+      s0_in           = s0_rev,       &
+      tr0_in          = tr0_rev,      &
+      tke_in          = tke_rev,      &
+      cldfrct_in      = cld_rev,      &
+      concldfrct_in   = concld_rev,   &
+      pblh_in         = pblh,         &
+      cush_inout      = cush,         &
+      umf_out         = umf_rev,      &
+      slflx_out       = slflx_rev,    &
+      qtflx_out       = qtflx_rev,    &
+      flxprc1_out     = flxprc_rev,   &
+      flxsnow1_out    = flxsnw_rev,   &
+      qvten_out       = qvten_rev,    &
+      qlten_out       = qlten_rev,    &
+      qiten_out       = qiten_rev,    &
+      sten_out        = sten_rev,     &
+      uten_out        = uten_rev,     &
+      vten_out        = vten_rev,     &
+      trten_out       = trten_rev,    &
+      qrten_out       = qrten_rev,    &
+      qsten_out       = qsten_rev,    &
+      precip_out      = precip_sh,    &
+      snow_out        = snow_sh,      &
+      evapc_out       = evapc_rev,    &
+      cufrc_out       = cufrc_rev,    &
+      qcu_out         = qcu_rev,      &
+      qlu_out         = qlu_rev,      &
+      qiu_out         = qiu_rev,      &
+      cbmf_out        = cbmf,         &
+      qc_out          = qc_rev,       &
+      rliq_out        = rliq,         &
+      cnt_out         = cnt_rev,      &
+      cnb_out         = cnb_rev,      &
+      dpdry0_in       = dpdry0_rev,   &
+      fer_out         = fer_out,      &
+      fdr_out         = fdr_out,      &
+      errmsg          = errmsg,       &
+      errflg          = errflg)
 
-    if (errflg /= 0) then
-      return
-    end if
+    if (errflg /= 0) return
 
-    ! Reverse cloud top/base interface indices
-    cnt_inv(:iend) = mkx + 1 - cnt(:iend)
-    cnb_inv(:iend) = mkx + 1 - cnb(:iend)
+    !--------------------------------------------------------------------------
+    ! Reverse cloud top/base interface indices back to model (TOA-to-surface)
+    !--------------------------------------------------------------------------
+    cnt(:ncol) = pver + 1 - cnt_rev(:ncol)
+    cnb(:ncol) = pver + 1 - cnb_rev(:ncol)
 
-    ! k spans 0 to mkx here for interface values but
-    ! should be 1 to mkx+1 (= pverp) for consistency with CAM
-    do k = 0, mkx
-      k_inv = mkx + 1 - k
-      umf_inv(:iend, k_inv) = umf(:iend, k)
-      slflx_inv(:iend, k_inv) = slflx(:iend, k)
-      qtflx_inv(:iend, k_inv) = qtflx(:iend, k)
-      flxprc1_inv(:iend, k_inv) = flxprc1(:iend, k)     ! reversed for output to cam
-      flxsnow1_inv(:iend, k_inv) = flxsnow1(:iend, k)   ! ""
+    !--------------------------------------------------------------------------
+    ! Reverse interface fields (0:pver bottom-to-top -> 1:pver+1 TOA-to-surface)
+    !--------------------------------------------------------------------------
+    do k = 0, pver
+      k_inv = pver + 1 - k
+      cmfmc_sh(:ncol, k_inv) = umf_rev(:ncol, k)
+      slflx(:ncol, k_inv)    = slflx_rev(:ncol, k)
+      qtflx(:ncol, k_inv)    = qtflx_rev(:ncol, k)
+      flxprc_sh(:ncol, k_inv) = flxprc_rev(:ncol, k)
+      flxsnw_sh(:ncol, k_inv) = flxsnw_rev(:ncol, k)
     end do
 
-    ! midpoint values
-    do k = 1, mkx
-      k_inv = mkx + 1 - k
-      qvten_inv(:iend, k_inv) = qvten(:iend, k)
-      qlten_inv(:iend, k_inv) = qlten(:iend, k)
-      qiten_inv(:iend, k_inv) = qiten(:iend, k)
-      sten_inv(:iend, k_inv) = sten(:iend, k)
-      uten_inv(:iend, k_inv) = uten(:iend, k)
-      vten_inv(:iend, k_inv) = vten(:iend, k)
-      qrten_inv(:iend, k_inv) = qrten(:iend, k)
-      qsten_inv(:iend, k_inv) = qsten(:iend, k)
-      evapc_inv(:iend, k_inv) = evapc(:iend, k)
-      cufrc_inv(:iend, k_inv) = cufrc(:iend, k)
-      qcu_inv(:iend, k_inv) = qcu(:iend, k)
-      qlu_inv(:iend, k_inv) = qlu(:iend, k)
-      qiu_inv(:iend, k_inv) = qiu(:iend, k)
-      qc_inv(:iend, k_inv) = qc(:iend, k)
+    !--------------------------------------------------------------------------
+    ! Reverse layer midpoint fields
+    !--------------------------------------------------------------------------
+    do k = 1, pver
+      k_inv = pver + 1 - k
+      ! unused: merged into main constituent tendencies.
+      ! qvten(:ncol, k_inv)    = qvten_rev(:ncol, k)
+      ! qlten(:ncol, k_inv)    = qlten_rev(:ncol, k)
+      ! qiten(:ncol, k_inv)    = qiten_rev(:ncol, k)
+      sten(:ncol, k_inv)     = sten_rev(:ncol, k)
+      uten(:ncol, k_inv)     = uten_rev(:ncol, k)
+      vten(:ncol, k_inv)     = vten_rev(:ncol, k)
+      qrten(:ncol, k_inv)    = qrten_rev(:ncol, k)
+      qsten(:ncol, k_inv)    = qsten_rev(:ncol, k)
+      evapc_sh(:ncol, k_inv) = evapc_rev(:ncol, k)
+      shfrc(:ncol, k_inv)    = cufrc_rev(:ncol, k)
+      qcu(:ncol, k_inv)      = qcu_rev(:ncol, k)
+      qlu(:ncol, k_inv)      = qlu_rev(:ncol, k)
+      qiu(:ncol, k_inv)      = qiu_rev(:ncol, k)
+      qc(:ncol, k_inv)       = qc_rev(:ncol, k)
       do m = 1, ncnst
-        trten_inv(:iend, k_inv, m) = trten(:iend, k, m)
+        trten(:ncol, k_inv, m) = trten_rev(:ncol, k, m)
       end do
-
     end do
 
-    sh_e_ed_ratio(:iend, :) = -1.0_kind_phys
-    do k = 1, mkx
-      do i = 1, iend
+    !--------------------------------------------------------------------------
+    ! Compute entrainment/(entrainment+detrainment) ratio diagnostic
+    ! Default to -1 where neither rate is significant
+    !--------------------------------------------------------------------------
+    sh_e_ed_ratio(:ncol, :) = -1.0_kind_phys
+    do k = 1, pver
+      do i = 1, ncol
         if (max(fer_out(i, k), fdr_out(i, k)) > 1.0e-10_kind_phys) then
           sh_e_ed_ratio(i, k) = max(fer_out(i, k), 0.0_kind_phys) &
-                                /(max(fer_out(i, k), 0.0_kind_phys) + max(fdr_out(i, k), 0.0_kind_phys))
+                                / (max(fer_out(i, k), 0.0_kind_phys) &
+                                   + max(fdr_out(i, k), 0.0_kind_phys))
         end if
       end do
     end do
@@ -310,6 +393,7 @@ contains
   end function exnf
 
   subroutine compute_uwshcu(mix, mkx, iend, ncnst, dt, &
+                            const_props, &
                             ps0_in, zs0_in, p0_in, z0_in, dp0_in, &
                             u0_in, v0_in, qv0_in, ql0_in, qi0_in, &
                             t0_in, s0_in, tr0_in, &
@@ -324,7 +408,13 @@ contains
                             cnt_out, cnb_out, dpdry0_in, &
                             fer_out, fdr_out, errmsg, errflg)
 
-    use constituents, only: qmin, cnst_get_type_byind, cnst_get_ind
+    ! framework dependency for const_props
+    use ccpp_constituent_prop_mod, only: ccpp_constituent_prop_ptr_t
+
+    ! dependency to get constituent index
+    use ccpp_const_utils,          only: ccpp_const_get_idx
+
+    use constituents, only: qmin
     use wv_saturation, only: findsp_vc
     use wv_saturation, only: qsat
     use shr_spfn_mod, only: erfc => shr_spfn_erfc
@@ -333,7 +423,9 @@ contains
     integer, intent(in)    :: mkx
     integer, intent(in)    :: iend
     integer, intent(in)    :: ncnst
-    real(kind_phys), intent(in)    :: dt                             !  Time step : 2*delta_t [ s ]
+    real(kind_phys), intent(in)    :: dt                              ! Physics time step [s]
+    type(ccpp_constituent_prop_ptr_t), &
+                     intent(in)    :: const_props(:)                  ! ccpp constituent properties pointer
     real(kind_phys), intent(in)    :: ps0_in(mix, 0:mkx)              !  Environmental pressure at the interfaces [ Pa ]
     real(kind_phys), intent(in)    :: zs0_in(mix, 0:mkx)              !  Environmental height at the interfaces [ m ]
     real(kind_phys), intent(in)    :: p0_in(mix, mkx)                 !  Environmental pressure at the layer mid-point [ Pa ]
@@ -797,7 +889,11 @@ contains
     real(kind_phys), dimension(mkx, ncnst)   :: trten_o, sstr0_o
     real(kind_phys), dimension(0:mkx, ncnst) :: trflx_o
     real(kind_phys), dimension(ncnst)       :: trsrc_o
-    integer                          :: ixnumliq, ixnumice, ixcldliq, ixcldice
+
+    ! constituent indices
+    integer :: ixnumliq, ixnumice, ixcldliq, ixcldice, ixq
+
+    logical :: const_is_wet
 
     ! ------------------ !
     !                    !
@@ -905,17 +1001,27 @@ contains
     parameter(kevp=2.e-6_kind_phys)
     logical, parameter :: noevap_krelkpen = .false.
 
-    !------------------------!
-    !                        !
-    ! Start Main Calculation !
-    !                        !
-    !------------------------!
+    ! Setup constituent indices for separately handled constituent species.
+    ! q is not assumed to be 1; in fact, no ordering is assumed here:
+    call ccpp_const_get_idx(const_props, &
+         'water_vapor_mixing_ratio_wrt_moist_air_and_condensed_water', &
+         ixq, errmsg, errflg)
 
-    call cnst_get_ind('NUMLIQ', ixnumliq)
-    call cnst_get_ind('NUMICE', ixnumice)
+    call ccpp_const_get_idx(const_props, &
+         'cloud_liquid_water_mixing_ratio_wrt_moist_air_and_condensed_water', &
+         ixcldliq, errmsg, errflg)
 
-    call cnst_get_ind('CLDLIQ', ixcldliq)
-    call cnst_get_ind('CLDICE', ixcldice)
+    call ccpp_const_get_idx(const_props, &
+         'cloud_ice_mixing_ratio_wrt_moist_air_and_condensed_water', &
+         ixcldice, errmsg, errflg)
+
+    call ccpp_const_get_idx(const_props, &
+         'mass_number_concentration_of_cloud_liquid_wrt_moist_air_and_condensed_water', &
+         ixnumliq, errmsg, errflg)
+
+    call ccpp_const_get_idx(const_props, &
+         'mass_number_concentration_of_ice_wrt_moist_air_and_condensed_water', &
+         ixnumice, errmsg, errflg)
 
     ! ------------------------------------------------------- !
     ! Initialize output variables defined for all grid points !
@@ -1756,6 +1862,12 @@ contains
             do m = 1, ncnst
               trten_out(i, :mkx, m) = trten_s(:mkx, m)
             end do
+
+            ! Also merge the q, cldliq, cldice tendencies here whereas they were handled separately
+            ! internally.
+            trten_out(i, :mkx, ixq)      = qvten_s(:mkx)
+            trten_out(i, :mkx, ixcldliq) = qlten_s(:mkx)
+            trten_out(i, :mkx, ixcldice) = qiten_s(:mkx)
 
             ! ------------------------------------------------------------------------------ !
             ! Below are diagnostic output variables for detailed analysis of cumulus scheme. !
@@ -3819,50 +3931,55 @@ contains
         ! Tendencies of tracers !
         ! --------------------- !
 
-        ! NOTE hplin need to investigate why this is a 4
-        ! first 3 are: Q, ?, ?, in CAM5
         ! The presence of this loop means that we have to be able to access all
         ! constituents, not just predefined cldliq/cldice/numliq/numice/Q.
-        tracer_loop: do m = 4, ncnst
-          if (m .ne. ixnumliq .and. m .ne. ixnumice) then
-            trmin = qmin(m)
-            trflx_d(0:mkx) = 0._kind_phys
-            trflx_u(0:mkx) = 0._kind_phys
-            do k = 1, mkx - 1
-              if (cnst_get_type_byind(m) .eq. 'wet') then
-                pdelx = dp0(k)
-              else
-                pdelx = dpdry0(k)
-              end if
-              km1 = k - 1
-              dum = (tr0(k, m) - trmin)*pdelx/g/dt + trflx(km1, m) - trflx(k, m) + trflx_d(km1)
-              trflx_d(k) = min(0._kind_phys, dum)
-            end do
-            do k = mkx, 2, -1
-              if (cnst_get_type_byind(m) .eq. 'wet') then
-                pdelx = dp0(k)
-              else
-                pdelx = dpdry0(k)
-              end if
-              km1 = k - 1
-              dum = (tr0(k, m) - trmin)*pdelx/g/dt + trflx(km1, m) - trflx(k, m) + &
-                    trflx_d(km1) - trflx_d(k) - trflx_u(k)
-              trflx_u(km1) = max(0._kind_phys, -dum)
-            end do
-            do k = 1, mkx
-              if (cnst_get_type_byind(m) .eq. 'wet') then
-                pdelx = dp0(k)
-              else
-                pdelx = dpdry0(k)
-              end if
-              km1 = k - 1
-              ! Check : I should re-check whether '_u', '_d' are correctly ordered in
-              !         the below tendency computation.
-              trten(k, m) = (trflx(km1, m) - trflx(k, m) + &
-                             trflx_d(km1) - trflx_d(k) + &
-                             trflx_u(km1) - trflx_u(k))*g/pdelx
-            end do
+        tracer_loop: do m = 1, ncnst
+          ! skip these tracers which are handled separately -
+          if(m == ixq .or. &
+             m == ixnumliq .or. m == ixnumice .or. &
+             m == ixcldliq .or. m == ixcldice) then
+            cycle tracer_loop
           end if
+
+          call const_props(m)%is_wet(const_is_wet, errflg, errmsg)
+
+          trmin = qmin(m)
+          trflx_d(0:mkx) = 0._kind_phys
+          trflx_u(0:mkx) = 0._kind_phys
+          do k = 1, mkx - 1
+            if (const_is_wet) then
+              pdelx = dp0(k)
+            else
+              pdelx = dpdry0(k)
+            end if
+            km1 = k - 1
+            dum = (tr0(k, m) - trmin)*pdelx/g/dt + trflx(km1, m) - trflx(k, m) + trflx_d(km1)
+            trflx_d(k) = min(0._kind_phys, dum)
+          end do
+          do k = mkx, 2, -1
+            if (const_is_wet) then
+              pdelx = dp0(k)
+            else
+              pdelx = dpdry0(k)
+            end if
+            km1 = k - 1
+            dum = (tr0(k, m) - trmin)*pdelx/g/dt + trflx(km1, m) - trflx(k, m) + &
+                  trflx_d(km1) - trflx_d(k) - trflx_u(k)
+            trflx_u(km1) = max(0._kind_phys, -dum)
+          end do
+          do k = 1, mkx
+            if (const_is_wet) then
+              pdelx = dp0(k)
+            else
+              pdelx = dpdry0(k)
+            end if
+            km1 = k - 1
+            ! Check : I should re-check whether '_u', '_d' are correctly ordered in
+            !         the below tendency computation.
+            trten(k, m) = (trflx(km1, m) - trflx(k, m) + &
+                           trflx_d(km1) - trflx_d(k) + &
+                           trflx_u(km1) - trflx_u(k))*g/pdelx
+          end do
         end do tracer_loop
 
         ! ---------------------------------------------------------------- !
@@ -4146,9 +4263,16 @@ contains
       cnt_out(i) = cnt
       cnb_out(i) = cnb
 
+      ! Create final constituent tendency array.
+      ! Internally, q, cldliq, cldice are handled separately via qvten/qlten/qiten.
+      ! Here we merge them into trten_out using the actual (not assumed) constituent indices.
       do m = 1, ncnst
         trten_out(i, :mkx, m) = trten(:mkx, m)
       end do
+
+      trten_out(i, :mkx, ixq) = qvten(:mkx)
+      trten_out(i, :mkx, ixcldliq) = qlten(:mkx)
+      trten_out(i, :mkx, ixcldice) = qiten(:mkx)
 
       ! ------------------------------------------------- !
       ! Below are specific diagnostic output for detailed !

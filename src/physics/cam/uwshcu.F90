@@ -168,7 +168,7 @@ end subroutine uwshcu_readnl
 
     call addfld( 'excessu_Cu'     , (/ 'lev' /),   'A', 'no'      , 'Updraft saturation excess'                        )
     call addfld( 'excess0_Cu'     , (/ 'lev' /),   'A', 'no'      , 'Environmental saturation excess'                  )
-    call addfld( 'xc_Cu'          , (/ 'lev' /),   'A', 'no'      , 'Critical mixing ratio'                            )
+    call addfld( 'xc_Cu'          , (/ 'lev' /),   'A', 'no'      , 'Critical ncoling ratio'                            )
     call addfld( 'aquad_Cu'       , (/ 'lev' /),   'A', 'no'      , 'aquad'                                            )
     call addfld( 'bquad_Cu'       , (/ 'lev' /),   'A', 'no'      , 'bquad'                                            )
     call addfld( 'cquad_Cu'       , (/ 'lev' /),   'A', 'no'      , 'cquad'                                            )
@@ -177,8 +177,8 @@ end subroutine uwshcu_readnl
 
     call addfld('exit_UWCu_Cu'    , horiz_only,    'A', 'no' , 'exit_UWCu'     )
     call addfld('exit_conden_Cu'  , horiz_only,    'A', 'no' , 'exit_conden'   )
-    call addfld('exit_klclmkx_Cu' , horiz_only,    'A', 'no' , 'exit_klclmkx'  )
-    call addfld('exit_klfcmkx_Cu' , horiz_only,    'A', 'no' , 'exit_klfcmkx'  )
+    call addfld('exit_klclpver_Cu' , horiz_only,    'A', 'no' , 'exit_klclpver'  )
+    call addfld('exit_klfcpver_Cu' , horiz_only,    'A', 'no' , 'exit_klfcpver'  )
     call addfld('exit_ufrc_Cu'    , horiz_only,    'A', 'no' , 'exit_ufrc'     )
     call addfld('exit_wtw_Cu'     , horiz_only,    'A', 'no' , 'exit_wtw'      )
     call addfld('exit_drycore_Cu' , horiz_only,    'A', 'no' , 'exit_drycore'  )
@@ -212,14 +212,13 @@ end subroutine uwshcu_readnl
 
   end subroutine init_uwshcu
 
-  subroutine uwshcu_cam(mix      , mkx        , iend          , ncnst     , dt       ,  &
+  subroutine uwshcu_cam(ncol      , pver        , iend          , ncnst     , dt       ,  &
                         ps0_inv  , zs0_inv    , p0_inv        , z0_inv    , dp0_inv  ,  &
                         u0_inv   , v0_inv     , qv0_inv       , ql0_inv   , qi0_inv  ,  &
                         t0_inv   , s0_inv     , tr0_inv       ,                         &
                         tke_inv  , cldfrct_inv, concldfrct_inv, pblh      , cush     ,  &
                         umf_inv  , slflx_inv  , qtflx_inv     ,                         &
                         flxprc1_inv, flxsnow1_inv,                 &
-                        qvten_inv, qlten_inv  , qiten_inv     ,                         &
                         sten_inv , uten_inv   , vten_inv      , trten_inv ,             &
                         qrten_inv, qsten_inv  , precip        , snow      , evapc_inv,  &
                         cufrc_inv, qcu_inv    , qlu_inv       , qiu_inv   ,             &
@@ -227,188 +226,248 @@ end subroutine uwshcu_readnl
                         cnt_inv  , cnb_inv    , lchnk         , dpdry0_inv,             &
                         sh_e_ed_ratio)
     use cam_history,     only : outfld
+    use ccpp_constituent_prop_mod, only: ccpp_const_props
 
     use uw_convect_shallow, only: uw_convect_shallow_run
 
     integer , intent(in)    :: lchnk
-    integer , intent(in)    :: mix
-    integer , intent(in)    :: mkx
+    integer , intent(in)    :: ncol
+    integer , intent(in)    :: pver
     integer , intent(in)    :: iend
     integer , intent(in)    :: ncnst
     real(r8), intent(in)    :: dt                       !  Time step : 2*delta_t [ s ]
-    real(r8), intent(in)    :: ps0_inv(mix,mkx+1)       !  Environmental pressure at the interfaces [ Pa ]
-    real(r8), intent(in)    :: zs0_inv(mix,mkx+1)       !  Environmental height at the interfaces   [ m ]
-    real(r8), intent(in)    :: p0_inv(mix,mkx)          !  Environmental pressure at the layer mid-point [ Pa ]
-    real(r8), intent(in)    :: z0_inv(mix,mkx)          !  Environmental height at the layer mid-point [ m ]
-    real(r8), intent(in)    :: dp0_inv(mix,mkx)         !  Environmental layer pressure thickness [ Pa ] > 0.
-    real(r8), intent(in)    :: dpdry0_inv(mix,mkx)      !  Environmental dry layer pressure thickness [ Pa ]
-    real(r8), intent(in)    :: u0_inv(mix,mkx)          !  Environmental zonal wind [ m/s ]
-    real(r8), intent(in)    :: v0_inv(mix,mkx)          !  Environmental meridional wind [ m/s ]
-    real(r8), intent(in)    :: qv0_inv(mix,mkx)         !  Environmental water vapor specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: ql0_inv(mix,mkx)         !  Environmental liquid water specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: qi0_inv(mix,mkx)         !  Environmental ice specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: t0_inv(mix,mkx)          !  Environmental temperature [ K ]
-    real(r8), intent(in)    :: s0_inv(mix,mkx)          !  Environmental dry static energy [ J/kg ]
-    real(r8), intent(in)    :: tr0_inv(mix,mkx,ncnst)   !  Environmental tracers [ #, kg/kg ]
-    real(r8), intent(in)    :: tke_inv(mix,mkx+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
-    real(r8), intent(in)    :: cldfrct_inv(mix,mkx)     !  Total cloud fraction at the previous time step [ fraction ]
-    real(r8), intent(in)    :: concldfrct_inv(mix,mkx)  !  Total convective ( shallow + deep ) cloud fraction
+    real(r8), intent(in)    :: ps0_inv(ncol,pver+1)       !  Environmental pressure at the interfaces [ Pa ]
+    real(r8), intent(in)    :: zs0_inv(ncol,pver+1)       !  Environmental height at the interfaces   [ m ]
+    real(r8), intent(in)    :: p0_inv(ncol,pver)          !  Environmental pressure at the layer mid-point [ Pa ]
+    real(r8), intent(in)    :: z0_inv(ncol,pver)          !  Environmental height at the layer mid-point [ m ]
+    real(r8), intent(in)    :: dp0_inv(ncol,pver)         !  Environmental layer pressure thickness [ Pa ] > 0.
+    real(r8), intent(in)    :: dpdry0_inv(ncol,pver)      !  Environmental dry layer pressure thickness [ Pa ]
+    real(r8), intent(in)    :: u0_inv(ncol,pver)          !  Environmental zonal wind [ m/s ]
+    real(r8), intent(in)    :: v0_inv(ncol,pver)          !  Environmental meridional wind [ m/s ]
+    real(r8), intent(in)    :: qv0_inv(ncol,pver)         !  Environmental water vapor specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: ql0_inv(ncol,pver)         !  Environmental liquid water specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: qi0_inv(ncol,pver)         !  Environmental ice specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: t0_inv(ncol,pver)          !  Environmental temperature [ K ]
+    real(r8), intent(in)    :: s0_inv(ncol,pver)          !  Environmental dry static energy [ J/kg ]
+    real(r8), intent(in)    :: tr0_inv(ncol,pver,ncnst)   !  Environmental tracers [ #, kg/kg ]
+    real(r8), intent(in)    :: tke_inv(ncol,pver+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
+    real(r8), intent(in)    :: cldfrct_inv(ncol,pver)     !  Total cloud fraction at the previous time step [ fraction ]
+    real(r8), intent(in)    :: concldfrct_inv(ncol,pver)  !  Total convective ( shallow + deep ) cloud fraction
                                                         !  at the previous time step [ fraction ]
-    real(r8), intent(in)    :: pblh(mix)                !  Height of PBL [ m ]
-    real(r8), intent(inout) :: cush(mix)                !  Convective scale height [ m ]
-    real(r8), intent(out)   :: umf_inv(mix,mkx+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
-    real(r8), intent(out)   :: qvten_inv(mix,mkx)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: qlten_inv(mix,mkx)       !  Tendency of liquid water specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: qiten_inv(mix,mkx)       !  Tendency of ice specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: sten_inv(mix,mkx)        !  Tendency of dry static energy [ J/kg/s ]
-    real(r8), intent(out)   :: uten_inv(mix,mkx)        !  Tendency of zonal wind [ m/s2 ]
-    real(r8), intent(out)   :: vten_inv(mix,mkx)        !  Tendency of meridional wind [ m/s2 ]
-    real(r8), intent(out)   :: trten_inv(mix,mkx,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
-    real(r8), intent(out)   :: qrten_inv(mix,mkx)       !  Tendency of rain water specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: qsten_inv(mix,mkx)       !  Tendency of snow specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: precip(mix)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
-    real(r8), intent(out)   :: snow(mix)                !  Snow flux at the surface [ m/s ]
-    real(r8), intent(out)   :: evapc_inv(mix,mkx)       !  Evaporation of precipitation [ kg/kg/s ]
-    real(r8), intent(out)   :: rliq(mix)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
-    real(r8), intent(out)   :: slflx_inv(mix,mkx+1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
-    real(r8), intent(out)   :: qtflx_inv(mix,mkx+1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
-    real(r8), intent(out)   :: flxprc1_inv(mix,mkx+1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
+    real(r8), intent(in)    :: pblh(ncol)                !  Height of PBL [ m ]
+    real(r8), intent(inout) :: cush(ncol)                !  Convective scale height [ m ]
+    real(r8), intent(out)   :: umf_inv(ncol,pver+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
+    real(r8), intent(out)   :: sten_inv(ncol,pver)        !  Tendency of dry static energy [ J/kg/s ]
+    real(r8), intent(out)   :: uten_inv(ncol,pver)        !  Tendency of zonal wind [ m/s2 ]
+    real(r8), intent(out)   :: vten_inv(ncol,pver)        !  Tendency of meridional wind [ m/s2 ]
+    real(r8), intent(out)   :: trten_inv(ncol,pver,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+    real(r8), intent(out)   :: qrten_inv(ncol,pver)       !  Tendency of rain water specific humidity [ kg/kg/s ]
+    real(r8), intent(out)   :: qsten_inv(ncol,pver)       !  Tendency of snow specific humidity [ kg/kg/s ]
+    real(r8), intent(out)   :: precip(ncol)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
+    real(r8), intent(out)   :: snow(ncol)                !  Snow flux at the surface [ m/s ]
+    real(r8), intent(out)   :: evapc_inv(ncol,pver)       !  Evaporation of precipitation [ kg/kg/s ]
+    real(r8), intent(out)   :: rliq(ncol)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
+    real(r8), intent(out)   :: slflx_inv(ncol,pver+1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
+    real(r8), intent(out)   :: qtflx_inv(ncol,pver+1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
+    real(r8), intent(out)   :: flxprc1_inv(ncol,pver+1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
-    real(r8), intent(out)   :: flxsnow1_inv(mix,mkx+1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
+    real(r8), intent(out)   :: flxsnow1_inv(ncol,pver+1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
 
-    real(r8), intent(out)   :: cufrc_inv(mix,mkx)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-    real(r8), intent(out)   :: qcu_inv(mix,mkx)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qlu_inv(mix,mkx)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qiu_inv(mix,mkx)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qc_inv(mix,mkx)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-    real(r8), intent(out)   :: cbmf(mix)                !  Cumulus base mass flux [ kg/m2/s ]
-    real(r8), intent(out)   :: cnt_inv(mix)             !  Cumulus top  interface index, cnt = kpen [ no ]
-    real(r8), intent(out)   :: cnb_inv(mix)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
+    real(r8), intent(out)   :: cufrc_inv(ncol,pver)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+    real(r8), intent(out)   :: qcu_inv(ncol,pver)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qlu_inv(ncol,pver)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qiu_inv(ncol,pver)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qc_inv(ncol,pver)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
+    real(r8), intent(out)   :: cbmf(ncol)                !  Cumulus base mass flux [ kg/m2/s ]
+    real(r8), intent(out)   :: cnt_inv(ncol)             !  Cumulus top  interface index, cnt = kpen [ no ]
+    real(r8), intent(out)   :: cnb_inv(ncol)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
 
-    real(r8), intent(out)   :: sh_e_ed_ratio(mix,mkx)   !  shallow conv [ent/(ent+det)] ratio
+    real(r8), intent(out)   :: sh_e_ed_ratio(ncol,pver)   !  shallow conv [ent/(ent+det)] ratio
 
     character(len=512)   :: errmsg
     integer              :: errflg
 
+    ! zero pcols before subsetting
+    umf_inv(:, :)       = 0.0_r8
+    slflx_inv(:, :)     = 0.0_r8
+    qtflx_inv(:, :)     = 0.0_r8
+    flxprc1_inv(:, :)   = 0.0_r8
+    flxsnow1_inv(:, :)  = 0.0_r8
+    sten_inv(:, :)      = 0.0_r8
+    uten_inv(:, :)      = 0.0_r8
+    vten_inv(:, :)      = 0.0_r8
+    trten_inv(:, :, :)  = 0.0_r8
+    qrten_inv(:, :)     = 0.0_r8
+    qsten_inv(:, :)     = 0.0_r8
+    precip(:)           = 0.0_r8
+    snow(:)             = 0.0_r8
+    evapc_inv(:, :)     = 0.0_r8
+    cufrc_inv(:, :)     = 0.0_r8
+    qcu_inv(:, :)       = 0.0_r8
+    qlu_inv(:, :)       = 0.0_r8
+    qiu_inv(:, :)       = 0.0_r8
+    qc_inv(:, :)        = 0.0_r8
+    cbmf(:)             = 0.0_r8
+    rliq(:)             = 0.0_r8
+    cnt_inv(:)          = 0.0_r8
+    cnb_inv(:)          = 0.0_r8
+    sh_e_ed_ratio(:, :) = 0.0_r8
+
     ! call the underlying CCPPized subroutine (dechunkized)
-    ! to subset to ncol TODO wip wip
-    call uw_convect_shallow_run(mix      , mkx        , iend          , ncnst     , dt       ,  &
-                        ps0_inv  , zs0_inv    , p0_inv        , z0_inv    , dp0_inv  ,  &
-                        u0_inv   , v0_inv     , qv0_inv       , ql0_inv   , qi0_inv  ,  &
-                        t0_inv   , s0_inv     , tr0_inv       ,                         &
-                        tke_inv  , cldfrct_inv, concldfrct_inv, pblh      , cush     ,  &
-                        umf_inv  , slflx_inv  , qtflx_inv     ,                         &
-                        flxprc1_inv, flxsnow1_inv,                 &
-                        qvten_inv, qlten_inv  , qiten_inv     ,                         &
-                        sten_inv , uten_inv   , vten_inv      , trten_inv ,             &
-                        qrten_inv, qsten_inv  , precip        , snow      , evapc_inv,  &
-                        cufrc_inv, qcu_inv    , qlu_inv       , qiu_inv   ,             &
-                        cbmf     , qc_inv     , rliq          ,                         &
-                        cnt_inv  , cnb_inv    , dpdry0_inv,             &
-                        sh_e_ed_ratio, errmsg, errflg)
+    call uw_convect_shallow_run( &
+      ncol          = ncol,                             &
+      pver          = pver,                             &
+      ncnst         = ncnst,                            &
+      dt            = dt,                               &
+      const_props   = ccpp_const_props,                 &
+      pint          = ps0_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
+      zi            = zs0_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
+      pmid          = p0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      zm            = z0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      pdel          = dp0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      pdeldry       = dpdry0_inv(:ncol, :pver),        & ! midpoints  (ncol, pver)
+      u             = u0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      v             = v0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      qv0           = qv0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      ql0           = ql0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      qi0           = qi0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      t             = t0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      s             = s0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      tr0           = tr0_inv(:ncol, :pver, 1:ncnst),  & ! midpoints  (ncol, pver, ncnst)
+      tke           = tke_inv(:ncol, :pver+1),         & ! interfaces (ncol, pver+1)
+      cld           = cldfrct_inv(:ncol, :pver),       & ! midpoints  (ncol, pver)
+      concld        = concldfrct_inv(:ncol, :pver),    & ! midpoints  (ncol, pver)
+      pblh          = pblh(:ncol),                      &
+      cush          = cush(:ncol),                      &
+      cmfmc_sh      = umf_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
+      slflx         = slflx_inv(:ncol, :pver+1),      & ! interfaces (ncol, pver+1)
+      qtflx         = qtflx_inv(:ncol, :pver+1),      & ! interfaces (ncol, pver+1)
+      flxprc_sh     = flxprc1_inv(:ncol, :pver+1),    & ! interfaces (ncol, pver+1)
+      flxsnw_sh     = flxsnow1_inv(:ncol, :pver+1),   & ! interfaces (ncol, pver+1)
+      sten          = sten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
+      uten          = uten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
+      vten          = vten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
+      trten         = trten_inv(:ncol, :pver, 1:ncnst),& ! midpoints  (ncol, pver, ncnst)
+      qrten         = qrten_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
+      qsten         = qsten_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
+      precip_sh     = precip(:ncol),                    &
+      snow_sh       = snow(:ncol),                      &
+      evapc_sh      = evapc_inv(:ncol, :pver),        & ! midpoints  (ncol, pver)
+      shfrc         = cufrc_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
+      qcu           = qcu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      qlu           = qlu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      qiu           = qiu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
+      qc            = qc_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      cbmf          = cbmf(:ncol),                      &
+      rliq          = rliq(:ncol),                      &
+      cnt           = cnt_inv(:ncol),                   &
+      cnb           = cnb_inv(:ncol),                   &
+      sh_e_ed_ratio = sh_e_ed_ratio(:ncol, :pver),    & ! midpoints  (ncol, pver)
+      errmsg        = errmsg,                            &
+      errflg        = errflg)
 
      ! ---------------------------------------- !
      ! Writing main diagnostic output variables !
      ! ---------------------------------------- !
 
-     ! call outfld( 'qtflx_Cu'        , qtflx_out(:,mkx:0:-1),    mix,    lchnk )
-     ! call outfld( 'slflx_Cu'        , slflx_out(:,mkx:0:-1),    mix,    lchnk )
-     ! call outfld( 'uflx_Cu'         , uflx_out,                 mix,    lchnk )
-     ! call outfld( 'vflx_Cu'         , vflx_out,                 mix,    lchnk )
+     ! call outfld( 'qtflx_Cu'        , qtflx_out(:,pver:0:-1),    ncol,    lchnk )
+     ! call outfld( 'slflx_Cu'        , slflx_out(:,pver:0:-1),    ncol,    lchnk )
+     ! call outfld( 'uflx_Cu'         , uflx_out,                 ncol,    lchnk )
+     ! call outfld( 'vflx_Cu'         , vflx_out,                 ncol,    lchnk )
 
-     ! call outfld( 'qtten_Cu'        , qtten_out,                mix,    lchnk )
-     ! call outfld( 'slten_Cu'        , slten_out,                mix,    lchnk )
-     ! call outfld( 'uten_Cu'         , uten_out(:,mkx:1:-1),     mix,    lchnk )
-     ! call outfld( 'vten_Cu'         , vten_out(:,mkx:1:-1),     mix,    lchnk )
-     ! call outfld( 'qvten_Cu'        , qvten_out(:,mkx:1:-1),    mix,    lchnk )
-     ! call outfld( 'qlten_Cu'        , qlten_out(:,mkx:1:-1),    mix,    lchnk )
-     ! call outfld( 'qiten_Cu'        , qiten_out(:,mkx:1:-1),    mix,    lchnk )
+     ! call outfld( 'qtten_Cu'        , qtten_out,                ncol,    lchnk )
+     ! call outfld( 'slten_Cu'        , slten_out,                ncol,    lchnk )
+     ! call outfld( 'uten_Cu'         , uten_out(:,pver:1:-1),     ncol,    lchnk )
+     ! call outfld( 'vten_Cu'         , vten_out(:,pver:1:-1),     ncol,    lchnk )
+     ! call outfld( 'qvten_Cu'        , qvten_out(:,pver:1:-1),    ncol,    lchnk )
+     ! call outfld( 'qlten_Cu'        , qlten_out(:,pver:1:-1),    ncol,    lchnk )
+     ! call outfld( 'qiten_Cu'        , qiten_out(:,pver:1:-1),    ncol,    lchnk )
 
-     ! call outfld( 'cbmf_Cu'         , cbmf_out,                 mix,    lchnk )
-     ! call outfld( 'ufrcinvbase_Cu'  , ufrcinvbase_out,          mix,    lchnk )
-     ! call outfld( 'ufrclcl_Cu'      , ufrclcl_out,              mix,    lchnk )
-     ! call outfld( 'winvbase_Cu'     , winvbase_out,             mix,    lchnk )
-     ! call outfld( 'wlcl_Cu'         , wlcl_out,                 mix,    lchnk )
-     ! call outfld( 'plcl_Cu'         , plcl_out,                 mix,    lchnk )
-     ! call outfld( 'pinv_Cu'         , pinv_out,                 mix,    lchnk )
-     ! call outfld( 'plfc_Cu'         , plfc_out,                 mix,    lchnk )
-     ! call outfld( 'pbup_Cu'         , pbup_out,                 mix,    lchnk )
-     ! call outfld( 'ppen_Cu'         , ppen_out,                 mix,    lchnk )
-     ! call outfld( 'qtsrc_Cu'        , qtsrc_out,                mix,    lchnk )
-     ! call outfld( 'thlsrc_Cu'       , thlsrc_out,               mix,    lchnk )
-     ! call outfld( 'thvlsrc_Cu'      , thvlsrc_out,              mix,    lchnk )
-     ! call outfld( 'emfkbup_Cu'      , emfkbup_out,              mix,    lchnk )
-     ! call outfld( 'cin_Cu'          , cinh_out,                 mix,    lchnk )
-     ! call outfld( 'cinlcl_Cu'       , cinlclh_out,              mix,    lchnk )
-     ! call outfld( 'cbmflimit_Cu'    , cbmflimit_out,            mix,    lchnk )
-     ! call outfld( 'tkeavg_Cu'       , tkeavg_out,               mix,    lchnk )
-     ! call outfld( 'zinv_Cu'         , zinv_out,                 mix,    lchnk )
-     ! call outfld( 'rcwp_Cu'         , rcwp_out,                 mix,    lchnk )
-     ! call outfld( 'rlwp_Cu'         , rlwp_out,                 mix,    lchnk )
-     ! call outfld( 'riwp_Cu'         , riwp_out,                 mix,    lchnk )
-     ! call outfld( 'tophgt_Cu'       , cush_inout,               mix,    lchnk )
+     ! call outfld( 'cbmf_Cu'         , cbmf_out,                 ncol,    lchnk )
+     ! call outfld( 'ufrcinvbase_Cu'  , ufrcinvbase_out,          ncol,    lchnk )
+     ! call outfld( 'ufrclcl_Cu'      , ufrclcl_out,              ncol,    lchnk )
+     ! call outfld( 'winvbase_Cu'     , winvbase_out,             ncol,    lchnk )
+     ! call outfld( 'wlcl_Cu'         , wlcl_out,                 ncol,    lchnk )
+     ! call outfld( 'plcl_Cu'         , plcl_out,                 ncol,    lchnk )
+     ! call outfld( 'pinv_Cu'         , pinv_out,                 ncol,    lchnk )
+     ! call outfld( 'plfc_Cu'         , plfc_out,                 ncol,    lchnk )
+     ! call outfld( 'pbup_Cu'         , pbup_out,                 ncol,    lchnk )
+     ! call outfld( 'ppen_Cu'         , ppen_out,                 ncol,    lchnk )
+     ! call outfld( 'qtsrc_Cu'        , qtsrc_out,                ncol,    lchnk )
+     ! call outfld( 'thlsrc_Cu'       , thlsrc_out,               ncol,    lchnk )
+     ! call outfld( 'thvlsrc_Cu'      , thvlsrc_out,              ncol,    lchnk )
+     ! call outfld( 'emfkbup_Cu'      , emfkbup_out,              ncol,    lchnk )
+     ! call outfld( 'cin_Cu'          , cinh_out,                 ncol,    lchnk )
+     ! call outfld( 'cinlcl_Cu'       , cinlclh_out,              ncol,    lchnk )
+     ! call outfld( 'cbmflimit_Cu'    , cbmflimit_out,            ncol,    lchnk )
+     ! call outfld( 'tkeavg_Cu'       , tkeavg_out,               ncol,    lchnk )
+     ! call outfld( 'zinv_Cu'         , zinv_out,                 ncol,    lchnk )
+     ! call outfld( 'rcwp_Cu'         , rcwp_out,                 ncol,    lchnk )
+     ! call outfld( 'rlwp_Cu'         , rlwp_out,                 ncol,    lchnk )
+     ! call outfld( 'riwp_Cu'         , riwp_out,                 ncol,    lchnk )
+     ! call outfld( 'tophgt_Cu'       , cush_inout,               ncol,    lchnk )
 
-     ! call outfld( 'wu_Cu'           , wu_out,                   mix,    lchnk )
-     ! call outfld( 'ufrc_Cu'         , ufrc_out,                 mix,    lchnk )
-     ! call outfld( 'qtu_Cu'          , qtu_out,                  mix,    lchnk )
-     ! call outfld( 'thlu_Cu'         , thlu_out,                 mix,    lchnk )
-     ! call outfld( 'thvu_Cu'         , thvu_out,                 mix,    lchnk )
-     ! call outfld( 'uu_Cu'           , uu_out,                   mix,    lchnk )
-     ! call outfld( 'vu_Cu'           , vu_out,                   mix,    lchnk )
-     ! call outfld( 'qtu_emf_Cu'      , qtu_emf_out,              mix,    lchnk )
-     ! call outfld( 'thlu_emf_Cu'     , thlu_emf_out,             mix,    lchnk )
-     ! call outfld( 'uu_emf_Cu'       , uu_emf_out,               mix,    lchnk )
-     ! call outfld( 'vu_emf_Cu'       , vu_emf_out,               mix,    lchnk )
-     ! call outfld( 'umf_Cu'          , umf_out(:,mkx:0:-1),      mix,    lchnk )
-     ! call outfld( 'uemf_Cu'         , uemf_out,                 mix,    lchnk )
-     ! call outfld( 'qcu_Cu'          , qcu_out(:,mkx:1:-1),      mix,    lchnk )
-     ! call outfld( 'qlu_Cu'          , qlu_out(:,mkx:1:-1),      mix,    lchnk )
-     ! call outfld( 'qiu_Cu'          , qiu_out(:,mkx:1:-1),      mix,    lchnk )
-     ! call outfld( 'cufrc_Cu'        , cufrc_out(:,mkx:1:-1),    mix,    lchnk )
-     ! call outfld( 'fer_Cu'          , fer_out,                  mix,    lchnk )
-     ! call outfld( 'fdr_Cu'          , fdr_out,                  mix,    lchnk )
+     ! call outfld( 'wu_Cu'           , wu_out,                   ncol,    lchnk )
+     ! call outfld( 'ufrc_Cu'         , ufrc_out,                 ncol,    lchnk )
+     ! call outfld( 'qtu_Cu'          , qtu_out,                  ncol,    lchnk )
+     ! call outfld( 'thlu_Cu'         , thlu_out,                 ncol,    lchnk )
+     ! call outfld( 'thvu_Cu'         , thvu_out,                 ncol,    lchnk )
+     ! call outfld( 'uu_Cu'           , uu_out,                   ncol,    lchnk )
+     ! call outfld( 'vu_Cu'           , vu_out,                   ncol,    lchnk )
+     ! call outfld( 'qtu_emf_Cu'      , qtu_emf_out,              ncol,    lchnk )
+     ! call outfld( 'thlu_emf_Cu'     , thlu_emf_out,             ncol,    lchnk )
+     ! call outfld( 'uu_emf_Cu'       , uu_emf_out,               ncol,    lchnk )
+     ! call outfld( 'vu_emf_Cu'       , vu_emf_out,               ncol,    lchnk )
+     ! call outfld( 'umf_Cu'          , umf_out(:,pver:0:-1),      ncol,    lchnk )
+     ! call outfld( 'uemf_Cu'         , uemf_out,                 ncol,    lchnk )
+     ! call outfld( 'qcu_Cu'          , qcu_out(:,pver:1:-1),      ncol,    lchnk )
+     ! call outfld( 'qlu_Cu'          , qlu_out(:,pver:1:-1),      ncol,    lchnk )
+     ! call outfld( 'qiu_Cu'          , qiu_out(:,pver:1:-1),      ncol,    lchnk )
+     ! call outfld( 'cufrc_Cu'        , cufrc_out(:,pver:1:-1),    ncol,    lchnk )
+     ! call outfld( 'fer_Cu'          , fer_out,                  ncol,    lchnk )
+     ! call outfld( 'fdr_Cu'          , fdr_out,                  ncol,    lchnk )
 
-     ! call outfld( 'dwten_Cu'        , dwten_out,                mix,    lchnk )
-     ! call outfld( 'diten_Cu'        , diten_out,                mix,    lchnk )
-     ! call outfld( 'qrten_Cu'        , qrten_out(:,mkx:1:-1),    mix,    lchnk )
-     ! call outfld( 'qsten_Cu'        , qsten_out(:,mkx:1:-1),    mix,    lchnk )
-     ! call outfld( 'flxrain_Cu'      , flxrain_out,              mix,    lchnk )
-     ! call outfld( 'flxsnow_Cu'      , flxsnow_out,              mix,    lchnk )
-     ! call outfld( 'ntraprd_Cu'      , ntraprd_out,              mix,    lchnk )
-     ! call outfld( 'ntsnprd_Cu'      , ntsnprd_out,              mix,    lchnk )
+     ! call outfld( 'dwten_Cu'        , dwten_out,                ncol,    lchnk )
+     ! call outfld( 'diten_Cu'        , diten_out,                ncol,    lchnk )
+     ! call outfld( 'qrten_Cu'        , qrten_out(:,pver:1:-1),    ncol,    lchnk )
+     ! call outfld( 'qsten_Cu'        , qsten_out(:,pver:1:-1),    ncol,    lchnk )
+     ! call outfld( 'flxrain_Cu'      , flxrain_out,              ncol,    lchnk )
+     ! call outfld( 'flxsnow_Cu'      , flxsnow_out,              ncol,    lchnk )
+     ! call outfld( 'ntraprd_Cu'      , ntraprd_out,              ncol,    lchnk )
+     ! call outfld( 'ntsnprd_Cu'      , ntsnprd_out,              ncol,    lchnk )
 
-     ! call outfld( 'excessu_Cu'      , excessu_arr_out,          mix,    lchnk )
-     ! call outfld( 'excess0_Cu'      , excess0_arr_out,          mix,    lchnk )
-     ! call outfld( 'xc_Cu'           , xc_arr_out,               mix,    lchnk )
-     ! call outfld( 'aquad_Cu'        , aquad_arr_out,            mix,    lchnk )
-     ! call outfld( 'bquad_Cu'        , bquad_arr_out,            mix,    lchnk )
-     ! call outfld( 'cquad_Cu'        , cquad_arr_out,            mix,    lchnk )
-     ! call outfld( 'bogbot_Cu'       , bogbot_arr_out,           mix,    lchnk )
-     ! call outfld( 'bogtop_Cu'       , bogtop_arr_out,           mix,    lchnk )
+     ! call outfld( 'excessu_Cu'      , excessu_arr_out,          ncol,    lchnk )
+     ! call outfld( 'excess0_Cu'      , excess0_arr_out,          ncol,    lchnk )
+     ! call outfld( 'xc_Cu'           , xc_arr_out,               ncol,    lchnk )
+     ! call outfld( 'aquad_Cu'        , aquad_arr_out,            ncol,    lchnk )
+     ! call outfld( 'bquad_Cu'        , bquad_arr_out,            ncol,    lchnk )
+     ! call outfld( 'cquad_Cu'        , cquad_arr_out,            ncol,    lchnk )
+     ! call outfld( 'bogbot_Cu'       , bogbot_arr_out,           ncol,    lchnk )
+     ! call outfld( 'bogtop_Cu'       , bogtop_arr_out,           ncol,    lchnk )
 
-     ! call outfld( 'exit_UWCu_Cu'    , exit_UWCu,                mix,    lchnk )
-     ! call outfld( 'exit_conden_Cu'  , exit_conden,              mix,    lchnk )
-     ! call outfld( 'exit_klclmkx_Cu' , exit_klclmkx,             mix,    lchnk )
-     ! call outfld( 'exit_klfcmkx_Cu' , exit_klfcmkx,             mix,    lchnk )
-     ! call outfld( 'exit_ufrc_Cu'    , exit_ufrc,                mix,    lchnk )
-     ! call outfld( 'exit_wtw_Cu'     , exit_wtw,                 mix,    lchnk )
-     ! call outfld( 'exit_drycore_Cu' , exit_drycore,             mix,    lchnk )
-     ! call outfld( 'exit_wu_Cu'      , exit_wu,                  mix,    lchnk )
-     ! call outfld( 'exit_cufilter_Cu', exit_cufilter,            mix,    lchnk )
-     ! call outfld( 'exit_kinv1_Cu'   , exit_kinv1,               mix,    lchnk )
-     ! call outfld( 'exit_rei_Cu'     , exit_rei,                 mix,    lchnk )
+     ! call outfld( 'exit_UWCu_Cu'    , exit_UWCu,                ncol,    lchnk )
+     ! call outfld( 'exit_conden_Cu'  , exit_conden,              ncol,    lchnk )
+     ! call outfld( 'exit_klclpver_Cu' , exit_klclpver,             ncol,    lchnk )
+     ! call outfld( 'exit_klfcpver_Cu' , exit_klfcpver,             ncol,    lchnk )
+     ! call outfld( 'exit_ufrc_Cu'    , exit_ufrc,                ncol,    lchnk )
+     ! call outfld( 'exit_wtw_Cu'     , exit_wtw,                 ncol,    lchnk )
+     ! call outfld( 'exit_drycore_Cu' , exit_drycore,             ncol,    lchnk )
+     ! call outfld( 'exit_wu_Cu'      , exit_wu,                  ncol,    lchnk )
+     ! call outfld( 'exit_cufilter_Cu', exit_cufilter,            ncol,    lchnk )
+     ! call outfld( 'exit_kinv1_Cu'   , exit_kinv1,               ncol,    lchnk )
+     ! call outfld( 'exit_rei_Cu'     , exit_rei,                 ncol,    lchnk )
 
-     ! call outfld( 'limit_shcu_Cu'   , limit_shcu,               mix,    lchnk )
-     ! call outfld( 'limit_negcon_Cu' , limit_negcon,             mix,    lchnk )
-     ! call outfld( 'limit_ufrc_Cu'   , limit_ufrc,               mix,    lchnk )
-     ! call outfld( 'limit_ppen_Cu'   , limit_ppen,               mix,    lchnk )
-     ! call outfld( 'limit_emf_Cu'    , limit_emf,                mix,    lchnk )
-     ! call outfld( 'limit_cinlcl_Cu' , limit_cinlcl,             mix,    lchnk )
-     ! call outfld( 'limit_cin_Cu'    , limit_cin,                mix,    lchnk )
-     ! call outfld( 'limit_cbmf_Cu'   , limit_cbmf,               mix,    lchnk )
-     ! call outfld( 'limit_rei_Cu'    , limit_rei,                mix,    lchnk )
-     ! call outfld( 'ind_delcin_Cu'   , ind_delcin,               mix,    lchnk )
+     ! call outfld( 'limit_shcu_Cu'   , limit_shcu,               ncol,    lchnk )
+     ! call outfld( 'limit_negcon_Cu' , limit_negcon,             ncol,    lchnk )
+     ! call outfld( 'limit_ufrc_Cu'   , limit_ufrc,               ncol,    lchnk )
+     ! call outfld( 'limit_ppen_Cu'   , limit_ppen,               ncol,    lchnk )
+     ! call outfld( 'limit_emf_Cu'    , limit_emf,                ncol,    lchnk )
+     ! call outfld( 'limit_cinlcl_Cu' , limit_cinlcl,             ncol,    lchnk )
+     ! call outfld( 'limit_cin_Cu'    , limit_cin,                ncol,    lchnk )
+     ! call outfld( 'limit_cbmf_Cu'   , limit_cbmf,               ncol,    lchnk )
+     ! call outfld( 'limit_rei_Cu'    , limit_rei,                ncol,    lchnk )
+     ! call outfld( 'ind_delcin_Cu'   , ind_delcin,               ncol,    lchnk )
   end subroutine uwshcu_cam
 
   end module uwshcu
