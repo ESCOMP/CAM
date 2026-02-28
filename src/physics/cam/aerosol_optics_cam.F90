@@ -178,6 +178,9 @@ contains
     modal_active = nmodes>0
     carma_active = nbins>0
     bulk_active = nbulk_aerosols>0
+    if (masterproc) then
+       write(iulog,*) prefix,'nmodes,nbins,nbulk_aerosols: ',nmodes,nbins,nbulk_aerosols
+    end if
 
     ! count aerosol models
     if (modal_active) then
@@ -863,15 +866,19 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
-          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+
+             ! construct name of radius physics buffer field
              pbuf_fld = 'VOLC_RAD_GEOM '
              if (len_trim(opticstype)>15) then
                 pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
              endif
+
              ! get microphysical properties for volcanic aerosols
              idx = pbuf_get_index(pbuf_fld)
-             call pbuf_get_field(pbuf, idx, geometric_radius )
+             call pbuf_get_field(pbuf, idx, geometric_radius)
 
+             ! construct aerosol optics object
              aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
                   ibin, ncol, pver, geometric_radius(:ncol,:))
 
@@ -1432,15 +1439,19 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
-          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+
+             ! construct name of radius physics buffer field
              pbuf_fld = 'VOLC_RAD_GEOM '
              if (len_trim(opticstype)>15) then
                 pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
              endif
+
              ! get microphysical properties for volcanic aerosols
              idx = pbuf_get_index(pbuf_fld)
-             call pbuf_get_field(pbuf, idx, geometric_radius )
+             call pbuf_get_field(pbuf, idx, geometric_radius)
 
+             ! construct aerosol optics object
              aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
                   ibin, ncol, pver, geometric_radius(:ncol,:))
 
