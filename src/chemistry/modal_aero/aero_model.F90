@@ -444,7 +444,7 @@ contains
           call add_default( dgnum_name(n), 1, ' ' )
           call add_default( dgnumwet_name(n), 1, ' ' )
        endif
-       if ( history_cesm_forcing .and. n<4 ) then
+       if ( history_cesm_forcing ) then
           call add_default( dgnumwet_name(n), 8, ' ' )
        endif
 
