@@ -556,7 +556,7 @@
       ! shallow convective (entrainment)/(entrainment+detrainment) ratio (out from uwshcu)
       call pbuf_get_field(pbuf, sh_e_ed_ratio_idx, sh_e_ed_ratio)
 
-      call uwshcu_cam( pcols     , pver    , ncol           , pcnst         , ztodt         ,                   &
+      call uwshcu_cam( pcols, ncol     , pver        , pcnst         , ztodt         ,                   &
                                state%pint, state%zi, state%pmid     , state%zm      , state%pdel    ,                   &
                                state%u   , state%v , state%q(:,:,1) , state%q(:,:,ixcldliq), state%q(:,:,ixcldice),     &
                                state%t   , state%s , state%q(:,:,:) ,                                                   &

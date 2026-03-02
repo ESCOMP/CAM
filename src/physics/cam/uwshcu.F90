@@ -212,7 +212,7 @@ end subroutine uwshcu_readnl
 
   end subroutine init_uwshcu
 
-  subroutine uwshcu_cam(ncol      , pver        , iend          , ncnst     , dt       ,  &
+  subroutine uwshcu_cam(pcols, ncol      , pver      , ncnst     , dt       ,  &
                         ps0_inv  , zs0_inv    , p0_inv        , z0_inv    , dp0_inv  ,  &
                         u0_inv   , v0_inv     , qv0_inv       , ql0_inv   , qi0_inv  ,  &
                         t0_inv   , s0_inv     , tr0_inv       ,                         &
@@ -230,60 +230,60 @@ end subroutine uwshcu_readnl
 
     use uw_convect_shallow, only: uw_convect_shallow_run
 
+    integer , intent(in)    :: pcols
     integer , intent(in)    :: lchnk
     integer , intent(in)    :: ncol
     integer , intent(in)    :: pver
-    integer , intent(in)    :: iend
     integer , intent(in)    :: ncnst
     real(r8), intent(in)    :: dt                       !  Time step : 2*delta_t [ s ]
-    real(r8), intent(in)    :: ps0_inv(ncol,pver+1)       !  Environmental pressure at the interfaces [ Pa ]
-    real(r8), intent(in)    :: zs0_inv(ncol,pver+1)       !  Environmental height at the interfaces   [ m ]
-    real(r8), intent(in)    :: p0_inv(ncol,pver)          !  Environmental pressure at the layer mid-point [ Pa ]
-    real(r8), intent(in)    :: z0_inv(ncol,pver)          !  Environmental height at the layer mid-point [ m ]
-    real(r8), intent(in)    :: dp0_inv(ncol,pver)         !  Environmental layer pressure thickness [ Pa ] > 0.
-    real(r8), intent(in)    :: dpdry0_inv(ncol,pver)      !  Environmental dry layer pressure thickness [ Pa ]
-    real(r8), intent(in)    :: u0_inv(ncol,pver)          !  Environmental zonal wind [ m/s ]
-    real(r8), intent(in)    :: v0_inv(ncol,pver)          !  Environmental meridional wind [ m/s ]
-    real(r8), intent(in)    :: qv0_inv(ncol,pver)         !  Environmental water vapor specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: ql0_inv(ncol,pver)         !  Environmental liquid water specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: qi0_inv(ncol,pver)         !  Environmental ice specific humidity [ kg/kg ]
-    real(r8), intent(in)    :: t0_inv(ncol,pver)          !  Environmental temperature [ K ]
-    real(r8), intent(in)    :: s0_inv(ncol,pver)          !  Environmental dry static energy [ J/kg ]
-    real(r8), intent(in)    :: tr0_inv(ncol,pver,ncnst)   !  Environmental tracers [ #, kg/kg ]
-    real(r8), intent(in)    :: tke_inv(ncol,pver+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
-    real(r8), intent(in)    :: cldfrct_inv(ncol,pver)     !  Total cloud fraction at the previous time step [ fraction ]
-    real(r8), intent(in)    :: concldfrct_inv(ncol,pver)  !  Total convective ( shallow + deep ) cloud fraction
+    real(r8), intent(in)    :: ps0_inv(pcols,pver+1)       !  Environmental pressure at the interfaces [ Pa ]
+    real(r8), intent(in)    :: zs0_inv(pcols,pver+1)       !  Environmental height at the interfaces   [ m ]
+    real(r8), intent(in)    :: p0_inv(pcols,pver)          !  Environmental pressure at the layer mid-point [ Pa ]
+    real(r8), intent(in)    :: z0_inv(pcols,pver)          !  Environmental height at the layer mid-point [ m ]
+    real(r8), intent(in)    :: dp0_inv(pcols,pver)         !  Environmental layer pressure thickness [ Pa ] > 0.
+    real(r8), intent(in)    :: dpdry0_inv(pcols,pver)      !  Environmental dry layer pressure thickness [ Pa ]
+    real(r8), intent(in)    :: u0_inv(pcols,pver)          !  Environmental zonal wind [ m/s ]
+    real(r8), intent(in)    :: v0_inv(pcols,pver)          !  Environmental meridional wind [ m/s ]
+    real(r8), intent(in)    :: qv0_inv(pcols,pver)         !  Environmental water vapor specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: ql0_inv(pcols,pver)         !  Environmental liquid water specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: qi0_inv(pcols,pver)         !  Environmental ice specific humidity [ kg/kg ]
+    real(r8), intent(in)    :: t0_inv(pcols,pver)          !  Environmental temperature [ K ]
+    real(r8), intent(in)    :: s0_inv(pcols,pver)          !  Environmental dry static energy [ J/kg ]
+    real(r8), intent(in)    :: tr0_inv(pcols,pver,ncnst)   !  Environmental tracers [ #, kg/kg ]
+    real(r8), intent(in)    :: tke_inv(pcols,pver+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
+    real(r8), intent(in)    :: cldfrct_inv(pcols,pver)     !  Total cloud fraction at the previous time step [ fraction ]
+    real(r8), intent(in)    :: concldfrct_inv(pcols,pver)  !  Total convective ( shallow + deep ) cloud fraction
                                                         !  at the previous time step [ fraction ]
-    real(r8), intent(in)    :: pblh(ncol)                !  Height of PBL [ m ]
-    real(r8), intent(inout) :: cush(ncol)                !  Convective scale height [ m ]
-    real(r8), intent(out)   :: umf_inv(ncol,pver+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
-    real(r8), intent(out)   :: sten_inv(ncol,pver)        !  Tendency of dry static energy [ J/kg/s ]
-    real(r8), intent(out)   :: uten_inv(ncol,pver)        !  Tendency of zonal wind [ m/s2 ]
-    real(r8), intent(out)   :: vten_inv(ncol,pver)        !  Tendency of meridional wind [ m/s2 ]
-    real(r8), intent(out)   :: trten_inv(ncol,pver,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
-    real(r8), intent(out)   :: qrten_inv(ncol,pver)       !  Tendency of rain water specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: qsten_inv(ncol,pver)       !  Tendency of snow specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: precip(ncol)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
-    real(r8), intent(out)   :: snow(ncol)                !  Snow flux at the surface [ m/s ]
-    real(r8), intent(out)   :: evapc_inv(ncol,pver)       !  Evaporation of precipitation [ kg/kg/s ]
-    real(r8), intent(out)   :: rliq(ncol)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
-    real(r8), intent(out)   :: slflx_inv(ncol,pver+1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
-    real(r8), intent(out)   :: qtflx_inv(ncol,pver+1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
-    real(r8), intent(out)   :: flxprc1_inv(ncol,pver+1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
+    real(r8), intent(in)    :: pblh(pcols)                !  Height of PBL [ m ]
+    real(r8), intent(inout) :: cush(pcols)                !  Convective scale height [ m ]
+    real(r8), intent(out)   :: umf_inv(pcols,pver+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
+    real(r8), intent(out)   :: sten_inv(pcols,pver)        !  Tendency of dry static energy [ J/kg/s ]
+    real(r8), intent(out)   :: uten_inv(pcols,pver)        !  Tendency of zonal wind [ m/s2 ]
+    real(r8), intent(out)   :: vten_inv(pcols,pver)        !  Tendency of meridional wind [ m/s2 ]
+    real(r8), intent(out)   :: trten_inv(pcols,pver,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+    real(r8), intent(out)   :: qrten_inv(pcols,pver)       !  Tendency of rain water specific humidity [ kg/kg/s ]
+    real(r8), intent(out)   :: qsten_inv(pcols,pver)       !  Tendency of snow specific humidity [ kg/kg/s ]
+    real(r8), intent(out)   :: precip(pcols)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
+    real(r8), intent(out)   :: snow(pcols)                !  Snow flux at the surface [ m/s ]
+    real(r8), intent(out)   :: evapc_inv(pcols,pver)       !  Evaporation of precipitation [ kg/kg/s ]
+    real(r8), intent(out)   :: rliq(pcols)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
+    real(r8), intent(out)   :: slflx_inv(pcols,pver+1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
+    real(r8), intent(out)   :: qtflx_inv(pcols,pver+1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
+    real(r8), intent(out)   :: flxprc1_inv(pcols,pver+1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
-    real(r8), intent(out)   :: flxsnow1_inv(ncol,pver+1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
+    real(r8), intent(out)   :: flxsnow1_inv(pcols,pver+1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
 
-    real(r8), intent(out)   :: cufrc_inv(ncol,pver)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-    real(r8), intent(out)   :: qcu_inv(ncol,pver)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qlu_inv(ncol,pver)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qiu_inv(ncol,pver)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-    real(r8), intent(out)   :: qc_inv(ncol,pver)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-    real(r8), intent(out)   :: cbmf(ncol)                !  Cumulus base mass flux [ kg/m2/s ]
-    real(r8), intent(out)   :: cnt_inv(ncol)             !  Cumulus top  interface index, cnt = kpen [ no ]
-    real(r8), intent(out)   :: cnb_inv(ncol)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
+    real(r8), intent(out)   :: cufrc_inv(pcols,pver)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+    real(r8), intent(out)   :: qcu_inv(pcols,pver)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qlu_inv(pcols,pver)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qiu_inv(pcols,pver)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
+    real(r8), intent(out)   :: qc_inv(pcols,pver)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
+    real(r8), intent(out)   :: cbmf(pcols)                !  Cumulus base mass flux [ kg/m2/s ]
+    real(r8), intent(out)   :: cnt_inv(pcols)             !  Cumulus top  interface index, cnt = kpen [ no ]
+    real(r8), intent(out)   :: cnb_inv(pcols)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
 
-    real(r8), intent(out)   :: sh_e_ed_ratio(ncol,pver)   !  shallow conv [ent/(ent+det)] ratio
+    real(r8), intent(out)   :: sh_e_ed_ratio(pcols,pver)   !  shallow conv [ent/(ent+det)] ratio
 
     character(len=512)   :: errmsg
     integer              :: errflg
