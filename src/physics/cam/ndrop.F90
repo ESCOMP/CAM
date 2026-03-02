@@ -68,6 +68,8 @@ integer, allocatable :: aer_cnst_idx(:,:)
 logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
                                ! in the ptend object
 
+integer :: nbin  ! number of bins
+
 !===============================================================================
 contains
 !===============================================================================
@@ -92,6 +94,8 @@ subroutine ndrop_init(aero_props)
    kvh_idx = pbuf_get_index('kvh')
 
    aten = 2._r8*mwh2o*surften/(r_universal*tmelt*rhoh2o)
+
+   nbin = aero_props%nbins()
 
    allocate( &
       aer_cnst_idx(aero_props%nbins(),0:maxval(aero_props%nmasses())), &
@@ -203,7 +207,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
 
    integer  :: lchnk               ! chunk identifier
    integer  :: ncol                ! number of columns
-   integer  :: nbin                ! number of modes/bins
    integer  :: nele_tot            ! total number of aerosol elements
 
    real(r8), pointer :: ncldwtr(:,:) ! droplet number concentration (#/kg)
@@ -281,7 +284,7 @@ subroutine dropmixnuc( aero_props, aero_state, &
    real(r8), allocatable :: raercol_cw(:,:,:) ! same as raercol but for cloud-borne phase
 
 
-   real(r8) :: na(pcols), va(pcols), hy(pcols)
+   real(r8) :: na(pcols,pver,nbin), va(pcols,pver,nbin), hy(pcols,pver,nbin)
    real(r8), allocatable :: naermod(:)  ! (1/m3)
    real(r8), allocatable :: hygro(:)    ! hygroscopicity of aerosol mode
    real(r8), allocatable :: vaerosol(:) ! interstit+activated aerosol volume conc (cm3/cm3)
@@ -316,7 +319,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
 
    lchnk = state%lchnk
    ncol  = state%ncol
-   nbin  = aero_props%nbins()
    nele_tot  = aero_props%ncnst_tot()
 
    ncldwtr  => state%q(:,:,numliq_idx)
@@ -382,6 +384,20 @@ subroutine dropmixnuc( aero_props, aero_state, &
    ! initialize aerosol tendencies
    call physics_ptend_init(ptend, state%psetcols, 'ndrop', lq=lq)
 
+   ! air density (kg/m3)
+   cs(:ncol,:)  = pmid(:ncol,:)/(rair*temp(:ncol,:))
+
+   phase = 1 ! interstitial
+   do m = 1, nbin
+      call aero_state%loadaer( aero_props, &
+           ncol, pver, &
+           m, cs, phase, na(:,:,m), va(:,:,m), &
+           hy(:,:,m), errnum, errstr)
+      if (errnum/=0) then
+         call endrun('dropmixnuc : '//trim(errstr))
+      end if
+   end do
+
    ! overall_main_i_loop
    do i = 1, ncol
 
@@ -397,7 +413,6 @@ subroutine dropmixnuc( aero_props, aero_state, &
          qcld(k)  = ncldwtr(i,k)
          qncld(k) = 0._r8
          srcn(k)  = 0._r8
-         cs(i,k)  = pmid(i,k)/(rair*temp(i,k))        ! air density (kg/m3)
          dz(i,k)  = 1._r8/(cs(i,k)*gravit*rpdel(i,k)) ! layer thickness in m
 
          do m = 1, nbin
@@ -520,18 +535,10 @@ subroutine dropmixnuc( aero_props, aero_state, &
 
             ! load aerosol properties, assuming external mixtures
 
-            phase = 1 ! interstitial
             do m = 1, nbin
-               call aero_state%loadaer( aero_props, &
-                  i, i, k, &
-                  m, cs, phase, na, va, &
-                  hy, errnum, errstr)
-               if (errnum/=0) then
-                  call endrun('dropmixnuc : '//trim(errstr))
-               end if
-               naermod(m)  = na(i)
-               vaerosol(m) = va(i)
-               hygro(m)    = hy(i)
+               naermod(m)  = na(i,k,m)
+               vaerosol(m) = va(i,k,m)
+               hygro(m)    = hy(i,k,m)
             end do
 
             call activate_aerosol( &
@@ -608,21 +615,13 @@ subroutine dropmixnuc( aero_props, aero_state, &
 
                alogarg = max(1.e-20_r8, 1._r8/lcldn(i,k) - 1._r8)
                wmin    = wbar + wmix*0.25_r8*sq2pi*log(alogarg)
-               phase   = 1   ! interstitial
 
                do m = 1, nbin
                   ! rce-comment - use kp1 here as old-cloud activation involves
                   !   aerosol from layer below
-                  call aero_state%loadaer( aero_props, &
-                     i, i, kp1,  &
-                     m, cs, phase, na, va,   &
-                     hy, errnum, errstr)
-                  if (errnum/=0) then
-                     call endrun('dropmixnuc : '//trim(errstr))
-                  end if
-                  naermod(m)  = na(i)
-                  vaerosol(m) = va(i)
-                  hygro(m)    = hy(i)
+                  naermod(m)  = na(i,kp1,m)
+                  vaerosol(m) = va(i,kp1,m)
+                  hygro(m)    = hy(i,kp1,m)
                end do
 
                call activate_aerosol( &
@@ -1461,17 +1460,16 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
    ! local
 
    integer :: ncol  ! number of columns
-   integer :: nbin  ! number of bins
    real(r8), pointer :: tair(:,:)     ! air temperature (K)
 
-   real(r8) naerosol(pcols) ! interstit+activated aerosol number conc (/m3)
-   real(r8) vaerosol(pcols) ! interstit+activated aerosol volume conc (m3/m3)
+   real(r8) naerosol(pcols,pver,nbin) ! interstit+activated aerosol number conc (/m3)
+   real(r8) vaerosol(pcols,pver,nbin) ! interstit+activated aerosol volume conc (m3/m3)
 
    real(r8) amcube(pcols)
    real(r8), allocatable :: argfactor(:)
    real(r8) surften_coef
    real(r8) a(pcols) ! surface tension parameter
-   real(r8) hygro(pcols)  ! aerosol hygroscopicity
+   real(r8) hygro(pcols,pver,nbin)  ! aerosol hygroscopicity
    real(r8) sm(pcols)  ! critical supersaturation at mode radius
    real(r8) arg(pcols)
    integer l,m,i,k, astat
@@ -1487,7 +1485,6 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
 
    !-------------------------------------------------------------------------------
 
-   nbin  = aero_props%nbins()
    ncol  = state%ncol
    tair  => state%t
 
@@ -1502,6 +1499,18 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
       argfactor(m)=twothird/(sq2*aero_props%alogsig(m))
    end do
 
+   phase=3 ! interstitial+cloudborne
+
+   do m = 1, nbin
+      call aero_state%loadaer( aero_props, &
+           ncol, pver, &
+           m, cs, phase, naerosol(:,:,m), vaerosol(:,:,m), &
+           hygro(:,:,m), errnum, errstr)
+      if (errnum/=0) then
+         call endrun('ccncalc : '//trim(errstr))
+      end if
+   end do
+
    ccn = 0._r8
    do k=top_lev,pver
 
@@ -1512,26 +1521,16 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
 
       do m=1,nbin
 
-         phase=3 ! interstitial+cloudborne
-
-         call aero_state%loadaer( aero_props, &
-            1, ncol, k, &
-            m, cs, phase, naerosol, vaerosol, &
-            hygro, errnum, errstr)
-         if (errnum/=0) then
-            call endrun('ccncalc : '//trim(errstr))
-         end if
-
-         where(naerosol(:ncol)>1.e-3_r8 .and. hygro(:ncol)>1.e-10_r8)
-            amcube(:ncol)=aero_props%amcube(m, vaerosol(:ncol), naerosol(:ncol) )
-            sm(:ncol)=smcoef(:ncol)/sqrt(hygro(:ncol)*amcube(:ncol)) ! critical supersaturation
+         where(naerosol(:ncol,k,m)>1.e-3_r8 .and. hygro(:ncol,k,m)>1.e-10_r8)
+            amcube(:ncol)=aero_props%amcube(m, vaerosol(:ncol,k,m), naerosol(:ncol,k,m) )
+            sm(:ncol)=smcoef(:ncol)/sqrt(hygro(:ncol,k,m)*amcube(:ncol)) ! critical supersaturation
          elsewhere
             sm(:ncol)=1._r8 ! value shouldn't matter much since naerosol is small
          endwhere
          do l=1,psat
             do i=1,ncol
                arg(i)=argfactor(m)*log(sm(i)/super(l))
-               ccn(i,k,l)=ccn(i,k,l)+naerosol(i)*0.5_r8*(1._r8-erf(arg(i)))
+               ccn(i,k,l)=ccn(i,k,l)+naerosol(i,k,m)*0.5_r8*(1._r8-erf(arg(i)))
             enddo
          enddo
       enddo

@@ -353,6 +353,17 @@ end subroutine radiation_readnl
 !================================================================================================
 
 subroutine radiation_register
+   use rrtmgp_pre,                only: rrtmgp_pre_register
+   use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_register
+   use rrtmgp_sw_gas_optics,      only: rrtmgp_sw_gas_optics_register
+   use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_register
+   ! names of gases that are available in the model
+   ! -- needed for the kdist initialization routines
+   type(ty_gas_concs_ccpp) :: available_gases
+   character(len=512) :: errmsg
+   integer :: errflg
+   character(len=*), parameter :: sub = 'radiation_register'
+
 
    ! Register radiation fields in the physics buffer
 
@@ -377,6 +388,26 @@ subroutine radiation_register
 
    ! Register fields for offline radiation driver.
    call rad_data_register()
+
+   ! Initialize available_gases object
+   call rrtmgp_pre_register(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
+
+   ! Read RRTMGP coefficients files and initialize kdist objects.
+   call rrtmgp_lw_gas_optics_register(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': lw '//errmsg)
+   end if
+   call rrtmgp_sw_gas_optics_register(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': sw '//errmsg)
+   end if
+
+   call rrtmgp_inputs_setup_register(kdist_sw, kdist_lw, nswbands, nlwbands, nswgpts, nlwgpts, &
+                      sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, &
+                      idx_lw_diag, idx_lw_cloudsim, band2gpt_sw, changeseed, errmsg, errflg)
 
 end subroutine radiation_register
 
@@ -411,15 +442,12 @@ end function radiation_do
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
-   use rrtmgp_pre,                only: rrtmgp_pre_init
    use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
    use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
    use rrtmgp_sw_solar_var_setup, only: rrtmgp_sw_solar_var_setup_init
    use solar_irrad_data,          only: do_spctrl_scaling, has_spectrum
    use cloud_rad_props,           only: cloud_rad_props_init
    use rad_constituents,          only: iceopticsfile, liqopticsfile
-   use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_init
-   use rrtmgp_sw_gas_optics,      only: rrtmgp_sw_gas_optics_init
    use radheat,                   only: p_top_for_equil_rad
 
    ! Initialize the radiation and cloud optics.
@@ -453,32 +481,14 @@ subroutine radiation_init(pbuf2d)
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
-   ! Initialize available_gases object
-   call rrtmgp_pre_init(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
-
-   ! Read RRTMGP coefficients files and initialize kdist objects.
-   call rrtmgp_lw_gas_optics_init(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': lw '//errmsg)
-   end if
-   call rrtmgp_sw_gas_optics_init(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': sw '//errmsg)
-   end if
-
    dtime = get_step_size()
    dtime_r8 = real(dtime, r8)
 
    ! Set up inputs to RRTMGP
-   call rrtmgp_inputs_setup_init(nswbands, nlwbands, pref_edge, pver, pverp, kdist_sw, kdist_lw, qrl_unused, &
-                   is_first_step(), use_rad_dt_cosz, dtime_r8, get_nstep(), iradsw, dt_avg, irad_always,     &
-                   is_first_restart_step(), p_top_for_equil_rad, nradgas, gasnamelength, get_curr_calday(),  &
-                   ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag,      &
-                   idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, changeseed, &
-                   nlay, nlayp, nextsw_cday, band2gpt_sw, irad_always_modified, errmsg, errflg)
+   call rrtmgp_inputs_setup_init(pref_edge, pver, pverp, qrl_unused, is_first_step(), use_rad_dt_cosz, dtime_r8, &
+                      get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(), p_top_for_equil_rad,    &
+                      nradgas, gasnamelength, get_curr_calday(), ktopcam, ktoprad, nlaycam, nlay, nlayp,         &
+                      nextsw_cday, irad_always_modified, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if

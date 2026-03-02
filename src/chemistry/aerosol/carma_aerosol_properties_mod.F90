@@ -644,12 +644,12 @@ contains
   !------------------------------------------------------------------------------
   ! apply max / min to number concentration
   !------------------------------------------------------------------------------
-  subroutine apply_number_limits( self, naerosol, vaerosol, istart, istop, m )
+  subroutine apply_number_limits( self, naerosol, vaerosol, ncol, nlev, m )
     class(carma_aerosol_properties), intent(in) :: self
-    real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-    real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-    integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-    integer,  intent(in) :: istop           ! stop column index
+    real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+    real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+    integer,  intent(in) :: ncol            ! number of columns
+    integer,  intent(in) :: nlev            ! number of vert levels
     integer,  intent(in) :: m               ! mode or bin index
 
   end subroutine apply_number_limits

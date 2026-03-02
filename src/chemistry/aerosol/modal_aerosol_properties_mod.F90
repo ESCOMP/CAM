@@ -743,22 +743,24 @@ contains
   !------------------------------------------------------------------------------
   ! apply max / min to number concentration
   !------------------------------------------------------------------------------
-  subroutine apply_number_limits( self, naerosol, vaerosol, istart, istop, m )
+  subroutine apply_number_limits( self, naerosol, vaerosol, ncol, nlev, m )
     class(modal_aerosol_properties), intent(in) :: self
-    real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-    real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-    integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-    integer,  intent(in) :: istop           ! stop column index
+    real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+    real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+    integer,  intent(in) :: ncol            ! number of columns
+    integer,  intent(in) :: nlev            ! number of vert levels
     integer,  intent(in) :: m               ! mode or bin index
 
-    integer :: i
+    integer :: i,k
 
     ! adjust number so that dgnumlo < dgnum < dgnumhi
     ! -- the diameter falls within the lower and upper limits which are
     !    represented by voltonumhi and voltonumblo values, respectively
-    do i = istart, istop
-       naerosol(i) = max(naerosol(i), vaerosol(i)*self%voltonumbhi_(m))
-       naerosol(i) = min(naerosol(i), vaerosol(i)*self%voltonumblo_(m))
+    do k = 1,nlev
+       do i = i,ncol
+          naerosol(i,k) = max(naerosol(i,k), vaerosol(i,k)*self%voltonumbhi_(m))
+          naerosol(i,k) = min(naerosol(i,k), vaerosol(i,k)*self%voltonumblo_(m))
+       end do
     end do
 
   end subroutine apply_number_limits

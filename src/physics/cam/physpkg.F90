@@ -298,10 +298,6 @@ contains
        ! register various data model gasses with pbuf
        call ghg_data_register()
 
-       ! carma microphysics
-       !
-       call carma_register()
-
        ! Register iondrag variables with pbuf
        call iondrag_register()
 
@@ -322,6 +318,10 @@ contains
        call radiation_register
        call cloud_diagnostics_register
        call radheat_register
+
+       ! carma microphysics
+       !
+       call carma_register()
 
        ! COSP
        call cospsimulator_intr_register
