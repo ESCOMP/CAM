@@ -465,8 +465,9 @@ contains
     ! NOTE: This only needs to be done once at the start of the run and does not need
     ! to be done for restarts.
     !
-    ! NOTE: We only want to do this with RRTMG. If CAM_RT is being used, then skip this.
-    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg") .and. (carma_do_optics)) then
+    ! NOTE: We only want to do this with RRTMG(P). If CAM_RT is being used, then skip this.
+    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg".or.radiation_scheme == "rrtmgp") &
+         .and. (carma_do_optics)) then
       call CARMA_CreateOpticsFile(carma, rc)
        if (rc < 0) call endrun('carma_register::carma_CreateOpticsFiles failed.')
     end if
