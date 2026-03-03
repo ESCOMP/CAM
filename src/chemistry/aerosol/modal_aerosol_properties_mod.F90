@@ -757,7 +757,7 @@ contains
     ! -- the diameter falls within the lower and upper limits which are
     !    represented by voltonumhi and voltonumblo values, respectively
     do k = 1,nlev
-       do i = i,ncol
+       do i = 1,ncol
           naerosol(i,k) = max(naerosol(i,k), vaerosol(i,k)*self%voltonumbhi_(m))
           naerosol(i,k) = min(naerosol(i,k), vaerosol(i,k)*self%voltonumblo_(m))
        end do

@@ -353,17 +353,22 @@ end subroutine radiation_readnl
 !================================================================================================
 
 subroutine radiation_register
-   use rrtmgp_pre,                only: rrtmgp_pre_register
-   use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_register
-   use rrtmgp_sw_gas_optics,      only: rrtmgp_sw_gas_optics_register
-   use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_register
+   use rrtmgp_pre,                only: rrtmgp_pre_init
+   use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
+   use rrtmgp_lw_gas_optics,      only: rrtmgp_lw_gas_optics_init
+   use rrtmgp_sw_gas_optics,      only: rrtmgp_sw_gas_optics_init
+   use radheat,                   only: p_top_for_equil_rad
+   ! local variables
+   character(len=512) :: errmsg
+
    ! names of gases that are available in the model
    ! -- needed for the kdist initialization routines
    type(ty_gas_concs_ccpp) :: available_gases
-   character(len=512) :: errmsg
    integer :: errflg
+   integer :: dtime
+   real(r8) :: dtime_r8
    character(len=*), parameter :: sub = 'radiation_register'
-
+   real(r8) :: qrl_unused(1,1)
 
    ! Register radiation fields in the physics buffer
 
@@ -390,24 +395,34 @@ subroutine radiation_register
    call rad_data_register()
 
    ! Initialize available_gases object
-   call rrtmgp_pre_register(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
+   call rrtmgp_pre_init(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': '//errmsg)
    end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
-   call rrtmgp_lw_gas_optics_register(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
+   call rrtmgp_lw_gas_optics_init(coefs_lw_file, available_gases, kdist_lw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': lw '//errmsg)
    end if
-   call rrtmgp_sw_gas_optics_register(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
+   call rrtmgp_sw_gas_optics_init(coefs_sw_file, available_gases, kdist_sw, errmsg, errflg)
    if (errflg /= 0) then
       call endrun(sub//': sw '//errmsg)
    end if
 
-   call rrtmgp_inputs_setup_register(kdist_sw, kdist_lw, nswbands, nlwbands, nswgpts, nlwgpts, &
-                      sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, &
-                      idx_lw_diag, idx_lw_cloudsim, band2gpt_sw, changeseed, errmsg, errflg)
+   dtime = get_step_size()
+   dtime_r8 = real(dtime, r8)
+
+   ! Set up inputs to RRTMGP
+   call rrtmgp_inputs_setup_init(nswbands, nlwbands, pref_edge, pver, pverp, kdist_sw, kdist_lw, qrl_unused, &
+                   is_first_step(), use_rad_dt_cosz, dtime_r8, get_nstep(), iradsw, dt_avg, irad_always,     &
+                   is_first_restart_step(), p_top_for_equil_rad, nradgas, gasnamelength, get_curr_calday(),  &
+                   ktopcam, ktoprad, nlaycam, sw_low_bounds, sw_high_bounds, idx_sw_diag, idx_nir_diag,      &
+                   idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, idx_lw_cloudsim, nswgpts, nlwgpts, changeseed, &
+                   nlay, nlayp, nextsw_cday, band2gpt_sw, irad_always_modified, errmsg, errflg)
+   if (errflg /= 0) then
+      call endrun(sub//': '//errmsg)
+   end if
 
 end subroutine radiation_register
 
@@ -442,13 +457,10 @@ end function radiation_do
 !================================================================================================
 
 subroutine radiation_init(pbuf2d)
-   use rrtmgp_inputs_setup,       only: rrtmgp_inputs_setup_init
    use rrtmgp_cloud_optics_setup, only: rrtmgp_cloud_optics_setup_init
    use rrtmgp_sw_solar_var_setup, only: rrtmgp_sw_solar_var_setup_init
    use solar_irrad_data,          only: do_spctrl_scaling, has_spectrum
    use cloud_rad_props,           only: cloud_rad_props_init
-   use rad_constituents,          only: iceopticsfile, liqopticsfile
-   use radheat,                   only: p_top_for_equil_rad
 
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
@@ -459,14 +471,7 @@ subroutine radiation_init(pbuf2d)
    ! local variables
    character(len=512) :: errmsg
 
-   ! names of gases that are available in the model 
-   ! -- needed for the kdist initialization routines 
-   type(ty_gas_concs_ccpp) :: available_gases
-
-   real(r8) :: qrl_unused(1,1)
-
    integer :: i, icall
-   integer :: nstep                       ! current timestep number
    logical :: history_amwg                ! output the variables used by the AMWG diag package
    logical :: history_vdiag               ! output the variables used by the AMWG variability diag package
    logical :: history_budget              ! output tendencies and state variables for CAM4
@@ -475,24 +480,9 @@ subroutine radiation_init(pbuf2d)
    integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr, istat, errflg
 
-   integer :: dtime
-   real(r8) :: dtime_r8
-
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
-   dtime = get_step_size()
-   dtime_r8 = real(dtime, r8)
-
-   ! Set up inputs to RRTMGP
-   call rrtmgp_inputs_setup_init(pref_edge, pver, pverp, qrl_unused, is_first_step(), use_rad_dt_cosz, dtime_r8, &
-                      get_nstep(), iradsw, dt_avg, irad_always, is_first_restart_step(), p_top_for_equil_rad,    &
-                      nradgas, gasnamelength, get_curr_calday(), ktopcam, ktoprad, nlaycam, nlay, nlayp,         &
-                      nextsw_cday, irad_always_modified, errmsg, errflg)
-   if (errflg /= 0) then
-      call endrun(sub//': '//errmsg)
-   end if
-
    ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
 
