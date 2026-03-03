@@ -911,9 +911,7 @@ contains
                       ! ref: Fig. 1d of Jasper F. Kok et al. (2017),
                       ! Smaller desert dust cooling effect estimated from analysis of dust size and abundance
 
-                      if (.not.aeroprops%model_is('BAM')) then
-                         call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
-                      end if
+                      call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
 
                       ! dmleung: update_diags updated dopaer(icol) as a diagnostic.
                       ! Aerosol optical and radiative properties are subsequently modified given dopaer update in update_diags.
@@ -948,9 +946,9 @@ contains
              bam_cnt = bam_cnt+1
              call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
                   list_idx, troplev)
-          else
-             call output_bin_diags()
-          end if
+          endif
+
+          call output_bin_diags()
 
        end do binloop
     end do aeromodel
@@ -1025,33 +1023,45 @@ contains
             case('dust')
                dustvol(icol) = vol(icol)
                burdendust(icol) = burdendust(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatdust(icol) = vol(icol) * specrefindex(iwav)%re
-               absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatdust(icol) = vol(icol) * specrefindex(iwav)%re
+                  absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrodust(icol)= vol(icol)*hygro_aer
             case('black-c')
                burdenbc(icol) = burdenbc(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatbc(icol) = vol(icol) * specrefindex(iwav)%re
-               absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatbc(icol) = vol(icol) * specrefindex(iwav)%re
+                  absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrobc(icol)= vol(icol)*hygro_aer
             case('sulfate')
                burdenso4(icol) = burdenso4(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
-               abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosulf(icol)= vol(icol)*hygro_aer
             case('p-organic')
                burdenpom(icol) = burdenpom(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatpom(icol) = vol(icol) * specrefindex(iwav)%re
-               abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatpom(icol) = vol(icol) * specrefindex(iwav)%re
+                  abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygropom(icol)= vol(icol)*hygro_aer
             case('s-organic')
                burdensoa(icol) = burdensoa(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
-               abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosoa(icol)= vol(icol)*hygro_aer
             case('seasalt')
                burdenseasalt(icol) = burdenseasalt(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
-               abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosslt(icol)= vol(icol)*hygro_aer
             end select
          end do
