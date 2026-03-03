@@ -5,7 +5,7 @@
 <entry_id>
 
   <!-- This is the same as the default entry in
-       cime/config/cesm/config_files.xml except for the value for clm:
+       cime/config/cesm/config_files.xml except for the value for cam:
        In a standalone cam checkout, COMP_ROOT_DIR_CAM is $SRCROOT
        rather than $SRCROOT/components/cam.
        However, because of the way overrides are handled, we need to
@@ -17,9 +17,9 @@
     <default_value>unset</default_value>
     <values>
       <value component="cam"      >$SRCROOT</value>
-      <value component="dlnd"      >$CIMEROOT/src/components/data_comps/dlnd</value>
-      <value component="slnd"      >$CIMEROOT/src/components/stub_comps/slnd</value>
-      <value component="xlnd"      >$CIMEROOT/src/components/xcpl_comps/xlnd</value>
+      <value component="datm"     >$SRCROOT/components/cdeps/datm</value>
+      <value component="satm"     >$CIMEROOT/CIME/non_py/src/components/stub_comps_$COMP_INTERFACE/satm</value>
+      <value component="xatm"     >$SRCROOT/components/cmeps/med_test_comps/xatm</value>
     </values>
     <group>case_comps</group>
     <file>env_case.xml</file>
