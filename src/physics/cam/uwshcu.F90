@@ -216,7 +216,7 @@ end subroutine uwshcu_readnl
                         ps0_inv  , zs0_inv    , p0_inv        , z0_inv    , dp0_inv  ,  &
                         u0_inv   , v0_inv     , qv0_inv       , ql0_inv   , qi0_inv  ,  &
                         t0_inv   , s0_inv     , tr0_inv       ,                         &
-                        tke_inv  , cldfrct_inv, concldfrct_inv, pblh      , cush     ,  &
+                        tke_inv  , pblh      , cush     ,  &
                         umf_inv  , slflx_inv  , qtflx_inv     ,                         &
                         flxprc1_inv, flxsnow1_inv,                 &
                         sten_inv , uten_inv   , vten_inv      , trten_inv ,             &
@@ -225,8 +225,10 @@ end subroutine uwshcu_readnl
                         cbmf     , qc_inv     , rliq          ,                         &
                         cnt_inv  , cnb_inv    , lchnk         , dpdry0_inv,             &
                         sh_e_ed_ratio)
-    use cam_history,     only : outfld
+    use cam_history,     only: outfld
     use ccpp_constituent_prop_mod, only: ccpp_const_props
+
+    use constituents,    only: qmin
 
     use uw_convect_shallow, only: uw_convect_shallow_run
 
@@ -251,9 +253,6 @@ end subroutine uwshcu_readnl
     real(r8), intent(in)    :: s0_inv(pcols,pver)          !  Environmental dry static energy [ J/kg ]
     real(r8), intent(in)    :: tr0_inv(pcols,pver,ncnst)   !  Environmental tracers [ #, kg/kg ]
     real(r8), intent(in)    :: tke_inv(pcols,pver+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
-    real(r8), intent(in)    :: cldfrct_inv(pcols,pver)     !  Total cloud fraction at the previous time step [ fraction ]
-    real(r8), intent(in)    :: concldfrct_inv(pcols,pver)  !  Total convective ( shallow + deep ) cloud fraction
-                                                        !  at the previous time step [ fraction ]
     real(r8), intent(in)    :: pblh(pcols)                !  Height of PBL [ m ]
     real(r8), intent(inout) :: cush(pcols)                !  Convective scale height [ m ]
     real(r8), intent(out)   :: umf_inv(pcols,pver+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
@@ -288,6 +287,91 @@ end subroutine uwshcu_readnl
     character(len=512)   :: errmsg
     integer              :: errflg
 
+    ! Diagnostic interface fields (pcols, pver+1)
+    real(r8) :: uflx_diag(pcols, pver+1)
+    real(r8) :: vflx_diag(pcols, pver+1)
+    real(r8) :: ufrc_diag(pcols, pver+1)
+    real(r8) :: wu_diag(pcols, pver+1)
+    real(r8) :: qtu_diag(pcols, pver+1)
+    real(r8) :: thlu_diag(pcols, pver+1)
+    real(r8) :: thvu_diag(pcols, pver+1)
+    real(r8) :: uu_diag(pcols, pver+1)
+    real(r8) :: vu_diag(pcols, pver+1)
+    real(r8) :: qtu_emf_diag(pcols, pver+1)
+    real(r8) :: thlu_emf_diag(pcols, pver+1)
+    real(r8) :: uu_emf_diag(pcols, pver+1)
+    real(r8) :: vu_emf_diag(pcols, pver+1)
+    real(r8) :: uemf_diag(pcols, pver+1)
+    real(r8) :: flxrain_diag(pcols, pver+1)
+    real(r8) :: flxsnow_diag(pcols, pver+1)
+
+    ! Diagnostic midpoint fields (pcols, pver)
+    real(r8) :: qvten_diag(pcols, pver)
+    real(r8) :: qlten_diag(pcols, pver)
+    real(r8) :: qiten_diag(pcols, pver)
+    real(r8) :: qtten_diag(pcols, pver)
+    real(r8) :: slten_diag(pcols, pver)
+    real(r8) :: dwten_diag(pcols, pver)
+    real(r8) :: diten_diag(pcols, pver)
+    real(r8) :: ntraprd_diag(pcols, pver)
+    real(r8) :: ntsnprd_diag(pcols, pver)
+    real(r8) :: excessu_arr_diag(pcols, pver)
+    real(r8) :: excess0_arr_diag(pcols, pver)
+    real(r8) :: xc_arr_diag(pcols, pver)
+    real(r8) :: aquad_arr_diag(pcols, pver)
+    real(r8) :: bquad_arr_diag(pcols, pver)
+    real(r8) :: cquad_arr_diag(pcols, pver)
+    real(r8) :: bogbot_arr_diag(pcols, pver)
+    real(r8) :: bogtop_arr_diag(pcols, pver)
+    real(r8) :: fer_out(pcols, pver)
+    real(r8) :: fdr_out(pcols, pver)
+
+    ! Diagnostic 1D fields (pcols)
+    real(r8) :: cinh_diag(pcols)
+    real(r8) :: cinlclh_diag(pcols)
+    real(r8) :: ufrcinvbase_diag(pcols)
+    real(r8) :: ufrclcl_diag(pcols)
+    real(r8) :: winvbase_diag(pcols)
+    real(r8) :: wlcl_diag(pcols)
+    real(r8) :: plcl_diag(pcols)
+    real(r8) :: pinv_diag(pcols)
+    real(r8) :: plfc_diag(pcols)
+    real(r8) :: pbup_diag(pcols)
+    real(r8) :: ppen_diag(pcols)
+    real(r8) :: qtsrc_diag(pcols)
+    real(r8) :: thlsrc_diag(pcols)
+    real(r8) :: thvlsrc_diag(pcols)
+    real(r8) :: emfkbup_diag(pcols)
+    real(r8) :: cbmflimit_diag(pcols)
+    real(r8) :: tkeavg_diag(pcols)
+    real(r8) :: zinv_diag(pcols)
+    real(r8) :: rcwp_diag(pcols)
+    real(r8) :: rlwp_diag(pcols)
+    real(r8) :: riwp_diag(pcols)
+
+    ! Diagnostic exit/limit flags (pcols)
+    real(r8) :: exit_UWCu_diag(pcols)
+    real(r8) :: exit_conden_diag(pcols)
+    real(r8) :: exit_klclmkx_diag(pcols)
+    real(r8) :: exit_klfcmkx_diag(pcols)
+    real(r8) :: exit_ufrc_diag(pcols)
+    real(r8) :: exit_wtw_diag(pcols)
+    real(r8) :: exit_drycore_diag(pcols)
+    real(r8) :: exit_wu_diag(pcols)
+    real(r8) :: exit_cufilter_diag(pcols)
+    real(r8) :: exit_kinv1_diag(pcols)
+    real(r8) :: exit_rei_diag(pcols)
+    real(r8) :: limit_shcu_diag(pcols)
+    real(r8) :: limit_negcon_diag(pcols)
+    real(r8) :: limit_ufrc_diag(pcols)
+    real(r8) :: limit_ppen_diag(pcols)
+    real(r8) :: limit_emf_diag(pcols)
+    real(r8) :: limit_cinlcl_diag(pcols)
+    real(r8) :: limit_cin_diag(pcols)
+    real(r8) :: limit_cbmf_diag(pcols)
+    real(r8) :: limit_rei_diag(pcols)
+    real(r8) :: ind_delcin_diag(pcols)
+
     ! zero pcols before subsetting
     umf_inv(:, :)       = 0.0_r8
     slflx_inv(:, :)     = 0.0_r8
@@ -313,6 +397,8 @@ end subroutine uwshcu_readnl
     cnt_inv(:)          = 0.0_r8
     cnb_inv(:)          = 0.0_r8
     sh_e_ed_ratio(:, :) = 0.0_r8
+    fer_out(:, :) = 0.0_r8
+    fdr_out(:, :) = 0.0_r8
 
     ! call the underlying CCPPized subroutine (dechunkized)
     call uw_convect_shallow_run( &
@@ -321,153 +407,244 @@ end subroutine uwshcu_readnl
       ncnst         = ncnst,                            &
       dt            = dt,                               &
       const_props   = ccpp_const_props,                 &
-      pint          = ps0_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
-      zi            = zs0_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
-      pmid          = p0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      zm            = z0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      pdel          = dp0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      pdeldry       = dpdry0_inv(:ncol, :pver),        & ! midpoints  (ncol, pver)
-      u             = u0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      v             = v0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      qv0           = qv0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      ql0           = ql0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      qi0           = qi0_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      t             = t0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      s             = s0_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
-      tr0           = tr0_inv(:ncol, :pver, 1:ncnst),  & ! midpoints  (ncol, pver, ncnst)
-      tke           = tke_inv(:ncol, :pver+1),         & ! interfaces (ncol, pver+1)
-      cld           = cldfrct_inv(:ncol, :pver),       & ! midpoints  (ncol, pver)
-      concld        = concldfrct_inv(:ncol, :pver),    & ! midpoints  (ncol, pver)
+      qmin          = qmin(:ncnst),                     &
+      pint          = ps0_inv(:ncol, :pver+1),          &
+      zi            = zs0_inv(:ncol, :pver+1),          &
+      pmid          = p0_inv(:ncol, :pver),             &
+      zm            = z0_inv(:ncol, :pver),             &
+      pdel          = dp0_inv(:ncol, :pver),            &
+      pdeldry       = dpdry0_inv(:ncol, :pver),         &
+      u             = u0_inv(:ncol, :pver),             &
+      v             = v0_inv(:ncol, :pver),             &
+      qv0           = qv0_inv(:ncol, :pver),            &
+      ql0           = ql0_inv(:ncol, :pver),            &
+      qi0           = qi0_inv(:ncol, :pver),            &
+      t             = t0_inv(:ncol, :pver),             &
+      s             = s0_inv(:ncol, :pver),             &
+      tr0           = tr0_inv(:ncol, :pver, 1:ncnst),   &
+      tke           = tke_inv(:ncol, :pver+1),          &
       pblh          = pblh(:ncol),                      &
-      cush          = cush(:ncol),                      &
-      cmfmc_sh      = umf_inv(:ncol, :pver+1),        & ! interfaces (ncol, pver+1)
-      slflx         = slflx_inv(:ncol, :pver+1),      & ! interfaces (ncol, pver+1)
-      qtflx         = qtflx_inv(:ncol, :pver+1),      & ! interfaces (ncol, pver+1)
-      flxprc_sh     = flxprc1_inv(:ncol, :pver+1),    & ! interfaces (ncol, pver+1)
-      flxsnw_sh     = flxsnow1_inv(:ncol, :pver+1),   & ! interfaces (ncol, pver+1)
-      sten          = sten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
-      uten          = uten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
-      vten          = vten_inv(:ncol, :pver),          & ! midpoints  (ncol, pver)
-      trten         = trten_inv(:ncol, :pver, 1:ncnst),& ! midpoints  (ncol, pver, ncnst)
-      qrten         = qrten_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
-      qsten         = qsten_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
+      cush          = cush(:ncol),                      & ! inout; below output:
+      cmfmc_sh      = umf_inv(:ncol, :pver+1),          &
+      slflx         = slflx_inv(:ncol, :pver+1),        &
+      qtflx         = qtflx_inv(:ncol, :pver+1),        &
+      flxprc_sh     = flxprc1_inv(:ncol, :pver+1),      &
+      flxsnw_sh     = flxsnow1_inv(:ncol, :pver+1),     &
+      sten          = sten_inv(:ncol, :pver),           &
+      uten          = uten_inv(:ncol, :pver),           &
+      vten          = vten_inv(:ncol, :pver),           &
+      trten         = trten_inv(:ncol, :pver, 1:ncnst), &
+      qrten         = qrten_inv(:ncol, :pver),          &
+      qsten         = qsten_inv(:ncol, :pver),          &
       precip_sh     = precip(:ncol),                    &
       snow_sh       = snow(:ncol),                      &
-      evapc_sh      = evapc_inv(:ncol, :pver),        & ! midpoints  (ncol, pver)
-      shfrc         = cufrc_inv(:ncol, :pver),         & ! midpoints  (ncol, pver)
-      qcu           = qcu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      qlu           = qlu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      qiu           = qiu_inv(:ncol, :pver),           & ! midpoints  (ncol, pver)
-      qc            = qc_inv(:ncol, :pver),            & ! midpoints  (ncol, pver)
+      evapc_sh      = evapc_inv(:ncol, :pver),          &
+      shfrc         = cufrc_inv(:ncol, :pver),          &
+      qcu           = qcu_inv(:ncol, :pver),            &
+      qlu           = qlu_inv(:ncol, :pver),            &
+      qiu           = qiu_inv(:ncol, :pver),            &
+      qc            = qc_inv(:ncol, :pver),             &
       cbmf          = cbmf(:ncol),                      &
       rliq          = rliq(:ncol),                      &
       cnt           = cnt_inv(:ncol),                   &
       cnb           = cnb_inv(:ncol),                   &
-      sh_e_ed_ratio = sh_e_ed_ratio(:ncol, :pver),    & ! midpoints  (ncol, pver)
-      errmsg        = errmsg,                            &
-      errflg        = errflg)
+      sh_e_ed_ratio = sh_e_ed_ratio(:ncol, :pver),      &
+      ! diagnostic outputs:
+      uflx_diag            = uflx_diag(:ncol, :),            &
+      vflx_diag            = vflx_diag(:ncol, :),            &
+      qvten_diag           = qvten_diag(:ncol, :),           &
+      qlten_diag           = qlten_diag(:ncol, :),           &
+      qiten_diag           = qiten_diag(:ncol, :),           &
+      qtten_diag           = qtten_diag(:ncol, :),           &
+      slten_diag           = slten_diag(:ncol, :),           &
+      ufrc_diag            = ufrc_diag(:ncol, :),            &
+      cinh_diag            = cinh_diag(:ncol),               &
+      cinlclh_diag         = cinlclh_diag(:ncol),            &
+      ufrcinvbase_diag     = ufrcinvbase_diag(:ncol),        &
+      ufrclcl_diag         = ufrclcl_diag(:ncol),            &
+      winvbase_diag        = winvbase_diag(:ncol),           &
+      wlcl_diag            = wlcl_diag(:ncol),               &
+      plcl_diag            = plcl_diag(:ncol),               &
+      pinv_diag            = pinv_diag(:ncol),               &
+      plfc_diag            = plfc_diag(:ncol),               &
+      pbup_diag            = pbup_diag(:ncol),               &
+      ppen_diag            = ppen_diag(:ncol),               &
+      qtsrc_diag           = qtsrc_diag(:ncol),              &
+      thlsrc_diag          = thlsrc_diag(:ncol),             &
+      thvlsrc_diag         = thvlsrc_diag(:ncol),            &
+      emfkbup_diag         = emfkbup_diag(:ncol),            &
+      cbmflimit_diag       = cbmflimit_diag(:ncol),          &
+      tkeavg_diag          = tkeavg_diag(:ncol),             &
+      zinv_diag            = zinv_diag(:ncol),               &
+      rcwp_diag            = rcwp_diag(:ncol),               &
+      rlwp_diag            = rlwp_diag(:ncol),               &
+      riwp_diag            = riwp_diag(:ncol),               &
+      wu_diag              = wu_diag(:ncol, :),              &
+      qtu_diag             = qtu_diag(:ncol, :),             &
+      thlu_diag            = thlu_diag(:ncol, :),            &
+      thvu_diag            = thvu_diag(:ncol, :),            &
+      uu_diag              = uu_diag(:ncol, :),              &
+      vu_diag              = vu_diag(:ncol, :),              &
+      qtu_emf_diag         = qtu_emf_diag(:ncol, :),         &
+      thlu_emf_diag        = thlu_emf_diag(:ncol, :),        &
+      uu_emf_diag          = uu_emf_diag(:ncol, :),          &
+      vu_emf_diag          = vu_emf_diag(:ncol, :),          &
+      uemf_diag            = uemf_diag(:ncol, :),            &
+      dwten_diag           = dwten_diag(:ncol, :),           &
+      diten_diag           = diten_diag(:ncol, :),           &
+      flxrain_diag         = flxrain_diag(:ncol, :),         &
+      flxsnow_diag         = flxsnow_diag(:ncol, :),         &
+      ntraprd_diag         = ntraprd_diag(:ncol, :),         &
+      ntsnprd_diag         = ntsnprd_diag(:ncol, :),         &
+      excessu_arr_diag     = excessu_arr_diag(:ncol, :),     &
+      excess0_arr_diag     = excess0_arr_diag(:ncol, :),     &
+      xc_arr_diag          = xc_arr_diag(:ncol, :),          &
+      aquad_arr_diag       = aquad_arr_diag(:ncol, :),       &
+      bquad_arr_diag       = bquad_arr_diag(:ncol, :),       &
+      cquad_arr_diag       = cquad_arr_diag(:ncol, :),       &
+      bogbot_arr_diag      = bogbot_arr_diag(:ncol, :),      &
+      bogtop_arr_diag      = bogtop_arr_diag(:ncol, :),      &
+      fer_out              = fer_out(:ncol,:pver),           &
+      fdr_out              = fdr_out(:ncol,:pver),           &
+      exit_UWCu_diag       = exit_UWCu_diag(:ncol),          &
+      exit_conden_diag     = exit_conden_diag(:ncol),        &
+      exit_klclmkx_diag    = exit_klclmkx_diag(:ncol),       &
+      exit_klfcmkx_diag    = exit_klfcmkx_diag(:ncol),       &
+      exit_ufrc_diag       = exit_ufrc_diag(:ncol),          &
+      exit_wtw_diag        = exit_wtw_diag(:ncol),           &
+      exit_drycore_diag    = exit_drycore_diag(:ncol),       &
+      exit_wu_diag         = exit_wu_diag(:ncol),            &
+      exit_cufilter_diag   = exit_cufilter_diag(:ncol),      &
+      exit_kinv1_diag      = exit_kinv1_diag(:ncol),         &
+      exit_rei_diag        = exit_rei_diag(:ncol),           &
+      limit_shcu_diag      = limit_shcu_diag(:ncol),         &
+      limit_negcon_diag    = limit_negcon_diag(:ncol),       &
+      limit_ufrc_diag      = limit_ufrc_diag(:ncol),         &
+      limit_ppen_diag      = limit_ppen_diag(:ncol),         &
+      limit_emf_diag       = limit_emf_diag(:ncol),          &
+      limit_cinlcl_diag    = limit_cinlcl_diag(:ncol),       &
+      limit_cin_diag       = limit_cin_diag(:ncol),          &
+      limit_cbmf_diag      = limit_cbmf_diag(:ncol),         &
+      limit_rei_diag       = limit_rei_diag(:ncol),          &
+      ind_delcin_diag      = ind_delcin_diag(:ncol),         &
+      errmsg               = errmsg,                         &
+      errflg               = errflg)
+
+     if(errflg /= 0) then
+         call endrun('uw_convect_shallow_run: ' // errmsg)
+     end if
 
      ! ---------------------------------------- !
      ! Writing main diagnostic output variables !
      ! ---------------------------------------- !
 
-     ! call outfld( 'qtflx_Cu'        , qtflx_out(:,pver:0:-1),    ncol,    lchnk )
-     ! call outfld( 'slflx_Cu'        , slflx_out(:,pver:0:-1),    ncol,    lchnk )
-     ! call outfld( 'uflx_Cu'         , uflx_out,                 ncol,    lchnk )
-     ! call outfld( 'vflx_Cu'         , vflx_out,                 ncol,    lchnk )
+     ! --- Fluxes at interfaces ---
+     call outfld( 'qtflx_Cu'        , qtflx_inv(:ncol,:),              ncol, lchnk )
+     call outfld( 'slflx_Cu'        , slflx_inv(:ncol,:),              ncol, lchnk )
+     call outfld( 'uflx_Cu'         , uflx_diag(:ncol,:),          ncol, lchnk )
+     call outfld( 'vflx_Cu'         , vflx_diag(:ncol,:),          ncol, lchnk )
 
-     ! call outfld( 'qtten_Cu'        , qtten_out,                ncol,    lchnk )
-     ! call outfld( 'slten_Cu'        , slten_out,                ncol,    lchnk )
-     ! call outfld( 'uten_Cu'         , uten_out(:,pver:1:-1),     ncol,    lchnk )
-     ! call outfld( 'vten_Cu'         , vten_out(:,pver:1:-1),     ncol,    lchnk )
-     ! call outfld( 'qvten_Cu'        , qvten_out(:,pver:1:-1),    ncol,    lchnk )
-     ! call outfld( 'qlten_Cu'        , qlten_out(:,pver:1:-1),    ncol,    lchnk )
-     ! call outfld( 'qiten_Cu'        , qiten_out(:,pver:1:-1),    ncol,    lchnk )
+     ! --- Tendencies (model ordering, 1=TOA) ---
+     call outfld( 'qtten_Cu'        , qtten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'slten_Cu'        , slten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'uten_Cu'         , uten_inv(:ncol,:pver),            ncol, lchnk )
+     call outfld( 'vten_Cu'         , vten_inv(:ncol,:pver),            ncol, lchnk )
+     call outfld( 'qvten_Cu'        , qvten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'qlten_Cu'        , qlten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'qiten_Cu'        , qiten_diag(:ncol,:pver),     ncol, lchnk )
 
-     ! call outfld( 'cbmf_Cu'         , cbmf_out,                 ncol,    lchnk )
-     ! call outfld( 'ufrcinvbase_Cu'  , ufrcinvbase_out,          ncol,    lchnk )
-     ! call outfld( 'ufrclcl_Cu'      , ufrclcl_out,              ncol,    lchnk )
-     ! call outfld( 'winvbase_Cu'     , winvbase_out,             ncol,    lchnk )
-     ! call outfld( 'wlcl_Cu'         , wlcl_out,                 ncol,    lchnk )
-     ! call outfld( 'plcl_Cu'         , plcl_out,                 ncol,    lchnk )
-     ! call outfld( 'pinv_Cu'         , pinv_out,                 ncol,    lchnk )
-     ! call outfld( 'plfc_Cu'         , plfc_out,                 ncol,    lchnk )
-     ! call outfld( 'pbup_Cu'         , pbup_out,                 ncol,    lchnk )
-     ! call outfld( 'ppen_Cu'         , ppen_out,                 ncol,    lchnk )
-     ! call outfld( 'qtsrc_Cu'        , qtsrc_out,                ncol,    lchnk )
-     ! call outfld( 'thlsrc_Cu'       , thlsrc_out,               ncol,    lchnk )
-     ! call outfld( 'thvlsrc_Cu'      , thvlsrc_out,              ncol,    lchnk )
-     ! call outfld( 'emfkbup_Cu'      , emfkbup_out,              ncol,    lchnk )
-     ! call outfld( 'cin_Cu'          , cinh_out,                 ncol,    lchnk )
-     ! call outfld( 'cinlcl_Cu'       , cinlclh_out,              ncol,    lchnk )
-     ! call outfld( 'cbmflimit_Cu'    , cbmflimit_out,            ncol,    lchnk )
-     ! call outfld( 'tkeavg_Cu'       , tkeavg_out,               ncol,    lchnk )
-     ! call outfld( 'zinv_Cu'         , zinv_out,                 ncol,    lchnk )
-     ! call outfld( 'rcwp_Cu'         , rcwp_out,                 ncol,    lchnk )
-     ! call outfld( 'rlwp_Cu'         , rlwp_out,                 ncol,    lchnk )
-     ! call outfld( 'riwp_Cu'         , riwp_out,                 ncol,    lchnk )
-     ! call outfld( 'tophgt_Cu'       , cush_inout,               ncol,    lchnk )
+     ! --- Scalar diagnostics ---
+     call outfld( 'cbmf_Cu'         , cbmf(:ncol),                 ncol, lchnk )
+     call outfld( 'ufrcinvbase_Cu'  , ufrcinvbase_diag(:ncol),     ncol, lchnk )
+     call outfld( 'ufrclcl_Cu'      , ufrclcl_diag(:ncol),         ncol, lchnk )
+     call outfld( 'winvbase_Cu'     , winvbase_diag(:ncol),         ncol, lchnk )
+     call outfld( 'wlcl_Cu'         , wlcl_diag(:ncol),             ncol, lchnk )
+     call outfld( 'plcl_Cu'         , plcl_diag(:ncol),             ncol, lchnk )
+     call outfld( 'pinv_Cu'         , pinv_diag(:ncol),             ncol, lchnk )
+     call outfld( 'plfc_Cu'         , plfc_diag(:ncol),             ncol, lchnk )
+     call outfld( 'pbup_Cu'         , pbup_diag(:ncol),             ncol, lchnk )
+     call outfld( 'ppen_Cu'         , ppen_diag(:ncol),             ncol, lchnk )
+     call outfld( 'qtsrc_Cu'        , qtsrc_diag(:ncol),           ncol, lchnk )
+     call outfld( 'thlsrc_Cu'       , thlsrc_diag(:ncol),          ncol, lchnk )
+     call outfld( 'thvlsrc_Cu'      , thvlsrc_diag(:ncol),         ncol, lchnk )
+     call outfld( 'emfkbup_Cu'      , emfkbup_diag(:ncol),         ncol, lchnk )
+     call outfld( 'cin_Cu'          , cinh_diag(:ncol),             ncol, lchnk )
+     call outfld( 'cinlcl_Cu'       , cinlclh_diag(:ncol),         ncol, lchnk )
+     call outfld( 'cbmflimit_Cu'    , cbmflimit_diag(:ncol),       ncol, lchnk )
+     call outfld( 'tkeavg_Cu'       , tkeavg_diag(:ncol),          ncol, lchnk )
+     call outfld( 'zinv_Cu'         , zinv_diag(:ncol),             ncol, lchnk )
+     call outfld( 'rcwp_Cu'         , rcwp_diag(:ncol),             ncol, lchnk )
+     call outfld( 'rlwp_Cu'         , rlwp_diag(:ncol),             ncol, lchnk )
+     call outfld( 'riwp_Cu'         , riwp_diag(:ncol),             ncol, lchnk )
+     call outfld( 'tophgt_Cu'       , cush(:ncol),                  ncol, lchnk )
 
-     ! call outfld( 'wu_Cu'           , wu_out,                   ncol,    lchnk )
-     ! call outfld( 'ufrc_Cu'         , ufrc_out,                 ncol,    lchnk )
-     ! call outfld( 'qtu_Cu'          , qtu_out,                  ncol,    lchnk )
-     ! call outfld( 'thlu_Cu'         , thlu_out,                 ncol,    lchnk )
-     ! call outfld( 'thvu_Cu'         , thvu_out,                 ncol,    lchnk )
-     ! call outfld( 'uu_Cu'           , uu_out,                   ncol,    lchnk )
-     ! call outfld( 'vu_Cu'           , vu_out,                   ncol,    lchnk )
-     ! call outfld( 'qtu_emf_Cu'      , qtu_emf_out,              ncol,    lchnk )
-     ! call outfld( 'thlu_emf_Cu'     , thlu_emf_out,             ncol,    lchnk )
-     ! call outfld( 'uu_emf_Cu'       , uu_emf_out,               ncol,    lchnk )
-     ! call outfld( 'vu_emf_Cu'       , vu_emf_out,               ncol,    lchnk )
-     ! call outfld( 'umf_Cu'          , umf_out(:,pver:0:-1),      ncol,    lchnk )
-     ! call outfld( 'uemf_Cu'         , uemf_out,                 ncol,    lchnk )
-     ! call outfld( 'qcu_Cu'          , qcu_out(:,pver:1:-1),      ncol,    lchnk )
-     ! call outfld( 'qlu_Cu'          , qlu_out(:,pver:1:-1),      ncol,    lchnk )
-     ! call outfld( 'qiu_Cu'          , qiu_out(:,pver:1:-1),      ncol,    lchnk )
-     ! call outfld( 'cufrc_Cu'        , cufrc_out(:,pver:1:-1),    ncol,    lchnk )
-     ! call outfld( 'fer_Cu'          , fer_out,                  ncol,    lchnk )
-     ! call outfld( 'fdr_Cu'          , fdr_out,                  ncol,    lchnk )
+     ! --- Updraft profiles at interfaces ---
+     call outfld( 'wu_Cu'           , wu_diag(:ncol,:),             ncol, lchnk )
+     call outfld( 'ufrc_Cu'         , ufrc_diag(:ncol,:),           ncol, lchnk )
+     call outfld( 'qtu_Cu'          , qtu_diag(:ncol,:),            ncol, lchnk )
+     call outfld( 'thlu_Cu'         , thlu_diag(:ncol,:),           ncol, lchnk )
+     call outfld( 'thvu_Cu'         , thvu_diag(:ncol,:),           ncol, lchnk )
+     call outfld( 'uu_Cu'           , uu_diag(:ncol,:),             ncol, lchnk )
+     call outfld( 'vu_Cu'           , vu_diag(:ncol,:),             ncol, lchnk )
+     call outfld( 'qtu_emf_Cu'      , qtu_emf_diag(:ncol,:),       ncol, lchnk )
+     call outfld( 'thlu_emf_Cu'     , thlu_emf_diag(:ncol,:),      ncol, lchnk )
+     call outfld( 'uu_emf_Cu'       , uu_emf_diag(:ncol,:),        ncol, lchnk )
+     call outfld( 'vu_emf_Cu'       , vu_emf_diag(:ncol,:),        ncol, lchnk )
+     call outfld( 'umf_Cu'          , umf_inv(:ncol,:pver),        ncol, lchnk )
+     call outfld( 'uemf_Cu'         , uemf_diag(:ncol,:),          ncol, lchnk )
 
-     ! call outfld( 'dwten_Cu'        , dwten_out,                ncol,    lchnk )
-     ! call outfld( 'diten_Cu'        , diten_out,                ncol,    lchnk )
-     ! call outfld( 'qrten_Cu'        , qrten_out(:,pver:1:-1),    ncol,    lchnk )
-     ! call outfld( 'qsten_Cu'        , qsten_out(:,pver:1:-1),    ncol,    lchnk )
-     ! call outfld( 'flxrain_Cu'      , flxrain_out,              ncol,    lchnk )
-     ! call outfld( 'flxsnow_Cu'      , flxsnow_out,              ncol,    lchnk )
-     ! call outfld( 'ntraprd_Cu'      , ntraprd_out,              ncol,    lchnk )
-     ! call outfld( 'ntsnprd_Cu'      , ntsnprd_out,              ncol,    lchnk )
+     ! --- In-cumulus cloud properties at midpoints ---
+     call outfld( 'qcu_Cu'          , qcu_inv(:ncol,:pver),         ncol, lchnk )
+     call outfld( 'qlu_Cu'          , qlu_inv(:ncol,:pver),         ncol, lchnk )
+     call outfld( 'qiu_Cu'          , qiu_inv(:ncol,:pver),         ncol, lchnk )
+     call outfld( 'cufrc_Cu'        , cufrc_inv(:ncol,:pver),       ncol, lchnk )
+     call outfld( 'fer_Cu'          , fer_out(:ncol,:pver),         ncol, lchnk )
+     call outfld( 'fdr_Cu'          , fdr_out(:ncol,:pver),         ncol, lchnk )
 
-     ! call outfld( 'excessu_Cu'      , excessu_arr_out,          ncol,    lchnk )
-     ! call outfld( 'excess0_Cu'      , excess0_arr_out,          ncol,    lchnk )
-     ! call outfld( 'xc_Cu'           , xc_arr_out,               ncol,    lchnk )
-     ! call outfld( 'aquad_Cu'        , aquad_arr_out,            ncol,    lchnk )
-     ! call outfld( 'bquad_Cu'        , bquad_arr_out,            ncol,    lchnk )
-     ! call outfld( 'cquad_Cu'        , cquad_arr_out,            ncol,    lchnk )
-     ! call outfld( 'bogbot_Cu'       , bogbot_arr_out,           ncol,    lchnk )
-     ! call outfld( 'bogtop_Cu'       , bogtop_arr_out,           ncol,    lchnk )
+     ! --- Precipitation microphysics ---
+     call outfld( 'dwten_Cu'        , dwten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'diten_Cu'        , diten_diag(:ncol,:pver),     ncol, lchnk )
+     call outfld( 'qrten_Cu'        , qrten_inv(:ncol,:pver),      ncol, lchnk )
+     call outfld( 'qsten_Cu'        , qsten_inv(:ncol,:pver),      ncol, lchnk )
+     call outfld( 'flxrain_Cu'      , flxrain_diag(:ncol,:),       ncol, lchnk )
+     call outfld( 'flxsnow_Cu'      , flxsnow_diag(:ncol,:),       ncol, lchnk )
+     call outfld( 'ntraprd_Cu'      , ntraprd_diag(:ncol,:pver),   ncol, lchnk )
+     call outfld( 'ntsnprd_Cu'      , ntsnprd_diag(:ncol,:pver),   ncol, lchnk )
 
-     ! call outfld( 'exit_UWCu_Cu'    , exit_UWCu,                ncol,    lchnk )
-     ! call outfld( 'exit_conden_Cu'  , exit_conden,              ncol,    lchnk )
-     ! call outfld( 'exit_klclpver_Cu' , exit_klclpver,             ncol,    lchnk )
-     ! call outfld( 'exit_klfcpver_Cu' , exit_klfcpver,             ncol,    lchnk )
-     ! call outfld( 'exit_ufrc_Cu'    , exit_ufrc,                ncol,    lchnk )
-     ! call outfld( 'exit_wtw_Cu'     , exit_wtw,                 ncol,    lchnk )
-     ! call outfld( 'exit_drycore_Cu' , exit_drycore,             ncol,    lchnk )
-     ! call outfld( 'exit_wu_Cu'      , exit_wu,                  ncol,    lchnk )
-     ! call outfld( 'exit_cufilter_Cu', exit_cufilter,            ncol,    lchnk )
-     ! call outfld( 'exit_kinv1_Cu'   , exit_kinv1,               ncol,    lchnk )
-     ! call outfld( 'exit_rei_Cu'     , exit_rei,                 ncol,    lchnk )
+     ! --- Buoyancy sorting diagnostics ---
+     call outfld( 'excessu_Cu'      , excessu_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'excess0_Cu'      , excess0_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'xc_Cu'           , xc_arr_diag(:ncol,:pver),    ncol, lchnk )
+     call outfld( 'aquad_Cu'        , aquad_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'bquad_Cu'        , bquad_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'cquad_Cu'        , cquad_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'bogbot_Cu'       , bogbot_arr_diag(:ncol,:pver), ncol, lchnk )
+     call outfld( 'bogtop_Cu'       , bogtop_arr_diag(:ncol,:pver), ncol, lchnk )
 
-     ! call outfld( 'limit_shcu_Cu'   , limit_shcu,               ncol,    lchnk )
-     ! call outfld( 'limit_negcon_Cu' , limit_negcon,             ncol,    lchnk )
-     ! call outfld( 'limit_ufrc_Cu'   , limit_ufrc,               ncol,    lchnk )
-     ! call outfld( 'limit_ppen_Cu'   , limit_ppen,               ncol,    lchnk )
-     ! call outfld( 'limit_emf_Cu'    , limit_emf,                ncol,    lchnk )
-     ! call outfld( 'limit_cinlcl_Cu' , limit_cinlcl,             ncol,    lchnk )
-     ! call outfld( 'limit_cin_Cu'    , limit_cin,                ncol,    lchnk )
-     ! call outfld( 'limit_cbmf_Cu'   , limit_cbmf,               ncol,    lchnk )
-     ! call outfld( 'limit_rei_Cu'    , limit_rei,                ncol,    lchnk )
-     ! call outfld( 'ind_delcin_Cu'   , ind_delcin,               ncol,    lchnk )
+     ! --- Exit condition flags ---
+     call outfld( 'exit_UWCu_Cu'    , exit_UWCu_diag(:ncol),       ncol, lchnk )
+     call outfld( 'exit_conden_Cu'  , exit_conden_diag(:ncol),     ncol, lchnk )
+     call outfld( 'exit_klclpver_Cu', exit_klclmkx_diag(:ncol),    ncol, lchnk )
+     call outfld( 'exit_klfcpver_Cu', exit_klfcmkx_diag(:ncol),    ncol, lchnk )
+     call outfld( 'exit_ufrc_Cu'    , exit_ufrc_diag(:ncol),       ncol, lchnk )
+     call outfld( 'exit_wtw_Cu'     , exit_wtw_diag(:ncol),        ncol, lchnk )
+     call outfld( 'exit_drycore_Cu' , exit_drycore_diag(:ncol),    ncol, lchnk )
+     call outfld( 'exit_wu_Cu'      , exit_wu_diag(:ncol),         ncol, lchnk )
+     call outfld( 'exit_cufilter_Cu', exit_cufilter_diag(:ncol),   ncol, lchnk )
+     call outfld( 'exit_kinv1_Cu'   , exit_kinv1_diag(:ncol),      ncol, lchnk )
+     call outfld( 'exit_rei_Cu'     , exit_rei_diag(:ncol),        ncol, lchnk )
+
+     ! --- Limiter flags ---
+     call outfld( 'limit_shcu_Cu'   , limit_shcu_diag(:ncol),      ncol, lchnk )
+     call outfld( 'limit_negcon_Cu' , limit_negcon_diag(:ncol),    ncol, lchnk )
+     call outfld( 'limit_ufrc_Cu'   , limit_ufrc_diag(:ncol),      ncol, lchnk )
+     call outfld( 'limit_ppen_Cu'   , limit_ppen_diag(:ncol),      ncol, lchnk )
+     call outfld( 'limit_emf_Cu'    , limit_emf_diag(:ncol),       ncol, lchnk )
+     call outfld( 'limit_cinlcl_Cu' , limit_cinlcl_diag(:ncol),   ncol, lchnk )
+     call outfld( 'limit_cin_Cu'    , limit_cin_diag(:ncol),       ncol, lchnk )
+     call outfld( 'limit_cbmf_Cu'   , limit_cbmf_diag(:ncol),     ncol, lchnk )
+     call outfld( 'limit_rei_Cu'    , limit_rei_diag(:ncol),       ncol, lchnk )
+     call outfld( 'ind_delcin_Cu'   , ind_delcin_diag(:ncol),      ncol, lchnk )
   end subroutine uwshcu_cam
 
   end module uwshcu

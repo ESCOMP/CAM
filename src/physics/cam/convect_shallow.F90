@@ -556,19 +556,54 @@
       ! shallow convective (entrainment)/(entrainment+detrainment) ratio (out from uwshcu)
       call pbuf_get_field(pbuf, sh_e_ed_ratio_idx, sh_e_ed_ratio)
 
-      call uwshcu_cam( pcols, ncol     , pver        , pcnst         , ztodt         ,                   &
-                               state%pint, state%zi, state%pmid     , state%zm      , state%pdel    ,                   &
-                               state%u   , state%v , state%q(:,:,1) , state%q(:,:,ixcldliq), state%q(:,:,ixcldice),     &
-                               state%t   , state%s , state%q(:,:,:) ,                                                   &
-                               tke       , cld     , concld         , pblh          , cush          ,                   &
-                               cmfmc2    , slflx   , qtflx          , 							&
-                               flxprec, flxsnow, 			         					&
-                               ptend_loc%s         , ptend_loc%u    , ptend_loc%v   , ptend_tracer  ,                   &
-                               rprdsh              , cmfdqs         , precc         , snow          ,                   &
-                               evapcsh             , shfrc          , iccmr_UW      , icwmr_UW      ,                   &
-                               icimr_UW            , cbmf           , qc2           , rliq2         ,                   &
-                               cnt2                , cnb2           , lchnk         , state%pdeldry ,                   &
-                               sh_e_ed_ratio                                                                            )
+      call uwshcu_cam(                                      &
+           pcols          = pcols,                           &
+           ncol           = ncol,                            &
+           pver           = pver,                            &
+           ncnst          = pcnst,                           &
+           dt             = ztodt,                           &
+           ps0_inv        = state%pint,                      &
+           zs0_inv        = state%zi,                        &
+           p0_inv         = state%pmid,                      &
+           z0_inv         = state%zm,                        &
+           dp0_inv        = state%pdel,                      &
+           u0_inv         = state%u,                         &
+           v0_inv         = state%v,                         &
+           qv0_inv        = state%q(:,:,1),                  &
+           ql0_inv        = state%q(:,:,ixcldliq),           &
+           qi0_inv        = state%q(:,:,ixcldice),           &
+           t0_inv         = state%t,                         &
+           s0_inv         = state%s,                         &
+           tr0_inv        = state%q(:,:,:),                  &
+           tke_inv        = tke,                             &
+           pblh           = pblh,                            &
+           cush           = cush,                            &
+           umf_inv        = cmfmc2,                          &
+           slflx_inv      = slflx,                           &
+           qtflx_inv      = qtflx,                           &
+           flxprc1_inv    = flxprec,                         &
+           flxsnow1_inv   = flxsnow,                         &
+           sten_inv       = ptend_loc%s,                     &
+           uten_inv       = ptend_loc%u,                     &
+           vten_inv       = ptend_loc%v,                     &
+           trten_inv      = ptend_tracer,                    &
+           qrten_inv      = rprdsh,                          &
+           qsten_inv      = cmfdqs,                          &
+           precip         = precc,                           &
+           snow           = snow,                            &
+           evapc_inv      = evapcsh,                         &
+           rliq           = rliq2,                           &
+           cufrc_inv      = shfrc,                           &
+           qcu_inv        = iccmr_UW,                        &
+           qlu_inv        = icwmr_UW,                        &
+           qiu_inv        = icimr_UW,                        &
+           cbmf           = cbmf,                            &
+           qc_inv         = qc2,                             &
+           cnt_inv        = cnt2,                            &
+           cnb_inv        = cnb2,                            &
+           lchnk          = lchnk,                           &
+           dpdry0_inv     = state%pdeldry,                   &
+           sh_e_ed_ratio  = sh_e_ed_ratio)
 
       ! --------------------------------------------------------------------- !
       ! Here, 'rprdsh = qrten', 'cmfdqs = qsten' both in unit of [ kg/kg/s ]  !
