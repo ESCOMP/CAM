@@ -2395,12 +2395,7 @@ CONTAINS
     ! ######################################################################################
     call t_startf('cosp_simulator')
     
-    ! Run loudly (with print statements) for the main processor
-    if (masterproc) then
-      cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.true.)
-    else
-      cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.) 
-    end if 
+    cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.)
 
     ! Check status flags
     nerror = 0
