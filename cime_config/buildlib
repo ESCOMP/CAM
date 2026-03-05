@@ -163,24 +163,6 @@ def _build_cam(caseroot, libroot, bldroot):
             expect(os.path.isfile(libfms), "FMS library not found {}".format(libfms))
             shutil.copy(libfms, libroot)
 
-        #--------------------------------------------------------
-        # Check if RTTOV is being requested by the user,
-        # and if so, set a needed environment variable
-        # and update the CAM_LINKED_LIBS list:
-        #--------------------------------------------------------
-
-        #env_vars = ''
-        #if "-rttov" in config_opts:
-            # Set environment variable needed by COSP Makefile
-        #    env_vars = "env RTTOV=true "
-
-            # Add HDF5 library to CAM linked library list:
-        #    hdf5_link_opts = "-L$(NCAR_LDFLAGS_HDF5)"
-        #    hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
-        #    case.set_value("CAM_LINKED_LIBS",
-        #                   case.get_value("CAM_LINKED_LIBS") + hdf5_link_opts)
-
-        # -------------------------------------------------------
         # build the library
         # -------------------------------------------------------
         complib = os.path.join(libroot, "libatm.a")
