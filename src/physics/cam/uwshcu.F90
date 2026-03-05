@@ -238,8 +238,8 @@ end subroutine uwshcu_readnl
     integer , intent(in)    :: pver
     integer , intent(in)    :: ncnst
     real(r8), intent(in)    :: dt                       !  Time step : 2*delta_t [ s ]
-    real(r8), intent(in)    :: ps0_inv(pcols,pver+1)       !  Environmental pressure at the interfaces [ Pa ]
-    real(r8), intent(in)    :: zs0_inv(pcols,pver+1)       !  Environmental height at the interfaces   [ m ]
+    real(r8), intent(in)    :: ps0_inv(pcols,pverp)       !  Environmental pressure at the interfaces [ Pa ]
+    real(r8), intent(in)    :: zs0_inv(pcols,pverp)       !  Environmental height at the interfaces   [ m ]
     real(r8), intent(in)    :: p0_inv(pcols,pver)          !  Environmental pressure at the layer mid-point [ Pa ]
     real(r8), intent(in)    :: z0_inv(pcols,pver)          !  Environmental height at the layer mid-point [ m ]
     real(r8), intent(in)    :: dp0_inv(pcols,pver)         !  Environmental layer pressure thickness [ Pa ] > 0.
@@ -252,10 +252,10 @@ end subroutine uwshcu_readnl
     real(r8), intent(in)    :: t0_inv(pcols,pver)          !  Environmental temperature [ K ]
     real(r8), intent(in)    :: s0_inv(pcols,pver)          !  Environmental dry static energy [ J/kg ]
     real(r8), intent(in)    :: tr0_inv(pcols,pver,ncnst)   !  Environmental tracers [ #, kg/kg ]
-    real(r8), intent(in)    :: tke_inv(pcols,pver+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
+    real(r8), intent(in)    :: tke_inv(pcols,pverp)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
     real(r8), intent(in)    :: pblh(pcols)                !  Height of PBL [ m ]
     real(r8), intent(inout) :: cush(pcols)                !  Convective scale height [ m ]
-    real(r8), intent(out)   :: umf_inv(pcols,pver+1)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
+    real(r8), intent(out)   :: umf_inv(pcols,pverp)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
     real(r8), intent(out)   :: sten_inv(pcols,pver)        !  Tendency of dry static energy [ J/kg/s ]
     real(r8), intent(out)   :: uten_inv(pcols,pver)        !  Tendency of zonal wind [ m/s2 ]
     real(r8), intent(out)   :: vten_inv(pcols,pver)        !  Tendency of meridional wind [ m/s2 ]
@@ -266,11 +266,11 @@ end subroutine uwshcu_readnl
     real(r8), intent(out)   :: snow(pcols)                !  Snow flux at the surface [ m/s ]
     real(r8), intent(out)   :: evapc_inv(pcols,pver)       !  Evaporation of precipitation [ kg/kg/s ]
     real(r8), intent(out)   :: rliq(pcols)                !  Vertical integral of tendency of detrained cloud condensate qc [ m/s ]
-    real(r8), intent(out)   :: slflx_inv(pcols,pver+1)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
-    real(r8), intent(out)   :: qtflx_inv(pcols,pver+1)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
-    real(r8), intent(out)   :: flxprc1_inv(pcols,pver+1)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
+    real(r8), intent(out)   :: slflx_inv(pcols,pverp)     !  Updraft liquid static energy flux [ J/kg * kg/m2/s ]
+    real(r8), intent(out)   :: qtflx_inv(pcols,pverp)     !  Updraft total water flux [ kg/kg * kg/m2/s ]
+    real(r8), intent(out)   :: flxprc1_inv(pcols,pverp)   ! uw grid-box mean rain+snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
-    real(r8), intent(out)   :: flxsnow1_inv(pcols,pver+1)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
+    real(r8), intent(out)   :: flxsnow1_inv(pcols,pverp)  ! uw grid-box mean snow flux (kg m^-2 s^-1)
                                                         ! for physics buffer calls in convect_shallow.F90
 
     real(r8), intent(out)   :: cufrc_inv(pcols,pver)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
@@ -287,23 +287,23 @@ end subroutine uwshcu_readnl
     character(len=512)   :: errmsg
     integer              :: errflg
 
-    ! Diagnostic interface fields (pcols, pver+1)
-    real(r8) :: uflx_diag(pcols, pver+1)
-    real(r8) :: vflx_diag(pcols, pver+1)
-    real(r8) :: ufrc_diag(pcols, pver+1)
-    real(r8) :: wu_diag(pcols, pver+1)
-    real(r8) :: qtu_diag(pcols, pver+1)
-    real(r8) :: thlu_diag(pcols, pver+1)
-    real(r8) :: thvu_diag(pcols, pver+1)
-    real(r8) :: uu_diag(pcols, pver+1)
-    real(r8) :: vu_diag(pcols, pver+1)
-    real(r8) :: qtu_emf_diag(pcols, pver+1)
-    real(r8) :: thlu_emf_diag(pcols, pver+1)
-    real(r8) :: uu_emf_diag(pcols, pver+1)
-    real(r8) :: vu_emf_diag(pcols, pver+1)
-    real(r8) :: uemf_diag(pcols, pver+1)
-    real(r8) :: flxrain_diag(pcols, pver+1)
-    real(r8) :: flxsnow_diag(pcols, pver+1)
+    ! Diagnostic interface fields (pcols, pverp)
+    real(r8) :: uflx_diag(pcols, pverp)
+    real(r8) :: vflx_diag(pcols, pverp)
+    real(r8) :: ufrc_diag(pcols, pverp)
+    real(r8) :: wu_diag(pcols, pverp)
+    real(r8) :: qtu_diag(pcols, pverp)
+    real(r8) :: thlu_diag(pcols, pverp)
+    real(r8) :: thvu_diag(pcols, pverp)
+    real(r8) :: uu_diag(pcols, pverp)
+    real(r8) :: vu_diag(pcols, pverp)
+    real(r8) :: qtu_emf_diag(pcols, pverp)
+    real(r8) :: thlu_emf_diag(pcols, pverp)
+    real(r8) :: uu_emf_diag(pcols, pverp)
+    real(r8) :: vu_emf_diag(pcols, pverp)
+    real(r8) :: uemf_diag(pcols, pverp)
+    real(r8) :: flxrain_diag(pcols, pverp)
+    real(r8) :: flxsnow_diag(pcols, pverp)
 
     ! Diagnostic midpoint fields (pcols, pver)
     real(r8) :: qvten_diag(pcols, pver)
@@ -408,8 +408,8 @@ end subroutine uwshcu_readnl
       dt            = dt,                               &
       const_props   = ccpp_const_props,                 &
       qmin          = qmin(:ncnst),                     &
-      pint          = ps0_inv(:ncol, :pver+1),          &
-      zi            = zs0_inv(:ncol, :pver+1),          &
+      pint          = ps0_inv(:ncol, :pverp),          &
+      zi            = zs0_inv(:ncol, :pverp),          &
       pmid          = p0_inv(:ncol, :pver),             &
       zm            = z0_inv(:ncol, :pver),             &
       pdel          = dp0_inv(:ncol, :pver),            &
@@ -422,14 +422,14 @@ end subroutine uwshcu_readnl
       t             = t0_inv(:ncol, :pver),             &
       s             = s0_inv(:ncol, :pver),             &
       tr0           = tr0_inv(:ncol, :pver, 1:ncnst),   &
-      tke           = tke_inv(:ncol, :pver+1),          &
+      tke           = tke_inv(:ncol, :pverp),          &
       pblh          = pblh(:ncol),                      &
       cush          = cush(:ncol),                      & ! inout; below output:
-      cmfmc_sh      = umf_inv(:ncol, :pver+1),          &
-      slflx         = slflx_inv(:ncol, :pver+1),        &
-      qtflx         = qtflx_inv(:ncol, :pver+1),        &
-      flxprc_sh     = flxprc1_inv(:ncol, :pver+1),      &
-      flxsnw_sh     = flxsnow1_inv(:ncol, :pver+1),     &
+      cmfmc_sh      = umf_inv(:ncol, :pverp),          &
+      slflx         = slflx_inv(:ncol, :pverp),        &
+      qtflx         = qtflx_inv(:ncol, :pverp),        &
+      flxprc_sh     = flxprc1_inv(:ncol, :pverp),      &
+      flxsnw_sh     = flxsnow1_inv(:ncol, :pverp),     &
       sten          = sten_inv(:ncol, :pver),           &
       uten          = uten_inv(:ncol, :pver),           &
       vten          = vten_inv(:ncol, :pver),           &
@@ -590,7 +590,7 @@ end subroutine uwshcu_readnl
      call outfld( 'thlu_emf_Cu'     , thlu_emf_diag(:ncol,:),      ncol, lchnk )
      call outfld( 'uu_emf_Cu'       , uu_emf_diag(:ncol,:),        ncol, lchnk )
      call outfld( 'vu_emf_Cu'       , vu_emf_diag(:ncol,:),        ncol, lchnk )
-     call outfld( 'umf_Cu'          , umf_inv(:ncol,:pver),        ncol, lchnk )
+     call outfld( 'umf_Cu'          , umf_inv(:ncol,:pverp),        ncol, lchnk )
      call outfld( 'uemf_Cu'         , uemf_diag(:ncol,:),          ncol, lchnk )
 
      ! --- In-cumulus cloud properties at midpoints ---

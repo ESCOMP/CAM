@@ -6,7 +6,6 @@
 ! Original author: Sungsu Park, Oct 2005, May 2008.
 ! CCPPized: Haipeng Lin, Feb 2026.
 module uw_convect_shallow
-
   use ccpp_kinds, only: kind_phys
 
   implicit none
@@ -16,22 +15,24 @@ module uw_convect_shallow
   public :: uw_convect_shallow_run
 
   real(kind_phys), parameter :: unset_kind_phys = huge(1.0_kind_phys)
-  real(kind_phys)            :: xlv                            !  Latent heat of vaporization
-  real(kind_phys)            :: xlf                            !  Latent heat of fusion
-  real(kind_phys)            :: xls                            !  Latent heat of sublimation = xlv + xlf
-  real(kind_phys)            :: cp                             !  Specific heat of dry air
-  real(kind_phys)            :: zvir                           !  rh2o/rair - 1
-  real(kind_phys)            :: r                              !  Gas constant for dry air
-  real(kind_phys)            :: g                              !  Gravitational constant
-  real(kind_phys)            :: ep2                            !  mol wgt water vapor / mol wgt dry air
-  real(kind_phys)            :: p00                            !  Reference pressure for exner function
-  real(kind_phys)            :: rovcp                          !  R/cp
+  real(kind_phys)            :: xlv           ! Latent heat of vaporization
+  real(kind_phys)            :: xlf           ! Latent heat of fusion
+  real(kind_phys)            :: xls           ! Latent heat of sublimation = xlv + xlf
+  real(kind_phys)            :: cp            ! Specific heat of dry air
+  real(kind_phys)            :: zvir          ! rh2o/rair - 1
+  real(kind_phys)            :: r             ! Gas constant for dry air
+  real(kind_phys)            :: g             ! Gravitational constant
+  real(kind_phys)            :: ep2           ! mol wgt water vapor / mol wgt dry air
+  real(kind_phys)            :: p00           ! Reference pressure for exner function
+  real(kind_phys)            :: rovcp         ! R/cp
 
   ! Tuning parameters set via namelist
-  real(kind_phys) :: rpen  = unset_kind_phys                   !  For penetrative entrainment efficiency
+  real(kind_phys) :: rpen  = unset_kind_phys  ! For penetrative entrainment efficiency
 
 contains
 
+!> \section arg_table_uw_convect_shallow_init Argument Table
+!! \htmlinclude uw_convect_shallow_init.html
   subroutine uw_convect_shallow_init( &
     masterproc, iulog, &
     rpen_in, &
@@ -41,13 +42,13 @@ contains
     logical, intent(in) :: masterproc
     integer, intent(in) :: iulog
     real(kind_phys), intent(in) :: rpen_in
-    real(kind_phys), intent(in) :: xlv_in     !  Latent heat of vaporization
-    real(kind_phys), intent(in) :: xlf_in     !  Latent heat of fusion
-    real(kind_phys), intent(in) :: cp_in      !  Specific heat of dry air
-    real(kind_phys), intent(in) :: zvir_in    !  rh2o/rair - 1
-    real(kind_phys), intent(in) :: r_in       !  Gas constant for dry air
-    real(kind_phys), intent(in) :: g_in       !  Gravitational constant
-    real(kind_phys), intent(in) :: ep2_in     !  mol wgt water vapor / mol wgt dry air
+    real(kind_phys), intent(in) :: xlv_in     ! Latent heat of vaporization
+    real(kind_phys), intent(in) :: xlf_in     ! Latent heat of fusion
+    real(kind_phys), intent(in) :: cp_in      ! Specific heat of dry air
+    real(kind_phys), intent(in) :: zvir_in    ! rh2o/rair - 1
+    real(kind_phys), intent(in) :: r_in       ! Gas constant for dry air
+    real(kind_phys), intent(in) :: g_in       ! Gravitational constant
+    real(kind_phys), intent(in) :: ep2_in     ! mol wgt water vapor / mol wgt dry air
 
     character(len=512), intent(out) :: errmsg
     integer, intent(out) :: errflg
@@ -206,8 +207,8 @@ contains
     real(kind_phys),    intent(out)   :: sh_e_ed_ratio(:, :) ! Shallow convection entrainment / (entrainment + detrainment) ratio [fraction]
 
     ! Diagnostic interface fields (ncol, pver+1), model ordering 1=TOA
-    real(kind_phys),    intent(out)   :: uflx_diag(:, :)        ! Zonal momentum flux [m s-1 kg m-2 s-1]
-    real(kind_phys),    intent(out)   :: vflx_diag(:, :)        ! Meridional momentum flux [m s-1 kg m-2 s-1]
+    real(kind_phys),    intent(out)   :: uflx_diag(:, :)        ! Zonal momentum flux [kg m-1 s-2]
+    real(kind_phys),    intent(out)   :: vflx_diag(:, :)        ! Meridional momentum flux [kg m-1 s-2]
     real(kind_phys),    intent(out)   :: ufrc_diag(:, :)        ! Updraft fractional area [fraction]
     real(kind_phys),    intent(out)   :: wu_diag(:, :)          ! Updraft vertical velocity [m s-1]
     real(kind_phys),    intent(out)   :: qtu_diag(:, :)         ! Updraft total water [kg kg-1]
@@ -443,7 +444,7 @@ contains
       cinh_out        = cinh_diag,           &
       ufrcinvbase_out = ufrcinvbase_diag,    &
       ufrclcl_out     = ufrclcl_diag,        &
-      winvbase_out    = winvbase_diag,        &
+      winvbase_out    = winvbase_diag,       &
       wlcl_out        = wlcl_diag,           &
       plcl_out        = plcl_diag,           &
       pinv_out        = pinv_diag,           &
@@ -467,15 +468,15 @@ contains
       thvu_out        = thvu_diag,           &
       uu_out          = uu_diag,             &
       vu_out          = vu_diag,             &
-      qtu_emf_out     = qtu_emf_diag,       &
+      qtu_emf_out     = qtu_emf_diag,        &
       thlu_emf_out    = thlu_emf_diag,       &
-      uu_emf_out      = uu_emf_diag,        &
-      vu_emf_out      = vu_emf_diag,        &
-      uemf_out        = uemf_diag,          &
+      uu_emf_out      = uu_emf_diag,         &
+      vu_emf_out      = vu_emf_diag,         &
+      uemf_out        = uemf_diag,           &
       dwten_out       = dwten_diag,          &
       diten_out       = diten_diag,          &
       flxrain_out     = flxrain_diag,        &
-      flxsnow_out     = flxsnow_diag,       &
+      flxsnow_out     = flxsnow_diag,        &
       ntraprd_out     = ntraprd_diag,        &
       ntsnprd_out     = ntsnprd_diag,        &
       excessu_arr_out = excessu_arr_diag,    &
@@ -486,10 +487,10 @@ contains
       cquad_arr_out   = cquad_arr_diag,      &
       bogbot_arr_out  = bogbot_arr_diag,     &
       bogtop_arr_out  = bogtop_arr_diag,     &
-      exit_UWCu       = exit_UWCu_diag,     &
+      exit_UWCu       = exit_UWCu_diag,      &
       exit_conden     = exit_conden_diag,    &
-      exit_klclmkx    = exit_klclmkx_diag,  &
-      exit_klfcmkx    = exit_klfcmkx_diag,  &
+      exit_klclmkx    = exit_klclmkx_diag,   &
+      exit_klfcmkx    = exit_klfcmkx_diag,   &
       exit_ufrc       = exit_ufrc_diag,      &
       exit_wtw        = exit_wtw_diag,       &
       exit_drycore    = exit_drycore_diag,   &
@@ -682,8 +683,8 @@ contains
     real(kind_phys), intent(out)   :: evapc_out(mix, mkx)             ! Tendency of evaporation of precipitation [ kg/kg/s ]
     real(kind_phys), intent(out)   :: slflx_out(mix, 0:mkx)           ! Updraft/pen.entrainment liquid static energy flux [ J/kg * kg/m2/s ]
     real(kind_phys), intent(out)   :: qtflx_out(mix, 0:mkx)           ! updraft/pen.entrainment total water flux [ kg/kg * kg/m2/s ]
-    real(kind_phys), intent(out)   :: flxprc1_out(mix, 0:mkx)         ! recip (rain+snow) flux
-    real(kind_phys), intent(out)   :: flxsnow1_out(mix, 0:mkx)        ! now flux
+    real(kind_phys), intent(out)   :: flxprc1_out(mix, 0:mkx)         ! Precipitation (rain+snow) flux at interfaces [kg m-2 s-1]
+    real(kind_phys), intent(out)   :: flxsnow1_out(mix, 0:mkx)        ! Snow flux at interfaces [kg m-2 s-1]
     real(kind_phys), intent(out)   :: cufrc_out(mix, mkx)             ! Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
     real(kind_phys), intent(out)   :: qcu_out(mix, mkx)               ! Condensate water specific humidity within cumulus updraft [ kg/kg ]
     real(kind_phys), intent(out)   :: qlu_out(mix, mkx)               ! Liquid water specific humidity within cumulus updraft [ kg/kg ]
@@ -696,10 +697,7 @@ contains
     real(kind_phys), intent(out)   :: fer_out(mix, mkx)               ! Fractional lateral entrainment rate [Pa-1]
     real(kind_phys), intent(out)   :: fdr_out(mix, mkx)               ! Fractional lateral detrainment rate [Pa-1]
 
-    ! Diagnostic output variables
-    ! TODO (hplin) -- investigate the vertical indexing here if already at model level (1 = TOA) and why indexing starts from zero
-    !  then we need to "bubble up" these as outputs from the run phase for diagnostic output, into proper 1=TOA indices
-
+    ! Diagnostic output variables:
     ! Diagnostic interface fields (on model interfaces, 1=TOA)
     real(kind_phys), intent(out) :: uflx_out(mix, mkx+1)       ! Zonal momentum flux [m s-1 kg m-2 s-1]
     real(kind_phys), intent(out) :: vflx_out(mix, mkx+1)       ! Meridional momentum flux [m s-1 kg m-2 s-1]
@@ -901,11 +899,11 @@ contains
 
     !----- Variables describing cumulus updraft
     real(kind_phys) :: wu(0:mkx)             ! Updraft vertical velocity at the interface [ m/s ]
-    real(kind_phys) :: thlu(0:mkx)           ! Updraft liquid potential temperature at the interface [ K ]
-    real(kind_phys) :: qtu(0:mkx)            ! Updraft total specific humidity at the interface [ kg/kg ]
-    real(kind_phys) :: uu(0:mkx)             ! Updraft zonal wind at the interface [ m/s ]
-    real(kind_phys) :: vu(0:mkx)             ! Updraft meridional wind at the interface [ m/s ]
-    real(kind_phys) :: thvu(0:mkx)           ! Updraft virtual potential temperature at the interface [ m/s ]
+    real(kind_phys) :: thlu(0:mkx)           ! Updraft liquid potential temperature at the interface [K]
+    real(kind_phys) :: qtu(0:mkx)            ! Updraft total specific humidity at the interface [kg kg-1]
+    real(kind_phys) :: uu(0:mkx)             ! Updraft zonal wind at the interface [m s-1]
+    real(kind_phys) :: vu(0:mkx)             ! Updraft meridional wind at the interface [m s-1]
+    real(kind_phys) :: thvu(0:mkx)           ! Updraft virtual potential temperature at the interface [K]
     real(kind_phys) :: rei(mkx)              ! Updraft fractional mixing rate with the environment [ 1/Pa ]
     real(kind_phys) :: tru(0:mkx, ncnst)     ! Updraft tracers [ #, kg/kg ]
 
@@ -1028,7 +1026,7 @@ contains
     real(kind_phys), dimension(0:mkx)       :: umf_s, slflx_s, qtflx_s, ufrc_s, uflx_s, vflx_s
     real(kind_phys)                         :: cush_s, precip_s, snow_s, cin_s, rliq_s, cbmf_s, cnt_s, cnb_s
     real(kind_phys)                         :: cin_i, cin_f, del_CIN, ke, alpha
-    real(kind_phys)                         :: cinlcl_i, del_cinlcl
+    real(kind_phys)                         :: cinlcl_i
     integer                          :: iter
 
     real(kind_phys), dimension(mkx, ncnst)   :: trten_s
@@ -1036,7 +1034,6 @@ contains
     !----- Variables for temporary storages
     real(kind_phys), dimension(mkx)         :: qv0_o, ql0_o, qi0_o, t0_o, s0_o, u0_o, v0_o
     real(kind_phys), dimension(mkx)         :: qt0_o, thl0_o, thvl0_o, &
-                                               sten_o, &
                                                thv0bot_o, thv0top_o, thvl0bot_o, thvl0top_o, &
                                                ssthl0_o, ssqt0_o, ssu0_o, ssv0_o
     real(kind_phys)                         :: tkeavg_o, thvlmin_o, qtsrc_o, thvlsrc_o, thlsrc_o, &
@@ -1045,8 +1042,7 @@ contains
     integer                          :: kinv_o, klcl_o, klfc_o
 
     real(kind_phys), dimension(mkx, ncnst)   :: tr0_o
-    real(kind_phys), dimension(mkx, ncnst)   :: trten_o, sstr0_o
-    real(kind_phys), dimension(0:mkx, ncnst) :: trflx_o
+    real(kind_phys), dimension(mkx, ncnst)   :: sstr0_o
     real(kind_phys), dimension(ncnst)       :: trsrc_o
 
     ! constituent indices
@@ -1240,8 +1236,8 @@ contains
     diten_out(:iend, :mkx) = 0.0_kind_phys
     flxrain_out(:iend, :mkx+1) = 0.0_kind_phys
     flxsnow_out(:iend, :mkx+1) = 0.0_kind_phys
-    ntraprd_out(:iend, mkx) = 0.0_kind_phys
-    ntsnprd_out(:iend, mkx) = 0.0_kind_phys
+    ntraprd_out(:iend, :mkx) = 0.0_kind_phys
+    ntsnprd_out(:iend, :mkx) = 0.0_kind_phys
 
     excessu_arr_out(:iend, :mkx) = 0.0_kind_phys
     excess0_arr_out(:iend, :mkx) = 0.0_kind_phys
@@ -4545,7 +4541,7 @@ contains
   !                                !
   ! ------------------------------ !
 
-  subroutine getbuoy(pbot, thv0bot, ptop, thv0top, thvubot, thvutop, plfc, cin)
+  pure subroutine getbuoy(pbot, thv0bot, ptop, thv0top, thvubot, thvutop, plfc, cin)
     ! ----------------------------------------------------------- !
     ! Subroutine to calculate integrated CIN [ J/kg = m2/s2 ] and !
     ! 'cinlcl, plfc' if any. Assume 'thv' is linear in each layer !
@@ -4555,7 +4551,10 @@ contains
     ! different from 'single_cin' below, where both positive  and !
     ! negative CIN are included.                                  !
     ! ----------------------------------------------------------- !
-    real(kind_phys) pbot, thv0bot, ptop, thv0top, thvubot, thvutop, plfc, cin, frc
+    real(kind_phys), intent(in)  :: pbot, thv0bot, ptop, thv0top, thvubot, thvutop
+    real(kind_phys), intent(out) :: plfc
+    real(kind_phys), intent(out) :: cin
+    real(kind_phys) :: frc
 
     if (thvubot .gt. thv0bot .and. thvutop .gt. thv0top) then
       plfc = pbot
@@ -4573,21 +4572,18 @@ contains
       cin = cin - (thvubot/thv0bot - 1._kind_phys)*(pbot - plfc)/ &
             (pbot/(r*thv0bot*exnf(pbot)) + ptop/(r*thv0top*exnf(ptop)))
     end if
-
-    return
   end subroutine getbuoy
 
-  function single_cin(pbot, thv0bot, ptop, thv0top, thvubot, thvutop)
+  pure function single_cin(pbot, thv0bot, ptop, thv0top, thvubot, thvutop)
     ! ------------------------------------------------------- !
     ! Function to calculate a single layer CIN by summing all !
     ! positive and negative CIN.                              !
     ! ------------------------------------------------------- !
     real(kind_phys) :: single_cin
-    real(kind_phys) pbot, thv0bot, ptop, thv0top, thvubot, thvutop
+    real(kind_phys), intent(in) :: pbot, thv0bot, ptop, thv0top, thvubot, thvutop
 
     single_cin = ((1._kind_phys - thvubot/thv0bot) + (1._kind_phys - thvutop/thv0top))*(pbot - ptop)/ &
                  (pbot/(r*thv0bot*exnf(pbot)) + ptop/(r*thv0top*exnf(ptop)))
-    return
   end function single_cin
 
   ! Calculate thermodynamic properties from a given set of ( p, thl, qt )
@@ -4603,7 +4599,7 @@ contains
     real(kind_phys), intent(out) :: qi
     real(kind_phys), intent(out) :: rvls
     integer, intent(out) :: id_check
-    real(kind_phys)              :: tc, temps, t
+    real(kind_phys)              :: tc, temps
     real(kind_phys)              :: leff, nu, qc
     integer               :: iteration
     real(kind_phys)              :: es              ! Saturation vapor pressure
@@ -4651,11 +4647,9 @@ contains
         id_check = 0
       end if
     end if
-
-    return
   end subroutine conden
 
-  subroutine roots(a, b, c, r1, r2, status)
+  pure subroutine roots(a, b, c, r1, r2, status)
     ! --------------------------------------------------------- !
     ! Subroutine to solve the second order polynomial equation. !
     ! I should check this subroutine later.                     !
@@ -4695,8 +4689,6 @@ contains
         end if
       end if
     end if
-
-    return
   end subroutine roots
 
   ! Function performing profile reconstruction of conservative scalars
@@ -4704,7 +4696,7 @@ contains
   ! UW-PBL scheme but from bottom to top layer here.
   ! At the lowest layer near to surface, slope is defined using the two lowest layer
   ! mid-point values.
-  function slope(mkx, field, p0)
+  pure function slope(mkx, field, p0)
     integer, intent(in) :: mkx
     real(kind_phys)             :: slope(mkx)
     real(kind_phys), intent(in) :: field(mkx)
