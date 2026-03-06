@@ -1,5 +1,124 @@
 ===============================================================
 
+Tag name: cam6_4_156
+Originator(s): fvitt, tilmes
+Date: 6 Mar 2026
+One-line Summary: Fix issue with prescribed volcanic aerosols
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1495
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Fix issue with 5th mode of the prescribed volcanic sulfate.
+ Issue #1494
+
+ Update IC file for B1850C_MTt4s compset.
+ Issue #1493
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+ - update prescribed ozone and strataero inputs
+ - set rad_climate to include VOLC_MMR5 (prescrided 5th mode of volcanic sulfate)
+   and use corrected physprop file for VOLC_MMR5
+
+M       bld/namelist_files/use_cases/1850_trop_strat_t4s_cam7.xml
+ - update IC file (to include O2)
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_cam7_presc_volc/user_nl_cam
+ - set rad_climate to include VOLC_MMR5 (prescrided 5th mode of volcanic sulfate)
+ - use corrected physprop file for VOLC_MMR5
+
+M       src/chemistry/modal_aero/aero_model.F90
+ - output diameters of all 5 modes when history_cesm_forcing is TRUE
+
+M       src/chemistry/mozart/mo_chm_diags.F90
+ - output so4 of the 5th mode when history_cesm_forcing is TRUE
+
+M       src/physics/cam/aerosol_optics_cam.F90
+ - use correct radius (5th mode) for VOLC_MMR5
+ - call output_bin_diags for BAM aerosols (more diagnistcis)
+
+M       src/physics/cam/phys_prop.F90
+ - add volcanic_radius5 to the list of valid optics methods
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
+   - pre-existing failure
+      ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
+      
+  DIFF ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s
+   - expected difference due to corrections to prescribed volcanic aerosols
+
+  DIFF ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s
+   - difference only in AODVISstdn (now includes prescribed volcanic sulfate)
+     otherwise bit-for-bit unchanged
+
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  DIFF ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+  DIFF SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s
+  DIFF SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s
+   - default output now includes diameters all 5 modes (for history_cesm_forcing=.true.)
+     otherwise bit-for-bit unchanged
+
+  DIFF ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s
+  DIFF ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem  
+  DIFF SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
+
+izumi/gnu/aux_cam:
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags
+   - differences in fill patterns of AOD diags and other aerosol optics now includes
+     BAM aerosols, otherwise bit-for-bit unchanged
+  
+  DIFF ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf
+  DIFF SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
+
+  DIFF SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  DIFF SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee
+  DIFF SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s
+   - default output now includes diameters all 5 modes (for history_cesm_forcing=.true.)
+     otherwise bit-for-bit unchanged
+     
+Summarize any changes to answers:
+
+ larger than roundoff for F1850C_MTso compset, otherwise bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_155
 Originator(s): cacraig, jimmielin
 Date: Feb 24, 2026
