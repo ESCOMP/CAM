@@ -64,6 +64,7 @@ derecho/intel/aux_cam:
   FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
    - pre-existing failure
       ERI bug in CICE -- See: https://github.com/ESCOMP/CESM_CICE/issues/34
+      
   DIFF ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s
    - expected difference due to corrections to prescribed volcanic aerosols
 
@@ -85,38 +86,35 @@ derecho/intel/aux_cam:
 
   DIFF ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s
   DIFF ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h
-  - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
-
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
 
 derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem  
+  DIFF SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
 
 izumi/gnu/aux_cam:
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags
+   - differences in fill patterns of AOD diags and other aerosol optics now includes
+     BAM aerosols, otherwise bit-for-bit unchanged
+  
+  DIFF ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf
+  DIFF SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc
+   - differences in fill patterns of AOD diags, otherwise bit-for-bit unchanged
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
+  DIFF SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  DIFF SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee
+  DIFF SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s
+   - default output now includes diameters all 5 modes (for history_cesm_forcing=.true.)
+     otherwise bit-for-bit unchanged
+     
+Summarize any changes to answers:
 
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+ larger than roundoff for F1850C_MTso compset, otherwise bit-for-bit unchanged
 
 ===============================================================
 ===============================================================
