@@ -266,7 +266,7 @@
          write(iulog,*) 'ERROR: shallow convection scheme ', shallow_scheme, ' is incompatible with eddy scheme ', eddy_scheme
          call endrun( 'convect_shallow_init: shallow_scheme and eddy_scheme are incompatible' )
      endif
-     call init_uwshcu( r8, latvap, cpair, latice, zvir, rair, gravit, mwh2o/mwdry )
+     call init_uwshcu( r8, latvap, cpair, latice, zvir, rair, gravit, mwh2o, mwdry )
 
      tke_idx = pbuf_get_index('tke')
 
@@ -379,9 +379,6 @@
    real(r8) :: ntsnprd(pcols,pver)                                       ! Net snow   production in layer
    real(r8) :: tend_s_snwprd(pcols,pver)                                 ! Heating rate of snow production
    real(r8) :: tend_s_snwevmlt(pcols,pver)                               ! Heating rate of evap/melting of snow
-   real(r8) :: slflx(pcols,pverp)                                        ! Shallow convective liquid water static energy flux
-   real(r8) :: qtflx(pcols,pverp)                                        ! Shallow convective total water flux
-   real(r8) :: cmfdqs(pcols, pver)                                       ! Shallow convective snow production
    real(r8) :: zero(pcols)                                               ! Array of zeros
    real(r8) :: cbmf(pcols)                                               ! Shallow cloud base mass flux [ kg/s/m2 ]
    real(r8) :: freqsh(pcols)                                             ! Frequency of shallow convection occurence
@@ -504,10 +501,7 @@
       ptend_loc%q = 0._r8
       ptend_loc%s = 0._r8
       rprdsh      = 0._r8
-      cmfdqs      = 0._r8
       precc       = 0._r8
-      slflx       = 0._r8
-      qtflx       = 0._r8
       icwmr       = 0._r8
       rliq2       = 0._r8
       qc2         = 0._r8
@@ -579,16 +573,15 @@
            pblh           = pblh,                            &
            cush           = cush,                            &
            umf_inv        = cmfmc2,                          &
-           slflx_inv      = slflx,                           &
-           qtflx_inv      = qtflx,                           &
+           slflx_inv      = cmfsl,                           &
+           qtflx_inv      = cmflq,                           &
            flxprc1_inv    = flxprec,                         &
            flxsnow1_inv   = flxsnow,                         &
            sten_inv       = ptend_loc%s,                     &
            uten_inv       = ptend_loc%u,                     &
            vten_inv       = ptend_loc%v,                     &
            trten_inv      = ptend_tracer,                    &
-           qrten_inv      = rprdsh,                          &
-           qsten_inv      = cmfdqs,                          &
+           cmfdqr         = rprdsh,                          &
            precip         = precc,                           &
            snow           = snow,                            &
            evapc_inv      = evapcsh,                         &
@@ -606,12 +599,10 @@
            sh_e_ed_ratio  = sh_e_ed_ratio)
 
       ! --------------------------------------------------------------------- !
-      ! Here, 'rprdsh = qrten', 'cmfdqs = qsten' both in unit of [ kg/kg/s ]  !
       ! In addition, define 'icwmr' which includes both liquid and ice.       !
       ! --------------------------------------------------------------------- !
 
       icwmr(:ncol,:)  = iccmr_UW(:ncol,:)
-      rprdsh(:ncol,:) = rprdsh(:ncol,:) + cmfdqs(:ncol,:)
       do m = 1, pcnst
          ptend_loc%q(:ncol,:pver,m) = ptend_tracer(:ncol,:pver,m)
       enddo
@@ -640,13 +631,6 @@
       !  endif
       !  enddo
       !  enddo
-
-      ! ------------------------------------------------- !
-      ! Convective fluxes of 'sl' and 'qt' in energy unit !
-      ! ------------------------------------------------- !
-
-      cmfsl(:ncol,:) = slflx(:ncol,:)
-      cmflq(:ncol,:) = qtflx(:ncol,:) * latvap
 
       call outfld( 'PRECSH' , precc  , pcols, lchnk )
 

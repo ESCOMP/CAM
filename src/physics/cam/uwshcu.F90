@@ -71,8 +71,7 @@ end subroutine uwshcu_readnl
 
 !===============================================================================
 
-  subroutine init_uwshcu( kind, xlv_in, cp_in, xlf_in, zvir_in, r_in, g_in, ep2_in )
-
+  subroutine init_uwshcu( kind, xlv_in, cp_in, xlf_in, zvir_in, r_in, g_in, mwh2o_in, mwdry_in )
     !------------------------------------------------------------- ! 
     ! Purpose:                                                     !
     ! Initialize key constants for the shallow convection package. !
@@ -89,12 +88,14 @@ end subroutine uwshcu_readnl
     real(r8), intent(in) :: zvir_in    !  rh2o/rair - 1
     real(r8), intent(in) :: r_in       !  Gas constant for dry air
     real(r8), intent(in) :: g_in       !  Gravitational constant
-    real(r8), intent(in) :: ep2_in     !  mol wgt water vapor / mol wgt dry air 
+    real(r8), intent(in) :: mwh2o_in
+    real(r8), intent(in) :: mwdry_in
 
     character(len=*), parameter :: subname = 'init_uwshcu'
 
     character(len=512)   :: errmsg
     integer              :: errflg
+    logical :: dummy_shfrc
 
     ! ------------------------- !
     ! Internal Output Variables !
@@ -204,7 +205,7 @@ end subroutine uwshcu_readnl
     endif
 
     ! call the underlying CCPPized subroutine
-    call uw_convect_shallow_init(masterproc, iulog, rpen, xlv_in, cp_in, xlf_in, zvir_in, r_in, g_in, ep2_in, errmsg, errflg)
+    call uw_convect_shallow_init(masterproc, iulog, rpen, xlv_in, cp_in, xlf_in, zvir_in, r_in, g_in, mwh2o_in, mwdry_in, dummy_shfrc, errmsg, errflg)
 
     if(errflg /= 0) then
       call endrun(subname//': '//errmsg)
@@ -220,7 +221,8 @@ end subroutine uwshcu_readnl
                         umf_inv  , slflx_inv  , qtflx_inv     ,                         &
                         flxprc1_inv, flxsnow1_inv,                 &
                         sten_inv , uten_inv   , vten_inv      , trten_inv ,             &
-                        qrten_inv, qsten_inv  , precip        , snow      , evapc_inv,  &
+                        cmfdqr, &
+                        precip        , snow      , evapc_inv,  &
                         cufrc_inv, qcu_inv    , qlu_inv       , qiu_inv   ,             &
                         cbmf     , qc_inv     , rliq          ,                         &
                         cnt_inv  , cnb_inv    , lchnk         , dpdry0_inv,             &
@@ -231,6 +233,7 @@ end subroutine uwshcu_readnl
     use constituents,    only: qmin
 
     use uw_convect_shallow, only: uw_convect_shallow_run
+    use physconst, only: latvap
 
     integer , intent(in)    :: pcols
     integer , intent(in)    :: lchnk
@@ -260,8 +263,7 @@ end subroutine uwshcu_readnl
     real(r8), intent(out)   :: uten_inv(pcols,pver)        !  Tendency of zonal wind [ m/s2 ]
     real(r8), intent(out)   :: vten_inv(pcols,pver)        !  Tendency of meridional wind [ m/s2 ]
     real(r8), intent(out)   :: trten_inv(pcols,pver,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
-    real(r8), intent(out)   :: qrten_inv(pcols,pver)       !  Tendency of rain water specific humidity [ kg/kg/s ]
-    real(r8), intent(out)   :: qsten_inv(pcols,pver)       !  Tendency of snow specific humidity [ kg/kg/s ]
+    real(r8), intent(out)   :: cmfdqr(pcols,pver)         !  Tendency of precipitation w.r.t. water vapor [ kg/kg/s ]
     real(r8), intent(out)   :: precip(pcols)              !  Precipitation ( rain + snow ) flux at the surface [ m/s ]
     real(r8), intent(out)   :: snow(pcols)                !  Snow flux at the surface [ m/s ]
     real(r8), intent(out)   :: evapc_inv(pcols,pver)       !  Evaporation of precipitation [ kg/kg/s ]
@@ -287,6 +289,10 @@ end subroutine uwshcu_readnl
     character(len=512)   :: errmsg
     integer              :: errflg
 
+    ! integer output indices for ccppized scheme to be converted to real for CAM
+    integer :: cnt_out(pcols)
+    integer :: cnb_out(pcols)
+
     ! Diagnostic interface fields (pcols, pverp)
     real(r8) :: uflx_diag(pcols, pverp)
     real(r8) :: vflx_diag(pcols, pverp)
@@ -310,6 +316,8 @@ end subroutine uwshcu_readnl
     real(r8) :: qlten_diag(pcols, pver)
     real(r8) :: qiten_diag(pcols, pver)
     real(r8) :: qtten_diag(pcols, pver)
+    real(r8) :: qrten_inv(pcols,pver)       !  Tendency of rain water specific humidity [ kg/kg/s ]
+    real(r8) :: qsten_inv(pcols,pver)       !  Tendency of snow specific humidity [ kg/kg/s ]
     real(r8) :: slten_diag(pcols, pver)
     real(r8) :: dwten_diag(pcols, pver)
     real(r8) :: diten_diag(pcols, pver)
@@ -382,6 +390,7 @@ end subroutine uwshcu_readnl
     uten_inv(:, :)      = 0.0_r8
     vten_inv(:, :)      = 0.0_r8
     trten_inv(:, :, :)  = 0.0_r8
+    cmfdqr(:, :)        = 0.0_r8
     qrten_inv(:, :)     = 0.0_r8
     qsten_inv(:, :)     = 0.0_r8
     precip(:)           = 0.0_r8
@@ -399,6 +408,8 @@ end subroutine uwshcu_readnl
     sh_e_ed_ratio(:, :) = 0.0_r8
     fer_out(:, :) = 0.0_r8
     fdr_out(:, :) = 0.0_r8
+    cnt_out(:) = 0
+    cnb_out(:) = 0
 
     ! call the underlying CCPPized subroutine (dechunkized)
     call uw_convect_shallow_run( &
@@ -426,14 +437,15 @@ end subroutine uwshcu_readnl
       pblh          = pblh(:ncol),                      &
       cush          = cush(:ncol),                      & ! inout; below output:
       cmfmc_sh      = umf_inv(:ncol, :pverp),          &
-      slflx         = slflx_inv(:ncol, :pverp),        &
-      qtflx         = qtflx_inv(:ncol, :pverp),        &
+      cmfsl         = slflx_inv(:ncol, :pverp),        &
+      cmflq         = qtflx_inv(:ncol, :pverp),        &
       flxprc_sh     = flxprc1_inv(:ncol, :pverp),      &
       flxsnw_sh     = flxsnow1_inv(:ncol, :pverp),     &
       sten          = sten_inv(:ncol, :pver),           &
       uten          = uten_inv(:ncol, :pver),           &
       vten          = vten_inv(:ncol, :pver),           &
       trten         = trten_inv(:ncol, :pver, 1:ncnst), &
+      cmfdqr        = cmfdqr(:ncol, :pver),             &
       qrten         = qrten_inv(:ncol, :pver),          &
       qsten         = qsten_inv(:ncol, :pver),          &
       precip_sh     = precip(:ncol),                    &
@@ -446,8 +458,8 @@ end subroutine uwshcu_readnl
       qc            = qc_inv(:ncol, :pver),             &
       cbmf          = cbmf(:ncol),                      &
       rliq          = rliq(:ncol),                      &
-      cnt           = cnt_inv(:ncol),                   &
-      cnb           = cnb_inv(:ncol),                   &
+      cnt           = cnt_out(:ncol),                   &
+      cnb           = cnb_out(:ncol),                   &
       sh_e_ed_ratio = sh_e_ed_ratio(:ncol, :pver),      &
       ! diagnostic outputs:
       uflx_diag            = uflx_diag(:ncol, :),            &
@@ -534,12 +546,16 @@ end subroutine uwshcu_readnl
          call endrun('uw_convect_shallow_run: ' // errmsg)
      end if
 
+     ! convert back to real for diagnostics
+     cnt_inv(:ncol) = real(cnt_out(:ncol), r8)
+     cnb_inv(:ncol) = real(cnb_out(:ncol), r8)
+
      ! ---------------------------------------- !
      ! Writing main diagnostic output variables !
      ! ---------------------------------------- !
 
      ! --- Fluxes at interfaces ---
-     call outfld( 'qtflx_Cu'        , qtflx_inv(:ncol,:),              ncol, lchnk )
+     call outfld( 'qtflx_Cu'        , qtflx_inv(:ncol,:) / latvap,              ncol, lchnk )
      call outfld( 'slflx_Cu'        , slflx_inv(:ncol,:),              ncol, lchnk )
      call outfld( 'uflx_Cu'         , uflx_diag(:ncol,:),          ncol, lchnk )
      call outfld( 'vflx_Cu'         , vflx_diag(:ncol,:),          ncol, lchnk )
