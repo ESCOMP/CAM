@@ -178,6 +178,9 @@ contains
     modal_active = nmodes>0
     carma_active = nbins>0
     bulk_active = nbulk_aerosols>0
+    if (masterproc) then
+       write(iulog,*) prefix,'nmodes,nbins,nbulk_aerosols: ',nmodes,nbins,nbulk_aerosols
+    end if
 
     ! count aerosol models
     if (modal_active) then
@@ -863,15 +866,19 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
-          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+
+             ! construct name of radius physics buffer field
              pbuf_fld = 'VOLC_RAD_GEOM '
              if (len_trim(opticstype)>15) then
                 pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
              endif
+
              ! get microphysical properties for volcanic aerosols
              idx = pbuf_get_index(pbuf_fld)
-             call pbuf_get_field(pbuf, idx, geometric_radius )
+             call pbuf_get_field(pbuf, idx, geometric_radius)
 
+             ! construct aerosol optics object
              aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
                   ibin, ncol, pver, geometric_radius(:ncol,:))
 
@@ -904,9 +911,7 @@ contains
                       ! ref: Fig. 1d of Jasper F. Kok et al. (2017),
                       ! Smaller desert dust cooling effect estimated from analysis of dust size and abundance
 
-                      if (.not.aeroprops%model_is('BAM')) then
-                         call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
-                      end if
+                      call update_diags( is_coarse_dust=coarse_dust_mode )  ! dopaer is updated in update_diags.
 
                       ! dmleung: update_diags updated dopaer(icol) as a diagnostic.
                       ! Aerosol optical and radiative properties are subsequently modified given dopaer update in update_diags.
@@ -941,9 +946,9 @@ contains
              bam_cnt = bam_cnt+1
              call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
                   list_idx, troplev)
-          else
-             call output_bin_diags()
-          end if
+          endif
+
+          call output_bin_diags()
 
        end do binloop
     end do aeromodel
@@ -1018,33 +1023,45 @@ contains
             case('dust')
                dustvol(icol) = vol(icol)
                burdendust(icol) = burdendust(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatdust(icol) = vol(icol) * specrefindex(iwav)%re
-               absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatdust(icol) = vol(icol) * specrefindex(iwav)%re
+                  absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrodust(icol)= vol(icol)*hygro_aer
             case('black-c')
                burdenbc(icol) = burdenbc(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatbc(icol) = vol(icol) * specrefindex(iwav)%re
-               absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatbc(icol) = vol(icol) * specrefindex(iwav)%re
+                  absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrobc(icol)= vol(icol)*hygro_aer
             case('sulfate')
                burdenso4(icol) = burdenso4(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
-               abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosulf(icol)= vol(icol)*hygro_aer
             case('p-organic')
                burdenpom(icol) = burdenpom(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatpom(icol) = vol(icol) * specrefindex(iwav)%re
-               abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatpom(icol) = vol(icol) * specrefindex(iwav)%re
+                  abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
+               end if
                hygropom(icol)= vol(icol)*hygro_aer
             case('s-organic')
                burdensoa(icol) = burdensoa(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
-               abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosoa(icol)= vol(icol)*hygro_aer
             case('seasalt')
                burdenseasalt(icol) = burdenseasalt(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
-               abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
+               if (associated(specrefindex)) then
+                  scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
+                  abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
+               end if
                hygrosslt(icol)= vol(icol)*hygro_aer
             end select
          end do
@@ -1129,21 +1146,20 @@ contains
             end if
             ! dmleung --
 
+            ! dmleung 20 Oct 2025 ++
+            ! Then, all these diagnostics are outputted based on the modified dust AOD.
+            ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the absorption diagnostics.
+            aodvis(icol) = aodvis(icol) + dopaer(icol)
+            aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+            absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
+            ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
+            asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
+            asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+            aodbin(icol) = aodbin(icol) + dopaer(icol)
 
          end if
-
-         ! dmleung 20 Oct 2025 ++
-         ! Then, all these diagnostics are outputted based on the modified dust AOD.
-         ! We simply apply dopaer/dopaer0 (>1 for coarse mode) to the absorption diagnostics.
-         aodvis(icol) = aodvis(icol) + dopaer(icol)
-         aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
-         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs(icol) * dopaer(icol)/dopaer0(icol) ! dmleung
-         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
-         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
-         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
-
-         aodbin(icol) = aodbin(icol) + dopaer(icol)
 
          if (ilev<=troplev(icol)) then
             aodvisst(icol) = aodvisst(icol) + dopaer(icol)
@@ -1433,15 +1449,19 @@ contains
           case('nonhygro', 'insoluble')
              aero_optics=>insoluble_aerosol_optics(aeroprops, aerostate, list_idx, ibin)
 
-          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+
+             ! construct name of radius physics buffer field
              pbuf_fld = 'VOLC_RAD_GEOM '
              if (len_trim(opticstype)>15) then
                 pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
              endif
+
              ! get microphysical properties for volcanic aerosols
              idx = pbuf_get_index(pbuf_fld)
-             call pbuf_get_field(pbuf, idx, geometric_radius )
+             call pbuf_get_field(pbuf, idx, geometric_radius)
 
+             ! construct aerosol optics object
              aero_optics=>volcrad_aerosol_optics(aeroprops, aerostate, list_idx, &
                   ibin, ncol, pver, geometric_radius(:ncol,:))
 

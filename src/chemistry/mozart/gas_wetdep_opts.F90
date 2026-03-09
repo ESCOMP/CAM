@@ -14,6 +14,7 @@ module gas_wetdep_opts
   implicit none
 
   character(len=16), protected :: gas_wetdep_list(pcnst) = ' '
+  character(len=16), protected :: gas_wetdep_ice_uptake_list(pcnst) = ' '
   character(len=3), protected :: gas_wetdep_method = 'MOZ'
   integer,          protected :: gas_wetdep_cnt = 0
 
@@ -38,6 +39,7 @@ contains
     integer :: unitn, i, ierr
 
     namelist /wetdep_inparm/ gas_wetdep_list
+    namelist /wetdep_inparm/ gas_wetdep_ice_uptake_list
     namelist /wetdep_inparm/ gas_wetdep_method
 
     if (masterproc) then
@@ -56,6 +58,7 @@ contains
 
 #ifdef SPMD
     call mpibcast (gas_wetdep_list, len(gas_wetdep_list(1))*pcnst, mpichar, 0, mpicom)
+    call mpibcast (gas_wetdep_ice_uptake_list, len(gas_wetdep_ice_uptake_list(1))*pcnst, mpichar, 0, mpicom)
     call mpibcast (gas_wetdep_method, len(gas_wetdep_method), mpichar, 0, mpicom)
 #endif
 

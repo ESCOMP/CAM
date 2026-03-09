@@ -137,6 +137,7 @@ logical              :: do_iss                       ! switch for implicit turbu
 logical              :: is_clubb_scheme = .false.
 logical              :: waccmx_mode = .false.
 logical              :: do_hb_above_clubb = .false.
+real(r8)             :: diff_sponge_fac
 
 contains
 
@@ -147,7 +148,7 @@ subroutine vd_readnl(nlfile)
 
   use namelist_utils,  only: find_group_name
   use units,           only: getunit, freeunit
-  use spmd_utils,      only: masterproc, masterprocid, mpi_logical, mpicom
+  use spmd_utils,      only: masterproc, masterprocid, mpi_logical, mpi_real8, mpicom
   use shr_log_mod,     only: errMsg => shr_log_errMsg
   use trb_mtn_stress_cam, only: trb_mtn_stress_readnl
   use beljaars_drag_cam, only: beljaars_drag_readnl
@@ -159,7 +160,7 @@ subroutine vd_readnl(nlfile)
   integer :: unitn, ierr
   character(len=*), parameter :: subname = 'vd_readnl'
 
-  namelist /vert_diff_nl/ diff_cnsrv_mass_check, do_iss
+  namelist /vert_diff_nl/ diff_cnsrv_mass_check, do_iss, diff_sponge_fac
   !-----------------------------------------------------------------------------
 
   if (masterproc) then
@@ -179,6 +180,8 @@ subroutine vd_readnl(nlfile)
   call mpi_bcast(diff_cnsrv_mass_check, 1, mpi_logical, masterprocid, mpicom, ierr)
   if (ierr /= 0) call endrun(errMsg(__FILE__, __LINE__)//" mpi_bcast error")
   call mpi_bcast(do_iss,                1, mpi_logical, masterprocid, mpicom, ierr)
+  if (ierr /= 0) call endrun(errMsg(__FILE__, __LINE__)//" mpi_bcast error")
+  call mpi_bcast(diff_sponge_fac,       1, mpi_real8, masterprocid, mpicom, ierr)
   if (ierr /= 0) call endrun(errMsg(__FILE__, __LINE__)//" mpi_bcast error")
 
   ! Get eddy_scheme setting from phys_control.
@@ -291,6 +294,7 @@ subroutine vertical_diffusion_init(pbuf2d)
     amIRoot  = masterproc, &
     iulog    = iulog, &
     ptop_ref = ptop_ref, &
+    diff_sponge_fac = diff_sponge_fac, &
     errmsg   = errmsg, &
     errflg   = errflg)
 
@@ -1409,6 +1413,7 @@ subroutine vertical_diffusion_tend( &
   call vertical_diffusion_sponge_layer_run( &
     ncol   = ncol,   &
     pverp  = pverp,  &
+    diff_sponge_fac = diff_sponge_fac, &
     kvm    = kvm,    & ! in/out
     errmsg = errmsg, &
     errflg = errflg)

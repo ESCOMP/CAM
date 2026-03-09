@@ -1411,7 +1411,7 @@ contains
     use dycore,             only: dycore_is
     use cam_control_mod,    only: aqua_planet
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_set
+    use clybryiy_fam,       only: clybryiy_fam_set
     use charge_neutrality,  only: charge_balance
     use qbo,                only: qbo_relax
     use iondrag,            only: iondrag_calc, do_waccm_ions
@@ -2073,7 +2073,7 @@ contains
 
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, cldliqini, cldiceini)
 
-    call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
     ! clean CARMA diagnostics object
     if (associated(carma_diags_obj)) then
@@ -2158,7 +2158,7 @@ contains
     use cloud_diagnostics, only: cloud_diagnostics_calc
     use perf_mod
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_adj
+    use clybryiy_fam,       only: clybryiy_fam_adj
     use clubb_intr,      only: clubb_tend_cam
     use sslt_rebin,      only: sslt_rebin_adv
     use tropopause,      only: tropopause_output
@@ -2337,16 +2337,16 @@ contains
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysbc (dycore?)")
 
-    call clybry_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
 
-    ! Since clybry_fam_adj operates directly on the tracers, and has no
+    ! Since clybryiy_fam_adj operates directly on the tracers, and has no
     ! physics_update call, re-run qneg3.
     call qneg3('TPHYSBCc',lchnk  ,ncol    ,pcols   ,pver    , &
          1, pcnst, qmin  ,state%q )
 
-    ! Validate output of clybry_fam_adj.
+    ! Validate output of clybryiy_fam_adj.
     if (state_debug_checks) &
-         call physics_state_check(state, name="clybry_fam_adj")
+         call physics_state_check(state, name="clybryiy_fam_adj")
 
     !
     ! Dump out "before physics" state
