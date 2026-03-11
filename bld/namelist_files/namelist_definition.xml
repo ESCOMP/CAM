@@ -3508,8 +3508,6 @@ Number of subcolumns in VAMP Generator
 Default: 10
 </entry>
 
-
-
 <!-- Moist Convection and Microphysics -->
 
 <entry id="deep_scheme" type="char*16" category="conv"
@@ -3677,6 +3675,33 @@ the zonally averaged zonal wind in the sponge layer.
 
 Default: 0.0
 </entry>
+
+<!-- MCSP nl added by KH -->
+
+<entry id="zmconv_MCSP_heat_coeff" type="real" category="conv"
+       group="zmconv_mcsp_nl" valid_values="" >
+MCSP heating coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="zmconv_MCSP_moisture_coeff" type="real" category="conv"
+       group="zmconv_mcsp_nl" valid_values="" >
+MCSP moistening coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="zmconv_MCSP_uwind_coeff" type="real" category="conv"
+       group="zmconv_mcsp_nl" valid_values="" >
+MCSP uwnd tendency coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="zmconv_MCSP_vwind_coeff" type="real" category="conv"
+       group="zmconv_mcsp_nl" valid_values="" >
+MCSP vwnd tendency coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
 
 <!-- CLUBB PBL Diff nl -->
 
