@@ -1080,24 +1080,25 @@ contains
             sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
                  hygrodust(icol) + hygrosslt(icol)
 
-            scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
-            absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
+            if (sumscat>0._r8 .and. sumabs>0._r8 .and. sumhygro>0._r8) then
+               scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
+               absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
 
-            scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
-            abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
+               scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
+               abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
 
-            scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
-            abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
+               scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
+               abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
 
-            scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
-            abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
+               scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
+               abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
 
-            scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
-            absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
+               scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
+               absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
 
-            scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
-            abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
-
+               scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
+               abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
+            endif
 
             aodabsbc(icol) = aodabsbc(icol) + absbc(icol)*dopaer(icol)*(1.0_r8-palb(icol))
 
