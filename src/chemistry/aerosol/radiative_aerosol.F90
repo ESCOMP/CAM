@@ -32,7 +32,6 @@ public :: rad_aer_get_info_by_mode, rad_aer_get_info_by_mode_spec
 public :: rad_aer_get_info_by_spectype
 public :: rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec
 public :: rad_aer_get_mode_idx, rad_aer_get_spec_idx
-public :: rad_aer_get_call_list
 public :: rad_aer_num_name
 public :: rad_aer_get_mode_props
 public :: rad_aer_get_props
@@ -574,21 +573,6 @@ function rad_aer_get_spec_idx(list_idx, mode_idx, spec_type) result(spec_idx)
    end do
 
 end function rad_aer_get_spec_idx
-
-!================================================================================================
-
-subroutine rad_aer_get_call_list(call_list)
-   use radiative_aerosol_definitions, only: N_DIAG, active_calls
-
-   ! Return info about which climate/diagnostic calculations are requested
-
-   ! Arguments
-   logical, intent(out) :: call_list(0:N_DIAG)
-   !-----------------------------------------------------------------------------
-
-   call_list(:) = active_calls(:)
-
-end subroutine rad_aer_get_call_list
 
 !================================================================================================
 

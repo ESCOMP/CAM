@@ -253,7 +253,6 @@ subroutine rad_cnst_get_aer_mmr_by_idx(list_idx, aer_idx, state, pbuf, mmr)
    real(r8),                    pointer    :: mmr(:,:)
 
    ! Local variables
-   integer :: lchnk
    integer :: idx
    character(len=1) :: source
    type(aerlist_t), pointer :: aerlist
@@ -266,8 +265,6 @@ subroutine rad_cnst_get_aer_mmr_by_idx(list_idx, aer_idx, state, pbuf, mmr)
       write(iulog,*) subname//': list_idx =', list_idx
       call endrun(subname//': list_idx out of bounds')
    endif
-
-   lchnk = state%lchnk
 
    ! Check for valid input aerosol index
    if (aer_idx < 1  .or.  aer_idx > aerlist%numaerosols) then
@@ -314,7 +311,6 @@ subroutine rad_cnst_get_mam_mmr_by_idx(list_idx, mode_idx, spec_idx, phase, stat
    ! Local variables
    integer :: m_idx
    integer :: idx
-   integer :: lchnk
    character(len=1) :: source
    type(modelist_t), pointer :: mlist
    character(len=*), parameter :: subname = 'rad_cnst_get_mam_mmr_by_idx'
@@ -353,8 +349,6 @@ subroutine rad_cnst_get_mam_mmr_by_idx(list_idx, mode_idx, spec_idx, phase, stat
       write(iulog,*) subname//': phase= ', phase
       call endrun(subname//': unrecognized phase; must be "a" or "c"')
    end if
-
-   lchnk = state%lchnk
 
    select case( source )
    case ('A')
@@ -569,7 +563,6 @@ subroutine rad_cnst_get_bin_mmr(list_idx, bin_idx, phase, state, pbuf, mmr)
    ! Local variables
    integer :: m_idx
    integer :: idx
-   integer :: lchnk
    character(len=1) :: source
    type(binlist_t), pointer :: slist
    character(len=*), parameter :: subname = 'rad_cnst_get_bin_mmr'
@@ -602,8 +595,6 @@ subroutine rad_cnst_get_bin_mmr(list_idx, bin_idx, phase, state, pbuf, mmr)
       write(iulog,*) subname//': phase= ', phase
       call endrun(subname//': unrecognized phase; must be "a" or "c"')
    end if
-
-   lchnk = state%lchnk
 
    select case( source )
    case ('A')
@@ -640,7 +631,6 @@ subroutine rad_cnst_get_mode_num(list_idx, mode_idx, phase, state, pbuf, num)
    ! Local variables
    integer :: m_idx
    integer :: idx
-   integer :: lchnk
    character(len=1) :: source
    type(modelist_t), pointer :: mlist
    character(len=*), parameter :: subname = 'rad_cnst_get_mode_num'
@@ -673,8 +663,6 @@ subroutine rad_cnst_get_mode_num(list_idx, mode_idx, phase, state, pbuf, num)
       write(iulog,*) subname//': phase= ', phase
       call endrun(subname//': unrecognized phase; must be "a" or "c"')
    end if
-
-   lchnk = state%lchnk
 
    select case( source )
    case ('A')
@@ -711,7 +699,6 @@ subroutine rad_cnst_get_bin_num(list_idx, bin_idx, phase, state, pbuf, num)
    ! Local variables
    integer :: m_idx
    integer :: idx
-   integer :: lchnk
    character(len=1) :: source
    type(binlist_t), pointer :: slist
    character(len=*), parameter :: subname = 'rad_cnst_get_bin_num'
@@ -744,8 +731,6 @@ subroutine rad_cnst_get_bin_num(list_idx, bin_idx, phase, state, pbuf, num)
       write(iulog,*) subname//': phase= ', phase
       call endrun(subname//': unrecognized phase; must be "a" or "c"')
    end if
-
-   lchnk = state%lchnk
 
    select case( source )
    case ('A')

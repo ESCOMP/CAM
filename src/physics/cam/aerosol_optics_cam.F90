@@ -12,7 +12,6 @@ module aerosol_optics_cam
   use cam_abortutils, only: endrun
   use spmd_utils, only: masterproc
   use radiative_aerosol_definitions, only: N_DIAG
-  use radiative_aerosol, only: rad_aer_get_call_list
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
 
@@ -121,6 +120,7 @@ contains
 
   !===============================================================================
   subroutine aerosol_optics_cam_init
+    use radiative_aerosol_definitions, only: active_calls
     use phys_control,     only: phys_getopts
     use ioFileMod,        only: getfil
 
@@ -128,7 +128,6 @@ contains
     integer :: iaermod, istat, ilist, i
     integer :: num_aero_models
 
-    logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
     integer :: m, n, cnt
 
@@ -172,10 +171,9 @@ contains
           lw10um_indx = i ! index corresponding to 10 microns
        end if
     end do
-    call rad_aer_get_call_list(call_list)
 
     do ilist = 0, n_diag
-       if (call_list(ilist)) then
+       if (active_calls(ilist)) then
           call addfld ('EXTINCT'//diag(ilist),    (/ 'lev' /), 'A','/m',&
                'Aerosol extinction 550 nm, day only', flag_xyfill=.true.)
           call addfld ('EXTINCTUV'//diag(ilist),  (/ 'lev' /), 'A','/m',&

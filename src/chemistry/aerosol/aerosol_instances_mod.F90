@@ -58,10 +58,6 @@ module aerosol_instances_mod
   ! States store pointers to phys_state(c) and pbuf which persist for the run.
   type(aero_state_entry_t), allocatable, target :: aero_states_all(:,:,:)
 
-  ! Which diagnostic lists are active (0:N_DIAG). Promoted from local to module-level
-  ! so that init_states can reuse it.
-  logical, allocatable :: call_list_(:)
-
   ! Number of aerosol models active at runtime.
   ! Note: Multiple aerosol models can be active at once, e.g., using bulk for volcanic aerosol and modal for others.
   ! When retrieving properties via aerosol_instances_get_props, or creating states from
@@ -74,7 +70,8 @@ module aerosol_instances_mod
 
 contains
   subroutine aerosol_instances_init()
-    use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_call_list
+    use radiative_aerosol, only: rad_aer_get_info
+    use radiative_aerosol_definitions, only: active_calls
     use modal_aerosol_properties_mod, only: modal_aerosol_properties
     use carma_aerosol_properties_mod, only: carma_aerosol_properties
     use bulk_aerosol_properties_mod,  only: bulk_aerosol_properties
@@ -110,14 +107,9 @@ contains
        call endrun(subname//'allocation error: aero_props_all')
     end if
 
-    allocate(call_list_(0:N_DIAG), stat=istat)
-    if (istat /= 0) then
-       call endrun(subname//'allocation error: call_list_')
-    end if
-    call rad_aer_get_call_list(call_list_)
-
     do ilist = 0, N_DIAG
-       if (.not. call_list_(ilist)) cycle
+       ! only populate aerosol properties for active climate/diagnostic lists.
+       if (.not. active_calls(ilist)) cycle
 
        call rad_aer_get_info(ilist, nmodes=nmodes, nbins=nbins, naero=nbulk_aerosols)
 
@@ -205,8 +197,6 @@ contains
        deallocate(aero_props_all)
     end if
 
-    if (allocated(call_list_)) deallocate(call_list_)
-
     num_aero_models_ = 0
 
   end subroutine aerosol_instances_final
@@ -218,6 +208,7 @@ contains
   ! States store pointers to phys_state(c) and pbuf which persist for the
   ! entire run.
   subroutine aerosol_instances_init_states(phys_state, pbuf2d)
+    use radiative_aerosol_definitions, only: active_calls
     use modal_aerosol_state_mod, only: modal_aerosol_state
     use carma_aerosol_state_mod, only: carma_aerosol_state
     use bulk_aerosol_state_mod,  only: bulk_aerosol_state
@@ -241,7 +232,7 @@ contains
     end if
 
     do ilist = 0, N_DIAG
-       if (.not. call_list_(ilist)) cycle
+       if (.not. active_calls(ilist)) cycle
 
        do lchnk = begchunk, endchunk
           pbuf => pbuf_get_chunk(pbuf2d, lchnk)

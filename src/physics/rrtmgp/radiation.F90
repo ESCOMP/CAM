@@ -20,9 +20,8 @@ use physconst,           only: cappa, cpair, gravit, stebol
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use radiative_aerosol_definitions, only: N_DIAG
+use radiative_aerosol_definitions, only: N_DIAG, active_calls
 use rad_constituents,    only: rad_cnst_out
-use radiative_aerosol, only: rad_aer_get_call_list
 !REMOVECAM
 use aerosol_mmr_cam, only: rad_aer_diag_out
 !REMOVECAM_END
@@ -162,10 +161,6 @@ real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 real(r8) :: eccf            ! Earth orbit eccentricity factor
 
 integer :: band2gpt_sw(2,nswbands)
-
-! active_calls is set by a rad_constituents method after parsing namelist input
-! for the rad_climate and rad_diag_N entries.
-logical :: active_calls(0:N_DIAG)
 
 ! Physics buffer indices
 integer :: qrs_idx      = 0 
@@ -553,9 +548,6 @@ subroutine radiation_init(pbuf2d)
                   'Graupel in-cloud extinction visible sw optical depth', &
                   sampling_seq='rad_lwsw', flag_xyfill=.true.)
    endif
-
-   ! get list of active radiation calls
-   call rad_aer_get_call_list(active_calls)
 
    ! Add shortwave radiation fields to history master field list.
 

@@ -391,7 +391,6 @@ subroutine rad_cnst_get_gas(list_idx, gasname, state, pbuf, mmr)
    real(r8),                    pointer    :: mmr(:,:)
 
    ! Local variables
-   integer :: lchnk
    integer :: igas
    integer :: idx
    character(len=1) :: source
@@ -405,8 +404,6 @@ subroutine rad_cnst_get_gas(list_idx, gasname, state, pbuf, mmr)
       write(iulog,*) subname//': list_idx =', list_idx
       call endrun(subname//': list_idx out of bounds')
    endif
-
-   lchnk = state%lchnk
 
    ! Get index of gas in internal arrays.  rad_gas_index will abort if the
    ! specified gasname is not recognized by the radiative transfer code.

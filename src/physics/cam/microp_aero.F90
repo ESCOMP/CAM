@@ -23,14 +23,13 @@ module microp_aero
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
-use ppgrid,           only: pcols, pver, pverp, begchunk, endchunk
+use ppgrid,           only: pcols, pver, pverp
 use ref_pres,         only: top_lev => trop_cloud_top_lev
 use physconst,        only: rair
 use constituents,     only: cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init, physics_ptend_sum, &
                             physics_state_copy, physics_update
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
-                            pbuf_get_chunk
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
 use phys_control,     only: phys_getopts, use_hetfrz_classnuc
 use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
                                  aerosol_instances_is_active, &
@@ -175,8 +174,6 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    !
    !-----------------------------------------------------------------------
 
-   use modal_aerosol_state_mod, only: modal_aerosol_state
-
    type(physics_state), pointer       :: phys_state(:)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -188,8 +185,6 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    character(len=32) :: str32
    character(len=*), parameter :: routine = 'microp_aero_init'
    logical :: history_amwg
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   integer :: c
 
    class(aerosol_properties), pointer :: aero_props_bulk => null()
 
@@ -557,7 +552,6 @@ subroutine microp_aero_run ( &
 
    real(r8) :: wsub(pcols,pver)    ! diagnosed sub-grid vertical velocity st. dev. (m/s)
    real(r8) :: wsubi(pcols,pver)   ! diagnosed sub-grid vertical velocity ice (m/s)
-   real(r8) :: nucboas
 
    real(r8) :: wght
 

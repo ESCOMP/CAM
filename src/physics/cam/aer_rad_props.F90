@@ -10,12 +10,9 @@ use ppgrid,           only: pcols, pver
 use physconst,        only: rga
 use physics_types,    only: physics_state
 
-use physics_buffer,   only: physics_buffer_desc
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag
-use phys_prop,        only: nrh, ot_length
 use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
                                   aerosol_instances_is_active
-use wv_saturation,    only: qsat
 use aerosol_optics_cam,only: aerosol_optics_cam_init, aerosol_optics_cam_sw, aerosol_optics_cam_lw
 use cam_history,      only: fieldname_len, addfld, outfld, add_default, horiz_only
 use cam_history_support, only : fillvalue

@@ -17,9 +17,8 @@ use physconst,           only: cappa, cpair
 use time_manager,        only: get_nstep, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use radiative_aerosol_definitions, only: N_DIAG
+use radiative_aerosol_definitions, only: N_DIAG, active_calls
 use rad_constituents,    only: rad_cnst_get_gas, rad_cnst_out, oldcldoptics, liqcldoptics, icecldoptics
-use radiative_aerosol, only: rad_aer_get_call_list
 !REMOVECAM
 use aerosol_mmr_cam, only: rad_aer_diag_out
 !REMOVECAM_END
@@ -375,7 +374,6 @@ subroutine radiation_init(pbuf2d)
 
    ! local variables
    integer :: icall
-   logical :: active_calls(0:N_DIAG)
    integer :: nstep                       ! current timestep number
    logical :: history_amwg                ! output the variables used by the AMWG diag package
    logical :: history_vdiag               ! output the variables used by the AMWG variability diag package
@@ -457,9 +455,6 @@ subroutine radiation_init(pbuf2d)
       call addfld('GRAU_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Graupel in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
    endif
-
-   ! get list of active radiation calls
-   call rad_aer_get_call_list(active_calls)
 
    ! Add shortwave radiation fields to history master field list.
 
@@ -855,7 +850,6 @@ subroutine radiation_tend( &
    real(r8) :: sfac(1:nswbands)     ! time varying scaling factors due to Solar Spectral Irrad at 1 A.U. per band
 
    integer :: icall                 ! index through climate/diagnostic radiation calls
-   logical :: active_calls(0:N_DIAG)
 
    ! Aerosol radiative properties
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
@@ -1199,9 +1193,6 @@ subroutine radiation_tend( &
 
          call get_variability(sfac)
 
-         ! Get the active climate/diagnostic shortwave calculations
-         call rad_aer_get_call_list(active_calls)
-
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
 
@@ -1254,8 +1245,6 @@ subroutine radiation_tend( &
       ! Longwave radiation computation
 
       if (dolw) then
-
-         call rad_aer_get_call_list(active_calls)
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1

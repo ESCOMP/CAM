@@ -712,14 +712,12 @@ subroutine parse_bin_defs(nl_in, bins)
 
    ! Local variables
    logical :: num_mr_found, mass_mr_found
-   logical :: particle_mr_found
    integer :: m
    integer :: istat
-   integer :: nbins, nstr, istr
+   integer :: nbins, nstr
    integer :: mbeg, mcur
    integer :: nspec, ispec
-   integer :: strlen, ibeg, iend, ipos
-   logical :: part_mr_found
+   integer :: strlen, iend, ipos
    character(len=*), parameter :: subname = 'parse_bin_defs'
    character(len=len(nl_in(1))) :: tmpstr
    character(len=1)  :: tmp_src_a
@@ -848,10 +846,9 @@ subroutine parse_bin_defs(nl_in, bins)
       tmpstr = nl_in(mcur)
 
       ! process bin component strings
-      particle_mr_found = .false.   ! keep track of whether particle mixing ratio component is found
       num_mr_found = .false.        ! keep track of whether number mixing ratio component is found
-      mass_mr_found = .false.        ! keep track of whether number mixing ratio component is found
-      ispec = 0                ! keep track of the number of species found
+      mass_mr_found = .false.       ! keep track of whether number mixing ratio component is found
+      ispec = 0                     ! keep track of the number of species found
       comps_loop: do
 
          ! source of interstitial component
