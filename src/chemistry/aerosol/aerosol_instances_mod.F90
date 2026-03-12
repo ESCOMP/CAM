@@ -226,7 +226,7 @@ contains
     use ppgrid,         only: begchunk, endchunk
     use cam_abortutils, only: endrun
 
-    type(physics_state),       intent(in), target :: phys_state(:)
+    type(physics_state),       intent(in), target :: phys_state(begchunk:endchunk)
     type(physics_buffer_desc),             pointer :: pbuf2d(:,:)
 
     integer :: iaermod, ilist, lchnk, istat
