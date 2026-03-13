@@ -410,6 +410,7 @@ contains
   subroutine get(self, bin_ndx, species_ndx, density, hygro, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
+    use cam_abortutils, only: endrun
 
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
@@ -422,7 +423,7 @@ contains
     complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
     real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
-    real(r8), optional, intent(out) :: dryrad  ! dry radius (m) -- not meaningful for modal
+    real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
 
     call rad_aer_get_props(self%list_idx_, bin_ndx, species_ndx, &
                                 density_aer=density, hygro_aer=hygro, spectype=spectype, &
@@ -437,13 +438,13 @@ contains
     end if
 
     if (present(num_to_mass_aer)) then
-       ! num_to_mass_aer not meaningful for modal aerosols:
-       num_to_mass_aer = 0.0_r8
+       ! num_to_mass_aer for modal aerosols should not be read from file
+       call endrun('modal_aerosol_properties_mod%get: num_to_mass_aer should not be read from file for modal aerosols')
     end if
 
     if (present(dryrad)) then
-       ! dryrad is not meaningful for modal aerosols:
-       dryrad = 0.0_r8
+       ! dryrad for modal aerosols should not be read from file
+       call endrun('modal_aerosol_properties_mod%get: dryrad should not be read from file for modal aerosols')
     end if
 
   end subroutine get

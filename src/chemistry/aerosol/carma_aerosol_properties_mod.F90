@@ -3,7 +3,7 @@ module carma_aerosol_properties_mod
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_bin_props_by_idx, &
-                              rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec, rad_aer_get_bin_props
+                               rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec
   use infnan, only: nan, assignment(=)
 
   implicit none
@@ -266,6 +266,7 @@ contains
   subroutine get(self, bin_ndx, species_ndx, density, hygro, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
+    use cam_abortutils, only: endrun
 
     class(carma_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
@@ -278,7 +279,7 @@ contains
     complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
     real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
-    real(r8), optional, intent(out) :: dryrad  ! dry radius (m) -- not meaningful for CARMA
+    real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
 
     if (present(density)) then
        call rad_aer_get_bin_props_by_idx(self%list_idx_, bin_ndx, species_ndx, density_aer=density)
@@ -307,13 +308,13 @@ contains
     end if
 
     if (present(num_to_mass_aer)) then
-       ! num_to_mass_aer not meaningful for sectional aerosols:
-       num_to_mass_aer = 0.0_r8
+       ! num_to_mass_aer for sectional aerosols should not be read from file
+       call endrun('carma_aerosol_properties_mod%get: num_to_mass_aer should not be read from file for sectional aerosols')
     end if
 
     if (present(dryrad)) then
-       ! dryrad is not meaningful for sectional aerosols:
-       dryrad = 0.0_r8
+       ! dryrad for sectional aerosols should not be read from file
+       call endrun('carma_aerosol_properties_mod%get: dryrad should not be read from file for sectional aerosols')
     end if
 
   end subroutine get
@@ -329,6 +330,8 @@ contains
        sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
        sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
        r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
+
+    use radiative_aerosol, only: rad_aer_get_bin_props
 
     class(carma_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index

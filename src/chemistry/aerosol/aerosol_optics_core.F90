@@ -186,6 +186,7 @@ contains
     if (.not. associated(aero_optics)) then
       errflg = 1
       errmsg = 'unrecognized aerosol optics type, could not create object'
+      return
     end if
 
     ! Determine if this is a coarse dust mode (MAM only)
@@ -385,6 +386,7 @@ contains
     if (.not. associated(aero_optics)) then
       errflg = 1
       errmsg = 'unrecognized aerosol optics type, could not create object'
+      return
     end if
 
     do iwav = 1, nlwbands
