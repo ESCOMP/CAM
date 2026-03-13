@@ -2364,6 +2364,19 @@ contains
 
     call t_stopf('bc_init')
 
+    ! Zero-initialize subroutine-level variables for snapshot
+    cmfmc(:,:) = 0._r8
+    cmfcme(:,:) = 0._r8
+    zdu(:,:) = 0._r8
+    rliq(:) = 0._r8
+    rice(:) = 0._r8
+    dlf(:,:) = 0._r8
+    dlf2(:,:) = 0._r8
+    rliq2(:) = 0._r8
+    det_s(:) = 0._r8
+    det_ice(:) = 0._r8
+    net_flx(:) = 0._r8
+
     !===================================================
     ! Global mean total energy fixer
     !===================================================
@@ -2421,19 +2434,6 @@ contains
 
     call surface_emissions_set( lchnk, ncol, pbuf )
     call elevated_emissions_set( lchnk, ncol, pbuf )
-
-    ! Zero-initialize subroutine-level variables for snapshot
-    cmfmc(:,:) = 0._r8
-    cmfcme(:,:) = 0._r8
-    zdu(:,:) = 0._r8
-    rliq(:) = 0._r8
-    rice(:) = 0._r8
-    dlf(:,:) = 0._r8
-    dlf2(:,:) = 0._r8
-    rliq2(:) = 0._r8
-    det_s(:) = 0._r8
-    det_ice(:) = 0._r8
-    net_flx(:) = 0._r8
 
     !
     !===================================================

@@ -2797,6 +2797,17 @@ contains
 
     call t_stopf('bc_init')
 
+    ! Zero-initialize subroutine-level variables for snapshot
+    cmfmc(:,:) = 0._r8
+    cmfcme(:,:) = 0._r8
+    zdu(:,:) = 0._r8
+    rliq(:) = 0._r8
+    rice(:) = 0._r8
+    dlf(:,:) = 0._r8
+    dlf2(:,:) = 0._r8
+    rliq2(:) = 0._r8
+    net_flx(:) = 0._r8
+
     !===================================================
     ! Global mean total energy fixer
     !===================================================
