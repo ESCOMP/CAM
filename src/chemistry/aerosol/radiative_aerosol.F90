@@ -1285,8 +1285,8 @@ subroutine rad_aer_init()
       bulk_aerosol_list, modal_aerosol_list, sectional_aerosol_list, list_resolve_physprops
 
    !REMOVECAM: aerosol_mmr_cam handles CAM-specific index resolution
-   use aerosol_mmr_cam, only: aerosol_mmr_cam_init, &
-      resolve_mode_cam_idx, resolve_bin_cam_idx, resolve_bulk_cam_idx, &
+   use aerosol_mmr_cam, only: aerosol_mmr_init, &
+      resolve_mode_idx, resolve_bin_idx, resolve_bulk_idx, &
       rad_aer_diag_init
    !REMOVECAM_END
 
@@ -1295,21 +1295,21 @@ subroutine rad_aer_init()
    !-----------------------------------------------------------------------------
 
    ! Initialize a zero target for the 'Z' type of aerosol MMR.
-   call aerosol_mmr_cam_init()
+   call aerosol_mmr_init()
 
    ! Read physical properties from data files
    call physprop_init()
 
    !REMOVECAM: resolve host-specific indices (CAM uses pbuf and state)
-   call resolve_mode_cam_idx(modes)
-   call resolve_bin_cam_idx(bins)
+   call resolve_mode_idx(modes)
+   call resolve_bin_idx(bins)
    !REMOVECAM_END
 
    ! Resolve physprop indices for aerosol lists
    do i = 0, N_DIAG
       if (active_calls(i)) then
          !REMOVECAM: resolve host-specific indices (CAM uses pbuf and state)
-         call resolve_bulk_cam_idx(bulk_aerosol_list(i))
+         call resolve_bulk_idx(bulk_aerosol_list(i))
          !REMOVECAM_END
          call list_resolve_physprops(bulk_aerosol_list(i), modal_aerosol_list(i), sectional_aerosol_list(i))
       end if

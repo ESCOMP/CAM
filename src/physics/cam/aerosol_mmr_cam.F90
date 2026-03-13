@@ -22,10 +22,10 @@ end interface
 ! values for constituents with requested value of zero
 real(r8), allocatable, target :: zero_cols(:,:)
 
-public :: aerosol_mmr_cam_init    ! allocate zero_cols
+public :: aerosol_mmr_init    ! allocate zero_cols
 public :: get_cam_idx
-public :: resolve_mode_cam_idx, resolve_bin_cam_idx
-public :: resolve_bulk_cam_idx
+public :: resolve_mode_idx, resolve_bin_idx
+public :: resolve_bulk_idx
 public :: rad_cnst_get_aer_mmr
 public :: rad_cnst_get_mam_mmr_idx
 public :: rad_cnst_get_mode_num
@@ -42,14 +42,14 @@ public :: rad_aer_diag_out
 contains
 !==============================================================================
 
-subroutine aerosol_mmr_cam_init()
+subroutine aerosol_mmr_init()
    use ppgrid, only: pcols, pver
    ! Allocate zero_cols array (must be called after ppgrid is set up)
    if (.not. allocated(zero_cols)) then
       allocate(zero_cols(pcols,pver))
       zero_cols = 0._r8
    end if
-end subroutine aerosol_mmr_cam_init
+end subroutine aerosol_mmr_init
 
 !================================================================================================
 
@@ -100,7 +100,7 @@ end function get_cam_idx
 
 !===========================
 
-subroutine resolve_mode_cam_idx(modes)
+subroutine resolve_mode_idx(modes)
 
    ! Initialize the mode definitions by looking up the relevent indices in the
    ! constituent and pbuf arrays, and getting the physprop IDs
@@ -115,7 +115,7 @@ subroutine resolve_mode_cam_idx(modes)
    ! Local variables
    integer :: m, ispec, nspec
 
-   character(len=*), parameter :: routine = 'resolve_mode_cam_idx'
+   character(len=*), parameter :: routine = 'resolve_mode_idx'
    !-----------------------------------------------------------------------------
 
    do m = 1, modes%nmodes
@@ -149,11 +149,11 @@ subroutine resolve_mode_cam_idx(modes)
 
    end do
 
-end subroutine resolve_mode_cam_idx
+end subroutine resolve_mode_idx
 
 !===========================
 
-subroutine resolve_bin_cam_idx(bins)
+subroutine resolve_bin_idx(bins)
 
    ! Initialize the bin definitions by looking up the relevent indices in the
    ! constituent and pbuf arrays, and getting the physprop IDs
@@ -168,7 +168,7 @@ subroutine resolve_bin_cam_idx(bins)
    ! Local variables
    integer :: m, ispec, nspec
 
-   character(len=*), parameter :: routine = 'resolve_bin_cam_idx'
+   character(len=*), parameter :: routine = 'resolve_bin_idx'
    !-----------------------------------------------------------------------------
 
    do m = 1, bins%nbins
@@ -208,11 +208,11 @@ subroutine resolve_bin_cam_idx(bins)
 
    end do
 
-end subroutine resolve_bin_cam_idx
+end subroutine resolve_bin_idx
 
 !===========================
 
-subroutine resolve_bulk_cam_idx(aerlist)
+subroutine resolve_bulk_idx(aerlist)
 
    ! Resolve host-specific indices for bulk aerosols.
    ! Must be called before list_resolve_physprops (which resolves physprop IDs).
@@ -223,14 +223,14 @@ subroutine resolve_bulk_cam_idx(aerlist)
    type(aerlist_t), intent(inout) :: aerlist
 
    integer :: i
-   character(len=*), parameter :: routine = 'resolve_bulk_cam_idx'
+   character(len=*), parameter :: routine = 'resolve_bulk_idx'
    !-----------------------------------------------------------------------------
 
    do i = 1, aerlist%numaerosols
       aerlist%aer(i)%idx = get_cam_idx(aerlist%aer(i)%source, aerlist%aer(i)%camname, routine)
    end do
 
-end subroutine resolve_bulk_cam_idx
+end subroutine resolve_bulk_idx
 
 !================================================================================================
 
