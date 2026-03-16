@@ -1,208 +1,233 @@
-module radiative_aerosol_definitions
-
 !-----------------------------------------------------------------------------
-!
 ! Core aerosol definitions for radiative calculations: shared constants,
 ! types, data, parsing, and initialization routines for both modal and
 ! sectional (bin) aerosol representations.
 !
 ! This module is the lowest-level shared module in the aerosol hierarchy.
 ! It will be shared with CAM-SIMA.
-!
 !-----------------------------------------------------------------------------
+module radiative_aerosol_definitions
 
-implicit none
-private
-save
+  implicit none
+  private
+  save
 
-!===========================
-! Shared constants (shared with rad_constituents for gases)
-!===========================
+  public :: parse_mode_defs, parse_bin_defs  ! parse mode and bin definitions for aerosol.
+  public :: parse_rad_specifier              ! parse rad_climate and rad_diag_N specifiers into rad_cnst_namelist_t.
+  public :: list_populate                    ! populate aerosol list structures from parsed namelist (run before register)
+  public :: list_resolve_physprops           ! resolve physprop indices into aerosol list structures
+  public :: print_modes, print_bins
 
-integer, public, parameter :: cs1 = 256
-integer, public, parameter :: N_DIAG = 10
+  !===========================
+  ! Named constants for mode/species/morph validation
+  ! These categories and definitions are used throughout the aerosol models,
+  ! not just in radiative_aerosol.
+  !===========================
+  integer, public, parameter :: num_mode_types = 9
+  integer, public, parameter :: num_spec_types = 8
+  character(len=14), public, parameter :: mode_type_names(num_mode_types) = (/ &
+     'accum         ', 'aitken        ', 'primary_carbon', 'fine_seasalt  ', &
+     'fine_dust     ', 'coarse        ', 'coarse_seasalt', 'coarse_dust   ', &
+     'coarse_strat  '  /)
+  character(len=9),  public, parameter :: spec_type_names(num_spec_types) = (/ &
+     'sulfate  ', 'ammonium ', 'nitrate  ', 'p-organic', &
+     's-organic', 'black-c  ', 'seasalt  ', 'dust     '/)
 
-logical, public            :: verbose = .true.
-character(len=1), public, parameter :: nl = achar(10)
+  integer, public, parameter :: num_bin_morphs  = 2
+  character(len=8), public, parameter :: bin_morph_names(num_bin_morphs) = &
+       (/ 'shell   ', 'core    ' /)
 
-! max number of externally mixed entities in the climate/diag lists
-integer, public, parameter :: n_rad_cnst = N_RAD_CNST
+  !===========================
+  ! Shared constants (shared with rad_constituents for gases) part 1.
+  !===========================
+  integer,          public, parameter :: cs1 = 256
+  logical,          public            :: verbose = .true.
+  character(len=1), public, parameter :: nl = achar(10)
 
-!===========================
-! Types
-!===========================
+  !===========================
+  ! Types
+  !===========================
+!! \section arg_table_rad_cnst_namelist_t
+!! \htmlinclude rad_cnst_namelist_t.html
+  ! type to provide access to the data parsed from the rad_climate and rad_diag_* strings
+  type, public :: rad_cnst_namelist_t
+     integer :: ncnst
+     character(len=  1), pointer :: source(:)  ! 'A' for state (advected), 'N' for pbuf (non-advected),
+                                               ! 'M' for mode, 'Z' for zero
+     character(len= 64), pointer :: camname(:) ! name registered in pbuf or constituents
+     character(len=cs1), pointer :: radname(:) ! radname is the name as identfied in radiation,
+                                               ! must be one of (rgaslist if a gas) or
+                                               ! (/fullpath/filename.nc if an aerosol)
+     character(len=  1), pointer :: type(:)    ! 'A' if aerosol, 'G' if gas, 'M' if mode
+  end type rad_cnst_namelist_t
 
-! type to provide access to the data parsed from the rad_climate and rad_diag_* strings
-type, public :: rad_cnst_namelist_t
-   integer :: ncnst
-   character(len=  1), pointer :: source(:)  ! 'A' for state (advected), 'N' for pbuf (non-advected),
-                                             ! 'M' for mode, 'Z' for zero
-   character(len= 64), pointer :: camname(:) ! name registered in pbuf or constituents
-   character(len=cs1), pointer :: radname(:) ! radname is the name as identfied in radiation,
-                                             ! must be one of (rgaslist if a gas) or
-                                             ! (/fullpath/filename.nc if an aerosol)
-   character(len=  1), pointer :: type(:)    ! 'A' if aerosol, 'G' if gas, 'M' if mode
-end type rad_cnst_namelist_t
+!! \section arg_table_mode_component_t
+!! \htmlinclude mode_component_t.html
+  ! type to provide access to the components of a mode
+  type, public :: mode_component_t
+     integer :: nspec
+     ! For "source" variables below, value is:
+     ! 'N' if in pbuf (non-advected)
+     ! 'A' if in state (advected)
+     character(len=  1) :: source_num_a  ! source of interstitial number conc field
+     character(len= 32) :: camname_num_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
+     character(len=  1) :: source_num_c  ! source of cloud borne number conc field
+     character(len= 32) :: camname_num_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
+     character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial specie mmr fields
+     character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr of interstitial components
+     character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
+     character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
+     character(len= 32), pointer :: type(:)          ! specie type (as used in MAM code)
+     character(len=cs1), pointer :: props(:)         ! file containing specie properties
+     integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
+     integer          :: idx_num_c    ! index in pbuf for number mixing ratio of interstitial species
+     integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
+     integer, pointer :: idx_mmr_c(:) ! index in pbuf for mmr of interstitial species
+     integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
+  end type mode_component_t
 
-! max number of strings in mode definitions
-integer, public, parameter :: n_mode_str = 120
+!! \section arg_table_modes_t
+!! \htmlinclude modes_t.html
+  ! type to provide access to all modes
+  type, public :: modes_t
+     integer :: nmodes
+     character(len= 32),     pointer :: names(:) ! names used to identify a mode in the climate/diag lists
+     character(len= 32),     pointer :: types(:) ! type of mode (as used in MAM code)
+     type(mode_component_t), pointer :: comps(:) ! components which define the mode
+  end type modes_t
 
-! max number of strings in bin definitions
-integer, public, parameter :: n_bin_str = 640
+!! \section arg_table_bin_component_t
+!! \htmlinclude bin_component_t.html
+  ! type to provide access to the components of a bin
+  type, public :: bin_component_t
+     integer :: nspec
+     ! For "source" variables below, value is:
+     ! 'N' if in pbuf (non-advected)
+     ! 'A' if in state (advected)
+     character(len=  1) :: source_num_a  ! source of interstitial number conc field
+     character(len= 32) :: camname_num_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
+     character(len=  1) :: source_num_c  ! source of cloud borne number conc field
+     character(len= 32) :: camname_num_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
 
-! type to provide access to the components of a mode
-type, public :: mode_component_t
-   integer :: nspec
-   ! For "source" variables below, value is:
-   ! 'N' if in pbuf (non-advected)
-   ! 'A' if in state (advected)
-   character(len=  1) :: source_num_a  ! source of interstitial number conc field
-   character(len= 32) :: camname_num_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
-   character(len=  1) :: source_num_c  ! source of cloud borne number conc field
-   character(len= 32) :: camname_num_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
-   character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial specie mmr fields
-   character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr of interstitial components
-   character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
-   character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
-   character(len= 32), pointer :: type(:)          ! specie type (as used in MAM code)
-   character(len=cs1), pointer :: props(:)         ! file containing specie properties
-   integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
-   integer          :: idx_num_c    ! index in pbuf for number mixing ratio of interstitial species
-   integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
-   integer, pointer :: idx_mmr_c(:) ! index in pbuf for mmr of interstitial species
-   integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
-end type mode_component_t
+     character(len=  1) :: source_mass_a  ! source of interstitial number conc field
+     character(len= 32) :: camname_mass_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
+     character(len=  1) :: source_mass_c  ! source of cloud borne number conc field
+     character(len= 32) :: camname_mass_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
 
-! type to provide access to all modes
-type, public :: modes_t
-   integer :: nmodes
-   character(len= 32),     pointer :: names(:) ! names used to identify a mode in the climate/diag lists
-   character(len= 32),     pointer :: types(:) ! type of mode (as used in MAM code)
-   type(mode_component_t), pointer :: comps(:) ! components which define the mode
-end type modes_t
+     character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial mmr field
+     character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr species
+     character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
+     character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
+     character(len= 32), pointer :: type(:)          ! species type
+     character(len= 32), pointer :: morph(:)         ! species morphology
+     character(len=cs1), pointer :: props(:)         ! file containing specie properties
 
-! type to provide access to the components of a bin
-type, public :: bin_component_t
-   integer :: nspec
-   ! For "source" variables below, value is:
-   ! 'N' if in pbuf (non-advected)
-   ! 'A' if in state (advected)
-   character(len=  1) :: source_num_a  ! source of interstitial number conc field
-   character(len= 32) :: camname_num_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
-   character(len=  1) :: source_num_c  ! source of cloud borne number conc field
-   character(len= 32) :: camname_num_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
+     integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
+     integer          :: idx_num_c    ! index in pbuf for number mixing ratio of cloud-borne species
+     integer          :: idx_mass_a   ! index in pbuf or constituents for mass mixing ratio of interstitial species
+     integer          :: idx_mass_c   ! index in pbuf for mass mixing ratio of cloud-borne species
 
-   character(len=  1) :: source_mass_a  ! source of interstitial number conc field
-   character(len= 32) :: camname_mass_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
-   character(len=  1) :: source_mass_c  ! source of cloud borne number conc field
-   character(len= 32) :: camname_mass_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
+     integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
+     integer, pointer :: idx_mmr_c(:) ! index in pbuf or constituents for mmr of cloud-borne species
+     integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
+  end type bin_component_t
 
-   character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial mmr field
-   character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr species
-   character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
-   character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
-   character(len= 32), pointer :: type(:)          ! species type
-   character(len= 32), pointer :: morph(:)         ! species morphology
-   character(len=cs1), pointer :: props(:)         ! file containing specie properties
+!! \section arg_table_bins_t
+!! \htmlinclude bins_t.html
+  ! type to provide access to all bins
+  type, public :: bins_t
+     integer :: nbins
+     character(len= 32),    pointer :: names(:) ! names used to identify a mode in the climate/diag lists
+     type(bin_component_t), pointer :: comps(:) ! components which define the mode
+  end type bins_t
 
-   integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
-   integer          :: idx_num_c    ! index in pbuf for number mixing ratio of cloud-borne species
-   integer          :: idx_mass_a   ! index in pbuf or constituents for mass mixing ratio of interstitial species
-   integer          :: idx_mass_c   ! index in pbuf for mass mixing ratio of cloud-borne species
+!! \section arg_table_aerosol_t
+!! \htmlinclude aerosol_t.html
+  ! Storage for bulk aerosol components in the climate/diagnostic lists
+  type, public :: aerosol_t
+     character(len=1)   :: source         ! A for state (advected), N for pbuf (non-advected), Z for zero
+     character(len=64)  :: camname        ! name of constituent in physics state or buffer
+     character(len=cs1) :: physprop_file  ! physprop filename
+     character(len=32)  :: mass_name      ! name for mass per layer field in history output
+     integer            :: idx            ! index of constituent in physics state or buffer
+     integer            :: physprop_id    ! ID used to access physical properties from phys_prop module
+  end type aerosol_t
 
-   integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
-   integer, pointer :: idx_mmr_c(:) ! index in pbuf or constituents for mmr of cloud-borne species
-   integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
-end type bin_component_t
+!! \section arg_table_aerlist_t
+!! \htmlinclude aerlist_t.html
+  type, public :: aerlist_t
+     integer                  :: numaerosols  ! number of aerosols
+     character(len=2)         :: list_id      ! set to "  " for climate list, or two character integer
+                                              ! (include leading zero) to identify diagnostic list
+     type(aerosol_t), pointer :: aer(:)       ! dimension(numaerosols)
+  end type aerlist_t
 
-! type to provide access to all bins
-type, public :: bins_t
-   integer :: nbins
-   character(len= 32),    pointer :: names(:) ! names used to identify a mode in the climate/diag lists
-   type(bin_component_t), pointer :: comps(:) ! components which define the mode
-end type bins_t
+!! \section arg_table_modelist_t
+!! \htmlinclude modelist_t.html
+  ! storage for modal aerosol components in the climate/diagnostic lists
+  type, public :: modelist_t
+     integer          :: nmodes              ! number of modes
+     character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
+                                             ! (include leading zero) to identify diagnostic list
+     integer,   pointer :: idx(:)            ! index of the mode in the mode definition object
+     character(len=cs1), pointer :: physprop_files(:) ! physprop filename
+     integer,   pointer :: idx_props(:)      ! index of the mode properties in the physprop object
+  end type modelist_t
 
-! Storage for bulk aerosol components in the climate/diagnostic lists
-type, public :: aerosol_t
-   character(len=1)   :: source         ! A for state (advected), N for pbuf (non-advected), Z for zero
-   character(len=64)  :: camname        ! name of constituent in physics state or buffer
-   character(len=cs1) :: physprop_file  ! physprop filename
-   character(len=32)  :: mass_name      ! name for mass per layer field in history output
-   integer            :: idx            ! index of constituent in physics state or buffer
-   integer            :: physprop_id    ! ID used to access physical properties from phys_prop module
-end type aerosol_t
+!! \section arg_table_binlist_t
+!! \htmlinclude binlist_t.html
+  ! storage for bin aerosol components in the climate/diagnostic lists
+  type, public :: binlist_t
+     integer          :: nbins               ! number of bins
+     character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
+                                             ! (include leading zero) to identify diagnostic list
+     integer,   pointer :: idx(:)            ! index of the bin in the bin definition object
+     character(len=cs1), pointer :: physprop_files(:) ! physprop filename
+     integer,   pointer :: idx_props(:)      ! index of the bin properties in the physprop object
+  end type binlist_t
 
-type, public :: aerlist_t
-   integer                  :: numaerosols  ! number of aerosols
-   character(len=2)         :: list_id      ! set to "  " for climate list, or two character integer
-                                            ! (include leading zero) to identify diagnostic list
-   type(aerosol_t), pointer :: aer(:)       ! dimension(numaerosols)
-end type aerlist_t
+  ! max number of strings in mode definitions
+  integer, public, parameter :: n_mode_str = 120
 
-! storage for modal aerosol components in the climate/diagnostic lists
+  ! max number of strings in bin definitions
+  integer, public, parameter :: n_bin_str = 640
 
-type, public :: modelist_t
-   integer          :: nmodes              ! number of modes
-   character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
-                                           ! (include leading zero) to identify diagnostic list
-   integer,   pointer :: idx(:)            ! index of the mode in the mode definition object
-   character(len=cs1), pointer :: physprop_files(:) ! physprop filename
-   integer,   pointer :: idx_props(:)      ! index of the mode properties in the physprop object
-end type modelist_t
+  !===========================
+  ! Shared constants (shared with rad_constituents for gases)
+  ! These have CCPP framework metadata attached to them as
+  ! physics/chemistry CCPP schemes make use of these quantities.
+  !===========================
+!> \section arg_table_radiative_aerosol_definitions  Argument Table
+!! \htmlinclude radiative_aerosol_definitions.html
+  ! maximum number of diagnostic lists
+  integer, public, parameter :: N_DIAG = 10
 
-! storage for bin aerosol components in the climate/diagnostic lists
+  ! max number of externally mixed entities in the climate/diag lists
+  integer, public, parameter :: n_rad_cnst = 80
 
-type, public :: binlist_t
-   integer          :: nbins               ! number of bins
-   character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
-                                           ! (include leading zero) to identify diagnostic list
-   integer,   pointer :: idx(:)            ! index of the bin in the bin definition object
-   character(len=cs1), pointer :: physprop_files(:) ! physprop filename
-   integer,   pointer :: idx_props(:)      ! index of the bin properties in the physprop object
-end type binlist_t
+  ! climate list identifier (to keep CCPP framework happy)
+  integer, public, parameter :: id_climate = 0
 
-!===========================
-! Module data
-!===========================
+  !===========================
+  ! Aerosol-specific module data.
+  !===========================
+  ! namelist data container per climate/diagnostic list.
+  type(rad_cnst_namelist_t), public :: radcnst_namelist(id_climate:N_DIAG)
 
-type(rad_cnst_namelist_t), public :: radcnst_namelist(0:N_DIAG)
+  ! flag for whether diagnostic lists are active
+  logical, public :: active_calls(id_climate:N_DIAG) = .false.
 
-logical, public :: active_calls(0:N_DIAG) = .false.
+  type(modes_t), public, target :: modes  ! mode definitions
+  type(bins_t),  public, target :: bins   ! bin definitions
 
-type(modes_t), public, target :: modes  ! mode definitions
-type(bins_t),  public, target :: bins   ! bin definitions
+  ! list of bulk aerosols used in climate/diagnostic calculations
+  type(aerlist_t),  public, target :: bulk_aerosol_list(id_climate:N_DIAG)
 
-type(aerlist_t),  public, target :: bulk_aerosol_list(0:N_DIAG) ! list of aerosols used in climate/diagnostic calcs
-type(modelist_t), public, target :: modal_aerosol_list(0:N_DIAG) ! list of aerosol modes used in climate/diagnostic calcs
-type(binlist_t),  public, target :: sectional_aerosol_list(0:N_DIAG) ! list of aerosol bins used in climate/diagnostic calcs
+  ! list of aerosol modes used in climate/diagnostic calculations
+  type(modelist_t), public, target :: modal_aerosol_list(id_climate:N_DIAG)
 
-!===========================
-! Named constants for mode/species/morph validation
-!===========================
-
-integer, public, parameter :: num_mode_types = 9
-integer, public, parameter :: num_spec_types = 8
-character(len=14), public, parameter :: mode_type_names(num_mode_types) = (/ &
-   'accum         ', 'aitken        ', 'primary_carbon', 'fine_seasalt  ', &
-   'fine_dust     ', 'coarse        ', 'coarse_seasalt', 'coarse_dust   ', &
-   'coarse_strat  '  /)
-character(len=9), public, parameter :: spec_type_names(num_spec_types) = (/ &
-   'sulfate  ', 'ammonium ', 'nitrate  ', 'p-organic', &
-   's-organic', 'black-c  ', 'seasalt  ', 'dust     '/)
-
-integer, public, parameter :: num_bin_morphs  = 2
-character(len=8), public, parameter :: bin_morph_names(num_bin_morphs) = &
-     (/ 'shell   ', 'core    ' /)
-
-!===========================
-! Public routines
-!===========================
-
-public :: parse_mode_defs, parse_bin_defs  ! parse mode and bin definitions for aerosol.
-public :: parse_rad_specifier              ! parse rad_climate and rad_diag_N specifiers into rad_cnst_namelist_t.
-public :: list_populate                    ! populate aerosol list structures from parsed namelist (run before register)
-public :: list_resolve_physprops           ! resolve physprop indices into aerosol list structures
-public :: print_modes, print_bins
+  ! list of aerosol bins used in climate/diagnostic calcs
+  type(binlist_t),  public, target :: sectional_aerosol_list(id_climate:N_DIAG)
 
 !==============================================================================
 contains
@@ -220,7 +245,6 @@ subroutine list_populate(namelist, aerlist, modal_aerosol_list, sectional_aeroso
    ! Do NOT merge with list_resolve_physprops.
    !
    ! Gas initialization is handled in rad_constituents.
-
    type(rad_cnst_namelist_t), intent(in) :: namelist ! parsed namelist input for climate or diagnostic lists
 
    type(aerlist_t),        intent(inout) :: aerlist
