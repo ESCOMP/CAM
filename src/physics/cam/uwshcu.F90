@@ -155,8 +155,8 @@ end subroutine uwshcu_readnl
     call addfld( 'qlu_Cu'         , (/ 'lev' /),   'A', 'kg/kg'   , 'Cumulus updraft LWC'                              )
     call addfld( 'qiu_Cu'         , (/ 'lev' /),   'A', 'kg/kg'   , 'Cumulus updraft IWC'                              )
     call addfld( 'cufrc_Cu'       , (/ 'lev' /),   'A', 'fraction', 'Cumulus cloud fraction'                           )
-    call addfld( 'fer_Cu'         , (/ 'lev' /),   'A', '1/m'     , 'Cumulus lateral fractional entrainment rate'      )
-    call addfld( 'fdr_Cu'         , (/ 'lev' /),   'A', '1/m'     , 'Cumulus lateral fractional detrainment Rate'      )
+    call addfld( 'fer_Cu'         , (/ 'lev' /),   'A', 'Pa-1'     , 'Cumulus lateral fractional entrainment rate'      )
+    call addfld( 'fdr_Cu'         , (/ 'lev' /),   'A', 'Pa-1'     , 'Cumulus lateral fractional detrainment Rate'      )
 
     call addfld( 'dwten_Cu'       , (/ 'lev' /),   'A', 'kg/kg/s' , 'Expellsion rate of cumulus cloud water to env.'   )
     call addfld( 'diten_Cu'       , (/ 'lev' /),   'A', 'kg/kg/s' , 'Expellsion rate of cumulus ice water to env.'     )
@@ -205,7 +205,10 @@ end subroutine uwshcu_readnl
     endif
 
     ! call the underlying CCPPized subroutine
-    call uw_convect_shallow_init(masterproc, iulog, rpen, xlv_in, cp_in, xlf_in, zvir_in, r_in, g_in, mwh2o_in, mwdry_in, dummy_shfrc, errmsg, errflg)
+    call uw_convect_shallow_init(amIRoot=masterproc, iulog=iulog, &
+         rpen_in=rpen, xlv_in=xlv_in, cp_in=cp_in, xlf_in=xlf_in, zvir_in=zvir_in, &
+         r_in=r_in, g_in=g_in, mwh2o_in=mwh2o_in, mwdry_in=mwdry_in, &
+         use_shfrc=dummy_shfrc, errmsg=errmsg, errflg=errflg)
 
     if(errflg /= 0) then
       call endrun(subname//': '//errmsg)
