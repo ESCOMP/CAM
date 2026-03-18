@@ -2547,7 +2547,7 @@
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam6"                    >1.75D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam7"                    >3.20D0</dust_emis_fact>
-<dust_emis_fact dyn="mpas"                 phys="cam7"                    >4.00D0</dust_emis_fact>
+<dust_emis_fact dyn="mpas"                 phys="cam7"                    >3.20D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_vbs">2.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_vbs">3.2D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">2.0D0</dust_emis_fact>
