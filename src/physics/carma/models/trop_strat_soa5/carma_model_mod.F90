@@ -389,11 +389,11 @@ contains
     ! Define the Gases
     refidx(:,1) = CMPLX(waterreal(:), waterimag(:), kind=f)
     call CARMAGAS_Create(carma, I_GAS_H2O, "Water Vapor", WTMOL_H2O, I_VAPRTN_H2O_MURPHY2005, I_GCOMP_H2O, &
-                         rc, shortname = "Q", refidx=refidx)
+                         rc, shortname = "Q", ds_threshold=-0.2_f, refidx=refidx)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
 
     call CARMAGAS_Create(carma, I_GAS_H2SO4, "Sulfuric Acid", WTMOL_H2SO4, I_VAPRTN_H2SO4_AYERS1980, &
-                          I_GCOMP_H2SO4, rc, shortname = "H2SO4", ds_threshold=-0.2_f)
+                          I_GCOMP_H2SO4, rc, shortname = "H2SO4")
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
 
 
