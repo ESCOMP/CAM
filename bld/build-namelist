@@ -3399,7 +3399,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';
         }
         elsif ($phys eq 'cam7') {
-            $micro_mg_dcs = '600.D-6';
+            $micro_mg_dcs = '450.D-6';
         }
     }
 
@@ -3929,7 +3929,7 @@ if ($waccm_phys or
     my $hdepth_scaling = '0.25D0' ;
     #MT value
     if ($cfg->get('model_top') eq 'mt') {
-	$hdepth_scaling = '0.32D0';
+	$hdepth_scaling = '0.29D0';
     }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
