@@ -18,9 +18,9 @@
    use wv_saturation,    only: qsat_water, svp_water, svp_ice, qsat_ice
    use cam_logfile,      only: iulog
    use ref_pres,         only: top_lev=>trop_cloud_top_lev
-   use cldfrc2m,         only: astG_PDF_single, astG_PDF, astG_RHU_single, &
-                               astG_RHU, aist_single, aist_vector,         &
-                               rhmini_const, rhmaxi_const
+   use compute_cloud_fraction_two_moment, only: astG_PDF_single, astG_PDF, astG_RHU_single, &
+                                                astG_RHU, aist_single, aist_vector
+   use cldfrc2m,         only: rhmini_const, rhmaxi_const
 
    implicit none
    private
@@ -1410,10 +1410,10 @@
           U0_nc   =  U0 
           if( CAMstfrac ) then
               call astG_RHU_single(U0_nc, p, qv0, landfrac(i), snowh(i), al0_st_nc, G0_nc, &
-                 rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                 rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
           else
               call astG_PDF_single(U0_nc, p, qv0, landfrac(i), snowh(i), al0_st_nc, G0_nc, &
-                 rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                 rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
           endif
           call aist_single(qv0,T0,p,qi0,landfrac(i),snowh(i),ai0_st_nc,&
                            rhmaxi, rhmini, rhminl, rhminl_adj_land, rhminh)
@@ -1469,10 +1469,10 @@
              U_nc = U  
              if( CAMstfrac ) then
                  call astG_RHU_single(U_nc, p, qv, landfrac(i), snowh(i), al_st_nc, G_nc, &
-                    rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                    rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
              else
                  call astG_PDF_single(U_nc, p, qv, landfrac(i), snowh(i), al_st_nc, G_nc, &
-                    rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                    rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
              endif
              al_st = (1._r8-a_dc-a_sc)*al_st_nc  
              caseid = 0
@@ -1591,10 +1591,10 @@
          U_nc  =  U
          if( CAMstfrac ) then
              call astG_RHU_single(U_nc, p, qv, landfrac(i), snowh(i), al_st_nc, G_nc, &
-                rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
          else
              call astG_PDF_single(U_nc, p, qv, landfrac(i), snowh(i), al_st_nc, G_nc, &
-                rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+                rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
          endif
          al_st = (1._r8-a_dc-a_sc)*al_st_nc
      else
@@ -1908,10 +1908,10 @@
    U_nc   =   U
    if( CAMstfrac ) then
        call astG_RHU_single(U_nc, p, qv, landfrac, snowh, al_st_nc, G_nc, &
-          rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+          rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
    else
        call astG_PDF_single(U_nc, p, qv, landfrac, snowh, al_st_nc, G_nc, &
-          rhminl_in=rhminl, rhminl_adj_land_in=rhminl_adj_land, rhminh_in=rhminh)
+          rhminl=rhminl, rhminl_adj_land=rhminl_adj_land, rhminh=rhminh)
    endif
    al_st   =  (1._r8-a_dc-a_sc)*al_st_nc 
    dUdt    = -(alpha*dqcncdt+beta)

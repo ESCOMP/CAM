@@ -2132,7 +2132,9 @@ end subroutine clubb_init_cnst
     use clubb_api_module, only: &
       clubb_fatal_error    ! Error code value to indicate a fatal error
 
-    use cldfrc2m,                  only: aist_vector, rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const
+    use compute_cloud_fraction_two_moment, only: aist_vector
+    use cldfrc2m,                  only: rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const, &
+                                         rhminl_const, rhminl_adj_land_const, rhminh_const
     use cam_history,               only: outfld
 
     use macrop_driver,             only: liquid_macro_tend
@@ -2519,6 +2521,9 @@ end subroutine clubb_init_cnst
     real(r8)                          :: fqtend(pcols,pver)
     real(r8)                          :: rhmini(pcols)
     real(r8)                          :: rhmaxi(pcols)
+    real(r8)                          :: rhminl_arr(pcols)
+    real(r8)                          :: rhminl_adj_land_arr(pcols)
+    real(r8)                          :: rhminh_arr(pcols)
     integer                           :: troplev(pcols)
     logical                           :: lqice(pcnst)
     logical                           :: apply_to_surface(pcols)
@@ -4627,6 +4632,10 @@ end subroutine clubb_init_cnst
     aist(:,:top_lev-1) = 0._r8
     qsatfac(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
 
+    rhminl_arr(:) = rhminl_const
+    rhminl_adj_land_arr(:) = rhminl_adj_land_const
+    rhminh_arr(:) = rhminh_const
+
     do k = top_lev, pver
 
       ! For Type II PSC and for thin cirrus, the clouds can be thin, but
@@ -4647,11 +4656,13 @@ end subroutine clubb_init_cnst
 
       if ( trim(subcol_scheme) == 'SILHS' ) then
         call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-             state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol )
+             state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol, &
+             rhmaxi, rhmini, rhminl_arr, rhminl_adj_land_arr, rhminh_arr)
       else
         call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
               state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,&
-              qsatfac_out=qsatfac(:,k), rhmini_in=rhmini, rhmaxi_in=rhmaxi)
+              rhmaxi, rhmini, rhminl_arr, rhminl_adj_land_arr, rhminh_arr, &
+              qsatfac_out=qsatfac(:,k))
       endif
     enddo
 
