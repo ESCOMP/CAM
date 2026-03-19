@@ -3926,10 +3926,10 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
     #WACCM value
-    my $hdepth_scaling = '0.25D0' ;
+    my $hdepth_scaling = '0.29D0' ;
     #MT value
     if ($cfg->get('model_top') eq 'mt') {
-	$hdepth_scaling = '0.32D0';
+	$hdepth_scaling = '0.29D0'
     }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
