@@ -860,7 +860,6 @@ end subroutine macrop_driver_readnl
       cappa = cappa, &
       gravit = gravit, &
       rair = rair, &
-      tmelt = tmelt, &
       pref = pref, &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
@@ -871,8 +870,6 @@ end subroutine macrop_driver_readnl
       q = state_loc%q(:ncol,:,1), & ! note: assumes wv is at index 1.
       cldice = state_loc%q(:ncol,:,ixcldice), &
       phis = state_loc%phis(:ncol), &
-      shallowcu = shallowcu(:ncol,:), &
-      deepcu = deepcu(:ncol,:), &
       concld = concld(:ncol,:), &
       landfrac = landfrac(:ncol), &
       ocnfrac = ocnfrac(:ncol), &
