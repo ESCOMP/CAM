@@ -353,13 +353,10 @@
    ! --------------- !
    integer  :: i, k, m
    integer  :: n, x
-   integer  :: ilon                                                      ! Global longitude index of a column
-   integer  :: ilat                                                      ! Global latitude  index of a column
    integer  :: lchnk                                                     ! Chunk identifier
    integer  :: ncol                                                      ! Number of atmospheric columns
    integer  :: nstep                                                     ! Current time step index
    integer  :: ixcldice, ixcldliq                                        ! Constituent indices for cloud liquid and ice water.
-   integer  :: ixnumice, ixnumliq                                        ! Constituent indices for cloud liquid and ice number concentration
 
    real(r8),  pointer   :: precc(:)                                      ! Shallow convective precipitation (rain+snow) rate at surface [ m/s ]
    real(r8),  pointer   :: snow(:)                                       ! Shallow convective snow rate at surface [ m/s ]
@@ -692,11 +689,6 @@
    ! ---------------------------------------------------------------------------- !
    ! Output new partition of cloud condensate variables, as well as precipitation !
    ! ---------------------------------------------------------------------------- !
-
-   if( microp_scheme == 'MG' ) then
-       call cnst_get_ind( 'NUMLIQ', ixnumliq )
-       call cnst_get_ind( 'NUMICE', ixnumice )
-   endif
 
    ftem(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
 
