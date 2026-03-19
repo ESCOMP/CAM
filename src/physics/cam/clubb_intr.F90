@@ -2521,6 +2521,8 @@ end subroutine clubb_init_cnst
     real(r8)                          :: fqtend(pcols,pver)
     real(r8)                          :: rhmini(pcols)
     real(r8)                          :: rhmaxi(pcols)
+    real(r8)                          :: rhmini_default(pcols)
+    real(r8)                          :: rhmaxi_default(pcols)
     real(r8)                          :: rhminl_arr(pcols)
     real(r8)                          :: rhminl_adj_land_arr(pcols)
     real(r8)                          :: rhminh_arr(pcols)
@@ -4632,6 +4634,8 @@ end subroutine clubb_init_cnst
     aist(:,:top_lev-1) = 0._r8
     qsatfac(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
 
+    rhmini_default(:) = rhmini_const
+    rhmaxi_default(:) = rhmaxi_const
     rhminl_arr(:) = rhminl_const
     rhminl_adj_land_arr(:) = rhminl_adj_land_const
     rhminh_arr(:) = rhminh_const
@@ -4654,15 +4658,30 @@ end subroutine clubb_init_cnst
         rhmaxi = rhmaxi_const
       end where
 
+      !REMOVECAM: this is no longer needed when CAM is retired and pcols no longer exists
+      aist(:,k) = 0._r8
+      !REMOVECAM_END
       if ( trim(subcol_scheme) == 'SILHS' ) then
-        call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-             state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol, &
-             rhmaxi, rhmini, rhminl_arr, rhminl_adj_land_arr, rhminh_arr)
+        call aist_vector(state1%q(1:ncol,k,ixq), state1%t(1:ncol,k), &
+             state1%pmid(1:ncol,k), state1%q(1:ncol,k,ixcldice), &
+             state1%q(1:ncol,k,ixnumice), cam_in%landfrac(1:ncol), &
+             cam_in%snowhland(1:ncol), aist(1:ncol,k), ncol, &
+             rhmaxi_in=rhmaxi_default(1:ncol), &
+             rhmini_in=rhmini_default(1:ncol), &
+             rhminl_in=rhminl_arr(1:ncol), &
+             rhminl_adj_land_in=rhminl_adj_land_arr(1:ncol), &
+             rhminh_in=rhminh_arr(1:ncol))
       else
-        call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-              state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,&
-              rhmaxi, rhmini, rhminl_arr, rhminl_adj_land_arr, rhminh_arr, &
-              qsatfac_out=qsatfac(:,k))
+        call aist_vector(state1%q(1:ncol,k,ixq), state1%t(1:ncol,k), &
+             state1%pmid(1:ncol,k), state1%q(1:ncol,k,ixcldice), &
+             state1%q(1:ncol,k,ixnumice), cam_in%landfrac(1:ncol), &
+             cam_in%snowhland(1:ncol), aist(1:ncol,k), ncol, &
+             rhmaxi_in=rhmaxi(1:ncol), &
+             rhmini_in=rhmini(1:ncol), &
+             rhminl_in=rhminl_arr(1:ncol), &
+             rhminl_adj_land_in=rhminl_adj_land_arr(1:ncol), &
+             rhminh_in=rhminh_arr(1:ncol), &
+             qsatfac_out=qsatfac(1:ncol,k))
       endif
     enddo
 

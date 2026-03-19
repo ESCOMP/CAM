@@ -115,17 +115,20 @@
       if (CAMstfrac) then
         call astG_RHU_single(ssl + 1._f, state%pmid(icol, iz), state%q(icol, iz, 1), &
                 cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, &
-                rhminl_const, rhminl_adj_land_const, rhminh_const, rhcrit(iz))
+                rhminl=rhminl_const, rhminl_adj_land=rhminl_adj_land_const, &
+                rhminh=rhminh_const, orhmin=rhcrit(iz))
       else
         call astG_PDF_single(ssl + 1._f, state%pmid(icol, iz), state%q(icol, iz, 1), &
                 cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, &
-                rhminl_const, rhminl_adj_land_const, rhminh_const, rhcrit(iz))
+                rhminl=rhminl_const, rhminl_adj_land=rhminl_adj_land_const, &
+                rhminh=rhminh_const, orhmin=rhcrit(iz))
       end if
 
       ! Now get the ice cloud fraction.
       call aist_single(state%q(icol, iz, 1), state%t(icol, iz), state%pmid(icol, iz), &
               qi(iz), cam_in%landfrac(icol), cam_in%snowhland(icol), icecldf(iz), &
-              rhmaxi_const, rhmini_const, rhminl_const, rhminl_adj_land_const, rhminh_const)
+              rhmaxi=rhmaxi_const, rhmini=rhmini_const, rhminl=rhminl_const, &
+              rhminl_adj_land=rhminl_adj_land_const, rhminh=rhminh_const)
     end do
               
     ! Calculate an overall cloud fraction. This may vary depending upon the model,
