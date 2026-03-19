@@ -2548,12 +2548,10 @@
 <dust_emis_fact dyn="se"                   phys="cam6"                    >1.75D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam7"                    >3.20D0</dust_emis_fact>
 <dust_emis_fact dyn="mpas"                 phys="cam7"                    >3.20D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_vbs">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam4_vbs">4.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"                    >2.0D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"                    >3.2D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">2.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam4_vbs">4.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam5_t1s1">2.0D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam7"             chem="trop_strat_mam5_t1s1">3.2D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam5_t1s1">2.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam7"    chem="trop_strat_mam5_t1s1">4.0D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             waccm_phys="1">2.0D0</dust_emis_fact>
