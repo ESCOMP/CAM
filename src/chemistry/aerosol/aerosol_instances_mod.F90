@@ -69,6 +69,16 @@ module aerosol_instances_mod
   logical :: bulk_active_  = .false.
 
 contains
+  ! Determine which aerosol models are active (modal, CARMA, bulk) and
+  ! create persistent aerosol_properties objects for each (model, list) pair.
+  ! Must be called after the radiative aerosol module has parsed aerosol definitions.
+  !
+  ! NOTE: A model is "globally active" if the climate list (list 0) has > 0 entries
+  ! for aerosol with that representation, but individual diagnostic lists
+  ! may have zero entries — in that case the corresponding properties slot is left null.
+  !
+  ! Callers that use lists other than the climate list thus need to check if the aerosol
+  ! model for that combination of (aero_model, list) is associated or not.
   subroutine aerosol_instances_init()
     use radiative_aerosol, only: rad_aer_get_info
     use radiative_aerosol_definitions, only: active_calls
@@ -136,19 +146,25 @@ contains
 
   end subroutine aerosol_instances_init
 
+  ! Return a pointer to the aerosol_properties object for the given aerosol
+  ! model index and radiation list.  Returns null when the model has no
+  ! entries in the specified list (see aerosol_instances_init).
   function aerosol_instances_get_props(iaermod, list_idx) result(props)
-    integer, intent(in) :: iaermod
-    integer, intent(in) :: list_idx
+    integer, intent(in) :: iaermod   ! aerosol model index (1..num_aero_models)
+    integer, intent(in) :: list_idx  ! radiation list index (0=climate, 1..N_DIAG)
     class(aerosol_properties), pointer :: props
 
     props => aero_props_all(iaermod, list_idx)%obj
 
   end function aerosol_instances_get_props
 
+  ! Return the number of aerosol models active at runtime.
   pure integer function aerosol_instances_get_num_models()
     aerosol_instances_get_num_models = num_aero_models_
   end function aerosol_instances_get_num_models
 
+  ! Return .true. if the named aerosol model ('modal', 'carma', or 'bulk')
+  ! has any entries in the climate list.
   logical function aerosol_instances_is_active(model_name)
     character(len=*), intent(in) :: model_name
 
@@ -264,10 +280,12 @@ contains
 
   end subroutine aerosol_instances_init_states
 
+  ! Return a pointer to the persistent aerosol_state object for the given
+  ! aerosol model index, radiation list, and chunk.
   function aerosol_instances_get_state(iaermod, list_idx, lchnk) result(astate)
-    integer, intent(in) :: iaermod
-    integer, intent(in) :: list_idx
-    integer, intent(in) :: lchnk
+    integer, intent(in) :: iaermod   ! aerosol model index (1..num_aero_models)
+    integer, intent(in) :: list_idx  ! radiation list index (0=climate, 1..N_DIAG)
+    integer, intent(in) :: lchnk     ! chunk index (begchunk..endchunk)
     class(aerosol_state), pointer :: astate
 
     astate => aero_states_all(iaermod, list_idx, lchnk)%obj

@@ -1011,7 +1011,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine rebin_bulk_fluxes(self, bulk_type, dep_fluxes, diam_edges, bulk_fluxes, &
                                error_code, error_string)
-    use infnan, only: nan, assignment(=)
+    use shr_infnan_mod, only: nan => shr_infnan_nan, assignment(=)
 
     class(modal_aerosol_properties), intent(in) :: self
     character(len=*),intent(in) :: bulk_type       ! aerosol type to rebin

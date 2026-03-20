@@ -10,7 +10,7 @@ module bulk_aerosol_properties_mod
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_props
-  use infnan, only: nan, assignment(=)
+  use shr_infnan_mod, only: nan => shr_infnan_nan, assignment(=)
 
   implicit none
 

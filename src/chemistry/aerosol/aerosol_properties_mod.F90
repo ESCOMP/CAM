@@ -488,25 +488,25 @@ contains
     if( ierr /= 0 ) then
        return
     end if
-    allocate(self%dgnum_(nbin),stat=ierr)
-    if( ierr /= 0 ) then
-       return
+    if (present(dgnum)) then
+       allocate(self%dgnum_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
     end if
-    allocate(self%dgnumhi_(nbin),stat=ierr)
-    if( ierr /= 0 ) then
-       return
+    if (present(dgnumhi)) then
+       allocate(self%dgnumhi_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
     end if
-    allocate(self%dgnumlo_(nbin),stat=ierr)
-    if( ierr /= 0 ) then
-       return
+    if (present(dgnumlo)) then
+       allocate(self%dgnumlo_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
     end if
-    allocate(self%rhcrystal_(nbin),stat=ierr)
-    if( ierr /= 0 ) then
-       return
+    if (present(rhcrystal)) then
+       allocate(self%rhcrystal_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
     end if
-    allocate(self%rhdeliques_(nbin),stat=ierr)
-    if( ierr /= 0 ) then
-       return
+    if (present(rhdeliques)) then
+       allocate(self%rhdeliques_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
     end if
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)),stat=ierr )
@@ -539,28 +539,18 @@ contains
 
     if (present(dgnum)) then
        self%dgnum_(:) = dgnum(:)
-    else
-       self%dgnum_(:) = 0._r8
     end if
     if (present(dgnumhi)) then
        self%dgnumhi_(:) = dgnumhi(:)
-    else
-       self%dgnumhi_(:) = 0._r8
     end if
     if (present(dgnumlo)) then
        self%dgnumlo_(:) = dgnumlo(:)
-    else
-       self%dgnumlo_(:) = 0._r8
     end if
     if (present(rhcrystal)) then
        self%rhcrystal_(:) = rhcrystal(:)
-    else
-       self%rhcrystal_(:) = 0._r8
     end if
     if (present(rhdeliques)) then
        self%rhdeliques_(:) = rhdeliques(:)
-    else
-       self%rhdeliques_(:) = 0._r8
     end if
 
     self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
@@ -710,7 +700,11 @@ contains
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
-    get_dgnum = self%dgnum_(bin_ndx)
+    if (allocated(self%dgnum_)) then
+       get_dgnum = self%dgnum_(bin_ndx)
+    else
+       get_dgnum = -huge(1._r8)
+    end if
   end function get_dgnum
 
   !------------------------------------------------------------------------------
@@ -720,7 +714,11 @@ contains
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
-    get_dgnumhi = self%dgnumhi_(bin_ndx)
+    if (allocated(self%dgnumhi_)) then
+       get_dgnumhi = self%dgnumhi_(bin_ndx)
+    else
+       get_dgnumhi = -huge(1._r8)
+    end if
   end function get_dgnumhi
 
   !------------------------------------------------------------------------------
@@ -730,7 +728,11 @@ contains
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
-    get_dgnumlo = self%dgnumlo_(bin_ndx)
+    if (allocated(self%dgnumlo_)) then
+       get_dgnumlo = self%dgnumlo_(bin_ndx)
+    else
+       get_dgnumlo = -huge(1._r8)
+    end if
   end function get_dgnumlo
 
   !------------------------------------------------------------------------------
@@ -740,7 +742,11 @@ contains
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
-    get_rhcrystal = self%rhcrystal_(bin_ndx)
+    if (allocated(self%rhcrystal_)) then
+       get_rhcrystal = self%rhcrystal_(bin_ndx)
+    else
+       get_rhcrystal = -huge(1._r8)
+    end if
   end function get_rhcrystal
 
   !------------------------------------------------------------------------------
@@ -750,7 +756,11 @@ contains
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
-    get_rhdeliques = self%rhdeliques_(bin_ndx)
+    if (allocated(self%rhdeliques_)) then
+       get_rhdeliques = self%rhdeliques_(bin_ndx)
+    else
+       get_rhdeliques = -huge(1._r8)
+    end if
   end function get_rhdeliques
 
   !------------------------------------------------------------------------------

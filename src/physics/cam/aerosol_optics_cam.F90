@@ -701,6 +701,7 @@ contains
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aerosol_instances_get_props(iaermod, list_idx)
+       ! Null when a globally active model has no entries in this diagnostic list.
        if (.not. associated(aeroprops)) cycle aeromodel
        aerostate => aerosol_instances_get_state(iaermod, list_idx, lchnk)
 
@@ -1217,6 +1218,7 @@ contains
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aerosol_instances_get_props(iaermod, list_idx)
+       ! Null when a globally active model has no entries in this diagnostic list.
        if (.not. associated(aeroprops)) cycle aeromodel
        aerostate => aerosol_instances_get_state(iaermod, list_idx, state%lchnk)
 
