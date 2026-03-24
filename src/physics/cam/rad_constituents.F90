@@ -8,9 +8,9 @@ module rad_constituents
 ! gas MMR retrieval (state/pbuf), gas diagnostics output, and cloud optics
 ! public variables (iceopticsfile, liqopticsfile, etc.).
 !
-! Aerosol handling is in radiative_aerosol (facade) backed by
-! radiative_aerosol_definitions (core definitions) and aerosol_mmr_cam
-! (CAM-specific MMR retrieval).
+! Aerosol handling is moved to the radiative_aerosol module.
+! Shared definitions between radiatively active gases and aerosol are in
+! radiative_aerosol_definitions (core definitions).
 !
 !------------------------------------------------------------------------------------------------
 
@@ -31,12 +31,6 @@ use cam_logfile,    only: iulog
 use radiative_aerosol_definitions, only: cs1, N_DIAG, n_rad_cnst, verbose, nl, &
                             rad_cnst_namelist_t, radcnst_namelist, active_calls, &
                             n_mode_str, n_bin_str, parse_rad_specifier
-
-!REMOVECAM
-use aerosol_mmr_cam, only: get_cam_idx
-!REMOVECAM_END
-
-use radiative_aerosol, only: rad_aer_readnl
 
 implicit none
 private
@@ -100,6 +94,11 @@ subroutine rad_cnst_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use mpishorthand
+
+
+   ! Call the underlying "readnl" routine in the radiative aerosol module
+   ! that was split off from rad_constituents.
+   use radiative_aerosol, only: rad_aer_readnl
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -311,6 +310,8 @@ end subroutine gas_list_populate
 !================================================================================================
 
 subroutine gas_list_resolve_cnst_idx(gaslist)
+   ! CAM index lookup (non-portable):
+   use aerosol_mmr_cam, only: get_cam_idx
 
    ! Resolve constituent indices for gas list entries.
    ! Must run at init time (after constituent registration).

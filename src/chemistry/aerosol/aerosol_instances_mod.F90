@@ -51,17 +51,22 @@ module aerosol_instances_mod
      class(aerosol_state),      pointer :: obj => null()
   end type aero_state_entry_t
 
-  ! Module holds aerosol properties objects, dimensioned (iaermod, 0:N_DIAG).
+  ! Persistent aerosol properties objects
+  ! dimensioned (iaermod, 0:N_DIAG).
   type(aero_props_entry_t), allocatable, target :: aero_props_all(:,:)
 
-  ! Persistent per-chunk aerosol state objects, dimensioned (iaermod, 0:N_DIAG, begchunk:endchunk).
+  ! Persistent per-chunk aerosol state objects
+  ! dimensioned (iaermod, 0:N_DIAG, begchunk:endchunk).
   ! States store pointers to phys_state(c) and pbuf which persist for the run.
   type(aero_state_entry_t), allocatable, target :: aero_states_all(:,:,:)
 
   ! Number of aerosol models active at runtime.
-  ! Note: Multiple aerosol models can be active at once, e.g., using bulk for volcanic aerosol and modal for others.
-  ! When retrieving properties via aerosol_instances_get_props, or creating states from
-  ! aerosol_instances_create_states, ensure that the aerosol model matches what is needed (e.g., aero_props%model_is('MAM') == .true.)
+  ! Note: Multiple aerosol models can be active at once.
+  ! e.g., using bulk for volcanic aerosol and modal for others.
+  ! When retrieving properties via aerosol_instances_get_props,
+  ! or creating states from aerosol_instances_create_states,
+  ! ensure that the aerosol model matches what is needed
+  ! (e.g., aero_props%model_is('MAM') == .true.)
   integer :: num_aero_models_ = 0
 
   logical :: modal_active_ = .false.
@@ -71,14 +76,17 @@ module aerosol_instances_mod
 contains
   ! Determine which aerosol models are active (modal, CARMA, bulk) and
   ! create persistent aerosol_properties objects for each (model, list) pair.
-  ! Must be called after the radiative aerosol module has parsed aerosol definitions.
+  ! Must be called after the radiative aerosol module
+  ! has parsed aerosol definitions.
   !
-  ! NOTE: A model is "globally active" if the climate list (list 0) has > 0 entries
-  ! for aerosol with that representation, but individual diagnostic lists
-  ! may have zero entries. In that case the corresponding properties slot is left null.
+  ! NOTE: A model is "globally active" if the climate list (list 0) has > 0
+  ! entries for aerosol with that representation, but individual diagnostic
+  ! lists may have zero entries. In that case the corresponding properties
+  ! slot is left null.
   !
-  ! Callers that use lists other than the climate list thus need to check if the aerosol
-  ! model for that combination of (aero_model, list) is associated or not.
+  ! Callers that use lists other than the climate list thus need to check
+  ! if the aerosol model for that combination of (aero_model, list)
+  ! is associated or not.
   subroutine aerosol_instances_init()
     use radiative_aerosol, only: rad_aer_get_info
     use radiative_aerosol_definitions, only: active_calls

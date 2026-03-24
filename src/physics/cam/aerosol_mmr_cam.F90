@@ -11,7 +11,6 @@ use shr_kind_mod,   only: r8 => shr_kind_r8
 
 implicit none
 private
-save
 
 ! define generic interface for MMR retrieval
 interface rad_cnst_get_aer_mmr
@@ -24,7 +23,8 @@ real(r8), allocatable, target :: zero_cols(:,:)
 
 public :: aerosol_mmr_init    ! allocate zero_cols
 public :: get_cam_idx
-public :: resolve_mode_idx, resolve_bin_idx
+public :: resolve_mode_idx
+public :: resolve_bin_idx
 public :: resolve_bulk_idx
 public :: rad_cnst_get_aer_mmr
 public :: rad_cnst_get_mam_mmr_idx
