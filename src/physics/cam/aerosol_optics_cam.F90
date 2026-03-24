@@ -1098,7 +1098,7 @@ contains
 
                scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
                abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
-            endif
+            end if
 
             aodabsbc(icol) = aodabsbc(icol) + absbc(icol)*dopaer(icol)*(1.0_r8-palb(icol))
 
