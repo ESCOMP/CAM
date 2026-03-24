@@ -63,12 +63,12 @@ type(gaslist_t), target :: gaslist(0:N_DIAG)  ! gasses used in climate/diagnosti
 ! values for constituents with requested value of zero
 real(r8), allocatable, target :: zero_cols(:,:)
 
-! Public interfaces — routines in this module
+! Public interfaces (only gas related remain):
 public :: &
-   rad_cnst_readnl,             &! read namelist values and parse
+   rad_cnst_readnl,             &! read namelist values and parse; also calls radiative_aerosol "readnl"
    rad_cnst_init,               &! find optics files and all constituents
-   rad_cnst_get_info,           &! gas+aerosol info wrapper
-   rad_cnst_get_gas,            &! return pointer to mmr for gasses
+   rad_cnst_get_info,           &! gas info wrapper
+   rad_cnst_get_gas,            &! return pointer to mmr for gases
    rad_cnst_out                  ! output constituent diagnostics (mass per layer and column burden)
 
 character(len=cs1), public :: iceopticsfile, liqopticsfile

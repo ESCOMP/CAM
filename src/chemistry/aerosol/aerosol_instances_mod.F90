@@ -75,7 +75,7 @@ contains
   !
   ! NOTE: A model is "globally active" if the climate list (list 0) has > 0 entries
   ! for aerosol with that representation, but individual diagnostic lists
-  ! may have zero entries — in that case the corresponding properties slot is left null.
+  ! may have zero entries. In that case the corresponding properties slot is left null.
   !
   ! Callers that use lists other than the climate list thus need to check if the aerosol
   ! model for that combination of (aero_model, list) is associated or not.

@@ -829,7 +829,7 @@ contains
                    else if (iwav==idx_sw_diag) then ! vis
 
                       ! Species partitioning for per-species AOD diagnostics
-                      ! (re-runs species loop — same data as core computed for asphericity)
+                      ! (re-runs species loop to compute for asphericity)
                       do ispec = 1, aeroprops%nspecies(ibin)
                          call aeroprops%get(ibin, ispec, density=specdens, &
                               spectype=spectype, refindex_sw=specrefindex, hygro=hygro_aer)

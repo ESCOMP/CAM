@@ -26,7 +26,9 @@ interface rad_aer_get_props
    module procedure rad_aer_get_mam_props_by_idx
 end interface
 
-! Public routines — aerosol queries (rad_aer_* naming)
+! Public subroutines
+! Formerly rad_cnst queries that are related to aerosol
+! have been moved to the rad_aer prefix.
 public :: rad_aer_get_info
 public :: rad_aer_get_info_by_mode, rad_aer_get_info_by_mode_spec
 public :: rad_aer_get_info_by_spectype
@@ -1230,7 +1232,7 @@ subroutine rad_aer_readnl(mode_defs, bin_defs)
       end if
    end do
 
-   ! Accumulate unique physprop files — bulk aerosol species
+   ! Accumulate unique physprop files for bulk aerosol species
    do i = 0, N_DIAG
       if (active_calls(i)) then
          call physprop_accum_unique_files(radcnst_namelist(i)%radname, radcnst_namelist(i)%type)
