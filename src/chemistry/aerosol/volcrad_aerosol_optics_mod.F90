@@ -54,7 +54,7 @@ contains
     class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncols, nlevs
-    real(r8),intent(in) :: geometric_radius(ncols,nlevs)
+    real(r8),intent(in) :: geometric_radius(:,:)
 
     type(volcrad_aerosol_optics), pointer :: newobj
 

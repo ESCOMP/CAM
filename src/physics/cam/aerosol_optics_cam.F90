@@ -740,27 +740,17 @@ contains
              call pbuf_get_field(pbuf, idx, geometric_radius)
           end select
 
-          ! Call portable aerosol optics driver:
-          if (associated(geometric_radius)) then
-             ! volcanic_radius:
-             call aerosol_optics_sw_bin(aeroprops, aerostate, ibin, &
-                  ncol, pver, top_lev, nswbands, nlwbands, numrh, &
-                  idx_sw_diag, &
-                  relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
-                  geometric_radius=geometric_radius(:ncol,:), &
-                  tau_bin=tau_bin(:ncol,:,:), ssa_bin=ssa_bin(:ncol,:,:), asm_bin=asm_bin(:ncol,:,:), &
-                  pabs_vis=pabs_vis(:ncol,:), dopaer0_vis=dopaer0_vis(:ncol,:), &
-                  errmsg=errmsg, errflg=errflg)
-          else
-             ! all other types:
-             call aerosol_optics_sw_bin(aeroprops, aerostate, ibin, &
-                  ncol, pver, top_lev, nswbands, nlwbands, numrh, &
-                  idx_sw_diag, &
-                  relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
-                  tau_bin=tau_bin(:ncol,:,:), ssa_bin=ssa_bin(:ncol,:,:), asm_bin=asm_bin(:ncol,:,:), &
-                  pabs_vis=pabs_vis(:ncol,:), dopaer0_vis=dopaer0_vis(:ncol,:), &
-                  errmsg=errmsg, errflg=errflg)
-          end if
+          ! Call portable aerosol optics driver.
+          ! geometric_radius is a null pointer for non-volcanic types;
+          ! the optional pointer dummy checks associated() internally.
+          call aerosol_optics_sw_bin(aeroprops, aerostate, ibin, &
+               ncol, pver, top_lev, nswbands, nlwbands, numrh, &
+               idx_sw_diag, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               geometric_radius=geometric_radius, &
+               tau_bin=tau_bin(:ncol,:,:), ssa_bin=ssa_bin(:ncol,:,:), asm_bin=asm_bin(:ncol,:,:), &
+               pabs_vis=pabs_vis(:ncol,:), dopaer0_vis=dopaer0_vis(:ncol,:), &
+               errmsg=errmsg, errflg=errflg)
 
           if(errflg /= 0) then
             call endrun(prefix//errmsg)
@@ -828,8 +818,15 @@ contains
 
                    else if (iwav==idx_sw_diag) then ! vis
 
-                      ! Species partitioning for per-species AOD diagnostics
-                      ! (re-runs species loop to compute for asphericity)
+                      ! Decompose bin optical properties into per-species
+                      ! contributions for AOD diagnostics (e.g., dustaod, bcaod).
+                      ! Uses the same volume-weighted refractive index method as
+                      ! the asphericity calculation in aerosol_optics_core, but
+                      ! for all species and all bins (not just coarse dust).
+                      !
+                      ! The below block is for diagnostics only.
+                      ! To edit the computation, change the code in
+                      ! species loop in aerosol_optics_core.F90.
                       do ispec = 1, aeroprops%nspecies(ibin)
                          call aeroprops%get(ibin, ispec, density=specdens, &
                               spectype=spectype, refindex_sw=specrefindex, hygro=hygro_aer)
@@ -1241,23 +1238,15 @@ contains
              call pbuf_get_field(pbuf, idx, geometric_radius)
           end select
 
-          ! Call portable aerosol optics driver:
-          if (associated(geometric_radius)) then
-             ! volcanic_radius:
-             call aerosol_optics_lw_bin(aeroprops, aerostate, ibin, &
-                  ncol, pver, nswbands, nlwbands, numrh, &
-                  relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
-                  geometric_radius=geometric_radius(:ncol,:), &
-                  tau_lw_bin=tau_lw_bin(:ncol,:,:), absorp_bin=absorp_bin(:ncol,:,:), &
-                  errmsg=errmsg, errflg=errflg)
-          else
-             ! other types:
-             call aerosol_optics_lw_bin(aeroprops, aerostate, ibin, &
-                  ncol, pver, nswbands, nlwbands, numrh, &
-                  relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
-                  tau_lw_bin=tau_lw_bin(:ncol,:,:), absorp_bin=absorp_bin(:ncol,:,:), &
-                  errmsg=errmsg, errflg=errflg)
-          end if
+          ! Call portable aerosol optics driver.
+          ! geometric_radius is a null pointer for non-volcanic types;
+          ! the optional pointer dummy checks associated() internally.
+          call aerosol_optics_lw_bin(aeroprops, aerostate, ibin, &
+               ncol, pver, nswbands, nlwbands, numrh, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               geometric_radius=geometric_radius, &
+               tau_lw_bin=tau_lw_bin(:ncol,:,:), absorp_bin=absorp_bin(:ncol,:,:), &
+               errmsg=errmsg, errflg=errflg)
 
           if (errflg /= 0) then
             call endrun(prefix//errmsg)

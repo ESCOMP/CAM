@@ -46,17 +46,17 @@ contains
 
     class(aerosol_properties), intent(in), target :: aeroprops
     class(aerosol_state),      intent(in), target :: aerostate
-    integer,     intent(in)                   :: ibin
-    integer,     intent(in)                   :: ncol
-    integer,     intent(in)                   :: nlev
-    integer,     intent(in)                   :: nswbands
-    integer,     intent(in)                   :: nlwbands
-    integer,     intent(in)                   :: numrh
-    real(r8),    intent(in)                   :: relh(:, :)
-    real(r8),    intent(in)                   :: sulfwtpct(:, :)
-    complex(r8), intent(in)                   :: crefwsw(:)
-    complex(r8), intent(in)                   :: crefwlw(:)
-    real(r8),    intent(in), optional, target :: geometric_radius(:, :)
+    integer,     intent(in)                       :: ibin
+    integer,     intent(in)                       :: ncol
+    integer,     intent(in)                       :: nlev
+    integer,     intent(in)                       :: nswbands
+    integer,     intent(in)                       :: nlwbands
+    integer,     intent(in)                       :: numrh
+    real(r8),    intent(in)                       :: relh(:, :)
+    real(r8),    intent(in)                       :: sulfwtpct(:, :)
+    complex(r8), intent(in)                       :: crefwsw(:)
+    complex(r8), intent(in)                       :: crefwlw(:)
+    real(r8),    intent(in), optional, pointer    :: geometric_radius(:, :)
 
     class(aerosol_optics), pointer :: aero_optics
 
@@ -90,8 +90,10 @@ contains
 
     case ('volcanic_radius', 'volcanic_radius1', 'volcanic_radius2', 'volcanic_radius3', 'volcanic_radius5')
       if (present(geometric_radius)) then
-        aero_optics => volcrad_aerosol_optics(aeroprops, aerostate, &
-                                              ibin, ncol, nlev, geometric_radius)
+        if (associated(geometric_radius)) then
+          aero_optics => volcrad_aerosol_optics(aeroprops, aerostate, &
+                                                ibin, ncol, nlev, geometric_radius)
+        end if
       end if
 
     end select
@@ -132,7 +134,7 @@ contains
     real(r8),    intent(in) :: mass(:, :)                    ! layer mass (pdeldry*rga)
     complex(r8), intent(in) :: crefwsw(:)
     complex(r8), intent(in) :: crefwlw(:)
-    real(r8),    intent(in), optional, target :: geometric_radius(:, :)
+    real(r8),    intent(in), optional, pointer :: geometric_radius(:, :)
 
     real(r8),    intent(out) :: tau_bin(:, :, :)  ! (ncol,nlev,nswbands) extinction OD
     real(r8),    intent(out) :: ssa_bin(:, :, :)  ! (ncol,nlev,nswbands) single scatter albedo
@@ -360,7 +362,7 @@ contains
     real(r8),    intent(in)         :: mass(:, :)
     complex(r8), intent(in)         :: crefwsw(:)
     complex(r8), intent(in)         :: crefwlw(:)
-    real(r8),    intent(in), optional, target :: geometric_radius(:, :)
+    real(r8),    intent(in), optional, pointer :: geometric_radius(:, :)
     real(r8),    intent(out)        :: tau_lw_bin(:, :, :)   ! (ncol,nlev,nlwbands) absorption OD
     real(r8),    intent(out)        :: absorp_bin(:, :, :)   ! (ncol,nlev,nlwbands) raw specific absorption (pabs)
 
