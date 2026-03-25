@@ -1,6 +1,60 @@
 
 ===============================================================
 
+Tag name: cam6_4_159
+Originator(s): cacraigucar
+Date: Mar 25, 2026
+One-line Summary: Update for namelists for spin-up
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1517
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Namelist out of the box for the spinup:  https://github.com/ESCOMP/CAM/issues/1515
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: modified namelist settings as specified in #1515
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+          - namelist modifications as specified in #1515
+
+M       cime_config/testdefs/testlist_cam.xml
+          - bump up time limit on test which ran out of wallclock time
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - answer changes for LT and MT
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: FAIL) details:
+     - See issue: https://github.com/ESCOMP/CAM/issues/1513.  Failure does not repeat when using the intel compiler.
+
+izumi/nag/aux_cam: all BFB except:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+       - See issue: https://github.com/ESCOMP/CAM/issues/1514. Test passes when subcolumns are disabled.
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_158
 Originator(s): cacraigucar
 Date: March 24, 2026
