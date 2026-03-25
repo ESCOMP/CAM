@@ -211,10 +211,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
         cmake_args = "-DCMAKE_VERBOSE_MAKEFILE=ON "
         if case.get_value("MPILIB") != "mpi-serial":
             cmake_args += "-DTUVX_ENABLE_MPI:BOOL=TRUE "
-        if case.get_value("DEBUG"):
-            cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
-        else:
-            cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
         cmake_args += "-DCMAKE_Fortran_COMPILER=mpif90 "
         cmake_args += "-DCMAKE_C_COMPILER=mpicc "
         cmake_args += "-DCMAKE_CXX_COMPILER=mpicxx "
