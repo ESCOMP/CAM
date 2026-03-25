@@ -243,11 +243,19 @@ subroutine rrtmgp_set_aer_sw( &
          ! set aerosol optical depth, clip to zero
          aer_sw%optical_props%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
          ! set value of single scattering albedo
-         aer_sw%optical_props%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
-                                          1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
+         where (aer_tau(idxday(i),ktopcam:,:) > 0._r8)
+            aer_sw%optical_props%ssa(i,ktoprad:,:) = aer_tau_w(idxday(i),ktopcam:,:) &
+                                                   / aer_tau(idxday(i),ktopcam:,:)
+         elsewhere
+            aer_sw%optical_props%ssa(i,ktoprad:,:) = 1._r8
+         end where
          ! set value of asymmetry
-         aer_sw%optical_props%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
-                                        0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
+         where (aer_tau_w(idxday(i),ktopcam:,:) > tiny)
+            aer_sw%optical_props%g(i,ktoprad:,:) = aer_tau_w_g(idxday(i),ktopcam:,:) &
+                                                 / aer_tau_w(idxday(i),ktopcam:,:)
+         elsewhere
+            aer_sw%optical_props%g(i,ktoprad:,:) = 0._r8
+         end where
       end do
 
       ! impose limits on the components

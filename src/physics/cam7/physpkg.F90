@@ -1402,7 +1402,7 @@ contains
     use dycore,             only: dycore_is
     use cam_control_mod,    only: aqua_planet
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_set
+    use clybryiy_fam,       only: clybryiy_fam_set
     use charge_neutrality,  only: charge_balance
     use qbo,                only: qbo_relax
     use iondrag,            only: iondrag_calc, do_waccm_ions
@@ -2556,7 +2556,7 @@ contains
 
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, cldliqini, cldiceini)
 
-    call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
     ! output these here -- after updates by chem_timestep_tend or export_fields within the current time step
     if (associated(cam_out%nhx_nitrogen_flx)) then
@@ -2620,7 +2620,7 @@ contains
     use radiation,       only: radiation_tend
     use perf_mod
     use mo_gas_phase_chemdr,only: map2chm
-    use clybry_fam,         only: clybry_fam_adj
+    use clybryiy_fam,       only: clybryiy_fam_adj
     use cam_abortutils,  only: endrun
     use subcol_utils,    only: is_subcol_on
     use qneg_module,     only: qneg3
@@ -2767,16 +2767,16 @@ contains
        call physics_state_check(state, name="before tphysbc (dycore?)")
     end if
 
-    call clybry_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
+    call clybryiy_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
 
-    ! Since clybry_fam_adj operates directly on the tracers, and has no
+    ! Since clybryiy_fam_adj operates directly on the tracers, and has no
     ! physics_update call, re-run qneg3.
     call qneg3('TPHYSBCc',lchnk  ,ncol    ,pcols   ,pver    , &
          1, pcnst, qmin  ,state%q )
 
-    ! Validate output of clybry_fam_adj.
+    ! Validate output of clybryiy_fam_adj.
     if (state_debug_checks) then
-       call physics_state_check(state, name="clybry_fam_adj")
+       call physics_state_check(state, name="clybryiy_fam_adj")
     end if
     !
     ! Dump out "before physics" state
