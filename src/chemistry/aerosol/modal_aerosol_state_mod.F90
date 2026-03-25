@@ -627,10 +627,18 @@ contains
   !------------------------------------------------------------------------------
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
-  !REMOVECAM - direct state%q access and modal_aero_data dependency
   function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
 
-    use modal_aero_data
+    !REMOVECAM - direct state%q access and modal_aero_data dependency
+    ! modeptr_* -> could be replaced with modetype checks
+    ! lptr_*    -> could be replaced with aero_props%species_type() loop check.
+    ! state%q   -> could be replaced with self%get_ambient_mmr.
+    ! lmassptr_amode == nacl/dust_a_amode -> could be replaced with %species_type().
+    use modal_aero_data, only: modeptr_coarse
+    use modal_aero_data, only: modeptr_pcarbon, modeptr_finedust, modeptr_coardust
+    use modal_aero_data, only: lptr_dust_a_amode, lptr_nacl_a_amode
+    use modal_aero_data, only: lmassptr_amode
+    !REMOVECAM_END
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: ibin   ! bin index
