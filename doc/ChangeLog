@@ -8,6 +8,11 @@ Github PR URL: https://github.com/ESCOMP/CAM/pull/1471
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
+ Issue #757: Introduce in-line photolysis rate calculations from TUV-x.
+
+ This provides the option to use the TUV-x library to calculate photo-chemical
+ rates rather the the traditional table-look up method (default method).
+
 Describe any changes made to build system:
  TUV-x is built as a separate library which is linked to CAM/CESM
 
