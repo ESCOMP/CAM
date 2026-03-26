@@ -27,13 +27,10 @@ module zm_conv_mcsp
    !     https://doi.org/10.1029/2019GL085316
    !
    !----------------------------------------------------------------------------
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use zm_eamxx_bridge_params, only: r8
-#else
+
    use shr_kind_mod,     only: r8=>shr_kind_r8
    use cam_abortutils,   only: endrun
    use cam_logfile,      only: iulog
-#endif
    use physconst,        only: cpair, pi
 
 
@@ -41,9 +38,7 @@ module zm_conv_mcsp
    private
 
    public :: zm_conv_mcsp_init ! Initialize MCSP output fields
-!KH:++++++++++++++++
    public :: zm_conv_mcsp_readnl ! Read MCSP namelist
-!KH:++++++++++++++++
    public :: zm_conv_mcsp_tend ! Perform MCSP tendency calculations
    public :: zm_conv_mcsp_hist ! Write diagnostic quantities to history files
 
@@ -51,20 +46,11 @@ module zm_conv_mcsp
    real(r8), parameter :: MCSP_conv_depth_min   = 500e2_r8 ! pressure thickness of convective heating [Pa]
    real(r8), parameter :: mcsp_shear_min        = 3.0_r8   ! min shear value for MCSP to be active
    real(r8), parameter :: mcsp_shear_max        = 200.0_r8 ! max shear value for MCSP to be active
-!KH:---------   
-!   real(r8) :: zmconv_MCSP_heat_coeff        = 0.3_r8
-!   real(r8) :: zmconv_MCSP_moisture_coeff    = 0._r8
-!   real(r8) :: zmconv_MCSP_uwind_coeff       = 0._r8
-!   real(r8) :: zmconv_MCSP_vwind_coeff       = 0._r8
-!KH:---------
 
-!KH:+++++++++
-   real(r8) :: zmconv_MCSP_heat_coeff         = 0.0_r8      
-   real(r8) :: zmconv_MCSP_moisture_coeff     = 0.0_r8  
-   real(r8) :: zmconv_MCSP_uwind_coeff        = 0.0_r8    
-   real(r8) :: zmconv_MCSP_vwind_coeff        = 0.0_r8 
-!KH:+++++++++
-
+   real(r8) :: zmconv_MCSP_heat_coeff      
+   real(r8) :: zmconv_MCSP_moisture_coeff  
+   real(r8) :: zmconv_MCSP_uwind_coeff      
+   real(r8) :: zmconv_MCSP_vwind_coeff  
 
 !===================================================================================================
 contains
@@ -74,7 +60,6 @@ subroutine zm_conv_mcsp_init()
    !----------------------------------------------------------------------------
    ! Purpose: initialize MCSP output fields
    !----------------------------------------------------------------------------
-#ifndef SCREAM_CONFIG_IS_CMAKE
    use cam_history,     only: addfld, horiz_only
    use mpishorthand
    !----------------------------------------------------------------------------
@@ -89,11 +74,10 @@ subroutine zm_conv_mcsp_init()
    call addfld('MCSP_freq',     horiz_only, 'A', '1',        'MCSP frequency of activation')
    call addfld('MCSP_shear',    horiz_only, 'A', 'm/s',      'MCSP vertical shear of zonal wind')
    call addfld('MCSP_zm_depth', horiz_only, 'A', 'Pa',  'ZM convection depth for MCSP')
-#endif /* SCREAM_CONFIG_IS_CMAKE */
 
 end subroutine zm_conv_mcsp_init
 
-!KH:+++++++++++++++++++++++++++
+
 !=========================================================================================
 
 subroutine zm_conv_mcsp_readnl(nlfile)
@@ -107,15 +91,15 @@ subroutine zm_conv_mcsp_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'zm_conv_mcsp_readnl'
 
-   namelist /zmconv_mcsp_nl/ zmconv_MCSP_heat_coeff, zmconv_MCSP_moisture_coeff, & 
-                             zmconv_MCSP_uwind_coeff, zmconv_MCSP_vwind_coeff
+   namelist /zmconv_nl/ zmconv_MCSP_heat_coeff, zmconv_MCSP_moisture_coeff, & 
+                        zmconv_MCSP_uwind_coeff, zmconv_MCSP_vwind_coeff
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
       open( newunit=unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'zmconv_mcsp_nl', status=ierr)
+      call find_group_name(unitn, 'zmconv_nl', status=ierr)
       if (ierr == 0) then
-         read(unitn, zmconv_mcsp_nl, iostat=ierr)
+         read(unitn, zmconv_nl, iostat=ierr)
          if (ierr /= 0) then
             call endrun(subname // ':: ERROR reading namelist')
          end if
@@ -126,16 +110,15 @@ subroutine zm_conv_mcsp_readnl(nlfile)
 
    ! Broadcast namelist variables
    call mpi_bcast(zmconv_MCSP_heat_coeff,                1, mpi_integer, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_heat_coeff")
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_heat_coeff")
    call mpi_bcast(zmconv_MCSP_moisture_coeff,            1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_moisture_coeff")
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_moisture_coeff")
    call mpi_bcast(zmconv_MCSP_uwind_coeff,                1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_uwind_coeff")
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_uwind_coeff")
    call mpi_bcast(zmconv_MCSP_vwind_coeff,                1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_vwind_coeff")
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_vwind_coeff")
 
 end subroutine zm_conv_mcsp_readnl
-!KH:+++++++++++++++++++++++++++++++
 
 !===================================================================================================
 
@@ -143,11 +126,7 @@ subroutine zm_conv_mcsp_calculate_shear( pcols, ncol, pver, state_pmid, state_u,
    !----------------------------------------------------------------------------
    ! Purpose: calculate shear for MCSP
    !----------------------------------------------------------------------------
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use zm_eamxx_bridge_methods, only: vertinterp
-#else
    use interpolate_data, only: vertinterp
-#endif
    !----------------------------------------------------------------------------
    ! Arguments
    integer,                               intent(in   ) :: pcols      ! number of atmospheric columns (max)
@@ -280,91 +259,94 @@ subroutine zm_conv_mcsp_tend( pcols, ncol, pver, pverp, &
    !++
    mcsp_tend_s_max = 0._r8
    !--
-   !----------------------------------------------------------------------------
-   ! calculate shear
+   if (zmconv_MCSP_heat_coeff>0 .OR. zmconv_MCSP_moisture_coeff>0 .OR. zmconv_MCSP_uwind_coeff>0 .OR. zmconv_MCSP_vwind_coeff>0) then
+      !----------------------------------------------------------------------------
+      ! calculate shear
 
-   call zm_conv_mcsp_calculate_shear( pcols, ncol, pver, state_pmid, state_u, state_v, mcsp_shear )
+      call zm_conv_mcsp_calculate_shear( pcols, ncol, pver, state_pmid, state_u, state_v, mcsp_shear )
 
-   !----------------------------------------------------------------------------
-   ! calculate mass weighted column average tendencies from ZM
+      !----------------------------------------------------------------------------
+      ! calculate mass weighted column average tendencies from ZM
 
-   zm_depth(1:ncol) = 0
-   do i = 1,ncol
-      if (jctop(i) .ne. pver) then
-         ! integrate pressure and ZM tendencies over column
-         do k = jctop(i),pver
-            zm_avg_tend_s(i) = zm_avg_tend_s(i) + ptend_zm_s(i,k) * state_pdel(i,k)
-            zm_avg_tend_q(i) = zm_avg_tend_q(i) + ptend_zm_q(i,k) * state_pdel(i,k)
-            pdel_sum(i) = pdel_sum(i) + state_pdel(i,k)
-         end do
-         ! normalize integrated ZM tendencies by total mass
-         zm_avg_tend_s(i) = zm_avg_tend_s(i) / pdel_sum(i)
-         zm_avg_tend_q(i) = zm_avg_tend_q(i) / pdel_sum(i)
-         ! calculate diagnostic zm_depth
-         zm_depth(i) = state_pint(i,pver+1) - state_pmid(i,jctop(i))
-      else
-         zm_avg_tend_s(i) = 0
-         zm_avg_tend_q(i) = 0
-         zm_depth(i)  = 0
-      end if
-   end do
+      zm_depth(1:ncol) = 0
+      do i = 1,ncol
+         if (jctop(i) .ne. pver) then
+            ! integrate pressure and ZM tendencies over column
+            do k = jctop(i),pver
+               zm_avg_tend_s(i) = zm_avg_tend_s(i) + ptend_zm_s(i,k) * state_pdel(i,k)
+               zm_avg_tend_q(i) = zm_avg_tend_q(i) + ptend_zm_q(i,k) * state_pdel(i,k)
+               pdel_sum(i) = pdel_sum(i) + state_pdel(i,k)
+            end do
+            ! normalize integrated ZM tendencies by total mass
+            zm_avg_tend_s(i) = zm_avg_tend_s(i) / pdel_sum(i)
+            zm_avg_tend_q(i) = zm_avg_tend_q(i) / pdel_sum(i)
+            ! calculate diagnostic zm_depth
+            zm_depth(i) = state_pint(i,pver+1) - state_pmid(i,jctop(i))
+         else
+            zm_avg_tend_s(i) = 0
+            zm_avg_tend_q(i) = 0
+            zm_depth(i)  = 0
+         end if
+      end do
 
-   !----------------------------------------------------------------------------
-   ! Note: To conserve total energy we need to account for the kinteic energy tendency
-   ! which we can obtain from the velocity tendencies based on the following:
-   !   KE_new = (u_new^2 + v_new^2)/2 
-   !          = [ (u_old+du)^2 + (v_old+dv)^2 ]/2
-   !          = [ ( u_old^2 + 2*u_old*du + du^2 ) + ( v_old^2 + 2*v_old*dv + dv^2 ) ]/2
-   !          = ( u_old^2 + v_old^2 )/2 + ( 2*u_old*du + du^2 + 2*v_old*dv + dv^2 )/2
-   !          = KE_old + [ 2*u_old*du + du^2 + 2*v_old*dv + dv^2 ] /2
+      !----------------------------------------------------------------------------
+      ! Note: To conserve total energy we need to account for the kinteic energy tendency
+      ! which we can obtain from the velocity tendencies based on the following:
+      !   KE_new = (u_new^2 + v_new^2)/2 
+      !          = [ (u_old+du)^2 + (v_old+dv)^2 ]/2
+      !          = [ ( u_old^2 + 2*u_old*du + du^2 ) + ( v_old^2 + 2*v_old*dv + dv^2 ) ]/2
+      !          = ( u_old^2 + v_old^2 )/2 + ( 2*u_old*du + du^2 + 2*v_old*dv + dv^2 )/2
+      !          = KE_old + [ 2*u_old*du + du^2 + 2*v_old*dv + dv^2 ] /2
 
-   !----------------------------------------------------------------------------
-   ! calculate MCSP tendencies
+      !----------------------------------------------------------------------------
+      ! calculate MCSP tendencies
 
-   do i = 1,ncol
+      do i = 1,ncol
 
-      ! check that ZM produced tendencies over a depth that exceeds the threshold
-      if ( zm_depth(i) >= MCSP_conv_depth_min ) then
-         ! check that ZM provided a non-zero column total heating
-         if ( zm_avg_tend_s(i) > 0 ) then
-            ! check that there is sufficient wind shear to justify coherent organization
-            if ( abs(mcsp_shear(i)).ge.mcsp_shear_min .and. &
-                 abs(mcsp_shear(i)).lt.mcsp_shear_max ) then
-               do k = jctop(i),pver
+         ! check that ZM produced tendencies over a depth that exceeds the threshold
+         if ( zm_depth(i) >= MCSP_conv_depth_min ) then
+            ! check that ZM provided a non-zero column total heating
+            if ( zm_avg_tend_s(i) > 0 ) then
+               ! check that there is sufficient wind shear to justify coherent organization
+               if ( abs(mcsp_shear(i)).ge.mcsp_shear_min .and. &
+                    abs(mcsp_shear(i)).lt.mcsp_shear_max ) then
+                  do k = jctop(i),pver
 
-                  ! See eq 7-8 of Moncrieff et al. (2017) - also eq (5) of Moncrieff & Liu (2006)
-                  pdepth_mid_k = state_pint(i,pver+1) - state_pmid(i,k)
-                  pdepth_total = state_pint(i,pver+1) - state_pmid(i,jctop(i))
+                     ! See eq 7-8 of Moncrieff et al. (2017) - also eq (5) of Moncrieff & Liu (2006)
+                     pdepth_mid_k = state_pint(i,pver+1) - state_pmid(i,k)
+                     pdepth_total = state_pint(i,pver+1) - state_pmid(i,jctop(i))
 
-                  ! specify the assumed vertical structure
-                  if (do_mcsp_t) mcsp_tend_s(i,k) = -1*zmconv_MCSP_heat_coeff * sin(2.0_r8*pi*(pdepth_mid_k/pdepth_total))
-                  if (do_mcsp_q) mcsp_tend_q(i,k) = -1*zmconv_MCSP_moisture_coeff * sin(2.0_r8*pi*(pdepth_mid_k/pdepth_total))
-                  if (do_mcsp_u) mcsp_tend_u(i,k) =    zmconv_MCSP_uwind_coeff * (cos(pi*(pdepth_mid_k/pdepth_total)))
-                  if (do_mcsp_v) mcsp_tend_v(i,k) =    zmconv_MCSP_vwind_coeff * (cos(pi*(pdepth_mid_k/pdepth_total)))
+                     ! specify the assumed vertical structure
+                     if (do_mcsp_t) mcsp_tend_s(i,k) = -1*zmconv_MCSP_heat_coeff * sin(2.0_r8*pi*(pdepth_mid_k/pdepth_total))
+                     if (do_mcsp_q) mcsp_tend_q(i,k) = -1*zmconv_MCSP_moisture_coeff * sin(2.0_r8*pi*(pdepth_mid_k/pdepth_total))
+                     if (do_mcsp_u) mcsp_tend_u(i,k) =    zmconv_MCSP_uwind_coeff * (cos(pi*(pdepth_mid_k/pdepth_total)))
+                     if (do_mcsp_v) mcsp_tend_v(i,k) =    zmconv_MCSP_vwind_coeff * (cos(pi*(pdepth_mid_k/pdepth_total)))
 
-                  ! scale the vertical structure by the ZM heating/drying tendencies
-                  if (do_mcsp_t) mcsp_tend_s(i,k) = zm_avg_tend_s(i) * mcsp_tend_s(i,k)
-                  !++
-                  if (do_mcsp_t) mcsp_tend_s_max(i) = zm_avg_tend_s(i) * zmconv_MCSP_heat_coeff / cpair
-                  !--
-                  if (do_mcsp_q) mcsp_tend_q(i,k) = zm_avg_tend_q(i) * mcsp_tend_q(i,k)
+                     ! scale the vertical structure by the ZM heating/drying tendencies
+                     if (do_mcsp_t) mcsp_tend_s(i,k) = zm_avg_tend_s(i) * mcsp_tend_s(i,k)
+                     !++
+                     if (do_mcsp_t) mcsp_tend_s_max(i) = zm_avg_tend_s(i) * zmconv_MCSP_heat_coeff / cpair
+                     !--
+                     if (do_mcsp_q) mcsp_tend_q(i,k) = zm_avg_tend_q(i) * mcsp_tend_q(i,k)
 
-                  ! integrate the DSE/qv tendencies for energy/mass fixer
-                  if (do_mcsp_t) mcsp_avg_tend_s(i) = mcsp_avg_tend_s(i) + mcsp_tend_s(i,k) * state_pdel(i,k) / pdel_sum(i)
-                  if (do_mcsp_q) mcsp_avg_tend_q(i) = mcsp_avg_tend_q(i) + mcsp_tend_q(i,k) * state_pdel(i,k) / pdel_sum(i)
+                     ! integrate the DSE/qv tendencies for energy/mass fixer
+                     if (do_mcsp_t) mcsp_avg_tend_s(i) = mcsp_avg_tend_s(i) + mcsp_tend_s(i,k) * state_pdel(i,k) / pdel_sum(i)
+                     if (do_mcsp_q) mcsp_avg_tend_q(i) = mcsp_avg_tend_q(i) + mcsp_tend_q(i,k) * state_pdel(i,k) / pdel_sum(i)
 
-                  ! integrate the change in kinetic energy (KE) for energy fixer
-                  if (do_mcsp_u.or.do_mcsp_v) then
-                     tend_k = ( 2.0_r8*mcsp_tend_u(i,k)*ztodt*state_u(i,k) + mcsp_tend_u(i,k)*mcsp_tend_u(i,k)*ztodt*ztodt &
-                               +2.0_r8*mcsp_tend_v(i,k)*ztodt*state_v(i,k) + mcsp_tend_v(i,k)*mcsp_tend_v(i,k)*ztodt*ztodt )/2.0_r8/ztodt
-                     mcsp_avg_tend_k(i) = mcsp_avg_tend_k(i) + tend_k*state_pdel(i,k) / pdel_sum(i)
-                  end if
+                     ! integrate the change in kinetic energy (KE) for energy fixer
+                     if (do_mcsp_u.or.do_mcsp_v) then
+                        tend_k = ( 2.0_r8*mcsp_tend_u(i,k)*ztodt*state_u(i,k) + mcsp_tend_u(i,k)*mcsp_tend_u(i,k)*ztodt*ztodt &
+                                  +2.0_r8*mcsp_tend_v(i,k)*ztodt*state_v(i,k) + mcsp_tend_v(i,k)*mcsp_tend_v(i,k)*ztodt*ztodt )/2.0_r8/ztodt
+                        mcsp_avg_tend_k(i) = mcsp_avg_tend_k(i) + tend_k*state_pdel(i,k) / pdel_sum(i)
+                     end if
 
-               end do ! k = jctop(i),pver
-            end if ! shear threshold
-         end if ! zm_avg_tend_s(i) > 0
-      end if ! zm_depth(i) >= MCSP_conv_depth_min
-   end do
+                  end do ! k = jctop(i),pver
+               end if ! shear threshold
+            end if ! zm_avg_tend_s(i) > 0
+         end if ! zm_depth(i) >= MCSP_conv_depth_min
+      end do
+
+   endif 
 
    !----------------------------------------------------------------------------
    ! calculate final output tendencies
@@ -422,9 +404,7 @@ subroutine zm_conv_mcsp_hist( lchnk, pcols, pver, &
    !----------------------------------------------------------------------------
    ! Purpose: write diagnostic quantities to history files
    !----------------------------------------------------------------------------
-#ifndef SCREAM_CONFIG_IS_CMAKE
    use cam_history,      only: outfld
-#endif
    !----------------------------------------------------------------------------
    ! Arguments
    integer,                         intent(in) :: lchnk           ! chunk identifier
@@ -441,7 +421,6 @@ subroutine zm_conv_mcsp_hist( lchnk, pcols, pver, &
    real(r8), dimension(pcols),      intent(in) :: mcsp_tend_s_max ! max MCSP heating tendency
    !--
    !----------------------------------------------------------------------------
-#ifndef SCREAM_CONFIG_IS_CMAKE
    ! write out MCSP diagnostic history fields
    call outfld('MCSP_DT',       mcsp_dt_out, pcols, lchnk )
    call outfld('MCSP_DQ',       mcsp_dq_out, pcols, lchnk )
@@ -453,7 +432,6 @@ subroutine zm_conv_mcsp_hist( lchnk, pcols, pver, &
    !++
    call outfld('MCSP_DT_max', mcsp_tend_s_max, pcols, lchnk)
    !--
-#endif
    !----------------------------------------------------------------------------
    return
 

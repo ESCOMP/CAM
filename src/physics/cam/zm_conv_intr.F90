@@ -633,7 +633,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
       ! Set these all to True so that the tedency variables get allocated. The internal flags to
       ! calculate each MCSP tedency will behave the same, but having them always allocated avoids
-      ! a problem with bridging to this routine from C++ for porting ZM to EAMxx
+
       do_mcsp_t    = .true.
       do_mcsp_q(1) = .true.
       do_mcsp_u    = .true.

@@ -3676,28 +3676,28 @@ the zonally averaged zonal wind in the sponge layer.
 Default: 0.0
 </entry>
 
-<!-- MCSP nl added by KH -->
+<!-- MCSP nl -->
 
 <entry id="zmconv_MCSP_heat_coeff" type="real" category="conv"
-       group="zmconv_mcsp_nl" valid_values="" >
+       group="zmconv_nl" valid_values="" >
 MCSP heating coefficient controlling the tendency intensity added.
 Default: 0.0
 </entry>
 
 <entry id="zmconv_MCSP_moisture_coeff" type="real" category="conv"
-       group="zmconv_mcsp_nl" valid_values="" >
+       group="zmconv_nl" valid_values="" >
 MCSP moistening coefficient controlling the tendency intensity added.
 Default: 0.0
 </entry>
 
 <entry id="zmconv_MCSP_uwind_coeff" type="real" category="conv"
-       group="zmconv_mcsp_nl" valid_values="" >
+       group="zmconv_nl" valid_values="" >
 MCSP uwnd tendency coefficient controlling the tendency intensity added.
 Default: 0.0
 </entry>
 
 <entry id="zmconv_MCSP_vwind_coeff" type="real" category="conv"
-       group="zmconv_mcsp_nl" valid_values="" >
+       group="zmconv_nl" valid_values="" >
 MCSP vwnd tendency coefficient controlling the tendency intensity added.
 Default: 0.0
 </entry>
