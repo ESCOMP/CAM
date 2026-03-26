@@ -5,7 +5,7 @@ module rrtmgp_inputs_cam
 ! RRTMGP.  Subset the number of model levels if CAM's top exceeds RRTMGP's
 ! valid domain.  Add an extra layer if CAM's top is below 1 Pa.
 ! The vertical indexing increases from top to bottom of atmosphere in both
-! CAM and RRTMGP arrays.   
+! CAM and RRTMGP arrays.
 !--------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
@@ -14,7 +14,7 @@ use ppgrid,           only: pcols, pver, pverp
 use physconst,        only: stebol, pi
 
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use camsrfexch,       only: cam_in_t
 
 use radconstants,     only: nradgas, gaslist, nswbands, nlwbands
@@ -25,7 +25,7 @@ use cloud_rad_props,  only: get_liquid_optics_sw, liquid_cloud_get_rad_props_lw,
                             get_ice_optics_sw,    ice_cloud_get_rad_props_lw,    &
                             get_snow_optics_sw,   snow_cloud_get_rad_props_lw,   &
                             get_grau_optics_sw,   grau_cloud_get_rad_props_lw
-                                 
+
 use mcica_subcol_gen, only: mcica_subcol_sw
 
 use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
@@ -44,6 +44,7 @@ private
 save
 
 public :: &
+   rrtmgp_inputs_cam_init, &
    rrtmgp_get_gas_mmrs, &
    rrtmgp_set_aer_lw,   &
    rrtmgp_set_aer_sw
@@ -57,11 +58,35 @@ real(r8), parameter :: tiny = 1.0e-80_r8
 ! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
 ! band boundaries of the 2 bands that overlap with the LW bands).
 integer, parameter, dimension(14) :: rrtmg_to_rrtmgp_swbands = &
-   [ 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
+     [ 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
+
+! aerosol optical properties TUV-x
+integer :: swaertau_idx   = -1       ! shortwave aerosol extinction optical depth. tau
+integer :: swaertauw_idx  = -1       ! shortwave aerosol extinction optical depth * single scattering albedo. tau*w
+integer :: swaertauwg_idx = -1       ! shortwave aerosol extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
 
 !==================================================================================================
 contains
 !==================================================================================================
+
+!==================================================================================================
+subroutine rrtmgp_inputs_cam_init()
+
+   integer :: errflg
+
+   ! Look up physic buffer fields for aerosol optical properties for TUV-x inputs.
+   !
+   ! The optical properties from radiation code is in the form of tau*w*g
+   ! (extinction optical depth * single scattering albedo * asymmetry parameter)
+   ! Individual parameters (extinction optical depth, single scattering albedo,
+   ! asymmetry parameter) need to be derived to be used in TUVx
+   swaertau_idx   = pbuf_get_index('SWAERTAU', errcode=errflg) ! optical depth
+   swaertauw_idx  = pbuf_get_index('SWAERTAUW', errcode=errflg) ! optical depth * single scattering albedo
+   swaertauwg_idx = pbuf_get_index('SWAERTAUWG', errcode=errflg) ! optical depth * single scattering albedo * asymmetry parameter
+
+end subroutine rrtmgp_inputs_cam_init
+
+!=========================================================================================
 
 subroutine rrtmgp_get_gas_mmrs(icall, state, pbuf, nlay, gas_mmrs)
 
@@ -150,7 +175,7 @@ subroutine rrtmgp_set_aer_sw( &
    type(ty_optical_props_2str_ccpp), intent(inout) :: aer_sw
 
    ! local variables
-   integer  :: i
+   integer  :: i, ncol
 
    ! The optical arrays dimensioned in the vertical as 0:pver.
    ! The index 0 is for the extra layer used in the radiation
@@ -163,6 +188,12 @@ subroutine rrtmgp_set_aer_sw( &
    real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! forward scattered fraction * w * tau
                                                   ! aer_tau_w_f is not used by RRTMGP.
+
+   ! for TUV-x
+   real(r8), pointer, dimension(:,:,:) :: swaertau   ! shortwave aerosol tau (extinction optical depth)
+   real(r8), pointer, dimension(:,:,:) :: swaertauw  ! shortwave aerosol tau * w (extinction optical depth * single scattering albedo)
+   real(r8), pointer, dimension(:,:,:) :: swaertauwg ! shortwave aerosol tau * w * g (extinction optical depth * single scattering albedo * asymmetry parameter)
+
    character(len=*), parameter :: sub = 'rrtmgp_set_aer_sw'
    !--------------------------------------------------------------------------------
 
@@ -172,6 +203,20 @@ subroutine rrtmgp_set_aer_sw( &
       icall, state, pbuf, nnite, idxnite, &
       aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
 
+   ! Save aerosol optical properties in the physics buffer for
+   ! photolysis, but only for the climate call.
+   if (icall==0.and.swaertau_idx>0) then
+      call pbuf_get_field(pbuf, swaertau_idx,   swaertau)
+      call pbuf_get_field(pbuf, swaertauw_idx,  swaertauw)
+      call pbuf_get_field(pbuf, swaertauwg_idx, swaertauwg)
+
+      ncol = state%ncol
+
+      swaertau(:ncol,1:pver,:)   = aer_tau(:ncol,1:pver,:)
+      swaertauw(:ncol,1:pver,:)  = aer_tau_w(:ncol,1:pver,:)
+      swaertauwg(:ncol,1:pver,:) = aer_tau_w_g(:ncol,1:pver,:)
+   endif
+
    ! The aer_sw object is only initialized if nday > 0.
    if (nday > 0) then
 
@@ -180,7 +225,7 @@ subroutine rrtmgp_set_aer_sw( &
       aer_tau(:,:,:)     = aer_tau(    :,:,rrtmg_to_rrtmgp_swbands)
       aer_tau_w(:,:,:)   = aer_tau_w(  :,:,rrtmg_to_rrtmgp_swbands)
       aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
-                  
+
       ! If there is an extra layer in the radiation then this initialization
       ! will provide default values.
       aer_sw%optical_props%tau = 0.0_r8

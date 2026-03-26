@@ -1,4 +1,131 @@
+===============================================================
 
+Tag name: cam6_4_160
+Originator(s): fvitt
+Date: 26 Mar 2026
+One-line Summary: Introduce the option to use TUV-x photolysis library
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1471
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Issue #757: Introduce in-line photolysis rate calculations from TUV-x.
+
+ This provides the option to use the TUV-x library to calculate photo-chemical
+ rates rather the the traditional table-look up method (default method).
+
+Describe any changes made to build system:
+ TUV-x is built as a separate library which is linked to CAM/CESM
+
+Describe any changes made to the namelist:
+
+ New namelist options for TUV-x photolysis
+
+ - tuvx_active :
+      Switch to turn on TUV-X photolysis.
+
+ - tuvx_config_path :
+      Filepath of TUV-X configuration specification.
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, cacraigucar, nusbaume
+
+List all files eliminated:
+D       src/chemistry/mozart/mo_setz.F90
+D       src/chemistry/mozart/mo_tuv_inti.F90
+ -remove unused modules
+
+List all files added and what they do:
+A       libraries/tuv-x
+ - include TUV-x lib
+
+A       src/chemistry/mozart/mo_tuvx.F90
+ - CAM interface to TUV-x lib
+
+A       cime_config/tuvx_MOZART.json
+A       cime_config/tuvx_MOZART_TS1.json
+A       src/chemistry/pp_trop_strat_mam5_t4s2/tuvx_config.json
+A       src/chemistry/pp_waccm_ma/tuvx_config.json
+A       src/chemistry/pp_waccm_ma/tuvx_config.json_121.65
+A       src/chemistry/pp_waccm_ma_mam5/tuvx_config.json
+A       src/chemistry/pp_waccm_ma_sulfur/tuvx_config.json
+A       src/chemistry/pp_waccm_tsmlt_mam5/tuvx_config.json
+ - sample TUV-x config files
+
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_tuvx_waccm_ma_mam5/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_tuvx_waccm_ma_mam5/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_tuvx_waccm_ma_mam5/user_nl_clm
+ - turn on TUV-x in tests
+
+List all existing files that have been modified, and describe the changes:
+M       .gitignore
+ - ignore .vscode files
+
+M       .gitmodules
+ - include TUV-x lib as submodule
+
+M       bld/namelist_files/namelist_definition.xml
+ - switch to turn on TUV-x
+ - file path of TUV-x configuration file
+
+M       cime_config/config_component.xml
+M       cime_config/buildlib
+ - mods including cmake options needed to build TUV-x lib
+
+M       cime_config/buildnml
+ - copy TUV-x inputs to run dir
+
+M       cime_config/testdefs/testmods_dirs/cam/carma_mixed_sulfate/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/user_nl_cam
+ - turn on TUV-x in tests
+
+M       src/chemistry/mozart/chemistry.F90
+ - use TUV-x rather than legacy look up table method when TUV-x is turned on
+
+M       src/chemistry/mozart/mo_chemini.F90
+ - initialize TUV-x when switched on
+
+M       src/chemistry/mozart/mo_gas_phase_chemdr.F90
+ - use TUV-x rather than legacy look up table method when TUV-x is turned on
+
+M       src/chemistry/mozart/mo_jeuv.F90
+ - add check for initialization
+
+M       src/chemistry/mozart/mo_jshort.F90
+ - make calc_jno routine public to available when TUV-x is used
+
+M       src/chemistry/mozart/mo_waccm_hrates.F90
+ - use chemical heating rates produced by TUV-x when switched on
+
+M       src/physics/rrtmg/radiation.F90
+M       src/physics/rrtmgp/radiation.F90
+M       src/physics/rrtmgp/rrtmgp_inputs_cam.F90
+ - get cloud and aerosol optical properties for use in TUV-x radiation transfer
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+   - expected baseline failure -- TUV-x is active
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1513
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_159
