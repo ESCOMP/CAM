@@ -1,8 +1,8 @@
 ===============================================================
 
-Tag name: cam6_4_???
+Tag name: cam6_4_160
 Originator(s): fvitt
-Date: ????
+Date: 26 Mar 2026
 One-line Summary: Introduce the option to use TUV-x photolysis library
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1471
 
@@ -105,16 +105,16 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
-  FAIL ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri
-   - pre-existing failure
-   - ERI test discovered a bug in CICE:  See: https://github.com/ESCOMP/CESM_CICE/issues/34
-
   DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
-   - expected failure -- TUV-x is active
+   - expected baseline failure -- TUV-x is active
 
 derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1513
 
-izumi/nag/aux_cam: All PASS
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
 izumi/gnu/aux_cam: All PASS
 
