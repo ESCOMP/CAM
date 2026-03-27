@@ -617,6 +617,7 @@ contains
       integer :: ipht, k, idose
       integer  :: i_col   ! column index
       integer  :: i_level ! vertical level index
+      integer  :: i_thrd  ! index for current OMP thread
       real(r8) :: sza     ! solar zenith angle [degrees]
       real(r8) :: cpe_rates(ncol,pverp+1,number_of_heating_rates) ! heating rates from TUV-x
       real(r8), pointer :: cpe_jo2_a(:,:) ! heating rate for jo2_a in physics buffer
@@ -649,7 +650,8 @@ contains
       cpe_jo3_a(:,:) = 0.0_r8
       cpe_jo3_b(:,:) = 0.0_r8
 
-      associate( tuvx => tuvx_ptrs( thread_id( ) ) )
+      i_thrd = thread_id()
+      associate( tuvx => tuvx_ptrs( i_thrd ) )
 
          allocate( photo_rates( pcols, pver+2, tuvx%n_photo_rates_ + tuvx%n_euv_rates_ &
                                                + tuvx%n_special_rates_ ) )
