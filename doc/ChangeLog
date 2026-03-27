@@ -1,6 +1,6 @@
 ===============================================================
 
-Tag name: cam6_4_160
+Tag name: cam6_4_161
 Originator(s): fvitt
 Date: 27 Mar 2026
 One-line Summary: Fix for CESM builds
@@ -41,6 +41,8 @@ appropriate machine below.  All failed tests must be justified.
 derecho/intel/aux_cam: All PASS
 
 derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1513
 
 izumi/nag/aux_cam:
   FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
