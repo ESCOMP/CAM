@@ -49,7 +49,7 @@ def buildnml(case, caseroot, compname):
     COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
     CALENDAR            = case.get_value("CALENDAR")
     COMPSET             = case.get_value("COMPSET")
- 
+
 # The Gregorian calendar currently can't be used with spinup compsets
 # because CAM's stream-handling code can't handle a request for data
 # for Feb 29 (possibly specified in a leapday testmod) from a non-leap-year
@@ -64,6 +64,7 @@ def buildnml(case, caseroot, compname):
             "Gregorian calendar (modifier _cG) cannot be used with spinup compset \n  {}".format(COMPSET)
         )
 
+    tuvx_data_src = os.path.join(srcroot, "libraries", "tuv-x", "data")
 
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
@@ -235,8 +236,7 @@ def buildnml(case, caseroot, compname):
         dest_data = os.path.join(rundir, "data")
         if os.path.exists(dest_data):
             shutil.rmtree(dest_data)
-        shutil.copytree(os.path.join(srcroot, "libraries", "tuv-x", "data"), \
-                                              dest_data)
+        shutil.copytree(tuvx_data_src, dest_data)
 
 ###############################################################################
 def _main_func():

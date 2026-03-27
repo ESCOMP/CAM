@@ -203,7 +203,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
         bldpath = os.path.join(bldroot, "tuv-x")
         if not os.path.exists(bldpath):
             os.makedirs(bldpath)
-        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+        srcpath = os.path.abspath(os.path.join(case.get_value("SRCROOT"), \
                                                "libraries", "tuv-x", ""))
         logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
 
