@@ -40,6 +40,7 @@
 
        real(r8), pointer :: solar_etf(:)
        logical :: do_heating(13)
+       logical :: is_initialized = .false.
 
        contains
 
@@ -96,6 +97,11 @@
              do_heating(m) = .true.
            endif
         enddo
+
+        ! If the module has already been initialized, return after
+        ! computing index map
+        if( is_initialized ) return
+        is_initialized = .true.
 
         if (.not.do_jeuv) return
 

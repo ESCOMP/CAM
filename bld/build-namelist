@@ -3399,7 +3399,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';
         }
         elsif ($phys eq 'cam7') {
-            $micro_mg_dcs = '600.D-6';
+            $micro_mg_dcs = '450.D-6';
         }
     }
 
@@ -3926,10 +3926,10 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
     #WACCM value
-    my $hdepth_scaling = '0.25D0' ;
+    my $hdepth_scaling = '0.29D0' ;
     #MT value
     if ($cfg->get('model_top') eq 'mt') {
-	$hdepth_scaling = '0.32D0';
+	$hdepth_scaling = '0.29D0'
     }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
@@ -3952,7 +3952,7 @@ if ($waccm_phys or
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
-    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.32D0');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.29D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }

@@ -28,7 +28,7 @@ module mo_chm_diags
   integer :: id_hf,id_f,id_cof2,id_cofcl,id_ch3br
   integer :: id_br,id_bro,id_hbr,id_hobr,id_ch4,id_h2o,id_h2
   integer :: id_o,id_o2,id_h, id_h2o2, id_n2o
-  integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
+  integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3,id_so4_a5
   integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
   integer :: id_ndep,id_nhdep
   integer :: id_clno2,id_brno2,id_br2
@@ -160,6 +160,7 @@ contains
     id_so4_a1  = get_spc_ndx( 'so4_a1' )
     id_so4_a2  = get_spc_ndx( 'so4_a2' )
     id_so4_a3  = get_spc_ndx( 'so4_a3' )
+    id_so4_a5  = get_spc_ndx( 'so4_a5' )
     id_num_a2  = get_spc_ndx( 'num_a2' )
     id_num_a3  = get_spc_ndx( 'num_a3' )
     id_dst_a3  = get_spc_ndx( 'dst_a3' )
@@ -568,6 +569,7 @@ contains
           if (m==id_so4_a1) call add_default( spc_name, 8, ' ')
           if (m==id_so4_a2) call add_default( spc_name, 8, ' ')
           if (m==id_so4_a3) call add_default( spc_name, 8, ' ')
+          if (m==id_so4_a5) call add_default( spc_name, 8, ' ')
 
           if (m==id_num_a2) call add_default( spc_name, 8, ' ')
           if (m==id_num_a3) call add_default( spc_name, 8, ' ')
