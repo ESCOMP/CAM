@@ -21,9 +21,9 @@
 
 [submodule "ali_arms"]
 	path = src/physics/ali_arms
-	url = https://github.com/fvitt/ALI-ARMS
+	url = https://github.com/ESCOMP/ALI-ARMS
         fxrequired = AlwaysRequired
-        fxtag = gnu_fix01
+        fxtag = ALI_ARMS_v1.0.2
         fxDONOTUSEurl = https://github.com/ESCOMP/ALI-ARMS
 
 [submodule "atmos_phys"]
