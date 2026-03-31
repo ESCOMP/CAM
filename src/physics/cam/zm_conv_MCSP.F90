@@ -91,15 +91,15 @@ subroutine zm_conv_mcsp_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'zm_conv_mcsp_readnl'
 
-   namelist /zmconv_nl/ zmconv_MCSP_heat_coeff, zmconv_MCSP_moisture_coeff, & 
+   namelist /zmconv_mcsp_nl/ zmconv_MCSP_heat_coeff, zmconv_MCSP_moisture_coeff, & 
                         zmconv_MCSP_uwind_coeff, zmconv_MCSP_vwind_coeff
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
       open( newunit=unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'zmconv_nl', status=ierr)
+      call find_group_name(unitn, 'zmconv_mcsp_nl', status=ierr)
       if (ierr == 0) then
-         read(unitn, zmconv_nl, iostat=ierr)
+         read(unitn, zmconv_mcsp_nl, iostat=ierr)
          if (ierr /= 0) then
             call endrun(subname // ':: ERROR reading namelist')
          end if
@@ -110,13 +110,13 @@ subroutine zm_conv_mcsp_readnl(nlfile)
 
    ! Broadcast namelist variables
    call mpi_bcast(zmconv_MCSP_heat_coeff,                1, mpi_integer, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_heat_coeff")
+   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_heat_coeff")
    call mpi_bcast(zmconv_MCSP_moisture_coeff,            1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_moisture_coeff")
+   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_moisture_coeff")
    call mpi_bcast(zmconv_MCSP_uwind_coeff,                1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_uwind_coeff")
+   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_uwind_coeff")
    call mpi_bcast(zmconv_MCSP_vwind_coeff,                1, mpi_real8,   masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_MCSP_vwind_coeff")
+   if (ierr /= 0) call endrun("zm_conv_mcsp_readnl: FATAL: mpi_bcast: zmconv_MCSP_vwind_coeff")
 
 end subroutine zm_conv_mcsp_readnl
 
@@ -259,7 +259,9 @@ subroutine zm_conv_mcsp_tend( pcols, ncol, pver, pverp, &
    !++
    mcsp_tend_s_max = 0._r8
    !--
+
    if (zmconv_MCSP_heat_coeff>0 .OR. zmconv_MCSP_moisture_coeff>0 .OR. zmconv_MCSP_uwind_coeff>0 .OR. zmconv_MCSP_vwind_coeff>0) then
+
       !----------------------------------------------------------------------------
       ! calculate shear
 
@@ -346,7 +348,7 @@ subroutine zm_conv_mcsp_tend( pcols, ncol, pver, pverp, &
          end if ! zm_depth(i) >= MCSP_conv_depth_min
       end do
 
-   endif 
+   end if 
 
    !----------------------------------------------------------------------------
    ! calculate final output tendencies
