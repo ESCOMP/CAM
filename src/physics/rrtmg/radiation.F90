@@ -147,6 +147,14 @@ integer :: cldfsnow_idx = 0
 integer :: cld_idx      = 0
 integer :: cldfgrau_idx = 0
 
+integer :: swaertau_idx   = -1
+integer :: swaertauw_idx  = -1
+integer :: swaertauwg_idx = -1
+
+integer :: swcldtau_idx   = -1
+integer :: swcldtauw_idx  = -1
+integer :: swcldtauwg_idx = -1
+
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ','_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
 ! averaging time interval for zenith angle
@@ -250,6 +258,7 @@ subroutine radiation_register
 
    use physics_buffer, only: pbuf_add_field, dtype_r8
    use radiation_data, only: rad_data_register
+   use radconstants,   only: nswbands
 
    call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate
    call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate
@@ -624,6 +633,21 @@ subroutine radiation_init(pbuf2d)
       call add_default('FLUT', 3, ' ')
    end if
 
+   ! physic buffer fields for aerosol optical properties.
+   ! Get the aerosol optical properties from radiation code.
+   ! The optical properties from radiation code is in the form of tau*w*g
+   ! (extinction optical depth * single scattering albedo * asymmetry parameter)
+   ! Individual parameters (extinction optical depth, single scattering albedo,
+   ! asymmetry parameter) need to be derived to be used in TUVx
+   swaertau_idx   = pbuf_get_index('SWAERTAU', errcode=err) ! optical depth
+   swaertauw_idx  = pbuf_get_index('SWAERTAUW', errcode=err) ! optical depth * single scattering albedo
+   swaertauwg_idx = pbuf_get_index('SWAERTAUWG', errcode=err) ! optical depth * single scattering albedo * asymmetry parameter
+
+   ! get the clouds optical properties from radiation code
+   swcldtau_idx   = pbuf_get_index('SWCLDTAU', errcode=err)
+   swcldtauw_idx  = pbuf_get_index('SWCLDTAUW', errcode=err)
+   swcldtauwg_idx = pbuf_get_index('SWCLDTAUWG', errcode=err)
+
 end subroutine radiation_init
 
 !===============================================================================
@@ -857,6 +881,14 @@ subroutine radiation_tend( &
    real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
+
+   real(r8), pointer, dimension(:,:,:) :: swaertau   ! shortwave aerosol tau
+   real(r8), pointer, dimension(:,:,:) :: swaertauw  ! shortwave aerosol tau * w
+   real(r8), pointer, dimension(:,:,:) :: swaertauwg ! shortwave aerosol tau * w * g
+
+   real(r8), pointer, dimension(:,:,:) :: swcldtau   ! shortwave cloud tau
+   real(r8), pointer, dimension(:,:,:) :: swcldtauw  ! shortwave cloud tau * w
+   real(r8), pointer, dimension(:,:,:) :: swcldtauwg ! shortwave cloud tau * w * g
 
    real(r8) :: fns(pcols,pverp)     ! net shortwave flux
    real(r8) :: fcns(pcols,pverp)    ! net clear-sky shortwave flux
@@ -1208,6 +1240,29 @@ subroutine radiation_tend( &
                rd%aer_tau550(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag)
                rd%aer_tau400(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag+1)
                rd%aer_tau700(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag-1)
+
+               ! Save aerosol optical properties in the physics buffer for
+               ! photolysis, but only for the climate call.
+               if (icall==0 .and. swcldtau_idx>0) then
+                 call pbuf_get_field(pbuf, swaertau_idx,   swaertau)
+                 call pbuf_get_field(pbuf, swaertauw_idx,  swaertauw)
+                 call pbuf_get_field(pbuf, swaertauwg_idx, swaertauwg)
+
+                 swaertau(:ncol,1:pver,:)   = aer_tau(:ncol,1:pver,:)
+                 swaertauw(:ncol,1:pver,:)  = aer_tau_w(:ncol,1:pver,:)
+                 swaertauwg(:ncol,1:pver,:) = aer_tau_w_g(:ncol,1:pver,:)
+
+                 call pbuf_get_field(pbuf, swcldtau_idx,   swcldtau)
+                 call pbuf_get_field(pbuf, swcldtauw_idx,  swcldtauw)
+                 call pbuf_get_field(pbuf, swcldtauwg_idx, swcldtauwg)
+
+                 do i = 1,nswbands
+                    swcldtau(:ncol,1:pver,i)   = c_cld_tau(i,:ncol,1:pver)
+                    swcldtauw(:ncol,1:pver,i)  = c_cld_tau_w(i,:ncol,1:pver)
+                    swcldtauwg(:ncol,1:pver,i) = c_cld_tau_w_g(i,:ncol,1:pver)
+                 end do
+
+               end if
 
                call rad_rrtmg_sw( &
                   lchnk, ncol, num_rrtmg_levs, r_state, state%pmid,          &

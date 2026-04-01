@@ -289,6 +289,7 @@ contains
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
     use physconst,         only : rga, gravit
     use mo_photo,          only : set_ub_col, setcol, table_photo
+    use mo_tuvx,           only : tuvx_get_photo_rates, tuvx_active
     use mo_exp_sol,        only : exp_sol
     use mo_imp_sol,        only : imp_sol
     use mo_setrxt,         only : setrxt
@@ -898,12 +899,22 @@ contains
     call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
          delta, esfact )
 
-    !-----------------------------------------------------------------
-    !	... lookup the photolysis rates from table
-    !-----------------------------------------------------------------
-    call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
-                      col_dens, zen_angle, asdir, cwat, cldfr, &
-                      esfact, vmr, invariants, ncol, lchnk, pbuf )
+    if (tuvx_active) then
+      !-----------------------------------------------------------------
+      !	... get calculated photolysis rates from TUV-x
+      !-----------------------------------------------------------------
+      call tuvx_get_photo_rates( pbuf, ncol, lchnk, zmid, zint, &
+                                 tfld, ts, invariants, vmr, col_delta, &
+                                 asdir, zen_angle, esfact, pdel, cldfr,&
+                                 cwat, reaction_rates(:,:,1:phtcnt) )
+    else
+      !-----------------------------------------------------------------
+      !	... lookup the photolysis rates from table
+      !-----------------------------------------------------------------
+      call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
+                        col_dens, zen_angle, asdir, cwat, cldfr, &
+                        esfact, vmr, invariants, ncol, lchnk, pbuf )
+    endif
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )
