@@ -260,7 +260,7 @@ contains
     real(r8) :: wza(nzalat,pver)
     real(r8) :: thza(nzalat,pver)
 
-    real(r8) :: sheight(pcols,pver) ! pressure scale height (m)
+    real(r8), parameter :: hscale = 7000._r8 ! pressure scale height (meters)
 
     if (.not.do_calc()) return
 
@@ -268,14 +268,11 @@ contains
 
        ncol = phys_state(lchnk)%ncol
 
-       ! scale height
-       sheight(:ncol,:) = phys_state(lchnk)%t(:ncol,:) * rgas / ( mbarv(:ncol,:,lchnk) * grav ) ! meters
-
        ! potential temperature
        theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * phys_state(lchnk)%exner(:ncol,:)
 
        ! vertical velocity
-       w(:ncol,:,lchnk) = -sheight(:ncol,:) *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
+       w(:ncol,:,lchnk) = -hscale *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
 
        u(:ncol,:,lchnk) =  phys_state(lchnk)%u(:ncol,:)
        v(:ncol,:,lchnk) =  phys_state(lchnk)%v(:ncol,:)
