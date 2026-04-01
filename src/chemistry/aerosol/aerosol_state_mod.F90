@@ -514,7 +514,7 @@ contains
     do ispc = 1, aero_props%nspecies(bin_ndx)
 
        if (cldbrne) then
-          call self%get_cldbrne_mmr(ispc, bin_ndx, aer_bin)
+          call self%get_cldbrne_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_bin)
        else
           call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_bin)
        end if
