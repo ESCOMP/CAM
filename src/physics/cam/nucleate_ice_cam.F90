@@ -485,24 +485,25 @@ subroutine nucleate_ice_cam_calc( &
    ni    => state%q(:,:,numice_idx)
    pmid  => state%pmid
 
+   rho(:ncol,:) = pmid(:ncol,:)/(rair*t(:ncol,:))
+
    if (clim_modal_carma) then
+      if (.not.(present(aero_props).and.present(aero_state))) then
+         call endrun('nucleate_ice_cam_calc: aero_props and aero_state must be present when MAM/CARMA is active')
+      end if
+
       nbins = aero_props%nbins()
       nmaxspc = maxval(aero_props%nspecies())
 
       allocate(size_wght(ncol,pver,nbins,nmaxspc))
       allocate(amb_num_bins(ncol,pver,nbins))
+
+      ! initiate ice nucleation tendencies
+      call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
    else
       nbins = 0
       nmaxspc = 0
-   endif
 
-   rho(:ncol,:) = pmid(:ncol,:)/(rair*t(:ncol,:))
-
-   if (clim_modal_carma) then
-
-      call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
-
-   else
       ! init number/mass arrays for bulk aerosols
       allocate( &
            naer2(pcols,pver,naer_all), &
@@ -519,6 +520,7 @@ subroutine nucleate_ice_cam_calc( &
          end if
       end do
 
+      ! initiate ice nucleation tendencies for bulk aerosol
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei')
    end if
 

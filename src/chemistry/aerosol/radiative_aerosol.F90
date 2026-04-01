@@ -1137,7 +1137,7 @@ end subroutine rad_aer_get_bin_props
 
 subroutine print_aerosol_lists(aer_list, m_list, s_list)
    use cam_logfile,    only: iulog
-   use radiative_aerosol_definitions, only: nl, aerlist_t, modelist_t, binlist_t, modes, bins
+   use radiative_aerosol_definitions, only: newline, aerlist_t, modelist_t, binlist_t, modes, bins
 
    ! Print summary of bulk, modal, and bin aerosol lists.
 
@@ -1148,9 +1148,9 @@ subroutine print_aerosol_lists(aer_list, m_list, s_list)
    integer :: i, idx
 
    if (len_trim(aer_list%list_id) == 0) then
-      write(iulog,*) nl//' bulk aerosol list for climate calculations'
+      write(iulog,*) newline//' bulk aerosol list for climate calculations'
    else
-      write(iulog,*) nl//' bulk aerosol list for diag'//aer_list%list_id//' calculations'
+      write(iulog,*) newline//' bulk aerosol list for diag'//aer_list%list_id//' calculations'
    end if
 
    do i = 1, aer_list%numaerosols
@@ -1159,9 +1159,9 @@ subroutine print_aerosol_lists(aer_list, m_list, s_list)
    enddo
 
    if (len_trim(m_list%list_id) == 0) then
-      write(iulog,*) nl//' modal aerosol list for climate calculations'
+      write(iulog,*) newline//' modal aerosol list for climate calculations'
    else
-      write(iulog,*) nl//' modal aerosol list for diag'//m_list%list_id//' calculations'
+      write(iulog,*) newline//' modal aerosol list for diag'//m_list%list_id//' calculations'
    end if
 
    do i = 1, m_list%nmodes
@@ -1170,9 +1170,9 @@ subroutine print_aerosol_lists(aer_list, m_list, s_list)
    enddo
 
    if (len_trim(s_list%list_id) == 0) then
-      write(iulog,*) nl//' bin aerosol list for climate calculations'
+      write(iulog,*) newline//' bin aerosol list for climate calculations'
    else
-      write(iulog,*) nl//' bin aerosol list for diag'//s_list%list_id//' calculations'
+      write(iulog,*) newline//' bin aerosol list for diag'//s_list%list_id//' calculations'
    end if
 
    do i = 1, s_list%nbins
@@ -1193,17 +1193,18 @@ end subroutine print_aerosol_lists
 ! In SIMA, this will read aerosol-specific namelists directly
 ! (rad_aerosol / rad_aer_diag_N instead of rad_climate / rad_diag_N).
 subroutine rad_aer_readnl(mode_defs, bin_defs)
+   use shr_kind_mod,   only: shr_kind_cl
    use phys_prop,      only: physprop_accum_unique_files
    use spmd_utils,     only: masterproc
    use radiative_aerosol_definitions, only: &
-      cs1, verbose, N_DIAG, modes, bins, &
+      verbose, N_DIAG, modes, bins, &
       active_calls, bulk_aerosol_list, modal_aerosol_list, sectional_aerosol_list, &
       radcnst_namelist, parse_mode_defs, parse_bin_defs, &
       list_populate, print_modes, print_bins
 
    ! Arguments
-   character(len=cs1), intent(inout) :: mode_defs(:)
-   character(len=cs1), intent(inout) :: bin_defs(:)
+   character(len=shr_kind_cl), intent(inout) :: mode_defs(:)
+   character(len=shr_kind_cl), intent(inout) :: bin_defs(:)
 
    ! Local variables
    integer :: i

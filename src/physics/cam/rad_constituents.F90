@@ -15,6 +15,7 @@ module rad_constituents
 !------------------------------------------------------------------------------------------------
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
+use shr_kind_mod,   only: shr_kind_cl
 use spmd_utils,     only: masterproc
 use ppgrid,         only: pcols, pver
 use physconst,      only: rga
@@ -28,7 +29,7 @@ use cam_abortutils, only: endrun
 use cam_logfile,    only: iulog
 
 ! Import from radiative_aerosol_definitions (core definitions)
-use radiative_aerosol_definitions, only: cs1, N_DIAG, n_rad_cnst, verbose, nl, &
+use radiative_aerosol_definitions, only: N_DIAG, n_rad_cnst, verbose, newline, &
                             rad_cnst_namelist_t, radcnst_namelist, active_calls, &
                             n_mode_str, n_bin_str, parse_rad_specifier
 
@@ -65,24 +66,24 @@ public :: &
    rad_cnst_get_gas,            &! return pointer to mmr for gases
    rad_cnst_out                  ! output constituent diagnostics (mass per layer and column burden)
 
-character(len=cs1), public :: iceopticsfile, liqopticsfile
+character(len=shr_kind_cl), public :: iceopticsfile, liqopticsfile
 character(len=32),  public :: icecldoptics,liqcldoptics
 logical,            public :: oldcldoptics = .false.
 
 ! Namelist variables
-character(len=cs1), dimension(n_mode_str) :: mode_defs   = ' '
-character(len=cs1), dimension(n_bin_str) :: bin_defs   = ' '
-character(len=cs1) :: rad_climate(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_1(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_2(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_3(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_4(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_5(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_6(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_7(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_8(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_9(n_rad_cnst) = ' '
-character(len=cs1) :: rad_diag_10(n_rad_cnst) = ' '
+character(len=shr_kind_cl), dimension(n_mode_str) :: mode_defs   = ' '
+character(len=shr_kind_cl), dimension(n_bin_str) :: bin_defs   = ' '
+character(len=shr_kind_cl) :: rad_climate(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_1(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_2(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_3(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_4(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_5(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_6(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_7(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_8(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_9(n_rad_cnst) = ' '
+character(len=shr_kind_cl) :: rad_diag_10(n_rad_cnst) = ' '
 
 !==============================================================================
 contains
@@ -205,7 +206,7 @@ subroutine rad_cnst_readnl(nlfile)
    call rad_aer_readnl(mode_defs, bin_defs)
 
    ! Gas init phase 1: set gas list_id fields and populate gas lists
-   if (masterproc) write(iulog,*) nl//subname//': Radiation gas constituent lists:'
+   if (masterproc) write(iulog,*) newline//subname//': Radiation gas constituent lists:'
    do i = 0, N_DIAG
       if (active_calls(i)) then
          if (i > 0) then
@@ -243,7 +244,7 @@ subroutine rad_cnst_init()
    zero_cols = 0._r8
 
    ! Resolve constituent indices for gas lists
-   if (masterproc) write(iulog,*) nl//subname//': checking for radiative gas constituents'
+   if (masterproc) write(iulog,*) newline//subname//': checking for radiative gas constituents'
    do i = 0, N_DIAG
       if (active_calls(i)) then
          call gas_list_resolve_cnst_idx(gaslist(i))
@@ -540,9 +541,9 @@ subroutine print_gas_list(glist)
    integer :: i
 
    if (len_trim(glist%list_id) == 0) then
-      write(iulog,*) nl//' gas list for climate calculations'
+      write(iulog,*) newline//' gas list for climate calculations'
    else
-      write(iulog,*) nl//' gas list for diag'//glist%list_id//' calculations'
+      write(iulog,*) newline//' gas list for diag'//glist%list_id//' calculations'
    end if
 
    do i = 1, nradgas

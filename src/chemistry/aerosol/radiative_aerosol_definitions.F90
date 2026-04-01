@@ -8,6 +8,8 @@
 !-----------------------------------------------------------------------------
 module radiative_aerosol_definitions
 
+  use shr_kind_mod,   only: shr_kind_cl
+
   implicit none
   private
   save
@@ -40,9 +42,8 @@ module radiative_aerosol_definitions
   !===========================
   ! Shared constants (shared with rad_constituents for gases) part 1.
   !===========================
-  integer,          public, parameter :: cs1 = 256
-  logical,          public            :: verbose = .true.
-  character(len=1), public, parameter :: nl = achar(10)
+  logical,          public, parameter :: verbose = .true.
+  character(len=1), public, parameter :: newline = achar(10)
 
   !===========================
   ! Types
@@ -52,13 +53,13 @@ module radiative_aerosol_definitions
   ! type to provide access to the data parsed from the rad_climate and rad_diag_* strings
   type, public :: rad_cnst_namelist_t
      integer :: ncnst
-     character(len=  1), pointer :: source(:)  ! 'A' for state (advected), 'N' for pbuf (non-advected),
+     character(len=  1),         pointer :: source(:)  ! 'A' for state (advected), 'N' for pbuf (non-advected),
                                                ! 'M' for mode, 'Z' for zero
-     character(len= 64), pointer :: camname(:) ! name registered in pbuf or constituents
-     character(len=cs1), pointer :: radname(:) ! radname is the name as identfied in radiation,
+     character(len= 64),         pointer :: camname(:) ! name registered in pbuf or constituents
+     character(len=shr_kind_cl), pointer :: radname(:) ! radname is the name as identfied in radiation,
                                                ! must be one of (rgaslist if a gas) or
                                                ! (/fullpath/filename.nc if an aerosol)
-     character(len=  1), pointer :: type(:)    ! 'A' if aerosol, 'G' if gas, 'M' if mode
+     character(len=  1),         pointer :: type(:)    ! 'A' if aerosol, 'G' if gas, 'M' if mode
   end type rad_cnst_namelist_t
 
 !! \section arg_table_mode_component_t
@@ -69,21 +70,38 @@ module radiative_aerosol_definitions
      ! For "source" variables below, value is:
      ! 'N' if in pbuf (non-advected)
      ! 'A' if in state (advected)
-     character(len=  1) :: source_num_a  ! source of interstitial number conc field
-     character(len= 32) :: camname_num_a ! name registered in pbuf or constituents for number mixing ratio of interstitial species
-     character(len=  1) :: source_num_c  ! source of cloud borne number conc field
-     character(len= 32) :: camname_num_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
-     character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial specie mmr fields
-     character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr of interstitial components
-     character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
-     character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
-     character(len= 32), pointer :: type(:)          ! specie type (as used in MAM code)
-     character(len=cs1), pointer :: props(:)         ! file containing specie properties
-     integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
-     integer          :: idx_num_c    ! index in pbuf for number mixing ratio of interstitial species
-     integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
-     integer, pointer :: idx_mmr_c(:) ! index in pbuf for mmr of interstitial species
-     integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
+
+     ! source of interstitial number conc field
+     character(len=  1) :: source_num_a
+     ! name registered in pbuf or constituents for number mixing ratio of interstitial species
+     character(len= 32) :: camname_num_a
+     ! source of cloud borne number conc field
+     character(len=  1) :: source_num_c
+     ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
+     character(len= 32) :: camname_num_c
+     ! source of interstitial specie mmr fields
+     character(len=  1),         pointer :: source_mmr_a(:)
+     ! name registered in pbuf or constituents for mmr of interstitial components
+     character(len= 32),         pointer :: camname_mmr_a(:)
+     ! source of cloud borne specie mmr fields
+     character(len=  1),         pointer :: source_mmr_c(:)
+     ! name registered in pbuf or constituents for mmr of cloud borne components
+     character(len= 32),         pointer :: camname_mmr_c(:)
+     ! specie type (as used in MAM code)
+     character(len= 32),         pointer :: type(:)
+     ! file containing specie properties
+     character(len=shr_kind_cl), pointer :: props(:)
+
+     ! index in pbuf or constituents for number mixing ratio of interstitial species
+     integer          :: idx_num_a
+     ! index in pbuf for number mixing ratio of interstitial species
+     integer          :: idx_num_c
+     ! index in pbuf or constituents for mmr of interstitial species
+     integer, pointer :: idx_mmr_a(:)
+     ! index in pbuf for mmr of interstitial species
+     integer, pointer :: idx_mmr_c(:)
+     ! ID used to access physical properties of mode species from phys_prop module
+     integer, pointer :: idx_props(:)
   end type mode_component_t
 
 !! \section arg_table_modes_t
@@ -114,22 +132,36 @@ module radiative_aerosol_definitions
      character(len=  1) :: source_mass_c  ! source of cloud borne number conc field
      character(len= 32) :: camname_mass_c ! name registered in pbuf or constituents for number mixing ratio of cloud borne species
 
-     character(len=  1), pointer :: source_mmr_a(:)  ! source of interstitial mmr field
-     character(len= 32), pointer :: camname_mmr_a(:) ! name registered in pbuf or constituents for mmr species
-     character(len=  1), pointer :: source_mmr_c(:)  ! source of cloud borne specie mmr fields
-     character(len= 32), pointer :: camname_mmr_c(:) ! name registered in pbuf or constituents for mmr of cloud borne components
-     character(len= 32), pointer :: type(:)          ! species type
-     character(len= 32), pointer :: morph(:)         ! species morphology
-     character(len=cs1), pointer :: props(:)         ! file containing specie properties
+     ! source of interstitial mmr field
+     character(len=  1),         pointer :: source_mmr_a(:)
+     ! name registered in pbuf or constituents for mmr species
+     character(len= 32),         pointer :: camname_mmr_a(:)
+     ! source of cloud borne specie mmr fields
+     character(len=  1),         pointer :: source_mmr_c(:)
+     ! name registered in pbuf or constituents for mmr of cloud borne components
+     character(len= 32),         pointer :: camname_mmr_c(:)
+     ! species type
+     character(len= 32),         pointer :: type(:)
+     ! species morphology
+     character(len= 32),         pointer :: morph(:)
+     ! file containing specie properties
+     character(len=shr_kind_cl), pointer :: props(:)
 
-     integer          :: idx_num_a    ! index in pbuf or constituents for number mixing ratio of interstitial species
-     integer          :: idx_num_c    ! index in pbuf for number mixing ratio of cloud-borne species
-     integer          :: idx_mass_a   ! index in pbuf or constituents for mass mixing ratio of interstitial species
-     integer          :: idx_mass_c   ! index in pbuf for mass mixing ratio of cloud-borne species
+     ! index in pbuf or constituents for number mixing ratio of interstitial species
+     integer          :: idx_num_a
+     ! index in pbuf for number mixing ratio of cloud-borne species
+     integer          :: idx_num_c
+     ! index in pbuf or constituents for mass mixing ratio of interstitial species
+     integer          :: idx_mass_a
+     ! index in pbuf for mass mixing ratio of cloud-borne species
+     integer          :: idx_mass_c
 
-     integer, pointer :: idx_mmr_a(:) ! index in pbuf or constituents for mmr of interstitial species
-     integer, pointer :: idx_mmr_c(:) ! index in pbuf or constituents for mmr of cloud-borne species
-     integer, pointer :: idx_props(:) ! ID used to access physical properties of mode species from phys_prop module
+     ! index in pbuf or constituents for mmr of interstitial species
+     integer, pointer :: idx_mmr_a(:)
+     ! index in pbuf or constituents for mmr of cloud-borne species
+     integer, pointer :: idx_mmr_c(:)
+     ! ID used to access physical properties of mode species from phys_prop module
+     integer, pointer :: idx_props(:)
   end type bin_component_t
 
 !! \section arg_table_bins_t
@@ -145,12 +177,12 @@ module radiative_aerosol_definitions
 !! \htmlinclude aerosol_t.html
   ! Storage for bulk aerosol components in the climate/diagnostic lists
   type, public :: aerosol_t
-     character(len=1)   :: source         ! A for state (advected), N for pbuf (non-advected), Z for zero
-     character(len=64)  :: camname        ! name of constituent in physics state or buffer
-     character(len=cs1) :: physprop_file  ! physprop filename
-     character(len=32)  :: mass_name      ! name for mass per layer field in history output
-     integer            :: idx            ! index of constituent in physics state or buffer
-     integer            :: physprop_id    ! ID used to access physical properties from phys_prop module
+     character(len=1)           :: source         ! A for state (advected), N for pbuf (non-advected), Z for zero
+     character(len=64)          :: camname        ! name of constituent in physics state or buffer
+     character(len=shr_kind_cl) :: physprop_file  ! physprop filename
+     character(len=32)          :: mass_name      ! name for mass per layer field in history output
+     integer                    :: idx            ! index of constituent in physics state or buffer
+     integer                    :: physprop_id    ! ID used to access physical properties from phys_prop module
   end type aerosol_t
 
 !! \section arg_table_aerlist_t
@@ -166,24 +198,40 @@ module radiative_aerosol_definitions
 !! \htmlinclude modelist_t.html
   ! storage for modal aerosol components in the climate/diagnostic lists
   type, public :: modelist_t
-     integer          :: nmodes              ! number of modes
-     character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
-                                             ! (include leading zero) to identify diagnostic list
-     integer,   pointer :: idx(:)            ! index of the mode in the mode definition object
-     character(len=cs1), pointer :: physprop_files(:) ! physprop filename
-     integer,   pointer :: idx_props(:)      ! index of the mode properties in the physprop object
+     ! number of modes
+     integer                             :: nmodes
+
+     ! set to "  " for climate list, or two character integer
+     ! (include leading zero) to identify diagnostic list
+     ! used to construct history field names and descriptions
+     character(len=2)                    :: list_id
+
+     ! index of the mode in the mode definition object
+     integer,                    pointer :: idx(:)
+     ! physprop filename
+     character(len=shr_kind_cl), pointer :: physprop_files(:)
+     ! index of the mode properties in the physprop object
+     integer,                    pointer :: idx_props(:)
   end type modelist_t
 
 !! \section arg_table_binlist_t
 !! \htmlinclude binlist_t.html
   ! storage for bin aerosol components in the climate/diagnostic lists
   type, public :: binlist_t
-     integer          :: nbins               ! number of bins
-     character(len=2) :: list_id             ! set to "  " for climate list, or two character integer
-                                             ! (include leading zero) to identify diagnostic list
-     integer,   pointer :: idx(:)            ! index of the bin in the bin definition object
-     character(len=cs1), pointer :: physprop_files(:) ! physprop filename
-     integer,   pointer :: idx_props(:)      ! index of the bin properties in the physprop object
+     ! number of bins
+     integer            :: nbins
+
+     ! set to "  " for climate list, or two character integer
+     ! (include leading zero) to identify diagnostic list
+     ! used to construct history field names and descriptions
+     character(len=2)   :: list_id
+
+     ! index of the bin in the bin definition object
+     integer,   pointer :: idx(:)
+     ! physprop filename
+     character(len=shr_kind_cl), pointer :: physprop_files(:)
+     ! index of the bin properties in the physprop object
+     integer,   pointer :: idx_props(:)
   end type binlist_t
 
   ! max number of strings in mode definitions
@@ -285,9 +333,9 @@ subroutine list_populate(namelist, aerlist, modal_aerosol_list, sectional_aeroso
 
    if (masterproc .and. verbose) then
       if (len_trim(aerlist%list_id) == 0) then
-         write(iulog,*) nl//' '//subname//': namelist input for climate list'
+         write(iulog,*) newline//' '//subname//': namelist input for climate list'
       else
-         write(iulog,*) nl//' '//subname//': namelist input for diagnostic list:'//aerlist%list_id
+         write(iulog,*) newline//' '//subname//': namelist input for diagnostic list:'//aerlist%list_id
       end if
    end if
 
@@ -1055,7 +1103,7 @@ end subroutine parse_bin_defs
 !===========================
 
 subroutine parse_rad_specifier(specifier, namelist_data)
-   use cam_abortutils, only: endrun
+    use cam_abortutils, only: endrun
 
 !-----------------------------------------------------------------------------
 ! Parse the radiation namelist specifiers.
@@ -1065,14 +1113,14 @@ subroutine parse_rad_specifier(specifier, namelist_data)
     type(rad_cnst_namelist_t),   intent(inout) :: namelist_data
 
     ! Local variables
-    integer            :: number, i, j
-    integer            :: ipos, strlen
-    integer            :: astat
-    character(len=cs1) :: tmpstr
-    character(len=1)   :: source(n_rad_cnst)
-    character(len=64)  :: camname(n_rad_cnst)
-    character(len=cs1) :: radname(n_rad_cnst)
-    character(len=1)   :: type(n_rad_cnst)
+    integer                    :: number, i, j
+    integer                    :: ipos, strlen
+    integer                    :: astat
+    character(len=shr_kind_cl) :: tmpstr
+    character(len=1)           :: source(n_rad_cnst)
+    character(len=64)          :: camname(n_rad_cnst)
+    character(len=shr_kind_cl) :: radname(n_rad_cnst)
+    character(len=1)           :: type(n_rad_cnst)
     !-------------------------------------------------------------------------
 
     number = 0
@@ -1151,7 +1199,7 @@ subroutine print_modes(modes)
 
    do m = 1, modes%nmodes
 
-      write(iulog,*) nl//' name=',trim(modes%names(m)),'  type=',trim(modes%types(m))
+      write(iulog,*) newline//' name=',trim(modes%names(m)),'  type=',trim(modes%types(m))
       write(iulog,*) ' src_a=',trim(modes%comps(m)%source_num_a),'  num_a=',trim(modes%comps(m)%camname_num_a), &
                      ' src_c=',trim(modes%comps(m)%source_num_c),'  num_c=',trim(modes%comps(m)%camname_num_c)
 
@@ -1181,7 +1229,7 @@ subroutine print_bins(bins)
 
    do m = 1, bins%nbins
 
-      write(iulog,*) nl//' name=',trim(bins%names(m))
+      write(iulog,*) newline//' name=',trim(bins%names(m))
 
       do i = 1, bins%comps(m)%nspec
 
