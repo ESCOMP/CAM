@@ -205,7 +205,7 @@ contains
        do ispc = 1, aero_props%nspecies(ibin)
           indx = aero_props%indexer(ibin, ispc)
           call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=raer(indx)%fld)
-          call self%get_cldbrne_mmr(ispc,ibin, qqcw(indx)%fld)
+          call self%get_cldbrne_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=qqcw(indx)%fld)
        end do
     end do
 
@@ -627,20 +627,10 @@ contains
   !------------------------------------------------------------------------------
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
-  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
-
-    !REMOVECAM - direct state%q access and modal_aero_data dependency
-    ! modeptr_* -> could be replaced with modetype checks
-    ! lptr_*    -> could be replaced with aero_props%species_type() loop check.
-    ! state%q   -> could be replaced with self%get_ambient_mmr.
-    ! lmassptr_amode == nacl/dust_a_amode -> could be replaced with %species_type().
-    use modal_aero_data, only: modeptr_coarse
-    use modal_aero_data, only: modeptr_pcarbon, modeptr_finedust, modeptr_coardust
-    use modal_aero_data, only: lptr_dust_a_amode, lptr_nacl_a_amode
-    use modal_aero_data, only: lmassptr_amode
-    !REMOVECAM_END
+  function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
 
     class(modal_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: ispc   ! species index
     integer, intent(in) :: ncol   ! number of columns
@@ -651,20 +641,32 @@ contains
     real(r8) :: f_act_conv_coarse(ncol,nlev)
     real(r8) :: f_act_conv_coarse_dust, f_act_conv_coarse_nacl
     real(r8) :: tmpdust, tmpnacl
-    integer :: lcoardust, lcoarnacl
-    integer :: i,k
+    real(r8), pointer :: dust_mmr(:,:), nacl_mmr(:,:)
+    integer :: dust_ndx, nacl_ndx
+    integer :: i,k,l
+    character(len=aero_name_len) :: bin_type, spectype
+
+    bin_type = aero_props%bin_name(ibin)
 
     f_act_conv_coarse(:,:) = 0.60_r8
     f_act_conv_coarse_dust = 0.40_r8
     f_act_conv_coarse_nacl = 0.80_r8
-    if (modeptr_coarse > 0) then
-       lcoardust = lptr_dust_a_amode(modeptr_coarse)
-       lcoarnacl = lptr_nacl_a_amode(modeptr_coarse)
-       if ((lcoardust > 0) .and. (lcoarnacl > 0)) then
+    if (trim(bin_type) == 'coarse') then
+       ! find dust and seasalt species indices in the coarse mode
+       dust_ndx = -1
+       nacl_ndx = -1
+       do l = 1, aero_props%nspecies(ibin)
+          call aero_props%species_type(ibin, l, spectype)
+          if (trim(spectype) == 'dust') dust_ndx = l
+          if (trim(spectype) == 'seasalt') nacl_ndx = l
+       end do
+       if ((dust_ndx > 0) .and. (nacl_ndx > 0)) then
+          call self%get_ambient_mmr(species_ndx=dust_ndx, bin_ndx=ibin, mmr=dust_mmr)
+          call self%get_ambient_mmr(species_ndx=nacl_ndx, bin_ndx=ibin, mmr=nacl_mmr)
           do k = 1, nlev
              do i = 1, ncol
-                tmpdust = max( 0.0_r8, self%state%q(i,k,lcoardust) )
-                tmpnacl = max( 0.0_r8, self%state%q(i,k,lcoarnacl) )
+                tmpdust = max( 0.0_r8, dust_mmr(i,k) )
+                tmpnacl = max( 0.0_r8, nacl_mmr(i,k) )
                 if ((tmpdust+tmpnacl) > 1.0e-30_r8) then
                    f_act_conv_coarse(i,k) = (f_act_conv_coarse_dust*tmpdust &
                         + f_act_conv_coarse_nacl*tmpnacl)/(tmpdust+tmpnacl)
@@ -674,9 +676,9 @@ contains
        end if
     end if
 
-    if (ibin == modeptr_pcarbon) then
+    if (trim(bin_type) == 'primary_carbon') then
        frac = 0.0_r8
-    else if ((ibin == modeptr_finedust) .or. (ibin == modeptr_coardust)) then
+    else if ((trim(bin_type) == 'fine_dust') .or. (trim(bin_type) == 'coarse_dust')) then
        frac = 0.4_r8
     else
        frac = 0.8_r8
@@ -688,12 +690,13 @@ contains
     ! number and sulfate are conceptually partitioned to the dust and seasalt
     ! on a mass basis, so the f_act_conv for number and sulfate are
     ! mass-weighted averages of the values used for dust/seasalt
-    if (ibin == modeptr_coarse) then
+    if (trim(bin_type) == 'coarse') then
        frac = f_act_conv_coarse
        if (ispc>0) then
-          if (lmassptr_amode(ispc,ibin) == lptr_dust_a_amode(ibin)) then
+          call aero_props%species_type(ibin, ispc, spectype)
+          if (trim(spectype) == 'dust') then
              frac = f_act_conv_coarse_dust
-          else if (lmassptr_amode(ispc,ibin) == lptr_nacl_a_amode(ibin)) then
+          else if (trim(spectype) == 'seasalt') then
              frac = f_act_conv_coarse_nacl
           end if
        end if

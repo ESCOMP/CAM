@@ -258,7 +258,7 @@ contains
        do ispc = 1, aero_props%nspecies(ibin)
           indx = aero_props%indexer(ibin, ispc)
           call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=raer(indx)%fld)
-          call self%get_cldbrne_mmr(ispc,ibin, qqcw(indx)%fld)
+          call self%get_cldbrne_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=qqcw(indx)%fld)
        end do
     end do
 

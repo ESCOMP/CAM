@@ -896,9 +896,10 @@ contains
   !------------------------------------------------------------------------------
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
-  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
+  function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
 
     class(aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: ispc   ! species index
     integer, intent(in) :: ncol   ! number of columns

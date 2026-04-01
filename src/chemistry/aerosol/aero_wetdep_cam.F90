@@ -606,7 +606,7 @@ contains
                    qqcw_in(:ncol,:) = qqcw(mm)%fld(:ncol,:)
                 end if
 
-                f_act_conv(:ncol,:) = aero_state%convcld_actfrac( m, l, ncol, pver)
+                f_act_conv(:ncol,:) = aero_state%convcld_actfrac( aero_props, m, l, ncol, pver)
                 name = aname
              end if
 
