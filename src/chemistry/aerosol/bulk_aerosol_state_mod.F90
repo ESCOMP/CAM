@@ -2,7 +2,7 @@ module bulk_aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use rad_constituents, only: rad_cnst_get_aer_mmr
   use cam_abortutils,   only: endrun
-  
+
   use physics_buffer, only: physics_buffer_desc
   use physics_types, only: physics_state
 
@@ -336,8 +336,13 @@ contains
     integer, intent(in) :: nlev      ! number of levels
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
+    real(r8), pointer :: mmr(:,:)    ! kg/kg
+    real(r8) :: dens                 ! kg/m3
 
-    vol = -huge(1._r8)
+    call aero_props%get(bin_idx, 1, density=dens)
+    call self%get_ambient_mmr(list_idx, 1, bin_idx, mmr)
+
+    vol(:ncol,:nlev) = mmr(:ncol,:nlev)/dens
 
   end function dry_volume
 
@@ -356,7 +361,8 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = self%dry_volume(aero_props, list_idx, bin_idx, ncol, nlev) &
+        + self%water_volume(aero_props, list_idx, bin_idx, ncol, nlev)
 
   end function wet_volume
 
@@ -375,7 +381,7 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = 0._r8
 
   end function water_volume
 
