@@ -348,7 +348,7 @@ contains
     do l = 1, aero_props%nspecies(m)
 
        call self%get_ambient_mmr(species_ndx=l, bin_ndx=m, mmr=raer)
-       call self%get_cldbrne_mmr(l,m, qqcw)
+       call self%get_cldbrne_mmr(species_ndx=l, bin_ndx=m, mmr=qqcw)
        call aero_props%get(m,l, density=specdens, hygro=spechygro, spectype=spectype)
        if (present(pom_hygro)) then
           if (spectype=='p-organic'.and.pom_hygro>0._r8) then
