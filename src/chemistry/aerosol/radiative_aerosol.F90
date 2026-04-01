@@ -38,11 +38,13 @@ public :: rad_aer_num_name
 public :: rad_aer_get_mode_props
 public :: rad_aer_get_props
 public :: rad_aer_get_bin_props_by_idx
-public :: rad_aer_get_bin_props
 public :: rad_aer_get_idx
 public :: print_aerosol_lists
 public :: rad_aer_readnl
 public :: rad_aer_init
+public :: rad_aer_mode_physprop_id
+public :: rad_aer_bulk_physprop_id
+public :: rad_aer_bin_physprop_id
 
 !==============================================================================
 contains
@@ -1038,103 +1040,6 @@ end subroutine rad_aer_get_mode_props
 
 !================================================================================================
 
-subroutine rad_aer_get_bin_props(list_idx, bin_idx, opticstype, &
-   extpsw, abspsw, asmpsw, absplw, corefrac, nfrac, &
-   wgtpct, nwtp, bcdust, nbcdust, kap, nkap, relh, nrelh, &
-   sw_hygro_ext_wtp, sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, &
-   sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, dryrad )
-   use shr_kind_mod,   only: r8 => shr_kind_r8
-   use phys_prop,      only: physprop_get, ot_length
-   use cam_abortutils, only: endrun
-   use cam_logfile,    only: iulog
-   use radiative_aerosol_definitions, only: N_DIAG, binlist_t, sectional_aerosol_list
-
-   ! Return requested properties for the bin from the specified
-   ! climate or diagnostic list.
-
-   ! Arguments
-   integer,             intent(in)  :: list_idx  ! index of the climate or a diagnostic list
-   integer,             intent(in)  :: bin_idx   ! mode index
-
-   character(len=ot_length), optional, intent(out) :: opticstype
-
-   real(r8),  optional, pointer     :: extpsw(:,:)
-   real(r8),  optional, pointer     :: abspsw(:,:)
-   real(r8),  optional, pointer     :: asmpsw(:,:)
-   real(r8),  optional, pointer     :: absplw(:,:)
-   real(r8),  optional, pointer     :: corefrac(:)
-   integer,   optional, intent(out) :: nfrac
-
-   real(r8),  optional, pointer     :: sw_hygro_ext_wtp(:,:)
-   real(r8),  optional, pointer     :: sw_hygro_ssa_wtp(:,:)
-   real(r8),  optional, pointer     :: sw_hygro_asm_wtp(:,:)
-   real(r8),  optional, pointer     :: lw_hygro_ext_wtp(:,:)
-   real(r8),  optional, pointer     :: sw_hygro_coreshell_ext(:,:,:,:,:)
-   real(r8),  optional, pointer     :: sw_hygro_coreshell_ssa(:,:,:,:,:)
-   real(r8),  optional, pointer     :: sw_hygro_coreshell_asm(:,:,:,:,:)
-   real(r8),  optional, pointer     :: lw_hygro_coreshell_ext(:,:,:,:,:)
-   real(r8),  optional, pointer     :: wgtpct(:)
-   real(r8),  optional, pointer     :: bcdust(:)
-   real(r8),  optional, pointer     :: kap(:)
-   real(r8),  optional, pointer     :: relh(:)
-   integer,   optional, intent(out) :: nwtp
-   integer,   optional, intent(out) :: nbcdust
-   integer,   optional, intent(out) :: nkap
-   integer,   optional, intent(out) :: nrelh
-   real(r8),  optional, intent(out) :: dryrad
-
-   ! Local variables
-   integer :: idx
-   type(binlist_t),  pointer   :: slist
-   character(len=*), parameter :: subname = 'rad_aer_get_bin_props'
-   !------------------------------------------------------------------------------------
-
-   if (list_idx >= 0 .and. list_idx <= N_DIAG) then
-      slist => sectional_aerosol_list(list_idx)
-   else
-      write(iulog,*) subname//': list_idx = ', list_idx
-      call endrun(subname//': list_idx out of range')
-   endif
-
-   ! Check for valid mode index
-   if (bin_idx < 1  .or.  bin_idx > slist%nbins) then
-      write(iulog,*) subname//': bin_idx= ', bin_idx, '  nbins= ', slist%nbins
-      call endrun(subname//': bin list index out of range')
-   end if
-
-   ! Get the physprop index for the requested bin
-   idx = slist%idx_props(bin_idx)
-
-   if (present(opticstype))  call physprop_get(idx, opticstype=opticstype)
-   if (present(extpsw))      call physprop_get(idx, extpsw2=extpsw)
-   if (present(abspsw))      call physprop_get(idx, abspsw2=abspsw)
-   if (present(asmpsw))      call physprop_get(idx, asmpsw2=asmpsw)
-   if (present(absplw))      call physprop_get(idx, absplw2=absplw)
-   if (present(corefrac))    call physprop_get(idx, corefrac=corefrac)
-   if (present(nfrac))       call physprop_get(idx, nfrac=nfrac)
-
-   if (present(sw_hygro_ext_wtp))       call physprop_get(idx, sw_hygro_ext_wtp=sw_hygro_ext_wtp)
-   if (present(sw_hygro_ssa_wtp))       call physprop_get(idx, sw_hygro_ssa_wtp=sw_hygro_ssa_wtp)
-   if (present(sw_hygro_asm_wtp))       call physprop_get(idx, sw_hygro_asm_wtp=sw_hygro_asm_wtp)
-   if (present(lw_hygro_ext_wtp))       call physprop_get(idx, lw_hygro_abs_wtp=lw_hygro_ext_wtp)
-   if (present(sw_hygro_coreshell_ext)) call physprop_get(idx, sw_hygro_coreshell_ext=sw_hygro_coreshell_ext)
-   if (present(sw_hygro_coreshell_ssa)) call physprop_get(idx, sw_hygro_coreshell_ssa=sw_hygro_coreshell_ssa)
-   if (present(sw_hygro_coreshell_asm)) call physprop_get(idx, sw_hygro_coreshell_asm=sw_hygro_coreshell_asm)
-   if (present(lw_hygro_coreshell_ext)) call physprop_get(idx, lw_hygro_coreshell_abs=lw_hygro_coreshell_ext)
-   if (present(wgtpct))                 call physprop_get(idx, wgtpct=wgtpct)
-   if (present(bcdust))                 call physprop_get(idx, bcdust=bcdust)
-   if (present(kap))                    call physprop_get(idx, kap=kap)
-   if (present(relh))                   call physprop_get(idx, relh=relh)
-   if (present(nwtp))                   call physprop_get(idx, nwtp=nwtp)
-   if (present(nbcdust))                call physprop_get(idx, nbcdust=nbcdust)
-   if (present(nkap))                   call physprop_get(idx, nkap=nkap)
-   if (present(nrelh))                  call physprop_get(idx, nrelh=nrelh)
-   if (present(dryrad))                 call physprop_get(idx, dryrad_aer=dryrad)
-
-end subroutine rad_aer_get_bin_props
-
-!================================================================================================
-
 subroutine print_aerosol_lists(aer_list, m_list, s_list)
    use cam_logfile,    only: iulog
    use radiative_aerosol_definitions, only: newline, aerlist_t, modelist_t, binlist_t, modes, bins
@@ -1323,6 +1228,98 @@ subroutine rad_aer_init()
    !REMOVECAM_END
 
 end subroutine rad_aer_init
+
+!================================================================================================
+
+!------------------------------------------------------------------------
+! Return the physprop ID for a mode in the modal aerosol list
+!------------------------------------------------------------------------
+integer function rad_aer_mode_physprop_id(list_idx, mode_idx)
+   use cam_abortutils, only: endrun
+   use cam_logfile,    only: iulog
+   use radiative_aerosol_definitions, only: N_DIAG, modelist_t, modal_aerosol_list
+
+   integer, intent(in) :: list_idx
+   integer, intent(in) :: mode_idx
+
+   type(modelist_t), pointer :: mlist
+   character(len=*), parameter :: subname = 'rad_aer_mode_physprop_id'
+
+   if (list_idx >= 0 .and. list_idx <= N_DIAG) then
+      mlist => modal_aerosol_list(list_idx)
+   else
+      write(iulog,*) subname//': list_idx = ', list_idx
+      call endrun(subname//': list_idx out of range')
+   endif
+
+   if (mode_idx < 1 .or. mode_idx > mlist%nmodes) then
+      write(iulog,*) subname//': mode_idx= ', mode_idx, '  nmodes= ', mlist%nmodes
+      call endrun(subname//': mode list index out of range')
+   end if
+
+   rad_aer_mode_physprop_id = mlist%idx_props(mode_idx)
+
+end function rad_aer_mode_physprop_id
+
+!------------------------------------------------------------------------
+! Return the physprop ID for an aerosol in the bulk aerosol list
+!------------------------------------------------------------------------
+integer function rad_aer_bulk_physprop_id(list_idx, aer_idx)
+   use cam_abortutils, only: endrun
+   use cam_logfile,    only: iulog
+   use radiative_aerosol_definitions, only: N_DIAG, aerlist_t, bulk_aerosol_list
+
+   integer, intent(in) :: list_idx
+   integer, intent(in) :: aer_idx
+
+   type(aerlist_t), pointer :: aerlist
+   character(len=*), parameter :: subname = 'rad_aer_bulk_physprop_id'
+
+   if (list_idx >= 0 .and. list_idx <= N_DIAG) then
+      aerlist => bulk_aerosol_list(list_idx)
+   else
+      write(iulog,*) subname//': list_idx = ', list_idx
+      call endrun(subname//': list_idx out of range')
+   endif
+
+   if (aer_idx < 1 .or. aer_idx > aerlist%numaerosols) then
+      write(iulog,*) subname//': aer_idx= ', aer_idx, '  list index: ', list_idx
+      call endrun(subname//': aer_idx out of range')
+   end if
+
+   rad_aer_bulk_physprop_id = aerlist%aer(aer_idx)%physprop_id
+
+end function rad_aer_bulk_physprop_id
+
+!------------------------------------------------------------------------
+! Return the physprop ID for a bin in the sectional (CARMA) aerosol list
+!------------------------------------------------------------------------
+integer function rad_aer_bin_physprop_id(list_idx, bin_idx)
+   use cam_abortutils, only: endrun
+   use cam_logfile,    only: iulog
+   use radiative_aerosol_definitions, only: N_DIAG, binlist_t, sectional_aerosol_list
+
+   integer, intent(in) :: list_idx
+   integer, intent(in) :: bin_idx
+
+   type(binlist_t), pointer :: slist
+   character(len=*), parameter :: subname = 'rad_aer_bin_physprop_id'
+
+   if (list_idx >= 0 .and. list_idx <= N_DIAG) then
+      slist => sectional_aerosol_list(list_idx)
+   else
+      write(iulog,*) subname//': list_idx = ', list_idx
+      call endrun(subname//': list_idx out of range')
+   endif
+
+   if (bin_idx < 1 .or. bin_idx > slist%nbins) then
+      write(iulog,*) subname//': bin_idx= ', bin_idx, '  nbins= ', slist%nbins
+      call endrun(subname//': bin list index out of range')
+   end if
+
+   rad_aer_bin_physprop_id = slist%idx_props(bin_idx)
+
+end function rad_aer_bin_physprop_id
 
 !================================================================================================
 

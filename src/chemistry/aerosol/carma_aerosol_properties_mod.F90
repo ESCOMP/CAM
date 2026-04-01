@@ -3,7 +3,8 @@ module carma_aerosol_properties_mod
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_bin_props_by_idx, &
-                               rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec
+                               rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec, &
+                               rad_aer_bin_physprop_id
   use infnan, only: nan, assignment(=)
 
   implicit none
@@ -29,7 +30,7 @@ module carma_aerosol_properties_mod
      procedure :: icenuc_updates_mmr
      procedure :: apply_number_limits
      procedure :: hetfrz_species
-     procedure :: optics_params
+     procedure :: physprop_id
      procedure :: soluble
      procedure :: min_mass_mean_rad
      procedure :: bin_name
@@ -320,180 +321,15 @@ contains
   end subroutine get
 
   !------------------------------------------------------------------------
-  ! returns optics type and table parameters
+  ! returns the physprop ID for a given bin index
   !------------------------------------------------------------------------
-  subroutine optics_params(self, bin_ndx, opticstype, extpsw, abspsw, asmpsw, absplw, &
-       refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
-       sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
-       sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
-       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
-       sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
-       r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs )
-
-    use radiative_aerosol, only: rad_aer_get_bin_props
-
+  integer function physprop_id(self, bin_ndx)
     class(carma_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx             ! bin index
+    integer, intent(in) :: bin_ndx
 
-    character(len=*), optional, intent(out) :: opticstype
+    physprop_id = rad_aer_bin_physprop_id(self%list_idx_, bin_ndx)
 
-    ! refactive index table parameters
-    real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! short wave specific extinction
-    real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! short wave specific absorption
-    real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! short wave asymmetry factor
-    real(r8),  optional, pointer     :: absplw(:,:,:,:) ! long wave specific absorption
-    real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of short wave real refractive indices for aerosols
-    real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of short wave imaginary refractive indices for aerosols
-    real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of long wave real refractive indices for aerosols
-    real(r8),  optional, pointer     :: refitablw(:,:)  ! table of long wave imaginary refractive indices for aerosols
-    integer,   optional, intent(out) :: ncoef  ! number of chebychev polynomials
-    integer,   optional, intent(out) :: prefr  ! number of real refractive indices in table
-    integer,   optional, intent(out) :: prefi  ! number of imaginary refractive indices in table
-
-    ! hygrowghtpct table parameters
-    real(r8),  optional, pointer     :: sw_hygro_ext_wtp(:,:) ! short wave extinction table
-    real(r8),  optional, pointer     :: sw_hygro_ssa_wtp(:,:) ! short wave single-scatter albedo table
-    real(r8),  optional, pointer     :: sw_hygro_asm_wtp(:,:) ! short wave asymmetry table
-    real(r8),  optional, pointer     :: lw_hygro_ext_wtp(:,:) ! long wave absorption table
-    real(r8),  optional, pointer     :: wgtpct(:)   ! weight precent of H2SO4/H2O solution
-    integer,   optional, intent(out) :: nwtp        ! number of weight precent values
-
-    ! hygrocoreshell table parameters
-    real(r8),  optional, pointer     :: sw_hygro_coreshell_ext(:,:,:,:,:) ! short wave extinction table
-    real(r8),  optional, pointer     :: sw_hygro_coreshell_ssa(:,:,:,:,:) ! short wave single-scatter albedo table
-    real(r8),  optional, pointer     :: sw_hygro_coreshell_asm(:,:,:,:,:) ! short wave asymmetry table
-    real(r8),  optional, pointer     :: lw_hygro_coreshell_ext(:,:,:,:,:) ! long wave absorption table
-    real(r8),  optional, pointer     :: corefrac(:) ! core fraction dimension values
-    real(r8),  optional, pointer     :: bcdust(:)   ! bc/(bc + dust) fraction dimension values
-    real(r8),  optional, pointer     :: kap(:)      ! hygroscopicity dimension values
-    real(r8),  optional, pointer     :: relh(:)     ! relative humidity dimension values
-    integer,   optional, intent(out) :: nfrac       ! core fraction dimension size
-    integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
-    integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
-    integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
-
-    ! hygroscopic
-    real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:) ! short wave extinction table
-    real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:) ! short wave single-scatter albedo table
-    real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:) ! short wave asymmetry table
-    real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:) ! long wave absorption table
-
-    ! non-hygroscopic (insoluble)
-    real(r8),  optional, pointer :: sw_insoluble_ext(:) ! short wave extinction table
-    real(r8),  optional, pointer :: sw_insoluble_ssa(:) ! short wave single-scatter albedo table
-    real(r8),  optional, pointer :: sw_insoluble_asm(:) ! short wave asymmetry table
-    real(r8),  optional, pointer :: lw_insoluble_ext(:) ! long wave absorption table
-
-    ! volcanic radius
-    real(r8),  optional, pointer :: r_sw_ext(:,:)
-    real(r8),  optional, pointer :: r_sw_scat (:,:)
-    real(r8),  optional, pointer :: r_sw_ascat(:,:)
-    real(r8),  optional, pointer :: r_mu(:)
-    real(r8),  optional, pointer :: r_lw_abs(:,:)
-
-    if (present(extpsw)) then
-       nullify(extpsw)
-    end if
-    if (present(abspsw)) then
-       nullify(abspsw)
-    end if
-    if (present(asmpsw)) then
-       nullify(asmpsw)
-    end if
-    if (present(absplw)) then
-       nullify(absplw)
-    end if
-    if (present(refrtabsw)) then
-       nullify(refrtabsw)
-    end if
-    if (present(refitabsw)) then
-       nullify(refitabsw)
-    end if
-    if (present(refrtablw)) then
-       nullify(refrtablw)
-    end if
-    if (present(refitablw)) then
-       nullify(refitablw)
-    end if
-    if (present(ncoef)) then
-       ncoef = huge(1)
-    end if
-    if (present(prefr)) then
-       prefr = huge(1)
-    end if
-    if (present(prefi)) then
-       prefi = huge(1)
-    end if
-
-    call rad_aer_get_bin_props(self%list_idx_,bin_ndx, &
-                                opticstype=opticstype, &
-                                sw_hygro_ext_wtp=sw_hygro_ext_wtp, &
-                                sw_hygro_ssa_wtp=sw_hygro_ssa_wtp, &
-                                sw_hygro_asm_wtp=sw_hygro_asm_wtp, &
-                                lw_hygro_ext_wtp=lw_hygro_ext_wtp, &
-                                wgtpct=wgtpct, &
-                                nwtp=nwtp, &
-                                sw_hygro_coreshell_ext=sw_hygro_coreshell_ext, &
-                                sw_hygro_coreshell_ssa=sw_hygro_coreshell_ssa, &
-                                sw_hygro_coreshell_asm=sw_hygro_coreshell_asm, &
-                                lw_hygro_coreshell_ext=lw_hygro_coreshell_ext, &
-                                corefrac=corefrac, &
-                                bcdust=bcdust, &
-                                kap=kap, &
-                                relh=relh, &
-                                nbcdust=nbcdust, &
-                                nkap=nkap, &
-                                nrelh=nrelh, &
-                                nfrac=nfrac )
-
-
-    ! hygroscopic
-    if (present(sw_hygroscopic_ext)) then
-       nullify(sw_hygroscopic_ext)
-    end if
-    if (present(sw_hygroscopic_ssa)) then
-       nullify(sw_hygroscopic_ssa)
-    end if
-    if (present(sw_hygroscopic_asm)) then
-       nullify(sw_hygroscopic_asm)
-    end if
-    if (present(lw_hygroscopic_ext)) then
-       nullify(lw_hygroscopic_ext)
-    end if
-
-    ! non-hygroscopic (insoluble)
-    if (present(sw_insoluble_ext)) then
-       nullify(sw_insoluble_ext)
-    end if
-    if (present(sw_insoluble_ssa)) then
-       nullify(sw_insoluble_ssa)
-    end if
-    if (present(sw_insoluble_asm)) then
-       nullify(sw_insoluble_asm)
-    end if
-    if (present(lw_insoluble_ext)) then
-       nullify(lw_insoluble_ext)
-    end if
-
-    ! volcanic radius
-    if (present(r_sw_ext)) then
-       nullify(r_sw_ext)
-    end if
-    if (present(r_sw_scat)) then
-       nullify(r_sw_scat)
-    end if
-    if (present(r_sw_ascat)) then
-       nullify(r_sw_ascat)
-    end if
-    if (present(r_lw_abs)) then
-       nullify(r_lw_abs)
-    end if
-    if (present(r_mu)) then
-       nullify(r_mu)
-    end if
-
-  end subroutine optics_params
+  end function physprop_id
 
   !------------------------------------------------------------------------------
   ! returns radius^3 (m3) of a given bin number
