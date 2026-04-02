@@ -1080,7 +1080,7 @@ contains
             sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
                  hygrodust(icol) + hygrosslt(icol)
 
-            if (sumscat>0._r8 .and. sumabs>0._r8 .and. sumhygro>0._r8) then
+            if (sumscat/=0._r8 .and. sumabs/=0._r8 .and. sumhygro/=0._r8) then
                scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
                absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
 
