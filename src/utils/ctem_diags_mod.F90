@@ -343,7 +343,8 @@ contains
 
     ! regrid to lon/lat grid
 
-    physflds(1)%fld => u_phys
+    ! set feild-bundle pointers for regridding utility
+    physflds(1)%fld => u_phys ! regrid inputs
     physflds(2)%fld => v_phys
     physflds(3)%fld => w_phys
     physflds(4)%fld => t_phys
@@ -352,7 +353,7 @@ contains
     physflds(7)%fld => vt_phys
     physflds(8)%fld => wt_phys
 
-    lonlatflds(1)%fld => u_lonlat
+    lonlatflds(1)%fld => u_lonlat ! regrid outputs
     lonlatflds(2)%fld => v_lonlat
     lonlatflds(3)%fld => w_lonlat
     lonlatflds(4)%fld => t_lonlat
@@ -361,18 +362,18 @@ contains
     lonlatflds(7)%fld => vt_lonlat
     lonlatflds(8)%fld => wt_lonlat
 
+    ! regrid 3-D fields
     call esmf_phys2lonlat_regrid(physflds, lonlatflds)
 
+    ! regrid 2-D field separately
     call esmf_phys2lonlat_regrid(ps_phys, ps_lonlat)
 
     call t_stopf('ctem_diags_calc-regrid')
 
-    call t_startf('ctem_diags_calc-zonal_mean-ps')
-    call esmf_zonal_mean_calc(ps_lonlat, ps_zm)
-    call t_stopf('ctem_diags_calc-zonal_mean-ps')
 
     call t_startf('ctem_diags_calc-zonal_mean-uvwt')
 
+    ! Mask out the mountains
     do i = beglon,endlon
        do j = beglat,endlat
 
@@ -393,17 +394,20 @@ contains
     ! mask out mountains from the zonal mean calculations
     wsums = esmf_zonal_mean_wsums(wght)
 
+    ! compute zonal-mean fields
     call esmf_zonal_mean_masked(u_lonlat, wght, wsums, u_zm)
     call esmf_zonal_mean_masked(v_lonlat, wght, wsums, v_zm)
     call esmf_zonal_mean_masked(w_lonlat, wght, wsums, w_zm)
     call esmf_zonal_mean_masked(t_lonlat, wght, wsums, t_zm)
-
     call esmf_zonal_mean_masked(uv_lonlat, wght, wsums, uv_zm)
     call esmf_zonal_mean_masked(uw_lonlat, wght, wsums, uw_zm)
     call esmf_zonal_mean_masked(vt_lonlat, wght, wsums, vt_zm)
     call esmf_zonal_mean_masked(wt_lonlat, wght, wsums, wt_zm)
 
     call t_stopf('ctem_diags_calc-zonal_mean-uvwt')
+
+    ! compute zonal-mean PS
+    call esmf_zonal_mean_calc(ps_lonlat, ps_zm)
 
     call t_startf('ctem_diags_calc-calc_dev_flx')
 
@@ -434,6 +438,7 @@ contains
 
     call t_startf('ctem_diags_calc-zonal_mean-p')
 
+    ! compute zonal-mean flux terms
     call esmf_zonal_mean_masked(vtp, wght, wsums, vtp_zm)
     call esmf_zonal_mean_masked(wtp, wght, wsums, wtp_zm)
     call esmf_zonal_mean_masked(uwp, wght, wsums, uwp_zm)
@@ -445,7 +450,7 @@ contains
 
     outcnt = endlon-beglon+1
 
-    ! output diagnostics
+    ! output TEM diagnostics
     do j = beglat,endlat
        outtmp(beglon:endlon,1:pver) = t_lonlat(beglon:endlon,j,1:pver)
        call outfld('THtem',outtmp, outcnt, j)
