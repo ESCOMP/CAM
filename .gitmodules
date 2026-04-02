@@ -23,7 +23,7 @@
 	path = src/physics/ali_arms
 	url = https://github.com/ESCOMP/ALI-ARMS
         fxrequired = AlwaysRequired
-        fxtag = ALI_ARMS_v1.0.1
+        fxtag = ALI_ARMS_v1.0.2
         fxDONOTUSEurl = https://github.com/ESCOMP/ALI-ARMS
 
 [submodule "atmos_phys"]
