@@ -1,5 +1,89 @@
 ===============================================================
 
+Tag name: cam6_4_162
+Originator(s): fvitt
+Date: 2 Apr 2026
+One-line Summary: Fix issue with aerosol optics diagnostics; gnu compiler workarounds
+Github PR URLs:
+ https://github.com/ESCOMP/CAM/pull/1500
+ https://github.com/ESCOMP/CAM/pull/1520
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Fix issues with aerosol optics diagnostics for bulk and prescribed volcanic aerosols
+ -- issue #1497
+
+ Fix compile errors with GNU Fortran 14.3.0 on Derecho
+ -- issues #1512 and #1519
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/physics/ali_arms
+ - update ALI-ARMS tag -- gnu compiler fix
+
+M       src/chemistry/mozart/mo_tuvx.F90
+ - gnu compiler bug workaround
+
+M       src/chemistry/aerosol/bulk_aerosol_state_mod.F90
+ - define volume functions used in aerosol optics diags
+
+M       src/physics/cam/aerosol_optics_cam.F90
+ - changes for bulk and prescribed volcanic aerosol optics diags
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository):
+- platform/compilers:
+- configure commandline:
+- build-namelist command (or complete namelist):
+- MSS location of output:
+
+MSS location of control simulations used to validate new climate:
+
+URL for AMWG diagnostics output used to validate new climate:
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_161
 Originator(s): fvitt
 Date: 27 Mar 2026
