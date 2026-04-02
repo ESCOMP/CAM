@@ -13,20 +13,20 @@ module hygrowghtpct_aerosol_optics_mod
 
   !> hygrowghtpct_aerosol_optics
   !! Table look up implementation of aerosol_optics to parameterize aerosol
-  !! radiative properties in terms of weight precent of H2SO4/H2O solution
+  !! radiative properties in terms of weight percent of H2SO4/H2O solution
   type, extends(aerosol_optics) :: hygrowghtpct_aerosol_optics
 
      real(r8), allocatable :: totalmmr(:,:) ! total mmr of the aerosol
-     real(r8), allocatable :: wgtpct(:,:)   ! weight precent of H2SO4/H2O solution
+     real(r8), allocatable :: wgtpct(:,:)   ! weight percent of H2SO4/H2O solution
 
      real(r8), pointer :: sw_hygro_ext_wtp(:,:) ! short wave extinction table
      real(r8), pointer :: sw_hygro_ssa_wtp(:,:) ! short wave single-scatter albedo table
      real(r8), pointer :: sw_hygro_asm_wtp(:,:) ! short wave asymmetry table
      real(r8), pointer :: lw_hygro_abs_wtp(:,:) ! long wave absorption table
 
-     real(r8), pointer :: tbl_wgtpct(:) ! weight precent dimenstion values
+     real(r8), pointer :: tbl_wgtpct(:) ! weight percent dimenstion values
 
-     integer :: nwtp ! weight precent dimenstion size
+     integer :: nwtp ! weight percent dimenstion size
 
    contains
 
@@ -80,7 +80,7 @@ contains
        return
     end if
 
-    ! weight precent of H2SO4/H2O solution
+    ! weight percent of H2SO4/H2O solution
     newobj%wgtpct(:ncol,:nlev) = wgtpct_in(:ncol,:nlev)
 
     call aero_props%optics_params(ibin, wgtpct=newobj%tbl_wgtpct, nwtp=newobj%nwtp)

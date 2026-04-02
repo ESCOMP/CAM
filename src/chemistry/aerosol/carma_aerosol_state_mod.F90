@@ -444,12 +444,12 @@ contains
   end subroutine water_uptake
 
   !------------------------------------------------------------------------------
-  ! aerosol weight precent of H2SO4/H2O solution
+  ! aerosol weight percent of H2SO4/H2O solution
   !------------------------------------------------------------------------------
   function wgtpct(self, ncol, nlev) result(wtp)
     class(carma_aerosol_state), intent(in) :: self
     integer, intent(in) ::  ncol, nlev
-    real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+    real(r8) :: wtp(ncol,nlev)  ! weight percent of H2SO4/H2O solution for given icol, ilev
 
     wtp(:,:) = carma_get_wght_pct(ncol,nlev,self%state)
 
