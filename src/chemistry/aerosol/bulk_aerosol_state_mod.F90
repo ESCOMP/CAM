@@ -331,7 +331,7 @@ contains
     real(r8) :: dens                 ! kg/m3
 
     call aero_props%get(bin_idx, 1, density=dens)
-    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_ndx, mmr=mmr)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_idx, mmr=mmr)
 
     vol(:ncol,:nlev) = mmr(:ncol,:nlev)/dens
 
