@@ -331,7 +331,7 @@ contains
     real(r8) :: dens                 ! kg/m3
 
     call aero_props%get(bin_idx, 1, density=dens)
-    call self%get_ambient_mmr(list_idx, 1, bin_idx, mmr)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_ndx, mmr=mmr)
 
     vol(:ncol,:nlev) = mmr(:ncol,:nlev)/dens
 
@@ -351,8 +351,8 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = self%dry_volume(aero_props, list_idx, bin_idx, ncol, nlev) &
-        + self%water_volume(aero_props, list_idx, bin_idx, ncol, nlev)
+    vol = self%dry_volume(aero_props, bin_idx, ncol, nlev) &
+        + self%water_volume(aero_props, bin_idx, ncol, nlev)
 
   end function wet_volume
 
