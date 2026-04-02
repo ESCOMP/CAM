@@ -3,14 +3,13 @@ module bulk_aerosol_state_mod
   !REMOVECAM
   use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr
   !REMOVECAM_END
-  use cam_abortutils,   only: endrun
-  
   !REMOVECAM: no longer need pbuf and state after CAM is retired
   use physics_buffer, only: physics_buffer_desc
-  use physics_types, only: physics_state
+  use physics_types,  only: physics_state
   !REMOVECAM_END
+  use cam_abortutils,   only: endrun
 
-  use aerosol_state_mod, only: aerosol_state, ptr2d_t
+  use aerosol_state_mod,      only: aerosol_state, ptr2d_t
   use aerosol_properties_mod, only: aerosol_properties
 
   implicit none
@@ -328,8 +327,13 @@ contains
     integer, intent(in) :: nlev      ! number of levels
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
+    real(r8), pointer :: mmr(:,:)    ! kg/kg
+    real(r8) :: dens                 ! kg/m3
 
-    vol = -huge(1._r8)
+    call aero_props%get(bin_idx, 1, density=dens)
+    call self%get_ambient_mmr(list_idx, 1, bin_idx, mmr)
+
+    vol(:ncol,:nlev) = mmr(:ncol,:nlev)/dens
 
   end function dry_volume
 
@@ -347,7 +351,8 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = self%dry_volume(aero_props, list_idx, bin_idx, ncol, nlev) &
+        + self%water_volume(aero_props, list_idx, bin_idx, ncol, nlev)
 
   end function wet_volume
 
@@ -365,7 +370,7 @@ contains
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = 0._r8
 
   end function water_volume
 

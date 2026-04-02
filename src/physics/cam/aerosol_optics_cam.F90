@@ -701,11 +701,11 @@ contains
     aeromodel: do iaermod = 1,num_aero_models
 
        aeroprops => aerosol_instances_get_props(iaermod, list_idx)
-       ! Null when a globally active model has no entries in this diagnostic list.
+       ! null when a globally active model has no entries in this diagnostic list.
        if (.not. associated(aeroprops)) cycle aeromodel
        aerostate => aerosol_instances_get_state(iaermod, list_idx, lchnk)
 
-       nbins=aeroprops%nbins()
+       nbins = aeroprops%nbins()
 
        sulfwtpct(:ncol,:pver) = aerostate%wgtpct(ncol,pver)
        call outfld('SULFWTPCT', sulfwtpct(1:ncol,:), ncol, lchnk)
@@ -720,6 +720,7 @@ contains
              coarse_dust_mode = .false.
           end if
 
+          ! zero out per-bin quantities for diagnostics
           dustaodbin(:) = 0._r8
           burden(:) = 0._r8
           aodbin(:) = 0.0_r8
@@ -897,23 +898,25 @@ contains
                          sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
                               hygrodust(icol) + hygrosslt(icol)
 
-                         scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
-                         absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
+                         if (sumscat/=0._r8 .and. sumabs/=0._r8 .and. sumhygro/=0._r8) then
+                            scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
+                            absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
 
-                         scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
-                         abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
+                            scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
+                            abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
 
-                         scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
-                         abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
+                            scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
+                            abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
 
-                         scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
-                         abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
+                            scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
+                            abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
 
-                         scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
-                         absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
+                            scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
+                            absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
 
-                         scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
-                         abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
+                            scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
+                            abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
+                         end if
 
                          ! Use dopaer0_vis (pre-asphericity) and pabs_vis from core for BFB diagnostic accumulation.
                          ! dopaer already has asphericity applied (from core); dopaer0 is the pre-asphericity value.
@@ -952,9 +955,8 @@ contains
                             dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
                          end if
 
-                         ! Absorption diagnostics using pabs_vis from core (BFB with original code)
-                         aodvis(icol) = aodvis(icol) + dopaer(icol)
-                         aodabs(icol) = aodabs(icol) + mass(icol,ilev) * pabs_vis(icol,ilev) * dopaer(icol)/dopaer0(icol)
+                         ! Absorption diagnostics using pabs_vis from aerosol_optics_core (BFB with original code)
+                         aodabs(icol)       = aodabs(icol) + mass(icol,ilev) * pabs_vis(icol,ilev) * dopaer(icol)/dopaer0(icol)
                          extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
                          absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs_vis(icol,ilev) * dopaer(icol)/dopaer0(icol)
                          ssavis(icol)       = ssavis(icol) + dopaer(icol)*ssa_bin(icol,ilev,iwav)
@@ -964,6 +966,8 @@ contains
                          aodbin(icol) = aodbin(icol) + dopaer(icol)
 
                       end if
+
+                      aodvis(icol) = aodvis(icol) + dopaer(icol)
 
                       if (ilev<=troplev(icol)) then
                          aodvisst(icol) = aodvisst(icol) + dopaer(icol)
