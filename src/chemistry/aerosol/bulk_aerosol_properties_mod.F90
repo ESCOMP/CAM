@@ -370,7 +370,9 @@ contains
     integer,  intent(in) :: istop           ! stop column index
     integer,  intent(in) :: m               ! mode or bin index
 
-    call endrun('ERROR: bulk_aerosol_properties_mod%apply_number_limits not yet implemented')
+    ! no-op for bulk aerosols: no min/max number constraints since numbers are diagnosed
+    ! from bulk mass concentrations
+    return
 
   end subroutine apply_number_limits
 

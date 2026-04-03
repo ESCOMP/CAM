@@ -43,6 +43,7 @@ use nucleate_ice_cam, only: use_preexisting_ice, nucleate_ice_cam_readnl, nuclea
 
 use ndrop,            only: ndrop_init, dropmixnuc
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
+use bulk_aerosol_state_mod, only: bulk_aerosol_state_set_bulk_scale
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
                                hetfrz_classnuc_cam_calc
@@ -345,6 +346,10 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
       call ndrop_bam_init()
 
+      ! Set BAM sulfate scaling factor for the aerosol state interface.
+      ! This enables bulk_aerosol_state%get_ambient_num to apply bulk_scale.
+      call bulk_aerosol_state_set_bulk_scale(bulk_scale)
+
       ! Set module-level props object for BAM (used by nucleate_ice_cam)
       aero_props_obj => aero_props_bulk
 
@@ -362,6 +367,8 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    if (associated(aero_props_obj)) then
       call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
    else
+      ! this path is used for aquaplanet compsets with two-moment microphysics
+      ! where nucleatei still runs Meyers nucleation deposition even without aerosol.
       call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
    end if
    if (use_hetfrz_classnuc) then
