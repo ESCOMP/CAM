@@ -25,9 +25,12 @@ module aerosol_state_mod
   !! class can be extended for a specific aerosol package.
   type, abstract :: aerosol_state
      integer :: list_idx_ = 0 ! radiation climate/diagnostic list index
+     integer :: ncol_ = 0     ! number of active columns
    contains
      procedure :: list_idx => get_list_idx
      procedure :: set_list_idx
+     procedure :: ncol => get_ncol
+     procedure :: set_ncol
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
@@ -299,6 +302,23 @@ contains
     integer, intent(in) :: list_idx
     self%list_idx_ = list_idx
   end subroutine set_list_idx
+
+  !------------------------------------------------------------------------------
+  ! returns the number of active columns
+  !------------------------------------------------------------------------------
+  pure integer function get_ncol(self)
+    class(aerosol_state), intent(in) :: self
+    get_ncol = self%ncol_
+  end function get_ncol
+
+  !------------------------------------------------------------------------------
+  ! sets the number of active columns
+  !------------------------------------------------------------------------------
+  subroutine set_ncol(self, ncol)
+    class(aerosol_state), intent(inout) :: self
+    integer, intent(in) :: ncol
+    self%ncol_ = ncol
+  end subroutine set_ncol
 
   !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity

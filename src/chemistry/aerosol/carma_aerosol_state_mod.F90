@@ -67,7 +67,8 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf,list_idx) result(newobj)
+  function constructor(ncol,state,pbuf,list_idx) result(newobj)
+    integer, intent(in) :: ncol
     type(physics_state), target, optional :: state
     type(physics_buffer_desc), pointer, optional :: pbuf(:)
     integer, intent(in), optional :: list_idx
@@ -84,6 +85,10 @@ contains
 
     newobj%state => state
     newobj%pbuf => pbuf
+
+    ! set number of active columns internally to prevent loops from accessing beyond
+    ! meaningful data in arrays
+    call newobj%set_ncol(ncol)
 
     if (present(list_idx)) call newobj%set_list_idx(list_idx)
 
@@ -190,7 +195,7 @@ contains
     integer :: igroup, ibin, rc, nchr, ncol
     real(r8) :: nmr(pcols,pver)
 
-    ncol = self%state%ncol
+    ncol = self%ncol()
 
     call rad_aer_get_info_by_bin(self%list_idx_, bin_ndx, bin_name=bin_name)
 
@@ -221,7 +226,7 @@ contains
     integer :: igroup, ibin, rc, nchr, ncol
     real(r8) :: nmr(pcols,pver)
 
-    ncol = self%state%ncol
+    ncol = self%ncol()
 
     call rad_aer_get_info_by_bin(self%list_idx_, bin_ndx, bin_name=bin_name)
 
@@ -323,7 +328,7 @@ contains
 
     real(r8) :: wght_arr(pcols,pver)
 
-    call self%icenuc_size_wght(bin_ndx, self%state%ncol, pver, species_type, use_preexisting_ice, wght_arr)
+    call self%icenuc_size_wght(bin_ndx, self%ncol(), pver, species_type, use_preexisting_ice, wght_arr)
 
     wght = wght_arr(col_ndx,lyr_ndx)
 

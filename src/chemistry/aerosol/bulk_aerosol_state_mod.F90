@@ -76,11 +76,12 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf,list_idx) result(newobj)
+  function constructor(ncol,state,pbuf,list_idx) result(newobj)
     !REMOVECAM: host-model specific dimensions
     use ppgrid,           only: pcols, pver
     !REMOVECAM_END
 
+    integer, intent(in) :: ncol
     type(physics_state), target :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
     integer, intent(in), optional :: list_idx
@@ -97,12 +98,17 @@ contains
     newobj%state => state
     newobj%pbuf => pbuf
 
+    ! set number of active columns internally to prevent loops from accessing beyond
+    ! meaningful data in arrays
+    call newobj%set_ncol(ncol)
+
     if (present(list_idx)) call newobj%set_list_idx(list_idx)
 
     ! Allocate per-object workspace for derived number fields.
     ! Thread-safe: in CAM, each chunk has its own state object.
     allocate(newobj%num_work_(pcols, pver), stat=ierr)
     if (ierr /= 0) call endrun('bulk_aerosol_state constructor: num_work_ allocation error')
+    newobj%num_work_(:,:) = 0._r8
     allocate(newobj%zero_fld_(pcols, pver), stat=ierr)
     if (ierr /= 0) call endrun('bulk_aerosol_state constructor: zero_fld_ allocation error')
     newobj%zero_fld_(:,:) = 0._r8
@@ -209,10 +215,14 @@ contains
     real(r8), pointer :: mmr(:,:)
     real(r8)          :: ntm
     character(len=32) :: aname
+    integer           :: nc
 
     ! Derive number mixing ratio from mass: num = mmr * num_to_mass_aer (* bam_sulfate_scale for sulfate).
     ! This matches the inline computation formerly in microp_aero.F90 and nucleate_ice_cam.F90.
     ! Computed into per-object workspace (num_work_); callers must use or copy before the next call.
+    ! Only active columns (1:ncol) are computed to avoid FPE on uninitialised padding columns.
+
+    nc = self%ncol()
 
     call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
     call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
@@ -220,9 +230,9 @@ contains
     ! Apply bam_sulfate_scale to sulfate/volcanic aerosol
     select case ( to_lower( aname(:4) ) )
     case ('sulf', 'volc') ! both treated as 'sulfate' in aero_props%get type.
-       self%num_work_(:,:) = mmr(:,:) * ntm * bam_sulfate_scale
+       self%num_work_(:nc,:) = mmr(:nc,:) * ntm * bam_sulfate_scale
     case default
-       self%num_work_(:,:) = mmr(:,:) * ntm
+       self%num_work_(:nc,:) = mmr(:nc,:) * ntm
     end select
 
     num => self%num_work_

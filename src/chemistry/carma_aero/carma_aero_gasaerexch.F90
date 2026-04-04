@@ -412,7 +412,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
   type(carma_aerosol_state), pointer :: aero_state
 
 !----------------------------------------------------------------------
-   aero_state => carma_aerosol_state(state, pbuf)
+   aero_state => carma_aerosol_state(ncol, state, pbuf)
 
 !  map CARMA soa to working soa(nbins,nsoa)
 

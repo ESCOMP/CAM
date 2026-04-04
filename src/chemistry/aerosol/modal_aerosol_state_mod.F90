@@ -64,7 +64,8 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf,list_idx) result(newobj)
+  function constructor(ncol,state,pbuf,list_idx) result(newobj)
+    integer, intent(in) :: ncol
     type(physics_state), target :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
     integer, intent(in), optional :: list_idx
@@ -79,6 +80,7 @@ contains
        return
     end if
 
+    call newobj%set_ncol(ncol)
     newobj%state => state
     newobj%pbuf => pbuf
 

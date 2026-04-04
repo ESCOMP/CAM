@@ -272,21 +272,21 @@ contains
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     modal_aerosol_state(phys_state(lchnk), pbuf, ilist)
+                     modal_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
              end if
           end if
           if (carma_active_) then
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     carma_aerosol_state(phys_state(lchnk), pbuf, ilist)
+                     carma_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
              end if
           end if
           if (bulk_active_) then
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     bulk_aerosol_state(phys_state(lchnk), pbuf, ilist)
+                     bulk_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
              end if
           end if
        end do
@@ -342,15 +342,15 @@ contains
     iaermod = 0
     if (modal_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => modal_aerosol_state(state, pbuf, list_idx)
+       aero_states(iaermod)%obj => modal_aerosol_state(state%ncol, state, pbuf, list_idx)
     end if
     if (carma_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => carma_aerosol_state(state, pbuf, list_idx)
+       aero_states(iaermod)%obj => carma_aerosol_state(state%ncol, state, pbuf, list_idx)
     end if
     if (bulk_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => bulk_aerosol_state(state, pbuf, list_idx)
+       aero_states(iaermod)%obj => bulk_aerosol_state(state%ncol, state, pbuf, list_idx)
     end if
 
   end subroutine aerosol_instances_create_states
