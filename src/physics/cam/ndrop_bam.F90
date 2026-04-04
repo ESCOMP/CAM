@@ -7,27 +7,16 @@ module ndrop_bam
 !---------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
-use spmd_utils,       only: masterproc
-use ppgrid,           only: pcols, pver, pverp
 use physconst,        only: gravit, rair, tmelt, cpair, rh2o, &
      r_universal, mwh2o, rhoh2o, latvap
-
-use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
-use aerosol_properties_mod, only: aerosol_properties
-
-use shr_spfn_mod,     only: erf => shr_spfn_erf, &
-                            erfc => shr_spfn_erfc
-use wv_saturation,    only: qsat
-use cam_history,      only: addfld, add_default, outfld
-use cam_logfile,      only: iulog
-use cam_abortutils,   only: endrun
-use ref_pres,         only: top_lev=>trop_cloud_top_lev
 
 implicit none
 private
 save
 
-public :: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
+public :: ndrop_bam_init
+public :: ndrop_bam_run
+public :: naer_all, aername, psat, ccn_name
 
 ! activate parameters
 
@@ -53,8 +42,6 @@ real(r8) :: third, sixth
 real(r8) :: sq2, sqpi
 real(r8) :: alogten, alog2, alog3, alogaten
 
-real(r8) :: pref = 1013.25e2_r8 ! reference pressure (Pa)
-
 ! aerosol properties
 character(len=20), allocatable :: aername(:)
 real(r8), allocatable :: dryrad_aer(:)
@@ -65,14 +52,23 @@ real(r8), allocatable :: num_to_mass_aer(:)
 
 integer :: naer_all      ! number of aerosols affecting climate
 integer :: idxsul   = -1 ! index in aerosol list for sulfate
+integer :: idxdst2  = -1 ! index in aerosol list for dust2
+integer :: idxdst3  = -1 ! index in aerosol list for dust3
+integer :: idxdst4  = -1 ! index in aerosol list for dust4
+
+character(len=4), parameter :: ccn_name(psat) = &
+   (/'CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'/)
 
 !===============================================================================
 contains
 !===============================================================================
 
-subroutine ndrop_bam_init
+subroutine ndrop_bam_init(amIRoot, iulog)
 
-  use phys_control, only: phys_getopts
+   use shr_spfn_mod,          only: erf => shr_spfn_erf
+
+   use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+   use aerosol_properties_mod,only: aerosol_properties
 
    !----------------------------------------------------------------------- 
    ! 
@@ -80,14 +76,14 @@ subroutine ndrop_bam_init
    ! 
    !-----------------------------------------------------------------------
 
+   logical, intent(in) :: amIRoot
+   integer, intent(in) :: iulog
+
    integer  :: l, m, iaer, iaermod
    real(r8) :: surften       ! surface tension of water w/respect to air (N/m)
    real(r8) :: arg
-   logical  :: history_amwg
    class(aerosol_properties), pointer :: aero_props_bam
    !-------------------------------------------------------------------------------
-
-   call phys_getopts(history_amwg_out=history_amwg)
 
    ! Access the physical properties of the bulk aerosols that are affecting the climate
    ! by using the abstract aerosol properties interface.
@@ -125,15 +121,15 @@ subroutine ndrop_bam_init
          num_to_mass_aer = num_to_mass_aer(iaer))
       dispersion_aer(iaer) = exp(aero_props_bam%alogsig(iaer))
 
-      ! Look for sulfate aerosol in this list (Bulk aerosol only)
-      if (trim(aername(iaer)) == 'SULFATE') idxsul   = iaer
-
-      ! aerosol number concentration
-      call addfld(trim(aername(iaer))//'_m3', (/ 'lev' /), 'A', 'm-3', 'aerosol number concentration', sampled_on_subcycle=.true.)
+      ! Look for sulfate and dust aerosols in this list (Bulk aerosol only)
+      if (trim(aername(iaer)) == 'SULFATE') idxsul  = iaer
+      if (trim(aername(iaer)) == 'DUST2')   idxdst2 = iaer
+      if (trim(aername(iaer)) == 'DUST3')   idxdst3 = iaer
+      if (trim(aername(iaer)) == 'DUST4')   idxdst4 = iaer
 
    end do
 
-   if (masterproc) then
+   if (amIRoot) then
       write(iulog,*) 'ndrop_bam_init: iaer, name, dryrad, density, hygro, dispersion, num_to_mass'
       do iaer = 1, naer_all
          write(iulog,*) iaer, aername(iaer), dryrad_aer(iaer), density_aer(iaer), hygro_aer(iaer), &
@@ -146,23 +142,12 @@ subroutine ndrop_bam_init
       end if
    end if
 
-   call addfld ('CCN1',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
-   call addfld ('CCN2',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
-   call addfld ('CCN3',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
-   call addfld ('CCN4',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
-   call addfld ('CCN5',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
-   call addfld ('CCN6',(/ 'lev' /), 'A','#/cm3','CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
-
-   if (history_amwg) then
-      call add_default('CCN3', 1, ' ')
-   end if
-
    ! set parameters for droplet activation, following abdul-razzak and ghan 2000, JGR
 
    third   = 1._r8/3._r8
    sixth   = 1._r8/6._r8
    sq2     = sqrt(2._r8)
-   pi      = 4._r8*atan(1.0_r8)
+   pi      = 4._r8*atan(1.0_r8)     ! note: this should probably use physconst pi but here for b4b
    sqpi    = sqrt(pi)
    surften = 0.076_r8
    aten    = 2._r8*mwh2o*surften/(r_universal*tmelt*rhoh2o)
@@ -226,8 +211,114 @@ end subroutine ndrop_bam_init
 !===============================================================================
 
 subroutine ndrop_bam_run( &
+     aero_state, &
+     ncol, pver, top_lev, &
+     rho, tair, wsub, qcld, qsmall_in, lcldm, numliq, deltatin, &
+     npccn, nacon, ccn, naer2_diag, &
+     errmsg, errflg)
+
+   use aerosol_properties_mod, only: aerosol_properties
+   use aerosol_state_mod,      only: aerosol_state
+   use bulk_aerosol_state_mod, only: bulk_aerosol_state
+
+   !-------------------------------------------------------------------------------
+   ! Chunk-level BAM droplet activation, contact freezing dust, and CCN diagnostics.
+   ! Computes naer2/maerosol from aerosol state internally via get_bulk_num_and_mass.
+   !-------------------------------------------------------------------------------
+
+   class(aerosol_state),      intent(in) :: aero_state
+   integer,  intent(in)  :: ncol
+   integer,  intent(in)  :: pver
+   integer,  intent(in)  :: top_lev
+   real(r8), intent(in)  :: rho(:,:)          ! air density (kg/m3)
+   real(r8), intent(in)  :: tair(:,:)         ! temperature (K)
+   real(r8), intent(in)  :: wsub(:,:)         ! sub-grid vertical velocity (m/s)
+   real(r8), intent(in)  :: qcld(:,:)         ! cloud liquid mmr (kg/kg)
+   real(r8), intent(in)  :: qsmall_in         ! minimum cloud liquid threshold
+   real(r8), intent(in)  :: lcldm(:,:)        ! liquid cloud fraction [fraction]
+   real(r8), intent(in)  :: numliq(:,:)       ! droplet number (#/kg)
+   real(r8), intent(in)  :: deltatin          ! timestep (s)
+   real(r8), intent(out) :: npccn(:,:)        ! droplet number tendency (#/kg/s)
+   real(r8), intent(out) :: nacon(:,:,:)      ! contact freezing dust (#/m3), (ncol,pver,4)
+   real(r8), intent(out) :: ccn(:,:,:)        ! CCN at 6 supersaturations (#/cm3), (ncol,pver,psat)
+   real(r8), intent(out) :: naer2_diag(:,:,:) ! aerosol number conc (#/m3), (ncol,pver,naer_all)
+
+   character(len=512), intent(out) :: errmsg
+   integer,            intent(out) :: errflg
+
+   ! local workspace
+   real(r8), allocatable :: naer2(:,:,:)      ! aerosol number concentration [m-3]
+   real(r8), allocatable :: maerosol(:,:,:)   ! aerosol mass conc [kg m-3]
+   real(r8) :: nact
+   integer  :: i, k, m
+
+   errmsg = ''
+   errflg = 0
+
+   allocate(naer2(ncol, pver, naer_all), stat=errflg, errmsg=errmsg)
+   allocate(maerosol(ncol, pver, naer_all), stat=errflg, errmsg=errmsg)
+   if(errflg /= 0) return
+
+   ! Compute aerosol number and mass concentrations from aerosol state.
+   ! b4b operation order: (mmr * rho) * ntm [* 2.0 for sulfate].
+   select type(bam => aero_state)
+   type is (bulk_aerosol_state)
+      do m = 1, naer_all
+         call bam%get_bulk_num_and_mass(m, ncol, rho, naer2(:,:,m), maerosol(:,:,m))
+      end do
+   class default
+      errmsg = 'ndrop_bam_run: aero_state must be bulk_aerosol_state'
+      errflg = 1
+      return
+   end select
+
+   ! Droplet activation
+   npccn(:,:) = 0._r8
+   do k = top_lev, pver
+      do i = 1, ncol
+         if (naer_all > 0 .and. qcld(i,k) >= qsmall_in) then
+            call activate(wsub(i,k), tair(i,k), rho(i,k), naer2(i,k,:), &
+                 naer_all, naer_all, maerosol(i,k,:), nact, &
+                 errmsg, errflg)
+            if(errflg /= 0) return
+         else
+            nact = 0._r8
+         end if
+         npccn(i,k) = (nact*lcldm(i,k) - numliq(i,k))/deltatin
+      end do
+   end do
+
+   ! Contact freezing: dust number concentrations for bins 2-4
+   nacon(:,:,:) = 0._r8
+   do k = top_lev, pver
+      do i = 1, ncol
+         if (tair(i,k) < 269.15_r8) then
+            if (idxdst2 > 0) nacon(i,k,2) = naer2(i,k,idxdst2)
+            if (idxdst3 > 0) nacon(i,k,3) = naer2(i,k,idxdst3)
+            if (idxdst4 > 0) nacon(i,k,4) = naer2(i,k,idxdst4)
+         end if
+      end do
+   end do
+
+   ! CCN diagnostics
+   call ccn_diag(ncol, pver, top_lev, maerosol, naer2, ccn)
+
+   ! Copy naer2 for diagnostic output
+   naer2_diag(:ncol,:,:) = naer2(:ncol,:,:)
+
+   deallocate(naer2, maerosol)
+
+end subroutine ndrop_bam_run
+
+!===============================================================================
+
+subroutine activate( &
    wbar, tair, rhoair, na, pmode, &
-   nmode, ma, nact)
+   nmode, ma, nact, &
+   errmsg, errflg)
+
+   use shr_spfn_mod,     only: erf => shr_spfn_erf
+   use wv_saturation,    only: qsat
 
    ! calculates number fraction of aerosols activated as CCN
    ! assumes an internal mixture within each of up to pmode multiple aerosol modes
@@ -237,6 +328,7 @@ subroutine ndrop_bam_run( &
 
    !      Abdul-Razzak and Ghan, A parameterization of aerosol activation.
    !      2. Multiple aerosol types. J. Geophys. Res., 105, 6837-6844.
+   !      https://doi.org/10.1029/1999JD901161
 
    ! input
    integer,  intent(in) :: pmode         ! dimension of modes
@@ -249,6 +341,8 @@ subroutine ndrop_bam_run( &
 
    ! output
    real(r8), intent(out) :: nact         ! number fraction of aerosols activated
+   character(len=512), intent(out) :: errmsg
+   integer,            intent(out) :: errflg
 
    ! local variables
    integer :: maxmodes
@@ -259,6 +353,8 @@ subroutine ndrop_bam_run( &
    real(r8), allocatable :: etafactor2(:)
    real(r8), allocatable :: amcubeloc(:)
    real(r8), allocatable :: lnsmloc(:)
+
+   real(r8), parameter   :: pref = 1013.25e2_r8 ! reference pressure [Pa]
 
    real(r8) :: pres     ! pressure (Pa)
    real(r8) :: diff0
@@ -281,7 +377,9 @@ subroutine ndrop_bam_run( &
    real(r8) :: etafactor2max
    real(r8) :: es
    integer  :: m
-   !-------------------------------------------------------------------------------
+
+   errflg = 0
+   errmsg = ''
 
    maxmodes = naer_all
    allocate( &
@@ -290,11 +388,14 @@ subroutine ndrop_bam_run( &
       smc(maxmodes),        &
       etafactor2(maxmodes), &
       amcubeloc(maxmodes),  &
-      lnsmloc(maxmodes)     )
+      lnsmloc(maxmodes),    &
+      stat=errflg, errmsg=errmsg)
+   if (errflg /= 0) return
 
    if (maxmodes < pmode) then
-      write(iulog,*)'ndrop_bam_run: maxmodes,pmode=',maxmodes,pmode
-      call endrun('ndrop_bam_run')
+      write(errmsg,*) 'ndrop_bam activate: maxmodes,pmode=',maxmodes, pmode
+      errflg = 1
+      return
    endif
 
    nact = 0._r8
@@ -376,36 +477,37 @@ subroutine ndrop_bam_run( &
       amcubeloc,  &
       lnsmloc     )
 
-end subroutine ndrop_bam_run
+end subroutine activate
 
 !===============================================================================
 
-subroutine ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
+subroutine ccn_diag(ncol, pver, top_lev, maerosol, naer2, ccn_out)
+   use shr_spfn_mod,     only: erfc => shr_spfn_erfc
 
    !-------------------------------------------------------------------------------
    !
-   ! Write diagnostic bulk aerosol ccn concentration
+   ! Compute diagnostic bulk aerosol ccn concentration
    !
    !-------------------------------------------------------------------------------
 
    ! Input arguments
-   integer,  intent(in) :: lchnk           ! chunk identifier
-   integer,  intent(in) :: ncol            ! number of columns
-   real(r8), intent(in) :: naer2(:,:,:)    ! aerosol number concentration (1/m3)
-   real(r8), intent(in) :: maerosol(:,:,:) ! aerosol mass conc (kg/m3)
+   integer,  intent(in)  :: ncol
+   integer,  intent(in)  :: pver
+   integer,  intent(in)  :: top_lev         ! top level of troposphere cloud physics
+   real(r8), intent(in)  :: naer2(:,:,:)    ! aerosol number concentration (1/m3)
+   real(r8), intent(in)  :: maerosol(:,:,:) ! aerosol mass conc (kg/m3)
+   real(r8), intent(out) :: ccn_out(:,:,:)  ! CCN at 6 supersaturations (#/cm3)
 
    ! Local variables
    integer :: i, k, l, m
    real(r8) :: arg
 
-   character*8, parameter :: ccn_name(psat)=(/'CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'/)
-   real(r8) :: amcubesulfate(pcols)  ! cube of dry mode radius (m) of sulfate
-   real(r8) :: smcritsulfate(pcols)  ! critical supersatuation for activation of sulfate
+   real(r8) :: amcubesulfate(ncol)  ! cube of dry mode radius (m) of sulfate
+   real(r8) :: smcritsulfate(ncol)  ! critical supersatuation for activation of sulfate
    real(r8) :: ccnfactsulfate
-   real(r8) :: ccn(pcols,pver,psat)  ! number conc of aerosols activated at supersat
    !-------------------------------------------------------------------------------
 
-   ccn(:ncol,:,:) = 0._r8
+   ccn_out(:ncol,:,:) = 0._r8
 
    do k = top_lev, pver
 
@@ -438,26 +540,18 @@ subroutine ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
                   else
                      ccnfactsulfate = 0.0_r8
                   end if
-                  ccn(i,k,l) = ccn(i,k,l) + naer2(i,k,m)*ccnfactsulfate
+                  ccn_out(i,k,l) = ccn_out(i,k,l) + naer2(i,k,m)*ccnfactsulfate
                end do
             else
                ! Non-sulfate species use ccnfact computed by the init routine
-               ccn(:ncol,k,l) = ccn(:ncol,k,l) + naer2(:ncol,k,m)*ccnfact(l,m)
+               ccn_out(:ncol,k,l) = ccn_out(:ncol,k,l) + naer2(:ncol,k,m)*ccnfact(l,m)
             end if
 
          end do   ! supersaturation
       end do      ! bulk aerosol
    end do         ! level
 
-   do l = 1, psat
-      call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
-   end do
-
-   do l = 1, naer_all
-      call outfld(trim(aername(l))//'_m3', naer2(:,:,l), pcols, lchnk)
-   end do
-
-end subroutine ndrop_bam_ccn
+end subroutine ccn_diag
 
 !===============================================================================
 

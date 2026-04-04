@@ -55,7 +55,6 @@ real(r8)                   :: nucleate_ice_strat = 0.0_r8
 
 ! Vars set via init method.
 real(r8) :: mincld      ! minimum allowed cloud fraction
-real(r8) :: bulk_scale  ! prescribed aerosol bulk sulfur scale factor
 
 ! constituent indices
 integer :: &
@@ -141,12 +140,11 @@ end subroutine nucleate_ice_cam_register
 
 !================================================================================================
 
-subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
+subroutine nucleate_ice_cam_init(mincld_in, pbuf2d, aero_props)
    use phys_control, only: phys_getopts
    use time_manager, only: is_first_step
 
    real(r8), intent(in) :: mincld_in
-   real(r8), intent(in) :: bulk_scale_in
    class(aerosol_properties), optional, intent(in) :: aero_props
 
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -174,7 +172,6 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    end if
 
    mincld     = mincld_in
-   bulk_scale = bulk_scale_in
 
    lq(:) = .false.
 
@@ -232,7 +229,6 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    if( masterproc ) then
       write(iulog,*) 'nucleate_ice parameters:'
       write(iulog,*) '  mincld                     = ', mincld_in
-      write(iulog,*) '  bulk_scale                 = ', bulk_scale_in
       write(iulog,*) '  use_preexisiting_ice       = ', use_preexisting_ice
       write(iulog,*) '  hist_preexisiting_ice      = ', hist_preexisting_ice
       write(iulog,*) '  nucleate_ice_subgrid       = ', nucleate_ice_subgrid
@@ -451,7 +447,7 @@ subroutine nucleate_ice_cam_calc( &
    if (present(aero_props)) then
       ! all aerosol models are handled unified here, including BAM (BAM has one bin per species.)
       ! BAM assumptions are now encoded in bulk_aerosol_state methods:
-      !   get_ambient_num derives #/kg from mass * num_to_mass [* bulk_scale]
+      !   get_ambient_num derives #/kg from mass * num_to_mass [* bam_sulfate_scale]
       !   icenuc_size_wght returns 1/25 (BAM scaling)
       !   icenuc_type_wght returns 1.0/0.0 for single-species bins
       nbins = aero_props%nbins()
@@ -561,7 +557,7 @@ subroutine nucleate_ice_cam_calc( &
 
    ! Collect number densities [# cm-3] for dust, sulfate, and soot.
    ! Unified for all aerosol models via the abstract interface.
-   ! For BAM: get_ambient_num returns mmr*num_to_mass (*bulk_scale for {sulf, volc} = "sulfate"),
+   ! For BAM: get_ambient_num returns mmr*num_to_mass (*bam_sulfate_scale for {sulf, volc} = "sulfate"),
    !          icenuc_size_wght returns 1/25, icenuc_type_wght returns 1.0 ("sulfate_strat" or "sulfate") or 0.0.
    ! When no aerosols are active, all *_num_col are zero and nucleati runs Meyers depnuc which only depend on T and qc.
    if (present(aero_props) .and. present(aero_state)) then

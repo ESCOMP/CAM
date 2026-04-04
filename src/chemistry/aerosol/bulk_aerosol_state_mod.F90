@@ -18,12 +18,11 @@ module bulk_aerosol_state_mod
 
   private
 
-  ! BAM sulfate scaling factor — set once at init by microp_aero_init,
-  ! read-only thereafter. Thread-safe for concurrent chunk processing.
-  real(r8), save :: bulk_scale_mod_ = 1.0_r8
+  ! BAM sulfate scaling factor:
+  ! former microp_aero_bulk_scale namelist parameter (always 2.0).
+  real(r8), parameter :: bam_sulfate_scale = 2.0_r8
 
   public :: bulk_aerosol_state
-  public :: bulk_aerosol_state_set_bulk_scale
 
   type, extends(aerosol_state) :: bulk_aerosol_state
      private
@@ -35,8 +34,6 @@ module bulk_aerosol_state_mod
 
       ! Per-object workspace for derived number mixing ratio.
       ! Allocated in constructor, deallocated in destructor.
-      ! Pointer members can have their target data modified even
-      ! when self is intent(in) — only pointer association is protected.
       real(r8), pointer :: num_work_(:,:) => null()   ! (horizontal_dimension, vertical_layer_dimension)
       real(r8), pointer :: zero_fld_(:,:) => null()   ! (horizontal_dimension, vertical_layer_dimension)
 
@@ -63,6 +60,7 @@ module bulk_aerosol_state_mod
      procedure :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: wgtpct
+     procedure :: get_bulk_num_and_mass
      ! for bit-for-bit
      procedure :: nuclice_get_numdens => nuclice_get_numdens_bam
 
@@ -195,7 +193,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    ! BAM has no cloud-borne aerosol pool — return zero array.
+    ! BAM has no cloud-borne aerosol equivalent, return zero array.
     mmr => self%zero_fld_
 
   end subroutine get_cldbrne_mmr
@@ -212,17 +210,17 @@ contains
     real(r8)          :: ntm
     character(len=32) :: aname
 
-    ! Derive number mixing ratio from mass: num = mmr * num_to_mass_aer (* bulk_scale for sulfate).
+    ! Derive number mixing ratio from mass: num = mmr * num_to_mass_aer (* bam_sulfate_scale for sulfate).
     ! This matches the inline computation formerly in microp_aero.F90 and nucleate_ice_cam.F90.
     ! Computed into per-object workspace (num_work_); callers must use or copy before the next call.
 
     call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
     call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
 
-    ! Apply bulk_scale to sulfate/volcanic aerosol
+    ! Apply bam_sulfate_scale to sulfate/volcanic aerosol
     select case ( to_lower( aname(:4) ) )
     case ('sulf', 'volc') ! both treated as 'sulfate' in aero_props%get type.
-       self%num_work_(:,:) = mmr(:,:) * ntm * bulk_scale_mod_
+       self%num_work_(:,:) = mmr(:,:) * ntm * bam_sulfate_scale
     case default
        self%num_work_(:,:) = mmr(:,:) * ntm
     end select
@@ -239,7 +237,7 @@ contains
     integer, intent(in) :: bin_ndx             ! bin index
     real(r8), pointer :: num(:,:)
 
-    ! BAM has no cloud-borne aerosol pool — return zero array.
+    ! BAM has no cloud-borne equivalent, return zero array.
     num => self%zero_fld_
 
   end subroutine get_cldbrne_num
@@ -495,17 +493,40 @@ contains
   end function wgtpct
 
   !------------------------------------------------------------------------------
-  ! Set the BAM sulfate scaling factor (bulk_scale namelist parameter).
-  ! Called once from microp_aero_init; read-only thereafter.
+  ! Compute BAM number concentration (#/m3) and mass concentration (kg/m3)
+  ! for a single bin. Hardcodes the sulfate scale factor (bam_sulfate_scale).
+  ! b4b operation order: (mmr * rho) first, then * ntm [* 2.0 for sulfate].
   !------------------------------------------------------------------------------
-  subroutine bulk_aerosol_state_set_bulk_scale(scale)
-    real(r8), intent(in) :: scale
-    bulk_scale_mod_ = scale
-  end subroutine bulk_aerosol_state_set_bulk_scale
+  subroutine get_bulk_num_and_mass(self, bin_ndx, ncol, rho, naer2, maerosol)
+    class(bulk_aerosol_state), intent(in) :: self
+    integer, intent(in)   :: bin_ndx
+    integer, intent(in)   :: ncol
+    real(r8), intent(in)  :: rho(:,:)       ! air density (kg/m3), (ncol,pver)
+    real(r8), intent(out) :: naer2(:,:)     ! number concentration (#/m3)
+    real(r8), intent(out) :: maerosol(:,:)  ! mass concentration (kg/m3)
+
+    real(r8), pointer :: mmr(:,:)
+    real(r8)          :: ntm
+    character(len=32) :: aname
+
+    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
+    call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
+
+    ! b4b operation order: (mmr * rho) first, then * ntm [* 2.0 for sulfate]
+    maerosol(:ncol,:) = mmr(:ncol,:) * rho(:ncol,:)
+
+    select case ( to_lower( aname(:4) ) )
+    case ('sulf', 'volc')
+       naer2(:ncol,:) = maerosol(:ncol,:) * ntm * bam_sulfate_scale
+    case default
+       naer2(:ncol,:) = maerosol(:ncol,:) * ntm
+    end select
+
+  end subroutine get_bulk_num_and_mass
 
   ! NOTE on bit-for-bit: The base-class nuclice_get_numdens computes:
   !   size_wght * type_wght * num_col(#/kg) * rho * per_cm3
-  ! where for BAM: num_col = mmr * ntm [* bulk_scale], size_wght = 1/25, type_wght = 1.0
+  ! where for BAM: num_col = mmr * ntm [* bam_sulfate_scale], size_wght = 1/25, type_wght = 1.0
   ! giving: (1/25) * 1.0 * (mmr * ntm) * rho * 1e-6
   !
   ! The original inline BAM code (nucleate_ice_cam.F90, removed) computed:
@@ -519,6 +540,9 @@ contains
   ! original operation order.
   subroutine nuclice_get_numdens_bam(self, aero_props, use_preexisting_ice, &
        ncol, nlev, rho, dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col)
+    !REMOVECAM: host-model specific dimensions
+    use ppgrid, only: pcols, pver
+    !REMOVECAM_END
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
@@ -531,8 +555,8 @@ contains
     real(r8), intent(out) :: soot_num_col(:,:)
     real(r8), intent(out) :: sulf_num_tot_col(:,:)
 
-    real(r8), pointer :: aer_mmr(:,:)
-    real(r8) :: ntm, maerosol, naer2
+    real(r8) :: naer2_1bin(ncol,nlev)
+    real(r8) :: maerosol_1bin(ncol,nlev)
     character(len=32) :: spectype
     integer :: m, i, k
     real(r8), parameter :: per_cm3 = 1.e-6_r8
@@ -544,26 +568,18 @@ contains
 
     do m = 1, aero_props%nbins()
        call aero_props%species_type(m, 1, spectype)
-       call self%get_ambient_mmr(species_ndx=1, bin_ndx=m, mmr=aer_mmr)
-       call rad_aer_get_props(self%list_idx_, m, num_to_mass_aer=ntm)
+       call self%get_bulk_num_and_mass(m, ncol, rho, naer2_1bin, maerosol_1bin)
 
-       ! Exact original operation order: mmr * rho * ntm, then / 25 * per_cm3
        do k = 1, nlev
           do i = 1, ncol
-             maerosol = aer_mmr(i,k) * rho(i,k)
-             if (spectype == 'sulfate') then
-                naer2 = maerosol * ntm * bulk_scale_mod_
-             else
-                naer2 = maerosol * ntm
-             end if
              select case (trim(spectype))
              case ('dust')
-                dust_num_col(i,k) = dust_num_col(i,k) + naer2 / 25._r8 * per_cm3
+                dust_num_col(i,k) = dust_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
              case ('sulfate')
-                sulf_num_col(i,k) = sulf_num_col(i,k) + naer2 / 25._r8 * per_cm3
-                sulf_num_tot_col(i,k) = sulf_num_tot_col(i,k) + naer2 / 25._r8 * per_cm3
+                sulf_num_col(i,k) = sulf_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
+                sulf_num_tot_col(i,k) = sulf_num_tot_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
              case ('black-c')
-                soot_num_col(i,k) = soot_num_col(i,k) + naer2 / 25._r8 * per_cm3
+                soot_num_col(i,k) = soot_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
              end select
           end do
        end do
