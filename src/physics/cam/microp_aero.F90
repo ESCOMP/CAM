@@ -755,39 +755,42 @@ subroutine microp_aero_run ( &
    else
 
       ! for bulk aerosol: activation, contact freezing, CCN diagnostics
-      call physics_ptend_init(ptend_loc, state1%psetcols, 'none')
+      ! do not run for aquaplanet compsets which also gets in this path.
+      if (associated(aero_state1_obj)) then
+         call physics_ptend_init(ptend_loc, state1%psetcols, 'none')
 
-      allocate(ccn_bam(pcols, pver, psat))
-      allocate(naer2_bam(pcols, pver, naer_all))
+         allocate(ccn_bam(pcols, pver, psat))
+         allocate(naer2_bam(pcols, pver, naer_all))
 
-      ! zero output to pcols
-      npccn(:,:) = 0._r8
-      nacon(:,:,:) = 0._r8
-      ccn_bam(:,:,:) = 0._r8
-      naer2_bam(:,:,:) = 0._r8
+         ! zero output to pcols
+         npccn(:,:) = 0._r8
+         nacon(:,:,:) = 0._r8
+         ccn_bam(:,:,:) = 0._r8
+         naer2_bam(:,:,:) = 0._r8
 
-      ! Run CCPPized subroutine for droplet activation and contact freezing
-      call ndrop_bam_run( &
-           aero_state = aero_state1_obj,                  &
-           ncol       = ncol,                             &
-           pver       = pver,                             &
-           top_lev    = top_lev,                          &
-           rho        = rho(:ncol,:),                     &
-           tair       = state1%t(:ncol,:),                &
-           wsub       = wsub(:ncol,:),                    &
-           qcld       = state1%q(:ncol,:,cldliq_idx),     &
-           qsmall_in  = qsmall,                           &
-           lcldm      = lcldm(:ncol,:),                   &
-           numliq     = state1%q(:ncol,:,numliq_idx),     &
-           deltatin   = deltatin,                         &
-           npccn      = npccn(:ncol,:),                   &
-           nacon      = nacon(:ncol,:,:),                 &
-           ccn        = ccn_bam(:ncol,:,:),               &
-           naer2_diag = naer2_bam(:ncol,:,:),             &
-           errmsg     = errmsg, &
-           errflg     = errflg)
-      if(errflg /= 0) then
-         call endrun('ndrop_bam_run: ' // errmsg)
+         ! Run CCPPized subroutine for droplet activation and contact freezing
+         call ndrop_bam_run( &
+              aero_state = aero_state1_obj,                  &
+              ncol       = ncol,                             &
+              pver       = pver,                             &
+              top_lev    = top_lev,                          &
+              rho        = rho(:ncol,:),                     &
+              tair       = state1%t(:ncol,:),                &
+              wsub       = wsub(:ncol,:),                    &
+              qcld       = state1%q(:ncol,:,cldliq_idx),     &
+              qsmall_in  = qsmall,                           &
+              lcldm      = lcldm(:ncol,:),                   &
+              numliq     = state1%q(:ncol,:,numliq_idx),     &
+              deltatin   = deltatin,                         &
+              npccn      = npccn(:ncol,:),                   &
+              nacon      = nacon(:ncol,:,:),                 &
+              ccn        = ccn_bam(:ncol,:,:),               &
+              naer2_diag = naer2_bam(:ncol,:,:),             &
+              errmsg     = errmsg, &
+              errflg     = errflg)
+         if(errflg /= 0) then
+            call endrun('ndrop_bam_run: ' // errmsg)
+         end if
       end if
 
    end if
@@ -848,7 +851,7 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! BAM diagnostic output (CCN concentration and aerosol number)
 
-   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero)) then
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero) .and. allocated(ccn_bam) .and. allocated(naer2_bam)) then
       do l = 1, psat
          call outfld(ccn_name(l), ccn_bam(1,1,l), pcols, lchnk)
       end do

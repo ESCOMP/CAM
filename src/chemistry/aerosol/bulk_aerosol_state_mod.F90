@@ -494,7 +494,7 @@ contains
 
   !------------------------------------------------------------------------------
   ! Compute BAM number concentration (#/m3) and mass concentration (kg/m3)
-  ! for a single bin. Hardcodes the sulfate scale factor (bam_sulfate_scale).
+  ! for a single bin. Applies bam_sulfate_scale only to SULFATE (not volcanic).
   ! b4b operation order: (mmr * rho) first, then * ntm [* 2.0 for sulfate].
   !------------------------------------------------------------------------------
   subroutine get_bulk_num_and_mass(self, bin_ndx, ncol, rho, naer2, maerosol)
@@ -513,10 +513,16 @@ contains
     call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
 
     ! b4b operation order: (mmr * rho) first, then * ntm [* 2.0 for sulfate]
+    !
+    ! Note: only SULFATE gets the scale factor here.
+    ! Volcanic aerosol (which also has spectype 'sulfate') does not get scaled in the
+    ! ndrop_bam/CCN path (which only scales idxsul, SULFATE here)
+    ! Ice nucleation has been unified to also use this path, but it does scale volcanic
+    ! aerosol; it will apply this scale factor separately.
     maerosol(:ncol,:) = mmr(:ncol,:) * rho(:ncol,:)
 
     select case ( to_lower( aname(:4) ) )
-    case ('sulf', 'volc')
+    case ('sulf')
        naer2(:ncol,:) = maerosol(:ncol,:) * ntm * bam_sulfate_scale
     case default
        naer2(:ncol,:) = maerosol(:ncol,:) * ntm
@@ -535,9 +541,8 @@ contains
   ! giving: (mmr * rho * ntm) / 25 * 1e-6
   !
   ! These differ only in floating-point operation order (associativity).
-  ! If this causes non-b4b results during testing, uncomment the procedure
-  ! binding in the type definition and this override to match the exact
-  ! original operation order.
+  ! It has been shown that this rearranging causes answer differences, so we
+  ! use this subroutine to replicate the original behavior.
   subroutine nuclice_get_numdens_bam(self, aero_props, use_preexisting_ice, &
        ncol, nlev, rho, dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col)
     !REMOVECAM: host-model specific dimensions
@@ -557,7 +562,7 @@ contains
 
     real(r8) :: naer2_1bin(ncol,nlev)
     real(r8) :: maerosol_1bin(ncol,nlev)
-    character(len=32) :: spectype
+    character(len=32) :: spectype, aname
     integer :: m, i, k
     real(r8), parameter :: per_cm3 = 1.e-6_r8
 
@@ -569,6 +574,18 @@ contains
     do m = 1, aero_props%nbins()
        call aero_props%species_type(m, 1, spectype)
        call self%get_bulk_num_and_mass(m, ncol, rho, naer2_1bin, maerosol_1bin)
+
+       ! get_bulk_num_and_mass only applied bam_sulfate_scale to SULFATE (by name).
+       ! For the nucleate_ice path, volcanic aerosol (spectype 'sulfate', name 'volc*')
+       ! also needs the scale, matching the original inline code which scaled ALL
+       ! spectype=='sulfate' bins including volcanic aerosol, so we will do it here:
+       ! (but do not do it again for SULFATE)
+       if (spectype == 'sulfate') then
+          call rad_aer_get_props(self%list_idx_, m, aername=aname)
+          if (to_lower(aname(:4)) == 'volc') then
+             naer2_1bin(:ncol,:nlev) = naer2_1bin(:ncol,:nlev) * bam_sulfate_scale
+          end if
+       end if
 
        do k = 1, nlev
           do i = 1, ncol
