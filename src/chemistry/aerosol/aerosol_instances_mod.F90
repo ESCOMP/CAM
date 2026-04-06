@@ -17,9 +17,15 @@ module aerosol_instances_mod
   !      object for a given (aerosol_model, list_idx, chunk).
   !   5. aerosol_instances_final()       -- deallocates all objects at shutdown.
   !
+  ! NOTE: when using _get_props() and _get_state(), they return pointers to
+  ! persistent properties and state objects. The caller should only nullify their
+  ! copy of the pointers after use, but should NOT deallocate as these objects
+  ! are shared per (aerosol_model, list_idx, chunk).
+  !
   ! For transient state (e.g., bound to a local copy of physics_state),
   ! aerosol_instances_create_states / destroy_states provide a per-call factory,
-  ! but is expected to be removed in the future.
+  ! but this capability will be removed after CAM is retired and intermediate
+  ! state tendencies will be replaced by separate physics scheme.
   !
   ! The init, get_props, get_state, and final routines are portable.
   ! The create/destroy_states factory and init_states are host-model specific
