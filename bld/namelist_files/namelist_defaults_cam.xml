@@ -848,6 +848,7 @@
 <gw_prndl     chem="trop_strat_mam4_slh">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_slh">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
+<gw_oro_south_fac         model_top="mt">1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         model_top="ht">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
@@ -860,6 +861,7 @@
 <gw_oro_south_fac carma="trop_strat_soa1">2.D0</gw_oro_south_fac>
 <gw_oro_south_fac carma="trop_strat_soa5">2.D0</gw_oro_south_fac>
 <gw_lndscl_sgh                          >.true. </gw_lndscl_sgh>
+<gw_lndscl_sgh            model_top="mt">.true. </gw_lndscl_sgh>
 <gw_lndscl_sgh            waccm_phys="1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh            model_top="ht">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
