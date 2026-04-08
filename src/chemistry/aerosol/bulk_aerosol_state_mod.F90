@@ -224,7 +224,7 @@ contains
 
     nc = self%ncol()
 
-    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_ndx, mmr=mmr)
     call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
 
     ! Apply bam_sulfate_scale to sulfate/volcanic aerosol
@@ -519,7 +519,7 @@ contains
     real(r8)          :: ntm
     character(len=32) :: aname
 
-    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_ndx, mmr=mmr)
     call rad_aer_get_props(self%list_idx_, bin_ndx, num_to_mass_aer=ntm, aername=aname)
 
     ! b4b operation order: (mmr * rho) first, then * ntm [* 2.0 for sulfate]

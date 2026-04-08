@@ -25,7 +25,8 @@ use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols, pver, pverp
 use ref_pres,         only: top_lev => trop_cloud_top_lev
-use physconst,        only: rair
+use physconst,        only: rair, gravit, tmelt, cpair, rh2o, rhoh2o, latvap, &
+                            r_universal, mwh2o
 use constituents,     only: cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init, physics_ptend_sum, &
                             physics_state_copy, physics_update
@@ -47,6 +48,10 @@ use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, &
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
                                hetfrz_classnuc_cam_calc
+
+use compute_subgrid_vertical_velocity, only: compute_subgrid_vertical_velocity_tke_run, &
+                                             compute_subgrid_vertical_velocity_kvh_run
+use scale_subgrid_vertical_velocity,   only: scale_subgrid_vertical_velocity_run
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
@@ -312,7 +317,8 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          aero_props_bulk => null()
       end do
 
-      call ndrop_bam_init(masterproc, iulog)
+      call ndrop_bam_init(masterproc, iulog, &
+           mwh2o=mwh2o, r_universal=r_universal, tmelt=tmelt, rhoh2o=rhoh2o)
 
       ! Set module-level props object for BAM (used by nucleate_ice_cam)
       aero_props_obj => aero_props_bulk
@@ -524,7 +530,6 @@ subroutine microp_aero_run ( &
    real(r8) :: cldliqf(pcols,pver) ! fractional of total cloud that is liquid
    real(r8) :: qcld                ! total cloud water
    real(r8) :: nctend_mixnuc(pcols,pver)
-   real(r8) :: dum                 ! temporary dummy variable
    real(r8) :: dmc, ssmc, so4mc    ! variables for modal scheme.
 
    ! BAM diagnostic output from ndrop_bam_run
@@ -558,7 +563,6 @@ subroutine microp_aero_run ( &
    ncol  = state1%ncol
 
    itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx,      ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
    call pbuf_get_field(pbuf, npccn_idx, npccn)
 
@@ -634,7 +638,6 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! More refined computation of sub-grid vertical velocity
    ! Set to be zero at the surface by initialization.
-
    select case (trim(eddy_scheme))
    case ('diag_TKE')
       call pbuf_get_field(pbuf, tke_idx, tke)
@@ -643,42 +646,50 @@ subroutine microp_aero_run ( &
       call pbuf_get_field(pbuf, wp2_idx, wp2, start=(/1,1,itim_old/),kount=(/pcols,pverp,1/))
       allocate(tke(pcols,pverp))
       tke(:ncol,:) = (3._r8/2._r8)*wp2(:ncol,:)
-
    case default
       call pbuf_get_field(pbuf, kvh_idx, kvh)
    end select
 
-   ! Set minimum values above top_lev.
-   wsub(:ncol,:top_lev-1)  = wsub_min
-   wsubi(:ncol,:top_lev-1) = wsubi_min
+   ! Compute raw wsub from TKE or KVH via CCPP-ized routines
+   wsub(:,:) = 0._r8
+   select case (trim(eddy_scheme))
+   case ('diag_TKE', 'CLUBB_SGS')
+      call compute_subgrid_vertical_velocity_tke_run( &
+           ncol    = ncol,    &
+           pver    = pver,    &
+           top_lev = top_lev, &
+           tke     = tke(:ncol,:pverp), &
+           wsub    = wsub(:ncol,:pver), &
+           errmsg  = errmsg,  &
+           errflg  = errflg)
+      if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_tke_run: ' // errmsg)
+   case default
+      call compute_subgrid_vertical_velocity_kvh_run( &
+           ncol    = ncol,    &
+           pver    = pver,    &
+           top_lev = top_lev, &
+           kvh     = kvh(:ncol,:pverp), &
+           wsub    = wsub(:ncol,:pver), &
+           errmsg  = errmsg,  &
+           errflg  = errflg)
+      if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_kvh_run: ' // errmsg)
+   end select
 
-   do k = top_lev, pver
-      do i = 1, ncol
-
-         select case (trim(eddy_scheme))
-         case ('diag_TKE', 'CLUBB_SGS')
-            wsub(i,k) = sqrt(0.5_r8*(tke(i,k) + tke(i,k+1))*(2._r8/3._r8))
-            wsub(i,k) = min(wsub(i,k),10._r8)
-         case default
-            ! get sub-grid vertical velocity from diff coef.
-            ! following morrison et al. 2005, JAS
-            ! assume mixing length of 30 m
-            dum = (kvh(i,k) + kvh(i,k+1))/2._r8/30._r8
-            ! use maximum sub-grid vertical vel of 10 m/s
-            dum = min(dum, 10._r8)
-            ! set wsub to value at current vertical level
-            wsub(i,k)  = dum
-         end select
-
-         wsubi(i,k) = max(wsubi_min, wsub(i,k)) * wsubi_scale
-         if (.not. use_preexisting_ice) then
-            wsubi(i,k) = min(wsubi(i,k), 0.2_r8)
-         endif
-
-         wsub(i,k)  = max(wsub_min, wsub(i,k)) * wsub_scale
-
-      end do
-   end do
+   ! Apply min/max/scale and derive wsubi (for ice nucleation)
+   call scale_subgrid_vertical_velocity_run( &
+        ncol                = ncol,                &
+        pver                = pver,                &
+        top_lev             = top_lev,             &
+        wsub_min            = wsub_min,            &
+        wsubi_min           = wsubi_min,           &
+        wsub_scale          = wsub_scale,          &
+        wsubi_scale         = wsubi_scale,         &
+        use_preexisting_ice = use_preexisting_ice, &
+        wsub                = wsub(:ncol,:pver),   &
+        wsubi               = wsubi(:ncol,:pver),  &
+        errmsg              = errmsg,              &
+        errflg              = errflg)
+   if(errflg /= 0) call endrun('scale_subgrid_vertical_velocity_run: ' // errmsg)
 
    call outfld('WSUB',   wsub, pcols, lchnk)
    call outfld('WSUBI', wsubi, pcols, lchnk)
@@ -697,18 +708,8 @@ subroutine microp_aero_run ( &
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
    call physics_update(state1, ptend_loc, deltatin)
 
-   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-   ! get liquid cloud fraction, check for minimum
-
-   do k = top_lev, pver
-      do i = 1, ncol
-         lcldm(i,k) = max(ast(i,k), mincld)
-      end do
-   end do
-
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Droplet Activation
-
    if (clim_modal_aero .or. clim_carma_aero) then
 
       ! for modal or carma aerosol
@@ -737,6 +738,8 @@ subroutine microp_aero_run ( &
 
       ! If not using preexsiting ice, then only use cloudbourne aerosol for the
       ! liquid clouds. This is the same behavior as CAM5.
+      !
+      ! ptend_loc is initialized inside dropmixnuc
       if (use_preexisting_ice) then
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
               state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
@@ -757,6 +760,11 @@ subroutine microp_aero_run ( &
       ! for bulk aerosol: activation, contact freezing, CCN diagnostics
       ! do not run for aquaplanet compsets which also gets in this path.
       if (associated(aero_state1_obj)) then
+         ! get liquid cloud fraction. scaling is done within the ndrop_bam scheme.
+         call pbuf_get_field(pbuf, ast_idx,      ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+
+         ! ndrop_bam has no tendencies; this is initialized in order
+         ! for ptend_loc accummulation to happen the same as dropmixnuc above.
          call physics_ptend_init(ptend_loc, state1%psetcols, 'none')
 
          allocate(ccn_bam(pcols, pver, psat))
@@ -774,12 +782,19 @@ subroutine microp_aero_run ( &
               ncol       = ncol,                             &
               pver       = pver,                             &
               top_lev    = top_lev,                          &
+              gravit     = gravit,                           &
+              rair       = rair,                             &
+              tmelt      = tmelt,                            &
+              cpair      = cpair,                            &
+              rh2o       = rh2o,                             &
+              rhoh2o     = rhoh2o,                           &
+              latvap     = latvap,                           &
               rho        = rho(:ncol,:),                     &
               tair       = state1%t(:ncol,:),                &
               wsub       = wsub(:ncol,:),                    &
               qcld       = state1%q(:ncol,:,cldliq_idx),     &
               qsmall_in  = qsmall,                           &
-              lcldm      = lcldm(:ncol,:),                   &
+              ast        = ast(:ncol,:),                     &
               numliq     = state1%q(:ncol,:,numliq_idx),     &
               deltatin   = deltatin,                         &
               npccn      = npccn(:ncol,:),                   &
@@ -802,18 +817,17 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Contact freezing  (-40<T<-3 C) (Young, 1974) with hooks into simulated dust
    ! estimate rndst and nacon for 4 dust bins here to pass to MG microphysics
-
-   do k = top_lev, pver
-      do i = 1, ncol
-
-         if (state1%t(i,k) < 269.15_r8) then
-
-            if (clim_modal_aero) then
-
-               ! For modal aerosols:
-               !  use size '3' for dust coarse mode...
-               !  scale by dust fraction in coarse mode
-
+   !
+   ! For bulk aerosol contact freezing is handled inside ndrop_bam_run
+   ! (nacon is output from ndrop_bam_run)
+   ! Below for modal aerosol only:
+   if(clim_modal_aero) then
+      ! For modal aerosols:
+      !  use size '3' for dust coarse mode...
+      !  scale by dust fraction in coarse mode
+      do k = top_lev, pver
+         do i = 1, ncol
+            if (state1%t(i,k) < 269.15_r8) then
                dmc  = coarse_dust(i,k)
                ssmc = coarse_nacl(i,k)
 
@@ -832,26 +846,20 @@ subroutine microp_aero_run ( &
                   nacon(i,k,3) = 0._r8
                end if
 
-               !also redefine parameters based on size...
-
+               ! also redefine parameters based on size...
                rndst(i,k,3) = 0.5_r8*dgnumwet(i,k,mode_coarse_dst_idx)
                if (rndst(i,k,3) <= 0._r8) then
                   rndst(i,k,3) = rn_dst3
                end if
-
             end if
-
-            ! For bulk aerosol contact freezing is handled inside ndrop_bam_run
-            ! nacon is output from ndrop_bam_run
-
-         end if
+         end do
       end do
-   end do
+   end if
 
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! BAM diagnostic output (CCN concentration and aerosol number)
-
-   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero) .and. allocated(ccn_bam) .and. allocated(naer2_bam)) then
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero) .and. &    ! not modal / carma
+       allocated(ccn_bam) .and. allocated(naer2_bam)) then             ! and bulk aerosols are active (not aquap)
       do l = 1, psat
          call outfld(ccn_name(l), ccn_bam(1,1,l), pcols, lchnk)
       end do

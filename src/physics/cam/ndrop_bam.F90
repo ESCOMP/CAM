@@ -7,8 +7,6 @@ module ndrop_bam
 !---------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
-use physconst,        only: gravit, rair, tmelt, cpair, rh2o, &
-     r_universal, mwh2o, rhoh2o, latvap
 
 implicit none
 private
@@ -31,7 +29,7 @@ real(r8), allocatable :: alogsig(:)       ! natl log of geometric standard dev o
 real(r8), allocatable :: exp45logsig(:)
 real(r8), allocatable :: argfactor(:)
 real(r8), allocatable :: amcube(:)        ! cube of dry mode radius (m)
-real(r8), allocatable :: smcrit(:)        ! critical supersatuation for activation
+real(r8), allocatable :: smcrit(:)        ! critical supersaturation for activation
 real(r8), allocatable :: lnsm(:)          ! ln(smcrit)
 real(r8), allocatable :: amcubefactor(:)  ! factors for calculating mode radius
 real(r8), allocatable :: smcritfactor(:)  ! factors for calculating critical supersaturation
@@ -63,21 +61,25 @@ character(len=4), parameter :: ccn_name(psat) = &
 contains
 !===============================================================================
 
-subroutine ndrop_bam_init(amIRoot, iulog)
+subroutine ndrop_bam_init(amIRoot, iulog, mwh2o, r_universal, tmelt, rhoh2o)
 
    use shr_spfn_mod,          only: erf => shr_spfn_erf
 
    use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
    use aerosol_properties_mod,only: aerosol_properties
 
-   !----------------------------------------------------------------------- 
-   ! 
+   !-----------------------------------------------------------------------
+   !
    ! Initialize constants for droplet activation by bulk aerosols
-   ! 
+   !
    !-----------------------------------------------------------------------
 
-   logical, intent(in) :: amIRoot
-   integer, intent(in) :: iulog
+   logical,  intent(in) :: amIRoot
+   integer,  intent(in) :: iulog
+   real(r8), intent(in) :: mwh2o       ! molecular weight of water (kg/kmol)
+   real(r8), intent(in) :: r_universal  ! universal gas constant (J/K/kmol)
+   real(r8), intent(in) :: tmelt       ! freezing point of water (K)
+   real(r8), intent(in) :: rhoh2o      ! density of liquid water (kg/m3)
 
    integer  :: l, m, iaer, iaermod
    real(r8) :: surften       ! surface tension of water w/respect to air (N/m)
@@ -213,7 +215,8 @@ end subroutine ndrop_bam_init
 subroutine ndrop_bam_run( &
      aero_state, &
      ncol, pver, top_lev, &
-     rho, tair, wsub, qcld, qsmall_in, lcldm, numliq, deltatin, &
+     gravit, rair, tmelt, cpair, rh2o, rhoh2o, latvap, &
+     rho, tair, wsub, qcld, qsmall_in, ast, numliq, deltatin, &
      npccn, nacon, ccn, naer2_diag, &
      errmsg, errflg)
 
@@ -222,7 +225,7 @@ subroutine ndrop_bam_run( &
    use bulk_aerosol_state_mod, only: bulk_aerosol_state
 
    !-------------------------------------------------------------------------------
-   ! Chunk-level BAM droplet activation, contact freezing dust, and CCN diagnostics.
+   ! BAM droplet activation, contact freezing dust, and CCN diagnostics.
    ! Computes naer2/maerosol from aerosol state internally via get_bulk_num_and_mass.
    !-------------------------------------------------------------------------------
 
@@ -230,12 +233,19 @@ subroutine ndrop_bam_run( &
    integer,  intent(in)  :: ncol
    integer,  intent(in)  :: pver
    integer,  intent(in)  :: top_lev
+   real(r8), intent(in)  :: gravit          ! gravitational acceleration (m/s2)
+   real(r8), intent(in)  :: rair            ! dry air gas constant (J/K/kg)
+   real(r8), intent(in)  :: tmelt           ! freezing point of water (K)
+   real(r8), intent(in)  :: cpair           ! specific heat of dry air (J/K/kg)
+   real(r8), intent(in)  :: rh2o            ! water vapor gas constant (J/K/kg)
+   real(r8), intent(in)  :: rhoh2o          ! density of liquid water (kg/m3)
+   real(r8), intent(in)  :: latvap          ! latent heat of vaporization (J/kg)
    real(r8), intent(in)  :: rho(:,:)          ! air density (kg/m3)
    real(r8), intent(in)  :: tair(:,:)         ! temperature (K)
    real(r8), intent(in)  :: wsub(:,:)         ! sub-grid vertical velocity (m/s)
    real(r8), intent(in)  :: qcld(:,:)         ! cloud liquid mmr (kg/kg)
    real(r8), intent(in)  :: qsmall_in         ! minimum cloud liquid threshold
-   real(r8), intent(in)  :: lcldm(:,:)        ! liquid cloud fraction [fraction]
+   real(r8), intent(in)  :: ast(:,:)          ! stratiform_cloud_area_fraction [fraction]
    real(r8), intent(in)  :: numliq(:,:)       ! droplet number (#/kg)
    real(r8), intent(in)  :: deltatin          ! timestep (s)
    real(r8), intent(out) :: npccn(:,:)        ! droplet number tendency (#/kg/s)
@@ -246,9 +256,13 @@ subroutine ndrop_bam_run( &
    character(len=512), intent(out) :: errmsg
    integer,            intent(out) :: errflg
 
+   ! minimum allowed cloud fraction
+   real(r8), parameter :: mincld = 0.0001_r8
+
    ! local workspace
    real(r8), allocatable :: naer2(:,:,:)      ! aerosol number concentration [m-3]
    real(r8), allocatable :: maerosol(:,:,:)   ! aerosol mass conc [kg m-3]
+   real(r8) :: lcldm(ncol, pver)
    real(r8) :: nact
    integer  :: i, k, m
 
@@ -272,14 +286,21 @@ subroutine ndrop_bam_run( &
       return
    end select
 
+   do k = top_lev, pver
+      do i = 1, ncol
+         lcldm(i,k) = max(ast(i,k), mincld)
+      end do
+   end do
+
    ! Droplet activation
    npccn(:,:) = 0._r8
    do k = top_lev, pver
       do i = 1, ncol
          if (naer_all > 0 .and. qcld(i,k) >= qsmall_in) then
             call activate(wsub(i,k), tair(i,k), rho(i,k), naer2(i,k,:), &
-                 naer_all, naer_all, maerosol(i,k,:), nact, &
-                 errmsg, errflg)
+                 naer_all, naer_all, maerosol(i,k,:), &
+                 gravit, rair, tmelt, cpair, rh2o, rhoh2o, latvap, &
+                 nact, errmsg, errflg)
             if(errflg /= 0) return
          else
             nact = 0._r8
@@ -314,8 +335,9 @@ end subroutine ndrop_bam_run
 
 subroutine activate( &
    wbar, tair, rhoair, na, pmode, &
-   nmode, ma, nact, &
-   errmsg, errflg)
+   nmode, ma, &
+   gravit, rair, tmelt, cpair, rh2o, rhoh2o, latvap, &
+   nact, errmsg, errflg)
 
    use shr_spfn_mod,     only: erf => shr_spfn_erf
    use wv_saturation,    only: qsat
@@ -338,6 +360,13 @@ subroutine activate( &
    real(r8), intent(in) :: rhoair        ! air density (kg/m3)
    real(r8), intent(in) :: na(pmode)     ! aerosol number concentration (1/m3)
    real(r8), intent(in) :: ma(pmode)     ! aerosol mass concentration (kg/m3)
+   real(r8), intent(in) :: gravit        ! gravitational acceleration (m/s2)
+   real(r8), intent(in) :: rair          ! dry air gas constant (J/K/kg)
+   real(r8), intent(in) :: tmelt         ! freezing point of water (K)
+   real(r8), intent(in) :: cpair         ! specific heat of dry air (J/K/kg)
+   real(r8), intent(in) :: rh2o          ! water vapor gas constant (J/K/kg)
+   real(r8), intent(in) :: rhoh2o        ! density of liquid water (kg/m3)
+   real(r8), intent(in) :: latvap        ! latent heat of vaporization (J/kg)
 
    ! output
    real(r8), intent(out) :: nact         ! number fraction of aerosols activated
