@@ -7,10 +7,9 @@ module bulk_aerosol_properties_mod
   use cam_abortutils, only: endrun
   use string_utils, only : to_lower
 
-  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+  use aerosol_properties_mod, only: aerosol_properties
 
-  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_props, &
-                               rad_aer_bulk_physprop_id
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_props
   use shr_infnan_mod, only: nan => shr_infnan_nan, assignment(=)
 
   implicit none
@@ -225,6 +224,8 @@ contains
   ! returns the physprop ID for a given bin (aerosol) index
   !------------------------------------------------------------------------
   integer function physprop_id(self, bin_ndx)
+    use radiative_aerosol, only: rad_aer_bulk_physprop_id
+
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 
@@ -425,6 +426,8 @@ contains
   ! returns name for a given aerosol bin
   !------------------------------------------------------------------------------
   function bin_name(self, bin_ndx) result(name)
+    use aerosol_properties_mod, only: aero_name_len
+
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx  ! bin number
 

@@ -2,8 +2,7 @@ module modal_aerosol_properties_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
-  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props, rad_aer_get_props, &
-                               rad_aer_mode_physprop_id
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props, rad_aer_get_props
 
   implicit none
 
@@ -454,6 +453,8 @@ contains
   ! returns the physprop ID for a given bin (mode) index
   !------------------------------------------------------------------------
   integer function physprop_id(self, bin_ndx)
+    use radiative_aerosol, only: rad_aer_mode_physprop_id
+
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx
 

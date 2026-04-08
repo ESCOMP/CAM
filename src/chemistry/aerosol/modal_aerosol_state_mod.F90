@@ -10,7 +10,7 @@ module modal_aerosol_state_mod
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use physics_types, only: physics_state
   !REMOVECAM_END
-  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+  use aerosol_properties_mod, only: aerosol_properties
   use physconst,  only: rhoh2o
   use cam_abortutils, only: endrun
 
@@ -215,6 +215,8 @@ contains
   ! return aerosol bin size weights for a given bin
   !------------------------------------------------------------------------------
   subroutine icenuc_size_wght_arr(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
+    use aerosol_properties_mod, only: aero_name_len
+
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
     integer, intent(in) :: ncol                ! number of columns
