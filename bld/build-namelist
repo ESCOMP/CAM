@@ -800,8 +800,15 @@ if ($docosp) {
 
 # TEM diags
 if ($phys =~ /cam7/) {
-    add_default($nl, 'ctem_diags_numlats');
-    add_default($nl, 'cam_physics_mesh');
+  add_default($nl, 'ctem_diags_numlats');
+}
+# check for conflicting TEM diagnostics settings
+if ((defined  $nl->get_value('ctem_diags_numlats')) and (defined $nl->get_value('phys_grid_ctem_za_nlat'))) {
+  my $esmf_nlats = $nl->get_value('ctem_diags_numlats');
+  my $sphr_nlats = $nl->get_value('phys_grid_ctem_za_nlat');
+  if ($esmf_nlats>0 and $sphr_nlats>0) {
+    die "Cannot set both Spherical Harmonics and ESMF regrid methods of TEM zonal mean diagnostics.\n";
+  }
 }
 
 # Constituents
@@ -3128,7 +3135,6 @@ else {
 # present in the namelist.
 add_default($nl, 'use_hemco');
 if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
-    add_default($nl, 'cam_physics_mesh');
     add_default($nl, 'hemco_data_root');
     add_default($nl, 'hemco_config_file');
     add_default($nl, 'hemco_diagn_file');
@@ -3216,7 +3222,6 @@ if ($waccmx) {
     add_default($nl, 'fv_high_altitude', 'val'=>'.true.');
   }
   if ($ionos ne 'none') {
-    add_default($nl, 'cam_physics_mesh');
     add_default($nl, 'oplus_grid');
     add_default($nl, 'edyn_grid');
   }
