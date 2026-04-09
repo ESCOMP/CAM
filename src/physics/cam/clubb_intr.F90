@@ -2493,12 +2493,14 @@ end subroutine clubb_init_cnst
       qvtend,       &
       qctend,       &
       inctend,      &
-      clubb_s,      &
       thv,          & ! virtual potential temperature			            [K]
       th              ! potential temperature                         [K]
 
     real(r8), dimension(pcols,pverp) :: &
       rho     		  ! Midpoint density in CAM      			            [kg/m^3]
+
+    real(r8), dimension(pcols,nzt_clubb) :: &
+      clubb_s         ! diagnosed dry static energy from clubb
 
     real(r8) :: &
       invrs_dz_g,               & ! Inverse of layer thickness                    [1/m]
@@ -4065,33 +4067,16 @@ end subroutine clubb_init_cnst
       end do
     end if
 
-!---- TODO: there seems to a an above top_lev interaction here that changes answers.
-!           The error occured because we were zeroing out the [1:top_lev-1] values in
-!           in rcm (when it still contained those levels), when it should've been
-!           set to state_loc%q(:,:,ixcldliq) and unchanged by clubb.
     ! Compute static energy using CLUBB's variables
-    !$acc parallel loop gang vector collapse(2) default(present)
-    do k = 1, top_lev-1
-      do i = 1, ncol
-
-        ! This can be simplified algebraically, but left like this to maintain BFBness
-        clubb_s(i,k) = cpairv(i,k,lchnk) * state_loc%t(i,k) - latvap * state_loc%q(i,k,ixcldliq) &
-                       + latvap * 0._r8 &                           ! error kept for BFBness
-                       !+ latvap * state_loc%q(i,k,ixcldliq) &         ! correct line
-                       + gravit * state_loc%zm(i,k) + state_loc%phis(i)
-      end do
-    end do
-
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = top_lev, pver
       do i = 1, ncol
         k_clubb = k + 1 - top_lev
-        clubb_s(i,k) = cpairv(i,k,lchnk) * thlm(i,k_clubb) / invrs_exner_zt(i,k_clubb) &
+        clubb_s(i,k_clubb) = cpairv(i,k,lchnk) * thlm(i,k_clubb) / invrs_exner_zt(i,k_clubb) &
                        + latvap * rcm(i,k_clubb) &
                        + gravit * state_loc%zm(i,k) + state_loc%phis(i)
       end do
     end do
-!--------------------------------- END TODO ---------------------------------
 
     ! Section below is concentrated on energy fixing for conservation.
     !   because CLUBB and CAM's thermodynamic variables are different.
@@ -4121,36 +4106,20 @@ end subroutine clubb_init_cnst
       wv_b = 0._r8
       wl_b = 0._r8
 
-!---- TODO: there seems to a an above top_lev interaction here that changes answers.
-!           The error occured because we were zeroing out the [1:top_lev-1] values in
-!           in rcm (when it still contained those levels), when it should've been
-!           set to state_loc%q(:,:,ixcldliq) and unchanged by clubb.
-      do k = 1, top_lev-1
-        ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
-        ! after CLUBB is called.  This is for energy conservation purposes.
-        se_a = se_a + clubb_s(i,k)*state_loc%pdel(i,k)*rga
-        ke_a = ke_a + 0.5_r8*(state_loc%u(i,k)**2+state_loc%v(i,k)**2)*state_loc%pdel(i,k)*rga
-        wv_a = wv_a + ( state_loc%q(i,k,ixq) + state_loc%q(i,k,ixcldliq) ) * state_loc%pdeldry(i,k) * rga   ! error kept for BFBness
-        wl_a = wl_a + 0.0_r8                                                                       ! error kept for BFBness
-        !wv_a = wv_a + state_loc%q(i,k,ixq)*state_loc%pdeldry(i,k)*rga                                   ! correct way
-        !wl_a = wl_a + state_loc%q(i,k,ixcldliq)*state_loc%pdeldry(i,k)*rga                              ! correct way
-      end do
-
       ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
       ! after CLUBB is called.  This is for energy conservation purposes.
       do k = top_lev, pver
         k_clubb     = k + 1 - top_lev
-        se_a = se_a + clubb_s(i,k)*state_loc%pdel(i,k)*rga
+        se_a = se_a + clubb_s(i,k_clubb)*state_loc%pdel(i,k)*rga
         ke_a = ke_a + 0.5_r8*(um(i,k_clubb)**2+vm(i,k_clubb)**2)*state_loc%pdel(i,k)*rga
         wv_a = wv_a + (rtm(i,k_clubb)-rcm(i,k_clubb))*state_loc%pdeldry(i,k)*rga
         wl_a = wl_a + (rcm(i,k_clubb))*state_loc%pdeldry(i,k)*rga
       end do
-!--------------------------------- END TODO ---------------------------------
 
       ! Based on these integrals, compute the total energy after CLUBB call
       te_a = se_a + ke_a + (latvap+latice) * wv_a + latice * wl_a
 
-      do k = 1, pver
+      do k = top_lev, pver
         ! Do the same as above, but for before CLUBB was called.
         se_b = se_b + state_loc%s(i,k)*state_loc%pdel(i,k)*rga
         ke_b = ke_b + 0.5_r8*(state_loc%u(i,k)**2+state_loc%v(i,k)**2)*state_loc%pdel(i,k)*rga
@@ -4185,7 +4154,8 @@ end subroutine clubb_init_cnst
       do i = 1, ncol
 
         do k = clubbtop(i), pver
-          clubb_s(i,k) = clubb_s(i,k) - se_dis(i) * gravit
+          k_clubb = k + 1 - top_lev
+          clubb_s(i,k_clubb) = clubb_s(i,k_clubb) - se_dis(i) * gravit
         end do
         ! convert to units of +ve [K]
         se_dis(i) = -1._r8 * se_dis(i) * gravit * invrs_cpairv(i,pver)
@@ -4309,26 +4279,7 @@ end subroutine clubb_init_cnst
       endif
     endif
 
-
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
-
-!---- TODO: there seems to a an above top_lev interaction here that changes answers.
-!           The error occured because we were zeroing out the [1:top_lev-1] values in
-!           in rcm (when it still contained those levels), when it should've been
-!           set to state_loc%q(:,:,ixcldliq) and unchanged by clubb. Had it been set correctly
-!           the ptend_loc%q terms would simplify to zero. I've left the (erroneous?) interaction
-!           for now to maintain BFBness
-    do k = 1, top_lev-1
-      do i = 1, ncol
-        ptend_loc%u(i,k)          = 0.0_r8
-        ptend_loc%v(i,k)          = 0.0_r8
-        ptend_loc%q(i,k,ixq)      = (   state_loc%q(i,k,ixcldliq))     * invrs_hdtime ! error kept for BFBness
-        ptend_loc%q(i,k,ixcldliq) = ( - state_loc%q(i,k,ixcldliq))     * invrs_hdtime ! error kept for BFBness
-        ! ptend_loc%q(i,k,ixq)      = 0.0_r8                                       ! correct line
-        ! ptend_loc%q(i,k,ixcldliq) = 0.0_r8                                       ! correct line
-        ptend_loc%s(i,k)          = (clubb_s(i,k) - state_loc%s(i,k))  * invrs_hdtime ! Tendency of static energy
-      end do
-    end do
 
     do k = top_lev, pver
       do i = 1, ncol
@@ -4338,10 +4289,9 @@ end subroutine clubb_init_cnst
         ptend_loc%q(i,k,ixq)      = ( rtm(i,k_clubb) - rcm(i,k_clubb) &
                                       -state_loc%q(i,k,ixq) )                     * invrs_hdtime ! water vapor
         ptend_loc%q(i,k,ixcldliq) = ( rcm(i,k_clubb) - state_loc%q(i,k,ixcldliq)) * invrs_hdtime ! Tendency of liquid water
-        ptend_loc%s(i,k)          = ( clubb_s(i,k) - state_loc%s(i,k))            * invrs_hdtime ! Tendency of static energy
+        ptend_loc%s(i,k)          = ( clubb_s(i,k_clubb) - state_loc%s(i,k))      * invrs_hdtime ! Tendency of static energy
       end do
     end do
-!--------------------------------- END TODO ---------------------------------
 
     invrs_macmic_num_steps = 1.0_r8 / REAL(cld_macmic_num_steps,r8)
 
