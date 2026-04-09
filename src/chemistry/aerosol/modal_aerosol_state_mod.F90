@@ -278,6 +278,8 @@ contains
   ! return aerosol bin size weights for a given bin, column and vertical layer
   !------------------------------------------------------------------------------
   subroutine icenuc_size_wght_val(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
+    use aerosol_properties_mod, only: aero_name_len
+
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
     integer, intent(in) :: col_ndx                ! column index
@@ -338,6 +340,7 @@ contains
   subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
 
     use aerosol_properties_mod, only: aerosol_properties
+    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -415,6 +418,8 @@ contains
   ! as heterogeneous freezing nuclei
   !------------------------------------------------------------------------------
   function hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
+    use aerosol_properties_mod, only: aero_name_len
+
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin number
     integer, intent(in) :: ncol                ! number of columns
@@ -452,8 +457,7 @@ contains
   end subroutine hygroscopicity
 
   !------------------------------------------------------------------------------
-  ! returns aerosol wet diameter and aerosol water concentration for a given
-  ! radiation diagnostic list number and bin number
+  ! returns aerosol wet diameter and aerosol water concentration for a given mode
   !------------------------------------------------------------------------------
   !REMOVECAM - under CAM-SIMA, water uptake computed by CCPP scheme; results passed via constituent interface
   subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
@@ -607,7 +611,7 @@ contains
   end function water_volume
 
   !------------------------------------------------------------------------------
-  ! aerosol wet diameter
+  ! aerosol wet diameter for a given mode
   !------------------------------------------------------------------------------
   !REMOVECAM - under CAM-SIMA, wet diameter provided by CCPP scheme output
   function wet_diameter(self, bin_idx, ncol, nlev) result(diam)
@@ -630,6 +634,7 @@ contains
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
   function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
+    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
