@@ -14,7 +14,7 @@ module ctem_diags_mod
   use spmd_utils, only: masterproc
   use ref_pres, only: pref_mid
   use esmf_lonlat_grid_mod, only: beglon=>lon_beg, endlon=>lon_end, beglat=>lat_beg, endlat=>lat_end
-  use cam_history,  only: addfld, outfld, horiz_only
+  use cam_history,  only: addfld, outfld, horiz_only, add_default
   use cam_history_support, only : fillvalue
   use perf_mod, only: t_startf, t_stopf
   use cam_logfile, only: iulog
@@ -222,6 +222,17 @@ contains
     call addfld ('PSzm',  horiz_only, 'A', 'Pa', 'Zonal-Mean surface pressure', gridname='ctem_zm' )
     call addfld ('PStem', horiz_only, 'A', 'Pa', 'Surface Pressure', gridname='ctem_lonlat')
     call addfld ('MSKtem',horiz_only, 'A', '1',  'TEM mask', gridname='ctem_lonlat' )
+
+    ! default monthly-means
+    call add_default('Uzm',1,' ')
+    call add_default('Vzm',1,' ')
+    call add_default('Wzm',1,' ')
+    call add_default('THzm',1,' ')
+    call add_default('VTHzm',1,' ')
+    call add_default('WTHzm',1,' ')
+    call add_default('UVzm',1,' ')
+    call add_default('UWzm',1,' ')
+    call add_default('PSzm',1,' ')
 
   end subroutine ctem_diags_init
 

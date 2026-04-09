@@ -798,6 +798,11 @@ if ($docosp) {
     add_default($nl, 'docosp', 'val'=>'.true.');
 }
 
+# TEM diags
+if ($phys =~ /cam7/) {
+    add_default($nl, 'ctem_diags_numlats');
+    add_default($nl, 'cam_physics_mesh');
+}
 
 # Constituents
 # ============

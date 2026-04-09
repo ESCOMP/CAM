@@ -13,7 +13,7 @@ module esmf_phys2lonlat_mod
   use ESMF, only: ESMF_FieldCreate, ESMF_FieldRegridStore
   use ESMF, only: ESMF_FieldGet, ESMF_FieldRegrid
   use ESMF, only: ESMF_KIND_I4, ESMF_KIND_R8, ESMF_TYPEKIND_R8
-  use ESMF, only: ESMF_REGRIDMETHOD_CONSERVE
+  use ESMF, only: ESMF_REGRIDMETHOD_BILINEAR, ESMF_POLEMETHOD_ALLAVG, ESMF_EXTRAPMETHOD_NEAREST_IDAVG
   use ESMF, only: ESMF_TERMORDER_SRCSEQ, ESMF_MESHLOC_ELEMENT, ESMF_STAGGERLOC_CENTER
   use ESMF, only: ESMF_FieldDestroy, ESMF_RouteHandleDestroy
   use esmf_check_error_mod, only: check_esmf_error
@@ -101,19 +101,21 @@ contains
     call check_esmf_error(rc, subname//'ESMF_FieldCreate 2D lonlat fld ERROR')
 
     call ESMF_FieldRegridStore(srcField=physfld_3d, dstField=lonlatfld_3d, &
-         regridMethod=ESMF_REGRIDMETHOD_CONSERVE, &
-         routeHandle=rh_phys2lonlat_3d, &
-         srcTermProcessing=smm_srctermproc, &
-         pipelineDepth=smm_pipelinedep, &
-         rc=rc)
+         regridMethod=ESMF_REGRIDMETHOD_BILINEAR,                          &
+         polemethod=ESMF_POLEMETHOD_ALLAVG,                                &
+         extrapMethod=ESMF_EXTRAPMETHOD_NEAREST_IDAVG,                     &
+         routeHandle=rh_phys2lonlat_3d, factorIndexList=factorIndexList,   &
+         factorList=factorList, srcTermProcessing=smm_srctermproc,         &
+         pipelineDepth=smm_pipelinedep, rc=rc)
     call check_esmf_error(rc, subname//'ESMF_FieldRegridStore 3D routehandle ERROR')
 
     call ESMF_FieldRegridStore(srcField=physfld_2d, dstField=lonlatfld_2d, &
-         regridMethod=ESMF_REGRIDMETHOD_CONSERVE, &
-         routeHandle=rh_phys2lonlat_2d, &
-         srcTermProcessing=smm_srctermproc, &
-         pipelineDepth=smm_pipelinedep, &
-         rc=rc)
+         regridMethod=ESMF_REGRIDMETHOD_BILINEAR,                          &
+         polemethod=ESMF_POLEMETHOD_ALLAVG,                                &
+         extrapMethod=ESMF_EXTRAPMETHOD_NEAREST_IDAVG,                     &
+         routeHandle=rh_phys2lonlat_2d, factorIndexList=factorIndexList,   &
+         factorList=factorList, srcTermProcessing=smm_srctermproc,         &
+         pipelineDepth=smm_pipelinedep, rc=rc)
     call check_esmf_error(rc, subname//'ESMF_FieldRegridStore 3D routehandle ERROR')
 
   end subroutine esmf_phys2lonlat_init

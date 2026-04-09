@@ -951,6 +951,10 @@
 <cam_physics_mesh hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
 <cam_physics_mesh hgrid="ne120np4" npg="3">share/meshes/ne120pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
 
+<!-- For ESMF regrid zonal-mean TEM diagnostics -->
+<ctem_diags_numlats hgrid="ne16np4">90</ctem_diags_numlats>
+<ctem_diags_numlats hgrid="ne30np4">180</ctem_diags_numlats>
+
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
 <lght_no_prd_factor                hgrid="ne30np4"                  >1.80D0</lght_no_prd_factor>
