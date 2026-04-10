@@ -523,9 +523,9 @@ contains
        if (has_drydep(spc_name)) then
           call addfld( depvel_name(m), horiz_only,  'A', 'cm/s',    'deposition velocity ' )
           call addfld( depflx_name(m), horiz_only,  'A', 'kg/m2/s', 'dry deposition flux ' )
-          if (history_chemistry) then
-             call add_default( depflx_name(m), 1, ' ' )
-          endif
+          !if (history_chemistry) then
+          !   call add_default( depflx_name(m), 1, ' ' )
+          !endif
        endif
 
        if (gas_wetdep_method=='MOZ') then
