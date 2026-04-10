@@ -223,17 +223,6 @@ contains
     call addfld ('PStem', horiz_only, 'A', 'Pa', 'Surface Pressure', gridname='ctem_lonlat')
     call addfld ('MSKtem',horiz_only, 'A', '1',  'TEM mask', gridname='ctem_lonlat' )
 
-    ! default monthly-means
-    call add_default('Uzm',1,' ')
-    call add_default('Vzm',1,' ')
-    call add_default('Wzm',1,' ')
-    call add_default('THzm',1,' ')
-    call add_default('VTHzm',1,' ')
-    call add_default('WTHzm',1,' ')
-    call add_default('UVzm',1,' ')
-    call add_default('UWzm',1,' ')
-    call add_default('PSzm',1,' ')
-
   end subroutine ctem_diags_init
 
   !-----------------------------------------------------------------------------
