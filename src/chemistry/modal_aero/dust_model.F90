@@ -105,12 +105,14 @@ module dust_model
   subroutine dust_init()
     use soil_erod_mod, only: soil_erod_init
     use constituents,  only: cnst_get_ind
-    use rad_constituents, only: rad_cnst_get_info
+    use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+    use aerosol_properties_mod, only: aerosol_properties
     use dust_common,   only: dust_set_params
 
-    integer :: l, m, mm, ndx, nspec
+    integer :: l, m, mm, ndx, nspec, iaermod
     character(len=32) :: spec_name
     integer, parameter :: mymodes(7) = (/ 2, 1, 3, 4, 5, 6, 7 /) ! tricky order ...
+    class(aerosol_properties), pointer :: aero_props_modal
 
     dust_nbin = ndst
     dust_nnum = ndst
@@ -143,12 +145,20 @@ module dust_model
     endif
     ! dmleung --
 
+    ! Find modal properties object from factory
+    aero_props_modal => null()
+    do iaermod = 1, aerosol_instances_get_num_models()
+       aero_props_modal => aerosol_instances_get_props(iaermod, 0)
+       if (aero_props_modal%model_is('MAM')) exit
+       aero_props_modal => null()
+    end do
+
     ndx = 0
     do mm = 1, ntot_amode
        m = mymodes(mm)
-       call rad_cnst_get_info(0, m, nspec=nspec)
+       nspec = aero_props_modal%nspecies(m)
        do l = 1, nspec
-          call rad_cnst_get_info(0, m, l, spec_name=spec_name )
+          call aero_props_modal%get(m, l, specname=spec_name)
           if (spec_name(:3) == 'dst') then
              ndx=ndx+1
              dust_names(ndx) = spec_name

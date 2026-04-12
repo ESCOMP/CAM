@@ -178,7 +178,7 @@ contains
     use mo_chem_utls,    only: get_spc_ndx
     use modal_aero_data, only: cnst_name_cw
     use modal_aero_data, only: modal_aero_data_init
-    use rad_constituents,only: rad_cnst_get_info
+    use radiative_aerosol,only: rad_aer_get_info
     use dust_model,      only: dust_init, dust_names, dust_active, dust_nbin, dust_nnum
     use seasalt_model,   only: seasalt_init, seasalt_names, seasalt_active,seasalt_nbin
     use aer_drydep_mod,  only: inidrydep
@@ -234,7 +234,7 @@ contains
                       history_cesm_forcing_out=history_cesm_forcing, &
                       history_dust_out=history_dust)
 
-    call rad_cnst_get_info(0, nmodes=nmodes)
+    call rad_aer_get_info(0, nmodes=nmodes)
 
     call modal_aero_data_init(pbuf2d)
     call modal_aero_bcscavcoef_init()
@@ -502,10 +502,10 @@ contains
     ! for surf_area_dens
     ! define indices associated with the various aerosol types
     do n = 1,nmodes
-       call rad_cnst_get_info(0, n, mode_type=mode_type, nspec=nspec)
+       call rad_aer_get_info(0, n, mode_type=mode_type, nspec=nspec)
        if ( trim(mode_type) /= 'primary_carbon') then ! ignore the primary_carbon mode
           do l = 1, nspec
-             call rad_cnst_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
+             call rad_aer_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
              index_tot_mass(n,l) = get_spc_ndx(spec_name)
              if ( trim(spec_type) == 'sulfate'   .or. &
                   trim(spec_type) == 's-organic' .or. &

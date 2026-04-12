@@ -54,11 +54,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
- function constructor(aero_props, aero_state, ilist, ibin, ncol, nlev, relhum) result(newobj)
+ function constructor(aero_props, aero_state, ibin, ncol, nlev, relhum) result(newobj)
 
     class(aerosol_properties),intent(in) :: aero_props ! aerosol_properties object
     class(aerosol_state),intent(in) :: aero_state      ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncol   ! number of columns
     integer, intent(in) :: nlev   ! number of levels
@@ -117,7 +116,7 @@ contains
        return
     end if
 
-    nspec = aero_props%nspecies(ilist,ibin)
+    nspec = aero_props%nspecies(ibin)
 
     coremmr(:,:) = 0._r8
     coredustmmr(:,:) = 0._r8
@@ -126,9 +125,9 @@ contains
 
     do ispec = 1,nspec
 
-       call aero_state%get_ambient_mmr(ilist,ispec,ibin,specmmr)
+       call aero_state%get_ambient_mmr(species_ndx=ispec,bin_ndx=ibin,mmr=specmmr)
 
-       call aero_props%get(ibin, ispec, list_ndx=ilist, density=specdens, &
+       call aero_props%get(ibin, ispec, density=specdens, &
                            spectype=spectype, specmorph=specmorph)
 
        if (trim(specmorph) == 'core') then
@@ -171,9 +170,9 @@ contains
        end do
     end do
 
-    call aero_state%hygroscopicity(ilist, ibin, newobj%kappa)
+    call aero_state%hygroscopicity(ibin, newobj%kappa)
 
-    call aero_props%optics_params(ilist, ibin, &
+    call aero_props%optics_params(ibin, &
          corefrac=newobj%tbl_corefrac, kap=newobj%tbl_kap, &
          bcdust=newobj%tbl_bcdust, relh=newobj%tbl_relh, &
          nfrac=newobj%nfrac, nbcdust=newobj%nbcdust, &
@@ -182,7 +181,7 @@ contains
     newobj%relh(:ncol,:) = relhum(:ncol,:)
 
     ! long wave optical properties table
-    call aero_props%optics_params(ilist, ibin,  &
+    call aero_props%optics_params(ibin,  &
          sw_hygro_coreshell_ext=newobj%sw_hygro_coreshell_ext, &
          sw_hygro_coreshell_ssa=newobj%sw_hygro_coreshell_ssa, &
          sw_hygro_coreshell_asm=newobj%sw_hygro_coreshell_asm, &
