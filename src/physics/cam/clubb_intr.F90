@@ -2337,6 +2337,7 @@ end subroutine clubb_init_cnst
       zt_g,                           & ! Thermodynamic grid of CLUBB		      	        [m]
       Lscale,                         &
       dz_g,                           & ! thickness of layer                            [m]
+      invrs_dz_g,                     & ! Inverse of layer thickness                    [1/m]
 
       ! MF local thermodynamic vars
                   invrs_exner_zt,& ! thermodynamic grid
@@ -2468,7 +2469,8 @@ end subroutine clubb_init_cnst
       rtm_output,                     &
       thlm_output,                    &
       um_output,                      &
-      vm_output                        
+      vm_output,                      &
+      rho_output
 
     real(r8), dimension(pcols) :: &
       rhmini,           &
@@ -2496,14 +2498,10 @@ end subroutine clubb_init_cnst
       thv,          & ! virtual potential temperature			            [K]
       th              ! potential temperature                         [K]
 
-    real(r8), dimension(pcols,pverp) :: &
-      rho     		  ! Midpoint density in CAM      			            [kg/m^3]
-
     real(r8), dimension(pcols,nzt_clubb) :: &
       clubb_s         ! diagnosed dry static energy from clubb
 
     real(r8) :: &
-      invrs_dz_g,               & ! Inverse of layer thickness                    [1/m]
       inv_exner_tmp,            & ! Inverse exner function consistent with CLUBB  [-]
       dlf2,                     & ! Detraining cld H20 from shallow convection    [kg/kg/day]
       dum1,                     & ! dummy variable                                [units vary]
@@ -2538,7 +2536,7 @@ end subroutine clubb_init_cnst
     character(len=512) :: errmsg
 
     integer, dimension(pcols) :: &
-      clubbtop, &
+      clubbtop_pbuf, &
       troplev
 
     integer :: &
@@ -2809,7 +2807,7 @@ end subroutine clubb_init_cnst
     !$acc              cam_in, cam_in%wsx, cam_in%wsy, cam_in%cflx, cam_in%shf, &
     !$acc              err_info, err_info%err_header, &
     !$acc              cpairv, rairv, se_dis, eleak, cld_pbuf, clubb_params_single_col, grid_dx, grid_dy ) &
-    !$acc     copyout( clubb_s, clubbtop, &
+    !$acc     copyout( clubb_s, clubbtop_pbuf, &
     !$acc              qclvar_out, wprcp_out, rcm_in_layer, rcm, cloud_frac_inout, thlm, rtm, & 
     !$acc              um, vm, wm_zt, exner, zt_g, zi_g, invrs_cpairv, &
     !$acc              pdf_params_chnk(lchnk)%rt_1,                pdf_params_chnk(lchnk)%rt_2,  &
@@ -2825,7 +2823,7 @@ end subroutine clubb_init_cnst
     !$acc              cloudy_downdraft_frac_out, cloud_cover_out, invrs_tau_zm_out, Lscale, &
     !$acc              invrs_exner_zt, fcor, fcor_y, sfc_elevation, thlm_forcing, rtm_forcing, um_forcing, &
     !$acc              vm_forcing, wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
-    !$acc              rtpthlp_forcing, wm_zm, wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc, &
+    !$acc              rtpthlp_forcing, wm_zm, wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc, invrs_dz_g, &
     !$acc              p_sfc, upwp_sfc_pert, vpwp_sfc_pert, rtm_ref, thlm_ref, um_ref, vm_ref, &
     !$acc              ug, vg, p_in_Pa, rho_zm, rho_zt, rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
     !$acc              invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, clubb_params, deltaz, err_info%err_code, &
@@ -3147,11 +3145,11 @@ end subroutine clubb_init_cnst
         ! Define the CLUBB thermodynamic grid (in units of m)
         zt_g(i,k) = state_loc%zm(i,k_cam) - state_loc%zi(i,pverp)
 
-        invrs_dz_g = 1._r8 / ( state_loc%zi(i,k_cam) - state_loc%zi(i,k_cam+1) )  ! compute thickness
+        invrs_dz_g(i,k) = 1._r8 / ( state_loc%zi(i,k_cam) - state_loc%zi(i,k_cam+1) )  ! compute thickness
 
-        rho_zt(i,k)          = rga * state_loc%pdel(i,k_cam)    * invrs_dz_g
+        rho_zt(i,k)          = rga * state_loc%pdel(i,k_cam)    * invrs_dz_g(i,k)
 
-        rho_ds_zt(i,k)       = rga * state_loc%pdeldry(i,k_cam) * invrs_dz_g
+        rho_ds_zt(i,k)       = rga * state_loc%pdeldry(i,k_cam) * invrs_dz_g(i,k)
 
         invrs_rho_ds_zt(i,k) = 1._r8 / rho_ds_zt(i,k)
 
@@ -3441,8 +3439,8 @@ end subroutine clubb_init_cnst
       do k = 1, nzt_clubb
         do i = 1, ncol
           k_cam = top_lev - 1 + k
-          kappa_zt(i,k) = rairv(i,k_cam,lchnk) * invrs_cpairv(i,k_cam)
-          dz_g(i,k)     = state_loc%zi(i,k_cam) - state_loc%zi(i,k_cam+1)  ! compute thickness
+          kappa_zt(i,k)   = rairv(i,k_cam,lchnk) * invrs_cpairv(i,k_cam)
+          dz_g(i,k)       = state_loc%zi(i,k_cam) - state_loc%zi(i,k_cam+1)  ! compute thickness
         end do
       end do
 
@@ -3529,10 +3527,10 @@ end subroutine clubb_init_cnst
         ! pass MF turbulent advection term as CLUBB explicit forcing term
         do k = 1, nzt_clubb
           do i = 1, ncol
-            rtm_forcing(i,k)  = rtm_forcing(i,k) - invrs_rho_ds_zt(i,k) * ( 1._r8 / dz_g(i,k) ) * &
+            rtm_forcing(i,k)  = rtm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dz_g(i,k) * &
                               ((rho_ds_zm(i,k) * mf_qtflx(i,k)) - (rho_ds_zm(i,k+1) * mf_qtflx(i,k+1)))
 
-            thlm_forcing(i,k) = thlm_forcing(i,k) - invrs_rho_ds_zt(i,k) * ( 1._r8 / dz_g(i,k) ) * &
+            thlm_forcing(i,k) = thlm_forcing(i,k) - invrs_rho_ds_zt(i,k) * invrs_dz_g(i,k) * &
                                ((rho_ds_zm(i,k) * mf_thlflx(i,k)) - (rho_ds_zm(i,k+1) * mf_thlflx(i,k+1)))
           end do
         end do
@@ -3952,9 +3950,6 @@ end subroutine clubb_init_cnst
 
       end if
 
-
-      ! Note that CLUBB does not produce an error code specific to any column, and
-      ! one value only for the entire chunk
       if ( any(err_info%err_code == clubb_fatal_error) ) then
         write(fstderr,*) "Fatal error in CLUBB advance_clubb_core: at timestep ", get_nstep()
         call endrun(subr//': '//err_info%err_header_global//NEW_LINE('a')//'Fatal error in CLUBB advance_clubb_core')
@@ -4081,15 +4076,15 @@ end subroutine clubb_init_cnst
     ! Section below is concentrated on energy fixing for conservation.
     !   because CLUBB and CAM's thermodynamic variables are different.
 
-    ! Initialize clubbtop to top_lev, for finding the highlest level CLUBB is
+    ! Initialize clubbtop_pbuf to top_lev, for finding the highlest level CLUBB is
     !  active for informing where to apply the energy fixer.
     !$acc parallel loop gang vector default(present)
     do i = 1, ncol
-      clubbtop(i) = top_lev
-      k_clubb     = clubbtop(i) + 1 - top_lev
-      do while ((rtp2_pbuf(i,k_clubb) <= 1.e-15_r8 .and. rcm(i,k_clubb)  ==  0._r8) .and. clubbtop(i) <  pver)
-        clubbtop(i) = clubbtop(i) + 1
-        k_clubb     = clubbtop(i) + 1 - top_lev
+      clubbtop_pbuf(i) = top_lev
+      k_clubb     = clubbtop_pbuf(i) + 1 - top_lev
+      do while ((rtp2_pbuf(i,k_clubb) <= 1.e-15_r8 .and. rcm(i,k_clubb)  ==  0._r8) .and. clubbtop_pbuf(i) <  pver)
+        clubbtop_pbuf(i) = clubbtop_pbuf(i) + 1
+        k_clubb          = clubbtop_pbuf(i) + 1 - top_lev
       end do
     end do
 
@@ -4135,7 +4130,7 @@ end subroutine clubb_init_cnst
       te_b = te_b + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
-      se_dis(i) = ( te_a - te_b ) / ( state_loc%pint(i,pverp) - state_loc%pint(i,clubbtop(i)) )
+      se_dis(i) = ( te_a - te_b ) / ( state_loc%pint(i,pverp) - state_loc%pint(i,clubbtop_pbuf(i)) )
 
       eleak(i) = ( te_a - te_b ) * invrs_hdtime
 
@@ -4153,7 +4148,7 @@ end subroutine clubb_init_cnst
       !$acc parallel loop gang vector default(present)
       do i = 1, ncol
 
-        do k = clubbtop(i), pver
+        do k = clubbtop_pbuf(i), pver
           k_clubb = k + 1 - top_lev
           clubb_s(i,k_clubb) = clubb_s(i,k_clubb) - se_dis(i) * gravit
         end do
@@ -4211,73 +4206,6 @@ end subroutine clubb_init_cnst
         tke_pbuf(i,k) = 0.5_r8 * ( up2_pbuf(i,k_clubb) + vp2_pbuf(i,k_clubb) + wp2_pbuf(i,k_clubb) ) 
       enddo
     enddo
-
-    ! --------------------------------------------------------------------------------- !
-    !  Diagnose some quantities that are computed in macrop_tend here.                  !
-    !  These are inputs required for the microphysics calculation.                      !
-    !                                                                                   !
-    !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
-    ! --------------------------------------------------------------------------------- !
-
-    !  initialize variables
-    alst_pbuf(:,:) = 0.0_r8
-    qlst_pbuf(:,:) = 0.0_r8
-
-    do k = top_lev, pver
-      do i = 1, ncol
-        k_clubb     = k + 1 - top_lev
-        alst_pbuf(i,k)    = cloud_frac_inout(i,k_clubb)
-        qlst_pbuf(i,k)    = rcm(i,k_clubb) / max( 0.01_r8, alst_pbuf(i,k) )  ! Incloud stratus condensate mixing ratio
-      enddo
-    enddo
-
-    ! --------------------------------------------------------------------------------- !
-    !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
-    ! --------------------------------------------------------------------------------- !
-
-    frac_limit = 0.01_r8
-    ic_limit   = 1.e-12_r8
-    deepcu_pbuf(:,:) = 0.0_r8
-    shalcu_pbuf(:,:) = 0.0_r8
-
-    do k = 1, pver-1
-      do i = 1, ncol
-        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the
-        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never
-        !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
-        !  fraction is purely from deep convection scheme.
-        deepcu_pbuf(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh_pbuf(i,k+1))),0.6_r8))
-
-        if (deepcu_pbuf(i,k) <= frac_limit .or. dp_icwmr_pbuf(i,k) < ic_limit) then
-          deepcu_pbuf(i,k) = 0._r8
-        endif
-
-        !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable
-        !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
-        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud
-        !  from CLUBB plus the deep convective cloud fraction
-!----------------- TODO: the way we set alst_pbuf (with clubb's cloud fraction)
-!                        this simplifies to the uncommented version. Seems weird, since it relies
-!                        on only deepcu_pbuf, but not a clear bug
-        !concld_pbuf(i,k) = min(cloud_frac_pbuf(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k),0.80_r8)
-        concld_pbuf(i,k) = min(deepcu_pbuf(i,k),0.80_r8)
-      enddo
-    enddo
-!-------------------------------------------------------------------------------------
-
-    if (single_column .and. .not. scm_cambfb_mode) then
-      if (trim(scm_clubb_iop_name)  ==  'ATEX_48hr'       .or. &
-          trim(scm_clubb_iop_name)  ==  'BOMEX_5day'      .or. &
-          trim(scm_clubb_iop_name)  ==  'DYCOMSrf01_4day' .or. &
-          trim(scm_clubb_iop_name)  ==  'DYCOMSrf02_06hr' .or. &
-          trim(scm_clubb_iop_name)  ==  'RICO_3day'       .or. &
-          trim(scm_clubb_iop_name)  ==  'ARM_CC') then
-
-         deepcu_pbuf(:,:) = 0.0_r8
-         concld_pbuf(:,:) = 0.0_r8
-
-      endif
-    endif
 
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
 
@@ -4385,7 +4313,7 @@ end subroutine clubb_init_cnst
     end if
 
 
-    !  Apply tendencies to ice mixing ratio, liquid and ice number, and aerosol constituents.
+    !  Apply tendencies to ice mixing ratio, liquid and ice number, and aerosol constituents that aren't mixed by ndrop
     !  Loading up this array doesn't mean the tendencies are applied.
     ! edsclr_inout is compressed with just the constituents being used, ptend and state are not compressed
     icnt=0
@@ -4434,7 +4362,7 @@ end subroutine clubb_init_cnst
     ! set pbuf field so that HB scheme is only applied above CLUBB top
     !
     if (do_hb_above_clubb) then
-      call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
+      call pbuf_set_field(pbuf, clubbtop_idx, clubbtop_pbuf)
     endif
 
     ! ------------------------------------------------- !
@@ -4599,6 +4527,73 @@ end subroutine clubb_init_cnst
     end do
 
     ! --------------------------------------------------------------------------------- !
+    !  Diagnose some quantities that are computed in macrop_tend here.                  !
+    !  These are inputs required for the microphysics calculation.                      !
+    !                                                                                   !
+    !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
+    ! --------------------------------------------------------------------------------- !
+
+    !  initialize variables
+    alst_pbuf(:,:) = 0.0_r8
+    qlst_pbuf(:,:) = 0.0_r8
+
+    do k = top_lev, pver
+      do i = 1, ncol
+        k_clubb     = k + 1 - top_lev
+        alst_pbuf(i,k)    = cloud_frac_inout(i,k_clubb)
+        qlst_pbuf(i,k)    = rcm(i,k_clubb) / max( 0.01_r8, alst_pbuf(i,k) )  ! Incloud stratus condensate mixing ratio
+      enddo
+    enddo
+
+    ! --------------------------------------------------------------------------------- !
+    !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
+    ! --------------------------------------------------------------------------------- !
+
+    frac_limit = 0.01_r8
+    ic_limit   = 1.e-12_r8
+    deepcu_pbuf(:,:) = 0.0_r8
+    shalcu_pbuf(:,:) = 0.0_r8
+
+    do k = 1, pver-1
+      do i = 1, ncol
+        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the
+        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never
+        !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
+        !  fraction is purely from deep convection scheme.
+        deepcu_pbuf(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh_pbuf(i,k+1))),0.6_r8))
+
+        if (deepcu_pbuf(i,k) <= frac_limit .or. dp_icwmr_pbuf(i,k) < ic_limit) then
+          deepcu_pbuf(i,k) = 0._r8
+        endif
+
+        !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable
+        !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
+        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud
+        !  from CLUBB plus the deep convective cloud fraction
+!----------------- TODO: the way we set alst_pbuf (with clubb's cloud fraction)
+!                        this simplifies to the uncommented version. Seems weird, since it relies
+!                        on only deepcu_pbuf, but not a clear bug
+        !concld_pbuf(i,k) = min(cloud_frac_pbuf(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k),0.80_r8)
+        concld_pbuf(i,k) = min(deepcu_pbuf(i,k),0.80_r8)
+      enddo
+    enddo
+!-------------------------------------------------------------------------------------
+
+    if (single_column .and. .not. scm_cambfb_mode) then
+      if (trim(scm_clubb_iop_name)  ==  'ATEX_48hr'       .or. &
+          trim(scm_clubb_iop_name)  ==  'BOMEX_5day'      .or. &
+          trim(scm_clubb_iop_name)  ==  'DYCOMSrf01_4day' .or. &
+          trim(scm_clubb_iop_name)  ==  'DYCOMSrf02_06hr' .or. &
+          trim(scm_clubb_iop_name)  ==  'RICO_3day'       .or. &
+          trim(scm_clubb_iop_name)  ==  'ARM_CC') then
+
+         deepcu_pbuf(:,:) = 0.0_r8
+         concld_pbuf(:,:) = 0.0_r8
+
+      endif
+    endif
+
+    ! --------------------------------------------------------------------------------- !
     !  COMPUTE THE ICE CLOUD FRACTION PORTION                                           !
     !  use the aist_vector function to compute the ice cloud fraction                   !
     ! --------------------------------------------------------------------------------- !
@@ -4722,7 +4717,6 @@ end subroutine clubb_init_cnst
     ! --------------------------------------------------------------------------------- !
 
     !----------------------------------------- Output section -----------------------------------------
-    ! TODO: Do we always want to be outputting all of this? Should we surround some/most of this with a flag? 
 
     call outfld( 'DETNLIQTND', detnliquid_output,pcols, lchnk )
 
@@ -4748,14 +4742,6 @@ end subroutine clubb_init_cnst
     call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
     call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
 
-    !  density
-    do k = 1, pver
-      do i = 1, ncol
-        rho(i,k) = rga * state_loc%pdel(i,k) / ( state_loc%zi(i,k) - state_loc%zi(i,k+1) )
-      end do
-    end do
-    rho(1:ncol,pverp)  = rho(1:ncol,pver)
-
     do k = top_lev, pverp
       do i = 1, ncol
 
@@ -4772,8 +4758,12 @@ end subroutine clubb_init_cnst
         wpthvp_clubb_output(i,k)    = wpthvp_pbuf(i,k_clubb) * cpair
         thlp2_output(i,k)           =  thlp2_pbuf(i,k_clubb)
 
-        wpthlp_output(i,k)  = ( wpthlp_pbuf(i,k_clubb) - (apply_const *  wpthlp_const) ) * rho(i,k) * cpair !  liquid water potential temperature flux
-        wprtp_output(i,k)   = (  wprtp_pbuf(i,k_clubb) - (apply_const *   wprtp_const) ) * rho(i,k) * latvap  !  total water mixig ratio flux
+        wpthlp_output(i,k)  = ( wpthlp_pbuf(i,k_clubb) - (apply_const *  wpthlp_const) ) &
+                              * rho_zm(i,k_clubb) * cpair !  liquid water potential temperature flux
+
+        wprtp_output(i,k)   = (  wprtp_pbuf(i,k_clubb) - (apply_const *   wprtp_const) ) &
+                              * rho_zm(i,k_clubb) * latvap  !  total water mixig ratio flux
+
         rtpthlp_output(i,k) =  rtpthlp_pbuf(i,k_clubb) - (apply_const * rtpthlp_const)
 
       end do
@@ -4789,6 +4779,7 @@ end subroutine clubb_init_cnst
 
         k_clubb = k + 1 - top_lev
 
+        rho_output(i,k)               = rho_zt(i,k_clubb)
         rcm_output(i,k)               = rcm(i,k_clubb)
         rtm_output(i,k)               = rtm(i,k_clubb)
         thlm_output(i,k)              = thlm(i,k_clubb)
@@ -4826,6 +4817,7 @@ end subroutine clubb_init_cnst
 
     do k = 1, top_lev-1
       do i = 1, ncol
+        rho_output(i,k)             = 0._r8
         wp2_output(i,k)             = 0._r8
         up2_output(i,k)             = 0._r8
         vp2_output(i,k)             = 0._r8
@@ -4882,9 +4874,9 @@ end subroutine clubb_init_cnst
     call outfld( 'UM_CLUBB',         um_output,                      pcols, lchnk )
     call outfld( 'VM_CLUBB',         vm_output,                      pcols, lchnk )
     call outfld( 'WM_ZT_CLUBB',      wm_zt_output,                   pcols, lchnk )
+    call outfld( 'RHO_CLUBB',        rho_output,                     pcols, lchnk )
 
     call outfld( 'RELVAR',           relvar_pbuf,                    pcols, lchnk )
-    call outfld( 'RHO_CLUBB',        rho(:,1:pver),                  pcols, lchnk )
     call outfld( 'CLOUDCOVER_CLUBB', cld_pbuf,                       pcols, lchnk )
     call outfld( 'CLOUDFRAC_CLUBB',  alst_pbuf,                      pcols, lchnk )
     call outfld( 'CONCLD',           concld_pbuf,                    pcols, lchnk )
@@ -4924,8 +4916,8 @@ end subroutine clubb_init_cnst
           s_awqi_output(i,k)       = s_awqi(i,k_clubb)
           s_awu_output(i,k)        = s_awu(i,k_clubb)
           s_awv_output(i,k)        = s_awv(i,k_clubb)
-          mf_thlflx_output(i,k)    = mf_thlflx(i,k_clubb)*rho(i,k)*cpair
-          mf_qtflx_output(i,k)     = mf_qtflx(i,k_clubb)*rho(i,k)*latvap
+          mf_thlflx_output(i,k)    = mf_thlflx(i,k_clubb) * rho_zm(i,k_clubb) * cpair
+          mf_qtflx_output(i,k)     = mf_qtflx(i,k_clubb) * rho_zm(i,k_clubb) * latvap
         end do
       end do
 
