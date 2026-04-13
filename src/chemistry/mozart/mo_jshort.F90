@@ -227,7 +227,7 @@
             else
                write(iulog,*) 'get_crs : ',rxt_tag_lst(m)(:len_trim(rxt_tag_lst(m))),' alias ', &
                     pht_alias_lst(m,1)(:len_trim(pht_alias_lst(m,1))),' not in dataset'
-               call endrun
+               call endrun('mo_jshort::get_crs error')
             end if
          end if
       end do
@@ -315,7 +315,7 @@
       deallocate( xs_species )
       if( ndx /= nj ) then
          write(iulog,*) 'get_crs : ndx count /= cross section count'
-         call endrun
+         call endrun('mo_jshort::get_crs: ndx count /= cross section count')
       end if
       !------------------------------------------------------------------------------
       !       ... get jo3 cross sections
@@ -385,6 +385,7 @@
       integer :: istat	! i/o status
       integer :: i, j
       character(len=256) :: locfn
+      character(len=256) :: errstr
 
 !----------------------------------------------------------------------
 !	... Get first strato photo rate file
@@ -403,8 +404,8 @@
 !----------------------------------------------------------------------
 !	... Open error exit
 !----------------------------------------------------------------------
-            write(iulog,*) 'xs_init: error ',istat,' opening file ',trim(locfn)
-            call endrun
+            write(errstr,*) 'mo_jshort::xs_init: error ',istat,' opening file ',trim(locfn)
+            call endrun(trim(errstr))
          end if
 !----------------------------------------------------------------------
 !	... read file
@@ -414,7 +415,7 @@
             read(unit,903,iostat=istat) ac(i,:)
             if( istat /= 0 ) then
                write(iulog,*) 'xs_init: error ',istat,' reading ac'
-               call endrun
+               call endrun('mo_jshort::xs_init read file error')
             end if
          end do
 
@@ -422,8 +423,8 @@
          do i = 1,20
             read(unit,903,iostat=istat) bc(i,:)
             if( istat /= 0 ) then
-               write(iulog,*) 'xs_init: error ',istat,' reading bc'
-               call endrun
+               write(errstr,*) 'xs_init: error ',istat,' reading bc'
+               call endrun(trim(errstr))
             end if
          end do
          close( unit )
@@ -618,6 +619,9 @@
        real(r8) :: abs_col(nlev)
        real(r8) :: tsrb(nlev,nsrbtuv)       ! Transmission in the SRB
        real(r8) :: xs_o2srb(nlev,nsrbtuv)   ! Cross section * QY for O2 in SRB
+
+       ! check for realistic O2 concentrations
+       call check_o2_col( o2cc )
 
       allocate( fnorm(nlev,nw),stat=astat )
       if( astat /= 0 ) then
@@ -943,6 +947,9 @@
 	real(r8) :: abs_col(nlev)
         real(r8) :: tsrb(nlev,nsrbtuv)       ! Transmission in the SRB
 	real(r8) :: xs_o2srb(nlev,nsrbtuv)   ! Cross section * QY for O2 in SRB
+
+        ! check for realistic O2 concentrations
+        call check_o2_col( o2cc )
 
       allocate( fnorm(nlev,nw),stat=astat )
       if( astat /= 0 ) then
@@ -1487,6 +1494,7 @@
       real(r8)    :: dtsrb(nlev)
       real(r8)    :: tsrb_rev(nlev,nsrbtuv)
       real(r8)    :: xs(nsrbtuv)
+      character(len=256) :: errstr
 
 !------------------------------------------------------------------------------
 !     ... Calculate cross sections
@@ -1562,8 +1570,8 @@
                term1 = log( xscho2(k+1,i)/xscho2(k,i) )
                term2 = log( o2col(k+1)/o2col(k) )
 	       if( term2 == 0._r8 ) then
-                  write(iulog,*) 'calc_o2srb : o2col(k:k+1),xscho2(k:k+1,i) = ',o2col(k:k+1),xscho2(k:k+1,i),' @ i,k = ',i,k
-	          call endrun
+                  write(errstr,*) 'calc_o2srb : o2col(k:k+1),xscho2(k:k+1,i) = ',o2col(k:k+1),xscho2(k:k+1,i),' @ i,k = ',i,k
+	          call endrun(trim(errstr))
 	       end if
                den = 1._r8 + log( xscho2(k+1,i)/xscho2(k,i) )/log( o2col(k+1)/o2col(k) )
                dto2 = abs(num/den)
@@ -1869,5 +1877,16 @@
       end function pjno
 
       end subroutine calc_jno
+
+      !----------------------------------------------------------------
+      subroutine check_o2_col( o2cc )
+        real(r8), intent(in) :: o2cc(:) ! o2 conc (mol/cm^3)
+
+        if (maxval(o2cc)<1.0_r8) then
+           write(*,*) 'mo_jshort input O2 (mol/cm^3): ',o2cc
+           call endrun('mo_jshort -- unrealistic O2 concentrations needed for absorption')
+        end if
+
+      end subroutine check_o2_col
 
       end module mo_jshort
