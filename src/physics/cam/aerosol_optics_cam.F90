@@ -376,49 +376,31 @@ contains
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-           !  if (history_aero_optics) then
-           !     call add_default (fldname, 1, ' ')
-           !  end if
 
              fldname = 'AOD_'//trim(aero_props(n)%obj%bin_name(0,m))
              aodbin_fields(n)%name(m) = fldname
              lngname = 'Aerosol optical depth, day only, 550 nm, '//trim(aero_props(n)%obj%bin_name(0,m))
              call addfld (aodbin_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-           !  if (history_aero_optics) then
-           !     call add_default (fldname, 1, ' ')
-           !  end if
 
              write(fldname,'(a,i2.2)') 'AODDUST', cnt
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-            ! if (history_aero_optics) then
-            !    call add_default (fldname, 1, ' ')
-            ! end if
 
              write(fldname,'(a,i2.2)') 'BURDENdn', cnt
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-          !   if (history_aero_optics) then
-          !      call add_default (fldname, 1, ' ')
-          !   end if
 
              fldname = 'AODdn_'//trim(aero_props(n)%obj%bin_name(0,m))
              aodbindn_fields(n)%name(m) = fldname
              lngname = 'Aerosol optical depth 550 nm, day night, '//trim(aero_props(n)%obj%bin_name(0,m))
              call addfld (aodbindn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-           !  if (history_aero_optics) then
-           !     call add_default (fldname, 1, ' ')
-           !  end if
 
              write(fldname,'(a,i2.2)') 'AODdnDUST', cnt
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-           !  if (history_aero_optics) then
-           !     call add_default (fldname, 1, ' ')
-           !  end if
 
           end do
 
@@ -498,54 +480,20 @@ contains
    end if
 
    if (history_aero_optics) then
-      call add_default ('AODDUST01'     , 1, ' ')
-      call add_default ('AODDUST03'     , 1, ' ')
-      call add_default ('ABSORB'       , 1, ' ')
-      call add_default ('AODVIS'       , 1, ' ')
-  !    call add_default ('AODUV'        , 1, ' ')
-  !    call add_default ('AODNIR'       , 1, ' ')
-  !    call add_default ('AODABS'       , 1, ' ')
-  !    call add_default ('AODABSBC'     , 1, ' ')
-      call add_default ('AODDUST'      , 1, ' ')
-  !    call add_default ('AODSO4'       , 1, ' ')
-  !    call add_default ('AODPOM'       , 1, ' ')
-  !    call add_default ('AODSOA'       , 1, ' ')
-  !    call add_default ('AODBC'        , 1, ' ')
-  !    call add_default ('AODSS'        , 1, ' ')
-  !    call add_default ('BURDEN01'      , 1, ' ')
-  !    call add_default ('BURDEN02'      , 1, ' ')
-  !    call add_default ('BURDEN03'      , 1, ' ')
-      call add_default ('BURDENDUST'   , 1, ' ')
-      call add_default ('BURDENSO4'    , 1, ' ')
-      call add_default ('BURDENPOM'    , 1, ' ')
-      call add_default ('BURDENSOA'    , 1, ' ')
-      call add_default ('BURDENBC'     , 1, ' ')
-      call add_default ('BURDENSEASALT', 1, ' ')
-      call add_default ('SSAVIS'       , 1, ' ')
-   !   call add_default ('EXTINCT'      , 1, ' ')
-   !   call add_default ('AODxASYM'     , 1, ' ')
-   !   call add_default ('EXTxASYM'     , 1, ' ')
-
-    !  call add_default ('AODdnDUST01'     , 1, ' ')
-    !  call add_default ('AODdnDUST03'     , 1, ' ')
       call add_default ('AODABSdn'       , 1, ' ')
-    !  call add_default ('ABSORBdn'       , 1, ' ')
+      call add_default ('ABSORBdn'       , 1, ' ')
       call add_default ('AODVISdn'       , 1, ' ')
-      call add_default ('AODVISstdn'       , 1, ' ')
+      call add_default ('AODVISstdn'     , 1, ' ')
       call add_default ('AODUVdn'        , 1, ' ')
-      call add_default ('AODUVstdn'        , 1, ' ')
-      call add_default ('AODNIRstdn'       , 1, ' ')
+      call add_default ('AODUVstdn'      , 1, ' ')
+      call add_default ('AODNIRstdn'     , 1, ' ')
       call add_default ('AODABSdn'       , 1, ' ')
-   !   call add_default ('AODABSBCdn'     , 1, ' ')
       call add_default ('AODDUSTdn'      , 1, ' ')
       call add_default ('AODSO4dn'       , 1, ' ')
       call add_default ('AODPOMdn'       , 1, ' ')
       call add_default ('AODSOAdn'       , 1, ' ')
       call add_default ('AODBCdn'        , 1, ' ')
       call add_default ('AODSSdn'        , 1, ' ')
-   !   call add_default ('BURDENdn01'      , 1, ' ')
-   !   call add_default ('BURDENdn02'      , 1, ' ')
-   !   call add_default ('BURDENdn03'      , 1, ' ')
       call add_default ('BURDENDUSTdn'   , 1, ' ')
       call add_default ('BURDENSO4dn'    , 1, ' ')
       call add_default ('BURDENPOMdn'    , 1, ' ')
@@ -554,9 +502,8 @@ contains
       call add_default ('BURDENSEASALTdn', 1, ' ')
       call add_default ('SSAVISdn'       , 1, ' ')
       call add_default ('EXTINCTdn'      , 1, ' ')
-      call add_default ('EXTINCTUVdn'      , 1, ' ')
-      call add_default ('EXTINCTNIRdn'      , 1, ' ')
-   !   call add_default ('AODxASYMdn'     , 1, ' ')
+      call add_default ('EXTINCTUVdn'    , 1, ' ')
+      call add_default ('EXTINCTNIRdn'   , 1, ' ')
       call add_default ('EXTxASYMdn'     , 1, ' ')
    end if
 

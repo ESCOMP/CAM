@@ -304,7 +304,7 @@ contains
        do m = 1, dust_nbin+dust_nnum
           dummy = trim(dust_names(m)) // 'SF'
           call addfld (dummy,horiz_only, 'A','kg/m2/s',trim(dust_names(m))//' dust surface emission')
-          if (history_aerosol) then
+          if (history_aerosol.or.history_chemistry) then
              call add_default (dummy, 1, ' ')
           endif
        enddo
@@ -334,7 +334,7 @@ contains
        do m = 1, seasalt_nbin
           dummy = trim(seasalt_names(m)) // 'SF'
           call addfld (dummy,horiz_only, 'A','kg/m2/s',trim(seasalt_names(m))//' seasalt surface emission')
-          if (history_aerosol) then
+          if (history_aerosol.or.history_chemistry) then
              call add_default (dummy, 1, ' ')
           endif
        enddo
