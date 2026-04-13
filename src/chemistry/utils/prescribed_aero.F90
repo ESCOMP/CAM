@@ -178,12 +178,12 @@ subroutine prescribed_aero_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use mpishorthand
-   use rad_constituents, only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+   use aerosol_instances_mod, only: aerosol_instances_is_active
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
-   integer :: unitn, ierr, nmodes, aero_loop_end
+   integer :: unitn, ierr, aero_loop_end
    logical :: skip_spec
    character(len=*), parameter :: subname = 'prescribed_aero_readnl'
 
@@ -266,8 +266,7 @@ subroutine prescribed_aero_readnl(nlfile)
    if ( .not. has_prescribed_aero) return
 
    ! Determine whether its a 'modal' aerosol simulation  or not
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   clim_modal_aero = (nmodes > 0)
+   clim_modal_aero = aerosol_instances_is_active('modal')
 
    ! For modal aerosols, interstitial species(*_a) are diagnosed from
    ! their *_logm and *_logv counterparts (e.g. soa_a1 is diagnosed from

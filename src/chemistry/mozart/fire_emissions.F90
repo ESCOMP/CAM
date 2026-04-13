@@ -13,7 +13,8 @@ module fire_emissions
   use cam_logfile,       only : iulog
   use ppgrid,            only : pver, pverp
   use constituents,      only : cnst_get_ind
-  use rad_constituents,  only : rad_cnst_get_aer_props, rad_cnst_num_name
+  use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use mo_chem_utls,      only : get_spc_ndx, get_extfrc_ndx
   use chem_mods,         only : adv_mass ! g/mole
   use infnan,            only : nan, assignment(=)
@@ -52,9 +53,11 @@ contains
     integer :: n, ii
 
     integer :: frc_ndx, spc_ndx
-    integer :: mode, spec
+    integer :: mode, spec, iaermod, m, l
     character(len=16) :: name
     character(len=32) :: num_name
+    character(len=aero_name_len) :: spec_name_tmp
+    class(aerosol_properties), pointer :: aero_props_modal
 
     real(r8), parameter :: demis_acc = 0.134e-6_r8 ! meters
     ! volume-mean emissions diameter of primary BC/OM aerosols, see :
@@ -69,6 +72,14 @@ contains
     character(len=12) :: units
 
     if (shr_fire_emis_mechcomps_n<1) return
+
+    ! Find modal properties object from factory
+    aero_props_modal => null()
+    do iaermod = 1, aerosol_instances_get_num_models()
+       aero_props_modal => aerosol_instances_get_props(iaermod, 0)
+       if (aero_props_modal%model_is('MAM')) exit
+       aero_props_modal => null()
+    end do
 
     if (shr_fire_emis_elevated) then ! initialize elevated forcings
 
@@ -116,15 +127,30 @@ contains
           spc_mass_factor(n) = 1.e-6_r8 * avogad / adv_mass(spc_ndx) ! 1.e-6 converts m-3 to cm-3.
           ! (molecules/kmole) / (g/mole) --> molecules/kg
 
-          ! for MAM need to include cooresponding forcings of number densities
+          ! for MAM need to include corresponding forcings of number densities
 
-          found = rad_cnst_num_name(0, name, num_name, mode_out=mode, spec_out=spec )
+          found = .false.
+          if (associated(aero_props_modal)) then
+             do m = 1, aero_props_modal%nbins()
+                do l = 1, aero_props_modal%nspecies(m)
+                   call aero_props_modal%get(m, l, specname=spec_name_tmp)
+                   if (trim(spec_name_tmp) == trim(name)) then
+                      call aero_props_modal%amb_num_name(m, num_name)
+                      mode = m
+                      spec = l
+                      found = .true.
+                      exit
+                   end if
+                end do
+                if (found) exit
+             end do
+          end if
 
           if ( found ) then
 
              frc_ndx = get_extfrc_ndx( num_name )
 
-             call rad_cnst_get_aer_props(0, mode, spec, density_aer=specdens)
+             call aero_props_modal%get(mode, spec, density=specdens)
              frc_num_map(n) = frc_ndx
              num_mass_factor(n) = x_numfact / specdens
 

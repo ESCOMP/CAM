@@ -1416,7 +1416,6 @@ end subroutine clubb_init_cnst
 
     !  From CAM libraries
     use cam_history,            only: addfld, add_default, horiz_only
-    use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
     use cam_abortutils,         only: endrun
 
     ! These are needed to set parameters

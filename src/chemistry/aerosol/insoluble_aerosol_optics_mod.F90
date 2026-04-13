@@ -40,11 +40,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ilist, ibin) result(newobj)
+  function constructor(aero_props, aero_state, ibin) result(newobj)
 
     class(aerosol_properties),intent(in) :: aero_props   ! aerosol_properties object
     class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
 
     type(insoluble_aerosol_optics), pointer :: newobj
@@ -58,13 +57,13 @@ contains
     end if
 
     ! get mode properties
-    call aero_props%optics_params(ilist, ibin, &
+    call aero_props%optics_params(ibin, &
          sw_insoluble_ext=newobj%sw_ext, &
          sw_insoluble_ssa=newobj%sw_ssa, &
          sw_insoluble_asm=newobj%sw_asm, &
          lw_insoluble_ext=newobj%lw_abs )
 
-    call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
+    call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
   end function constructor
 
