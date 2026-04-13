@@ -377,8 +377,8 @@
 <se_mesh_file hgrid="ne0np4TESTONLY.ne5x4"    >atm/cam/coords/ne0np4EQFACE.ne5x4.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/coords/ne30x4_EXODUS_ARCTIC_c191009.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/coords/ne30x8_EXODUS_ARCTICGRIS_c191209.g</se_mesh_file>
-<se_mesh_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/grids/POLARRES_ne30x4_EXODUS.nc</se_mesh_file>
-<se_mesh_file hgrid="ne0np4.NATL.ne30x8"      >/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/grids/NATL_ne30x8_EXODUS.nc</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/grids/POLARCAP_ne30x4_EXODUS.nc</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.NATL.ne30x8"      >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/grids/NATL_ne30x8_EXODUS.nc</se_mesh_file>
 
 <!-- Analytic ICs  -->
 <analytic_ic_type                   > none </analytic_ic_type>
@@ -2063,7 +2063,7 @@
 <drydep_srf_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/chem/trop_mam/atmsrf_ne30x4_ARCTIC_191011.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne30x8_ARCTICGRIS_191212.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/atmsrf/atmsrf_POLARCAP_250322.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne0np4.NATL.ne30x8">/glade/work/rwills/grids/var-res/ne0np4.NATL.ne30x8/atmsrf/atmsrf_ne0np4.NATL.ne30x8_201109.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.NATL.ne30x8">/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/atmsrf/atmsrf_ne0np4.NATL.ne30x8_201109.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="C24">atm/cam/chem/trop_mam/atmsrf_C24_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C48">atm/cam/chem/trop_mam/atmsrf_C48_c200625.nc</drydep_srf_file>
