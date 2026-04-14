@@ -222,8 +222,8 @@
 <ncdata hgrid="ne120np4" nlev="30"  aquaplanet="1" >atm/cam/inic/se/ape_cam5_ne120np4_L30_c170419.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"                 >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="32"  aquaplanet="1" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
-<ncdata hgrid="ne120np4" nlev="58"                 >/glade/work/aherring/grids/uniform-res/ne120np4.pg3/inic/betacast_ERA5ml_20100101_ne120np4_L58_c260225.nc</ncdata>
-<ncdata hgrid="ne120np4" nlev="93"                 >/glade/work/aherring/grids/uniform-res/ne120np4.pg3/inic/betacast_ERA5ml_20100101_ne120np4_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="58"                 >atm/cam/inic/se/betacast_ERA5ml_20100101_ne120np4_L58_c260225.nc</ncdata>
+<ncdata hgrid="ne120np4" nlev="93"                 >atm/cam/inic/se/inic/betacast_ERA5ml_20100101_ne120np4_L93_c260225.nc</ncdata>
 <ncdata hgrid="ne120np4" nlev="273" waccmx="1"     >atm/waccm/ic/fx2000_ne120pg3L273.001.cam.i.0002-01-01-00000.noBRCL_c250522.nc</ncdata>
 
 <ncdata hgrid="ne240np4" nlev="26"                 >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
@@ -239,17 +239,17 @@
 
 <ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="32" >atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" >atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
-<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L32_c250620.nc</ncdata>
-<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20200101_CONUS_c250617.nc</ncdata>
-<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20200101_ARCTIC_c250617.nc</ncdata>
-<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20200101_ARCTICGRIS_c250617.nc</ncdata>
-<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
-<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20200101_NATL_L58_c250618.nc</ncdata>
-<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/inic/betacast_ERA5ml_20100101_CONUS_ne30x8_L93_c260225.nc</ncdata>
-<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/betacast_ERA5ml_20100101_ARCTIC_ne30x4_L93_c260225.nc</ncdata>
-<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/betacast_ERA5ml_20100101_ARCTICGRIS_ne30x8_L93_c260225.nc</ncdata>
-<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/inic/betacast_ERA5ml_20100101_POLARCAP_ne30x4_L93_c260225.nc</ncdata>
-<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="93" >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/inic/betacast_ERA5ml_20100101_NATL_ne30x8_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="32" >atm/cam/inic/se/betacast_ERA5ml_20200101_NATL_L32_c250620.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="58" >atm/cam/inic/se/betacast_ERA5ml_20200101_CONUS_c250617.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="58" >atm/cam/inic/se/betacast_ERA5ml_20200101_ARCTIC_c250617.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="58" >atm/cam/inic/se/betacast_ERA5ml_20200101_ARCTICGRIS_c250617.nc</ncdata>
+<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="58" >atm/cam/inic/se/betacast_ERA5ml_20200101_POLARCAP_c250322.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="58" >atm/cam/inic/se/betacast_ERA5ml_20200101_NATL_L58_c250618.nc</ncdata>
+<ncdata hgrid="ne0np4CONUS.ne30x8" nlev="93" >atm/cam/inic/se/betacast_ERA5ml_20100101_CONUS_ne30x8_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTIC.ne30x4" nlev="93" >atm/cam/inic/se/betacast_ERA5ml_20100101_ARCTIC_ne30x4_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="93" >atm/cam/inic/se/betacast_ERA5ml_20100101_ARCTICGRIS_ne30x8_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.POLARCAP.ne30x4" nlev="93" >atm/cam/inic/se/betacast_ERA5ml_20100101_POLARCAP_ne30x4_L93_c260225.nc</ncdata>
+<ncdata hgrid="ne0np4.NATL.ne30x8" nlev="93" >atm/cam/inic/se/betacast_ERA5ml_20100101_NATL_ne30x8_L93_c260225.nc</ncdata>
 
 <!-- MPAS Initial Conditions -->
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c240508.nc</ncdata>
@@ -341,8 +341,8 @@
 <bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.POLARCAP.ne30x4"   >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/topo/POLARCAP_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20250322.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.NATL.ne30x8"       >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/topo/NATL.ne30x8_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20260225.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.POLARCAP.ne30x4"   >atm/cam/topo/se/POLARCAP_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_c20250322.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.NATL.ne30x8"       >atm/cam/topo/se/NATL.ne30x8_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_c20260225.nc</bnd_topo>
 
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
@@ -377,8 +377,8 @@
 <se_mesh_file hgrid="ne0np4TESTONLY.ne5x4"    >atm/cam/coords/ne0np4EQFACE.ne5x4.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/coords/ne30x4_EXODUS_ARCTIC_c191009.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/coords/ne30x8_EXODUS_ARCTICGRIS_c191209.g</se_mesh_file>
-<se_mesh_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/grids/POLARCAP_ne30x4_EXODUS.nc</se_mesh_file>
-<se_mesh_file hgrid="ne0np4.NATL.ne30x8"      >/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/grids/NATL_ne30x8_EXODUS.nc</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.POLARCAP.ne30x4"  >atm/cam/coords/POLARCAP_ne30x4_EXODUS_c220531.nc</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.NATL.ne30x8"      >atm/cam/coords/NATL_ne30x8_EXODUS_c201016.nc</se_mesh_file>
 
 <!-- Analytic ICs  -->
 <analytic_ic_type                   > none </analytic_ic_type>
@@ -2062,8 +2062,8 @@
 <drydep_srf_file hgrid="ne0np4CONUS.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4conus30x8_161116.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/chem/trop_mam/atmsrf_ne30x4_ARCTIC_191011.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne30x8_ARCTICGRIS_191212.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.POLARRES.ne30x4/atmsrf/atmsrf_POLARCAP_250322.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne0np4.NATL.ne30x8">/glade/work/aherring/grids/var-res/ne0np4.NATL.ne30x8/atmsrf/atmsrf_ne0np4.NATL.ne30x8_201109.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >atm/cam/chem/trop_mam//atmsrf_POLARCAP_c250322.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.NATL.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4.NATL.ne30x8_c201109.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="C24">atm/cam/chem/trop_mam/atmsrf_C24_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C48">atm/cam/chem/trop_mam/atmsrf_C48_c200625.nc</drydep_srf_file>
