@@ -341,8 +341,8 @@
 <bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.POLARCAP.ne30x4"   >atm/cam/topo/se/POLARCAP_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_c20250322.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.NATL.ne30x8"       >atm/cam/topo/se/NATL.ne30x8_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_c20260225.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.POLARCAP.ne30x4"   >atm/cam/topo/se/POLARCAP_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20250322.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.NATL.ne30x8"       >atm/cam/topo/se/NATL.ne30x8_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20260225.nc</bnd_topo>
 
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas/mpasa480_gmted2010_modis_bedmachine_nc3000_Laplace0400_noleak_20240507.nc</bnd_topo>
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240507.nc</bnd_topo>
@@ -2062,8 +2062,8 @@
 <drydep_srf_file hgrid="ne0np4CONUS.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4conus30x8_161116.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTIC.ne30x4"    >atm/cam/chem/trop_mam/atmsrf_ne30x4_ARCTIC_191011.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4.ARCTICGRIS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne30x8_ARCTICGRIS_191212.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >atm/cam/chem/trop_mam//atmsrf_POLARCAP_c250322.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne0np4.NATL.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4.NATL.ne30x8_c201109.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.POLARCAP.ne30x4"  >atm/cam/chem/trop_mam/atmsrf_POLARCAP_250322.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.NATL.ne30x8"      >atm/cam/chem/trop_mam/atmsrf_ne0np4.NATL.ne30x8_201109.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="C24">atm/cam/chem/trop_mam/atmsrf_C24_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C48">atm/cam/chem/trop_mam/atmsrf_C48_c200625.nc</drydep_srf_file>
