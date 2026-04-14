@@ -48,6 +48,7 @@ contains
     use mo_srf_emissions,  only : srf_emissions_inti
     use mo_sulf,           only : sulf_inti
     use mo_photo,          only : photo_inti
+    use mo_tuvx,           only : tuvx_init, tuvx_active
     use mo_drydep,         only : drydep_inti
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
@@ -73,7 +74,7 @@ contains
     use mo_heatnirco2,     only : heatnirco2_init
     use mo_waccm_hrates,   only : init_hrates
     use mo_aurora,         only : aurora_inti
-    use clybry_fam,        only : clybry_fam_init
+    use clybryiy_fam,        only : clybryiy_fam_init
     use mo_neu_wetdep,     only : neu_wetdep_init
     use physics_buffer,    only : physics_buffer_desc
     use cam_abortutils,    only : endrun
@@ -165,7 +166,7 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the sad module
     !-----------------------------------------------------------------------
-    call sad_inti(pbuf2d)
+    call sad_inti()
     if (masterproc) write(iulog,*) 'chemini: after sad_inti on node ',iam
 
     !-----------------------------------------------------------------------
@@ -196,10 +197,16 @@ contains
     call euvac_init (euvac_file)
 
     call photo_inti( xs_coef_file, xs_short_file, xs_long_file, rsf_file, &
-         photon_file, electron_file, &
-         exo_coldens_file, photo_max_zen )
-
+           photon_file, electron_file, exo_coldens_file, photo_max_zen )
     if (masterproc) write(iulog,*) 'chemini: after photo_inti on node ',iam
+
+    !-----------------------------------------------------------------------
+    ! 	... initialize the TUV-x photolysis rate constant calculator
+    !-----------------------------------------------------------------------
+    if( tuvx_active ) then
+      call tuvx_init( photon_file, electron_file, photo_max_zen, pbuf2d )
+      if (masterproc) write(iulog,*) 'chemini: after tuvx_init on node ',iam
+    end if
 
     !-----------------------------------------------------------------------
     !	... initialize ion production
@@ -210,7 +217,7 @@ contains
     call neu_wetdep_init()
     if (masterproc) write(iulog,*) 'chemini: after wetdep_init'
 
-    call clybry_fam_init()
+    call clybryiy_fam_init()
 
     if (masterproc) write(iulog,*) 'chemini: finished on node ',iam
 

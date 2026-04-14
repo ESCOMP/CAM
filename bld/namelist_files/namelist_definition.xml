@@ -538,6 +538,13 @@ Default: .false.,  unless it is overridden (WACCM with interactive chemistry and
           configurations do this)
 </entry>
 
+<entry id="ctem_diags_numlats" type="integer"  category="diagnostics"
+       group="ctem_diags_nl" valid_values="" >
+Number of latitude grid points for zonal average Transformed Eulerian Mean (TEM)
+diagnostics history fields.  Values greater than zero turn on the TEM diagostics.
+Default: 0
+</entry>
+
 <entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
        group="phys_grid_ctem_opts" valid_values="" >
 Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
@@ -1263,13 +1270,6 @@ In the low-top model, this helps to conserve momentum and produce a QBO.
 Default: set by build-namelist.
 </entry>
 
-<entry id="gw_limit_tau_without_eff" type="logical" category="gw_drag"
-       group="gw_drag_nl" valid_values="" >
-Apply limiters to tau before applying the efficiency factor, rather than
-afterward.
-Default: set by build-namelist
-</entry>
-
 <entry id="gw_apply_tndmax" type="logical" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Apply limiter on maximum wind tendency from stress divergence in gravity wave drag scheme.
@@ -1526,7 +1526,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_do_adjust_tauoro" type="logical" category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-If true, then adujust tauoro
+If true, then adjust tauoro
 Default: set by build-namelist.
 </entry>
 
@@ -1568,7 +1568,7 @@ Default: set by build-namelist.
 
 <entry id="gw_rdg_Fr_c" type="real"  category="gw_rdg"
        group="gw_rdg_nl" valid_values="" >
-Critical inverse4 Froude number
+Critical inverse Froude number
 Default: set by build-namelist.
 </entry>
 
@@ -2339,7 +2339,7 @@ COSP will not run unless this is set to .true. in the namelist!
 Turn on the desired simulators using lXXX_sim namelist vars
 If no specific simulators are specified, all of the simulators
 are run on all columns and all output is saved. (useful for testing).
-COSP is available with CAM4, CAM5 and CAM6 physics.
+COSP is available with CAM4, CAM5, CAM6 and CAM7 physics.
 This default logical is set in cospsimulator_intr.F90.
 Default: FALSE
 </entry>
@@ -2576,7 +2576,7 @@ Default: .true., except for carma=cirrus and carma=carma_dust
        group="micro_mg_nl" valid_values="" >
 Version number for MG microphysics.  This value is set automatically based
 on settings in configure and passed to build-namelist
-Default: 1 for CAM5 and 2 for CAM6
+Default: 1 for CAM5, 2 for CAM6 and 3 for CAM7
 </entry>
 
 <entry id="micro_mg_sub_version" type="integer" category="microphys"
@@ -2949,7 +2949,7 @@ Default: 0.05
 <entry id="use_preexisting_ice" type="logical" category="microphys"
        group="nucleate_ice_nl" valid_values="" >
 Switch to turn on treatment of pre-existing ice in the ice nucleation code.
-Default: .false., except .true. for CAM6
+Default: .false., except .true. for CAM6 and CAM7
 </entry>
 
 <entry id="hist_preexisting_ice" type="logical" category="microphys"
@@ -2980,7 +2980,7 @@ Default: set by build-namelist
 Switch to determine whether ice nucleation happens using the incloud (true) or
 the gridbox average (false) relative humidity.  When true, it is assumed that
 the incloud relative humidity for nucleation is 1.
-Default: .true., except .false. for CAM6
+Default: .true., except .false. for CAM6 and CAM7
 </entry>
 
 <entry id="nucleate_ice_strat" type="real" category="microphys"
@@ -3036,7 +3036,7 @@ Default: .true.
 <entry id="cldfrc_ice" type="logical" category="cldfrc"
        group="cldfrc_nl" valid_values="" >
 Switch for ice cloud fraction calculation.
-Default: .true. for CAM5 and CAM6, otherwise .false.
+Default: .true. for CAM5, CAM6 and CAM7, otherwise .false.
 </entry>
 
 <entry id="cldfrc_rhminl" type="real" category="cldfrc"
@@ -3048,7 +3048,7 @@ Default: set by build-namelist
 <entry id="cldfrc_rhminl_adj_land" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Adjustment to rhminl for land without snow cover.
-Default: 0.0 for CAM6;
+Default: 0.0 for CAM6 and CAM7;
          all others =&gt; 0.10
 </entry>
 
@@ -3091,7 +3091,7 @@ Default: set by build-namelist
 <entry id="cldfrc_premib" type="real" category="conv"
        group="cldfrc_nl" valid_values="" >
 Bottom height (Pa) for mid-level liquid stratus fraction.
-Default: 700.e2 for CAM5 and CAM6; all others=&gt; 750.e2
+Default: 700.e2 for CAM5, CAM6 and CAM7; all others=&gt; 750.e2
 </entry>
 
 <entry id="cldfrc_iceopt" type="integer" category="conv"
@@ -3147,7 +3147,7 @@ Default: set by build-namelist
        group="cldfrc2m_nl" valid_values="" >
 Use cloud fraction to determine whether to do growth of ice clouds below
 RHice of 1 down to RHice = rhmini.
-Default: .true. for CAM6; all others =&gt; .false.
+Default: .true. for CAM6 and CAM7; all others =&gt; .false.
 </entry>
 
 <entry id="cldfrc2m_do_avg_aist_algs" type="logical" category="conv"
@@ -3196,7 +3196,7 @@ Default: set by build-namelist
 <entry id="zmconv_num_cin" type="integer" category="conv"
        group="zmconv_nl" valid_values="" >
 The number of negative buoyancy regions that are allowed before the convection top and CAPE calculations are completed.
-Default: =&gt; 1 for CAM6;
+Default: =&gt; 1 for CAM6 and CAM7;
          =&gt; 5 for all other
 </entry>
 
@@ -3226,7 +3226,7 @@ Default: .false.
 
 <entry id="zmconv_parcel_hscale" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
- The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction). 
+ The fraction of the boundary layer (PBL) depth, over which to mix the initial ZM convective parcel properties (fraction).
 Default: 0.5
 </entry>
 
@@ -3513,10 +3513,10 @@ Default: 10
 <!-- Moist Convection and Microphysics -->
 
 <entry id="deep_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS" >
+       group="phys_ctl_nl" valid_values="ZM,off,CLUBB_SGS" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
-'off' for none; or 'UNICON' which doesn't distinquish shallow and deep.
-Default: 'ZM' unless using 'UNICON' or 'pbl=none'
+'off' for none.
+Default: 'ZM' unless using 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
@@ -3543,12 +3543,11 @@ Default: set by build-namelist
 </entry>
 
 <entry id="shallow_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS,UNICON" >
+       group="phys_ctl_nl" valid_values="Hack,UW,CLUBB_SGS" >
 Type of shallow convection scheme employed.
  'Hack' for Hack shallow convection;
  'UW' for original McCaa UW pbl scheme, modified by Sungsu Park;
  'CLUBB_SGS' for CLUBB_SGS
- 'UNICON' which doesn't distinquish shallow and deep.
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
@@ -3648,16 +3647,35 @@ diffusion solver routine.
 Default: set by build-namelist
 </entry>
 
-<entry id="unicon_offline_dat_out" type="logical"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-Produce output for the offline unicon driver.
-Default: .false.
-</entry>
+<entry id="diff_sponge_fac" type="real" category="pbl"
+       group="vert_diff_nl" valid_values="" >
+Factor to add sponge layer vertical diffusion of zonal and meridional components
+of the wind verctor (following the profile for del2 damping in the spectral-element dycore).
 
-<entry id="unicon_offline_dat_hfile" type="integer"  category="diagnostics"
-       group="unicon_nl" valid_values="" >
-History file number for offline unicon driver output.
-Default: 2 (i.e., h1 history file)
+Sponge layer interface coefficients for model tops above ptop=1E-3Pa (e.g. WACCM):
+
+        kvm_sponge(1) = 2.e5*diff_sponge_fac
+        kvm_sponge(2) = 2.e5*diff_sponge_fac
+        kvm_sponge(3) = 1.5e5*diff_sponge_fac
+        kvm_sponge(4) = 1.0e5*diff_sponge_fac
+        kvm_sponge(5) = 0.5e5*diff_sponge_fac
+        kvm_sponge(6) = 0.1e5*diff_sponge_fac
+
+Else:
+
+	kvm_sponge(1) = 2.e4*diff_sponge_fac
+        kvm_sponge(2) = 2.e4*diff_sponge_fac
+        kvm_sponge(3) = 0.4e*diff_sponge_fac
+        kvm_sponge(4) = 0.1e4*diff_sponge_fac
+
+Vertical diffusion in configurations with model tops below ~80km
+(e.g., LT and MT) is only recommended for spin-up with diff_sponge_fac=1.
+For higher tops diff_sponge_fac=1 can improve model stability in general.
+
+A too large diff_sponge_fac value can lead to "stove pipes" in the
+the zonally averaged zonal wind in the sponge layer.
+
+Default: 0.0
 </entry>
 
 <!-- CLUBB PBL Diff nl -->
@@ -5145,7 +5163,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
+       group="phys_ctl_nl" valid_values="cam4,cam5,cam6,cam7,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5162,10 +5180,12 @@ Default: set by build-namelist
 
 <entry id="cam_chempkg" type="char*32" category="build" group="phys_ctl_nl"
        valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
-		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
-		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
-		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
-		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem">
+                     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam4_slh,trop_strat_mam5_slh,
+                     trop_strat_mam5_t1s1,trop_strat_mam5_t1s2,trop_strat_mam5_t2s1,trop_strat_mam5_t4s2,
+                     trop_strat_mam5_vbsext,trop_strat_noaero,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,
+                     waccm_sc_mam4,waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,
+                     waccm_tsmlt_mam4_slh,waccm_tsmlt_mam5_slh,waccm_mad_mam5,waccm_ma_mam5,waccm_tsmlt_mam5,
+                     waccm_tsmlt_mam5_vbsext,waccm_t4ma_mam5,waccm_ma_noaero,geoschem_mam4">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5665,7 +5685,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5673,7 +5693,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -5762,6 +5782,29 @@ Default: FALSE
        group="radiation_nl" valid_values="" >
 Calculate radiative effect of graupel/hail (using snow optics)
 Default: FALSE
+</entry>
+
+<entry id="p_top_for_equil_rad" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top valid pressure level LTE radiation scheme
+Default: 1.0 for WACCM/WACCMX
+         2. for all other RRTMGP runs
+         0.0 for all other runs
+</entry>
+
+<entry id="p_top_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Top pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="p_bot_for_radmrg" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Bottom pressure level LTE/non-LTE merger region
+</entry>
+
+<entry id="qrsmlt_scaling" type="real"  category="radiation"
+       group="radheat_nl" valid_values="" >
+Scaling factor for simplified QRS MLT heating in CAM
 </entry>
 
 <entry id="use_rad_dt_cosz" type="logical"  category="radiation"
@@ -6282,6 +6325,51 @@ Default: NEU
        group="wetdep_inparm" valid_values="" >
 List of gas-phase species that undergo wet deposition via the wet deposition scheme.
 Default: NONE
+</entry>
+
+<entry id="gas_wetdep_ice_uptake_list" type="char*16(1000)" category="cam_chem"
+       group="wetdep_inparm" valid_values="" >
+List of gas-phase species that undergo ice scavenging in the NEU
+wet deposition scheme.
+Default: set by build-namelist
+</entry>
+
+<!-- Short-Lived Halogen (SLH) Namelist Definitions -->
+
+<entry id="SSAdehal_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH dehalogenation reaction (XONO2,XNO2,HOX) on Sea-Salt Aerosols.
+Default: set by build-namelist
+</entry>
+
+<entry id="SSAhno3_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH acid displacement reaction (HNO3-->HCl) on Sea-Salt Aerosols.
+Default: set by build-namelist
+</entry>
+
+<entry id="SSAn2o5_ScalingFactor" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH dinitrogen pentoxide reaction (N2O5-->HNO3+CLNO2) on Sea-Salt Aerosols
+Default: set by build-namelist.
+</entry>
+
+<entry id="LIQfraprx_ScalingFactor_I" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH washout (Iodine) on liquid droplets based on Free-Regime Approx.
+Default: set by build-namelist
+</entry>
+
+<entry id="ICEfraprx_ScalingFactor_I" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH washout (Iodine) on ice crystals based on Free-Regime Approx.
+Default: set by build-namelist
+</entry>
+
+<entry id="ICEfraprx_ScalingFactor_Br" type="real" category="cam_chem"
+       group="slh_nl" valid_values="" >
+Scaling-factor for SLH washout (Bromine) on ice crystals based on Free-Regime Approx.
+Default: set by build-namelist
 </entry>
 
 <entry id="modal_accum_coarse_exch" type="logical" category="cam_chem"
@@ -7662,6 +7750,17 @@ Maximum zenith angle (degrees) used for photolysis.
 Default: set by build-namelist.
 </entry>
 
+<entry id="tuvx_config_path" type="char*256" input_pathname="abs" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Filepath of TUV-X configuration specification.
+Default: NONE
+</entry>
+
+<entry id="tuvx_active" type="logical" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Switch to turn on TUV-X photolysis.
+Default: FALSE
+</entry>
 
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 
@@ -7984,6 +8083,13 @@ Call ALI-ARMS every X timesteps
 Default: 1
 </entry>
 
+<entry id="nlte_use_extco2" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the extended CO2 scheme of Lopez-Puertas et al. 2024 as an alernative method of computing non-LTE
+CO2 cooling rates in the upper atmosphere. (DOI:10.5194/gmd-17-4401-2024)
+Default: FALSE
+</entry>
+
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"
        group="qbo_nl" valid_values="" >
 TRUE implies assume cyclic qbo data.
@@ -8188,6 +8294,14 @@ If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then
 the molecular diffusion and thermal conductivity coefficients will be
 multiplied by a factor of se_molecular_diff.
 
+Default: 0.
+</entry>
+
+<entry id="se_min_temperature" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Used by spectral element dynamical core to apply floor to temperature.
+If set to a value greater than zero the floor is applied.
+Otherwise, no floor is applied.
 Default: 0.
 </entry>
 

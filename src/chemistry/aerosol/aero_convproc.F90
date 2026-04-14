@@ -460,7 +460,7 @@ subroutine aero_convproc_intr( aero_props, aero_state, state, ptend, pbuf, ztodt
 
             ndx = aer_cnst_ndx(mm)
 
-            if (ndx>0) call outfld( trim(cnst_name_extd(1,mm))//'SFWET', aerdepwetis(:,ndx), pcols, lchnk )
+            if (ndx>0) call outfld( trim(cnst_name_extd(1,mm))//'SFWETC', aerdepwetis(:,ndx), pcols, lchnk )
             call outfld( trim(cnst_name_extd(1,mm))//'SFSIC', sflxic(:,mm), pcols, lchnk )
             call outfld( trim(cnst_name_extd(1,mm))//'SFSEC', sflxec(:,mm), pcols, lchnk )
 

@@ -369,9 +369,13 @@ contains
 
     if( has_sox ) then
        call addfld( 'XPH_LWC',(/ 'lev' /), 'A','kg/kg', 'pH value multiplied by lwc')
+       call addfld( 'AQSO4_H2O2', horiz_only, 'A', 'kg/m2/s', 'SO4 aqueous phase chemistry due to H2O2')
+       call addfld( 'AQSO4_O3', horiz_only, 'A', 'kg/m2/s', 'SO4 aqueous phase chemistry due to O3')
 
        if ( history_aerosol ) then
           call add_default ('XPH_LWC', 1, ' ')
+          call add_default ('AQSO4_H2O2', 1, ' ')
+          call add_default ('AQSO4_O3', 1, ' ')
        endif
     endif
 
@@ -698,7 +702,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
                   state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_total, reff_trop )
+                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_total, reff_trop, sad_ssa )
 
     use mo_constants, only : pi, avo => avogadro
 
@@ -722,6 +726,7 @@ contains
     real(r8), intent(inout) :: dm_aer(:,:,:)
     real(r8), intent(inout) :: sad_total(:,:)
     real(r8), intent(out)   :: reff_trop(:,:)
+    real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
 
@@ -766,6 +771,8 @@ contains
     !           (no growth effect for mineral dust)
     !-----------------------------------------------------------------
     real(r8), dimension(7) :: table_rh, table_rfac_sulf, table_rfac_bc, table_rfac_oc, table_rfac_ss
+
+    sad_ssa = -huge(1._r8)
 
     data table_rh(1:7)        / 0.0_r8, 0.5_r8, 0.7_r8, 0.8_r8, 0.9_r8, 0.95_r8, 0.99_r8/
     data table_rfac_sulf(1:7) / 1.0_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8, 1.9_r8,  2.2_r8/
@@ -1067,6 +1074,7 @@ contains
 
     if( has_sox ) then
        call setsox( state, &
+            pbuf,     &
             ncol,     &
             lchnk,    &
             loffset,  &
@@ -1078,7 +1086,6 @@ contains
             cwat,     &
             cldfr,    &
             cldnum,   &
-            airdens,  &
             invariants, &
             vmrcw,    &
             vmr,      &
@@ -1088,7 +1095,9 @@ contains
             aqso4_h2o2,&
             aqso4_o3  &
             )
-        call outfld( 'XPH_LWC',xphlwc(:ncol,:), ncol , lchnk )
+        call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
+        call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk )
+        call outfld( 'AQSO4_O3',   aqso4_o3(:ncol),   ncol, lchnk )
     endif
 
     if( has_soa ) then

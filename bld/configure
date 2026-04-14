@@ -64,10 +64,11 @@ OPTIONS
                         Default: none.
     -chem <name>        Build CAM with specified prognostic chemistry package
                         [ none | ghg_mam4 | terminator | trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_ts2 |
-                         trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_ts4 | trop_strat_mam5_vbs | trop_strat_noaero |
-                         trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
-                         waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
-                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | waccm_ma_noaero | geoschem_mam4 ].
+			  trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam4_slh | trop_strat_mam5_slh | trop_strat_mam5_t1s1 |
+			  trop_strat_mam5_t2s2 | trop_strat_mam5_t2s1 | trop_strat_mam5_t4s2 | trop_strat_noaero | trop_strat_mam5_vbsext |
+			  waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_mad_mam4 | waccm_ma_mam4 |
+			  waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 | waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam4_slh |
+			  waccm_tsmlt_mam5_slh | waccm_tsmlt_mam5_vbsext | waccm_t4ma_mam5 | waccm_ma_noaero | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6 and cam7, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
@@ -80,6 +81,7 @@ OPTIONS
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
      -dyn <name>        Dynamical core option: [fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
+     -ext_co2_cool      Switch on extended non-LTE CO2 cooling
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
@@ -104,7 +106,6 @@ OPTIONS
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
-     -unicon            Switch to turn on the UNICON scheme. Default: off.
      -usr_mech_infile   Path and file name of the user supplied chemistry mechanism file.
      -waccm_phys        Switch enables the use of WACCM physics in any chemistry configuration.
                         The user does not need to set this if one of the waccm chemistry options
@@ -276,7 +277,6 @@ GetOptions(
     "nc_lib=s"                  => \$opts{'nc_lib'},
     "nc_mod=s"                  => \$opts{'nc_mod'},
     "nlev=s"                    => \$opts{'nlev'},
-    "ocn=s"                     => \$opts{'ocn'},
     "offline_dyn"               => \$opts{'offline_dyn'},
     "pbl=s"                     => \$opts{'pbl'},
     "pcols=s"                   => \$opts{'pcols'},
@@ -296,13 +296,13 @@ GetOptions(
     "smp!"                      => \$opts{'smp'},
     "spmd!"                     => \$opts{'spmd'},
     "target_os=s"               => \$opts{'target_os'},
-    "unicon"                    => \$opts{'unicon'},
     "usr_mech_infile=s"         => \$opts{'usr_mech_infile'},
     "usr_src=s"                 => \$opts{'usr_src'},
     "v|verbose"                 => \$opts{'verbose'},
     "version"                   => \$opts{'version'},
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
+    "ext_co2_cool"              => \$opts{'ext_co2_cool'},
 )  or usage();
 
 # Give usage message.
@@ -709,6 +709,12 @@ if (defined $opts{'waccmx'}) {
 my $waccmx = $cfg_ref->get('waccmx');
 my $ionos  = $cfg_ref->get('ionosphere');
 
+# Extended CO2 non-LTE option
+if (defined $opts{'ext_co2_cool'}) {
+    $cfg_ref->set('ext_co2_cool', $opts{'ext_co2_cool'});
+}
+my $ext_co2_cool = $cfg_ref->get('ext_co2_cool');
+
 #-----------------------------------------------------------------------------------------------
 
 # Prognostic species package(s)
@@ -947,27 +953,6 @@ $cfg_ref->set('pbl', $pbl_pkg);
 if ($print>=2) { print "PBL package: $pbl_pkg$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# UNICON
-
-if (defined $opts{'unicon'}) {
-    $cfg_ref->set('unicon', $opts{'unicon'});
-}
-my $unicon = $cfg_ref->get('unicon');
-
-# consistency checks...
-
-# UNICON assumes park macrophysics, uw pbl, and mg microphysics
-if ($unicon and
-    ($macrophys_pkg ne 'park' or $pbl_pkg ne 'uw' or $microphys_pkg !~ m/^mg/) ) {
-    die <<"EOF";
-**    ERROR: UNICON assumes macrophys='park', pbl='uw', microphys='mg*'.  Current values are:
-**    macrophys: $macrophys_pkg, pbl: $pbl_pkg, microphys: $microphys_pkg.
-EOF
-}
-
-if ($unicon and $print>=2) { print "Using UNICON scheme.$eol"; }
-
-#-----------------------------------------------------------------------------------------------
 # Radiation package
 
 # Set default
@@ -1052,25 +1037,6 @@ $cfg_ref->set('aquaplanet', $aquaplanet);
 
 my $aqua_mode = $aquaplanet ? "ON" : "OFF";
 if ($print>=2) { print "Aqua-planet mode: $aqua_mode$eol"; }
-
-#-----------------------------------------------------------------------------------------------
-# Ocean model
-my $ocn_pkg = 'socn';
-if ($aquaplanet) {
-    # Default for aquaplanet mode is to use an analytic expression for fixed SST.
-    $ocn_pkg = 'aquaplanet';
-}
-
-# Allow the user to override the default via the commandline.
-# For aquaplanet with SOM the option '-ocn som' should be used to override
-# aquaplanet's default ocean component setting.
-if (defined $opts{'ocn'}) {
-    $ocn_pkg = lc($opts{'ocn'});
-}
-
-$cfg_ref->set('ocn', $ocn_pkg);
-
-if ($print>=2) { print "Ocean package: $ocn_pkg$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Use modifications for perturbation growth testing?
@@ -1227,7 +1193,9 @@ if ($phys_pkg eq 'cam7') {
     }
 }
 elsif ($waccmx) {
-    if ($phys_pkg eq 'cam6') {
+    if ($hgrid =~ /ne120/) {
+        $nlev = 273;
+    } elsif ($phys_pkg eq 'cam6') {
         $nlev = 130;
     } else {
         $nlev = 126;
@@ -1332,7 +1300,7 @@ if ($chem_pkg =~ '_mam3') {
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_CESM -DMODEL_GEOSCHEM';
     if ($chem_pkg =~ '_mam4') {
-        $chem_nadv = 269; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
+        $chem_nadv = 312; # includes all GEOS-Chem advected species, CO2, and MAM aerosols
     }
 }
 # CARMA sectional microphysics
@@ -1467,12 +1435,6 @@ else {
         if ($carma_nadv > 0) {
             $nadv += $carma_nadv;
             if ($print>=2) { print "Advected constituents added by CARMA model $carma_pkg: $carma_nadv$eol"; }
-        }
-
-        # UNICON tracers
-        if ($unicon) {
-            $nadv += 5;
-            if ($print>=2) { print "Advected constituents added by UNICON: 5$eol"; }
         }
 
     }
@@ -1790,6 +1752,9 @@ $cfg_cppdefs .= " -DPLEV=$nlev -DPCNST=$nadv -DPCOLS=$pcols -DPSUBCOLS=$psubcols
 # Radiatively active constituent number
 $cfg_cppdefs .= " -DN_RAD_CNST=$max_n_rad_cnst";
 
+# use iso_c_binding c_bool in RRTMGP (needed for nag-7)
+if ($rad_pkg eq 'rrtmgp') { $cfg_cppdefs .= ' -DRTE_USE_CBOOL'; }
+
 # offline driver for FV dycore
 if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 
@@ -1812,6 +1777,11 @@ if ($waccmx) {
     $cfg_cppdefs .= ' -DWACCMX_PHYS';
 }
 
+# Extended Non-LTE CO2 cooling
+if ($ext_co2_cool) {
+    $cfg_cppdefs .= ' -DEXT_CO2_COOL';
+}
+
 # PIO
 my $pio2_build = (defined $opts{'pio2'}) ? 1 : 0;
 
@@ -1831,9 +1801,6 @@ if ($silhs == 1) {
 
 # Simple Models
 if ($simple_phys) { $cfg_cppdefs .= ' -DSIMPLE'; }
-
-# UNICON
-if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 
 # Harmonized Emissions Component (HEMCO)
 # These CPP definitions are used by HEMCO to recognize -
@@ -2014,6 +1981,7 @@ sub write_filepath
     my $spmd          = $cfg_ref->get('spmd');
     my $offline_drv   = $cfg_ref->get('offline_drv');
     my $inic_val      = $cfg_ref->get('analytic_ic');
+    my $ext_co2_cool  = $cfg_ref->get('ext_co2_cool');
 
     # Root directory
     my $camsrcdir = $cfg_ref->get('cam_dir');
@@ -2105,6 +2073,10 @@ sub write_filepath
 	print $fh "$camsrcdir/src/physics/ali_arms/subs\n";
 	print $fh "$camsrcdir/src/physics/ali_arms/include\n";
     }
+    if ($ext_co2_cool) {
+        print $fh "$camsrcdir/src/physics/ext_co2_cooling/source/modules\n";
+    }
+
     print $fh "$camsrcdir/src/ionosphere\n";
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";
@@ -2133,16 +2105,18 @@ sub write_filepath
     }
     elsif ($rad eq 'rrtmgp') {
         print $fh "$camsrcdir/src/physics/rrtmgp\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/gas-optics\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-frontend\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-frontend\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/extensions\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/gas-optics\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-frontend\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-frontend\n";
         if ($use_rrtmgp_gpu) {
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels/accel\n";
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels/accel\n";
+            print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-kernels/accel\n";
+            print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-kernels/accel\n";
         }
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rrtmgp-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/ext/rte-kernels\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp\n";
+        print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/objects\n";
     }
 
     if ($clubb_sgs) {
@@ -2154,7 +2128,7 @@ sub write_filepath
     }
 
     if ($phys_pkg eq 'cam7') {
-	print $fh "$camsrcdir/src/physics/pumas\n";
+	print $fh "$camsrcdir/src/atmos_phys/schemes/pumas/pumas\n";
     } else {
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
     }
@@ -2165,6 +2139,7 @@ sub write_filepath
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
     print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized\n";
+    print $fh "$camsrcdir/src/atmos_phys/to_be_ccppized/radiation_utils\n";
     print $fh "$camsrcdir/src/atmos_phys/phys_utils\n";
 
     # Add the CCPP'ized subdirectories
@@ -2174,11 +2149,14 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/check_energy\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/conservation_adjust/dme_adjust\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/hack_shallow\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/rrtmgp/utils\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rasch_kristjansson\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/utilities\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/gravity_wave_drag\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/rayleigh_friction\n";
-
     print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_fraction\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
@@ -2199,6 +2177,9 @@ sub write_filepath
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
     print $fh "$camsrcdir/src/utils/cam_ccpp\n";
+
+    # Routines from CAM-SIMA
+    print $fh "$camsrcdir/src/utils/cam-sima/src/physics/utils\n";
 
     $fh->close;
 }

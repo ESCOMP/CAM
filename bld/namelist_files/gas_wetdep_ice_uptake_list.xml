@@ -1,0 +1,15 @@
+<gas_wetdep_ice_uptake_list>
+
+  <list id="SLH">
+    HNO3
+    CLONO2
+    HCL
+    HOCL
+    BRNO2
+    CLNO2
+    I2O2
+    I2O3
+    I2O4
+  </list>
+
+</gas_wetdep_ice_uptake_list>
