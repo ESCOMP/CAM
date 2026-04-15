@@ -1641,6 +1641,15 @@ contains
     call pbuf_get_field(pbuf, rliqbc_idx, rliqbc)
     rliq(:ncol) = rliqbc(:ncol)
 
+    ! zero out local variables that may be written to snapshot for safety.
+    fh2o(:) = 0._r8         ! used in chem_timestep_tend.
+    surfric(:) = 0._r8      ! out from vertical_diffusion_tend.
+    obklen(:) = 0._r8       ! out from vertical_diffusion_tend.
+    flx_heat(:) = 0._r8     ! first out from gw_drag_cam.
+    det_s(:) = 0._r8        ! out from clubb_tend_cam.
+    det_ice(:) = 0._r8      ! out from clubb_tend_cam.
+    net_flx(:) = 0._r8      ! out from radiation_tend.
+
     !
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
@@ -2831,6 +2840,17 @@ contains
     call check_tracers_init(state, tracerint)
 
     call t_stopf('bc_init')
+
+    ! Zero-initialize subroutine-level variables for snapshot
+    cmfmc(:,:) = 0._r8
+    cmfcme(:,:) = 0._r8
+    zdu(:,:) = 0._r8
+    rliq(:) = 0._r8
+    rice(:) = 0._r8
+    dlf(:,:) = 0._r8
+    dlf2(:,:) = 0._r8
+    rliq2(:) = 0._r8
+    net_flx(:) = 0._r8
 
     !===================================================
     ! Global mean total energy fixer
