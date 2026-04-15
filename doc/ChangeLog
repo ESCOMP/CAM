@@ -1,3 +1,71 @@
+
+===============================================================
+
+Tag name: cam6_4_164
+Originator(s): cacraigucar, billsacks, sjsprecious, nusbaume, jimmielin
+Date: April 15, 2026
+One-line Summary: Misc tag before CESM3 release
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1530
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Fixes for snapshot output in GNU debug: https://github.com/ESCOMP/CAM/pull/1503
+  - Point to correct locations for datm, satm, and xatm: https://github.com/ESCOMP/CAM/pull/1492
+  - nvhpc test fails since update to match alphaa08l externals: https://github.com/ESCOMP/CAM/issues/1513
+  - Wrong function used in SE dycore "prim_printstate": https://github.com/ESCOMP/CAM/issues/1491
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .config_files.xml
+          - mods for datm, satm and xatm locations
+
+M       .gitmodules
+M       ccs_config
+          - update ccs_config tag to get fix for GPU test
+
+M       cime_config/testdefs/testlist_cam.xml
+          - increase time for WACCM test which ran past its time limit
+
+M       src/control/cam_snapshot_common.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+          - fixes for snapshot output
+
+M       src/dynamics/se/dycore/prim_state_mod.F90
+          - "MINVAL" needed to be "MAXVAL" for a calculation
+
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+
+derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: DIFF) details:
+    - Baseline difference expected per jimmielin
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+    - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_163
