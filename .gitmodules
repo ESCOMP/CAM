@@ -23,7 +23,7 @@
 	path = src/physics/ali_arms
 	url = https://github.com/ESCOMP/ALI-ARMS
         fxrequired = AlwaysRequired
-        fxtag = ALI_ARMS_v1.0.1
+        fxtag = ALI_ARMS_v1.0.2
         fxDONOTUSEurl = https://github.com/ESCOMP/ALI-ARMS
 
 [submodule "atmos_phys"]
@@ -139,7 +139,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm.git
-fxtag = ccs_config_cesm1.0.79
+fxtag = ccs_config_cesm1.0.81
 fxrequired = ToplevelRequired
 fxDONOTUSEurl = https://github.com/ESMCI/ccs_config_cesm.git
 

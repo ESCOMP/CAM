@@ -16,8 +16,6 @@ module zm_conv_intr
    use zm_conv_momtran,      only: zm_conv_momtran_run
    use cloud_fraction_fice,  only: cloud_fraction_fice_run
 
-   use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
-                               rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
    use cam_abortutils,   only: endrun
    use physconst,        only: pi
    use spmd_utils,       only: masterproc

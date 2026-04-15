@@ -12,7 +12,8 @@ use ppgrid,           only: pcols, pver, pverp
 use physconst,        only: gravit, rair, tmelt, cpair, rh2o, &
      r_universal, mwh2o, rhoh2o, latvap
 
-use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_props
+use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+use aerosol_properties_mod, only: aerosol_properties
 
 use shr_spfn_mod,     only: erf => shr_spfn_erf, &
                             erfc => shr_spfn_erfc
@@ -79,18 +80,34 @@ subroutine ndrop_bam_init
    ! 
    !-----------------------------------------------------------------------
 
-   integer  :: l, m, iaer
+   integer  :: l, m, iaer, iaermod
    real(r8) :: surften       ! surface tension of water w/respect to air (N/m)
    real(r8) :: arg
    logical  :: history_amwg
+   class(aerosol_properties), pointer :: aero_props_bam
    !-------------------------------------------------------------------------------
 
    call phys_getopts(history_amwg_out=history_amwg)
 
    ! Access the physical properties of the bulk aerosols that are affecting the climate
-   ! by using routines from the rad_constituents module.
+   ! by using the abstract aerosol properties interface.
 
-   call rad_cnst_get_info(0, naero=naer_all)
+   ! Find BAM properties object from factory
+   aero_props_bam => null()
+   do iaermod = 1, aerosol_instances_get_num_models()
+      aero_props_bam => aerosol_instances_get_props(iaermod, 0)
+      if (associated(aero_props_bam)) then
+         if (aero_props_bam%model_is('BAM')) exit
+      end if
+      aero_props_bam => null()
+   end do
+
+   if (associated(aero_props_bam)) then
+      naer_all = aero_props_bam%nbins()
+   else
+      naer_all = 0
+   end if
+
    allocate( &
       aername(naer_all),        &
       dryrad_aer(naer_all),     &
@@ -100,13 +117,13 @@ subroutine ndrop_bam_init
       num_to_mass_aer(naer_all) )
 
    do iaer = 1, naer_all
-      call rad_cnst_get_aer_props(0, iaer, &
-         aername         = aername(iaer), &
-         dryrad_aer      = dryrad_aer(iaer), &
-         density_aer     = density_aer(iaer), &
-         hygro_aer       = hygro_aer(iaer), &
-         dispersion_aer  = dispersion_aer(iaer), &
-         num_to_mass_aer = num_to_mass_aer(iaer) )
+      call aero_props_bam%get(iaer, 1, &
+         specname        = aername(iaer), &
+         dryrad          = dryrad_aer(iaer), &
+         density         = density_aer(iaer), &
+         hygro           = hygro_aer(iaer), &
+         num_to_mass_aer = num_to_mass_aer(iaer))
+      dispersion_aer(iaer) = exp(aero_props_bam%alogsig(iaer))
 
       ! Look for sulfate aerosol in this list (Bulk aerosol only)
       if (trim(aername(iaer)) == 'SULFATE') idxsul   = iaer
