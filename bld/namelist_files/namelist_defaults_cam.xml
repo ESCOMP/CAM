@@ -2889,7 +2889,7 @@
 <zmconv_num_cin                                       phys="cam7"     > 1       </zmconv_num_cin>
 
 <zmconv_dmpdz                                                         > -1.0E-3 </zmconv_dmpdz>
-<zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
+<zmconv_tiedtke_add                                                    > 0.5     </zmconv_tiedtke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
 <zmconv_tau                                                           > 3600.0    </zmconv_tau>
 

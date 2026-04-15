@@ -70,7 +70,7 @@ module zm_conv_intr
    integer  :: zmconv_num_cin            ! Number of negative buoyancy regions that are allowed
                                          ! before the convection top and CAPE calculations are completed.
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
-   real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
+   real(r8) :: zmconv_tiedtke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
    logical  :: zmconv_parcel_pbl = .false.           ! switch for parcel pbl calculation
    real(r8) :: zmconv_parcel_hscale = unset_r8       ! Fraction of PBL depth over which to mix initial parcel
@@ -161,7 +161,7 @@ subroutine zm_conv_readnl(nlfile)
    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
                         zmconv_ke, zmconv_ke_lnd,  &
                         zmconv_momcu, zmconv_momcd, &
-                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
+                        zmconv_dmpdz, zmconv_tiedtke_add, zmconv_capelmt, &
                         zmconv_parcel_pbl,  zmconv_parcel_hscale, zmconv_tau
    !-----------------------------------------------------------------------------
 
@@ -195,8 +195,8 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_momcd")
    call mpi_bcast(zmconv_dmpdz,             1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_dmpdz")
-   call mpi_bcast(zmconv_tiedke_add,        1, mpi_real8, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tiedke_add")
+   call mpi_bcast(zmconv_tiedtke_add,        1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tiedtke_add")
    call mpi_bcast(zmconv_capelmt,           1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
    call mpi_bcast(zmconv_parcel_pbl,        1, mpi_logical, masterprocid, mpicom, ierr)
@@ -345,7 +345,7 @@ subroutine zm_conv_init(pref_edge)
     call zm_convr_init(plev, plevp, cpair, epsilo, gravit, latvap, tmelt, rair, &
                   pref_edge,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin,  &
-                  no_deep_pbl, zmconv_tiedke_add, &
+                  no_deep_pbl, zmconv_tiedtke_add, &
                   zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_parcel_hscale, zmconv_tau, &
                   masterproc, iulog, errmsg, errflg)
 
