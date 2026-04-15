@@ -218,6 +218,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
         cmake_args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_DISABLE_FIND_PACKAGE_yaml-cpp=1 "
         if (case.get_value("MACH") == "izumi") :
             cmake_args += f"-DCMAKE_PREFIX_PATH={arg_dict['NETCDF_PATH']} "
             cmake_args += f"-DCMAKE_IGNORE_PATH={os.environ.get('PYTHONHOME')} "
@@ -241,8 +242,9 @@ def _build_tuvx(caseroot, libroot, bldroot):
         incldir = os.environ.get('USER_INCLDIR')
         if incldir is None:
             incldir = ''
-        os.environ['USER_INCLDIR'] = incldir + \
-            f" -I{_tuvx_include_dir(libroot)} "
+        #os.environ['USER_INCLDIR'] = incldir + \
+        #    f" -I{_tuvx_include_dir(libroot)} "
+        os.environ['USER_INCLDIR'] = f" -I{_tuvx_include_dir(libroot)} " + incldir
 
         # create symlink to library in folder CIME expects libraries to be in
         dst = os.path.join(libroot, "libtuvx.a")
