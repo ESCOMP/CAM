@@ -332,7 +332,7 @@ contains
     character(len=aero_name_len) :: spectype
 
     real(r8) :: vol(ncol,nlev) ! aerosol volume mixing ratio
-    integer  :: i, k, l
+    integer  :: l
     !-------------------------------------------------------------------------------
     errnum = 0
 
