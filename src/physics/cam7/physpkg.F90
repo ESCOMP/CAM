@@ -2845,7 +2845,6 @@ contains
     cmfcme(:,:) = 0._r8
     zdu(:,:) = 0._r8
     rliq(:) = 0._r8
-    rice(:) = 0._r8
     dlf(:,:) = 0._r8
     dlf2(:,:) = 0._r8
     rliq2(:) = 0._r8
