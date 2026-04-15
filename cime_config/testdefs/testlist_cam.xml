@@ -2498,7 +2498,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:40:00</option>
+      <option name="wallclock">00:50:00</option>
       <option name="comment" >WACCM7 with MA chemistry</option>
     </options>
   </test>
