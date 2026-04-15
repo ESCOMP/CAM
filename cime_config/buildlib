@@ -242,9 +242,8 @@ def _build_tuvx(caseroot, libroot, bldroot):
         incldir = os.environ.get('USER_INCLDIR')
         if incldir is None:
             incldir = ''
-        #os.environ['USER_INCLDIR'] = incldir + \
-        #    f" -I{_tuvx_include_dir(libroot)} "
-        os.environ['USER_INCLDIR'] = f" -I{_tuvx_include_dir(libroot)} " + incldir
+        os.environ['USER_INCLDIR'] = incldir + \
+            f" -I{_tuvx_include_dir(libroot)} "
 
         # create symlink to library in folder CIME expects libraries to be in
         dst = os.path.join(libroot, "libtuvx.a")
