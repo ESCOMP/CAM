@@ -1512,6 +1512,7 @@
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="camchem"/>
+      <machine name="derecho" compiler="intel" category="cam_refined"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
