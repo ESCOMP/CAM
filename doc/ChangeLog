@@ -1,6 +1,53 @@
 
 ===============================================================
 
+Tag name: cam6_4_165
+Originator(s): adamrher, cacraigucar
+Date: April 16, 2026
+One-line Summary: Implement POLARCAP and NATL grids +L58 inic for all other SE-VR grids
+Github PR URL: htpps://github.com/ESCOMP/CAM/pull/1287
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Install SE dual-polar VR grid: https://github.com/ESCOMP/CAM/issues/979
+ - Add NATLx8 grid: https://github.com/ESCOMP/CAM/issues/1330
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+
+List any changes to the defaults for the boundary datasets:
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, PeterHjortLauritzen
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_defaults_cam.xml
+           -
+
+M       cime_config/testdefs/testlist_cam.xml
+           - Add prebeta and cam_refined tests for new grids
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_164
 Originator(s): cacraigucar, billsacks, sjsprecious, nusbaume, jimmielin
 Date: April 15, 2026
