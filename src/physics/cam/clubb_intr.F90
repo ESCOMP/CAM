@@ -3240,6 +3240,7 @@ end subroutine clubb_init_cnst
         end do
       end do
 
+      ! pressure on momentum grid needed for mass flux calc.
       do k = 1, nzm_clubb
         do i = 1, ncol
           k_cam = top_lev - 1 + k
@@ -3495,7 +3496,7 @@ end subroutine clubb_init_cnst
         rtm_zm     = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr,  rtm(:ncol,:) )
         thlm_zm    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlm(:ncol,:) )
 
-        ! pressure,exner on momentum grid needed for mass flux calc.
+        ! exner on momentum grid needed for mass flux calc.
         kappa_zm = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, kappa_zt )
 
         do k = 1, nzm_clubb
