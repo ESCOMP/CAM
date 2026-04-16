@@ -3242,8 +3242,8 @@
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1" model_top="none"> 5 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  model_top="mt"                          > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"                             > 1  </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.POLARCAP.ne30x4"                           > 1  </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"                             > 2  </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4.POLARCAP.ne30x4"                           > 2  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"                               > 1  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"                         > 1  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.NATL.ne30x8"                               > 1  </se_hypervis_subcycle>
@@ -3263,6 +3263,8 @@
 <se_hypervis_subcycle_sponge waccmx="1"                                      > 20 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1" model_top="none"     > 60 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                                > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"                    > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.POLARCAP.ne30x4"                  > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"                      > 5  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8"                > 5  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.NATL.ne30x8"                      > 5  </se_hypervis_subcycle_sponge>
