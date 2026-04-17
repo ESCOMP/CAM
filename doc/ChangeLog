@@ -1,6 +1,68 @@
 
 ===============================================================
 
+Tag name: cam6_4_165
+Originator(s): adamrher, cacraigucar
+Date: April 16, 2026
+One-line Summary: Implement POLARCAP and NATL grids +L58/L93 inic for all SE-VR grids
+Github PR URL: htpps://github.com/ESCOMP/CAM/pull/1287
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Install SE dual-polar VR grid: https://github.com/ESCOMP/CAM/issues/979
+ - Add NATLx8 grid: https://github.com/ESCOMP/CAM/issues/1330
+ - Add L58/L93 support for all VR-SE grids + ne120pg3
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+ - added SE-VR defaults for new inputdata files and dycore time-stepping
+List any changes to the defaults for the boundary datasets:
+ - added ncdata, bnd_topo, drydep_srf_file, se_mesh_file for new and existing grids 
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, PeterHjortLauritzen
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_defaults_cam.xml
+           - added SE-VR entries for dycore time-stepping
+           - added L58 & L93 ncdata entries for all SE-VR grids + ne120pg3
+           - added bnd_topo, drydep_srf_file, se_mesh_file for POLARCAP & NATL grids
+
+M       cime_config/testdefs/testlist_cam.xml
+           - Add prebeta and cam_refined tests for new grids
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - Answers expected to change for refined grids
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+      - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+Ran cam_refined tests as well.  All ran to completion except:
+SMS_D_Ln9_P1280x1.ne0POLARCAPne30x4_ne0POLARCAPne30x4_mt12.FHISTC_LTso.derecho_intel.cam-outfrq9s
+  - Same failure as the above CONUS test
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_164
 Originator(s): cacraigucar, billsacks, sjsprecious, nusbaume, jimmielin
 Date: April 15, 2026
