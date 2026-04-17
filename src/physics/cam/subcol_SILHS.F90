@@ -599,8 +599,8 @@ contains
 #ifdef CLUBB_SGS
 #ifdef SILHS
      use clubb_intr, only: &
-        ztodt ! model timestep
-        
+        ztodt => ztodtptr ! model timestep
+
      use clubb_api_module,       only : setup_pdf_parameters_api, &
 
                                         zm2zt_api, setup_grid_heights_api, &

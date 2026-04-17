@@ -104,7 +104,7 @@ module clubb_intr
     pdf_implicit_coefs_terms_chnk(:)  ! PDF impl. coefs. & expl. terms      [units vary]
 
   real(r8), public :: &
-    ztodt  ! model timestep
+    ztodtptr ! model timestep
 #endif
 
   ! ------------------------------------------------------------ !
@@ -2730,7 +2730,7 @@ end subroutine clubb_init_cnst
     !--------------------- Scalar Setting --------------------
 
     !  Set the ztodt timestep in pbuf for SILHS, this is needed because hdtime is not input to silhs
-    ztodt = 1.0_r8 * hdtime
+    ztodtptr = 1.0_r8 * hdtime
 
     !  Determine CLUBB time step and make it sub-step friendly
     !  For now we want CLUBB time step to be 5 min since that is
