@@ -4,19 +4,20 @@
 Tag name: cam6_4_165
 Originator(s): adamrher, cacraigucar
 Date: April 16, 2026
-One-line Summary: Implement POLARCAP and NATL grids +L58 inic for all other SE-VR grids
+One-line Summary: Implement POLARCAP and NATL grids +L58/L93 inic for all SE-VR grids
 Github PR URL: htpps://github.com/ESCOMP/CAM/pull/1287
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
  - Install SE dual-polar VR grid: https://github.com/ESCOMP/CAM/issues/979
  - Add NATLx8 grid: https://github.com/ESCOMP/CAM/issues/1330
+ - Add L58/L93 support for all VR-SE grids + ne120pg3
 
 Describe any changes made to build system: N/A
 
 Describe any changes made to the namelist:
-
+ - added SE-VR defaults for new inputdata files and dycore time-stepping
 List any changes to the defaults for the boundary datasets:
-
+ - added ncdata, bnd_topo, drydep_srf_file, se_mesh_file for new and existing grids 
 Describe any substantial timing or memory changes: N/A
 
 Code reviewed by: cacraigucar, PeterHjortLauritzen
@@ -27,7 +28,9 @@ List all files added and what they do: N/A
 
 List all existing files that have been modified, and describe the changes:
 M       bld/namelist_files/namelist_defaults_cam.xml
-           -
+           - added SE-VR entries for dycore time-stepping
+           - added L58 & L93 ncdata entries for all SE-VR grids + ne120pg3
+           - added bnd_topo, drydep_srf_file, se_mesh_file for POLARCAP & NATL grids
 
 M       cime_config/testdefs/testlist_cam.xml
            - Add prebeta and cam_refined tests for new grids
