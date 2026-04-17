@@ -38,12 +38,24 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - Answers expected to change for refined grids
 
-derecho/nvhpc/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)
+
+derecho/nvhpc/aux_cam: all BFB
 
 izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+      - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
-izumi/gnu/aux_cam:
+izumi/gnu/aux_cam: all BFB
+
+Ran cam_refined tests as well.  All ran to completion except:
+SMS_D_Ln9_P1280x1.ne0POLARCAPne30x4_ne0POLARCAPne30x4_mt12.FHISTC_LTso.derecho_intel.cam-outfrq9s
+  - Same failure as the above CONUS test
 
 ===============================================================
 ===============================================================
