@@ -3213,7 +3213,8 @@ end subroutine clubb_init_cnst
       ! level above the surface (according to the CLUBB ascending grid).
 ! TODO: p_sfc should be set to state_loc%pint, not state_loc%pmid.
 !       Changing it will change answers when clubb_l_call_pdf_closure_twice = .true.
-      p_sfc(i)          = state_loc%pmid(i,pver)
+      !p_sfc(i)          = state_loc%pmid(i,pver)
+      p_sfc(i)          = state_loc%pint(i,pverp)
 !----------------
 
       !  Set the elevation of the surface
