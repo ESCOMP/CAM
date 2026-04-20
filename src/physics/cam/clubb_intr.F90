@@ -3209,13 +3209,8 @@ end subroutine clubb_init_cnst
 
       deltaz(i)         = state_loc%zi(i,pverp-1) - state_loc%zi(i,pverp)
 
-      ! For consistency, set surface pressure to p_in_Pa at the first thermo.
-      ! level above the surface (according to the CLUBB ascending grid).
-! TODO: p_sfc should be set to state_loc%pint, not state_loc%pmid.
-!       Changing it will change answers when clubb_l_call_pdf_closure_twice = .true.
-      !p_sfc(i)          = state_loc%pmid(i,pver)
+      !  Set the surface pressure      
       p_sfc(i)          = state_loc%pint(i,pverp)
-!----------------
 
       !  Set the elevation of the surface
       sfc_elevation(i)  = state_loc%zi(i,pverp)
