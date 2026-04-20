@@ -84,6 +84,7 @@ module aero_model
   integer,allocatable :: num_idx(:)
   integer,allocatable :: index_tot_mass(:,:)
   integer,allocatable :: index_chm_mass(:,:)
+  integer,allocatable :: index_ssa_mass(:,:)
 
   integer :: ndx_h2so4
   character(len=fieldname_len), allocatable :: dgnum_name(:), dgnumwet_name(:)
@@ -99,6 +100,9 @@ module aero_model
   logical :: modal_accum_coarse_exch = .false.
 
   type(modal_aerosol_properties), pointer :: aero_props=>null()
+
+  integer :: n_coarse_dust=-1 ! dmleung added n_coarse_dust to determine the index for the
+                              ! coarse dust mode for different MAM versions. 29 Oct 2025
 
 contains
 
@@ -174,7 +178,7 @@ contains
     use mo_chem_utls,    only: get_spc_ndx
     use modal_aero_data, only: cnst_name_cw
     use modal_aero_data, only: modal_aero_data_init
-    use rad_constituents,only: rad_cnst_get_info
+    use radiative_aerosol,only: rad_aer_get_info
     use dust_model,      only: dust_init, dust_names, dust_active, dust_nbin, dust_nnum
     use seasalt_model,   only: seasalt_init, seasalt_names, seasalt_active,seasalt_nbin
     use aer_drydep_mod,  only: inidrydep
@@ -230,7 +234,7 @@ contains
                       history_cesm_forcing_out=history_cesm_forcing, &
                       history_dust_out=history_dust)
 
-    call rad_cnst_get_info(0, nmodes=nmodes)
+    call rad_aer_get_info(0, nmodes=nmodes)
 
     call modal_aero_data_init(pbuf2d)
     call modal_aero_bcscavcoef_init()
@@ -440,7 +444,7 @@ contains
           call add_default( dgnum_name(n), 1, ' ' )
           call add_default( dgnumwet_name(n), 1, ' ' )
        endif
-       if ( history_cesm_forcing .and. n<4 ) then
+       if ( history_cesm_forcing ) then
           call add_default( dgnumwet_name(n), 8, ' ' )
        endif
 
@@ -492,14 +496,16 @@ contains
     allocate(index_chm_mass(nmodes,nspec_max))
     index_tot_mass = -1
     index_chm_mass = -1
+    allocate(index_ssa_mass(nmodes,nspec_max))
+    index_ssa_mass = -1
 
     ! for surf_area_dens
     ! define indices associated with the various aerosol types
     do n = 1,nmodes
-       call rad_cnst_get_info(0, n, mode_type=mode_type, nspec=nspec)
+       call rad_aer_get_info(0, n, mode_type=mode_type, nspec=nspec)
        if ( trim(mode_type) /= 'primary_carbon') then ! ignore the primary_carbon mode
           do l = 1, nspec
-             call rad_cnst_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
+             call rad_aer_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
              index_tot_mass(n,l) = get_spc_ndx(spec_name)
              if ( trim(spec_type) == 'sulfate'   .or. &
                   trim(spec_type) == 's-organic' .or. &
@@ -508,8 +514,16 @@ contains
                   trim(spec_type) == 'ammonium') then
                 index_chm_mass(n,l) = get_spc_ndx(spec_name)
              endif
+             if ( trim(spec_type) == 'seasalt')  then
+                index_ssa_mass(n,l) = get_spc_ndx(spec_name)
+             endif
           enddo
        endif
+
+       ! determine coarse dust mode number
+       if (mode_type=='coarse' .or. mode_type=='coarse_dust') then
+          n_coarse_dust = n
+       end if
     enddo
 
     if (has_sox) then
@@ -617,6 +631,8 @@ contains
     real(r8), pointer :: wetdens(:,:,:)
     real(r8), pointer :: qaerwat(:,:,:)
 
+    logical :: aspherical
+
     landfrac => cam_in%landfrac(:)
     icefrac  => cam_in%icefrac(:)
     ocnfrac  => cam_in%ocnfrac(:)
@@ -653,16 +669,14 @@ contains
     rad_drop(:,:) = 5.0e-6_r8
     dens_drop(:,:) = rhoh2o
     sg_drop(:,:) = 1.46_r8
-    jvlc = 3
+    jvlc = 3    ! dmleung: jvlc = 3, moment = 0 => dry dep velocity for number of cloud-borne aerosols
     call modal_aero_depvel_part( ncol,state%t(:,:), state%pmid(:,:), ram1, fv,  &
                      vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                      rad_drop(:,:), dens_drop(:,:), sg_drop(:,:), 0, lchnk)
-    jvlc = 4
+    jvlc = 4    ! jvlc = 4, moment = 3 => dry dep velocity for vol/mass of cloud-borne aerosols
     call modal_aero_depvel_part( ncol,state%t(:,:), state%pmid(:,:), ram1, fv,  &
                      vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
                      rad_drop(:,:), dens_drop(:,:), sg_drop(:,:), 3, lchnk)
-
-
 
     do m = 1, ntot_amode   ! main loop over aerosol modes
 
@@ -678,14 +692,24 @@ contains
              dens_aer(1:ncol,:) = wetdens(1:ncol,:,m)
              sg_aer(1:ncol,:) = sigmag_amode(m)
 
-             jvlc = 1
+             ! dmleung 20 Oct 2025 ++
+             ! dmleung: adding asphericity effect on slowing down gravitational settling velocity
+             ! for internally mixed coarse-mode aerosols (Yue Huang et al., 2020)
+             ! Huang et al. (2020) showed that aspherical dust has reduced gravitational settling by 15-20 %.
+             ! Since (1) MAM modes are internally mixed, and (2) sea spray aerosols are also aspherical,
+             ! for now dmleung applies asphericity correction to grav. set. velocity for the whole coarse mode.
+
+             aspherical = (m == n_coarse_dust)
+
+             jvlc = 1   ! dmleung: jvlc = 1, moment = 0 => dry dep velocity for number of interstitial aerosols
              call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                         vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
-                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk)
-             jvlc = 2
+                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 0, lchnk, aspherical=aspherical)
+             jvlc = 2   ! jvlc = 2, moment = 3 => dry dep velocity for vol/mass of interstitial aerosols
              call modal_aero_depvel_part( ncol, state%t(:,:), state%pmid(:,:), ram1, fv,  &
                         vlc_dry(:,:,jvlc), vlc_trb(:,jvlc), vlc_grv(:,:,jvlc),  &
-                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk)
+                        rad_aer(:,:), dens_aer(:,:), sg_aer(:,:), 3, lchnk, aspherical=aspherical)
+
           end if
 
           do lspec = 0, nspec_amode(m)+1   ! loop over number + constituents + water
@@ -869,7 +893,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
                   state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate, rho, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop )
+                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
@@ -891,6 +915,7 @@ contains
     real(r8), intent(inout) :: dm_aer(:,:,:)
     real(r8), intent(inout) :: sad_trop(:,:)
     real(r8), intent(out)   :: reff_trop(:,:)
+    real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
     real(r8), pointer, dimension(:,:,:) :: dgnumwet
@@ -902,7 +927,7 @@ contains
 
     beglev(:ncol)=ltrop(:ncol)+1
     endlev(:ncol)=pver
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, sad_trop, reff_trop, sfc=sfc )
+    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, sad_trop, reff_trop, sfc=sfc, sad_ssa=sad_ssa )
 
     do i = 1,ncol
        do k = ltrop(i)+1,pver
@@ -1255,7 +1280,7 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc )
+  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc, sad_ssa )
     use mo_constants,    only : pi
     use modal_aero_data, only : nspec_amode, alnsg_amode
 
@@ -1270,6 +1295,7 @@ contains
     real(r8), intent(out) :: sad(:,:)
     real(r8), intent(out) :: reff(:,:)
     real(r8),optional, intent(out) :: sfc(:,:,:)
+    real(r8),optional, intent(out) :: sad_ssa(:,:)
 
     ! local vars
     real(r8) :: sad_mode(pcols,pver,ntot_amode),radeff(pcols,pver)
@@ -1277,6 +1303,8 @@ contains
     real(r8) :: rho_air
     integer  :: i,k,l,m
     real(r8) :: chm_mass, tot_mass
+    real(r8) :: ssa_mass
+    real(r8) :: sad_mode_ssa(pcols,pver,ntot_amode)
 
     !
     ! Compute surface aero for each mode.
@@ -1288,6 +1316,10 @@ contains
     vol = 0._r8
     vol_mode = 0._r8
     reff = 0._r8
+    if (present(sad_ssa)) then
+      sad_ssa = 0._r8
+      sad_mode_ssa = 0._r8
+    end if
 
     do i = 1,ncol
        do k = beglev(i),endlev(i)
@@ -1298,11 +1330,16 @@ contains
              !
              tot_mass = 0._r8
              chm_mass = 0._r8
+             ssa_mass = 0._r8
              do m=1,nspec_amode(l)
                if ( index_tot_mass(l,m) > 0 ) &
                     tot_mass = tot_mass + mmr(i,k,index_tot_mass(l,m))
                if ( index_chm_mass(l,m) > 0 ) &
                     chm_mass = chm_mass + mmr(i,k,index_chm_mass(l,m))
+               if (present(sad_ssa)) then
+                 if ( index_ssa_mass(l,m) > 0 ) &
+                      ssa_mass = ssa_mass + mmr(i,k,index_ssa_mass(l,m))
+               end if
              end do
              if ( tot_mass > 0._r8 ) then
               ! surface area density
@@ -1311,6 +1348,13 @@ contains
                                * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
                sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
 
+               if (present(sad_ssa)) then
+                 sad_mode_ssa(i,k,l) = ssa_mass/tot_mass &
+                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
+                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
+                 sad_mode_ssa(i,k,l) = 1.e-2_r8 * sad_mode_ssa(i,k,l) ! cm^2/cm^3
+               end if
+
               ! volume calculation, for use in effective radius calculation
                vol_mode(i,k,l) = chm_mass/tot_mass &
                                * mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
@@ -1318,11 +1362,17 @@ contains
              else
                sad_mode(i,k,l) = 0._r8
                vol_mode(i,k,l) = 0._r8
+               if (present(sad_ssa)) then
+                 sad_mode_ssa(i,k,l) = 0._r8
+               end if
              end if
           end do
           sad(i,k) = sum(sad_mode(i,k,:))
           vol(i,k) = sum(vol_mode(i,k,:))
           reff(i,k) = 3._r8*vol(i,k)/sad(i,k)
+          if (present(sad_ssa)) then
+            sad_ssa(i,k) = sum(sad_mode_ssa(i,k,:))
+          end if
 
        enddo
     enddo
@@ -1443,7 +1493,7 @@ contains
   !===============================================================================
   !===============================================================================
   subroutine modal_aero_depvel_part( ncol, t, pmid, ram1, fv, vlc_dry, vlc_trb, vlc_grv,  &
-                                     radius_part, density_part, sig_part, moment, lchnk )
+                                     radius_part, density_part, sig_part, moment, lchnk, aspherical )   ! dmleung added aspherical flag 20 Oct 2025
 
 !    calculates surface deposition velocity of particles
 !    L. Zhang, S. Gong, J. Padro, and L. Barrie
@@ -1476,6 +1526,9 @@ contains
     real(r8), intent(out) :: vlc_trb(pcols)       !Turbulent deposn velocity (m/s)
     real(r8), intent(out) :: vlc_grv(pcols,pver)       !grav deposn velocity (m/s)
     real(r8), intent(out) :: vlc_dry(pcols,pver)       !dry deposn velocity (m/s)
+    logical,  intent(in), OPTIONAL :: aspherical   ! dmleung: asphericity is strong for coarse-mode interstitial
+    ! aerosols only, mostly dust and seasalt. For coarse mode aerosols, asphericity reduces coarse-mode gravitational
+    ! settling velocity by 20 % following Fig. 4 of Yue Huang et al. (2020).
     !------------------------------------------------------------------------
 
     !------------------------------------------------------------------------
@@ -1505,6 +1558,11 @@ contains
     real(r8) :: wrk1, wrk2, wrk3
 
     ! constants
+
+     real(r8), parameter :: asphericaldust_drydep = 0.8_r8 ! dmleung added 20 Oct 2025: aspherical dust reduces
+     ! gravitational settling velocity by 15-20 %. Yue Huang et al. (2020)
+     ! Climate Models and Remote Sensing Retrievals Neglect Substantial Desert Dust Asphericity
+
     real(r8) gamma(11)      ! exponent of schmidt number
 !   data gamma/0.54d+00,  0.56d+00,  0.57d+00,  0.54d+00,  0.54d+00, &
 !              0.56d+00,  0.54d+00,  0.54d+00,  0.54d+00,  0.56d+00, &
@@ -1572,6 +1630,16 @@ contains
           vlc_grv(i,k) = (4.0_r8/18.0_r8) * radius_moment(i,k)*radius_moment(i,k)*density_part(i,k)* &
                   gravit*slp_crc(i,k) / vsc_dyn_atm(i,k) ![m s-1] Stokes' settling velocity SeP97 p. 466
           vlc_grv(i,k) = vlc_grv(i,k) * dispersion
+
+          ! dmleung edited 20 Oct 2025 based on Longlei Li's edits ++
+          ! asphericity reduces gravitational settling velocity of coarse-mode aerosols by 20 %.
+          ! scale flag is only true for coarse mode (m == n_coarse_dust).
+          if (present(aspherical)) then
+             if(aspherical) then
+                vlc_grv(i,k) = vlc_grv(i,k) * asphericaldust_drydep
+             end if
+          end if
+          ! dmleung --
 
           vlc_dry(i,k)=vlc_grv(i,k)
        enddo

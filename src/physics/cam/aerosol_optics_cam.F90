@@ -4,32 +4,32 @@ module aerosol_optics_cam
   use cam_logfile,  only: iulog
   use radconstants, only: nswbands, nlwbands, idx_sw_diag, idx_uv_diag, idx_nir_diag
   use radconstants, only: get_lw_spectral_boundaries
-  use phys_prop,    only: ot_length
+  use phys_prop,    only: ot_length, numrh=>nrh
   use physics_types,only: physics_state
-  use physics_buffer,only: physics_buffer_desc
+  use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use ppgrid, only: pcols, pver
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun
   use spmd_utils, only: masterproc
-  use rad_constituents,  only: n_diag, rad_cnst_get_call_list
+  use radiative_aerosol_definitions, only: N_DIAG
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
 
+  use ref_pres, only: clim_modal_aero_top_lev
   use tropopause, only : tropopause_findChemTrop
   use wv_saturation, only: qsat
 
-  use aerosol_properties_mod, only: aerosol_properties
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
-  use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+  use aerosol_instances_mod,  only: aerosol_instances_get_props, &
+                                    aerosol_instances_get_num_models, aerosol_instances_is_active, &
+                                    aerosol_instances_final, &
+                                    aerosol_instances_get_state
 
   use aerosol_state_mod,      only: aerosol_state
-  use modal_aerosol_state_mod,only: modal_aerosol_state
-  use carma_aerosol_state_mod,only: carma_aerosol_state
 
-  use aerosol_optics_mod,     only: aerosol_optics
-  use refractive_aerosol_optics_mod, only: refractive_aerosol_optics
-  use hygrocoreshell_aerosol_optics_mod, only: hygrocoreshell_aerosol_optics
-  use hygrowghtpct_aerosol_optics_mod, only: hygrowghtpct_aerosol_optics
+  use aerosol_optics_core,   only: aerosol_optics_sw_bin, aerosol_optics_lw_bin
+
+  use aer_vis_diag_mod, only: aer_vis_diag_out
 
   implicit none
 
@@ -41,25 +41,10 @@ module aerosol_optics_cam
   public :: aerosol_optics_cam_sw
   public :: aerosol_optics_cam_lw
 
-  type aero_props_t
-     class(aerosol_properties), pointer :: obj => null()
-  end type aero_props_t
-  type aero_state_t
-     class(aerosol_state), pointer :: obj => null()
-  end type aero_state_t
-
-  type(aero_props_t), allocatable :: aero_props(:) ! array of aerosol properties objects to allow for
-                                                   ! multiple aerosol representations in the same sim
-                                                   ! such as MAM and CARMA
-
   ! refractive index for water read in read_water_refindex
   complex(r8) :: crefwsw(nswbands) = -huge(1._r8) ! complex refractive index for water visible
   complex(r8) :: crefwlw(nlwbands) = -huge(1._r8) ! complex refractive index for water infrared
   character(len=cl) :: water_refindex_file = 'NONE' ! full pathname for water refractive index dataset
-
-  logical :: carma_active = .false.
-  logical :: modal_active = .false.
-  integer :: num_aero_models = 0
   integer :: lw10um_indx = -1            ! wavelength index corresponding to 10 microns
   real(r8), parameter :: lw10um = 10._r8 ! microns
 
@@ -75,6 +60,8 @@ module aerosol_optics_cam
   type(out_name), allocatable :: burdendn_fields(:) ! num_aero_models
   type(out_name), allocatable :: aodbindn_fields(:)
   type(out_name), allocatable :: aoddustdn_fields(:)
+
+  integer :: top_lev = 1
 
 contains
 
@@ -126,63 +113,46 @@ contains
 
   !===============================================================================
   subroutine aerosol_optics_cam_init
-    use rad_constituents, only: rad_cnst_get_info
+    use radiative_aerosol_definitions, only: active_calls
     use phys_control,     only: phys_getopts
     use ioFileMod,        only: getfil
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_init: '
-    integer :: nmodes=0, nbins=0, iaermod, istat, ilist, i
+    integer :: iaermod, istat, ilist, i
+    integer :: num_aero_models
 
-    logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
-    integer :: m, n
+    integer :: m, n, cnt
 
     character(len=fieldname_len) :: fldname
     character(len=128) :: lngname
     logical :: history_aero_optics     ! output aerosol optics diagnostics
     logical :: history_amwg            ! output the variables used by the AMWG diag package
     logical :: history_dust            ! output dust diagnostics
+    logical :: prog_modal_aero         ! prognostic modal aerosols present
+
+    class(aerosol_properties), pointer :: aprops
 
     character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
                       history_aero_optics_out = history_aero_optics, &
-                      history_dust_out        = history_dust )
+                      history_dust_out        = history_dust, &
+                      prog_modal_aero_out     = prog_modal_aero )
 
-    num_aero_models = 0
+    ! Limit modal aerosols with top_lev here.
+    if (prog_modal_aero) then
+       top_lev = clim_modal_aero_top_lev
+    else
+       top_lev = 1
+    endif
 
-    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
-    modal_active = nmodes>0
-    carma_active = nbins>0
-
-    ! count aerosol models
-    if (modal_active) then
-       num_aero_models = num_aero_models+1
-    end if
-    if (carma_active) then
-       num_aero_models = num_aero_models+1
-    end if
-
-    if (num_aero_models>0) then
-       allocate(aero_props(num_aero_models), stat=istat)
-       if (istat/=0) then
-          call endrun(prefix//'array allocation error: aero_props')
-       end if
-    end if
-
-    iaermod = 0
-
-    if (modal_active) then
-       iaermod = iaermod+1
-       aero_props(iaermod)%obj => modal_aerosol_properties()
-    end if
-    if (carma_active) then
-       iaermod = iaermod+1
-       aero_props(iaermod)%obj => carma_aerosol_properties()
-    end if
+    num_aero_models = aerosol_instances_get_num_models()
 
     if (water_refindex_file=='NONE') then
-       call endrun(prefix//'water_refindex_file must be specified')
+       if (aerosol_instances_is_active('modal') .or. aerosol_instances_is_active('carma')) then
+          call endrun(prefix//'water_refindex_file must be specified')
+       end if
     else
        call getfil(water_refindex_file, locfile)
        call read_water_refindex(locfile)
@@ -194,10 +164,9 @@ contains
           lw10um_indx = i ! index corresponding to 10 microns
        end if
     end do
-    call rad_cnst_get_call_list(call_list)
 
     do ilist = 0, n_diag
-       if (call_list(ilist)) then
+       if (active_calls(ilist)) then
           call addfld ('EXTINCT'//diag(ilist),    (/ 'lev' /), 'A','/m',&
                'Aerosol extinction 550 nm, day only', flag_xyfill=.true.)
           call addfld ('EXTINCTUV'//diag(ilist),  (/ 'lev' /), 'A','/m',&
@@ -207,7 +176,7 @@ contains
           call addfld ('ABSORB'//diag(ilist),     (/ 'lev' /), 'A','/m',&
                'Aerosol absorption, day only', flag_xyfill=.true.)
           call addfld ('AODVIS'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODVISst'//diag(ilist), horiz_only,  'A','  ', &
                'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
           call addfld ('AODNIRst'//diag(ilist), horiz_only,  'A','  ', &
@@ -228,33 +197,33 @@ contains
                'Aerosol optical depth summed over all sw wavelengths', flag_xyfill=.true.)
 
           call addfld ('EXTINCTdn'//diag(ilist),    (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 550 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTUVdn'//diag(ilist),  (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 350 nm, day night', flag_xyfill=.true.)
           call addfld ('EXTINCTNIRdn'//diag(ilist), (/ 'lev' /), 'A','/m',&
-               'Aerosol extinction 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol extinction 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('ABSORBdn'//diag(ilist),     (/ 'lev' /), 'A','/m',&
-               'Aerosol absorption, day only', flag_xyfill=.true.)
+               'Aerosol absorption, day night', flag_xyfill=.true.)
           call addfld ('AODVISdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 nm', flag_xyfill=.true.)
+               'Aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODVISstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRstdn'//diag(ilist), horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVstdn'//diag(ilist),  horiz_only,  'A','  ', &
-               'Stratospheric aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Stratospheric aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODUVdn'//diag(ilist),      horiz_only,  'A','  ', &
-               'Aerosol optical depth 350 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 350 nm, day night', flag_xyfill=.true.)
           call addfld ('AODNIRdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol optical depth 1020 nm, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 1020 nm, day night', flag_xyfill=.true.)
           call addfld ('AODABSdn'//diag(ilist),     horiz_only,  'A','  ', &
-               'Aerosol absorption optical depth 550 nm, day only', flag_xyfill=.true.)
+               'Aerosol absorption optical depth 550 nm, day night', flag_xyfill=.true.)
           call addfld ('AODxASYMdn'//diag(ilist),   horiz_only,  'A','  ', &
-               'Aerosol optical depth 550 * asymmetry factor, day only', flag_xyfill=.true.)
+               'Aerosol optical depth 550 * asymmetry factor, day night', flag_xyfill=.true.)
           call addfld ('EXTxASYMdn'//diag(ilist),   (/ 'lev' /), 'A','  ', &
-               'extinction 550 nm * asymmetry factor, day only',  flag_xyfill=.true.)
+               'extinction 550 nm * asymmetry factor, day night',  flag_xyfill=.true.)
           call addfld ('AODTOTdn'//diag(ilist), horiz_only, 'A','1',&
-               'Aerosol optical depth summed over all sw wavelengths, day only')
+               'Aerosol optical depth summed over all sw wavelengths, day night')
 
           if (lw10um_indx>0) then
              call addfld('AODABSLW'//diag(ilist), (/ 'lev' /), 'A','/m',&
@@ -302,37 +271,44 @@ contains
           call endrun(prefix//'array allocation error: aoddustdn_fields')
        end if
 
+       cnt=0
+
        do n = 1,num_aero_models
 
-          allocate(burden_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          ! for history output use the climate list.
+          aprops => aerosol_instances_get_props(n, list_idx=0)
+
+          allocate(burden_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: burden_fields(n)%name')
           end if
-          allocate(aodbin_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          allocate(aodbin_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: aodbin_fields(n)%name')
           end if
-          allocate(aoddust_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          allocate(aoddust_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: aoddust_fields(n)%name')
           end if
 
-          allocate(burdendn_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          allocate(burdendn_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: burdendn_fields(n)%name')
           end if
-          allocate(aodbindn_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          allocate(aodbindn_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: aodbindn_fields(n)%name')
           end if
-          allocate(aoddustdn_fields(n)%name(aero_props(n)%obj%nbins()), stat=istat)
+          allocate(aoddustdn_fields(n)%name(aprops%nbins()), stat=istat)
           if (istat/=0) then
              call endrun(prefix//'array allocation error: aoddustdn_fields(n)%name')
           end if
 
-          do m = 1, aero_props(n)%obj%nbins()
+          do m = 1, aprops%nbins()
 
-             write(fldname,'(a,i2.2)') 'BURDEN', m
+             cnt = cnt+1
+
+             write(fldname,'(a,i2.2)') 'BURDEN', cnt
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -340,15 +316,15 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             fldname = 'AOD_'//trim(aero_props(n)%obj%bin_name(0,m))
+             fldname = 'AOD_'//trim(aprops%bin_name(bin_ndx=m))
              aodbin_fields(n)%name(m) = fldname
-             lngname = 'Aerosol optical depth, day only, 550 nm, '//trim(aero_props(n)%obj%bin_name(0,m))
+             lngname = 'Aerosol optical depth, day only, 550 nm, '//trim(aprops%bin_name(bin_ndx=m))
              call addfld (aodbin_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
              if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODDUST', m
+             write(fldname,'(a,i2.2)') 'AODDUST', cnt
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -356,7 +332,7 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'BURDENdn', m
+             write(fldname,'(a,i2.2)') 'BURDENdn', cnt
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
@@ -364,15 +340,15 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             fldname = 'AODdn_'//trim(aero_props(n)%obj%bin_name(0,m))
+             fldname = 'AODdn_'//trim(aprops%bin_name(bin_ndx=m))
              aodbindn_fields(n)%name(m) = fldname
-             lngname = 'Aerosol optical depth 550 nm, day night, '//trim(aero_props(n)%obj%bin_name(0,m))
+             lngname = 'Aerosol optical depth 550 nm, day night, '//trim(aprops%bin_name(bin_ndx=m))
              call addfld (aodbindn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
              if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODdnDUST', m
+             write(fldname,'(a,i2.2)') 'AODdnDUST', cnt
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -522,23 +498,14 @@ contains
   !===============================================================================
   subroutine aerosol_optics_cam_final
 
-    integer :: iaermod
-
-    do iaermod = 1,num_aero_models
-       if (associated(aero_props(iaermod)%obj)) then
-          deallocate(aero_props(iaermod)%obj)
-          nullify(aero_props(iaermod)%obj)
-       end if
-    end do
-
-    if (allocated(aero_props)) then
-       deallocate(aero_props)
-    endif
+    call aerosol_instances_final()
 
   end subroutine aerosol_optics_cam_final
 
   !===============================================================================
   subroutine aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, tauxar, wa, ga, fa)
+
+    use aerosol_optics_core, only: dustaspherical_opts
 
     ! calculates aerosol sw radiative properties
 
@@ -554,27 +521,21 @@ contains
     real(r8), intent(inout) :: ga(pcols,0:pver,nswbands)     ! asymmetry factor
     real(r8), intent(inout) :: fa(pcols,0:pver,nswbands)     ! forward scattered fraction
 
+    real(r8) :: taubam(pcols,0:pver)
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_sw: '
 
     integer :: ibin, nbins
     integer :: iwav, ilev
-    integer :: icol, istat
+    integer :: icol
     integer :: lchnk, ncol
+    integer :: num_aero_models
 
-    type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
-                                                     ! multiple aerosol representations in the same sim
-                                                     ! such as MAM and CARMA
-
-    class(aerosol_optics), pointer :: aero_optics
+    character(len=aero_name_len) :: modetype
+    logical :: coarse_dust_mode ! coarse dust mode for different MAM versions
 
     real(r8) :: dopaer(pcols)
     real(r8) :: mass(pcols,pver)
     real(r8) :: air_density(pcols,pver)
-
-    real(r8), allocatable :: pext(:)  ! parameterized specific extinction (m2/kg)
-    real(r8), allocatable :: pabs(:)  ! parameterized specific absorption (m2/kg)
-    real(r8), allocatable :: palb(:)  ! parameterized single scattering albedo
-    real(r8), allocatable :: pasm(:)  ! parameterized asymmetry factor
 
     real(r8) :: relh(pcols,pver)
     real(r8) :: sate(pcols,pver)     ! saturation vapor pressure
@@ -652,16 +613,31 @@ contains
     ! total species AOD
     real(r8) :: dustaod(pcols), sulfaod(pcols), bcaod(pcols), &
                 pomaod(pcols), soaaod(pcols), ssltaod(pcols)
-
+    real(r8) :: dustaod0(pcols) ! single-level dust AOD assuming spherical dust in coarse mode
+    real(r8) :: dopaer0(pcols)  ! single-level total AOD assuming spherical dust in coarse mode
     real(r8) :: aodvisst(pcols) ! stratospheric extinction optical depth
     real(r8) :: aoduvst(pcols)  ! stratospheric extinction optical depth in uv
     real(r8) :: aodnirst(pcols) ! stratospheric extinction optical depth in nir
     real(r8) :: ssavis(pcols)
     integer :: troplev(pcols)
 
-    integer :: i, k
+    integer :: bam_cnt
 
-    nullify(aero_optics)
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
+
+    ! Per-bin optics arrays from portable core
+    real(r8) :: tau_bin(pcols,pver,nswbands)
+    real(r8) :: ssa_bin(pcols,pver,nswbands)
+    real(r8) :: asm_bin(pcols,pver,nswbands)
+    real(r8) :: pabs_vis(pcols,pver)      ! specific absorption at vis band (from core, for BFB diagnostics)
+    real(r8) :: dopaer0_vis(pcols,pver)   ! pre-asphericity tau at vis band (from core, for BFB diagnostics)
+
+    integer :: ispec
+
+    character(len=512)   :: errmsg
+    integer              :: errflg
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -681,6 +657,9 @@ contains
     absorb = 0._r8
     aodtot = 0._r8
     tauxar = 0._r8
+    wa = 0._r8
+    ga = 0._r8
+    fa = 0._r8
     extinct = 0._r8
     extinctnir = 0._r8
     extinctuv = 0._r8
@@ -706,298 +685,326 @@ contains
     bcaod = 0.0_r8
     ssltaod = 0.0_r8
 
+    dustaod0 = 0.0_r8
+    dopaer0 = 0.0_r8
+
+    num_aero_models = aerosol_instances_get_num_models()
     if (num_aero_models<1) return
 
-    allocate(aero_state(num_aero_models), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: aero_state')
-    end if
+    ! calculate relative humidity for table lookup into rh grid
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
-    iaermod = 0
-    if (modal_active) then
-       iaermod = iaermod+1
-       aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-    end if
-    if (carma_active) then
-       iaermod = iaermod+1
-       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
-    end if
-
-    allocate(pext(ncol), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: pext')
-    end if
-    allocate(pabs(ncol), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: pabs')
-    end if
-    allocate(palb(ncol), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: palb')
-    end if
-    allocate(pasm(ncol), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: pasm')
-    end if
+    bam_cnt = 0
 
     aeromodel: do iaermod = 1,num_aero_models
 
-       aeroprops => aero_props(iaermod)%obj
-       aerostate => aero_state(iaermod)%obj
+       aeroprops => aerosol_instances_get_props(iaermod, list_idx)
+       ! null when a globally active model has no entries in this diagnostic list.
+       if (.not. associated(aeroprops)) cycle aeromodel
+       aerostate => aerosol_instances_get_state(iaermod, list_idx, lchnk)
 
-       nbins=aeroprops%nbins(list_idx)
+       nbins = aeroprops%nbins()
 
        sulfwtpct(:ncol,:pver) = aerostate%wgtpct(ncol,pver)
        call outfld('SULFWTPCT', sulfwtpct(1:ncol,:), ncol, lchnk)
 
        binloop: do ibin = 1, nbins
 
+          ! Determine coarse dust mode for diagnostics
+          if (aeroprops%model_is('MAM')) then
+             modetype = aeroprops%bin_name(bin_ndx=ibin)
+             coarse_dust_mode = (modetype=='coarse' .or. modetype=='coarse_dust')
+          else
+             coarse_dust_mode = .false.
+          end if
+
+          ! zero out per-bin quantities for diagnostics
           dustaodbin(:) = 0._r8
           burden(:) = 0._r8
           aodbin(:) = 0.0_r8
+          taubam(:,:) = 0._r8
 
-          call aeroprops%optics_params(list_idx, ibin, opticstype=opticstype)
-
+          ! Only for volcanic_radius, get geometric_radius from pbuf
+          ! (host-model specific) into optional argument.
+          nullify(geometric_radius)
+          call aeroprops%optics_params(bin_ndx=ibin, opticstype=opticstype)
           select case (trim(opticstype))
-          case('modal') ! refractive method
-             aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
-                                                    ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-          case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-             aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
-                                                        ibin, ncol, pver, relh(:ncol,:))
-          case('hygroscopic_wtp')
-             aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
-                                                      ibin, ncol, pver, sulfwtpct(:ncol,:))
-          case default
-             call endrun(prefix//'optics method not recognized')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+             ! construct name of radius physics buffer field
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius)
           end select
 
-          if (associated(aero_optics)) then
+          ! Call portable aerosol optics driver.
+          ! geometric_radius is a null pointer for non-volcanic types;
+          ! the optional pointer dummy checks associated() internally.
+          call aerosol_optics_sw_bin(aeroprops, aerostate, ibin, &
+               ncol, pver, top_lev, nswbands, nlwbands, numrh, &
+               idx_sw_diag, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               geometric_radius=geometric_radius, &
+               tau_bin=tau_bin(:ncol,:,:), ssa_bin=ssa_bin(:ncol,:,:), asm_bin=asm_bin(:ncol,:,:), &
+               pabs_vis=pabs_vis(:ncol,:), dopaer0_vis=dopaer0_vis(:ncol,:), &
+               errmsg=errmsg, errflg=errflg)
 
-             wetvol(:ncol,:pver) = aerostate%wet_volume(aeroprops, list_idx, ibin, ncol, pver)
-             watervol(:ncol,:pver) = aerostate%water_volume(aeroprops, list_idx, ibin, ncol, pver)
-
-             wavelength: do iwav = 1, nswbands
-
-                vertical: do ilev = 1, pver
-
-                   call aero_optics%sw_props(ncol, ilev, iwav, pext, pabs, palb, pasm )
-
-                   call init_diags
-
-                   column: do icol = 1,ncol
-                      dopaer(icol) = pext(icol)*mass(icol,ilev)
-                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
-                      wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + dopaer(icol)*palb(icol)
-                      ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)
-                      fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + dopaer(icol)*palb(icol)*pasm(icol)*pasm(icol)
-
-                      call update_diags
-
-                   end do column
-
-                end do vertical
-             end do wavelength
-
-          else
-             call endrun(prefix//'aero_optics object pointer not associated')
+          if(errflg /= 0) then
+            call endrun(prefix//errmsg)
           end if
 
-          deallocate(aero_optics)
-          nullify(aero_optics)
+          ! Accumulate into total physics arrays.
+          wavelength: do iwav = 1, nswbands
+             vertical: do ilev = top_lev, pver
+                column: do icol = 1, ncol
+                   ! aerosol optical depth at layer ilev:
+                   tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + tau_bin(icol,ilev,iwav)
 
-          call output_bin_diags
+                   ! single scattering albedo at layer ilev:
+                   wa(icol,ilev,iwav) = wa(icol,ilev,iwav) + tau_bin(icol,ilev,iwav)*ssa_bin(icol,ilev,iwav)
+
+                   ! asymmetry factor at layer ilev:
+                   ga(icol,ilev,iwav) = ga(icol,ilev,iwav) + tau_bin(icol,ilev,iwav)*ssa_bin(icol,ilev,iwav)*asm_bin(icol,ilev,iwav)
+
+                   ! forward scattered fraction at layer ilev:
+                   fa(icol,ilev,iwav) = fa(icol,ilev,iwav) + tau_bin(icol,ilev,iwav)*ssa_bin(icol,ilev,iwav)*asm_bin(icol,ilev,iwav)*asm_bin(icol,ilev,iwav)
+                end do column
+             end do vertical
+          end do wavelength
+
+          ! CAM diagnostics:
+          ! Get wet/water volumes for diagnostic species partitioning
+          wetvol(:ncol,:pver) = aerostate%wet_volume(aeroprops, ibin, ncol, pver)
+          watervol(:ncol,:pver) = aerostate%water_volume(aeroprops, ibin, ncol, pver)
+
+          ! Diagnostic accumulation using tau_bin (asphericity already applied by core)
+          do iwav = 1, nswbands
+             do ilev = top_lev, pver
+
+                ! Initialize per-species diagnostic accumulators for this (iwav, ilev)
+                dustvol(:ncol)   = 0._r8
+                scatdust(:ncol)  = 0._r8
+                absdust(:ncol)   = 0._r8
+                hygrodust(:ncol) = 0._r8
+                scatsulf(:ncol)  = 0._r8
+                abssulf(:ncol)   = 0._r8
+                hygrosulf(:ncol) = 0._r8
+                scatbc(:ncol)    = 0._r8
+                absbc(:ncol)     = 0._r8
+                hygrobc(:ncol)   = 0._r8
+                scatpom(:ncol)   = 0._r8
+                abspom(:ncol)    = 0._r8
+                hygropom(:ncol)  = 0._r8
+                scatsoa(:ncol)   = 0._r8
+                abssoa(:ncol)    = 0._r8
+                hygrosoa(:ncol)  = 0._r8
+                scatsslt(:ncol)  = 0._r8
+                abssslt(:ncol)   = 0._r8
+                hygrosslt(:ncol) = 0._r8
+
+                do icol = 1, ncol
+                   ! dopaer is tau_bin with asphericity already applied
+                   dopaer(icol) = tau_bin(icol,ilev,iwav)
+
+                   if (iwav==idx_uv_diag) then
+                      aoduv(icol) = aoduv(icol) + dopaer(icol)
+                      extinctuv(icol,ilev) = extinctuv(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+                      if (ilev<=troplev(icol)) then
+                         aoduvst(icol) = aoduvst(icol) + dopaer(icol)
+                      end if
+
+                   else if (iwav==idx_sw_diag) then ! vis
+
+                      ! Decompose bin optical properties into per-species
+                      ! contributions for AOD diagnostics (e.g., dustaod, bcaod).
+                      ! Uses the same volume-weighted refractive index method as
+                      ! the asphericity calculation in aerosol_optics_core, but
+                      ! for all species and all bins (not just coarse dust).
+                      !
+                      ! The below block is for diagnostics only.
+                      ! To edit the computation, change the code in
+                      ! species loop in aerosol_optics_core.F90.
+                      do ispec = 1, aeroprops%nspecies(ibin)
+                         call aeroprops%get(ibin, ispec, density=specdens, &
+                              spectype=spectype, refindex_sw=specrefindex, hygro=hygro_aer)
+                         call aerostate%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=specmmr)
+
+                         burden(icol) = burden(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+
+                         vol(icol) = specmmr(icol,ilev)/specdens
+
+                         select case ( trim(spectype) )
+                         case('dust')
+                            dustvol(icol) = vol(icol)
+                            burdendust(icol) = burdendust(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatdust(icol) = vol(icol) * specrefindex(iwav)%re
+                               absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygrodust(icol)= vol(icol)*hygro_aer
+                         case('black-c')
+                            burdenbc(icol) = burdenbc(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatbc(icol) = vol(icol) * specrefindex(iwav)%re
+                               absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygrobc(icol)= vol(icol)*hygro_aer
+                         case('sulfate')
+                            burdenso4(icol) = burdenso4(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
+                               abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygrosulf(icol)= vol(icol)*hygro_aer
+                         case('p-organic')
+                            burdenpom(icol) = burdenpom(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatpom(icol) = vol(icol) * specrefindex(iwav)%re
+                               abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygropom(icol)= vol(icol)*hygro_aer
+                         case('s-organic')
+                            burdensoa(icol) = burdensoa(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
+                               abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygrosoa(icol)= vol(icol)*hygro_aer
+                         case('seasalt')
+                            burdenseasalt(icol) = burdenseasalt(icol) + specmmr(icol,ilev)*mass(icol,ilev)
+                            if (associated(specrefindex)) then
+                               scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
+                               abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
+                            end if
+                            hygrosslt(icol)= vol(icol)*hygro_aer
+                         end select
+                      end do
+
+                      if (wetvol(icol,ilev)>1.e-40_r8 .and. vol(icol)>0._r8) then
+
+                         ! partition optical depth into contributions from each constituent
+                         ! assume contribution is proportional to refractive index X volume
+
+                         scath2o = watervol(icol,ilev)*crefwsw(iwav)%re
+                         absh2o = -watervol(icol,ilev)*crefwsw(iwav)%im
+                         sumscat = scatsulf(icol) + scatpom(icol) + scatsoa(icol) + scatbc(icol) + &
+                              scatdust(icol) + scatsslt(icol) + scath2o
+                         sumabs  = abssulf(icol) + abspom(icol) + abssoa(icol) + absbc(icol) + &
+                              absdust(icol) + abssslt(icol) + absh2o
+                         sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
+                              hygrodust(icol) + hygrosslt(icol)
+
+                         if (sumscat/=0._r8 .and. sumabs/=0._r8 .and. sumhygro/=0._r8) then
+                            scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
+                            absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
+
+                            scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
+                            abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
+
+                            scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
+                            abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
+
+                            scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
+                            abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
+
+                            scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
+                            absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
+
+                            scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
+                            abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
+                         end if
+
+                         ! Use dopaer0_vis (pre-asphericity) and pabs_vis from core for BFB diagnostic accumulation.
+                         ! dopaer already has asphericity applied (from core); dopaer0 is the pre-asphericity value.
+                         dopaer0(icol) = dopaer0_vis(icol,ilev)
+
+                         ! Per-species AOD diagnostics use dopaer0 (pre-asphericity) and ssa_bin (=palb).
+                         ! In the original code, species AOD was computed before asphericity was applied to dopaer.
+                         aodabsbc(icol) = aodabsbc(icol) + absbc(icol)*dopaer0(icol)*(1.0_r8-ssa_bin(icol,ilev,iwav))
+
+                         aodc          = (abssulf(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatsulf(icol))*dopaer0(icol)
+                         sulfaod(icol) = sulfaod(icol) + aodc
+
+                         aodc          = (abspom(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatpom(icol))*dopaer0(icol)
+                         pomaod(icol)  = pomaod(icol) + aodc
+
+                         aodc          = (abssoa(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatsoa(icol))*dopaer0(icol)
+                         soaaod(icol)  = soaaod(icol) + aodc
+
+                         aodc          = (absbc(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatbc(icol))*dopaer0(icol)
+                         bcaod(icol)   = bcaod(icol) + aodc
+
+                         aodc          = (abssslt(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatsslt(icol))*dopaer0(icol)
+                         ssltaod(icol) = ssltaod(icol) + aodc
+
+                         aodc          = (absdust(icol)*(1.0_r8 - ssa_bin(icol,ilev,iwav)) + ssa_bin(icol,ilev,iwav)*scatdust(icol))*dopaer0(icol)
+                         dustaod(icol) = dustaod(icol) + aodc
+
+                         ! dustaod0 is the single-level spherical dust AOD
+                         dustaod0(icol) = aodc
+
+                         ! Diagnostic dustaodbin and dustaod asphericity adjustment
+                         if (coarse_dust_mode) then
+                            dustaodbin(icol) = dustaodbin(icol) + dopaer0(icol)*dustvol(icol)/wetvol(icol,ilev) * dustaspherical_opts
+                            dustaod(icol) = dustaod(icol) - dustaod0(icol) + dustaod0(icol)*dustaspherical_opts
+                         else
+                            dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
+                         end if
+
+                         ! Absorption diagnostics using pabs_vis from aerosol_optics_core (BFB with original code)
+                         aodabs(icol)       = aodabs(icol) + mass(icol,ilev) * pabs_vis(icol,ilev) * dopaer(icol)/dopaer0(icol)
+                         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+                         absorb(icol,ilev)  = absorb(icol,ilev) + air_density(icol,ilev) * pabs_vis(icol,ilev) * dopaer(icol)/dopaer0(icol)
+                         ssavis(icol)       = ssavis(icol) + dopaer(icol)*ssa_bin(icol,ilev,iwav)
+                         asymvis(icol)      = asymvis(icol) + dopaer(icol)*asm_bin(icol,ilev,iwav)
+                         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*asm_bin(icol,ilev,iwav)*air_density(icol,ilev)/mass(icol,ilev)
+
+                         aodbin(icol) = aodbin(icol) + dopaer(icol)
+
+                      end if
+
+                      aodvis(icol) = aodvis(icol) + dopaer(icol)
+
+                      if (ilev<=troplev(icol)) then
+                         aodvisst(icol) = aodvisst(icol) + dopaer(icol)
+                      end if
+
+                   else if (iwav==idx_nir_diag) then
+                      aodnir(icol) = aodnir(icol) + dopaer(icol)
+                      extinctnir(icol,ilev) = extinctnir(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
+
+                      if (ilev<=troplev(icol)) then
+                         aodnirst(icol) = aodnirst(icol) + dopaer(icol)
+                      end if
+
+                   end if
+
+                   aodtot(icol) = aodtot(icol) + dopaer(icol)
+
+                end do ! icol
+             end do ! ilev
+          end do ! iwav
+
+          ! BAM diagnostics
+          if (aeroprops%model_is('BAM')) then
+             taubam(:ncol,top_lev:pver) = tau_bin(:ncol,top_lev:pver,idx_sw_diag)
+             bam_cnt = bam_cnt+1
+             call aer_vis_diag_out(lchnk, ncol, nnite, idxnite, bam_cnt, taubam, &
+                  list_idx, troplev)
+          endif
+
+          call output_bin_diags()
 
        end do binloop
     end do aeromodel
 
     call output_tot_diags
 
-    deallocate(pext)
-    deallocate(pabs)
-    deallocate(palb)
-    deallocate(pasm)
-
-    do iaermod = 1,num_aero_models
-       deallocate(aero_state(iaermod)%obj)
-       nullify(aero_state(iaermod)%obj)
-    end do
-
-    deallocate(aero_state)
-
   contains
-
-    !===============================================================================
-    subroutine init_diags
-      dustvol(:ncol)   = 0._r8
-      scatdust(:ncol)  = 0._r8
-      absdust(:ncol)   = 0._r8
-      hygrodust(:ncol) = 0._r8
-      scatsulf(:ncol)  = 0._r8
-      abssulf(:ncol)   = 0._r8
-      hygrosulf(:ncol) = 0._r8
-      scatbc(:ncol)    = 0._r8
-      absbc(:ncol)     = 0._r8
-      hygrobc(:ncol)   = 0._r8
-      scatpom(:ncol)   = 0._r8
-      abspom(:ncol)    = 0._r8
-      hygropom(:ncol)  = 0._r8
-      scatsoa(:ncol)   = 0._r8
-      abssoa(:ncol)    = 0._r8
-      hygrosoa(:ncol)  = 0._r8
-      scatsslt(:ncol)  = 0._r8
-      abssslt(:ncol)   = 0._r8
-      hygrosslt(:ncol) = 0._r8
-    end subroutine init_diags
-
-    !===============================================================================
-    subroutine update_diags
-
-      integer :: ispec
-
-      if (iwav==idx_uv_diag) then
-         aoduv(icol) = aoduv(icol) + dopaer(icol)
-         extinctuv(icol,ilev) = extinctuv(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         if (ilev<=troplev(icol)) then
-            aoduvst(icol) = aoduvst(icol) + dopaer(icol)
-         end if
-
-      else if (iwav==idx_sw_diag) then ! vis
-         aodvis(icol) = aodvis(icol) + dopaer(icol)
-         aodabs(icol) = aodabs(icol) + pabs(icol)*mass(icol,ilev)
-         extinct(icol,ilev) = extinct(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         absorb(icol,ilev)  = absorb(icol,ilev) + pabs(icol)*air_density(icol,ilev)
-         ssavis(icol)       = ssavis(icol) + dopaer(icol)*palb(icol)
-         asymvis(icol)      = asymvis(icol) + dopaer(icol)*pasm(icol)
-         asymext(icol,ilev) = asymext(icol,ilev) + dopaer(icol)*pasm(icol)*air_density(icol,ilev)/mass(icol,ilev)
-
-         aodbin(icol) = aodbin(icol) + dopaer(icol)
-
-         if (ilev<=troplev(icol)) then
-            aodvisst(icol) = aodvisst(icol) + dopaer(icol)
-         end if
-
-         ! loop over species ...
-
-         do ispec = 1, aeroprops%nspecies(list_idx,ibin)
-            call aeroprops%get(ibin, ispec, list_ndx=list_idx, density=specdens, &
-                 spectype=spectype, refindex_sw=specrefindex, hygro=hygro_aer)
-            call aerostate%get_ambient_mmr(list_idx, ispec, ibin, specmmr)
-
-            burden(icol) = burden(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-
-            vol(icol) = specmmr(icol,ilev)/specdens
-
-            select case ( trim(spectype) )
-            case('dust')
-               dustvol(icol) = vol(icol)
-               burdendust(icol) = burdendust(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatdust(icol) = vol(icol) * specrefindex(iwav)%re
-               absdust(icol)  =-vol(icol) * specrefindex(iwav)%im
-               hygrodust(icol)= vol(icol)*hygro_aer
-            case('black-c')
-               burdenbc(icol) = burdenbc(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatbc(icol) = vol(icol) * specrefindex(iwav)%re
-               absbc(icol)  =-vol(icol) * specrefindex(iwav)%im
-               hygrobc(icol)= vol(icol)*hygro_aer
-            case('sulfate')
-               burdenso4(icol) = burdenso4(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsulf(icol) = vol(icol) * specrefindex(iwav)%re
-               abssulf(icol)  =-vol(icol) * specrefindex(iwav)%im
-               hygrosulf(icol)= vol(icol)*hygro_aer
-            case('p-organic')
-               burdenpom(icol) = burdenpom(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatpom(icol) = vol(icol) * specrefindex(iwav)%re
-               abspom(icol)  =-vol(icol) * specrefindex(iwav)%im
-               hygropom(icol)= vol(icol)*hygro_aer
-            case('s-organic')
-               burdensoa(icol) = burdensoa(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsoa(icol) = vol(icol) * specrefindex(iwav)%re
-               abssoa(icol) = -vol(icol) * specrefindex(iwav)%im
-               hygrosoa(icol)= vol(icol)*hygro_aer
-            case('seasalt')
-               burdenseasalt(icol) = burdenseasalt(icol) + specmmr(icol,ilev)*mass(icol,ilev)
-               scatsslt(icol) = vol(icol) * specrefindex(iwav)%re
-               abssslt(icol) = -vol(icol) * specrefindex(iwav)%im
-               hygrosslt(icol)= vol(icol)*hygro_aer
-            end select
-         end do
-
-         if (wetvol(icol,ilev)>1.e-40_r8 .and. vol(icol)>0._r8) then
-
-            dustaodbin(icol) = dustaodbin(icol) + dopaer(icol)*dustvol(icol)/wetvol(icol,ilev)
-
-            ! partition optical depth into contributions from each constituent
-            ! assume contribution is proportional to refractive index X volume
-
-            scath2o = watervol(icol,ilev)*crefwsw(iwav)%re
-            absh2o = -watervol(icol,ilev)*crefwsw(iwav)%im
-            sumscat = scatsulf(icol) + scatpom(icol) + scatsoa(icol) + scatbc(icol) + &
-                 scatdust(icol) + scatsslt(icol) + scath2o
-            sumabs  = abssulf(icol) + abspom(icol) + abssoa(icol) + absbc(icol) + &
-                 absdust(icol) + abssslt(icol) + absh2o
-            sumhygro = hygrosulf(icol) + hygropom(icol) + hygrosoa(icol) + hygrobc(icol) + &
-                 hygrodust(icol) + hygrosslt(icol)
-
-            scatdust(icol) = (scatdust(icol) + scath2o*hygrodust(icol)/sumhygro)/sumscat
-            absdust(icol)  = (absdust(icol) + absh2o*hygrodust(icol)/sumhygro)/sumabs
-
-            scatsulf(icol) = (scatsulf(icol) + scath2o*hygrosulf(icol)/sumhygro)/sumscat
-            abssulf(icol)  = (abssulf(icol) + absh2o*hygrosulf(icol)/sumhygro)/sumabs
-
-            scatpom(icol) = (scatpom(icol) + scath2o*hygropom(icol)/sumhygro)/sumscat
-            abspom(icol)  = (abspom(icol) + absh2o*hygropom(icol)/sumhygro)/sumabs
-
-            scatsoa(icol) = (scatsoa(icol) + scath2o*hygrosoa(icol)/sumhygro)/sumscat
-            abssoa(icol)  = (abssoa(icol) + absh2o*hygrosoa(icol)/sumhygro)/sumabs
-
-            scatbc(icol)= (scatbc(icol) + scath2o*hygrobc(icol)/sumhygro)/sumscat
-            absbc(icol)  = (absbc(icol) +  absh2o*hygrobc(icol)/sumhygro)/sumabs
-
-            scatsslt(icol) = (scatsslt(icol) + scath2o*hygrosslt(icol)/sumhygro)/sumscat
-            abssslt(icol)  = (abssslt(icol) + absh2o*hygrosslt(icol)/sumhygro)/sumabs
-
-
-            aodabsbc(icol) = aodabsbc(icol) + absbc(icol)*dopaer(icol)*(1.0_r8-palb(icol))
-
-
-
-            aodc          = (absdust(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatdust(icol))*dopaer(icol)
-            dustaod(icol) = dustaod(icol) + aodc
-
-            aodc          = (abssulf(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsulf(icol))*dopaer(icol)
-            sulfaod(icol) = sulfaod(icol) + aodc
-
-            aodc          = (abspom(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatpom(icol))*dopaer(icol)
-            pomaod(icol)  = pomaod(icol) + aodc
-
-            aodc          = (abssoa(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsoa(icol))*dopaer(icol)
-            soaaod(icol)  = soaaod(icol) + aodc
-
-            aodc          = (absbc(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatbc(icol))*dopaer(icol)
-            bcaod(icol)   = bcaod(icol) + aodc
-
-            aodc          = (abssslt(icol)*(1.0_r8 - palb(icol)) + palb(icol)*scatsslt(icol))*dopaer(icol)
-            ssltaod(icol) = ssltaod(icol) + aodc
-
-         end if
-      else if (iwav==idx_nir_diag) then
-         aodnir(icol) = aodnir(icol) + dopaer(icol)
-         extinctnir(icol,ilev) = extinctnir(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-
-         if (ilev<=troplev(icol)) then
-            aodnirst(icol) = aodnirst(icol) + dopaer(icol)
-         end if
-
-      end if
-
-      aodtot(icol) = aodtot(icol) + dopaer(icol)
-
-    end subroutine update_diags
 
     !===============================================================================
     subroutine output_bin_diags
@@ -1162,118 +1169,102 @@ contains
 
     real(r8), intent(inout) :: tauxar(pcols,pver,nlwbands) ! layer absorption optical depth
 
-
-    real(r8) :: dopaer(pcols)
     real(r8) :: mass(pcols,pver)
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_lw: '
 
     integer :: ibin, nbins
     integer :: iwav, ilev
-    integer :: ncol, icol, istat
+    integer :: ncol, icol
+    integer :: num_aero_models
 
-    type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
-                                                     ! multiple aerosol representations in the same sim
-                                                     ! such as MAM and CARMA
-
-    class(aerosol_optics), pointer :: aero_optics
     class(aerosol_state),      pointer :: aerostate
     class(aerosol_properties), pointer :: aeroprops
-
-    real(r8), allocatable :: pabs(:)
 
     real(r8) :: relh(pcols,pver)
     real(r8) :: sate(pcols,pver)     ! saturation vapor pressure
     real(r8) :: satq(pcols,pver)     ! saturation specific humidity
     real(r8) :: sulfwtpct(pcols,pver) ! sulf weight percent
 
-    character(len=32) :: opticstype
+    character(len=ot_length) :: opticstype
     integer :: iaermod
 
+    real(r8), pointer :: geometric_radius(:,:)
+    integer  :: idx  ! index to pbuf for geometric radius
+    character(len=16) :: pbuf_fld
+
     real(r8) :: lwabs(pcols,pver)
+
+    ! Per-bin optics arrays from portable core
+    real(r8) :: tau_lw_bin(pcols,pver,nlwbands)
+    real(r8) :: absorp_bin(pcols,pver,nlwbands)
+
+    character(len=512)   :: errmsg
+    integer              :: errflg
+
     lwabs = 0._r8
     tauxar = 0._r8
 
-    nullify(aero_optics)
-
-    allocate(aero_state(num_aero_models), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: aero_state')
-    end if
-
-    iaermod = 0
-    if (modal_active) then
-       iaermod = iaermod+1
-       aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-    end if
-    if (carma_active) then
-       iaermod = iaermod+1
-       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
-    end if
+    num_aero_models = aerosol_instances_get_num_models()
 
     ncol = state%ncol
 
     mass(:ncol,:) = state%pdeldry(:ncol,:)*rga
 
-    allocate(pabs(ncol), stat=istat)
-    if (istat/=0) then
-       call endrun(prefix//'array allocation error: pabs')
-    end if
+    ! calculate relative humidity for table lookup into rh grid
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+    relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+    relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
     aeromodel: do iaermod = 1,num_aero_models
 
-       aeroprops => aero_props(iaermod)%obj
-       aerostate => aero_state(iaermod)%obj
+       aeroprops => aerosol_instances_get_props(iaermod, list_idx)
+       ! Null when a globally active model has no entries in this diagnostic list.
+       if (.not. associated(aeroprops)) cycle aeromodel
+       aerostate => aerosol_instances_get_state(iaermod, list_idx, state%lchnk)
 
-       nbins=aero_props(iaermod)%obj%nbins(list_idx)
+       nbins=aeroprops%nbins()
 
        sulfwtpct(:ncol,:pver) = aerostate%wgtpct(ncol,pver)
 
        binloop: do ibin = 1, nbins
 
-          call aeroprops%optics_params(list_idx, ibin, opticstype=opticstype)
-
+          ! Get volcanic geometric_radius from pbuf if needed (CAM-specific)
+          nullify(geometric_radius)
+          call aeroprops%optics_params(bin_ndx=ibin, opticstype=opticstype)
           select case (trim(opticstype))
-          case('modal') ! refractive method
-             aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
-                                                    ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-          case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-             aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
-                                                        ibin, ncol, pver, relh(:ncol,:))
-          case('hygroscopic_wtp')
-             aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
-                                                      ibin, ncol, pver, sulfwtpct(:ncol,:))
-          case default
-             call endrun(prefix//'optics method not recognized')
+          case('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
+             pbuf_fld = 'VOLC_RAD_GEOM '
+             if (len_trim(opticstype)>15) then
+                pbuf_fld = trim(pbuf_fld)//opticstype(16:16)
+             endif
+             idx = pbuf_get_index(pbuf_fld)
+             call pbuf_get_field(pbuf, idx, geometric_radius)
           end select
 
-          if (associated(aero_optics)) then
+          ! Call portable aerosol optics driver.
+          ! geometric_radius is a null pointer for non-volcanic types;
+          ! the optional pointer dummy checks associated() internally.
+          call aerosol_optics_lw_bin(aeroprops, aerostate, ibin, &
+               ncol, pver, nswbands, nlwbands, numrh, &
+               relh(:ncol,:), sulfwtpct(:ncol,:), mass(:ncol,:), crefwsw, crefwlw, &
+               geometric_radius=geometric_radius, &
+               tau_lw_bin=tau_lw_bin(:ncol,:,:), absorp_bin=absorp_bin(:ncol,:,:), &
+               errmsg=errmsg, errflg=errflg)
 
-             wavelength: do iwav = 1, nlwbands
-
-                vertical: do ilev = 1, pver
-                   call aero_optics%lw_props(ncol, ilev, iwav, pabs )
-
-                   column: do icol = 1, ncol
-                      dopaer(icol) = pabs(icol)*mass(icol,ilev)
-                      tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + dopaer(icol)
-                      lwabs(icol,ilev) = lwabs(icol,ilev) + pabs(icol)
-                   end do column
-
-                end do vertical
-
-             end do wavelength
-
-          else
-             call endrun(prefix//'aero_optics object pointer not associated')
+          if (errflg /= 0) then
+            call endrun(prefix//errmsg)
           end if
 
-          deallocate(aero_optics)
-          nullify(aero_optics)
+          ! Accumulate into total arrays
+          wavelength: do iwav = 1, nlwbands
+             vertical: do ilev = 1, pver
+                column: do icol = 1, ncol
+                   tauxar(icol,ilev,iwav) = tauxar(icol,ilev,iwav) + tau_lw_bin(icol,ilev,iwav)
+                   lwabs(icol,ilev) = lwabs(icol,ilev) + absorp_bin(icol,ilev,iwav)
+                end do column
+             end do vertical
+          end do wavelength
 
        end do binloop
     end do aeromodel
@@ -1283,15 +1274,6 @@ contains
     if (lw10um_indx>0) then
        call outfld('AODABSLW'//diag(list_idx), tauxar(:,:,lw10um_indx), pcols, state%lchnk)
     end if
-
-    deallocate(pabs)
-
-    do iaermod = 1,num_aero_models
-       deallocate(aero_state(iaermod)%obj)
-       nullify(aero_state(iaermod)%obj)
-    end do
-
-    deallocate(aero_state)
 
   end subroutine aerosol_optics_cam_lw
 

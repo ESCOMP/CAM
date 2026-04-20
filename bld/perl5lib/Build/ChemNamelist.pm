@@ -7,7 +7,7 @@ no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 #-------------------------------------------------------------------------------------
 # Date         Contributor      Modification
 #-------------------------------------------------------------------------------------
-# 26 Jan 2011  Francis Vitt     Created 
+# 26 Jan 2011  Francis Vitt     Created
 #-------------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------------
 
@@ -46,8 +46,8 @@ sub set_dep_lists
 {
     my ( $chem, $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print_lvl ) = @_;
 
-    my ( $gas_wetdep_list, $aer_wetdep_list, $aer_drydep_list, $aer_sol_facti, $aer_sol_factb, 
-         $aer_scav_coef, $gas_drydep_list ) ;
+    my ( $gas_wetdep_list, $gas_wetdep_ice_uptake_list, $aer_wetdep_list, $aer_drydep_list,
+	 $aer_sol_facti, $aer_sol_factb, $aer_scav_coef, $gas_drydep_list ) ;
 
     my @species_list ;
     my @nottransported_list ;
@@ -74,6 +74,9 @@ sub set_dep_lists
     $gas_wetdep_list = get_gas_wetdep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
     if ($print_lvl>=2) {print " gas wet dep list : $gas_wetdep_list  \n" ;}
 
+    $gas_wetdep_ice_uptake_list = get_gas_wetdep_ice_uptake_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
+    if ($print_lvl>=2) {print " gas wet dep ice uptake list : $gas_wetdep_ice_uptake_list  \n" ;}
+
     $aer_wetdep_list = get_aer_wetdep_list( $chem, $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
     if ($print_lvl>=2) {print " aer wet dep list : $aer_wetdep_list  \n" ;}
 
@@ -84,7 +87,7 @@ sub set_dep_lists
     if ($print_lvl>=2) {print " aer dry dep list : $aer_drydep_list  \n" ;}
 
     # set solubility factors for aerosols
-    if (length($aer_wetdep_list)>2){ 
+    if (length($aer_wetdep_list)>2){
         my @values = split(',', $aer_wetdep_list);
         my $first = 1; my $pre = "";
         foreach my $val (@values){
@@ -121,15 +124,16 @@ sub set_dep_lists
         }
     }
 
-    return ( $gas_wetdep_list, $aer_wetdep_list, $aer_sol_facti, $aer_sol_factb, $aer_scav_coef, 
-             $aer_drydep_list, $gas_drydep_list );
+    return ( $gas_wetdep_list, $gas_wetdep_ice_uptake_list, $aer_wetdep_list,
+	     $aer_sol_facti, $aer_sol_factb, $aer_scav_coef, $gas_drydep_list, $aer_drydep_list ) ;
+
 }
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 sub set_aero_modes_info
 {
-    my ( $cfg, $data_src, $print_lvl, $mode_types, $modal_species, $modal_groups, 
+    my ( $cfg, $data_src, $print_lvl, $mode_types, $modal_species, $modal_groups,
          $mode_spec_type, $mode_spec, $mode_spec_cw, $mode_spec_src ) = @_;
 
     my $chem_proc_src = $cfg->get('chem_proc_src');
@@ -214,6 +218,8 @@ sub get_gas_drydep_list
     my $master_file = '';
     if ($chem =~ /geoschem/) {
       $master_file = "$cfg_dir/namelist_files/geoschem_master_gas_drydep_list.xml";
+    } elsif ($chem =~ /_slh/) {
+      $master_file = "$cfg_dir/namelist_files/slh_master_gas_drydep_list.xml";
     } else {
       $master_file = "$cfg_dir/namelist_files/mozart_master_gas_drydep_list.xml";
     }
@@ -255,7 +261,7 @@ sub get_aer_wetdep_list
     } else {
       $master_file = "$cfg_dir/namelist_files/mozart_master_aer_wetdep_list.xml";
     }
-      
+
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " aer wet dep list : $list  \n" ;}
@@ -270,6 +276,8 @@ sub get_gas_wetdep_list
     my $master_file = '';
     if ($chem =~ /geoschem/) {
       $master_file = "$cfg_dir/namelist_files/geoschem_master_gas_wetdep_list.xml";
+    } elsif ($chem =~ /_slh/) {
+      $master_file = "$cfg_dir/namelist_files/slh_master_gas_wetdep_list.xml";
     } else {
       $master_file = "$cfg_dir/namelist_files/mozart_master_gas_wetdep_list.xml";
     }
@@ -277,6 +285,20 @@ sub get_gas_wetdep_list
     my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " gas wet dep list : $list  \n" ;}
+
+    return ($list);
+}
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+sub get_gas_wetdep_ice_uptake_list
+{
+    my ($chem,$cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
+
+    my $master_file = "$cfg_dir/namelist_files/gas_wetdep_ice_uptake_list.xml";
+
+    my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
+
+    if ($print_lvl>=2) {print " gas wet dep ice uptake list : $list  \n" ;}
 
     return ($list);
 }
@@ -344,4 +366,4 @@ sub quote_string {
     }
     return $str;
 }
-1; # to appease require 
+1; # to appease require

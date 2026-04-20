@@ -537,7 +537,7 @@ subroutine aerosol_optics_init(phys_prop, nc_id)
    case ('insoluble')
       call insoluble_optics_init(phys_prop, nc_id)
 
-   case ('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3')
+   case ('volcanic_radius','volcanic_radius1','volcanic_radius2','volcanic_radius3','volcanic_radius5')
       call volcanic_radius_optics_init(phys_prop, nc_id)
 
    case ('volcanic')

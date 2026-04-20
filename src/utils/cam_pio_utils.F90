@@ -1152,7 +1152,7 @@ contains
     if (present(errcode)) then
        errcode = ierr
     end if
-    
+
     if(ierr/= PIO_NOERR .and. (.not. present(errcode))) then
        call endrun('Failed to open '//trim(fname)//' to read')
     end if

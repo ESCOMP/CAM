@@ -626,6 +626,9 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
      'cam_out%solld',               'cam_out_solld',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'cam_out%flwds',               'cam_out_flwds',           'W m-2',          horiz_only)
+
+   call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_out%netsw',               'cam_out_netsw',           'unset',          horiz_only)
 
 end subroutine cam_out_snapshot_init
@@ -1232,7 +1235,14 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
          ! Retrieve the pbuf data. Special handling for certain
          ! integer-type fields.
-         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop') then
+         ! This will allow data written out to not be mangled,
+         ! and also allow writing out snapshots with debug on in GNU compiler.
+         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_JT' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_MAXG' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_IDEEP' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'NMXRGN' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ACNUNM') then
             call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d_int)
             ! copy into real
             allocate(tmpptr2d(size(tmpptr2d_int, 1), size(tmpptr2d_int, 2)))

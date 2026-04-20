@@ -19,9 +19,9 @@ module aero_model
   use chem_mods,         only: gas_pcnst, adv_mass
   use mo_tracname,       only: solsym
   use infnan,            only: nan, assignment(=)
-  use rad_constituents,  only: rad_cnst_get_info, rad_cnst_get_info_by_bin, &
-                               rad_cnst_get_info_by_bin_spec, rad_cnst_get_bin_props_by_idx, &
-                               rad_cnst_get_bin_mmr_by_idx
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_info_by_bin_spec, &
+                               rad_aer_get_bin_props_by_idx
+  use aerosol_mmr_cam,   only: rad_cnst_get_bin_mmr_by_idx
   use mo_setsox,         only: setsox, has_sox
   use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
@@ -156,17 +156,17 @@ contains
 
     integer :: idx, ierr
 
-    call rad_cnst_get_info( 0, nbins=nbins)
+    call rad_aer_get_info( 0, nbins=nbins)
     allocate( nspec(nbins), stat=ierr )
     if (ierr/=0) call endrun('aero_model_register: allocate error')
 
     ! add pbuf fields for interstitial (cloud borne) aerosols in CARMA
     do m = 1, nbins
-       call rad_cnst_get_info_by_bin(0, m, num_name=num_name, num_name_cw=num_name_cw, nspec=nspec(m))
+       call rad_aer_get_info_by_bin(0, m, num_name=num_name, num_name_cw=num_name_cw, nspec=nspec(m))
        call pbuf_add_field(num_name,'global',dtype_r8,(/pcols,pver/), idx)
        call pbuf_add_field(num_name_cw,'global',dtype_r8,(/pcols,pver/), idx)
        do l = 1, nspec(m)
-          call rad_cnst_get_info_by_bin_spec(0, m, l, spec_name_cw=spec_name_cw)
+          call rad_aer_get_info_by_bin_spec(0, m, l, spec_name_cw=spec_name_cw)
           call pbuf_add_field(spec_name_cw,'global',dtype_r8,(/pcols,pver/),idx)
        enddo
     enddo
@@ -230,13 +230,13 @@ contains
 
     if (is_first_step()) then
        do m = 1, nbins
-          call rad_cnst_get_info_by_bin(0, m, num_name=num_name, num_name_cw=num_name_cw)
+          call rad_aer_get_info_by_bin(0, m, num_name=num_name, num_name_cw=num_name_cw)
           idx = pbuf_get_index(num_name)
           call pbuf_set_field(pbuf2d, idx, 0.0_r8)
           idx = pbuf_get_index(num_name_cw)
           call pbuf_set_field(pbuf2d, idx, 0.0_r8)
           do l = 1, nspec(m)
-             call rad_cnst_get_info_by_bin_spec(0, m, l, spec_name_cw=spec_name_cw)
+             call rad_aer_get_info_by_bin_spec(0, m, l, spec_name_cw=spec_name_cw)
              idx = pbuf_get_index(spec_name_cw)
              call pbuf_set_field(pbuf2d, idx, 0.0_r8)
           enddo
@@ -294,9 +294,9 @@ contains
          bin_idx(m,l) = ii
 
          if (l <= nspec(m) ) then   ! species
-            call rad_cnst_get_info_by_bin_spec(0, m, l, spec_name=fieldname(ii), spec_name_cw=fieldname_cw(ii))
+            call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=fieldname(ii), spec_name_cw=fieldname_cw(ii))
          else  !number
-            call rad_cnst_get_info_by_bin(0, m, num_name=fieldname(ii), num_name_cw=fieldname_cw(ii))
+            call rad_aer_get_info_by_bin(0, m, num_name=fieldname(ii), num_name_cw=fieldname_cw(ii))
          end if
 
          call cnst_get_ind(fieldname(ii), idxtmp, abort=.false.)
@@ -425,7 +425,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
                   state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop )
+                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
@@ -447,10 +447,13 @@ contains
     real(r8), intent(inout) :: dm_aer(:,:,:)
     real(r8), intent(inout) :: sad_trop(:,:)  ! aerosol surface area density (cm2/cm3), zeroed above the tropopause
     real(r8), intent(out)   :: reff_trop(:,:) ! aerosol effective radius (cm), zeroed above the tropopause
+    real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
     integer :: beglev(ncol)
     integer :: endlev(ncol)
+
+    sad_ssa = -huge(1._r8)
 
     beglev(:ncol)=ltrop(:ncol)+1
     endlev(:ncol)=pver
@@ -610,7 +613,7 @@ contains
        ! Note: taken here from CARMA pbuf field which may be not any more consistent with changed fields after carma was applied
        ! Need to add new code that recalcuates dryr and wetr
        ! get bin info
-       call rad_cnst_get_info_by_bin(0, m, nspec=nspec(m), bin_name=bin_name)
+       call rad_aer_get_info_by_bin(0, m, nspec=nspec(m), bin_name=bin_name)
 
        nchr = len_trim(bin_name)-2
        shortname = bin_name(:nchr)
@@ -640,7 +643,7 @@ contains
        do l = 1, nspec(m)
           mm = bin_idx(m, l)
           if (l <= nspec(m)) then
-             call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+             call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
              call rad_cnst_get_bin_mmr_by_idx(0, m, l, 'a', state, pbuf, raer(mm)%fld)
              call rad_cnst_get_bin_mmr_by_idx(0, m, l, 'c', state, pbuf, qqcw(mm)%fld)  ! cloud-borne aerosol
              if (trim(spectype) == 'sulfate') then
@@ -759,7 +762,7 @@ contains
        do l = 1, nspec(m)  ! for sulfate only
           mm = bin_idx(m, l)
          ! sulfate mass that needs to be added to the total mass
-          call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+          call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
           if (trim(spectype) == 'sulfate') then
               ! only do loop if vmrcw has changed
               do k=1,pver
@@ -851,7 +854,7 @@ contains
     reff = 0._r8
 
     do ibin=1,nbins ! loop over aerosol bins
-      call rad_cnst_get_info_by_bin(0, ibin, bin_name=bin_name)
+      call rad_aer_get_info_by_bin(0, ibin, bin_name=bin_name)
 
       nchr = len_trim(bin_name)-2
       shortname = bin_name(:nchr)
@@ -884,7 +887,7 @@ contains
 
              tot_mass = tot_mass + aer_bin_mmr(icol,ilev)
 
-             call rad_cnst_get_bin_props_by_idx(0, ibin, ispec, spectype=spectype)
+             call rad_aer_get_bin_props_by_idx(0, ibin, ispec, spectype=spectype)
 
              if ( trim(spectype) == 'sulfate'   .or. &
                 trim(spectype) == 's-organic' .or. &
