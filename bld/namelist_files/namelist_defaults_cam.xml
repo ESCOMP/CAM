@@ -2166,6 +2166,7 @@
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 <clubb_do_icesuper                                > .false. </clubb_do_icesuper>
+<clubb_l_ascending_grid                           > .false. </clubb_l_ascending_grid>
 
 
 <!-- Lscale_from_tau set by clubb_opts config option -->
@@ -2227,9 +2228,13 @@
 <clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_gamma_coefb phys="cam7"                    > 0.3     </clubb_gamma_coefb>
+<clubb_grid_adapt_in_time_method                  > 0       </clubb_grid_adapt_in_time_method>
+<clubb_fill_holes_type                            > 2       </clubb_fill_holes_type>
+<clubb_grid_remap_method                          > 1       </clubb_grid_remap_method>
 <clubb_ipdf_call_placement                        > 2       </clubb_ipdf_call_placement>
 <clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
 <clubb_lmin_coef                                  > 0.1     </clubb_lmin_coef>
+<clubb_l_add_dycore_grid                          > .false. </clubb_l_add_dycore_grid>
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
 <clubb_l_C2_cloud_frac                            > .false. </clubb_l_C2_cloud_frac>
 <clubb_l_calc_thlp2_rad                           > .true.  </clubb_l_calc_thlp2_rad>
@@ -2262,6 +2267,8 @@
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_predict_upwp_vpwp phys="cam7"            > .true.  </clubb_l_predict_upwp_vpwp>
+<clubb_l_ho_nontrad_coriolis                      > .false. </clubb_l_ho_nontrad_coriolis>
+<clubb_l_ho_trad_coriolis                         > .false. </clubb_l_ho_trad_coriolis>
 <clubb_l_prescribed_avg_deltaz                    > .false. </clubb_l_prescribed_avg_deltaz>
 <clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_rtm_nudge                                > .false. </clubb_l_rtm_nudge>
