@@ -714,7 +714,8 @@
 <!-- Time-variant chemistry surface values -->
 <bndtvghg>atm/cam/ggas/ghg_hist_1765-2005_c091218.nc</bndtvghg>
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_RNOCStrend_c141002.nc</flbc_file>
-<flbc_file chem="ghg_mam4">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_file chem="ghg_mam4" phys="cam6">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_file                 phys="cam7">atm/waccm/lb/CMIP7/LBC_17500116-20221216_CMIP7_0p5degLat_OCSupdate_c250523.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
 <co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
@@ -2603,7 +2604,7 @@
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.50D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.55D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
 
