@@ -284,7 +284,7 @@ end subroutine ccpp_const_props_init
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !CAM-equivalent stub so dynamic constituents register routines can build
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++
-subroutine instantiate(this, std_name, long_name, units, vertical_dim,  &
+subroutine instantiate(this, std_name, long_name, diag_name, units, vertical_dim,  &
         advected, default_value, min_value, molar_mass, water_species,         &
         mixing_ratio_type, errcode, errmsg)
       use ccpp_kinds, only: kind_phys
@@ -293,6 +293,7 @@ subroutine instantiate(this, std_name, long_name, units, vertical_dim,  &
       class(ccpp_constituent_properties_t), intent(inout) :: this
       character(len=*),                     intent(in)    :: std_name
       character(len=*),                     intent(in)    :: long_name
+      character(len=*),                     intent(in)    :: diag_name
       character(len=*),                     intent(in)    :: units
       character(len=*),                     intent(in)    :: vertical_dim
       logical, optional,                    intent(in)    :: advected
