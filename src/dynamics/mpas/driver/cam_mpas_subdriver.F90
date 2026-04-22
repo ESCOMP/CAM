@@ -262,7 +262,8 @@ contains
        ! MPAS-A setup code that it is operating as a CAM dycore, and that it is necessary to
        ! allocate scalars separately from other Registry-defined fields
        !
-       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
+       ! In MPAS, there must be at least one constituent, `qv`, which denotes water vapor mixing ratio.
+       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', max(1, num_scalars))
 
        mesh_iotype = MPAS_IO_NETCDF  ! Not actually used
        call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype, pio_file_desc=fh_ini)
@@ -482,26 +483,29 @@ contains
           return
        end if
 
-       !
-       ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
-       ! something has gone wrong
-       !
-       if (size(cnst_name) /= num_scalars) then
-          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
-                              messageType=MPAS_LOG_ERR)
-          call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
-                              messageType=MPAS_LOG_ERR)
-          ierr = 1
-          return
-       end if
-
-       !
-       ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
-       ! the case, something has gone wrong
-       !
        if (size(cnst_name) > 0) then
+          !
+          ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
+          ! something has gone wrong
+          !
+          if (size(cnst_name) /= num_scalars) then
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
+                messageType=MPAS_LOG_ERR)
+             call mpas_log_write( &
+                'size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
+                messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+
+          !
+          ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
+          ! the case, something has gone wrong
+          !
           if (trim(cnst_name(1)) /= 'Q') then
-             call mpas_log_write(trim(subname)//': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
           end if
@@ -552,6 +556,10 @@ contains
           cam_from_mpas_cnst(mpas_from_cam_cnst(i)) = i
        end do
 
+       call mpas_pool_add_dimension(statePool, 'index_qv', 1)
+       call mpas_pool_add_dimension(statePool, 'index_qc', 0)
+       call mpas_pool_add_dimension(statePool, 'index_tke', 0)
+
        timeLevs = 2
 
        do i = 1, timeLevs
@@ -565,7 +573,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(statePool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg kg^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Water vapor mixing ratio')
@@ -615,6 +622,10 @@ contains
           return
        end if
 
+       call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
+       call mpas_pool_add_dimension(tendPool, 'index_qc', 0)
+       call mpas_pool_add_dimension(tendPool, 'index_tke', 0)
+
        timeLevs = 1
 
        do i = 1, timeLevs
@@ -628,7 +639,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'tend_qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
