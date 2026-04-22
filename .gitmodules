@@ -104,7 +104,7 @@
 	url = https://github.com/larson-group/clubb_release
         fxrequired = AlwaysRequired
         fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20240605_73d60f6_gpufixes_posinf
+        fxtag = clubb_4ncar_20260109_ddf5110
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
 [submodule "ext_co2_cooling"]
