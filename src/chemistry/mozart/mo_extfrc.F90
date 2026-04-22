@@ -207,6 +207,7 @@ contains
                'vertically intergrated external forcing for '//trim(spc_name) )
           if ( history_aerosol .or. history_chemistry ) then
              call add_default( trim(spc_name)//'_CLXF', 1, ' ' )
+             call add_default( trim(spc_name)//'_CMXF', 1, ' ' )
           endif
           if ( history_cesm_forcing .and. spc_name == 'NO2' ) then
              call add_default( trim(spc_name)//'_CLXF', 1, ' ' )
