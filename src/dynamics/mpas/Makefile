@@ -1,4 +1,4 @@
-GIT_VERSION=$(shell git -C "$(MPAS_SRC_ROOT)/dycore" describe --always --dirty --tags || echo "N/A" )
+GIT_VERSION=$(shell git -C "$(MPAS_SRC_ROOT)/dycore" describe --always --dirty --tags || echo "N/A")
 CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_CAM_DYCORE -DMPAS_PIO_SUPPORT -DMPAS_NO_ESMF_INIT -DMPAS_GIT_VERSION="$(GIT_VERSION)" -DMPAS_BUILD_TARGET="N/A" -DMPAS_NAMELIST_SUFFIX="atmosphere"
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
@@ -27,7 +27,8 @@ INTERFACE_OBJS = \
 DYN_OBJS = \
 	mpas_atm_time_integration.o \
 	mpas_atm_boundaries.o \
-	mpas_atm_iau.o
+	mpas_atm_iau.o \
+	mpas_atm_dissipation_models.o
 
 DIAG_OBJS = \
 	mpas_atm_diagnostics_manager.o \
@@ -83,8 +84,6 @@ FRAME_OBJS = \
 	mpas_io_streams.o \
 	mpas_bootstrapping.o \
 	mpas_io_units.o \
-	mpas_stream_inquiry.o \
-	stream_inquiry.o \
 	mpas_stream_manager.o \
 	mpas_stream_list.o \
 	mpas_forcing.o \
@@ -99,8 +98,11 @@ FRAME_OBJS = \
 	regex_matching.o \
 	mpas_log.o \
 	mpas_halo.o \
-	mpas_string_utils.o
-
+	mpas_string_utils.o \
+	mpas_ptscotch_interface.o \
+	ptscotch_interface.o \
+	mpas_stream_inquiry.o \
+	stream_inquiry.o
 
 UTIL_OBJS = \
 	ezxml.o
@@ -139,8 +141,7 @@ mpas_framework.o: mpas_dmpar.o \
                   mpas_io_units.o \
                   mpas_block_decomp.o \
                   mpas_stream_manager.o \
-                  mpas_c_interfacing.o \
-                  mpas_halo.o
+                  mpas_c_interfacing.o
 
 mpas_abort.o: mpas_kind_types.o mpas_io_units.o mpas_threading.o
 
@@ -160,7 +161,7 @@ mpas_pool_routines.o: mpas_derived_types.o mpas_field_routines.o mpas_threading.
 
 mpas_decomp.o: mpas_derived_types.o mpas_stream_manager.o mpas_log.o
 
-mpas_hash.o : mpas_derived_types.o
+mpas_hash.o: mpas_derived_types.o
 
 mpas_dmpar.o: mpas_sort.o mpas_kind_types.o mpas_derived_types.o mpas_hash.o mpas_threading.o mpas_pool_routines.o mpas_log.o
 
@@ -170,7 +171,7 @@ mpas_timekeeping.o: mpas_string_utils.o mpas_kind_types.o mpas_derived_types.o m
 
 mpas_timer.o: mpas_kind_types.o mpas_dmpar.o mpas_threading.o mpas_log.o
 
-mpas_block_decomp.o: mpas_derived_types.o mpas_hash.o mpas_io_units.o mpas_dmpar.o
+mpas_block_decomp.o: mpas_derived_types.o mpas_hash.o mpas_io_units.o mpas_dmpar.o mpas_timer.o mpas_ptscotch_interface.o
 
 mpas_block_creator.o: mpas_dmpar.o mpas_hash.o mpas_sort.o mpas_io_units.o mpas_block_decomp.o mpas_stream_manager.o mpas_decomp.o mpas_abort.o $(DEPS)
 
@@ -184,8 +185,6 @@ mpas_io_units.o: mpas_kind_types.o
 
 mpas_threading.o: mpas_kind_types.o
 
-mpas_stream_inquiry.o: mpas_derived_types.o mpas_log.o mpas_c_interfacing.o stream_inquiry.o
-
 mpas_stream_list.o: mpas_derived_types.o mpas_kind_types.o mpas_io_streams.o mpas_timekeeping.o regex_matching.o mpas_log.o
 
 mpas_stream_manager.o: mpas_io_streams.o mpas_timekeeping.o mpas_derived_types.o mpas_kind_types.o mpas_c_interfacing.o mpas_stream_list.o mpas_dmpar.o mpas_io.o mpas_threading.o mpas_log.o
@@ -193,6 +192,10 @@ mpas_stream_manager.o: mpas_io_streams.o mpas_timekeeping.o mpas_derived_types.o
 mpas_forcing.o: mpas_derived_types.o mpas_timekeeping.o mpas_stream_manager.o mpas_log.o mpas_io_units.o
 
 mpas_halo.o: mpas_derived_types.o mpas_pool_routines.o mpas_log.o
+
+mpas_ptscotch_interface.o: mpas_derived_types.o mpas_log.o
+
+mpas_stream_inquiry.o: mpas_derived_types.o mpas_log.o mpas_c_interfacing.o
 
 #
 # Operator dependencies
@@ -240,8 +243,9 @@ incs: $(REGISTRY_FILE)
 #
 dycore: $(DYN_OBJS) $(DIAGNOSTICS) $(DIAG_OBJS) $(INTERFACE_OBJS)
 
-mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o mpas_atm_boundaries.o
+mpas_atm_dissipation_models.o: mpas_atm_dimensions.o
 
+mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o mpas_atm_boundaries.o mpas_atm_dissipation_models.o
 
 #
 # Diagnostics
@@ -261,8 +265,7 @@ mpas_atm_core_interface.o: mpas_atm_core.o incs
 
 mpas_atm_core.o: mpas_atm_threading.o mpas_atm_time_integration.o mpas_atm_diagnostics_manager.o mpas_atm_halos.o
 
-cam_mpas_subdriver.o: mpas_atm_core_interface.o mpas_derived_types.o mpas_framework.o mpas_domain_routines.o mpas_pool_routines.o
-
+cam_mpas_subdriver.o: mpas_atm_core.o mpas_atm_core_interface.o mpas_atm_time_integration.o mpas_atm_dimensions.o mpas_atm_halos.o mpas_atm_threading.o
 
 clean:
 	rm registry Registry_processed.xml *.inc *.o *.mod lib*.a
@@ -275,7 +278,7 @@ clean:
 	$(CC) -c $(CFLAGS) -DUNDERSCORE $(CPPFLAGS) $(CPPINCLUDES) -I$(MPAS_SRC_ROOT)/dycore/src/external/ezxml $<
 
 %.o : %.F
-	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) $<
+	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) -I$(MPAS_SRC_ROOT)/dycore/src/framework $<
 
 %.o : %.F90
 	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) $<
