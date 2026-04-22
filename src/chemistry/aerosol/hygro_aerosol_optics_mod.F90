@@ -47,11 +47,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ilist, ibin, ncols, nlevs, numrh, relhum) &
+  function constructor(aero_props, aero_state, ibin, ncols, nlevs, numrh, relhum) &
                 result(newobj)
     class(aerosol_properties),intent(in) :: aero_props   ! aerosol_properties object
     class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncols, nlevs, numrh
     real(r8),intent(in) :: relhum(ncols,nlevs)
@@ -85,13 +84,13 @@ contains
     newobj%wrh(1:ncols,1:nlevs) = rhtrunc(1:ncols,1:nlevs) * numrh - newobj%krh(1:ncols,1:nlevs) ! (-) weighting on left side values
 
     ! optical properties tables
-    call aero_props%optics_params(ilist, ibin, &
+    call aero_props%optics_params(ibin, &
          sw_hygroscopic_ext=newobj%ext_sw, &
          sw_hygroscopic_ssa=newobj%ssa_sw, &
          sw_hygroscopic_asm=newobj%asm_sw, &
          lw_insoluble_ext=newobj%abs_lw )
 
-    call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
+    call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
   end function constructor
 

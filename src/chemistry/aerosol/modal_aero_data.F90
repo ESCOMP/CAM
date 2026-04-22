@@ -19,7 +19,7 @@
       use chem_mods,       only: gas_pcnst
       use radconstants,    only: nswbands, nlwbands
       use shr_const_mod,   only: pi => shr_const_pi
-      use rad_constituents,only: rad_cnst_get_info, rad_cnst_get_aer_props, rad_cnst_get_mode_props
+      use radiative_aerosol,only: rad_aer_get_info, rad_aer_get_props, rad_aer_get_mode_props
       use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk
 
       implicit none
@@ -58,7 +58,6 @@
       real(r8), public, protected, allocatable :: dgnum_amode(:)
       real(r8), public, protected, allocatable :: dgnumlo_amode(:)
       real(r8), public, protected, allocatable :: dgnumhi_amode(:)
-      integer,  public, protected, allocatable :: mode_size_order(:)
 
       !   input sigmag_amode
       real(r8), public, protected, allocatable :: sigmag_amode(:)
@@ -157,7 +156,7 @@
     character(len=32) :: spec_name, mode_type
     character(len=1) :: modestr
 
-    call rad_cnst_get_info( 0, nmodes=ntot_amode )
+    call rad_aer_get_info( 0, nmodes=ntot_amode )
     allocate( nspec_amode(ntot_amode) )
     allocate( numptr_amode(ntot_amode) )
     allocate( numptrcw_amode(ntot_amode) )
@@ -175,7 +174,6 @@
        mcalcwater_amode(:) = 0
     endif
     allocate(dgnum_amode(ntot_amode))
-    allocate(mode_size_order(ntot_amode))
     allocate(dgnumlo_amode(ntot_amode))
     allocate(dgnumhi_amode(ntot_amode))
     allocate(sigmag_amode(ntot_amode))
@@ -211,12 +209,12 @@
     )
 
     do m = 1, ntot_amode
-       call rad_cnst_get_info(0, m, mode_type=mode_type, nspec=nspec_amode(m))
+       call rad_aer_get_info(0, m, mode_type=mode_type, nspec=nspec_amode(m))
        modename_amode(m) = mode_type
        ! count number of soa, poa, and bc bins in mode 1
        if (m==1) then
           do l = 1, nspec_amode(m)
-             call rad_cnst_get_info(0, m, l, spec_name=spec_name )
+             call rad_aer_get_info(0, m, l, spec_name=spec_name )
              if (spec_name(:3) == 'soa') nsoa=nsoa+1
              if (spec_name(:3) == 'pom') npoa=npoa+1
              if (spec_name(:2) == 'bc' ) nbc =nbc +1
@@ -239,7 +237,7 @@
 
     do m = 1, ntot_amode
        do l = 1, nspec_amode(m)
-          call rad_cnst_get_info(0, m, l, spec_name=spec_name )
+          call rad_aer_get_info(0, m, l, spec_name=spec_name )
           xname_massptr(l,m) = spec_name
           write(modestr,'(I1)') m
           idx = index( xname_massptr(l,m), '_' )
@@ -408,7 +406,7 @@
        !--------------------------------------------------------------
        ! ... local variables
        !--------------------------------------------------------------
-       integer :: l, m, i, lchnk, tmp
+       integer :: l, m, i, lchnk
 
        integer :: qArrIndex
        complex(r8), pointer  :: refindex_aer_sw(:), &
@@ -423,11 +421,9 @@
 
        ! Mode specific properties.
        do m = 1, ntot_amode
-          call rad_cnst_get_mode_props(0, m, &
+          call rad_aer_get_mode_props(0, m, &
              sigmag=sigmag_amode(m), dgnum=dgnum_amode(m), dgnumlo=dgnumlo_amode(m), &
              dgnumhi=dgnumhi_amode(m), rhcrystal=rhcrystal_amode(m), rhdeliques=rhdeliques_amode(m))
-
-          mode_size_order(m) = m
 
           !   compute frequently used parameters: ln(sigmag),
           !   volume-to-number and volume-to-surface conversions, ...
@@ -445,16 +441,6 @@
           alnv2nhi_amode(m) = log( voltonumbhi_amode(m) )
 
        end do
-
-       do i = 1, ntot_amode-1 ! order from largest to smallest
-          do m = 2, ntot_amode
-             if (dgnum_amode(mode_size_order(m-1))<dgnum_amode(mode_size_order(m))) then
-                tmp = mode_size_order(m-1)
-                mode_size_order(m-1)= mode_size_order(m)
-                mode_size_order(m) = tmp
-             endif
-          enddo
-       enddo
 
        lptr2_soa_g_amode(:) = -1
        soa_ndx = 0
@@ -487,7 +473,7 @@
        do m = 1, ntot_amode
           do l = 1, nspec_amode(m)
              qArrIndex =  lmassptr_amode(l,m)     !index of the species in the state%q array
-             call rad_cnst_get_aer_props(0, m, l , &
+             call rad_aer_get_props(0, m, l , &
                   refindex_aer_sw=refindex_aer_sw, &
                   refindex_aer_lw=refindex_aer_lw, &
                   density_aer=specdens_amode(l,m), &
