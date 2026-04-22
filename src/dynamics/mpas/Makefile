@@ -49,10 +49,6 @@ REG_OBJS = \
 	fortprintf.o \
 	utility.o
 
-STREAMS_GEN_OBJS = \
-	streams_gen.o \
-	test_functions.o
-
 OPERATOR_OBJS = \
 	mpas_vector_operations.o \
 	mpas_matrix_operations.o \
@@ -113,7 +109,6 @@ all:
 	( $(MAKE) framework )
 	( $(MAKE) operators )
 	( $(MAKE) registry )
-	( $(MAKE) streams_gen )
 	( $(MAKE) incs )
 	( $(MAKE) dycore )
 	( ar -ru libmpas.a $(INTERFACE_OBJS) $(DYN_OBJS) $(DIAG_OBJS) $(DIAGNOSTICS) $(OPERATOR_OBJS) $(FRAME_OBJS) $(UTIL_OBJS) )
@@ -222,14 +217,6 @@ mpas_geometry_utils.o: mpas_vector_operations.o mpas_matrix_operations.o
 #
 registry: $(REG_OBJS) ezxml.o
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(REG_OBJS) ezxml.o
-
-
-#
-# Default stream file generator
-#
-streams_gen: $(STREAMS_GEN_OBJS) ezxml.o
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(STREAMS_GEN_OBJS) ezxml.o
-
 
 #
 # Include files manufactured by the registry code generator
