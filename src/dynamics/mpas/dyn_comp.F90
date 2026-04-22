@@ -197,10 +197,13 @@ type dyn_export_t
    !
    ! Invariant -- needed for computing the frontogenesis function
    !
-   real(r8), dimension(:,:),   pointer :: defc_a
-   real(r8), dimension(:,:),   pointer :: defc_b
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
+   real(r8), allocatable :: defc_a(:, :) ! Backward compatibility for CAM relying on pre-MPAS 8.4.0.
+   real(r8), allocatable :: defc_b(:, :) ! Backward compatibility for CAM relying on pre-MPAS 8.4.0.
+   real(r8), pointer :: deformation_coef_c2(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_s2(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_cs(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_c(:, :)  ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_x.
+   real(r8), pointer :: deformation_coef_s(:, :)  ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_y.
    real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
    real(r8), dimension(:),     pointer :: dvEdge
    real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
@@ -506,13 +509,21 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! for frontogenesis calc
 
+   nullify(dyn_out % deformation_coef_c2)
+   nullify(dyn_out % deformation_coef_s2)
+   nullify(dyn_out % deformation_coef_cs)
+   nullify(dyn_out % deformation_coef_c)
+   nullify(dyn_out % deformation_coef_s)
+
    if (use_gw_front .or. use_gw_front_igw) then
       dyn_out % areaCell => dyn_in % areaCell
       dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
-      call mpas_pool_get_array(mesh_pool, 'defc_a',               dyn_out % defc_a)
-      call mpas_pool_get_array(mesh_pool, 'defc_b',               dyn_out % defc_b)
-      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_x', dyn_out % cell_gradient_coef_x)
-      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_y', dyn_out % cell_gradient_coef_y)
+
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_c2',  dyn_out % deformation_coef_c2)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_s2',  dyn_out % deformation_coef_s2)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_cs',  dyn_out % deformation_coef_cs)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_c',   dyn_out % deformation_coef_c)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_s',   dyn_out % deformation_coef_s)
       call mpas_pool_get_array(mesh_pool, 'edgesOnCell_sign',     dyn_out % edgesOnCell_sign)
       call mpas_pool_get_array(mesh_pool, 'dvEdge',               dyn_out % dvEdge)
       call mpas_pool_get_array(mesh_pool, 'edgesOnCell',          dyn_out % edgesOnCell)
@@ -547,6 +558,34 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    call cam_mpas_init_phase4(endrun)
+
+   ! Get the old deformation coefficients back for compatibility with `calc_frontogenesis` in `dp_coupling`.
+   ! Ideally, this should have been done as soon as `deformation_coef_*` become associated. However, they are not initialized
+   ! until `cam_mpas_init_phase4` completes.
+   if (associated(dyn_out % deformation_coef_c2) .and. &
+      associated(dyn_out % deformation_coef_s2) .and. &
+      associated(dyn_out % deformation_coef_cs)) then
+
+      allocate(dyn_out % defc_a, mold=dyn_out % deformation_coef_c2, stat=ierr)
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate "defc_a" array')
+      end if
+
+      allocate(dyn_out % defc_b, mold=dyn_out % deformation_coef_cs, stat=ierr)
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate "defc_b" array')
+      end if
+
+      dyn_out % defc_a(:, :) = dyn_out % deformation_coef_c2(:, :) - dyn_out % deformation_coef_s2(:, :)
+      dyn_out % defc_b(:, :) = 2.0_r8 * dyn_out % deformation_coef_cs(:, :)
+
+      if (masterproc) then
+         write(iulog, '(a, 2(1x, es13.6e2))') 'DEBUG: defc_a: ', &
+            maxval(dyn_out % defc_a(:, :)), minval(dyn_out % defc_a(:, :))
+         write(iulog, '(a, 2(1x, es13.6e2))') 'DEBUG: defc_b: ', &
+            maxval(dyn_out % defc_b(:, :)), minval(dyn_out % defc_b(:, :))
+      end if
+   end if
 
    !
    ! Set pointers to tendency fields that are not allocated until the call to cam_mpas_init_phase4
@@ -741,6 +780,17 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % rho)
    nullify(dyn_out % ux)
    nullify(dyn_out % uy)
+   nullify(dyn_out % deformation_coef_c2)
+   nullify(dyn_out % deformation_coef_s2)
+   nullify(dyn_out % deformation_coef_cs)
+   nullify(dyn_out % deformation_coef_c)
+   nullify(dyn_out % deformation_coef_s)
+   if (allocated(dyn_out % defc_a)) then
+      deallocate(dyn_out % defc_a)
+   end if
+   if (allocated(dyn_out % defc_b)) then
+      deallocate(dyn_out % defc_b)
+   end if
    deallocate(dyn_out % pmiddry)
    deallocate(dyn_out % pintdry)
    nullify(dyn_out % vorticity)
