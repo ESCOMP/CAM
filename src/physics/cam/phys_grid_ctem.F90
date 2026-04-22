@@ -222,6 +222,8 @@ contains
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   subroutine phys_grid_ctem_diags(phys_state)
+    use air_composition, only: cappav
+    use physconst, only: pref
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
     character(len=*), parameter :: prefix = 'phys_grid_ctem_diags: '
@@ -269,7 +271,8 @@ contains
        ncol = phys_state(lchnk)%ncol
 
        ! potential temperature
-       theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * phys_state(lchnk)%exner(:ncol,:)
+       theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * &
+            (pref/ phys_state(lchnk)%pmid(:ncol,:))**cappav(:ncol,:,lchnk)
 
        ! vertical velocity
        w(:ncol,:,lchnk) = -hscale *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)

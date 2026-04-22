@@ -235,7 +235,8 @@ contains
     use esmf_zonal_mean_mod, only: esmf_zonal_mean_calc, esmf_zonal_mean_wsums, esmf_zonal_mean_masked
     use interpolate_data, only: lininterp
     use esmf_phys2lonlat_mod, only: fields_bundle_t, nflds
-
+    use air_composition, only: cappav
+    use physconst, only: pref
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
     real(r8), target :: u_phys(pver,pcols,begchunk:endchunk)
@@ -322,7 +323,9 @@ contains
           w_phys(:,i,lchnk) = -hscale * w_phys(:,i,lchnk)/pref_mid(:)
 
           ! potential temperature -- vertically intepolate to ref press
-          theta(:) =  phys_state(lchnk)%t(i,:) * phys_state(lchnk)%exner(i,:)
+          theta(:) =  phys_state(lchnk)%t(i,:) * &
+            (pref/ phys_state(lchnk)%pmid(i,:))**cappav(i,:,lchnk)
+
           call lininterp( theta(:), phys_state(lchnk)%pmid(i,:), pver, &
                           t_phys(:,i,lchnk), pref_mid(:), pver )
 
