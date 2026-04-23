@@ -1,5 +1,163 @@
 ===============================================================
 
+Tag name: cam6_4_167
+Originator(s): fvitt
+Date: 23 Apr 2025
+One-line Summary: Updates for cam7 compsets
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1534
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Update LBC file for cam7 compsets #1539
+ Update default namelist settings for 1850 MTt4s and adjust default history fields #1527
+ Improve error messaging in O2 chemistry #1528
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, tilmes, cecilehannay
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - update cam7 default namelist settings
+
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/1850_cam_mt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_mt.xml
+M       bld/namelist_files/use_cases/waccm_sc_hist_cam7.xml
+ - default LBC file is now specified in namelist_defaults_cam.xml
+
+M       bld/namelist_files/use_cases/1850_trop_strat_t4s_cam7.xml
+ - namelist updates for 1850 MTt4s
+
+M       bld/namelist_files/use_cases/waccm_ma_hist_cam7.xml
+M       bld/namelist_files/use_cases/hist_trop_strat_t4s_cam7.xml
+ - update flbc_list
+
+M       cime_config/testdefs/testlist_cam.xml
+ - add test for 1850 MTt4s
+
+M       src/chemistry/mozart/mo_jshort.F90
+ - improve error checking and reporting
+
+M       src/physics/cam/aerosol_optics_cam.F90
+ - modify history_aero_optics default fields
+
+M       src/physics/cam/ndrop.F90
+ - include CCN4 in history_amwg default fields
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+  DIFF ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  DIFF ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  DIFF ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  DIFF ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  DIFF ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
+  DIFF SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+   - expected differences due to updates in LBC file and seasalt_emis_scale factor
+
+  DIFF SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850C_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s
+   - new test -- no baselines to compare against
+
+  DIFF ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s
+  DIFF ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp
+  DIFF ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120
+  DIFF ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s
+  DIFF ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri
+  DIFF ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri
+  DIFF ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+  DIFF SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+  DIFF SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  DIFF SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7
+  DIFF SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d
+  DIFF SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+  DIFF SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp
+  DIFF SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  - differ only in field list, otherwise bit-for-bit
+
+derecho/nvhpc/aux_cam:
+    FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default COMPARE_base_rest
+    - pre-existing restart test failure
+
+    FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default NLCOMP
+    FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_166_nvhpc: DIFF
+   - expected differences due to updates in LBC file and seasalt_emis_scale factor
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+   - expected differences due to updates in LBC file and seasalt_emis_scale factor
+
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s
+  DIFF ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist
+  DIFF SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s
+  DIFF TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac
+   - differ only in field list, otherwise bit-for-bit
+
+izumi/gnu/aux_cam:
+  DIFF ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags
+  DIFF ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s
+  DIFF ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480
+  DIFF PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0
+  DIFF PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1
+  DIFF PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3
+  DIFF SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  DIFF SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s
+   - differ only in field list, otherwise bit-for-bit
+
+  DIFF ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  DIFF ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+   - expected differences due to updates in LBC file and seasalt_emis_scale factor
+
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+   - new LBC file
+
+Summarize any changes to answers:
+ Large than round-off due to updates in LBC file and seasalt_emis_scale factor
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_166
 Originator(s): huebleruwm, adamrher, cacraigucar
 Date: April 21, 2026
