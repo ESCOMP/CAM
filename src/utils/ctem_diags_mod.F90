@@ -14,7 +14,7 @@ module ctem_diags_mod
   use spmd_utils, only: masterproc
   use ref_pres, only: pref_mid
   use esmf_lonlat_grid_mod, only: beglon=>lon_beg, endlon=>lon_end, beglat=>lat_beg, endlat=>lat_end
-  use cam_history,  only: addfld, outfld, horiz_only, add_default
+  use cam_history,  only: addfld, outfld, horiz_only
   use cam_history_support, only : fillvalue
   use perf_mod, only: t_startf, t_stopf
   use cam_logfile, only: iulog
@@ -228,7 +228,6 @@ contains
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   subroutine ctem_diags_calc(phys_state)
-    use air_composition, only: mbarv ! g/mole
     use shr_const_mod, only: rgas => shr_const_rgas ! J/K/kmole
     use shr_const_mod, only: grav => shr_const_g ! m/s2
     use esmf_phys2lonlat_mod, only: esmf_phys2lonlat_regrid
@@ -237,6 +236,7 @@ contains
     use esmf_phys2lonlat_mod, only: fields_bundle_t, nflds
     use air_composition, only: cappav
     use physconst, only: pref
+
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
     real(r8), target :: u_phys(pver,pcols,begchunk:endchunk)
