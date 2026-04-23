@@ -22,10 +22,9 @@
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/CMIP7/LBC_17500116-20221216_CMIP7_0p5degLat_c250326.nc</flbc_file>
 <flbc_list>
  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
- 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'CFC11eq'
+ 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'SF6', 'CFC11eq'
 </flbc_list>
 
 <!-- Upper Boundary -->

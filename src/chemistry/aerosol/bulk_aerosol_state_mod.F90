@@ -1,12 +1,15 @@
 module bulk_aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use rad_constituents, only: rad_cnst_get_aer_mmr
-  use cam_abortutils,   only: endrun
-  
+  !REMOVECAM
+  use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr
+  !REMOVECAM_END
+  !REMOVECAM: no longer need pbuf and state after CAM is retired
   use physics_buffer, only: physics_buffer_desc
-  use physics_types, only: physics_state
+  use physics_types,  only: physics_state
+  !REMOVECAM_END
+  use cam_abortutils,   only: endrun
 
-  use aerosol_state_mod, only: aerosol_state, ptr2d_t
+  use aerosol_state_mod,      only: aerosol_state, ptr2d_t
   use aerosol_properties_mod, only: aerosol_properties
 
   implicit none
@@ -14,16 +17,17 @@ module bulk_aerosol_state_mod
   type, extends(aerosol_state) :: bulk_aerosol_state
      private
 
+      !REMOVECAM: state and pbuf will be replaced by SIMA MMR API
       type(physics_state), pointer :: state => null()
       type(physics_buffer_desc), pointer :: pbuf(:) => null()
+      !REMOVECAM_END
 
    contains
 
      procedure :: get_transported
      procedure :: set_transported
      procedure :: ambient_total_bin_mmr
-     procedure :: get_ambient_mmr_0list
-     procedure :: get_ambient_mmr_rlist
+     procedure :: get_ambient_mmr
      procedure :: get_cldbrne_mmr
      procedure :: get_ambient_num
      procedure :: get_cldbrne_num
@@ -54,9 +58,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf) result(newobj)
+  function constructor(state,pbuf,list_idx) result(newobj)
     type(physics_state), target :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
+    integer, intent(in), optional :: list_idx
     type(bulk_aerosol_state), pointer :: newobj
 
     integer :: ierr
@@ -69,6 +74,8 @@ contains
 
     newobj%state => state
     newobj%pbuf => pbuf
+
+    if (present(list_idx)) call newobj%set_list_idx(list_idx)
 
   end function constructor
 
@@ -117,7 +124,7 @@ contains
     real(r8) :: mmr_tot                 ! mass mixing ratios totaled for all species
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call self%get_ambient_mmr(1, bin_ndx, mmr)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_ndx, mmr=mmr)
 
     mmr_tot = mmr(col_ndx, lyr_ndx)
 
@@ -126,30 +133,17 @@ contains
   !------------------------------------------------------------------------------
   ! returns ambient aerosol mass mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
-  subroutine get_ambient_mmr_0list(self, species_ndx, bin_ndx, mmr)
+  subroutine get_ambient_mmr(self, species_ndx, bin_ndx, mmr)
     class(bulk_aerosol_state), intent(in) :: self
     integer, intent(in) :: species_ndx  ! species index
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call self%get_ambient_mmr(0, species_ndx, bin_ndx, mmr)
+    ! species_ndx is ignored in the bulk implementation.
+    ! bin_ndx is used to identify each individual bulk aerosol.
+    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
 
-  end subroutine get_ambient_mmr_0list
-
-  !------------------------------------------------------------------------------
-  ! returns ambient aerosol mass mixing ratio for a given radiation diagnostics
-  ! list index, species index and bin index
-  !------------------------------------------------------------------------------
-  subroutine get_ambient_mmr_rlist(self, list_ndx, species_ndx, bin_ndx, mmr)
-    class(bulk_aerosol_state), intent(in) :: self
-    integer, intent(in) :: list_ndx     ! rad climate list index
-    integer, intent(in) :: species_ndx  ! species index
-    integer, intent(in) :: bin_ndx      ! bin index
-    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
-
-    call rad_cnst_get_aer_mmr(list_ndx, bin_ndx, self%state, self%pbuf, mmr)
-
-  end subroutine get_ambient_mmr_rlist
+  end subroutine get_ambient_mmr
 
   !------------------------------------------------------------------------------
   ! returns cloud-borne aerosol number mixing ratio for a given species index and bin index
@@ -293,9 +287,8 @@ contains
   ! returns hygroscopicity for a given radiation diagnostic list number and
   ! bin number
   !------------------------------------------------------------------------------
-  subroutine hygroscopicity(self, list_ndx, bin_ndx, kappa)
+  subroutine hygroscopicity(self, bin_ndx, kappa)
     class(bulk_aerosol_state), intent(in) :: self
-    integer, intent(in) :: list_ndx        ! rad climate list number
     integer, intent(in) :: bin_ndx         ! bin number
     real(r8), intent(out) :: kappa(:,:)    ! hygroscopicity (ncol,nlev)
 
@@ -307,11 +300,10 @@ contains
   ! returns aerosol wet diameter and aerosol water concentration for a given
   ! radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  subroutine water_uptake(self, aero_props, list_idx, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
-    integer, intent(in) :: list_idx             ! rad climate/diags list number
     integer, intent(in) :: bin_idx              ! bin number
     integer, intent(in) :: ncol                 ! number of columns
     integer, intent(in) :: nlev                 ! number of levels
@@ -325,57 +317,60 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol dry volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function dry_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function dry_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
+    real(r8), pointer :: mmr(:,:)    ! kg/kg
+    real(r8) :: dens                 ! kg/m3
 
-    vol = -huge(1._r8)
+    call aero_props%get(bin_idx, 1, density=dens)
+    call self%get_ambient_mmr(species_ndx=1, bin_ndx=bin_idx, mmr=mmr)
+
+    vol(:ncol,:nlev) = mmr(:ncol,:nlev)/dens
 
   end function dry_volume
 
   !------------------------------------------------------------------------------
   ! aerosol wet volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function wet_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function wet_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = self%dry_volume(aero_props, bin_idx, ncol, nlev) &
+        + self%water_volume(aero_props, bin_idx, ncol, nlev)
 
   end function wet_volume
 
   !------------------------------------------------------------------------------
   ! aerosol water volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function water_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function water_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
-    vol = -huge(1._r8)
+    vol = 0._r8
 
   end function water_volume
 
@@ -397,9 +392,10 @@ contains
   !------------------------------------------------------------------------------
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
-  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
+  function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
 
     class(bulk_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: ispc   ! species index
     integer, intent(in) :: ncol   ! number of columns
@@ -412,12 +408,12 @@ contains
   end function convcld_actfrac
 
   !------------------------------------------------------------------------------
-  ! aerosol weight precent of H2SO4/H2O solution
+  ! aerosol weight percent of H2SO4/H2O solution
   !------------------------------------------------------------------------------
   function wgtpct(self, ncol, nlev) result(wtp)
     class(bulk_aerosol_state), intent(in) :: self
     integer, intent(in) ::  ncol, nlev
-    real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+    real(r8) :: wtp(ncol,nlev)  ! weight percent of H2SO4/H2O solution for given icol, ilev
 
     wtp = -huge(1._r8)
 
