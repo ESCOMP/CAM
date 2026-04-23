@@ -1864,7 +1864,7 @@ if ($cosp) {
       $ldflags .= " -L$cosp_libdir -lrttov13_wrapper -lrttov13_mw_scatt -lrttov13_brdf_atlas -lrttov13_emis_atlas -lrttov13_other -lrttov13_parallel -lrttov13_coef_io -lrttov13_hdf -lrttov13_main ";
       $cfg_ref->set('ldflags', $ldflags);
       print "Adding rttov libraries as dependencies in ldflags.\n";
-    }       
+    }
     # Create the COSP Makefile from a template and copy it into the cosp bld directory
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
     write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
@@ -2173,6 +2173,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/microp_aero\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
