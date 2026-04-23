@@ -105,6 +105,7 @@ UTIL_OBJS = \
 
 
 all:
+	( $(MAKE) apply-patch )
 	( $(MAKE) xml )
 	( $(MAKE) framework )
 	( $(MAKE) operators )
@@ -113,6 +114,13 @@ all:
 	( $(MAKE) dycore )
 	( ar -ru libmpas.a $(INTERFACE_OBJS) $(DYN_OBJS) $(DIAG_OBJS) $(DIAGNOSTICS) $(OPERATOR_OBJS) $(FRAME_OBJS) $(UTIL_OBJS) )
 
+apply-patch:
+	@for file in "$(MPAS_SRC_ROOT)"/driver/*.patch; do \
+		if [ -f "$${file}" ] && git -C "$(MPAS_SRC_ROOT)"/dycore apply --check -p1 "$${file}" 1>/dev/null 2>&1; then \
+			echo "Applying $${file}"; \
+			git -C "$(MPAS_SRC_ROOT)"/dycore apply -p1 "$${file}"; \
+		fi; \
+	done
 
 #
 # EZXML
