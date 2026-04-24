@@ -154,7 +154,7 @@ contains
     use cam_diagnostics,    only: diag_register
     use cloud_diagnostics,  only: cloud_diagnostics_register
     use cospsimulator_intr, only: cospsimulator_intr_register
-    use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+    use radiative_aerosol,   only: rad_aer_get_info ! Added to query if it is a modal aero sim or not
     use radheat,            only: radheat_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
@@ -267,7 +267,7 @@ contains
        call conv_water_register()
 
        ! Determine whether its a 'modal' aerosol simulation  or not
-       call rad_cnst_get_info(0, nmodes=nmodes)
+       call rad_aer_get_info(0, nmodes=nmodes)
        clim_modal_aero = (nmodes > 0)
 
        if (clim_modal_aero) then
@@ -744,6 +744,7 @@ contains
     use wv_saturation,      only: wv_sat_init
     use microp_driver,      only: microp_driver_init
     use microp_aero,        only: microp_aero_init
+    use aerosol_instances_mod, only: aerosol_instances_init, aerosol_instances_init_states
     use macrop_driver,      only: macrop_driver_init
     use conv_water,         only: conv_water_init
     use tracers,            only: tracers_init
@@ -753,6 +754,7 @@ contains
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
     use rad_constituents,   only: rad_cnst_init
+    use radiative_aerosol,  only: rad_aer_init
     use aer_rad_props,      only: aer_rad_props_init
     use subcol,             only: subcol_init
     use qbo,                only: qbo_init
@@ -859,7 +861,10 @@ contains
     call solar_data_init()
 
     ! Initialize rad constituents and their properties
-    call rad_cnst_init()
+    call rad_aer_init()   ! aerosol init: physprop_init + mode/bin/list init
+    call aerosol_instances_init()  ! create abstract aerosol factory objects
+    call aerosol_instances_init_states(phys_state, pbuf2d)  ! create persistent per-chunk state objects
+    call rad_cnst_init()  ! gas-specific init
 
     call radiation_init(pbuf2d)
 
@@ -1531,6 +1536,12 @@ contains
     ifld = pbuf_get_index('AST')
     call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
+    ! zero out local variables that may be written to snapshot for safety.
+    fh2o(:) = 0._r8         ! used in chem_timestep_tend.
+    surfric(:) = 0._r8      ! out from vertical_diffusion_tend.
+    obklen(:) = 0._r8       ! out from vertical_diffusion_tend.
+    flx_heat(:) = 0._r8     ! first out from gw_drag_cam.
+
     !
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
@@ -2176,12 +2187,16 @@ contains
     use dyn_tests_utils, only: vc_dycore
     use surface_emissions_mod,only: surface_emissions_set
     use elevated_emissions_mod,only: elevated_emissions_set
+    use aerosol_properties_mod, only: aerosol_properties
+    use aerosol_state_mod, only: aerosol_state
+    use aerosol_instances_mod, only: aerosol_instances_get_props, &
+         aerosol_instances_get_num_models, aerosol_instances_get_state
 
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
 
-    type(physics_state), intent(inout) :: state
+    type(physics_state), intent(inout), target :: state
     type(physics_tend ), intent(inout) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
 
@@ -2274,7 +2289,6 @@ contains
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
     real(r8) :: rliq(pcols)                    ! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8) :: rice(pcols)                    ! vertical integral of ice not yet in q(ixcldice)
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: det_s  (pcols)                 ! vertical integral of detrained static energy from ice
     real(r8) :: det_ice(pcols)                 ! vertical integral of detrained ice
@@ -2283,11 +2297,20 @@ contains
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
 
+    ! For abstract aerosol interface (calcsize/wateruptake)
+    class(aerosol_properties), pointer :: aero_props
+    class(aerosol_state), pointer :: aero_state_obj
+
+    integer :: iaermod_lcl
+
     ! For aerosol budget diagnostics
     character(len=16) :: pname      !! package name
     type(carma_diags_t), pointer :: carma_diags_obj
 
     !-----------------------------------------------------------------------
+    nullify(aero_props)
+    nullify(aero_state_obj)
+
     carma_diags_obj => carma_diags_t()
     if (.not.associated(carma_diags_obj)) then
        call endrun('tphysbc: carma_diags_obj allocation failed')
@@ -2358,6 +2381,18 @@ contains
 
     call t_stopf('bc_init')
 
+    ! Zero-initialize subroutine-level variables for snapshot
+    cmfmc(:,:) = 0._r8
+    cmfcme(:,:) = 0._r8
+    zdu(:,:) = 0._r8
+    rliq(:) = 0._r8
+    dlf(:,:) = 0._r8
+    dlf2(:,:) = 0._r8
+    rliq2(:) = 0._r8
+    det_s(:) = 0._r8
+    det_ice(:) = 0._r8
+    net_flx(:) = 0._r8
+
     !===================================================
     ! Global mean total energy fixer
     !===================================================
@@ -2424,7 +2459,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call dadadj_tend(ztodt, state, ptend)
@@ -2437,7 +2472,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call t_stopf('dry_adjustment')
@@ -2451,13 +2486,13 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
          zdu,       &
-         rliq,    rice,      &
+         rliq,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
@@ -2476,7 +2511,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call t_stopf('convect_deep_tend')
@@ -2499,9 +2534,7 @@ contains
 
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
-    snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
     call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
-    snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
@@ -2515,13 +2548,9 @@ contains
        dlf(:,:) = 0._r8
     end if
 
-    ! Zero-initialize subroutine-level variables for snapshot
-    dlf2(:,:) = 0._r8
-    rliq2(:) = 0._r8
-
     if (trim(cam_take_snapshot_before) == "convect_shallow_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call convect_shallow_tend (ztodt   , cmfmc, &
@@ -2545,7 +2574,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_shallow_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
@@ -2600,7 +2629,7 @@ contains
 
        if (trim(cam_take_snapshot_before) == "rk_stratiform_tend") then
             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                 flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                 flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call rk_stratiform_cam_tend(state, ptend, pbuf, ztodt, &
@@ -2620,7 +2649,7 @@ contains
 
        if (trim(cam_take_snapshot_after) == "rk_stratiform_tend") then
            call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-               flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+               flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call check_energy_cam_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
@@ -2661,7 +2690,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "macrop_driver_tend") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call macrop_driver_tend( &
@@ -2692,7 +2721,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "macrop_driver_tend") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call check_energy_cam_chng(state, tend, "macrop_tend", nstep, ztodt, &
@@ -2708,7 +2737,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "clubb_tend_cam") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call clubb_tend_cam(state, ptend, pbuf, cld_macmic_ztodt,&
@@ -2738,7 +2767,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "clubb_tend_cam") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                      flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                      flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              ! Use actual qflux (not lhf/latvap) for consistency with surface fluxes and revised code
@@ -2775,7 +2804,7 @@ contains
 
           if (trim(cam_take_snapshot_before) == "microp_section") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call carma_diags_obj%update(cam_in, state, pbuf)
@@ -2790,7 +2819,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "microp_driver_tend_subcol") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
@@ -2842,7 +2871,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "microp_driver_tend_subcol") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                   flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call check_energy_cam_chng(state_sc, tend_sc, "microp_tend_subcol", &
@@ -2879,7 +2908,7 @@ contains
 
           if (trim(cam_take_snapshot_after) == "microp_section") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call check_energy_cam_chng(state, tend, "microp_tend", nstep, ztodt, &
@@ -2926,25 +2955,36 @@ contains
 
        call t_startf('aerosol_wet_processes')
        if (clim_modal_aero) then
+          ! Find the modal aerosol model properties object.
+          do iaermod_lcl = 1, aerosol_instances_get_num_models()
+             aero_props => aerosol_instances_get_props(iaermod_lcl, list_idx=0)
+             if (associated(aero_props)) then
+                if (aero_props%model_is('MAM')) exit
+             end if
+          end do
+          !REMOVECAM - get persistent state from factory; under CAM-SIMA states will be passed as scheme inputs
+          aero_state_obj => aerosol_instances_get_state(iaermod_lcl, 0, state%lchnk)
+          !REMOVECAM_END
+
           if (prog_modal_aero) then
              call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
              ! Do calculations of mode radius and water uptake if:
              ! 1) modal aerosols are affecting the climate, or
              ! 2) prognostic modal aerosols are enabled
-             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf)
+             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf, aero_props, aero_state_obj)
              ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
              ! modes is done in conjunction with the dry radius calculation
-             call modal_aero_wateruptake_dr(state, pbuf)
+             call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
              call physics_update(state, ptend, ztodt, tend)
           else
-             call modal_aero_calcsize_diag(state, pbuf)
-             call modal_aero_wateruptake_dr(state, pbuf)
+             call modal_aero_calcsize_diag(state, pbuf, aero_props, aero_state_obj)
+             call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
           endif
        endif
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
           call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call carma_diags_obj%update(cam_in, state, pbuf)
@@ -2959,7 +2999,7 @@ contains
 
        if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
           call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        if (carma_do_wetdep) then
@@ -3016,7 +3056,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "radiation_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call radiation_tend( &
@@ -3035,7 +3075,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "radiation_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call check_energy_cam_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)

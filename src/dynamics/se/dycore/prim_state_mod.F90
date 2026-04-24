@@ -138,7 +138,7 @@ CONTAINS
         min_local(ie,6) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))+hyai(1)*ps0
         max_local(ie,6) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))+hyai(1)*ps0
         min_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
-        max_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
+        max_local(ie,7) = MAXVAL(moist_ps_fvm(:,:,ie))
         min_local(ie,8)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,8)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,9)  = MINVAL(moist_ps(:,:,ie))
