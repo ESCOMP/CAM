@@ -578,13 +578,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 
       dyn_out % defc_a(:, :) = dyn_out % deformation_coef_c2(:, :) - dyn_out % deformation_coef_s2(:, :)
       dyn_out % defc_b(:, :) = 2.0_r8 * dyn_out % deformation_coef_cs(:, :)
-
-      if (masterproc) then
-         write(iulog, '(a, 2(1x, es13.6e2))') 'DEBUG: defc_a: ', &
-            maxval(dyn_out % defc_a(:, :)), minval(dyn_out % defc_a(:, :))
-         write(iulog, '(a, 2(1x, es13.6e2))') 'DEBUG: defc_b: ', &
-            maxval(dyn_out % defc_b(:, :)), minval(dyn_out % defc_b(:, :))
-      end if
    end if
 
    !
