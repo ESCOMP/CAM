@@ -116,7 +116,7 @@ subroutine eddy_diff_init(ntop_eddy_in)
   logical :: history_amwg
 
   ! Call CCPPized subroutine:
-  call bretherton_park_diff_init(masterproc, iulog, pver, pverp, &
+  call bretherton_park_diff_init(masterproc, iulog, pver, &
    gravit, cpair, rair, zvir, latvap, latice, karman, &
    ntop_eddy_in, &
    pref_mid, &
@@ -274,7 +274,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8), intent(out) :: sfi(pcols,pverp)
 
   ! pbuf fields
-  real(r8), pointer :: qrl(:,:)                        ! LW radiative cooling rate [K s-1]
+  real(r8), pointer :: qrl(:,:)                        ! LW radiative cooling rate [J Pa kg-1 s-1]
   real(r8), pointer :: wsedl(:,:)                      ! Sedimentation velocity of stratiform liquid cloud droplet [m s-1]
 
   integer :: i, k
@@ -297,7 +297,7 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8) :: errorPBL(pcols)           ! Error function showing whether PBL produced convergent solution or not [m2 s-1]
   real(r8) :: pblhp(pcols)              ! PBL top pressure [Pa]
   real(r8) :: minpblh(pcols)            ! Minimum PBL height based on surface stress [m]
-  real(r8) :: tkes(pcols)               ! TKE at surface interface [ m2/s2 ]
+  real(r8) :: tkes(pcols)               ! Specific TKE at surface interface [ m2/s2 ]
   real(r8) :: wcap(pcols,pver+1)        ! Normalized TKE at all interfaces [ m2/s2 ]
   integer  :: turbtype(pcols,pverp)     ! Turbulence type identifier at all interfaces [ no unit ]
   real(r8) :: kbase_o(pcols,ncvmax)     ! Original external base interface index of CL from 'exacol'

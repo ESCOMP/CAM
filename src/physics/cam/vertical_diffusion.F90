@@ -660,7 +660,7 @@ subroutine vertical_diffusion_tend( &
   ! CCPP-ized sponge layer logic
   use vertical_diffusion_sponge_layer, only: vertical_diffusion_sponge_layer_run
 
-  ! CCPP-ized kinematic fluxes and obklen logic
+  ! CCPP-ized kinematic fluxes and Obukhov length (obklen) logic
   use vertical_diffusion_interstitials,    only: compute_kinematic_fluxes_and_obklen_run
 
   ! CCPP-ized vertical diffusion solver (for non-WACCM-X use)
