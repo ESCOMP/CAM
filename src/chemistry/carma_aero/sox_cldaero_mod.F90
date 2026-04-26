@@ -433,6 +433,7 @@ contains
        qin(:ncol,k,id_so2)   = max( qin(:ncol,k,id_so2),   small_value )
        qin(:ncol,k,id_h2o2)  = max( qin(:ncol,k,id_h2o2),  small_value )
        qin(:ncol,k,id_h2so4) = max( qin(:ncol,k,id_h2so4), small_value )
+       if ( id_nh3 > 0 ) qin(:ncol,k,id_nh3) = max( qin(:ncol,k,id_nh3), small_value )
 
     end do
 
