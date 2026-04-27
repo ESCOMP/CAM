@@ -3206,7 +3206,7 @@ Tunable entrainment rate in ZM deep convection scheme in units of (m-1).
 Default: -1.0e-3 m-1
 </entry>
 
-<entry id="zmconv_tiedke_add" type="real" category="conv"
+<entry id="zmconv_tiedtke_add" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
 Tunable parcel temperature perturbation in ZM deep convection scheme in units of (K).
 Default: 0.5K perturbation
@@ -3696,6 +3696,13 @@ Switch for CLUBB_ADV parameter that turns on advection of CLUBB pdf moments by
 the dynamics core. Very experimental.
 </entry>
 
+<entry id="clubb_l_ascending_grid" type="logical" category="pblrad"
+       group="clubbpbl_diff_nl" valid_values="" >
+Causes advance_clubb_core to run in ascending mode, where the surface is at k=1, which is opposite
+of the descending cam grid. This is mainly a testing/debugging option - it requires an expensive 
+data flipping step and should not change answers significantly.
+</entry>
+
 <!-- Clubb timestep -->
 <entry id="clubb_timestep" type="real" category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
@@ -3964,6 +3971,32 @@ Gaussian PDF, and also decreases the difference between the means of w from
 each Gaussian.
 </entry>
 
+<entry id="clubb_grid_adapt_in_time_method" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="0,1" >
+Specifier for method to construct a grid density function to adapt grid to.
+Valid values: 0 (no grid adaptation), 1 (use Lscale and wp2)
+</entry>
+
+<entry id="clubb_fill_holes_type" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="0,1,2,3,4,5,6" >
+Selects which algorithm the fill_holes routine uses to correct 
+below threshold values in field solutions.
+0: off - Skip the mass conservative hole filling step, rely on blunt clipping
+1: global - Fast but minimally local, most methods use this as a fallback step
+2: sliding_window - Expensive but highly local when possible, falls back to global fill if needed
+3: widening_windows - Slightly parallelizable, local when possible, falls back to global if needed
+4: smart_window - Uses hueristics to determine ranges to fill, fast and highly local when possible, falls back to global if needed
+5: smart_window_smooth - Same as smart_window, but with experimental smoothing features that slightly increases cost, NO GLOBAL FALLBACK
+6: parallel_fill - Highly local when possible, completely parallelizable but computationally wasteful, falls back to global if needed
+See CLUBB_core/model_flags.F90 or CLUBB_core/fill_holes.F90 for more detail.
+</entry>
+
+<entry id="clubb_grid_remap_method" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="1" >
+Specifier for method to remap values from one grid to another.
+Valid values: 1 (ullrich remapping)
+</entry>
+
 <entry id="clubb_iiPDF_type" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="1,2,3,4,5,6,7" >
 Selected option for the two-component normal (double Gaussian) PDF type to use for the w, rt,
@@ -3988,6 +4021,11 @@ Intensity of stability correction applied to C1 and C6
 Coefficient used to determine the minimum allowable value of CLUBB's length
 scale (Lscale) in a grid-spacing dependent formula.  Increasing the value of
 clubb_lmin_coef increases the minimum allowable value for length scale.
+</entry>
+
+<entry id="clubb_l_add_dycore_grid" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to remap values from the dycore grid.
 </entry>
 
 <entry id="clubb_l_brunt_vaisala_freq_moist" type="logical" category="pblrad"
@@ -4169,6 +4207,18 @@ in terms of wp3(t+1). (Requires ADG1 PDF and l_standard_term_ta=true).
 Flag to predict horizontal momentum fluxes upwp and vpwp along with mean
 horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
 calculated by down-gradient diffusion.
+</entry>
+
+<entry id="clubb_l_ho_nontrad_coriolis" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to implement the nontraditional Coriolis terms in the 
+prognostic equations of w'w', u'w', and u'u.
+</entry>
+
+<entry id="clubb_l_ho_trad_coriolis" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to implement the traditional Coriolis terms in the
+prognostic equations of v'w' and u'w'.
 </entry>
 
 <entry id="clubb_l_prescribed_avg_deltaz" type="logical" category="pblrad"
@@ -7750,6 +7800,17 @@ Maximum zenith angle (degrees) used for photolysis.
 Default: set by build-namelist.
 </entry>
 
+<entry id="tuvx_config_path" type="char*256" input_pathname="abs" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Filepath of TUV-X configuration specification.
+Default: NONE
+</entry>
+
+<entry id="tuvx_active" type="logical" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Switch to turn on TUV-X photolysis.
+Default: FALSE
+</entry>
 
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 

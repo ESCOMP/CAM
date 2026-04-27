@@ -48,14 +48,13 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ilist, ibin, ncols, nlevs, geometric_radius) &
+  function constructor(aero_props, aero_state, ibin, ncols, nlevs, geometric_radius) &
                 result(newobj)
     class(aerosol_properties),intent(in) :: aero_props   ! aerosol_properties object
     class(aerosol_state),     intent(in) :: aero_state      ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncols, nlevs
-    real(r8),intent(in) :: geometric_radius(ncols,nlevs)
+    real(r8),intent(in) :: geometric_radius(:,:)
 
     type(volcrad_aerosol_optics), pointer :: newobj
 
@@ -81,14 +80,14 @@ contains
     end if
 
     ! optical properties tables
-    call aero_props%optics_params(ilist, ibin, &
+    call aero_props%optics_params(ibin, &
          r_sw_ext=newobj%r_sw_ext, &
          r_sw_scat=newobj%r_sw_scat, &
          r_sw_ascat=newobj%r_sw_ascat, &
          r_lw_abs=newobj%r_lw_abs, &
          r_mu=newobj%r_mu )
 
-    call aero_state%get_ambient_mmr(ilist, species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
+    call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=ibin, mmr=newobj%mmr)
 
 
 ! NOTE should try to use table_interp_mod utility !!!

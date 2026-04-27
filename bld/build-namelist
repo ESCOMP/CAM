@@ -3399,7 +3399,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';
         }
         elsif ($phys eq 'cam7') {
-            $micro_mg_dcs = '600.D-6';
+            $micro_mg_dcs = '450.D-6';
         }
     }
 
@@ -3525,6 +3525,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
      die "$ProgName - ERROR: clubb_history = .true. with multiple threads is not supported. \n";
    }
 
+   add_default($nl, 'clubb_l_ascending_grid');
    add_default($nl, 'clubb_do_icesuper');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');
@@ -3616,9 +3617,13 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_detphase_lowtemp');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_do_liqsupersat');
+   add_default($nl, 'clubb_grid_adapt_in_time_method');
+   add_default($nl, 'clubb_fill_holes_type');
+   add_default($nl, 'clubb_grid_remap_method');
    add_default($nl, 'clubb_ipdf_call_placement');
    add_default($nl, 'clubb_lambda0_stability_coef');
    add_default($nl, 'clubb_lmin_coef');
+   add_default($nl, 'clubb_l_add_dycore_grid');
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
@@ -3640,6 +3645,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_mono_flux_lim_vm');
    add_default($nl, 'clubb_l_partial_upwind_wp3');
    add_default($nl, 'clubb_l_predict_upwp_vpwp');
+   add_default($nl, 'clubb_l_ho_nontrad_coriolis');
+   add_default($nl, 'clubb_l_ho_trad_coriolis');
    add_default($nl, 'clubb_l_rcm_supersat_adj');
    add_default($nl, 'clubb_l_smooth_Heaviside_tau_wpxp');
    add_default($nl, 'clubb_l_stability_correct_tau_zm');
@@ -3776,7 +3783,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_ke_lnd');
     add_default($nl, 'zmconv_num_cin');
     add_default($nl, 'zmconv_dmpdz');
-    add_default($nl, 'zmconv_tiedke_add');
+    add_default($nl, 'zmconv_tiedtke_add');
     add_default($nl, 'zmconv_capelmt');
     add_default($nl, 'zmconv_tau');
     add_default($nl, 'zmconv_parcel_hscale');
@@ -3926,10 +3933,10 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
     #WACCM value
-    my $hdepth_scaling = '0.25D0' ;
+    my $hdepth_scaling = '0.29D0' ;
     #MT value
     if ($cfg->get('model_top') eq 'mt') {
-	$hdepth_scaling = '0.32D0';
+	$hdepth_scaling = '0.29D0'
     }
     my $qbo_forcing = '.false.';
     if ($dyn eq 'fv') {
@@ -3952,7 +3959,7 @@ if ($waccm_phys or
     # cam7 settings for model_top = 'lt'
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     $use_gw_convect_dp = '.true.';
-    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.32D0');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'0.29D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }

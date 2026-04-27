@@ -10,12 +10,9 @@ use ppgrid,           only: pcols, pver
 use physconst,        only: rga
 use physics_types,    only: physics_state
 
-use physics_buffer,   only: physics_buffer_desc
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag
-use phys_prop,        only: nrh, ot_length
-use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, &
-                            rad_cnst_get_aer_props
-use wv_saturation,    only: qsat
+use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
+                                  aerosol_instances_is_active
 use aerosol_optics_cam,only: aerosol_optics_cam_init, aerosol_optics_cam_sw, aerosol_optics_cam_lw
 use cam_history,      only: fieldname_len, addfld, outfld, add_default, horiz_only
 use cam_history_support, only : fillvalue
@@ -48,12 +45,9 @@ contains
 subroutine aer_rad_props_init()
    use phys_control, only: phys_getopts
 
-   integer                    :: numaerosols  ! number of aerosols
    logical                    :: history_amwg         ! output the variables used by the AMWG diag package
    logical                    :: history_aero_optics  ! Output aerosol optics diagnostics
    logical                    :: history_dust         ! Output dust diagnostics
-   integer                    :: nmodes               ! number of aerosol modes
-   integer                    :: nbins                ! number of aerosol bins
 
    character(len=2) :: numch
    integer :: i
@@ -71,9 +65,6 @@ subroutine aer_rad_props_init()
 
    ! Contributions to AEROD_v from individual aerosols (climate species).
 
-   ! number of bulk aerosols in climate list
-   call rad_cnst_get_info(0, naero=numaerosols, nmodes=nmodes, nbins=nbins)
-
    call aer_vis_diag_init()
 
    ! Determine default fields
@@ -81,11 +72,11 @@ subroutine aer_rad_props_init()
       call add_default ('AEROD_v', 1, ' ')
    endif
 
-   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
+   if (aerosol_instances_get_num_models() > 0) then
       call aerosol_optics_cam_init()
    endif
 
-   bam_debug = numaerosols>0 .and. history_aero_optics
+   bam_debug = aerosol_instances_is_active('bulk') .and. history_aero_optics
 
    ! for BAM debugging
    if (bam_debug) then
@@ -146,9 +137,6 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    integer :: lchnk
    integer :: troplev(pcols)
 
-   integer  :: numaerosols     ! number of bulk aerosols in climate/diagnostic list
-   integer  :: nmodes          ! number of aerosol modes in climate/diagnostic list
-   integer  :: nbins           ! number of aerosol bins in climate/diagnostic list
    integer :: i
    !-----------------------------------------------------------------------------
 
@@ -162,11 +150,8 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    tau_w_g(1:ncol,:,:) = 0._r8
    tau_w_f(1:ncol,:,:) = 0._r8
 
-   ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
-
    ! Contributions from modal and bin aerosols.
-   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
+   if (aerosol_instances_get_num_models() > 0) then
       call aerosol_optics_cam_sw(list_idx, state, pbuf, nnite, idxnite, &
                                  tau, tau_w, tau_w_g, tau_w_f)
    end if
@@ -210,19 +195,13 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf, odap_aer)
 
    ! Local variables
 
-   integer :: numaerosols ! number of bulk aerosols in climate/diagnostic list
-   integer :: nmodes      ! number of aerosol modes in climate/diagnostic list
-   integer :: nbins       ! number of aerosol bins in climate/diagnostic list
    integer :: i, ncol
    !-----------------------------------------------------------------------------
-
-   ! get number of bulk aerosols and number of modes in current list
-   call rad_cnst_get_info(list_idx, naero=numaerosols, nmodes=nmodes, nbins=nbins)
 
    odap_aer = 0._r8
 
    ! Contributions from modal and sectional aerosols.
-   if (numaerosols>0 .or. nmodes>0 .or. nbins>0) then
+   if (aerosol_instances_get_num_models() > 0) then
       call aerosol_optics_cam_lw(list_idx, state, pbuf, odap_aer)
    end if
 

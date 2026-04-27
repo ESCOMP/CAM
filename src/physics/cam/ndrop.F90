@@ -169,6 +169,7 @@ subroutine ndrop_init(aero_props)
    ! set the add_default fields
    if (history_amwg) then
       call add_default('CCN3', 1, ' ')
+      call add_default('CCN4', 1, ' ')
    endif
 
 end subroutine ndrop_init
