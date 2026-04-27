@@ -1235,7 +1235,14 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
          ! Retrieve the pbuf data. Special handling for certain
          ! integer-type fields.
-         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop') then
+         ! This will allow data written out to not be mangled,
+         ! and also allow writing out snapshots with debug on in GNU compiler.
+         if( trim(pbuf_snapshot(i)%ddt_string) == 'clubbtop' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_JT' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_MAXG' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ZM_IDEEP' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'NMXRGN' .or. &
+             trim(pbuf_snapshot(i)%ddt_string) == 'ACNUNM') then
             call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d_int)
             ! copy into real
             allocate(tmpptr2d(size(tmpptr2d_int, 1), size(tmpptr2d_int, 2)))

@@ -2,6 +2,9 @@
 buildnmlc
 buildcppc
 
+# Ignore ide configs
+.vscode
+
 # Ignore editor temporaries and backups
 *~
 .#*

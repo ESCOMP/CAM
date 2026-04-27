@@ -9,8 +9,8 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
 
 use wv_saturation,    only: qsat_water
-use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, rad_cnst_get_aer_props, &
-                            rad_cnst_get_mode_props
+use aerosol_properties_mod, only: aerosol_properties
+use aerosol_state_mod, only: aerosol_state
 use cam_history,      only: addfld, add_default, outfld, horiz_only
 use cam_logfile,      only: iulog
 use ref_pres,         only: top_lev => clim_modal_aero_top_lev
@@ -57,11 +57,11 @@ contains
 subroutine modal_aero_wateruptake_reg()
 
   use physics_buffer,   only: pbuf_add_field, dtype_r8
-  use rad_constituents, only: rad_cnst_get_info
+  use radiative_aerosol, only: rad_aer_get_info
 
    integer :: nmodes
 
-   call rad_cnst_get_info(0, nmodes=nmodes)
+   call rad_aer_get_info(0, nmodes=nmodes)
    call pbuf_add_field('DGNUMWET',   'global',  dtype_r8, (/pcols, pver, nmodes/), dgnumwet_idx)
    call pbuf_add_field('WETDENS_AP', 'physpkg', dtype_r8, (/pcols, pver, nmodes/), wetdens_ap_idx)
 
@@ -82,6 +82,7 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
    use time_manager,  only: is_first_step
    use physics_buffer,only: pbuf_set_field
    use infnan,       only : nan, assignment(=)
+   use radiative_aerosol, only: rad_aer_get_info
 
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
    real(r8) :: real_nan
@@ -106,7 +107,7 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
 
    ! assume for now that will compute wateruptake for climate list modes only
 
-   call rad_cnst_get_info(0, nmodes=nmodes)
+   call rad_aer_get_info(0, nmodes=nmodes)
 
    do m = 1, nmodes
       write(trnum, '(i3.3)') m
@@ -160,7 +161,8 @@ end subroutine modal_aero_wateruptake_init
 !===============================================================================
 
 
-subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnumwet_m, &
+subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state, &
+                                     dgnumdry_m, dgnumwet_m, &
                                      qaerwat_m, wetdens_m, hygro_m, dryvol_m, dryrad_m, drymass_m,&
                                      so4dryvol_m, naer_m)
 !-----------------------------------------------------------------------
@@ -168,19 +170,21 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 ! CAM specific driver for modal aerosol water uptake code.
 !
 ! *** N.B. *** The calculation has been enabled for diagnostic mode lists
-!              via optional arguments.  If the list_idx arg is present then
-!              all the optional args must be present.
+!              via optional arguments.  For diagnostic list calculations
+!              all the optional array args must be present.
 !
 !-----------------------------------------------------------------------
 
    use time_manager,  only: is_first_step
    use cam_history,   only: outfld, fieldname_len
    use tropopause,    only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+
    ! Arguments
    type(physics_state), target, intent(in)    :: state          ! Physics state variables
    type(physics_buffer_desc),   pointer       :: pbuf(:)        ! physics buffer
+   class(aerosol_properties), intent(in), target :: aero_props
+   class(aerosol_state), intent(in), target :: aero_state
 
-   integer,  optional,          intent(in)    :: list_idx_in
    real(r8), optional,          pointer       :: dgnumdry_m(:,:,:)
    real(r8), optional,          pointer       :: dgnumwet_m(:,:,:)
    real(r8), optional,          pointer       :: qaerwat_m(:,:,:)
@@ -260,15 +264,15 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    character(len=3) :: trnum       ! used to hold mode number (as characters)
    character(len=32) :: spectype
+
    !-----------------------------------------------------------------------
 
    lchnk = state%lchnk
    ncol = state%ncol
 
-   list_idx = 0
-   if (present(list_idx_in)) then
-      list_idx = list_idx_in
+   list_idx = aero_props%list_idx()
 
+   if (list_idx /= 0) then
       ! check that all optional args are present
       if (.not. present(dgnumdry_m) .or. .not. present(dgnumwet_m) .or. &
           .not. present(qaerwat_m)  .or. .not. present(wetdens_m)) then
@@ -290,7 +294,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    end if
 
    ! loop over all aerosol modes
-   call rad_cnst_get_info(list_idx, nmodes=nmodes)
+   nmodes = aero_props%nbins()
 
    if (modal_strat_sulfate) then
      call pbuf_get_field(pbuf,  sulfeq_idx, sulfeq )
@@ -355,20 +359,21 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    do m = 1, nmodes
 
-      call rad_cnst_get_mode_props(list_idx, m, sigmag=sigmag, &
-         rhcrystal=rhcrystal(m), rhdeliques=rhdeliques(m))
+      sigmag = exp(aero_props%alogsig(m))
+      rhcrystal(m) = aero_props%rhcrystal(m)
+      rhdeliques(m) = aero_props%rhdeliques(m)
 
       ! get mode info
-      call rad_cnst_get_info(list_idx, m, nspec=nspec)
+      nspec = aero_props%nspecies(m)
 
       do l = 1, nspec
 
          ! accumulate the aerosol masses of each mode
-         call rad_cnst_get_aer_mmr(0, m, l, 'a', state, pbuf, raer)
+         call aero_state%get_ambient_mmr(species_ndx=l, bin_ndx=m, mmr=raer)
          maer(:ncol,:,m)= maer(:ncol,:,m) + raer(:ncol,:)
 
          ! get species interstitial mixing ratio ('a')
-         call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
+         call aero_props%get(m, l, density=specdens, &
                                      spectype=spectype)
 
          if (modal_strat_sulfate .and. (trim(spectype).eq.'sulfate')) then
@@ -518,6 +523,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    deallocate(maer, alnsg)
    deallocate( &
       wetrad, wetvol, wtrvol, wtpct, sulden, rhcrystal, rhdeliques, specdens_1 )
+
 end subroutine modal_aero_wateruptake_dr
 
 !===============================================================================
