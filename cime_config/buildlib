@@ -109,7 +109,7 @@ def _build_cam(caseroot, libroot, bldroot):
             # Add HDF5 library to CAM linked library list:
             linked_libs = case.get_value("CAM_LINKED_LIBS",
                                         subgroup="build_component_cam")
-            hdf5_link_opts = f"-L{hdf5_lib_path}"
+            hdf5_link_opts = f" -L{hdf5_lib_path}"
             hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
             case.set_value("CAM_LINKED_LIBS",
                            linked_libs + hdf5_link_opts)
