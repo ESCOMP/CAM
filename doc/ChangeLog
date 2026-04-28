@@ -65,12 +65,12 @@ derecho/nvhpc/aux_cam:
 
 izumi/nag/aux_cam:
 
-  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
    - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
   DIFF SMS_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_nag.cam-carma_test_tracers
-   -new test 
-  
+   -new test
+
 izumi/gnu/aux_cam: All PASS
 
 CAM tag used for the baseline comparison tests if different than previous
