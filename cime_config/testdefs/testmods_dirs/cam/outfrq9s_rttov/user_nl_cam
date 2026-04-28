@@ -5,4 +5,4 @@ write_nstep0=.true.
 inithist='ENDOFRUN'
 cosp_lrttov_sim=.true.
 cosp_rttov_Ninstruments=1
-cosp_rttov_instrument_namelists='/glade/u/home/cacraig/RTTOV/namelists/cosp2_rttov_inst_CESM.txt'
+cosp_rttov_instrument_namelists='/glade/campaign/cesm/community/amwg/rttov/RTTOV/namelists/cosp2_rttov_inst_CESM.txt'
