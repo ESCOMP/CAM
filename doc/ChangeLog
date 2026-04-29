@@ -1,6 +1,6 @@
 ===============================================================
 
-Tag name: cam6_4_168
+Tag name: cam6_4_169
 Originator(s): fvitt
 Date: 28 Apr 2026
 One-line Summary: Enable CARMA with cam7 physics and RRTMGP radiation
@@ -59,9 +59,9 @@ platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
-derecho/intel/aux_cam:
+derecho/intel/aux_cam: All PASS
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
 
@@ -72,9 +72,6 @@ izumi/nag/aux_cam:
    -new test
 
 izumi/gnu/aux_cam: All PASS
-
-CAM tag used for the baseline comparison tests if different than previous
-tag:
 
 Summarize any changes to answers: bit-for-bit
 
