@@ -288,10 +288,6 @@ contains
        ! register various data model gasses with pbuf
        call ghg_data_register()
 
-       ! carma microphysics
-       !
-       call carma_register()
-
        ! Register iondrag variables with pbuf
        call iondrag_register()
 
@@ -312,6 +308,10 @@ contains
        call radiation_register
        call cloud_diagnostics_register
        call radheat_register
+
+       ! carma microphysics
+       !
+       call carma_register()
 
        ! COSP
        call cospsimulator_intr_register
@@ -2753,7 +2753,6 @@ contains
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
     real(r8) :: rliq(pcols)                    ! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8) :: rice(pcols)                    ! vertical integral of ice not yet in q(ixcldice)
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: flx_cnd(pcols)
     real(r8) :: flx_heat(pcols)
@@ -2846,7 +2845,6 @@ contains
     cmfcme(:,:) = 0._r8
     zdu(:,:) = 0._r8
     rliq(:) = 0._r8
-    rice(:) = 0._r8
     dlf(:,:) = 0._r8
     dlf2(:,:) = 0._r8
     rliq2(:) = 0._r8
@@ -2918,7 +2916,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
 
     call dadadj_tend(ztodt, state, ptend)
@@ -2931,7 +2929,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
 
     call t_stopf('dry_adjustment')
@@ -2945,13 +2943,13 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
 
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
          zdu,       &
-         rliq,    rice,      &
+         rliq,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
@@ -2970,7 +2968,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
 
     call t_stopf('convect_deep_tend')
@@ -2994,9 +2992,7 @@ contains
 
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
-    snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
     call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
-    snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
     !===================================================
     ! Compute convect diagnostics
@@ -3011,7 +3007,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_diagnostics_calc") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
     call convect_diagnostics_calc (ztodt   , cmfmc, &
              dlf        , dlf2   ,  rliq   , rliq2, &
