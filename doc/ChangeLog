@@ -1,5 +1,111 @@
 ===============================================================
 
+Tag name: cam6_4_170
+Originator(s): fvitt
+Date: 30 Apr 2026
+One-line Summary: TEM diagnostics updates
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1543
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Issue #1542
+ Implement the following updates to TEM diagnostics:
+   . Set up default namelist settings so that ESMF regrid method is used by default in cam7 configurations
+   . ESMF bilinear interpolation for the zonal mean calculations
+   . Use constant scale height of 7 km
+   . Correct calculation of potential temperature (Exner bug fix)
+   . Vertically interpolate to constant pressures before TEM terms are calculated
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - set default TEM diags namelist settings
+ - add check for conflicting namelist settings
+ - remove add_default for cam_physics_mesh -- now set by buildnml for all configurations
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - remove cam_physics_mesh defaults -- now set to $ATM_DOMAIN_MESH in buildnml
+ - default TEM num lats for ne16 and ne30 grids
+
+M       bld/namelist_files/use_cases/1850_trop_strat_t4s_cam7.xml
+ - remove TEM settings -- now set by default
+
+M       cime_config/buildnml
+ - set cam_physics_mesh to $ATM_DOMAIN_MESH for all configurations
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq3s_physgrid_tem/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_physgrid_tem_1deg/user_nl_cam
+ - avoid conflicting TEM settings
+
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_ctem/user_nl_cam
+ - remove cam_physics_mesh settings -- now default
+
+M       src/physics/cam/phys_grid_ctem.F90
+ - use constant scale height of 7 km
+ - correct calculation of potential temperature (Exner bug fix)
+
+M       src/utils/ctem_diags_mod.F90
+ - use constant scale height of 7 km
+ - correct calculation of potential temperature (Exner bug fix)
+ - vertically interpolate to constant pressures before TEM terms are calculated
+
+M       src/utils/esmf_phys2lonlat_mod.F90
+ - ESMF bilinear interpolation for the zonal mean calculations
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository):
+- platform/compilers:
+- configure commandline:
+- build-namelist command (or complete namelist):
+- MSS location of output:
+
+MSS location of control simulations used to validate new climate:
+
+URL for AMWG diagnostics output used to validate new climate:
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_169
 Originator(s): fvitt
 Date: 28 Apr 2026
