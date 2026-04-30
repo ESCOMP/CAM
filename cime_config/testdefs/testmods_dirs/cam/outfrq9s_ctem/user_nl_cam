@@ -4,7 +4,6 @@ nhtfrq=9,9,9,9,9,9,9,9,9,9
 write_nstep0=.true.
 inithist='ENDOFRUN'
 
-cam_physics_mesh = '$ATM_DOMAIN_MESH'
 ctem_diags_numlats = 90
 
 fincl2 = 'THtem','Utem','Vtem','Wtem','VTHtem','WTHtem','UVtem', 'UWtem', 'MSKtem', 'PStem'
