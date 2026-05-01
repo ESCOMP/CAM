@@ -114,13 +114,6 @@
  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'SF6', 'CFC11eq'
 </flbc_list>
 
-<!-- TEM -- REMOVE (will be default namelist parms) -->
-<!-- cam_physics_mesh = '$ATM_DOMAIN_MESH' -->
-<cam_physics_mesh hgrid="ne16np4" npg="3">share/meshes/ne16pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne30np4" npg="3">share/meshes/ne30pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
-<ctem_diags_numlats hgrid="ne16np4"> 90</ctem_diags_numlats>
-<ctem_diags_numlats hgrid="ne30np4">180</ctem_diags_numlats>
-
 <!-- history output -->
 
 <mfilt                           >      0,       5,     20,      40,      12,      120,       73</mfilt>

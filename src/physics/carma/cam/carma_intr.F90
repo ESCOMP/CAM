@@ -465,8 +465,9 @@ contains
     ! NOTE: This only needs to be done once at the start of the run and does not need
     ! to be done for restarts.
     !
-    ! NOTE: We only want to do this with RRTMG. If CAM_RT is being used, then skip this.
-    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg") .and. (carma_do_optics)) then
+    ! NOTE: We only want to do this with RRTMG(P). If CAM_RT is being used, then skip this.
+    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg".or.radiation_scheme == "rrtmgp") &
+         .and. (carma_do_optics)) then
       call CARMA_CreateOpticsFile(carma, rc)
        if (rc < 0) call endrun('carma_register::carma_CreateOpticsFiles failed.')
     end if
@@ -3903,6 +3904,13 @@ contains
        call endrun('carma_get_wet_radius ERROR4: rc = ',rc)
     end if
 
+    if (irhswell == I_PETTERS) then
+       call carma_get_kappa(state, igroup, ibin, kappa, rc)
+       if (rc/=RC_OK) then
+          call endrun('carma_get_wet_radius carma_get_kappa ERROR: rc = ',rc)
+       end if
+    end if
+
     do icol = 1, ncol
        do iz = 1, pver
           if (rdry(icol, iz)>0._r8) then
@@ -3929,11 +3937,6 @@ contains
                 end if
 
              else if (irhswell == I_PETTERS) then
-
-                call carma_get_kappa(state, igroup, ibin, kappa, rc)
-                if (rc/=RC_OK) then
-                   call endrun('carma_get_wet_radius carma_get_kappa ERROR: rc = ',rc)
-                end if
 
                 call getwetr(carma, igroup, ibin, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
                              h2o_mass=watcon, h2o_vp=wvpres, temp=state%t(icol,iz), kappa=kappa(icol,iz))

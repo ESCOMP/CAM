@@ -303,7 +303,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer( self, aero_props, istart, istop, k,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, ncol, nlev,  m, cs, phase, &
                        naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties
@@ -312,17 +312,15 @@ contains
     class(aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer,  intent(in) :: istart      ! start column index (1 <= istart <= istop <= pcols)
-    integer,  intent(in) :: istop       ! stop column index
-    integer,  intent(in) :: k           ! level index
+    integer,  intent(in) :: ncol, nlev
     integer,  intent(in) :: m           ! mode or bin index
     real(r8), intent(in) :: cs(:,:)     ! air density (kg/m3)
     integer,  intent(in) :: phase       ! phase of aerosol: 1 for interstitial, 2 for cloud-borne, 3 for sum
 
     ! output arguments
-    real(r8), intent(out) :: naerosol(:)  ! number conc (1/m3)
-    real(r8), intent(out) :: vaerosol(:)  ! volume conc (m3/m3)
-    real(r8), intent(out) :: hygro(:)     ! bulk hygroscopicity of mode
+    real(r8), intent(out) :: naerosol(:,:)  ! number conc (1/m3)
+    real(r8), intent(out) :: vaerosol(:,:)  ! volume conc (m3/m3)
+    real(r8), intent(out) :: hygro(:,:)     ! bulk hygroscopicity of mode
 
     integer ,         intent(out) :: errnum
     character(len=*), intent(out) :: errstr
@@ -335,15 +333,13 @@ contains
     real(r8) :: specdens, spechygro
     character(len=aero_name_len) :: spectype
 
-    real(r8) :: vol(istart:istop) ! aerosol volume mixing ratio
-    integer  :: i, l
+    real(r8) :: vol(ncol,nlev) ! aerosol volume mixing ratio
+    integer  :: l
     !-------------------------------------------------------------------------------
     errnum = 0
 
-    do i = istart, istop
-       vaerosol(i) = 0._r8
-       hygro(i)    = 0._r8
-    end do
+    vaerosol(:,:) = 0._r8
+    hygro(:,:)    = 0._r8
 
     do l = 1, aero_props%nspecies(m)
 
@@ -357,59 +353,42 @@ contains
        endif
 
        if (phase == 3) then
-          do i = istart, istop
-             vol(i) = max(raer(i,k) + qqcw(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(raer(:ncol,:) + qqcw(:ncol,:), 0._r8)/specdens
        else if (phase == 2) then
-          do i = istart, istop
-             vol(i) = max(qqcw(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(qqcw(:ncol,:), 0._r8)/specdens
        else if (phase == 1) then
-          do i = istart, istop
-             vol(i) = max(raer(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(raer(:ncol,:), 0._r8)/specdens
        else
           errnum = -1
           write(errstr,*)'phase = ',phase,' in aerosol_state::loadaer not recognized'
           return
        end if
 
-       do i = istart, istop
-          vaerosol(i) = vaerosol(i) + vol(i)
-          hygro(i)    = hygro(i) + vol(i)*spechygro
-       end do
-
+       vaerosol(:ncol,:) = vaerosol(:ncol,:) + vol(:ncol,:)
+       hygro(:ncol,:)    = hygro(:ncol,:) + vol(:ncol,:)*spechygro
     end do
 
-    do i = istart, istop
-       if (vaerosol(i) > 1.0e-30_r8) then
-          hygro(i)    = hygro(i)/(vaerosol(i))
-          vaerosol(i) = vaerosol(i)*cs(i,k)
-       else
-          hygro(i)    = 0.0_r8
-          vaerosol(i) = 0.0_r8
-       end if
-    end do
+    where(vaerosol(:ncol,:) > 1.0e-30_r8)
+       hygro(:ncol,:)    = hygro(:ncol,:)/(vaerosol(:ncol,:))
+       vaerosol(:ncol,:) = vaerosol(:ncol,:)*cs(:ncol,:)
+    elsewhere
+       hygro(:ncol,:)    = 0._r8
+       vaerosol(:ncol,:) = 0._r8
+    end where
 
     ! aerosol number mixing ratios (#/kg)
     call self%get_ambient_num(m, raer)
     call self%get_cldbrne_num(m, qqcw)
     if (phase == 3) then
-       do i = istart, istop
-          naerosol(i) = (raer(i,k) + qqcw(i,k))*cs(i,k) ! #/kg -> #/m3
-       end do
+       naerosol(:ncol,:) = (raer(:ncol,:) + qqcw(:ncol,:))*cs(:ncol,:) ! #/kg -> #/m3
     else if (phase == 2) then
-       do i = istart, istop
-          naerosol(i) = qqcw(i,k)*cs(i,k)
-       end do
+       naerosol(:ncol,:) = qqcw(:ncol,:)*cs(:ncol,:)
     else
-       do i = istart, istop
-          naerosol(i) = raer(i,k)*cs(i,k)
-       end do
+       naerosol(:ncol,:) = raer(:ncol,:)*cs(:ncol,:)
     end if
 
     ! adjust number
-    call aero_props%apply_number_limits( naerosol, vaerosol, istart, istop, m )
+    call aero_props%apply_number_limits( naerosol, vaerosol, ncol, nlev, m )
 
   end subroutine loadaer
 
