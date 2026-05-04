@@ -77,7 +77,6 @@ OPTIONS
                         increasing the number of advected constituents by 4.
      -cosp              Enable the COSP simulator.
      -rttov             Enable RTTOV within the COSP simulator.
-     -rttov_libdir <str> A string containing a path to the RTTOV install.
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
@@ -248,7 +247,6 @@ GetOptions(
     "cosp"                      => \$opts{'cosp'},
     "cosp_libdir=s"             => \$opts{'cosp_libdir'},
     "rttov"                     => \$opts{'rttov'},
-    "rttov_libdir=s"            => \$opts{'rttov_libdir'},
     "cppdefs=s"                 => \$opts{'cppdefs'},
     "cpl=s"                     => \$opts{'cpl'},
     "debug"                     => \$opts{'debug'},
@@ -1013,20 +1011,15 @@ if (defined $opts{'cosp'}) {
 my $cosp = $cfg_ref->get('cosp');
 
 # Option to build COSP with RTTOV
-if ($cosp and defined $opts{'rttov'} and defined $opts{'rttov_libdir'}) {
+if ( $cosp and defined $opts{'rttov'}) {
    $cfg_ref->set('rttov', $opts{'rttov'});
-   $cfg_ref->set('rttov_libdir', $opts{'rttov_libdir'});
    print "COSP-RTTOV enabled$eol";
 }
-elsif ( $cosp and defined $opts{'rttov'}) {
-   $cfg_ref->set('rttov', $opts{'rttov'});
-}
 elsif ( defined $opts{'rttov'} ) {
-   die "configure ERROR: rttov defined but cosp undefined. rttov_libdir also undefined \n";
+   die "configure ERROR: rttov defined but cosp undefined. \n";
 }
 
 my $rttov = $cfg_ref->get('rttov');
-my $rttov_libdir = $cfg_ref->get('rttov_libdir');
 
 # cosp is only implemented with the cam5, cam6, and cam7 physics packages
 if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam7')) {

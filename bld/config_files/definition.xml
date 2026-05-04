@@ -286,10 +286,6 @@ Directory containing COSP library.
 Switch to enable building the RTTOV radiative transfer model. With COSP.
 1 => link COSP with RTTOV when building.
 </entry>
-<entry id="rttov_libdir" value="">
-Directory containing RTTOV libraries. For example:
-/glade/campaign/cesm/community/amwg/rttov/RTTOV/RTTOV_build/lib/
-</entry>
 <entry id="fv3core_libdir" value="">
 Directory containing FV3CORE library.
 </entry>
