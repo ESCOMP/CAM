@@ -14,7 +14,7 @@ module sox_cldaero_mod
   use phys_control,    only : phys_getopts
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
-  use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_info_by_bin, rad_cnst_get_bin_props_by_idx
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_bin_props_by_idx
 
   implicit none
   private
@@ -66,12 +66,12 @@ contains
     ! get info about the modal aerosols
     ! get nbins
 
-    call rad_cnst_get_info( 0, nbins=nbins)
+    call rad_aer_get_info( 0, nbins=nbins)
 
     allocate( nspec(nbins) )
 
     do m = 1, nbins
-       call rad_cnst_get_info_by_bin(0, m, nspec=nspec(m))
+       call rad_aer_get_info_by_bin(0, m, nspec=nspec(m))
     end do
     ! add plus one to include number, total mmr and nspec
     nspec_max = maxval(nspec)
@@ -146,7 +146,7 @@ contains
           do m = 1, nbins
             do l = 1, nspec(m)
                   mm = bin_idx(m, l)
-                 call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+                 call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
                  if (trim(spectype) == 'sulfate') then
                        so4mmr(i,k) =  so4mmr(i,k) +  qcw(i,k,mm)
                  end if
@@ -261,7 +261,7 @@ contains
     aqso4_o3 = 0.0_r8
 
     do n = 1, nbins
-       call rad_cnst_get_info_by_bin(0, n, nspec=nspec(n), bin_name=bin_name)
+       call rad_aer_get_info_by_bin(0, n, nspec=nspec(n), bin_name=bin_name)
 
 
        nchr = len_trim(bin_name)-2
@@ -347,7 +347,7 @@ contains
                 do n = 1, nbins
                    do l = 1, nspec(n)
                       mm = bin_idx(n, l)
-                       call rad_cnst_get_bin_props_by_idx(0, n, l,spectype=spectype)
+                       call rad_aer_get_bin_props_by_idx(0, n, l,spectype=spectype)
                        if (trim(spectype) == 'sulfate') then
                          if (faqgain_so4(n) .gt. 0.0_r8) then
                           dqdt_aqso4(i,k,mm) = faqgain_so4(n)*dso4dt_aqrxn*cldfrc(i,k)

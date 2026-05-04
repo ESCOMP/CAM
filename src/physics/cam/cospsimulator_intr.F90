@@ -427,9 +427,6 @@ CONTAINS
     if (cosp_lfrac_out) then
        lfrac_out = .true.
     end if
-    if (cosp_lradar_sim) then
-       lradar_sim = .true.
-    end if
     if (cosp_llidar_sim) then
        llidar_sim = .true.
        lparasol_sim = .true.
@@ -442,6 +439,20 @@ CONTAINS
     end if
     if (cosp_lmodis_sim) then
        lmodis_sim = .true.
+    end if
+    if (cosp_lradar_sim) then
+       lradar_sim = .true.
+       ! Joint CloudSat-MODIS diagnostics require MODIS so add it and swathing if it will not otherwise be used.
+       if ((.not.lmodis_sim) .and. (.not.cosp_lite) .and. (.not.cosp_passive) .and. &
+             (.not.cosp_active) .and. (.not.cosp_runall)) then
+          lmodis_sim = .true. 
+          cospswathsIN(6)%N_inst_swaths                                  = COSP_N_SWATHS_CSCAL
+          cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL)   = COSP_SWATH_WIDTHS_CSCAL
+          cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)         = COSP_SWATH_LOCALTIMES_CSCAL
+       end if
+       ! CloudSat tcc requires CALIPSO so add it if it will not otherwise be used. Swathing is shared by default.
+       llidar_sim = .true.
+       lparasol_sim = .true. ! Parasol is tied to CALIPSO in this interface.
     end if
     if ((cosp_rttov_Ninstruments > 0) .and. cosp_lrttov_sim) then
        lrttov_sim = .true.
@@ -471,6 +482,7 @@ CONTAINS
 
     if (cosp_active) then
        lradar_sim = .true.
+       lmodis_sim = .true. ! Joint CloudSat-MODIS diagnostics require MODIS
        llidar_sim = .true.
        lparasol_sim = .true.
        cosp_ncolumns = 10
@@ -1506,7 +1518,7 @@ CONTAINS
     ! ######################################################################################
     ! Simulator output info
     ! ######################################################################################
-    integer, parameter :: nf_radar=17                    ! number of radar outputs
+    integer, parameter :: nf_radar=23                    ! number of radar outputs
     integer, parameter :: nf_calipso=44                  ! number of calipso outputs (28 w/o OPAQ, 44 w/ OPAQ)
     integer, parameter :: nf_isccp=9                     ! number of isccp outputs
     integer, parameter :: nf_misr=1                      ! number of misr outputs
@@ -1704,13 +1716,10 @@ CONTAINS
     real(r8) :: pctmodis(pcols)
     real(r8) :: lwpmodis(pcols)
     real(r8) :: iwpmodis(pcols)
-    real(r8) :: clmodis_cam(pcols,ntau_cosp_modis*nprs_cosp)
     real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
-    real(r8) :: clmodis_liq(pcols,ntau_cosp_modis,nprs_cosp) ! JKS Not sure if I need to duplicate clmodis here.
+    real(r8) :: clmodis_liq(pcols,ntau_cosp_modis,nprs_cosp)
     real(r8) :: clmodis_ice(pcols,ntau_cosp_modis,nprs_cosp)
-    real(r8) :: clrimodis_cam(pcols,ntau_cosp*numMODISReffIceBins)
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
-    real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
     real(r8) :: lwp_reffliq_modis(pcols,nlwp_cosp_modis,numMODISReffLiqBins)
     real(r8) :: iwp_reffice_modis(pcols,niwp_cosp_modis,numMODISReffIceBins)
@@ -1908,13 +1917,10 @@ CONTAINS
     pctmodis(1:pcols)                                = R_UNDEF
     lwpmodis(1:pcols)                                = R_UNDEF
     iwpmodis(1:pcols)                                = R_UNDEF
-    clmodis_cam(1:pcols,1:ntau_cosp_modis*nprs_cosp) = R_UNDEF
     clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
     clmodis_liq(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
     clmodis_ice(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)           = R_UNDEF
-    clrimodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffIceBins) = R_UNDEF ! +cosp2
     clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
-    clrlmodis_cam(1:pcols,1:ntau_cosp_modis*numMODISReffLiqBins) = R_UNDEF ! +cosp2
     clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
     lwp_reffliq_modis(1:pcols,1:nlwp_cosp_modis,1:numMODISReffLiqBins) = R_UNDEF
     iwp_reffice_modis(1:pcols,1:niwp_cosp_modis,1:numMODISReffIceBins) = R_UNDEF
@@ -2282,9 +2288,9 @@ CONTAINS
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
     if (allocated(rttov_configs)) then
-        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT,rttov_configs)
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,use_vgrid,cospOUT,rttov_configs)
     else
-        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,cospOUT)
+        call construct_cosp_outputs(ncol,nscol_cosp,nlay,Nlvgrid,rttov_Ninstruments,use_vgrid,cospOUT)
     end if
     call t_stopf("construct_cosp_outputs")
 
@@ -2375,7 +2381,7 @@ CONTAINS
        ! need to pass the correct section (:ncol,ktop:pver).
        call subsample_and_optics( &
           ncol, nlay, nscol_cosp, nhydro, overlap, &
-          lidar_ice_type, sd_cs(lchnk), &
+          use_vgrid, lidar_ice_type, sd_cs(lchnk), &
           cld(:ncol,ktop:pver), concld(:ncol,ktop:pver), &
           rain_ls_interp, snow_ls_interp, grpl_ls_interp, rain_cv_interp, &
           snow_cv_interp, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
@@ -2389,12 +2395,7 @@ CONTAINS
     ! ######################################################################################
     call t_startf('cosp_simulator')
     
-    ! Run loudly (with print statements) for the main processor
-    if (masterproc) then
-      cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.true.)
-    else
-      cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.) 
-    end if 
+    cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.)
 
     ! Check status flags
     nerror = 0
@@ -2770,26 +2771,6 @@ CONTAINS
           end do
        endif
 
-       if (lmodis_sim) then
-          do ip=1,nprs_cosp
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clmodis_cam(i,ipt) = clmodis(i,it,ip)
-             end do
-          end do
-          do ip=1,numMODISReffIceBins
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clrimodis_cam(i,ipt) = clrimodis(i,it,ip)
-             end do
-          end do
-          do ip=1,numMODISReffLiqBins
-             do it=1,ntau_cosp_modis
-                ipt=(ip-1)*ntau_cosp_modis+it
-                clrlmodis_cam(i,ipt) = clrlmodis(i,it,ip)
-             end do
-          end do
-       endif
 
        ! Subcolums
        do ihml=1,nlay
@@ -3120,11 +3101,11 @@ CONTAINS
           iwpmodis(:ncol) = iwpmodis(:ncol)*climodis(:ncol)
        end where
        call outfld('IWPMODIS',iwpmodis    ,pcols,lchnk)
-       call outfld('CLMODIS',clmodis_cam  ,pcols,lchnk)
+       call outfld('CLMODIS',clmodis  ,pcols,lchnk)
        call outfld('CLMODIS_LIQ',clmodis_liq  ,pcols,lchnk)
        call outfld('CLMODIS_ICE',clmodis_ice  ,pcols,lchnk)
-       call outfld('CLRIMODIS',clrimodis_cam  ,pcols,lchnk)
-       call outfld('CLRLMODIS',clrlmodis_cam  ,pcols,lchnk)
+       call outfld('CLRIMODIS',clrimodis  ,pcols,lchnk)
+       call outfld('CLRLMODIS',clrlmodis  ,pcols,lchnk)
        call outfld('LWP_REFFCLW_MODIS',lwp_reffliq_modis,pcols,lchnk)
        call outfld('IWP_REFFCLI_MODIS',iwp_reffice_modis,pcols,lchnk)
     end if  
@@ -3784,7 +3765,7 @@ CONTAINS
   !
   ! This subroutine allocates output fields based on input logical flag switches.
   ! ######################################################################################  
-  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,N_rttov_instruments,x,rttov_configs)
+  subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,N_rttov_instruments,use_vgrid,x,rttov_configs)
     ! Inputs
     integer,intent(in) :: &
          Npoints,         &   ! Number of sampled points
@@ -3880,8 +3861,6 @@ CONTAINS
           x%calipso_lidarcldphase(Npoints,Nlvgrid,6), &
           x%calipso_lidarcldtmp(Npoints,LIDAR_NTEMP,5), &
           x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &     
-          x%calipso_tau_tot(Npoints,Ncolumns,Nlevels), &       
-          x%calipso_temp_tot(Npoints,Nlevels),  &
           ! Calipso opaque cloud diagnostics
           x%calipso_cldtype(Npoints,LIDAR_NTYPE), &
           x%calipso_cldtypetemp(Npoints,LIDAR_NTYPE), &
@@ -4001,17 +3980,7 @@ CONTAINS
     if (allocated(y%beta_mol_atlid))      deallocate(y%beta_mol_atlid)
     if (allocated(y%tau_mol_grLidar532))  deallocate(y%tau_mol_grLidar532)
     if (allocated(y%tau_mol_atlid))       deallocate(y%tau_mol_atlid)
-    if (allocated(y%rcfg_cloudsat%N_scale_flag))       deallocate(y%rcfg_cloudsat%N_scale_flag)
-    if (allocated(y%rcfg_cloudsat%Z_scale_flag))       deallocate(y%rcfg_cloudsat%Z_scale_flag)
-    if (allocated(y%rcfg_cloudsat%Z_scale_added_flag)) deallocate(y%rcfg_cloudsat%Z_scale_added_flag)
-    if (allocated(y%rcfg_cloudsat%Ze_scaled))          deallocate(y%rcfg_cloudsat%Ze_scaled)
-    if (allocated(y%rcfg_cloudsat%Zr_scaled))          deallocate(y%rcfg_cloudsat%Zr_scaled)
-    if (allocated(y%rcfg_cloudsat%kr_scaled))          deallocate(y%rcfg_cloudsat%kr_scaled)
-    if (allocated(y%rcfg_cloudsat%fc))                 deallocate(y%rcfg_cloudsat%fc)
-    if (allocated(y%rcfg_cloudsat%rho_eff))            deallocate(y%rcfg_cloudsat%rho_eff)
-    if (allocated(y%rcfg_cloudsat%base_list))          deallocate(y%rcfg_cloudsat%base_list)
-    if (allocated(y%rcfg_cloudsat%step_list))          deallocate(y%rcfg_cloudsat%step_list)
-    if (associated(y%cfg_rttov))                       nullify(y%cfg_rttov)
+    if (associated(y%cfg_rttov))          nullify(y%cfg_rttov)
 
   end subroutine destroy_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4068,10 +4037,6 @@ CONTAINS
         deallocate(y%calipso_beta_mol)
         nullify(y%calipso_beta_mol)
      endif
-     if (associated(y%calipso_temp_tot))          then
-        deallocate(y%calipso_temp_tot)
-        nullify(y%calipso_temp_tot)
-     endif
      if (associated(y%calipso_betaperp_tot))      then
         deallocate(y%calipso_betaperp_tot)
         nullify(y%calipso_betaperp_tot)
@@ -4079,10 +4044,6 @@ CONTAINS
      if (associated(y%calipso_beta_tot))          then
         deallocate(y%calipso_beta_tot)
         nullify(y%calipso_beta_tot)
-     endif
-     if (associated(y%calipso_tau_tot))           then
-        deallocate(y%calipso_tau_tot)
-        nullify(y%calipso_tau_tot)
      endif
      if (associated(y%calipso_lidarcldphase))     then
         deallocate(y%calipso_lidarcldphase)

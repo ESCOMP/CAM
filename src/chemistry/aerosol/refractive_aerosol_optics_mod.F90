@@ -17,7 +17,7 @@ module refractive_aerosol_optics_mod
   !! surface mode wet radius and wet refractive index using chebychev polynomials
   type, extends(aerosol_optics) :: refractive_aerosol_optics
 
-     integer :: ibin, ilist
+     integer :: ibin
      class(aerosol_state), pointer :: aero_state      ! aerosol_state object
      class(aerosol_properties), pointer :: aero_props ! aerosol_properties object
 
@@ -70,12 +70,11 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(aero_props, aero_state, ilist, ibin, ncol, nlev, nsw, nlw, crefwsw, crefwlw) &
+  function constructor(aero_props, aero_state, ibin, ncol, nlev, nsw, nlw, crefwsw, crefwlw) &
        result(newobj)
 
     class(aerosol_properties),intent(in), target :: aero_props   ! aerosol_properties object
     class(aerosol_state),intent(in), target :: aero_state        ! aerosol_state object
-    integer, intent(in) :: ilist  ! climate or a diagnostic list number
     integer, intent(in) :: ibin   ! bin number
     integer, intent(in) :: ncol   ! number of columns
     integer, intent(in) :: nlev   ! number of levels
@@ -105,7 +104,7 @@ contains
     end if
 
     ! get mode properties
-    call aero_props%optics_params(ilist, ibin, &
+    call aero_props%optics_params(ibin, &
          refrtabsw=newobj%refrtabsw, refitabsw=newobj%refitabsw, &
          refrtablw=newobj%refrtablw, refitablw=newobj%refitablw,&
          extpsw=newobj%extpsw, abspsw=newobj%abspsw, asmpsw=newobj%asmpsw, &
@@ -151,11 +150,11 @@ contains
     end if
     newobj%crefwsw(:) = crefwsw(:)
 
-    call aero_state%water_uptake(aero_props, ilist, ibin,  ncol, nlev, dgnumwet, qaerwat)
+    call aero_state%water_uptake(aero_props, ibin,  ncol, nlev, dgnumwet, qaerwat)
 
-    nspec = aero_props%nspecies(ilist,ibin)
+    nspec = aero_props%nspecies(ibin)
 
-    logsigma=aero_props%alogsig(ilist,ibin)
+    logsigma=aero_props%alogsig(ibin)
 
     ! calc size parameter for all columns
     call modal_size_parameters(newobj%ncoef, ncol, nlev, logsigma, dgnumwet, &
@@ -164,8 +163,8 @@ contains
     do ilev = 1, nlev
        dryvol(:ncol) = 0._r8
        do ispec = 1, nspec
-          call aero_state%get_ambient_mmr(ilist,ispec,ibin,specmmr)
-          call aero_props%get(ibin, ispec, list_ndx=ilist, density=specdens)
+          call aero_state%get_ambient_mmr(species_ndx=ispec,bin_ndx=ibin,mmr=specmmr)
+          call aero_props%get(ibin, ispec, density=specdens)
 
           do icol = 1, ncol
              vol(icol) = specmmr(icol,ilev)/specdens
@@ -183,7 +182,6 @@ contains
 
     newobj%aero_state => aero_state
     newobj%aero_props => aero_props
-    newobj%ilist = ilist
     newobj%ibin = ibin
 
   end function constructor
@@ -212,7 +210,7 @@ contains
     type(table_interp_wghts) :: wghtsr(ncol)
     type(table_interp_wghts) :: wghtsi(ncol)
 
-    crefin(:ncol) = self%aero_state%refractive_index_sw(ncol, ilev, self%ilist, self%ibin, iwav, self%aero_props)
+    crefin(:ncol) = self%aero_state%refractive_index_sw(ncol, ilev, self%ibin, iwav, self%aero_props)
 
     do icol = 1, ncol
        crefin(icol) = crefin(icol) + self%watervol(icol,ilev)*self%crefwsw(iwav)
@@ -281,7 +279,7 @@ contains
     type(table_interp_wghts) :: wghtsr(ncol)
     type(table_interp_wghts) :: wghtsi(ncol)
 
-    crefin(:ncol) = self%aero_state%refractive_index_lw(ncol, ilev, self%ilist, self%ibin, iwav, self%aero_props)
+    crefin(:ncol) = self%aero_state%refractive_index_lw(ncol, ilev, self%ibin, iwav, self%aero_props)
 
     do icol = 1, ncol
        crefin(icol) = crefin(icol) + self%watervol(icol,ilev)*self%crefwlw(iwav)

@@ -202,7 +202,7 @@ contains
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
     use modal_aero_data,     only : ntot_amode, nspec_amode
-    use rad_constituents,    only : rad_cnst_get_info
+    use radiative_aerosol,    only : rad_aer_get_info
 #endif
 
     ! GEOS-Chem interface modules in CAM
@@ -578,7 +578,7 @@ contains
 
     DO M = 1, ntot_amode
        DO L = 1, nspec_amode(M)
-          call rad_cnst_get_info(0,M,L,spec_name=aername)
+          call rad_aer_get_info(0,M,L,spec_name=aername)
           SELECT CASE ( to_upper(aername(:3)) )
              CASE ( 'BC_' )
                 SELECT CASE ( to_upper(aername(4:5)) )
@@ -1937,7 +1937,7 @@ contains
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use phys_grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
     use physconst,           only : MWDry, Gravit
-    use rad_constituents,    only : rad_cnst_get_info
+    use radiative_aerosol,    only : rad_aer_get_info
     use short_lived_species, only : get_short_lived_species_gc, set_short_lived_species_gc
     use spmd_utils,          only : masterproc
     use time_manager,        only : Get_Curr_Calday, Get_Curr_Date ! For computing SZA
@@ -2341,10 +2341,12 @@ contains
           P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
           IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_aer_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           IF ( K > 0 ) State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = 0.0e+00_fp
        ENDDO
@@ -2361,10 +2363,12 @@ contains
           ! species (with cnst index P, which corresponds to index K in
           ! State_Chm)
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_aer_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
@@ -2573,9 +2577,9 @@ contains
                                              + REAL(state%q(:nY,nZ:1:-1,N),fp) *         &
                                                 adv_mass(l_SO4) / adv_mass(mapCnst(N))
        ! SO4_gasRatio is in mol/mol
-       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
-                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
-                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1)
+       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &       ! kg(H2SO4) kg-1 air
+                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &       ! g(SO4) mol(SO4)-1 / g(H2SO4) mol(H2SO4)-1
+                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1) ! kg(SO4) kg-1 air
        MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ)
     ENDIF
 #endif

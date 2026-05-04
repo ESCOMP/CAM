@@ -28,7 +28,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:40:00</option>
       <option name="comment">CAM7-LT, cosp, radiation diagnostics</option>
     </options>
   </test>
@@ -135,7 +135,7 @@
     </machines>
     <options>
       <option name="comment" >cam6; branch, hybrid starts</option>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FHIST" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
@@ -321,6 +321,17 @@
     <options>
       <option name="comment" >CAM5, CARMA sea salt, COSP, rad_diag w/ modal aerosols</option>
       <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
+  <test compset="FCARMA2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA trop_strat model test</option>
     </options>
   </test>
 
@@ -803,6 +814,16 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+<!--             WACCM carma trop_strat model    -->
+  <test compset="FWmaCARMAHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment">CARMA WACCM trop_strat model test</option>
+    </options>
+  </test>
 <!-- TEM diagnostics and zonal-average output -->
   <test compset="QPWmaC4" grid="ne5_ne5_mg37" name="SMS_D_Ln6" testmods="cam/outfrq3s_physgrid_tem">
     <machines>
@@ -1058,12 +1079,12 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x2" testmods="cam/outfrq9s_mee_fluxes" supported="false">
+  <test compset="FWmaHIST" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s_mee_fluxes" supported="false">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:40:00</option>
     </options>
   </test>
   <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x3" testmods="cam/outfrq9s_mee_fluxes" supported="false">
@@ -1117,6 +1138,15 @@
     </options>
   </test>
 
+  <test compset="QPC7" grid="ne3_ne3_mg37" name="ERC_D_Ln9" testmods="cam/outfrq9s_rttov">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >CAM6 aquaplanet w/ RTTOV</option>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
   <test compset="QPC6" grid="f19_f19_mt232" name="ERC_D_Ln9" testmods="cam/outfrq3s_cosp">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
@@ -1491,6 +1521,7 @@
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="camchem"/>
+      <machine name="derecho" compiler="intel" category="cam_refined"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -1522,6 +1553,24 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FHISTC_LTso" grid="ne0NATLne30x8_ne0NATLne30x8_mt12" name="SMS_D_Ln9_P1920x1" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="prebeta"/>
+      <machine name="derecho" compiler="intel" category="cam_refined"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="FHISTC_LTso" grid="ne0POLARCAPne30x4_ne0POLARCAPne30x4_mt12" name="SMS_D_Ln9_P1280x1" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="derecho" compiler="intel" category="prebeta"/>
+      <machine name="derecho" compiler="intel" category="cam_refined"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FHISTC_MTso" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
@@ -1980,6 +2029,16 @@
     <options>
       <option name="wallclock">00:40:00</option>
       <option name="comment" >Medium-top CAM-Chem with simpler climate chemistry</option>
+    </options>
+  </test>
+  <test compset="1850C_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP" grid="ne30pg3_ne30pg3_mt232" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="camchem"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment" >1850 Medium-top CAM-Chem with simpler climate chemistry</option>
     </options>
   </test>
   <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
@@ -2477,7 +2536,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:40:00</option>
+      <option name="wallclock">00:50:00</option>
       <option name="comment" >WACCM7 with MA chemistry</option>
     </options>
   </test>
@@ -2532,6 +2591,62 @@
     <options>
       <option name="wallclock">00:20:00</option>
       <option name="comment" >WACCM TSMLT MAM4</option>
+    </options>
+  </test>
+
+  <test compset="FC2000climo_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FCHIST_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FCnudged_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >CAMChem with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FW2000climo_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FWHIST_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
+    </options>
+  </test>
+  <test compset="FWnudged_SLH" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="slh-chem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment" >WACCM with short-lived halogens</option>
     </options>
   </test>
 

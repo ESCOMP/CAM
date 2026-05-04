@@ -12,8 +12,8 @@ module carma_aero_gasaerexch
   use chem_mods,       only:  gas_pcnst
   use ref_pres,        only:  top_lev => clim_modal_aero_top_lev
   use ppgrid,          only:  pcols, pver
-  use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_info_by_bin, rad_cnst_get_bin_props_by_idx, &
-                              rad_cnst_get_info_by_bin_spec
+  use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_bin_props_by_idx, &
+                              rad_aer_get_info_by_bin_spec
   use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
   implicit none
@@ -109,14 +109,14 @@ contains
     ! get info about the bin aerosols
     ! get nbins
 
-    call rad_cnst_get_info( 0, nbins=nbins)
+    call rad_aer_get_info( 0, nbins=nbins)
 
     allocate( nspec(nbins) )
     allocate( cnsoa(nbins) )
     allocate( cnpoa(nbins) )
 
     do m = 1, nbins
-       call rad_cnst_get_info_by_bin(0, m, nspec=nspec(m))
+       call rad_aer_get_info_by_bin(0, m, nspec=nspec(m))
     end do
 
     nspec_max = maxval(nspec)
@@ -168,7 +168,7 @@ contains
        cnsoa(m) = 0
        cnpoa(m) = 0
        do l = 1, nspec(m)
-          call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+          call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
           if (trim(spectype) == 's-organic') then
              cnsoa(m) = cnsoa(m) + 1
           end if
@@ -185,9 +185,9 @@ contains
     do m = 1, nbins
        ns = 0
        do l = 1, nspec(m)
-          call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+          call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
           if (trim(spectype) == 's-organic') then
-             call rad_cnst_get_info_by_bin_spec(0, m, l, spec_name=spec_name)
+             call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=spec_name)
              ns = ns + 1
              dqdtsoa_idx(m,ns) = pbuf_get_index('DQDT_'//trim(spec_name))
           end if
@@ -238,9 +238,9 @@ contains
        do l = 1, nspec(m)    ! do through nspec
           ii = bin_idx(m,l)
           if (l <= nspec(m) ) then   ! species
-             call rad_cnst_get_info_by_bin_spec(0, m, l, spec_name=fldname(ii) )
+             call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=fldname(ii) )
              ! only write out SOA exchange here
-             call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+             call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
              if (trim(spectype) == 's-organic') then
                 fieldname= trim(fldname(ii)) // '_sfgaex1'
                 long_name = trim(fldname(ii)) // ' gas-aerosol-exchange primary column tendency'
@@ -430,7 +430,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
         nn = 0
         do l = 1, nspec(m)
            mm = bin_idx(m, l)
-           call rad_cnst_get_bin_props_by_idx(0, m, l, spectype=spectype)
+           call rad_aer_get_bin_props_by_idx(0, m, l, spectype=spectype)
            if (trim(spectype) == 's-organic') then
               n = n + 1
               soa_c(:ncol,:,m,n) = raervmr(:ncol,:,mm)
@@ -691,7 +691,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
         j  = 0
         do l = 1, nspec(m)
            mm = bin_idx(m,l)
-           call rad_cnst_get_bin_props_by_idx(0, m, l,spectype=spectype)
+           call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
            if (trim(spectype) == 's-organic') then
               j = j + 1
               fieldname= trim(fldname(mm)) // '_sfgaex1'

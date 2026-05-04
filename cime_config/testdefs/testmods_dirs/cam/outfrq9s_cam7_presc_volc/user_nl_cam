@@ -18,7 +18,7 @@ rad_climate =
  'N:VOLC_MMR1:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc',
  'N:VOLC_MMR2:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc',
  'N:VOLC_MMR3:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc',
- 'N:VOLC_MMR5:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc'
+ 'N:VOLC_MMR5:$DIN_LOC_ROOT/atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode5_c260228.nc'
 
  fincl2 = 'VOLC_MMR1','VOLC_MMR2','VOLC_MMR3','VOLC_MMR5','VOLC_RAD_GEOM1','VOLC_RAD_GEOM2','VOLC_RAD_GEOM3','VOLC_RAD_GEOM5',
           'VOLC_SAD'

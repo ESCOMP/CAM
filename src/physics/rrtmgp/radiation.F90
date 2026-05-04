@@ -20,7 +20,11 @@ use physconst,           only: cappa, cpair, gravit, stebol
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_out
+use radiative_aerosol_definitions, only: N_DIAG, active_calls
+use rad_constituents,    only: rad_cnst_out
+!REMOVECAM
+use aerosol_mmr_cam, only: rad_aer_diag_out
+!REMOVECAM_END
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
                                gaslist, radconstants_init
@@ -85,7 +89,7 @@ type rad_out_t
    real(r8) :: fsnsc(pcols)         ! Clear sky surface abs solar flux
    real(r8) :: fsntc(pcols)         ! Clear sky total column abs solar flux
    real(r8) :: fsdsc(pcols)         ! Clear sky surface downwelling solar flux
-   
+
    real(r8) :: fsntoa(pcols)        ! Net solar flux at TOA
    real(r8) :: fsntoac(pcols)       ! Clear sky net solar flux at TOA
    real(r8) :: fsutoa(pcols)        ! upwelling solar flux at TOA
@@ -97,7 +101,7 @@ type rad_out_t
    real(r8) :: fsn200(pcols)        ! Net SW flux interpolated to 200 mb
    real(r8) :: fsn200c(pcols)       ! Net clear-sky SW flux interpolated to 200 mb
    real(r8) :: fsnr(pcols)          ! Net SW flux interpolated to tropopause
-   
+
    real(r8) :: flux_sw_up(pcols,pverp)     ! upward shortwave flux on interfaces
    real(r8) :: flux_sw_clr_up(pcols,pverp) ! upward shortwave clearsky flux
    real(r8) :: flux_sw_dn(pcols,pverp)     ! downward flux
@@ -148,7 +152,7 @@ logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
 logical :: graupel_in_rad   = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
-! Gathered indices of day and night columns 
+! Gathered indices of day and night columns
 integer :: nday           ! Number of daylight columns
 integer :: nnite          ! Number of night columns
 integer :: idxday(pcols)   ! chunk indices of daylight columns
@@ -158,25 +162,21 @@ real(r8) :: eccf            ! Earth orbit eccentricity factor
 
 integer :: band2gpt_sw(2,nswbands)
 
-! active_calls is set by a rad_constituents method after parsing namelist input
-! for the rad_climate and rad_diag_N entries.
-logical :: active_calls(0:N_DIAG)
-
 ! Physics buffer indices
-integer :: qrs_idx      = 0 
-integer :: qrl_idx      = 0 
-integer :: su_idx       = 0 
-integer :: sd_idx       = 0 
-integer :: lu_idx       = 0 
-integer :: ld_idx       = 0 
+integer :: qrs_idx      = 0
+integer :: qrl_idx      = 0
+integer :: su_idx       = 0
+integer :: sd_idx       = 0
+integer :: lu_idx       = 0
+integer :: ld_idx       = 0
 integer :: fsds_idx     = 0
 integer :: fsns_idx     = 0
 integer :: fsnt_idx     = 0
 integer :: flns_idx     = 0
 integer :: flnt_idx     = 0
-integer :: cld_idx      = 0 
-integer :: cldfsnow_idx = 0 
-integer :: cldfgrau_idx = 0    
+integer :: cld_idx      = 0
+integer :: cldfsnow_idx = 0
+integer :: cldfgrau_idx = 0
 integer :: dei_idx
 integer :: mu_idx
 integer :: lambda_idx
@@ -250,6 +250,11 @@ character(len=gasnamelength) :: gaslist_lc(nradgas)
 type(var_desc_t) :: cospcnt_desc  ! cosp
 type(var_desc_t) :: nextsw_cday_desc
 
+! Cloud optical properties TUV-x
+integer :: swcldtau_idx   = -1       ! shortwave cloud extinction optical depth. tau
+integer :: swcldtauw_idx  = -1       ! shortwave cloud extinction optical depth * single scattering albedo. tau*w
+integer :: swcldtauwg_idx = -1       ! shortwave cloud extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -308,7 +313,7 @@ subroutine radiation_readnl(nlfile)
    call mpi_bcast(use_rad_uniform_angle, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_uniform_angle")
    call mpi_bcast(rad_uniform_angle, 1, mpi_real8, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")   
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")
    call mpi_bcast(graupel_in_rad, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: graupel_in_rad")
 
@@ -327,7 +332,7 @@ subroutine radiation_readnl(nlfile)
    if (iradlw      < 0) iradlw      = nint((-iradlw     *3600._r8)/dtime)
    if (irad_always < 0) irad_always = nint((-irad_always*3600._r8)/dtime)
 
-   !----------------------------------------------------------------------- 
+   !-----------------------------------------------------------------------
    ! Print runtime options to log.
    !-----------------------------------------------------------------------
 
@@ -356,8 +361,8 @@ subroutine radiation_register
 
    ! Register radiation fields in the physics buffer
 
-   call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
-   call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
+   call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate
+   call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate
 
    call pbuf_add_field('FSDS' , 'global',dtype_r8,(/pcols/), fsds_idx) ! Surface solar downward flux
    call pbuf_add_field('FSNS' , 'global',dtype_r8,(/pcols/), fsns_idx) ! Surface net shortwave flux
@@ -432,8 +437,8 @@ subroutine radiation_init(pbuf2d)
    ! local variables
    character(len=512) :: errmsg
 
-   ! names of gases that are available in the model 
-   ! -- needed for the kdist initialization routines 
+   ! names of gases that are available in the model
+   ! -- needed for the kdist initialization routines
    type(ty_gas_concs_ccpp) :: available_gases
 
    real(r8) :: qrl_unused(1,1)
@@ -453,7 +458,7 @@ subroutine radiation_init(pbuf2d)
 
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
-   
+
    ! Initialize available_gases object
    call rrtmgp_pre_init(nradgas, available_gases, gaslist, gaslist_lc, errmsg, errflg)
    if (errflg /= 0) then
@@ -484,9 +489,8 @@ subroutine radiation_init(pbuf2d)
       call endrun(sub//': '//errmsg)
    end if
 
-   ! Set up CAM-side RRTMGP inputs - will go away once SW radiation is CCPPized
-   call rrtmgp_inputs_cam_init(ktopcam, ktoprad, idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_sw_cloudsim, idx_lw_diag, &
-           idx_lw_cloudsim)
+   ! Lookup pbuf flds for TUV-x aerosol optics
+   call rrtmgp_inputs_cam_init()
 
    ! Set radconstants module-level index variables that we're setting in CCPP-ized scheme now
    call radconstants_init(idx_sw_diag, idx_nir_diag, idx_uv_diag, idx_lw_diag)
@@ -525,7 +529,7 @@ subroutine radiation_init(pbuf2d)
    if (is_first_restart_step()) then
       cosp_cnt(begchunk:endchunk) = cosp_cnt_init
    else
-      cosp_cnt(begchunk:endchunk) = 0     
+      cosp_cnt(begchunk:endchunk) = 0
    end if
 
    ! Add fields to history buffer
@@ -553,9 +557,6 @@ subroutine radiation_init(pbuf2d)
                   'Graupel in-cloud extinction visible sw optical depth', &
                   sampling_seq='rad_lwsw', flag_xyfill=.true.)
    endif
-
-   ! get list of active radiation calls
-   call rad_cnst_get_call_list(active_calls)
 
    ! Add shortwave radiation fields to history master field list.
 
@@ -719,7 +720,12 @@ subroutine radiation_init(pbuf2d)
       call add_default('FLUT', 2, ' ')
       call add_default('FLUT', 3, ' ')
    end if
-   
+
+   ! get the clouds optical properties from radiation code
+   swcldtau_idx   = pbuf_get_index('SWCLDTAU', errcode=ierr)
+   swcldtauw_idx  = pbuf_get_index('SWCLDTAUW', errcode=ierr)
+   swcldtauwg_idx = pbuf_get_index('SWCLDTAUWG', errcode=ierr)
+
 end subroutine radiation_init
 
 !===============================================================================
@@ -744,7 +750,7 @@ subroutine radiation_define_restart(file)
    end if
 
 end subroutine radiation_define_restart
-  
+
 !===============================================================================
 
 subroutine radiation_write_restart(file)
@@ -763,7 +769,7 @@ subroutine radiation_write_restart(file)
    end if
 
 end subroutine radiation_write_restart
-  
+
 !===============================================================================
 
 subroutine radiation_read_restart(file)
@@ -795,23 +801,23 @@ subroutine radiation_read_restart(file)
 
 
 end subroutine radiation_read_restart
-  
+
 !===============================================================================
 
 subroutine radiation_tend( &
    state, ptend, pbuf, cam_out, cam_in, net_flx, rd_out)
 
-   !----------------------------------------------------------------------- 
-   ! 
+   !-----------------------------------------------------------------------
+   !
    ! CAM driver for radiation computation.
-   ! 
+   !
    !-----------------------------------------------------------------------
 
    ! Location/Orbital Parameters for cosine zenith angle
    use phys_grid,                         only: get_rlat_all_p, get_rlon_all_p
    use cam_control_mod,                   only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,                       only: shr_orb_decl, shr_orb_cosz
-   
+
    ! CCPPized schemes
    use rrtmgp_inputs,                     only: rrtmgp_inputs_run
    use rrtmgp_pre,                        only: rrtmgp_pre_run, rrtmgp_pre_timestep_init
@@ -863,7 +869,7 @@ subroutine radiation_tend( &
    type(rad_out_t), pointer :: rd  ! allow rd_out to be optional by allocating a local object
                                    ! if the argument is not present
    logical  :: write_output
-  
+
    integer  :: i, k, gas_idx, istat
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
@@ -959,7 +965,7 @@ subroutine radiation_tend( &
    real(r8), allocatable :: toa_flux(:,:)
    ! Scale factors based on spectral distribution from input irradiance dataset
    real(r8), allocatable :: sfac(:,:)
-   
+
    ! Planck sources for LW.
    type(ty_source_func_lw_ccpp) :: sources_lw
 
@@ -1017,6 +1023,11 @@ subroutine radiation_tend( &
    character(len=512) :: errmsg
    integer            :: errflg, err
    character(len=*), parameter :: sub = 'radiation_tend'
+
+   ! cloud optical properties for TUV-x
+   real(r8), pointer, dimension(:,:,:) :: swcldtau   ! shortwave cloud tau
+   real(r8), pointer, dimension(:,:,:) :: swcldtauw  ! shortwave cloud tau * w
+   real(r8), pointer, dimension(:,:,:) :: swcldtauwg ! shortwave cloud tau * w * g
    !--------------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -1209,6 +1220,7 @@ subroutine radiation_tend( &
       ! Output the mass per layer, and total column burdens for gas and aerosol
       ! constituents in the climate list.
       call rad_cnst_out(0, state, pbuf)
+      call rad_aer_diag_out(0, state, pbuf)
 
       !========================!
       ! SHORTWAVE calculations !
@@ -1233,6 +1245,19 @@ subroutine radiation_tend( &
          cld_tau_cloudsim(:ncol,:) = cld_tau(idx_sw_cloudsim,:,:)
          snow_tau_cloudsim(:ncol,:) = snow_tau(idx_sw_cloudsim,:,:)
          grau_tau_cloudsim(:ncol,:) = grau_tau(idx_sw_cloudsim,:,:)
+
+         ! cloud optical properties for TUV-x
+         if (swcldtau_idx>0) then
+            call pbuf_get_field(pbuf, swcldtau_idx,   swcldtau)
+            call pbuf_get_field(pbuf, swcldtauw_idx,  swcldtauw)
+            call pbuf_get_field(pbuf, swcldtauwg_idx, swcldtauwg)
+
+            do i = 1,nswbands
+               swcldtau(:ncol,1:pver,i)   = c_cld_tau(i,:ncol,1:pver)
+               swcldtauw(:ncol,1:pver,i)  = c_cld_tau_w(i,:ncol,1:pver)
+               swcldtauwg(:ncol,1:pver,i) = c_cld_tau_w_g(i,:ncol,1:pver)
+            end do
+         endif
 
          call rrtmgp_sw_mcica_subcol_gen_run(dosw, kdist_sw, nswbands, nswgpts, nday, nlay, &
                  pver, tiny, idxday, ktopcam, ktoprad, cldfprime, c_cld_tau,   &
@@ -1264,14 +1289,11 @@ subroutine radiation_tend( &
 
                   ! Compute the gas optics (stored in atm_optics_sw).
                   ! toa_flux is the reference solar source from RRTMGP data.
-                  !$acc data copyin(kdist_sw%gas_props,pmid_day,pint_day,t_day,gas_concs_sw%gas_concs,atm_optics_sw%optical_props) &
-                  !$acc     copyout(toa_flux)
                   call rrtmgp_sw_gas_optics_run(dosw, 1, nday, nday, pmid_day, pint_day, t_day,  &
                                gas_concs_sw, atm_optics_sw, kdist_sw, toa_flux, errmsg, errflg)
                   if (errflg /= 0) then
                      call endrun(sub//': '//errmsg)
                   end if
-                  !$acc end data
 
                   ! Scale the solar source
                   call rrtmgp_sw_solar_var_run(toa_flux, 2, band2gpt_sw, nswbands, sol_irrad, we, nbins, sol_tsi, &
@@ -1285,26 +1307,16 @@ subroutine radiation_tend( &
                ! Set SW aerosol optical properties in the aer_sw object.
                ! This call made even when no daylight columns because it does some
                ! diagnostic aerosol output.
-               call rrtmgp_set_aer_sw( &
-                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
-                  
+               call rrtmgp_set_aer_sw(ktopcam, ktoprad, icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
+
                if (nday > 0) then
 
                   ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
-                  !$acc data copyin(coszrs_day, toa_flux, alb_dir, alb_dif, &
-                  !$acc             atm_optics_sw%optical_props, atm_optics_sw%optical_props%tau, atm_optics_sw%optical_props%ssa, &
-                  !$acc             atm_optics_sw%optical_props%g, aer_sw%optical_props%tau,          &
-                  !$acc             aer_sw%optical_props, aer_sw%optical_props%ssa, aer_sw%optical_props%g,                 &
-                  !$acc             cloud_sw%optical_props, cloud_sw%optical_props%tau, cloud_sw%optical_props%ssa,           &
-                  !$acc             cloud_sw%optical_props%g)                                         &
-                  !$acc        copy(fswc%fluxes, fswc%fluxes%flux_net,fswc%fluxes%flux_up,fswc%fluxes%flux_dn,     &
-                  !$acc             fsw%fluxes, fsw%fluxes%flux_net,fsw%fluxes%flux_up,fsw%fluxes%flux_dn)
                   call rrtmgp_sw_rte_run(dosw, .true., .true., nday, 1, nday, atm_optics_sw, cloud_sw,  &
                                  aer_sw, coszrs_day, toa_flux, alb_dir, alb_dif, fswc, fsw, errmsg, errflg)
                   if (errflg /= 0) then
                      call endrun(sub//': '//errmsg)
                   end if
-                  !$acc end data
                end if
 
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
@@ -1364,37 +1376,17 @@ subroutine radiation_tend( &
                end if
 
                ! Compute the gas optics and Planck sources.
-               !$acc data copyin(kdist_lw%gas_props, pmid_rad, pint_rad, t_rad,  &
-               !$acc             t_sfc, gas_concs_lw%gas_concs, atm_optics_lw%optical_props)         &
-               !$acc        copy(atm_optics_lw%optical_props%tau,                &
-               !$acc             sources_lw%sources, sources_lw%sources%lay_source,                  &
-               !$acc             sources_lw%sources%sfc_source,                  &
-               !$acc             sources_lw%sources%lev_source,                  &
-               !$acc             sources_lw%sources%sfc_source_jac)
                call rrtmgp_lw_gas_optics_run(dolw, 1, ncol, ncol, pmid_rad, pint_rad, t_rad,  &
                   t_sfc, gas_concs_lw, atm_optics_lw, sources_lw, t_rad, .false., kdist_lw, errmsg, &
                   errflg)
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
-               !$acc end data
 
                ! Set LW aerosol optical properties in the aer_lw object.
-               call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
+               call rrtmgp_set_aer_lw(ktopcam, ktoprad, icall, state, pbuf, aer_lw)
 
                ! Call the main rrtmgp_lw driver
-               !$acc data copyin(atm_optics_lw%optical_props,atm_optics_lw%optical_props%tau,   &
-               !$acc             aer_lw%optical_props,aer_lw%optical_props%tau,          &
-               !$acc             cloud_lw%optical_props, cloud_lw%optical_props%tau,        &
-               !$acc             sources_lw%sources,sources_lw%sources%lay_source,     &
-               !$acc             sources_lw%sources%sfc_source,     &
-               !$acc             sources_lw%sources%lev_source,     &
-               !$acc             sources_lw%sources%sfc_source_jac, &
-               !$acc             emis_sfc)                          &
-               !$acc        copy(flwc%fluxes, flwc%fluxes%flux_net, flwc%fluxes%flux_up, &
-               !$acc             flwc%fluxes%flux_dn, flw%fluxes, flw%fluxes%flux_net,  &
-               !$acc             flw%fluxes%flux_up, flw%fluxes%flux_dn,    &
-               !$acc             lw_ds)
                call rrtmgp_lw_rte_run(dolw, dolw, .false., .false., .false., &
                                  0, atm_optics_lw, cloud_lw, sources_lw, emis_sfc, &
                                  kdist_lw, aer_lw, fluxlwup_jac, lw_ds, flwc, flw, &
@@ -1402,8 +1394,7 @@ subroutine radiation_tend( &
                if (errflg /= 0) then
                   call endrun(sub//': '//errmsg)
                end if
-               !$acc end data
-               
+
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
                call set_lw_diags()
 
@@ -1617,7 +1608,7 @@ subroutine radiation_tend( &
 
          cam_out%solld(idxday(i)) = sum(flux_dn_diffuse(i,nlay+1,1:9))         &
                                     + 0.5_r8 * flux_dn_diffuse(i,nlay+1,10)
-         
+
          cam_out%solsd(idxday(i)) = 0.5_r8 * flux_dn_diffuse(i, nlay+1, 10)    &
                                     + sum(flux_dn_diffuse(i,nlay+1,11:14))
       end do
@@ -1630,7 +1621,7 @@ subroutine radiation_tend( &
 
       ! Set CAM LW diagnostics
       !----------------------------------------------------------------------------
- 
+
       fnl = 0._r8
       fcnl = 0._r8
 
@@ -1681,7 +1672,7 @@ subroutine radiation_tend( &
    subroutine heating_rate(type, ncol, flux_net, hrate)
 
       ! Compute heating rate as a dry static energy tendency
-      
+
       ! arguments
       character(2), intent(in)  :: type ! either LW or SW
       integer,      intent(in)  :: ncol
@@ -1842,7 +1833,7 @@ subroutine radiation_output_lw(lchnk, ncol, icall, rd, pbuf, cam_out)
 
    call outfld('FLUT'//diag(icall),    rd%flut,       pcols, lchnk)
    call outfld('FLUTC'//diag(icall),   rd%flutc,      pcols, lchnk)
-   
+
    ftem(:ncol) = rd%flutc(:ncol) - rd%flut(:ncol)
    call outfld('LWCF'//diag(icall),    ftem,          pcols, lchnk)
 
@@ -1883,4 +1874,3 @@ end subroutine stop_on_err
 !=========================================================================================
 
 end module radiation
-
