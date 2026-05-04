@@ -77,7 +77,7 @@ OPTIONS
                         increasing the number of advected constituents by 4.
      -cosp              Enable the COSP simulator.
      -rttov             Enable RTTOV within the COSP simulator.
-     -rttov_libdir <str>A string containing a path to the RTTOV install.
+     -rttov_libdir <str> A string containing a path to the RTTOV install.
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
@@ -1022,7 +1022,7 @@ elsif ( $cosp and defined $opts{'rttov'}) {
    $cfg_ref->set('rttov', $opts{'rttov'});
 }
 elsif ( defined $opts{'rttov'} ) {
-   die "configure ERROR: rttov defined but cosp undefined. cosp_libdir also undefined \n";
+   die "configure ERROR: rttov defined but cosp undefined. rttov_libdir also undefined \n";
 }
 
 my $rttov = $cfg_ref->get('rttov');
@@ -1870,12 +1870,12 @@ if ($cosp) {
         die "** Could not create the cosp build directory: $bld_dir\n";
     }
 
-    # Turn on RTTOV if passed the keyword. The cosp-rttov Makefile copies rttov libraries to the $cosp_libdir path
+    # Turn on RTTOV.
+    # NOTE: Specialized linking with RTTOV is handled here and in buildlib. A single, unified linking
     if ($rttov) {
-      # Current version when copying the RTTOV libraries for each build (both HDF5 and openmp are successfully linked now):
+      # Add the rttov library dependencies to the ldflags. The cosp-rttov Makefile links these libraries to the $cosp_libdir path.
+      # A more functional code would read these ldflags from Makefile.rttov in the COSP2 directory in CAM instead of hardcoding.
       $ldflags .= " -L$cosp_libdir -lrttov13_wrapper -lrttov13_mw_scatt -lrttov13_brdf_atlas -lrttov13_emis_atlas -lrttov13_other -lrttov13_parallel -lrttov13_coef_io -lrttov13_hdf -lrttov13_main ";
-      # Let the RTTOV libraries stay where they are:
-      # A more functional code would read these from Makefile.rttov in the COSP2 directory in CAM instead of hardcoding, but I don't know how to do that yet.
       $cfg_ref->set('ldflags', $ldflags);
       print "Adding rttov libraries as dependencies in ldflags.\n";
     }       

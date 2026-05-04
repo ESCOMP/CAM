@@ -4,7 +4,7 @@ module cospsimulator_intr
   !         Name:         CFMIP Observational Simulator Package Version 2 (COSP2)
   !         What:         Simulate ISCCP/CloudSat/CALIPSO/MISR/MODIS cloud products from
   !                       GCM inputs with RTTOV spectral radiation diagnostics.
-  !         Version:      v2.2.0 (December 2025)
+  !         Version:      v2.2.1 (May 2026)
   !         Authors:      Dustin Swales (dustin.swales@noaa.gov), Jonah Shaw (jonah.shaw@colorado.edu)
   !
   ! Modifications:

@@ -1143,7 +1143,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >CAM6 aquaplanet w/ RTTOV</option>
+      <option name="comment" >CAM7 aquaplanet w/ RTTOV</option>
       <option name="wallclock">00:20:00</option>
     </options>
   </test>

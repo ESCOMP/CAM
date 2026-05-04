@@ -2483,10 +2483,9 @@ Default: 0
        group="cospsimulator_nl" valid_values="" >
 List of RTTOV instrument namelist files to read when running RTTOV in COSP.
 File paths are read relative to the case run directory 
-(e.g. /glade/derecho/scratch/$USER/$CASENAME/run/). Each namelist file
+(e.g. /glade/derecho/scratch/$USER/$CASENAME/run/) if an absolute path is not provided (recommended). Each namelist file
 contains information specifying the simulated instrument, channels, and
-outputs. Templates and instructions can be found in the COSP-RTTOV 
-code repository.
+outputs. Templates and instructions can be found in src/physics/cosp2/COSP-RTTOV_examples/.
 Default: none
 </entry>
 
