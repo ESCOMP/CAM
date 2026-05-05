@@ -165,7 +165,7 @@ end subroutine convect_deep_init
 subroutine convect_deep_tend( &
      mcon    ,cme     ,          &
      zdu      , &
-     rliq    ,rice     , &
+     rliq    , &
      ztodt   , &
      state   ,ptend   ,landfrac ,pbuf)
 
@@ -194,7 +194,6 @@ subroutine convect_deep_tend( &
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
-   real(r8), intent(out) :: rice(pcols) ! reserved ice (not yet in cldice) for energy integrals
 
    real(r8), pointer :: prec(:)   ! total precipitation
    real(r8), pointer :: snow(:)   ! snow from ZM convection
@@ -229,7 +228,6 @@ subroutine convect_deep_tend( &
     cme = 0
     zdu = 0
     rliq = 0
-    rice = 0
 
     call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
 
@@ -261,7 +259,7 @@ subroutine convect_deep_tend( &
 
      call zm_conv_tend( pblh    ,mcon    ,cme     , &
           tpert   ,zdu      , &
-          rliq    ,rice    , &
+          rliq    , &
           ztodt   , &
           jctop, jcbot , &
           state   ,ptend   ,landfrac, pbuf)

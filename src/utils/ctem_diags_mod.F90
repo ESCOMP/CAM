@@ -228,13 +228,14 @@ contains
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   subroutine ctem_diags_calc(phys_state)
-    use air_composition, only: mbarv ! g/mole
     use shr_const_mod, only: rgas => shr_const_rgas ! J/K/kmole
     use shr_const_mod, only: grav => shr_const_g ! m/s2
     use esmf_phys2lonlat_mod, only: esmf_phys2lonlat_regrid
     use esmf_zonal_mean_mod, only: esmf_zonal_mean_calc, esmf_zonal_mean_wsums, esmf_zonal_mean_masked
     use interpolate_data, only: lininterp
     use esmf_phys2lonlat_mod, only: fields_bundle_t, nflds
+    use air_composition, only: cappav
+    use physconst, only: pref
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -242,7 +243,6 @@ contains
     real(r8), target :: v_phys(pver,pcols,begchunk:endchunk)
     real(r8), target :: w_phys(pver,pcols,begchunk:endchunk)
     real(r8), target :: t_phys(pver,pcols,begchunk:endchunk)
-    real(r8), target :: p_phys(pver,pcols,begchunk:endchunk)
 
     real(r8), target :: uv_phys(pver,pcols,begchunk:endchunk)
     real(r8), target :: uw_phys(pver,pcols,begchunk:endchunk)
@@ -255,25 +255,13 @@ contains
     real(r8), target :: v_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8), target :: w_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8), target :: t_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8), target :: p_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8) :: ps_lonlat(beglon:endlon,beglat:endlat)
     real(r8) :: mskind1(beglon:endlon,beglat:endlat) ! vertical index where mountain masking begins
-
-    real(r8) :: ui_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: vi_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: wi_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: ti_lonlat(beglon:endlon,beglat:endlat,pver)
 
     real(r8), target  :: uv_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8), target  :: uw_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8), target  :: vt_lonlat(beglon:endlon,beglat:endlat,pver)
     real(r8), target  :: wt_lonlat(beglon:endlon,beglat:endlat,pver)
-
-    real(r8) :: uvi_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: uwi_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: vti_lonlat(beglon:endlon,beglat:endlat,pver)
-    real(r8) :: wti_lonlat(beglon:endlon,beglat:endlat,pver)
-
 
     real(r8) :: u_zm(beglat:endlat,pver)
     real(r8) :: v_zm(beglat:endlat,pver)
@@ -299,7 +287,6 @@ contains
     real(r8) :: wsums(beglat:endlat,pver)
 
     integer  :: lchnk, ncol, i, j, k
-    real(r8) :: sheight(pver) ! pressure scale height (m)
 
     real(r8) :: outtmp(beglon:endlon,pver)
     integer :: outcnt
@@ -308,6 +295,9 @@ contains
 
     type(fields_bundle_t) :: physflds(nflds)
     type(fields_bundle_t) :: lonlatflds(nflds)
+
+    real(r8) :: theta(pver)
+    real(r8), parameter :: hscale = 7000._r8 ! pressure scale height (meters)
 
     if (.not.ctem_diags_active) return
 
@@ -318,21 +308,26 @@ contains
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
        do i = 1,ncol
-          ! wind components
-          u_phys(:,i,lchnk) =  phys_state(lchnk)%u(i,:)
-          v_phys(:,i,lchnk) =  phys_state(lchnk)%v(i,:)
 
-          ! scale height
-          sheight(:) = phys_state(lchnk)%t(i,:) * rgas / ( mbarv(i,:,lchnk) * grav ) ! meters
+          ! wind components -- vertically intepolate to ref press
+          call lininterp( phys_state(lchnk)%u(i,:), phys_state(lchnk)%pmid(i,:), pver, &
+                          u_phys(:,i,lchnk), pref_mid(:), pver )
 
-          ! vertical velocity
-          w_phys(:,i,lchnk) = -sheight(:) *  phys_state(lchnk)%omega(i,:) / phys_state(lchnk)%pmid(i,:)
+          call lininterp( phys_state(lchnk)%v(i,:), phys_state(lchnk)%pmid(i,:), pver, &
+                          v_phys(:,i,lchnk), pref_mid(:), pver )
 
-          ! potential temperature
-          t_phys(:,i,lchnk) = phys_state(lchnk)%t(i,:) * phys_state(lchnk)%exner(i,:)
+          call lininterp( phys_state(lchnk)%omega(i,:), phys_state(lchnk)%pmid(i,:), pver, &
+                          w_phys(:,i,lchnk), pref_mid(:), pver )
 
-          ! mid point press
-          p_phys(:,i,lchnk) = phys_state(lchnk)%pmid(i,:)
+          ! omega -> vertical velocity
+          w_phys(:,i,lchnk) = -hscale * w_phys(:,i,lchnk)/pref_mid(:)
+
+          ! potential temperature -- vertically intepolate to ref press
+          theta(:) =  phys_state(lchnk)%t(i,:) * &
+            (pref/ phys_state(lchnk)%pmid(i,:))**cappav(i,:,lchnk)
+
+          call lininterp( theta(:), phys_state(lchnk)%pmid(i,:), pver, &
+                          t_phys(:,i,lchnk), pref_mid(:), pver )
 
           ! surface pressure
           ps_phys(i,lchnk) = phys_state(lchnk)%ps(i)
@@ -351,39 +346,37 @@ contains
 
     ! regrid to lon/lat grid
 
-    physflds(1)%fld => u_phys
+    ! set feild-bundle pointers for regridding utility
+    physflds(1)%fld => u_phys ! regrid inputs
     physflds(2)%fld => v_phys
     physflds(3)%fld => w_phys
     physflds(4)%fld => t_phys
-    physflds(5)%fld => p_phys
-    physflds(6)%fld => uv_phys
-    physflds(7)%fld => uw_phys
-    physflds(8)%fld => vt_phys
-    physflds(9)%fld => wt_phys
+    physflds(5)%fld => uv_phys
+    physflds(6)%fld => uw_phys
+    physflds(7)%fld => vt_phys
+    physflds(8)%fld => wt_phys
 
-    lonlatflds(1)%fld => u_lonlat
+    lonlatflds(1)%fld => u_lonlat ! regrid outputs
     lonlatflds(2)%fld => v_lonlat
     lonlatflds(3)%fld => w_lonlat
     lonlatflds(4)%fld => t_lonlat
-    lonlatflds(5)%fld => p_lonlat
-    lonlatflds(6)%fld => uv_lonlat
-    lonlatflds(7)%fld => uw_lonlat
-    lonlatflds(8)%fld => vt_lonlat
-    lonlatflds(9)%fld => wt_lonlat
+    lonlatflds(5)%fld => uv_lonlat
+    lonlatflds(6)%fld => uw_lonlat
+    lonlatflds(7)%fld => vt_lonlat
+    lonlatflds(8)%fld => wt_lonlat
 
+    ! regrid 3-D fields
     call esmf_phys2lonlat_regrid(physflds, lonlatflds)
 
+    ! regrid 2-D field separately
     call esmf_phys2lonlat_regrid(ps_phys, ps_lonlat)
 
     call t_stopf('ctem_diags_calc-regrid')
 
-    call t_startf('ctem_diags_calc-zonal_mean-ps')
-    call esmf_zonal_mean_calc(ps_lonlat, ps_zm)
-    call t_stopf('ctem_diags_calc-zonal_mean-ps')
 
-    call t_startf('ctem_diags_calc-interp')
+    call t_startf('ctem_diags_calc-zonal_mean-uvwt')
 
-    ! vertically intepolate to ref press
+    ! Mask out the mountains
     do i = beglon,endlon
        do j = beglat,endlat
 
@@ -397,53 +390,27 @@ contains
                 wght(i,j,k) = 0._r8
              end if
           end do
-
-          call lininterp( u_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          ui_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( v_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          vi_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( w_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          wi_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( t_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          ti_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( uv_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          uvi_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( uw_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          uwi_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( vt_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          vti_lonlat(i,j,:), pref_mid(:), pver )
-
-          call lininterp( wt_lonlat(i,j,:), p_lonlat(i,j,:), pver, &
-                          wti_lonlat(i,j,:), pref_mid(:), pver )
-
        end do
     end do
-
-    call t_stopf('ctem_diags_calc-interp')
-
-    call t_startf('ctem_diags_calc-zonal_mean-uvwt')
 
     ! calculate zonal means from interpolated fields
     ! mask out mountains from the zonal mean calculations
     wsums = esmf_zonal_mean_wsums(wght)
 
-    call esmf_zonal_mean_masked(ui_lonlat, wght, wsums, u_zm)
-    call esmf_zonal_mean_masked(vi_lonlat, wght, wsums, v_zm)
-    call esmf_zonal_mean_masked(wi_lonlat, wght, wsums, w_zm)
-    call esmf_zonal_mean_masked(ti_lonlat, wght, wsums, t_zm)
-
-    call esmf_zonal_mean_masked(uvi_lonlat, wght, wsums, uv_zm)
-    call esmf_zonal_mean_masked(uwi_lonlat, wght, wsums, uw_zm)
-    call esmf_zonal_mean_masked(vti_lonlat, wght, wsums, vt_zm)
-    call esmf_zonal_mean_masked(wti_lonlat, wght, wsums, wt_zm)
+    ! compute zonal-mean fields
+    call esmf_zonal_mean_masked(u_lonlat, wght, wsums, u_zm)
+    call esmf_zonal_mean_masked(v_lonlat, wght, wsums, v_zm)
+    call esmf_zonal_mean_masked(w_lonlat, wght, wsums, w_zm)
+    call esmf_zonal_mean_masked(t_lonlat, wght, wsums, t_zm)
+    call esmf_zonal_mean_masked(uv_lonlat, wght, wsums, uv_zm)
+    call esmf_zonal_mean_masked(uw_lonlat, wght, wsums, uw_zm)
+    call esmf_zonal_mean_masked(vt_lonlat, wght, wsums, vt_zm)
+    call esmf_zonal_mean_masked(wt_lonlat, wght, wsums, wt_zm)
 
     call t_stopf('ctem_diags_calc-zonal_mean-uvwt')
+
+    ! compute zonal-mean PS
+    call esmf_zonal_mean_calc(ps_lonlat, ps_zm)
 
     call t_startf('ctem_diags_calc-calc_dev_flx')
 
@@ -474,6 +441,7 @@ contains
 
     call t_startf('ctem_diags_calc-zonal_mean-p')
 
+    ! compute zonal-mean flux terms
     call esmf_zonal_mean_masked(vtp, wght, wsums, vtp_zm)
     call esmf_zonal_mean_masked(wtp, wght, wsums, wtp_zm)
     call esmf_zonal_mean_masked(uwp, wght, wsums, uwp_zm)
@@ -485,15 +453,15 @@ contains
 
     outcnt = endlon-beglon+1
 
-    ! output diagnostics
+    ! output TEM diagnostics
     do j = beglat,endlat
-       outtmp(beglon:endlon,1:pver) = ti_lonlat(beglon:endlon,j,1:pver)
+       outtmp(beglon:endlon,1:pver) = t_lonlat(beglon:endlon,j,1:pver)
        call outfld('THtem',outtmp, outcnt, j)
-       outtmp(beglon:endlon,1:pver) = ui_lonlat(beglon:endlon,j,1:pver)
+       outtmp(beglon:endlon,1:pver) = u_lonlat(beglon:endlon,j,1:pver)
        call outfld('Utem',outtmp, outcnt, j)
-       outtmp(beglon:endlon,1:pver) = vi_lonlat(beglon:endlon,j,1:pver)
+       outtmp(beglon:endlon,1:pver) = v_lonlat(beglon:endlon,j,1:pver)
        call outfld('Vtem',outtmp, outcnt, j)
-       outtmp(beglon:endlon,1:pver) = wi_lonlat(beglon:endlon,j,1:pver)
+       outtmp(beglon:endlon,1:pver) = w_lonlat(beglon:endlon,j,1:pver)
        call outfld('Wtem',outtmp, outcnt, j)
        outtmp(beglon:endlon,1:pver) = vtp(beglon:endlon,j,1:pver)
        call outfld('VTHtem',outtmp, outcnt, j)
