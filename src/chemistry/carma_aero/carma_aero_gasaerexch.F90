@@ -15,6 +15,7 @@ module carma_aero_gasaerexch
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_bin_props_by_idx, &
                               rad_aer_get_info_by_bin_spec
   use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
+  use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
   implicit none
   private
@@ -36,8 +37,8 @@ module carma_aero_gasaerexch
   character(len=32), allocatable :: fldname_cw(:)    ! names for cloud_borne output fields
 
   ! local indexing for bins
-  integer, allocatable :: bin_idx(:,:) ! table for local indexing of modal aero number and mmr
   integer :: ncnst_tot                  ! total number of mode number conc + mode species
+  type(carma_aerosol_properties), pointer :: aero_props =>null()
 
   real(r8) :: mw_soa = 250._r8
   integer :: fracvbs_idx = -1
@@ -121,27 +122,13 @@ contains
 
     nspec_max = maxval(nspec)
 
-    ncnst_tot = nspec(1)
-    do m = 2, nbins
-       ncnst_tot = ncnst_tot + nspec(m)
-    end do
+    aero_props => carma_aerosol_properties()
 
-    allocate(  bin_idx(nbins,nspec_max), &
-               do_soag_any(nbins),       &
+    ncnst_tot = aero_props%ncnst_tot()
+
+    allocate(  do_soag_any(nbins),       &
                fldname_cw(ncnst_tot),    &
                fldname(ncnst_tot) )
-
-    ! Local indexing compresses the mode and number/mass indicies into one index.
-    ! This indexing is used by the pointer arrays used to reference state and pbuf
-    ! fields.
-    ! for CARMA we add number = 0, total mass = 1, and mass from each constituence into mm.
-    ii = 0
-    do m = 1, nbins
-       do l = 1, nspec(m)    ! do through nspec
-          ii = ii + 1
-          bin_idx(m,l) = ii
-       end do
-    end do
 
     ! SOAG / SOA / POM information
     ! Define number of VBS bins (nsoa) based on number of SOAG chemistry species
@@ -236,7 +223,7 @@ contains
 !  define history fields for basic gas-aer exchange
     do m = 1, nbins
        do l = 1, nspec(m)    ! do through nspec
-          ii = bin_idx(m,l)
+          ii = aero_props%indexer(m,l)
           if (l <= nspec(m) ) then   ! species
              call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=fldname(ii) )
              ! only write out SOA exchange here
@@ -429,7 +416,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
         n = 0
         nn = 0
         do l = 1, nspec(m)
-           mm = bin_idx(m, l)
+           mm = aero_props%indexer(m,l)
            call rad_aer_get_bin_props_by_idx(0, m, l, spectype=spectype)
            if (trim(spectype) == 's-organic') then
               n = n + 1
@@ -506,6 +493,8 @@ subroutine carma_aero_gasaerexch_sub(  state, &
   call gas_aer_uptkrates( ncol,       loffset,                &
                           num_bin,          t,          pmid,       &
                           wetr_n,                   uptkrate    )
+
+  uptkrate_all = 0.0_r8
 
   do m = 1, nbins
 
@@ -690,7 +679,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
      if (do_soag_any(m)) then
         j  = 0
         do l = 1, nspec(m)
-           mm = bin_idx(m,l)
+           mm = aero_props%indexer(m,l)
            call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
            if (trim(spectype) == 's-organic') then
               j = j + 1
@@ -708,6 +697,9 @@ subroutine carma_aero_gasaerexch_sub(  state, &
         end do ! l = ...
      end if
   end do ! m = ...
+
+  deallocate(aero_state)
+  nullify(aero_state)
 
 end subroutine carma_aero_gasaerexch_sub
 

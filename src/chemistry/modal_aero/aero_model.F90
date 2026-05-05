@@ -3,7 +3,7 @@
 !===============================================================================
 module aero_model
   use shr_kind_mod,   only: r8 => shr_kind_r8
-  use constituents,   only: pcnst, cnst_name, cnst_get_ind
+  use constituents,   only: pcnst, cnst_name, cnst_get_ind, cnst_mw
   use ppgrid,         only: pcols, pver, pverp
   use phys_control,   only: phys_getopts, cam_physpkg_is
   use cam_abortutils, only: endrun
@@ -30,6 +30,8 @@ module aero_model
   use modal_aero_wateruptake, only: modal_strat_sulfate
   use mo_setsox,              only: setsox, has_sox
   use modal_aerosol_properties_mod, only: modal_aerosol_properties
+  use modal_aerosol_state_mod, only: modal_aerosol_state
+  use aerosol_state_mod, only: aerosol_state, ptr2d_t
 
   implicit none
   private
@@ -100,6 +102,7 @@ module aero_model
   logical :: modal_accum_coarse_exch = .false.
 
   type(modal_aerosol_properties), pointer :: aero_props=>null()
+  integer :: ncnst_tot
 
   integer :: n_coarse_dust=-1 ! dmleung added n_coarse_dust to determine the index for the
                               ! coarse dust mode for different MAM versions. 29 Oct 2025
@@ -203,7 +206,7 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_chemistry, history_cesm_forcing, history_dust
 
-    integer :: l
+    integer :: l, mm
     character(len=6) :: test_name
     character(len=64) :: errmes
 
@@ -215,6 +218,12 @@ contains
     character(len=32) :: spec_type
     character(len=32) :: mode_type
     integer :: nspec
+    character(len=32) :: spectype
+    character(len=32) :: name_a
+    character(len=32) :: name_c
+
+    aero_props => modal_aerosol_properties()
+    ncnst_tot = aero_props%ncnst_tot()
 
     ! aqueous chem initialization
     call sox_inti()
@@ -250,7 +259,6 @@ contains
     ! call aero_deposition_cam_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
     if (.not.aerodep_flx_prescribed()) then
-       aero_props => modal_aerosol_properties()
        call aero_deposition_cam_init(aero_props)
     endif
 
@@ -989,7 +997,7 @@ contains
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
-    type(physics_state), intent(in)    :: state    ! Physics state variables
+    type(physics_state), target, intent(in) :: state    ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1027,9 +1035,9 @@ contains
 
     real(r8), dimension(ncol) :: wrk
     character(len=32)         :: name
-    real(r8) :: dvmrcwdt(ncol,pver,gas_pcnst)
+    real(r8) :: dvmrcwdt(ncol,pver,ncnst_tot)
     real(r8) :: dvmrdt(ncol,pver,gas_pcnst)
-    real(r8) :: vmrcw(ncol,pver,gas_pcnst)            ! cloud-borne aerosol (vmr)
+    real(r8) :: vmrcw(ncol,pver,ncnst_tot)            ! cloud-borne aerosol (vmr)
 
     real(r8) ::  aqso4(ncol,ntot_amode)               ! aqueous phase chemistry
     real(r8) ::  aqh2so4(ncol,ntot_amode)             ! aqueous phase chemistry
@@ -1040,7 +1048,21 @@ contains
     real(r8), pointer :: fldcw(:,:)
     real(r8), pointer :: sulfeq(:,:,:)
 
-!
+    character(len=32) :: spectype
+    character(len=32) :: specname
+    character(len=32) :: name_a, name_c
+    real(r8) :: mw(ncnst_tot)
+    integer :: ndx, ierr, mm
+    type(ptr2d_t), allocatable :: raer(:)     ! aerosol mass, number mixing ratios
+    type(ptr2d_t), allocatable :: qqcw(:)
+    class(aerosol_state), pointer :: aero_state
+
+    character(len=*), parameter :: subname = 'aero_model_gasaerexch'
+
+!----------------------------------------------------------------------
+    aero_state => modal_aerosol_state(state, pbuf)
+
+!!
 ! ... initialize nh3
 !
     if ( nh3_ndx > 0 ) then
@@ -1076,7 +1098,33 @@ contains
 !
 ! Aerosol processes ...
 !
-    call qqcw2vmr( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
+    allocate( &
+      raer(ncnst_tot), &
+      qqcw(ncnst_tot), stat=ierr )
+    if (ierr /= 0) call endrun(subname//': allocate error')
+
+    ! Init pointers to mode number and specie mass mixing ratios in
+    ! intersitial and cloud borne phases.
+    call aero_state%get_states( aero_props, raer, qqcw )
+
+    mw(:) = 0.0_r8
+    do m = 1, aero_props%nbins()      ! main loop over aerosol bins
+       do l = 0, aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          if (l==0) then
+             call aero_props%num_names(m, name_a, name_c)
+          else
+             call aero_props%mmr_names(m,l, name_a, name_c)
+          end if
+
+          call cnst_get_ind(name_a,ndx)
+          mw(mm) = cnst_mw(ndx)
+          vmrcw(:ncol,:,mm) = qqcw(mm)%fld(:ncol,:)
+
+       end do
+    end do
+
+    call qqcw2vmr( vmrcw, mw, mbar, ncol )
 
     dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
     dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
@@ -1084,7 +1132,7 @@ contains
     ! aqueous chemistry ...
 
     if( has_sox ) then
-       call setsox( state, &
+       call setsox( aero_state, state, &
               pbuf,     &
               ncol,     &
               lchnk,    &
@@ -1192,7 +1240,14 @@ contains
 
     call t_stopf('modal_coag')
 
-    call vmr2qqcw( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
+    call vmr2qqcw( vmrcw, mw, mbar, ncol )
+
+    do m = 1, aero_props%nbins()      ! main loop over aerosol bins
+       do l = 0, aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          qqcw(mm)%fld(:ncol,:) = vmrcw(:ncol,:,mm)
+       end do
+    end do
 
     ! diagnostics for cloud-borne aerosols...
     do n = 1,pcnst
@@ -1999,83 +2054,63 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine qqcw2vmr(lchnk, vmr, mbar, ncol, im, pbuf)
-    use modal_aero_data, only : qqcw_get_field
-    use physics_buffer, only : physics_buffer_desc
+  subroutine qqcw2vmr(vmr, mw, mbar, ncol)
     !-----------------------------------------------------------------
     !	... Xfrom from mass to volume mixing ratio
     !-----------------------------------------------------------------
 
-    use chem_mods, only : adv_mass, gas_pcnst
-
-    implicit none
-
     !-----------------------------------------------------------------
     !	... Dummy args
     !-----------------------------------------------------------------
-    integer, intent(in)     :: lchnk, ncol, im
+    integer, intent(in)     :: ncol
     real(r8), intent(in)    :: mbar(ncol,pver)
-    real(r8), intent(inout) :: vmr(ncol,pver,gas_pcnst)
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(in)    :: mw(ncnst_tot)
+    real(r8), intent(inout) :: vmr(ncol,pver,ncnst_tot)
 
     !-----------------------------------------------------------------
     !	... Local variables
     !-----------------------------------------------------------------
-    integer :: k, m
-    real(r8), pointer :: fldcw(:,:)
+    integer :: k,l, m,mm
 
-    do m=1,gas_pcnst
-       if( adv_mass(m) /= 0._r8 ) then
-          fldcw => qqcw_get_field(pbuf, m+im,lchnk,errorhandle=.true.)
-          if(associated(fldcw)) then
-             do k=1,pver
-                vmr(:ncol,k,m) = mbar(:ncol,k) * fldcw(:ncol,k) / adv_mass(m)
-             end do
-          else
-             vmr(:,:,m) = 0.0_r8
-          end if
-       end if
+    do m = 1, aero_props%nbins()
+       do l = 0, aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          do k=1,pver
+             vmr(:ncol,k,mm) = mbar(:ncol,k) * vmr(:ncol,k,mm) / mw(mm)
+          end do
+       end do
     end do
+
   end subroutine qqcw2vmr
 
 
   !=============================================================================
   !=============================================================================
-  subroutine vmr2qqcw( lchnk, vmr, mbar, ncol, im, pbuf )
+  subroutine vmr2qqcw(vmr, mw, mbar, ncol)
     !-----------------------------------------------------------------
     !	... Xfrom from volume to mass mixing ratio
     !-----------------------------------------------------------------
 
-    use m_spc_id
-    use chem_mods,       only : adv_mass, gas_pcnst
-    use modal_aero_data, only : qqcw_get_field
-    use physics_buffer,  only : physics_buffer_desc
-
-    implicit none
-
     !-----------------------------------------------------------------
     !	... Dummy args
     !-----------------------------------------------------------------
-    integer, intent(in)     :: lchnk, ncol, im
+    integer, intent(in)     :: ncol
     real(r8), intent(in)    :: mbar(ncol,pver)
-    real(r8), intent(in)    :: vmr(ncol,pver,gas_pcnst)
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(in)    :: mw(ncnst_tot)
+    real(r8), intent(inout) :: vmr(ncol,pver,ncnst_tot)
 
     !-----------------------------------------------------------------
     !	... Local variables
     !-----------------------------------------------------------------
-    integer :: k, m
-    real(r8), pointer :: fldcw(:,:)
-    !-----------------------------------------------------------------
-    !	... The non-group species
-    !-----------------------------------------------------------------
-    do m = 1,gas_pcnst
-       fldcw => qqcw_get_field(pbuf, m+im,lchnk,errorhandle=.true.)
-       if( adv_mass(m) /= 0._r8 .and. associated(fldcw)) then
-          do k = 1,pver
-             fldcw(:ncol,k) = adv_mass(m) * vmr(:ncol,k,m) / mbar(:ncol,k)
+    integer :: k, l, m, mm
+
+    do m = 1, aero_props%nbins()
+       do l = 0, aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          do k=1,pver
+             vmr(:ncol,k,mm) = mw(mm) * vmr(:ncol,k,mm) / mbar(:ncol,k)
           end do
-       end if
+       end do
     end do
 
   end subroutine vmr2qqcw

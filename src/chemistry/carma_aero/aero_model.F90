@@ -65,22 +65,7 @@ module aero_model
   integer, public, protected :: nspec_max = 0
   integer, public, protected :: nbins = 0
   integer, public, protected, allocatable :: nspec(:)
-
-  ! local indexing for bins
-  integer, allocatable :: bin_idx(:,:) ! table for local indexing of modal aero number and mmr
-  integer :: ncnst_tot                  ! total number of mode number conc + mode species
-  integer :: ncnst_extd                  ! twiece total number of mode number conc + mode species
-
-  ! Indices for CARMA species in the ptend%q array.  Needed for prognostic aerosol case.
-  logical, allocatable :: bin_cnst_lq(:,:)
-  integer, allocatable :: bin_cnst_idx(:,:)
-
-
-  ! ptr2d_t is used to create arrays of pointers to 2D fields
-  type ptr2d_t
-    real(r8), pointer :: fld(:,:) => null()
-  end type ptr2d_t
-
+  integer :: ncnst_tot
   logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
                                  ! in the ptend object
 
@@ -209,7 +194,7 @@ contains
 
     ! local vars
     character(len=*), parameter :: subrname = 'aero_model_init'
-    integer :: m, n, ii, mm
+    integer :: m, n, mm
     integer :: idxtmp    = -1
 
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
@@ -273,50 +258,33 @@ contains
 
     nspec_max = maxval(nspec)
 
-    ncnst_tot = nspec(1)
-    do m = 2, nbins
-      ncnst_tot = ncnst_tot + nspec(m)
-    end do
-    ncnst_extd = 2*ncnst_tot
+    ncnst_tot = aero_props%ncnst_tot()
 
     allocate( &
-      bin_idx(nbins,nspec_max),      &
-      bin_cnst_lq(nbins,nspec_max), &
-      bin_cnst_idx(nbins,nspec_max), &
       fieldname_cw(ncnst_tot), &
       fieldname(ncnst_tot), stat=ierr  )
     if (ierr/=0) call endrun(subrname//' : allocate error')
 
-    ii = 0
     do m = 1, nbins
       do l = 1, nspec(m) ! loop through species
-         ii = ii + 1
-         bin_idx(m,l) = ii
+         mm = aero_props%indexer(m,l)
 
          if (l <= nspec(m) ) then   ! species
-            call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=fieldname(ii), spec_name_cw=fieldname_cw(ii))
+            call rad_aer_get_info_by_bin_spec(0, m, l, spec_name=fieldname(mm), spec_name_cw=fieldname_cw(mm))
          else  !number
-            call rad_aer_get_info_by_bin(0, m, num_name=fieldname(ii), num_name_cw=fieldname_cw(ii))
+            call rad_aer_get_info_by_bin(0, m, num_name=fieldname(mm), num_name_cw=fieldname_cw(mm))
          end if
 
-         call cnst_get_ind(fieldname(ii), idxtmp, abort=.false.)
+         call cnst_get_ind(fieldname(mm), idxtmp, abort=.false.)
           if (idxtmp.gt.0) then
-             bin_cnst_lq(m,l) = .true.
-             bin_cnst_idx(m,l) = idxtmp
              lq(idxtmp) = .true.
              call cnst_set_convtran2(idxtmp, .not.convproc_do_aer)
-          else
-             bin_cnst_lq(m,l) = .false.
-             bin_cnst_idx(m,l) = 0
           end if
 
-         mm = ii
-
-         unit_basename = 'kg'
-         if (l == nspec(m) + 2) then   ! number
-          unit_basename = ' 1'
-         end if
-
+          unit_basename = 'kg'
+          if (l == nspec(m) + 2) then   ! number
+             unit_basename = ' 1'
+          end if
 
           call addfld( fieldname_cw(mm),                (/ 'lev' /), 'A', unit_basename//'/kg ',   &
                trim(fieldname_cw(mm))//' in cloud water')
@@ -355,7 +323,7 @@ contains
     if (has_sox) then
        do n = 1, nbins
           do l = 1, nspec(n)   ! not for total mass or number
-             mm = bin_idx(n, l)
+             mm = aero_props%indexer(n,l)
              call addfld (&
                   trim(fieldname_cw(mm))//'AQSO4',horiz_only,  'A','kg/m2/s', &
                   trim(fieldname_cw(mm))//' aqueous phase chemistry')
@@ -501,10 +469,13 @@ contains
 
     use carma_aero_gasaerexch, only : carma_aero_gasaerexch_sub
     use time_manager,          only : get_nstep
+    use carma_aerosol_state_mod, only : carma_aerosol_state
+    use aerosol_state_mod, only: aerosol_state, ptr2d_t
+
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
-    type(physics_state), intent(in)    :: state    ! Physics state variables
+    type(physics_state),target, intent(in) :: state  ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -540,8 +511,6 @@ contains
 
     real(r8) :: del_h2so4_aeruptk(ncol,pver)
 
-    real(r8), pointer :: pblh(:)                    ! pbl height (m)
-
     real(r8), dimension(ncol) :: wrk
     character(len=32)         :: name
     real(r8) :: dvmrcwdt(ncol,pver,ncnst_tot)
@@ -559,14 +528,10 @@ contains
     real(r8) ::  xphlwc(ncol,pver)                    ! pH value multiplied by lwc
     real(r8) ::  nh3_beg(ncol,pver)
     real(r8) ::  mw_carma(ncnst_tot)
-    real(r8), pointer :: fldcw(:,:)
-    real(r8), pointer :: sulfeq(:,:,:)
     real(r8) :: wetr(pcols,pver)   ! CARMA wet radius in cm
     real(r8) :: wetrho(pcols,pver)   ! CARMA wet dens
     real(r8), allocatable :: rmass(:)     ! CARMA rmass
 
-    real(r8) :: old_total_mass
-    real(r8) :: new_total_mass
     real(r8) :: old_total_number
 
     character(len=32) :: spectype
@@ -574,6 +539,11 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr, ierr
     character(len=*), parameter :: subname = 'aero_model_gasaerexch'
+
+    class(aerosol_state), pointer :: aero_state
+
+!----------------------------------------------------------------------
+    aero_state => carma_aerosol_state(state, pbuf)
 
 !
 ! ... initialize nh3
@@ -605,6 +575,10 @@ contains
       raer(ncnst_tot), &
       qqcw(ncnst_tot), stat=ierr )
     if (ierr /= 0) call endrun(subname//': allocate error')
+
+    ! Init pointers to mode number and specie mass mixing ratios in
+    ! intersitial and cloud borne phases.
+    call aero_state%get_states( aero_props, raer, qqcw )
 
     mw_carma(:) = 0.0_r8
     do m = 1, nbins      ! main loop over aerosol bins
@@ -641,11 +615,9 @@ contains
        ! Init pointers to mode number and specie mass mixing ratios in
        ! intersitial and cloud borne phases.
        do l = 1, nspec(m)
-          mm = bin_idx(m, l)
+          mm = aero_props%indexer(m,l)
           if (l <= nspec(m)) then
-             call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
-             call rad_cnst_get_bin_mmr_by_idx(0, m, l, 'a', state, pbuf, raer(mm)%fld)
-             call rad_cnst_get_bin_mmr_by_idx(0, m, l, 'c', state, pbuf, qqcw(mm)%fld)  ! cloud-borne aerosol
+             call aero_props%get(bin_ndx=m, species_ndx=l, spectype=spectype)
              if (trim(spectype) == 'sulfate') then
                 mw_carma(mm) = 96._r8
              end if
@@ -680,7 +652,7 @@ contains
     ! aqueous chemistry ...
 
     if( has_sox ) then
-         call setsox( state,  &
+         call setsox( aero_state, state,  &
               pbuf,     &
               ncol,     &
               lchnk,    &
@@ -705,10 +677,13 @@ contains
 
           do n = 1, nbins
             do l = 1, nspec(n)   ! not for total mass or number
-                mm = bin_idx(n, l)
-                call outfld( trim(fieldname_cw(mm))//'AQSO4',   aqso4(:ncol,mm),   ncol, lchnk)
-                call outfld( trim(fieldname_cw(mm))//'AQH2SO4', aqh2so4(:ncol,mm), ncol, lchnk)
-             end do
+               call aero_props%get(bin_ndx=n, species_ndx=l, spectype=spectype)
+               if (trim(spectype) == 'sulfate') then
+                  mm = aero_props%indexer(n,l)
+                  call outfld( trim(fieldname_cw(mm))//'AQSO4',   aqso4(:ncol,n),   ncol, lchnk)
+                  call outfld( trim(fieldname_cw(mm))//'AQH2SO4', aqh2so4(:ncol,n), ncol, lchnk)
+               end if
+            end do
           end do
 
           call outfld( 'AQSO4_H2O2', aqso4_h2o2(:ncol), ncol, lchnk)
@@ -752,40 +727,16 @@ contains
     ! note vmr2qqcw does not change qqcw pointer (different than in MAM)
     call vmr2mmr_carma ( lchnk, vmrcw, mbar, mw_carma, ncol, loffset, rmass )
 
-    !vmrcw in kg/kg
-    ! change pointer value for total mmr and number. In order to do this correctly
-    ! only mass has to be added to each bin (not number). This will require redistributing
-    ! mass to different bins. Here, we change both mass and number until we have a better
-    ! solution.
-    delta_so4mass(:,:,:) = 0.0_r8
-    do m = 1, nbins
-       do l = 1, nspec(m)  ! for sulfate only
-          mm = bin_idx(m, l)
-         ! sulfate mass that needs to be added to the total mass
-          call rad_aer_get_bin_props_by_idx(0, m, l,spectype=spectype)
-          if (trim(spectype) == 'sulfate') then
-              ! only do loop if vmrcw has changed
-              do k=1,pver
-                 do i=1,ncol
-                  if (vmrcw(i,k,mm) .gt. mmrcw(i,k,mm) .and. mmrcw(i,k,mm) /= 0.0_r8)  then
-                   delta_so4mass(i,k,mm) = ( vmrcw(i,k,mm) - mmrcw(i,k,mm) )
-                  else
-                    delta_so4mass(i,k,mm) = 0.0_r8
-                  end if
-                 end do
-              end do
-         end if
-       end do
-    end do
-
     do m = 1, nbins
        do l = 1, nspec(m) ! for sulfate only
-          mm = bin_idx(m, l)
+          mm = aero_props%indexer(m,l)
           qqcw(mm)%fld(:ncol,:) = vmrcw(:ncol,:,mm)
           call outfld( trim(fieldname_cw(mm)), qqcw(mm)%fld(:ncol,:), ncol, lchnk)
        end do
     end do
 
+    deallocate(aero_state)
+    nullify(aero_state)
 
   end subroutine aero_model_gasaerexch
 
@@ -941,7 +892,7 @@ contains
 
     do m = 1, nbins
        do l = 1, nspec(m)   ! for each species, not total mmr or number, information of mw are missing
-          mm = bin_idx(m, l)
+          mm = aero_props%indexer(m,l)
           do k=1,pver
              vmr(:ncol,k,mm) = mbar(:ncol,k) * vmr(:ncol,k,mm) / mw_carma(mm)
           end do
@@ -977,7 +928,7 @@ contains
     !-----------------------------------------------------------------
     do m = 1, nbins
        do l = 1, nspec(m)   ! for each species, not total mmr or number, information of mw are missing
-          mm = bin_idx(m, l)
+          mm = aero_props%indexer(m,l)
           do k=1,pver
              vmr(:ncol,k,mm) = mw_carma(mm) * vmr(:ncol,k,mm) / mbar(:ncol,k)
           end do

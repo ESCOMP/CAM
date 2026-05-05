@@ -3,6 +3,7 @@ module mo_setsox
   use shr_kind_mod, only : r8 => shr_kind_r8
   use cam_logfile,  only : iulog
   use physics_types,only : physics_state
+  use aerosol_state_mod, only: aerosol_state
 
   implicit none
 
@@ -148,7 +149,7 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine setsox( state, &
+  subroutine setsox( aero_state, state, &
        pbuf,   &
        ncol,   &
        lchnk,  &
@@ -211,6 +212,7 @@ contains
     !-----------------------------------------------------------------------
     !      ... Dummy arguments
     !-----------------------------------------------------------------------
+    class(aerosol_state), intent(in) :: aero_state
     type(physics_state),                intent(in)    :: state   ! Physics state variables
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:) ! Physics buffer
     integer,          intent(in)    :: ncol              ! num of columns in chunk
@@ -362,7 +364,8 @@ contains
     xso4(:,:) = 0._r8
     xno3(:,:) = 0._r8
     xnh4(:,:) = 0._r8
-
+    xso4_init = 0._r8
+    
     do k = 1,pver
        xph(:,k) = xph0                                ! initial PH value
 
@@ -757,9 +760,9 @@ contains
                   / xam         & ! / (molecule(a)/m3(a))
                   * AVOGADRO    & ! * (molecule(a)/mole(a))
                   * M3_TO_L       ! * (L(a)/m3(a)) = mole(h2o2)/mole(a)/s
-          
+
           xh2o2(i,k) = xh2o2(i,k) + r2h2o2*dtime ! updated h2o2 by het production
-          
+
           !-----------------------------------------------
           !       ... Partioning
           !-----------------------------------------------
@@ -877,7 +880,7 @@ contains
        end do col_loop1
     end do ver_loop1
 
-    call sox_cldaero_update( &
+    call sox_cldaero_update( aero_state, &
           state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
           xdelso4hp, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
           aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
@@ -900,7 +903,7 @@ contains
    !-----------------------------------------------------------------
    pure integer function get_heff_index(species_name) result(index)
       use shr_drydep_mod, only: species_name_table
-     
+
       character(len=*), intent(in) :: species_name
 
       do index = 1, size(species_name_table)
