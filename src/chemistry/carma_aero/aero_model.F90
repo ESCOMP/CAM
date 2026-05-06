@@ -236,7 +236,7 @@ contains
     end if
 
     ! aqueous chem initialization
-    call sox_inti()
+    call sox_inti(aero_props)
 
     h2so4_ndx = get_spc_ndx('H2SO4')
     nh3_ndx = get_spc_ndx('NH3')

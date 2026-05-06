@@ -8,6 +8,8 @@ module sox_cldaero_mod
   use ppgrid,           only : pcols, pver
   use mo_chem_utls,     only : get_spc_ndx
   use cldaero_mod,      only : cldaero_conc_t, cldaero_allocate, cldaero_deallocate
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_state_mod, only: aerosol_state
 
   implicit none
   private
@@ -26,7 +28,8 @@ contains
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
 
-  subroutine sox_cldaero_init
+  subroutine sox_cldaero_init(aero_props_in)
+    class(aerosol_properties), target, intent(in) :: aero_props_in
 
      id_so2 = get_spc_ndx( 'SO2' )
      id_so4 = get_spc_ndx( 'SO4' )
@@ -60,7 +63,7 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
-  subroutine sox_cldaero_update( &
+  subroutine sox_cldaero_update( aero_state, &
        state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d )
@@ -68,6 +71,7 @@ contains
 
     ! args
 
+    class(aerosol_state), intent(in) :: aero_state
     type(physics_state), intent(in) :: state     ! Physics state variables
     integer,  intent(in) :: ncol
     integer,  intent(in) :: lchnk ! chunk id

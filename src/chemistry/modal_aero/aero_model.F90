@@ -223,7 +223,7 @@ contains
     ncnst_tot = aero_props%ncnst_tot()
 
     ! aqueous chem initialization
-    call sox_inti()
+    call sox_inti(aero_props)
 
     dgnum_idx       = pbuf_get_index('DGNUM')
     dgnumwet_idx    = pbuf_get_index('DGNUMWET')

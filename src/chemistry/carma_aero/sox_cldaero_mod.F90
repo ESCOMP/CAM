@@ -12,10 +12,8 @@ module sox_cldaero_mod
   use phys_control,    only : cam_chempkg_is
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
-  use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties
   use aerosol_state_mod, only: aerosol_state
-
-  use modal_aero_data, only : ntot_amode
 
   implicit none
   private
@@ -32,7 +30,7 @@ module sox_cldaero_mod
   integer :: ncnst_tot = -huge(1) ! total number of mode number conc + mode species
   integer, public, protected :: nbins = 0
 
-  type(carma_aerosol_properties), pointer :: aero_props =>null()
+  class(aerosol_properties), pointer :: aero_props =>null()
 
   logical :: has_msa = .false.
 
@@ -41,7 +39,8 @@ contains
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
 
-  subroutine sox_cldaero_init
+  subroutine sox_cldaero_init(aero_props_in)
+    class(aerosol_properties), target, intent(in) :: aero_props_in
 
     id_msa = get_spc_ndx( 'MSA' )
     id_h2so4 = get_spc_ndx( 'H2SO4' )
@@ -55,7 +54,7 @@ contains
                   //' -- should not invoke sox_cldaero_mod ')
     endif
 
-    aero_props => carma_aerosol_properties()
+    aero_props => aero_props_in
 
     ncnst_tot = aero_props%ncnst_tot()
     nbins = aero_props%nbins()
@@ -76,11 +75,15 @@ contains
     type(cldaero_conc_t), pointer :: conc_obj
 
     character(len=32) :: spectype
-
     integer :: l,m
-    integer :: i,k,mm
-
+    integer :: i,k,mm, ntot_amode
     logical :: mode7
+
+    if (aero_props%model_is('MAM')) then
+       ntot_amode = aero_props%nbins()
+    else
+       ntot_amode = 0
+    end if
 
     mode7 = ntot_amode == 7
 

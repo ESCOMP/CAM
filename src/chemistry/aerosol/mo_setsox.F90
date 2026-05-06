@@ -29,7 +29,7 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine sox_inti
+  subroutine sox_inti(aero_props)
     !-----------------------------------------------------------------------
     !	... initialize the hetero sox routine
     !-----------------------------------------------------------------------
@@ -39,6 +39,9 @@ contains
     use phys_control, only : phys_getopts
     use carma_flags_mod, only : carma_do_cloudborne
     use sox_cldaero_mod, only : sox_cldaero_init
+    use aerosol_properties_mod, only : aerosol_properties
+
+    class(aerosol_properties), intent(in) :: aero_props
 
     logical :: modal_aerosols
 
@@ -143,7 +146,7 @@ contains
        return
     end if
 
-    call sox_cldaero_init()
+    call sox_cldaero_init(aero_props)
 
   end subroutine sox_inti
 
@@ -365,7 +368,7 @@ contains
     xno3(:,:) = 0._r8
     xnh4(:,:) = 0._r8
     xso4_init = 0._r8
-    
+
     do k = 1,pver
        xph(:,k) = xph0                                ! initial PH value
 

@@ -19,6 +19,7 @@ module aero_model
   use physics_buffer,    only: pbuf_get_field, pbuf_get_index
   use cam_history,       only: outfld
   use infnan,            only: nan, assignment(=)
+  use bulk_aerosol_properties_mod, only: bulk_aerosol_properties
 
   implicit none
   private
@@ -56,6 +57,8 @@ module aero_model
   real(r8) :: aer_sol_facti(pcnst) ! in-cloud solubility factor
   real(r8) :: aer_sol_factb(pcnst) ! below-cloud solubility factor
   real(r8) :: aer_scav_coef(pcnst)
+
+  type(bulk_aerosol_properties), pointer :: aero_props =>null()
 
 contains
 
@@ -151,8 +154,10 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_dust    ! Output dust
 
+    aero_props => bulk_aerosol_properties()
+
     ! aqueous chem initialization
-    call sox_inti()
+    call sox_inti(aero_props)
 
     call phys_getopts( history_aerosol_out = history_aerosol,&
                        history_dust_out    = history_dust   )
@@ -1030,11 +1035,13 @@ contains
     use mo_aerosols, only : aerosols_formation, has_aerosols
     use mo_setsox,   only : setsox, has_sox
     use mo_setsoa,   only : setsoa, has_soa
+    use aerosol_state_mod, only : aerosol_state
+    use bulk_aerosol_state_mod, only : bulk_aerosol_state
 
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
-    type(physics_state), intent(in)    :: state    ! Physics state variables
+    type(physics_state),target, intent(in) :: state ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1069,11 +1076,15 @@ contains
     real(r8) ::  aqso4_o3(ncol)              ! SO4 aqueous phase chemistry due to O3
     real(r8) ::  xphlwc(ncol,pver)           ! pH value multiplied by lwc
 
+    class(aerosol_state), pointer :: aero_state
+
+!----------------------------------------------------------------------
+    aero_state => bulk_aerosol_state(state, pbuf)
 
   ! aqueous chemistry ...
 
     if( has_sox ) then
-       call setsox( state, &
+       call setsox( aero_state, state, &
             pbuf,     &
             ncol,     &
             lchnk,    &
