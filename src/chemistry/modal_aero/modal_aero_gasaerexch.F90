@@ -18,7 +18,6 @@
   use ppgrid,          only:  pcols, pver
   use modal_aero_data, only:  ntot_amode, numptr_amode, sigmag_amode
   use modal_aero_data, only: lptr2_soa_g_amode, lptr2_soa_a_amode, lptr2_pom_a_amode
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
   implicit none
   private
@@ -59,10 +58,6 @@
 
   real (r8), allocatable :: fac_m2v_pcarbon(:)
 
-  ! local indexing for bins
-  integer :: ncnst_tot                  ! total number of mode number conc + mode species
-  type(modal_aerosol_properties), pointer :: aero_props =>null()
-
 ! !DESCRIPTION: This module implements ...
 !
 ! !REVISION HISTORY:
@@ -93,8 +88,8 @@ subroutine modal_aero_gasaerexch_sub(                            &
                         loffset,  deltat,                        &
                         t,        pmid,     pdel,                &
                         qh2o,               troplev,             &
-                        q,                  qqcw_in,             &
-                        dqdt_other,         dqqcwdt_other_in,    &
+                        q,                  qqcw,                &
+                        dqdt_other,         dqqcwdt_other,       &
                         dgncur_a,           dgncur_awet,         &
                         sulfeq         )
 
@@ -114,7 +109,6 @@ use physconst,         only:  gravit, mwdry, rair
 use cam_abortutils,    only:  endrun
 use spmd_utils,        only:  iam, masterproc
 use phys_control,      only:  cam_chempkg_is
-use mo_chem_utls,      only: get_spc_ndx
 
 implicit none
 
@@ -130,13 +124,13 @@ implicit none
                                                    ! *** MUST BE  #/kmol-air for number
                                                    ! *** MUST BE mol/mol-air for mass
                                                    ! *** NOTE ncol dimension
-   real(r8), intent(inout) :: qqcw_in(ncol,pver,ncnst_tot)
+   real(r8), intent(inout) :: qqcw(ncol,pver,pcnstxx)
                                                    ! like q but for cloud-borner tracers
    real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
                                                    ! TMR tendency from other continuous
                                                    ! growth processes (aqchem, soa??)
                                                    ! *** NOTE ncol dimension
-   real(r8), intent(in)    :: dqqcwdt_other_in(ncol,pver,ncnst_tot)
+   real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
                                                    ! like dqdt_other but for cloud-borner tracers
    real(r8), intent(in)    :: t(pcols,pver)        ! temperature at model levels (K)
    real(r8), intent(in)    :: pmid(pcols,pver)     ! pressure at model levels (Pa)
@@ -263,25 +257,6 @@ implicit none
    real(r8) :: dqdtsv1(ncol,pver,pcnstxx)
    real(r8) :: dqqcwdtsv1(ncol,pver,pcnstxx)
 
-   real(r8) :: qqcw(ncol,pver,pcnstxx)
-   real(r8) :: dqqcwdt_other(ncol,pver,pcnstxx)
-
-   integer :: m, mm, ndx
-   character(len=32) :: name_a, name_c
-
-   do m = 1,aero_props%nbins()
-      do l = 0,aero_props%nspecies(m)
-         mm = aero_props%indexer(m,l)
-         if (l==0) then
-            call aero_props%num_names(m, name_a, name_c)
-         else
-            call aero_props%mmr_names(m,l, name_a, name_c)
-         end if
-         ndx = get_spc_ndx( name_a )
-         qqcw(:,:,ndx) = qqcw_in(:,:,mm)
-         dqqcwdt_other(:,:,ndx) = dqqcwdt_other_in(:,:,mm)
-      end do
-   end do
 
 !----------------------------------------------------------------------
 
@@ -969,19 +944,6 @@ implicit none
       end do ! jsrf = ...
    end do ! l = ...
 
-   do m = 1,aero_props%nbins()
-      do l = 0,aero_props%nspecies(m)
-         mm = aero_props%indexer(m,l)
-         if (l==0) then
-            call aero_props%num_names(m, name_a, name_c)
-         else
-            call aero_props%mmr_names(m,l, name_a, name_c)
-         end if
-         ndx = get_spc_ndx( name_a )
-         qqcw_in(:,:,mm) = qqcw(:,:,ndx)
-      end do
-   end do
-
    return
    end subroutine modal_aero_gasaerexch_sub
 
@@ -1520,10 +1482,6 @@ implicit none
    logical                        :: history_aerosol      ! Output the MAM aerosol tendencies
    logical                        :: history_aerocom    ! Output the aerocom history
    !-----------------------------------------------------------------------
-
-    aero_props => modal_aerosol_properties()
-
-    ncnst_tot = aero_props%ncnst_tot()
 
         call phys_getopts( history_aerosol_out        = history_aerosol   )
 
