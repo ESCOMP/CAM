@@ -264,8 +264,8 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
-                 spec_mw, spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
+                 spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
     use cam_abortutils, only: endrun
 

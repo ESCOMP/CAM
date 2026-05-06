@@ -152,16 +152,16 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
-                 spec_mw, spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
+                 spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
 
     class(bulk_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
     integer, intent(in) :: species_ndx         ! species index
-    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     character(len=*), optional, intent(out) :: spectype  ! species type
     character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
