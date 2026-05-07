@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------------------
-! Modal aerosol implementation
+! Generic aerosol implementation
 !----------------------------------------------------------------------------------
 module sox_cldaero_mod
 
@@ -49,9 +49,8 @@ contains
     id_nh3 = get_spc_ndx( 'NH3' )
     has_msa = id_msa>0
 
-    if (id_h2so4<1 .or. id_so2<1 .or. id_h2o2<1) then
-      call endrun('sox_cldaero_init:MAM mech does not include necessary species' &
-                  //' -- should not invoke sox_cldaero_mod ')
+    if ( id_so2<1 ) then
+       call endrun('sox_cldaero_init: SO2 is not included in chemistry -- should not invoke sox_cldaero_mod...')
     endif
 
     aero_props => aero_props_in
@@ -79,6 +78,14 @@ contains
     integer :: i,k,mm, ntot_amode
     logical :: mode7
 
+    conc_obj => cldaero_allocate()
+
+    if (aero_props%model_is('BAM')) then
+       ! no cloud-borne aerosols
+       conc_obj%xlwc(:ncol,:) = lwc(:ncol,:)*cfact(:ncol,:) ! cloud water L(water)/
+       return
+    end if
+
     if (aero_props%model_is('MAM')) then
        ntot_amode = aero_props%nbins()
     else
@@ -87,11 +94,9 @@ contains
 
     mode7 = ntot_amode == 7
 
-    conc_obj => cldaero_allocate()
-
     do k = 1,pver
        do i = 1,ncol
-          if( cldfrc(i,k) >0._r8) then
+          if(cldfrc(i,k)>0._r8) then
              conc_obj%xlwc(i,k) = lwc(i,k) *cfact(i,k) ! cloud water L(water)/L(air)
              conc_obj%xlwc(i,k) = conc_obj%xlwc(i,k) / cldfrc(i,k) ! liquid water in the cloudy fraction of cell
           else
