@@ -41,7 +41,7 @@ contains
     use sox_cldaero_mod, only : sox_cldaero_init
     use aerosol_properties_mod, only : aerosol_properties
 
-    class(aerosol_properties), intent(in) :: aero_props
+    class(aerosol_properties), target, intent(in) :: aero_props
 
     logical :: modal_aerosols
 
