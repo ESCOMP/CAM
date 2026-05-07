@@ -62,14 +62,13 @@ contains
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
-  function sox_cldaero_create_obj(cldfrc, qcw, lwc, cfact, ncol, loffset) result( conc_obj )
+  function sox_cldaero_create_obj(cldfrc, qcw, lwc, cfact, ncol) result( conc_obj )
 
     real(r8), intent(in) :: cldfrc(:,:)
     real(r8), intent(in) :: qcw(:,:,:)
     real(r8), intent(in) :: lwc(:,:)
     real(r8), intent(in) :: cfact(:,:)
     integer,  intent(in) :: ncol
-    integer,  intent(in) :: loffset
 
     type(cldaero_conc_t), pointer :: conc_obj
 
@@ -140,8 +139,8 @@ contains
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
   subroutine sox_cldaero_update( aero_state, &
-       state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
-       delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
+       ncol, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+       delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, xnh3, xnh4c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
 
     use physics_types, only: physics_state
@@ -149,11 +148,8 @@ contains
     ! args
 
     class(aerosol_state), intent(in) :: aero_state
-    type(physics_state), intent(in) :: state     ! Physics state variables
 
     integer,  intent(in) :: ncol
-    integer,  intent(in) :: lchnk ! chunk id
-    integer,  intent(in) :: loffset
 
     real(r8), intent(in) :: dtime ! time step (sec)
 
@@ -172,14 +168,11 @@ contains
     real(r8), intent(in) :: xso4(:,:)
     real(r8), intent(in) :: xso4_init(:,:)
     real(r8), intent(in) :: nh3g(:,:)
-    real(r8), intent(in) :: hno3g(:,:)
     real(r8), intent(in) :: xnh3(:,:)
-    real(r8), intent(in) :: xhno3(:,:)
     real(r8), intent(in) :: xnh4c(:,:)
     real(r8), intent(in) :: xmsa(:,:)
     real(r8), intent(in) :: xso2(:,:)
     real(r8), intent(in) :: xh2o2(:,:)
-    real(r8), intent(in) :: xno3c(:,:)
 
     real(r8), intent(inout) :: qcw(:,:,:) ! cloud-borne aerosol (vmr)
     real(r8), intent(inout) :: qin(:,:,:) ! xported species ( vmr )
@@ -210,7 +203,7 @@ contains
     real(r8) :: fwetrem, uptkrate
 
     integer :: l, m, n, mm
-    integer :: i,k, ndx
+    integer :: i,k
     real(r8) :: xl
     real(r8) :: mw_so4
     character(len=32) :: spectype

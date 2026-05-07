@@ -106,6 +106,7 @@ module aero_model
   integer :: n_coarse_dust=-1 ! dmleung added n_coarse_dust to determine the index for the
                               ! coarse dust mode for different MAM versions. 29 Oct 2025
   integer :: ncnst_tot = -1
+  integer :: chem_map_ndx(gas_pcnst) = -1
 
 contains
 
@@ -218,12 +219,26 @@ contains
     character(len=32) :: spec_type
     character(len=32) :: mode_type
     integer :: nspec
+    integer :: mm
+    character(len=32) :: name_a, name_c
 
     aero_props => modal_aerosol_properties()
     ncnst_tot = aero_props%ncnst_tot()
 
     ! aqueous chem initialization
     call sox_inti(aero_props)
+
+    do m = 1,aero_props%nbins()
+       do l = 0,aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          if (l==0) then
+             call aero_props%num_names(m, name_a, name_c)
+          else
+             call aero_props%mmr_names(m,l, name_a, name_c)
+          end if
+          chem_map_ndx(mm) = get_spc_ndx( name_a )
+       end do
+    end do
 
     dgnum_idx       = pbuf_get_index('DGNUM')
     dgnumwet_idx    = pbuf_get_index('DGNUMWET')
@@ -1048,9 +1063,8 @@ contains
 
     real(r8) :: qqcw(ncol,pver,ncnst_tot)
 
-    integer :: ndx, mm
+    integer :: mm
     character(len=32) :: specname
-    character(len=32) :: name_a, name_c
     class(aerosol_state), pointer :: aero_state
 
     aero_state => modal_aerosol_state(state, pbuf)
@@ -1099,24 +1113,19 @@ contains
 
     if( has_sox ) then
 
+       ! Temperary code to map cloud-borne aerosol VMRs to aerosol only array (qqcw)
+       ! needed for setsox interface.  When refactoring aero_model_gasaerexch
+       ! with modal_aero_gasaerexch_sub, this mapping should go away.
        do m = 1,aero_props%nbins()
           do l = 0,aero_props%nspecies(m)
              mm = aero_props%indexer(m,l)
-             if (l==0) then
-                call aero_props%num_names(m, name_a, name_c)
-             else
-                call aero_props%mmr_names(m,l, name_a, name_c)
-             end if
-             ndx = get_spc_ndx( name_a )
-             qqcw(:,:,mm) = vmrcw(:,:,ndx)
+             qqcw(:,:,mm) = vmrcw(:,:,chem_map_ndx(mm))
           end do
        end do
 
        call setsox( aero_state, state, &
               pbuf,     &
               ncol,     &
-              lchnk,    &
-              loffset,  &
               delt,     &
               pmid,     &
               pdel,     &
@@ -1135,16 +1144,11 @@ contains
               aqso4_o3  &
               )
 
+       ! Map back to all-species chemistry VMR array
        do m = 1,aero_props%nbins()
           do l = 0,aero_props%nspecies(m)
              mm = aero_props%indexer(m,l)
-             if (l==0) then
-                call aero_props%num_names(m, name_a, name_c)
-             else
-                call aero_props%mmr_names(m,l, name_a, name_c)
-             end if
-             ndx = get_spc_ndx( name_a )
-             vmrcw(:,:,ndx) = qqcw(:,:,mm)
+             vmrcw(:,:,chem_map_ndx(mm)) = qqcw(:,:,mm)
           end do
        end do
 

@@ -18,7 +18,7 @@ module mo_setsox
   integer :: id_so4, id_h2so4
 
   logical :: has_sox = .true.
-  logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ox, inv_nh4no3, inv_ho2
+  logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ho2
 
   logical :: cloud_borne = .false.
 
@@ -155,8 +155,6 @@ contains
   subroutine setsox( aero_state, state, &
        pbuf,   &
        ncol,   &
-       lchnk,  &
-       loffset,&
        dtime,  &
        press,  &
        pdel,   &
@@ -202,7 +200,6 @@ contains
                              MOLECULAR_WEIGHT_DRY_AIR_G_MOL => mwdry
     use ppgrid,       only : pcols, pver
     use chem_mods,    only : gas_pcnst, nfs
-    use chem_mods,    only : adv_mass
     use physconst,    only : mwdry, gravit
     use mo_constants, only : pi
     use sox_cldaero_mod, only : sox_cldaero_update, sox_cldaero_create_obj, sox_cldaero_destroy_obj
@@ -219,8 +216,6 @@ contains
     type(physics_state),                intent(in)    :: state   ! Physics state variables
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:) ! Physics buffer
     integer,          intent(in)    :: ncol              ! num of columns in chunk
-    integer,          intent(in)    :: lchnk             ! chunk id
-    integer,          intent(in)    :: loffset           ! offset of chem tracers in the advected tracers array
     real(r8),         intent(in)    :: dtime             ! time step (sec)
     real(r8),         intent(in)    :: press(:,:)        ! midpoint pressure ( Pa )
     real(r8),         intent(in)    :: pdel(:,:)         ! pressure thickness of levels (Pa)
@@ -279,15 +274,13 @@ contains
     real(r8) :: xdelso4hp(ncol,pver)
     real(r8) :: xhnm(ncol,pver) ! air number density (molecules cm-3)
 
-    integer  :: k, i, iter, file
+    integer  :: k, i, iter
     real(r8) :: wrk, delta
-    real(r8) :: xph0, aden, xk, xe, x2
-    real(r8) :: tz, xl, px, qz, es, qs, patm
+    real(r8) :: xph0, xk, xe, x2
+    real(r8) :: tz, xl, px, patm
     real(r8) :: Eso2, Eso4, Ehno3, Eco2, Eh2o, Enh3
     real(r8) :: so2g, h2o2g, o3g
-    real(r8) :: hno3a, nh3a, so2a, h2o2a, co2a, o3a
     real(r8) :: rah2o2, rao3, pso4, ccc
-    real(r8) :: cnh3, chno3, com, com1, com2, xra
     real(r8) :: f_hso3 ! fraction of aqueous S(IV) that's HSO3-
     real(r8) :: f_so3  ! fraction of aqueous S(IV) that's SO3=
 
@@ -360,7 +353,7 @@ contains
             * 1.e-3_r8                       ! Kg(a)/L(a)
     end do
 
-    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol, loffset )
+    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol )
     xso4c => cldconc%so4c
     xnh4c => cldconc%nh4c
     xno3c => cldconc%no3c
@@ -688,8 +681,8 @@ contains
              end do ! iter
 
              if( .not. converged ) then
-                write(iulog,*) 'setsox: pH failed to converge @ (',i,',',k,'), % change=', &
-                     100._r8*delta
+                write(*,*) 'setsox: pH failed to converge @ (',i,',',k,'), % change=', &
+                     100._r8*delta !!! What should delta be set to ????
              end if
           else
              xph(i,k) =  1.e-7_r8
@@ -892,8 +885,8 @@ contains
     if (cloud_borne) then
        ! update cloud-borne aerosols
        call sox_cldaero_update( aero_state, &
-            state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
-            xdelso4hp, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
+            ncol, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
+            xdelso4hp, xh2so4, xso4, xso4_init, nh3g, xnh3, xnh4c, xmsa, xso2, xh2o2, qcw, qin, &
             aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
     else
        if (id_so2>0) then

@@ -655,8 +655,6 @@ contains
          call setsox( aero_state, state,  &
               pbuf,     &
               ncol,     &
-              lchnk,    &
-              loffset,  &
               delt,     &
               pmid,     &
               pdel,     &
