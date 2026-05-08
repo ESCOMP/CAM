@@ -101,9 +101,17 @@ def _build_cam(caseroot, libroot, bldroot):
         config_opts  = case.get_value("CAM_CONFIG_OPTS")
 
         if "-rttov" in config_opts:
-            # Set environment variable needed by COSP Makefile
-            env_vars = "env RTTOV=true "
+            # RTTOV source directory (currently hardcoded to a specific ACL-controlled directory on Derecho)
+            rttov_src_dir = "/glade/campaign/cesm/community/amwg/rttov/RTTOV"
 
+            # Set environment variable needed by COSP Makefile
+            env_vars = f"env RTTOV=true RTTOV_SRC_DIR={rttov_src_dir} "
+
+            # Run shell script to build RTTOV in ACL-controlled directory
+            rttov_command = "./compile_RTTOV.sh"
+            _run_cmd(rttov_command, rttov_src_dir)
+
+            # Get path to HDF5 library
             hdf5_lib_path = os.environ.get("NCAR_LDFLAGS_HDF5")
 
             # Add HDF5 library to CAM linked library list:
