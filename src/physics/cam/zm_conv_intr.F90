@@ -40,6 +40,12 @@ module zm_conv_intr
       zm_conv_tend,               &! return tendencies
       zm_conv_tend_2               ! return tendencies
 
+  !++ MCSP
+  public :: ttend_s
+
+  real(r8) :: ttend_s(pcols,pver)
+  !-- MCSP
+
    public zmconv_ke, zmconv_ke_lnd  ! needed by convect_shallow
 
    integer ::& ! indices for fields in the physics buffer
@@ -77,6 +83,7 @@ module zm_conv_intr
    logical  :: zmconv_parcel_pbl = .false.           ! switch for parcel pbl calculation
    real(r8) :: zmconv_parcel_hscale = unset_r8       ! Fraction of PBL depth over which to mix initial parcel
    real(r8) :: zmconv_tau = unset_r8          ! Timescale for convection
+
 
 !  indices for fields in the physics buffer
    integer  ::    cld_idx          = 0
@@ -224,9 +231,6 @@ subroutine zm_conv_init(pref_edge)
   use spmd_utils,     only: masterproc
   use phys_control,   only: phys_deepconv_pbl, phys_getopts, cam_physpkg_is
   use physics_buffer, only: pbuf_get_index
-!++ MCSP
-  use zm_conv_mcsp,            only: zm_conv_mcsp_init
-!-- MCSP
 
   implicit none
 
@@ -310,10 +314,6 @@ subroutine zm_conv_init(pref_edge)
        call add_default('ZMMTT    ', history_budget_histfile_num, ' ')
     end if
 
-!++ MCSP
-    call zm_conv_mcsp_init()
-!-- MCSP
-
 !
 ! Limit deep convection to regions below 40 mb
 ! Note this calculation is repeated in the shallow convection interface
@@ -389,9 +389,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    use phys_control,  only: cam_physpkg_is
    use ccpp_constituent_prop_mod, only: ccpp_const_props
-!++ MCSP
-   use zm_conv_mcsp,            only: zm_conv_mcsp_tend, zm_conv_mcsp_hist
-!-- MCSP
 
    ! Arguments
 
@@ -435,28 +432,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ! physics types
    type(physics_state) :: state1        ! locally modify for evaporation to use, not returned
    type(physics_ptend),target :: ptend_loc     ! package tendencies
-
-!++ MCSP
-   type(physics_ptend),target :: ptend_mcsp           ! MCSP output tendencies
-
-   ! flags for MCSP tendencies
-   logical :: do_mcsp_t        = .false.
-   logical :: do_mcsp_q(pcnst) = .false.
-   logical :: do_mcsp_u        = .false.
-   logical :: do_mcsp_v        = .false.
-
-   ! MCSP history output variables
-   real(r8), dimension(pcols,pver) :: mcsp_dt_out     ! MCSP tendency for DSE
-   real(r8), dimension(pcols,pver) :: mcsp_dq_out     ! MCSP tendency for qv
-   real(r8), dimension(pcols,pver) :: mcsp_du_out     ! MCSP tendency for u wind
-   real(r8), dimension(pcols,pver) :: mcsp_dv_out     ! MCSP tendency for v wind
-   real(r8), dimension(pcols)      :: mcsp_freq       ! MSCP frequency for output
-   real(r8), dimension(pcols)      :: mcsp_shear      ! shear used to check against threshold
-   real(r8), dimension(pcols)      :: zm_depth        ! pressure depth of ZM heating
-   !++ MCSP
-   real(r8), dimension(pcols)      :: mcsp_tend_s_max ! max MCSP heating tendency
-   !-- MCSP
-!-- MCSP
 
    ! physics buffer fields
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
@@ -625,44 +600,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
 
-!++ MCSP
-   !----------------------------------------------------------------------------
-   ! mesoscale coherent structure parameterization (MCSP)
-   ! Note that this modifies the tendencies produced by zm_convr(), such that
-   ! history variables like ZMDT will include the effects of MCSP
-
-      ! Set these all to True so that the tedency variables get allocated. The internal flags to
-      ! calculate each MCSP tedency will behave the same, but having them always allocated avoids
-
-      do_mcsp_t    = .true.
-      do_mcsp_q(1) = .true.
-      do_mcsp_u    = .true.
-      do_mcsp_v    = .true.
-
-      call physics_ptend_init( ptend_mcsp, state%psetcols, 'zm_conv_mcsp_tend', &
-                               ls=do_mcsp_t, lq=do_mcsp_q, lu=do_mcsp_u, lv=do_mcsp_v)
-
-      call zm_conv_mcsp_tend( pcols, ncol, pver, pverp, &
-                              ztodt, int(jctop),             &
-                              state%pmid, state%pint, state%pdel, &
-                              state%s, state%q, state%u, state%v, &
-                              ptend_loc%s, ptend_loc%q(:,:,1), &
-                              ptend_mcsp%s(:,:), ptend_mcsp%q(:,:,1), &
-                              ptend_mcsp%u(:,:), ptend_mcsp%v(:,:), &
-                              mcsp_dt_out, mcsp_dq_out, mcsp_du_out, mcsp_dv_out, &
-                              mcsp_freq, mcsp_shear, zm_depth, mcsp_tend_s_max )
-
-      call zm_conv_mcsp_hist( lchnk, pcols, pver, &
-                              mcsp_dt_out, mcsp_dq_out, mcsp_du_out, mcsp_dv_out, &
-                              mcsp_freq, mcsp_shear, zm_depth, mcsp_tend_s_max )
-
-      ! add MCSP tendencies to ZM convective tendencies
-      call physics_ptend_sum( ptend_mcsp, ptend_loc, ncol)
-      call physics_ptend_dealloc(ptend_mcsp)
-
-!-- MCSP
-
-
+   !++ MCSP
+   ttend_s = ptend_loc%s(:pcols,:)
+   !-- MCSP
 !
 ! Output fractional occurance of ZM convection
 !

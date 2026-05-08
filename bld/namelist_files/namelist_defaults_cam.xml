@@ -2892,10 +2892,13 @@
 <zmconv_parcel_hscale                                                 >  0.5    </zmconv_parcel_hscale>
 
 <!-- MCSP scheme -->
-<zmconv_MCSP_heat_coeff                                               >  0.0D0  </zmconv_MCSP_heat_coeff >
-<zmconv_MCSP_moisture_coeff                                           >  0.0D0  </zmconv_MCSP_moisture_coeff >
-<zmconv_MCSP_uwind_coeff                                               >  0.0D0  </zmconv_MCSP_uwind_coeff >
-<zmconv_MCSP_vwind_coeff                                               >  0.0D0  </zmconv_MCSP_vwind_coeff >
+<MCSP_heat_coeff                                               >  0.0D0  </MCSP_heat_coeff >
+<MCSP_moisture_coeff                                           >  0.0D0  </MCSP_moisture_coeff >
+<MCSP_uwind_coeff                                              >  0.0D0  </MCSP_uwind_coeff >
+<MCSP_vwind_coeff                                              >  0.0D0  </MCSP_vwind_coeff >
+<MCSP_storm_speed_pref                                         >60000.0  </MCSP_storm_speed_pref>
+<MCSP_conv_depth_min                                           >50000.0  </MCSP_conv_depth_min>
+<mcsp_shear_min                                                >  3.0    </mcsp_shear_min>
 
 <!-- Cloud sedimentation -->
 
