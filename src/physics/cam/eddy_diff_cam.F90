@@ -284,10 +284,10 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8) :: bprod(pcols,pverp)
   real(r8) :: s2(pcols,pver)            ! Shear squared, defined at interfaces except surface [ s-2 ]
   real(r8) :: n2(pcols,pver)            ! Buoyancy frequency, defined at interfaces except surface [ s-2 ]
-  real(r8) :: ri(pcols,pver)            ! Richardson number, 'n2/s2', defined at interfaces except surface [ s-2 ]
-  real(r8) :: wpert(pcols)              ! Turbulent velocity excess [m s-1]
-  real(r8) :: sfuh(pcols,pver)          ! Saturation fraction in upper half-layer [ fraction ]
-  real(r8) :: sflh(pcols,pver)          ! Saturation fraction in lower half-layer [ fraction ]
+  real(r8) :: ri(pcols,pver)            ! Gradient Richardson number, 'n2/s2', defined at interfaces except surface [ s-2 ]
+  real(r8) :: wpert(pcols)              ! Turbulent vertical velocity excess [m s-1]
+  real(r8) :: sfuh(pcols,pver)          ! Water vapor saturation fraction in upper half-layer [ fraction ]
+  real(r8) :: sflh(pcols,pver)          ! Water vapor saturation fraction in lower half-layer [ fraction ]
   real(r8) :: qlfd(pcols,pver)          ! Liquid water specific humidity for diffusion [ kg/kg ]
   ! Buoyancy coefficients : w'b' = ch * w'sl' + cm * w'qt'
   real(r8) :: chu(pcols,pverp)          ! Heat buoyancy coef for dry states, interfaces

@@ -3615,7 +3615,7 @@ Default: 30.D0
 
 <entry id="kv_top_pressure" type="real" category="pbl"
        group="eddy_diff_nl" valid_values="" >
-Pressure (Pa) that defined the upper atmosphere for adjustment of
+Pressure (Pa) that defines the upper atmosphere for adjustment of
 eddy diffusivities from diag_TKE using kv_top_scale.
 Default: 0.
 </entry>
