@@ -18,10 +18,6 @@ public :: beljaars_drag_tend
 ! Is this module on at all?
 logical, public, protected :: do_beljaars = .false.
 
-! Tuning parameters for TMS.
-real(r8) :: blj_orocnst
-real(r8) :: blj_z0fac
-
 ! pbuf field indices
 integer :: &
      sgh30_idx = -1, &
@@ -34,7 +30,7 @@ contains
 subroutine beljaars_drag_readnl(nlfile)
   use namelist_utils, only: find_group_name
   use units, only: getunit, freeunit
-  use spmd_utils, only: masterprocid, mpi_logical, mpi_real8, mpicom
+  use spmd_utils, only: masterprocid, mpi_logical, mpicom
 
   ! filepath for file containing namelist input
   character(len=*), intent(in) :: nlfile
@@ -79,19 +75,14 @@ end subroutine beljaars_drag_register
 subroutine beljaars_drag_init()
 
   use cam_history, only: addfld, add_default, horiz_only
-  use error_messages, only: handle_errmsg
   use phys_control, only: phys_getopts
   use physics_buffer, only: pbuf_get_index
 
   logical :: history_amwg
 
-  character(len=128) :: errstring
-
   if (.not. do_beljaars) return
 
   call phys_getopts(history_amwg_out=history_amwg)
-
-  call handle_errmsg(errstring, subname="init_blj")
 
   call addfld('DRAGBLJ', (/ 'lev' /) , 'A', '1/s', 'Drag profile from Beljaars SGO              ')
   call addfld('TAUBLJX', horiz_only, 'A', 'N/m2',  'Zonal      integrated drag from Beljaars SGO')
@@ -155,15 +146,13 @@ subroutine beljaars_drag_tend(state, pbuf)
        pver    = pver,                                           &
        u       = state%u(:ncol, :),                              &
        v       = state%v(:ncol, :),                              &
-       t       = state%t(:ncol, :),                              &
-       pmid    = state%pmid(:ncol, :),                           &
        delp    = state%pdel(:ncol, :),                           &
        zm      = state%zm(:ncol, :),                             &
        sgh30   = sgh30(:ncol),                                   &
        gravit  = gravit,                                         &
-       dragblj = dragblj(:ncol, :),                              &
-       taubljx = taubljx(:ncol),                                 &
-       taubljy = taubljy(:ncol),                                 &
+       drag    = dragblj(:ncol, :),                              &
+       taux    = taubljx(:ncol),                                 &
+       tauy    = taubljy(:ncol),                                 &
        errmsg  = errmsg,                                         &
        errflg  = errflg)
 
