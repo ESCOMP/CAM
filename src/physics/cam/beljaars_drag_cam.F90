@@ -81,9 +81,7 @@ subroutine beljaars_drag_init()
   use cam_history, only: addfld, add_default, horiz_only
   use error_messages, only: handle_errmsg
   use phys_control, only: phys_getopts
-  use physconst, only: karman, gravit, rair
   use physics_buffer, only: pbuf_get_index
-  use beljaars_drag, only: init_blj
 
   logical :: history_amwg
 
@@ -93,7 +91,6 @@ subroutine beljaars_drag_init()
 
   call phys_getopts(history_amwg_out=history_amwg)
 
-  call init_blj( r8, gravit, rair, errstring )
   call handle_errmsg(errstring, subname="init_blj")
 
   call addfld('DRAGBLJ', (/ 'lev' /) , 'A', '1/s', 'Drag profile from Beljaars SGO              ')
@@ -112,20 +109,26 @@ subroutine beljaars_drag_init()
 
 end subroutine beljaars_drag_init
 
-subroutine beljaars_drag_tend(state, pbuf, cam_in)
+subroutine beljaars_drag_tend(state, pbuf)
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field
   use physics_types, only: physics_state
-  use camsrfexch, only: cam_in_t
   use cam_history, only: outfld
-  use beljaars_drag, only: compute_blj
+
+  use physconst, only: gravit
+  use beljaars_drag, only: beljaars_drag_run
 
   type(physics_state), intent(in) :: state
   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
-  type(cam_in_t), intent(in) :: cam_in
 
   real(r8), pointer :: sgh30(:)
   real(r8), pointer :: dragblj(:,:)
   real(r8), pointer :: taubljx(:), taubljy(:)
+
+  integer :: ncol
+  character(len=512) :: errmsg
+  integer :: errflg
+
+  ncol = state%ncol
 
   call pbuf_get_field(pbuf, dragblj_idx, dragblj)
   call pbuf_get_field(pbuf, taubljx_idx, taubljx)
@@ -140,10 +143,33 @@ subroutine beljaars_drag_tend(state, pbuf, cam_in)
 
   call pbuf_get_field(pbuf, sgh30_idx, sgh30)
 
-  call compute_blj( pcols    , pver    , state%ncol , &
-       state%u    , state%v  , state%t , state%pmid , & 
-       state%pdel , state%zm , sgh30   , dragblj    , & 
-       taubljx    , taubljy  , cam_in%landfrac )
+  ! zero to pcols
+  dragblj(:, :) = 0._r8
+  taubljx(:)    = 0._r8
+  taubljy(:)    = 0._r8
+
+  ! Call the CCPPized subroutine:
+  call beljaars_drag_run(                                        &
+       do_beljaars = do_beljaars,                                &
+       ncol    = state%ncol,                                     &
+       pver    = pver,                                           &
+       u       = state%u(:ncol, :),                              &
+       v       = state%v(:ncol, :),                              &
+       t       = state%t(:ncol, :),                              &
+       pmid    = state%pmid(:ncol, :),                           &
+       delp    = state%pdel(:ncol, :),                           &
+       zm      = state%zm(:ncol, :),                             &
+       sgh30   = sgh30(:ncol),                                   &
+       gravit  = gravit,                                         &
+       dragblj = dragblj(:ncol, :),                              &
+       taubljx = taubljx(:ncol),                                 &
+       taubljy = taubljy(:ncol),                                 &
+       errmsg  = errmsg,                                         &
+       errflg  = errflg)
+
+  if(errflg /= 0) then
+     call endrun('beljaars_drag_run: '//errmsg)
+  end if
 
   call outfld("TAUBLJX", taubljx, pcols, state%lchnk)
   call outfld("TAUBLJY", taubljy, pcols, state%lchnk)

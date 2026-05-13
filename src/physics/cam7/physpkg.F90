@@ -2204,7 +2204,7 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
 
-    call beljaars_drag_tend(state, pbuf, cam_in)
+    call beljaars_drag_tend(state, pbuf)
 
     ! TMS is not active in CAM7 (it is only for CAM5), but the tms tend subroutine
     ! will initialize the pbuf fields to zero - no logic is computed below:

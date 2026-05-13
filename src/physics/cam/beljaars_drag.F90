@@ -1,152 +1,107 @@
+! Beljaars Sub-Grid Orographic (SGO) Form Drag Parameterization
+! Returns drag profile and integrated stress associated with subgrid mountains
+! with horizontal length scales nominally below 3 km.
+! Based on Beljaars et al. (2004, QJRMS) https://doi.org/10.1256/qj.03.73.
+!
+! Original author: J. Bacmeister, March 2016, based on TMS
 module beljaars_drag
-
   implicit none
-  private      
-  save
+  private
 
-  public init_blj                             ! Initialization
-  public compute_blj                          ! Full routine
-
-  ! ------------ !
-  ! Private data !
-  ! ------------ !
-
-  integer,  parameter :: r8 = selected_real_kind(12) ! 8 byte real
-
-  real(r8), parameter :: horomin= 1._r8       ! Minimum value of subgrid orographic height for mountain stress [ m ]
-  real(r8), parameter :: z0max  = 100._r8     ! Maximum value of z_0 for orography [ m ]
-  real(r8), parameter :: dv2min = 0.01_r8     ! Minimum shear squared [ m2/s2 ]
-  real(r8)            :: orocnst              ! Converts from standard deviation to height [ no unit ]
-  real(r8)            :: z0fac                ! Factor determining z_0 from orographic standard deviation [ no unit ] 
-  real(r8)            :: karman               ! von Karman constant
-  real(r8)            :: gravit               ! Acceleration due to gravity
-  real(r8)            :: rair                 ! Gas constant for dry air
+  public :: beljaars_drag_run
 
 contains
+!> \section arg_table_beljaars_drag_run Argument Table
+!! \htmlinclude beljaars_drag_run.html
+  ! Compute Beljaars SGO form drag profile and surface stresses
+  subroutine beljaars_drag_run( &
+    do_beljaars, &
+    ncol, pver, &
+    u, v, t, pmid, delp, zm, sgh30, &
+    gravit, &
+    ! below output:
+    drag, taux, tauy, &
+    errmsg, errflg)
+    use ccpp_kinds, only: kind_phys
 
-  !============================================================================ !
-  !                                                                             !
-  !============================================================================ !
+    logical,            intent(in)  :: do_beljaars  ! is Beljaars active?
+    integer,            intent(in)  :: ncol
+    integer,            intent(in)  :: pver
+    real(kind_phys),    intent(in)  :: u(:, :)      ! zonal wind [m s-1]
+    real(kind_phys),    intent(in)  :: v(:, :)      ! meridional wind [m s-1]
+    real(kind_phys),    intent(in)  :: t(:, :)      ! air temperature [K]
+    real(kind_phys),    intent(in)  :: pmid(:, :)   ! air pressure [Pa]
+    real(kind_phys),    intent(in)  :: delp(:, :)   ! air pressure thickness [Pa]
+    real(kind_phys),    intent(in)  :: zm(:, :)     ! geopotential height wrt surface [m]
+    real(kind_phys),    intent(in)  :: sgh30(:)     ! standard deviation of subgrid orography [m]
+    real(kind_phys),    intent(in)  :: gravit       ! gravitational acceleration [m s-2]
 
-  subroutine init_blj( kind, gravit_in, rair_in , errstring )
+    real(kind_phys),    intent(out) :: drag(:, :)   ! SGO drag profile [s-1]
+    real(kind_phys),    intent(out) :: taux(:)      ! surface zonal wind stress [N m-2]
+    real(kind_phys),    intent(out) :: tauy(:)      ! surface meridional wind stress [N m-2]
+    character(len=*),   intent(out) :: errmsg
+    integer,            intent(out) :: errflg
 
-    integer,  intent(in) :: kind
-    real(r8), intent(in) :: gravit_in, rair_in
+    ! Local variables
+    integer  :: i, k
 
-    character(len=*), intent(out) :: errstring
+    real(kind_phys) :: vmag                         ! velocity magnitude [m s-1]
 
-    errstring = ' '
+    real(kind_phys) :: alpha, beta, Cmd, Ccorr, n1, n2, k1, kflt, k2, IH
+    real(kind_phys) :: a1(ncol), a2(ncol)
 
-    if ( kind /= r8 ) then
-       errstring = 'inconsistent KIND of reals passed to init_blj'
-       return
-    endif
+    errmsg = ''
+    errflg = 0
 
-   gravit   = gravit_in
-   rair     = rair_in
-    
-  end subroutine init_blj
+    if(.not. do_beljaars) then
+      ! if not doing Beljaars, return zero drag and stresses from routine.
+      drag(:,:) = 0._kind_phys
+      taux(:,:) = 0._kind_phys
+      tauy(:,:) = 0._kind_phys
+      return
+    end if
 
-  !============================================================================ !
-  !                                                                             !
-  !============================================================================ !
+    alpha =  12.0_kind_phys
+    beta  =  1.0_kind_phys
+    n1    = -1.9_kind_phys
+    n2    = -2.8_kind_phys
 
-  subroutine compute_blj( pcols    , pver    , ncol    ,                     &
-                          u        , v       , t       , pmid    , delp    , &
-                          zm       , sgh     , drag    , taux    , tauy    , & 
-                          landfrac )
+    Cmd   = 0.005_kind_phys
+    Ccorr = 0.6_kind_phys * 5.0_kind_phys
 
-    !------------------------------------------------------------------------------ !
-    ! Beljaars Sub-Grid Orographic (SGO) Form drag parameterization                 !  
-    !                                                                               !
-    ! Returns drag profile and integrated stress associated with subgrid mountains  !
-    ! with horizontal length scales nominally below 3km.  Similar to TMS but        !
-    ! drag is distributed in the vertical (Beljaars et al., 2003, QJRMS).           !
-    !                                                                               !
-    ! First cut follows TMS.     J. Bacmeister, March 2016                          !
-    !------------------------------------------------------------------------------ !
+    kflt  = 0.00035_kind_phys   ! m-1
+    k1    = 0.003_kind_phys     ! m-1
+    IH    = 0.00102_kind_phys   ! m-1
 
-    ! ---------------------- !
-    ! Input-Output Arguments ! 
-    ! ---------------------- !
+    a1(1:ncol) = (sgh30(1:ncol) * sgh30(1:ncol)) / (IH * (kflt**n1))
+    a2(1:ncol) = a1(1:ncol) * k1**(n1 - n2)
 
-    integer,  intent(in)  :: pcols                 ! Number of columns dimensioned
-    integer,  intent(in)  :: pver                  ! Number of model layers
-    integer,  intent(in)  :: ncol                  ! Number of columns actually used
-
-    real(r8), intent(in)  :: u(pcols,pver)         ! Layer mid-point zonal wind [ m/s ]
-    real(r8), intent(in)  :: v(pcols,pver)         ! Layer mid-point meridional wind [ m/s ]
-    real(r8), intent(in)  :: t(pcols,pver)         ! Layer mid-point temperature [ K ]
-    real(r8), intent(in)  :: pmid(pcols,pver)      ! Layer mid-point pressure [ Pa ]
-    real(r8), intent(in)  :: delp(pcols,pver)      ! Layer thickness [ Pa ]
-    real(r8), intent(in)  :: zm(pcols,pver)        ! Layer mid-point height [ m ]
-    real(r8), intent(in)  :: sgh(pcols)            ! Standard deviation of orography [ m ]
-    real(r8), intent(in)  :: landfrac(pcols)       ! Land fraction [ fraction ]
-    
-    real(r8), intent(out) :: drag(pcols,pver)      ! SGO drag profile [ kg/s/m2 ]
-    real(r8), intent(out) :: taux(pcols)           ! Surface zonal      wind stress [ N/m2 ]
-    real(r8), intent(out) :: tauy(pcols)           ! Surface meridional wind stress [ N/m2 ]
-
-    ! --------------- !
-    ! Local Variables !
-    ! --------------- !
-
-    integer  :: i,k                                ! Loop indices
-    integer  :: kb, kt                             ! Bottom and top of source region
-   
-    real(r8) :: vmag                               ! Velocity magnitude [ m /s ]
-
-    real(r8) :: alpha,beta,Cmd,Ccorr,n1,n2,k1,kflt,k2,IH
-    real(r8) :: a1(pcols),a2(pcols)
-
-    alpha =  12._r8
-    beta  =  1._r8
-    n1    = -1.9_r8
-    n2    = -2.8_r8
-
-    Cmd   = 0.005_r8
-    Ccorr = 0.6_r8 * 5._r8
-
-    kflt  = 0.00035_r8  ! m-1
-    k1    = 0.003_r8    ! m-1
-    IH    = 0.00102_r8  ! m-1
-
-    a1(1:ncol)    = (sgh(1:ncol)*sgh(1:ncol)) / ( IH* (kflt**n1) )
-    a2(1:ncol)    = a1(1:ncol) * k1**(n1-n2)
-
-
-    ! ----------------------- !
-    ! Main Computation Begins !
-    ! ----------------------- !
-       
     do k = 1, pver
-    do i = 1, ncol
-       Vmag      = SQRT( u(i,k)**2 + v(i,k)**2)
-       drag(i,k) = -alpha * beta * Cmd * Ccorr * Vmag * 2.109_r8 *  & 
-                   EXP ( -(zm(i,k)/1500._r8 )*SQRT(zm(i,k)/1500._r8) ) * ( zm(i,k)**(-1.2_r8) )  &
-                   * a2(i)
+      do i = 1, ncol
+        vmag      = sqrt(u(i, k)**2 + v(i, k)**2)
+        drag(i, k) = -alpha * beta * Cmd * Ccorr * vmag * 2.109_kind_phys * &
+                     exp(-(zm(i, k) / 1500.0_kind_phys) * sqrt(zm(i, k) / 1500.0_kind_phys)) * &
+                     (zm(i, k)**(-1.2_kind_phys)) * a2(i)
+      end do
     end do
-    end do
-    
 
-    !---------------------------------!
-    ! Diagnose effective surface drag !
-    ! in X and Y by integrating in    !
-    ! the vertical                    !
-    !---------------------------------!
-    ! FIXME: uses 'state' u and v. 
-    ! Should updated u and v's be used?
-
-    taux=0._r8
-    tauy=0._r8
+    ! Diagnose effective surface drag in X and Y by integrating in the vertical
+    !
+    ! taux, tauy stresses generated by Beljaars drag here
+    ! uses the pre-vertical diffusion winds (and not the updated winds)
+    ! however, at this point only these winds are available because the diffusion
+    ! solver runs after the orographic drag.
+    ! the actual provisionally updated winds are actually used to recompute taubljx/y
+    ! which are added to the updated residual stress. see the physics scheme
+    ! beljaars_add_updated_residual_stress. (hplin, 5/13/26)
+    taux(:) = 0.0_kind_phys
+    tauy(:) = 0.0_kind_phys
     do k = 1, pver
-    do i = 1, ncol
-       taux(i)  = taux(i) + drag(i,k)*u(i,k)*delp(i,k)/gravit
-       tauy(i)  = tauy(i) + drag(i,k)*v(i,k)*delp(i,k)/gravit
-    end do
+      do i = 1, ncol
+        taux(i) = taux(i) + drag(i, k) * u(i, k) * delp(i, k) / gravit
+        tauy(i) = tauy(i) + drag(i, k) * v(i, k) * delp(i, k) / gravit
+      end do
     end do
 
-    return
-  end subroutine compute_blj
-
+  end subroutine beljaars_drag_run
 end module beljaars_drag
