@@ -8,6 +8,7 @@ Purpose of changes (include the issue number and title text for each relevant Gi
 - Closes #1551 - Bug in physics tendency scaling
 - Closes #1553 - RRTMGP diagnostic net_flx bug
 - Closes #1550 - ZM scheme no longer conserving energy
+- Closes #1556 - rad_cnst refactor: list_idx gating in carma_aerosol_state_mod.F90 breaks radiation diagnostics
 
 Describe any changes made to build system: N/A
 
@@ -49,6 +50,10 @@ M       src/physics/rrtmgp/radiation.F90
 M       src/utils/air_composition.F90
  - Remove 'protected' attribute from cp_or_cv_dycore to allow physpkg to
    save/restore it across the diagnostic physics_dme_adjust call
+
+M       src/chemistry/aerosol/carma_aerosol_state_mod.F90
+ - Remove erroneous endrun guards in carma aerosol state that were blocking
+   double radiation cases
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
