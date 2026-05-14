@@ -69,6 +69,94 @@ Expecting failures against baseline for all tests using SE dycore
 
 ===============================================================
 
+Tag name: cam6_4_172
+Originator(s): fvitt
+Date: 14 May 2026
+One-line Summary: Aqueous chemistry bug fixes
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1548
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+Issue #1544
+Fix the following aqueous chemistry bugs:
+ - 5th mode is not included in the updates when MAM5 is used
+ - Failure to update NH3 when CARMA is used
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar tilmes
+
+List all files eliminated:
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/carma_aero/carma_aero_gasaerexch.F90
+ - initialize diagnostic varible to zero
+
+M       src/chemistry/carma_aero/sox_cldaero_mod.F90
+ - include NH3 gas loss
+ - enforce lower limits
+
+M       src/chemistry/modal_aero/sox_cldaero_mod.F90
+ - include the 5th sulfate mode
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  DIFF ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  DIFF ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  DIFF ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  DIFF ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s
+  DIFF ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
+  DIFF SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+  DIFF SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  DIFF SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850C_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s
+  DIFF SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+  DIFF SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  DIFF SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  DIFF SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+  DIFF SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s
+  DIFF SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp
+  - expected differences due to bug fixes for MAM5 and CARMA
+
+derecho/nvhpc/aux_cam: PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s
+  - expected differences due to bug fix for MAM5
+
+izumi/gnu/aux_cam:
+  DIFF SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  - expected differences due to bug fix for MAM5
+
+Summarize any changes to answers:
+  larger than roundoff for MAM5 and CARMA configurations
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_171
 Originator(s): fvitt
 Date: 1 May 2026
