@@ -191,11 +191,10 @@ contains
          dqdt_aqhprxn(ncol,pver), dqdt_aqo3rxn(ncol,pver)
 
     real(r8) :: faqgain_msa(nbins,ncol,pver), faqgain_so4(nbins,ncol,pver)
-    real(r8) :: delso4_3d(ncol,pver)
+    real(r8) :: delso4_ox(ncol,pver)
 
     real(r8) :: delnh3, delnh4
-    real(r8) :: delso4_o3rxn, &
-         dso4dt_aqrxn, dso4dt_hprxn, &
+    real(r8) :: dso4dt_aqrxn, dso4dt_hprxn, &
          dso4dt_gasuptk, dmsadt_gasuptk, &
          dmsadt_gasuptk_tomsa, dmsadt_gasuptk_toso4, &
          dqdt_aq, dqdt_wr, dqdt
@@ -219,7 +218,7 @@ contains
     aqh2so4 = 0.0_r8
     aqso4_h2o2 = 0.0_r8
     aqso4_o3 = 0.0_r8
-    delso4_3d = 0.0_r8
+    delso4_ox = 0.0_r8
 
     ! Avoid double counting in-cloud sulfur oxidation when running with
     ! GEOS-Chem. If running with GEOS-Chem then sulfur oxidation
@@ -228,7 +227,7 @@ contains
     if ( cam_chempkg_is('geoschem_mam4') ) return
 
     where (cldfrc(:ncol,:) >= 1.0e-5_r8)
-       delso4_3d(:ncol,:) = xso4(:ncol,:) - xso4_init(:ncol,:)
+       delso4_ox(:ncol,:) = xso4(:ncol,:) - xso4_init(:ncol,:)
     end where
 
     !-------------------------------------------------------------------------
@@ -237,8 +236,8 @@ contains
     ! bin, which is the MR of cloud drops "associated with" the mode
     ! thus we are assuming the cloud drop size is independent of the
     ! associated aerosol mode properties
-    call aero_state%aqu_gain_binfraction(aero_props, 'sulfate', qcw, delso4_3d, faqgain_so4)
-    if (has_msa) call aero_state%aqu_gain_binfraction(aero_props, 'msa', qcw, delso4_3d, faqgain_msa)
+    call aero_state%aqu_gain_binfraction(aero_props, 'sulfate', qcw, delso4_ox, faqgain_so4)
+    if (has_msa) call aero_state%aqu_gain_binfraction(aero_props, 'msa', qcw, delso4_ox, faqgain_msa)
 
     lev_loop: do k = 1,pver
        col_loop: do i = 1,ncol
@@ -246,8 +245,6 @@ contains
              xl = xlwc(i,k)
 
              if (xl .ge. 1.e-8_r8) then !! when cloud is present
-
-                delso4_o3rxn = delso4_3d(i,k) ! xso4(i,k) - xso4_init(i,k)
 
                 if (id_nh3>0) then
                    delnh3 = nh3g(i,k) - xnh3(i,k)
@@ -285,7 +282,7 @@ contains
                 ! the uptake of highly soluble aerosol precursor gases (h2so4, msa, ...)
                 ! AND the wetremoval of dissolved, unreacted so2 and h2o2
 
-                dso4dt_aqrxn = (delso4_o3rxn + delso4_hprxn(i,k)) / dtime
+                dso4dt_aqrxn = (delso4_ox(i,k) + delso4_hprxn(i,k)) / dtime
                 dso4dt_hprxn = delso4_hprxn(i,k) / dtime
 
                 ! fwetrem = fraction of in-cloud-water material that is wet removed

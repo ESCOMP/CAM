@@ -724,11 +724,11 @@ contains
   subroutine aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
 
     class(modal_aerosol_state), intent(in) :: self
-    class(aerosol_properties), intent(in) :: aero_props
-    character(len=*), intent(in) :: type
-    real(r8), intent(in) :: qcw(:,:,:)
-    real(r8), intent(in) :: delso4_o3rxn(:,:)
-    real(r8), intent(out) :: faqgain(:,:,:) ! fraction gain in each mode / bin
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: type                ! aerosol species type
+    real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+    real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+    real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
 
     character(len=aero_name_len) :: modetype, spectype
     integer :: i,k,l,m,n,mm, ncol, nbins
