@@ -29,7 +29,7 @@ List all existing files that have been modified, and describe the changes:
 M       .gitmodules
  - Update atmos_phys external to atmos_phys0_21_003
 
-M       src/atmos_phys (external)
+M       src/atmos_phys
  - Update to atmos_phys0_21_003: fix ZM scheme factor for energy conservation
 
 M       src/physics/cam/physpkg.F90
@@ -61,12 +61,109 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h (Overall: DIFF) details:
+  ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7 (Overall: DIFF) details:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h (Overall: DIFF) details:
+  SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging (Overall: DIFF) details:
+  SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850C_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: DIFF) details:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - expected differences due to SE dycore updates + ZM bug fix.
+
 
 derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: DIFF)
+    - expected differences due to SE dycore updates + ZM bug fix.
 
 izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  ERC_D_Ln27.ne3pg3_ne3pg3_mt232.FKESSLER.izumi_nag.cam-outfrq9s (Overall: DIFF) details::
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC4.izumi_nag.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: DIFF) details:
+  SMS_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_nag.cam-carma_test_tracers (Overall: DIFF) details:
+    - expected differences due to SE dycore updates + ZM bug fix.
+
+  ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist (Overall: DIFF) details
+  SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s (Overall: DIFF) details:
+  TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac (Overall: DIFF) details:
+     - expected differences due to ZM bug fix.
 
 izumi/gnu/aux_cam:
+  ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags (Overall: DIFF) details:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-rad_diag (Overall: DIFF) details:
+  ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags (Overall: DIFF) details:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FGRAYRAD.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FTJ16.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 (Overall: DIFF) details:
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0 (Overall: DIFF) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1 (Overall: DIFF) details:
+  PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3 (Overall: DIFF) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6 (Overall: DIFF) details:
+  SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc (Overall: DIFF) details:
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+  SMS_D_Ln9.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mt232.FW4madSD.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+    - expected failures due to SE dycore updates + ZM bug fix
 
 Summarize any changes to answers:
 Expecting failures against baseline for all tests using SE dycore
