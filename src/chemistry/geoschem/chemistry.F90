@@ -21,6 +21,7 @@ module chemistry
   use string_utils,        only : to_upper
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
+  use modal_aerosol_properties_mod, only: modal_aerosol_properties
 #endif
 
   ! GEOS-Chem derived types
@@ -169,6 +170,10 @@ module chemistry
   ! for nitrogen deposition fluxes to surface models
   logical, parameter :: chem_has_ndep_flx = .false.
 
+#if defined( MODAL_AERO )
+  ! MAM aerosol properties object class
+  type(modal_aerosol_properties), pointer :: aero_props=>null()
+#endif
 contains
 
   !================================================================================================
@@ -1573,8 +1578,11 @@ contains
     ENDIF
 
 #if defined( MODAL_AERO )
+    ! instantiate MAM aerosol properties object
+    aero_props => modal_aerosol_properties()
+
     ! Initialize aqueous chem
-    CALL SOx_inti()
+    CALL SOx_inti(aero_props)
 
     ! Initialize aerosols
     CALL aero_model_init( pbuf2d )
