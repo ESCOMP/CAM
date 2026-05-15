@@ -41,7 +41,7 @@ module aero_model
   public :: aero_model_wetdep     ! aerosol wet removal
   public :: aero_model_emissions  ! aerosol emissions
   public :: aero_model_surfarea    ! tropospheric aerosol wet surface area for chemistry
-  public :: aero_model_strat_surfarea   ! stub
+  public :: aero_model_strat_surfarea
 
    ! Misc private data
   character(len=32), allocatable :: fieldname(:)    ! names for interstitial output fields
@@ -89,6 +89,10 @@ module aero_model
   real(r8)          :: sol_factb_interstitial  = 0.1_r8
   real(r8)          :: sol_factic_interstitial = 0.4_r8
 
+  integer, parameter :: max_sad_spec = 16
+  character(len=32) :: sad_chem_spec_types(max_sad_spec) = ' '
+  character(len=32) :: sad_strat_spec_types(max_sad_spec) = ' '
+
   logical :: convproc_do_aer
 
   type(carma_aerosol_properties), pointer :: aero_props =>null()
@@ -112,7 +116,8 @@ contains
     character(len=*), parameter :: subname = 'aero_model_readnl'
 
     ! Namelist variables
-    namelist /aerosol_nl/ sol_facti_cloud_borne, sol_factb_interstitial, sol_factic_interstitial
+    namelist /aerosol_nl/ sol_facti_cloud_borne, sol_factb_interstitial, sol_factic_interstitial, &
+       sad_chem_spec_types, sad_strat_spec_types
 
     !-----------------------------------------------------------------------------
 
@@ -136,6 +141,8 @@ contains
     call mpibcast(sol_facti_cloud_borne, 1,                         mpir8,   0, mpicom)
     call mpibcast(sol_factb_interstitial, 1,                        mpir8,   0, mpicom)
     call mpibcast(sol_factic_interstitial, 1,                       mpir8,   0, mpicom)
+    call mpibcast(sad_chem_spec_types,    len(sad_chem_spec_types(1))*max_sad_spec,    mpichar, 0, mpicom)
+    call mpibcast(sad_strat_spec_types,   len(sad_strat_spec_types(1))*max_sad_spec,   mpichar, 0, mpicom)
 #endif
 
     call aero_wetdep_readnl(nlfile)
@@ -382,6 +389,21 @@ contains
 
     call aero_wetdep_init()
 
+    if (masterproc) then
+       write(iulog,*) 'SAD chemistry spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_chem_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_chem_spec_types(l))
+          end if
+       end do
+       write(iulog,*) 'SAD stratospheric spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_strat_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_strat_spec_types(l))
+          end if
+       end do
+    end if
+
   end subroutine aero_model_init
 
   !=============================================================================
@@ -487,7 +509,8 @@ contains
     beglev(:ncol) = clim_modal_aero_top_lev
     endlev(:ncol) = ltrop(:ncol)
 
-    call surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, strato_sad, reff_strat )
+    call surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, strato_sad, reff_strat, &
+                         spec_type_list=sad_strat_spec_types )
 
   end subroutine aero_model_strat_surfarea
 
@@ -808,9 +831,10 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, sad, reff, sfc, dm_aer )
+  subroutine surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, sad, reff, sfc, dm_aer, spec_type_list )
     use mo_constants, only: pi
     use carma_intr,   only: carma_effecitive_radius
+    use aerosol_spec_utils, only: spec_type_in_list
 
     ! dummy args
     type(physics_state),    intent(in) :: state           ! Physics state variables
@@ -823,6 +847,7 @@ contains
     real(r8), intent(out) :: reff(:,:)   ! bulk effective radius in cm from beglev to endlev, zero elsewhere
     real(r8), optional, intent(out) :: sfc(:,:,:) ! surface area density per bin
     real(r8), optional, intent(out) :: dm_aer(:,:,:) ! diameter per bin
+    character(len=*), optional, intent(in) :: spec_type_list(:) ! overrides sad_chem_spec_types (e.g., strat SAD uses sulfate-only list)
 
     ! local vars
     real(r8) :: reffaer(pcols,pver) ! bulk effective radius in cm
@@ -889,12 +914,14 @@ contains
 
              call rad_aer_get_bin_props_by_idx(0, ibin, ispec, spectype=spectype)
 
-             if ( trim(spectype) == 'sulfate'   .or. &
-                trim(spectype) == 's-organic' .or. &
-                trim(spectype) == 'p-organic' .or. &
-                trim(spectype) == 'black-c'   .or. &
-                trim(spectype) == 'ammonium') then
-                chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
+             if (present(spec_type_list)) then
+                if (spec_type_in_list(spectype, spec_type_list)) then
+                   chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
+                end if
+             else
+                if (spec_type_in_list(spectype, sad_chem_spec_types)) then
+                   chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
+                end if
              end if
 
           end do
