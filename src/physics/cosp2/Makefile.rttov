@@ -42,7 +42,7 @@ BINDIR=$(RTTOVDIR)/bin
 
 #### Do not edit beyond this line ####
 
-LIBDIR=$(RTTOVIR)/lib
+LIBDIR=$(RTTOVDIR)/lib
 
 ifdef LDFLAGS_HDF5
 	LIBS=\
