@@ -23,7 +23,9 @@ module aero_model
                                rad_aer_get_bin_props_by_idx
   use aerosol_mmr_cam,   only: rad_cnst_get_bin_mmr_by_idx
   use mo_setsox,         only: setsox, has_sox
-  use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   use carma_intr, only: carma_get_group_by_name, carma_get_dry_radius, carma_get_wet_radius, carma_get_bin_rmass
   use carma_intr, only: carma_get_sad
@@ -76,7 +78,8 @@ module aero_model
 
   logical :: convproc_do_aer
 
-  type(carma_aerosol_properties), pointer :: aero_props =>null()
+  class(aerosol_properties), pointer :: aero_props =>null()
+  integer :: iaermod_ = -1
 
 contains
 
@@ -210,7 +213,10 @@ contains
     integer :: idx, ierr
     real(r8) :: nanval
 
-    aero_props => carma_aerosol_properties()
+    do iaermod_ = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod_, 0)
+       if (aero_props%model_is('CARMA')) exit
+    end do
     call aero_deposition_cam_init(aero_props)
 
     if (is_first_step()) then
@@ -469,7 +475,6 @@ contains
 
     use carma_aero_gasaerexch, only : carma_aero_gasaerexch_sub
     use time_manager,          only : get_nstep
-    use carma_aerosol_state_mod, only : carma_aerosol_state
     use aerosol_state_mod, only: aerosol_state, ptr2d_t
 
     !-----------------------------------------------------------------------
@@ -543,7 +548,7 @@ contains
     class(aerosol_state), pointer :: aero_state
 
 !----------------------------------------------------------------------
-    aero_state => carma_aerosol_state(state, pbuf)
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
 !
 ! ... initialize nh3
@@ -733,7 +738,6 @@ contains
        end do
     end do
 
-    deallocate(aero_state)
     nullify(aero_state)
 
   end subroutine aero_model_gasaerexch

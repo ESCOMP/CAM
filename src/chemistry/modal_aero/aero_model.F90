@@ -29,9 +29,10 @@ module aero_model
 
   use modal_aero_wateruptake, only: modal_strat_sulfate
   use mo_setsox,              only: setsox, has_sox
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
-  use modal_aerosol_state_mod, only: modal_aerosol_state
+  use aerosol_properties_mod, only: aerosol_properties
   use aerosol_state_mod, only: aerosol_state
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   implicit none
   private
@@ -101,7 +102,8 @@ module aero_model
 
   logical :: modal_accum_coarse_exch = .false.
 
-  type(modal_aerosol_properties), pointer :: aero_props=>null()
+  class(aerosol_properties), pointer :: aero_props=>null()
+  integer :: iaermod_ = -1
 
   integer :: n_coarse_dust=-1 ! dmleung added n_coarse_dust to determine the index for the
                               ! coarse dust mode for different MAM versions. 29 Oct 2025
@@ -222,7 +224,10 @@ contains
     integer :: mm
     character(len=32) :: name_a, name_c
 
-    aero_props => modal_aerosol_properties()
+    do iaermod_ = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod_, 0)
+       if (aero_props%model_is('MAM')) exit
+    end do
     ncnst_tot = aero_props%ncnst_tot()
 
     ! aqueous chem initialization
@@ -1067,7 +1072,7 @@ contains
     character(len=32) :: specname
     class(aerosol_state), pointer :: aero_state
 
-    aero_state => modal_aerosol_state(state, pbuf)
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 !
 ! ... initialize nh3
 !
