@@ -250,13 +250,13 @@ module aerosol_properties_mod
      !------------------------------------------------------------------------------
      ! apply max / min to number concentration
      !------------------------------------------------------------------------------
-     subroutine aero_apply_num_limits( self, naerosol, vaerosol, istart, istop, m )
+     subroutine aero_apply_num_limits( self, naerosol, vaerosol, ncol, nlev, m )
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
-       real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-       real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-       integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-       integer,  intent(in) :: istop           ! stop column index
+       real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+       real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+       integer,  intent(in) :: ncol            ! number of columns
+       integer,  intent(in) :: nlev            ! number of vert levels
        integer,  intent(in) :: m               ! mode or bin index
 
      end subroutine aero_apply_num_limits

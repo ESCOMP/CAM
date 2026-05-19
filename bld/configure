@@ -991,13 +991,6 @@ if ($rad_pkg eq 'camrt') {
             "                 with aerosol package $chem_pkg\n";
     }
 }
-elsif ($rad_pkg =~ m/rrtmg/) {
-
-    # RRTMGP not currently working with CARMA
-    if ($rad_pkg eq 'rrtmgp' and $carma_pkg ne 'none') {
-        die "configure ERROR: The CARMA microphysics package does not currently work with RRTMGP\n";
-    }
-}
 
 $cfg_ref->set('rad', $rad_pkg);
 
