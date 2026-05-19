@@ -27,9 +27,9 @@
         fxDONOTUSEurl = https://github.com/ESCOMP/ALI-ARMS
 
 [submodule "atmos_phys"]
-	path = src/atmos_phys
-	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_21_003
+        path = src/atmos_phys
+        url = https://github.com/bstephens82/atmospheric_physics
+        fxtag = 1481d854eb1d41f7faa9586c3997d0cfcd40f49b
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
