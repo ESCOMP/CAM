@@ -15,7 +15,9 @@ module carma_aero_gasaerexch
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_info_by_bin, rad_aer_get_bin_props_by_idx, &
                               rad_aer_get_info_by_bin_spec
   use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
-  use carma_aerosol_properties_mod, only: carma_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   implicit none
   private
@@ -38,7 +40,8 @@ module carma_aero_gasaerexch
 
   ! local indexing for bins
   integer :: ncnst_tot                  ! total number of mode number conc + mode species
-  type(carma_aerosol_properties), pointer :: aero_props =>null()
+  class(aerosol_properties), pointer :: aero_props =>null()
+  integer :: iaermod_ = -1
 
   real(r8) :: mw_soa = 250._r8
   integer :: fracvbs_idx = -1
@@ -122,7 +125,10 @@ contains
 
     nspec_max = maxval(nspec)
 
-    aero_props => carma_aerosol_properties()
+    do iaermod_ = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod_, 0)
+       if (aero_props%model_is('CARMA')) exit
+    end do
 
     ncnst_tot = aero_props%ncnst_tot()
 
@@ -298,7 +304,7 @@ subroutine carma_aero_gasaerexch_sub(  state, &
   use physconst,         only: gravit, mwdry
   use cam_abortutils,    only: endrun
   use time_manager,      only: is_first_step
-  use carma_aerosol_state_mod, only: carma_aerosol_state
+  use aerosol_state_mod, only: aerosol_state
   use physics_types,     only: physics_state
   use physconst, only: mwdry, rair
 
@@ -396,10 +402,10 @@ subroutine carma_aero_gasaerexch_sub(  state, &
 
   real(r8) :: rhoair(pcols,pver)
   real(r8), pointer :: nmr(:,:)
-  type(carma_aerosol_state), pointer :: aero_state
+  class(aerosol_state), pointer :: aero_state
 
 !----------------------------------------------------------------------
-   aero_state => carma_aerosol_state(state, pbuf)
+   aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
 !  map CARMA soa to working soa(nbins,nsoa)
 
@@ -699,7 +705,6 @@ subroutine carma_aero_gasaerexch_sub(  state, &
      end if
   end do ! m = ...
 
-  deallocate(aero_state)
   nullify(aero_state)
 
 end subroutine carma_aero_gasaerexch_sub

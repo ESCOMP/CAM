@@ -21,7 +21,9 @@ module chemistry
   use string_utils,        only : to_upper
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_num_models
 #endif
 
   ! GEOS-Chem derived types
@@ -171,8 +173,7 @@ module chemistry
   logical, parameter :: chem_has_ndep_flx = .false.
 
 #if defined( MODAL_AERO )
-  ! MAM aerosol properties object class
-  type(modal_aerosol_properties), pointer :: aero_props=>null()
+  class(aerosol_properties), pointer :: aero_props=>null()
 #endif
 contains
 
@@ -1578,8 +1579,14 @@ contains
     ENDIF
 
 #if defined( MODAL_AERO )
-    ! instantiate MAM aerosol properties object
-    aero_props => modal_aerosol_properties()
+    ! retrieve MAM aerosol properties from aerosol instances
+    block
+      integer :: iaermod
+      do iaermod = 1, aerosol_instances_get_num_models()
+         aero_props => aerosol_instances_get_props(iaermod, 0)
+         if (aero_props%model_is('MAM')) exit
+      end do
+    end block
 
     ! Initialize aqueous chem
     CALL SOx_inti(aero_props)
