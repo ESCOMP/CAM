@@ -230,6 +230,7 @@ contains
          dso4dt_aqrxn, dso4dt_hprxn, &
          dso4dt_gasuptk, dmsadt_gasuptk_toso4, &
          dqdt_aq, dqdt_wr, dqdt
+    real(r8) :: delnh3
 
     real(r8) :: fwetrem, uptkrate
 
@@ -294,6 +295,10 @@ contains
              if (xl .ge. 1.e-8_r8) then !! when cloud is present
 
                 delso4_o3rxn = xso4(i,k) - xso4_init(i,k)
+
+                if (id_nh3>0) then
+                   delnh3 = nh3g(i,k) - xnh3(i,k)
+                endif
 
                 ! the factors are proportional to the activated particle MR for each
                 ! bin, which is the MR of cloud drops "associated with" the mode
@@ -384,7 +389,6 @@ contains
                 dqdt_aq = -dso4dt_aqrxn*cldfrc(i,k)
                 dqdt = dqdt_aq + dqdt_wr
                 qin(i,k,id_so2) = qin(i,k,id_so2) + dqdt * dtime
-                qin(i,k,id_so2) =  MAX( qin(i,k,id_so2),    small_value )
 
                 ! h2o2 -- the first order loss rate for h2o2 is frh2o2_c*clwlrat(i,k)
                 ! fwetrem = max( 0.0_r8, (1.0_r8-exp(-min(100._r8,dtime*frh2o2_c*clwlrat(i,k)))) )
@@ -394,7 +398,13 @@ contains
                 dqdt_aq = -dso4dt_hprxn*cldfrc(i,k)
                 dqdt = dqdt_aq + dqdt_wr
                 qin(i,k,id_h2o2) = qin(i,k,id_h2o2) + dqdt * dtime
-                qin(i,k,id_h2o2) =  MAX( qin(i,k,id_h2o2),    small_value )
+
+                ! NH3
+                if (id_nh3>0) then
+                   dqdt_aq = delnh3/dtime*cldfrc(i,k)
+                   dqdt = dqdt_aq
+                   qin(i,k,id_nh3) = qin(i,k,id_nh3) + dqdt * dtime
+                endif
 
                 ! for SO4 from H2O2/O3 budgets
                 dqdt_aqhprxn(i,k) = dso4dt_hprxn*cldfrc(i,k)
@@ -408,31 +418,52 @@ contains
     !==============================================================
     ! ... Update the mixing ratios
     !==============================================================
+    do k = 1,pver
+
+       do n = 1, nbins
+          do l = 1, nspec(n)
+             mm = bin_idx(n, l)
+             call rad_aer_get_bin_props_by_idx(0, n, l,spectype=spectype)
+             if (trim(spectype) == 'sulfate') then
+                qcw(:,k,mm) = max(qcw(:,k,mm), small_value )
+             end if
+          end do
+       end do
+
+       qin(:ncol,k,id_so2)   = max( qin(:ncol,k,id_so2),   small_value )
+       qin(:ncol,k,id_h2o2)  = max( qin(:ncol,k,id_h2o2),  small_value )
+       qin(:ncol,k,id_h2so4) = max( qin(:ncol,k,id_h2so4), small_value )
+       if ( id_nh3 > 0 ) qin(:ncol,k,id_nh3) = max( qin(:ncol,k,id_nh3), small_value )
+
+    end do
 
     ! diagnostics
 
     specmw_so4_amode = 96.0_r8
-      do n = 1, nbins
-        ! while looking through all species, only dqdt_aqso4 from sulfates  is gt zero
-        do l = 1, nspec(n)
-           mm = bin_idx(n, l)
-           aqso4(:,n)=0._r8
-            do k=1,pver
-               do i=1,ncol
-                  aqso4(i,n)=aqso4(i,n)+dqdt_aqso4(i,k,mm)*specmw_so4_amode/mbar(i,k) &
-                       *pdel(i,k)/gravit ! kg/m2/s
-               enddo
-            enddo
+    do n = 1, nbins
+       ! while looking through all species, only dqdt_aqso4 from sulfates  is gt zero
+       do l = 1, nspec(n)
+          call rad_aer_get_bin_props_by_idx(0, n, l,spectype=spectype)
+          if (trim(spectype) == 'sulfate') then
+             mm = bin_idx(n, l)
+             aqso4(:,n)=0._r8
+             do k=1,pver
+                do i=1,ncol
+                   aqso4(i,n)=aqso4(i,n)+dqdt_aqso4(i,k,mm)*specmw_so4_amode/mbar(i,k) &
+                        *pdel(i,k)/gravit ! kg/m2/s
+                enddo
+             enddo
 
-            aqh2so4(:,n)=0._r8
-            do k=1,pver
-               do i=1,ncol
-                  aqh2so4(i,n)=aqh2so4(i,n)+dqdt_aqh2so4(i,k,mm)*specmw_so4_amode/mbar(i,k) &
-                       *pdel(i,k)/gravit ! kg/m2/s
-               enddo
-            enddo
-         end do
-      end do
+             aqh2so4(:,n)=0._r8
+             do k=1,pver
+                do i=1,ncol
+                   aqh2so4(i,n)=aqh2so4(i,n)+dqdt_aqh2so4(i,k,mm)*specmw_so4_amode/mbar(i,k) &
+                        *pdel(i,k)/gravit ! kg/m2/s
+                enddo
+             enddo
+          end if
+       end do
+    end do
 
     aqso4_h2o2(:) = 0._r8
     do k=1,pver

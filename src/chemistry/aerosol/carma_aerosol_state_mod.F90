@@ -407,10 +407,6 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr, ncol
 
-    if (self%list_idx_ /= 0) then
-       call endrun('carma_aerosol_state::hygroscopicity: only valid for climate list (list_idx=0)')
-    end if
-
     call rad_aer_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
@@ -476,10 +472,6 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
 
-    if (self%list_idx_ /= 0) then
-       call endrun('carma_aerosol_state::dry_volume: only valid for climate list (list_idx=0)')
-    end if
-
     call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
@@ -518,10 +510,6 @@ contains
 
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
-
-    if (self%list_idx_ /= 0) then
-       call endrun('carma_aerosol_state::wet_volume: only valid for climate list (list_idx=0)')
-    end if
 
     call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
@@ -585,10 +573,6 @@ contains
 
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
-
-    if (self%list_idx_ /= 0) then
-       call endrun('carma_aerosol_state::wet_diameter: only valid for climate list (list_idx=0)')
-    end if
 
     call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
