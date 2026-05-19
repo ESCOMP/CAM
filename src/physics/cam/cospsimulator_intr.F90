@@ -2351,12 +2351,12 @@ CONTAINS
     ! Multiply by 2 to go from radius to diameter, multiply 1e6 to go from meters to microns.
     cospstateIN%DeffLiq(:,:) = 0._r8 ! Initialize for zero everywhere.
     where ((mr_lsliq(1:ncol,1:pver) > 0._r8) .and. (mr_ccliq(1:ncol,1:pver) > 0._r8))
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / &
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * (mr_lsliq(1:ncol,1:pver) + mr_ccliq(1:ncol,1:pver)) / &
         (mr_lsliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_LSCLIQ) + mr_ccliq(1:ncol,1:pver) / reff_cosp(1:ncol,1:pver,I_CVCLIQ))
     else where (mr_lsliq(1:ncol,1:pver) > 0._r8)
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:pver,I_LSCLIQ)
     else where (mr_ccliq(1:ncol,1:pver) > 0._r8)
-        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
+        cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
     end where
     cospstateIN%DeffIce(:,:) = dei(1:ncol,1:pver)
 
