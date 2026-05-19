@@ -81,17 +81,16 @@ contains
 
     if (aero_props%model_is('BAM')) then
        ! no cloud-borne aerosols
-       conc_obj%xlwc(:ncol,:) = lwc(:ncol,:)*cfact(:ncol,:) ! cloud water L(water)/
+       conc_obj%xlwc(:ncol,:) = lwc(:ncol,:)*cfact(:ncol,:) ! cloud water L(water)/L(air)
        return
     end if
 
     if (aero_props%model_is('MAM')) then
        ntot_amode = aero_props%nbins()
-    else
-       ntot_amode = 0
+       if (ntot_amode /= 7) then
+          conc_obj%so4_fact = 1._r8
+       end if
     end if
-
-    mode7 = ntot_amode == 7
 
     do k = 1,pver
        do i = 1,ncol
@@ -124,14 +123,6 @@ contains
           end do
        end do
     end do
-
-    ! *** NOTE ***
-    ! should refactor this bit after merging to later cam tag -- where aero_props%model_is is avail
-    if (ntot_amode>0) then
-       if (.not.mode7) then
-          conc_obj%so4_fact = 1._r8
-       end if
-    end if
 
   end function sox_cldaero_create_obj
 
