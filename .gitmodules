@@ -99,14 +99,6 @@
         fxtag = v2.1.9
 	fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
 
-[submodule "clubb"]
-	path = src/physics/clubb
-	url = https://github.com/larson-group/clubb_release
-        fxrequired = AlwaysRequired
-        fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20260109_ddf5110
-        fxDONOTUSEurl = https://github.com/larson-group/clubb_release
-
 [submodule "ext_co2_cooling"]
 	path = src/physics/ext_co2_cooling
 	url = https://github.com/fedef17/CO2_cool_fort.git
