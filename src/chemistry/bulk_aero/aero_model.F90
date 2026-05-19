@@ -157,13 +157,15 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_dust    ! Output dust
 
+    nullify(aero_props)
     do iaermod_ = 1, aerosol_instances_get_num_models()
        aero_props => aerosol_instances_get_props(iaermod_, 0)
        if (aero_props%model_is('BAM')) exit
+       nullify(aero_props)
     end do
 
     ! aqueous chem initialization
-    call sox_inti(aero_props)
+    if (associated(aero_props)) call sox_inti(aero_props)
 
     call phys_getopts( history_aerosol_out = history_aerosol,&
                        history_dust_out    = history_dust   )
@@ -1084,7 +1086,8 @@ contains
     class(aerosol_state), pointer :: aero_state
 
 !----------------------------------------------------------------------
-    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    nullify(aero_state)
+    if (iaermod_ > 0) aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
   ! aqueous chemistry ...
 
