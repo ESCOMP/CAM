@@ -20,7 +20,7 @@
 
 
 # Update RTTOVDIR to point to your RTTOV installation directory containing: bin  build  include  lib  mod  obj
-RTTOVDIR=/glade/campaign/cesm/community/amwg/rttov/RTTOV/RTTOV_build
+RTTOVDIR=$(RTTOV_SRC_DIR)/RTTOV_build
 FFLAGS= -I$(RTTOVDIR)/mod -I$(RTTOVDIR)/include -fPIC -O3 -fopenmp
 LDFLAGS_ARCH=-fopenmp
 
