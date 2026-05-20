@@ -2340,7 +2340,7 @@ CONTAINS
     cospstateIN%rttov_time(:,3)  = ncsec - (3600*cospstateIN%rttov_time(:,1)) - (60*cospstateIN%rttov_time(:,2)) ! Final remainder
 
     ! We get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
-    cospstateIN%sza(1:ncol)                    = acosd(coszrs(1:ncol))
+    cospstateIN%sza(1:ncol)                    = acos(coszrs(1:ncol)) * 180.0_8 / acos(-1.0_8)
 
     cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice ! gridcell ice water mixing ratio
     cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq ! gridcell liquid water mixing ratio
