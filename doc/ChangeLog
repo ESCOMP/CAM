@@ -1,6 +1,6 @@
 Tag name: cam6_4_174
 Originator(s): kuanchihwang
-Date: TBD
+Date: 21 May 2026
 One-line Summary: Update MPAS dynamical core to version 8.4.0
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1545
 
@@ -67,22 +67,57 @@ platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below. All failed tests must be justified.
 
-derecho/intel/aux_cam: In progress
+derecho/intel/aux_cam:
+  ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_173_intel: DIFF
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_173_intel: DIFF
+  ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 NLCOMP
+    FAIL ERC_D_Ln9.mpasa120_mpasa120.QPC7.derecho_intel.cam-outfrq9s_mpasa120 BASELINE /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_173_intel: DIFF
 
-derecho/nvhpc/aux_cam: In progress
+  Expected namelist and answer changes due to MPAS version update.
 
-izumi/nag/aux_cam: In progress
+  Notes about SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s:
+  This test is flaky. It may sometimes fail with a "floating invalid" error in CTSM.
 
-izumi/gnu/aux_cam: In progress
+derecho/nvhpc/aux_cam:
+  PASS.
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHS94.izumi_nag.cam-outfrq9s (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHS94.izumi_nag.cam-outfrq9s NLCOMP
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHS94.izumi_nag.cam-outfrq9s BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_4_173_nag: DIFF
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 NLCOMP
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.QPC7.izumi_nag.cam-outfrq9s_mpasa480 BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_4_173_nag: DIFF
+
+  Expected namelist and answer changes due to MPAS version update.
+
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+
+  Pre-existing test failure. See https://github.com/ESCOMP/CAM/issues/1514.
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 NLCOMP
+    FAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_4_173_gnu: DIFF
+  ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+    FAIL ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 NLCOMP
+    FAIL ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480 BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_4_173_gnu: DIFF
+
+  Expected namelist and answer changes due to MPAS version update.
 
 CAM tag used for the baseline comparison tests if different than previous
 tag: cam6_4_173
 
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
+Summarize any changes to answers:
+
+In summary, this PR is answer-changing for tests that involve MPAS dynamical core.
+For tests that do not involve MPAS dynamical core, they are bit-for-bit.
 
 ===============================================================
 
