@@ -1,3 +1,91 @@
+Tag name: cam6_4_174
+Originator(s): kuanchihwang
+Date: TBD
+One-line Summary: Update MPAS dynamical core to version 8.4.0
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1545
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+This PR updates MPAS dynamical core from version 8.2.1 to 8.4.0. See the in-between release notes of MPAS for details.
+
+Closes #1479
+
+Describe any changes made to build system:
+
+M       src/dynamics/mpas/Makefile
+  * Update Makefile to fix build errors
+  * Remove unnecessary Makefile build target
+  * Add patches to fix crash in MPAS 8.4.0
+
+Describe any changes made to the namelist:
+
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+  * Update namelist definitions, defaults, and input to accommodate MPAS 8.4.0
+
+List any changes to the defaults for the boundary datasets:
+
+None
+
+Describe any substantial timing or memory changes:
+
+None
+
+Code reviewed by: nusbaume
+
+List all files eliminated:
+
+None
+
+List all files added and what they do:
+
+A       src/dynamics/mpas/driver/0001-Fix-Fortran-standard-violation.patch
+A       src/dynamics/mpas/driver/0002-Add-missing-argument-intent.patch
+A       src/dynamics/mpas/driver/0003-Avoid-implicit-save-attribute.patch
+  * Add patches to fix crash in MPAS 8.4.0
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+  * Update MPAS dynamical core to version 8.4.0
+M       src/dynamics/mpas/dp_coupling.F90
+  * Add support for new deformation coefficients introduced in MPAS 8.4.0
+M       src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+  * Remove deprecated variables that no longer exist
+  * Define new constituent indexes required by MPAS 8.4.0
+M       src/dynamics/mpas/driver/README
+  * Add patches to fix crash in MPAS 8.4.0
+M       src/dynamics/mpas/dycore
+  * Update MPAS dynamical core to version 8.4.0
+M       src/dynamics/mpas/dyn_comp.F90
+  * Update namelist definitions, defaults, and input to accommodate MPAS 8.4.0
+  * Add support for new deformation coefficients introduced in MPAS 8.4.0
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below. All failed tests must be justified.
+
+derecho/intel/aux_cam: In progress
+
+derecho/nvhpc/aux_cam: In progress
+
+izumi/nag/aux_cam: In progress
+
+izumi/gnu/aux_cam: In progress
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: cam6_4_173
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+===============================================================
+
 Tag name: cam6_4_173
 Originator(s): pel, peverwhee, hplin
 Date: 15 May 2026
