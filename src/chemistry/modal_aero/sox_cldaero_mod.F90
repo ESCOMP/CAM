@@ -77,8 +77,10 @@ contains
     integer :: i,k
 
     logical :: mode7
+    logical :: mode5
 
     mode7 = ntot_amode == 7
+    mode5 = ntot_amode == 5
 
     conc_obj => cldaero_allocate()
 
@@ -127,6 +129,27 @@ contains
             + qcw(:ncol,:,id_nh4_4a) &
             + qcw(:ncol,:,id_nh4_5a) &
             + qcw(:ncol,:,id_nh4_6a)
+    else if (mode5) then
+#if ( defined MODAL_AERO_5MODE )
+       id_so4_1a = lptr_so4_cw_amode(1) - loffset
+       id_so4_2a = lptr_so4_cw_amode(2) - loffset
+       id_so4_3a = lptr_so4_cw_amode(3) - loffset
+       id_so4_5a = lptr_so4_cw_amode(5) - loffset
+#endif
+       conc_obj%so4c(:ncol,:) &
+            = qcw(:,:,id_so4_1a) &
+            + qcw(:,:,id_so4_2a) &
+            + qcw(:,:,id_so4_3a) &
+            + qcw(:,:,id_so4_5a)
+
+        ! for 3-mode, so4 is assumed to be nh4hso4
+        ! the partial neutralization of so4 is handled by using a
+        !    -1 charge (instead of -2) in the electro-neutrality equation
+       conc_obj%nh4c(:ncol,:) = 0._r8
+
+       ! with 3-mode, assume so4 is nh4hso4, and so half-neutralized
+       conc_obj%so4_fact = 1._r8
+
     else
        id_so4_1a = lptr_so4_cw_amode(1) - loffset
        id_so4_2a = lptr_so4_cw_amode(2) - loffset

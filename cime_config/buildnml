@@ -49,6 +49,7 @@ def buildnml(case, caseroot, compname):
     COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
     CALENDAR            = case.get_value("CALENDAR")
     COMPSET             = case.get_value("COMPSET")
+    mesh_file           = case.get_value("ATM_DOMAIN_MESH")
 
 # The Gregorian calendar currently can't be used with spinup compsets
 # because CAM's stream-handling code can't handle a request for data
@@ -152,6 +153,9 @@ def buildnml(case, caseroot, compname):
             infile_lines.append(" cam_branch_file = '" + cam_branch_file + "'")
             if ninst > 1:
                 logger.info("%s is being used for cam_branch_file", cam_branch_file)
+
+        # ESMF mesh file
+        infile_lines.append(" cam_physics_mesh = '" + mesh_file + "'")
 
         # In python3 integer division returns a float value.
         # Adjust argument of int() to get nearest integer.
