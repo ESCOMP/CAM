@@ -106,7 +106,7 @@ module cospsimulator_intr
   real(r8), target :: LWP_binEdges_cosp(2,nlwp_cosp_modis)
   real(r8), target :: IWP_binEdges_cosp(2,niwp_cosp_modis)
   real(r8), target :: LWP_binCenters_cosp(nlwp_cosp_modis)
-  real(r8), target :: IWP_binCenters_cosp(niwp_cosp_modis)   
+  real(r8), target :: IWP_binCenters_cosp(niwp_cosp_modis)
   real(r8), target :: cfodd_histdbze_cosp(CFODD_NDBZE)
   real(r8), target :: cfodd_histicod_cosp(CFODD_NICOD)
 
@@ -232,7 +232,7 @@ module cospsimulator_intr
   integer :: dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx, dei_idx
-  
+
   ! ######################################################################################
   ! Declarations specific to COSP2
   ! ######################################################################################
@@ -273,11 +273,11 @@ module cospsimulator_intr
        gamma_2 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/),&
        gamma_3 = (/-1._r8, -1._r8,      2.0_r8,      2.0_r8, -1._r8, -1._r8,      2.0_r8,      2.0_r8,      2.0_r8/),&
        gamma_4 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/)
-       
+
   ! Swathing DDT array
   type(swath_inputs),dimension(6)  :: &
-       cospswathsIN       
-       
+       cospswathsIN
+
   type rttov_output_write
        integer              :: &
            nchan_out
@@ -299,10 +299,10 @@ module cospsimulator_intr
   ! Namelist paths for each RTTOV instrument
   character(len=256), dimension(50) :: rttov_instrument_namelists = ' '         ! Default
   character(len=256), dimension(50) :: cosp_rttov_instrument_namelists = ' '    ! Namelist default
-         
+
 #endif
 
-CONTAINS 
+CONTAINS
 
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_readnl
@@ -339,11 +339,11 @@ CONTAINS
          COSP_SWATH_WIDTHS_MODIS,        & ! Width in km of MODIS satellite overpasses
          COSP_SWATH_WIDTHS_PARASOL,      & ! Width in km of PARASOL satellite overpasses
          COSP_SWATH_WIDTHS_CSCAL,        & ! Width in km of CLOUDSAT+CALIPSO satellite overpasses
-         COSP_SWATH_WIDTHS_ATLID           ! Width in km of ATLID satellite overpasses    
-       
+         COSP_SWATH_WIDTHS_ATLID           ! Width in km of ATLID satellite overpasses
+
 #ifdef USE_COSP
 !!! this list should include any variable that you might want to include in the namelist
-!!! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls. 
+!!! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls.
     namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, &
          cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
          cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
@@ -354,7 +354,7 @@ CONTAINS
          COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
          COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
          COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
-    
+
     !! read in the namelist
     if (masterproc) then
        unitn = getunit()
@@ -445,7 +445,7 @@ CONTAINS
        ! Joint CloudSat-MODIS diagnostics require MODIS so add it and swathing if it will not otherwise be used.
        if ((.not.lmodis_sim) .and. (.not.cosp_lite) .and. (.not.cosp_passive) .and. &
              (.not.cosp_active) .and. (.not.cosp_runall)) then
-          lmodis_sim = .true. 
+          lmodis_sim = .true.
           cospswathsIN(6)%N_inst_swaths                                  = COSP_N_SWATHS_CSCAL
           cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL)   = COSP_SWATH_WIDTHS_CSCAL
           cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)         = COSP_SWATH_LOCALTIMES_CSCAL
@@ -528,7 +528,7 @@ CONTAINS
     ! Set RTTOV instruments and namelists paths, from cosp namelist
     rttov_Ninstruments = cosp_rttov_Ninstruments
     rttov_instrument_namelists = cosp_rttov_instrument_namelists
-        
+
     if (masterproc) then
        if (docosp) then
           write(iulog,*)'COSP configuration:'
@@ -553,7 +553,7 @@ CONTAINS
           write(iulog,*)'  COSP_N_SWATHS_MISR                            = ', COSP_N_SWATHS_MISR
           write(iulog,*)'  COSP_SWATH_LOCALTIMES_MISR                    = ', COSP_SWATH_LOCALTIMES_MISR
           write(iulog,*)'  COSP_SWATH_WIDTHS_MISR                        = ', COSP_SWATH_WIDTHS_MISR
-          
+
           write(iulog,*)'  COSP_N_SWATHS_CSCAL                           = ', COSP_N_SWATHS_CSCAL
           write(iulog,*)'  COSP_SWATH_LOCALTIMES_CSCAL                   = ', COSP_SWATH_LOCALTIMES_CSCAL
           write(iulog,*)'  COSP_SWATH_WIDTHS_CSCAL                       = ', COSP_SWATH_WIDTHS_CSCAL
@@ -596,9 +596,9 @@ CONTAINS
     character(len=8) :: &
         fmt,   & ! format descriptor for flexible RTTOV output
         i_str
-        
+
     fmt = '(I3.3)' ! an integer of width 3 with zeros at the left
-    
+
     ! Set number of levels used by COSP to the number of levels used by
     ! CAM's cloud macro/microphysics parameterizations.
     nlay = pver - ktop + 1
@@ -677,7 +677,7 @@ CONTAINS
             'COSP MODIS ice water path', 'kg m-2', IWP_binCenters_cosp,        &
             bounds_name='cosp_iwp_modis_bnds',bounds=IWP_binEdges_cosp)
     end if
-    
+
     ! Assume the rttov_configs object is accessible and set up here
     if (lrttov_sim) then
        do i=1,rttov_Ninstruments
@@ -843,17 +843,17 @@ CONTAINS
             'CALIPSO z_opaque Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('OPACITY_CAL_2D', (/'cosp_ht'/), 'A', 'percent', &
             'CALIPSO opacity Fraction', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLDOPQ_CAL_TMP', horiz_only, 'A', 'K', & 
+       call addfld('CLDOPQ_CAL_TMP', horiz_only, 'A', 'K', &
             'CALIPSO Opaque Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLDTHN_CAL_TMP', horiz_only, 'A', 'K', & 
+       call addfld('CLDTHN_CAL_TMP', horiz_only, 'A', 'K', &
             'CALIPSO Thin Cloud Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDZOPQ_CAL_TMP', horiz_only, 'A', 'K', &
             'CALIPSO z_opaque Temperature', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLDOPQ_CAL_Z', horiz_only, 'A', 'm', & 
+       call addfld('CLDOPQ_CAL_Z', horiz_only, 'A', 'm', &
             'CALIPSO Opaque Cloud Altitude', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDTHN_CAL_Z', horiz_only, 'A', 'm', &
             'CALIPSO Thin Cloud Altitude', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld('CLDTHN_CAL_EMIS', horiz_only, 'A', '1', & 
+       call addfld('CLDTHN_CAL_EMIS', horiz_only, 'A', '1', &
             'CALIPSO Thin Cloud Emissivity', flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDOPQ_CAL_SE', horiz_only, 'A', 'm', &
             'CALIPSO Opaque Cloud Altitude with respect to surface-elevation', flag_xyfill=.true., fill_value=R_UNDEF)
@@ -1061,15 +1061,15 @@ CONTAINS
        if (lradar_sim) then
           call add_default('DBZE_CS',cosp_histfile_num,' ')
        end if
-    end if     
-    
+    end if
+
     ! RTTOV
     if (lrttov_sim) then
        do i=1,rttov_Ninstruments
           write (i_str,fmt) i ! converting integer to string i_str using a 'internal file'
           if (.not. rttov_configs(i) % Lrttov_pc) then
               if (rttov_configs(i) % Lrttov_bt) then
-                  ! Just add one variable for now.               
+                  ! Just add one variable for now.
                   call addfld ('rttov_bt_total_inst'//trim(i_str),     & ! Variable name
                                (/'RTTOV_CHAN_I'//trim(i_str)/),        & ! History coordinate name
                                'A',                                    & ! A - 'average', I - 'instantaneous'
@@ -1080,7 +1080,7 @@ CONTAINS
                   call add_default ('rttov_bt_total_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
 
-              if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then 
+              if (rttov_configs(i) % Lrttov_bt .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
                   call addfld ('rttov_bt_clear_inst'//trim(i_str),       &
                                (/'RTTOV_CHAN_I'//trim(i_str)/),          &
                                'A',                                      &
@@ -1088,7 +1088,7 @@ CONTAINS
                                'RTTOV Clear-sky Brightness Temperature', &
                                flag_xyfill=.true.,                       &
                                fill_value=R_UNDEF)
-                  call add_default ('rttov_bt_clear_inst'//trim(i_str),cosp_histfile_num,' ')                  
+                  call add_default ('rttov_bt_clear_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
 
               if (rttov_configs(i) % Lrttov_rad) then
@@ -1118,7 +1118,7 @@ CONTAINS
                                'RTTOV Cloudy-sky Radiance',          &
                                flag_xyfill=.true.,                   &
                                fill_value=R_UNDEF)
-                  call add_default ('rttov_rad_cloudy_inst'//trim(i_str),cosp_histfile_num,' ')                  
+                  call add_default ('rttov_rad_cloudy_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
 
               if (rttov_configs(i) % Lrttov_refl) then
@@ -1129,7 +1129,7 @@ CONTAINS
                                'RTTOV All-sky Reflectance',          &
                                flag_xyfill=.true.,                   &
                                fill_value=R_UNDEF)
-                  call add_default ('rttov_refl_total_inst'//trim(i_str),cosp_histfile_num,' ')                  
+                  call add_default ('rttov_refl_total_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
 
               if (rttov_configs(i) % Lrttov_refl .and. ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
@@ -1140,14 +1140,14 @@ CONTAINS
                                'RTTOV Clear-sky Reflectance',        &
                                flag_xyfill=.true.,                   &
                                fill_value=R_UNDEF)
-                  call add_default ('rttov_refl_clear_inst'//trim(i_str),cosp_histfile_num,' ')                  
+                  call add_default ('rttov_refl_clear_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
           else
-              if (rttov_configs(i) % Lrttov_bt) then   
+              if (rttov_configs(i) % Lrttov_bt) then
                   call addfld ('rttov_btpc_clr_inst'//trim(i_str),       &
                                (/'RTTOV_CHAN_I'//trim(i_str)/),             &
-                               'A',                                         & 
-                               'Degrees Kelvin',                            & 
+                               'A',                                         &
+                               'Degrees Kelvin',                            &
                                'PC-RTTOV Clear-sky Brightness Temperature', &
                                flag_xyfill=.true.,                          &
                                fill_value=R_UNDEF)
@@ -1157,15 +1157,15 @@ CONTAINS
               if (rttov_configs(i) % Lrttov_rad) then
                   call addfld ('rttov_radpc_clr_inst'//trim(i_str), &
                                (/'RTTOV_CHAN_I'//trim(i_str)/),        &
-                               'A',                                    & 
+                               'A',                                    &
                                'mW/cm-1/sr/m2',                        &
                                'PC-RTTOV Clear-sky Radiance',          &
                                flag_xyfill=.true.,                     &
                                fill_value=R_UNDEF)
                   call add_default ('rttov_radpc_clr_inst'//trim(i_str),cosp_histfile_num,' ')
               end if
-           end if 
-       end do     
+           end if
+       end do
     end if
 
     !! ADDFLD, ADD_DEFAULT, OUTFLD CALLS FOR COSP OUTPUTS IF RUNNING COSP OFF-LINE
@@ -1236,7 +1236,7 @@ CONTAINS
     dpflxprc_idx   = pbuf_get_index('DP_FLXPRC')
     dpflxsnw_idx   = pbuf_get_index('DP_FLXSNW')
     shflxprc_idx   = pbuf_get_index('SH_FLXPRC', errcode=ierr)
-    shflxsnw_idx   = pbuf_get_index('SH_FLXSNW', errcode=ierr)    
+    shflxsnw_idx   = pbuf_get_index('SH_FLXSNW', errcode=ierr)
     lsflxprc_idx   = pbuf_get_index('LS_FLXPRC')
     lsflxsnw_idx   = pbuf_get_index('LS_FLXSNW')
 
@@ -1313,9 +1313,9 @@ CONTAINS
     rttov_instrument_namelists_final(:) = rttov_instrument_namelists(1:rttov_Ninstruments)
 
     unitn = getunit()
-    
+
     call COSP_INIT(Lisccp_sim, Lmodis_sim, Lmisr_sim, Lradar_sim, Llidar_sim, LgrLidar532,  &
-         Latlid, Lparasol_sim, Lrttov_sim, radar_freq, k2, use_gas_abs, do_ray,             &                       
+         Latlid, Lparasol_sim, Lrttov_sim, radar_freq, k2, use_gas_abs, do_ray,             &
          isccp_topheight, isccp_topheight_direction, surface_radar, rcfg_cloudsat,          &
          use_vgrid, csat_vgrid, Nlr, nlay, cloudsat_micro_scheme,                           &
          rttov_Ninstruments, rttov_instrument_namelists_final, rttov_configs,unitn=unitn)
@@ -1524,7 +1524,7 @@ CONTAINS
     integer, parameter :: nf_misr=1                      ! number of misr outputs
     integer, parameter :: nf_modis=20                    ! number of modis outputs
     integer, parameter :: nf_rttov=9                     ! number of possible RTTOV outputs per instrument
-    
+
     ! Cloudsat outputs
     character(len=max_fieldname_len),dimension(nf_radar),parameter ::          &
           fname_radar = (/'CFAD_DBZE94_CS         ', 'CLD_CAL_NOTCS          ', 'DBZE_CS                ', &
@@ -1567,7 +1567,7 @@ CONTAINS
     character(len=8) :: &
         fmt,   & ! format descriptor for flexible RTTOV output
         i_str
-        
+
     ! RTTOV outputs
     character(len=max_fieldname_len),dimension(rttov_Ninstruments,nf_rttov) :: &
          fname_rttov
@@ -1592,7 +1592,7 @@ CONTAINS
     real(r8), pointer, dimension(:,:) :: concld          ! concld fraction, cca - convective_cloud_amount (0-1)
     real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
     real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
-    real(r8), pointer, dimension(:,:) :: dei             ! ice effective diameter (microns)    
+    real(r8), pointer, dimension(:,:) :: dei             ! ice effective diameter (microns)
     real(r8), pointer, dimension(:,:) :: ls_reffrain     ! rain effective drop radius (microns)
     real(r8), pointer, dimension(:,:) :: ls_reffsnow     ! snow effective drop size (microns)
     real(r8), pointer, dimension(:,:) :: cv_reffliq      ! convective cld liq effective drop radius (microns)
@@ -1649,22 +1649,22 @@ CONTAINS
     real(r8) :: cld_cal_tmpliq(pcols,nht_cosp)
     real(r8) :: cld_cal_tmpice(pcols,nht_cosp)
     real(r8) :: cld_cal_tmpun(pcols,nht_cosp)
-    real(r8) :: cldopaq_cal(pcols)                       
+    real(r8) :: cldopaq_cal(pcols)
     real(r8) :: cldthin_cal(pcols)
     real(r8) :: cldopaqz_cal(pcols)
     real(r8) :: cldopaq_cal_temp(pcols)
-    real(r8) :: cldthin_cal_temp(pcols) 
+    real(r8) :: cldthin_cal_temp(pcols)
     real(r8) :: cldzopaq_cal_temp(pcols)
-    real(r8) :: cldopaq_cal_z(pcols)   
-    real(r8) :: cldthin_cal_z(pcols)   
+    real(r8) :: cldopaq_cal_z(pcols)
+    real(r8) :: cldthin_cal_z(pcols)
     real(r8) :: cldthin_cal_emis(pcols)
-    real(r8) :: cldopaq_cal_se(pcols)  
+    real(r8) :: cldopaq_cal_se(pcols)
     real(r8) :: cldthin_cal_se(pcols)
     real(r8) :: cldzopaq_cal_se(pcols)
     real(r8) :: cldopaq_cal_2d(pcols,nht_cosp)
     real(r8) :: cldthin_cal_2d(pcols,nht_cosp)
-    real(r8) :: cldzopaq_cal_2d(pcols,nht_cosp) 
-    real(r8) :: opacity_cal_2d(pcols,nht_cosp) 
+    real(r8) :: cldzopaq_cal_2d(pcols,nht_cosp)
+    real(r8) :: opacity_cal_2d(pcols,nht_cosp)
     real(r8) :: cfad_dbze94_cs(pcols,nht_cosp*CLOUDSAT_DBZE_BINS)
     real(r8) :: cfad_sr532_cal(pcols,nht_cosp*nsr_cosp)
     real(r8) :: tau_isccp(pcols,nscol_cosp)
@@ -1735,7 +1735,7 @@ CONTAINS
     ! COSPv2 stuff
     character(len=256),dimension(100) :: cosp_status
     integer :: nerror
-    
+
     integer :: istat
     character(len=*), parameter :: sub = 'cospsimulator_intr_run'
     !--------------------------------------------------------------------------------------
@@ -1763,8 +1763,8 @@ CONTAINS
            end do
        end do
     end if
-    
-    
+
+
     ! Allocate the DDT for the RTTOV outputs (bleh?)
     if (lrttov_sim) then
        call t_startf('allocate rttov_outputs_cp')
@@ -1801,7 +1801,7 @@ CONTAINS
              if (rttov_configs(i) % Lrttov_rad) then
                 allocate(rttov_outputs_cp(i) % rad_total_pc(pcols,rttov_configs(i) % nchan_out))
              end if
-          end if        
+          end if
        end do
        call t_stopf('allocate rttov_outputs_cp')
     end if
@@ -1869,7 +1869,7 @@ CONTAINS
     cldzopaq_cal_se(1:pcols)                         = R_UNDEF
     cldopaq_cal_2d(1:pcols,1:nht_cosp)               = R_UNDEF
     cldthin_cal_2d(1:pcols,1:nht_cosp)               = R_UNDEF
-    cldzopaq_cal_2d(1:pcols,1:nht_cosp)              = R_UNDEF 
+    cldzopaq_cal_2d(1:pcols,1:nht_cosp)              = R_UNDEF
     opacity_cal_2d(1:pcols,1:nht_cosp)               = R_UNDEF
     ! - OPAQ diagnostics end
     cfad_dbze94_cs(1:pcols,1:nht_cosp*CLOUDSAT_DBZE_BINS)    = R_UNDEF
@@ -1944,7 +1944,7 @@ CONTAINS
              if (rttov_configs(i) % Lrttov_rad) then
                 rttov_outputs_cp(i) % rad_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
              end if
-             if (rttov_configs(i) % Lrttov_rad .and. & 
+             if (rttov_configs(i) % Lrttov_rad .and. &
                 ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer))) then
                    rttov_outputs_cp(i) % rad_clear(1:pcols,1:rttov_outputs_cp(i) % nchan_out)    = R_UNDEF
                    rttov_outputs_cp(i) % rad_cloudy(1:pcols,1:rttov_outputs_cp(i) % nchan_out)   = R_UNDEF
@@ -1963,7 +1963,7 @@ CONTAINS
              if (rttov_configs(i) % Lrttov_rad) then
                 rttov_outputs_cp(i) % rad_total_pc(1:pcols,1:rttov_outputs_cp(i) % nchan_out) = R_UNDEF
              end if
-          end if      
+          end if
        end do
     end if
 
@@ -1982,7 +1982,7 @@ CONTAINS
        run_misr(1:nf_misr,1:ncol)=.false.
        run_modis(1:nf_modis,1:ncol)=.false.
        run_rttov(1:rttov_Ninstruments,1:nf_rttov,1:ncol)=.false.
-       
+
        if (lradar_sim) then
           do i=1,nf_radar
              run_radar(i,1:pcols)=hist_fld_col_active(fname_radar(i),lchnk,pcols)
@@ -2007,8 +2007,8 @@ CONTAINS
           do i=1,nf_modis
              run_modis(i,1:pcols)=hist_fld_col_active(fname_modis(i),lchnk,pcols)
           end do
-       end if       
-       
+       end if
+
        ! Only look for variables that have been requested as output.
        if (lrttov_sim) then
           do k=1,rttov_Ninstruments
@@ -2042,10 +2042,10 @@ CONTAINS
                 if (rttov_configs(k) % Lrttov_rad) then
                    run_rttov(k,9,1:pcols)=hist_fld_col_active(fname_rttov(k,9),lchnk,pcols)
                 end if
-             end if                      
+             end if
           end do
-       end if          
-       
+       end if
+
        do i=1,ncol
           if ((any(run_radar(:,i))) .or. (any(run_calipso(:,i))) .or. (any(run_isccp(:,i))) &
                .or. (any(run_misr(:,i))) .or. (any(run_modis(:,i))) .or. (any(run_rttov(:,:,i)))) then
@@ -2085,15 +2085,15 @@ CONTAINS
     call rad_cnst_get_gas(0,'CO2', state, pbuf,  co2)
     call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
     ! Note: no radiatively active CO or SO2 in RRTMG or at least in CESM2.
-    
+
     ! fields from physics buffer
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, cld_idx,    cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, concld_idx, concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, rel_idx, rel  )
     call pbuf_get_field(pbuf, rei_idx, rei  )
-    call pbuf_get_field(pbuf, dei_idx, dei  )    
-    
+    call pbuf_get_field(pbuf, dei_idx, dei  )
+
     call pbuf_get_field(pbuf, lsreffrain_idx, ls_reffrain  )
     call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow  )
     call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq   )
@@ -2309,13 +2309,13 @@ CONTAINS
     cospstateIN%qv              = q(:ncol,ktop:pver)
     cospstateIN%tca             = cld(1:ncol,1:pver)
     cospstateIN%o3              = o3(:ncol,ktop:pver)
-    cospstateIN%co2             = co2(1:ncol,1:pver)  
-    cospstateIN%ch4             = ch4(1:ncol,1:pver)  
-    cospstateIN%n2o             = n2o(1:ncol,1:pver)  
+    cospstateIN%co2             = co2(1:ncol,1:pver)
+    cospstateIN%ch4             = ch4(1:ncol,1:pver)
+    cospstateIN%n2o             = n2o(1:ncol,1:pver)
     cospstateIN%co              = 0._r8 ! CO not radiatively active.
     ! For winds take the total 10m wind from cam_in and divide it such that the quadrature sum is the same.
-    cospstateIN%u_sfc           = cam_in%u10(1:ncol) * (2**(-0.5))
-    cospstateIN%v_sfc           = cam_in%u10(1:ncol) * (2**(-0.5))
+    cospstateIN%u_sfc           = cam_in%u10(1:ncol) * (2**(-0.5_r8))
+    cospstateIN%v_sfc           = cam_in%u10(1:ncol) * (2**(-0.5_r8))
     cospstateIN%sunlit          = cam_sunlit(:ncol)
     cospstateIN%skt             = cam_in%ts(:ncol)
     cospstateIN%psfc            = state%ps(1:ncol)
@@ -2340,7 +2340,7 @@ CONTAINS
     cospstateIN%rttov_time(:,3)  = ncsec - (3600*cospstateIN%rttov_time(:,1)) - (60*cospstateIN%rttov_time(:,2)) ! Final remainder
 
     ! We get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
-    cospstateIN%sza(1:ncol)                    = acos(coszrs(1:ncol)) * 180.0_8 / acos(-1.0_8)
+    cospstateIN%sza(1:ncol)                    = acos(coszrs(1:ncol)) * 180.0_r8 / acos(-1.0_r8)
 
     cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice ! gridcell ice water mixing ratio
     cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq ! gridcell liquid water mixing ratio
@@ -2371,7 +2371,7 @@ CONTAINS
     if (lrttov_sim) cospIN%cfg_rttov     => rttov_configs
 
     cospIN%cospswathsIN = cospswathsIN
-    call t_stopf('construct_cospIN') 
+    call t_stopf('construct_cospIN')
 
     if (lradar_sim .or. (llidar_sim .or. (lisccp_sim .or. (lmisr_sim .or. lmodis_sim)))) then
        call t_startf("subsample_and_optics")
@@ -2389,12 +2389,12 @@ CONTAINS
           dem_s_snow, state%ps(:ncol), cospstateIN, cospIN)
        call t_stopf("subsample_and_optics")
     end if
-    
+
     ! ######################################################################################
     ! Call COSP
     ! ######################################################################################
     call t_startf('cosp_simulator')
-    
+
     cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.)
 
     ! Check status flags
@@ -2409,7 +2409,7 @@ CONTAINS
        call endrun('cospsimulator_intr_run: error return from cosp_simulator')
     end if
     call t_stopf('cosp_simulator')
-  
+
     ! ######################################################################################
     ! Write COSP inputs to output file for offline use.
     ! ######################################################################################
@@ -2550,7 +2550,7 @@ CONTAINS
           enddo
        end if
     end if
-    call t_stopf("sunlit_passive")  
+    call t_stopf("sunlit_passive")
 
     ! ######################################################################################
     ! Copy COSP outputs to CAM fields.
@@ -2623,7 +2623,7 @@ CONTAINS
        cfad_lidarsr532(1:ncol,1:nsr_cosp,1:nht_cosp) = cospOUT%calipso_cfad_sr(:,:,:)
        refl_parasol(1:ncol,1:nsza_cosp)  = cospOUT%parasolGrid_refl
        ! CALIPSO Opaque cloud diagnostics
-       cldopaq_cal(1:ncol)                = cospOUT%calipso_cldtype(:,1)          
+       cldopaq_cal(1:ncol)                = cospOUT%calipso_cldtype(:,1)
        cldthin_cal(1:ncol)                = cospOUT%calipso_cldtype(:,2)
        cldopaqz_cal(1:ncol)               = cospOUT%calipso_cldtype(:,3)
        cldopaq_cal_temp(1:ncol)           = cospOUT%calipso_cldtypetemp(:,1)
@@ -2700,7 +2700,7 @@ CONTAINS
                   cospOUT % rttov_outputs(i) % rad_total_pc
              end if
           else
-             if (rttov_configs(i) % Lrttov_bt) then 
+             if (rttov_configs(i) % Lrttov_bt) then
                 rttov_outputs_cp(i) % bt_total(1:ncol,1:rttov_outputs_cp(i) % nchan_out)        = &
                   cospOUT % rttov_outputs(i) % bt_total
                 if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
@@ -2725,11 +2725,11 @@ CONTAINS
                    rttov_outputs_cp(i) % refl_clear(1:ncol,1:rttov_outputs_cp(i) % nchan_out)   = &
                      cospOUT % rttov_outputs(i) % refl_clear
                 end if
-             end if          
+             end if
           end if
        end do
-    endif    
-    
+    endif
+
     ! Use COSP output to populate CAM collapsed output variables
     do i=1,ncol
        if (lradar_sim) then
@@ -2790,7 +2790,7 @@ CONTAINS
 
     call destroy_cospIN(cospIN)
 
-    call t_stopf("destroy_cospIN") 
+    call t_stopf("destroy_cospIN")
     call t_startf("destroy_cospstateIN")
 
     call destroy_cospstateIN(cospstateIN)
@@ -2798,7 +2798,7 @@ CONTAINS
     call t_stopf("destroy_cospstateIN")
     call t_startf("destroy_cospOUT")
 
-    call destroy_cosp_outputs(cospOUT) 
+    call destroy_cosp_outputs(cospOUT)
 
     call t_stopf("destroy_cospOUT")
 
@@ -2852,14 +2852,14 @@ CONTAINS
        call outfld('CLDLOW_CAL_UN', cldlow_cal_un,  pcols,lchnk) !+1.4
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cld_cal(:ncol,:nht_cosp) == R_UNDEF)
-             !! setting missing values to 0 (clear air).  
+             !! setting missing values to 0 (clear air).
              !! I'm not sure why COSP produces a mix of R_UNDEF and realvalue in the nht_cosp dimension.
              cld_cal(:ncol,:nht_cosp) = 0.0_r8
           end where
        end if
        call outfld('CLD_CAL',        cld_cal,       pcols,lchnk)  !! fails check_accum if 'A'
        call outfld('MOL532_CAL',     mol532_cal,    pcols,lchnk)
-       
+
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cfad_sr532_cal(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
              !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
@@ -2870,12 +2870,12 @@ CONTAINS
        call outfld('CFAD_SR532_CAL',cfad_sr532_cal    ,pcols,lchnk)
        if (cospIN%cospswathsIN(5)%N_inst_swaths < 1) then
           where (refl_parasol(:ncol,:nsza_cosp) == R_UNDEF)
-             !! setting missing values to 0 (clear air).  
+             !! setting missing values to 0 (clear air).
              refl_parasol(:ncol,:nsza_cosp) = 0
           end where
        end if
        call outfld('RFL_PARASOL',refl_parasol   ,pcols,lchnk) !!
-       
+
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cld_cal_liq(:ncol,:nht_cosp) == R_UNDEF) !+cosp1.4
              !! setting missing values to 0 (clear air), likely below sea level
@@ -2883,7 +2883,7 @@ CONTAINS
           end where
        end if
        call outfld('CLD_CAL_LIQ',cld_cal_liq    ,pcols,lchnk)  !!
-       
+
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cld_cal_ice(:ncol,:nht_cosp) == R_UNDEF)
              !! setting missing values to 0 (clear air), likely below sea level
@@ -2891,7 +2891,7 @@ CONTAINS
           end where
        end if
        call outfld('CLD_CAL_ICE',cld_cal_ice    ,pcols,lchnk)  !!
-       
+
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cld_cal_un(:ncol,:nht_cosp) == R_UNDEF)
              !! setting missing values to 0 (clear air), likely below sea level
@@ -2905,19 +2905,19 @@ CONTAINS
           cld_cal_tmp(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMP',cld_cal_tmp    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpliq(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpliq(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPLIQ',cld_cal_tmpliq    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpice(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpice(:ncol,:nht_cosp) = 0.0_r8
        end where
        call outfld('CLD_CAL_TMPICE',cld_cal_tmpice    ,pcols,lchnk)  !!
-       
+
        where (cld_cal_tmpun(:ncol,:nht_cosp) == R_UNDEF)
           !! setting missing values to 0 (clear air), likely below sea level
           cld_cal_tmpun(:ncol,:nht_cosp) = 0.0_r8
@@ -2938,7 +2938,7 @@ CONTAINS
        call outfld('CLDTHN_CAL_SE',   cldthin_cal_se,    pcols, lchnk)
        call outfld('CLDZOPQ_CAL_SE',  cldzopaq_cal_se,   pcols, lchnk)
 
-       ! NOTE: This output handling does not work with the COSP satellite swathing 
+       ! NOTE: This output handling does not work with the COSP satellite swathing
        ! because nans meant to be swathed are assigned to R_UNDEF.
        where (cldopaq_cal_2d(:ncol,:nht_cosp) == R_UNDEF)
           cldopaq_cal_2d(:ncol,:nht_cosp) = 0.0_r8
@@ -2966,7 +2966,7 @@ CONTAINS
     if (lradar_sim) then
        if (cospIN%cospswathsIN(3)%N_inst_swaths < 1) then
           where (cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) == R_UNDEF)
-             !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue 
+             !! fails check_accum if this is set... with ht_cosp set relative to sea level, mix of R_UNDEF and realvalue
              !           cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = R_UNDEF
              cfad_dbze94_cs(:ncol,:nht_cosp*CLOUDSAT_DBZE_BINS) = 0.0_r8
           end where
@@ -3021,7 +3021,7 @@ CONTAINS
           tautmodis(:ncol) = tautmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('TAUTMODIS',tautmodis    ,pcols,lchnk)
-       
+
        where ((tauwmodis(:ncol) == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           tauwmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3029,7 +3029,7 @@ CONTAINS
           tauwmodis(:ncol) = tauwmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('TAUWMODIS',tauwmodis    ,pcols,lchnk)
-       
+
        where ((tauimodis(:ncol) == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           tauimodis(:ncol) = R_UNDEF
        elsewhere
@@ -3037,7 +3037,7 @@ CONTAINS
           tauimodis(:ncol) = tauimodis(:ncol)*climodis(:ncol)
        end where
        call outfld('TAUIMODIS',tauimodis    ,pcols,lchnk)
-       
+
        where ((tautlogmodis(:ncol)  == R_UNDEF) .or. (cltmodis(:ncol) == R_UNDEF))
           tautlogmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3045,7 +3045,7 @@ CONTAINS
           tautlogmodis(:ncol) = tautlogmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('TAUTLOGMODIS',tautlogmodis    ,pcols,lchnk)
-       
+
        where ((tauwlogmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           tauwlogmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3053,23 +3053,23 @@ CONTAINS
           tauwlogmodis(:ncol) = tauwlogmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('TAUWLOGMODIS',tauwlogmodis    ,pcols,lchnk)
-       
-       where ((tauilogmodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF)) 
+
+       where ((tauilogmodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           tauilogmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction climodis
           tauilogmodis(:ncol) = tauilogmodis(:ncol)*climodis(:ncol)
        end where
        call outfld('TAUILOGMODIS',tauilogmodis    ,pcols,lchnk)
-       
-       where ((reffclwmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF)) 
+
+       where ((reffclwmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           reffclwmodis(:ncol) = R_UNDEF
        elsewhere
           !! weight by the cloud fraction clwmodis
           reffclwmodis(:ncol) = reffclwmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('REFFCLWMODIS',reffclwmodis    ,pcols,lchnk)
-       
+
        where ((reffclimodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           reffclimodis(:ncol) = R_UNDEF
        elsewhere
@@ -3077,7 +3077,7 @@ CONTAINS
           reffclimodis(:ncol) = reffclimodis(:ncol)*climodis(:ncol)
        end where
        call outfld('REFFCLIMODIS',reffclimodis    ,pcols,lchnk)
-       
+
        where ((pctmodis(:ncol)  == R_UNDEF) .or. ( cltmodis(:ncol) == R_UNDEF))
           pctmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3085,7 +3085,7 @@ CONTAINS
           pctmodis(:ncol) = pctmodis(:ncol)*cltmodis(:ncol)
        end where
        call outfld('PCTMODIS',pctmodis    ,pcols,lchnk)
-       
+
        where ((lwpmodis(:ncol)  == R_UNDEF) .or. (clwmodis(:ncol) == R_UNDEF))
           lwpmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3093,7 +3093,7 @@ CONTAINS
           lwpmodis(:ncol) = lwpmodis(:ncol)*clwmodis(:ncol)
        end where
        call outfld('LWPMODIS',lwpmodis    ,pcols,lchnk)
-       
+
        where ((iwpmodis(:ncol)  == R_UNDEF) .or. (climodis(:ncol) == R_UNDEF))
           iwpmodis(:ncol) = R_UNDEF
        elsewhere
@@ -3108,7 +3108,7 @@ CONTAINS
        call outfld('CLRLMODIS',clrlmodis  ,pcols,lchnk)
        call outfld('LWP_REFFCLW_MODIS',lwp_reffliq_modis,pcols,lchnk)
        call outfld('IWP_REFFCLI_MODIS',iwp_reffice_modis,pcols,lchnk)
-    end if  
+    end if
 
     ! RTTOV
     if (lrttov_sim) then
@@ -3140,7 +3140,7 @@ CONTAINS
                 if ((rttov_configs(i) % Lrttov_cld) .or. (rttov_configs(i) % Lrttov_aer)) then
                    call outfld('rttov_refl_clear_inst'//trim(i_str),rttov_outputs_cp(i) % refl_clear,pcols,lchnk)
                 end if
-             end if          
+             end if
           end if
        end do
     endif
@@ -3157,7 +3157,7 @@ CONTAINS
         if (allocated(rttov_outputs_cp(i) % bt_total_pc))     deallocate(rttov_outputs_cp(i) % bt_total_pc)
         if (allocated(rttov_outputs_cp(i) % rad_total_pc))    deallocate(rttov_outputs_cp(i) % rad_total_pc)
     end do
-    
+
     ! SUB-COLUMN OUTPUT
     if (lfrac_out) then
        call outfld('SCOPS_OUT',scops_out   ,pcols,lchnk)!!!-1.00000E+30 !! fails check_accum if 'A'
@@ -3271,7 +3271,7 @@ CONTAINS
        allocate(rngs(nPoints), seed(nPoints), stat=istat)
        call handle_allocate_error(istat, sub, 'rngs, seed')
        seed = int(sfcP)
-       if (Npoints > 1) seed=(sfcP-int(sfcP))*1000000 
+       if (Npoints > 1) seed=(sfcP-int(sfcP))*1000000
        call init_rng(rngs, seed)
 
        ! Call scops
@@ -3320,7 +3320,7 @@ CONTAINS
              ! Adjust grid-box mean snow properties to local properties
              ! Convert longwave optical depth to longwave emissivity
              if (prec_ls(j,k) /= 0._r8 .and. dtau_s_snow(j,k) > 0._r8) then
-                dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k) 
+                dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k)
              end if
              if (prec_ls(j,k) /= 0._r8 .and. dem_s_snow(j,k) > 0._r8) then
                 dem_s_snow(j,k) = dem_s_snow(j,k)/prec_ls(j,k)
@@ -3655,19 +3655,19 @@ CONTAINS
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine construct_cospIN(npoints,ncolumns,nlevels,ninst_rttov,y,emis_grey)
     use cosp_kinds,           only: wp
-    
+
     ! Inputs
     integer,intent(in) :: &
          npoints,  & ! Number of horizontal gridpoints
          ncolumns, & ! Number of subcolumns
          nlevels,  & ! Number of vertical levels
          ninst_rttov ! Number of RTTOV instruments
-    ! Outputs 
+    ! Outputs
     type(cosp_optical_inputs),intent(out) :: y
     ! Optional input
     real(wp),intent(in),target, optional :: &
          emis_grey
-     
+
     ! local
     integer :: istat
     character(len=*), parameter :: sub = 'construct_cospIN'
@@ -3680,9 +3680,9 @@ CONTAINS
     y%Ninst_rttov = Ninst_rttov
     y%Npart       = 4
     y%Nrefl       = PARASOL_NREFL
-    
+
     if (present(emis_grey)) y%emis_grey => emis_grey
-    
+
     allocate(y%tau_067(            npoints, ncolumns, nlevels),&
              y%emiss_11(           npoints, ncolumns, nlevels),&
              y%frac_out(           npoints, ncolumns, nlevels),&
@@ -3764,7 +3764,7 @@ CONTAINS
   ! SUBROUTINE construct_cosp_outputs
   !
   ! This subroutine allocates output fields based on input logical flag switches.
-  ! ######################################################################################  
+  ! ######################################################################################
   subroutine construct_cosp_outputs(Npoints,Ncolumns,Nlevels,Nlvgrid,N_rttov_instruments,use_vgrid,x,rttov_configs)
     ! Inputs
     integer,intent(in) :: &
@@ -3788,7 +3788,7 @@ CONTAINS
     character(len=*), parameter :: sub = 'construct_cosp_outputs'
     integer :: i
     !--------------------------------------------------------------------------------------
-    
+
      ! ISCCP simulator outputs
     if (lisccp_sim) then
        allocate( &
@@ -3860,7 +3860,7 @@ CONTAINS
           x%calipso_cldlayer(Npoints,LIDAR_NCAT), &
           x%calipso_lidarcldphase(Npoints,Nlvgrid,6), &
           x%calipso_lidarcldtmp(Npoints,LIDAR_NTEMP,5), &
-          x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &     
+          x%calipso_cldlayerphase(Npoints,LIDAR_NCAT,6), &
           ! Calipso opaque cloud diagnostics
           x%calipso_cldtype(Npoints,LIDAR_NTYPE), &
           x%calipso_cldtypetemp(Npoints,LIDAR_NTYPE), &
@@ -3900,7 +3900,7 @@ CONTAINS
        endif
        call handle_allocate_error(istat, sub, 'cloudsat_precip_*')
     endif
-    
+
     ! RTTOV - Allocate output for multiple instruments
     if (lrttov_sim) then
        x % Ninst_rttov = N_rttov_instruments
@@ -3914,7 +3914,7 @@ CONTAINS
              end if
              if (rttov_configs(i) % Lrttov_rad) then                             ! Radiance
                 allocate(x % rttov_outputs(i) % rad_total_pc(Npoints,rttov_configs(i) % nchan_out))
-             end if  
+             end if
           else
              allocate(x % rttov_outputs(i) % channel_indices(rttov_configs(i) % nchan_out))
              if (rttov_configs(i) % Lrttov_bt) then                              ! Brightness temp
@@ -3942,7 +3942,7 @@ CONTAINS
        end do
     else
         x % Ninst_rttov = 0
-    end if    
+    end if
 
   end subroutine construct_cosp_outputs
 
@@ -4000,7 +4000,7 @@ CONTAINS
     if (allocated(y%phalf))           deallocate(y%phalf)
     if (allocated(y%qv))              deallocate(y%qv)
     if (allocated(y%rttov_date))      deallocate(y%rttov_date)
-    if (allocated(y%rttov_time))      deallocate(y%rttov_time)    
+    if (allocated(y%rttov_time))      deallocate(y%rttov_time)
     if (allocated(y%sza))             deallocate(y%sza)
     if (allocated(y%co2))             deallocate(y%co2)
     if (allocated(y%ch4))             deallocate(y%ch4)
@@ -4017,7 +4017,7 @@ CONTAINS
     if (allocated(y%cloudIce))        deallocate(y%cloudIce)
     if (allocated(y%cloudLiq))        deallocate(y%cloudLiq)
     if (allocated(y%DeffLiq))         deallocate(y%DeffLiq)
-    if (allocated(y%DeffIce))         deallocate(y%DeffIce)    
+    if (allocated(y%DeffIce))         deallocate(y%DeffIce)
     if (allocated(y%fl_rain))         deallocate(y%fl_rain)
     if (allocated(y%fl_snow))         deallocate(y%fl_snow)
     if (allocated(y%tca))             deallocate(y%tca)
@@ -4285,7 +4285,7 @@ CONTAINS
         deallocate(y%calipso_lidarcldtype)
         nullify(y%calipso_lidarcldtype)
      endif
-        
+
      ! RTTOV multi-instrument
      if (allocated(y%rttov_outputs)) then
          do i=1,y % Ninst_rttov ! Iterate over each instrument
@@ -4331,28 +4331,28 @@ CONTAINS
              endif
          end do
          deallocate(y%rttov_outputs)
-     end if        
-        
+     end if
+
    end subroutine destroy_cosp_outputs
-   
+
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  ! SUBROUTINE rttov_cleanup     
+  ! SUBROUTINE rttov_cleanup
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   subroutine rttov_cleanup(y)
     use MOD_COSP_RTTOV_INTERFACE, only: DESTROY_RTTOV_CONFIG
-    
+
     type(cosp_optical_inputs),intent(inout) :: y
     integer :: i
-    
+
     if (size(y%cfg_rttov) > 0) then
         do i=1,y%Ninst_rttov
             call destroy_rttov_config(y%cfg_rttov(i))
         end do
     end if
     nullify(y%cfg_rttov)
-    
-  end subroutine rttov_cleanup 
-   
+
+  end subroutine rttov_cleanup
+
 #endif
 
 !#######################################################################
