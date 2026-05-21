@@ -1547,7 +1547,7 @@ CONTAINS
                          'CLDOPQ_CAL     ','CLDTHN_CAL     ','CLDZOPQ_CAL    ','CLDOPQ_CAL_2D  ','CLDTHN_CAL_2D  ',&
                          'CLDZOPQ_CAL_2D ','OPACITY_CAL_2D ','CLDOPQ_CAL_TMP ','CLDTHN_CAL_TMP ','CLDZOPQ_CAL_TMP',&
                          'CLDOPQ_CAL_Z   ','CLDTHN_CAL_Z   ','CLDTHN_CAL_EMIS','CLDOPQ_CAL_SE  ','CLDTHN_CAL_SE  ',&
-                         'CLDZOPQ_CAL_SE' /)
+                         'CLDZOPQ_CAL_SE '/)
     ! ISCCP outputs
     character(len=max_fieldname_len),dimension(nf_isccp),parameter :: &
          fname_isccp=(/'FISCCP1_COSP    ','CLDTOT_ISCCP    ','MEANCLDALB_ISCCP',&
@@ -1771,7 +1771,7 @@ CONTAINS
        do i=1,rttov_Ninstruments
           rttov_outputs_cp(i) % nchan_out = rttov_configs(i) % nchan_out
           ! Only allocate output if the output has been requested.
-          if (not(rttov_configs(i) % Lrttov_pc)) then
+          if (.not.(rttov_configs(i) % Lrttov_pc)) then
              if (rttov_configs(i) % Lrttov_bt) then
                 allocate(rttov_outputs_cp(i) % bt_total(pcols,rttov_configs(i) % nchan_out))
              end if
@@ -1933,7 +1933,7 @@ CONTAINS
     ! Initialize the RTTOV outputs
     if (lrttov_sim) then
        do i=1,rttov_Ninstruments
-          if (not(rttov_configs(i) % Lrttov_pc)) then
+          if (.not.(rttov_configs(i) % Lrttov_pc)) then
              if (rttov_configs(i) % Lrttov_bt) then
                 rttov_outputs_cp(i) % bt_total(1:pcols,1:rttov_outputs_cp(i) % nchan_out)     = R_UNDEF
              end if
@@ -2012,7 +2012,7 @@ CONTAINS
        ! Only look for variables that have been requested as output.
        if (lrttov_sim) then
           do k=1,rttov_Ninstruments
-             if (not(rttov_configs(k) % Lrttov_pc)) then
+             if (.not.(rttov_configs(k) % Lrttov_pc)) then
                 if (rttov_configs(k) % Lrttov_bt) then
                    run_rttov(k,1,1:pcols)=hist_fld_col_active(fname_rttov(k,1),lchnk,pcols)
                 end if
@@ -2314,8 +2314,8 @@ CONTAINS
     cospstateIN%n2o             = n2o(1:ncol,1:pver)  
     cospstateIN%co              = 0._r8 ! CO not radiatively active.
     ! For winds take the total 10m wind from cam_in and divide it such that the quadrature sum is the same.
-    cospstateIN%u_sfc           = cam_in%u10(1:ncol) * (2**(-1/2))
-    cospstateIN%v_sfc           = cam_in%u10(1:ncol) * (2**(-1/2))
+    cospstateIN%u_sfc           = cam_in%u10(1:ncol) * (2**(-0.5))
+    cospstateIN%v_sfc           = cam_in%u10(1:ncol) * (2**(-0.5))
     cospstateIN%sunlit          = cam_sunlit(:ncol)
     cospstateIN%skt             = cam_in%ts(:ncol)
     cospstateIN%psfc            = state%ps(1:ncol)
