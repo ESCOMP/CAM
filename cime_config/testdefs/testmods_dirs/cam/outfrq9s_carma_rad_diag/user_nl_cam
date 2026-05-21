@@ -1,0 +1,31 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+write_nstep0=.true.
+inithist='ENDOFRUN'
+
+rad_diag_1 = 'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'A:O3:O3', 'A:N2O:N2O', 'A:CH4:CH4',
+ 'N:CFC11:CFC11', 'N:CFC12:CFC12'
+
+rad_diag_2 = 'A:Q:H2O', 'N:O2:O2', 'A:CO2:CO2', 'A:O3:O3', 'A:N2O:N2O', 'A:CH4:CH4',
+ 'N:CFC11:CFC11', 'N:CFC12:CFC12',
+ 'B:MXAER01:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX01_rrtmg.nc',
+ 'B:MXAER02:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX02_rrtmg.nc',
+ 'B:MXAER03:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX03_rrtmg.nc',
+ 'B:MXAER04:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX04_rrtmg.nc',
+ 'B:MXAER05:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX05_rrtmg.nc',
+ 'B:MXAER06:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX06_rrtmg.nc',
+ 'B:MXAER07:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX07_rrtmg.nc',
+ 'B:MXAER08:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX08_rrtmg.nc',
+ 'B:MXAER09:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX09_rrtmg.nc',
+ 'B:MXAER10:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX10_rrtmg.nc',
+ 'B:MXAER11:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX11_rrtmg.nc',
+ 'B:MXAER12:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX12_rrtmg.nc',
+ 'B:MXAER13:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX13_rrtmg.nc',
+ 'B:MXAER14:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX14_rrtmg.nc',
+ 'B:MXAER15:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX15_rrtmg.nc',
+ 'B:MXAER16:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX16_rrtmg.nc',
+ 'B:MXAER17:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX17_rrtmg.nc',
+ 'B:MXAER18:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX18_rrtmg.nc',
+ 'B:MXAER19:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX19_rrtmg.nc',
+ 'B:MXAER20:$DIN_LOC_ROOT/atm/cam/chem/carma/rrtmg/aerosol_cld_CRMIX20_rrtmg.nc'
