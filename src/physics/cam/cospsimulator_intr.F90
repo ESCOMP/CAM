@@ -2623,22 +2623,22 @@ CONTAINS
        cfad_lidarsr532(1:ncol,1:nsr_cosp,1:nht_cosp) = cospOUT%calipso_cfad_sr(:,:,:)
        refl_parasol(1:ncol,1:nsza_cosp)  = cospOUT%parasolGrid_refl
        ! CALIPSO Opaque cloud diagnostics
-       cldopaq_cal(1:pcols)                = cospOUT%calipso_cldtype(:,1)          
-       cldthin_cal(1:pcols)                = cospOUT%calipso_cldtype(:,2)
-       cldopaqz_cal(1:pcols)               = cospOUT%calipso_cldtype(:,3)
-       cldopaq_cal_temp(1:pcols)           = cospOUT%calipso_cldtypetemp(:,1)
-       cldthin_cal_temp(1:pcols)           = cospOUT%calipso_cldtypetemp(:,2)
-       cldzopaq_cal_temp(1:pcols)          = cospOUT%calipso_cldtypetemp(:,3)
-       cldopaq_cal_z(1:pcols)              = cospOUT%calipso_cldtypemeanz(:,1)
-       cldthin_cal_z(1:pcols)              = cospOUT%calipso_cldtypemeanz(:,2)
-       cldthin_cal_emis(1:pcols)           = cospOUT%calipso_cldthinemis
-       cldopaq_cal_se(1:pcols)             = cospOUT%calipso_cldtypemeanzse(:,1)
-       cldthin_cal_se(1:pcols)             = cospOUT%calipso_cldtypemeanzse(:,2)
-       cldzopaq_cal_se(1:pcols)            = cospOUT%calipso_cldtypemeanzse(:,3)
-       cldopaq_cal_2d(1:pcols,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,1)
-       cldthin_cal_2d(1:pcols,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,2)
-       cldzopaq_cal_2d(1:pcols,1:nht_cosp) = cospOUT%calipso_lidarcldtype(:,:,3)
-       opacity_cal_2d(1:pcols,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,4)
+       cldopaq_cal(1:ncol)                = cospOUT%calipso_cldtype(:,1)          
+       cldthin_cal(1:ncol)                = cospOUT%calipso_cldtype(:,2)
+       cldopaqz_cal(1:ncol)               = cospOUT%calipso_cldtype(:,3)
+       cldopaq_cal_temp(1:ncol)           = cospOUT%calipso_cldtypetemp(:,1)
+       cldthin_cal_temp(1:ncol)           = cospOUT%calipso_cldtypetemp(:,2)
+       cldzopaq_cal_temp(1:ncol)          = cospOUT%calipso_cldtypetemp(:,3)
+       cldopaq_cal_z(1:ncol)              = cospOUT%calipso_cldtypemeanz(:,1)
+       cldthin_cal_z(1:ncol)              = cospOUT%calipso_cldtypemeanz(:,2)
+       cldthin_cal_emis(1:ncol)           = cospOUT%calipso_cldthinemis
+       cldopaq_cal_se(1:ncol)             = cospOUT%calipso_cldtypemeanzse(:,1)
+       cldthin_cal_se(1:ncol)             = cospOUT%calipso_cldtypemeanzse(:,2)
+       cldzopaq_cal_se(1:ncol)            = cospOUT%calipso_cldtypemeanzse(:,3)
+       cldopaq_cal_2d(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,1)
+       cldthin_cal_2d(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,2)
+       cldzopaq_cal_2d(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtype(:,:,3)
+       opacity_cal_2d(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,4)
     endif
 
     ! ISCCP
