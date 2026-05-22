@@ -165,6 +165,21 @@ module nudging
 !                                 i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal 
 !                                      nudging scale  Hscale~500km.
 !
+!      Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging 
+!                                 of spherical harmonic modes, to suppress sampling errors.
+!                                 When initializing each basis, a local average of SH values 
+!                                 is computed for the area associated with each grid point.
+!                                 SpectralNring set the number of rings of equal-area points 
+!                                 in this sampling domain. 
+!                                 Each ring (kk) contains 8*(kk-1) sample points.
+!
+!                                    Nudge_SpectralNring     Number of Samping Points
+!                                    -------------------     -------------------------
+!                                       1                        1      (DEFAULT SampleGrid NOT used)
+!                                       2                        9
+!                                       3                       25
+!                                       4                       49
+!
 !      Nudge_Uprof         - INT index of profile structure to use for U.  [0,1,2]
 !      Nudge_Vprof         - INT index of profile structure to use for V.  [0,1,2]
 !      Nudge_Tprof         - INT index of profile structure to use for T.  [0,1,2]
@@ -217,8 +232,7 @@ module nudging
   use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom, mpi_success
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
-  use zonal_mean_mod, only: ZonalMean_t
-  use spherical_harmonic_mod, only: SphericalHarmonic_t
+  use ug_spectralmethods_mod, only: SphericalHarmonic_GS_t, ZonalMean_t
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -301,7 +315,8 @@ module nudging
   logical             :: Nudge_SpectralFilter =.false.
   integer             :: Nudge_SpectralNtrunc = -1
   integer             :: Nudge_SpectralNbasis = -1
-  type(SphericalHarmonic_t):: SH
+  integer             :: Nudge_SpectralNring  =  1
+  type(SphericalHarmonic_GS_t):: SH
   real(r8),allocatable:: Spectral_Bamp2d(:)
   real(r8),allocatable:: Spectral_Bamp3d(:,:)
 
@@ -368,6 +383,7 @@ contains
                          Nudge_TimeScale_Opt,                                 &
                          Nudge_Times_Per_Day, Model_Times_Per_Day,            &
                          Nudge_SpectralFilter, Nudge_SpectralNtrunc,          &
+                         Nudge_SpectralNring,                                 &
                          Nudge_Ucoef , Nudge_Uprof,                           &
                          Nudge_Vcoef , Nudge_Vprof,                           &
                          Nudge_Qcoef , Nudge_Qprof,                           &
@@ -612,6 +628,8 @@ contains
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralFilter')
    call MPI_bcast(Nudge_SpectralNtrunc,   1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralNtrunc')
+   call MPI_bcast(Nudge_SpectralNring,    1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralNring')
 
    ! End Routine
    !------------
@@ -879,6 +897,7 @@ contains
      write(iulog,*) 'NUDGING: Nudge_ZonalNbasis=',Nudge_ZonalNbasis
      write(iulog,*) 'NUDGING: Nudge_SpectralFilter=',Nudge_SpectralFilter
      write(iulog,*) 'NUDGING: Nudge_SpectralNtrunc=',Nudge_SpectralNtrunc
+     write(iulog,*) 'NUDGING: Nudge_SpectralNring=',Nudge_SpectralNring
      write(iulog,*) 'NUDGING: Nudge_Ucoef  =',Nudge_Ucoef
      write(iulog,*) 'NUDGING: Nudge_Vcoef  =',Nudge_Vcoef
      write(iulog,*) 'NUDGING: Nudge_Qcoef  =',Nudge_Qcoef
@@ -1028,7 +1047,8 @@ contains
 
    if(Nudge_SpectralFilter) then
      write(iulog,*) 'NUDGING: calling SH%init() Nudge_SpectralNtrunc =',Nudge_SpectralNtrunc
-     call SH%init(Nudge_SpectralNtrunc,Nudge_SpectralNbasis)
+     write(iulog,*) 'NUDGING: calling SH%init() Nudge_SpectralNring  =',Nudge_SpectralNring
+     call SH%init(Nudge_SpectralNtrunc,Nudge_SpectralNbasis,SAMPLE_NRING=Nudge_SpectralNring)
      write(iulog,*) 'NUDGING: done    SH%init() Nudge_SpectralNbasis =',Nudge_SpectralNbasis
      allocate(Spectral_Bamp2d(Nudge_SpectralNbasis),stat=istat)
      call alloc_err(istat,'nudging_init','Spectral_Bamp2d',Nudge_SpectralNbasis)
