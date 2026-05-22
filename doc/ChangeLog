@@ -1,3 +1,80 @@
+===============================================================
+
+Tag name: cam6_4_175
+Originator(s): jimmielin
+Date: May 22, 2026
+One-line Summary: Complete CCPPization of CAM5 UW (diag_TKE) PBL scheme; cleanup to vertical_diffusion_tend
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1445
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1429 - Move University of Washington moist turbulence scheme ("diag_TKE", CAM5 PBL scheme) to atmos_phys.
+- Cleanup to vertical_diffusion_tend to accommodate CCPPization of HB (CAM4) and UW (CAM5) PBL schemes.
+- Minor fixes to snapshot metadata.
+
+Describe any changes made to build system: added bretherton_park folder to atmos_phys
+
+Describe any changes made to the namelist: update to descriptions only.
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: None
+
+Code reviewed by: nusbaume, cacraig, peverwhee (atmos_phys)
+
+List all files eliminated:
+```
+D       src/physics/cam/eddy_diff.F90
+  - moved to atmos_phys
+
+D       src/physics/cam/pbl_utils.F90
+  - only remaining subroutine now in atmos_phys bretherton_park_diff.F90
+```
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+```
+M       bld/configure
+  - add bretherton_park subdir for atmos_phys
+
+M       bld/namelist_files/namelist_definition.xml
+  - fix description
+
+M       src/control/cam_snapshot_common.F90
+  - populate units for pbuf_ksrftms, pbuf_WSEDL
+
+M       src/physics/cam/eddy_diff_cam.F90
+  - moved most of existing logic in eddy_diff_tend to new CCPP scheme bretherton_park_diff_run
+  - what remains is just CAM-specific code for history and code to interface with the underlying run phase.
+
+M       src/physics/cam/vertical_diffusion.F90
+  - move kinematic fluxes and obklen calculation to common interstitial scheme.
+  - move input preparation (vert coord for vdiff, potential temp) to common interstitial scheme.
+  - rearrange data flow for HB, UW to share as much code as possible.
+```
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL)
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers: All B4B
+
+===============================================================
+
 Tag name: cam6_4_174
 Originator(s): kuanchihwang
 Date: 21 May 2026
