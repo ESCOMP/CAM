@@ -371,26 +371,43 @@ CONTAINS
     end if
 
    !  Indexing order for "cospIN % cospswathsIN" is ISCCP, MISR, CLOUDSAT-CALIPSO, ATLID, PARASOL, MODIS
-    if (masterproc) then
-       cospswathsIN(1)%N_inst_swaths                                  = COSP_N_SWATHS_ISCCP
-       cospswathsIN(1)%inst_localtimes(1:COSP_N_SWATHS_ISCCP)         = COSP_SWATH_LOCALTIMES_ISCCP
-       cospswathsIN(1)%inst_localtime_widths(1:COSP_N_SWATHS_ISCCP)   = COSP_SWATH_WIDTHS_ISCCP
-       cospswathsIN(2)%N_inst_swaths                                  = COSP_N_SWATHS_MISR
-       cospswathsIN(2)%inst_localtimes(1:COSP_N_SWATHS_MISR)          = COSP_SWATH_LOCALTIMES_MISR
-       cospswathsIN(2)%inst_localtime_widths(1:COSP_N_SWATHS_MISR)    = COSP_SWATH_WIDTHS_MISR
-       cospswathsIN(3)%N_inst_swaths                                  = COSP_N_SWATHS_CSCAL
-       cospswathsIN(3)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)         = COSP_SWATH_LOCALTIMES_CSCAL
-       cospswathsIN(3)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL)   = COSP_SWATH_WIDTHS_CSCAL
-       cospswathsIN(4)%N_inst_swaths                                  = COSP_N_SWATHS_ATLID
-       cospswathsIN(4)%inst_localtimes(1:COSP_N_SWATHS_ATLID)         = COSP_SWATH_LOCALTIMES_ATLID
-       cospswathsIN(4)%inst_localtime_widths(1:COSP_N_SWATHS_ATLID)   = COSP_SWATH_WIDTHS_ATLID
-       cospswathsIN(5)%N_inst_swaths                                  = COSP_N_SWATHS_PARASOL
-       cospswathsIN(5)%inst_localtimes(1:COSP_N_SWATHS_PARASOL)       = COSP_SWATH_LOCALTIMES_PARASOL
-       cospswathsIN(5)%inst_localtime_widths(1:COSP_N_SWATHS_PARASOL) = COSP_SWATH_WIDTHS_PARASOL
-       cospswathsIN(6)%N_inst_swaths                                  = COSP_N_SWATHS_MODIS
-       cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_MODIS)   = COSP_SWATH_WIDTHS_MODIS
-       cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_MODIS)         = COSP_SWATH_LOCALTIMES_MODIS
-    end if
+     if (masterproc) then
+        cospswathsIN(1)%N_inst_swaths = COSP_N_SWATHS_ISCCP
+        if (COSP_N_SWATHS_ISCCP > 0) then
+           cospswathsIN(1)%inst_localtimes(1:COSP_N_SWATHS_ISCCP)       = COSP_SWATH_LOCALTIMES_ISCCP
+           cospswathsIN(1)%inst_localtime_widths(1:COSP_N_SWATHS_ISCCP) = COSP_SWATH_WIDTHS_ISCCP
+        end if
+        
+        cospswathsIN(2)%N_inst_swaths = COSP_N_SWATHS_MISR
+        if (COSP_N_SWATHS_MISR > 0) then
+           cospswathsIN(2)%inst_localtimes(1:COSP_N_SWATHS_MISR)        = COSP_SWATH_LOCALTIMES_MISR
+           cospswathsIN(2)%inst_localtime_widths(1:COSP_N_SWATHS_MISR)  = COSP_SWATH_WIDTHS_MISR
+        end if
+        
+        cospswathsIN(3)%N_inst_swaths = COSP_N_SWATHS_CSCAL
+        if (COSP_N_SWATHS_CSCAL > 0) then
+           cospswathsIN(3)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)       = COSP_SWATH_LOCALTIMES_CSCAL
+           cospswathsIN(3)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL) = COSP_SWATH_WIDTHS_CSCAL
+        end if
+        
+        cospswathsIN(4)%N_inst_swaths = COSP_N_SWATHS_ATLID
+        if (COSP_N_SWATHS_ATLID > 0) then
+           cospswathsIN(4)%inst_localtimes(1:COSP_N_SWATHS_ATLID)       = COSP_SWATH_LOCALTIMES_ATLID
+           cospswathsIN(4)%inst_localtime_widths(1:COSP_N_SWATHS_ATLID) = COSP_SWATH_WIDTHS_ATLID
+        end if
+        
+        cospswathsIN(5)%N_inst_swaths = COSP_N_SWATHS_PARASOL
+        if (COSP_N_SWATHS_PARASOL > 0) then
+           cospswathsIN(5)%inst_localtimes(1:COSP_N_SWATHS_PARASOL)     = COSP_SWATH_LOCALTIMES_PARASOL
+           cospswathsIN(5)%inst_localtime_widths(1:COSP_N_SWATHS_PARASOL) = COSP_SWATH_WIDTHS_PARASOL
+        end if
+        
+        cospswathsIN(6)%N_inst_swaths = COSP_N_SWATHS_MODIS
+        if (COSP_N_SWATHS_MODIS > 0) then
+           cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_MODIS) = COSP_SWATH_WIDTHS_MODIS
+           cospswathsIN(6)%inst_localtimes(1:COSP_N_SWATHS_MODIS)       = COSP_SWATH_LOCALTIMES_MODIS
+        end if
+     end if
 
 #ifdef SPMD
     ! Broadcast namelist variables
