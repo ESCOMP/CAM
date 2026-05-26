@@ -3722,6 +3722,9 @@ CONTAINS
              y%fracPrecipIce(npoints,   ncolumns), stat=istat)
     call handle_allocate_error(istat, sub, 'tau_067,..,fracPrecipIce')
 
+    ! Initialize pointers
+    nullify(y%cfg_rttov)
+
   end subroutine construct_cospIN
 
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
