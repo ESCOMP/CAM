@@ -377,31 +377,31 @@ CONTAINS
            cospswathsIN(1)%inst_localtimes(1:COSP_N_SWATHS_ISCCP)       = COSP_SWATH_LOCALTIMES_ISCCP
            cospswathsIN(1)%inst_localtime_widths(1:COSP_N_SWATHS_ISCCP) = COSP_SWATH_WIDTHS_ISCCP
         end if
-        
+
         cospswathsIN(2)%N_inst_swaths = COSP_N_SWATHS_MISR
         if (COSP_N_SWATHS_MISR > 0) then
            cospswathsIN(2)%inst_localtimes(1:COSP_N_SWATHS_MISR)        = COSP_SWATH_LOCALTIMES_MISR
            cospswathsIN(2)%inst_localtime_widths(1:COSP_N_SWATHS_MISR)  = COSP_SWATH_WIDTHS_MISR
         end if
-        
+
         cospswathsIN(3)%N_inst_swaths = COSP_N_SWATHS_CSCAL
         if (COSP_N_SWATHS_CSCAL > 0) then
            cospswathsIN(3)%inst_localtimes(1:COSP_N_SWATHS_CSCAL)       = COSP_SWATH_LOCALTIMES_CSCAL
            cospswathsIN(3)%inst_localtime_widths(1:COSP_N_SWATHS_CSCAL) = COSP_SWATH_WIDTHS_CSCAL
         end if
-        
+
         cospswathsIN(4)%N_inst_swaths = COSP_N_SWATHS_ATLID
         if (COSP_N_SWATHS_ATLID > 0) then
            cospswathsIN(4)%inst_localtimes(1:COSP_N_SWATHS_ATLID)       = COSP_SWATH_LOCALTIMES_ATLID
            cospswathsIN(4)%inst_localtime_widths(1:COSP_N_SWATHS_ATLID) = COSP_SWATH_WIDTHS_ATLID
         end if
-        
+
         cospswathsIN(5)%N_inst_swaths = COSP_N_SWATHS_PARASOL
         if (COSP_N_SWATHS_PARASOL > 0) then
            cospswathsIN(5)%inst_localtimes(1:COSP_N_SWATHS_PARASOL)     = COSP_SWATH_LOCALTIMES_PARASOL
            cospswathsIN(5)%inst_localtime_widths(1:COSP_N_SWATHS_PARASOL) = COSP_SWATH_WIDTHS_PARASOL
         end if
-        
+
         cospswathsIN(6)%N_inst_swaths = COSP_N_SWATHS_MODIS
         if (COSP_N_SWATHS_MODIS > 0) then
            cospswathsIN(6)%inst_localtime_widths(1:COSP_N_SWATHS_MODIS) = COSP_SWATH_WIDTHS_MODIS
@@ -2359,8 +2359,8 @@ CONTAINS
     ! We get the SZA by taking the arcosine of cos(sza), but this seems to be the variable the radiation scheme can pass.
     cospstateIN%sza(1:ncol)                    = acos(coszrs(1:ncol)) * 180.0_r8 / acos(-1.0_r8)
 
-    cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice ! gridcell ice water mixing ratio
-    cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq ! gridcell liquid water mixing ratio
+    cospstateIN%cloudIce(1:ncol,1:pver) = totg_ice(1:ncol,1:pver)  ! gridcell ice water mixing ratio
+    cospstateIN%cloudLiq(1:ncol,1:pver) = totg_liq(1:ncol,1:pver)  ! gridcell liquid water mixing ratio
 
     ! Combine large-scale and convective cloud liquid effective radii into effective diameters for RTTOV
     ! Reff(Npoints,Nlevels,N_HYDRO)
@@ -2375,7 +2375,7 @@ CONTAINS
     else where (mr_ccliq(1:ncol,1:pver) > 0._r8)
         cospstateIN%DeffLiq(:,:) = 2._r8 * 1.0e6_r8 * reff_cosp(1:ncol,1:pver,I_CVCLIQ)
     end where
-    cospstateIN%DeffIce(:,:) = dei(1:ncol,1:pver)
+    cospstateIN%DeffIce(1:ncol,1:pver) = dei(1:ncol,1:pver)
 
     call t_stopf("construct_cospstateIN")
 
