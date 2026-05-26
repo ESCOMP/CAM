@@ -262,7 +262,8 @@ contains
        ! MPAS-A setup code that it is operating as a CAM dycore, and that it is necessary to
        ! allocate scalars separately from other Registry-defined fields
        !
-       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
+       ! In MPAS, there must be at least one constituent, `qv`, which denotes water vapor mixing ratio.
+       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', max(1, num_scalars))
 
        mesh_iotype = MPAS_IO_NETCDF  ! Not actually used
        call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype, pio_file_desc=fh_ini)
@@ -482,26 +483,29 @@ contains
           return
        end if
 
-       !
-       ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
-       ! something has gone wrong
-       !
-       if (size(cnst_name) /= num_scalars) then
-          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
-                              messageType=MPAS_LOG_ERR)
-          call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
-                              messageType=MPAS_LOG_ERR)
-          ierr = 1
-          return
-       end if
-
-       !
-       ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
-       ! the case, something has gone wrong
-       !
        if (size(cnst_name) > 0) then
+          !
+          ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
+          ! something has gone wrong
+          !
+          if (size(cnst_name) /= num_scalars) then
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
+                messageType=MPAS_LOG_ERR)
+             call mpas_log_write( &
+                'size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
+                messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+
+          !
+          ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
+          ! the case, something has gone wrong
+          !
           if (trim(cnst_name(1)) /= 'Q') then
-             call mpas_log_write(trim(subname)//': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
           end if
@@ -552,6 +556,10 @@ contains
           cam_from_mpas_cnst(mpas_from_cam_cnst(i)) = i
        end do
 
+       call mpas_pool_add_dimension(statePool, 'index_qv', 1)
+       call mpas_pool_add_dimension(statePool, 'index_qc', 0)
+       call mpas_pool_add_dimension(statePool, 'index_tke', 0)
+
        timeLevs = 2
 
        do i = 1, timeLevs
@@ -565,7 +573,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(statePool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg kg^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Water vapor mixing ratio')
@@ -615,6 +622,10 @@ contains
           return
        end if
 
+       call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
+       call mpas_pool_add_dimension(tendPool, 'index_qc', 0)
+       call mpas_pool_add_dimension(tendPool, 'index_tke', 0)
+
        timeLevs = 1
 
        do i = 1, timeLevs
@@ -628,7 +639,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'tend_qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
@@ -943,13 +953,9 @@ contains
        type (field2DReal), pointer :: zgrid, zxu, zz
        type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
 
-       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
-       type (field2DReal), pointer :: cell_gradient_coef_x, cell_gradient_coef_y
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors
 
        type (MPAS_Stream_type) :: mesh_stream
-
-       nullify(cell_gradient_coef_x)
-       nullify(cell_gradient_coef_y)
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
@@ -1028,14 +1034,6 @@ contains
 
        call mpas_pool_get_field(meshPool, 'edgeNormalVectors', edgeNormalVectors)
        call mpas_pool_get_field(meshPool, 'localVerticalUnitVectors', localVerticalUnitVectors)
-
-       call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
-       call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
-
-       if (use_gw_front .or. use_gw_front_igw) then
-          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_x', cell_gradient_coef_x)
-          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_y', cell_gradient_coef_y)
-       endif
 
        ierr_total = 0
 
@@ -1164,16 +1162,6 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, localVerticalUnitVectors, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, defc_a, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_x, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_y, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       endif
 
        if (ierr_total > 0) then
            write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to static input stream.'
@@ -1253,12 +1241,7 @@ contains
 
        call MPAS_dmpar_exch_halo_field(edgeNormalVectors)
        call MPAS_dmpar_exch_halo_field(localVerticalUnitVectors)
-       call MPAS_dmpar_exch_halo_field(defc_a)
-       call MPAS_dmpar_exch_halo_field(defc_b)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_x)
-          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_y)
-       endif
+
        !
        ! Re-index from global index space to local index space
        !
@@ -1346,8 +1329,7 @@ contains
        type (field2DReal), pointer :: zgrid, zxu, zz
        type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
 
-       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
-       type (field2DReal), pointer :: cell_gradient_coef_x, cell_gradient_coef_y
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors
 
        type (field0DChar), pointer :: initial_time
        type (field0DChar), pointer :: xtime
@@ -1386,9 +1368,6 @@ contains
 
        type (field1DReal), pointer :: u_init
        type (field1DReal), pointer :: qv_init
-
-       nullify(cell_gradient_coef_x)
-       nullify(cell_gradient_coef_y)
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)
@@ -1467,12 +1446,7 @@ contains
 
        call mpas_pool_get_field(allFields, 'edgeNormalVectors', edgeNormalVectors)
        call mpas_pool_get_field(allFields, 'localVerticalUnitVectors', localVerticalUnitVectors)
-       call mpas_pool_get_field(allFields, 'defc_a', defc_a)
-       call mpas_pool_get_field(allFields, 'defc_b', defc_b)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call mpas_pool_get_field(allFields, 'cell_gradient_coef_x', cell_gradient_coef_x)
-          call mpas_pool_get_field(allFields, 'cell_gradient_coef_y', cell_gradient_coef_y)
-       endif
+
        call mpas_pool_get_field(allFields, 'initial_time', initial_time, timeLevel=1)
        call mpas_pool_get_field(allFields, 'xtime', xtime, timeLevel=1)
        call mpas_pool_get_field(allFields, 'u', u, timeLevel=1)
@@ -1638,16 +1612,7 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, localVerticalUnitVectors, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, defc_a, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, defc_b, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_streamAddField(restart_stream, cell_gradient_coef_x, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-          call MPAS_streamAddField(restart_stream, cell_gradient_coef_y, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       endif
+
        call MPAS_streamAddField(restart_stream, initial_time, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xtime, ierr=ierr)
@@ -1854,12 +1819,7 @@ contains
 
        call cam_mpas_update_halo('edgeNormalVectors', endrun)
        call cam_mpas_update_halo('localVerticalUnitVectors', endrun)
-       call cam_mpas_update_halo('defc_a', endrun)
-       call cam_mpas_update_halo('defc_b', endrun)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call cam_mpas_update_halo('cell_gradient_coef_x', endrun)
-          call cam_mpas_update_halo('cell_gradient_coef_y', endrun)
-       endif
+
        call cam_mpas_update_halo('u', endrun)
        call cam_mpas_update_halo('w', endrun)
        call cam_mpas_update_halo('rho_zz', endrun)
