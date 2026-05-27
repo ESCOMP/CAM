@@ -76,6 +76,7 @@ OPTIONS
      -co2_cycle         This option modifies the CAM configuration by
                         increasing the number of advected constituents by 4.
      -cosp              Enable the COSP simulator.
+     -rttov             Enable RTTOV within the COSP simulator.
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
@@ -245,6 +246,7 @@ GetOptions(
     "co2_cycle"                 => \$opts{'co2_cycle'},
     "cosp"                      => \$opts{'cosp'},
     "cosp_libdir=s"             => \$opts{'cosp_libdir'},
+    "rttov"                     => \$opts{'rttov'},
     "cppdefs=s"                 => \$opts{'cppdefs'},
     "cpl=s"                     => \$opts{'cpl'},
     "debug"                     => \$opts{'debug'},
@@ -1000,6 +1002,17 @@ if (defined $opts{'cosp'}) {
     $cfg_ref->set('cosp', $opts{'cosp'});
 }
 my $cosp = $cfg_ref->get('cosp');
+
+# Option to build COSP with RTTOV
+if ( $cosp and defined $opts{'rttov'}) {
+   $cfg_ref->set('rttov', $opts{'rttov'});
+   print "COSP-RTTOV enabled$eol";
+}
+elsif ( defined $opts{'rttov'} ) {
+   die "configure ERROR: rttov defined but cosp undefined. \n";
+}
+
+my $rttov = $cfg_ref->get('rttov');
 
 # cosp is only implemented with the cam5, cam6, and cam7 physics packages
 if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam7')) {
@@ -1843,6 +1856,15 @@ if ($cosp) {
         die "** Could not create the cosp build directory: $bld_dir\n";
     }
 
+    # Turn on RTTOV.
+    # NOTE: Specialized linking with RTTOV is handled here and in buildlib. A single, unified linking
+    if ($rttov) {
+      # Add the rttov library dependencies to the ldflags. The cosp-rttov Makefile links these libraries to the $cosp_libdir path.
+      # A more functional code would read these ldflags from Makefile.rttov in the COSP2 directory in CAM instead of hardcoding.
+      $ldflags .= " -L$cosp_libdir -lrttov13_wrapper -lrttov13_mw_scatt -lrttov13_brdf_atlas -lrttov13_emis_atlas -lrttov13_other -lrttov13_parallel -lrttov13_coef_io -lrttov13_hdf -lrttov13_main ";
+      $cfg_ref->set('ldflags', $ldflags);
+      print "Adding rttov libraries as dependencies in ldflags.\n";
+    }       
     # Create the COSP Makefile from a template and copy it into the cosp bld directory
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
     write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
