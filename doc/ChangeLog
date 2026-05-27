@@ -1,3 +1,106 @@
+
+===============================================================
+
+Tag name: cam6_4_176
+Originator(s): jshaw35, cacraigucar
+Date: May 27, 2026
+One-line Summary: COSP-RTTOV integration with CAM
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1327
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- COSP-RTTOV integeration with CAM: https://github.com/ESCOMP/CAM/issues/1324
+- Implementation of new "satellite-like" swathing in standard COSP outputs: https://github.com/ESCOMP/CAM/issues/1328
+
+These changes bring COSP-RTTOV into CAM. COSP-RTTOV is an extension of the COSP satellite simulator that allows CESM users to
+simulate top-of-atmosphere spectral radiation fields consistent with the CESM model state (see tool description paper here:
+https://doi.org/10.5194/gmd-18-4935-2025).
+
+COSP-RTTOV operates by reading namelist files that describe the instrument for COSP-RTTOV to simulate (e.g. a specific hyperspectral
+sounder) and how output should be simulated (e.g. what radiation fields and which spectral channels). See
+$CAM_ROOT/src/physics/cosp2/COSP-RTTOV_examples/README.txt for documentation.
+Normal COSP functionality is also expanded by allowing users to run COSP simulators on only a subset of grid cells according to a
+simplified swathing pattern determined by local equator crossing times and swath widths.
+
+Describe any changes made to build system:
+When COSP-RTTOV is enabled, CAM will compile RTTOV. When COSP-RTTOV is not enabled (including when COSP is used
+but without RTTOV output), RTTOV will not be compiled.
+
+Describe any changes made to the namelist:
+Trigger use of COSP-RTTOV with cosp_lrttov_sim, cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists
+Allows COSP output to apply simple swathing using “cosp_N_SWATHS_[INSTRUMENT_NAME]”, “cosp_SWATH_LOCALTIMES_[INSTRUMENT_NAME]”,
+“cosp_SWATH_WIDTHS_[INSTRUMENT_NAME]"
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_rttov/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_rttov/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_rttov/user_nl_clm
+           - Add RTTOV testing files
+
+A       src/physics/cosp2/COSP-RTTOV_examples/README.txt
+A       src/physics/cosp2/COSP-RTTOV_examples/compile_RTTOV.sh
+A       src/physics/cosp2/COSP-RTTOV_examples/cosp2_rttov_inst_CESM.txt
+A       src/physics/cosp2/COSP-RTTOV_examples/rttov_channel_input_AIRSL1C_subset.csv
+A       src/physics/cosp2/Makefile.rttov
+           - Support documentation and tools for RTTOV
+
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/physics/cosp2/src
+          - update COSP external
+
+M       bld/config_files/definition.xml
+M       bld/configure
+          - add rttov switch to turn on/off building of RTTOV
+
+M       bld/namelist_files/namelist_definition.xml
+          - add new namelists described above
+
+M       cime_config/buildlib
+          - build RTTOV if requested
+
+M       cime_config/config_component.xml
+          - blank line added
+
+M       cime_config/testdefs/testlist_cam.xml
+          - add RTTOV regression test
+
+M       src/physics/cam/cospsimulator_intr.F90
+          - code changes as described in issues/PR
+
+M       src/physics/cosp2/Makefile.in
+          - mods to suuport optional building of RTTOV
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB except:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: DIFF) details:
+    - new test (no previous baseline)
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to pass this time
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all BFB except:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL)
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_175
