@@ -2454,6 +2454,15 @@ will be saved.
 Default: FALSE
 </entry>
 
+<entry id="cosp_lrttov_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, RTTOV simulator will be run and output
+will be saved according to the appropriate RTTOV
+instrument namelist files in "rttov_instrument_namelists".
+
+Default: FALSE
+</entry>
+
 <!-- COSP input control parameters -->
 
 <entry id="cosp_ncolumns" type="integer"  category="cosp"
@@ -2461,6 +2470,168 @@ Default: FALSE
 Number of subcolumns in SCOPS
 This default logical is set in cospsimulator_intr.F90
 Default: 50
+</entry>
+
+<entry id="cosp_rttov_Ninstruments" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Number of RTTOV instruments to simulate.
+This default logical is set in cospsimulator_intr.F90
+Default: 0
+</entry>
+    
+<entry id="cosp_rttov_instrument_namelists" type="char*256(50)"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+List of RTTOV instrument namelist files to read when running RTTOV in COSP.
+File paths are read relative to the case run directory 
+(e.g. /glade/derecho/scratch/$USER/$CASENAME/run/) if an absolute path is not provided (recommended). Each namelist file
+contains information specifying the simulated instrument, channels, and
+outputs. Templates and instructions can be found in src/physics/cosp2/COSP-RTTOV_examples/.
+Default: none
+</entry>
+
+<!-- Swathing input control parameters. -->
+<entry id="cosp_N_SWATHS_ISCCP" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP ISCCP data.
+Default: none
+</entry>
+
+<entry id="cosp_N_SWATHS_MISR" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP MISR data.
+Default: none
+</entry>
+
+<entry id="cosp_N_SWATHS_MODIS" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP MODIS data.
+Default: none
+</entry>
+
+<entry id="cosp_N_SWATHS_CSCAL" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP CloudSat-CALIPSO data.
+Default: none
+</entry>
+
+<entry id="cosp_N_SWATHS_PARASOL" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP PARASOL data.
+Default: none
+</entry>
+
+<entry id="cosp_N_SWATHS_ATLID" type="integer*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Number of satellite sampling swaths used to mask COSP ATLID data.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_ISCCP" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP ISCCP data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_MISR" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP MISR data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_MODIS" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP MODIS data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_CSCAL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data. The  
+sampling "local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_PARASOL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP PARASOL data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_LOCALTIMES_ATLID" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath localtimes (hours) for masking COSP ATLID data. The sampling 
+"local time" refers to a linear shift from UTC as a function of a 
+gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_ISCCP" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP ISCCP data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_MISR" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP MISR data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_MODIS" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP MODIS data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_CSCAL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP CSCAL data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_PARASOL" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP PARASOL data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
+</entry>
+
+<entry id="cosp_SWATH_WIDTHS_ATLID" type="real*10"  category="cosp"
+       group="cospsimulator_nl" valid_values="" >
+Swath widths (kilometers) for masking COSP ATLID data. The "swath width"
+determines the spatial region around each local time that is simulated. 
+Supplying a swath width in units of distance rather than radians produces
+a larger sampling density at higher latitudes that is consistent with
+observations.
+Default: none
 </entry>
 
 <!-- COSP output parameters -->
@@ -3610,12 +3781,12 @@ Default: 100.e3 (hPa)
 <entry id="eddy_moist_entrain_a2l" type="real" category="pbl"
        group="eddy_diff_nl" valid_values="" >
 Moist entrainment enhancement parameter.
-Default: set by build-namelist
+Default: 30.D0
 </entry>
 
 <entry id="kv_top_pressure" type="real" category="pbl"
        group="eddy_diff_nl" valid_values="" >
-Pressure (Pa) that defined the upper atmosphere for adjustment of
+Pressure (Pa) that defines the upper atmosphere for adjustment of
 eddy diffusivities from diag_TKE using kv_top_scale.
 Default: 0.
 </entry>
@@ -8810,8 +8981,8 @@ Default: 120000.0
 
 <entry id="mpas_visc4_2dsmag" type="real" category="mpas"
        group="nhyd_model" valid_values="">
-Scaling coefficient of delta_x^3 to obtain Del^4 diffusion coefficient in
-MPAS dycore.
+Coefficient multiplied by delta x^3 to obtain Del^4 physical hyperviscosity
+in MPAS dycore.
 Default: 0.05
 </entry>
 
@@ -8902,13 +9073,6 @@ MPAS dycore.
 Default: TRUE
 </entry>
 
-<entry id="mpas_epssm" type="real" category="mpas"
-       group="nhyd_model" valid_values="">
-Off-centering parameter for the vertically implicit acoustic integration in
-MPAS dycore
-Default: 0.1
-</entry>
-
 <entry id="mpas_smdiv" type="real" category="mpas"
        group="nhyd_model" valid_values="">
 3-d divergence damping coefficient in MPAS dycore.
@@ -8984,6 +9148,32 @@ damping linearly ramps to zero by layer number from the top
 Default: 3
 </entry>
 
+<entry id="mpas_epssm_minimum" type="real" category="mpas"
+       group="damping" valid_values="real values between 0 and 1">
+Value of epssm, the off-centering parameter for the vertically implicit acoustic integration,
+below transition zone.
+Default: 0.1
+</entry>
+
+<entry id="mpas_epssm_maximum" type="real" category="mpas"
+       group="damping" valid_values="real values between 0 and 1">
+Value of epssm, the off-centering parameter for the vertically implicit acoustic integration,
+above transition zone.
+Default: 0.5
+</entry>
+
+<entry id="mpas_epssm_transition_bottom_z" type="real" category="mpas"
+       group="damping" valid_values="positive real values">
+Height (in meters) above MSL for the bottom of transition zone for epssm.
+Default: 30000.0
+</entry>
+
+<entry id="mpas_epssm_transition_top_z" type="real" category="mpas"
+       group="damping" valid_values="positive real values">
+Height (in meters) above MSL for the top of transition zone for epssm.
+Default: 50000.0
+</entry>
+
 <entry id="mpas_apply_lbcs" type="logical" category="mpas"
        group="limited_area" valid_values="">
 Whether to apply lateral boundary conditions
@@ -9034,6 +9224,18 @@ dycore.
 Default: FALSE
 </entry>
 
+<entry id="mpas_halo_exch_method" type="char*512" category="mpas"
+       group="development" valid_values="mpas_dmpar,mpas_halo">
+Method to use for exchanging halos in MPAS dycore.
+Default: mpas_halo
+</entry>
+
+<entry id="mpas_gpu_aware_mpi" type="logical" category="mpas"
+       group="development" valid_values=".false.,.true.">
+Whether to use GPU-aware MPI for halo exchanges in MPAS dycore. GPU-aware MPI
+is only implemented for mpas_halo_exch_method = mpas_halo.
+Default: FALSE
+</entry>
 
 <!-- Dycore testing  -->
 
