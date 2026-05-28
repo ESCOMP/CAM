@@ -1,4 +1,85 @@
+===============================================================
 
+Tag name: cam6_4_177
+Originator(s): fvitt
+Date: 29 May 2026
+One-line Summary: Generalize the aqueous cloud chemistry
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1559
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Generalize cloud chemistry aerosol processes -- Issue #1428
+ Generic aerosol abstract interfaces are used so that a single version of the
+ cloud chemistry code needed, regardless of the aerosol representation.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated:
+R052    src/chemistry/carma_aero/sox_cldaero_mod.F90    src/chemistry/aerosol/sox_cldaero_mod.F90
+D       src/chemistry/bulk_aero/sox_cldaero_mod.F90
+D       src/chemistry/modal_aero/sox_cldaero_mod.F90
+ - these are replace by a single generalized module
+
+List all files added and what they do:
+   src/chemistry/aerosol/sox_cldaero_mod.F90
+   - generalized cloud chemistry code module
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/aerosol/aero_wetdep_cam.F90
+ - minor correction for history default output
+
+M       src/chemistry/aerosol/aerosol_properties_mod.F90
+M       src/chemistry/aerosol/bulk_aerosol_properties_mod.F90
+M       src/chemistry/aerosol/carma_aerosol_properties_mod.F90
+M       src/chemistry/aerosol/modal_aerosol_properties_mod.F90
+ - add species molec weight argument to get routine
+
+M       src/chemistry/aerosol/aerosol_state_mod.F90
+M       src/chemistry/aerosol/bulk_aerosol_state_mod.F90
+M       src/chemistry/aerosol/carma_aerosol_state_mod.F90
+M       src/chemistry/aerosol/modal_aerosol_state_mod.F90
+ - add aqu_gain_binfraction procedure
+
+M       src/chemistry/aerosol/mo_setsox.F90
+ - use aerosol_properties and aerosol_state abstract objects
+
+M       src/chemistry/bulk_aero/aero_model.F90
+M       src/chemistry/carma_aero/aero_model.F90
+M       src/chemistry/modal_aero/aero_model.F90
+ - use aerosol_instances module to get aerosol_properties and aerosol_state objects
+
+M       src/chemistry/carma_aero/carma_aero_gasaerexch.F90
+ - initial use of aerosol abstract interfaces
+
+M       src/chemistry/geoschem/chemistry.F90
+ - pass aero_props object into sox_inti
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_176
