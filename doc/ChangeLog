@@ -3,7 +3,7 @@
 Tag name: cam6_4_177
 Originator(s): fvitt
 Date: 29 May 2026
-One-line Summary: Generalize the aqueous cloud chemistry
+One-line Summary: Generalize cloud chemistry
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1559
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
@@ -23,7 +23,7 @@ Describe any substantial timing or memory changes: N/A
 Code reviewed by: jimmielin
 
 List all files eliminated:
-R052    src/chemistry/carma_aero/sox_cldaero_mod.F90    src/chemistry/aerosol/sox_cldaero_mod.F90
+D       src/chemistry/carma_aero/sox_cldaero_mod.F90
 D       src/chemistry/bulk_aero/sox_cldaero_mod.F90
 D       src/chemistry/modal_aero/sox_cldaero_mod.F90
  - these are replace by a single generalized module
