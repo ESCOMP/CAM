@@ -52,6 +52,7 @@ module carma_aerosol_state_mod
      procedure :: wet_volume
      procedure :: water_volume
      procedure :: wet_diameter
+     procedure :: aqu_gain_binfraction
 
      final :: destructor
 
@@ -588,5 +589,79 @@ contains
     diam(:ncol,:nlev) = 2._r8*radwet(:ncol,:nlev)
 
   end function wet_diameter
+
+  !------------------------------------------------------------------------------
+  ! aqueous chemistry partitioning -- used in sox_cldaero_update
+  !------------------------------------------------------------------------------
+  subroutine aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+
+    class(carma_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: type                ! aerosol species type
+    real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+    real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+    real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
+
+    real(r8) :: raddry(pcols,pver)   ! dry radius (m)
+    real(r8) :: rhodry(pcols,pver)   ! dry density (kg/m3)
+    character(len=aero_name_len) :: bin_name, shortname
+    integer :: igroup, ibin, jbin, rc, nchr
+    integer :: icol, klev, nbins, ncol
+    real(r8), allocatable :: rad_cm(:,:,:)
+    real(r8), allocatable :: wt_mass(:)
+    real(r8) :: wt_sum
+
+    ! To calculate the fraction of sulfate mass produced by aq.chemistry that will be
+    ! distributed across different bins, we need to conserve particle number. In CARMA,
+    ! this is done following the formula for mass transfer for, following
+    ! Yu et al., 2015, A3.2:  https://doi.org/10.1002/2014MS000421. The mass fraction
+    ! for each bin can be calculated by normalizing the mass transfer rate in each bin:
+    ! M/D^2 as: fra = Mi/D^2/sum(Mi/D^2).
+
+    ncol = self%state%ncol
+    nbins = aero_props%nbins()
+    faqgain(:,:,:) = 0._r8
+
+    allocate(wt_mass(nbins))
+    allocate(rad_cm(nbins,pcols,pver))
+    rad_cm(:,:,:) = 0._r8
+
+    do ibin = 1, nbins
+       call rad_aer_get_info_by_bin(0, ibin, bin_name=bin_name)
+       nchr = len_trim(bin_name)-2
+       shortname = bin_name(:nchr)
+       call carma_get_group_by_name(shortname, igroup, rc)
+       read(bin_name(nchr+1:),*) jbin
+       call carma_get_dry_radius(self%state, igroup, jbin, raddry, rhodry, rc)
+       if (index(bin_name,'MXAER')>0) then
+          rad_cm(ibin,:ncol,:) = raddry(:ncol,:)*1.e2_r8 ! m -> cm
+       end if
+    end do
+
+    lev_loop: do klev = 1,pver
+       col_loop: do icol = 1,ncol
+
+          !faqgain = fraction of total so4_c gain going to bin n
+          wt_sum = 0._r8
+          wt_mass(:) = 0._r8
+
+          do ibin = 1, nbins
+             if (rad_cm(ibin,icol,klev) > 0._r8) then
+                wt_mass(ibin) = delso4_o3rxn(icol,klev) / rad_cm(ibin,icol,klev) / rad_cm(ibin,icol,klev)
+                wt_sum = wt_sum + wt_mass(ibin)
+             end if
+          end do
+          do ibin = 1, nbins
+             if (wt_mass(ibin) > 0._r8) then
+                faqgain(ibin,icol,klev) = wt_mass(ibin)/wt_sum
+             end if
+          end do
+
+       end do col_loop
+    end do lev_loop
+
+    deallocate(rad_cm, wt_mass)
+
+  end subroutine aqu_gain_binfraction
 
 end module carma_aerosol_state_mod

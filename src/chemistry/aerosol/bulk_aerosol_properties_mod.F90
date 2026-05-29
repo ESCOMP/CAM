@@ -152,7 +152,7 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
 
@@ -161,6 +161,7 @@ contains
     integer, intent(in) :: species_ndx         ! species index
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     character(len=*), optional, intent(out) :: spectype  ! species type
     character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
@@ -216,6 +217,23 @@ contains
     end if
     if (present(dryrad)) then
        call rad_aer_get_props(self%list_idx_, bin_ndx,  dryrad_aer=dryrad)
+    end if
+    if (present(spec_mw)) then
+       call rad_aer_get_props(self%list_idx_, bin_ndx,  aername=aername)
+
+       select case ( to_lower( aername(:4) ) )
+       case('sulf','volc')
+          spec_mw = 96._r8
+       case('bcar','bcph','ocar','ocph')
+          spec_mw = 12._r8
+       case('dust')
+          spec_mw = 12._r8 !!! ????
+       case('sslt','seas','ssam','sscm')
+          spec_mw = 57._r8
+       case default
+          spec_mw = nan
+          call endrun('ERROR: bulk_aerosol_properties_mod%get aername not recognized : '//aername)
+       end select
     end if
 
   end subroutine get

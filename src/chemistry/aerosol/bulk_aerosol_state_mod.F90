@@ -45,6 +45,7 @@ module bulk_aerosol_state_mod
      procedure :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: wgtpct
+     procedure :: aqu_gain_binfraction
 
      final :: destructor
 
@@ -418,5 +419,21 @@ contains
     wtp = -huge(1._r8)
 
   end function wgtpct
+
+  !------------------------------------------------------------------------------
+  ! aqueous chemistry partitioning -- used in sox_cldaero_update
+  !------------------------------------------------------------------------------
+  subroutine aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+
+    class(bulk_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props
+    character(len=*), intent(in) :: type
+    real(r8), intent(in) :: qcw(:,:,:)
+    real(r8), intent(in) :: delso4_o3rxn(:,:)
+    real(r8), intent(out) :: faqgain(:,:,:) ! fraction gain in each mode / bin
+
+    faqgain(:,:,:) = 1._r8
+
+  end subroutine aqu_gain_binfraction
 
 end module bulk_aerosol_state_mod
