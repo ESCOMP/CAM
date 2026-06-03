@@ -7,8 +7,8 @@ One-line Summary: Fix ZM downdraft term and atmos_phys update; moving mountain G
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1568
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
-- Closes #1565
-- Closes ESCOMP/atmospheric_physics#404
+- Closes #1565 - moving mountain gravity wave scheme fails when ZM scheme is off
+- Closes ESCOMP/atmospheric_physics#404 - Potentially incorrect downdraft constituent flux calculation in ZM
 
 Describe any changes made to build system: N/A
 
@@ -39,7 +39,7 @@ appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam: All PASS
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
   ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
