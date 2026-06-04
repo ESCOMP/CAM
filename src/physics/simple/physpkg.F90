@@ -288,8 +288,7 @@ contains
     call cnst_get_ind('CLDICE', ixcldice_init, abort=.false.)
     call cnst_get_ind('NUMLIQ', ixnumliq_init, abort=.false.)
     call cnst_get_ind('NUMICE', ixnumice_init, abort=.false.)
-    call ccpp_const_props_init(ixq, ixcldliq_init, ixcldice_init, &
-                               ixnumliq_init, ixnumice_init)
+    call ccpp_const_props_init(ixq)
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
