@@ -32,6 +32,7 @@ module clubb_intr
   use scamMOD,             only: single_column, scm_clubb_iop_name, scm_cambfb_mode
 
 #ifdef CLUBB_SGS
+  use clubb,               only: clubb_init, stats_zero
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms, &
                                  clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
@@ -60,7 +61,8 @@ module clubb_intr
   
   ! NOTE: the only reason for anything in this section being set to public is for use with SILHS
 
-  public :: stats_init_clubb, stats_end_timestep_clubb
+!  public :: stats_init_clubb, stats_end_timestep_clubb
+  public :: stats_end_timestep_clubb
 
   type(clubb_config_flags_type), public  :: &
     clubb_config_flags
@@ -1457,44 +1459,10 @@ end subroutine clubb_init_cnst
     use cam_history,            only: addfld, add_default, horiz_only
     use cam_abortutils,         only: endrun
 
-    ! These are needed to set parameters
-    use clubb_api_module, only: &
-         core_rknd, em_min, &
-         ilambda0_stability_coef, ic_K10, ic_K10h, iC7, iC7b, iC8, iC8b, iC11, iC11b, iC4, iC_uu_shr, iC_uu_buoy, &
-         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thl, iC6thlb, iC6thlc, iup2_sfc_coef, iwpxp_L_thresh, &
-         iC14, iC_wp3_pr_turb, igamma_coef, igamma_coefb, imult_coef, ilmin_coef, &
-         iSkw_denom_coef, ibeta, iskw_max_mag, &
-         iC_invrs_tau_bkgnd,iC_invrs_tau_sfc,iC_invrs_tau_shear,iC_invrs_tau_N2,iC_invrs_tau_N2_wp2, &
-         iC_invrs_tau_N2_xp2,iC_invrs_tau_N2_wpxp,iC_invrs_tau_N2_clear_wp3, &
-         iC2rt, iC2thl, iC2rtthl, ic_K1, ic_K2, inu2, ic_K8, ic_K9, inu9, iC_wp2_splat, ibv_efold, &
-         iwpxp_Ri_exp, iz_displace, &
-         params_list
-
-    use clubb_api_module, only: &
-         print_clubb_config_flags_api, &
-         check_clubb_settings_api, &
-         init_pdf_params_api, &
-         time_precision, &
-         core_rknd, &
-         set_clubb_debug_level_api, &
-         clubb_fatal_error, &     ! Error code value to indicate a fatal error
-         err_info_type, &
-         init_default_err_info_api, &
-         cleanup_err_info_api, &
-         nparams, &
-         init_clubb_params_api, &
-         w_tol_sqd, &
-         rt_tol, &
-         thl_tol, &
-         saturation_bolton, & ! Constant for Bolton approximations of saturation
-         saturation_gfdl,   & ! Constant for the GFDL approximation of saturation
-         saturation_flatau, & ! Constant for Flatau approximations of saturation
-         saturation_lookup    ! Use a lookup table for mixing length
-
     use time_manager,           only: is_first_step
-    use constituents,           only: cnst_get_ind
     use phys_control,           only: phys_getopts
     use cam_logfile,            only: iulog
+    use spmd_utils,             only: mpicom, mstrid=>masterprocid, mpi_character
 #endif
 
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, physics_buffer_desc
@@ -1506,112 +1474,22 @@ end subroutine clubb_init_cnst
 
 #ifdef CLUBB_SGS
 
-    real(kind=time_precision) :: dum1, dum2, dum3
-
     ! The similar name to clubb_history is unfortunate...
     logical :: history_amwg, history_clubb
 
-    type(err_info_type) :: &
-      err_info          ! err_info struct used in CLUBB containing err_code and err_header
-      
-    integer :: i, j, k, l                    ! Indices
-    integer :: nmodes, nspec, m
-    integer :: ixq, ixcldice, ixcldliq, ixnumliq, ixnumice
-    integer :: lptr
-
     logical, parameter :: l_input_fields = .false. ! Always false for CAM-CLUBB.
-    logical, parameter :: l_update_pressure = .false. ! Always false for CAM-CLUBB.
 
-    integer :: ierr=0
-
-    real(r8) :: &
-      C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
-      C4, C_uu_shr, C_uu_buoy, C6rt, C6rtb, C6rtc, C6thl, C6thlb, C6thlc, &
-      C7, C7b, C7c, C8, C8b, C10, &
-      C11, C11b, C11c, C12, C13, C14, C_wp2_pr_dfsn, C_wp3_pr_tp, &
-      C_wp3_pr_turb, C_wp3_pr_dfsn, C_wp2_splat, &
-      C6rt_Lscale0, C6thl_Lscale0, C7_Lscale0, wpxp_L_thresh, &
-      c_K, c_K1, nu1, c_K2, nu2, c_K6, nu6, c_K8, nu8,  &
-      c_K9, nu9, nu10, c_K_hm, c_K_hmb, K_hm_min_coef, nu_hm, &
-      slope_coef_spread_DG_means_w, pdf_component_stdev_factor_w, &
-      coef_spread_DG_means_rt, coef_spread_DG_means_thl, &
-      gamma_coef, gamma_coefb, gamma_coefc, mu, beta, lmin_coef, &
-      omicron, zeta_vrnce_rat, upsilon_precip_frac_rat, &
-      lambda0_stability_coef, mult_coef, taumin, taumax, Lscale_mu_coef, &
-      Lscale_pert_coef, alpha_corr, Skw_denom_coef, c_K10, c_K10h, &
-      thlp2_rad_coef, thlp2_rad_cloud_frac_thresh, up2_sfc_coef, &
-      Skw_max_mag, xp3_coef_base, xp3_coef_slope, altitude_threshold, &
-      rtp2_clip_coef, C_invrs_tau_bkgnd, C_invrs_tau_sfc, &
-      C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
-      C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
-      C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, wpxp_Ri_exp, &
-      a3_coef_min, a_const, bv_efold, z_displace
-
-    !----- Begin Code -----
-
-    if (core_rknd /= r8) then
-      call endrun('clubb_ini_cam:  CLUBB library core_rknd must match CAM r8 and it does not')
-    end if
-
-    ! Allocate PDF parameters across columns and chunks
-    allocate( &
-       pdf_params_chnk(begchunk:endchunk),   &
-       pdf_params_zm_chnk(begchunk:endchunk), &
-       pdf_implicit_coefs_terms_chnk(begchunk:endchunk), stat=ierr )
-    if( ierr /= 0 ) call endrun(' clubb_ini_cam: failed to allocate pdf_params')
-
-    ! ----------------------------------------------------------------- !
-    ! Determine how many constituents CLUBB will transport.  Note that
-    ! CLUBB does not transport aerosol consituents.  Therefore, need to
-    ! determine how many aerosols constituents there are and subtract that
-    ! off of pcnst (the total consituents)
-    ! ----------------------------------------------------------------- !
+    integer :: clubb_init_errcode
+    character(len=200) :: error_message
 
     call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
 
-    !  Select variables to apply tendencies back to CAM
-
-    ! Initialize all consituents to true to start
-    lq(1:pcnst) = .true.
-    edsclr_dim  = pcnst
-
-    call cnst_get_ind('Q',ixq)
-    call cnst_get_ind('NUMICE',ixnumice)
-    call cnst_get_ind('NUMLIQ',ixnumliq)
-    call cnst_get_ind('CLDLIQ',ixcldliq)
-    call cnst_get_ind('CLDICE',ixcldice)
-
-    do m = 1, pcnst
-       if (cnst_ndropmixed(m)) then
-          lq(m)=.false.
-          !  Droplet number is transported in dropmixnuc, therefore we
-          !  do NOT want CLUBB to apply transport tendencies to avoid double
-          !  counting.  Else, we apply tendencies.
-          edsclr_dim = edsclr_dim-1
-       endif
-    enddo
-
-    ! ----------------------------------------------------------------- !
-    ! Set the debug level.  Level 2 has additional computational expense since
-    ! it checks the array variables in CLUBB for invalid values.
-    ! ----------------------------------------------------------------- !
-    call set_clubb_debug_level_api( 0 )
-
     ! ----------------------------------------------------------------- !
     ! use pbuf_get_fld_idx to get existing physics buffer fields from other
     ! physics packages (e.g. tke)
     ! ----------------------------------------------------------------- !
-
-
-    !  Defaults
-    stats_metadata%l_stats_samp = .false.
-    stats_metadata%l_grads = .false.
-
-    !  Overwrite defaults if needed
-    if (stats_metadata%l_stats) stats_metadata%l_stats_samp = .true.
 
     !  Define physics buffers indexes
     cld_idx             = pbuf_get_index('CLD')         ! Cloud fraction
@@ -1630,124 +1508,6 @@ end subroutine clubb_init_cnst
     cmfmc_sh_idx        = pbuf_get_index('CMFMC_SH')
     naai_idx            = pbuf_get_index('NAAI')
     npccn_idx           = pbuf_get_index('NPCCN')
-
-    ! Scalars aren't in use, set all indices to -1
-    sclr_idx%iisclr_rt  = -1
-    sclr_idx%iisclr_thl = -1
-    sclr_idx%iisclr_CO2 = -1
-    sclr_idx%iiedsclr_rt  = -1
-    sclr_idx%iiedsclr_thl = -1
-    sclr_idx%iiedsclr_CO2 = -1
-
-    ! ----------------------------------------------------------------- !
-    ! Define number of tracers for CLUBB to diffuse
-    ! ----------------------------------------------------------------- !
-
-    if (clubb_l_do_expldiff_rtm_thlm) then
-      ! add 2 since we want to diffuse temperature and moisture explicitly as well
-      edsclr_dim = edsclr_dim + 2
-    endif
-
-    ! ----------------------------------------------------------------- !
-    ! Setup CLUBB core
-    ! ----------------------------------------------------------------- !
-
-     call init_clubb_params_api( 1, -99, "", &
-                                     clubb_params_single_col )
-
-    clubb_params_single_col(1,iC2rtthl)                       = clubb_C2rtthl
-    clubb_params_single_col(1,iC8)                            = clubb_C8
-    clubb_params_single_col(1,iC11)                           = clubb_c11
-    clubb_params_single_col(1,iC11b)                          = clubb_c11b
-    clubb_params_single_col(1,iC14)                           = clubb_c14
-    clubb_params_single_col(1,iC_wp3_pr_turb)                 = clubb_C_wp3_pr_turb
-    clubb_params_single_col(1,ic_K10)                         = clubb_c_K10
-    clubb_params_single_col(1,imult_coef)                     = clubb_mult_coef
-    clubb_params_single_col(1,iSkw_denom_coef)                = clubb_Skw_denom_coef
-    clubb_params_single_col(1,iC2rt)                          = clubb_C2rt
-    clubb_params_single_col(1,iC2thl)                         = clubb_C2thl
-    clubb_params_single_col(1,ibeta)                          = clubb_beta
-    clubb_params_single_col(1,iC6rt)                          = clubb_c6rt
-    clubb_params_single_col(1,iC6rtb)                         = clubb_c6rtb
-    clubb_params_single_col(1,iC6rtc)                         = clubb_c6rtc
-    clubb_params_single_col(1,iC6thl)                         = clubb_c6thl
-    clubb_params_single_col(1,iC6thlb)                        = clubb_c6thlb
-    clubb_params_single_col(1,iC6thlc)                        = clubb_c6thlc
-    clubb_params_single_col(1,iwpxp_L_thresh)                 = clubb_wpxp_L_thresh
-    clubb_params_single_col(1,iC7)                            = clubb_C7
-    clubb_params_single_col(1,iC7b)                           = clubb_C7b
-    clubb_params_single_col(1,igamma_coef)                    = clubb_gamma_coef
-    clubb_params_single_col(1,ic_K10h)                        = clubb_c_K10h
-    clubb_params_single_col(1,ilambda0_stability_coef)        = clubb_lambda0_stability_coef
-    clubb_params_single_col(1,ilmin_coef)                     = clubb_lmin_coef
-    clubb_params_single_col(1,iC8b)                           = clubb_C8b
-    clubb_params_single_col(1,iskw_max_mag)                   = clubb_skw_max_mag
-    clubb_params_single_col(1,iC1)                            = clubb_C1
-    clubb_params_single_col(1,iC1b)                           = clubb_C1b
-    clubb_params_single_col(1,igamma_coefb)                   = clubb_gamma_coefb
-    clubb_params_single_col(1,iup2_sfc_coef)                  = clubb_up2_sfc_coef
-    clubb_params_single_col(1,iC4)                            = clubb_C4
-    clubb_params_single_col(1,iC_uu_shr)                      = clubb_C_uu_shr
-    clubb_params_single_col(1,iC_uu_buoy)                     = clubb_C_uu_buoy
-    clubb_params_single_col(1,ic_K1)                          = clubb_c_K1
-    clubb_params_single_col(1,ic_K2)                          = clubb_c_K2
-    clubb_params_single_col(1,inu2)                           = clubb_nu2
-    clubb_params_single_col(1,ic_K8)                          = clubb_c_K8
-    clubb_params_single_col(1,ic_K9)                          = clubb_c_K9
-    clubb_params_single_col(1,inu9)                           = clubb_nu9
-    clubb_params_single_col(1,iC_wp2_splat)                   = clubb_C_wp2_splat
-    clubb_params_single_col(1,iC_invrs_tau_bkgnd)             = clubb_C_invrs_tau_bkgnd
-    clubb_params_single_col(1,iC_invrs_tau_sfc)               = clubb_C_invrs_tau_sfc
-    clubb_params_single_col(1,iC_invrs_tau_shear)             = clubb_C_invrs_tau_shear
-    clubb_params_single_col(1,iC_invrs_tau_N2)                = clubb_C_invrs_tau_N2
-    clubb_params_single_col(1,iC_invrs_tau_N2_wp2)            = clubb_C_invrs_tau_N2_wp2
-    clubb_params_single_col(1,iC_invrs_tau_N2_xp2)            = clubb_C_invrs_tau_N2_xp2
-    clubb_params_single_col(1,iC_invrs_tau_N2_wpxp)           = clubb_C_invrs_tau_N2_wpxp
-    clubb_params_single_col(1,iC_invrs_tau_N2_clear_wp3)      = clubb_C_invrs_tau_N2_clear_wp3
-    clubb_params_single_col(1,ibv_efold)                      = clubb_bv_efold
-    clubb_params_single_col(1,iwpxp_Ri_exp)                   = clubb_wpxp_Ri_exp
-    clubb_params_single_col(1,iz_displace)                    = clubb_z_displace
-
-    ! Override clubb default
-    if ( trim(subcol_scheme) == 'SILHS' ) then
-      clubb_config_flags%saturation_formula = saturation_flatau
-    else
-      clubb_config_flags%saturation_formula = saturation_gfdl     ! Goff & Gratch (1946) approximation for SVP
-    end if
-
-    !  Set up CLUBB core.  Note that some of these inputs are overwritten
-    !  when clubb_tend_cam is called.  The reason is that heights can change
-    !  at each time step, which is why dummy arrays are read in here for heights
-    !  as they are immediately overwrote.
-    !! Initialize err_info with default values since info is not available here
-    call init_default_err_info_api(1, err_info)
-!$OMP PARALLEL
-    call check_clubb_settings_api( 1, clubb_params_single_col,  & ! Intent(in)
-                                   l_implemented,               & ! Intent(in)
-                                   l_input_fields,              & ! Intent(in)
-                                   clubb_config_flags,          & ! intent(in)
-                                   err_info )                     ! Intent(inout)
-
-    if ( any(err_info%err_code == clubb_fatal_error) ) then
-       call endrun('clubb_ini_cam: FATAL ERROR CALLING CHECK_CLUBB_SETTINGS_API')
-    end if
-!$OMP END PARALLEL
-
-    ! Cleanup err_info since it is not needed anymore
-    call cleanup_err_info_api(err_info)
-
-    ! Print the list of CLUBB parameters
-    if ( masterproc ) then
-       do j = 1, nparams, 1
-          write(iulog,*) params_list(j), " = ", clubb_params_single_col(1,j)
-       enddo
-    endif
-
-    ! Print configurable CLUBB flags
-    if ( masterproc ) then
-       write(iulog,'(a,i0,a)') " CLUBB configurable flags "
-       call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
-    end if
 
     ! ----------------------------------------------------------------- !
     ! Add output fields for the history files
@@ -1845,44 +1605,6 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux (EDMF)', sampled_on_subcycle=.true.)
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)', sampled_on_subcycle=.true.)
     end if
-
-    if ( trim(subcol_scheme) /= 'SILHS' ) then
-       ! hm_metadata is set up by calling init_pdf_hydromet_arrays_api in subcol_init_SILHS.
-       ! So if we are not using silhs, we allocate the parts of hm_metadata that need allocating
-       ! in order to making intel debug tests happy.
-       allocate( hm_metadata%hydromet_list(1), stat=ierr)
-       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%hydromet_list' )
-       allocate( hm_metadata%l_mix_rat_hm(1), stat=ierr)
-       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate hm_metadata%l_mix_rat_hm' )
-    end if
-
-    !  Initialize statistics, below are dummy variables
-    dum1 = 300._r8
-    dum2 = 1200._r8
-    dum3 = 300._r8
-
-    if (stats_metadata%l_stats) then
-
-      call stats_init_clubb( .true., dum1, dum2, &
-                             nzm_clubb, nzt_clubb, nzm_clubb, dum3, &
-                             stats_zt(:), stats_zm(:), stats_sfc(:), &
-                             stats_rad_zt(:), stats_rad_zm(:))
-
-       allocate(out_zt(pcols,pver,stats_zt(1)%num_output_fields), stat=ierr)
-       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_zt' )
-       allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields), stat=ierr)
-       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_zm' )
-       allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields), stat=ierr)
-       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_sfc' )
-
-       if ( stats_metadata%l_output_rad_files ) then
-          allocate(out_radzt(pcols,pver,stats_rad_zt(1)%num_output_fields), stat=ierr)
-          if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_radzt' )
-          allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields), stat=ierr)
-          if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_radzm' )
-       end if
-
-    endif
 
     ! ----------------------------------------------------------------- !
     ! Make all of this output default, this is not CLUBB history
@@ -2047,6 +1769,36 @@ end subroutine clubb_init_cnst
     ! End             !
     ! Initialization  !
     ! --------------- !
+
+    ! Call the CAM-SIMA layer
+    call clubb_init(pcols, pver, pverp, begchunk, endchunk, masterproc, &
+                        mpicom, mstrid, mpi_character, max_fieldname_len, &
+                        iulog, subcol_scheme, pcnst, cnst_ndropmixed, lq, &
+                        stats_metadata, l_input_fields, clubb_config_flags, &
+                        clubb_l_do_expldiff_rtm_thlm, l_implemented, sclr_idx, &
+                        clubb_C2rtthl, clubb_C8, clubb_c11, clubb_c11b, clubb_c14, &
+                        clubb_C_wp3_pr_turb, clubb_c_K10, clubb_mult_coef, &
+                        clubb_Skw_denom_coef, clubb_C2rt, clubb_C2thl, clubb_beta, &
+                        clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, &
+                        clubb_c6thlc, clubb_wpxp_L_thresh, clubb_C7, clubb_C7b, &
+                        clubb_gamma_coef, clubb_c_K10h, clubb_lambda0_stability_coef, &
+                        clubb_lmin_coef, clubb_C8b, clubb_skw_max_mag, clubb_C1, clubb_C1b, &
+                        clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_C4, clubb_C_uu_shr, &
+                        clubb_C_uu_buoy, clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, &
+                        clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_C_invrs_tau_bkgnd, &
+                        clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, clubb_C_invrs_tau_N2, &
+                        clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, &
+                        clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, &
+                        edsclr_dim, sclr_dim, hydromet_dim, &
+                        nzm_clubb, nzt_clubb, hm_metadata, clubb_params_single_col, &
+                        stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, &
+                        pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, &
+                        out_zt, out_zm, out_sfc, out_radzt, out_radzm, &
+                        error_message, clubb_init_errcode )
+
+    if (clubb_init_errcode /= 0) then
+      call endrun(error_message)
+    end if
 
 #endif
     end subroutine clubb_ini_cam
@@ -5220,433 +4972,6 @@ end subroutine ice_macro_tend
   ! =============================================================================== !
 
 #ifdef CLUBB_SGS
-
-  subroutine stats_init_clubb( l_stats_in, stats_tsamp_in, stats_tout_in, &
-                               nnzp, nnrad_zt,nnrad_zm, delt, &
-                               stats_zt, stats_zm, stats_sfc, &
-                               stats_rad_zt, stats_rad_zm)
-    !
-    ! Description: Initializes the statistics saving functionality of
-    !   the CLUBB model.  This is for purpose of CAM-CLUBB interface.  Here
-    !   the traditional stats_init of CLUBB is not called, as it is not compatible
-    !   with CAM output.
-
-    !-----------------------------------------------------------------------
-
-    use clubb_api_module, only:        time_precision, &   !
-                                       nvarmax_zm, stats_init_zm_api, & !
-                                       nvarmax_zt, stats_init_zt_api, & !
-                                       nvarmax_rad_zt, stats_init_rad_zt_api, & !
-                                       nvarmax_rad_zm, stats_init_rad_zm_api, & !
-                                       nvarmax_sfc, stats_init_sfc_api, & !
-                                       fstderr, var_length !
-    use cam_abortutils,         only: endrun
-    use cam_history,            only: addfld, horiz_only
-    use namelist_utils,         only: find_group_name
-    use units,                  only: getunit, freeunit
-    use spmd_utils,             only: mpicom, mstrid=>masterprocid, mpi_character
-
-    implicit none
-
-    !----------------------- Input Variables -----------------------
-
-    logical, intent(in) :: l_stats_in ! Stats on? T/F
-
-    real(kind=time_precision), intent(in) ::  &
-      stats_tsamp_in,  & ! Sampling interval   [s]
-      stats_tout_in      ! Output interval     [s]
-
-    integer, intent(in) :: nnzp     ! Grid points in the vertical [count]
-    integer, intent(in) :: nnrad_zt ! Grid points in the radiation grid [count]
-    integer, intent(in) :: nnrad_zm ! Grid points in the radiation grid [count]
-
-    real(kind=time_precision), intent(in) ::   delt         ! Timestep (dtmain in CLUBB)         [s]
-
-    !----------------------- Output Variables -----------------------
-    type (stats), intent(out), dimension(pcols) :: &
-      stats_zt,      & ! stats_zt grid
-      stats_zm,      & ! stats_zm grid
-      stats_rad_zt,  & ! stats_rad_zt grid
-      stats_rad_zm,  & ! stats_rad_zm grid
-      stats_sfc        ! stats_sfc
-
-
-    !----------------------- Local Variables -----------------------
-
-    !  Namelist Variables
-
-    character(len=*), parameter :: subr = 'stats_init_clubb'
-
-    character(len=var_length), dimension(nvarmax_zt)     ::   clubb_vars_zt      ! Variables on the thermodynamic levels
-    character(len=var_length), dimension(nvarmax_zm)     ::   clubb_vars_zm      ! Variables on the momentum levels
-    character(len=var_length), dimension(nvarmax_rad_zt) ::   clubb_vars_rad_zt  ! Variables on the radiation levels
-    character(len=var_length), dimension(nvarmax_rad_zm) ::   clubb_vars_rad_zm  ! Variables on the radiation levels
-    character(len=var_length), dimension(nvarmax_sfc)    ::   clubb_vars_sfc     ! Variables at the model surface
-
-    namelist /clubb_stats_nl/ &
-      clubb_vars_zt, &
-      clubb_vars_zm, &
-      clubb_vars_rad_zt, &
-      clubb_vars_rad_zm, &
-      clubb_vars_sfc
-
-    logical :: l_error
-
-    character(len=200) :: temp1, sub
-
-    integer :: i, ntot, read_status, j
-    integer :: iunit, ierr
-
-    !----------------------- Begin Code -----------------------
-
-    !  Initialize
-    l_error = .false.
-
-    !  Set stats_variables variables with inputs from calling subroutine
-    stats_metadata%l_stats = l_stats_in
-
-    stats_metadata%stats_tsamp = stats_tsamp_in
-    stats_metadata%stats_tout  = stats_tout_in
-
-    if ( .not. stats_metadata%l_stats ) then
-       stats_metadata%l_stats_samp  = .false.
-       stats_metadata%l_stats_last  = .false.
-       return
-    end if
-
-    !  Initialize namelist variables
-
-    clubb_vars_zt     = ''
-    clubb_vars_zm     = ''
-    clubb_vars_rad_zt = ''
-    clubb_vars_rad_zm = ''
-    clubb_vars_sfc    = ''
-
-    !  Read variables to compute from the namelist
-    if (masterproc) then
-       iunit= getunit()
-       open(unit=iunit,file="atm_in",status='old')
-       call find_group_name(iunit, 'clubb_stats_nl', status=read_status)
-       if (read_status == 0) then
-          read(unit=iunit, nml=clubb_stats_nl, iostat=read_status)
-          if (read_status /= 0) then
-             call endrun('stats_init_clubb:  error reading namelist')
-          end if
-       end if
-       close(unit=iunit)
-       call freeunit(iunit)
-    end if
-
-    ! Broadcast namelist variables
-    call mpi_bcast(clubb_vars_zt,      var_length*nvarmax_zt,       mpi_character, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_zt")
-    call mpi_bcast(clubb_vars_zm,      var_length*nvarmax_zm,       mpi_character, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_zm")
-    call mpi_bcast(clubb_vars_rad_zt,  var_length*nvarmax_rad_zt,   mpi_character, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_rad_zt")
-    call mpi_bcast(clubb_vars_rad_zm,  var_length*nvarmax_rad_zm,   mpi_character, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_rad_zm")
-    call mpi_bcast(clubb_vars_sfc,     var_length*nvarmax_sfc,      mpi_character, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
-
-
-    !  Hardcode these for use in CAM-CLUBB, don't want either
-    stats_metadata%l_netcdf = .false.
-    stats_metadata%l_grads  = .false.
-
-    !  Check sampling and output frequencies
-    do j = 1, pcols
-
-      !  The model time step length, delt (which is dtmain), should multiply
-      !  evenly into the statistical sampling time step length, stats_tsamp.
-      if ( abs( stats_metadata%stats_tsamp/delt - floor(stats_metadata%stats_tsamp/delt) ) > 1.e-8_r8 ) then
-         l_error = .true.  ! This will cause the run to stop.
-         write(fstderr,*) 'Error:  stats_tsamp should be an even multiple of ',  &
-                          'the clubb time step (delt below)'
-         write(fstderr,*) 'stats_tsamp = ', stats_metadata%stats_tsamp
-         write(fstderr,*) 'delt = ', delt
-         call endrun ("stats_init_clubb:  CLUBB stats_tsamp must be an even multiple of the timestep")
-      endif
-
-      !  Initialize zt (mass points)
-
-      i = 1
-      do while ( ichar(clubb_vars_zt(i)(1:1)) /= 0 .and. &
-                 len_trim(clubb_vars_zt(i))   /= 0 .and. &
-                 i <= nvarmax_zt )
-         i = i + 1
-      enddo
-      ntot = i - 1
-      if ( ntot == nvarmax_zt ) then
-         l_error = .true.
-         write(fstderr,*) "There are more statistical variables listed in ",  &
-                          "clubb_vars_zt than allowed for by nvarmax_zt."
-         write(fstderr,*) "Check the number of variables listed for clubb_vars_zt ",  &
-                          "in the stats namelist, or change nvarmax_zt."
-         write(fstderr,*) "nvarmax_zt = ", nvarmax_zt
-         call endrun ("stats_init_clubb:  number of zt statistical variables exceeds limit")
-      endif
-
-      stats_zt(j)%num_output_fields = ntot
-      stats_zt(j)%kk = nnzp - 1
-
-      allocate( stats_zt(j)%z( stats_zt(j)%kk ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%z")
-
-      allocate( stats_zt(j)%accum_field_values( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%accum_field_values")
-      allocate( stats_zt(j)%accum_num_samples( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%accum_num_samples")
-      allocate( stats_zt(j)%l_in_update( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%l_in_update")
-      call stats_zero( stats_zt(j)%kk, stats_zt(j)%num_output_fields, stats_zt(j)%accum_field_values, &
-                       stats_zt(j)%accum_num_samples, stats_zt(j)%l_in_update )
-
-      allocate( stats_zt(j)%file%grid_avg_var( stats_zt(j)%num_output_fields ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%file%grid_avg_var")
-      allocate( stats_zt(j)%file%z( stats_zt(j)%kk ), stat=ierr )
-      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%file%z")
-
-      !  Default initialization for array indices for zt
-      call stats_init_zt_api( hydromet_dim, sclr_dim, edsclr_dim, &
-                              hm_metadata%hydromet_list, hm_metadata%l_mix_rat_hm, &
-                              clubb_vars_zt, &
-                              l_error, &
-                              stats_metadata, stats_zt(j) )
-
-      !  Initialize zm (momentum points)
-
-      i = 1
-      do while ( ichar(clubb_vars_zm(i)(1:1)) /= 0  .and. &
-                 len_trim(clubb_vars_zm(i)) /= 0    .and. &
-                 i <= nvarmax_zm )
-         i = i + 1
-      end do
-      ntot = i - 1
-      if ( ntot == nvarmax_zm ) then
-         l_error = .true.  ! This will cause the run to stop.
-         write(fstderr,*) "There are more statistical variables listed in ",  &
-                          "clubb_vars_zm than allowed for by nvarmax_zm."
-         write(fstderr,*) "Check the number of variables listed for clubb_vars_zm ",  &
-                          "in the stats namelist, or change nvarmax_zm."
-         write(fstderr,*) "nvarmax_zm = ", nvarmax_zm
-         call endrun ("stats_init_clubb:  number of zm statistical variables exceeds limit")
-      endif
-
-      stats_zm(j)%num_output_fields = ntot
-      stats_zm(j)%kk = nnzp
-
-      allocate( stats_zm(j)%z( stats_zm(j)%kk ) )
-
-      allocate( stats_zm(j)%accum_field_values( 1, 1, stats_zm(j)%kk, stats_zm(j)%num_output_fields ) )
-      allocate( stats_zm(j)%accum_num_samples( 1, 1, stats_zm(j)%kk, stats_zm(j)%num_output_fields ) )
-      allocate( stats_zm(j)%l_in_update( 1, 1, stats_zm(j)%kk, stats_zm(j)%num_output_fields ) )
-      call stats_zero( stats_zm(j)%kk, stats_zm(j)%num_output_fields, stats_zm(j)%accum_field_values, &
-                       stats_zm(j)%accum_num_samples, stats_zm(j)%l_in_update )
-
-      allocate( stats_zm(j)%file%grid_avg_var( stats_zm(j)%num_output_fields ) )
-      allocate( stats_zm(j)%file%z( stats_zm(j)%kk ) )
-
-      call stats_init_zm_api( hydromet_dim, sclr_dim, edsclr_dim, &
-                              hm_metadata%hydromet_list, hm_metadata%l_mix_rat_hm, &
-                              clubb_vars_zm, &
-                              l_error, &
-                              stats_metadata, stats_zm(j) )
-
-      !  Initialize rad_zt (radiation points)
-
-      if (stats_metadata%l_output_rad_files) then
-
-         i = 1
-         do while ( ichar(clubb_vars_rad_zt(i)(1:1)) /= 0  .and. &
-                    len_trim(clubb_vars_rad_zt(i))   /= 0  .and. &
-                    i <= nvarmax_rad_zt )
-            i = i + 1
-         end do
-         ntot = i - 1
-         if ( ntot == nvarmax_rad_zt ) then
-            write(fstderr,*) "There are more statistical variables listed in ",  &
-                             "clubb_vars_rad_zt than allowed for by nvarmax_rad_zt."
-            write(fstderr,*) "Check the number of variables listed for clubb_vars_rad_zt ",  &
-                             "in the stats namelist, or change nvarmax_rad_zt."
-            write(fstderr,*) "nvarmax_rad_zt = ", nvarmax_rad_zt
-            call endrun ("stats_init_clubb:  number of rad_zt statistical variables exceeds limit")
-         endif
-
-        stats_rad_zt(j)%num_output_fields = ntot
-        stats_rad_zt(j)%kk = nnrad_zt
-
-        allocate( stats_rad_zt(j)%z( stats_rad_zt(j)%kk ) )
-
-        allocate( stats_rad_zt(j)%accum_field_values( 1, 1, stats_rad_zt(j)%kk, stats_rad_zt(j)%num_output_fields ) )
-        allocate( stats_rad_zt(j)%accum_num_samples( 1, 1, stats_rad_zt(j)%kk, stats_rad_zt(j)%num_output_fields ) )
-        allocate( stats_rad_zt(j)%l_in_update( 1, 1, stats_rad_zt(j)%kk, stats_rad_zt(j)%num_output_fields ) )
-
-        call stats_zero( stats_rad_zt(j)%kk, stats_rad_zt(j)%num_output_fields, stats_rad_zt(j)%accum_field_values, &
-                       stats_rad_zt(j)%accum_num_samples, stats_rad_zt(j)%l_in_update )
-
-        allocate( stats_rad_zt(j)%file%grid_avg_var( stats_rad_zt(j)%num_output_fields ) )
-        allocate( stats_rad_zt(j)%file%z( stats_rad_zt(j)%kk ) )
-
-         call stats_init_rad_zt_api( clubb_vars_rad_zt, &
-                                     l_error, &
-                                     stats_metadata, stats_rad_zt(j) )
-
-         !  Initialize rad_zm (radiation points)
-
-         i = 1
-         do while ( ichar(clubb_vars_rad_zm(i)(1:1)) /= 0 .and. &
-                    len_trim(clubb_vars_rad_zm(i))   /= 0 .and. &
-                    i <= nvarmax_rad_zm )
-            i = i + 1
-         end do
-         ntot = i - 1
-         if ( ntot == nvarmax_rad_zm ) then
-            l_error = .true.  ! This will cause the run to stop.
-            write(fstderr,*) "There are more statistical variables listed in ",  &
-                             "clubb_vars_rad_zm than allowed for by nvarmax_rad_zm."
-            write(fstderr,*) "Check the number of variables listed for clubb_vars_rad_zm ",  &
-                             "in the stats namelist, or change nvarmax_rad_zm."
-            write(fstderr,*) "nvarmax_rad_zm = ", nvarmax_rad_zm
-            call endrun ("stats_init_clubb:  number of rad_zm statistical variables exceeds limit")
-         endif
-
-         stats_rad_zm(j)%num_output_fields = ntot
-         stats_rad_zm(j)%kk = nnrad_zm
-
-         allocate( stats_rad_zm(j)%z( stats_rad_zm(j)%kk ) )
-
-         allocate( stats_rad_zm(j)%accum_field_values( 1, 1, stats_rad_zm(j)%kk, stats_rad_zm(j)%num_output_fields ) )
-         allocate( stats_rad_zm(j)%accum_num_samples( 1, 1, stats_rad_zm(j)%kk, stats_rad_zm(j)%num_output_fields ) )
-         allocate( stats_rad_zm(j)%l_in_update( 1, 1, stats_rad_zm(j)%kk, stats_rad_zm(j)%num_output_fields ) )
-
-         call stats_zero( stats_rad_zm(j)%kk, stats_rad_zm(j)%num_output_fields, stats_rad_zm(j)%accum_field_values, &
-                       stats_rad_zm(j)%accum_num_samples, stats_rad_zm(j)%l_in_update )
-
-         allocate( stats_rad_zm(j)%file%grid_avg_var( stats_rad_zm(j)%num_output_fields ) )
-         allocate( stats_rad_zm(j)%file%z( stats_rad_zm(j)%kk ) )
-
-         call stats_init_rad_zm_api( clubb_vars_rad_zm, &
-                                     l_error, &
-                                     stats_metadata, stats_rad_zm(j) )
-      end if ! l_output_rad_files
-
-
-      !  Initialize sfc (surface point)
-      i = 1
-      do while ( ichar(clubb_vars_sfc(i)(1:1)) /= 0 .and. &
-                 len_trim(clubb_vars_sfc(i))   /= 0 .and. &
-                 i <= nvarmax_sfc )
-         i = i + 1
-      end do
-      ntot = i - 1
-      if ( ntot == nvarmax_sfc ) then
-         l_error = .true.  ! This will cause the run to stop.
-         write(fstderr,*) "There are more statistical variables listed in ",  &
-                          "clubb_vars_sfc than allowed for by nvarmax_sfc."
-         write(fstderr,*) "Check the number of variables listed for clubb_vars_sfc ",  &
-                          "in the stats namelist, or change nvarmax_sfc."
-         write(fstderr,*) "nvarmax_sfc = ", nvarmax_sfc
-         call endrun ("stats_init_clubb:  number of sfc statistical variables exceeds limit")
-      endif
-
-      stats_sfc(j)%num_output_fields = ntot
-      stats_sfc(j)%kk = 1
-
-      allocate( stats_sfc(j)%z( stats_sfc(j)%kk ) )
-
-      allocate( stats_sfc(j)%accum_field_values( 1, 1, stats_sfc(j)%kk, stats_sfc(j)%num_output_fields ) )
-      allocate( stats_sfc(j)%accum_num_samples( 1, 1, stats_sfc(j)%kk, stats_sfc(j)%num_output_fields ) )
-      allocate( stats_sfc(j)%l_in_update( 1, 1, stats_sfc(j)%kk, stats_sfc(j)%num_output_fields ) )
-
-      call stats_zero( stats_sfc(j)%kk, stats_sfc(j)%num_output_fields, stats_sfc(j)%accum_field_values, &
-                       stats_sfc(j)%accum_num_samples, stats_sfc(j)%l_in_update )
-
-      allocate( stats_sfc(j)%file%grid_avg_var( stats_sfc(j)%num_output_fields ) )
-      allocate( stats_sfc(j)%file%z( stats_sfc(j)%kk ) )
-
-      call stats_init_sfc_api( clubb_vars_sfc, &
-                               l_error, &
-                               stats_metadata, stats_sfc(j) )
-    end do
-
-    ! Check for errors
-
-    if ( l_error ) then
-       call endrun ('stats_init:  errors found')
-    endif
-
-    ! Now call add fields
-
-    do i = 1, stats_zt(1)%num_output_fields
-
-      temp1 = trim(stats_zt(1)%file%grid_avg_var(i)%name)
-      sub   = temp1
-      if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-
-        call addfld( trim(sub), (/ 'ilev' /), 'A', &
-                     trim(stats_zt(1)%file%grid_avg_var(i)%units), &
-                     trim(stats_zt(1)%file%grid_avg_var(i)%description), &
-                     sampled_on_subcycle=.true. )
-    enddo
-
-    do i = 1, stats_zm(1)%num_output_fields
-
-      temp1 = trim(stats_zm(1)%file%grid_avg_var(i)%name)
-      sub   = temp1
-      if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-
-       call addfld( trim(sub), (/ 'ilev' /), 'A', &
-                    trim(stats_zm(1)%file%grid_avg_var(i)%units), &
-                    trim(stats_zm(1)%file%grid_avg_var(i)%description), &
-                    sampled_on_subcycle=.true. )
-    enddo
-
-    if (stats_metadata%l_output_rad_files) then
-
-       do i = 1, stats_rad_zt(1)%num_output_fields
-          temp1 = trim(stats_rad_zt(1)%file%grid_avg_var(i)%name)
-          sub   = temp1
-          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-          call addfld( trim(sub), (/ 'ilev' /), 'A', &
-                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%units), &
-                       trim(stats_rad_zt(1)%file%grid_avg_var(i)%description), &
-                       sampled_on_subcycle=.true. )
-       enddo
-
-       do i = 1, stats_rad_zm(1)%num_output_fields
-          temp1 = trim(stats_rad_zm(1)%file%grid_avg_var(i)%name)
-          sub   = temp1
-          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-          call addfld( trim(sub), (/ 'ilev' /), 'A', &
-                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%units), &
-                       trim(stats_rad_zm(1)%file%grid_avg_var(i)%description), &
-                       sampled_on_subcycle=.true. )
-       enddo
-    endif
-
-    do i = 1, stats_sfc(1)%num_output_fields
-       temp1 = trim(stats_sfc(1)%file%grid_avg_var(i)%name)
-       sub   = temp1
-       if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
-       call addfld( trim(sub), horiz_only, 'A', &
-                    trim(stats_sfc(1)%file%grid_avg_var(i)%units), &
-                    trim(stats_sfc(1)%file%grid_avg_var(i)%description), &
-                    sampled_on_subcycle=.true. )
-    enddo
-
-
-    return
-
-  end subroutine stats_init_clubb
-
-#endif
-
-  ! =============================================================================== !
-  !                                                                                 !
-  ! =============================================================================== !
-
-#ifdef CLUBB_SGS
   subroutine stats_end_timestep_clubb(thecol, stats_zt, stats_zm, stats_rad_zt, stats_rad_zm, stats_sfc, &
                                       out_zt, out_zm, out_radzt, out_radzm, out_sfc)
     !-----------------------------------------------------------------------
@@ -5805,49 +5130,6 @@ end subroutine ice_macro_tend
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
-
-#ifdef CLUBB_SGS
-
-    !-----------------------------------------------------------------------
-  subroutine stats_zero( kk, num_output_fields, x, n, l_in_update )
-
-    !     Description:
-    !     Initialize stats to zero
-    !-----------------------------------------------------------------------
-
-    use clubb_api_module, only: &
-        stat_rknd,   & ! Variable(s)
-        stat_nknd
-
-
-    implicit none
-
-    !  Input
-    integer, intent(in) :: kk, num_output_fields
-
-    !  Output
-    real(kind=stat_rknd), dimension(1,1,kk,num_output_fields), intent(out)    :: x
-    integer(kind=stat_nknd), dimension(1,1,kk,num_output_fields), intent(out) :: n
-    logical, dimension(1,1,kk,num_output_fields), intent(out)                 :: l_in_update
-
-    !  Zero out arrays
-
-    if ( num_output_fields > 0 ) then
-       x(:,:,:,:) = 0.0_r8
-       n(:,:,:,:) = 0
-       l_in_update(:,:,:,:) = .false.
-    end if
-
-    return
-
-  end subroutine stats_zero
-
-#endif
-
-  ! =============================================================================== !
-  !                                                                                 !
-  ! =============================================================================== !
-
 
 #ifdef CLUBB_SGS
     !-----------------------------------------------------------------------
