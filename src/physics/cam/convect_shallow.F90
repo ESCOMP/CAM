@@ -37,7 +37,6 @@
    !        'off'    = No shallow convection
 
    character(len=16) :: shallow_scheme      ! Default set in phys_control.F90, use namelist to change
-   character(len=16) :: microp_scheme       ! Microphysics scheme
    logical           :: history_amwg        ! output the variables used by the AMWG diag package
    logical           :: history_budget      ! Output tendencies and state variables for CAM4 T, qv, ql, qi
    integer           :: history_budget_histfile_num ! output history file number for budget fields
@@ -86,7 +85,7 @@
   use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
   use phys_control, only: use_gw_convect_sh
 
-  call phys_getopts( shallow_scheme_out = shallow_scheme, microp_scheme_out = microp_scheme)
+  call phys_getopts( shallow_scheme_out = shallow_scheme )
 
   call pbuf_add_field('ICWMRSH',    'physpkg' ,dtype_r8,(/pcols,pver/),       icwmrsh_idx )
   call pbuf_add_field('RPRDSH',     'physpkg' ,dtype_r8,(/pcols,pver/),       rprdsh_idx )
