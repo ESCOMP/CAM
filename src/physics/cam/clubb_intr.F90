@@ -61,7 +61,6 @@ module clubb_intr
   
   ! NOTE: the only reason for anything in this section being set to public is for use with SILHS
 
-!  public :: stats_init_clubb, stats_end_timestep_clubb
   public :: stats_end_timestep_clubb
 
   type(clubb_config_flags_type), public  :: &
