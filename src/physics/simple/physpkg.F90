@@ -222,7 +222,7 @@ contains
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
     ! local variables
-    integer :: lchnk, ixq, ixcldliq_init, ixcldice_init, ixnumliq_init, ixnumice_init
+    integer :: lchnk, ixq
     !-----------------------------------------------------------------------
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
@@ -284,10 +284,6 @@ contains
     ! Initialize CAM CCPP constituent properties array
     ! for use in CCPP-ized physics schemes:
     call cnst_get_ind('Q', ixq)
-    call cnst_get_ind('CLDLIQ', ixcldliq_init, abort=.false.)
-    call cnst_get_ind('CLDICE', ixcldice_init, abort=.false.)
-    call cnst_get_ind('NUMLIQ', ixnumliq_init, abort=.false.)
-    call cnst_get_ind('NUMICE', ixnumice_init, abort=.false.)
     call ccpp_const_props_init(ixq)
 
     ! Initialize qneg3 and qneg4
