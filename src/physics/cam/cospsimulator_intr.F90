@@ -147,6 +147,7 @@ module cospsimulator_intr
   logical :: cosp_lisccp_sim       = .false.
   logical :: cosp_lmisr_sim        = .false.
   logical :: cosp_lmodis_sim       = .false.
+  logical :: cosp_latlid_sim       = .false.
   logical :: cosp_lrttov_sim       = .false.
   logical :: cosp_histfile_aux     = .false.
   logical :: cosp_lfrac_out        = .false.
@@ -344,16 +345,16 @@ CONTAINS
 #ifdef USE_COSP
 !!! this list should include any variable that you might want to include in the namelist
 !!! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls.
-    namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, &
-         cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
-         cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
-         cosp_ncolumns, cosp_nradsteps, cosp_passive, cosp_runall,                         &
-         cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists,                         &
-         COSP_N_SWATHS_ISCCP, COSP_SWATH_LOCALTIMES_ISCCP, COSP_SWATH_WIDTHS_ISCCP, COSP_N_SWATHS_MISR,        &
-         COSP_SWATH_LOCALTIMES_MISR, COSP_SWATH_WIDTHS_MISR, COSP_N_SWATHS_MODIS, COSP_SWATH_LOCALTIMES_MODIS, &
-         COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
-         COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
-         COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
+     namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, &
+          cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
+          cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_latlid_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
+          cosp_ncolumns, cosp_nradsteps, cosp_passive, cosp_runall,                         &
+          cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists,                         &
+          COSP_N_SWATHS_ISCCP, COSP_SWATH_LOCALTIMES_ISCCP, COSP_SWATH_WIDTHS_ISCCP, COSP_N_SWATHS_MISR,        &
+          COSP_SWATH_LOCALTIMES_MISR, COSP_SWATH_WIDTHS_MISR, COSP_N_SWATHS_MODIS, COSP_SWATH_LOCALTIMES_MODIS, &
+          COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
+          COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
+          COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
 
     !! read in the namelist
     if (masterproc) then
@@ -421,6 +422,7 @@ CONTAINS
     call mpibcast(cosp_lfrac_out,       1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lradar_sim,      1,  mpilog, 0, mpicom)
     call mpibcast(cosp_llidar_sim,      1,  mpilog, 0, mpicom)
+    call mpibcast(cosp_latlid_sim,      1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lisccp_sim,      1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lmisr_sim,       1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lmodis_sim,      1,  mpilog, 0, mpicom)
@@ -447,6 +449,9 @@ CONTAINS
     if (cosp_llidar_sim) then
        llidar_sim = .true.
        lparasol_sim = .true.
+    end if
+    if (cosp_latlid_sim) then
+       latlid = .true.
     end if
     if (cosp_lisccp_sim) then
        lisccp_sim = .true.
@@ -553,6 +558,7 @@ CONTAINS
           write(iulog,*)'  COSP frequency in radiation steps        = ', cosp_nradsteps
           write(iulog,*)'  Enable radar simulator                   = ', lradar_sim
           write(iulog,*)'  Enable calipso simulator                 = ', llidar_sim
+          write(iulog,*)'  Enable atlid simulator                   = ', latlid
           write(iulog,*)'  Enable ISCCP simulator                   = ', lisccp_sim
           write(iulog,*)'  Enable MISR simulator                    = ', lmisr_sim
           write(iulog,*)'  Enable MODIS simulator                   = ', lmodis_sim
@@ -641,9 +647,9 @@ CONTAINS
             values=scol_cosp)
     end if
 
-    if (llidar_sim .or. lradar_sim) then
+    if (llidar_sim .or. lradar_sim .or. latlid) then
        call add_hist_coord('cosp_ht', nht_cosp,                                &
-            'COSP Mean Height for calipso and radar simulator outputs', 'm',   &
+            'COSP Mean Height for calipso, atlid and radar simulator outputs', 'm',   &
             htmid_cosp, bounds_name='cosp_ht_bnds', bounds=htlim_cosp,         &
             vertical_coord=.true.)
     end if
@@ -652,6 +658,12 @@ CONTAINS
        call add_hist_coord('cosp_sr', nsr_cosp,                                &
             'COSP Mean Scattering Ratio for calipso simulator CFAD output', '1', &
             srmid_cosp, bounds_name='cosp_sr_bnds', bounds=srlim_cosp)
+    end if
+
+    if (latlid) then
+       call add_hist_coord('cosp_355sr', nsr_cosp,                             &
+            'COSP Mean Scattering Ratio for ATLID simulator CFAD output', '1', &
+            srmid_cosp, bounds_name='cosp_355sr_bnds', bounds=srlim_cosp)
     end if
 
     if (llidar_sim) then
@@ -883,6 +895,34 @@ CONTAINS
             .and. (.not.cosp_isccp)) then
           call add_default('MOL532_CAL',cosp_histfile_num,' ')
        end if
+    end if
+
+    ! ATLID (355nm) SIMULATOR OUTPUTS
+    if (latlid) then
+       call addfld('CLDLOW_ATLID', horiz_only, 'A', 'percent', &
+            'ATLID Low-level Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLDMED_ATLID', horiz_only, 'A', 'percent', &
+            'ATLID Mid-level Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLDHGH_ATLID', horiz_only, 'A', 'percent', &
+            'ATLID High-level Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLDTOT_ATLID', horiz_only, 'A', 'percent', &
+            'ATLID Total Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CLD_ATLID', (/'cosp_ht'/), 'A', 'percent', &
+            'ATLID Cloud Fraction (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('CFAD_SR355_ATLID', (/'cosp_355sr','cosp_ht'/), 'A', 'fraction', &
+            'ATLID Scattering Ratio CFAD (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('BETAMOL_ATLID', (/'cosp_ht'/), 'A', 'm-1 sr-1', &
+            'ATLID Molecular Backscatter (355 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld('BETATOT_ATLID', (/'cosp_scol','cosp_ht'/), 'I', 'm-1 sr-1', &
+            'ATLID Total Backscatter (355 nm) in each Subcolumn', flag_xyfill=.true., fill_value=R_UNDEF)
+
+       call add_default('CLDLOW_ATLID',cosp_histfile_num,' ')
+       call add_default('CLDMED_ATLID',cosp_histfile_num,' ')
+       call add_default('CLDHGH_ATLID',cosp_histfile_num,' ')
+       call add_default('CLDTOT_ATLID',cosp_histfile_num,' ')
+       call add_default('CLD_ATLID',cosp_histfile_num,' ')
+       call add_default('CFAD_SR355_ATLID',cosp_histfile_num,' ')
+       call add_default('BETAMOL_ATLID',cosp_histfile_num,' ')
     end if
 
     ! RADAR SIMULATOR OUTPUTS
@@ -1713,6 +1753,15 @@ CONTAINS
     real(r8) :: cld_cal_notcs(pcols,nht_cosp)
     real(r8) :: atb532_cal(pcols,nlay*nscol_cosp)
     real(r8) :: mol532_cal(pcols,nlay)
+    ! ATLID (355nm) simulator outputs
+    real(r8) :: betatot_atlid(pcols,nscol_cosp,nlay)
+    real(r8) :: betamol_atlid(pcols,nlay)
+    real(r8) :: cfad_sr355_atlid(pcols,nht_cosp*nsr_cosp)
+    real(r8) :: cld_atlid(pcols,nht_cosp)
+    real(r8) :: cldlow_atlid(pcols)
+    real(r8) :: cldmed_atlid(pcols)
+    real(r8) :: cldhgh_atlid(pcols)
+    real(r8) :: cldtot_atlid(pcols)
     real(r8) :: cld_misr(pcols,nhtmisr_cosp*ntau_cosp)
     real(r8) :: refl_parasol(pcols,nsza_cosp)
     real(r8) :: scops_out(pcols,nlay*nscol_cosp)
@@ -1914,6 +1963,15 @@ CONTAINS
     cld_cal_notcs(1:pcols,1:nht_cosp)                = R_UNDEF
     atb532_cal(1:pcols,1:nlay*nscol_cosp)            = R_UNDEF
     mol532_cal(1:pcols,1:nlay)                       = R_UNDEF
+    ! ATLID (355nm) outputs
+    betatot_atlid(1:pcols,1:nscol_cosp,1:nlay)       = R_UNDEF
+    betamol_atlid(1:pcols,1:nlay)                    = R_UNDEF
+    cfad_sr355_atlid(1:pcols,1:nht_cosp*nsr_cosp)    = R_UNDEF
+    cld_atlid(1:pcols,1:nht_cosp)                    = R_UNDEF
+    cldlow_atlid(1:pcols)                            = R_UNDEF
+    cldmed_atlid(1:pcols)                            = R_UNDEF
+    cldhgh_atlid(1:pcols)                            = R_UNDEF
+    cldtot_atlid(1:pcols)                            = R_UNDEF
     cld_misr(1:pcols,1:nhtmisr_cosp*ntau_cosp)       = R_UNDEF
     refl_parasol(1:pcols,1:nsza_cosp)                = R_UNDEF
     scops_out(1:pcols,1:nlay*nscol_cosp)             = R_UNDEF
@@ -2658,6 +2716,29 @@ CONTAINS
        opacity_cal_2d(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtype(:,:,4)
     endif
 
+    ! ATLID (355nm) SIMULATOR OUTPUTS
+    if (latlid) then
+       if (associated(cospOUT%atlid_beta_mol)) then
+          betamol_atlid(1:ncol,1:nlay) = cospOUT%atlid_beta_mol
+       endif
+       if (associated(cospOUT%atlid_beta_tot)) then
+          betatot_atlid(1:ncol,1:nscol_cosp,1:nlay) = cospOUT%atlid_beta_tot
+       endif
+       if (associated(cospOUT%atlid_cfad_sr)) then
+          cfad_sr355_atlid(1:ncol,1:nht_cosp*nsr_cosp) = reshape(cospOUT%atlid_cfad_sr, &
+                                                           shape=[ncol, nht_cosp*nsr_cosp])
+       endif
+       if (associated(cospOUT%atlid_lidarcld)) then
+          cld_atlid(1:ncol,1:nht_cosp) = cospOUT%atlid_lidarcld
+       endif
+       if (associated(cospOUT%atlid_cldlayer)) then
+          cldlow_atlid(1:ncol)  = cospOUT%atlid_cldlayer(:,1)
+          cldmed_atlid(1:ncol)  = cospOUT%atlid_cldlayer(:,2)
+          cldhgh_atlid(1:ncol)  = cospOUT%atlid_cldlayer(:,3)
+          cldtot_atlid(1:ncol)  = cospOUT%atlid_cldlayer(:,4)
+       endif
+    endif
+
     ! ISCCP
     if (lisccp_sim) then
        clisccp2(1:ncol,1:ntau_cosp,1:nprs_cosp) = cospOUT%isccp_fq
@@ -2775,6 +2856,15 @@ CONTAINS
              do isc=1,nscol_cosp
                 ihsc=(ihml-1)*nscol_cosp+isc
                 atb532_cal(i,ihsc) = atb532(i,isc,ihml)
+             end do
+          end do
+       endif
+
+       if (latlid) then
+          do ih=1,nht_cosp
+             do is=1,nsr_cosp
+                ihs=(ih-1)*nsr_cosp+is
+                cfad_sr355_atlid(i,ihs) = cfad_sr355_atlid(i,ihs)  ! Already reshaped from cospOUT? Check
              end do
           end do
        endif
@@ -3013,6 +3103,29 @@ CONTAINS
        call outfld('CS_WR_CFODD_REFF_SMALL', cfodd_ntotal_small_cs, pcols, lchnk)
        call outfld('CS_WR_CFODD_REFF_MEDIUM',cfodd_ntotal_medium_cs,pcols, lchnk)
        call outfld('CS_WR_CFODD_REFF_LARGE', cfodd_ntotal_large_cs, pcols, lchnk)
+    end if
+
+    ! ATLID (355nm) SIMULATOR OUTPUTS
+    if (latlid) then
+       if (cospIN%cospswathsIN(4)%N_inst_swaths < 1) then
+          where (cld_atlid(:ncol,:nht_cosp) == R_UNDEF)
+             cld_atlid(:ncol,:nht_cosp) = 0.0_r8
+          end where
+       end if
+       call outfld('CLD_ATLID',        cld_atlid,       pcols,lchnk)
+       call outfld('BETAMOL_ATLID',    betamol_atlid,   pcols,lchnk)
+       call outfld('BETATOT_ATLID',    betatot_atlid,   pcols,lchnk)
+       
+       if (cospIN%cospswathsIN(4)%N_inst_swaths < 1) then
+          where (cfad_sr355_atlid(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
+             cfad_sr355_atlid(:ncol,:nht_cosp*nsr_cosp) = 0.0_r8
+          end where
+       end if
+       call outfld('CFAD_SR355_ATLID', cfad_sr355_atlid, pcols,lchnk)
+       call outfld('CLDLOW_ATLID',     cldlow_atlid,    pcols,lchnk)
+       call outfld('CLDMED_ATLID',     cldmed_atlid,    pcols,lchnk)
+       call outfld('CLDHGH_ATLID',     cldhgh_atlid,    pcols,lchnk)
+       call outfld('CLDTOT_ATLID',     cldtot_atlid,    pcols,lchnk)
     end if
 
     ! MISR SIMULATOR OUTPUTS
@@ -3542,7 +3655,7 @@ CONTAINS
     call t_startf("calipso_optics")
     if (Llidar_sim) then
        ReffTemp = ReffIN
-       call lidar_optics(nPoints,nColumns,nLevels,5,lidar_ice_type,                      &
+       call lidar_optics(nPoints,nColumns,nLevels,5,lidar_ice_type,532,                    &
                          mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCLIQ),              &
                          mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCICE),              &
                          mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCLIQ),              &
@@ -3568,6 +3681,38 @@ CONTAINS
                          cospIN%tautot_liq_calipso(1:nPoints,1:nColumns,1:nLevels))
     endif
     call t_stopf("calipso_optics")
+
+    ! ATLID (355nm) Optics
+    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    call t_startf("atlid_optics")
+    if (Latlid) then
+       ReffTemp = ReffIN
+       call lidar_optics(nPoints,nColumns,nLevels,5,lidar_ice_type,355,                    &
+                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCLIQ),              &
+                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCICE),              &
+                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCLIQ),              &
+                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCICE),              &
+                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSSNOW),              &
+                         ReffTemp(1:nPoints,1:nLevels,I_LSCLIQ),                         &
+                         ReffTemp(1:nPoints,1:nLevels,I_LSCICE),                         &
+                         ReffTemp(1:nPoints,1:nLevels,I_CVCLIQ),                         &
+                         ReffTemp(1:nPoints,1:nLevels,I_CVCICE),                         &
+                         ReffTemp(1:nPoints,1:nLevels,I_LSSNOW),                         &
+                         cospstateIN%pfull(1:nPoints,1:nLevels),                         &
+                         cospstateIN%phalf(1:nPoints,1:nLevels+1),                       &
+                         cospstateIN%at(1:nPoints,1:nLevels),                            &
+                         cospIN%beta_mol_atlid(1:nPoints,1:nLevels),                     &
+                         cospIN%betatot_atlid(1:nPoints,1:nColumns,1:nLevels),           &
+                         cospIN%tau_mol_atlid(1:nPoints,1:nLevels),                      &
+                         cospIN%tautot_atlid(1:nPoints,1:nColumns,1:nLevels),            &
+                         cospIN%tautot_S_liq_atlid(1:nPoints,1:nColumns),                &
+                         cospIN%tautot_S_ice_atlid(1:nPoints,1:nColumns),                &
+                         cospIN%betatot_ice_atlid(1:nPoints,1:nColumns,1:nLevels),       &
+                         cospIN%betatot_liq_atlid(1:nPoints,1:nColumns,1:nLevels),       &
+                         cospIN%tautot_ice_atlid(1:nPoints,1:nColumns,1:nLevels),        &
+                         cospIN%tautot_liq_atlid(1:nPoints,1:nColumns,1:nLevels))
+    endif
+    call t_stopf("atlid_optics")
 
 
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -229,7 +229,7 @@ contains
   ! ######################################################################################
   ! SUBROUTINE lidar_optics
   ! ######################################################################################
-  subroutine lidar_optics(npoints,ncolumns,nlev,npart,ice_type,q_lsliq,q_lsice,q_cvliq, &
+  subroutine lidar_optics(npoints,ncolumns,nlev,npart,ice_type,lidar_freq,q_lsliq,q_lsice,q_cvliq, &
                           q_cvice,q_lssnow,ls_radliq,ls_radice,cv_radliq,cv_radice,ls_radsnow,  &
                           pres,presf,temp,beta_mol,betatot,tau_mol,tautot,  &
                           tautot_S_liq,tautot_S_ice,betatot_ice,betatot_liq,         &
@@ -242,12 +242,13 @@ contains
     ! ####################################################################################
     
     ! INPUTS
-    INTEGER,intent(in) :: & 
-         npoints,      & ! Number of gridpoints
-         ncolumns,     & ! Number of subcolumns
-         nlev,         & ! Number of levels
-         npart,        & ! Number of cloud meteors (stratiform_liq, stratiform_ice, conv_liq, conv_ice). 
-         ice_type        ! Ice particle shape hypothesis (0 for spheres, 1 for non-spherical)
+     INTEGER,intent(in) :: & 
+          npoints,      & ! Number of gridpoints
+          ncolumns,     & ! Number of subcolumns
+          nlev,         & ! Number of levels
+          npart,        & ! Number of cloud meteors (stratiform_liq, stratiform_ice, conv_liq, conv_ice). 
+          ice_type,     & ! Ice particle shape hypothesis (0 for spheres, 1 for non-spherical)
+          lidar_freq      ! Lidar frequency (nm). Use to change between lidar platforms
     REAL(WP),intent(in),dimension(npoints,nlev) :: &
          temp,         & ! Temperature of layer k
          pres,         & ! Pressure at full levels
@@ -291,11 +292,14 @@ contains
 
     INTEGER                                         :: i,k,icol
     
-    ! Local data
-    REAL(WP),PARAMETER :: rhoice     = 0.5e+03    ! Density of ice (kg/m3) 
-    REAL(WP),PARAMETER :: Cmol       = 6.2446e-32 ! Wavelength dependent
-    REAL(WP),PARAMETER :: rdiffm     = 0.7_wp     ! Multiple scattering correction parameter
-    REAL(WP),PARAMETER :: Qscat      = 2.0_wp     ! Particle scattering efficiency at 532 nm
+     ! Local data
+     REAL(WP),PARAMETER :: rhoice         = 0.5e+03    ! Density of ice (kg/m3) 
+     REAL(WP),PARAMETER :: Cmol_532nm     = 6.2446e-32 ! Wavelength dependent at 532nm
+     REAL(WP),PARAMETER :: Cmol_355nm     = 3.2662e-31 ! Wavelength dependent at 355nm
+     REAL(WP),PARAMETER :: rdiffm_532nm   = 0.7_wp     ! Multiple scattering correction at 532nm
+     REAL(WP),PARAMETER :: rdiffm_355nm   = 0.6_wp     ! Multiple scattering correction at 355nm
+     REAL(WP) :: Cmol, rdiffm              ! Runtime-selected values based on lidar_freq
+     REAL(WP),PARAMETER :: Qscat          = 2.0_wp     ! Particle scattering efficiency at 532 nm
     ! Local indicies for large-scale and convective ice and liquid 
     INTEGER,PARAMETER  :: INDX_LSLIQ  = 1
     INTEGER,PARAMETER  :: INDX_LSICE  = 2
@@ -317,9 +321,19 @@ contains
          polpartCVICE1 = (/ 1.3615e-8_wp, -2.04206e-6_wp, 7.51799e-5_wp, 0.00078213_wp, 0.0182131_wp/), &
          polpartLSICE1 = (/ 1.3615e-8_wp, -2.04206e-6_wp, 7.51799e-5_wp, 0.00078213_wp, 0.0182131_wp/), &
          polpartLSSNOW = (/ 1.3615e-8_wp, -2.04206e-6_wp, 7.51799e-5_wp, 0.00078213_wp, 0.0182131_wp/)
-    ! ##############################################################################
-    
-    ! Liquid/ice particles
+     ! ##############################################################################
+     
+     ! Which LIDAR frequency are we using?
+     if (lidar_freq .eq. 355) then
+        Cmol   = Cmol_355nm
+        rdiffm = rdiffm_355nm
+     endif
+     if (lidar_freq .eq. 532) then
+        Cmol   = Cmol_532nm
+        rdiffm = rdiffm_532nm
+     endif
+     
+     ! Liquid/ice particles
     rhopart(INDX_LSLIQ)  = rholiq
     rhopart(INDX_LSICE)  = rhoice
     rhopart(INDX_CVLIQ)  = rholiq

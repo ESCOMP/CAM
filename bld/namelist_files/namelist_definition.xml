@@ -2425,7 +2425,14 @@ Default: FALSE
 
 <entry id="cosp_llidar_sim" type="logical"  category="cosp"
        group="cospsimulator_nl" valid_values="">
-If true, COSP lidar simulator will be run and all non-subcolumn output
+If true, COSP CALIPSO/CALIOP lidar simulator will be run and all non-subcolumn output
+will be saved
+Default: FALSE
+</entry>
+
+<entry id="cosp_latlid_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, COSP EarthCARE/ATmospheric LIDar (ATLID) simulator will be run and all non-subcolumn output
 will be saved
 Default: FALSE
 </entry>
