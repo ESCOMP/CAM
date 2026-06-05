@@ -1462,8 +1462,17 @@ end subroutine clubb_init_cnst
     use phys_control,           only: phys_getopts
     use cam_logfile,            only: iulog
     use spmd_utils,             only: mpicom, mstrid=>masterprocid, mpi_character
+    use clubb_api_module,       only: nvarmax_zm, &
+         nvarmax_zt, &
+         nvarmax_rad_zt, &
+         nvarmax_rad_zm, &
+         nvarmax_sfc, &
+         var_length
+
 #endif
 
+    use namelist_utils,         only: find_group_name
+    use units,                  only: getunit, freeunit
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, physics_buffer_desc
 
     implicit none
@@ -1477,6 +1486,23 @@ end subroutine clubb_init_cnst
     logical :: history_amwg, history_clubb
 
     logical, parameter :: l_input_fields = .false. ! Always false for CAM-CLUBB.
+
+    character(len=*), parameter :: subr = 'stats_init_clubb'
+
+    character(len=var_length), dimension(nvarmax_zt)     ::   clubb_vars_zt      ! Variables on the thermodynamic levels
+    character(len=var_length), dimension(nvarmax_zm)     ::   clubb_vars_zm      ! Variables on the momentum levels
+    character(len=var_length), dimension(nvarmax_rad_zt) ::   clubb_vars_rad_zt  ! Variables on the radiation levels
+    character(len=var_length), dimension(nvarmax_rad_zm) ::   clubb_vars_rad_zm  ! Variables on the radiation levels
+    character(len=var_length), dimension(nvarmax_sfc)    ::   clubb_vars_sfc     ! Variables at the model surface
+
+    namelist /clubb_stats_nl/ &
+      clubb_vars_zt, &
+      clubb_vars_zm, &
+      clubb_vars_rad_zt, &
+      clubb_vars_rad_zm, &
+      clubb_vars_sfc
+
+    integer :: iunit, read_status, ierr
 
     integer :: clubb_init_errcode
     character(len=200) :: error_message
@@ -1769,6 +1795,43 @@ end subroutine clubb_init_cnst
     ! Initialization  !
     ! --------------- !
 
+    !  Initialize namelist variables
+
+    clubb_vars_zt     = ''
+    clubb_vars_zm     = ''
+    clubb_vars_rad_zt = ''
+    clubb_vars_rad_zm = ''
+    clubb_vars_sfc    = ''
+
+    !  Read variables to compute from the namelist
+    if (masterproc) then
+       iunit= getunit()
+       open(unit=iunit,file="atm_in",status='old')
+       call find_group_name(iunit, 'clubb_stats_nl', status=read_status)
+       if (read_status == 0) then
+          read(unit=iunit, nml=clubb_stats_nl, iostat=read_status)
+          if (read_status /= 0) then
+             error_message = 'stats_init_clubb:  error reading namelist'
+             clubb_init_errcode = 1
+             return
+          end if
+       end if
+       close(unit=iunit)
+       call freeunit(iunit)
+    end if
+
+    ! Broadcast namelist variables
+    call mpi_bcast(clubb_vars_zt,      var_length*nvarmax_zt,       mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_zt")
+    call mpi_bcast(clubb_vars_zm,      var_length*nvarmax_zm,       mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_zz")
+    call mpi_bcast(clubb_vars_rad_zt,  var_length*nvarmax_rad_zt,   mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_rad_zt")
+    call mpi_bcast(clubb_vars_rad_zm,  var_length*nvarmax_rad_zm,   mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_rad_zm")
+    call mpi_bcast(clubb_vars_sfc,     var_length*nvarmax_sfc,      mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
+
     ! Call the CAM-SIMA layer
     call clubb_init(pcols, pver, pverp, begchunk, endchunk, masterproc, &
                         mpicom, mstrid, mpi_character, max_fieldname_len, &
@@ -1790,6 +1853,7 @@ end subroutine clubb_init_cnst
                         clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, &
                         edsclr_dim, sclr_dim, hydromet_dim, &
                         nzm_clubb, nzt_clubb, hm_metadata, clubb_params_single_col, &
+                        clubb_vars_zt, clubb_vars_zm, clubb_vars_sfc, clubb_vars_rad_zt, clubb_vars_rad_zm, &
                         stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, &
                         pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, &
                         out_zt, out_zm, out_sfc, out_radzt, out_radzm, &
