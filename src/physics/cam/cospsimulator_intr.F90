@@ -345,16 +345,16 @@ CONTAINS
 #ifdef USE_COSP
 !!! this list should include any variable that you might want to include in the namelist
 !!! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls.
-     namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, &
-          cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
-          cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_latlid_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
-          cosp_ncolumns, cosp_nradsteps, cosp_passive, cosp_runall,                         &
-          cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists,                         &
-          COSP_N_SWATHS_ISCCP, COSP_SWATH_LOCALTIMES_ISCCP, COSP_SWATH_WIDTHS_ISCCP, COSP_N_SWATHS_MISR,        &
-          COSP_SWATH_LOCALTIMES_MISR, COSP_SWATH_WIDTHS_MISR, COSP_N_SWATHS_MODIS, COSP_SWATH_LOCALTIMES_MODIS, &
-          COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
-          COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
-          COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
+				namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, &
+										cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
+										cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_latlid_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_lrttov_sim, &
+										cosp_ncolumns, cosp_nradsteps, cosp_passive, cosp_runall,                         &
+										cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists,                         &
+										COSP_N_SWATHS_ISCCP, COSP_SWATH_LOCALTIMES_ISCCP, COSP_SWATH_WIDTHS_ISCCP, COSP_N_SWATHS_MISR,        &
+										COSP_SWATH_LOCALTIMES_MISR, COSP_SWATH_WIDTHS_MISR, COSP_N_SWATHS_MODIS, COSP_SWATH_LOCALTIMES_MODIS, &
+										COSP_SWATH_WIDTHS_MODIS, COSP_N_SWATHS_PARASOL, COSP_SWATH_LOCALTIMES_PARASOL,                   &
+										COSP_SWATH_WIDTHS_PARASOL, COSP_N_SWATHS_CSCAL, COSP_SWATH_LOCALTIMES_CSCAL,                     &
+										COSP_SWATH_WIDTHS_CSCAL, COSP_N_SWATHS_ATLID, COSP_SWATH_LOCALTIMES_ATLID, COSP_SWATH_WIDTHS_ATLID
 
     !! read in the namelist
     if (masterproc) then
