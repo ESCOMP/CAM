@@ -32,7 +32,7 @@ module clubb_intr
   use scamMOD,             only: single_column, scm_clubb_iop_name, scm_cambfb_mode
 
 #ifdef CLUBB_SGS
-  use clubb,               only: clubb_init, stats_zero
+  use clubb,               only: clubb_init, clubb2_run, stats_zero
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms, &
                                  clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
@@ -4264,62 +4264,20 @@ end subroutine clubb_init_cnst
     !  Detrainment of convective condensate into the environment or stratiform cloud    !
     ! --------------------------------------------------------------------------------- !
 
-    !  Initialize the shallow convective detrainment rate, will always be zero
-    dlf2 = 0.0_r8
-    dlf_liq_out(:,:) = 0.0_r8
-    dlf_ice_out(:,:) = 0.0_r8
-
     lqice(:)        = .false.
     lqice(ixcldliq) = .true.
     lqice(ixcldice) = .true.
     lqice(ixnumliq) = .true.
     lqice(ixnumice) = .true.
 
-    dl_rad = clubb_detliq_rad
-    di_rad = clubb_detice_rad
-    dt_low = clubb_detphase_lowtemp
-
     call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lq=lqice)
 
-    do k = 1, pver
-      do i = 1, ncol
-
-        if( state_loc%t(i,k) > meltpt_temp ) then
-          dum1 = 0.0_r8
-        elseif ( state_loc%t(i,k) < dt_low ) then
-          dum1 = 1.0_r8
-        else
-          dum1 = ( meltpt_temp - state_loc%t(i,k) ) / ( meltpt_temp - dt_low )
-        endif
-
-        ptend_loc%q(i,k,ixcldliq) = dlf(i,k) * ( 1._r8 - dum1 )
-        ptend_loc%q(i,k,ixcldice) = dlf(i,k) * dum1
-        ptend_loc%q(i,k,ixnumliq) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2 )) * ( 1._r8 - dum1 ) ) &
-                                   / (4._r8*3.14_r8*dl_rad**3*997._r8) + & ! Deep    Convection
-                                   3._r8 * (                         dlf2    * ( 1._r8 - dum1 ) ) &
-                                   / (4._r8*3.14_r8*10.e-6_r8**3*997._r8)     ! Shallow Convection
-        ptend_loc%q(i,k,ixnumice) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2 )) *  dum1 ) &
-                                   / (4._r8*3.14_r8*di_rad**3*500._r8) + & ! Deep    Convection
-                                   3._r8 * (                         dlf2    *  dum1 ) &
-                                   / (4._r8*3.14_r8*50.e-6_r8**3*500._r8)     ! Shallow Convection
-        ptend_loc%s(i,k)          = dlf(i,k) * dum1 * latice
-
-        dlf_liq_out(i,k) = dlf(i,k) * ( 1._r8 - dum1 )
-        dlf_ice_out(i,k) = dlf(i,k) * dum1
-
-        ! convert moist dlf tendencies to dry
-        ptend_loc%q(i,k,ixcldliq) = ptend_loc%q(i,k,ixcldliq)*state_loc%pdel(i,k)/state_loc%pdeldry(i,k)
-        ptend_loc%q(i,k,ixcldice) = ptend_loc%q(i,k,ixcldice)*state_loc%pdel(i,k)/state_loc%pdeldry(i,k)
-
-        ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
-        !   track of the integrals of ice and static energy that is effected from conversion to ice
-        !   so that the energy checker doesn't complain.
-        det_s(i)                  = det_s(i)   + ptend_loc%s(i,k)          * state_loc%pdel(i,k)    * rga
-        det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice) * state_loc%pdeldry(i,k) * rga
-      enddo
-    enddo
-
-    det_ice(:ncol) = det_ice(:ncol) / 1000._r8  ! divide by density of water
+    call clubb2_run(ncol, pver, meltpt_temp, latice, rga, &
+                        ixcldliq, ixcldice, ixnumliq, ixnumice, &
+                        dlf, dlf_liq_out, dlf_ice_out, &
+                        clubb_detliq_rad, clubb_detice_rad, clubb_detphase_lowtemp, &
+                        state_loc%pdel, state_loc%pdeldry, &
+                        state_loc%t, ptend_loc%s, ptend_loc%q, det_s, det_ice )
 
     do k = 1, pver
       do i = 1, ncol
