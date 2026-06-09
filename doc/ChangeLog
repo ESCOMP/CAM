@@ -3,13 +3,13 @@
 Tag name: cam6_4_180
 Originator(s): fvitt
 Date: 9 June 2026
-One-line Summary: Read water species from IC file in analytic configurations
+One-line Summary: Analytic initial conditions water species
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1575
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
  Read water species concentrations from IC input file when the analytic conditions are not moist.
- Addresses issue #1563 -- Analytical startup ignores water species in IC file
+ Addresses issue #1563 -- Analytic startup ignores water species in IC file
 
 Describe any changes made to build system: N/A
 
@@ -36,37 +36,17 @@ platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
-derecho/intel/aux_cam:
+derecho/intel/aux_cam: All PASS
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
-izumi/gnu/aux_cam:
+izumi/gnu/aux_cam: All PASS
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
-
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+Summarize any changes to answers: bit-for-bit
 
 ===============================================================
 ===============================================================
