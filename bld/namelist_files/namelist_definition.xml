@@ -3714,12 +3714,6 @@ CLUBB timestep, set by build-namelist, do not adjust.
 Rain evaporation efficiency factor.
 </entry>
 
-<entry id="clubb_do_icesuper" type="logical"  category="pblrad"
-       group="clubbpbl_diff_nl" valid_values="" >
-Flag to perform a saturation adjustment for ice which will add ice mass if the
-air is supersaturated with respect to ice.
-</entry>
-
 <!-- CLUBB params namelist -->
 
 <entry id="clubb_beta" type="real" category="pblrad"
@@ -3949,11 +3943,6 @@ in the CLUBB parameterization in units of (K).
        group="clubb_params_nl" valid_values="" >
 Apply adjustments to dry static energy so that CLUBB conserves
 energy.
-</entry>
-
-<entry id="clubb_do_liqsupersat" type="logical"  category="conv"
-       group="clubb_params_nl" valid_values="" >
-Apply liquid supersaturation adjustment code
 </entry>
 
 <entry id="clubb_gamma_coef" type="real" category="pblrad"

@@ -3536,7 +3536,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    }
 
    add_default($nl, 'clubb_l_ascending_grid');
-   add_default($nl, 'clubb_do_icesuper');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_rainevap_turb');
@@ -3626,7 +3625,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_detliq_rad');
    add_default($nl, 'clubb_detphase_lowtemp');
    add_default($nl, 'clubb_do_energyfix');
-   add_default($nl, 'clubb_do_liqsupersat');
    add_default($nl, 'clubb_grid_adapt_in_time_method');
    add_default($nl, 'clubb_fill_holes_type');
    add_default($nl, 'clubb_grid_remap_method');

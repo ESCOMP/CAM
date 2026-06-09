@@ -32,7 +32,7 @@ module clubb_intr
   use scamMOD,             only: single_column, scm_clubb_iop_name, scm_cambfb_mode
 
 #ifdef CLUBB_SGS
-  use clubb,               only: clubb_init, clubb2_run, stats_zero
+  use clubb,               only: clubb_init, clubb2_run, clubb3_run, stats_zero
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms, &
                                  clubb_config_flags_type, grid, stats, &
                                  nu_vertical_res_dep, stats_metadata_type, &
@@ -157,7 +157,6 @@ module clubb_intr
   ! ----------------------------------------------------------------- !
 
   logical :: do_cldcool
-  logical :: clubb_do_icesuper
 
   logical :: &
     clubb_l_intr_sfc_flux_smooth = .false. ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
@@ -171,7 +170,6 @@ module clubb_intr
   logical            :: lq(pcnst)
   logical            :: do_rainturb
   logical            :: clubb_do_adv
-  logical            :: clubb_do_liqsupersat = .false.
   logical            :: clubb_do_energyfix   = .true.
   integer            :: edsclr_dim       ! Number of scalars to transport in CLUBB
 
@@ -778,7 +776,7 @@ end subroutine clubb_init_cnst
     namelist /clubb_his_nl/ clubb_history, clubb_rad_history
     namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, &
                                 clubb_do_adv, clubb_timestep,  &
-                                clubb_rnevap_effic, clubb_do_icesuper, &
+                                clubb_rnevap_effic, &
                                 clubb_l_ascending_grid
     namelist /clubb_params_nl/ clubb_beta, &
          clubb_bv_efold, &
@@ -823,7 +821,6 @@ end subroutine clubb_init_cnst
          clubb_detliq_rad, &
          clubb_detphase_lowtemp, &
          clubb_do_energyfix, &
-         clubb_do_liqsupersat, &
          clubb_gamma_coef, &
          clubb_gamma_coefb, &
          clubb_grid_adapt_in_time_method, &
@@ -1024,8 +1021,6 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_history")
     call mpi_bcast(clubb_rad_history,            1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_rad_history")
-    call mpi_bcast(clubb_do_icesuper,            1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_icesuper")
     call mpi_bcast(clubb_cloudtop_cooling,       1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_cloudtop_cooling")
     call mpi_bcast(clubb_rainevap_turb,          1, mpi_logical, mstrid, mpicom, ierr)
@@ -1121,8 +1116,6 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_lambda0_stability_coef")
     call mpi_bcast(clubb_l_lscale_plume_centered,1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_lscale_plume_centered")
-    call mpi_bcast(clubb_do_liqsupersat,         1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_liqsupersat")
     call mpi_bcast(clubb_do_energyfix,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_energyfix")
     call mpi_bcast(clubb_C_invrs_tau_bkgnd,       1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1898,7 +1891,7 @@ end subroutine clubb_init_cnst
     use cam_abortutils, only: endrun
     use cam_logfile,    only: iulog
     use tropopause,     only: tropopause_findChemTrop
-    use time_manager,   only: get_nstep, is_first_restart_step
+    use time_manager,   only: get_nstep, is_first_restart_step, get_curr_calday, get_calday
     use perf_mod,       only: t_startf, t_stopf
 
 #ifdef CLUBB_SGS
@@ -2353,6 +2346,8 @@ end subroutine clubb_init_cnst
       clubbtop_pbuf, &
       troplev
 
+    real(r8) :: calday
+
     integer :: &
       errflg, &
       j, k, t, ixind, nadv, n,      & ! Loop variables
@@ -2364,9 +2359,19 @@ end subroutine clubb_init_cnst
       icnt, &
       stats_nsamp, stats_nout         ! Stats sampling and output intervals for CLUBB [timestep]
 
+    integer, parameter :: dates(12) = (/ 116, 214, 316, 415,  516,  615, &
+         716, 816, 915, 1016, 1115, 1216 /)
+
+    real(r8) :: tropp_days(12)
 #endif
 
   call t_startf('clubb_tend_cam')
+
+  calday = get_curr_calday()
+
+  do n = 1,12
+    tropp_days(n) = get_calday( dates(n), 0 )
+  end do
 
   do i = 1, pcols
     det_s(i)   = 0.0_r8
@@ -2381,7 +2386,6 @@ end subroutine clubb_init_cnst
     if ( do_clubb_mf )            call endrun(subr//': do_clubb_mf=.true. not available when compiling with OpenACC')
     if ( do_rainturb )            call endrun(subr//': do_rainturb=.true. not available when compiling with OpenACC')
     if ( do_cldcool )             call endrun(subr//': do_cldcool=.true. not available when compiling with OpenACC')
-    if ( clubb_do_icesuper )      call endrun(subr//': clubb_do_icesuper=.true. not available when compiling with OpenACC')
     if ( single_column .and. .not. scm_cambfb_mode )  then
       call endrun(subr//': (single_column && !scm_cambfb_mode)=.true. not available when compiling with OpenACC')
     end if
@@ -2488,10 +2492,6 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, vpwp_clubb_gw_mc_idx,   vpwp_clubb_gw_mc_pbuf )
     call pbuf_get_field(pbuf, wpthlp_clubb_gw_mc_idx, wpthlp_clubb_gw_mc_pbuf )
 
-    if (clubb_do_icesuper) then
-      call pbuf_get_field(pbuf, naai_idx, naai_pbuf)
-    end if
-
     !  Initialize physics tendency arrays
     call physics_ptend_init(ptend_all, state%psetcols, 'clubb')
 
@@ -2501,10 +2501,6 @@ end subroutine clubb_init_cnst
     ! Constituents are all treated as dry mmr by clubb.  Convert the water species to
     ! a dry basis.
     call set_wet_to_dry(state_loc, convert_cnst_type='wet')
-
-    if (clubb_do_liqsupersat) then
-      call pbuf_get_field(pbuf, npccn_idx, npccn_pbuf)
-    endif
 
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for
@@ -2836,70 +2832,6 @@ end subroutine clubb_init_cnst
       end do
 
     end if
-
-    !----------------------------------- Ice supersaturation adjustment -----------------------------------
-    if (clubb_do_icesuper) then
-
-      ! -------------------------------------- !
-      ! Ice Saturation Adjustment Computation  !
-      ! -------------------------------------- !
-
-      lq2(:)  = .FALSE.
-      lq2(1)  = .TRUE.
-      lq2(ixcldice) = .TRUE.
-      lq2(ixnumice) = .TRUE.
-
-      latsub = latvap + latice
-
-      call physics_ptend_init(ptend_loc, state%psetcols, 'iceadj', ls=.true., lq=lq2 )
-
-      do k = 1, pver
-        do i = 1, ncol
-          stend(i,k)    = 0._r8
-          qvtend(i,k)   = 0._r8
-          qitend(i,k)   = 0._r8
-          initend(i,k)  = 0._r8
-        end do
-      end do
-
-      call t_startf('clubb_tend_cam:ice_macro_tend')
-      call ice_macro_tend(  ncol * nzt_clubb, latsub, hdtime,                                                         & ! in
-                                 naai_pbuf(1:ncol,top_lev:pver),          state_loc%t(1:ncol,top_lev:pver),           & ! in
-                            state_loc%pmid(1:ncol,top_lev:pver),          state_loc%q(1:ncol,top_lev:pver,1),         & ! in
-                               state_loc%q(1:ncol,top_lev:pver,ixcldice), state_loc%q(1:ncol,top_lev:pver,ixnumice),  & ! in
-                                     stend(1:ncol,top_lev:pver),               qvtend(1:ncol,top_lev:pver),           & ! out
-                                    qitend(1:ncol,top_lev:pver),              initend(1:ncol,top_lev:pver) )            ! out
-      call t_stopf('clubb_tend_cam:ice_macro_tend')
-
-      ! update local copy of state with the tendencies
-      do k = top_lev, pver
-        do i = 1, ncol
-          ptend_loc%q(i,k,1)         = qvtend(i,k)
-          ptend_loc%q(i,k,ixcldice)  = qitend(i,k)
-          ptend_loc%q(i,k,ixnumice)  = initend(i,k)
-          ptend_loc%s(i,k)           = stend(i,k)
-        end do
-      end do
-
-      ! Add the ice tendency to the output tendency
-      call physics_ptend_sum(ptend_loc, ptend_all, ncol)
-
-      ! ptend_loc is reset to zero by this call
-      call physics_update(state_loc, ptend_loc, hdtime)
-
-      ! Write output for tendencies:
-      do k = 1, pver
-        do i = 1, ncol
-          temp2d(i,k) =  stend(i,k) * invrs_cpairv(i,k)
-        end do
-      end do
-
-      call outfld( 'TTENDICE',  temp2d, pcols, lchnk )
-      call outfld( 'QVTENDICE', qvtend, pcols, lchnk )
-      call outfld( 'QITENDICE', qitend, pcols, lchnk )
-      call outfld( 'NITENDICE', initend, pcols, lchnk )
-
-    endif
 
     !----------------------------------------- Initializing arrays -----------------------------------------
 
@@ -4192,68 +4124,6 @@ end subroutine clubb_init_cnst
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state_loc,ptend_loc,hdtime)
 
-    ! Due to the order of operation of CLUBB, which closes on liquid first,
-    ! then advances it's predictive equations second, this can lead to
-    ! RHliq > 1 directly before microphysics is called.  Therefore, we use
-    ! ice_macro_tend to enforce RHliq <= 1 everywhere before microphysics is called.
-
-    if (clubb_do_liqsupersat) then
-
-      call t_startf('clubb_cam_tend:do_liqsupersat')
-      ! -------------------------------------- !
-      ! Ice Saturation Adjustment Computation  !
-      ! -------------------------------------- !
-
-      latsub = latvap + latice
-
-      lq2(:)        = .FALSE.
-      lq2(ixq)      = .TRUE.
-      lq2(ixcldliq) = .TRUE.
-      lq2(ixnumliq) = .TRUE.
-
-      call physics_ptend_init(ptend_loc, state%psetcols, 'iceadj', ls=.true., lq=lq2 )
-
-      stend(:ncol,:)=0._r8
-      qvtend(:ncol,:)=0._r8
-      qctend(:ncol,:)=0._r8
-      inctend(:ncol,:)=0._r8
-
-      call liquid_macro_tend(npccn_pbuf(1:ncol,top_lev:pver), state_loc%t(1:ncol,top_lev:pver),                      &
-                             state_loc%pmid(1:ncol,top_lev:pver), state_loc%q(1:ncol,top_lev:pver,ixq),            &
-                             state_loc%q(1:ncol,top_lev:pver,ixcldliq), state_loc%q(1:ncol,top_lev:pver,ixnumliq), &
-                             latvap, hdtime, stend(1:ncol,top_lev:pver),qvtend(1:ncol,top_lev:pver),         &
-                             qctend(1:ncol,top_lev:pver), inctend(1:ncol,top_lev:pver), ncol * nzt_clubb )
-
-      ! update local copy of state with the tendencies
-      ptend_loc%q(:ncol,top_lev:pver,ixq)       =  qvtend(:ncol,top_lev:pver)
-      ptend_loc%q(:ncol,top_lev:pver,ixcldliq)  =  qctend(:ncol,top_lev:pver)
-      ptend_loc%q(:ncol,top_lev:pver,ixnumliq)  = inctend(:ncol,top_lev:pver)
-      ptend_loc%s(:ncol,top_lev:pver)           =   stend(:ncol,top_lev:pver)
-
-      ! Add the ice tendency to the output tendency
-      call physics_ptend_sum(ptend_loc, ptend_all, ncol)
-
-      ! ptend_loc is reset to zero by this call
-      call physics_update(state_loc, ptend_loc, hdtime)
-
-      ! Write output for tendencies:
-      !        oufld: QVTENDICE,QCTENDICE,NCTENDICE,FQTENDICE
-      temp2d(:ncol,:pver) =  stend(:ncol,:pver) * invrs_cpairv(:ncol,:pver)
-      call outfld( 'TTENDICE', temp2d, pcols, lchnk )
-      call outfld( 'QVTENDICE', qvtend, pcols, lchnk )
-      call outfld( 'QCTENDICE', qctend, pcols, lchnk )
-      call outfld( 'NCTENDICE', inctend, pcols, lchnk )
-
-      where(qctend .ne. 0._r8)
-        temp2d = 1._r8
-      elsewhere
-        temp2d = 0._r8
-      end where
-
-      call outfld( 'FQTENDICE', temp2d, pcols, lchnk )
-      call t_stopf('clubb_cam_tend:do_liqsupersat')
-    end if
-
     ! ------------------------------------------------------------ !
     ! The rest of the code deals with diagnosing variables         !
     ! for microphysics/radiation computation and macrophysics      !
@@ -4291,97 +4161,10 @@ end subroutine clubb_init_cnst
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state_loc,ptend_loc,hdtime)
 
-    ! ptend_all now has all accumulated tendencies.  Convert the tendencies for the
-    ! wet constituents to wet air basis.
-    do ixind = 1, pcnst
-      if (lq(ixind) .and. cnst_type(ixind) == 'wet') then
-        do k = 1, pver
-          do i = 1, ncol
-            ptend_all%q(i,k,ixind) = ptend_all%q(i,k,ixind)*state_loc%pdeldry(i,k)/state_loc%pdel(i,k)
-          end do
-        end do
-      end if
-    end do
-
-    ! --------------------------------------------------------------------------------- !
-    !  Diagnose some quantities that are computed in macrop_tend here.                  !
-    !  These are inputs required for the microphysics calculation.                      !
-    !                                                                                   !
-    !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
-    ! --------------------------------------------------------------------------------- !
-
-    !  initialize variables
-    alst_pbuf(:,:) = 0.0_r8
-    qlst_pbuf(:,:) = 0.0_r8
-
-    do k = top_lev, pver
-      do i = 1, ncol
-        k_clubb     = k + 1 - top_lev
-        alst_pbuf(i,k)    = cloud_frac(i,k_clubb)
-        qlst_pbuf(i,k)    = rcm(i,k_clubb) / max( 0.01_r8, alst_pbuf(i,k) )  ! Incloud stratus condensate mixing ratio
-      enddo
-    enddo
-
-    ! --------------------------------------------------------------------------------- !
-    !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
-    ! --------------------------------------------------------------------------------- !
-
-    frac_limit = 0.01_r8
-    ic_limit   = 1.e-12_r8
-    deepcu_pbuf(:,:) = 0.0_r8
-    shalcu_pbuf(:,:) = 0.0_r8
-
-    do k = 1, pver-1
-      do i = 1, ncol
-        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the
-        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never
-        !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
-        !  fraction is purely from deep convection scheme.
-        deepcu_pbuf(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh_pbuf(i,k+1))),0.6_r8))
-
-        if (deepcu_pbuf(i,k) <= frac_limit .or. dp_icwmr_pbuf(i,k) < ic_limit) then
-          deepcu_pbuf(i,k) = 0._r8
-        endif
-
-        !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable
-        !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
-        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud
-        !  from CLUBB plus the deep convective cloud fraction
-        ! NOTE: concld_pbuf used to be calculated in the commented-out version below, but since we 
-        ! set alst_pbuf=cloud_frac_pbuf, this simplifies to only using deepcu_pbuf.
-        ! This is potentially a bug, but there's not really a "right" way to combine the different
-        ! cloud factions, so it has been left to only use deepcu_pbuf for now
-        !concld_pbuf(i,k) = min(cloud_frac_pbuf(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k),0.80_r8)
-        concld_pbuf(i,k) = min(deepcu_pbuf(i,k),0.80_r8)
-      enddo
-    enddo
-
-    if (single_column .and. .not. scm_cambfb_mode) then
-      if (trim(scm_clubb_iop_name)  ==  'ATEX_48hr'       .or. &
-          trim(scm_clubb_iop_name)  ==  'BOMEX_5day'      .or. &
-          trim(scm_clubb_iop_name)  ==  'DYCOMSrf01_4day' .or. &
-          trim(scm_clubb_iop_name)  ==  'DYCOMSrf02_06hr' .or. &
-          trim(scm_clubb_iop_name)  ==  'RICO_3day'       .or. &
-          trim(scm_clubb_iop_name)  ==  'ARM_CC') then
-
-         deepcu_pbuf(:,:) = 0.0_r8
-         concld_pbuf(:,:) = 0.0_r8
-
-      endif
-    endif
-
-    ! --------------------------------------------------------------------------------- !
-    !  COMPUTE THE ICE CLOUD FRACTION PORTION                                           !
-    !  use the aist_vector function to compute the ice cloud fraction                   !
-    ! --------------------------------------------------------------------------------- !
-
     !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
     troplev(:) = 0
     !REMOVECAM_END
     call tropopause_findChemTrop( state, troplev )
-
-    aist_pbuf(:,:top_lev-1) = 0._r8
-    qsatfac_pbuf(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
 
     do k = top_lev, pver
 
@@ -4411,87 +4194,19 @@ end subroutine clubb_init_cnst
       endif
     enddo
 
-    ! --------------------------------------------------------------------------------- !
-    !  THIS PART COMPUTES THE LIQUID STRATUS FRACTION                                   !
-    !                                                                                   !
-    !  For now leave the computation of ice stratus fraction from macrop_driver intact  !
-    !  because CLUBB does nothing with ice.  Here I simply overwrite the liquid stratus !
-    !  fraction that was coded in macrop_driver                                         !
-    ! --------------------------------------------------------------------------------- !
-
-    do k = 1, pver
-      do i = 1, ncol
-
-        !  Recompute net stratus fraction using maximum over-lapping assumption, as done
-        !  in macrophysics code, using alst computed above and aist read in from physics buffer
-        ast_pbuf(i,k) = max(alst_pbuf(i,k),aist_pbuf(i,k))
-        qist_pbuf(i,k) = state_loc%q(i,k,ixcldice)/max(0.01_r8,aist_pbuf(i,k))
-
-        !  Probably need to add deepcu cloud fraction to the cloud fraction array, else would just
-        !  be outputting the shallow convective cloud fraction
-        cld_pbuf(i,k) = min(ast_pbuf(i,k)+deepcu_pbuf(i,k),1.0_r8)
-
-      enddo
-    enddo
-
-
-    ! --------------------------------------------------------------------------------- !
-    !  DIAGNOSE THE PBL DEPTH                                                           !
-    !  this is needed for aerosol code                                                  !
-    ! --------------------------------------------------------------------------------- !
-    do k = 1, pver
-      do i = 1, ncol
-         !subroutine pblind expects "Stull" definition of Exner
-         th(i,k) = state_loc%t(i,k)*state_loc%exner(i,k)
-         !thv should have condensate loading to be consistent with earlier def's in this module
-         thv(i,k) = th(i,k)*(1.0_r8+zvir*state_loc%q(i,k,ixq) - state_loc%q(i,k,ixcldliq))
-      enddo
-    enddo
-
-    ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    rrho   (1:ncol) = calc_ideal_gas_rrho(rair, state_loc%t(1:ncol,pver), state_loc%pmid(1:ncol,pver))
-    ustar2 (1:ncol) = calc_friction_velocity(cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), rrho(1:ncol))
-    ! use correct qflux from coupler
-    kinheat(1:ncol) = calc_kinematic_heat_flux(cam_in%shf(1:ncol), rrho(1:ncol), cpair)
-    kinwat (1:ncol) = calc_kinematic_water_vapor_flux(cam_in%cflx(1:ncol,1), rrho(1:ncol))
-    kbfs   (1:ncol) = calc_kinematic_buoyancy_flux(kinheat(1:ncol), zvir, th(1:ncol,pver), kinwat(1:ncol))
-    obklen (1:ncol) = calc_obukhov_length(thv(1:ncol,pver), ustar2(1:ncol), gravit, karman, kbfs(1:ncol))
-
-
-    where (kbfs(:ncol)  ==  -0.0_r8) kbfs(:ncol) = 0.0_r8
-
-    ! Compute PBL depth according to Holtslag-Boville Scheme -- only pblh is needed here
-    ! and other outputs are discarded
-    !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
-    pblh_pbuf(:) = 0._r8
-    dummy2(:) = 0._r8
-    dummy3(:) = 0._r8
-    !REMOVECAM_END
-    call hb_pbl_dependent_coefficients_run( &
-      ncol      = ncol,                                      &
-      pver      = pver,                                      &
-      pverp     = pverp,                                     &
-      gravit    = gravit,                                    &
-      z         = state_loc%zm(:ncol,:pver),                    &
-      zi        = state_loc%zi(:ncol,:pverp),                   &
-      u         = state_loc%u(:ncol,:pver),                     &
-      v         = state_loc%v(:ncol,:pver),                     &
-      cldn      = cld_pbuf(:ncol,:pver),                   &
-      ! Inputs from CLUBB (not HB coefficients)
-      thv       = thv(:ncol,:pver),                          &
-      ustar     = ustar2(:ncol),                             &
-      kbfs      = kbfs(:ncol),                               &
-      obklen    = obklen(:ncol),                             &
-      ! Output variables
-      pblh      = pblh_pbuf(:ncol),                               &
-      wstar     = dummy2(:ncol),                             &
-      bge       = dummy3(:ncol),                             &
-      errmsg    = errmsg,                                    &
-      errflg    = errflg)
-
-    ! --------------------------------------------------------------------------------- !
-    !                              END CLOUD FRACTION DIAGNOSIS                         !
-    ! --------------------------------------------------------------------------------- !
+    call clubb3_run(ncol, pver, pverp, pcnst, top_lev, zvir, rair, cpair, gravit, karman, &
+                        ixq, ixcldice, ixcldliq, ixnumice, calday, tropp_days, tropLev, &
+                        rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, &
+                        single_column, scm_cambfb_mode, scm_clubb_iop_name, subcol_scheme, &
+                        dp1, dp2, cmfmc, cmfmc_sh_pbuf, dp_icwmr_pbuf, concld_pbuf, &
+                        aist_pbuf, qsatfac_pbuf, ast_pbuf, qist_pbuf, cld_pbuf, &
+                        pblh_pbuf, deepcu_pbuf, shalcu_pbuf, lq, cnst_type, &
+                        alst_pbuf, qlst_pbuf, rcm, cloud_frac, exner, &
+                        state_loc%t, state_loc%q, ptend_all%q, state_loc%pmid, cam_in%landfrac, &
+                        cam_in%snowhland, state_loc%pdel, state_loc%pdeldry, &
+                        cam_in%wsx, cam_in%wsy, cam_in%shf, cam_in%cflx, state_loc%zm, &
+                        state_loc%zi, state_loc%u, state_loc%v, state_loc%lat, state_loc%pint, state_loc%phis, &
+                        errmsg, errflg )
 
     !----------------------------------------- Output section -----------------------------------------
 

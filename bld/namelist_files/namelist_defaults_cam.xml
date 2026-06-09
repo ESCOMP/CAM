@@ -2162,7 +2162,6 @@
 <clubb_do_adv                                     > .false. </clubb_do_adv>
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
-<clubb_do_icesuper                                > .false. </clubb_do_icesuper>
 <clubb_l_ascending_grid                           > .false. </clubb_l_ascending_grid>
 
 
@@ -2219,7 +2218,6 @@
 <clubb_detliq_rad                                 > 8.0D-6              </clubb_detliq_rad>
 <clubb_detphase_lowtemp                           > 238.15D0            </clubb_detphase_lowtemp>
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
-<clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
 <clubb_gamma_coef phys="cam7"                     > 0.3     </clubb_gamma_coef>
 <clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
@@ -2304,7 +2302,6 @@
 <do_hb_above_clubb phys="cam7"                    >.true.   </do_hb_above_clubb>
 
 <!-- SILHS options -->
-<clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
 <clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
 <clubb_C2thl                            silhs="1" > 0.2     </clubb_C2thl>
 <clubb_C2rtthl                          silhs="1" > 0.2     </clubb_C2rtthl>
