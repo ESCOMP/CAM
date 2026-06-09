@@ -642,7 +642,7 @@ CONTAINS
             bounds_name='cosp_tau_bnds', bounds=taulim_cosp)
     end if
 
-    if (lisccp_sim .or. llidar_sim .or. lradar_sim .or. lmisr_sim) then
+    if (lisccp_sim .or. llidar_sim .or. lradar_sim .or. lmisr_sim .or. latlid_sim) then
        call add_hist_coord('cosp_scol', nscol_cosp, 'COSP subcolumn',          &
             values=scol_cosp)
     end if
@@ -922,7 +922,6 @@ CONTAINS
        call add_default('CLDTOT_ATLID',cosp_histfile_num,' ')
        call add_default('CLD_ATLID',cosp_histfile_num,' ')
        call add_default('CFAD_SR355_ATLID',cosp_histfile_num,' ')
-       call add_default('BETAMOL_ATLID',cosp_histfile_num,' ')
     end if
 
     ! RADAR SIMULATOR OUTPUTS
@@ -1117,6 +1116,10 @@ CONTAINS
 
        if (lradar_sim) then
           call add_default('DBZE_CS',cosp_histfile_num,' ')
+       end if
+
+       if (latlid_sim) then
+          call add_default('BETAMOL_ATLID',cosp_histfile_num,' ')
        end if
     end if
 
@@ -3114,7 +3117,6 @@ CONTAINS
        end if
        call outfld('CLD_ATLID',        cld_atlid,       pcols,lchnk)
        call outfld('BETAMOL_ATLID',    betamol_atlid,   pcols,lchnk)
-       call outfld('BETATOT_ATLID',    betatot_atlid,   pcols,lchnk)
        
        if (cospIN%cospswathsIN(4)%N_inst_swaths < 1) then
           where (cfad_sr355_atlid(:ncol,:nht_cosp*nsr_cosp) == R_UNDEF)
@@ -3301,6 +3303,8 @@ CONTAINS
        if (lradar_sim) then
           call outfld('DBZE_CS',dbze_cs,pcols,lchnk) !! fails check_accum if 'A'
        end if
+       if (latlid_sim) then
+          call outfld('BETATOT_ATLID',betatot_atlid,pcols,lchnk)
     end if
     call t_stopf("writing_output")
 #endif
