@@ -21,6 +21,7 @@ use cam_grid_support,       only: cam_grid_id, cam_grid_get_gcid, &
 use cam_map_utils,          only: iMap
 
 use inic_analytic,          only: analytic_ic_active, analytic_ic_set_ic
+use inic_analytic_utils,    only: analytic_ic_is_moist
 use dyn_tests_utils,        only: vcoord=>vc_dry_pressure
 
 use cam_history,            only: outfld, hist_fld_active, fieldname_len
@@ -1550,7 +1551,10 @@ subroutine read_inidat(dyn_in)
 
    do m_cnst = 1, pcnst
 
-      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) cycle
+      ! skip over water species only if analytic ICs are moist
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) then
+         if (analytic_ic_is_moist()) cycle
+      end if
 
       found = .false.
       if (cnst_read_iv(m_cnst)) then
