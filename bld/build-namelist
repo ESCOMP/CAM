@@ -3882,6 +3882,28 @@ if ($chem =~ /_mam(\d)/) {
     }
 }
 
+# SAD process participation spec_types
+if ($chem =~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # sad_seasalt_spec_types is MAM-only: CARMA does not compute separate
+    # sea-salt SAD (its aero_model_surfarea sets sad_ssa to a sentinel value).
+    add_default($nl, 'sad_seasalt_spec_types',
+       'val'=>"'seasalt'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+if ($carma ne 'none' and $chem !~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+
 # Gravity wave drag settings
 
 # By default, orographic waves are always on

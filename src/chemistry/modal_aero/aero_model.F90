@@ -88,6 +88,7 @@ module aero_model
   integer,allocatable :: index_tot_mass(:,:)
   integer,allocatable :: index_chm_mass(:,:)
   integer,allocatable :: index_ssa_mass(:,:)
+  integer,allocatable :: index_strat_mass(:,:)
 
   integer :: ndx_h2so4
   character(len=fieldname_len), allocatable :: dgnum_name(:), dgnumwet_name(:)
@@ -95,6 +96,16 @@ module aero_model
   ! Namelist variables
   character(len=16) :: drydep_list(pcnst) = ' '
   real(r8)          :: seasalt_emis_scale
+
+  integer, parameter :: max_sad_spec = 16
+  character(len=32) :: sad_chem_spec_types(max_sad_spec) = ' '
+  character(len=32) :: sad_seasalt_spec_types(max_sad_spec) = ' '
+  character(len=32) :: sad_strat_spec_types(max_sad_spec) = ' '
+
+  ! Mode types excluded from SAD: primary_carbon should not contribute
+  integer, parameter :: num_sad_exclude_modes = 1
+  character(len=32), parameter :: sad_exclude_mode_types(num_sad_exclude_modes) = (/ &
+     'primary_carbon                  ' /)
 
   integer :: ndrydep = 0
   integer,allocatable :: drydep_indices(:)
@@ -132,7 +143,8 @@ contains
     ! Namelist variables
     character(len=16) :: aer_drydep_list(pcnst) = ' '
 
-    namelist /aerosol_nl/ aer_drydep_list, modal_strat_sulfate, modal_accum_coarse_exch, seasalt_emis_scale
+    namelist /aerosol_nl/ aer_drydep_list, modal_strat_sulfate, modal_accum_coarse_exch, seasalt_emis_scale, &
+       sad_chem_spec_types, sad_seasalt_spec_types, sad_strat_spec_types
 
     !-----------------------------------------------------------------------------
 
@@ -157,6 +169,9 @@ contains
     call mpibcast(modal_strat_sulfate,     1,                       mpilog,  0, mpicom)
     call mpibcast(seasalt_emis_scale, 1,                            mpir8,   0, mpicom)
     call mpibcast(modal_accum_coarse_exch, 1,                       mpilog,  0, mpicom)
+    call mpibcast(sad_chem_spec_types,    len(sad_chem_spec_types(1))*max_sad_spec,    mpichar, 0, mpicom)
+    call mpibcast(sad_seasalt_spec_types, len(sad_seasalt_spec_types(1))*max_sad_spec, mpichar, 0, mpicom)
+    call mpibcast(sad_strat_spec_types,  len(sad_strat_spec_types(1))*max_sad_spec,   mpichar, 0, mpicom)
 #endif
 
     drydep_list = aer_drydep_list
@@ -197,6 +212,7 @@ contains
     use modal_aero_gasaerexch, only: modal_aero_gasaerexch_init
     use modal_aero_newnuc,     only: modal_aero_newnuc_init
     use modal_aero_rename,     only: modal_aero_rename_init
+    use aerosol_spec_utils,    only: spec_type_in_list
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -523,25 +539,26 @@ contains
     index_chm_mass = -1
     allocate(index_ssa_mass(nmodes,nspec_max))
     index_ssa_mass = -1
+    allocate(index_strat_mass(nmodes,nspec_max))
+    index_strat_mass = -1
 
     ! for surf_area_dens
     ! define indices associated with the various aerosol types
     do n = 1,nmodes
        call rad_aer_get_info(0, n, mode_type=mode_type, nspec=nspec)
-       if ( trim(mode_type) /= 'primary_carbon') then ! ignore the primary_carbon mode
+       if (.not. spec_type_in_list(mode_type, sad_exclude_mode_types)) then
           do l = 1, nspec
              call rad_aer_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
              index_tot_mass(n,l) = get_spc_ndx(spec_name)
-             if ( trim(spec_type) == 'sulfate'   .or. &
-                  trim(spec_type) == 's-organic' .or. &
-                  trim(spec_type) == 'p-organic' .or. &
-                  trim(spec_type) == 'black-c'   .or. &
-                  trim(spec_type) == 'ammonium') then
+             if (spec_type_in_list(spec_type, sad_chem_spec_types)) then
                 index_chm_mass(n,l) = get_spc_ndx(spec_name)
-             endif
-             if ( trim(spec_type) == 'seasalt')  then
+             end if
+             if (spec_type_in_list(spec_type, sad_seasalt_spec_types)) then
                 index_ssa_mass(n,l) = get_spc_ndx(spec_name)
-             endif
+             end if
+             if (spec_type_in_list(spec_type, sad_strat_spec_types)) then
+                index_strat_mass(n,l) = get_spc_ndx(spec_name)
+             end if
           enddo
        endif
 
@@ -550,6 +567,27 @@ contains
           n_coarse_dust = n
        end if
     enddo
+
+    if (masterproc) then
+       write(iulog,*) 'SAD chemistry spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_chem_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_chem_spec_types(l))
+          end if
+       end do
+       write(iulog,*) 'SAD seasalt spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_seasalt_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_seasalt_spec_types(l))
+          end if
+       end do
+       write(iulog,*) 'SAD stratospheric spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_strat_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_strat_spec_types(l))
+          end if
+       end do
+    end if
 
     if (has_sox) then
        do m = 1, ntot_amode
@@ -993,7 +1031,8 @@ contains
 
     beglev(:ncol)=top_lev
     endlev(:ncol)=ltrop(:ncol)
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, strato_sad, reff_strat )
+    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, strato_sad, reff_strat, &
+                         chm_mass_idx=index_strat_mass )
 
   end subroutine aero_model_strat_surfarea
 
@@ -1330,7 +1369,7 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc, sad_ssa )
+  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc, sad_ssa, chm_mass_idx )
     use mo_constants,    only : pi
     use modal_aero_data, only : nspec_amode, alnsg_amode
 
@@ -1346,6 +1385,7 @@ contains
     real(r8), intent(out) :: reff(:,:)
     real(r8),optional, intent(out) :: sfc(:,:,:)
     real(r8),optional, intent(out) :: sad_ssa(:,:)
+    integer, optional, intent(in)  :: chm_mass_idx(:,:) ! overrides index_chm_mass (e.g., strat SAD uses sulfate-only indices)
 
     ! local vars
     real(r8) :: sad_mode(pcols,pver,ntot_amode),radeff(pcols,pver)
@@ -1355,6 +1395,7 @@ contains
     real(r8) :: chm_mass, tot_mass
     real(r8) :: ssa_mass
     real(r8) :: sad_mode_ssa(pcols,pver,ntot_amode)
+    integer  :: idx_chm_val
 
     !
     ! Compute surface aero for each mode.
@@ -1384,8 +1425,13 @@ contains
              do m=1,nspec_amode(l)
                if ( index_tot_mass(l,m) > 0 ) &
                     tot_mass = tot_mass + mmr(i,k,index_tot_mass(l,m))
-               if ( index_chm_mass(l,m) > 0 ) &
-                    chm_mass = chm_mass + mmr(i,k,index_chm_mass(l,m))
+               if (present(chm_mass_idx)) then
+                  idx_chm_val = chm_mass_idx(l,m)
+               else
+                  idx_chm_val = index_chm_mass(l,m)
+               end if
+               if ( idx_chm_val > 0 ) &
+                    chm_mass = chm_mass + mmr(i,k,idx_chm_val)
                if (present(sad_ssa)) then
                  if ( index_ssa_mass(l,m) > 0 ) &
                       ssa_mass = ssa_mass + mmr(i,k,index_ssa_mass(l,m))
