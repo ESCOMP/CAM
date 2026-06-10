@@ -921,6 +921,7 @@ CONTAINS
        call add_default('CLDHGH_ATLID',cosp_histfile_num,' ')
        call add_default('CLDTOT_ATLID',cosp_histfile_num,' ')
        call add_default('CLD_ATLID',cosp_histfile_num,' ')
+       call add_default('BETAMOL_ATLID',cosp_histfile_num,' ')
        call add_default('CFAD_SR355_ATLID',cosp_histfile_num,' ')
     end if
 
@@ -1119,7 +1120,7 @@ CONTAINS
        end if
 
        if (latlid_sim) then
-          call add_default('BETAMOL_ATLID',cosp_histfile_num,' ')
+          call add_default('BETATOT_ATLID',cosp_histfile_num,' ')
        end if
     end if
 
@@ -2451,7 +2452,7 @@ CONTAINS
     cospIN%cospswathsIN = cospswathsIN
     call t_stopf('construct_cospIN')
 
-    if (lradar_sim .or. (llidar_sim .or. (lisccp_sim .or. (lmisr_sim .or. lmodis_sim)))) then
+    if (lradar_sim .or. (llidar_sim .or. (lisccp_sim .or. (lmisr_sim .or. (lmodis_sim .or. latlid_sim))))) then
        call t_startf("subsample_and_optics")
        ! The arrays passed here contain only active columns and the limited vertical
        ! domain operated on by COSP.  Unsubscripted array arguments have already been
