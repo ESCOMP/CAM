@@ -1,12 +1,6 @@
 module bulk_aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
-  !REMOVECAM
-  use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr
-  !REMOVECAM_END
-  !REMOVECAM: no longer need pbuf and state after CAM is retired
-  use physics_buffer, only: physics_buffer_desc
-  use physics_types,  only: physics_state
-  !REMOVECAM_END
+  use aerosol_mmr_host, only: rad_cnst_get_aer_mmr, aero_host_binding_t
   use cam_abortutils,   only: endrun
   use radiative_aerosol, only: rad_aer_get_props
   use string_utils, only: to_lower
@@ -27,10 +21,10 @@ module bulk_aerosol_state_mod
   type, extends(aerosol_state) :: bulk_aerosol_state
      private
 
-      !REMOVECAM: state and pbuf will be replaced by SIMA MMR API
-      type(physics_state), pointer :: state => null()
-      type(physics_buffer_desc), pointer :: pbuf(:) => null()
-      !REMOVECAM_END
+      ! Opaque host-binding handle used to retrieve aerosol fields from
+      ! host model data; built by aerosol_instances_mod.
+      ! This keeps model-specific data structures outside of the aerosol interface.
+      type(aero_host_binding_t) :: host_
 
       ! Per-object workspace for derived number mixing ratio.
       ! Allocated in constructor, deallocated in destructor.
@@ -77,14 +71,13 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(ncol,state,pbuf,list_idx) result(newobj)
+  function constructor(ncol, host, list_idx) result(newobj)
     !REMOVECAM: host-model specific dimensions
     use ppgrid,           only: pcols, pver
     !REMOVECAM_END
 
     integer, intent(in) :: ncol
-    type(physics_state), target :: state
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    type(aero_host_binding_t), intent(in) :: host
     integer, intent(in), optional :: list_idx
     type(bulk_aerosol_state), pointer :: newobj
 
@@ -96,8 +89,7 @@ contains
        return
     end if
 
-    newobj%state => state
-    newobj%pbuf => pbuf
+    newobj%host_ = host
 
     ! set number of active columns internally to prevent loops from accessing beyond
     ! meaningful data in arrays
@@ -121,8 +113,8 @@ contains
   subroutine destructor(self)
     type(bulk_aerosol_state), intent(inout) :: self
 
-    nullify(self%state)
-    nullify(self%pbuf)
+    ! disassociate the host binding (data referenced within is not owned here)
+    self%host_ = aero_host_binding_t()
 
     if (associated(self%num_work_)) then
        deallocate(self%num_work_)
@@ -187,7 +179,7 @@ contains
 
     ! species_ndx is ignored in the bulk implementation.
     ! bin_ndx is used to identify each individual bulk aerosol.
-    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%state, self%pbuf, mmr)
+    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, self%host_, mmr)
 
   end subroutine get_ambient_mmr
 

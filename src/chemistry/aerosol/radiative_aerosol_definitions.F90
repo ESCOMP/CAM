@@ -8,8 +8,6 @@
 !-----------------------------------------------------------------------------
 module radiative_aerosol_definitions
 
-  use shr_kind_mod,   only: shr_kind_cl
-
   implicit none
   private
   save
@@ -56,7 +54,7 @@ module radiative_aerosol_definitions
      character(len=  1),         pointer :: source(:)  ! 'A' for state (advected), 'N' for pbuf (non-advected),
                                                ! 'M' for mode, 'Z' for zero
      character(len= 64),         pointer :: camname(:) ! name registered in pbuf or constituents
-     character(len=shr_kind_cl), pointer :: radname(:) ! radname is the name as identfied in radiation,
+     character(len=256),         pointer :: radname(:) ! radname is the name as identfied in radiation,
                                                ! must be one of (rgaslist if a gas) or
                                                ! (/fullpath/filename.nc if an aerosol)
      character(len=  1),         pointer :: type(:)    ! 'A' if aerosol, 'G' if gas, 'M' if mode
@@ -90,7 +88,7 @@ module radiative_aerosol_definitions
      ! specie type (as used in MAM code)
      character(len= 32),         pointer :: type(:)
      ! file containing specie properties
-     character(len=shr_kind_cl), pointer :: props(:)
+     character(len=256),         pointer :: props(:)
 
      ! index in pbuf or constituents for number mixing ratio of interstitial species
      integer          :: idx_num_a
@@ -145,7 +143,7 @@ module radiative_aerosol_definitions
      ! species morphology
      character(len= 32),         pointer :: morph(:)
      ! file containing specie properties
-     character(len=shr_kind_cl), pointer :: props(:)
+     character(len=256),         pointer :: props(:)
 
      ! index in pbuf or constituents for number mixing ratio of interstitial species
      integer          :: idx_num_a
@@ -179,7 +177,7 @@ module radiative_aerosol_definitions
   type, public :: aerosol_t
      character(len=1)           :: source         ! A for state (advected), N for pbuf (non-advected), Z for zero
      character(len=64)          :: camname        ! name of constituent in physics state or buffer
-     character(len=shr_kind_cl) :: physprop_file  ! physprop filename
+     character(len=256)         :: physprop_file  ! physprop filename
      character(len=32)          :: mass_name      ! name for mass per layer field in history output
      integer                    :: idx            ! index of constituent in physics state or buffer
      integer                    :: physprop_id    ! ID used to access physical properties from phys_prop module
@@ -188,10 +186,10 @@ module radiative_aerosol_definitions
 !! \section arg_table_aerlist_t
 !! \htmlinclude aerlist_t.html
   type, public :: aerlist_t
-     integer                  :: numaerosols  ! number of aerosols
+     integer                  :: numaerosols = 0  ! number of aerosols
      character(len=2)         :: list_id      ! set to "  " for climate list, or two character integer
                                               ! (include leading zero) to identify diagnostic list
-     type(aerosol_t), pointer :: aer(:)       ! dimension(numaerosols)
+     type(aerosol_t), pointer :: aer(:) => null()  ! dimension(numaerosols)
   end type aerlist_t
 
 !! \section arg_table_modelist_t
@@ -199,7 +197,7 @@ module radiative_aerosol_definitions
   ! storage for modal aerosol components in the climate/diagnostic lists
   type, public :: modelist_t
      ! number of modes
-     integer                             :: nmodes
+     integer                             :: nmodes = 0
 
      ! set to "  " for climate list, or two character integer
      ! (include leading zero) to identify diagnostic list
@@ -207,11 +205,11 @@ module radiative_aerosol_definitions
      character(len=2)                    :: list_id
 
      ! index of the mode in the mode definition object
-     integer,                    pointer :: idx(:)
+     integer,                    pointer :: idx(:) => null()
      ! physprop filename
-     character(len=shr_kind_cl), pointer :: physprop_files(:)
+     character(len=256),         pointer :: physprop_files(:) => null()
      ! index of the mode properties in the physprop object
-     integer,                    pointer :: idx_props(:)
+     integer,                    pointer :: idx_props(:) => null()
   end type modelist_t
 
 !! \section arg_table_binlist_t
@@ -219,7 +217,7 @@ module radiative_aerosol_definitions
   ! storage for bin aerosol components in the climate/diagnostic lists
   type, public :: binlist_t
      ! number of bins
-     integer            :: nbins
+     integer            :: nbins = 0
 
      ! set to "  " for climate list, or two character integer
      ! (include leading zero) to identify diagnostic list
@@ -227,11 +225,11 @@ module radiative_aerosol_definitions
      character(len=2)   :: list_id
 
      ! index of the bin in the bin definition object
-     integer,   pointer :: idx(:)
+     integer,   pointer :: idx(:) => null()
      ! physprop filename
-     character(len=shr_kind_cl), pointer :: physprop_files(:)
+     character(len=256), pointer :: physprop_files(:) => null()
      ! index of the bin properties in the physprop object
-     integer,   pointer :: idx_props(:)
+     integer,   pointer :: idx_props(:) => null()
   end type binlist_t
 
   ! max number of strings in mode definitions
@@ -424,8 +422,8 @@ subroutine list_resolve_physprops(aerlist, modal_aerosol_list, sectional_aerosol
    ! physprop_get_id requires physprop files to have been read.
    ! Do NOT merge with list_populate.
    !
-   ! Host-specific index resolution (get_cam_idx) is handled
-   ! separately by the host module (e.g. aerosol_mmr_cam).
+   ! Host-specific index resolution (get_host_idx) is handled
+   ! separately by the host module (e.g. aerosol_mmr_host).
 
    use phys_prop, only: physprop_get_id
 
@@ -1116,10 +1114,10 @@ subroutine parse_rad_specifier(specifier, namelist_data)
     integer                    :: number, i, j
     integer                    :: ipos, strlen
     integer                    :: astat
-    character(len=shr_kind_cl) :: tmpstr
+    character(len=256) :: tmpstr
     character(len=1)           :: source(n_rad_cnst)
     character(len=64)          :: camname(n_rad_cnst)
-    character(len=shr_kind_cl) :: radname(n_rad_cnst)
+    character(len=256) :: radname(n_rad_cnst)
     character(len=1)           :: type(n_rad_cnst)
     !-------------------------------------------------------------------------
 

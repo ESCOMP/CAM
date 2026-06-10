@@ -340,7 +340,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer( self, aero_props, ncol, nlev,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, ncol, nlev, m, cs, phase, &
                        naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties

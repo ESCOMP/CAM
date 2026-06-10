@@ -3,12 +3,9 @@ module carma_aerosol_state_mod
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
 
   use radiative_aerosol, only: rad_aer_get_info_by_bin
-  !REMOVECAM
-  use aerosol_mmr_cam, only: rad_cnst_get_bin_mmr_by_idx, rad_cnst_get_bin_num
-  !REMOVECAM_END
+  use aerosol_mmr_host, only: rad_cnst_get_bin_mmr_by_idx, rad_cnst_get_bin_num, aero_host_binding_t
   !REMOVECAM: no longer need pbuf and state after CAM is retired
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
-  use physics_types, only: physics_state
+  use physics_buffer, only: pbuf_get_field, pbuf_get_index
   !REMOVECAM_END
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use cam_abortutils, only: endrun
@@ -27,10 +24,10 @@ module carma_aerosol_state_mod
 
   type, extends(aerosol_state) :: carma_aerosol_state
      private
-     !REMOVECAM: state and pbuf will be replaced by SIMA MMR API
-     type(physics_state), pointer :: state => null()
-     type(physics_buffer_desc), pointer :: pbuf(:) => null()
-     !REMOVECAM_END
+      ! Opaque host-binding handle used to retrieve aerosol fields from
+      ! host model data; built by aerosol_instances_mod.
+      ! This keeps model-specific data structures outside of the aerosol interface.
+     type(aero_host_binding_t) :: host_
    contains
 
      procedure :: get_transported
@@ -68,10 +65,9 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(ncol,state,pbuf,list_idx) result(newobj)
+  function constructor(ncol,host,list_idx) result(newobj)
     integer, intent(in) :: ncol
-    type(physics_state), target, optional :: state
-    type(physics_buffer_desc), pointer, optional :: pbuf(:)
+    type(aero_host_binding_t), intent(in) :: host
     integer, intent(in), optional :: list_idx
 
     type(carma_aerosol_state), pointer :: newobj
@@ -84,8 +80,7 @@ contains
        return
     end if
 
-    newobj%state => state
-    newobj%pbuf => pbuf
+    newobj%host_ = host
 
     ! set number of active columns internally to prevent loops from accessing beyond
     ! meaningful data in arrays
@@ -100,8 +95,8 @@ contains
   subroutine destructor(self)
     type(carma_aerosol_state), intent(inout) :: self
 
-    nullify(self%state)
-    nullify(self%pbuf)
+    ! disassociate the host binding (data referenced within is not owned here)
+    self%host_ = aero_host_binding_t()
 
   end subroutine destructor
 
@@ -152,7 +147,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_total_mmr(self%state, igroup, ibin, totmmr, rc)
+    call carma_get_total_mmr(self%host_%state, igroup, ibin, totmmr, rc)
 
     mmr_tot = totmmr(col_ndx,lyr_ndx)
 
@@ -167,7 +162,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
+    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'a', self%host_, mmr)
 
   end subroutine get_ambient_mmr
 
@@ -180,7 +175,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'c', self%state, self%pbuf, mmr)
+    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'c', self%host_, mmr)
 
   end subroutine get_cldbrne_mmr
 
@@ -207,9 +202,9 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'a', self%state, self%pbuf, num)
+    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'a', self%host_, num)
 
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     num(:ncol,:) = nmr(:ncol,:)
 
@@ -238,9 +233,9 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'c', self%state, self%pbuf, num)
+    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'c', self%host_, num)
 
-    call carma_get_number_cld(self%pbuf, igroup, ibin,  ncol, pver, nmr, rc)
+    call carma_get_number_cld(self%host_%pbuf, igroup, ibin,  ncol, pver, nmr, rc)
 
     num(:ncol,:) = nmr(:ncol,:)
 
@@ -302,7 +297,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_dry_radius(self%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
 
     do k = 1,nlev
        do i = 1,ncol
@@ -388,7 +383,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_dry_radius(self%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
 
     do k = 1,nlev
        do i = 1,ncol
@@ -422,7 +417,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_kappa(self%state, igroup, ibin, kappa, rc)
+    call carma_get_kappa(self%host_%state, igroup, ibin, kappa, rc)
 
   end subroutine hygroscopicity
 
@@ -453,7 +448,7 @@ contains
     integer, intent(in) ::  ncol, nlev
     real(r8) :: wtp(ncol,nlev)  ! weight percent of H2SO4/H2O solution for given icol, ilev
 
-    wtp(:,:) = carma_get_wght_pct(ncol,nlev,self%state)
+    wtp(:,:) = carma_get_wght_pct(ncol,nlev,self%host_%state)
 
   end function wgtpct
 
@@ -489,8 +484,8 @@ contains
 
     vol = 0._r8
 
-    call carma_get_dry_radius(self%state, igroup, ibin, raddry, rhodry, rc)
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, raddry, rhodry, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     vol(:ncol,:) = four_thirds_pi * (raddry(:ncol,:)**3) * nmr(:ncol,:) ! units = m3/kg
 
@@ -528,8 +523,8 @@ contains
 
     vol = 0._r8
 
-    call carma_get_wet_radius(self%state, igroup, ibin, radwet, rhowet, rc)
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_wet_radius(self%host_%state, igroup, ibin, radwet, rhowet, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     vol(:ncol,:) = four_thirds_pi * (radwet(:ncol,:)**3) * nmr(:ncol,:) ! units = m3/kg
 
@@ -589,7 +584,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_wet_radius(self%state, igroup, ibin, radwet, rhowet, rc)
+    call carma_get_wet_radius(self%host_%state, igroup, ibin, radwet, rhowet, rc)
 
     diam(:ncol,:nlev) = 2._r8*radwet(:ncol,:nlev)
 
@@ -623,7 +618,7 @@ contains
     ! for each bin can be calculated by normalizing the mass transfer rate in each bin:
     ! M/D^2 as: fra = Mi/D^2/sum(Mi/D^2).
 
-    ncol = self%state%ncol
+    ncol = self%host_%state%ncol
     nbins = aero_props%nbins()
     faqgain(:,:,:) = 0._r8
 
@@ -637,7 +632,7 @@ contains
        shortname = bin_name(:nchr)
        call carma_get_group_by_name(shortname, igroup, rc)
        read(bin_name(nchr+1:),*) jbin
-       call carma_get_dry_radius(self%state, igroup, jbin, raddry, rhodry, rc)
+       call carma_get_dry_radius(self%host_%state, igroup, jbin, raddry, rhodry, rc)
        if (index(bin_name,'MXAER')>0) then
           rad_cm(ibin,:ncol,:) = raddry(:ncol,:)*1.e2_r8 ! m -> cm
        end if

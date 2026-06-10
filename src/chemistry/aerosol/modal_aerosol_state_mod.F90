@@ -3,12 +3,9 @@ module modal_aerosol_state_mod
   use shr_spfn_mod, only: erf => shr_spfn_erf
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props
-  !REMOVECAM
-  use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr, rad_cnst_get_mode_num
-  !REMOVECAM_END
+  use aerosol_mmr_host, only: rad_cnst_get_aer_mmr, rad_cnst_get_mode_num, aero_host_binding_t
   !REMOVECAM: no longer need pbuf and state after CAM is retired
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
-  use physics_types, only: physics_state
+  use physics_buffer, only: pbuf_get_field, pbuf_get_index
   !REMOVECAM_END
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use physconst,  only: rhoh2o
@@ -23,10 +20,10 @@ module modal_aerosol_state_mod
 
   type, extends(aerosol_state) :: modal_aerosol_state
      private
-     !REMOVECAM: state and pbuf will be replaced by SIMA MMR API
-     type(physics_state), pointer :: state => null()
-     type(physics_buffer_desc), pointer :: pbuf(:) => null()
-     !REMOVECAM_END
+      ! Opaque host-binding handle used to retrieve aerosol fields from
+      ! host model data; built by aerosol_instances_mod.
+      ! This keeps model-specific data structures outside of the aerosol interface.
+     type(aero_host_binding_t) :: host_
    contains
 
      procedure :: get_transported
@@ -66,10 +63,9 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(ncol,state,pbuf,list_idx) result(newobj)
+  function constructor(ncol, host, list_idx) result(newobj)
     integer, intent(in) :: ncol
-    type(physics_state), target :: state
-    type(physics_buffer_desc), pointer :: pbuf(:)
+    type(aero_host_binding_t), intent(in) :: host
     integer, intent(in), optional :: list_idx
 
     type(modal_aerosol_state), pointer :: newobj
@@ -83,8 +79,7 @@ contains
     end if
 
     call newobj%set_ncol(ncol)
-    newobj%state => state
-    newobj%pbuf => pbuf
+    newobj%host_ = host
 
     if (present(list_idx)) call newobj%set_list_idx(list_idx)
 
@@ -95,8 +90,8 @@ contains
   subroutine destructor(self)
     type(modal_aerosol_state), intent(inout) :: self
 
-    nullify(self%state)
-    nullify(self%pbuf)
+    ! disassociate the host binding (data referenced within is not owned here)
+    self%host_ = aero_host_binding_t()
 
   end subroutine destructor
 
@@ -139,7 +134,7 @@ contains
     mmr_tot = 0._r8
 
     do spec_ndx=1,aero_props%nspecies(bin_ndx)
-       call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, spec_ndx, 'a', self%state, self%pbuf, mmrptr)
+       call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, spec_ndx, 'a', self%host_, mmrptr)
        mmr_tot = mmr_tot + mmrptr(col_ndx,lyr_ndx)
     end do
 
@@ -154,7 +149,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
+    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, species_ndx, 'a', self%host_, mmr)
   end subroutine get_ambient_mmr
 
   !------------------------------------------------------------------------------
@@ -166,7 +161,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, species_ndx, 'c', self%state, self%pbuf, mmr)
+    call rad_cnst_get_aer_mmr(self%list_idx_, bin_ndx, species_ndx, 'c', self%host_, mmr)
   end subroutine get_cldbrne_mmr
 
   !------------------------------------------------------------------------------
@@ -177,7 +172,7 @@ contains
     integer, intent(in) :: bin_ndx     ! bin index
     real(r8), pointer   :: num(:,:)    ! number densities
 
-    call rad_cnst_get_mode_num(self%list_idx_, bin_ndx, 'a', self%state, self%pbuf, num)
+    call rad_cnst_get_mode_num(self%list_idx_, bin_ndx, 'a', self%host_, num)
   end subroutine get_ambient_num
 
   !------------------------------------------------------------------------------
@@ -188,7 +183,7 @@ contains
     integer, intent(in) :: bin_ndx             ! bin index
     real(r8), pointer :: num(:,:)
 
-    call rad_cnst_get_mode_num(self%list_idx_, bin_ndx, 'c', self%state, self%pbuf, num)
+    call rad_cnst_get_mode_num(self%list_idx_, bin_ndx, 'c', self%host_, num)
   end subroutine get_cldbrne_num
 
   !------------------------------------------------------------------------------
@@ -252,7 +247,7 @@ contains
              wght(:ncol,:) = 1._r8
           else
              call rad_aer_get_mode_props(0, bin_ndx, sigmag=sigmag_aitken)
-             call pbuf_get_field(self%pbuf, pbuf_get_index('DGNUM' ), dgnum)
+             call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUM' ), dgnum)
              do k = 1,nlev
                 do i = 1,ncol
                    if (dgnum(i,k,bin_ndx) > 0._r8) then
@@ -313,7 +308,7 @@ contains
              wght = 1._r8
           else
              call rad_aer_get_mode_props(0, bin_ndx, sigmag=sigmag_aitken)
-             call pbuf_get_field(self%pbuf, pbuf_get_index('DGNUM' ), dgnum)
+             call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUM' ), dgnum)
 
              if (dgnum(col_ndx,lyr_ndx,bin_ndx) > 0._r8) then
                 ! only allow so4 with D>0.1 um in ice nucleation
@@ -486,8 +481,8 @@ contains
 
     if (self%list_idx_ == 0) then
        ! water uptake and wet radius for the climate list has already been calculated
-       call pbuf_get_field(self%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet_m)
-       call pbuf_get_field(self%pbuf, pbuf_get_index('QAERWAT'),  qaerwat_m)
+       call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet_m)
+       call pbuf_get_field(self%host_%pbuf, pbuf_get_index('QAERWAT'),  qaerwat_m)
 
        dgnumwet(:ncol,:nlev) = dgnumwet_m(:ncol,:nlev,bin_idx)
        qaerwat (:ncol,:nlev) =  qaerwat_m(:ncol,:nlev,bin_idx)
@@ -505,9 +500,9 @@ contains
           qaerwat = -huge(1._r8)
           return
        end if
-       call modal_aero_calcsize_diag(self%state, self%pbuf, aero_props, self, dgnumdry_m, hygro_m, &
+       call modal_aero_calcsize_diag(self%host_%state, self%host_%pbuf, aero_props, self, dgnumdry_m, hygro_m, &
                                      dryvol_m, dryrad_m, drymass_m, so4dryvol_m, naer_m)
-       call modal_aero_wateruptake_dr(self%state, self%pbuf, aero_props, self, dgnumdry_m, dgnumwet_m, &
+       call modal_aero_wateruptake_dr(self%host_%state, self%host_%pbuf, aero_props, self, dgnumdry_m, dgnumwet_m, &
                                       qaerwat_m, wetdens_m, hygro_m, dryvol_m, dryrad_m, &
                                       drymass_m, so4dryvol_m, naer_m)
 
@@ -622,7 +617,7 @@ contains
 
     real(r8), pointer :: dgnumwet(:,:,:)
 
-    call pbuf_get_field(self%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+    call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
 
     diam(:ncol,:nlev) = dgnumwet(:ncol,:nlev,bin_idx)
 
@@ -738,7 +733,7 @@ contains
     real(r8) :: sumf
     real(r8), allocatable :: qnum_c(:)
 
-    ncol = self%state%ncol
+    ncol = self%ncol()
     nbins = aero_props%nbins()
 
     !-------------------------------------------------------------------------

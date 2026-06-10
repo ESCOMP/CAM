@@ -6,7 +6,7 @@ module radiative_aerosol
 !
 ! Provides query routines (rad_aer_get_info*, rad_aer_get_props*, etc.) and
 ! property-access routines that wrap phys_prop lookups.
-! Init is via rad_aer_init (uses host-specific module aerosol_mmr_cam).
+! Init is via rad_aer_init (uses host-specific module aerosol_mmr_host).
 !
 !------------------------------------------------------------------------------------------------
 
@@ -1192,11 +1192,9 @@ subroutine rad_aer_init()
       N_DIAG, modes, bins, active_calls, &
       bulk_aerosol_list, modal_aerosol_list, sectional_aerosol_list, list_resolve_physprops
 
-   !REMOVECAM: aerosol_mmr_cam handles CAM-specific index resolution
-   use aerosol_mmr_cam, only: aerosol_mmr_init, &
+   use aerosol_mmr_host, only: aerosol_mmr_init, &
       resolve_mode_idx, resolve_bin_idx, resolve_bulk_idx, &
       rad_aer_diag_init
-   !REMOVECAM_END
 
    integer :: i
    character(len=*), parameter :: subname = 'rad_aer_init'
@@ -1208,24 +1206,20 @@ subroutine rad_aer_init()
    ! Read physical properties from data files
    call physprop_init()
 
-   !REMOVECAM: resolve host-specific indices (CAM uses pbuf and state)
+   ! Resolve host-specific indices
    call resolve_mode_idx(modes)
    call resolve_bin_idx(bins)
-   !REMOVECAM_END
 
    ! Resolve physprop indices for aerosol lists
    do i = 0, N_DIAG
       if (active_calls(i)) then
-         !REMOVECAM: resolve host-specific indices (CAM uses pbuf and state)
          call resolve_bulk_idx(bulk_aerosol_list(i))
-         !REMOVECAM_END
          call list_resolve_physprops(bulk_aerosol_list(i), modal_aerosol_list(i), sectional_aerosol_list(i))
       end if
    end do
 
-   !REMOVECAM: history add calls for radiative aerosol diagnostics.
+   ! Register aerosol diagnostic history fields
    call rad_aer_diag_init(bulk_aerosol_list(0))
-   !REMOVECAM_END
 
 end subroutine rad_aer_init
 

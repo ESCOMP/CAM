@@ -242,6 +242,7 @@ contains
     use modal_aerosol_state_mod, only: modal_aerosol_state
     use carma_aerosol_state_mod, only: carma_aerosol_state
     use bulk_aerosol_state_mod,  only: bulk_aerosol_state
+    use aerosol_mmr_host, only: aero_host_binding, aero_host_binding_t
     use physics_types,  only: physics_state
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
     use ppgrid,         only: begchunk, endchunk
@@ -252,6 +253,7 @@ contains
 
     integer :: iaermod, ilist, lchnk, istat
     type(physics_buffer_desc), pointer :: pbuf(:)
+    type(aero_host_binding_t) :: host
     character(len=*), parameter :: subname = 'aerosol_instances_init_states: '
 
     if (num_aero_models_ < 1) return
@@ -266,27 +268,28 @@ contains
 
        do lchnk = begchunk, endchunk
           pbuf => pbuf_get_chunk(pbuf2d, lchnk)
+          host = aero_host_binding(phys_state(lchnk), pbuf)
 
           iaermod = 0
           if (modal_active_) then
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     modal_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
+                     modal_aerosol_state(phys_state(lchnk)%ncol, host, ilist)
              end if
           end if
           if (carma_active_) then
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     carma_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
+                     carma_aerosol_state(phys_state(lchnk)%ncol, host, ilist)
              end if
           end if
           if (bulk_active_) then
              iaermod = iaermod + 1
              if (associated(aero_props_all(iaermod, ilist)%obj)) then
                 aero_states_all(iaermod, ilist, lchnk)%obj => &
-                     bulk_aerosol_state(phys_state(lchnk)%ncol, phys_state(lchnk), pbuf, ilist)
+                     bulk_aerosol_state(phys_state(lchnk)%ncol, host, ilist)
              end if
           end if
        end do
@@ -318,6 +321,7 @@ contains
     use modal_aerosol_state_mod, only: modal_aerosol_state
     use carma_aerosol_state_mod, only: carma_aerosol_state
     use bulk_aerosol_state_mod,  only: bulk_aerosol_state
+    use aerosol_mmr_host, only: aero_host_binding, aero_host_binding_t
     use physics_types,  only: physics_state
     use physics_buffer, only: physics_buffer_desc
     use cam_abortutils, only: endrun
@@ -329,6 +333,7 @@ contains
     integer,                   intent(out)              :: nstates           ! number of aerosol states created
 
     integer :: iaermod, istat
+    type(aero_host_binding_t) :: host
     character(len=*), parameter :: subname = 'aerosol_instances_create_states: '
 
     nstates = num_aero_models_
@@ -339,18 +344,20 @@ contains
        call endrun(subname//'allocation error: aero_states')
     end if
 
+    host = aero_host_binding(state, pbuf)
+
     iaermod = 0
     if (modal_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => modal_aerosol_state(state%ncol, state, pbuf, list_idx)
+       aero_states(iaermod)%obj => modal_aerosol_state(state%ncol, host, list_idx)
     end if
     if (carma_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => carma_aerosol_state(state%ncol, state, pbuf, list_idx)
+       aero_states(iaermod)%obj => carma_aerosol_state(state%ncol, host, list_idx)
     end if
     if (bulk_active_) then
        iaermod = iaermod + 1
-       aero_states(iaermod)%obj => bulk_aerosol_state(state%ncol, state, pbuf, list_idx)
+       aero_states(iaermod)%obj => bulk_aerosol_state(state%ncol, host, list_idx)
     end if
 
   end subroutine aerosol_instances_create_states
