@@ -253,9 +253,9 @@ def _build_tuvx(caseroot, libroot, bldroot):
             cmake_args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
             cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
             cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+            cmake_args += "-DCMAKE_DISABLE_FIND_PACKAGE_yaml-cpp=1 "
             if (case.get_value("MACH") == "izumi") :
                 cmake_args += f"-DCMAKE_PREFIX_PATH={arg_dict['NETCDF_PATH']} "
-                cmake_args += f"-DCMAKE_IGNORE_PATH={os.environ.get('PYTHONHOME')} "
             if (case.get_value("MACH") == "izumi") and (case.get_value('COMPILER') == "nag") :
                 cmake_args += "-DCMAKE_Fortran_FLAGS='-C=all -g ' "
             else :
