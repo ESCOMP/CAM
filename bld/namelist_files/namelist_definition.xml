@@ -2530,7 +2530,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP ISCCP data. The sampling 
 "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -2538,7 +2538,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP MISR data. The sampling 
 "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -2546,7 +2546,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP MODIS data. The sampling 
 "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -2554,7 +2554,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data. The  
 sampling "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -2562,7 +2562,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP PARASOL data. The sampling 
 "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -2570,7 +2570,7 @@ Default: none
        group="cospsimulator_nl" valid_values="" >
 Swath localtimes (hours) for masking COSP ATLID data. The sampling 
 "local time" refers to a linear shift from UTC as a function of a 
-gridcell?s longitude (t_local = t_UTC ? longitude * 24/360).
+gridcell's longitude (t_local = t_UTC - longitude * 24/360).
 Default: none
 </entry>
 
@@ -4671,6 +4671,7 @@ Default: 0.22
        group="clubb_mf_nl" valid_values="" >
 Weighting factor for CLUBB TKE on plume entrainment
 Default: 0.0
+</entry>
 
 <entry id="clubb_mf_nup" type="integer" category="conv"
        group="clubb_mf_nl" valid_values="" >
@@ -4688,6 +4689,7 @@ Default: 10.e3
        group="clubb_mf_nl" valid_values="" >
 Fraction of autoconversion partitioned to downdrafts (zero means no downdrafts)
 Default: 0.0
+</entry>
 
 <entry id="do_clubb_mf_coldpool" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
@@ -4699,26 +4701,31 @@ Default: .false.
        group="clubb_mf_nl" valid_values="" >
 Linear enhancement factor to the downdrafts used for the cold pool calculations
 Default: 200.0
+</entry>
 
 <entry id="clubb_mf_ddbeta" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Exponent enhancement factor to the downdrafts used for the cold pool calculations
 Default: 1.0
+</entry>
 
 <entry id="clubb_mf_pwfac" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Enhancement factor for the near surface pressure drag term in downdraft equation
 Default: 1.0
+</entry>
 
 <entry id="clubb_mf_ddexp" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Elevation power law exponent for downdrafts velocities in the subcloud layer
 Default: 3.0
+</entry>
 
 <entry id="clubb_mf_cldfrac_fac" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Factor to increase the ensemble MF plume cloud fractions
 Default: 1.0
+</entry>
 
 <entry id="do_clubb_mf_ustar" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >

@@ -689,8 +689,8 @@ module clubb_intr
     call pbuf_add_field('RCM_CLUBB_macmic'    ,'physpkg',  dtype_r8, (/pcols,pver*cld_macmic_num_steps/), rcm_macmic_idx)
     call pbuf_add_field('CLDFRAC_CLUBB_macmic','physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
     call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
-    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
-    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
 
     if (do_clubb_mf) then
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
@@ -1958,8 +1958,8 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_upmf'     , (/ 'ilev', 'nens' /), 'A', 'kg/m2/s' , 'Plume updraft mass flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_upqt'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft total water mixing ratio (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_upthl'    , (/ 'ilev', 'nens' /), 'A', 'K'       , 'Plume updraft liquid potential temperature (EDMF)', sampled_on_subcycle=.true. )
-      call addfld ( 'edmf_upthv'    , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft virtual potential temperature (EDMF)', sampled_on_subcycle=.true. )
-      call addfld ( 'edmf_upth'     , (/ 'ilev', 'nens' /), 'A', 'm/s'     , 'Plume updraft potential temperature (EDMF)', sampled_on_subcycle=.true. )
+      call addfld ( 'edmf_upthv'    , (/ 'ilev', 'nens' /), 'A', 'K'     , 'Plume updraft virtual potential temperature (EDMF)', sampled_on_subcycle=.true. )
+      call addfld ( 'edmf_upth'     , (/ 'ilev', 'nens' /), 'A', 'K'     , 'Plume updraft potential temperature (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_upqc'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume updraft condensate mixing ratio (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_upent'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft entrainment rate (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_updet'    , (/ 'ilev', 'nens' /), 'A', '1/m'     , 'Plume updraft dettrainment rate (EDMF)', sampled_on_subcycle=.true. )
