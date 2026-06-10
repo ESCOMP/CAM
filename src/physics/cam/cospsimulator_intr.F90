@@ -3305,6 +3305,7 @@ CONTAINS
        end if
        if (latlid_sim) then
           call outfld('BETATOT_ATLID',betatot_atlid,pcols,lchnk)
+       end if
     end if
     call t_stopf("writing_output")
 #endif
