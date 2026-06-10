@@ -109,7 +109,7 @@ module aerosol_properties_mod
      !  long wave species refractive indices
      !  species morphology
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro, &
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
           spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
           dryrad)
        import :: aerosol_properties, r8
@@ -118,6 +118,7 @@ module aerosol_properties_mod
        integer, intent(in) :: species_ndx         ! species index
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+       real(r8), optional, intent(out) :: spec_mw ! species molecular weight
        character(len=*), optional, intent(out) :: spectype  ! species type
        character(len=*), optional, intent(out) :: specname  ! species name
        character(len=*), optional, intent(out) :: specmorph ! species morphology
@@ -250,13 +251,13 @@ module aerosol_properties_mod
      !------------------------------------------------------------------------------
      ! apply max / min to number concentration
      !------------------------------------------------------------------------------
-     subroutine aero_apply_num_limits( self, naerosol, vaerosol, istart, istop, m )
+     subroutine aero_apply_num_limits( self, naerosol, vaerosol, ncol, nlev, m )
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
-       real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-       real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-       integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-       integer,  intent(in) :: istop           ! stop column index
+       real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+       real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+       integer,  intent(in) :: ncol            ! number of columns
+       integer,  intent(in) :: nlev            ! number of vert levels
        integer,  intent(in) :: m               ! mode or bin index
 
      end subroutine aero_apply_num_limits

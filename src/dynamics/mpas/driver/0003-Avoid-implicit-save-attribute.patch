@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kuan-Chih Wang <kuanchihw@ucar.edu>
+Date: Tue, 21 Apr 2026 14:49:58 -0600
+Subject: [PATCH] Avoid implicit `save` attribute during variable declaration
+
+In Fortran, explicit initialization of a variable implies the `save` attribute,
+which may have surprising result and is not thread-safe.
+
+Avoid doing it to conform to the Fortran best practices.
+---
+ src/core_atmosphere/dynamics/mpas_atm_time_integration.F | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+index b6e620fe1..227fbde86 100644
+--- a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
++++ b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+@@ -1918,7 +1918,7 @@ module atm_time_integration
+       type (mpas_pool_type), pointer :: diag_physics
+       type (mpas_pool_type), pointer :: mesh
+       type (mpas_pool_type), pointer :: tend
+-      type (mpas_pool_type), pointer :: tend_physics => null()
++      type (mpas_pool_type), pointer :: tend_physics
+       type (mpas_pool_type), pointer :: lbc  ! regional_MPAS addition
+ 
+       real (kind=RKIND), dimension(:,:), pointer :: w
+-- 
+2.48.1
+

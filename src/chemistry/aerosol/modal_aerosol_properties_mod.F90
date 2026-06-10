@@ -3,7 +3,7 @@ module modal_aerosol_properties_mod
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props, rad_aer_get_props
-
+  use modal_aero_data, only: specmw_amode
   implicit none
 
   private
@@ -407,7 +407,7 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
     use cam_abortutils, only: endrun
@@ -417,6 +417,7 @@ contains
     integer, intent(in) :: species_ndx         ! species index
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     character(len=*), optional, intent(out) :: spectype  ! species type
     character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
@@ -428,6 +429,10 @@ contains
     call rad_aer_get_props(self%list_idx_, bin_ndx, species_ndx, &
                                 density_aer=density, hygro_aer=hygro, spectype=spectype, &
                                 refindex_aer_sw=refindex_sw, refindex_aer_lw=refindex_lw)
+
+    if (present(spec_mw)) then
+       spec_mw = specmw_amode(species_ndx,bin_ndx)
+    end if
 
     if (present(specname)) then
        call rad_aer_get_info(self%list_idx_, bin_ndx, species_ndx, spec_name=specname)
@@ -621,22 +626,24 @@ contains
   !------------------------------------------------------------------------------
   ! apply max / min to number concentration
   !------------------------------------------------------------------------------
-  subroutine apply_number_limits( self, naerosol, vaerosol, istart, istop, m )
+  subroutine apply_number_limits( self, naerosol, vaerosol, ncol, nlev, m )
     class(modal_aerosol_properties), intent(in) :: self
-    real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-    real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-    integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-    integer,  intent(in) :: istop           ! stop column index
+    real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+    real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+    integer,  intent(in) :: ncol            ! number of columns
+    integer,  intent(in) :: nlev            ! number of vert levels
     integer,  intent(in) :: m               ! mode or bin index
 
-    integer :: i
+    integer :: i,k
 
     ! adjust number so that dgnumlo < dgnum < dgnumhi
     ! -- the diameter falls within the lower and upper limits which are
     !    represented by voltonumhi and voltonumblo values, respectively
-    do i = istart, istop
-       naerosol(i) = max(naerosol(i), vaerosol(i)*self%voltonumbhi_(m))
-       naerosol(i) = min(naerosol(i), vaerosol(i)*self%voltonumblo_(m))
+    do k = 1,nlev
+       do i = 1,ncol
+          naerosol(i,k) = max(naerosol(i,k), vaerosol(i,k)*self%voltonumbhi_(m))
+          naerosol(i,k) = min(naerosol(i,k), vaerosol(i,k)*self%voltonumblo_(m))
+       end do
     end do
 
   end subroutine apply_number_limits

@@ -10,9 +10,10 @@ module modal_aerosol_state_mod
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use physics_types, only: physics_state
   !REMOVECAM_END
-  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use physconst,  only: rhoh2o
   use cam_abortutils, only: endrun
+  use ppgrid, only:  pver
 
   implicit none
 
@@ -49,6 +50,7 @@ module modal_aerosol_state_mod
      procedure :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: wgtpct
+     procedure :: aqu_gain_binfraction
 
      final :: destructor
 
@@ -215,7 +217,6 @@ contains
   ! return aerosol bin size weights for a given bin
   !------------------------------------------------------------------------------
   subroutine icenuc_size_wght_arr(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
-    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -278,7 +279,6 @@ contains
   ! return aerosol bin size weights for a given bin, column and vertical layer
   !------------------------------------------------------------------------------
   subroutine icenuc_size_wght_val(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
-    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -338,9 +338,6 @@ contains
   ! returns aerosol type weights for a given aerosol type and bin
   !------------------------------------------------------------------------------
   subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
-
-    use aerosol_properties_mod, only: aerosol_properties
-    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -418,7 +415,6 @@ contains
   ! as heterogeneous freezing nuclei
   !------------------------------------------------------------------------------
   function hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
-    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin number
@@ -634,7 +630,6 @@ contains
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
   function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
-    use aerosol_properties_mod, only: aero_name_len
 
     class(modal_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
@@ -722,5 +717,89 @@ contains
     wtp(:,:) = -huge(1._r8)
 
   end function wgtpct
+
+  !------------------------------------------------------------------------------
+  ! aqueous chemistry partitioning -- used in sox_cldaero_update
+  !------------------------------------------------------------------------------
+  subroutine aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+
+    class(modal_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: type                ! aerosol species type
+    real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+    real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+    real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
+
+    character(len=aero_name_len) :: modetype, spectype
+    integer :: i,k,l,m,n,mm, ncol, nbins
+    integer :: accum_n
+    real(r8) :: sumf
+    real(r8), allocatable :: qnum_c(:)
+
+    ncol = self%state%ncol
+    nbins = aero_props%nbins()
+
+    !-------------------------------------------------------------------------
+    ! compute factors for partitioning aerosol mass gains among modes.
+    ! The factors are proportional to the activated particle MR for each
+    ! mode, which is the MR of cloud drops "associated with" the mode
+    ! thus we are assuming the cloud drop size is independent of the
+    ! associated aerosol mode properties (i.e., drops associated with
+    ! Aitken and coarse sea-salt particles are same size)
+    !
+    ! qnum_c(n) = activated particle number MR for mode n (these are just
+    ! used for partitioning among modes, so don't need to divide by cldfrc)
+    !-------------------------------------------------------------------------
+
+    accum_n = -1
+    do m = 1, nbins
+       call rad_aer_get_info(0, m, mode_type=modetype)
+       if (modetype=='accum') then
+          accum_n = m
+       end if
+    end do
+
+    allocate(qnum_c(nbins))
+
+    faqgain = 0.0_r8
+
+    lev_loop: do k = 1,pver
+       col_loop: do i = 1,ncol
+          do m = 1, nbins
+             mm = aero_props%indexer(m,0)
+             qnum_c(m) = max( 0.0_r8, qcw(i,k,mm) )
+           end do
+
+          ! force qnum_c(n) to be positive for n=modeptr_accum or n=1
+          n = accum_n
+          if (n <= 0) n = 1
+          qnum_c(n) = max( 1.0e-10_r8, qnum_c(n) )
+
+          ! faqgain_so4(n) = fraction of total so4_c gain going to mode n
+          ! these are proportional to the activated particle MR for each mode
+          sumf = 0.0_r8
+          do n = 1, nbins
+             do l = 1, aero_props%nspecies(n)
+                call  aero_props%get(n,l, spectype=spectype)
+                if (trim(spectype) == trim(type)) then
+                   faqgain(n,i,k) = qnum_c(n)
+                   sumf = sumf + faqgain(n,i,k)
+                end if
+             end do
+          end do
+
+          if (sumf > 0.0_r8) then
+             do n = 1, nbins
+                faqgain(n,i,k) = faqgain(n,i,k) / sumf
+             end do
+          end if
+          ! at this point (sumf <= 0.0) only when all the faqgain_so4 are zero
+
+       end do col_loop
+    end do lev_loop
+
+    deallocate(qnum_c)
+
+  end subroutine aqu_gain_binfraction
 
 end module modal_aerosol_state_mod
