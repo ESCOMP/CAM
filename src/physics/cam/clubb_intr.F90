@@ -689,8 +689,8 @@ module clubb_intr
     call pbuf_add_field('RCM_CLUBB_macmic'    ,'physpkg',  dtype_r8, (/pcols,pver*cld_macmic_num_steps/), rcm_macmic_idx)
     call pbuf_add_field('CLDFRAC_CLUBB_macmic','physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
     call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
-    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
-    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
 
     if (do_clubb_mf) then
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
