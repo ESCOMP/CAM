@@ -2291,6 +2291,10 @@ contains
     real(r8) :: prec_sed_macmic(pcols)
     real(r8) :: snow_sed_macmic(pcols)
 
+    ! CLUBB+MF
+    real(r8) :: prec_sh_macmic(pcols)
+    real(r8) :: snow_sh_macmic(pcols)
+
     ! energy checking variables
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
