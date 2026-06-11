@@ -234,6 +234,14 @@ def _build_tuvx(caseroot, libroot, bldroot):
 
     with Case(caseroot, read_only=False) as case:
         config_opts = case.get_value("CAM_CONFIG_OPTS")
+
+        # Remove any TUV-x link options set by a previous build, so that
+        # re-building the case does not accumulate duplicate or stale
+        # options in CAM_LINKED_LIBS:
+        linked_libs = case.get_value("CAM_LINKED_LIBS",
+                                     subgroup="build_component_cam")
+        tuvx_link_opts = " -ltuvx -lyaml-cpp"
+        new_linked_libs = re.sub(r"\s*-ltuvx -lyaml-cpp", "", linked_libs)
         if "-tuvx" in config_opts:
             bldpath = os.path.join(bldroot, "tuv-x")
             if not os.path.exists(bldpath):
