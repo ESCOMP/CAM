@@ -65,6 +65,8 @@ module co2_cycle
 
    integer, dimension(ncnst) :: c_i                   ! global index
 
+   logical :: local_co2 = .false.  ! .true. if CO2 const. added in this module
+
 !===============================================================================
 contains
 !===============================================================================
@@ -141,10 +143,10 @@ subroutine co2_register
 !-------------------------------------------------------------------------------
 
    use physconst,      only: mwco2, cpair
-   use constituents,   only: cnst_add
+   use constituents,   only: cnst_get_ind, cnst_add
 
    ! Local variables
-   real(r8), dimension(ncnst) :: &       
+   real(r8), dimension(ncnst) :: &
       c_mw,    &! molecular weights
       c_cp,    &! heat capacities
       c_qmin    ! minimum mmr
@@ -159,10 +161,16 @@ subroutine co2_register
    c_cp   = (/     cpair,     cpair,     cpair,     cpair /)
    c_qmin = (/ 1.e-20_r8, 1.e-20_r8, 1.e-20_r8, 1.e-20_r8 /)
 
-   ! register CO2 constiuents as dry tracers, set indices
+   ! register any new CO2 constiuents as dry tracers, set indices
 
    do i = 1, ncnst
-      call cnst_add(c_names(i), c_mw(i), c_cp(i), c_qmin(i), c_i(i), longname=c_names(i), mixtype='dry')
+      call cnst_get_ind(c_names(icnst), c_i(icnst), abort=.false.)
+      if (c_i(icnst) < 0) then
+         call cnst_add(c_names(i), c_mw(i), c_cp(i), c_qmin(i), c_i(i), longname=c_names(i), mixtype='dry')
+         local_co2 = .true.
+      else
+         local_co2 = .false.
+      end if
 
       select case (trim(c_names(i)))
       case ('CO2_OCN')
@@ -304,8 +312,10 @@ subroutine co2_init
       mm = c_i(m)
 
       call addfld(trim(cnst_name(mm))//'_BOT', horiz_only,  'A', 'kg/kg',   trim(cnst_longname(mm))//', Bottom Layer')
-      call addfld(cnst_name(mm),               (/ 'lev' /), 'A', 'kg/kg',   cnst_longname(mm))
-      call addfld(sflxnam(mm),                 horiz_only,  'A', 'kg/m2/s', trim(cnst_name(mm))//' surface flux')
+      if ((trim(cnst_name(mm)) /= 'CO2') .or. local_co2) then
+         call addfld(cnst_name(mm),            (/ 'lev' /), 'A', 'kg/kg',   cnst_longname(mm))
+         call addfld(sflxnam(mm),              horiz_only,  'A', 'kg/m2/s', trim(cnst_name(mm))//' surface flux')
+      end if
 
       call add_default(cnst_name(mm), 1, ' ')
       call add_default(sflxnam(mm),   1, ' ')
