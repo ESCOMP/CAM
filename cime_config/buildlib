@@ -298,10 +298,10 @@ def _build_tuvx(caseroot, libroot, bldroot):
             os.symlink(_yaml_cpp_lib_path(libroot), dst)
 
             # Add TUVX to CAM linked library list:
-            linked_libs = case.get_value("CAM_LINKED_LIBS",
-                                         subgroup="build_component_cam")
-            tuvx_link_opts = " -ltuvx -lyaml-cpp"
-            case.set_value("CAM_LINKED_LIBS", linked_libs + tuvx_link_opts)
+            new_linked_libs = tuvx_link_opts.strip() + " " + new_linked_libs
+
+        if new_linked_libs != linked_libs:
+            case.set_value("CAM_LINKED_LIBS", new_linked_libs)
 
 ###############################################################################
 def _tuvx_include_dir(libroot):
