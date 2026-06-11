@@ -752,7 +752,7 @@ if (not $waccm_phys) {
 
 # Check TUV-X configuration
 my $tuvx_active = $nl->get_value('tuvx_active');
-if ($tuvx_active =~ /$TRUE/) {
+if ($tuvx_active =~ /$TRUE/io) {
     my $tuvx_config = $cfg->get('tuvx');
     if (!$tuvx_config) {
 	die "$ProgName - ERROR: must use -tuvx CAM configure flag \n";
