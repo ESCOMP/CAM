@@ -526,8 +526,6 @@ subroutine microp_aero_run ( &
 
    real(r8) :: rho(pcols,pver)     ! air density (kg m-3)
 
-   real(r8) :: lcldm(pcols,pver)   ! liq cloud fraction
-
    real(r8) :: lcldn(pcols,pver)   ! fractional coverage of new liquid cloud
    real(r8) :: lcldo(pcols,pver)   ! fractional coverage of old liquid cloud
    real(r8) :: cldliqf(pcols,pver) ! fractional of total cloud that is liquid

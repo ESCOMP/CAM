@@ -270,8 +270,6 @@ subroutine resolve_bulk_idx(aerlist)
 
    ! Resolve host-specific indices for bulk aerosols.
    ! Must be called before list_resolve_physprops (which resolves physprop IDs).
-
-   use cam_abortutils, only: endrun
    use radiative_aerosol_definitions, only: aerlist_t
 
    type(aerlist_t), intent(inout) :: aerlist
@@ -478,7 +476,6 @@ subroutine rad_cnst_get_bin_mmr_by_idx_cam(list_idx, bin_idx, spec_idx, phase, s
    ! Local variables
    integer :: s_idx
    integer :: idx
-   integer :: lchnk
    character(len=1) :: source
    type(binlist_t), pointer :: slist
    character(len=*), parameter :: subname = 'rad_cnst_get_bin_mmr_by_idx'
@@ -517,8 +514,6 @@ subroutine rad_cnst_get_bin_mmr_by_idx_cam(list_idx, bin_idx, spec_idx, phase, s
       write(iulog,*) subname//': phase= ', phase
       call endrun(subname//': unrecognized phase; must be "a" or "c"')
    end if
-
-   lchnk = state%lchnk
 
    select case( source )
    case ('A')
