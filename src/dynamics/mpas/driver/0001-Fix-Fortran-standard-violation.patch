@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kuan-Chih Wang <kuanchihw@ucar.edu>
+Date: Tue, 21 Apr 2026 13:50:09 -0600
+Subject: [PATCH] Fix Fortran standard violation due to pointer argument not
+ being associated
+
+At line 1970, if the `DO_PHYSICS` macro is undefined, the `diag_physics` pointer
+will not be initialized by the call to `mpas_pool_get_subpool`, and therefore
+its pointer association status will remain undefined.
+
+However, at line 2250, this pointer is used as an argument to call `atm_compute_dyn_tend`,
+which constitutes a Fortran standard violation.
+
+Quoted from Fortran 2023,
+
+> 15.5.2.4 Argument association
+> Except in references to intrinsic inquiry functions, a pointer actual argument that
+> corresponds to a nonoptional nonpointer dummy argument shall be pointer associated with
+> a target.
+
+This bug can lead to a runtime crash for models that use MPAS as a dynamical core
+(e.g., CAM, CAM-SIMA).
+
+Fix this issue by adding the `pointer` attribute to the `diag_physics` dummy argument
+for the `atm_compute_dyn_tend` subroutine.
+---
+ src/core_atmosphere/dynamics/mpas_atm_time_integration.F | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+index 238ca7235..c16072976 100644
+--- a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
++++ b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+@@ -5813,7 +5813,7 @@ module atm_time_integration
+       type (mpas_pool_type), intent(in) :: state
+       type (mpas_pool_type), intent(in) :: diag
+       type (mpas_pool_type), intent(in) :: mesh
+-      type (mpas_pool_type), intent(in) :: diag_physics
++      type (mpas_pool_type), pointer, intent(in) :: diag_physics
+       type (mpas_pool_type), intent(in) :: configs
+       integer, intent(in) :: nVertLevels              ! for allocating stack variables
+       integer, intent(in) :: rk_step, dynamics_substep
+-- 
+2.48.1
+

@@ -3,6 +3,7 @@ module mo_setsox
   use shr_kind_mod, only : r8 => shr_kind_r8
   use cam_logfile,  only : iulog
   use physics_types,only : physics_state
+  use aerosol_state_mod, only: aerosol_state
 
   implicit none
 
@@ -17,7 +18,7 @@ module mo_setsox
   integer :: id_so4, id_h2so4
 
   logical :: has_sox = .true.
-  logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ox, inv_nh4no3, inv_ho2
+  logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ho2
 
   logical :: cloud_borne = .false.
 
@@ -28,7 +29,7 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine sox_inti
+  subroutine sox_inti(aero_props)
     !-----------------------------------------------------------------------
     !	... initialize the hetero sox routine
     !-----------------------------------------------------------------------
@@ -38,6 +39,9 @@ contains
     use phys_control, only : phys_getopts
     use carma_flags_mod, only : carma_do_cloudborne
     use sox_cldaero_mod, only : sox_cldaero_init
+    use aerosol_properties_mod, only : aerosol_properties
+
+    class(aerosol_properties), target, intent(in) :: aero_props
 
     logical :: modal_aerosols
 
@@ -142,17 +146,15 @@ contains
        return
     end if
 
-    call sox_cldaero_init()
+    call sox_cldaero_init(aero_props)
 
   end subroutine sox_inti
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine setsox( state, &
+  subroutine setsox( aero_state, state, &
        pbuf,   &
        ncol,   &
-       lchnk,  &
-       loffset,&
        dtime,  &
        press,  &
        pdel,   &
@@ -198,7 +200,6 @@ contains
                              MOLECULAR_WEIGHT_DRY_AIR_G_MOL => mwdry
     use ppgrid,       only : pcols, pver
     use chem_mods,    only : gas_pcnst, nfs
-    use chem_mods,    only : adv_mass
     use physconst,    only : mwdry, gravit
     use mo_constants, only : pi
     use sox_cldaero_mod, only : sox_cldaero_update, sox_cldaero_create_obj, sox_cldaero_destroy_obj
@@ -211,11 +212,10 @@ contains
     !-----------------------------------------------------------------------
     !      ... Dummy arguments
     !-----------------------------------------------------------------------
+    class(aerosol_state), intent(in) :: aero_state
     type(physics_state),                intent(in)    :: state   ! Physics state variables
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:) ! Physics buffer
     integer,          intent(in)    :: ncol              ! num of columns in chunk
-    integer,          intent(in)    :: lchnk             ! chunk id
-    integer,          intent(in)    :: loffset           ! offset of chem tracers in the advected tracers array
     real(r8),         intent(in)    :: dtime             ! time step (sec)
     real(r8),         intent(in)    :: press(:,:)        ! midpoint pressure ( Pa )
     real(r8),         intent(in)    :: pdel(:,:)         ! pressure thickness of levels (Pa)
@@ -268,20 +268,19 @@ contains
     real(r8), parameter :: kh2 = 8.3e5_r8          ! HO2(a) + ho2(a) -> h2o2(a) + o2  Reference: JPL; Bielski et al. 1985
     real(r8), parameter :: kh3 = 9.7e7_r8          ! HO2(a) + o2-    -> h2o2(a) + o2  Reference: JPL; Bielski et al. 1985
     real(r8), parameter :: Ra = GAS_CONSTANT_KMOL / KMOL_TO_MOL * M3_TO_L * PASCAL_TO_ATM ! universal constant   (atm)/(M-K)
+    real(r8), parameter :: small_value = 1.e-20_r8
 
     !
     real(r8) :: xdelso4hp(ncol,pver)
     real(r8) :: xhnm(ncol,pver) ! air number density (molecules cm-3)
 
-    integer  :: k, i, iter, file
+    integer  :: k, i, iter
     real(r8) :: wrk, delta
-    real(r8) :: xph0, aden, xk, xe, x2
-    real(r8) :: tz, xl, px, qz, es, qs, patm
+    real(r8) :: xph0, xk, xe, x2
+    real(r8) :: tz, xl, px, patm
     real(r8) :: Eso2, Eso4, Ehno3, Eco2, Eh2o, Enh3
     real(r8) :: so2g, h2o2g, o3g
-    real(r8) :: hno3a, nh3a, so2a, h2o2a, co2a, o3a
     real(r8) :: rah2o2, rao3, pso4, ccc
-    real(r8) :: cnh3, chno3, com, com1, com2, xra
     real(r8) :: f_hso3 ! fraction of aqueous S(IV) that's HSO3-
     real(r8) :: f_so3  ! fraction of aqueous S(IV) that's SO3=
 
@@ -354,7 +353,7 @@ contains
             * 1.e-3_r8                       ! Kg(a)/L(a)
     end do
 
-    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol, loffset )
+    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol )
     xso4c => cldconc%so4c
     xnh4c => cldconc%nh4c
     xno3c => cldconc%no3c
@@ -362,6 +361,7 @@ contains
     xso4(:,:) = 0._r8
     xno3(:,:) = 0._r8
     xnh4(:,:) = 0._r8
+    xso4_init = 0._r8
 
     do k = 1,pver
        xph(:,k) = xph0                                ! initial PH value
@@ -681,8 +681,8 @@ contains
              end do ! iter
 
              if( .not. converged ) then
-                write(iulog,*) 'setsox: pH failed to converge @ (',i,',',k,'), % change=', &
-                     100._r8*delta
+                write(*,*) 'setsox: pH failed to converge @ (',i,',',k,'), % change=', &
+                     100._r8*delta !!! What should delta be set to ????
              end if
           else
              xph(i,k) =  1.e-7_r8
@@ -757,9 +757,9 @@ contains
                   / xam         & ! / (molecule(a)/m3(a))
                   * AVOGADRO    & ! * (molecule(a)/mole(a))
                   * M3_TO_L       ! * (L(a)/m3(a)) = mole(h2o2)/mole(a)/s
-          
+
           xh2o2(i,k) = xh2o2(i,k) + r2h2o2*dtime ! updated h2o2 by het production
-          
+
           !-----------------------------------------------
           !       ... Partioning
           !-----------------------------------------------
@@ -877,10 +877,26 @@ contains
        end do col_loop1
     end do ver_loop1
 
-    call sox_cldaero_update( &
-          state, ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
-          xdelso4hp, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
-          aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
+    aqso4 = 0._r8
+    aqh2so4 = 0._r8
+    aqso4_h2o2 = 0._r8
+    aqso4_o3 = 0._r8
+
+    if (cloud_borne) then
+       ! update cloud-borne aerosols
+       call sox_cldaero_update( aero_state, &
+            ncol, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
+            xdelso4hp, xh2so4, xso4, xso4_init, nh3g, xnh3, xnh4c, xmsa, xso2, xh2o2, qcw, qin, &
+            aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
+    else
+       if (id_so2>0) then
+          qin(:ncol,:,id_so2) = max( xso2(:ncol,:), small_value )
+       endif
+       if (id_h2o2>0) then
+          qin(:ncol,:,id_h2o2) = max( xh2o2(:ncol,:), small_value )
+       endif
+       qin(:ncol,:,id_so4) = max( xso4(:ncol,:), small_value )
+    endif
 
     xphlwc(:,:) = 0._r8
     do k = 1, pver
@@ -900,7 +916,7 @@ contains
    !-----------------------------------------------------------------
    pure integer function get_heff_index(species_name) result(index)
       use shr_drydep_mod, only: species_name_table
-     
+
       character(len=*), intent(in) :: species_name
 
       do index = 1, size(species_name_table)

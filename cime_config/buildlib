@@ -91,15 +91,48 @@ def _build_cam(caseroot, libroot, bldroot):
         except:
             raise RuntimeError("CAM's 'buildcpp' script failed to run properly.")
 
+        #--------------------------------------------------------
+        # Check if RTTOV is being requested by the user,
+        # and if so, set a needed environment variable
+        # and update the CAM_LINKED_LIBS list:
+        #--------------------------------------------------------
+
+        env_vars = ''
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
+
+        if "-rttov" in config_opts:
+            # RTTOV source directory (currently hardcoded to a specific ACL-controlled directory on Derecho)
+            rttov_src_dir = "/glade/campaign/cesm/community/amwg/rttov/RTTOV"
+
+            # Set environment variable needed by COSP Makefile
+            env_vars = f"env RTTOV=true RTTOV_SRC_DIR={rttov_src_dir} "
+
+            # Run shell script to build RTTOV in ACL-controlled directory
+            rttov_command = "./compile_RTTOV.sh"
+            _run_cmd(rttov_command, rttov_src_dir)
+
+            # Get path to HDF5 library
+            hdf5_lib_path = os.environ.get("NCAR_LDFLAGS_HDF5")
+
+            # Add HDF5 library to CAM linked library list:
+            linked_libs = case.get_value("CAM_LINKED_LIBS",
+                                        subgroup="build_component_cam")
+            hdf5_link_opts = f" -L{hdf5_lib_path}"
+            hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
+            case.set_value("CAM_LINKED_LIBS",
+                           linked_libs + hdf5_link_opts)
+
+
     with Case(caseroot) as case:
 
-        casetools = case.get_value("CASETOOLS")
-        srcroot = case.get_value("SRCROOT")
-        gmake_j = case.get_value("GMAKE_J")
-        gmake = case.get_value("GMAKE")
-        mach = case.get_value("MACH")
+        casetools    = case.get_value("CASETOOLS")
+        srcroot      = case.get_value("SRCROOT")
+        gmake_j      = case.get_value("GMAKE_J")
+        gmake        = case.get_value("GMAKE")
+        mach         = case.get_value("MACH")
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
         user_incldir = None
-        cam_dycore = case.get_value("CAM_DYCORE")
+        cam_dycore   = case.get_value("CAM_DYCORE")
         if cam_dycore == "fv3":
             slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
             compiler = case.get_value("COMPILER")
@@ -138,14 +171,14 @@ def _build_cam(caseroot, libroot, bldroot):
             expect(os.path.isfile(libfms), "FMS library not found {}".format(libfms))
             shutil.copy(libfms, libroot)
 
-        # -------------------------------------------------------
         # build the library
         # -------------------------------------------------------
         complib = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
 
-        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
-            gmake, gmake_j, complib, makefile, get_standard_makefile_args(case)
+        cmd = "{}{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
+            env_vars, gmake, gmake_j, complib, makefile,
+            get_standard_makefile_args(case)
         )
         if cam_cppdefs:
             cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)

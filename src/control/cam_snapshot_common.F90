@@ -1442,7 +1442,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'ipbl                   ','unset                  ',&
           'ISS_FRAC               ','unset                  ',&
           'kpblh                  ','unset                  ',&
-          'ksrftms                ','unset                  ',&
+          'ksrftms                ','kg/m2/s                ',&
           'kvh                    ','m2/s                   ',&
           'kvm                    ','m2/s                   ',&
           'kvt                    ','m2/s                   ',&
@@ -1606,7 +1606,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'wpthlp_mc_zt           ','unset                  ',&
           'WPTHLP_nadv            ','unset                  ',&
           'WPTHVP                 ','unset                  ',&
-          'WSEDL                  ','unset                  ',&
+          'WSEDL                  ','m/s                    ',&
           'wstarPBL               ','unset                  ',&
           'ZM_DP                  ','unset                  '  /),                  (/2,100/))
 
