@@ -714,7 +714,8 @@
 <!-- Time-variant chemistry surface values -->
 <bndtvghg>atm/cam/ggas/ghg_hist_1765-2005_c091218.nc</bndtvghg>
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_RNOCStrend_c141002.nc</flbc_file>
-<flbc_file chem="ghg_mam4">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_file chem="ghg_mam4" phys="cam6">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_file                 phys="cam7">atm/waccm/lb/CMIP7/LBC_17500116-20221216_CMIP7_0p5degLat_OCSupdate_c250523.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
 <co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2015">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
@@ -866,6 +867,7 @@
 <gw_prndl     chem="trop_strat_mam4_slh">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_slh">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
+<gw_oro_south_fac         model_top="mt">1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         model_top="ht">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
@@ -878,6 +880,7 @@
 <gw_oro_south_fac carma="trop_strat_soa1">2.D0</gw_oro_south_fac>
 <gw_oro_south_fac carma="trop_strat_soa5">2.D0</gw_oro_south_fac>
 <gw_lndscl_sgh                          >.true. </gw_lndscl_sgh>
+<gw_lndscl_sgh            model_top="mt">.true. </gw_lndscl_sgh>
 <gw_lndscl_sgh            waccm_phys="1">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh            model_top="ht">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
@@ -956,18 +959,10 @@
 <edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
 <edyn_grid hgrid="ne120np4" >320x385</edyn_grid>
 
-<!-- ESMF mesh files for physics decomposition -->
-<cam_physics_mesh hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="4x5">atm/cam/coords/fv4x5_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne5np4">atm/cam/coords/ne5np4_esmf_20191204.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne5np4" npg="3">atm/cam/coords/ne5np4.pg3_esmf_mesh_c210121.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne16np4" npg="3">share/meshes/ne16pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
-<cam_physics_mesh hgrid="ne120np4" npg="3">share/meshes/ne120pg3_ESMFmesh_cdf5_c20211018.nc</cam_physics_mesh>
+<!-- For ESMF regrid zonal-mean TEM diagnostics -->
+<ctem_diags_numlats>0</ctem_diags_numlats>
+<ctem_diags_numlats hgrid="ne16np4">90</ctem_diags_numlats>
+<ctem_diags_numlats hgrid="ne30np4">180</ctem_diags_numlats>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
@@ -2089,6 +2084,8 @@
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
 <xs_short_file>atm/waccm/phot/xs_short_c221005mm_slh_c250930.nc</xs_short_file>
 <xs_long_file >atm/waccm/phot/temp_prs_GT200nm_c221005mm_slh_c250930.nc</xs_long_file>
+<xs_short_file phys="cam7">atm/waccm/phot/xs_short_c250124mm.nc</xs_short_file>
+<xs_long_file  phys="cam7">atm/waccm/phot/temp_prs_GT200nm_c250124mm.nc</xs_long_file>
 <rsf_file     >atm/waccm/phot/RSF_GT200nm_v3.0_c080811.nc</rsf_file>
 <exo_coldens_file>atm/cam/chem/trop_mozart/phot/exo_coldens.nc</exo_coldens_file>
 
@@ -2608,7 +2605,7 @@
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.50D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.55D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
 
@@ -2916,7 +2913,7 @@
 <zmconv_num_cin                                       phys="cam7"     > 1       </zmconv_num_cin>
 
 <zmconv_dmpdz                                                         > -1.0E-3 </zmconv_dmpdz>
-<zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
+<zmconv_tiedtke_add                                                    > 0.5     </zmconv_tiedtke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
 <zmconv_tau                                                           > 3600.0    </zmconv_tau>
 
@@ -3460,8 +3457,6 @@
 <mpas_coef_3rd_order          > 1.0D0 </mpas_coef_3rd_order>
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
-<mpas_epssm                   > 0.1D0 </mpas_epssm>
-<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
 <mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
@@ -3475,6 +3470,11 @@
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
+<mpas_epssm_minimum> 0.1D0 </mpas_epssm_minimum>
+<mpas_epssm_maximum> 0.1D0 </mpas_epssm_maximum>
+<mpas_epssm_maximum hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm_maximum>
+<mpas_epssm_transition_bottom_z> 30000.0D0 </mpas_epssm_transition_bottom_z>
+<mpas_epssm_transition_top_z> 50000.0D0 </mpas_epssm_transition_top_z>
 <mpas_apply_lbcs> .false. </mpas_apply_lbcs>
 <mpas_jedi_da> .false. </mpas_jedi_da>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
@@ -3489,6 +3489,9 @@
 <mpas_print_global_minmax_vel  > .false. </mpas_print_global_minmax_vel>
 <mpas_print_detailed_minmax_vel> .false. </mpas_print_detailed_minmax_vel>
 <mpas_print_global_minmax_sca  > .false. </mpas_print_global_minmax_sca>
+
+<mpas_halo_exch_method> mpas_halo </mpas_halo_exch_method>
+<mpas_gpu_aware_mpi> .false. </mpas_gpu_aware_mpi>
 
 <!-- ================================================================== -->
 <!-- Chemistry Rates Diagnostics                                        -->

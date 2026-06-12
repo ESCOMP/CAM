@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kuan-Chih Wang <kuanchihw@ucar.edu>
+Date: Tue, 21 Apr 2026 14:35:05 -0600
+Subject: [PATCH] Add missing argument intent
+
+Throughout the `atm_compute_dyn_tend` subroutine, the `tend_physics` pointer
+never changes its pointer association status. Add the missing `intent(in)`
+attribute for better safety.
+---
+ src/core_atmosphere/dynamics/mpas_atm_time_integration.F | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+index c16072976..b6e620fe1 100644
+--- a/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
++++ b/src/core_atmosphere/dynamics/mpas_atm_time_integration.F
+@@ -5809,7 +5809,7 @@ module atm_time_integration
+       ! Dummy arguments
+       !
+       type (mpas_pool_type), intent(inout) :: tend
+-      type (mpas_pool_type), pointer :: tend_physics
++      type (mpas_pool_type), pointer, intent(in) :: tend_physics
+       type (mpas_pool_type), intent(in) :: state
+       type (mpas_pool_type), intent(in) :: diag
+       type (mpas_pool_type), intent(in) :: mesh
+-- 
+2.48.1
+

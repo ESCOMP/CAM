@@ -298,10 +298,6 @@ contains
        ! register various data model gasses with pbuf
        call ghg_data_register()
 
-       ! carma microphysics
-       !
-       call carma_register()
-
        ! Register iondrag variables with pbuf
        call iondrag_register()
 
@@ -322,6 +318,10 @@ contains
        call radiation_register
        call cloud_diagnostics_register
        call radheat_register
+
+       ! carma microphysics
+       !
+       call carma_register()
 
        ! COSP
        call cospsimulator_intr_register
@@ -1469,6 +1469,7 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    real(r8) :: tmp_cpcv  (pcols,pver) ! tmp space
     real(r8) :: scaling(pcols,pver)
     logical  :: moist_mixing_ratio_dycore
 
@@ -1987,11 +1988,6 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
-    !
-    ! update cp/cv for energy computation based in updated water variables
-    !
-    call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
-         to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
@@ -2005,10 +2001,17 @@ contains
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
+        tmp_cpcv(:ncol,:pver)        = cp_or_cv_dycore(:ncol,:pver,lchnk)
         if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                fh2o, surfric, obklen, flx_heat)
-        end if
+       end if
+       !
+       ! update cp/cv for energy computation based in updated water variables
+       !
+       call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
+            to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
         if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2020,6 +2023,7 @@ contains
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
         state%ps(:ncol)             = tmp_ps(:ncol)
+        cp_or_cv_dycore(:ncol,:pver,lchnk) = tmp_cpcv(:ncol,:pver)
       end if
     else
       !
@@ -2289,7 +2293,6 @@ contains
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
     real(r8) :: rliq(pcols)                    ! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8) :: rice(pcols)                    ! vertical integral of ice not yet in q(ixcldice)
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: det_s  (pcols)                 ! vertical integral of detrained static energy from ice
     real(r8) :: det_ice(pcols)                 ! vertical integral of detrained ice
@@ -2387,7 +2390,6 @@ contains
     cmfcme(:,:) = 0._r8
     zdu(:,:) = 0._r8
     rliq(:) = 0._r8
-    rice(:) = 0._r8
     dlf(:,:) = 0._r8
     dlf2(:,:) = 0._r8
     rliq2(:) = 0._r8
@@ -2461,7 +2463,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call dadadj_tend(ztodt, state, ptend)
@@ -2474,7 +2476,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "dadadj_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call t_stopf('dry_adjustment')
@@ -2488,13 +2490,13 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
          zdu,       &
-         rliq,    rice,      &
+         rliq,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
@@ -2513,7 +2515,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_deep_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call t_stopf('convect_deep_tend')
@@ -2536,9 +2538,7 @@ contains
 
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
-    snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
     call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
-    snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
@@ -2554,7 +2554,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "convect_shallow_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call convect_shallow_tend (ztodt   , cmfmc, &
@@ -2578,7 +2578,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "convect_shallow_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+           flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
@@ -2633,7 +2633,7 @@ contains
 
        if (trim(cam_take_snapshot_before) == "rk_stratiform_tend") then
             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                 flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                 flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call rk_stratiform_cam_tend(state, ptend, pbuf, ztodt, &
@@ -2653,7 +2653,7 @@ contains
 
        if (trim(cam_take_snapshot_after) == "rk_stratiform_tend") then
            call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-               flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+               flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call check_energy_cam_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
@@ -2694,7 +2694,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "macrop_driver_tend") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call macrop_driver_tend( &
@@ -2725,7 +2725,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "macrop_driver_tend") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call check_energy_cam_chng(state, tend, "macrop_tend", nstep, ztodt, &
@@ -2741,7 +2741,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "clubb_tend_cam") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call clubb_tend_cam(state, ptend, pbuf, cld_macmic_ztodt,&
@@ -2771,7 +2771,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "clubb_tend_cam") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                      flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                      flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              ! Use actual qflux (not lhf/latvap) for consistency with surface fluxes and revised code
@@ -2808,7 +2808,7 @@ contains
 
           if (trim(cam_take_snapshot_before) == "microp_section") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call carma_diags_obj%update(cam_in, state, pbuf)
@@ -2823,7 +2823,7 @@ contains
 
              if (trim(cam_take_snapshot_before) == "microp_driver_tend_subcol") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                     flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
@@ -2875,7 +2875,7 @@ contains
 
              if (trim(cam_take_snapshot_after) == "microp_driver_tend_subcol") then
                 call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                   flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                   flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call check_energy_cam_chng(state_sc, tend_sc, "microp_tend_subcol", &
@@ -2912,7 +2912,7 @@ contains
 
           if (trim(cam_take_snapshot_after) == "microp_section") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call check_energy_cam_chng(state, tend, "microp_tend", nstep, ztodt, &
@@ -2988,7 +2988,7 @@ contains
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
           call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call carma_diags_obj%update(cam_in, state, pbuf)
@@ -3003,7 +3003,7 @@ contains
 
        if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
           call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        if (carma_do_wetdep) then
@@ -3060,7 +3060,7 @@ contains
 
     if (trim(cam_take_snapshot_before) == "radiation_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call radiation_tend( &
@@ -3079,7 +3079,7 @@ contains
 
     if (trim(cam_take_snapshot_after) == "radiation_tend") then
        call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call check_energy_cam_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)

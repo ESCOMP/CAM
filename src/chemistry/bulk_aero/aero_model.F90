@@ -19,6 +19,9 @@ module aero_model
   use physics_buffer,    only: pbuf_get_field, pbuf_get_index
   use cam_history,       only: outfld
   use infnan,            only: nan, assignment(=)
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   implicit none
   private
@@ -56,6 +59,9 @@ module aero_model
   real(r8) :: aer_sol_facti(pcnst) ! in-cloud solubility factor
   real(r8) :: aer_sol_factb(pcnst) ! below-cloud solubility factor
   real(r8) :: aer_scav_coef(pcnst)
+
+  class(aerosol_properties), pointer :: aero_props =>null()
+  integer :: iaermod_ = -1
 
 contains
 
@@ -151,8 +157,15 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_dust    ! Output dust
 
+    nullify(aero_props)
+    do iaermod_ = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod_, 0)
+       if (aero_props%model_is('BAM')) exit
+       nullify(aero_props)
+    end do
+
     ! aqueous chem initialization
-    call sox_inti()
+    if (associated(aero_props)) call sox_inti(aero_props)
 
     call phys_getopts( history_aerosol_out = history_aerosol,&
                        history_dust_out    = history_dust   )
@@ -1030,11 +1043,12 @@ contains
     use mo_aerosols, only : aerosols_formation, has_aerosols
     use mo_setsox,   only : setsox, has_sox
     use mo_setsoa,   only : setsoa, has_soa
+    use aerosol_state_mod, only : aerosol_state
 
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
-    type(physics_state), intent(in)    :: state    ! Physics state variables
+    type(physics_state),target, intent(in) :: state ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1069,15 +1083,18 @@ contains
     real(r8) ::  aqso4_o3(ncol)              ! SO4 aqueous phase chemistry due to O3
     real(r8) ::  xphlwc(ncol,pver)           ! pH value multiplied by lwc
 
+    class(aerosol_state), pointer :: aero_state
+
+!----------------------------------------------------------------------
+    nullify(aero_state)
+    if (iaermod_ > 0) aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
   ! aqueous chemistry ...
 
     if( has_sox ) then
-       call setsox( state, &
+       call setsox( aero_state, state, &
             pbuf,     &
             ncol,     &
-            lchnk,    &
-            loffset,  &
             delt,     &
             pmid,     &
             pdel,     &

@@ -29,7 +29,7 @@
 [submodule "atmos_phys"]
 	path = src/atmos_phys
 	url = https://github.com/ESCOMP/atmospheric_physics
-	fxtag = atmos_phys0_21_000
+	fxtag = atmos_phys0_22_003
         fxrequired = AlwaysRequired
         fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
@@ -72,7 +72,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/ESCOMP/HEMCO_CESM.git
-        fxtag = hemco-cesm2_2_0_hemco3_10_3
+        fxtag = hemco-cesm2_3_0_hemco3_10_3
         fxrequired = AlwaysRequired
 	fxDONOTUSEurl = https://github.com/ESCOMP/HEMCO_CESM.git
 
@@ -88,16 +88,16 @@
 	url = https://github.com/MPAS-Dev/MPAS-Model.git
         fxrequired = AlwaysRequired
         fxsparse = ../.mpas_sparse_checkout
-        fxtag = v8.2.1
+        fxtag = v8.4.0
 	fxDONOTUSEurl = https://github.com/MPAS-Dev/MPAS-Model.git
 
 [submodule "cosp2"]
-	path = src/physics/cosp2/src
-	url = https://github.com/CFMIP/COSPv2.0
+        path = src/physics/cosp2/src
+        url = https://github.com/CFMIP/COSPv2.0
         fxrequired = AlwaysRequired
         fxsparse = ../.cosp_sparse_checkout
-        fxtag = v2.1.9
-	fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
+        fxtag = v2.2.1
+        fxDONOTUSEurl = https://github.com/CFMIP/COSPv2.0
 
 [submodule "clubb"]
 	path = src/physics/clubb

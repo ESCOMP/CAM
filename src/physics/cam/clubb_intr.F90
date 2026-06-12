@@ -2816,6 +2816,7 @@ end subroutine clubb_init_cnst
     !$acc     copyout( clubb_s, clubbtop_pbuf, &
     !$acc              qclvar, wprcp, rcm_in_layer, rcm, cloud_frac, thlm, rtm, &
     !$acc              um, vm, wm_zt, exner, zt_g, zi_g, invrs_cpairv, &
+    !$acc              rho_zm, rho_zt, &
     !$acc              pdf_params_chnk(lchnk)%rt_1,                pdf_params_chnk(lchnk)%rt_2,  &
     !$acc              pdf_params_chnk(lchnk)%varnce_rt_1,         pdf_params_chnk(lchnk)%varnce_rt_2, &
     !$acc              pdf_params_chnk(lchnk)%mixt_frac ) &
@@ -2831,7 +2832,7 @@ end subroutine clubb_init_cnst
     !$acc              vm_forcing, wprtp_forcing, wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
     !$acc              rtpthlp_forcing, wm_zm, wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc, invrs_dz_g, &
     !$acc              p_sfc, upwp_sfc_pert, vpwp_sfc_pert, rtm_ref, thlm_ref, um_ref, vm_ref, &
-    !$acc              ug, vg, p_in_Pa, rho_zm, rho_zt, rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
+    !$acc              ug, vg, p_in_Pa, rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
     !$acc              invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, rfrzm, clubb_params, deltaz, err_info%err_code, &
     !$acc              pdf_params_chnk(lchnk)%w_1,                 pdf_params_chnk(lchnk)%w_2, &
     !$acc              pdf_params_chnk(lchnk)%varnce_w_1,          pdf_params_chnk(lchnk)%varnce_w_2, &

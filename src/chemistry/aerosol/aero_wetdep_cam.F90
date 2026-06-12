@@ -309,12 +309,12 @@ contains
          call add_default (trim(name)//'SFWET', 1, ' ')
       endif
       if ( history_aerosol ) then
-         call add_default (trim(name)//'SFSEC', 1, ' ')
          call add_default (trim(name)//'SFSIC', 1, ' ')
          call add_default (trim(name)//'SFSIS', 1, ' ')
          call add_default (trim(name)//'SFSBC', 1, ' ')
          call add_default (trim(name)//'SFSBS', 1, ' ')
          if (convproc_do_aer) then
+            call add_default (trim(name)//'SFSEC', 1, ' ')
             call add_default (trim(name)//'SFSES', 1, ' ')
             call add_default (trim(name)//'SFSBD', 1, ' ')
          end if

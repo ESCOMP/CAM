@@ -76,10 +76,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! mesh information and coefficients needed for
    ! frontogenesis function calculation
    !
-   real(r8), pointer :: defc_a(:,:)
-   real(r8), pointer :: defc_b(:,:)
-   real(r8), pointer :: cell_gradient_coef_x(:,:)
-   real(r8), pointer :: cell_gradient_coef_y(:,:)
+   real(r8), pointer :: deformation_coef_c(:, :) ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_x.
+   real(r8), pointer :: deformation_coef_s(:, :) ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_y.
    real(r8), pointer :: edgesOnCell_sign(:,:)
    real(r8), pointer :: dvEdge(:)
    real(r8), pointer :: areaCell(:)
@@ -169,10 +167,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       !
       ! compute frontogenesis function and angle for gravity wave scheme
       !
-      defc_a => dyn_out % defc_a
-      defc_b => dyn_out % defc_b
-      cell_gradient_coef_x => dyn_out % cell_gradient_coef_x
-      cell_gradient_coef_y => dyn_out % cell_gradient_coef_y
+      deformation_coef_c => dyn_out % deformation_coef_c
+      deformation_coef_s => dyn_out % deformation_coef_s
       edgesOnCell_sign => dyn_out % edgesOnCell_sign
       dvEdge => dyn_out % dvEdge
       areaCell => dyn_out % areaCell
@@ -192,15 +188,13 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       allocate(frontga_phys(pcols, pver, begchunk:endchunk), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate frontga_phys array')
 
-
       call calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,  &
                                theta_m, tracers(index_qv,:,:),             &
-                               uperp, utangential, defc_a, defc_b,         &
-                               cell_gradient_coef_x, cell_gradient_coef_y, &
+                               uperp, utangential, dyn_out % defc_a, dyn_out % defc_b, &
+                               deformation_coef_c, deformation_coef_s, &
                                areaCell, dvEdge, cellsOnEdge, edgesOnCell, &
                                nEdgesOnCell, edgesOnCell_sign,             &
                                plev, nCellsSolve )
-
    end if
 
    if (use_gw_movmtn_pbl) then

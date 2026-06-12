@@ -543,6 +543,7 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver)       ! tmp space
     real(r8) :: tmp_ps    (pcols)            ! tmp space
+    real(r8) :: tmp_cpcv  (pcols,pver)       ! tmp space
     real(r8) :: scaling(pcols,pver)
     !--------------------------------------------------------------------------
 
@@ -609,11 +610,6 @@ contains
     !     other dynamics. Bundy, Feb 2004.
     !
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
-    !
-    ! update cp/cv for energy computation based in updated water variables
-    !
-    call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
-         to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
     if (moist_physics) then
       ! Scale dry mass and energy
@@ -643,6 +639,13 @@ contains
           tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
           tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
           tmp_ps(:ncol)                = state%ps(:ncol)
+          tmp_cpcv(:ncol,:pver)        = cp_or_cv_dycore(:ncol,:pver,lchnk)
+          !
+          ! update cp/cv for energy computation based in updated water variables
+          !
+          call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
+               to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+
           call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
           call tot_energy_phys(state, 'phAM')
           call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
@@ -650,6 +653,7 @@ contains
           state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
           state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
           state%ps(:ncol)             = tmp_ps(:ncol)
+          cp_or_cv_dycore(:ncol,:pver,lchnk) = tmp_cpcv(:ncol,:pver)
         end if
       else
         !
