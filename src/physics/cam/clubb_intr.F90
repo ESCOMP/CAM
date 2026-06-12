@@ -4642,7 +4642,7 @@ end subroutine clubb_init_cnst
       end where
 
       !REMOVECAM: this is no longer needed when CAM is retired and pcols no longer exists
-      aist(:,k) = 0._r8
+      aist_pbuf(:,k) = 0._r8
       !REMOVECAM_END
       if ( trim(subcol_scheme) == 'SILHS' ) then
         call aist_vector(state_loc%q(:ncol,k,ixq), state_loc%t(:ncol,k), &
