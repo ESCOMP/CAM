@@ -4166,6 +4166,9 @@ end subroutine clubb_init_cnst
     !REMOVECAM_END
     call tropopause_findChemTrop( state, troplev )
 
+    aist_pbuf(:,:top_lev-1) = 0._r8
+    qsatfac_pbuf(:, :) = 0._r8
+
     do k = top_lev, pver
 
       ! For Type II PSC and for thin cirrus, the clouds can be thin, but
@@ -4194,14 +4197,14 @@ end subroutine clubb_init_cnst
       endif
     enddo
 
-    call clubb3_run(ncol, pver, pverp, pcnst, top_lev, zvir, rair, cpair, gravit, karman, &
+    call clubb3_run(pcols, ncol, pver, pverp, pcnst, top_lev, zvir, rair, cpair, gravit, karman, &
                         ixq, ixcldice, ixcldliq, ixnumice, calday, tropp_days, tropLev, &
                         rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, &
                         single_column, scm_cambfb_mode, scm_clubb_iop_name, subcol_scheme, &
                         dp1, dp2, cmfmc, cmfmc_sh_pbuf, dp_icwmr_pbuf, concld_pbuf, &
                         aist_pbuf, qsatfac_pbuf, ast_pbuf, qist_pbuf, cld_pbuf, &
                         pblh_pbuf, deepcu_pbuf, shalcu_pbuf, lq, cnst_type, &
-                        alst_pbuf, qlst_pbuf, rcm, cloud_frac, exner, &
+                        alst_pbuf, qlst_pbuf, rcm, cloud_frac, exner, state_loc%exner, &
                         state_loc%t, state_loc%q, ptend_all%q, state_loc%pmid, cam_in%landfrac, &
                         cam_in%snowhland, state_loc%pdel, state_loc%pdeldry, &
                         cam_in%wsx, cam_in%wsy, cam_in%shf, cam_in%cflx, state_loc%zm, &
