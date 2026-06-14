@@ -42,3 +42,8 @@ bin/git-fleximod update
 
 ### CAM6 namelist settings - https://docs.cesm.ucar.edu/models/cesm2/settings/current/cam_nml.html
 
+
+## Community resources
+
+- Unofficial, community-maintained AI-agent skill for onboarding new users (not an official ESCOMP resource): [earth-space-ai/cam-skill](https://github.com/earth-space-ai/cam-skill). It restructures the existing CAM documentation for AI coding agents and defers to this repository as the source of truth.
+
