@@ -228,7 +228,9 @@ function co2_implements_cnst(name)
 
    do m = 1, ncnst
       if (name == c_names(m)) then
-         co2_implements_cnst = .true.
+         if ((trim(name) /= 'CO2') .or. local_co2) then
+            co2_implements_cnst = .true.
+         end if
          return
       end if
    end do
@@ -312,7 +314,7 @@ subroutine co2_init
       mm = c_i(m)
 
       call addfld(trim(cnst_name(mm))//'_BOT', horiz_only,  'A', 'kg/kg',   trim(cnst_longname(mm))//', Bottom Layer')
-      if ((trim(cnst_name(mm)) /= 'CO2') .or. local_co2) then
+      if (co2_implements_cnst(cnst_name(mm))) then
          call addfld(cnst_name(mm),            (/ 'lev' /), 'A', 'kg/kg',   cnst_longname(mm))
          call addfld(sflxnam(mm),              horiz_only,  'A', 'kg/m2/s', trim(cnst_name(mm))//' surface flux')
       end if
