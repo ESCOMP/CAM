@@ -144,6 +144,7 @@ subroutine co2_register
 
    use physconst,      only: mwco2, cpair
    use constituents,   only: cnst_get_ind, cnst_add
+   use cam_abortutils, only: endrun
 
    ! Local variables
    real(r8), dimension(ncnst) :: &
@@ -163,13 +164,16 @@ subroutine co2_register
 
    ! register any new CO2 constiuents as dry tracers, set indices
 
+   local_co2 = .false.
    do i = 1, ncnst
       call cnst_get_ind(c_names(icnst), c_i(icnst), abort=.false.)
       if (c_i(icnst) < 0) then
          call cnst_add(c_names(i), c_mw(i), c_cp(i), c_qmin(i), c_i(i), longname=c_names(i), mixtype='dry')
-         local_co2 = .true.
-      else
-         local_co2 = .false.
+         if (trim(c_names(i)) == 'CO2') then
+            local_co2 = .true.
+         end if
+      else if (trim(c_names(i)) /= 'CO2') then
+         call endrun('co2_register: '//trim(c_names(i))//' already defined')
       end if
 
       select case (trim(c_names(i)))
