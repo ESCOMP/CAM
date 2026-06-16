@@ -686,11 +686,11 @@ module clubb_intr
     call add_hist_coord('ncyc', cld_macmic_num_steps, 'macro/micro cycle index')
     call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
 
-    call pbuf_add_field('RCM_CLUBB_macmic'    ,'physpkg',  dtype_r8, (/pcols,pver*cld_macmic_num_steps/), rcm_macmic_idx)
-    call pbuf_add_field('CLDFRAC_CLUBB_macmic','physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
-    call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
-    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
-    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
+    call pbuf_add_field('RCM_CLUBB_macmic',     'physpkg', dtype_r8, (/pcols,pver*cld_macmic_num_steps/),  rcm_macmic_idx)
+    call pbuf_add_field('CLDFRAC_CLUBB_macmic', 'physpkg', dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), cldfrac_macmic_idx)
+    call pbuf_add_field('WPTHLP_CLUBB_macmic',  'physpkg', dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
+    call pbuf_add_field('WPRTP_CLUBB_macmic',   'physpkg', dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
+    call pbuf_add_field('WPTHVP_CLUBB_macmic',  'physpkg', dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
 
     if (do_clubb_mf) then
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
@@ -4781,9 +4781,10 @@ end subroutine clubb_init_cnst
       !  Use correct qflux from cam_in, not lhf/latvap as was done previously
       te_b = te_b + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime
 
-!jt check with Adam  These are not bfb with nonclubbmf run
-!jt      ! subtract enthalpy of falling precip from tb
-      te_b = te_b - prec_sh(i)*1000._r8*latice*hdtime
+      if (do_clubb_mf) then
+         ! subtract enthalpy of falling precip from tb
+         te_b = te_b - prec_sh(i)*1000._r8*latice*hdtime
+      end if
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
       se_dis(i) = ( te_a - te_b ) / ( state_loc%pint(i,pverp) - state_loc%pint(i,clubbtop_pbuf(i)) )
@@ -5430,7 +5431,7 @@ end subroutine clubb_init_cnst
     !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
     troplev(:) = 0
     !REMOVECAM_END
-    call tropopause_findChemTrop( state_loc, troplev )
+    call tropopause_findChemTrop( state, troplev )
 
     aist_pbuf(:,:top_lev-1) = 0._r8
     qsatfac_pbuf(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
@@ -5813,7 +5814,7 @@ end subroutine clubb_init_cnst
       end do
 
       do k = 1, top_lev-1
-         do i = 1, ncol
+        do i = 1, ncol
           mf_dry_a_output(i,k)     = 0._r8
           mf_moist_a_output(i,k)   = 0._r8
           mf_dry_w_output(i,k)     = 0._r8
