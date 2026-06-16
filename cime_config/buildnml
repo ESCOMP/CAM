@@ -65,7 +65,8 @@ def buildnml(case, caseroot, compname):
             "Gregorian calendar (modifier _cG) cannot be used with spinup compset \n  {}".format(COMPSET)
         )
 
-    tuvx_data_src = os.path.join(srcroot, "libraries", "tuv-x", "data")
+    if '-tuvx' in CAM_CONFIG_OPTS:
+        tuvx_data_src = os.path.join(srcroot, "libraries", "tuv-x", "data")
 
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
@@ -237,10 +238,11 @@ def buildnml(case, caseroot, compname):
                    shutil.copy(file1,file2)
 
         # Copy TUV-x data to rundir
-        dest_data = os.path.join(rundir, "data")
-        if os.path.exists(dest_data):
-            shutil.rmtree(dest_data)
-        shutil.copytree(tuvx_data_src, dest_data)
+        if '-tuvx' in CAM_CONFIG_OPTS:
+            dest_data = os.path.join(rundir, "data")
+            if os.path.exists(dest_data):
+                shutil.rmtree(dest_data)
+            shutil.copytree(tuvx_data_src, dest_data)
 
 ###############################################################################
 def _main_func():
