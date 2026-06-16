@@ -1895,37 +1895,15 @@ end subroutine clubb_init_cnst
 #ifdef CLUBB_SGS
     use spmd_utils, only: iam
     use clubb_api_module, only: &
-      nparams, &
-      calc_derrived_params_api, &
-      check_parameters_api, &
-      time_precision, &
-      advance_clubb_core_api, &
-      zt2zm_api, zm2zt_api, &
-      setup_grid_heights_api, &
-      em_min, &
-      w_tol_sqd, &
-      rt_tol, &
-      thl_tol, &
-      stats_begin_timestep_api, &
-      calculate_thlp2_rad_api, update_xp2_mc_api, &
-      sat_mixrat_liq_api, &
-      fstderr, &
-      ipdf_post_advance_fields, &
-      copy_single_pdf_params_to_multi, &
-      copy_multi_pdf_params_to_single, &
-      pdf_parameter, &
+      zm2zt_api, &
       init_pdf_params_api, &
       init_pdf_implicit_coefs_terms_api, &
-      setup_grid_api, &
-      cleanup_grid_api, &
       iiPDF_new, &
       iiPDF_new_hybrid
 
     ! Import setup for CLUBB error messaging
     use clubb_api_module, only: &
-      clubb_fatal_error,    & ! Error code value to indicate a fatal error
       err_info_type,        &
-      init_err_info_api,    &
       cleanup_err_info_api
 
     use cldfrc2m,                  only: aist_vector, rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const
@@ -2392,6 +2370,7 @@ end subroutine clubb_init_cnst
 
     end if
 
+!BAS does this make sense to do? 
     !$acc data copyin( state_loc, cam_in )
 
 !BAS moved up from below to keep on CAM side
