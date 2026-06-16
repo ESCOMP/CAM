@@ -1,4 +1,84 @@
+===============================================================
 
+Tag name: cam6_4_182
+Originator(s): fvitt
+Date: 16 Jun 2026
+One-line Summary: Updates to CAM's build of TUV-X library
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1577
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Build TUV-X library only in cases where TUV-X is used.  Configure
+ switch -tuvx has been added to CAM_CONFIG_OPTS which activates
+ the build of the TUV-X library.
+
+ Address issues:
+  #1537: TUV-x build issue when users have Conda environments active
+  https://github.com/ESCOMP/CAM/issues/1570
+
+  #1570: TUV-x copies input files to run directory regardless of whether TUV-x is active
+  https://github.com/ESCOMP/CAM/issues/1570
+
+Describe any changes made to build system:
+ Changes TUV-X library build as described above
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - error out if tuvx_active is TRUE and not configured for TUV-X
+
+M       bld/config_files/definition.xml
+M       bld/configure
+ - add "-tuvx" configure switch -- define "TUVX" CPP def
+
+M       cime_config/buildlib
+ - build TUV-X lib only if "-tuvx" is included in CAM_CONFIG_OPTS
+
+M       cime_config/buildnml
+ - copy TUV-X input data to run directory only if "-tuvx" is included in CAM_CONFIG_OPTS
+
+M       cime_config/config_component.xml
+ - remove tuvx and yaml-cpp libs from default setting of CAM_LINKED_LIBS
+   -- buildlib will add these only only if cam is configured for tuvx
+
+M       cime_config/testdefs/testmods_dirs/cam/carma_mixed_sulfate/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_tuvx_waccm_ma_mam5/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/shell_commands
+ -- append "-tuvx" to CAM_CONFIG_OPTS
+
+M       src/chemistry/mozart/mo_tuvx.F90
+ - use ifdefs to stub out the module for cases where TUV-X lib is not available
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_181
