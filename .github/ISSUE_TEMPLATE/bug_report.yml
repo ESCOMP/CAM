@@ -33,8 +33,8 @@ body:
       label: What machine were you running CAM on?
       multiple: true
       options:
-        - CISL machine (e.g. cheyenne)
-        - CGD machine (e.g. izumi)
+        - CISL machine (e.g. Derecho)
+        - CGD machine (e.g. Izumi)
         - Docker container
         - Personal Computer
         - Other (please explain below)
