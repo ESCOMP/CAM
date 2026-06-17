@@ -1493,8 +1493,8 @@ end subroutine clubb_init_cnst
 
     integer :: iunit, read_status, ierr
 
-    integer :: clubb_init_errcode
-    character(len=200) :: error_message
+    integer :: errflg
+    character(len=200) :: errmsg
 
     call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
@@ -1800,9 +1800,7 @@ end subroutine clubb_init_cnst
        if (read_status == 0) then
           read(unit=iunit, nml=clubb_stats_nl, iostat=read_status)
           if (read_status /= 0) then
-             error_message = 'stats_init_clubb:  error reading namelist'
-             clubb_init_errcode = 1
-             return
+             call endrun('stats_init_clubb:  error reading namelist')
           end if
        end if
        close(unit=iunit)
@@ -1822,34 +1820,36 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
 
     ! Call the CAM-SIMA layer
-    call clubb_init(pcols, pver, pverp, begchunk, endchunk, masterproc, &
-                    mpicom, mstrid, mpi_character, max_fieldname_len, &
-                    iulog, subcol_scheme, pcnst, cnst_ndropmixed, lq, &
-                    stats_metadata, l_input_fields, clubb_config_flags, &
-                    clubb_l_do_expldiff_rtm_thlm, l_implemented, sclr_idx, &
-                    clubb_C2rtthl, clubb_C8, clubb_c11, clubb_c11b, clubb_c14, &
-                    clubb_C_wp3_pr_turb, clubb_c_K10, clubb_mult_coef, &
-                    clubb_Skw_denom_coef, clubb_C2rt, clubb_C2thl, clubb_beta, &
-                    clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, &
-                    clubb_c6thlc, clubb_wpxp_L_thresh, clubb_C7, clubb_C7b, &
-                    clubb_gamma_coef, clubb_c_K10h, clubb_lambda0_stability_coef, &
-                    clubb_lmin_coef, clubb_C8b, clubb_skw_max_mag, clubb_C1, clubb_C1b, &
-                    clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_C4, clubb_C_uu_shr, &
-                    clubb_C_uu_buoy, clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, &
-                    clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_C_invrs_tau_bkgnd, &
-                    clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, clubb_C_invrs_tau_N2, &
-                    clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, &
-                    clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, &
-                    edsclr_dim, sclr_dim, hydromet_dim, &
-                    nzm_clubb, nzt_clubb, hm_metadata, clubb_params_single_col, &
-                    clubb_vars_zt, clubb_vars_zm, clubb_vars_sfc, clubb_vars_rad_zt, clubb_vars_rad_zm, &
-                    stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, &
-                    pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, &
-                    out_zt, out_zm, out_sfc, out_radzt, out_radzm, &
-                    error_message, clubb_init_errcode )
+    call clubb_init(pcols, pver, pverp, pcnst, begchunk, endchunk, & ! in
+                    masterproc, mpicom, mstrid, mpi_character, & ! in
+                    iulog, max_fieldname_len, & ! in
+                    sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
+                    l_implemented, l_input_fields, clubb_l_do_expldiff_rtm_thlm, & ! in
+                    cnst_ndropmixed, subcol_scheme, & ! in
+                    clubb_vars_zt, clubb_vars_zm, clubb_vars_sfc, & ! in
+                    clubb_vars_rad_zt, clubb_vars_rad_zm, & ! in
+                    edsclr_dim, clubb_params_single_col, & ! inout
+                    out_zt, out_zm, out_sfc, out_radzt, out_radzm, & ! inout
+                    clubb_C2rtthl, clubb_C8, clubb_c11, clubb_c11b, clubb_c14, & ! inout
+                    clubb_C_wp3_pr_turb, clubb_c_K10, clubb_mult_coef, & ! inout
+                    clubb_Skw_denom_coef, clubb_C2rt, clubb_C2thl, clubb_beta, & ! inout
+                    clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, & ! inout
+                    clubb_c6thlc, clubb_wpxp_L_thresh, clubb_C7, clubb_C7b, & ! inout
+                    clubb_gamma_coef, clubb_c_K10h, clubb_lambda0_stability_coef, & ! inout
+                    clubb_lmin_coef, clubb_C8b, clubb_skw_max_mag, clubb_C1, clubb_C1b, & ! inout
+                    clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_C4, clubb_C_uu_shr, & ! inout
+                    clubb_C_uu_buoy, clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, & ! inout
+                    clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_C_invrs_tau_bkgnd, & ! inout
+                    clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, clubb_C_invrs_tau_N2, & ! inout
+                    clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, & ! inout
+                    clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, & ! inout
+                    lq, stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, & ! inout
+                    pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, & ! inout
+                    stats_metadata, hm_metadata, clubb_config_flags, sclr_idx, & ! inout
+                    errmsg, errflg ) ! out
 
-    if (clubb_init_errcode /= 0) then
-      call endrun(error_message)
+    if (errflg /= 0) then
+      call endrun(errmsg)
     end if
 
 #endif
@@ -2486,12 +2486,12 @@ end subroutine clubb_init_cnst
 
     call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lq=lqice)
 
-    call clubb2_run(ncol, pver, meltpt_temp, latice, rga, &
-                        ixcldliq, ixcldice, ixnumliq, ixnumice, &
-                        dlf, dlf_liq_out, dlf_ice_out, &
-                        clubb_detliq_rad, clubb_detice_rad, clubb_detphase_lowtemp, &
-                        state_loc%pdel, state_loc%pdeldry, &
-                        state_loc%t, ptend_loc%s, ptend_loc%q, det_s, det_ice )
+    call clubb2_run(ncol, pver, ixcldliq, ixcldice, ixnumliq, ixnumice, & ! in
+                    clubb_detliq_rad, clubb_detice_rad, clubb_detphase_lowtemp, &! in
+                    meltpt_temp, latice, rga, & ! in
+                    dlf, state_loc%t, state_loc%pdel, state_loc%pdeldry, & ! in
+                    ptend_loc%q, ptend_loc%s, det_s, det_ice, & ! inout
+                    dlf_liq_out, dlf_ice_out ) ! out
 
     do k = 1, pver
       do i = 1, ncol
@@ -2541,19 +2541,23 @@ end subroutine clubb_init_cnst
       endif
     enddo
 
-    call clubb3_run(pcols, ncol, pver, pverp, pcnst, top_lev, zvir, rair, cpair, gravit, karman, &
-                        ixq, ixcldice, ixcldliq, ixnumice, calday, tropp_days, tropLev, &
-                        rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, &
-                        single_column, scm_cambfb_mode, scm_clubb_iop_name, subcol_scheme, &
-                        dp1, dp2, cmfmc, cmfmc_sh_pbuf, dp_icwmr_pbuf, concld_pbuf, &
-                        aist_pbuf, qsatfac_pbuf, ast_pbuf, qist_pbuf, cld_pbuf, &
-                        pblh_pbuf, deepcu_pbuf, shalcu_pbuf, lq, cnst_type, &
-                        alst_pbuf, qlst_pbuf, rcm, cloud_frac, exner, state_loc%exner, &
-                        state_loc%t, state_loc%q, ptend_all%q, state_loc%pmid, cam_in%landfrac, &
-                        cam_in%snowhland, state_loc%pdel, state_loc%pdeldry, &
-                        cam_in%wsx, cam_in%wsy, cam_in%shf, cam_in%cflx, state_loc%zm, &
-                        state_loc%zi, state_loc%u, state_loc%v, state_loc%lat, state_loc%pint, state_loc%phis, &
-                        errmsg, errflg )
+    call clubb3_run(pcols, ncol, pver, pverp, pcnst, top_lev, & ! in
+                    ixq, ixcldice, ixcldliq, ixnumice, & ! in
+                    rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, & ! in
+                    dp1, dp2, zvir, rair, cpair, gravit, karman, & ! in
+                    calday, tropp_days, & ! in
+                    state_loc%lat, state_loc%phis, cam_in%landfrac, cam_in%snowhland, & ! in
+                    cam_in%wsx, cam_in%wsy, cam_in%shf, & ! in
+                    state_loc%pint, state_loc%pmid, state_loc%pdel, state_loc%pdeldry, & ! in
+                    rcm, cloud_frac, state_loc%t, exner, & ! in
+                    state_loc%exner, state_loc%zm, state_loc%zi, state_loc%u, & ! in
+                    state_loc%v, cmfmc, cam_in%cflx, state_loc%q, & ! in
+                    single_column, scm_cambfb_mode, lq, & ! in
+                    cnst_type, scm_clubb_iop_name, subcol_scheme, & ! in
+                    pblh_pbuf, alst_pbuf, qlst_pbuf, deepcu_pbuf, shalcu_pbuf, & ! inout
+                    cmfmc_sh_pbuf, dp_icwmr_pbuf, concld_pbuf, aist_pbuf,  & ! inout
+                    qsatfac_pbuf, ast_pbuf, qist_pbuf, cld_pbuf, ptend_all%q, troplev, & ! inout
+                    errmsg, errflg ) ! out
 
     if (errflg /= 0) then
       call endrun(errmsg)
