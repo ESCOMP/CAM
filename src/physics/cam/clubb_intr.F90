@@ -1906,6 +1906,7 @@ end subroutine clubb_init_cnst
       err_info_type,        &
       cleanup_err_info_api
 
+!BAS still using aist_vector here but prob need to move to SIMA side
     use cldfrc2m,                  only: aist_vector, rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const
     use cam_history,               only: outfld
 
@@ -2033,9 +2034,6 @@ end subroutine clubb_init_cnst
     integer :: i !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
 
 #ifdef CLUBB_SGS
-
-!BAS to sima    real(r8), parameter :: &
-!BAS to sima      rad2deg=180.0_r8/pi
 
     character(len=*), parameter :: subr='clubb_tend_cam'
 
@@ -2191,10 +2189,8 @@ end subroutine clubb_init_cnst
     real(r8) :: tropp_days(12)
 !end BAS
 
-!BAS
     logical :: first_step, first_restart_step
     integer :: nstep
-!end BAS
 
   call t_startf('clubb_tend_cam')
 
