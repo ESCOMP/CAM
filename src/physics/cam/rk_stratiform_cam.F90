@@ -895,7 +895,6 @@ subroutine rk_stratiform_cam_tend( &
       cappa = cappa, &
       gravit = gravit, &
       rair = rair, &
-      tmelt = tmelt, &
       pref = pref, &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
@@ -906,8 +905,6 @@ subroutine rk_stratiform_cam_tend( &
       q = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
-      shallowcu = shallowcu(:ncol,:), &
-      deepcu = deepcu(:ncol,:), &
       concld = concld(:ncol,:), &
       landfrac = landfrac(:ncol), &
       ocnfrac = ocnfrac(:ncol), &
@@ -950,8 +947,6 @@ subroutine rk_stratiform_cam_tend( &
       q_wv = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
-      shallowcu = shallowcu(:ncol,:), &
-      deepcu = deepcu(:ncol,:), &
       concld = concld(:ncol,:), &
       landfrac = landfrac(:ncol), &
       ocnfrac = ocnfrac(:ncol), &
@@ -1291,7 +1286,6 @@ subroutine rk_stratiform_cam_tend( &
       cappa = cappa, &
       gravit = gravit, &
       rair = rair, &
-      tmelt = tmelt, &
       pref = pref, &
       lapse_rate = lapse_rate, &
       top_lev_cloudphys = 1, & ! CAM4 macrophysics.
@@ -1302,8 +1296,6 @@ subroutine rk_stratiform_cam_tend( &
       q = state1%q(:ncol,:,ixq), &
       cldice = state1%q(:ncol,:,ixcldice), &
       phis = state1%phis(:ncol), &
-      shallowcu = shallowcu(:ncol,:), &
-      deepcu = deepcu(:ncol,:), &
       concld = concld(:ncol,:), &
       landfrac = landfrac(:ncol), &
       ocnfrac = ocnfrac(:ncol), &

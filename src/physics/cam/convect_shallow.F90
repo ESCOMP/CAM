@@ -37,7 +37,6 @@
    !        'off'    = No shallow convection
 
    character(len=16) :: shallow_scheme      ! Default set in phys_control.F90, use namelist to change
-   character(len=16) :: microp_scheme       ! Microphysics scheme
    logical           :: history_amwg        ! output the variables used by the AMWG diag package
    logical           :: history_budget      ! Output tendencies and state variables for CAM4 T, qv, ql, qi
    integer           :: history_budget_histfile_num ! output history file number for budget fields
@@ -86,7 +85,7 @@
   use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
   use phys_control, only: use_gw_convect_sh
 
-  call phys_getopts( shallow_scheme_out = shallow_scheme, microp_scheme_out = microp_scheme)
+  call phys_getopts( shallow_scheme_out = shallow_scheme )
 
   call pbuf_add_field('ICWMRSH',    'physpkg' ,dtype_r8,(/pcols,pver/),       icwmrsh_idx )
   call pbuf_add_field('RPRDSH',     'physpkg' ,dtype_r8,(/pcols,pver/),       rprdsh_idx )
@@ -266,7 +265,7 @@
          write(iulog,*) 'ERROR: shallow convection scheme ', shallow_scheme, ' is incompatible with eddy scheme ', eddy_scheme
          call endrun( 'convect_shallow_init: shallow_scheme and eddy_scheme are incompatible' )
      endif
-     call init_uwshcu( r8, latvap, cpair, latice, zvir, rair, gravit, mwh2o/mwdry )
+     call init_uwshcu( r8, latvap, cpair, latice, zvir, rair, gravit, mwh2o, mwdry )
 
      tke_idx = pbuf_get_index('tke')
 
@@ -320,14 +319,12 @@
 
    use constituents,    only : pcnst, cnst_get_ind, cnst_get_type_byind
    use hk_conv,         only : cmfmca_cam
-   use uwshcu,          only : compute_uwshcu_inv
+
+   use uwshcu, only: uwshcu_cam
 
    use time_manager,    only : get_nstep
    use wv_saturation,   only : qsat
    use physconst,       only : latice, latvap, rhoh2o, tmelt, gravit
-
-   use spmd_utils, only : iam
-   implicit none
 
    ! ---------------------- !
    ! Input-Output Arguments !
@@ -355,13 +352,10 @@
    ! --------------- !
    integer  :: i, k, m
    integer  :: n, x
-   integer  :: ilon                                                      ! Global longitude index of a column
-   integer  :: ilat                                                      ! Global latitude  index of a column
    integer  :: lchnk                                                     ! Chunk identifier
    integer  :: ncol                                                      ! Number of atmospheric columns
    integer  :: nstep                                                     ! Current time step index
    integer  :: ixcldice, ixcldliq                                        ! Constituent indices for cloud liquid and ice water.
-   integer  :: ixnumice, ixnumliq                                        ! Constituent indices for cloud liquid and ice number concentration
 
    real(r8),  pointer   :: precc(:)                                      ! Shallow convective precipitation (rain+snow) rate at surface [ m/s ]
    real(r8),  pointer   :: snow(:)                                       ! Shallow convective snow rate at surface [ m/s ]
@@ -381,9 +375,6 @@
    real(r8) :: ntsnprd(pcols,pver)                                       ! Net snow   production in layer
    real(r8) :: tend_s_snwprd(pcols,pver)                                 ! Heating rate of snow production
    real(r8) :: tend_s_snwevmlt(pcols,pver)                               ! Heating rate of evap/melting of snow
-   real(r8) :: slflx(pcols,pverp)                                        ! Shallow convective liquid water static energy flux
-   real(r8) :: qtflx(pcols,pverp)                                        ! Shallow convective total water flux
-   real(r8) :: cmfdqs(pcols, pver)                                       ! Shallow convective snow production
    real(r8) :: zero(pcols)                                               ! Array of zeros
    real(r8) :: cbmf(pcols)                                               ! Shallow cloud base mass flux [ kg/s/m2 ]
    real(r8) :: freqsh(pcols)                                             ! Frequency of shallow convection occurence
@@ -506,10 +497,7 @@
       ptend_loc%q = 0._r8
       ptend_loc%s = 0._r8
       rprdsh      = 0._r8
-      cmfdqs      = 0._r8
       precc       = 0._r8
-      slflx       = 0._r8
-      qtflx       = 0._r8
       icwmr       = 0._r8
       rliq2       = 0._r8
       qc2         = 0._r8
@@ -545,37 +533,73 @@
       lq(:) = .TRUE.
       call physics_ptend_init( ptend_loc, state%psetcols, 'UWSHCU', ls=.true., lu=.true., lv=.true., lq=lq  )
 
+      ! pbuf field setup:
+      ! cush - convective scale height (inout)
       call pbuf_get_field(pbuf, cush_idx, cush  ,(/1,itim_old/),  (/pcols,1/))
+      ! tke - in [m2 s-2]
       call pbuf_get_field(pbuf, tke_idx,  tke)
 
-
+      ! shallow convective precip (rain + snow) flux (out from uwshcu)
       call pbuf_get_field(pbuf, sh_flxprc_idx, flxprec)
+      ! shallow convective snow flux (out from uwshcu)
       call pbuf_get_field(pbuf, sh_flxsnw_idx, flxsnow)
+      ! shallow convective (entrainment)/(entrainment+detrainment) ratio (out from uwshcu)
       call pbuf_get_field(pbuf, sh_e_ed_ratio_idx, sh_e_ed_ratio)
 
-      call compute_uwshcu_inv( pcols     , pver    , ncol           , pcnst         , ztodt         ,                   &
-                               state%pint, state%zi, state%pmid     , state%zm      , state%pdel    ,                   &
-                               state%u   , state%v , state%q(:,:,1) , state%q(:,:,ixcldliq), state%q(:,:,ixcldice),     &
-                               state%t   , state%s , state%q(:,:,:) ,                                                   &
-                               tke       , cld     , concld         , pblh          , cush          ,                   &
-                               cmfmc2    , slflx   , qtflx          , 							&
-			       flxprec, flxsnow, 			         					&
-                               ptend_loc%q(:,:,1)  , ptend_loc%q(:,:,ixcldliq), ptend_loc%q(:,:,ixcldice),              &
-                               ptend_loc%s         , ptend_loc%u    , ptend_loc%v   , ptend_tracer  ,                   &
-                               rprdsh              , cmfdqs         , precc         , snow          ,                   &
-                               evapcsh             , shfrc          , iccmr_UW      , icwmr_UW      ,                   &
-                               icimr_UW            , cbmf           , qc2           , rliq2         ,                   &
-                               cnt2                , cnb2           , lchnk         , state%pdeldry ,                   &
-                               sh_e_ed_ratio                                                                            )
+      call uwshcu_cam(                                      &
+           pcols          = pcols,                           &
+           ncol           = ncol,                            &
+           pver           = pver,                            &
+           ncnst          = pcnst,                           &
+           dt             = ztodt,                           &
+           ps0_inv        = state%pint,                      &
+           zs0_inv        = state%zi,                        &
+           p0_inv         = state%pmid,                      &
+           z0_inv         = state%zm,                        &
+           dp0_inv        = state%pdel,                      &
+           u0_inv         = state%u,                         &
+           v0_inv         = state%v,                         &
+           qv0_inv        = state%q(:,:,1),                  &
+           ql0_inv        = state%q(:,:,ixcldliq),           &
+           qi0_inv        = state%q(:,:,ixcldice),           &
+           t0_inv         = state%t,                         &
+           s0_inv         = state%s,                         &
+           tr0_inv        = state%q(:,:,:),                  &
+           tke_inv        = tke,                             &
+           pblh           = pblh,                            &
+           cush           = cush,                            &
+           umf_inv        = cmfmc2,                          &
+           slflx_inv      = cmfsl,                           &
+           qtflx_inv      = cmflq,                           &
+           flxprc1_inv    = flxprec,                         &
+           flxsnow1_inv   = flxsnow,                         &
+           sten_inv       = ptend_loc%s,                     &
+           uten_inv       = ptend_loc%u,                     &
+           vten_inv       = ptend_loc%v,                     &
+           trten_inv      = ptend_tracer,                    &
+           cmfdqr         = rprdsh,                          &
+           precip         = precc,                           &
+           snow           = snow,                            &
+           evapc_inv      = evapcsh,                         &
+           rliq           = rliq2,                           &
+           cufrc_inv      = shfrc,                           &
+           qcu_inv        = iccmr_UW,                        &
+           qlu_inv        = icwmr_UW,                        &
+           qiu_inv        = icimr_UW,                        &
+           cbmf           = cbmf,                            &
+           qc_inv         = qc2,                             &
+           cnt_inv        = cnt2,                            &
+           cnb_inv        = cnb2,                            &
+           lchnk          = lchnk,                           &
+           dpdry0_inv     = state%pdeldry,                   &
+           sh_e_ed_ratio  = sh_e_ed_ratio)
 
       ! --------------------------------------------------------------------- !
-      ! Here, 'rprdsh = qrten', 'cmfdqs = qsten' both in unit of [ kg/kg/s ]  !
       ! In addition, define 'icwmr' which includes both liquid and ice.       !
       ! --------------------------------------------------------------------- !
 
       icwmr(:ncol,:)  = iccmr_UW(:ncol,:)
-      rprdsh(:ncol,:) = rprdsh(:ncol,:) + cmfdqs(:ncol,:)
-      do m = 4, pcnst
+      do m = 1, pcnst
          ptend_loc%q(:ncol,:pver,m) = ptend_tracer(:ncol,:pver,m)
       enddo
 
@@ -603,13 +627,6 @@
       !  endif
       !  enddo
       !  enddo
-
-      ! ------------------------------------------------- !
-      ! Convective fluxes of 'sl' and 'qt' in energy unit !
-      ! ------------------------------------------------- !
-
-      cmfsl(:ncol,:) = slflx(:ncol,:)
-      cmflq(:ncol,:) = qtflx(:ncol,:) * latvap
 
       call outfld( 'PRECSH' , precc  , pcols, lchnk )
 
@@ -671,11 +688,6 @@
    ! ---------------------------------------------------------------------------- !
    ! Output new partition of cloud condensate variables, as well as precipitation !
    ! ---------------------------------------------------------------------------- !
-
-   if( microp_scheme == 'MG' ) then
-       call cnst_get_ind( 'NUMLIQ', ixnumliq )
-       call cnst_get_ind( 'NUMICE', ixnumice )
-   endif
 
    ftem(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
 

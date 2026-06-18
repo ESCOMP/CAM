@@ -2186,6 +2186,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/uw_shallow\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
