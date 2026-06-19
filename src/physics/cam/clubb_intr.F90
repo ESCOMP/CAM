@@ -1819,8 +1819,16 @@ end subroutine clubb_init_cnst
     call mpi_bcast(clubb_vars_sfc,     var_length*nvarmax_sfc,      mpi_character, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(subr//": FATAL: mpi_bcast: clubb_vars_sfc")
 
+    allocate( &
+       pdf_params_chnk(begchunk:endchunk),   &
+       pdf_params_zm_chnk(begchunk:endchunk), &
+       pdf_implicit_coefs_terms_chnk(begchunk:endchunk), stat=ierr )
+    if( ierr /= 0 ) then
+      call endrun(' clubb_ini_cam: failed to allocate pdf_params')
+    end if
+
     ! Call the CAM-SIMA layer
-    call clubb_init(pcols, pver, pverp, pcnst, begchunk, endchunk, & ! in
+    call clubb_init(pcols, pver, pverp, pcnst, & ! in
                     masterproc, mpicom, mstrid, mpi_character, & ! in
                     iulog, max_fieldname_len, & ! in
                     sclr_dim, hydromet_dim, nzt_clubb, nzm_clubb, & ! in
@@ -1844,12 +1852,11 @@ end subroutine clubb_init_cnst
                     clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, clubb_C_invrs_tau_N2_wpxp, & ! inout
                     clubb_C_invrs_tau_N2_clear_wp3, clubb_bv_efold, clubb_wpxp_Ri_exp, clubb_z_displace, & ! inout
                     lq, stats_zt, stats_zm, stats_sfc, stats_rad_zt, stats_rad_zm, & ! inout
-                    pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, & ! inout
                     stats_metadata, hm_metadata, clubb_config_flags, sclr_idx, & ! inout
                     errmsg, errflg ) ! out
 
     if (errflg /= 0) then
-      call endrun(errmsg)
+      call endrun("clubb_ini_cam: "//trim(errmsg))
     end if
 
 #endif
@@ -2327,6 +2334,7 @@ end subroutine clubb_init_cnst
     ! Copy the state to state_loc array to use in this routine
     call physics_state_copy(state, state_loc)
 
+!BAS check utilities
     ! Constituents are all treated as dry mmr by clubb.  Convert the water species to
     ! a dry basis.
     call set_wet_to_dry(state_loc, convert_cnst_type='wet')
@@ -2366,13 +2374,12 @@ end subroutine clubb_init_cnst
 
     end if
 
-!BAS does this make sense to do? 
+!BAS does this make sense to do? Maybe remove 
     !$acc data copyin( state_loc, cam_in )
 
-!BAS moved up from below to keep on CAM side
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
 
-    call clubb1_run(ncol, pcols, lchnk, iam, nstep, state_loc%lat, state_loc%lon, hdtime, & ! in
+    call clubb1_run(ncol, pcols, iam, nstep, state_loc%lat, state_loc%lon, hdtime, & ! in
                     pver, pverp, pcnst, clubb_timestep, & ! in
                     nzt_clubb, nzm_clubb, sclr_dim, edsclr_dim, hydromet_dim, & ! in
                     stats_metadata, hm_metadata, clubb_do_adv, first_step, first_restart_step, & ! in
@@ -2381,7 +2388,7 @@ end subroutine clubb_init_cnst
                     macmic_it, top_lev, rtpthlp_const, wpthlp_const, wprtp_const, sclr_tol, & ! in
                     ts_nudge, rtm_min, rtm_nudge_max_altitude, & ! in
                     wp3_const, cld_macmic_num_steps, clubb_params_single_col, & ! in
-                    cpair, cpairv, rair, inv_p0_clubb, rairv, zvir, latvap, latice, & ! in
+                    cpair, cpairv(:,:,lchnk), rair, inv_p0_clubb, rairv(:,:,lchnk), zvir, latvap, latice, & ! in
                     rga, gravit, clubb_rnevap_effic, do_cldcool, do_rainturb, & ! in
                     do_clubb_mf, l_implemented, grid_type, lq, deep_scheme, & ! in
                     state_loc%q, state_loc%t, state_loc%pmid, state_loc%zm, & ! in
@@ -2394,7 +2401,7 @@ end subroutine clubb_init_cnst
                     clubb_l_intr_sfc_flux_smooth, clubb_config_flags, & ! in
                     apply_const, gr, ztodtptr, state_loc%u, state_loc%v, state_loc%s, wprcp, & ! inout
                     ptend_loc%q, ptend_loc%u, ptend_loc%v, ptend_loc%s, & ! inout
-                    pdf_params_chnk, pdf_params_zm_chnk, pdf_implicit_coefs_terms_chnk, & ! inout
+                    pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), pdf_implicit_coefs_terms_chnk(lchnk), & ! inout
                     eleak, se_dis, rho_zm, rho_zt, exner, cloud_frac, & ! inout
                     zi_g, zt_g, grid_dx, grid_dy, & ! inout
                     mf_dry_a, mf_moist_a, mf_dry_w, mf_moist_w, & ! inout
@@ -2847,7 +2854,7 @@ end subroutine clubb_init_cnst
     call t_stopf('clubb_tend_cam:non_acc_region')
 
     ! Cleanup err_info
-    call cleanup_err_info_api(err_info)
+!    call cleanup_err_info_api(err_info)
 #endif
 
     call t_stopf('clubb_tend_cam')
