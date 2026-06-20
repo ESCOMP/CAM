@@ -2374,9 +2374,6 @@ end subroutine clubb_init_cnst
 
     end if
 
-!BAS does this make sense to do? Maybe remove 
-    !$acc data copyin( state_loc, cam_in )
-
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
 
     call clubb1_run(ncol, pcols, iam, nstep, state_loc%lat, state_loc%lon, hdtime, & ! in
