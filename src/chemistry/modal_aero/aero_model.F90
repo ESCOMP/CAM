@@ -981,22 +981,46 @@ contains
     real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
-    real(r8), pointer, dimension(:,:,:) :: dgnumwet
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
-    integer :: i,k
+    integer :: i,k, lchnk
 
-    call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet )
+    real(r8) :: sfc_tmp(ncol,pver,nmodes)
+    real(r8) :: dm_tmp(ncol,pver,nmodes)
+    real(r8) :: sad_tmp(ncol,pver)
+    real(r8) :: reff_tmp(ncol,pver)
 
-    beglev(:ncol)=ltrop(:ncol)+1
-    endlev(:ncol)=pver
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, sad_trop, reff_trop, sfc=sfc, sad_ssa=sad_ssa )
+    class(aerosol_state), pointer :: aero_state
+
+    lchnk = state%lchnk
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
+
+    sad_trop = 0._r8
+    reff_trop = 0._r8
+    sfc = 0._r8
+    dm_aer = 0._r8
 
     do i = 1,ncol
        do k = ltrop(i)+1,pver
-          dm_aer(i,k,:) = dgnumwet(i,k,:) * 1.e2_r8 ! convert m to cm
+          sad_trop(i,k) = sad_tmp(i,k)
+          reff_trop(i,k) = reff_tmp(i,k)
+          sfc(i,k,:) = sfc_tmp(i,k,:)
+          dm_aer(i,k,:) = dm_tmp(i,k,:)
        enddo
     enddo
+
+    call aero_state%surf_area_dens(aero_props, sad_seasalt_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
+
+    sad_ssa = 0._r8
+
+    do i = 1,ncol
+       do k = ltrop(i)+1,pver
+          sad_ssa(i,k) = sad_tmp(i,k)
+       end do
+    end do
 
   end subroutine aero_model_surfarea
 
@@ -1018,21 +1042,35 @@ contains
     real(r8), intent(out)   :: reff_strat(:,:)
 
     ! local vars
-    real(r8), pointer, dimension(:,:,:) :: dgnumwet
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
+    integer :: i,k, lchnk
+
+    real(r8) :: sfc_tmp(ncol,pver,nmodes)
+    real(r8) :: dm_tmp(ncol,pver,nmodes)
+    real(r8) :: sad_tmp(ncol,pver)
+    real(r8) :: reff_tmp(ncol,pver)
+    real(r8) :: relhum(ncol,pver)
+
+    class(aerosol_state), pointer :: aero_state
 
     reff_strat = 0._r8
     strato_sad = 0._r8
 
     if (.not.modal_strat_sulfate) return
 
-    call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet )
+    relhum = huge(1._r8)
 
-    beglev(:ncol)=top_lev
-    endlev(:ncol)=ltrop(:ncol)
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, strato_sad, reff_strat, &
-                         chm_mass_idx=index_strat_mass )
+    lchnk = state%lchnk
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
+
+    do i = 1,ncol
+       do k = top_lev, ltrop(i)
+          strato_sad(i,k) = sad_tmp(i,k)
+          reff_strat(i,k) = reff_tmp(i,k)
+       enddo
+    enddo
 
   end subroutine aero_model_strat_surfarea
 
@@ -1365,119 +1403,6 @@ contains
 
   !===============================================================================
   ! private methods
-
-
-  !=============================================================================
-  !=============================================================================
-  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc, sad_ssa, chm_mass_idx )
-    use mo_constants,    only : pi
-    use modal_aero_data, only : nspec_amode, alnsg_amode
-
-    ! dummy args
-    integer,  intent(in)  :: ncol
-    real(r8), intent(in)  :: mmr(:,:,:)
-    real(r8), intent(in)  :: pmid(:,:)
-    real(r8), intent(in)  :: temp(:,:)
-    real(r8), intent(in)  :: diam(:,:,:)
-    integer,  intent(in)  :: beglev(:)
-    integer,  intent(in)  :: endlev(:)
-    real(r8), intent(out) :: sad(:,:)
-    real(r8), intent(out) :: reff(:,:)
-    real(r8),optional, intent(out) :: sfc(:,:,:)
-    real(r8),optional, intent(out) :: sad_ssa(:,:)
-    integer, optional, intent(in)  :: chm_mass_idx(:,:) ! overrides index_chm_mass (e.g., strat SAD uses sulfate-only indices)
-
-    ! local vars
-    real(r8) :: sad_mode(pcols,pver,ntot_amode),radeff(pcols,pver)
-    real(r8) :: vol(pcols,pver),vol_mode(pcols,pver,ntot_amode)
-    real(r8) :: rho_air
-    integer  :: i,k,l,m
-    real(r8) :: chm_mass, tot_mass
-    real(r8) :: ssa_mass
-    real(r8) :: sad_mode_ssa(pcols,pver,ntot_amode)
-    integer  :: idx_chm_val
-
-    !
-    ! Compute surface aero for each mode.
-    ! Total over all modes as the surface area for chemical reactions.
-    !
-
-    sad = 0._r8
-    sad_mode = 0._r8
-    vol = 0._r8
-    vol_mode = 0._r8
-    reff = 0._r8
-    if (present(sad_ssa)) then
-      sad_ssa = 0._r8
-      sad_mode_ssa = 0._r8
-    end if
-
-    do i = 1,ncol
-       do k = beglev(i),endlev(i)
-          rho_air = pmid(i,k)/(temp(i,k)*287.04_r8)
-          do l=1,ntot_amode
-             !
-             ! compute a mass weighting of the number
-             !
-             tot_mass = 0._r8
-             chm_mass = 0._r8
-             ssa_mass = 0._r8
-             do m=1,nspec_amode(l)
-               if ( index_tot_mass(l,m) > 0 ) &
-                    tot_mass = tot_mass + mmr(i,k,index_tot_mass(l,m))
-               if (present(chm_mass_idx)) then
-                  idx_chm_val = chm_mass_idx(l,m)
-               else
-                  idx_chm_val = index_chm_mass(l,m)
-               end if
-               if ( idx_chm_val > 0 ) &
-                    chm_mass = chm_mass + mmr(i,k,idx_chm_val)
-               if (present(sad_ssa)) then
-                 if ( index_ssa_mass(l,m) > 0 ) &
-                      ssa_mass = ssa_mass + mmr(i,k,index_ssa_mass(l,m))
-               end if
-             end do
-             if ( tot_mass > 0._r8 ) then
-              ! surface area density
-               sad_mode(i,k,l) = chm_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
-                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
-               sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
-
-               if (present(sad_ssa)) then
-                 sad_mode_ssa(i,k,l) = ssa_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
-                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
-                 sad_mode_ssa(i,k,l) = 1.e-2_r8 * sad_mode_ssa(i,k,l) ! cm^2/cm^3
-               end if
-
-              ! volume calculation, for use in effective radius calculation
-               vol_mode(i,k,l) = chm_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
-                               * exp(4.5_r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
-             else
-               sad_mode(i,k,l) = 0._r8
-               vol_mode(i,k,l) = 0._r8
-               if (present(sad_ssa)) then
-                 sad_mode_ssa(i,k,l) = 0._r8
-               end if
-             end if
-          end do
-          sad(i,k) = sum(sad_mode(i,k,:))
-          vol(i,k) = sum(vol_mode(i,k,:))
-          reff(i,k) = 3._r8*vol(i,k)/sad(i,k)
-          if (present(sad_ssa)) then
-            sad_ssa(i,k) = sum(sad_mode_ssa(i,k,:))
-          end if
-
-       enddo
-    enddo
-
-    if (present(sfc)) then
-       sfc(:,:,:) = sad_mode(:,:,:)
-    endif
-
-  end subroutine surf_area_dens
 
   !===============================================================================
   !===============================================================================

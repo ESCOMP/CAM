@@ -31,6 +31,9 @@ module aero_model
   use carma_intr, only: carma_get_sad
 
   use aerosol_properties_mod, only: aero_name_len
+  use aerosol_state_mod, only: aerosol_state
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   implicit none
   private
@@ -449,11 +452,35 @@ contains
     integer :: beglev(ncol)
     integer :: endlev(ncol)
 
+    integer :: i,k, lchnk
+
+    real(r8) :: sfc_tmp(ncol,pver,nbins)
+    real(r8) :: dm_tmp(ncol,pver,nbins)
+    real(r8) :: sad_tmp(ncol,pver)
+    real(r8) :: reff_tmp(ncol,pver)
+    class(aerosol_state), pointer :: aero_state
+
     sad_ssa = -huge(1._r8)
 
-    beglev(:ncol)=ltrop(:ncol)+1
-    endlev(:ncol)=pver
-    call surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, sad_trop, reff_trop, sfc=sfc, dm_aer=dm_aer )
+    lchnk = state%lchnk
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
+
+    sad_trop = 0._r8
+    reff_trop = 0._r8
+    sfc = 0._r8
+    dm_aer = 0._r8
+
+    do i = 1,ncol
+       do k = ltrop(i)+1,pver
+          sfc(i,k,:) = sfc_tmp(i,k,:)
+          dm_aer(i,k,:) = dm_tmp(i,k,:)
+          sad_trop(i,k) = sad_tmp(i,k)
+          reff_trop(i,k) = reff_tmp(i,k)
+       enddo
+    enddo
 
   end subroutine aero_model_surfarea
 
@@ -477,14 +504,32 @@ contains
     real(r8), intent(out)   :: reff_strat(:,:) ! aerosol effective radius (cm), zeroed below the tropopause
 
     ! local vars
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
+    integer :: i,k, lchnk
 
-    beglev(:ncol) = clim_modal_aero_top_lev
-    endlev(:ncol) = ltrop(:ncol)
+    real(r8) :: sfc_tmp(ncol,pver,nbins)
+    real(r8) :: dm_tmp(ncol,pver,nbins)
+    real(r8) :: sad_tmp(ncol,pver)
+    real(r8) :: reff_tmp(ncol,pver)
+    real(r8) :: relhum(ncol,pver)
 
-    call surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, strato_sad, reff_strat, &
-                         spec_type_list=sad_strat_spec_types )
+    class(aerosol_state), pointer :: aero_state
+
+
+    reff_strat = 0._r8
+    strato_sad = 0._r8
+
+    lchnk = state%lchnk
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
+
+    do i = 1,ncol
+       do k = clim_modal_aero_top_lev, ltrop(i)
+          strato_sad(i,k) = sad_tmp(i,k)
+          reff_strat(i,k) = reff_tmp(i,k)
+       enddo
+    enddo
 
   end subroutine aero_model_strat_surfarea
 
@@ -781,121 +826,8 @@ contains
   !===============================================================================
   ! private methods
 
-
   !=============================================================================
   !=============================================================================
-  subroutine surf_area_dens( state, pbuf, ncol, mmr, beglev, endlev, sad, reff, sfc, dm_aer, spec_type_list )
-    use mo_constants, only: pi
-    use carma_intr,   only: carma_effecitive_radius
-    use aerosol_spec_utils, only: spec_type_in_list
-
-    ! dummy args
-    type(physics_state),    intent(in) :: state           ! Physics state variables
-    type(physics_buffer_desc), pointer :: pbuf(:)
-    integer,  intent(in)  :: ncol
-    real(r8), intent(in)  :: mmr(:,:,:)
-    integer,  intent(in)  :: beglev(:)
-    integer,  intent(in)  :: endlev(:)
-    real(r8), intent(out) :: sad(:,:)    ! bulk surface area density in cm2/cm3 from beglev to endlev, zero elsewhere
-    real(r8), intent(out) :: reff(:,:)   ! bulk effective radius in cm from beglev to endlev, zero elsewhere
-    real(r8), optional, intent(out) :: sfc(:,:,:) ! surface area density per bin
-    real(r8), optional, intent(out) :: dm_aer(:,:,:) ! diameter per bin
-    character(len=*), optional, intent(in) :: spec_type_list(:) ! overrides sad_chem_spec_types (e.g., strat SAD uses sulfate-only list)
-
-    ! local vars
-    real(r8) :: reffaer(pcols,pver) ! bulk effective radius in cm
-
-    real(r8) :: sad_bin(pcols,pver,nbins)
-    integer  :: icol, ilev, ibin, ispec !!, reff_pbf_ndx
-    real(r8) :: chm_mass, tot_mass
-    character(len=32) :: spectype
-    real(r8) :: wetr(pcols,pver)      ! CARMA bin wet radius in cm
-    real(r8) :: wetrho(pcols,pver)    ! CARMA bin wet density
-    real(r8) :: sad_carma(pcols,pver) ! CARMA bin wet surface area density in cm2/cm3
-    real(r8), pointer :: aer_bin_mmr(:,:)
-
-    character(len=aero_name_len) :: bin_name, shortname
-    integer :: igroup, indxbin, rc, nchr
-
-    sad = 0._r8
-    reff = 0._r8
-
-    !
-    ! Compute surface aero for each bin.
-    ! Total over all bins as the surface area for chemical reactions.
-    !
-
-    reffaer = carma_effecitive_radius(state)
-
-    sad = 0._r8
-    sad_bin = 0._r8
-    reff = 0._r8
-
-    do ibin=1,nbins ! loop over aerosol bins
-      call rad_aer_get_info_by_bin(0, ibin, bin_name=bin_name)
-
-      nchr = len_trim(bin_name)-2
-      shortname = bin_name(:nchr)
-
-      call carma_get_group_by_name(shortname, igroup, rc)
-
-      read(bin_name(nchr+1:),*) indxbin
-
-      call carma_get_wet_radius(state, igroup, indxbin, wetr, wetrho, rc) ! m
-      wetr(:ncol,:) = wetr(:ncol,:) * 1.e2_r8 ! cm
-      call carma_get_sad(state, igroup, indxbin, sad_carma, rc)
-
-      if (present(dm_aer)) then
-         dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
-      endif
-      sad_bin(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
-    end do
-
-    do icol = 1,ncol
-      do ilev = beglev(icol),endlev(icol)
-        do ibin=1,nbins ! loop over aerosol bins
-          !
-          ! compute a mass weighting of the number
-          !
-          tot_mass = 0._r8
-          chm_mass = 0._r8
-          do ispec=1,nspec(ibin)
-
-             call rad_cnst_get_bin_mmr_by_idx(0, ibin, ispec, 'a', state, pbuf, aer_bin_mmr)
-
-             tot_mass = tot_mass + aer_bin_mmr(icol,ilev)
-
-             call rad_aer_get_bin_props_by_idx(0, ibin, ispec, spectype=spectype)
-
-             if (present(spec_type_list)) then
-                if (spec_type_in_list(spectype, spec_type_list)) then
-                   chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
-                end if
-             else
-                if (spec_type_in_list(spectype, sad_chem_spec_types)) then
-                   chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
-                end if
-             end if
-
-          end do
-          if ( tot_mass > 0._r8 ) then
-         ! surface area density
-            sad_bin(icol,ilev,ibin) = chm_mass / tot_mass * sad_bin(icol,ilev,ibin) ! cm^2/cm^3
-          else
-            sad_bin(icol,ilev,ibin) = 0._r8
-          end if
-        end do
-        sad(icol,ilev) = sum(sad_bin(icol,ilev,:))
-        reff(icol,ilev) = reffaer(icol,ilev)
-
-       end do
-    end do
-
-    if (present(sfc)) then
-       sfc(:,:,:) = sad_bin(:,:,:)
-    endif
-
-  end subroutine surf_area_dens
 
   !=============================================================================
   subroutine mmr2vmr_carma(lchnk, vmr, mbar, mw_carma, ncol, im, rmass)

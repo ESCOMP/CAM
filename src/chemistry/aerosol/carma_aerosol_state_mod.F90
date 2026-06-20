@@ -16,7 +16,7 @@ module carma_aerosol_state_mod
   use physconst, only: pi
   use carma_intr, only: carma_get_total_mmr, carma_get_dry_radius, carma_get_number, carma_get_number_cld
   use carma_intr, only: carma_get_group_by_name, carma_get_kappa, carma_get_dry_radius, carma_get_wet_radius
-  use carma_intr, only: carma_get_wght_pct
+  use carma_intr, only: carma_get_wght_pct, carma_effecitive_radius, carma_get_sad
   use ppgrid, only: begchunk, endchunk, pcols, pver
 
   implicit none
@@ -53,6 +53,7 @@ module carma_aerosol_state_mod
      procedure :: water_volume
      procedure :: wet_diameter
      procedure :: aqu_gain_binfraction
+     procedure :: surf_area_dens
 
      final :: destructor
 
@@ -663,5 +664,104 @@ contains
     deallocate(rad_cm, wt_mass)
 
   end subroutine aqu_gain_binfraction
+
+  !------------------------------------------------------------------------
+  ! aerosol surface area density
+  !------------------------------------------------------------------------
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, relhum, pmid, temp, sad, reff, sfc, dm_aer)
+    use aerosol_spec_utils, only : spec_type_in_list
+
+    class(carma_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
+    integer,  intent(in)  :: ncol      ! number of columns
+    integer,  intent(in)  :: nlev      ! number of levels
+    real(r8), intent(in)  :: relhum(:,:)
+    real(r8), intent(in)  :: pmid(:,:)
+    real(r8), intent(in)  :: temp(:,:)
+
+    real(r8), intent(out) :: sad(:,:)
+    real(r8), intent(out) :: reff(:,:)
+    real(r8), intent(out) :: sfc(:,:,:)
+    real(r8), intent(out) :: dm_aer(:,:,:)
+
+    ! local vars
+    real(r8) :: reffaer(pcols,pver) ! bulk effective radius in cm
+
+    integer  :: icol, ilev, ibin, ispec !!, reff_pbf_ndx
+    real(r8) :: chm_mass, tot_mass
+    character(len=32) :: spectype
+    real(r8) :: wetr(pcols,pver)      ! CARMA bin wet radius in cm
+    real(r8) :: wetrho(pcols,pver)    ! CARMA bin wet density
+    real(r8) :: sad_carma(pcols,pver) ! CARMA bin wet surface area density in cm2/cm3
+    real(r8), pointer :: aer_bin_mmr(:,:)
+
+    character(len=aero_name_len) :: bin_name, shortname
+    integer :: igroup, indxbin, rc, nchr
+
+    sad = 0._r8
+    reff = 0._r8
+    sfc = 0._r8
+    dm_aer = 0._r8
+
+    !
+    ! Compute surface aero for each bin.
+    ! Total over all bins as the surface area for chemical reactions.
+    !
+
+    reffaer = carma_effecitive_radius(self%state)
+
+    do ibin=1,aero_props%nbins() ! loop over aerosol bins
+      call rad_aer_get_info_by_bin(self%list_idx_, ibin, bin_name=bin_name)
+
+      nchr = len_trim(bin_name)-2
+      shortname = bin_name(:nchr)
+
+      call carma_get_group_by_name(shortname, igroup, rc)
+
+      read(bin_name(nchr+1:),*) indxbin
+
+      call carma_get_wet_radius(self%state, igroup, indxbin, wetr, wetrho, rc) ! m
+      wetr(:ncol,:) = wetr(:ncol,:) * 1.e2_r8 ! cm
+      call carma_get_sad(self%state, igroup, indxbin, sad_carma, rc)
+
+      dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
+      sfc(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
+    end do
+
+    do icol = 1, ncol
+      do ilev = 1, nlev
+        do ibin = 1, aero_props%nbins() ! loop over aerosol bins
+          !
+          ! compute a mass weighting of the number
+          !
+          tot_mass = 0._r8
+          chm_mass = 0._r8
+          do ispec=1,aero_props%nspecies(ibin)
+
+             call aero_props%get(bin_ndx=ibin, species_ndx=ispec, spectype=spectype)
+             call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=aer_bin_mmr)
+
+             tot_mass = tot_mass + aer_bin_mmr(icol,ilev)
+
+             if (spec_type_in_list(spectype, types_list)) then
+                chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
+             end if
+
+          end do
+          if ( tot_mass > 0._r8 ) then
+         ! surface area density
+            sfc(icol,ilev,ibin) = chm_mass  / tot_mass * sfc(icol,ilev,ibin) ! cm^2/cm^3
+          else
+            sfc(icol,ilev,ibin) = 0._r8
+          end if
+        end do
+        sad(icol,ilev) = sum(sfc(icol,ilev,:))
+        reff(icol,ilev) = reffaer(icol,ilev)
+
+       end do
+    end do
+
+  end subroutine surf_area_dens
 
 end module carma_aerosol_state_mod
