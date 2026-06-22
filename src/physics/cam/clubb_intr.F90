@@ -2376,7 +2376,7 @@ end subroutine clubb_init_cnst
 
     call physics_ptend_init( ptend_loc, state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq )
 
-    call clubb1_run(ncol, pcols, iam, nstep, state_loc%lat, state_loc%lon, hdtime, & ! in
+    call clubb1_run(ncol, iam, nstep, state_loc%lat, state_loc%lon, hdtime, & ! in
                     pver, pverp, pcnst, clubb_timestep, & ! in
                     nzt_clubb, nzm_clubb, sclr_dim, edsclr_dim, hydromet_dim, & ! in
                     stats_metadata, hm_metadata, clubb_do_adv, first_step, first_restart_step, & ! in
@@ -2533,7 +2533,7 @@ end subroutine clubb_init_cnst
       endif
     enddo
 
-    call clubb3_run(pcols, ncol, pver, pverp, pcnst, top_lev, & ! in
+    call clubb3_run(ncol, pver, pverp, pcnst, top_lev, & ! in
                     ixq, ixcldice, ixcldliq, ixnumice, & ! in
                     rhminis_const, rhmaxis_const, rhmini_const, rhmaxi_const, & ! in
                     dp1, dp2, zvir, rair, cpair, gravit, karman, & ! in
