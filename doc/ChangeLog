@@ -1,5 +1,101 @@
 ===============================================================
 
+Tag name: cam6_4_183
+Originator(s): jimmielin
+Date: 22 Jun 2026
+One-line Summary: Complete CCPPization of cloud fraction for two-moment microphys (cldfrc2m); Add rad_diag CARMA testmod to existing Derecho FCARMA2000climo test
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1522
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1521 - Move two-moment cloud fraction scheme (cldfrc2m) to atmos_phys as compute_cloud_fraction_two_moment.
+- cldfrc2m is used broadly across CAM physics (cldwat2m_macro, clubb_intr, CARMA cirrus models) and its namelist parameters are pulled in via USE statements in many places. Moving the computational routines to atmos_phys and making cldfrc2m a thin CAM shim for namelist I/O and parameter distribution facilitates CCPP port of CLUBB, PUMAS, etc. as these namelist parameters will cleanly flow via standard names
+- Added keyword arguments calling into cldfrc for rh threshold etc. for clarity
+- Closes #1560 - Extend CARMA test on Derecho/Intel with rad_diag testing
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume, fvitt (CARMA fix), peverwhee (atmos_phys)
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/user_nl_clm
+  - new testmod that exercises rad_diag for CARMA (prev only Izumi for MAM)
+  - new testmod that exercises carma_do_optics for CARMA to write out optics files
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+M       src/atmos_phys
+  - update atmos_phys to atmos_phys0_23_000.
+
+M       bld/namelist_files/namelist_definition.xml
+  - fix typo
+
+M       cime_config/testdefs/testlist_cam.xml
+  - update Derecho Intel FCARMA test to use the new outfrq9s_carma_rad_diag testmod.
+
+M       src/physics/cam/cldfrc2m.F90
+  - Move computational subroutines (astG_PDF, astG_RHU, astG_PDF_single,
+    astG_RHU_single, aist_single, aist_vector) to atmos_phys
+    compute_cloud_fraction_two_moment.
+  - Keep readnl, init, and public namelist-derived constants
+    (rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const,
+    rhminl_const, rhminl_adj_land_const, rhminh_const).
+  - init now calls compute_cloud_fraction_two_moment_init and
+    cldfrc_getparams to distribute parameters.
+  - Newly exposes rhminl_const, rhminl_adj_land_const, rhminh_const
+    (previously internal) so callers can pass them in explicitly.
+
+M       src/physics/cam/cldwat2m_macro.F90
+  - USE compute_cloud_fraction_two_moment directly for subroutines;
+    USE cldfrc2m shim only for rh constants.
+
+M       src/physics/cam/clubb_intr.F90
+  - USE compute_cloud_fraction_two_moment for aist_vector;
+    USE cldfrc2m shim for rh constants including newly-exposed rhminl_const,
+    rhminl_adj_land_const, rhminh_const.
+
+M       src/physics/carma/models/cirrus/carma_cloudfraction.F90
+M       src/physics/carma/models/cirrus_dust/carma_cloudfraction.F90
+  - USE compute_cloud_fraction_two_moment for subroutines;
+    USE cldfrc2m shim for rh constants.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s_carma_rad_diag (Overall: DIFF) details:
+    - the testmod for this test changed to "outfrq9s_carma_rad_diag".
+      I cprnc'd the baseline files manually against
+      /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_182_intel/
+      SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s
+      The cam.h0a file differs only in the field lists due to new variables introduced in rad_diag_2 and 3.
+      The other files are IDENTICAL.
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+    - pre-existing failure.
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: All B4B
+
+===============================================================
+
 Tag name: cam6_4_182
 Originator(s): fvitt
 Date: 16 Jun 2026

@@ -334,14 +334,14 @@
     </options>
   </test>
 
-  <test compset="FCARMA2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
+  <test compset="FCARMA2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_carma_rad_diag" supported="false">
     <machines>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
       <machine name="derecho" compiler="intel" category="carma"/>
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
-      <option name="comment">CARMA trop_strat model test</option>
+      <option name="comment">CARMA trop_strat, rad_diag w/ sectional CARMA bins</option>
     </options>
   </test>
   <test compset="FWmaCARMAHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
