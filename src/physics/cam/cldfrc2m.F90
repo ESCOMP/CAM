@@ -47,7 +47,7 @@ real(r8),  protected :: rhmaxis_const
 ! Parameters for Liquid Stratus !
 ! ----------------------------- !
 
-real(r8),  protected :: rhminl_const              ! Critical RH for low-level  liquid stratus clouds
+real(r8),  protected :: rhminl_const              ! Critical RH for low-level liquid stratus clouds
 real(r8),  protected :: rhminl_adj_land_const     ! rhminl adjustment for snowfree land
 real(r8),  protected :: rhminh_const              ! Critical RH for high-level liquid stratus clouds
 
