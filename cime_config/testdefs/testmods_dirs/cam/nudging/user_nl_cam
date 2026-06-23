@@ -20,6 +20,8 @@
  Nudge_TimeScale_Opt = 0
  Nudge_Times_Per_Day=4
  Model_Times_Per_Day=48
+ Nudge_ZonalFilter=.false.
+ Nudge_ZonalNbasis=-1
  Nudge_SpectralFilter=.false.
  Nudge_SpectralNtrunc=-1
  Nudge_SpectralNring= 1
@@ -33,6 +35,7 @@
  Nudge_Qcoef  =0.00
  Nudge_PSprof =0
  Nudge_PScoef =0.00
+ Nudge_PSscal =0.00
  Nudge_Beg_Year =2008
  Nudge_Beg_Month=12
  Nudge_Beg_Day  =16
@@ -51,5 +54,6 @@
  Nudge_Vwin_Lindex  =5.
  Nudge_Vwin_Ldelta  =1.0
  Nudge_Vwin_Invert  =.false.
+ Nudge_Bwindow_File='BoundaryWindowFile.nc'
 /
 

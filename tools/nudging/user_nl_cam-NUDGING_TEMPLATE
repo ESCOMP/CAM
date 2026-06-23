@@ -24,6 +24,10 @@
 !                                    current model timestep and shorter than the analyses 
 !                                    timestep. As this number is increased, the nudging
 !                                    force has the form of newtonian cooling.
+!      Nudge_ZonalFilter    - LOGICAL Option to apply zonal mean filtering to the 
+!                                     model state and target data.
+!      Nudge_ZonalNbasis    - INT The number of meridional modes(Legendre Polynomials)
+!                                     used for zonal filtering. 
 !      Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to 
 !                                     the model state and target data so that nudging 
 !                                     tendencies are only applied to scales larger than
@@ -52,11 +56,10 @@
 !                                       3                       25
 !                                       4                       49
 !
-!      Nudge_Uprof         - INT     index of profile structure to use for U.  [0=OFF,1=ON,2=WINDOW] 
-!      Nudge_Vprof         - INT     index of profile structure to use for V.  [0=OFF,1=ON,2=WINDOW]
-!      Nudge_Tprof         - INT     index of profile structure to use for T.  [0=OFF,1=ON,2=WINDOW]
-!      Nudge_Qprof         - INT     index of profile structure to use for Q.  [0=OFF,1=ON,2=WINDOW]
-!      Nudge_PSprof        - INT     index of profile structure to use for PS. [0=OFF,N/A]
+!      Nudge_Uprof         - INT     index of profile structure to use for U. [0=OFF,1=ON,2=WINDOW,3=USER-WINDOW] 
+!      Nudge_Vprof         - INT     index of profile structure to use for V. [0=OFF,1=ON,2=WINDOW,3=USER-WINDOW]
+!      Nudge_Tprof         - INT     index of profile structure to use for T. [0=OFF,1=ON,2=WINDOW,3=USER-WINDOW]
+!      Nudge_Qprof         - INT     index of profile structure to use for Q. [0=OFF,1=ON,2=WINDOW,3=USER-WINDOW]
 !      Nudge_Ucoef         - REAL    fractional nudging coeffcient for U. 
 !                                       Utau=(Nudge_Ucoef/analyses_timestep)
 !      Nudge_Vcoef         - REAL    fractional nudging coeffcient for V. 
@@ -65,8 +68,13 @@
 !                                       Ttau=(Nudge_Tcoef/analyses_timestep)
 !      Nudge_Qcoef         - REAL    fractional nudging coeffcient for Q. 
 !                                       Qtau=(Nudge_Qcoef/analyses_timestep)
+!      Nudge_PSprof        - INT     index of profile structure to use for PS. [0=OFF,1=ON,2=WINDOW,3=USER-WINDOW]
 !      Nudge_PScoef        - REAL    fractional nudging coeffcient for PS. 
 !                                       PStau=(Nudge_PScoef/analyses_timestep)
+!      Nudge_PSscal        - REAL Coeffcient controling the vertical influence function.
+!                                 for:  Nudge_PSscal < 1.0 : P'(n) = [    B(n)      ]*(Target_Ps - Model_Ps)
+!                                       Nudge_PSscal > 1.0 : P'(n) = [(Pref/P0)**scl]*(Target_Ps - Model_Ps)
+!                                       (default: Nudge_PSscal = 0.0)
 !      Nudge_Beg_Year      - INT     nudging begining year.
 !      Nudge_Beg_Month     - INT     nudging begining month.
 !      Nudge_Beg_Day       - INT     nudging begining day.
@@ -89,6 +97,7 @@
 !      Nudge_Vwin_Invert   - LOGICAL Invert Vertical Window Function to its Compliment.
 !                                      TRUE  = value=0 inside the specified window, 1 outside
 !                                      FALSE = value=1 inside the specified window, 0 outside
+!      Nudge_Bwindow_File  - CHAR path to the Horizonal Boundary Window file.
 !    /
 !======================================================
 &nudging_nl
@@ -99,6 +108,8 @@
  Nudge_TimeScale_Opt= 0
  Nudge_Times_Per_Day= 4
  Model_Times_Per_Day= 48
+ Nudge_ZonalFilter    = .false.
+ Nudge_ZonalNbasis    = -1
  Nudge_SpectralFilter = .false.
  Nudge_SpectralNtrunc = -1
  Nudge_SpectralNring  =  1
@@ -112,6 +123,7 @@
  Nudge_Qcoef  =1.00
  Nudge_PSprof =0
  Nudge_PScoef =0.00
+ Nudge_PSscal =0.00
  Nudge_Beg_Year =1979
  Nudge_Beg_Month=1
  Nudge_Beg_Day  =2 

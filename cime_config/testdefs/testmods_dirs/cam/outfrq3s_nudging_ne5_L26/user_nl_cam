@@ -24,8 +24,9 @@
  Nudge_Tcoef  =1.00
  Nudge_Qprof  =1
  Nudge_Qcoef  =1.00
- Nudge_PSprof =1
- Nudge_PScoef =1.00
+ Nudge_PSprof =0
+ Nudge_PScoef =0.00
+ Nudge_PSscal =0.00
  Nudge_Beg_Year =0001
  Nudge_Beg_Month=01
  Nudge_Beg_Day  =01

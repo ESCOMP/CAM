@@ -248,7 +248,7 @@
 
 <entry id="Nudge_SpectralNring" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Set size of local-area grid used to suppress Samping Errors.
+       Set size of local-area grid used to suppress Sampling Errors.
 
        Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging
                                   of spherical harmonic modes, to suppress sampling errors.
@@ -258,7 +258,7 @@
                                   in this sampling domain.
                                   Each ring (kk) contains 8*(kk-1) sample points.
  
-                                     Nudge_SpectralNring     Number of Samping Points
+                                     Nudge_SpectralNring     Number of Sampling Points
                                      -------------------     -------------------------
                                         1                        1      (DEFAULT SampleGrid NOT used)
                                         2                        9
@@ -354,6 +354,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -370,6 +373,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -386,6 +392,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -402,6 +411,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -414,10 +426,12 @@
 
 <entry id="Nudge_PSprof" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Profile index for PS nudging.
+       Profile index for PS nudging.(Horizontal Only)
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -425,6 +439,14 @@
        group="nudging_nl" valid_values="" >
        Normalized Coeffcient for PS nudging.
          [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_PSscal" type="real" category="nudging"
+	group="nudging_nl" valid_values="" >
+       Coeffcient controling the vertical influence function.
+          Nudge_PSscal < 1.0 : P'(n) = [    B(n)      ]*(Target_Ps - Model_Ps)
+          Nudge_PSscal > 1.0 : P'(n) = [(Pref/P0)**scl]*(Target_Ps - Model_Ps)
        Default: 0.
        </entry>
 
@@ -506,6 +528,13 @@
          TRUE  = value=0 inside the specified window, 1 outside
          FALSE = value=1 inside the specified window, 0 outside
        Default: FALSE
+       </entry>
+
+<entry id="Nudge_Bwindow_File" type="char*256" input_pathname="abs" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Filename for the Horizonal Boundary Window to use for nudging with profile option 3.
+        (e.g. '/$DIN_LOC_ROOT/atm/cam/nudging/BoundaryWindowFile.nc')
+       Default: 'BoundaryWindowFile.nc'
        </entry>
 
 <entry id="Nudge_ZonalFilter" type="logical" category="nudging"

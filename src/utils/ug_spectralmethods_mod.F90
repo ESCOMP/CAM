@@ -872,18 +872,23 @@ contains
       real(r8),allocatable:: Csum (:,:)
       real(r8),allocatable:: Gcov (:)
       integer:: nn,n2,ncols,lchnk,cc
-      integer:: Nsum,ns,ll
+      integer:: Nsum,ns,ll,idx
       integer :: nlcols, count, astat
 
       integer :: nlev
+      integer :: nbas_x_nlev
       character(len=*), parameter :: subname = 'calc_SphericalHarmonic_3Damps_COV'
 
-      nlev = size(I_Gdata,dim=2)
-
+      nlev   = size(I_Gdata,dim=2)
       nlcols = get_nlcols_p()
-      allocate(Gcov(this%nbas), stat=astat)
+
+      ! Flatten the vertical and basis dimensions to
+      ! allow a single MPI reduction
+      !-----------------------------------------------
+      nbas_x_nlev = this%nbas*nlev
+      allocate(Gcov(nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Gcov')
-      allocate(Csum(nlcols, this%nbas), stat=astat)
+      allocate(Csum(nlcols, nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Csum')
 
       Csum(:,:) = 0._r8
@@ -892,32 +897,31 @@ contains
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
       do ll= 1,nlev
-
-         Csum(:,:) = 0._r8
-         Gcov(:) = 0._r8
-
-         do nn= 1,this%nbas
-            count = 0
-            do lchnk=begchunk,endchunk
-               ncols = get_ncols_p(lchnk)
-               do cc = 1,ncols
-                  count=count+1
-                  Csum(count,nn) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
-               end do
+      do nn= 1,this%nbas
+         idx = (ll-1)*this%nbas + nn
+         count = 0
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            do cc = 1,ncols
+               count=count+1
+               Csum(count,idx) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
             end do
          end do
+      end do
+      end do
 
-         call shr_reprosum_calc(Csum, Gcov, count, nlcols, this%nbas, gbl_count=ngcols_p, commid=mpicom)
+      call shr_reprosum_calc(Csum, Gcov, count, nlcols, nbas_x_nlev, gbl_count=ngcols_p, commid=mpicom)
 
-         ! Multiply by map to get the amplitudes
-         !-------------------------------------------
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do ll= 1,nlev
          do nn=1,this%nbas
             O_Bamp(nn,ll) = 0._r8
             do n2=1,this%nbas
-               O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(n2)
+               idx = (ll-1)*this%nbas + n2
+               O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(idx)
             end do
          end do
-
       end do
 
       ! End Routine
@@ -1535,18 +1539,23 @@ contains
       real(r8),allocatable:: Csum (:,:)
       real(r8),allocatable:: Bamp (:)
       integer:: nn,n2,ncols,lchnk,cc
-      integer:: Nsum,ns,ll
+      integer:: Nsum,ns,ll,idx
       integer :: nlcols, count, astat
 
       integer :: nlev
+      integer :: nbas_x_nlev
       character(len=*), parameter :: subname = 'calc_SphericalHarmonic_3Damps_GS'
 
-      nlev = size(I_Gdata,dim=2)
-
+      nlev   = size(I_Gdata,dim=2)
       nlcols = get_nlcols_p()
-      allocate(Bamp(this%nbas), stat=astat)
+
+      ! Flatten the vertical and basis dimensions to 
+      ! allow a single MPI reduction
+      !-----------------------------------------------
+      nbas_x_nlev = this%nbas*nlev
+      allocate(Bamp(nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Bamp')
-      allocate(Csum(nlcols, this%nbas), stat=astat)
+      allocate(Csum(nlcols, nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Csum')
 
       Csum(:,:) = 0._r8
@@ -1555,29 +1564,28 @@ contains
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
       do ll= 1,nlev
-
-         Csum(:,:) = 0._r8
-         Bamp(:) = 0._r8
-
-         do nn= 1,this%nbas
-            count = 0
-            do lchnk=begchunk,endchunk
-               ncols = get_ncols_p(lchnk)
-               do cc = 1,ncols
-                  count=count+1
-                  Csum(count,nn) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
-               end do
+      do nn= 1,this%nbas
+         idx = (ll-1)*this%nbas + nn
+         count = 0
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            do cc = 1,ncols
+               count=count+1
+               Csum(count,idx) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
             end do
          end do
+      end do
+      end do
 
-         call shr_reprosum_calc(Csum, Bamp, count, nlcols, this%nbas, gbl_count=ngcols_p, commid=mpicom)
+      call shr_reprosum_calc(Csum, Bamp, count, nlcols, nbas_x_nlev, gbl_count=ngcols_p, commid=mpicom)
 
-         ! Output the amplitudes
-         !--------------------------
-         do nn=1,this%nbas
-            O_Bamp(nn,ll) = Bamp(nn)
-         end do
-
+      ! Unpack the amplitudes into the Output array
+      !--------------------------------------------
+      do ll= 1,nlev
+      do nn=1,this%nbas
+         idx = (ll-1)*this%nbas + nn
+         O_Bamp(nn,ll) = Bamp(idx)
+      end do
       end do
 
       ! End Routine
@@ -2092,18 +2100,23 @@ contains
       real(r8),allocatable:: Csum (:,:)
       real(r8),allocatable:: Gcov (:)
       integer:: nn,n2,ncols,lchnk,cc
-      integer:: Nsum,ns,ll
+      integer:: Nsum,ns,ll,idx
       integer :: nlcols, count, astat
 
       integer :: nlev
+      integer :: nbas_x_nlev
       character(len=*), parameter :: subname = 'calc_ZonalMean_3Damps'
 
       nlev = size(I_Gdata,dim=2)
-
       nlcols = get_nlcols_p()
-      allocate(Gcov(this%nbas), stat=astat)
+
+      ! Flatten the vertical and basis dimensions to
+      ! allow a single MPI reduction
+      !-----------------------------------------------
+      nbas_x_nlev = this%nbas*nlev
+      allocate(Gcov(nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Gcov')
-      allocate(Csum(nlcols, this%nbas), stat=astat)
+      allocate(Csum(nlcols, nbas_x_nlev), stat=astat)
       call handle_allocate_error(astat, subname, 'Csum')
 
       Csum(:,:) = 0._r8
@@ -2112,32 +2125,31 @@ contains
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
       do ll= 1,nlev
-
-         Csum(:,:) = 0._r8
-         Gcov(:) = 0._r8
-
-         do nn= 1,this%nbas
-            count = 0
-            do lchnk=begchunk,endchunk
-               ncols = get_ncols_p(lchnk)
-               do cc = 1,ncols
-                  count=count+1
-                  Csum(count,nn) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
-               end do
+      do nn= 1,this%nbas
+         idx = (ll-1)*this%nbas + nn
+         count = 0
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            do cc = 1,ncols
+               count=count+1
+               Csum(count,idx) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
             end do
          end do
+      end do
+      end do
 
-         call shr_reprosum_calc(Csum, Gcov, count, nlcols, this%nbas, gbl_count=ngcols_p, commid=mpicom)
+      call shr_reprosum_calc(Csum, Gcov, count, nlcols, nbas_x_nlev, gbl_count=ngcols_p, commid=mpicom)
 
-         ! Multiply by map to get the amplitudes
-         !-------------------------------------------
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do ll= 1,nlev
          do nn=1,this%nbas
             O_Bamp(nn,ll) = 0._r8
             do n2=1,this%nbas
-               O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(n2)
+               idx = (ll-1)*this%nbas + n2
+               O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(idx)
             end do
          end do
-
       end do
 
       ! End Routine
