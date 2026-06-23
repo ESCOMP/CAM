@@ -1,5 +1,69 @@
 ===============================================================
 
+Tag name: cam6_4_184
+Originator(s): jimmielin
+Date: 23 Jun 2026
+One-line Summary: Complete CCPPization of Beljaars orographic form drag scheme; cleanup
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1558
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1555 - Convert Beljaars drag and move to atmos_phys
+
+Describe any changes made to build system: added atmos_phys/schemes/beljaars_drag directory.
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraig, JulioTBacmeister (CAM and atmos_phys), nusbaume (atmos_phys)
+
+List all files eliminated:
+D       src/physics/cam/beljaars_drag.F90
+  - moved to atmos_phys and refactored/cleaned up.
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/atmos_phys
+  - update to atmos_phys0_24_000.
+
+M       bld/configure
+  - add atmos_phys/schemes/beljaars_drag subdirectory.
+
+M       src/physics/cam/beljaars_drag_cam.F90
+  - cleanup and use CCPPized subroutines.
+
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+  - remove unused cam_in from beljaars_drag_tend.
+
+M       src/physics/cam/vertical_diffusion.F90
+  - move beljaars wind damping rate interstitial to proper location instead of
+    diffusion_stubs.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure.
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: All B4B
+
+===============================================================
+
 Tag name: cam6_4_183
 Originator(s): jimmielin
 Date: 22 Jun 2026
