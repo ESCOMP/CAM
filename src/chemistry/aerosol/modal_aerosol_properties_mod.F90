@@ -3,7 +3,7 @@ module modal_aerosol_properties_mod
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props, rad_aer_get_props
-
+  use modal_aero_data, only: specmw_amode
   implicit none
 
   private
@@ -407,7 +407,7 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
     use cam_abortutils, only: endrun
@@ -417,6 +417,7 @@ contains
     integer, intent(in) :: species_ndx         ! species index
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     character(len=*), optional, intent(out) :: spectype  ! species type
     character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
@@ -428,6 +429,10 @@ contains
     call rad_aer_get_props(self%list_idx_, bin_ndx, species_ndx, &
                                 density_aer=density, hygro_aer=hygro, spectype=spectype, &
                                 refindex_aer_sw=refindex_sw, refindex_aer_lw=refindex_lw)
+
+    if (present(spec_mw)) then
+       spec_mw = specmw_amode(species_ndx,bin_ndx)
+    end if
 
     if (present(specname)) then
        call rad_aer_get_info(self%list_idx_, bin_ndx, species_ndx, spec_name=specname)

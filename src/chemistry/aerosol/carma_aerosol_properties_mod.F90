@@ -264,7 +264,7 @@ contains
   !  long wave species refractive indices
   !  species morphology
   !------------------------------------------------------------------------
-  subroutine get(self, bin_ndx, species_ndx, density, hygro, &
+  subroutine get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
                  spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
                  dryrad)
     use cam_abortutils, only: endrun
@@ -274,6 +274,7 @@ contains
     integer, intent(in) :: species_ndx         ! species index
     real(r8), optional, intent(out) :: density ! density (kg/m3)
     real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+    real(r8), optional, intent(out) :: spec_mw ! species molecular weight
     character(len=*), optional, intent(out) :: spectype  ! species type
     character(len=*), optional, intent(out) :: specname  ! species name
     character(len=*), optional, intent(out) :: specmorph ! species morphology
@@ -281,6 +282,8 @@ contains
     complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
     real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
     real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
+
+    character(len=32) :: type
 
     if (present(density)) then
        call rad_aer_get_bin_props_by_idx(self%list_idx_, bin_ndx, species_ndx, density_aer=density)
@@ -306,6 +309,25 @@ contains
        else
           call rad_aer_get_info_by_bin_spec(self%list_idx_, bin_ndx, species_ndx, spec_name=specname)
        end if
+    end if
+    if (present(spec_mw)) then
+       call rad_aer_get_bin_props_by_idx(self%list_idx_, bin_ndx, species_ndx, spectype=type)
+       select case (trim(type))
+       case('sulfate')
+          spec_mw = 96._r8
+       case('black-c')
+          spec_mw = 12._r8
+       case('s-organic')
+          spec_mw = 250._r8
+       case('p-organic')
+          spec_mw = 12._r8
+       case('dust')
+          spec_mw = 12._r8
+       case('seasalt')
+          spec_mw = 57._r8
+       case default
+          spec_mw = nan
+       end select
     end if
 
     if (present(num_to_mass_aer)) then

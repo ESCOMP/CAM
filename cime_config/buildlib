@@ -6,7 +6,7 @@ create the cam library
 # pylint: disable=multiple-imports, wrong-import-position, wildcard-import
 # pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
 # pylint: disable=invalid-name
-import sys, os, filecmp, shutil
+import sys, os, filecmp, shutil, re
 from glob import glob
 
 _CIMEROOT = os.environ.get("CIMEROOT")
@@ -91,15 +91,48 @@ def _build_cam(caseroot, libroot, bldroot):
         except:
             raise RuntimeError("CAM's 'buildcpp' script failed to run properly.")
 
+        #--------------------------------------------------------
+        # Check if RTTOV is being requested by the user,
+        # and if so, set a needed environment variable
+        # and update the CAM_LINKED_LIBS list:
+        #--------------------------------------------------------
+
+        env_vars = ''
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
+
+        if "-rttov" in config_opts:
+            # RTTOV source directory (currently hardcoded to a specific ACL-controlled directory on Derecho)
+            rttov_src_dir = "/glade/campaign/cesm/community/amwg/rttov/RTTOV"
+
+            # Set environment variable needed by COSP Makefile
+            env_vars = f"env RTTOV=true RTTOV_SRC_DIR={rttov_src_dir} "
+
+            # Run shell script to build RTTOV in ACL-controlled directory
+            rttov_command = "./compile_RTTOV.sh"
+            _run_cmd(rttov_command, rttov_src_dir)
+
+            # Get path to HDF5 library
+            hdf5_lib_path = os.environ.get("NCAR_LDFLAGS_HDF5")
+
+            # Add HDF5 library to CAM linked library list:
+            linked_libs = case.get_value("CAM_LINKED_LIBS",
+                                        subgroup="build_component_cam")
+            hdf5_link_opts = f" -L{hdf5_lib_path}"
+            hdf5_link_opts += " -lhdf5_fortran -lhdf5_hl_fortran -lhdf5"
+            case.set_value("CAM_LINKED_LIBS",
+                           linked_libs + hdf5_link_opts)
+
+
     with Case(caseroot) as case:
 
-        casetools = case.get_value("CASETOOLS")
-        srcroot = case.get_value("SRCROOT")
-        gmake_j = case.get_value("GMAKE_J")
-        gmake = case.get_value("GMAKE")
-        mach = case.get_value("MACH")
+        casetools    = case.get_value("CASETOOLS")
+        srcroot      = case.get_value("SRCROOT")
+        gmake_j      = case.get_value("GMAKE_J")
+        gmake        = case.get_value("GMAKE")
+        mach         = case.get_value("MACH")
+        config_opts  = case.get_value("CAM_CONFIG_OPTS")
         user_incldir = None
-        cam_dycore = case.get_value("CAM_DYCORE")
+        cam_dycore   = case.get_value("CAM_DYCORE")
         if cam_dycore == "fv3":
             slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
             compiler = case.get_value("COMPILER")
@@ -138,14 +171,14 @@ def _build_cam(caseroot, libroot, bldroot):
             expect(os.path.isfile(libfms), "FMS library not found {}".format(libfms))
             shutil.copy(libfms, libroot)
 
-        # -------------------------------------------------------
         # build the library
         # -------------------------------------------------------
         complib = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
 
-        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
-            gmake, gmake_j, complib, makefile, get_standard_makefile_args(case)
+        cmd = "{}{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
+            env_vars, gmake, gmake_j, complib, makefile,
+            get_standard_makefile_args(case)
         )
         if cam_cppdefs:
             cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)
@@ -199,60 +232,76 @@ def _build_tuvx(caseroot, libroot, bldroot):
 # Builds the TUV-x library and updates the case variables used to set the
 # include paths and linked libraries
 
-    with Case(caseroot) as case:
-        bldpath = os.path.join(bldroot, "tuv-x")
-        if not os.path.exists(bldpath):
-            os.makedirs(bldpath)
-        srcpath = os.path.abspath(os.path.join(case.get_value("SRCROOT"), \
-                                               "libraries", "tuv-x", ""))
-        logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
+    with Case(caseroot, read_only=False) as case:
+        config_opts = case.get_value("CAM_CONFIG_OPTS")
 
-        arg_dict = _cmake_default_args(caseroot)
-        cmake_args = "-DCMAKE_VERBOSE_MAKEFILE=ON "
-        if case.get_value("MPILIB") != "mpi-serial":
-            cmake_args += "-DTUVX_ENABLE_MPI:BOOL=TRUE "
-        cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
-        cmake_args += "-DCMAKE_Fortran_COMPILER=mpif90 "
-        cmake_args += "-DCMAKE_C_COMPILER=mpicc "
-        cmake_args += "-DCMAKE_CXX_COMPILER=mpicxx "
-        cmake_args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
-        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
-        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
-        if (case.get_value("MACH") == "izumi") :
-            cmake_args += f"-DCMAKE_PREFIX_PATH={arg_dict['NETCDF_PATH']} "
-            cmake_args += f"-DCMAKE_IGNORE_PATH={os.environ.get('PYTHONHOME')} "
-        if (case.get_value("MACH") == "izumi") and (case.get_value('COMPILER') == "nag") :
-            cmake_args += "-DCMAKE_Fortran_FLAGS='-C=all -g ' "
-        else :
-            cmake_args += f"-DCMAKE_Fortran_FLAGS='{arg_dict['FFLAGS']}' "
-        cmake_args += f"-DCMAKE_INSTALL_PREFIX='{libroot}' "
-        cmake_args += "-DTUVX_ENABLE_TESTS=OFF "
-        cmake_args += "-DTUVX_ENABLE_COVERAGE=OFF "
-        cmake_args += "-DTUVX_BUILD_CLI=OFF "
-        cmake_args += f"-DTUVX_INSTALL_INCLUDE_DIR='{_tuvx_include_dir(libroot)}' "
-        cmake_args += f"-DTUVX_INSTALL_MOD_DIR='{_tuvx_include_dir(libroot)}' "
-        cmake_args += srcpath
+        # Remove any TUV-x link options set by a previous build, so that
+        # re-building the case does not accumulate duplicate or stale
+        # options in CAM_LINKED_LIBS:
+        linked_libs = case.get_value("CAM_LINKED_LIBS",
+                                     subgroup="build_component_cam")
+        tuvx_link_opts = " -ltuvx -lyaml-cpp"
+        new_linked_libs = re.sub(r"\s*-ltuvx -lyaml-cpp", "", linked_libs)
+        if "-tuvx" in config_opts:
+            bldpath = os.path.join(bldroot, "tuv-x")
+            if not os.path.exists(bldpath):
+                os.makedirs(bldpath)
+            srcpath = os.path.abspath(os.path.join(case.get_value("SRCROOT"), \
+                                      "libraries", "tuv-x", ""))
+            logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
 
-        _run_cmd(f"cmake {cmake_args}", bldpath)
-        _run_cmd(case.get_value('GMAKE'), bldpath)
-        _run_cmd(f"{case.get_value('GMAKE')} install", bldpath)
+            arg_dict = _cmake_default_args(caseroot)
+            cmake_args = "-DCMAKE_VERBOSE_MAKEFILE=ON "
+            if case.get_value("MPILIB") != "mpi-serial":
+                cmake_args += "-DTUVX_ENABLE_MPI:BOOL=TRUE "
+            cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
+            cmake_args += "-DCMAKE_Fortran_COMPILER=mpif90 "
+            cmake_args += "-DCMAKE_C_COMPILER=mpicc "
+            cmake_args += "-DCMAKE_CXX_COMPILER=mpicxx "
+            cmake_args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+            cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+            cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+            cmake_args += "-DCMAKE_DISABLE_FIND_PACKAGE_yaml-cpp=1 "
+            if (case.get_value("MACH") == "izumi") :
+                cmake_args += f"-DCMAKE_PREFIX_PATH={arg_dict['NETCDF_PATH']} "
+            if (case.get_value("MACH") == "izumi") and (case.get_value('COMPILER') == "nag") :
+                cmake_args += "-DCMAKE_Fortran_FLAGS='-C=all -g ' "
+            else :
+                cmake_args += f"-DCMAKE_Fortran_FLAGS='{arg_dict['FFLAGS']}' "
+            cmake_args += f"-DCMAKE_INSTALL_PREFIX='{libroot}' "
+            cmake_args += "-DTUVX_ENABLE_TESTS=OFF "
+            cmake_args += "-DTUVX_ENABLE_COVERAGE=OFF "
+            cmake_args += "-DTUVX_BUILD_CLI=OFF "
+            cmake_args += f"-DTUVX_INSTALL_INCLUDE_DIR='{_tuvx_include_dir(libroot)}' "
+            cmake_args += f"-DTUVX_INSTALL_MOD_DIR='{_tuvx_include_dir(libroot)}' "
+            cmake_args += srcpath
 
-        # add TUV-x to include paths
-        incldir = os.environ.get('USER_INCLDIR')
-        if incldir is None:
-            incldir = ''
-        os.environ['USER_INCLDIR'] = incldir + \
-            f" -I{_tuvx_include_dir(libroot)} "
+            _run_cmd(f"cmake {cmake_args}", bldpath)
+            _run_cmd(case.get_value('GMAKE'), bldpath)
+            _run_cmd(f"{case.get_value('GMAKE')} install", bldpath)
 
-        # create symlink to library in folder CIME expects libraries to be in
-        dst = os.path.join(libroot, "libtuvx.a")
-        if os.path.isfile(dst):
-            os.remove(dst)
-        os.symlink(_tuvx_lib_path(libroot), dst)
-        dst = os.path.join(libroot, "libyaml-cpp.a")
-        if os.path.isfile(dst):
-            os.remove(dst)
-        os.symlink(_yaml_cpp_lib_path(libroot), dst)
+            # add TUV-x to include paths
+            incldir = os.environ.get('USER_INCLDIR')
+            if incldir is None:
+                incldir = ''
+            os.environ['USER_INCLDIR'] = incldir + \
+                f" -I{_tuvx_include_dir(libroot)} "
+
+            # create symlink to library in folder CIME expects libraries to be in
+            dst = os.path.join(libroot, "libtuvx.a")
+            if os.path.isfile(dst):
+                os.remove(dst)
+            os.symlink(_tuvx_lib_path(libroot), dst)
+            dst = os.path.join(libroot, "libyaml-cpp.a")
+            if os.path.isfile(dst):
+                os.remove(dst)
+            os.symlink(_yaml_cpp_lib_path(libroot), dst)
+
+            # Add TUVX to CAM linked library list:
+            new_linked_libs = tuvx_link_opts.strip() + " " + new_linked_libs
+
+        if new_linked_libs != linked_libs:
+            case.set_value("CAM_LINKED_LIBS", new_linked_libs)
 
 ###############################################################################
 def _tuvx_include_dir(libroot):

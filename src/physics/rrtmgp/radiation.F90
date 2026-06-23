@@ -1124,11 +1124,6 @@ subroutine radiation_tend( &
       end do
    end if
 
-   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
-   flns(:) = 0._r8
-   flnt(:) = 0._r8
-   !REMOVECAM_END
-
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
       !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
@@ -1335,6 +1330,11 @@ subroutine radiation_tend( &
       !=======================!
 
       if (dolw) then
+
+         !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+         flns(:) = 0._r8
+         flnt(:) = 0._r8
+         !REMOVECAM_END
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &

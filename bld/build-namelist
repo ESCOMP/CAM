@@ -750,6 +750,15 @@ if (not $waccm_phys) {
     add_default($nl, 'p_bot_for_radmrg');
 }
 
+# Check TUV-X configuration
+my $tuvx_active = $nl->get_value('tuvx_active');
+if ($tuvx_active =~ /$TRUE/io) {
+    my $tuvx_config = $cfg->get('tuvx');
+    if (!$tuvx_config) {
+	die "$ProgName - ERROR: must use -tuvx CAM configure flag \n";
+    }
+}
+
 # Solar irradiance
 
 # First check that solar_const and solar_irrad_data_file are not both defined
@@ -4398,7 +4407,6 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_coef_3rd_order');
     add_default($nl, 'mpas_smagorinsky_coef');
     add_default($nl, 'mpas_mix_full');
-    add_default($nl, 'mpas_epssm');
     add_default($nl, 'mpas_smdiv');
     add_default($nl, 'mpas_apvm_upwinding');
     add_default($nl, 'mpas_h_ScaleWithMesh');
@@ -4409,12 +4417,18 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
     add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
+    add_default($nl, 'mpas_epssm_minimum');
+    add_default($nl, 'mpas_epssm_maximum');
+    add_default($nl, 'mpas_epssm_transition_bottom_z');
+    add_default($nl, 'mpas_epssm_transition_top_z');
     add_default($nl, 'mpas_apply_lbcs');
     add_default($nl, 'mpas_jedi_da');
     add_default($nl, 'mpas_do_restart');
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_print_global_minmax_sca');
+    add_default($nl, 'mpas_halo_exch_method');
+    add_default($nl, 'mpas_gpu_aware_mpi');
 
     # mpas_block_decomp_file_prefix should only be set when more than one task is used.
     # Otherwise the file is not used and should not be added to the input dataset file.

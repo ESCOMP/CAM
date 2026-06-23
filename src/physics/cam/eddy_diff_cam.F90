@@ -5,7 +5,6 @@ use ppgrid, only: pcols, pver, pverp
 use cam_logfile, only: iulog
 use cam_abortutils, only: endrun
 use physconst, only: gravit, cpair, rair, zvir, latvap, latice, karman
-use eddy_diff, only: ncvmax
 use time_manager, only: is_first_step
 use physics_buffer, only: physics_buffer_desc
 use spmd_utils, only: masterproc
@@ -15,19 +14,8 @@ implicit none
 private
 
 public :: eddy_diff_readnl
-public :: eddy_diff_register
 public :: eddy_diff_init
 public :: eddy_diff_tend
-
-! Number of iterations for solution
-integer, parameter :: nturb = 5
-
-! Logical switches for moist mixing ratio diffusion
-! (molecular diffusion is not done here)
-logical :: do_diffusion_const_wet(1)
-logical :: do_molecular_diffusion_const(1)
-
-integer :: ntop_eddy, nbot_eddy
 
 ! Cloud mass constituent indices
 integer :: ixcldliq, ixcldice
@@ -36,9 +24,7 @@ integer :: ixcldliq, ixcldice
 integer :: qrl_idx   = -1
 integer :: wsedl_idx = -1
 
-! Mixing lengths squared.
-! Used for computing free air diffusivity.
-real(r8) :: ml2(pver+1)
+integer :: ncvmax
 
 ! Various namelist options to limit or tweak the effects of eddy diffusion.
 
@@ -112,66 +98,33 @@ subroutine eddy_diff_readnl(nlfile)
 
 end subroutine eddy_diff_readnl
 
-subroutine eddy_diff_register()
-end subroutine eddy_diff_register
-
-subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
+subroutine eddy_diff_init(ntop_eddy_in)
 
   use error_messages, only: handle_errmsg
   use cam_history, only: addfld, add_default, horiz_only
   use constituents, only: cnst_get_ind
   use ref_pres, only: pref_mid
-  use eddy_diff, only: init_eddy_diff
-  use physics_buffer, only: pbuf_set_field, pbuf_get_index
+  use physics_buffer, only: pbuf_get_index
 
-  type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
+  use bretherton_park_diff, only: bretherton_park_diff_init
+
   integer,  intent(in) :: ntop_eddy_in ! Top interface level to which eddy vertical diffusivity is applied ( = 1 )
-  integer,  intent(in) :: nbot_eddy_in ! Bottom interface level to which eddy vertical diffusivity is applied ( = pver )
 
-  character(len=128) :: errstring
-
-  real(r8) :: leng_max(pver)
-  integer :: k
+  character(len=512)   :: errmsg
+  integer              :: errflg
 
   logical :: history_amwg
 
-  ntop_eddy = ntop_eddy_in
-  nbot_eddy = nbot_eddy_in
-
-  do k = 1, pver
-     if (pref_mid(k) <= eddy_max_bot_pressure*1.e2_r8) then
-        leng_max(k) = eddy_leng_max
-     else
-        leng_max(k) = 40.e3_r8
-     end if
-  end do
-
-  if (masterproc) then
-     write(iulog,*)'init_eddy_diff: nturb=',nturb
-     write(iulog,*)'init_eddy_diff: eddy_leng_max=',eddy_leng_max,' lbulk_max=',eddy_lbulk_max
-     do k = 1,pver
-        write(iulog,*)'init_eddy_diff:',k,pref_mid(k),'leng_max=',leng_max(k)
-     end do
-  end if
-
-  call init_eddy_diff(pver, gravit, cpair, rair, zvir, &
-       latvap, latice, ntop_eddy, nbot_eddy, karman, &
-       eddy_lbulk_max, leng_max, &
-       eddy_moist_entrain_a2l, errstring)
-
-  call handle_errmsg(errstring, subname="init_eddy_diff")
-
-  ! Set the square of the mixing lengths.
-  ml2(1:ntop_eddy) = 0._r8
-  do k = ntop_eddy + 1, nbot_eddy
-     ml2(k) = 30.0_r8**2
-  end do
-  ml2(nbot_eddy+1:pver+1) = 0._r8
-
- ! Only diffuse water vapor (constituent 1) and disable molecular diffusion
-  do_diffusion_const_wet(:) = .false.
-  do_molecular_diffusion_const(:) = .false.
-  do_diffusion_const_wet(1) = .true.
+  ! Call CCPPized subroutine:
+  call bretherton_park_diff_init(masterproc, iulog, pver, &
+   gravit, cpair, rair, zvir, latvap, latice, karman, &
+   ntop_eddy_in, &
+   pref_mid, &
+   eddy_lbulk_max, eddy_leng_max, eddy_max_bot_pressure, eddy_moist_entrain_a2l, &
+   ncvmax, errmsg, errflg)
+  if(errflg /= 0) then
+   call endrun('bretherton_park_diff_init: ' // errmsg)
+  endif
 
   ! Cloud mass constituents
   call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -268,7 +221,8 @@ subroutine eddy_diff_init(pbuf2d, ntop_eddy_in, nbot_eddy_in)
 end subroutine eddy_diff_init
 
 subroutine eddy_diff_tend(state, pbuf, cam_in, &
-     ztodt, p, tint, rhoi, cldn, wstarent, &
+     ztodt, do_iss, fv_am_correction, &
+     p, tint, rhoi, dpidz_sq, cldn, wstarent, &
      kvm_in, kvh_in, ksrftms, dragblj,tauresx, tauresy, &
      rrho, ustar, pblh, kvm, kvh, kvq, cgh, cgs, tpert, qpert, &
      tke, sprod, sfi)
@@ -276,18 +230,31 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   use physics_types, only: physics_state
   use camsrfexch, only: cam_in_t
   use coords_1d, only: Coords1D
+  use physics_buffer,       only: pbuf_get_field
+  use cam_history,          only: outfld
+
+  use constituents,              only: pcnst
+  use ccpp_constituent_prop_mod, only: ccpp_const_props
+  use beljaars_drag_cam,         only: do_beljaars
+
+  ! CCPPized subroutines
+  use bretherton_park_diff,      only: bretherton_park_diff_run
+  use eddy_diffusivity_adjustment_above_pbl, only: eddy_diffusivity_adjustment_above_pbl_run
 
   type(physics_state), intent(in) :: state
   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
   type(cam_in_t), intent(in) :: cam_in
   real(r8), intent(in) :: ztodt
+  logical,         intent(in)       :: do_iss           ! Use implicit turbulent surface stress computation
+  logical,         intent(in)       :: fv_am_correction    ! Do angular momentum conservation correction
   type(Coords1D), intent(in) :: p
-  real(r8), intent(in) :: tint(pcols,pver+1)
-  real(r8), intent(in) :: rhoi(pcols,pver+1)
+  real(r8), intent(in) :: tint(pcols,pverp)
+  real(r8), intent(in) :: rhoi(pcols,pverp)
+  real(r8), intent(in) :: dpidz_sq(pcols,pverp)
   real(r8), intent(in) :: cldn(pcols,pver)
-  logical, intent(in) :: wstarent
-  real(r8), intent(in) :: kvm_in(pcols,pver+1)
-  real(r8), intent(in) :: kvh_in(pcols,pver+1)
+  logical,  intent(in) :: wstarent
+  real(r8), intent(in) :: kvm_in(pcols,pverp)
+  real(r8), intent(in) :: kvh_in(pcols,pverp)
   real(r8), intent(in) :: ksrftms(pcols)
   real(r8), intent(in) :: dragblj(pcols,pver)       ! Drag profile from Beljaars SGO form drag [ 1/s ]
   real(r8), intent(inout) :: tauresx(pcols)
@@ -295,293 +262,91 @@ subroutine eddy_diff_tend(state, pbuf, cam_in, &
   real(r8), intent(out) :: rrho(pcols)
   real(r8), intent(out) :: ustar(pcols)
   real(r8), intent(out) :: pblh(pcols)
-  real(r8), intent(out) :: kvm(pcols,pver+1)
-  real(r8), intent(out) :: kvh(pcols,pver+1)
-  real(r8), intent(out) :: kvq(pcols,pver+1)
-  real(r8), intent(out) :: cgh(pcols,pver+1)
-  real(r8), intent(out) :: cgs(pcols,pver+1)
+  real(r8), intent(out) :: kvm(pcols,pverp)
+  real(r8), intent(out) :: kvh(pcols,pverp)
+  real(r8), intent(out) :: kvq(pcols,pverp)
+  real(r8), intent(out) :: cgh(pcols,pverp)
+  real(r8), intent(out) :: cgs(pcols,pverp)
   real(r8), intent(out) :: tpert(pcols)
   real(r8), intent(out) :: qpert(pcols)
-  real(r8), intent(out) :: tke(pcols,pver+1)
-  real(r8), intent(out) :: sprod(pcols,pver+1)
-  real(r8), intent(out) :: sfi(pcols,pver+1)
+  real(r8), intent(out) :: tke(pcols,pverp)
+  real(r8), intent(out) :: sprod(pcols,pverp)
+  real(r8), intent(out) :: sfi(pcols,pverp)
+
+  ! pbuf fields
+  real(r8), pointer :: qrl(:,:)                        ! LW radiative cooling rate [J Pa kg-1 s-1]
+  real(r8), pointer :: wsedl(:,:)                      ! Sedimentation velocity of stratiform liquid cloud droplet [m s-1]
 
   integer :: i, k
+  integer :: ncol, lchnk
 
-  call compute_eddy_diff( pbuf, state%lchnk    ,                                     &
-       pcols    , pver        , state%ncol       , state%t    , tint, state%q(:,:,1) , ztodt   , &
-       state%q(:,:,ixcldliq)  , state%q(:,:,ixcldice)   ,                            &
-       state%s  , p           , rhoi, cldn       , &
-       state%zm , state%zi    , state%pmid , state%pint , state%u        , state%v , &
-       cam_in%wsx, cam_in%wsy , cam_in%shf , cam_in%cflx(:,1) , wstarent           , &
-       rrho     , ustar       , pblh       , kvm_in     , kvh_in         , kvm     , &
-       kvh      , kvq         , cgh        ,                                         &
-       cgs      , tpert       , qpert      , tke            ,                        &
-       sprod    , sfi         ,                                                      &
-       tauresx  , tauresy     , ksrftms    , dragblj )
-
-  ! The diffusivities from diag_TKE can be much larger than from HB in the free
-  ! troposphere and upper atmosphere. These seem to be larger than observations,
-  ! and in WACCM the gw_drag code is already applying an eddy diffusivity in the
-  ! upper atmosphere. Optionally, adjust the diffusivities in the free troposphere
-  ! or the upper atmosphere.
-  !
-  ! NOTE: Further investigation should be done as to why the diffusivities are
-  ! larger in diag_TKE.
-  if ((kv_freetrop_scale /= 1._r8) .or. ((kv_top_scale /= 1._r8) .and. (kv_top_pressure > 0._r8))) then
-     do i = 1, state%ncol
-        do k = 1, pverp
-           ! Outside of the boundary layer?
-           if (state%zi(i,k) > pblh(i)) then
-              ! In the upper atmosphere?
-              if (state%pint(i,k) <= kv_top_pressure) then
-                 kvh(i,k) = kvh(i,k) * kv_top_scale
-                 kvm(i,k) = kvm(i,k) * kv_top_scale
-                 kvq(i,k) = kvq(i,k) * kv_top_scale
-              else
-                 kvh(i,k) = kvh(i,k) * kv_freetrop_scale
-                 kvm(i,k) = kvm(i,k) * kv_freetrop_scale
-                 kvq(i,k) = kvq(i,k) * kv_freetrop_scale
-              end if
-           else
-              exit
-           end if
-        end do
-     end do
-  end if
-
-end subroutine eddy_diff_tend
-
-!=============================================================================== !
-!                                                                                !
-!=============================================================================== !
-
-subroutine compute_eddy_diff( pbuf, lchnk  ,                                                      &
-                              pcols  , pver   , ncol     , t       , tint, qv       , ztodt   ,   &
-                              ql     , qi     , s        , p       , rhoi, cldn     ,             &
-                              z      , zi     , pmid     , pi      , u        , v       ,         &
-                              taux   , tauy   , shflx    , qflx    , wstarent ,           rrho  , &
-                              ustar  , pblh   , kvm_in   , kvh_in  , kvm_out  , kvh_out , kvq   , &
-                              cgh    , cgs    , tpert    , qpert   , tke     ,                    &
-                              sprod  , sfi    ,                                                   &
-                              tauresx, tauresy, ksrftms, dragblj )
-
-  !-------------------------------------------------------------------- !
-  ! Purpose: Interface to compute eddy diffusivities.                   !
-  !          Eddy diffusivities are calculated in a fully implicit way  !
-  !          through iteration process.                                 !
-  ! Author:  Sungsu Park. August. 2006.                                 !
-  !                       May.    2008.                                 !
-  !-------------------------------------------------------------------- !
-
-  use diffusion_solver_cam, only: compute_vdiff
-  use cam_history,          only: outfld
-  use phys_debug_util,      only: phys_debug_col
-  use air_composition,      only: cpairv, rairv, mbarv
-  use atmos_phys_pbl_utils, only: calc_eddy_flux_coefficient, calc_ideal_gas_rrho, calc_friction_velocity
-  use error_messages,       only: handle_errmsg
-  use coords_1d,            only: Coords1D
-  use wv_saturation,        only: qsat
-  use eddy_diff,            only: trbintd, caleddy
-  use physics_buffer,       only: pbuf_get_field
-  use beljaars_drag_cam,    only: do_beljaars
-
-  ! --------------- !
-  ! Input Variables !
-  ! --------------- !
-
-  type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
-  integer,  intent(in)    :: lchnk
-  integer,  intent(in)    :: pcols                     ! Number of atmospheric columns [ # ]
-  integer,  intent(in)    :: pver                      ! Number of atmospheric layers  [ # ]
-  integer,  intent(in)    :: ncol                      ! Number of atmospheric columns [ # ]
-  logical,  intent(in)    :: wstarent                  ! .true. means use the 'wstar' entrainment closure.
-  real(r8), intent(in)    :: ztodt                     ! Physics integration time step 2 delta-t [ s ]
-  real(r8), intent(in)    :: t(pcols,pver)             ! Temperature [ K ]
-  real(r8), intent(in)    :: tint(pcols,pver+1)        ! Temperature defined on interfaces [ K ]
-  real(r8), intent(in)    :: qv(pcols,pver)            ! Water vapor  specific humidity [ kg/kg ]
-  real(r8), intent(in)    :: ql(pcols,pver)            ! Liquid water specific humidity [ kg/kg ]
-  real(r8), intent(in)    :: qi(pcols,pver)            ! Ice specific humidity [ kg/kg ]
-  real(r8), intent(in)    :: s(pcols,pver)             ! Dry static energy [ J/kg ]
-  type(Coords1D), intent(in) :: p                      ! Pressure coordinates for solver [ Pa ]
-  real(r8), intent(in)    :: rhoi(pcols,pver+1)        ! Density at interfaces [ kg/m3 ]
-  real(r8), intent(in)    :: cldn(pcols,pver)          ! Stratiform cloud fraction [ fraction ]
-  real(r8), intent(in)    :: z(pcols,pver)             ! Layer mid-point height above surface [ m ]
-  real(r8), intent(in)    :: zi(pcols,pver+1)          ! Interface height above surface [ m ]
-  real(r8), intent(in)    :: pmid(pcols,pver)          ! Layer mid-point pressure [ Pa ]
-  real(r8), intent(in)    :: pi(pcols,pver+1)          ! Interface pressure [ Pa ]
-  real(r8), intent(in)    :: u(pcols,pver)             ! Zonal velocity [ m/s ]
-  real(r8), intent(in)    :: v(pcols,pver)             ! Meridional velocity [ m/s ]
-  real(r8), intent(in)    :: taux(pcols)               ! Zonal wind stress at surface [ N/m2 ]
-  real(r8), intent(in)    :: tauy(pcols)               ! Meridional wind stress at surface [ N/m2 ]
-  real(r8), intent(in)    :: shflx(pcols)              ! Sensible heat flux at surface [ unit ? ]
-  real(r8), intent(in)    :: qflx(pcols,1)             ! Water vapor flux at surface [ kg/m2/s]
-  real(r8), intent(in)    :: kvm_in(pcols,pver+1)      ! kvm saved from last timestep [ m2/s ]
-  real(r8), intent(in)    :: kvh_in(pcols,pver+1)      ! kvh saved from last timestep [ m2/s ]
-  real(r8), intent(in)    :: ksrftms(pcols)            ! Surface drag coefficient of turbulent mountain stress [ unit ? ]
-  real(r8), intent(in)    :: dragblj(pcols,pver)       ! Drag profile from Beljaars SGO form drag [ 1/s ]
-
-  ! ---------------- !
-  ! Output Variables !
-  ! ---------------- !
-
-  real(r8), intent(out)   :: kvm_out(pcols,pver+1)     ! Eddy diffusivity for momentum [ m2/s ]
-  real(r8), intent(out)   :: kvh_out(pcols,pver+1)     ! Eddy diffusivity for heat [ m2/s ]
-  real(r8), intent(out)   :: kvq(pcols,pver+1)         ! Eddy diffusivity for constituents, moisture and tracers [ m2/s ]
-                                                       ! (note not having '_out')
-  real(r8), intent(out)   :: rrho(pcols)               ! Reciprocal of density at the lowest layer
-  real(r8), intent(out)   :: ustar(pcols)              ! Surface friction velocity [ m/s ]
-  real(r8), intent(out)   :: pblh(pcols)               ! PBL top height [ m ]
-  real(r8), intent(out)   :: cgh(pcols,pver+1)         ! Counter-gradient term for heat [ J/kg/m ]
-  real(r8), intent(out)   :: cgs(pcols,pver+1)         ! Counter-gradient star [ cg/flux ]
-  real(r8), intent(out)   :: tpert(pcols)              ! Convective temperature excess [ K ]
-  real(r8), intent(out)   :: qpert(pcols)              ! Convective humidity excess [ kg/kg ]
-  real(r8), intent(out)   :: tke(pcols,pver+1)         ! Turbulent kinetic energy [ m2/s2 ]
-  real(r8), intent(out)   :: sprod(pcols,pver+1)       ! Shear production [ m2/s3 ]
-  real(r8), intent(out)   :: sfi(pcols,pver+1)         ! Interfacial layer saturation fraction [ fraction ]
-
-  ! ---------------------- !
-  ! Input-Output Variables !
-  ! ---------------------- !
-
-  real(r8), intent(inout) :: tauresx(pcols)            ! Residual stress to be added in vdiff to correct for turb
-  real(r8), intent(inout) :: tauresy(pcols)            ! Stress mismatch between sfc and atm accumulated in prior timesteps
-
-  ! -------------- !
-  ! pbuf Variables !
-  ! -------------- !
-
-  real(r8), pointer :: qrl(:,:)                        ! LW radiative cooling rate
-  real(r8), pointer :: wsedl(:,:)                      ! Sedimentation velocity
-                                                       ! of stratiform liquid cloud droplet [ m/s ]
-
-  ! --------------- !
-  ! Local Variables !
-  ! --------------- !
-
-  integer                    icol
-  integer                    i, k, iturb, status
-  integer :: ipbl(pcols)     ! If 1, PBL is CL, while if 0, PBL is STL.
-  integer :: kpblh(pcols)    ! Layer index containing PBL top within or at the base interface (NOT USED)
-
-  character(2048)         :: warnstring                ! Warning(s) to print
-  character(128)          :: errstring                 ! Error message
-
-  real(r8) :: bprod(pcols,pverp) ! Buoyancy production of tke [ m2/s3 ]
-  real(r8) :: tkes(pcols)        ! TKE at surface interface [ m2/s2 ]
-  real(r8) :: went(pcols)        ! Entrainment rate at the PBL top interface [ m/s ] (NOT USED)
-
-  real(r8)                :: kvf(pcols,pver+1)         ! Free atmospheric eddy diffusivity [ m2/s ]
-  real(r8)                :: kvm(pcols,pver+1)         ! Eddy diffusivity for momentum [ m2/s ]
-  real(r8)                :: kvh(pcols,pver+1)         ! Eddy diffusivity for heat [ m2/s ]
-  real(r8)                :: kvm_preo(pcols,pver+1)    ! Eddy diffusivity for momentum [ m2/s ]
-  real(r8)                :: kvh_preo(pcols,pver+1)    ! Eddy diffusivity for heat [ m2/s ]
-  real(r8)                :: kvm_pre(pcols,pver+1)     ! Eddy diffusivity for momentum [ m2/s ]
-  real(r8)                :: kvh_pre(pcols,pver+1)     ! Eddy diffusivity for heat [ m2/s ]
-  real(r8)                :: errorPBL(pcols)           ! Error function showing whether PBL produced convergent solution or not.
-                                                       ! [ unit ? ]
-  real(r8)                :: s2(pcols,pver)            ! Shear squared, defined at interfaces except surface [ s-2 ]
-  real(r8)                :: n2(pcols,pver)            ! Buoyancy frequency, defined at interfaces except surface [ s-2 ]
-  real(r8)                :: ri(pcols,pver)            ! Richardson number, 'n2/s2', defined at interfaces except surface [ s-2 ]
-  real(r8)                :: pblhp(pcols)              ! PBL top pressure [ Pa ]
-  real(r8)                :: minpblh(pcols)            ! Minimum PBL height based on surface stress
-
-  real(r8)                :: qt(pcols,pver)            ! Total specific humidity [ kg/kg ]
-  real(r8)                :: sfuh(pcols,pver)          ! Saturation fraction in upper half-layer [ fraction ]
-  real(r8)                :: sflh(pcols,pver)          ! Saturation fraction in lower half-layer [ fraction ]
-  real(r8)                :: sl(pcols,pver)            ! Liquid water static energy [ J/kg ]
-  real(r8)                :: slv(pcols,pver)           ! Liquid water virtual static energy [ J/kg ]
-  real(r8)                :: slslope(pcols,pver)       ! Slope of 'sl' in each layer
-  real(r8)                :: qtslope(pcols,pver)       ! Slope of 'qt' in each layer
-  real(r8)                :: qvfd(pcols,pver)          ! Specific humidity for diffusion [ kg/kg ]
-  real(r8)                :: tfd(pcols,pver)           ! Temperature for diffusion [ K ]
-  real(r8)                :: slfd(pcols,pver)          ! Liquid static energy [ J/kg ]
-  real(r8)                :: qtfd(pcols,pver,1)        ! Total specific humidity [ kg/kg ]
-  real(r8)                :: qlfd(pcols,pver)          ! Liquid water specific humidity for diffusion [ kg/kg ]
-  real(r8)                :: ufd(pcols,pver)           ! U-wind for diffusion [ m/s ]
-  real(r8)                :: vfd(pcols,pver)           ! V-wind for diffusion [ m/s ]
-
+  ! outputs from UW PBL scheme for history output
+  real(r8) :: bprod(pcols,pverp)
+  real(r8) :: s2(pcols,pver)            ! Shear squared, defined at interfaces except surface [ s-2 ]
+  real(r8) :: n2(pcols,pver)            ! Buoyancy frequency, defined at interfaces except surface [ s-2 ]
+  real(r8) :: ri(pcols,pver)            ! Gradient Richardson number, 'n2/s2', defined at interfaces except surface [ s-2 ]
+  real(r8) :: wpert(pcols)              ! Turbulent vertical velocity excess [m s-1]
+  real(r8) :: sfuh(pcols,pver)          ! Water vapor saturation fraction in upper half-layer [ fraction ]
+  real(r8) :: sflh(pcols,pver)          ! Water vapor saturation fraction in lower half-layer [ fraction ]
+  real(r8) :: qlfd(pcols,pver)          ! Liquid water specific humidity for diffusion [ kg/kg ]
   ! Buoyancy coefficients : w'b' = ch * w'sl' + cm * w'qt'
-
-  real(r8)                :: chu(pcols,pver+1)         ! Heat buoyancy coef for dry states, defined at each interface, finally.
-  real(r8)                :: chs(pcols,pver+1)         ! Heat buoyancy coef for sat states, defined at each interface, finally.
-  real(r8)                :: cmu(pcols,pver+1)         ! Moisture buoyancy coef for dry states,
-                                                       ! defined at each interface, finally.
-  real(r8)                :: cms(pcols,pver+1)         ! Moisture buoyancy coef for sat states,
-                                                       ! defined at each interface, finally.
-
-  real(r8)                :: jnk1d(pcols)
-  real(r8)                :: jnk2d(pcols,pver+1)
-  real(r8)                :: zero(pcols)
-  real(r8)                :: zero2d(pcols,pver+1)
-  real(r8)                :: es                     ! Saturation vapor pressure
-  real(r8)                :: qs                     ! Saturation specific humidity
-  real(r8)                :: ep2, templ, temps
-
-  ! ------------------------------- !
-  ! Variables for diagnostic output !
-  ! ------------------------------- !
-
-  real(r8)                :: wpert(pcols)              ! Turbulent velocity excess [ m/s ]
-
-  real(r8)                :: kbase_o(pcols,ncvmax)     ! Original external base interface index of CL from 'exacol'
-  real(r8)                :: ktop_o(pcols,ncvmax)      ! Original external top  interface index of CL from 'exacol'
-  real(r8)                :: ncvfin_o(pcols)           ! Original number of CLs from 'exacol'
-  real(r8)                :: kbase_mg(pcols,ncvmax)    ! 'kbase' after extending-merging from 'zisocl'
-  real(r8)                :: ktop_mg(pcols,ncvmax)     ! 'ktop' after extending-merging from 'zisocl'
-  real(r8)                :: ncvfin_mg(pcols)          ! 'ncvfin' after extending-merging from 'zisocl'
-  real(r8)                :: kbase_f(pcols,ncvmax)     ! Final 'kbase' after extending-merging & including SRCL
-  real(r8)                :: ktop_f(pcols,ncvmax)      ! Final 'ktop' after extending-merging & including SRCL
-  real(r8)                :: ncvfin_f(pcols)           ! Final 'ncvfin' after extending-merging & including SRCL
-  real(r8)                :: wet(pcols,ncvmax)         ! Entrainment rate at the CL top  [ m/s ]
-  real(r8)                :: web(pcols,ncvmax)         ! Entrainment rate at the CL base [ m/s ].
-                                                       ! Set to zero if CL is based at surface.
-  real(r8)                :: jtbu(pcols,ncvmax)        ! Buoyancy jump across the CL top  [ m/s2 ]
-  real(r8)                :: jbbu(pcols,ncvmax)        ! Buoyancy jump across the CL base [ m/s2 ]
-  real(r8)                :: evhc(pcols,ncvmax)        ! Evaporative enhancement factor at the CL top
-  real(r8)                :: jt2slv(pcols,ncvmax)      ! Jump of slv ( across two layers ) at CL top used only for evhc [ J/kg ]
-  real(r8)                :: n2ht(pcols,ncvmax)        ! n2 defined at the CL top  interface but using
-                                                       ! sfuh(kt)   instead of sfi(kt) [ s-2 ]
-  real(r8)                :: n2hb(pcols,ncvmax)        ! n2 defined at the CL base interface but using
-                                                       ! sflh(kb-1) instead of sfi(kb) [ s-2 ]
-  real(r8)                :: lwp(pcols,ncvmax)         ! LWP in the CL top layer [ kg/m2 ]
-  real(r8)                :: opt_depth(pcols,ncvmax)   ! Optical depth of the CL top layer
-  real(r8)                :: radinvfrac(pcols,ncvmax)  ! Fraction of radiative cooling confined in the top portion of CL top layer
-  real(r8)                :: radf(pcols,ncvmax)        ! Buoyancy production at the CL top due to LW radiative cooling [ m2/s3 ]
-  real(r8)                :: wstar(pcols,ncvmax)       ! Convective velocity in each CL [ m/s ]
-  real(r8)                :: wstar3fact(pcols,ncvmax)  ! Enhancement of 'wstar3' due to entrainment (inverse) [ no unit ]
-  real(r8)                :: ebrk(pcols,ncvmax)        ! Net mean TKE of CL including entrainment effect [ m2/s2 ]
-  real(r8)                :: wbrk(pcols,ncvmax)        ! Net mean normalized TKE (W) of CL,
-                                                       ! 'ebrk/b1' including entrainment effect [ m2/s2 ]
-  real(r8)                :: lbrk(pcols,ncvmax)        ! Energetic internal thickness of CL [m]
-  real(r8)                :: ricl(pcols,ncvmax)        ! CL internal mean Richardson number
-  real(r8)                :: ghcl(pcols,ncvmax)        ! Half of normalized buoyancy production of CL
-  real(r8)                :: shcl(pcols,ncvmax)        ! Galperin instability function of heat-moisture of CL
-  real(r8)                :: smcl(pcols,ncvmax)        ! Galperin instability function of mementum of CL
-  real(r8)                :: ghi(pcols,pver+1)         ! Half of normalized buoyancy production at all interfaces
-  real(r8)                :: shi(pcols,pver+1)         ! Galperin instability function of heat-moisture at all interfaces
-  real(r8)                :: smi(pcols,pver+1)         ! Galperin instability function of heat-moisture at all interfaces
-  real(r8)                :: rii(pcols,pver+1)         ! Interfacial Richardson number defined at all interfaces
-  real(r8)                :: lengi(pcols,pver+1)       ! Turbulence length scale at all interfaces [ m ]
-  real(r8)                :: wcap(pcols,pver+1)        ! Normalized TKE at all interfaces [ m2/s2 ]
+  real(r8) :: chu(pcols,pverp)          ! Heat buoyancy coef for dry states, interfaces
+  real(r8) :: chs(pcols,pverp)          ! Heat buoyancy coef for sat states, interfaces
+  real(r8) :: cmu(pcols,pverp)          ! Moisture buoyancy coef for dry states, interfaces
+  real(r8) :: cms(pcols,pverp)          ! Moisture buoyancy coef for sat states, interfaces
+  real(r8) :: errorPBL(pcols)           ! Error function showing whether PBL produced convergent solution or not [m2 s-1]
+  real(r8) :: pblhp(pcols)              ! PBL top pressure [Pa]
+  real(r8) :: minpblh(pcols)            ! Minimum PBL height based on surface stress [m]
+  real(r8) :: tkes(pcols)               ! Specific TKE at surface interface [ m2/s2 ]
+  real(r8) :: wcap(pcols,pver+1)        ! Normalized TKE at all interfaces [ m2/s2 ]
+  integer  :: turbtype(pcols,pverp)     ! Turbulence type identifier at all interfaces [ no unit ]
+  real(r8) :: kbase_o(pcols,ncvmax)     ! Original external base interface index of CL from 'exacol'
+  real(r8) :: ktop_o(pcols,ncvmax)      ! Original external top  interface index of CL from 'exacol'
+  real(r8) :: ncvfin_o(pcols)           ! Original number of CLs from 'exacol'
+  real(r8) :: kbase_mg(pcols,ncvmax)    ! 'kbase' after extending-merging from 'zisocl'
+  real(r8) :: ktop_mg(pcols,ncvmax)     ! 'ktop' after extending-merging from 'zisocl'
+  real(r8) :: ncvfin_mg(pcols)          ! 'ncvfin' after extending-merging from 'zisocl'
+  real(r8) :: kbase_f(pcols,ncvmax)     ! Original external base interface index of CL from 'exacol'
+  real(r8) :: ktop_f(pcols,ncvmax)      ! Original external top  interface index of CL from 'exacol'
+  real(r8) :: ncvfin_f(pcols)           ! Original number of CLs from 'exacol'
+  real(r8) :: wet(pcols,ncvmax)         ! Entrainment rate at the CL top, ncvmax  [m s-1]
+  real(r8) :: web(pcols,ncvmax)         ! Entrainment rate at the CL base, ncvmax [m s-1] (Set to zero if CL is based at surface)
+  real(r8) :: jtbu(pcols,ncvmax)        ! Buoyancy jump across the CL top, ncvmax  [m s-2]
+  real(r8) :: jbbu(pcols,ncvmax)        ! Buoyancy jump across the CL base, ncvmax [m s-2]
+  real(r8) :: evhc(pcols,ncvmax)        ! Evaporative enhancement factor at the CL top, ncvmax
+  real(r8) :: jt2slv(pcols,ncvmax)      ! Jump of slv (liquid water virtual static energy) (across two layers)
+                                        ! at CL top used only for evhc (evaporative enhancement factor at CL top), ncvmax [J kg-1]
+  real(r8) :: n2ht(pcols,ncvmax)        ! n2 defined at the CL top  interface but using
+                                        ! sfuh(kt)   instead of sfi(kt), ncvmax [s-2]
+  real(r8) :: n2hb(pcols,ncvmax)        ! n2 defined at the CL base interface but using
+                                        ! sflh(kb-1) instead of sfi(kb), ncvmax [s-2]
+  real(r8) :: lwp(pcols,ncvmax)         ! LWP in the CL top layer, ncvmax [kg m-2]
+  real(r8) :: opt_depth(pcols,ncvmax)   ! Optical depth of the CL top layer, ncvmax [1]
+  real(r8) :: radinvfrac(pcols,ncvmax)  ! Fraction of radiative cooling confined in the top portion of CL top layer, ncvmax [fraction]
+  real(r8) :: radf(pcols,ncvmax)        ! Buoyancy production at the CL top due to LW radiative cooling, ncvmax [m2 s-3]
+  real(r8) :: wstar(pcols,ncvmax)       ! Convective velocity in each CL, ncvmax [m s-1]
+  real(r8) :: wstar3fact(pcols,ncvmax)  ! Enhancement of 'wstar3' due to entrainment (inverse), ncvmax [1]
+  real(r8) :: ebrk(pcols,ncvmax)        ! Net mean TKE of CL including entrainment effect, ncvmax [m2 s-2]
+  real(r8) :: wbrk(pcols,ncvmax)        ! Net mean normalized TKE (W) of CL,
+                                        ! 'ebrk/b1' including entrainment effect, ncvmax [m2 s-2]
+  real(r8) :: lbrk(pcols,ncvmax)        ! Energetic internal thickness of CL, ncvmax [m]
+  real(r8) :: ricl(pcols,ncvmax)        ! CL internal mean Richardson number, ncvmax [1]
+  real(r8) :: ghcl(pcols,ncvmax)        ! Half of normalized buoyancy production of CL, ncvmax [1]
+  real(r8) :: shcl(pcols,ncvmax)        ! Galperin instability function of heat-moisture of CL, ncvmax [1]
+  real(r8) :: smcl(pcols,ncvmax)        ! Galperin instability function of mementum of CL, ncvmax [1]
+  real(r8) :: ghi(pcols,pverp)          ! Half of normalized buoyancy production at all interfaces [1]
+  real(r8) :: shi(pcols,pverp)          ! Galperin instability function of heat-moisture at all interfaces [1]
+  real(r8) :: smi(pcols,pverp)          ! Galperin instability function of heat-moisture at all interfaces [1]
+  real(r8) :: rii(pcols,pverp)          ! Interfacial Richardson number defined at all interfaces [1]
+  real(r8) :: lengi(pcols,pverp)        ! Turbulence length scale at all interfaces [m]
   ! For sedimentation-entrainment feedback
-  real(r8)                :: wsed(pcols,ncvmax)        ! Sedimentation velocity at the top of each CL [ m/s ]
+  real(r8) :: wsed(pcols,ncvmax)        ! Sedimentation velocity at the top of each CL [ m/s ]
 
-  integer(i4)             :: turbtype(pcols,pver+1)    ! Turbulence type identifier at all interfaces [ no unit ]
+  character(len=512)   :: errmsg
+  integer              :: errflg
 
-  ! ---------- !
-  ! Parameters !
-  ! ---------- !
-
-  logical,          parameter :: use_kvf        =  .false.      ! .true. (.false.) : initialize kvh/kvm =  kvf ( 0. )
-  real(r8),         parameter :: lambda         =   0.5_r8      ! Under-relaxation factor ( 0 < lambda =< 1 )
-
-  ! ---------- !
-  ! Initialize !
-  ! ---------- !
-
-  zero(:)     = 0._r8
-  zero2d(:,:) = 0._r8
+  ncol = state%ncol
+  lchnk = state%lchnk
 
   ! ---------------------------------------------- !
   ! Get LW radiative heating out of physics buffer !
@@ -589,288 +354,262 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   call pbuf_get_field(pbuf, qrl_idx,   qrl)
   call pbuf_get_field(pbuf, wsedl_idx, wsedl)
 
-  ! ----------------------- !
-  ! Main Computation Begins !
-  ! ----------------------- !
+  ! Update input values to run phase with values from previous timestep (pbuf)
+  ! the pbuf field is not passed as inout directly here. This is because
+  ! (from the original vertical_diffusion_tend comments:)
+  !
+  ! kvh (in pbuf) is used by other physics parameterizations,
+  ! and as an initial guess in compute_eddy_diff on the next timestep.
+  ! It is not updated by the diffusion solver call.
+  !
+  ! kvm (in pbuf) is only used as an initial guess in compute_eddy_diff on the next timestep.
+  ! The contributions for molecular diffusion made to kvm by the call
+  ! to the diffusion solver below are not included in the pbuf
+  ! as these are not needed in the initial guess by compute_eddy_diff.
+  !
+  ! There is a pbuf_set_field call after the PBL scheme calls that updates
+  ! kvm and kvh in pbuf from the pbuf fields.
+  ! The entirety of vertical_diffusion_tend will be obsolete in CAM-SIMA,
+  ! and thus the original logic is retained here without further refactoring.
+  kvm(:ncol, :pverp) = kvm_in(:ncol, :pverp)
+  kvh(:ncol, :pverp) = kvh_in(:ncol, :pverp)
 
-  ufd(:ncol,:)  = u(:ncol,:)
-  vfd(:ncol,:)  = v(:ncol,:)
-  tfd(:ncol,:)  = t(:ncol,:)
-  qvfd(:ncol,:) = qv(:ncol,:)
-  qlfd(:ncol,:) = ql(:ncol,:)
+  ! zero out output arrays to pcols
+  s2         = 0._r8
+  n2         = 0._r8
+  ri         = 0._r8
+  kvq        = 0._r8
+  rrho       = 0._r8
+  ustar      = 0._r8
+  pblh       = 0._r8
+  pblhp      = 0._r8
+  minpblh    = 0._r8
+  cgh        = 0._r8
+  cgs        = 0._r8
+  tpert      = 0._r8
+  qpert      = 0._r8
+  wpert      = 0._r8
+  tke        = 0._r8
+  tkes       = 0._r8
+  wcap       = 0._r8
+  wsed       = 0._r8
+  turbtype   = 0._r8
+  bprod      = 0._r8
+  sprod      = 0._r8
+  sfi        = 0._r8
+  sfuh       = 0._r8
+  sflh       = 0._r8
+  qlfd       = 0._r8
+  chu        = 0._r8
+  chs        = 0._r8
+  cmu        = 0._r8
+  cms        = 0._r8
+  kbase_o    = 0._r8
+  ktop_o     = 0._r8
+  ncvfin_o   = 0._r8
+  kbase_mg   = 0._r8
+  ktop_mg    = 0._r8
+  ncvfin_mg  = 0._r8
+  kbase_f    = 0._r8
+  ktop_f     = 0._r8
+  ncvfin_f   = 0._r8
+  wet        = 0._r8
+  web        = 0._r8
+  jtbu       = 0._r8
+  jbbu       = 0._r8
+  evhc       = 0._r8
+  jt2slv     = 0._r8
+  n2ht       = 0._r8
+  n2hb       = 0._r8
+  lwp        = 0._r8
+  opt_depth  = 0._r8
+  radinvfrac = 0._r8
+  radf       = 0._r8
+  wstar      = 0._r8
+  wstar3fact = 0._r8
+  ebrk       = 0._r8
+  wbrk       = 0._r8
+  lbrk       = 0._r8
+  ricl       = 0._r8
+  ghcl       = 0._r8
+  shcl       = 0._r8
+  smcl       = 0._r8
+  ghi        = 0._r8
+  shi        = 0._r8
+  smi        = 0._r8
+  rii        = 0._r8
+  lengi      = 0._r8
+  errorPBL   = 0._r8
 
-  do iturb = 1, nturb
+  ! TODO reorder arguments of the subroutine such that in, inout, out (in this order)
+  ! Call CCPPized run phase subroutine
+  call bretherton_park_diff_run( &
+       ncol            = ncol,                          &
+       pver            = pver,                          &
+       pverp           = pverp,                         &
+       pcnst           = pcnst,                         &
+       ncvmax          = ncvmax,                        & ! max # of CLs.
+       iulog           = iulog,                         &
+       dt              = ztodt,                         &
+       const_props     = ccpp_const_props,              &
+       do_iss          = do_iss,                        &
+       am_correction   = fv_am_correction,              &
+       do_beljaars     = do_beljaars,                   &
+       is_first_timestep= is_first_step(),              &
+       gravit          = gravit,                        &
+       cpair           = cpair,                         &
+       rair            = rair,                          &
+       latvap          = latvap,                        &
+       latice          = latice,                        &
+       t               = state%t(:ncol,:pver),          &
+       tint            = tint(:ncol,:pverp),            &
+       qv              = state%q(:ncol,:pver,1),        & ! assumes q_wv at 1
+       ql              = state%q(:ncol,:pver,ixcldliq), &
+       qi              = state%q(:ncol,:pver,ixcldice), &
+       s               = state%s(:ncol,:pver),          &
+       p               = p,                             &
+       rhoi            = rhoi(:ncol,:pverp),            &
+       dpidz_sq        = dpidz_sq(:ncol,:pverp),        &
+       cldn            = cldn(:ncol,:pver),             &
+       z               = state%zm(:ncol,:pver),         &
+       zi              = state%zi(:ncol,:pverp),        &
+       pmid            = state%pmid(:ncol,:pver),       &
+       pint            = state%pint(:ncol,:pverp),      &
+       u               = state%u(:ncol,:pver),          &
+       v               = state%v(:ncol,:pver),          &
+       taux            = cam_in%wsx(:ncol),             &
+       tauy            = cam_in%wsy(:ncol),             &
+       shflx           = cam_in%shf(:ncol),             &
+       qflx            = cam_in%cflx(:ncol,:pcnst),     & ! will be subsetted to wv in run phase.
+       wstarent        = wstarent,                      & ! use wstar entrainment? logical
+       ksrftms         = ksrftms(:ncol),                &
+       dragblj         = dragblj(:ncol,:pver),          &
+       qrl             = qrl(:ncol,:pver),              &
+       wsedl           = wsedl(:ncol,:pver),            &
+       ! below input/output
+       tauresx         = tauresx(:ncol),                &
+       tauresy         = tauresy(:ncol),                &
+       kvm             = kvm(:ncol,:pverp),             & ! in from prev timestep, out from curr timestep.
+       kvh             = kvh(:ncol,:pverp),             & ! in from prev timestep, out from curr timestep.
+       ! below output
+       s2              = s2(:ncol,:pver),               &
+       n2              = n2(:ncol,:pver),               &
+       ri              = ri(:ncol,:pver),               &
+       kvq             = kvq(:ncol,:pverp),             &
+       rrho            = rrho(:ncol),                   &
+       ustar           = ustar(:ncol),                  &
+       pblh            = pblh(:ncol),                   &
+       pblhp           = pblhp(:ncol),                  &
+       minpblh         = minpblh(:ncol),                &
+       cgh             = cgh(:ncol,:pverp),             &
+       cgs             = cgs(:ncol,:pverp),             &
+       tpert           = tpert(:ncol),                  &
+       qpert           = qpert(:ncol),                  &
+       wpert           = wpert(:ncol),                  &
+       tke             = tke(:ncol,:pverp),             &
+       tkes            = tkes(:ncol),                   &
+       wcap            = wcap(:ncol,:pverp),            &
+       wsed            = wsed(:ncol,:ncvmax),           & ! ncvmax = pver.
+       turbtype        = turbtype(:ncol,:pverp),        &
+       bprod           = bprod(:ncol,:pverp),           &
+       sprod           = sprod(:ncol,:pverp),           &
+       sfi             = sfi(:ncol,:pverp),             &
+       sfuh            = sfuh(:ncol,:pver),             &
+       sflh            = sflh(:ncol,:pver),             &
+       qlfd            = qlfd(:ncol,:pver),             &
+       chu             = chu(:ncol,:pverp),             &
+       chs             = chs(:ncol,:pverp),             &
+       cmu             = cmu(:ncol,:pverp),             &
+       cms             = cms(:ncol,:pverp),             &
+       kbase_o         = kbase_o(:ncol,:ncvmax),        &
+       ktop_o          = ktop_o(:ncol,:ncvmax),         &
+       ncvfin_o        = ncvfin_o(:ncol),               &
+       kbase_mg        = kbase_mg(:ncol,:ncvmax),       &
+       ktop_mg         = ktop_mg(:ncol,:ncvmax),        &
+       ncvfin_mg       = ncvfin_mg(:ncol),              &
+       kbase_f         = kbase_f(:ncol,:ncvmax),        &
+       ktop_f          = ktop_f(:ncol,:ncvmax),         &
+       ncvfin_f        = ncvfin_f(:ncol),               &
+       wet             = wet(:ncol,:ncvmax),            &
+       web             = web(:ncol,:ncvmax),            &
+       jtbu            = jtbu(:ncol,:ncvmax),           &
+       jbbu            = jbbu(:ncol,:ncvmax),           &
+       evhc            = evhc(:ncol,:ncvmax),           &
+       jt2slv          = jt2slv(:ncol,:ncvmax),         &
+       n2ht            = n2ht(:ncol,:ncvmax),           &
+       n2hb            = n2hb(:ncol,:ncvmax),           &
+       lwp             = lwp(:ncol,:ncvmax),            &
+       opt_depth       = opt_depth(:ncol,:ncvmax),      &
+       radinvfrac      = radinvfrac(:ncol,:ncvmax),     &
+       radf            = radf(:ncol,:ncvmax),           &
+       wstar           = wstar(:ncol,:ncvmax),          &
+       wstar3fact      = wstar3fact(:ncol,:ncvmax),     &
+       ebrk            = ebrk(:ncol,:ncvmax),           &
+       wbrk            = wbrk(:ncol,:ncvmax),           &
+       lbrk            = lbrk(:ncol,:ncvmax),           &
+       ricl            = ricl(:ncol,:ncvmax),           &
+       ghcl            = ghcl(:ncol,:ncvmax),           &
+       shcl            = shcl(:ncol,:ncvmax),           &
+       smcl            = smcl(:ncol,:ncvmax),           &
+       ghi             = ghi(:ncol,:pverp),             &
+       shi             = shi(:ncol,:pverp),             &
+       smi             = smi(:ncol,:pverp),             &
+       rii             = rii(:ncol,:pverp),             &
+       lengi           = lengi(:ncol,:pverp),           &
+       errorPBL        = errorPBL(:ncol),               &
+       errmsg          = errmsg,                        &
+       errflg          = errflg)
 
-     ! Total stress includes 'tms'.
-     ! Here, in computing 'tms', we can use either iteratively changed 'ufd,vfd' or the
-     ! initially given 'u,v' to the PBL scheme. Note that normal stress, 'taux, tauy'
-     ! are not changed by iteration. In order to treat 'tms' in a fully implicit way,
-     ! I am using updated wind, here.
+  if(errflg /= 0) then
+    call endrun('compute_eddy_diff: ' // errmsg)
+  end if
 
-     ! Compute ustar
-     rrho(:ncol)   = calc_ideal_gas_rrho(rair, tfd(:ncol,pver), pmid(:ncol,pver))
-     ustar(:ncol)  = calc_friction_velocity(taux(:ncol) - ksrftms(:ncol) * ufd(:ncol,pver), & ! Zonal wind stress
-                                            tauy(:ncol) - ksrftms(:ncol) * vfd(:ncol,pver), & ! Meridional wind stress
-                                            rrho(:ncol))
-
-     minpblh(:ncol) = 100.0_r8 * ustar(:ncol)   ! By construction, 'minpblh' is larger than 1 [m] when 'ustar_min = 0.01'.
-
-     ! Calculate (qt,sl,n2,s2,ri) from a given set of (t,qv,ql,qi,u,v)
-
-     call trbintd( &
-                   pcols    , pver    , ncol  , z       , ufd     , vfd     , tfd   , pmid    , &
-                   s2       , n2      , ri    , zi      , pi      , cldn    , qtfd  , qvfd    , &
-                   qlfd     , qi      , sfi   , sfuh    , sflh    , slfd    , slv   , slslope , &
-                   qtslope  , chs     , chu   , cms     , cmu     )
-
-     ! Save initial (i.e., before iterative diffusion) profile of (qt,sl) at each iteration.
-     ! Only necessary for (qt,sl) not (u,v) because (qt,sl) are newly calculated variables.
-
-     if( iturb == 1 ) then
-        qt(:ncol,:) = qtfd(:ncol,:,1)
-        sl(:ncol,:) = slfd(:ncol,:)
-     endif
-
-     ! Get free atmosphere exchange coefficients. This 'kvf' is not used in UW moist PBL scheme
-     if (use_kvf) then
-        kvf(:ncol,:) = 0.0_r8
-        do k = ntop_eddy, nbot_eddy-1
-           do i = 1, ncol
-              kvf(i,k+1) = calc_eddy_flux_coefficient(ml2(k), ri(i, k), s2(i, k))
-           end do
-        end do
-     else
-        kvf = 0._r8
-     end if
-
-     ! Initialize kvh/kvm to send to caleddy, depending on model timestep and iteration number
-     ! This is necessary for 'wstar-based' entrainment closure.
-
-     if( iturb == 1 ) then
-        if( is_first_step() ) then
-           ! First iteration of first model timestep : Use free tropospheric value or zero.
-           kvh(:ncol,:) = kvf(:ncol,:)
-           kvm(:ncol,:) = kvf(:ncol,:)
-        else
-           ! First iteration on any model timestep except the first : Use value from previous timestep
-           kvh(:ncol,:) = kvh_in(:ncol,:)
-           kvm(:ncol,:) = kvm_in(:ncol,:)
-        endif
-     else
-        ! Not the first iteration : Use from previous iteration
-        kvh(:ncol,:) = kvh_out(:ncol,:)
-        kvm(:ncol,:) = kvm_out(:ncol,:)
-     endif
-
-     ! Calculate eddy diffusivity (kvh_out,kvm_out) and (tke,bprod,sprod) using
-     ! a given (kvh,kvm) which are used only for initializing (bprod,sprod)  at
-     ! the first part of caleddy. (bprod,sprod) are fully updated at the end of
-     ! caleddy after calculating (kvh_out,kvm_out)
-
-     call caleddy( pcols     , pver      , ncol      ,                     &
-                   slfd      , qtfd      , qlfd      , slv      ,ufd     , &
-                   vfd       , pi        , z         , zi       ,          &
-                   qflx      , shflx     , slslope   , qtslope  ,          &
-                   chu       , chs       , cmu       , cms      ,sfuh    , &
-                   sflh      , n2        , s2        , ri       ,rrho    , &
-                   pblh      , ustar     ,                                 &
-                   kvh       , kvm       , kvh_out   , kvm_out  ,          &
-                   tpert     , qpert     , qrl       , kvf      , tke    , &
-                   wstarent  , bprod     , sprod     , minpblh  , wpert  , &
-                   tkes      , went      , turbtype  ,                     &
-                   kbase_o   , ktop_o    , ncvfin_o  ,                     &
-                   kbase_mg  , ktop_mg   , ncvfin_mg ,                     &
-                   kbase_f   , ktop_f    , ncvfin_f  ,                     &
-                   wet       , web       , jtbu      , jbbu     ,          &
-                   evhc      , jt2slv    , n2ht      , n2hb     ,          &
-                   lwp       , opt_depth , radinvfrac, radf     ,          &
-                   wstar     , wstar3fact,                                 &
-                   ebrk      , wbrk      , lbrk      , ricl     , ghcl   , &
-                   shcl      , smcl      , ghi       , shi      , smi    , &
-                   rii       , lengi     , wcap      , pblhp    , cldn   , &
-                   ipbl      , kpblh     , wsedl     , wsed, &
-                   warnstring, errstring)
-
-     if (trim(warnstring) /= "") then
-        write(iulog,*) "eddy_diff_cam: Messages from caleddy follow."
-        write(iulog,*) warnstring
-     end if
-
-     call handle_errmsg(errstring, subname="caleddy")
-
-     ! Calculate errorPBL to check whether PBL produced convergent solutions or not.
-
-     if( iturb == nturb ) then
-        do i = 1, ncol
-           errorPBL(i) = 0._r8
-           do k = 1, pver
-              errorPBL(i) = errorPBL(i) + ( kvh(i,k) - kvh_out(i,k) )**2
-           end do
-           errorPBL(i) = sqrt(errorPBL(i)/pver)
-        end do
-     end if
-
-     ! Eddy diffusivities which will be used for the initialization of (bprod,
-     ! sprod) in 'caleddy' at the next iteration step.
-
-     if( iturb > 1 .and. iturb < nturb ) then
-        kvm_out(:ncol,:) = lambda * kvm_out(:ncol,:) + ( 1._r8 - lambda ) * kvm(:ncol,:)
-        kvh_out(:ncol,:) = lambda * kvh_out(:ncol,:) + ( 1._r8 - lambda ) * kvh(:ncol,:)
-     endif
-
-     ! Set nonlocal terms to zero for flux diagnostics, since not used by caleddy.
-
-     cgh(:ncol,:) = 0._r8
-     cgs(:ncol,:) = 0._r8
-
-     if( iturb < nturb ) then
-
-        ! Each time we diffuse the original state
-
-        slfd(:ncol,:)  = sl(:ncol,:)
-        qtfd(:ncol,:,1)= qt(:ncol,:)
-        ufd(:ncol,:)   = u(:ncol,:)
-        vfd(:ncol,:)   = v(:ncol,:)
-
-        ! TODO (hplin, 5/9/2025): after these are subset to ncol check if we
-        ! need to initialize some outs to 0; compute_vdiff did not do this before
-
-        ! Diffuse initial profile of each time step using a given (kvh_out,kvm_out)
-        ! In the below 'compute_vdiff', (slfd,qtfd,ufd,vfd) are 'inout' variables.
-        call compute_vdiff( &
-             ncol            = ncol,                                          &
-             pver            = pver,                                          &
-             pverp           = pverp,                                         &
-             ncnst           = 1,                                             &
-             ztodt           = ztodt,                                         &
-             do_diffusion_u_v= .true.,                                        & ! horizontal winds and
-             do_diffusion_s  = .true.,                                        & ! dry static energy are diffused
-             do_diffusion_const = do_diffusion_const_wet,                     & ! together with moist constituent
-             do_molecular_diffusion_const = do_molecular_diffusion_const,     &
-             itaures         = .false.,                                       &
-             t               = t(:ncol,:pver),                                &
-             tint            = tint(:ncol,:pverp),                            &
-             p               = p,                                             &
-             rhoi            = rhoi(:ncol,:pverp),                            &
-             taux            = taux(:ncol),                                   &
-             tauy            = tauy(:ncol),                                   &
-             shflx           = shflx(:ncol),                                  &
-             cflx            = qflx(:ncol,:1),                                & ! ncnst = 1
-             dse_top         = zero,                                          &
-             kvh             = kvh_out(:ncol,:pverp),                         &
-             kvm             = kvm_out(:ncol,:pverp),                         &
-             kvq             = kvh_out(:ncol,:pverp),                         & ! [sic] kvh_out is assigned to kvh, kvq
-             cgs             = cgs(:ncol,:pverp),                             &
-             cgh             = cgh(:ncol,:pverp),                             &
-             ksrftms         = ksrftms(:ncol),                                &
-             dragblj         = dragblj(:ncol,:pver),                          &
-             qmincg          = zero,                                          &
-             ! input/output
-             u               = ufd(:ncol,:pver),                              &
-             v               = vfd(:ncol,:pver),                              &
-             q               = qtfd(:ncol,:pver,:1),                          & ! ncnst = 1
-             dse             = slfd(:ncol,:pver),                             &
-             tauresx         = tauresx(:ncol),                                &
-             tauresy         = tauresy(:ncol),                                &
-             ! below output
-             dtk             = jnk2d(:ncol,:pver),                            &
-             tautmsx         = jnk1d(:ncol),                                  &
-             tautmsy         = jnk1d(:ncol),                                  &
-             topflx          = jnk1d(:ncol),                                  &
-             errmsg          = errstring,                                     &
-             ! arguments for Beljaars
-             do_beljaars     = do_beljaars,                                   &
-             ! arguments for molecular diffusion only.
-             do_molec_diff   = .false.,                                       &
-             use_temperature_molec_diff = .false.,                            &
-             cpairv          = cpairv(:ncol,:,lchnk),                         &
-             rairv           = rairv(:ncol,:,lchnk),                          &
-             mbarv           = mbarv(:ncol,:,lchnk))
-
-        call handle_errmsg(errstring, subname="compute_vdiff", &
-             extra_msg="compute_vdiff called from eddy_diff_cam")
-
-        ! Retrieve (tfd,qvfd,qlfd) from (slfd,qtfd) in order to
-        ! use 'trbintd' at the next iteration.
-
-        do k = 1, pver
-           do i = 1, ncol
-              ! ----------------------------------------------------- !
-              ! Compute the condensate 'qlfd' in the updated profiles !
-              ! ----------------------------------------------------- !
-              ! Option.1 : Assume grid-mean condensate is homogeneously diffused by the moist turbulence scheme.
-              !            This should be used if 'pseudodiff = .false.' in vertical_diffusion.F90.
-              ! Modification : Need to be check whether below is correct in the presence of ice, qi.
-              !                I should understand why the variation of ice, qi is neglected during diffusion.
-              templ     = ( slfd(i,k) - gravit*z(i,k) ) / cpair
-              call qsat( templ, pmid(i,k), es, qs)
-              ep2       =  .622_r8
-              temps     =   templ + ( qtfd(i,k,1) - qs ) / ( cpair / latvap + latvap * qs / ( rair * templ**2 ) )
-              call qsat( temps, pmid(i,k), es, qs)
-              qlfd(i,k) =   max( qtfd(i,k,1) - qi(i,k) - qs ,0._r8 )
-              ! Option.2 : Assume condensate is not diffused by the moist turbulence scheme.
-              !            This should bs used if 'pseudodiff = .true.'  in vertical_diffusion.F90.
-              ! qlfd(i,k) = ql(i,k)
-              ! ----------------------------- !
-              ! Compute the other 'qvfd, tfd' !
-              ! ----------------------------- !
-              qvfd(i,k) = max( 0._r8, qtfd(i,k,1) - qi(i,k) - qlfd(i,k) )
-              tfd(i,k)  = ( slfd(i,k) + latvap * qlfd(i,k) + (latvap+latice) * qi(i,k) - gravit*z(i,k)) / cpair
-           end do
-        end do
-     endif
-
-  end do  ! End of 'iturb' iteration
-
-  kvq(:ncol,:) = kvh_out(:ncol,:)
-
-  ! --------------------------------------------------------------- !
-  ! Writing for detailed diagnostic analysis of UW moist PBL scheme !
-  ! --------------------------------------------------------------- !
-
-  call outfld( 'WGUSTD' , wpert, pcols, lchnk )
-
-  call outfld( 'BPROD   ', bprod, pcols, lchnk )
-  call outfld( 'SPROD   ', sprod, pcols, lchnk )
-  call outfld( 'SFI     ', sfi,   pcols, lchnk )
-
-  call outfld( 'UW_errorPBL',    errorPBL,   pcols,   lchnk )
-
-  call outfld( 'UW_n2',          n2,         pcols,   lchnk )
-  call outfld( 'UW_s2',          s2,         pcols,   lchnk )
-  call outfld( 'UW_ri',          ri,         pcols,   lchnk )
-
-  call outfld( 'UW_sfuh',        sfuh,       pcols,   lchnk )
-  call outfld( 'UW_sflh',        sflh,       pcols,   lchnk )
-  call outfld( 'UW_sfi',         sfi,        pcols,   lchnk )
-
+  ! inputs into UW written out as debug:
   call outfld( 'UW_cldn',        cldn,       pcols,   lchnk )
   call outfld( 'UW_qrl',         qrl,        pcols,   lchnk )
-  call outfld( 'UW_ql',          qlfd,       pcols,   lchnk )
+
+  ! outputs from UW:
+  call outfld( 'UW_errorPBL',    errorPBL,   pcols,   lchnk )
+
+  call outfld( 'BPROD   ', bprod, pcols, lchnk )
+  call outfld( 'UW_bprod',       bprod,      pcols,   lchnk )
+  call outfld( 'SPROD   ', sprod, pcols, lchnk )
+  call outfld( 'UW_sprod',       sprod,      pcols,   lchnk )
+
+  call outfld( 'WGUSTD' , wpert, pcols, lchnk )
+  call outfld( 'UW_wpert',       wpert,      pcols,   lchnk )
+
+  call outfld( 'SFI     ', sfi,   pcols, lchnk )
+  call outfld( 'UW_sfi',         sfi,        pcols,   lchnk )
 
   call outfld( 'UW_chu',         chu,        pcols,   lchnk )
   call outfld( 'UW_chs',         chs,        pcols,   lchnk )
   call outfld( 'UW_cmu',         cmu,        pcols,   lchnk )
   call outfld( 'UW_cms',         cms,        pcols,   lchnk )
 
-  call outfld( 'UW_tke',         tke,        pcols,   lchnk )
-  call outfld( 'UW_wcap',        wcap,       pcols,   lchnk )
-  call outfld( 'UW_bprod',       bprod,      pcols,   lchnk )
-  call outfld( 'UW_sprod',       sprod,      pcols,   lchnk )
+  call outfld( 'UW_n2',          n2,         pcols,   lchnk )
+  call outfld( 'UW_s2',          s2,         pcols,   lchnk )
+  call outfld( 'UW_ri',          ri,         pcols,   lchnk )
 
-  call outfld( 'UW_kvh',         kvh_out,    pcols,   lchnk )
-  call outfld( 'UW_kvm',         kvm_out,    pcols,   lchnk )
-
+  call outfld( 'UW_kvh',         kvh,        pcols,   lchnk )
+  call outfld( 'UW_kvm',         kvm,        pcols,   lchnk )
   call outfld( 'UW_pblh',        pblh,       pcols,   lchnk )
-  call outfld( 'UW_pblhp',       pblhp,      pcols,   lchnk )
-  call outfld( 'UW_tpert',       tpert,      pcols,   lchnk )
-  call outfld( 'UW_qpert',       qpert,      pcols,   lchnk )
-  call outfld( 'UW_wpert',       wpert,      pcols,   lchnk )
-
   call outfld( 'UW_ustar',       ustar,      pcols,   lchnk )
-  call outfld( 'UW_tkes',        tkes,       pcols,   lchnk )
+  call outfld( 'UW_pblhp',       pblhp,      pcols,   lchnk )
   call outfld( 'UW_minpblh',     minpblh,    pcols,   lchnk )
 
+  call outfld( 'UW_tpert',       tpert,      pcols,   lchnk )
+  call outfld( 'UW_qpert',       qpert,      pcols,   lchnk )
+  call outfld( 'UW_tke',         tke,        pcols,   lchnk )
+
+  call outfld( 'UW_sfuh',        sfuh,       pcols,   lchnk )
+  call outfld( 'UW_sflh',        sflh,       pcols,   lchnk )
+
+  call outfld( 'UW_ql',          qlfd,       pcols,   lchnk )
+
+  call outfld( 'UW_tkes',        tkes,       pcols,   lchnk )
+  call outfld( 'UW_wcap',        wcap,       pcols,   lchnk )
+  call outfld( 'UW_wsed',        wsed,       pcols,   lchnk )
   call outfld( 'UW_turbtype',    real(turbtype,r8),   pcols,   lchnk )
 
   call outfld( 'UW_kbase_o',     kbase_o,    pcols,   lchnk )
@@ -913,8 +652,33 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   call outfld( 'UW_ria',         rii,        pcols,   lchnk )
   call outfld( 'UW_leng',        lengi,      pcols,   lchnk )
 
-  call outfld( 'UW_wsed',        wsed,       pcols,   lchnk )
+  ! The diffusivities from diag_TKE can be much larger than from HB in the free
+  ! troposphere and upper atmosphere. These seem to be larger than observations,
+  ! and in WACCM the gw_drag code is already applying an eddy diffusivity in the
+  ! upper atmosphere. Optionally, adjust the diffusivities in the free troposphere
+  ! or the upper atmosphere.
+  !
+  ! NOTE: Further investigation should be done as to why the diffusivities are
+  ! larger in diag_TKE.
+  call eddy_diffusivity_adjustment_above_pbl_run( &
+       ncol = ncol, &
+       pverp = pverp, &
+       kv_top_pressure = kv_top_pressure, &
+       kv_freetrop_scale = kv_freetrop_scale, &
+       kv_top_scale = kv_top_scale, &
+       zi = state%zi(:ncol,:pverp), &
+       pint = state%pint(:ncol,:pverp), &
+       pblh = pblh(:ncol), &
+       ! below in/out
+       kvh = kvh(:ncol,:pverp), &
+       kvm = kvm(:ncol,:pverp), &
+       kvq = kvq(:ncol,:pverp), &
+       errmsg = errmsg, errflg = errflg)
 
-end subroutine compute_eddy_diff
+  if(errflg /= 0) then
+     call endrun('eddy_diffusivity_adjustment_above_pbl_run: ' // errmsg)
+  end if
+
+end subroutine eddy_diff_tend
 
 end module eddy_diff_cam

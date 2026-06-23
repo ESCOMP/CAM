@@ -230,7 +230,7 @@
   <entry id="CAM_LINKED_LIBS">
     <type>char</type>
     <valid_values></valid_values>
-    <default_value>-ltuvx -lyaml-cpp -lstdc++</default_value>
+    <default_value>-lstdc++</default_value>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
     <desc>
@@ -413,6 +413,7 @@
     <file>env_case.xml</file>
     <desc>User mods to apply to specific compset matches. </desc>
   </entry>
+
 
   <help>
     =========================================
