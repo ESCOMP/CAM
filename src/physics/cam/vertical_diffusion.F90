@@ -673,7 +673,7 @@ subroutine vertical_diffusion_tend( &
   use diffusion_solver,     only: implicit_surface_stress_add_drag_coefficient_run
   use diffusion_stubs,      only: turbulent_mountain_stress_add_drag_coefficient_run
   use diffusion_solver,     only: vertical_diffusion_wind_damping_rate_run
-  use diffusion_stubs,      only: beljaars_add_wind_damping_rate_run
+  use beljaars_drag_interstitials, only: beljaars_add_wind_damping_rate_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_horizontal_momentum_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_dry_static_energy_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_tracers_run
