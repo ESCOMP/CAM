@@ -279,7 +279,7 @@ contains
     REAL(WP),intent(out),dimension(npoints,nlev) :: &
          beta_mol,       & ! Molecular backscatter coefficient
          tau_mol           ! Molecular optical depth
-    REAL(WP),intent(out),dimension(npoints,ncolumns) :: &
+    REAL(WP),optional,intent(out),dimension(npoints,ncolumns) :: &
          tautot_S_liq,   & ! TOA optical depth for liquid
          tautot_S_ice      ! TOA optical depth for ice
     
@@ -291,6 +291,7 @@ contains
     REAL(WP),dimension(npoints,nlev,npart)          :: rad_part,kp_part,qpart,alpha_part,tau_part
 
     INTEGER                                         :: i,k,icol
+    logical                                         :: lparasol,lphaseoptics
     
     ! Local data
     REAL(WP),PARAMETER :: rhoice         = 0.5e+03    ! Density of ice (kg/m3) 
@@ -332,7 +333,16 @@ contains
        Cmol   = Cmol_532nm
        rdiffm = rdiffm_532nm
     endif
-     
+
+    ! Do we need to generate optical inputs for Parasol simulator?
+    lparasol = .false.
+    if (present(tautot_S_liq) .and. present(tautot_S_ice)) lparasol = .true.
+    
+    ! Are optical-depths and backscatter coefficients for ice and liquid requested?
+    lphaseoptics=.false.
+    if (present(betatot_ice) .and. present(betatot_liq) .and. present(tautot_liq) .and. &
+         present(tautot_ice)) lphaseoptics=.true.
+
     ! Liquid/ice particles
     rhopart(INDX_LSLIQ)  = rholiq
     rhopart(INDX_LSICE)  = rhoice
@@ -393,10 +403,13 @@ contains
 
     betatot    (1:npoints,1:ncolumns,1:nlev) = spread(beta_mol(1:npoints,1:nlev), dim=2, NCOPIES=ncolumns)
     tautot     (1:npoints,1:ncolumns,1:nlev) = spread(tau_mol (1:npoints,1:nlev), dim=2, NCOPIES=ncolumns)
-    betatot_liq(1:npoints,1:ncolumns,1:nlev) = betatot(1:npoints,1:ncolumns,1:nlev)
-    betatot_ice(1:npoints,1:ncolumns,1:nlev) = betatot(1:npoints,1:ncolumns,1:nlev)
-    tautot_liq (1:npoints,1:ncolumns,1:nlev) = tautot(1:npoints,1:ncolumns,1:nlev)
-    tautot_ice (1:npoints,1:ncolumns,1:nlev) = tautot(1:npoints,1:ncolumns,1:nlev)      
+
+    if (lphaseoptics) then
+       betatot_liq(1:npoints,1:ncolumns,1:nlev) = betatot(1:npoints,1:ncolumns,1:nlev)
+       betatot_ice(1:npoints,1:ncolumns,1:nlev) = betatot(1:npoints,1:ncolumns,1:nlev)
+       tautot_liq (1:npoints,1:ncolumns,1:nlev) = tautot(1:npoints,1:ncolumns,1:nlev)
+       tautot_ice (1:npoints,1:ncolumns,1:nlev) = tautot(1:npoints,1:ncolumns,1:nlev)
+    endif
     
     ! ##############################################################################
     ! *) Particles alpha, beta and optical thickness
@@ -414,10 +427,14 @@ contains
           kp_part(1:npoints,1:nlev,i) = 0._wp
        endwhere
     enddo    
-    
+
+    ! Initialize (if necessary)
+    if (lparasol) then
+       tautot_S_liq(1:npoints,1:ncolumns) = 0._wp
+       tautot_S_ice(1:npoints,1:ncolumns) = 0._wp
+    endif
+
     ! Loop over all subcolumns
-    tautot_S_liq(1:npoints,1:ncolumns) = 0._wp
-    tautot_S_ice(1:npoints,1:ncolumns) = 0._wp
     do icol=1,ncolumns
        ! ##############################################################################
        ! Mixing ratio particles in each subcolum
@@ -473,29 +490,32 @@ contains
        ! ##############################################################################
        ! Beta and optical thickness (liquid/ice)
        ! ##############################################################################
+       if (lphaseoptics) then
        ! Ice
-       betatot_ice(1:npoints,icol,1:nlev) = betatot_ice(1:npoints,icol,1:nlev)+ &
-            kp_part(1:npoints,1:nlev,INDX_LSICE)*alpha_part(1:npoints,1:nlev,INDX_LSICE)+ &
-            kp_part(1:npoints,1:nlev,INDX_CVICE)*alpha_part(1:npoints,1:nlev,INDX_CVICE)+ &
-            kp_part(1:npoints,1:nlev,INDX_LSSNOW)*alpha_part(1:npoints,1:nlev,INDX_LSSNOW)
-       tautot_ice(1:npoints,icol,1:nlev) = tautot_ice(1:npoints,icol,1:nlev)  + &
-            tau_part(1:npoints,1:nlev,INDX_LSICE) + &
-            tau_part(1:npoints,1:nlev,INDX_CVICE) + &
-            tau_part(1:npoints,1:nlev,INDX_LSSNOW)
+          betatot_ice(1:npoints,icol,1:nlev) = betatot_ice(1:npoints,icol,1:nlev)+ &
+                kp_part(1:npoints,1:nlev,INDX_LSICE)*alpha_part(1:npoints,1:nlev,INDX_LSICE)+ &
+                kp_part(1:npoints,1:nlev,INDX_CVICE)*alpha_part(1:npoints,1:nlev,INDX_CVICE)+ &
+                kp_part(1:npoints,1:nlev,INDX_LSSNOW)*alpha_part(1:npoints,1:nlev,INDX_LSSNOW)
+          tautot_ice(1:npoints,icol,1:nlev) = tautot_ice(1:npoints,icol,1:nlev)  + &
+                tau_part(1:npoints,1:nlev,INDX_LSICE) + &
+                tau_part(1:npoints,1:nlev,INDX_CVICE) + &
+                tau_part(1:npoints,1:nlev,INDX_LSSNOW)
 
-       ! Liquid
-       betatot_liq(1:npoints,icol,1:nlev) = betatot_liq(1:npoints,icol,1:nlev)+ &
-            kp_part(1:npoints,1:nlev,INDX_LSLIQ)*alpha_part(1:npoints,1:nlev,INDX_LSLIQ)+ &
-            kp_part(1:npoints,1:nlev,INDX_CVLIQ)*alpha_part(1:npoints,1:nlev,INDX_CVLIQ)
-       tautot_liq(1:npoints,icol,1:nlev) = tautot_liq(1:npoints,icol,1:nlev)  + &
-            tau_part(1:npoints,1:nlev,INDX_LSLIQ) + &
-            tau_part(1:npoints,1:nlev,INDX_CVLIQ)
-            
+          ! Liquid
+          betatot_liq(1:npoints,icol,1:nlev) = betatot_liq(1:npoints,icol,1:nlev)+ &
+                kp_part(1:npoints,1:nlev,INDX_LSLIQ)*alpha_part(1:npoints,1:nlev,INDX_LSLIQ)+ &
+                kp_part(1:npoints,1:nlev,INDX_CVLIQ)*alpha_part(1:npoints,1:nlev,INDX_CVLIQ)
+          tautot_liq(1:npoints,icol,1:nlev) = tautot_liq(1:npoints,icol,1:nlev)  + &
+                tau_part(1:npoints,1:nlev,INDX_LSLIQ) + &
+                tau_part(1:npoints,1:nlev,INDX_CVLIQ)
+       endif
        ! ##############################################################################    
        ! Optical depths used by the PARASOL simulator
        ! ##############################################################################             
-       tautot_S_liq(:,icol) = tau_part(:,nlev,1)+tau_part(:,nlev,3)
-       tautot_S_ice(:,icol) = tau_part(:,nlev,2)+tau_part(:,nlev,4)+tau_part(:,nlev,5)               
+       if (lparasol) then
+          tautot_S_liq(:,icol) = tau_part(:,nlev,1)+tau_part(:,nlev,3)
+          tautot_S_ice(:,icol) = tau_part(:,nlev,2)+tau_part(:,nlev,4)+tau_part(:,nlev,5)
+       endif
     enddo
     
   end subroutine lidar_optics

@@ -18,6 +18,7 @@ use cam_grid_support,   only: cam_grid_id, &
 use cam_map_utils,      only: iMap
 
 use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
+use inic_analytic_utils,only: analytic_ic_is_moist
 use dyn_tests_utils,    only: vcoord=>vc_height
 
 use cam_history,        only: addfld, horiz_only
@@ -1211,7 +1212,11 @@ subroutine read_inidat(dyn_in)
 
       cam_idx = mpas_from_cam_cnst(mpas_idx)
 
-      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(cam_idx))) cycle
+      ! skip over water species only if analytic ICs are moist
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(cam_idx))) then
+         if (analytic_ic_is_moist()) cycle
+      end if
+
 
       ! The name translation is hardcoded here temporarily...
       trac_name = cnst_name(cam_idx)
