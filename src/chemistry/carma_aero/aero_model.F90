@@ -423,24 +423,15 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate,  m, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
+                  state, relhum, pmid, temp, ltrop, &
+                  sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
-    real(r8), intent(in)    :: mmr(:,:,:)
-    real(r8), intent(in)    :: radmean      ! mean radii in cm
-    real(r8), intent(in)    :: strato_sad(:,:)
-    integer,  intent(in)    :: ncol
     integer,  intent(in)    :: ltrop(:)
-    real(r8), intent(in)    :: dlat(:)                    ! degrees latitude
-    integer,  intent(in)    :: het1_ndx
     real(r8), intent(in)    :: relhum(:,:)
-    real(r8), intent(in)    :: m(:,:) ! total atm density (/cm^3)
-    real(r8), intent(in)    :: sulfate(:,:)
-    type(physics_buffer_desc), pointer :: pbuf(:)
 
     real(r8), intent(inout) :: sfc(:,:,:)
     real(r8), intent(inout) :: dm_aer(:,:,:)
@@ -449,29 +440,26 @@ contains
     real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
+    integer :: i,k, lchnk, ncol
 
-    integer :: i,k, lchnk
-
-    real(r8) :: sfc_tmp(ncol,pver,nbins)
-    real(r8) :: dm_tmp(ncol,pver,nbins)
-    real(r8) :: sad_tmp(ncol,pver)
-    real(r8) :: reff_tmp(ncol,pver)
+    real(r8) :: sfc_tmp(state%ncol,pver,nbins)
+    real(r8) :: dm_tmp(state%ncol,pver,nbins)
+    real(r8) :: sad_tmp(state%ncol,pver)
+    real(r8) :: reff_tmp(state%ncol,pver)
     class(aerosol_state), pointer :: aero_state
-
-    sad_ssa = -huge(1._r8)
-
-    lchnk = state%lchnk
-
-    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
-    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
-            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
 
     sad_trop = 0._r8
     reff_trop = 0._r8
     sfc = 0._r8
     dm_aer = 0._r8
+    sad_ssa = -huge(1._r8)
+
+    lchnk = state%lchnk
+    ncol = state%ncol
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
+            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
 
     do i = 1,ncol
        do k = ltrop(i)+1,pver
@@ -488,37 +476,35 @@ contains
   ! provides wet stratospheric aerosol surface area info for sectional aerosols
   ! called from mo_gas_phase_chemdr.F90
   !-------------------------------------------------------------------------
-  subroutine aero_model_strat_surfarea( state, ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
+  subroutine aero_model_strat_surfarea( state, pmid, temp, ltrop, strato_sad, reff_strat )
 
     use ref_pres, only: clim_modal_aero_top_lev
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
-    integer,  intent(in)    :: ncol
-    real(r8), intent(in)    :: mmr(:,:,:)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:) ! tropopause level indices
-    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), intent(out)   :: strato_sad(:,:) ! aerosol surface area density (cm2/cm3), zeroed below the tropopause
     real(r8), intent(out)   :: reff_strat(:,:) ! aerosol effective radius (cm), zeroed below the tropopause
 
     ! local vars
-    integer :: i,k, lchnk
+    integer :: i,k, lchnk, ncol
 
-    real(r8) :: sfc_tmp(ncol,pver,nbins)
-    real(r8) :: dm_tmp(ncol,pver,nbins)
-    real(r8) :: sad_tmp(ncol,pver)
-    real(r8) :: reff_tmp(ncol,pver)
-    real(r8) :: relhum(ncol,pver)
+    real(r8) :: sfc_tmp(state%ncol,pver,nbins)
+    real(r8) :: dm_tmp(state%ncol,pver,nbins)
+    real(r8) :: sad_tmp(state%ncol,pver)
+    real(r8) :: reff_tmp(state%ncol,pver)
+    real(r8) :: relhum(state%ncol,pver)
 
     class(aerosol_state), pointer :: aero_state
 
-
     reff_strat = 0._r8
     strato_sad = 0._r8
+    relhum = -huge(1._r8)
 
     lchnk = state%lchnk
+    ncol = state%ncol
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
     call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &

@@ -955,24 +955,15 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate, rho, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
+                  state, relhum, pmid, temp, ltrop, &
+                  sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
-    real(r8), intent(in)    :: mmr(:,:,:)
-    real(r8), intent(in)    :: radmean      ! mean radii in cm
-    real(r8), intent(in)    :: strato_sad(:,:)
-    integer,  intent(in)    :: ncol
     integer,  intent(in)    :: ltrop(:)
-    real(r8), intent(in)    :: dlat(:)                    ! degrees latitude
-    integer,  intent(in)    :: het1_ndx
     real(r8), intent(in)    :: relhum(:,:)
-    real(r8), intent(in)    :: rho(:,:) ! total atm density (/cm^3)
-    real(r8), intent(in)    :: sulfate(:,:)
-    type(physics_buffer_desc), pointer :: pbuf(:)
 
     real(r8), intent(inout) :: sfc(:,:,:)
     real(r8), intent(inout) :: dm_aer(:,:,:)
@@ -981,16 +972,17 @@ contains
     real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
-    integer :: i,k, lchnk
+    integer :: i,k, lchnk, ncol
 
-    real(r8) :: sfc_tmp(ncol,pver,nmodes)
-    real(r8) :: dm_tmp(ncol,pver,nmodes)
-    real(r8) :: sad_tmp(ncol,pver)
-    real(r8) :: reff_tmp(ncol,pver)
+    real(r8) :: sfc_tmp(state%ncol,pver,nmodes)
+    real(r8) :: dm_tmp(state%ncol,pver,nmodes)
+    real(r8) :: sad_tmp(state%ncol,pver)
+    real(r8) :: reff_tmp(state%ncol,pver)
 
     class(aerosol_state), pointer :: aero_state
 
     lchnk = state%lchnk
+    ncol = state%ncol
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
@@ -1028,27 +1020,24 @@ contains
   ! provides WET stratospheric aerosol surface area info for modal aerosols
   ! if modal_strat_sulfate = TRUE -- called from mo_gas_phase_chemdr
   !-------------------------------------------------------------------------
-  subroutine aero_model_strat_surfarea( state, ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
+  subroutine aero_model_strat_surfarea( state, pmid, temp, ltrop, strato_sad, reff_strat )
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
-    integer,  intent(in)    :: ncol
-    real(r8), intent(in)    :: mmr(:,:,:)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:) ! tropopause level indices
-    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), intent(out)   :: strato_sad(:,:)
     real(r8), intent(out)   :: reff_strat(:,:)
 
     ! local vars
-    integer :: i,k, lchnk
+    integer :: i,k, lchnk, ncol
 
-    real(r8) :: sfc_tmp(ncol,pver,nmodes)
-    real(r8) :: dm_tmp(ncol,pver,nmodes)
-    real(r8) :: sad_tmp(ncol,pver)
-    real(r8) :: reff_tmp(ncol,pver)
-    real(r8) :: relhum(ncol,pver)
+    real(r8) :: sfc_tmp(state%ncol,pver,nmodes)
+    real(r8) :: dm_tmp(state%ncol,pver,nmodes)
+    real(r8) :: sad_tmp(state%ncol,pver)
+    real(r8) :: reff_tmp(state%ncol,pver)
+    real(r8) :: relhum(state%ncol,pver)
 
     class(aerosol_state), pointer :: aero_state
 
@@ -1060,6 +1049,7 @@ contains
     relhum = huge(1._r8)
 
     lchnk = state%lchnk
+    ncol = state%ncol
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
     call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &

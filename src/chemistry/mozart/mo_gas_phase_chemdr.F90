@@ -674,7 +674,7 @@ contains
        strato_sad(:,:) = 0._r8
 
        ! Prognostic modal stratospheric sulfate: compute dry strato_sad
-       call aero_model_strat_surfarea( state, ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
+       call aero_model_strat_surfarea( state, pmid, tfld, troplevchem, strato_sad, reff_strat )
 
     endif
 

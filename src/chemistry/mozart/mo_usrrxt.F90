@@ -1109,8 +1109,8 @@ contains
           sad_trop(:ncol,:pver)=strato_sad(:ncol,:pver)
        else
           call aero_model_surfarea( &
-               state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
-               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop, sad_sslt )
+               state, relhum, pmid, temp, tropchemlev, &
+               sfc_array, dm_array, sad_trop, reff_trop, sad_sslt )
        endif
     endif
 
