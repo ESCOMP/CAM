@@ -922,8 +922,8 @@ contains
        enddo
     enddo
 
-    sfc(:,:,:) = sad_mode(:,:,:)
-    dm_aer(:,:,:) = diam(:,:,:) * 1.e2_r8 ! convert m to cm
+    sfc(:ncol,:,:) = sad_mode(:ncol,:,:)
+    dm_aer(:ncol,:,:) = diam(:ncol,:,:) * 1.e2_r8 ! convert m to cm
 
     deallocate(sad_mode)
     deallocate(vol_mode)
