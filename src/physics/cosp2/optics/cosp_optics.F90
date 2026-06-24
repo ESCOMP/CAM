@@ -324,11 +324,11 @@ contains
     ! ##############################################################################
     
     ! Which LIDAR frequency are we using?
-    if (lidar_freq .eq. 355) then
+    if (lidar_freq == 355) then
        Cmol   = Cmol_355nm
        rdiffm = rdiffm_355nm
     endif
-    if (lidar_freq .eq. 532) then
+    if (lidar_freq == 532) then
        Cmol   = Cmol_532nm
        rdiffm = rdiffm_532nm
     endif

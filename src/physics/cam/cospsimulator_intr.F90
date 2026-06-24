@@ -2860,15 +2860,6 @@ CONTAINS
           end do
        endif
 
-       if (latlid) then
-          do ih=1,nht_cosp
-             do is=1,nsr_cosp
-                ihs=(ih-1)*nsr_cosp+is
-                cfad_sr355_atlid(i,ihs) = cfad_sr355_atlid(i,ihs)  ! Already reshaped from cospOUT? Check
-             end do
-          end do
-       endif
-
        if (lmisr_sim) then
           do ihm=1,nhtmisr_cosp
              do it=1,ntau_cosp
