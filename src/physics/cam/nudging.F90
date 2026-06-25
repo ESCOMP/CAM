@@ -1492,18 +1492,6 @@ contains
    real(r8)                :: Sbar,Qbar,Wsum
    integer                 :: dtime
 
-   real(r8),allocatable:: hyam_w(:,:,:)
-   real(r8),allocatable:: hybm_w(:,:,:)
-   real(r8),allocatable:: dadn_w(:,:,:)
-   real(r8),allocatable:: dbdn_w(:,:,:)
-   real(r8):: Astar (pcols,pver)
-   real(r8):: Bstar (pcols,pver)
-   real(r8):: Asum  (pcols)
-   real(r8):: Bsum  (pcols)
-   real(r8):: PSvert1(pcols)
-   real(r8):: PSvert2(pcols)
-   integer :: istat
-
    real(r8),allocatable:: hyai_w(:,:,:)
    real(r8),allocatable:: hybi_w(:,:,:)
    real(r8):: hyai_m(pcols,pverp)
@@ -1513,6 +1501,7 @@ contains
    real(r8):: Dlt_PS(pcols)
    real(r8):: lnP0  (pcols,pverp)
    real(r8):: lnP1  (pcols,pverp)
+   integer :: istat
 
    ! Check if Nudging is initialized
    !---------------------------------
@@ -1527,15 +1516,6 @@ contains
      call alloc_err(istat,'nudging_timestep_init','hyai_w',pcols*pverp*((endchunk-begchunk)+1))
      allocate(hybi_w(pcols,pverp,begchunk:endchunk),stat=istat)
      call alloc_err(istat,'nudging_timestep_init','hybi_w',pcols*pverp*((endchunk-begchunk)+1))
-
-     allocate(hyam_w(pcols,pver,begchunk:endchunk),stat=istat)
-     call alloc_err(istat,'nudging_timestep_init','hyam_w',pcols*pver*((endchunk-begchunk)+1))
-     allocate(hybm_w(pcols,pver,begchunk:endchunk),stat=istat)
-     call alloc_err(istat,'nudging_timestep_init','hybm_w',pcols*pver*((endchunk-begchunk)+1))
-     allocate(dadn_w(pcols,pver,begchunk:endchunk),stat=istat)
-     call alloc_err(istat,'nudging_timestep_init','dadn_w',pcols*pver*((endchunk-begchunk)+1))
-     allocate(dbdn_w(pcols,pver,begchunk:endchunk),stat=istat)
-     call alloc_err(istat,'nudging_timestep_init','dbdn_w',pcols*pver*((endchunk-begchunk)+1))
    endif
 
    ! Get time step size
@@ -1979,10 +1959,8 @@ contains
 
    ! End Routine
    !------------
-   if(allocated(hyam_w)) deallocate(hyam_w)
-   if(allocated(hybm_w)) deallocate(hybm_w)
-   if(allocated(dadn_w)) deallocate(dadn_w)
-   if(allocated(dbdn_w)) deallocate(dbdn_w)
+   if(allocated(hyai_w)) deallocate(hyai_w)
+   if(allocated(hybi_w)) deallocate(hybi_w)
   end subroutine nudging_timestep_init
   !================================================================
 
