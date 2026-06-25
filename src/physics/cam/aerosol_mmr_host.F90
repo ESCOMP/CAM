@@ -9,6 +9,9 @@ module aerosol_mmr_host
 !    referencing host-model data structures directly, making them portable.
 ! 2) rad_cnst_get_aer_mmr, rad_cnst_get_mode_num, bin_num, bin_mmr
 !    subroutines to retrieve data given the above host handle.
+! 3) get_mode_dry_diameter, get_mode_wet_diameter, get_mode_aer_water
+!    accessors for the climate-list mode diagnostics computed by the
+!    calcsize/wateruptake calculations.
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use physics_types,  only: physics_state
@@ -59,6 +62,9 @@ real(r8), allocatable, target :: zero_cols(:,:)
 
 public :: aero_host_binding_t
 public :: aero_host_binding   ! build a handle from host data structures
+public :: get_mode_dry_diameter  ! dry number mode diameters of the climate list
+public :: get_mode_wet_diameter  ! wet number mode diameters of the climate list
+public :: get_mode_aer_water     ! aerosol water of the climate list modes
 public :: aerosol_mmr_init    ! allocate zero_cols
 public :: get_host_idx
 public :: resolve_mode_idx
@@ -104,6 +110,57 @@ function aero_host_binding(state, pbuf) result(host)
    host%pbuf  => pbuf
 
 end function aero_host_binding
+
+!================================================================================================
+
+subroutine get_mode_dry_diameter(host, dgnum)
+
+   ! Return the dry number mode diameters (all modes) of the climate list,
+   ! computed by the modal_aero_calcsize calculation.
+   ! CAM: the DGNUM pbuf field.
+
+   use physics_buffer, only: pbuf_get_field, pbuf_get_index
+
+   type(aero_host_binding_t), intent(in) :: host
+   real(r8),                  pointer    :: dgnum(:,:,:)
+
+   call pbuf_get_field(host%pbuf, pbuf_get_index('DGNUM'), dgnum)
+
+end subroutine get_mode_dry_diameter
+
+!================================================================================================
+
+subroutine get_mode_wet_diameter(host, dgnumwet)
+
+   ! Return the wet number mode diameters (all modes) of the climate list,
+   ! computed by the modal_aero_wateruptake calculation.
+   ! CAM: the DGNUMWET pbuf field.
+
+   use physics_buffer, only: pbuf_get_field, pbuf_get_index
+
+   type(aero_host_binding_t), intent(in) :: host
+   real(r8),                  pointer    :: dgnumwet(:,:,:)
+
+   call pbuf_get_field(host%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+
+end subroutine get_mode_wet_diameter
+
+!================================================================================================
+
+subroutine get_mode_aer_water(host, qaerwat)
+
+   ! Return the aerosol water (all modes) of the climate list,
+   ! computed by the modal_aero_wateruptake calculation.
+   ! CAM: the QAERWAT pbuf field.
+
+   use physics_buffer, only: pbuf_get_field, pbuf_get_index
+
+   type(aero_host_binding_t), intent(in) :: host
+   real(r8),                  pointer    :: qaerwat(:,:,:)
+
+   call pbuf_get_field(host%pbuf, pbuf_get_index('QAERWAT'), qaerwat)
+
+end subroutine get_mode_aer_water
 
 !================================================================================================
 

@@ -1,15 +1,18 @@
 module mo_setsox
 
+  ! Portable (CCPP-ready) aqueous sulfur chemistry (setsox).
+  ! Species indices / invariant flags, the Henry's Law table indices and the
+  ! host physical constants are provided by the host through setsox_init /
+  ! setsox_sub arguments (CAM wrapper: mo_setsox_cam).  The polymorphic
+  ! aerosol_state abstraction is deliberately host-portable.
+
   use shr_kind_mod, only : r8 => shr_kind_r8
-  use cam_logfile,  only : iulog
-  use physics_types,only : physics_state
   use aerosol_state_mod, only: aerosol_state
 
   implicit none
 
   private
-  public :: sox_inti, setsox
-  public :: has_sox
+  public :: setsox_init, setsox_sub
 
   logical            ::  inv_o3
   integer            ::  id_msa
@@ -17,7 +20,6 @@ module mo_setsox
   integer :: id_so2, id_nh3, id_hno3, id_h2o2, id_o3, id_ho2
   integer :: id_so4, id_h2so4
 
-  logical :: has_sox = .true.
   logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ho2
 
   logical :: cloud_borne = .false.
@@ -29,132 +31,76 @@ contains
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine sox_inti(aero_props)
+  subroutine setsox_init( cloud_borne_in, &
+       id_so2_in,   inv_so2_in,  &
+       id_nh3_in,   inv_nh3_in,  &
+       id_hno3_in,  inv_hno3_in, &
+       id_h2o2_in,  inv_h2o2_in, &
+       id_ho2_in,   inv_ho2_in,  &
+       id_o3_in,    inv_o3_in,   &
+       id_h2so4_in, id_so4_in,   id_msa_in, &
+       heff_id_hno3_in, heff_id_so2_in,  heff_id_nh3_in, &
+       heff_id_co2_in,  heff_id_h2o2_in, heff_id_o3_in )
     !-----------------------------------------------------------------------
     !	... initialize the hetero sox routine
+    !
+    ! Store the species indices / invariant flags and the Henry's Law
+    ! constant table indices resolved by the host (CAM: sox_inti in
+    ! mo_setsox_cam).  An id <= 0 marks the species as absent.
     !-----------------------------------------------------------------------
 
-    use mo_chem_utls, only : get_spc_ndx, get_inv_ndx
-    use spmd_utils,   only : masterproc
-    use phys_control, only : phys_getopts
-    use carma_flags_mod, only : carma_do_cloudborne
-    use sox_cldaero_mod, only : sox_cldaero_init
-    use aerosol_properties_mod, only : aerosol_properties
+    logical, intent(in) :: cloud_borne_in  ! aqueous sulfate goes to cloud-borne aerosol
+    integer, intent(in) :: id_so2_in       ! index in invariants (if inv flag) or solution array
+    logical, intent(in) :: inv_so2_in      ! species is an invariant
+    integer, intent(in) :: id_nh3_in
+    logical, intent(in) :: inv_nh3_in
+    integer, intent(in) :: id_hno3_in
+    logical, intent(in) :: inv_hno3_in
+    integer, intent(in) :: id_h2o2_in
+    logical, intent(in) :: inv_h2o2_in
+    integer, intent(in) :: id_ho2_in
+    logical, intent(in) :: inv_ho2_in
+    integer, intent(in) :: id_o3_in
+    logical, intent(in) :: inv_o3_in
+    integer, intent(in) :: id_h2so4_in     ! used when cloud_borne_in
+    integer, intent(in) :: id_so4_in       ! used when .not. cloud_borne_in
+    integer, intent(in) :: id_msa_in
+    ! indices into the shared array of Henry's Law constant parameters (dheff)
+    integer, intent(in) :: heff_id_hno3_in, heff_id_so2_in,  heff_id_nh3_in
+    integer, intent(in) :: heff_id_co2_in,  heff_id_h2o2_in, heff_id_o3_in
 
-    class(aerosol_properties), target, intent(in) :: aero_props
+    cloud_borne = cloud_borne_in
 
-    logical :: modal_aerosols
+    id_so2   = id_so2_in
+    inv_so2  = inv_so2_in
+    id_nh3   = id_nh3_in
+    inv_nh3  = inv_nh3_in
+    id_hno3  = id_hno3_in
+    inv_hno3 = inv_hno3_in
+    id_h2o2  = id_h2o2_in
+    inv_h2o2 = inv_h2o2_in
+    id_ho2   = id_ho2_in
+    inv_ho2  = inv_ho2_in
+    id_o3    = id_o3_in
+    inv_o3   = inv_o3_in
+    id_h2so4 = id_h2so4_in
+    id_so4   = id_so4_in
+    id_msa   = id_msa_in
 
-    call phys_getopts( prog_modal_aero_out=modal_aerosols )
-    cloud_borne = modal_aerosols .or. carma_do_cloudborne
+    heff_id_hno3 = heff_id_hno3_in
+    heff_id_so2  = heff_id_so2_in
+    heff_id_nh3  = heff_id_nh3_in
+    heff_id_co2  = heff_id_co2_in
+    heff_id_h2o2 = heff_id_h2o2_in
+    heff_id_o3   = heff_id_o3_in
 
-    !-----------------------------------------------------------------
-    !       ... get species indicies
-    !-----------------------------------------------------------------
-
-    if (cloud_borne) then
-       id_h2so4 = get_spc_ndx( 'H2SO4' )
-    else
-       id_so4 = get_spc_ndx( 'SO4' )
-    endif
-    id_msa = get_spc_ndx( 'MSA' )
-
-    inv_so2 = .false.
-    id_so2 = get_inv_ndx( 'SO2' )
-    inv_so2 = id_so2 > 0
-    if ( .not. inv_so2 ) then
-       id_so2 = get_spc_ndx( 'SO2' )
-    endif
-
-    inv_NH3 = .false.
-    id_NH3 = get_inv_ndx( 'NH3' )
-    inv_NH3 = id_NH3 > 0
-    if ( .not. inv_NH3 ) then
-       id_NH3 = get_spc_ndx( 'NH3' )
-    endif
-
-    inv_HNO3 = .false.
-    id_HNO3 = get_inv_ndx( 'HNO3' )
-    inv_HNO3 = id_hno3 > 0
-    if ( .not. inv_HNO3 ) then
-       id_HNO3 = get_spc_ndx( 'HNO3' )
-    endif
-
-    inv_H2O2 = .false.
-    id_H2O2 = get_inv_ndx( 'H2O2' )
-    inv_H2O2 = id_H2O2 > 0
-    if ( .not. inv_H2O2 ) then
-       id_H2O2 = get_spc_ndx( 'H2O2' )
-    endif
-
-    inv_HO2 = .false.
-    id_HO2 = get_inv_ndx( 'HO2' )
-    inv_HO2 = id_HO2 > 0
-    if ( .not. inv_HO2 ) then
-       id_HO2 = get_spc_ndx( 'HO2' )
-    endif
-
-    inv_o3 = get_inv_ndx( 'O3' ) > 0
-    if (inv_o3) then
-       id_o3 = get_inv_ndx( 'O3' )
-    else
-       id_o3 = get_spc_ndx( 'O3' )
-    endif
-    inv_ho2 = get_inv_ndx( 'HO2' ) > 0
-    if (inv_ho2) then
-       id_ho2 = get_inv_ndx( 'HO2' )
-    else
-       id_ho2 = get_spc_ndx( 'HO2' )
-    endif
-
-    has_sox = (id_so2>0) .and. (id_h2o2>0) .and. (id_o3>0) .and. (id_ho2>0)
-    if (cloud_borne) then
-       has_sox = has_sox .and. (id_h2so4>0)
-    else
-       has_sox = has_sox .and. (id_so4>0) .and. (id_nh3>0)
-    endif
-
-    ! Lookup Effective Henry's Law Constant parameters from the common
-    ! data file read in the shared code.
-    heff_id_hno3 = get_heff_index( 'HNO3' )
-    heff_id_so2  = get_heff_index( 'SO2'  )
-    heff_id_nh3  = get_heff_index( 'NH3'  )
-    heff_id_co2  = get_heff_index( 'CO2'  )
-    heff_id_h2o2 = get_heff_index( 'H2O2' )
-    heff_id_o3   = get_heff_index( 'OX'   )
-
-    has_sox = has_sox .and. (heff_id_hno3 > 0) .and. (heff_id_so2 > 0) &
-               .and. (heff_id_nh3 > 0) .and. (heff_id_co2 > 0) &
-               .and. (heff_id_h2o2 > 0) .and. (heff_id_o3 > 0)
-
-    if (masterproc) then
-       write(iulog,*) 'sox_inti: has_sox = ',has_sox
-    endif
-
-    if( has_sox ) then
-       if (masterproc) then
-          write(iulog,*) '-----------------------------------------'
-          write(iulog,*) ' mo_setsox will do sox aerosols'
-          write(iulog,*) '-----------------------------------------'
-       endif
-    else
-       if (masterproc) then
-          write(iulog,*) '-----------------------------------------'
-          write(iulog,*) ' mo_setsox will not do sox aerosols'
-          write(iulog,*) '-----------------------------------------'
-       endif
-       return
-    end if
-
-    call sox_cldaero_init(aero_props)
-
-  end subroutine sox_inti
+  end subroutine setsox_init
 
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-  subroutine setsox( aero_state, state, &
-       pbuf,   &
+  subroutine setsox_sub( aero_state, &
        ncol,   &
+       pver,   &
        dtime,  &
        press,  &
        pdel,   &
@@ -164,6 +110,14 @@ contains
        cldfrc, &
        cldnum, &
        invariants, &
+       co2_mass_mixing_ratio, &
+       dheff,  &
+       AVOGADRO_KMOL, &
+       BOLTZMANN, &
+       GAS_CONSTANT_KMOL, &
+       MOLECULAR_WEIGHT_CO2_G_MOL, &
+       MOLECULAR_WEIGHT_DRY_AIR_G_MOL, &
+       gravit, &
        qcw,    &
        qin,    &
        xphlwc, &
@@ -171,6 +125,8 @@ contains
        aqh2so4,&
        aqso4_h2o2, &
        aqso4_o3,   &
+       errmsg, &
+       errflg, &
        yph_in,  &
        aqso4_h2o2_3d, &
        aqso4_o3_3d &
@@ -193,29 +149,16 @@ contains
     ! NOTE: This routine assumes an Ideal Gas.
     !-----------------------------------------------------------------------
     !
-    use physconst,    only : AVOGADRO_KMOL => avogad, &
-                             BOLTZMANN => boltz, &
-                             GAS_CONSTANT_KMOL => r_universal, &
-                             MOLECULAR_WEIGHT_CO2_G_MOL => mwco2, &
-                             MOLECULAR_WEIGHT_DRY_AIR_G_MOL => mwdry
-    use ppgrid,       only : pcols, pver
-    use chem_mods,    only : gas_pcnst, nfs
-    use physconst,    only : mwdry, gravit
-    use mo_constants, only : pi
     use sox_cldaero_mod, only : sox_cldaero_update, sox_cldaero_create_obj, sox_cldaero_destroy_obj
     use cldaero_mod,     only : cldaero_conc_t
-    use shr_drydep_mod,  only : dheff
-    use physics_buffer,  only : physics_buffer_desc
-    use rad_constituents, only : rad_cnst_get_gas
 
     !
     !-----------------------------------------------------------------------
     !      ... Dummy arguments
     !-----------------------------------------------------------------------
     class(aerosol_state), intent(in) :: aero_state
-    type(physics_state),                intent(in)    :: state   ! Physics state variables
-    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:) ! Physics buffer
     integer,          intent(in)    :: ncol              ! num of columns in chunk
+    integer,          intent(in)    :: pver              ! num of vertical levels
     real(r8),         intent(in)    :: dtime             ! time step (sec)
     real(r8),         intent(in)    :: press(:,:)        ! midpoint pressure ( Pa )
     real(r8),         intent(in)    :: pdel(:,:)         ! pressure thickness of levels (Pa)
@@ -225,6 +168,15 @@ contains
     real(r8), target, intent(in)    :: cldfrc(:,:)       ! cloud fraction
     real(r8),         intent(in)    :: cldnum(:,:)       ! droplet number concentration (#/kg)
     real(r8),         intent(in)    :: invariants(:,:,:)
+    real(r8),         intent(in)    :: co2_mass_mixing_ratio(:,:) ! kg kg-1 (host CO2; CAM: rad_cnst_get_gas)
+    real(r8),         intent(in)    :: dheff(:,:)        ! Henry's Law constant parameters table
+    ! host physical constants (passed in for bit-for-bit consistency with the host)
+    real(r8),         intent(in)    :: AVOGADRO_KMOL     ! Avogadro's number (molecules/kmol)
+    real(r8),         intent(in)    :: BOLTZMANN         ! Boltzmann's constant (J/K/molecule)
+    real(r8),         intent(in)    :: GAS_CONSTANT_KMOL ! universal gas constant (J/K/kmol)
+    real(r8),         intent(in)    :: MOLECULAR_WEIGHT_CO2_G_MOL     ! molecular weight of CO2 (g/mol)
+    real(r8),         intent(in)    :: MOLECULAR_WEIGHT_DRY_AIR_G_MOL ! molecular weight of dry air (g/mol)
+    real(r8),         intent(in)    :: gravit            ! gravitational acceleration (m/s2)
     real(r8), target, intent(inout) :: qcw(:,:,:)        ! cloud-borne aerosol (vmr)
     real(r8),         intent(inout) :: qin(:,:,:)        ! transported species ( vmr )
     real(r8),         intent(out)   :: xphlwc(:,:)       ! pH value multiplied by lwc
@@ -233,6 +185,8 @@ contains
     real(r8),         intent(out)   :: aqh2so4(:,:)                 ! aqueous phase chemistry
     real(r8),         intent(out)   :: aqso4_h2o2(:)                ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
     real(r8),         intent(out)   :: aqso4_o3(:)                  ! SO4 aqueous phase chemistry due to O3 (kg/m2)
+    character(len=*), intent(out)   :: errmsg
+    integer,          intent(out)   :: errflg
     real(r8),         intent(in), optional :: yph_in                ! ph value
     real(r8),         intent(out), optional :: aqso4_h2o2_3d(:, :)  ! 3D SO4 aqueous phase chemistry due to H2O2 (kg/m2)
     real(r8),         intent(out), optional :: aqso4_o3_3d(:, :)    ! 3D SO4 aqueous phase chemistry due to O3 (kg/m2)
@@ -250,10 +204,11 @@ contains
     real(r8), parameter :: G_TO_KG = 1.0e-3_r8                  ! kg g-1
     real(r8), parameter :: KMOL_TO_MOL = 1.0e3_r8               ! mol kmol-1
     real(r8), parameter :: SMALL_NUMBER = 1.0e-30_r8
-    real(r8), parameter :: AVOGADRO = AVOGADRO_KMOL / KMOL_TO_MOL ! molecule mol-1
-    real(r8), parameter :: const0 = 1.e3_r8/AVOGADRO
+    ! derived from host physical constants (assigned below; formerly parameters)
+    real(r8)            :: AVOGADRO ! molecule mol-1
+    real(r8)            :: const0
     real(r8)            :: MOLECULAR_WEIGHT_DRY_AIR ! kg mol-1
-    real(r8), parameter :: MOLECULAR_WEIGHT_CO2 = MOLECULAR_WEIGHT_CO2_G_MOL * G_TO_KG ! kg mol-1
+    real(r8)            :: MOLECULAR_WEIGHT_CO2 ! kg mol-1
     real(r8), parameter :: xa0 = 11._r8
     real(r8), parameter :: xb0 = -.1_r8
     real(r8), parameter :: xa1 = 1.053_r8
@@ -267,7 +222,7 @@ contains
     real(r8), parameter :: kh1 = 1.6e-5_r8         ! HO2(a)          -> H+ + O2-      Reference: JPL 19-5
     real(r8), parameter :: kh2 = 8.3e5_r8          ! HO2(a) + ho2(a) -> h2o2(a) + o2  Reference: JPL; Bielski et al. 1985
     real(r8), parameter :: kh3 = 9.7e7_r8          ! HO2(a) + o2-    -> h2o2(a) + o2  Reference: JPL; Bielski et al. 1985
-    real(r8), parameter :: Ra = GAS_CONSTANT_KMOL / KMOL_TO_MOL * M3_TO_L * PASCAL_TO_ATM ! universal constant   (atm)/(M-K)
+    real(r8)            :: Ra ! universal constant   (atm)/(M-K) (assigned below; formerly a parameter)
     real(r8), parameter :: small_value = 1.e-20_r8
 
     !
@@ -308,8 +263,6 @@ contains
          henh3,  &            ! henry law const for nh3
          heo3              !!,   &            ! henry law const for o3
 
-    real(r8), pointer :: co2_mass_mixing_ratio(:,:) ! kg kg-1
-
     real(r8), dimension(ncol)  :: work1
     logical :: converged
 
@@ -328,6 +281,16 @@ contains
     real(r8) :: yph, yph_lo, yph_hi
     real(r8) :: ynetpos, ynetpos_lo, ynetpos_hi
 
+    errmsg = ''
+    errflg = 0
+
+    ! derived host-constant values (same expressions as the original
+    ! parameter declarations, computed from the host-passed constants)
+    AVOGADRO = AVOGADRO_KMOL / KMOL_TO_MOL ! molecule mol-1
+    const0 = 1.e3_r8/AVOGADRO
+    MOLECULAR_WEIGHT_CO2 = MOLECULAR_WEIGHT_CO2_G_MOL * G_TO_KG ! kg mol-1
+    Ra = GAS_CONSTANT_KMOL / KMOL_TO_MOL * M3_TO_L * PASCAL_TO_ATM ! universal constant   (atm)/(M-K)
+
     MOLECULAR_WEIGHT_DRY_AIR = MOLECULAR_WEIGHT_DRY_AIR_G_MOL * G_TO_KG  ! kg mol-1
 
     !-----------------------------------------------------------------
@@ -342,8 +305,6 @@ contains
     !-----------------------------------------------------------------
     xhnm(:ncol,:) = press(:ncol,:) / (tfld(:ncol,:) * M3_TO_CM3 * BOLTZMANN)  ! air number density (molecules cm-3)
 
-    call rad_cnst_get_gas(0, 'CO2', state, pbuf, co2_mass_mixing_ratio)
-
     xph0 = 10._r8**(-ph0)                      ! initial PH value
 
     do k = 1,pver
@@ -353,7 +314,7 @@ contains
             * 1.e-3_r8                       ! Kg(a)/L(a)
     end do
 
-    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol )
+    cldconc => sox_cldaero_create_obj( cldfrc,qcw,lwc, cfact, ncol, pver )
     xso4c => cldconc%so4c
     xnh4c => cldconc%nh4c
     xno3c => cldconc%no3c
@@ -885,7 +846,8 @@ contains
     if (cloud_borne) then
        ! update cloud-borne aerosols
        call sox_cldaero_update( aero_state, &
-            ncol, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
+            ncol, pver, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
+            gravit, &
             xdelso4hp, xh2so4, xso4, xso4_init, nh3g, xnh3, xnh4c, xmsa, xso2, xh2o2, qcw, qin, &
             aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
     else
@@ -909,21 +871,6 @@ contains
 
     call sox_cldaero_destroy_obj(cldconc)
 
-  end subroutine setsox
-
-   !-----------------------------------------------------------------
-   !       ... looks up Effective Henry's Law Constant parameters
-   !-----------------------------------------------------------------
-   pure integer function get_heff_index(species_name) result(index)
-      use shr_drydep_mod, only: species_name_table
-
-      character(len=*), intent(in) :: species_name
-
-      do index = 1, size(species_name_table)
-         if (trim(adjustl(species_name)) == &
-             trim(adjustl(species_name_table(index)))) return
-      end do
-      index = -1
-   end function get_heff_index
+  end subroutine setsox_sub
 
 end module mo_setsox

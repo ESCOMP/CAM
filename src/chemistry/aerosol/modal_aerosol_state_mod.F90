@@ -4,25 +4,23 @@ module modal_aerosol_state_mod
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
   use radiative_aerosol, only: rad_aer_get_info, rad_aer_get_mode_props
   use aerosol_mmr_host, only: rad_cnst_get_aer_mmr, rad_cnst_get_mode_num, aero_host_binding_t
-  !REMOVECAM: no longer need pbuf and state after CAM is retired
-  use physics_buffer, only: pbuf_get_field, pbuf_get_index
-  !REMOVECAM_END
+  use aerosol_mmr_host, only: get_mode_dry_diameter, get_mode_wet_diameter, get_mode_aer_water
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
-  use physconst,  only: rhoh2o
+  use physconst,  only: rhoh2o, pi
   use cam_abortutils, only: endrun
-  use ppgrid, only:  pver
 
   implicit none
 
   private
 
   public :: modal_aerosol_state
+  public :: modal_aerosol_state_register_water_uptake_diag
 
   type, extends(aerosol_state) :: modal_aerosol_state
      private
-      ! Opaque host-binding handle used to retrieve aerosol fields from
-      ! host model data; built by aerosol_instances_mod.
-      ! This keeps model-specific data structures outside of the aerosol interface.
+     ! Opaque host-binding handle used to retrieve aerosol fields from
+     ! host model data; built by host-side wiring (aerosol_instances_mod).
+     ! This keeps model-specific data structures outside of the aerosol interface.
      type(aero_host_binding_t) :: host_
    contains
 
@@ -58,9 +56,52 @@ module modal_aerosol_state_mod
      procedure :: constructor
   end interface modal_aerosol_state
 
+  ! Interface of the diagnostic-list water uptake recompute. The science
+  ! (modal_aero_wateruptake_diag) lives with the portable modal aerosol
+  ! schemes, which are not part of every build, so it is wired in by host
+  ! code at initialization through a procedure pointer rather than
+  ! referenced directly; when nothing is registered, diagnostic-list
+  ! water uptake aborts as unavailable.
+  abstract interface
+     subroutine water_uptake_diag_i(aero_props, aero_state, ncol, nlev, top_lev, &
+          pi, rhoh2o, t, pmid, h2ommr, cldn, bin_idx, dgnumwet, qaerwat, errmsg, errflg)
+       import :: aerosol_properties, aerosol_state, r8
+       class(aerosol_properties), intent(in) :: aero_props
+       class(aerosol_state),      intent(in) :: aero_state
+       integer,          intent(in)  :: ncol          ! number of columns
+       integer,          intent(in)  :: nlev          ! number of vertical levels
+       integer,          intent(in)  :: top_lev       ! top level for aerosol calculations
+       real(r8),         intent(in)  :: pi            ! pi
+       real(r8),         intent(in)  :: rhoh2o        ! density of liquid water (kg/m3)
+       real(r8),         intent(in)  :: t(:,:)        ! temperature (K)
+       real(r8),         intent(in)  :: pmid(:,:)     ! layer pressure (Pa)
+       real(r8),         intent(in)  :: h2ommr(:,:)   ! specific humidity (kg/kg)
+       real(r8),         intent(in)  :: cldn(:,:)     ! layer cloud fraction (0-1)
+       integer,          intent(in)  :: bin_idx       ! mode index of the returned slices
+       real(r8),         intent(out) :: dgnumwet(:,:) ! wet number mode diameter of mode bin_idx (m)
+       real(r8),         intent(out) :: qaerwat(:,:)  ! aerosol water of mode bin_idx (g/g)
+       character(len=*), intent(out) :: errmsg
+       integer,          intent(out) :: errflg
+     end subroutine water_uptake_diag_i
+  end interface
+
+  procedure(water_uptake_diag_i), pointer :: water_uptake_diag_fn => null()
+
   real(r8), parameter :: rh2odens = 1._r8/rhoh2o
 
 contains
+
+  !------------------------------------------------------------------------------
+  ! register the diagnostic-list water uptake implementation (host wiring;
+  ! called at initialization from code that has access to the portable
+  ! modal aerosol schemes)
+  !------------------------------------------------------------------------------
+  subroutine modal_aerosol_state_register_water_uptake_diag(fn)
+    procedure(water_uptake_diag_i) :: fn
+
+    water_uptake_diag_fn => fn
+
+  end subroutine modal_aerosol_state_register_water_uptake_diag
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
@@ -248,7 +289,7 @@ contains
              wght(:ncol,:) = 1._r8
           else
              call rad_aer_get_mode_props(0, bin_ndx, sigmag=sigmag_aitken)
-             call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUM' ), dgnum)
+             call get_mode_dry_diameter(self%host_, dgnum)
              do k = 1,nlev
                 do i = 1,ncol
                    if (dgnum(i,k,bin_ndx) > 0._r8) then
@@ -309,7 +350,7 @@ contains
              wght = 1._r8
           else
              call rad_aer_get_mode_props(0, bin_ndx, sigmag=sigmag_aitken)
-             call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUM' ), dgnum)
+             call get_mode_dry_diameter(self%host_, dgnum)
 
              if (dgnum(col_ndx,lyr_ndx,bin_ndx) > 0._r8) then
                 ! only allow so4 with D>0.1 um in ice nucleation
@@ -452,38 +493,41 @@ contains
 
   !------------------------------------------------------------------------------
   ! returns aerosol wet diameter and aerosol water concentration for a given mode
+  !
+  ! For the climate list (list_idx==0) these were pre-computed by the water
+  ! uptake calculation and are retrieved via the aerosol_mmr_host accessors
+  ! (DGNUMWET/QAERWAT pbuf fields in CAM; dgncur_awet/qaerwat_aer registry
+  ! fields written by the CCPPized wateruptake scheme in CAM-SIMA).
+  ! Diagnostic lists are recomputed from the atmospheric state passed in by
+  ! the caller, via the registered portable implementation (see the
+  ! water_uptake_diag_i interface above).
   !------------------------------------------------------------------------------
-  !REMOVECAM - under CAM-SIMA, water uptake computed by CCPP scheme; results passed via constituent interface
-  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
-    use modal_aero_wateruptake, only: modal_aero_wateruptake_dr
-    use modal_aero_calcsize,    only: modal_aero_calcsize_diag
+  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                          t, pmid, h2ommr, cldn, dgnumwet, qaerwat)
 
     class(modal_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
     integer, intent(in) :: bin_idx              ! bin number
     integer, intent(in) :: ncol                 ! number of columns
     integer, intent(in) :: nlev                 ! number of levels
+    integer, intent(in) :: top_lev              ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)               ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:)            ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:)          ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:)            ! layer cloud fraction (0-1)
     real(r8),intent(out) :: dgnumwet(ncol,nlev) ! aerosol wet diameter (m)
     real(r8),intent(out) :: qaerwat(ncol,nlev)  ! aerosol water concentration (g/g)
 
-    integer :: istat, nmodes
-    real(r8), pointer :: dgnumdry_m(:,:,:) ! number mode dry diameter for all modes
     real(r8), pointer :: dgnumwet_m(:,:,:) ! number mode wet diameter for all modes
     real(r8), pointer :: qaerwat_m(:,:,:)  ! aerosol water (g/g) for all modes
-    real(r8), pointer :: wetdens_m(:,:,:)  !
-    real(r8), pointer :: hygro_m(:,:,:)  !
-    real(r8), pointer :: dryvol_m(:,:,:)  !
-    real(r8), pointer :: dryrad_m(:,:,:)  !
-    real(r8), pointer :: drymass_m(:,:,:)  !
-    real(r8), pointer :: so4dryvol_m(:,:,:)  !
-    real(r8), pointer :: naer_m(:,:,:)  !
 
-    nmodes = aero_props%nbins()
+    character(len=512) :: errmsg
+    integer            :: errflg
 
     if (self%list_idx_ == 0) then
        ! water uptake and wet radius for the climate list has already been calculated
-       call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet_m)
-       call pbuf_get_field(self%host_%pbuf, pbuf_get_index('QAERWAT'),  qaerwat_m)
+       call get_mode_wet_diameter(self%host_, dgnumwet_m)
+       call get_mode_aer_water(self%host_, qaerwat_m)
 
        dgnumwet(:ncol,:nlev) = dgnumwet_m(:ncol,:nlev,bin_idx)
        qaerwat (:ncol,:nlev) =  qaerwat_m(:ncol,:nlev,bin_idx)
@@ -491,37 +535,17 @@ contains
     else
        ! If doing a diagnostic calculation then need to calculate the wet radius
        ! and water uptake for the diagnostic modes
-       allocate(dgnumdry_m(ncol,nlev,nmodes),  dgnumwet_m(ncol,nlev,nmodes), &
-                qaerwat_m(ncol,nlev,nmodes),   wetdens_m(ncol,nlev,nmodes), &
-                hygro_m(ncol,nlev,nmodes),     dryvol_m(ncol,nlev,nmodes), &
-                dryrad_m(ncol,nlev,nmodes),    drymass_m(ncol,nlev,nmodes),  &
-                so4dryvol_m(ncol,nlev,nmodes), naer_m(ncol,nlev,nmodes), stat=istat)
-       if (istat > 0) then
-          dgnumwet = -huge(1._r8)
-          qaerwat = -huge(1._r8)
-          return
+       if (.not. associated(water_uptake_diag_fn)) then
+          call endrun('modal_aerosol_state::water_uptake: diagnostic-list water uptake ' // &
+               'is not available: no implementation registered (the modal aerosol ' // &
+               'schemes are not part of this build)')
        end if
-       call modal_aero_calcsize_diag(self%host_%state, self%host_%pbuf, aero_props, self, dgnumdry_m, hygro_m, &
-                                     dryvol_m, dryrad_m, drymass_m, so4dryvol_m, naer_m)
-       call modal_aero_wateruptake_dr(self%host_%state, self%host_%pbuf, aero_props, self, dgnumdry_m, dgnumwet_m, &
-                                      qaerwat_m, wetdens_m, hygro_m, dryvol_m, dryrad_m, &
-                                      drymass_m, so4dryvol_m, naer_m)
-
-       dgnumwet(:ncol,:nlev) = dgnumwet_m(:ncol,:nlev,bin_idx)
-       qaerwat (:ncol,:nlev) =  qaerwat_m(:ncol,:nlev,bin_idx)
-
-       deallocate(dgnumdry_m)
-       deallocate(dgnumwet_m)
-       deallocate(qaerwat_m)
-       deallocate(wetdens_m)
-       deallocate(hygro_m)
-       deallocate(dryvol_m)
-       deallocate(dryrad_m)
-       deallocate(drymass_m)
-       deallocate(so4dryvol_m)
-       deallocate(naer_m)
+       call water_uptake_diag_fn(aero_props, self, ncol, nlev, top_lev, pi, rhoh2o, &
+            t, pmid, h2ommr, cldn, bin_idx, dgnumwet, qaerwat, errmsg, errflg)
+       if (errflg /= 0) then
+          call endrun('modal_aerosol_state::water_uptake: '//trim(errmsg))
+       end if
     endif
-
 
   end subroutine water_uptake
 
@@ -557,7 +581,8 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol wet volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function wet_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
+  function wet_volume(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                      t, pmid, h2ommr, cldn) result(vol)
 
     class(modal_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
@@ -565,6 +590,11 @@ contains
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
+    integer, intent(in) :: top_lev   ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)    ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
@@ -572,7 +602,8 @@ contains
     real(r8) :: watervol(ncol,nlev)
 
     dryvol = self%dry_volume(aero_props, bin_idx, ncol, nlev)
-    watervol = self%water_volume(aero_props, bin_idx, ncol, nlev)
+    watervol = self%water_volume(aero_props, bin_idx, ncol, nlev, top_lev, &
+                                 t, pmid, h2ommr, cldn)
 
     vol = watervol + dryvol
 
@@ -581,7 +612,8 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol water volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function water_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
+  function water_volume(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                        t, pmid, h2ommr, cldn) result(vol)
 
     class(modal_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
@@ -589,13 +621,19 @@ contains
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
+    integer, intent(in) :: top_lev   ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)    ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
     real(r8) :: dgnumwet(ncol,nlev)
     real(r8) :: qaerwat(ncol,nlev)
 
-    call self%water_uptake(aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+    call self%water_uptake(aero_props, bin_idx, ncol, nlev, top_lev, &
+                           t, pmid, h2ommr, cldn, dgnumwet, qaerwat)
 
     vol(:ncol,:nlev) = qaerwat(:ncol,:nlev)*rh2odens
     where (vol<0._r8)
@@ -607,7 +645,6 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol wet diameter for a given mode
   !------------------------------------------------------------------------------
-  !REMOVECAM - under CAM-SIMA, wet diameter provided by CCPP scheme output
   function wet_diameter(self, bin_idx, ncol, nlev) result(diam)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_idx   ! bin number
@@ -618,7 +655,7 @@ contains
 
     real(r8), pointer :: dgnumwet(:,:,:)
 
-    call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+    call get_mode_wet_diameter(self%host_, dgnumwet)
 
     diam(:ncol,:nlev) = dgnumwet(:ncol,:nlev,bin_idx)
 
@@ -729,12 +766,13 @@ contains
     real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
 
     character(len=aero_name_len) :: modetype, spectype
-    integer :: i,k,l,m,n,mm, ncol, nbins
+    integer :: i,k,l,m,n,mm, ncol, nlev, nbins
     integer :: accum_n
     real(r8) :: sumf
     real(r8), allocatable :: qnum_c(:)
 
     ncol = self%ncol()
+    nlev = size(qcw, 2)
     nbins = aero_props%nbins()
 
     !-------------------------------------------------------------------------
@@ -761,7 +799,7 @@ contains
 
     faqgain = 0.0_r8
 
-    lev_loop: do k = 1,pver
+    lev_loop: do k = 1,nlev
        col_loop: do i = 1,ncol
           do m = 1, nbins
              mm = aero_props%indexer(m,0)
@@ -851,7 +889,7 @@ contains
 
     character(len=*), parameter :: subname = 'modal_aerosol_state_mod::surf_area_dens'
 
-    call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), diam)
+    call get_mode_wet_diameter(self%host_, diam)
 
     !
     ! Compute surface aero for each mode.

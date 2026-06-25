@@ -11,44 +11,54 @@
 
 ! !USES:
    use shr_kind_mod,    only:  r8 => shr_kind_r8
-   use chem_mods,       only:  gas_pcnst
-   use modal_aero_data, only:  nspec_max
 
   implicit none
   private
   save
 
 ! !PUBLIC MEMBER FUNCTIONS:
-  public modal_aero_coag_sub, modal_aero_coag_init
+  public modal_aero_coag_run, modal_aero_coag_init
 
 ! !PUBLIC DATA MEMBERS:
-  integer, parameter :: pcnstxx = gas_pcnst
-
-#if ( defined MODAL_AERO_7MODE || defined MODAL_AERO_4MODE || defined MODAL_AERO_5MODE)
-  integer, parameter, public :: pair_option_acoag = 3
-#elif ( defined MODAL_AERO_3MODE )
-  integer, parameter, public :: pair_option_acoag = 1
-#endif
+  integer, protected, public :: pair_option_acoag = 0
 ! specifies pairs of modes for which coagulation is calculated
-!   1 -- [aitken-->accum] 
+! (set by modal_aero_coag_init from the host; default 0 = do no coag)
+!   1 -- [aitken-->accum]
 !   2 -- [aitken-->accum], and [pcarbon-->accum]
-!   3 -- [aitken-->accum], [pcarbon-->accum], 
-!        and [aitken-->pcarbon--(aging)-->accum] 
+!   3 -- [aitken-->accum], [pcarbon-->accum],
+!        and [aitken-->pcarbon--(aging)-->accum]
 ! other -- do no coag
 
   integer, parameter, public :: maxpair_acoag = 10
   integer, protected, public :: maxspec_acoag != nspec_max
 
-  integer, protected, public :: npair_acoag
+! coagulation-pair tables (host constituent-index space), handed to
+! modal_aero_coag_init by the host wrapper (see modal_aero_coag_cam)
+  integer, protected, public :: npair_acoag = 0
   integer, protected, public :: modefrm_acoag(maxpair_acoag)
   integer, protected, public :: modetoo_acoag(maxpair_acoag)
   integer, protected, public :: modetooeff_acoag(maxpair_acoag)
   integer, protected, public :: nspecfrm_acoag(maxpair_acoag)
   integer, allocatable, protected, public :: lspecfrm_acoag(:,:)
   integer, allocatable, protected, public :: lspectoo_acoag(:,:)
-  
+
   integer :: ip_aitacc, ip_aitpca, ip_pcaacc
   real(r8), allocatable :: fac_m2v_aitage(:), fac_m2v_pcarbon(:)
+
+! mode metadata from the host (set by modal_aero_coag_init); names match
+! the modal_aero_data originals so the science bodies are unchanged
+  integer :: ntot_amode
+  integer :: modeptr_accum, modeptr_aitken, modeptr_pcarbon
+  integer,  allocatable :: numptr_amode(:), mprognum_amode(:), nspec_amode(:)
+  integer,  allocatable :: lmassptr_amode(:,:)
+  real(r8), allocatable :: alnsg_amode(:), sigmag_amode(:)
+
+! host physical constants (set by modal_aero_coag_init; passed from the host
+! rather than hardcoded so the values stay bit-identical with the host's)
+  real(r8) :: r_universal   ! universal gas constant (J/K/kmol)
+  real(r8) :: p0            ! standard pressure (Pa)
+  real(r8) :: tmelt         ! freezing point of water (K)
+  real(r8) :: boltz         ! Boltzmann constant (J/K)
 
 ! !DESCRIPTION: This module implements ...
 !
@@ -67,16 +77,19 @@
   contains
 !----------------------------------------------------------------------
 !BOP
-! !ROUTINE:  modal_aero_coag_sub --- ...
+! !ROUTINE:  modal_aero_coag_run --- ...
 !
 ! !INTERFACE:
-   subroutine modal_aero_coag_sub(                               &
-                        lchnk,    ncol,     nstep,               &
-                        loffset,  deltat_main,                   &
+   subroutine modal_aero_coag_run(                               &
+                        ncol,     pver,     top_lev,             &
+                        num_q,    loffset,  nstep,               &
+                        deltat_main,                             &
                         t,        pmid,     pdel,                &
                         q,                                       &
                         dgncur_a,           dgncur_awet,         &
-                        wetdens_a                                )
+                        wetdens_a,                               &
+                        dqdt,     dotend,                        &
+                        errmsg,   errflg    )
 
 
 !----------------------------------------------------------------------
@@ -84,43 +97,45 @@
 !----------------------------------------------------------------------
 
 ! !USES:
-   use mo_constants,     only: pi
-   use modal_aero_data
    use modal_aero_gasaerexch, only:  n_so4_monolayers_pcage
-
-   use cam_abortutils,   only: endrun
-   use cam_history,      only: outfld, fieldname_len
-   use chem_mods,        only: adv_mass
-   use constituents,     only: pcnst, cnst_name
-   use physconst,        only: gravit, mwdry, r_universal
-   use ppgrid,           only: pcols, pver
-   use spmd_utils,       only: iam, masterproc
-   use ref_pres,         only: top_lev => clim_modal_aero_top_lev
 
    implicit none
 
 ! !PARAMETERS:
-   integer, intent(in)  :: lchnk            ! chunk identifier
    integer, intent(in)  :: ncol             ! number of columns in chunk
-   integer, intent(in)  :: nstep            ! model step
+   integer, intent(in)  :: pver             ! number of vertical levels
+   integer, intent(in)  :: top_lev          ! top level for modal aerosol calculations
+   integer, intent(in)  :: num_q            ! number of species in q/dqdt (= gas_pcnst)
    integer, intent(in)  :: loffset          ! offset applied to modal aero "pointers"
+   integer, intent(in)  :: nstep            ! model step (for coagulation sub-cycling)
 
    real(r8), intent(in) :: deltat_main      ! model timestep (s)
 
-   real(r8), intent(in) :: t(pcols,pver)    ! temperature (K)
-   real(r8), intent(in) :: pmid(pcols,pver) ! pressure at model levels (Pa)
-   real(r8), intent(in) :: pdel(pcols,pver) ! pressure thickness of levels (Pa)
+   real(r8), intent(in) :: t(:,:)           ! (ncol,pver) temperature (K)
+   real(r8), intent(in) :: pmid(:,:)        ! (ncol,pver) pressure at model levels (Pa)
+   real(r8), intent(in) :: pdel(:,:)        ! (ncol,pver) pressure thickness of levels (Pa)
 
-   real(r8), intent(inout) :: q(ncol,pver,pcnstxx) 
+   real(r8), intent(inout) :: q(:,:,:)      ! (ncol,pver,num_q)
                                             ! tracer mixing ratio (TMR) array
                                             ! *** MUST BE mol/mol-air or #/mol-air
-                                            ! *** NOTE ncol & pcnstxx dimensions
-   real(r8), intent(in) :: dgncur_a(pcols,pver,ntot_amode)
+                                            ! *** updated in place: number changes are
+                                            !     direct assignments, and dqdt*deltat_main
+                                            !     is NOT bit-identical to the stored change
+                                            !     (deltatinv_main carries a 1+1e-15 guard),
+                                            !     so this scheme cannot be tendency-return
+   real(r8), intent(in) :: dgncur_a(:,:,:)  ! (ncol,pver,ntot_amode)
                                  ! dry geo. mean dia. (m) of number distrib.
-   real(r8), intent(in) :: dgncur_awet(pcols,pver,ntot_amode)
+   real(r8), intent(in) :: dgncur_awet(:,:,:)
+                                 ! (ncol,pver,ntot_amode)
                                  ! wet geo. mean dia. (m) of number distrib.
-   real(r8), intent(in) :: wetdens_a(pcols,pver,ntot_amode) 
+   real(r8), intent(in) :: wetdens_a(:,:,:) ! (ncol,pver,ntot_amode)
                                  ! density of wet aerosol (kg/m3)
+   real(r8), intent(out) :: dqdt(:,:,:)     ! (ncol,pver,num_q) TMR "dq/dt" array
+                                            ! (diagnostic only; q is updated in place)
+   logical,  intent(out) :: dotend(:)       ! (num_q) identifies the species that
+                                            ! tendencies are computed for
+   character(len=*), intent(out) :: errmsg
+   integer,          intent(out) :: errflg
 
 ! !DESCRIPTION: 
 !   computes changes due to coagulation involving
@@ -143,7 +158,7 @@
 	integer :: idomode(ntot_amode), iselfcoagdone(ntot_amode)
 	integer :: jfreqcoag, jsoa
 	integer :: k
-	integer :: l, l2, lmz, lsfrm, lstoo, lunout
+	integer :: l, l2, lsfrm, lstoo, lunout
 	integer :: modefrm, modetoo, mait, macc, mpca
 	integer ::  n, nfreqcoag
 
@@ -176,14 +191,15 @@
 	real(r8) :: ybetaij0(maxpair_acoag), ybetaij3(maxpair_acoag)
 	real(r8) :: ybetaii0(maxpair_acoag), ybetajj0(maxpair_acoag)
 
-        real(r8) :: dqdt(ncol,pver,pcnstxx)  ! TMR "dq/dt" array - NOTE dims
-        logical  :: dotend(pcnst)            ! identifies the species that
-                                             ! tendencies are computed for
-	real(r8) :: qsrflx(pcols)
-
-        character(len=fieldname_len+3) :: fieldname
-
 ! begin
+	errmsg = ' '
+	errflg = 0
+
+!   zero the tendency outputs up front: they are intent(out) and the caller
+!   uses them unconditionally, including on the bypass paths below
+	dotend(:) = .false.
+	dqdt(1:ncol,:,:) = 0.0_r8
+
 !   check if any coagulation pairs exist
 	if (npair_acoag <= 0) return
 
@@ -203,9 +219,6 @@
 !!$   if (nstep > 3) call endrun( 'modal_aero_coag_sub -- nstep>3 testing halt' )
 !!$   end if   ! (ldiag1 > 0)
 !--------------------------------------------------------------------------------
-
-	dotend(:) = .false.
-	dqdt(1:ncol,:,:) = 0.0_r8
 
 	lunout = 6
 
@@ -583,7 +596,9 @@ main_ipair2: do ipair = 1, npair_acoag
 	write(lunout,*) '*** modal_aero_coag_sub error'
 	write(lunout,*) '    cannot do _coag_sub error pair_option_acoag =', &
 		pair_option_acoag
-	call endrun( 'modal_aero_coag_sub error' )
+	errmsg = 'modal_aero_coag_sub error'
+	errflg = 1
+	return
 
 
 	end if   ! (pair_option_acoag == ...)
@@ -682,345 +697,120 @@ main_ipair2: do ipair = 1, npair_acoag
 	end do
 
 
-!   do history file column-tendency fields
-	do l = loffset+1, pcnst
-	    lmz = l - loffset
-	    if ( .not. dotend(lmz) ) cycle
-
-	    qsrflx(:) = 0.0_r8
-	    do k = top_lev, pver
-	    do i = 1, ncol
-		qsrflx(i) = qsrflx(i) + dqdt(i,k,lmz)*pdel(i,k)
-	    end do
-	    end do
-	    qsrflx(:) = qsrflx(:)*(adv_mass(lmz)/(gravit*mwdry))
-	    fieldname = trim(cnst_name(l)) // '_sfcoag1'
-	    call outfld( fieldname, qsrflx, pcols, lchnk )
-!	    if (( masterproc ) .and. (nstep < 1)) &
-!		write(*,'(2(a,2x),1p,e11.3)') &
-!		'modal_aero_coag_sub outfld', fieldname, adv_mass(lmz)
-	end do ! l = ...
+!   history file column-tendency fields (column integral of dqdt with
+!   adv_mass/mwdry scaling + outfld) are done by the caller, which owns
+!   the host constituent metadata
 
 
 	return
 
 
 !EOC
-	end subroutine modal_aero_coag_sub
+	end subroutine modal_aero_coag_run
 
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-	subroutine modal_aero_coag_init
+	subroutine modal_aero_coag_init( pair_option_acoag_in,            &
+	     npair_acoag_in, modefrm_acoag_in, modetoo_acoag_in,          &
+	     modetooeff_acoag_in, nspecfrm_acoag_in,                      &
+	     lspecfrm_acoag_in, lspectoo_acoag_in,                        &
+	     ip_aitacc_in, ip_aitpca_in, ip_pcaacc_in,                    &
+	     fac_m2v_aitage_in, fac_m2v_pcarbon_in,                       &
+	     nspec_max_in, ntot_amode_in,                                 &
+	     modeptr_accum_in, modeptr_aitken_in, modeptr_pcarbon_in,     &
+	     numptr_amode_in, mprognum_amode_in, nspec_amode_in,          &
+	     lmassptr_amode_in, alnsg_amode_in, sigmag_amode_in,          &
+	     r_universal_in, pstd_in, tmelt_in, boltz_in,                 &
+	     errmsg, errflg )
 !
-!   computes pointers for species transfer during coagulation
+!   store the resolved coagulation-pair tables, mode metadata, and host
+!   physical constants used by modal_aero_coag_run
+!   pair/species resolution and history-field registration are host
+!   responsibilities (see modal_aero_coag_cam)
 !
-	use modal_aero_data
-	use modal_aero_gasaerexch, only:  &
-		modefrm_pcage, nspecfrm_pcage, lspecfrm_pcage, lspectoo_pcage, &
-                soa_equivso4_factor
-
-	use cam_abortutils,  only: endrun
-	use cam_history,     only: addfld, add_default, fieldname_len, horiz_only
-	use constituents,    only: pcnst, cnst_name
-	use spmd_utils,      only: masterproc
-        use phys_control,    only: phys_getopts
-
 	implicit none
 
-!   local variables
-	integer :: ipair, iq, iqfrm, iqfrm_aa, iqtoo, iqtoo_aa
-        integer :: jsoa
-	integer :: l, l1, l2, lsfrm, lstoo, lunout
-	integer :: m, mait, mpca, mfrm, mtoo, mtef
-	integer :: nchfrm, nchfrmskip, nchtoo, nchtooskip, nspec
+!   arguments
+	integer,  intent(in) :: pair_option_acoag_in     ! pair selection (see module header)
+	integer,  intent(in) :: npair_acoag_in           ! number of coagulation pairs
+	integer,  intent(in) :: modefrm_acoag_in(:)      ! (maxpair_acoag) "from" mode of each pair
+	integer,  intent(in) :: modetoo_acoag_in(:)      ! (maxpair_acoag) "too" mode of each pair
+	integer,  intent(in) :: modetooeff_acoag_in(:)   ! (maxpair_acoag) effective "too" mode of each pair
+	integer,  intent(in) :: nspecfrm_acoag_in(:)     ! (maxpair_acoag) species count of each pair
+	integer,  intent(in) :: lspecfrm_acoag_in(:,:)   ! (nspec_max,maxpair_acoag) "from" species
+	                                                 ! indices (host constituent space)
+	integer,  intent(in) :: lspectoo_acoag_in(:,:)   ! (nspec_max,maxpair_acoag) "too" species
+	                                                 ! indices (host constituent space)
+	integer,  intent(in) :: ip_aitacc_in             ! pair index of [aitken-->accum]
+	integer,  intent(in) :: ip_aitpca_in             ! pair index of [aitken-->pcarbon]
+	integer,  intent(in) :: ip_pcaacc_in             ! pair index of [pcarbon-->accum]
+	real(r8), intent(in) :: fac_m2v_aitage_in(:)     ! (nspec_max) mixing-ratio to volume factors
+	real(r8), intent(in) :: fac_m2v_pcarbon_in(:)    ! (nspec_max) for aging shell/core calcs
+	integer,  intent(in) :: nspec_max_in             ! max number of species in a mode
+	integer,  intent(in) :: ntot_amode_in            ! number of aerosol modes
+	integer,  intent(in) :: modeptr_accum_in         ! accumulation mode index
+	integer,  intent(in) :: modeptr_aitken_in        ! aitken mode index
+	integer,  intent(in) :: modeptr_pcarbon_in       ! primary carbon mode index
+	integer,  intent(in) :: numptr_amode_in(:)       ! (ntot_amode) number indices (host constituent space)
+	integer,  intent(in) :: mprognum_amode_in(:)     ! (ntot_amode) prognostic-number flags
+	integer,  intent(in) :: nspec_amode_in(:)        ! (ntot_amode) species counts
+	integer,  intent(in) :: lmassptr_amode_in(:,:)   ! (nspec_max,ntot_amode) mass indices
+	                                                 ! (host constituent space)
+	real(r8), intent(in) :: alnsg_amode_in(:)        ! (ntot_amode) ln(sigmag)
+	real(r8), intent(in) :: sigmag_amode_in(:)       ! (ntot_amode) geometric standard deviation
+	real(r8), intent(in) :: r_universal_in           ! universal gas constant (J/K/kmol)
+	real(r8), intent(in) :: pstd_in                  ! standard pressure (Pa)
+	real(r8), intent(in) :: tmelt_in                 ! freezing point of water (K)
+	real(r8), intent(in) :: boltz_in                 ! Boltzmann constant (J/K)
+	character(len=*), intent(out) :: errmsg
+	integer,          intent(out) :: errflg
 
-	character(len=fieldname_len)   :: tmpname
-	character(len=fieldname_len+3) :: fieldname
-	character(128)                 :: long_name
-	character(8)                   :: unit
+	errmsg = ' '
+	errflg = 0
 
-	logical :: dotend(pcnst)
-        logical :: history_aerosol      ! Output the MAM aerosol tendencies
- 
-	character(len=200) :: msg
+	pair_option_acoag = pair_option_acoag_in
 
-        !-----------------------------------------------------------------------     
-    
-        call phys_getopts( history_aerosol_out        = history_aerosol   )
+	maxspec_acoag = nspec_max_in
+	allocate( lspecfrm_acoag(maxspec_acoag,maxpair_acoag) )
+	allocate( lspectoo_acoag(maxspec_acoag,maxpair_acoag) )
+	allocate( fac_m2v_aitage(nspec_max_in), fac_m2v_pcarbon(nspec_max_in) )
 
-        lunout = 6
+	npair_acoag         = npair_acoag_in
+	modefrm_acoag(:)    = modefrm_acoag_in(:)
+	modetoo_acoag(:)    = modetoo_acoag_in(:)
+	modetooeff_acoag(:) = modetooeff_acoag_in(:)
+	nspecfrm_acoag(:)   = nspecfrm_acoag_in(:)
+	lspecfrm_acoag(:,:) = lspecfrm_acoag_in(:,:)
+	lspectoo_acoag(:,:) = lspectoo_acoag_in(:,:)
 
-        maxspec_acoag = nspec_max
-        allocate( lspecfrm_acoag(maxspec_acoag,maxpair_acoag) )
-        allocate( lspectoo_acoag(maxspec_acoag,maxpair_acoag) )
-        allocate( fac_m2v_aitage(nspec_max), fac_m2v_pcarbon(nspec_max) )
+	ip_aitacc = ip_aitacc_in
+	ip_aitpca = ip_aitpca_in
+	ip_pcaacc = ip_pcaacc_in
 
-!
-!   define "from mode" and "to mode" for each coagulation pairing
-!	currently just a2-->a1 coagulation
-!
-	if (pair_option_acoag == 1) then
-	    npair_acoag = 1
-	    modefrm_acoag(1) = modeptr_aitken
-	    modetoo_acoag(1) = modeptr_accum
-	    modetooeff_acoag(1) = modeptr_accum
-	else if (pair_option_acoag == 2) then
-	    npair_acoag = 2
-	    modefrm_acoag(1) = modeptr_aitken
-	    modetoo_acoag(1) = modeptr_accum
-	    modetooeff_acoag(1) = modeptr_accum
-	    modefrm_acoag(2) = modeptr_pcarbon
-	    modetoo_acoag(2) = modeptr_accum
-	    modetooeff_acoag(2) = modeptr_accum
-	else if (pair_option_acoag == 3) then
-	    npair_acoag = 3
-	    modefrm_acoag(1) = modeptr_aitken
-	    modetoo_acoag(1) = modeptr_accum
-	    modetooeff_acoag(1) = modeptr_accum
-	    modefrm_acoag(2) = modeptr_pcarbon
-	    modetoo_acoag(2) = modeptr_accum
-	    modetooeff_acoag(2) = modeptr_accum
-	    modefrm_acoag(3) = modeptr_aitken
-	    modetoo_acoag(3) = modeptr_pcarbon
-	    modetooeff_acoag(3) = modeptr_accum
-	    if (modefrm_pcage <= 0) then
-		write(*,*) '*** modal_aero_coag_init error'
-		write(*,*) '    pair_option_acoag, modefrm_pcage mismatch'
-		write(*,*) '    pair_option_acoag, modefrm_pcage =', &
-		    pair_option_acoag, modefrm_pcage
-		call endrun( 'modal_aero_coag_init error' )
-	    end if
-	else
-	    npair_acoag = 0
-	    return
-	end if
+	fac_m2v_aitage(:)  = fac_m2v_aitage_in(:)
+	fac_m2v_pcarbon(:) = fac_m2v_pcarbon_in(:)
 
-!
-!   define species involved in each coagulation pairing
-!	(include aerosol water)
-!
-aa_ipair: do ipair = 1, npair_acoag
+	ntot_amode      = ntot_amode_in
+	modeptr_accum   = modeptr_accum_in
+	modeptr_aitken  = modeptr_aitken_in
+	modeptr_pcarbon = modeptr_pcarbon_in
 
-	mfrm = modefrm_acoag(ipair)
-	mtoo = modetoo_acoag(ipair)
-	mtef = modetooeff_acoag(ipair)
-	if ( (mfrm < 1) .or. (mfrm > ntot_amode) .or.   &
-	     (mtoo < 1) .or. (mtoo > ntot_amode) .or.   &
-	     (mtef < 1) .or. (mtef > ntot_amode) ) then
-	    write(*,*) '*** modal_aero_coag_init error'
-	    write(*,*) '    ipair, ntot_amode =', ipair, ntot_amode
-	    write(*,*) '    mfrm, mtoo, mtef  =', mfrm, mtoo, mtef
-	    call endrun( 'modal_aero_coag_init error' )
-	end if
+	allocate( numptr_amode(ntot_amode_in), mprognum_amode(ntot_amode_in), &
+	          nspec_amode(ntot_amode_in) )
+	allocate( lmassptr_amode(nspec_max_in,ntot_amode_in) )
+	allocate( alnsg_amode(ntot_amode_in), sigmag_amode(ntot_amode_in) )
+	numptr_amode(:)     = numptr_amode_in(:)
+	mprognum_amode(:)   = mprognum_amode_in(:)
+	nspec_amode(:)      = nspec_amode_in(:)
+	lmassptr_amode(:,:) = lmassptr_amode_in(:,:)
+	alnsg_amode(:)      = alnsg_amode_in(:)
+	sigmag_amode(:)     = sigmag_amode_in(:)
 
-
-	mtoo = mtef   ! effective modetoo
-	if (mfrm < 10) then
-	    nchfrmskip = 1
-	else if (mfrm < 100) then
-	    nchfrmskip = 2
-	else
-	    nchfrmskip = 3
-	end if
-	if (mtoo < 10) then
-	    nchtooskip = 1
-	else if (mtoo < 100) then
-	    nchtooskip = 2
-	else
-	    nchtooskip = 3
-	end if
-
-	nspec = 0
-aa_iqfrm: do iqfrm = 1, nspec_amode(mfrm)
-	    lsfrm = lmassptr_amode(iqfrm,mfrm)
-	    if ((lsfrm .lt. 1) .or. (lsfrm .gt. pcnst)) cycle aa_iqfrm
-	    nchfrm = len( trim( cnst_name(lsfrm) ) ) - nchfrmskip
-! find "too" species having same lspectype_amode as the "frm" species
-! AND same cnst_name (except for last 1/2/3 characters which are the mode index)
-	    do iqtoo = 1, nspec_amode(mtoo)
-              lstoo = lmassptr_amode(iqtoo,mtoo)
-              nchtoo = len( trim( cnst_name(lstoo) ) ) - nchtooskip
-              if (cnst_name(lsfrm)(1:nchfrm) == cnst_name(lstoo)(1:nchtoo)) then
-                 exit
-              else
-                 lstoo = 0
-              end if
-	    end do
-
-	    if ((lstoo < 1) .or. (lstoo > pcnst)) lstoo = 0
-	    nspec = nspec + 1
-	    lspecfrm_acoag(nspec,ipair) = lsfrm
-	    lspectoo_acoag(nspec,ipair) = lstoo
-	end do aa_iqfrm
-
-!       lsfrm = lwaterptr_amode(mfrm)
-!       if ((lsfrm .ge. 1) .and. (lsfrm .le. pcnst)) then
-!           lstoo = lwaterptr_amode(mtoo)
-!           if ((lstoo .lt. 1) .or. (lstoo .gt. pcnst)) lstoo = 0
-!           nspec = nspec + 1
-!           lspecfrm_acoag(nspec,ipair) = lsfrm
-!           lspectoo_acoag(nspec,ipair) = lstoo
-!       end if
-
-	nspecfrm_acoag(ipair) = nspec
-	end do aa_ipair
-
-!
-!   output results
-!
-	if ( masterproc ) then
-
-	write(lunout,9310)
-
-	do ipair = 1, npair_acoag
-	  mfrm = modefrm_acoag(ipair)
-	  mtoo = modetoo_acoag(ipair)
-	  mtef = modetooeff_acoag(ipair)
-	  write(lunout,9320) ipair, mfrm, mtoo, mtef
-
-	  do iq = 1, nspecfrm_acoag(ipair)
-	    lsfrm = lspecfrm_acoag(iq,ipair)
-	    lstoo = lspectoo_acoag(iq,ipair)
-	    if (lstoo .gt. 0) then
-		write(lunout,9330) lsfrm, cnst_name(lsfrm),   &
-      			lstoo, cnst_name(lstoo)
-	    else
-		write(lunout,9340) lsfrm, cnst_name(lsfrm)
-	    end if
-	  end do
-
-	end do ! ipair = ...
-	write(lunout,*)
-
-	end if ! ( masterproc ) 
-
-9310	format( / 'subr. modal_aero_coag_init' )
-9320	format( 'pair', i3, 5x, 'mode', i3, &
-		' ---> mode', i3, '   eff', i3 )
-9330	format( 5x, 'spec', i3, '=', a, ' ---> spec', i3, '=', a )
-9340	format( 5x, 'spec', i3, '=', a, ' ---> LOSS' )
-
-!   set following variables that are used in modal_aero_coag_subr
-!
-	fac_m2v_aitage(:) = 0.0_r8
-	fac_m2v_pcarbon(:) = 0.0_r8
-	if (pair_option_acoag == 3) then
-!   following ipair definitions MUST BE CONSISTENT with
-!   the coding in modal_aero_coag_init for pair_option_acoag == 3
-	    ip_aitacc = 1
-	    ip_pcaacc = 2
-	    ip_aitpca = 3
-
-	    mait = modeptr_aitken
-	    mpca = modeptr_pcarbon
-
-	    ipair = ip_aitpca
-	    do iq = 1, nspecfrm_acoag(ipair)
-		lsfrm = lspecfrm_acoag(iq,ipair)
-		l2 = -1
-		do l1 = 1, nspec_amode(mait)
-		   if (lmassptr_amode(l1,mait) == lsfrm) then
-                      l2 = l1
-			exit
-		   end if
-		end do
-		if (l2 <= 0) then
-		    write( msg, '(a,5(1x,i12))' ) &
-			'modal_aero_coag_init error a001 for ipair, iq, lsfrm', &
-			ipair, iq, lsfrm
-		    call endrun( msg )
-		end if
-		if (lsfrm == lptr_so4_a_amode(mait)) then
-!		    fac_m2v_aitage(iq) = specmw_amode(l2) / specdens_amode(l2) 
-                   fac_m2v_aitage(iq) = specmw_amode(l1,mait) / specdens_amode(l1,mait)
-		else if (lsfrm == lptr_nh4_a_amode(mait)) then
-!                   fac_m2v_aitage(iq) = specmw_amode(l2) / specdens_amode(l2)
-                    fac_m2v_aitage(iq) = specmw_amode(l1,mait) / specdens_amode(l1,mait)
-		else 
-		    do jsoa = 1, nsoa
-			if (lsfrm == lptr2_soa_a_amode(mait,jsoa)) then
-			    fac_m2v_aitage(iq) = soa_equivso4_factor(jsoa)*   &
-                                 !(specmw_amode(l2) / specdens_amode(l2))
-                                 (specmw_amode(l1,mait) / specdens_amode(l1,mait))
-			end if
-!   for soa, the soa_equivso4_factor converts the soa volume into an
-!	so4(+nh4) volume that has same hygroscopicity contribution as soa
-!   this allows aging calculations to be done in terms of the amount
-!	of (equivalent) so4(+nh4) in the shell
-!   (see modal_aero_gasaerexch)
-		    end do
-		end if
-	    end do
-	    
-	    do l = 1, nspec_amode(mpca)
-!B		l2 = lspectype_amode(l,mpca)
-!   fac_m2v converts (kmol-AP/kmol-air) to (m3-AP/kmol-air)
-!		[m3-AP/kmol-AP]    = [kg-AP/kmol-AP]  / [kg-AP/m3-AP]
-!		fac_m2v_pcarbon(l) = specmw_amode(l2) / specdens_amode(l2)
-                fac_m2v_pcarbon(l) = specmw_amode(l,mpca) / specdens_amode(l,mpca)
-	    end do
-
-	else
-	    ip_aitacc = -999888777
-	    ip_pcaacc = -999888777
-	    ip_aitpca = -999888777
-	end if
-
-!
-!   create history file column-tendency fields
-!
-	dotend(:) = .false.
-	do ipair = 1, npair_acoag
-	  do iq = 1, nspecfrm_acoag(ipair)
-	    l = lspecfrm_acoag(iq,ipair)
-	    if ((l > 0) .and. (l <= pcnst)) dotend(l) = .true.
-	    l = lspectoo_acoag(iq,ipair)
-	    if ((l > 0) .and. (l <= pcnst)) dotend(l) = .true.
-	  end do
-
-	  m = modefrm_acoag(ipair)
-	  if ((m > 0) .and. (m <= ntot_amode)) then
-	    l = numptr_amode(m)
-	    if ((l > 0) .and. (l <= pcnst)) dotend(l) = .true.
-	  end if
-	  m = modetoo_acoag(ipair)
-	  if ((m > 0) .and. (m <= ntot_amode)) then
-	    l = numptr_amode(m)
-	    if ((l > 0) .and. (l <= pcnst)) dotend(l) = .true.
-	  end if
-	end do ! ipair = ...
-
-	if (pair_option_acoag == 3) then
-	   do iq = 1, nspecfrm_pcage
-	      lsfrm = lspecfrm_pcage(iq)
-	      lstoo = lspectoo_pcage(iq)
-	      if ((lsfrm > 0) .and. (lsfrm <= pcnst)) then
-	         dotend(lsfrm) = .true.
-	         if ((lstoo > 0) .and. (lstoo <= pcnst)) then
-	            dotend(lstoo) = .true.
-	         end if
-	      end if
-	   end do
-	end if
-
-	do l = 1, pcnst
-	    if ( .not. dotend(l) ) cycle
-	    tmpname = cnst_name(l)
-	    unit = 'kg/m2/s'
-	    do m = 1, ntot_amode
-	        if (l == numptr_amode(m)) unit = '#/m2/s'
-	    end do
-	    fieldname = trim(tmpname) // '_sfcoag1'
-	    long_name = trim(tmpname) // ' modal_aero coagulation column tendency'
-	    call addfld( fieldname, horiz_only, 'A', unit, long_name )
-            if ( history_aerosol ) then 
-               call add_default( fieldname, 1, ' ' )
-	    endif
-	    if ( masterproc ) write(*,'(3(a,2x))') &
-		'modal_aero_coag_init addfld', fieldname, unit
-	end do ! l = ...
-
+	r_universal = r_universal_in
+	p0          = pstd_in
+	tmelt       = tmelt_in
+	boltz       = boltz_in
 
 	return
 	end subroutine modal_aero_coag_init
@@ -1035,9 +825,8 @@ aa_iqfrm: do iqfrm = 1, nspec_amode(mfrm)
           pdensat, pdensac,                       &
           betaij0, betaij2i, betaij2j, betaij3,   &
           betaii0, betaii2, betajj0, betajj2      )
-        use physconst, only: p0 => pstd, &
-                             tmelt, &
-                             boltz
+!   (p0, tmelt, boltz are module-level host constants
+!    set by modal_aero_coag_init)
 !
 ! interface to subr. getcoags
 !

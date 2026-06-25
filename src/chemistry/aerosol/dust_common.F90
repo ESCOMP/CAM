@@ -1,16 +1,20 @@
 !=============================================================================
 ! Common dust module
+!   Portable: host constants are passed as arguments; errors are reported
+!   through errmsg/errflg for the caller to handle.
 !=============================================================================
 module dust_common
 
-  use shr_kind_mod,     only: r8 => shr_kind_r8, cl => shr_kind_cl
-  use cam_abortutils,   only: endrun
-  use cam_logfile,      only: iulog
+  use shr_kind_mod,     only: r8 => shr_kind_r8
 
   implicit none
   private
 
   public :: dust_set_params
+
+  ! Dust aerosol material density used by the emissions number/mass flux
+  ! conversion and the settling parameters below (value from CAM mo_constants).
+  real(r8), public, parameter :: dust_density = 2.5e+3_r8  ! [kg m-3]
 
 contains
 
@@ -27,14 +31,12 @@ contains
   ! Modifications by C. Zender and later by S. Levis
   ! Rest of subroutine from C. Zender's dust model
   !=============================================================================
-  subroutine dust_set_params( nbin, dmt_grd, dmt_vwr, stk_crc )
+  subroutine dust_set_params( nbin, dmt_grd, dmt_vwr, stk_crc, pi, rair, gravit, errmsg, errflg )
 
     !
     ! !USES
     !
-    use physconst,     only: pi,rair, gravit
-    use mo_constants,  only: dust_density
-    use infnan,        only: nan, assignment(=)
+    use shr_infnan_mod, only: nan => shr_infnan_nan, assignment(=)
 
     !
     ! !ARGUMENTS:
@@ -43,6 +45,11 @@ contains
     real(r8),intent(in)  :: dmt_grd(:)
     real(r8),intent(out) :: dmt_vwr(:)
     real(r8),intent(out) :: stk_crc(:)
+    real(r8),intent(in)  :: pi          ! host model constants
+    real(r8),intent(in)  :: rair        ! gas constant for dry air (J/K/kg)
+    real(r8),intent(in)  :: gravit      ! gravitational acceleration (m/s2)
+    character(len=*), intent(out) :: errmsg
+    integer,          intent(out) :: errflg
 
     !
     ! !REVISION HISTORY
@@ -87,6 +94,9 @@ contains
     real(r8) :: sz_max(sz_nbr)          ![m] Size Bin maxima
     real(r8) :: sz_ctr(sz_nbr)          ![m] Size Bin centers
     real(r8) :: sz_dlt(sz_nbr)          ![m] Size Bin widths
+
+    errmsg = ''
+    errflg = 0
 
     stk_crc(:) = nan
     dmt_vwr(:) = nan
@@ -218,8 +228,10 @@ contains
           else if (ryn_nbr_grv(m) < 2.0e5_r8) then
              cff_drg_grv(m) = 0.44_r8                         !Sep97 p.463 (8.32)
           else
-             write(iulog,'(a,es9.2)') "ryn_nbr_grv(m) = ",ryn_nbr_grv(m)
-             call endrun ('Dustini error: Reynolds number too large in stk_crc_get()')
+             write(errmsg,'(a,es9.2)') &
+                  'Dustini error: Reynolds number too large in stk_crc_get(): ryn_nbr_grv(m) = ', ryn_nbr_grv(m)
+             errflg = 1
+             return
           endif
 
           ! Update terminal velocity based on new Reynolds number and drag coeff
@@ -233,9 +245,8 @@ contains
              vlc_grv(m) = 0.5_r8 * (vlc_grv(m)+vlc_grv_old)  ! [m s-1]
           endif
           if (itr_idx > 20) then
-             write(iulog,*) 'Dustini error: Terminal velocity not converging ',&
-                  ' in stk_crc_get(), breaking loop...'
-             ! to next iteration
+             ! Dustini error: terminal velocity not converging in stk_crc_get();
+             ! break the loop and accept the current value (was an iulog warning)
              exit eps_loop
           endif
           itr_idx = itr_idx + 1

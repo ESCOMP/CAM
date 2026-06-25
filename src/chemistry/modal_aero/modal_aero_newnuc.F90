@@ -11,26 +11,36 @@ module modal_aero_newnuc
 
 ! !USES:
    use shr_kind_mod,  only:  r8 => shr_kind_r8
-   use shr_kind_mod,  only:  r4 => shr_kind_r4
-   use mo_constants,  only:  pi
-   use chem_mods,     only:  gas_pcnst
 
   implicit none
   private
   save
 
 ! !PUBLIC MEMBER FUNCTIONS:
-  public modal_aero_newnuc_sub, modal_aero_newnuc_init
+  public modal_aero_newnuc_run, modal_aero_newnuc_init
 
 ! !PUBLIC DATA MEMBERS:
-  integer, parameter  :: pcnstxx = gas_pcnst
-  integer  :: l_h2so4_sv, l_nh3_sv, lnumait_sv, lnh4ait_sv, lso4ait_sv
+! species indices in the host constituent space, set by modal_aero_newnuc_init;
+! default 0 = bypass (host found no h2so4 or no aitken so4/num species)
+  integer  :: l_h2so4_sv = 0, l_nh3_sv = 0, lnumait_sv = 0, lnh4ait_sv = 0, lso4ait_sv = 0
 
-! min h2so4 vapor for nuc calcs = 4.0e-16 mol/mol-air ~= 1.0e4 molecules/cm3, 
+! min h2so4 vapor for nuc calcs = 4.0e-16 mol/mol-air ~= 1.0e4 molecules/cm3,
   real(r8), parameter :: qh2so4_cutoff = 4.0e-16_r8
 
   real(r8) :: dens_so4a_host
   real(r8) :: mw_nh4a_host, mw_so4a_host
+
+! aitken-mode geometry (nominal size + dry-diameter limits) from host mode metadata
+  real(r8) :: dgnum_aitken, dgnumhi_aitken, dgnumlo_aitken
+
+! host physical constants, set by modal_aero_newnuc_init (passed from the host
+! rather than hardcoded so the values stay bit-identical with the host's)
+  real(r8) :: pi
+  real(r8) :: rgas              ! gas constant (J/K/mol)
+  real(r8) :: avogad            ! Avogadro's number (1/mol)
+  real(r8) :: mw_so4a           ! molecular weight of sulfate (g/mol)
+  real(r8) :: mw_nh4a           ! molecular weight of ammonium (g/mol)
+  real(r8) :: r_universal       ! universal gas constant (J/K/kmol)
 
 ! !DESCRIPTION: This module implements ...
 !
@@ -53,58 +63,58 @@ module modal_aero_newnuc
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 !BOP
-! !ROUTINE:  modal_aero_newnuc_sub --- ...
+! !ROUTINE:  modal_aero_newnuc_run --- ...
 !
 ! !INTERFACE:
-   subroutine modal_aero_newnuc_sub(                             &
-                        lchnk,    ncol,     nstep,               &
-                        loffset,  deltat,                        &
+   subroutine modal_aero_newnuc_run(                             &
+                        ncol,     pver,     top_lev,             &
+                        num_q,    loffset,  deltat,              &
                         t,        pmid,     pdel,                &
                         zm,       pblh,                          &
                         qv,       cld,                           &
-                        q,                                       &
-                        del_h2so4_gasprod,  del_h2so4_aeruptk    )
+                        q,        gravit,                        &
+                        del_h2so4_gasprod,  del_h2so4_aeruptk,   &
+                        dqdt,     dotend,   qsrflx,              &
+                        errmsg,   errflg    )
 
 
 ! !USES:
-   use modal_aero_data
-   use cam_abortutils,    only: endrun
-   use cam_history,       only: outfld, fieldname_len
-   use chem_mods,         only: adv_mass
-   use constituents,      only: pcnst, cnst_name
-   use physconst,         only: gravit, mwdry, r_universal
-   use ppgrid,            only: pcols, pver
-   use spmd_utils,        only: iam, masterproc
    use wv_saturation,     only: qsat
-   use ref_pres,          only: top_lev=>clim_modal_aero_top_lev
 
    implicit none
 
 ! !PARAMETERS:
-   integer, intent(in)  :: lchnk            ! chunk identifier
    integer, intent(in)  :: ncol             ! number of columns in chunk
-   integer, intent(in)  :: nstep            ! model step
+   integer, intent(in)  :: pver             ! number of vertical levels
+   integer, intent(in)  :: top_lev          ! top level for modal aerosol calculations
+   integer, intent(in)  :: num_q            ! number of species in q/dqdt (= gas_pcnst)
    integer, intent(in)  :: loffset          ! offset applied to modal aero "pointers"
    real(r8), intent(in) :: deltat           ! model timestep (s)
 
-   real(r8), intent(in) :: t(pcols,pver)    ! temperature (K)
-   real(r8), intent(in) :: pmid(pcols,pver) ! pressure at model levels (Pa)
-   real(r8), intent(in) :: pdel(pcols,pver) ! pressure thickness of levels (Pa)
-   real(r8), intent(in) :: zm(pcols,pver)   ! midpoint height above surface (m)
-   real(r8), intent(in) :: pblh(pcols)      ! pbl height (m)
-   real(r8), intent(in) :: qv(pcols,pver)   ! specific humidity (kg/kg)
-   real(r8), intent(in) :: cld(ncol,pver)   ! stratiform cloud fraction
-                                            ! *** NOTE ncol dimension
-   real(r8), intent(inout) :: q(ncol,pver,pcnstxx) 
+   real(r8), intent(in) :: t(:,:)           ! (ncol,pver) temperature (K)
+   real(r8), intent(in) :: pmid(:,:)        ! (ncol,pver) pressure at model levels (Pa)
+   real(r8), intent(in) :: pdel(:,:)        ! (ncol,pver) pressure thickness of levels (Pa)
+   real(r8), intent(in) :: zm(:,:)          ! (ncol,pver) midpoint height above surface (m)
+   real(r8), intent(in) :: pblh(:)          ! (ncol) pbl height (m)
+   real(r8), intent(in) :: qv(:,:)          ! (ncol,pver) specific humidity (kg/kg)
+   real(r8), intent(in) :: cld(:,:)         ! (ncol,pver) stratiform cloud fraction
+   real(r8), intent(in) :: q(:,:,:)         ! (ncol,pver,num_q)
                                             ! tracer mixing ratio (TMR) array
                                             ! *** MUST BE mol/mol-air or #/mol-air
-                                            ! *** NOTE ncol & pcnstxx dimensions
-   real(r8), intent(in) :: del_h2so4_gasprod(ncol,pver) 
-                                            ! h2so4 gas-phase production
+   real(r8), intent(in) :: gravit           ! gravitational acceleration (m/s2)
+   real(r8), intent(in) :: del_h2so4_gasprod(:,:)
+                                            ! (ncol,pver) h2so4 gas-phase production
                                             ! change over deltat (mol/mol)
-   real(r8), intent(in) :: del_h2so4_aeruptk(ncol,pver) 
-                                            ! h2so4 gas-phase loss to
+   real(r8), intent(in) :: del_h2so4_aeruptk(:,:)
+                                            ! (ncol,pver) h2so4 gas-phase loss to
                                             ! aerosol over deltat (mol/mol)
+   real(r8), intent(out) :: dqdt(:,:,:)     ! (ncol,pver,num_q) TMR tendency array
+   logical,  intent(out) :: dotend(:)       ! (num_q) flag for doing tendency
+   real(r8), intent(out) :: qsrflx(:,:,:)   ! (ncol,num_q,1)
+                                            ! process-specific column tracer tendencies
+                                            ! 1 = nucleation (for aerocom)
+   character(len=*), intent(out) :: errmsg
+   integer,          intent(out) :: errflg
 
 ! !DESCRIPTION: 
 !   computes changes due to aerosol nucleation (new particle formation)
@@ -124,7 +134,7 @@ module modal_aero_newnuc
 !BOC
 
 !   local variables
-	integer :: i, itmp, k, l, lmz, lun, m, mait
+	integer :: i, itmp, k, lun
 	integer :: lnumait, lso4ait, lnh4ait
 	integer :: l_h2so4, l_nh3
 	integer :: ldiagveh02
@@ -141,11 +151,11 @@ module modal_aero_newnuc
 	real(r8) :: dens_nh4so4a
 	real(r8) :: dmdt_ait, dmdt_aitsv1, dmdt_aitsv2, dmdt_aitsv3
 	real(r8) :: dndt_ait, dndt_aitsv1, dndt_aitsv2, dndt_aitsv3
-        real(r8) :: dndt(pcols,pver) ! nucleation rate (#/m3/s)
+        real(r8) :: dndt(ncol,pver) ! nucleation rate (#/m3/s)
 	real(r8) :: dnh4dt_ait, dso4dt_ait
 	real(r8) :: dpnuc
 	real(r8) :: dplom_mode(1), dphim_mode(1)
-	real(r8) :: ev_sat(pcols,pver)
+	real(r8) :: ev_sat(ncol,pver)
 	real(r8) :: mass1p
 	real(r8) :: mass1p_aithi, mass1p_aitlo 
 	real(r8) :: pdel_fac
@@ -153,27 +163,23 @@ module modal_aero_newnuc
 	real(r8) :: qnh3_cur, qnh3_del, qnh4a_del
 	real(r8) :: qnuma_del
 	real(r8) :: qso4a_del
-	real(r8) :: qv_sat(pcols,pver)
+	real(r8) :: qv_sat(ncol,pver)
 	real(r8) :: qvswtr
 	real(r8) :: relhum, relhumav, relhumnn
 	real(r8) :: tmpa, tmpb, tmpc
 	real(r8) :: tmp_q1, tmp_q2, tmp_q3
 	real(r8) :: tmp_frso4, tmp_uptkrate
 
-	integer, parameter :: nsrflx = 1     ! last dimension of qsrflx
-	real(r8) :: qsrflx(pcols,pcnst,nsrflx)
-                              ! process-specific column tracer tendencies
-                              ! 1 = nucleation (for aerocom)
-	real(r8) :: dqdt(ncol,pver,pcnstxx)  ! TMR tendency array -- NOTE dims
-	logical  :: dotend(pcnst)            ! flag for doing tendency
 	logical  :: do_nh3                   ! flag for doing nh3/nh4
 
 
 	character(len=1) :: tmpch1, tmpch2, tmpch3
-        character(len=fieldname_len+3) :: fieldname
 
 
 ! begin
+	errmsg = ' '
+	errflg = 0
+
 	lun = 6
 
 !--------------------------------------------------------------------------------
@@ -192,6 +198,13 @@ module modal_aero_newnuc
 !--------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
+!   zero the tendency outputs up front: they are intent(out) and the caller
+!   applies/outputs them unconditionally, including on the bypass path below
+	dotend(:) = .false.
+	dqdt(1:ncol,:,:) = 0.0_r8
+	qsrflx(1:ncol,:,:) = 0.0_r8
+        dndt(1:ncol,:) = 0.0_r8
+
 	l_h2so4 = l_h2so4_sv - loffset
 	l_nh3   = l_nh3_sv   - loffset
 	lnumait = lnumait_sv - loffset
@@ -201,20 +214,13 @@ module modal_aero_newnuc
 !   skip if no aitken mode OR if no h2so4 species
 	if ((l_h2so4 <= 0) .or. (lso4ait <= 0) .or. (lnumait <= 0)) return
 
-	dotend(:) = .false.
-	dqdt(1:ncol,:,:) = 0.0_r8
-	qsrflx(1:ncol,:,:) = 0.0_r8
-        dndt(1:ncol,:) = 0.0_r8
-
 !   set dotend
-	mait = modeptr_aitken
 	dotend(lnumait) = .true.
 	dotend(lso4ait) = .true.
 	dotend(l_h2so4) = .true.
 
-	lnh4ait = lptr_nh4_a_amode(mait) - loffset
-	if ((l_nh3   > 0) .and. (l_nh3   <= pcnst) .and. &
-	    (lnh4ait > 0) .and. (lnh4ait <= pcnst)) then
+	if ((l_nh3   > 0) .and. (l_nh3   <= num_q) .and. &
+	    (lnh4ait > 0) .and. (lnh4ait <= num_q)) then
 	    do_nh3 = .true.
 	    dotend(lnh4ait) = .true.
 	    dotend(l_nh3) = .true.
@@ -224,9 +230,9 @@ module modal_aero_newnuc
 
 
 !   dry-diameter limits for "grown" new particles
-	dplom_mode(1) = exp( 0.67_r8*log(dgnumlo_amode(mait))   &
-	                   + 0.33_r8*log(dgnum_amode(mait)) )
-	dphim_mode(1) = dgnumhi_amode(mait)
+	dplom_mode(1) = exp( 0.67_r8*log(dgnumlo_aitken)   &
+	                   + 0.33_r8*log(dgnum_aitken) )
+	dphim_mode(1) = dgnumhi_aitken
 
 !   mass1p_... = mass (kg) of so4 & nh4 in a single particle of diameter ...
 !                (assuming same dry density for so4 & nh4)
@@ -443,30 +449,26 @@ main_i:	do i = 1, ncol
         dso4dt_ait = dmdt_ait*tmp_frso4/mw_so4a_host
         dnh4dt_ait = dmdt_ait*(1.0_r8 - tmp_frso4)/mw_nh4a_host
 
+!   dqdt tendencies are returned to the caller, which applies q = q + dqdt*deltat
 	dqdt(i,k,l_h2so4) = -dso4dt_ait*(1.0_r8-cldx)
 	qsrflx(i,l_h2so4,1) = qsrflx(i,l_h2so4,1) + dqdt(i,k,l_h2so4)*pdel_fac
-	q(i,k,l_h2so4) = q(i,k,l_h2so4) + dqdt(i,k,l_h2so4)*deltat
 
 	dqdt(i,k,lso4ait) = dso4dt_ait*(1.0_r8-cldx)
 	qsrflx(i,lso4ait,1) = qsrflx(i,lso4ait,1) + dqdt(i,k,lso4ait)*pdel_fac
-	q(i,k,lso4ait) = q(i,k,lso4ait) + dqdt(i,k,lso4ait)*deltat
 	if (lnumait > 0) then
 	    dqdt(i,k,lnumait) = dndt_ait*(1.0_r8-cldx)
 !   dndt is (#/m3/s), dqdt(:,:,lnumait) is (#/kmol-air/s), aircon is (mol-air/m3)
             dndt(i,k) = dqdt(i,k,lnumait)*aircon*1.0e-3_r8
 	    qsrflx(i,lnumait,1) = qsrflx(i,lnumait,1)   &
 	                        + dqdt(i,k,lnumait)*pdel_fac
-	    q(i,k,lnumait) = q(i,k,lnumait) + dqdt(i,k,lnumait)*deltat
 	end if
 
 	if (( do_nh3 ) .and. (dnh4dt_ait > 0.0_r8)) then
 	    dqdt(i,k,l_nh3) = -dnh4dt_ait*(1.0_r8-cldx)
 	    qsrflx(i,l_nh3,1) = qsrflx(i,l_nh3,1) + dqdt(i,k,l_nh3)*pdel_fac
-	    q(i,k,l_nh3) = q(i,k,l_nh3) + dqdt(i,k,l_nh3)*deltat
 
 	    dqdt(i,k,lnh4ait) = dnh4dt_ait*(1.0_r8-cldx)
 	    qsrflx(i,lnh4ait,1) = qsrflx(i,lnh4ait,1) + dqdt(i,k,lnh4ait)*pdel_fac
-	    q(i,k,lnh4ait) = q(i,k,lnh4ait) + dqdt(i,k,lnh4ait)*deltat
 	end if
 
 !!   temporary diagnostic
@@ -540,26 +542,13 @@ main_i:	do i = 1, ncol
 	end do main_k
 
 
-!   do history file column-tendency fields
-	do l = loffset+1, pcnst
-	    lmz = l - loffset
-	    if ( .not. dotend(lmz) ) cycle
-
-	    do i = 1, ncol
-		qsrflx(i,lmz,1) = qsrflx(i,lmz,1)*(adv_mass(lmz)/mwdry)
-	    end do
-	    fieldname = trim(cnst_name(l)) // '_sfnnuc1'
-	    call outfld( fieldname, qsrflx(:,lmz,1), pcols, lchnk )
-
-!	    if (( masterproc ) .and. (nstep < 1)) &
-!		write(lun,'(2(a,2x),1p,e11.3)') &
-!		'modal_aero_newnuc_sub outfld', fieldname, adv_mass(lmz)
-	end do ! l = ...
+!   history file column-tendency fields (adv_mass/mwdry scaling + outfld of
+!   qsrflx) are done by the caller, which owns the host constituent metadata
 
 
 	return
 !EOC
-	end subroutine modal_aero_newnuc_sub
+	end subroutine modal_aero_newnuc_run
 
 
 
@@ -574,10 +563,8 @@ main_i:	do i = 1, ncol
            isize_nuc, qnuma_del, qso4a_del, qnh4a_del,   &
            qh2so4_del, qnh3_del, dens_nh4so4a, ldiagaa )
 !          qh2so4_del, qnh3_del, dens_nh4so4a )
-          use mo_constants, only: rgas, &               ! Gas constant (J/K/kmol)
-                                  avogad => avogadro    ! Avogadro's number (1/kmol)
-          use physconst,    only: mw_so4a => mwso4, &   ! Molecular weight of sulfate
-                                  mw_nh4a => mwnh4      ! Molecular weight of ammonium
+!   (rgas, avogad, mw_so4a, mw_nh4a are module-level host constants
+!    set by modal_aero_newnuc_init)
 !.......................................................................
 !
 ! calculates new particle production from homogeneous nucleation
@@ -1412,154 +1399,72 @@ main_i:	do i = 1, ncol
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-subroutine modal_aero_newnuc_init
+subroutine modal_aero_newnuc_init( l_h2so4_in, l_nh3_in,             &
+     lnumait_in, lnh4ait_in, lso4ait_in,                             &
+     mw_so4a_host_in, mw_nh4a_host_in, dens_so4a_host_in,            &
+     dgnum_aitken_in, dgnumhi_aitken_in, dgnumlo_aitken_in,          &
+     pi_in, rgas_in, avogad_in, mw_so4a_in, mw_nh4a_in,              &
+     r_universal_in, errmsg, errflg )
 
 !-----------------------------------------------------------------------
 !
 ! Purpose:
-!    set do_adjust and do_aitken flags
-!    create history fields for column tendencies associated with
-!       modal_aero_calcsize
-!
-! Author: R. Easter
+!    store the resolved species indices, aitken-mode so4/nh4 properties,
+!       and host physical constants used by modal_aero_newnuc_run
+!    index resolution and history-field registration are host
+!       responsibilities (see modal_aero_newnuc_cam)
 !
 !-----------------------------------------------------------------------
-
-use modal_aero_data
-use modal_aero_rename
-
-use cam_abortutils,   only:  endrun
-use cam_history,      only:  addfld, add_default, fieldname_len, horiz_only
-use constituents,     only:  pcnst, cnst_get_ind, cnst_name
-use spmd_utils,       only:  masterproc
-use phys_control,     only: phys_getopts
-
 
 implicit none
 
 !-----------------------------------------------------------------------
 ! arguments
+   integer,  intent(in) :: l_h2so4_in          ! h2so4 gas index (host constituent space)
+   integer,  intent(in) :: l_nh3_in            ! nh3 gas index (host constituent space)
+   integer,  intent(in) :: lnumait_in          ! aitken number index (host constituent space)
+   integer,  intent(in) :: lnh4ait_in          ! aitken nh4 index (host constituent space)
+   integer,  intent(in) :: lso4ait_in          ! aitken so4 index (host constituent space)
+   real(r8), intent(in) :: mw_so4a_host_in     ! mw of so4 aerosol in host code (g/mol)
+   real(r8), intent(in) :: mw_nh4a_host_in     ! mw of nh4 aerosol in host code (g/mol)
+   real(r8), intent(in) :: dens_so4a_host_in   ! dry density of so4 aerosol in host code (kg/m3)
+   real(r8), intent(in) :: dgnum_aitken_in     ! aitken mode nominal dry diameter (m)
+   real(r8), intent(in) :: dgnumhi_aitken_in   ! aitken mode upper dry-diameter limit (m)
+   real(r8), intent(in) :: dgnumlo_aitken_in   ! aitken mode lower dry-diameter limit (m)
+   real(r8), intent(in) :: pi_in
+   real(r8), intent(in) :: rgas_in             ! gas constant (J/K/mol)
+   real(r8), intent(in) :: avogad_in           ! Avogadro's number (1/mol)
+   real(r8), intent(in) :: mw_so4a_in          ! molecular weight of sulfate (g/mol)
+   real(r8), intent(in) :: mw_nh4a_in          ! molecular weight of ammonium (g/mol)
+   real(r8), intent(in) :: r_universal_in      ! universal gas constant (J/K/kmol)
+   character(len=*), intent(out) :: errmsg
+   integer,          intent(out) :: errflg
 
-!-----------------------------------------------------------------------
-! local
-   integer  :: l_h2so4, l_nh3
-   integer  :: lnumait, lnh4ait, lso4ait
-   integer  :: l, l1, l2
-   integer  :: m, mait
+   !-----------------------------------------------------------------------
 
-   character(len=fieldname_len)   :: tmpname
-   character(len=fieldname_len+3) :: fieldname
-   character(128)                 :: long_name
-   character(8)                   :: unit
+   errmsg = ' '
+   errflg = 0
 
-   logical                        :: dotend(pcnst)
-   logical                        :: history_aerosol      ! Output the MAM aerosol tendencies
+   l_h2so4_sv = l_h2so4_in
+   l_nh3_sv   = l_nh3_in
+   lnumait_sv = lnumait_in
+   lnh4ait_sv = lnh4ait_in
+   lso4ait_sv = lso4ait_in
 
-   !-----------------------------------------------------------------------     
-   
-        call phys_getopts( history_aerosol_out        = history_aerosol   )
+   mw_so4a_host   = mw_so4a_host_in
+   mw_nh4a_host   = mw_nh4a_host_in
+   dens_so4a_host = dens_so4a_host_in
 
+   dgnum_aitken   = dgnum_aitken_in
+   dgnumhi_aitken = dgnumhi_aitken_in
+   dgnumlo_aitken = dgnumlo_aitken_in
 
-!   set these indices
-!   skip if no h2so4 species
-!   skip if no aitken mode so4 or num species
-	l_h2so4_sv = 0
-	l_nh3_sv = 0
-	lnumait_sv = 0
-	lnh4ait_sv = 0
-	lso4ait_sv = 0
-
-	call cnst_get_ind( 'H2SO4', l_h2so4, .false. )
-	call cnst_get_ind( 'NH3', l_nh3, .false. )
-
-	mait = modeptr_aitken
-	if (mait > 0) then
-	    lnumait = numptr_amode(mait)
-	    lso4ait = lptr_so4_a_amode(mait)
-	    lnh4ait = lptr_nh4_a_amode(mait)
-	end if
-	if ((l_h2so4  <= 0) .or. (l_h2so4 > pcnst)) then
-	    write(*,'(/a/)')   &
-		'*** modal_aero_newnuc bypass -- l_h2so4 <= 0'
-	    return
-	else if ((lso4ait <= 0) .or. (lso4ait > pcnst)) then
-	    write(*,'(/a/)')   &
-		'*** modal_aero_newnuc bypass -- lso4ait <= 0'
-	    return
-	else if ((lnumait <= 0) .or. (lnumait > pcnst)) then
-	    write(*,'(/a/)')   &
-		'*** modal_aero_newnuc bypass -- lnumait <= 0'
-	    return
-	else if ((mait <= 0) .or. (mait > ntot_amode)) then
-	    write(*,'(/a/)')   &
-		'*** modal_aero_newnuc bypass -- modeptr_aitken <= 0'
-	    return
-	end if
-
-	l_h2so4_sv = l_h2so4
-	l_nh3_sv   = l_nh3
-	lnumait_sv = lnumait
-	lnh4ait_sv = lnh4ait
-	lso4ait_sv = lso4ait
-
-!   set these constants
-!      mw_so4a_host is molec-wght of sulfate aerosol in host code
-!         96 when nh3/nh4 are simulated
-!         something else when nh3/nh4 are not simulated
-	l = lptr_so4_a_amode(mait) ; l2 = -1
-        if (l <= 0) call endrun( 'modal_aero_newnuch_init error a001 finding aitken so4' )
-        do l1 = 1, nspec_amode(mait) 
-           if (lmassptr_amode(l1,mait) == l) then
-              l2 = l1
-              mw_so4a_host = specmw_amode(l1,mait)
-              dens_so4a_host = specdens_amode(l1,mait)
-           end if
-        end do
-        if (l2 <= 0) call endrun( 'modal_aero_newnuch_init error a002 finding aitken so4' )
-
-        l = lptr_nh4_a_amode(mait) ; l2 = -1
-        if (l > 0) then
-           do l1 = 1, nspec_amode(mait) 
-              if (lmassptr_amode(l1,mait) == l) then
-                 l2 = l1
-                 mw_nh4a_host = specmw_amode(l1,mait)
-              end if
-           end do
-           if (l2 <= 0) call endrun( 'modal_aero_newnuch_init error a002 finding aitken nh4' )
-        else
-           mw_nh4a_host = mw_so4a_host
-        end if
-
-!
-!   create history file column-tendency fields
-!
-	dotend(:) = .false.
-	dotend(lnumait) = .true.
-	dotend(lso4ait) = .true.
-	dotend(l_h2so4) = .true.
-	if ((l_nh3   > 0) .and. (l_nh3   <= pcnst) .and. &
-	    (lnh4ait > 0) .and. (lnh4ait <= pcnst)) then
-	    dotend(lnh4ait) = .true.
-	    dotend(l_nh3) = .true.
-	end if
-
-	do l = 1, pcnst
-	    if ( .not. dotend(l) ) cycle
-	    tmpname = cnst_name(l)
-	    unit = 'kg/m2/s'
-	    do m = 1, ntot_amode
-	        if (l == numptr_amode(m)) unit = '#/m2/s'
-	    end do
-	    fieldname = trim(tmpname) // '_sfnnuc1'
-	    long_name = trim(tmpname) // ' modal_aero new particle nucleation column tendency'
-	    call addfld( fieldname, horiz_only, 'A', unit, long_name )
-            if ( history_aerosol ) then 
-               call add_default( fieldname, 1, ' ' )
-            endif
-	    if ( masterproc ) write(*,'(3(a,2x))') &
-		'modal_aero_newnuc_init addfld', fieldname, unit
-	end do ! l = ...
-
+   pi          = pi_in
+   rgas        = rgas_in
+   avogad      = avogad_in
+   mw_so4a     = mw_so4a_in
+   mw_nh4a     = mw_nh4a_in
+   r_universal = r_universal_in
 
       return
       end subroutine modal_aero_newnuc_init

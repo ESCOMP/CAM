@@ -378,13 +378,19 @@ contains
   ! returns aerosol wet diameter and aerosol water concentration for a given
   ! radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                          t, pmid, h2ommr, cldn, dgnumwet, qaerwat)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
     integer, intent(in) :: bin_idx              ! bin number
     integer, intent(in) :: ncol                 ! number of columns
     integer, intent(in) :: nlev                 ! number of levels
+    integer, intent(in) :: top_lev              ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)               ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:)            ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:)          ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:)            ! layer cloud fraction (0-1)
     real(r8),intent(out) :: dgnumwet(ncol,nlev) ! aerosol wet diameter (m)
     real(r8),intent(out) :: qaerwat(ncol,nlev)  ! aerosol water concentration (g/g)
 
@@ -418,7 +424,8 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol wet volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function wet_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
+  function wet_volume(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                      t, pmid, h2ommr, cldn) result(vol)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
@@ -426,18 +433,25 @@ contains
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
+    integer, intent(in) :: top_lev   ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)    ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 
     vol = self%dry_volume(aero_props, bin_idx, ncol, nlev) &
-        + self%water_volume(aero_props, bin_idx, ncol, nlev)
+        + self%water_volume(aero_props, bin_idx, ncol, nlev, top_lev, &
+                            t, pmid, h2ommr, cldn)
 
   end function wet_volume
 
   !------------------------------------------------------------------------------
   ! aerosol water volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function water_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
+  function water_volume(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                        t, pmid, h2ommr, cldn) result(vol)
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
@@ -445,6 +459,11 @@ contains
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
+    integer, intent(in) :: top_lev   ! top level for aerosol calculations
+    real(r8),intent(in) :: t(:,:)    ! temperature (K)
+    real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+    real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+    real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
 
     real(r8) :: vol(ncol,nlev)       ! m3/kg
 

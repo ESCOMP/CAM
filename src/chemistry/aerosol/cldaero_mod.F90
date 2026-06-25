@@ -2,11 +2,13 @@
 ! low level utility module for cloud aerosols
 !
 ! Created by Francis Vitt
+!
+! Portable (CCPP-ready): array sizes are runtime arguments and host constants
+! are passed in; no CAM infrastructure dependencies.
 !----------------------------------------------------------------------------------
 module cldaero_mod
 
   use shr_kind_mod, only : r8 => shr_kind_r8
-  use ppgrid,       only : pcols, pver
 
   implicit none
   private
@@ -28,14 +30,17 @@ contains
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
-  function cldaero_allocate( ) result( cldconc )
+  function cldaero_allocate( ncol, pver ) result( cldconc )
+    integer, intent(in) :: ncol  ! number of columns in chunk
+    integer, intent(in) :: pver  ! number of vertical levels
+
     type(cldaero_conc_t), pointer:: cldconc
 
     allocate( cldconc )
-    allocate( cldconc%so4c(pcols,pver) )
-    allocate( cldconc%nh4c(pcols,pver) )
-    allocate( cldconc%no3c(pcols,pver) )
-    allocate( cldconc%xlwc(pcols,pver) )
+    allocate( cldconc%so4c(ncol,pver) )
+    allocate( cldconc%nh4c(ncol,pver) )
+    allocate( cldconc%no3c(ncol,pver) )
+    allocate( cldconc%xlwc(ncol,pver) )
 
     cldconc%so4c(:,:) = 0._r8
     cldconc%nh4c(:,:) = 0._r8
@@ -79,10 +84,10 @@ contains
 ! utility function for cloud-borne aerosols
 !----------------------------------------------------------------------------------
 
-  function cldaero_uptakerate( xl, cldnum, cfact, cldfrc, tfld,  press ) result( uptkrate )
-    use mo_constants, only : pi
+  function cldaero_uptakerate( xl, cldnum, cfact, cldfrc, tfld,  press, pi ) result( uptkrate )
 
     real(r8), intent(in) :: xl, cldnum, cfact, cldfrc, tfld,  press
+    real(r8), intent(in) :: pi   ! host value of pi (passed for bit-for-bit consistency)
 
     real(r8) :: uptkrate
 

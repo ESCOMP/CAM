@@ -1,17 +1,14 @@
 !----------------------------------------------------------------------------------
 ! Generic aerosol implementation
+!
+! Portable (CCPP-ready): species indices, host constants and configuration are
+! passed in through sox_cldaero_init; no CAM infrastructure dependencies.
 !----------------------------------------------------------------------------------
 module sox_cldaero_mod
 
   use shr_kind_mod,    only : r8 => shr_kind_r8
-  use cam_abortutils,  only : endrun
-  use ppgrid,          only : pcols, pver
-  use mo_chem_utls,    only : get_spc_ndx
   use cldaero_mod,     only : cldaero_conc_t, cldaero_allocate, cldaero_deallocate
-  use physconst,       only : gravit
-  use phys_control,    only : cam_chempkg_is
   use cldaero_mod,     only : cldaero_uptakerate
-  use chem_mods,       only : gas_pcnst
   use aerosol_properties_mod, only: aerosol_properties
   use aerosol_state_mod, only: aerosol_state
 
@@ -34,23 +31,47 @@ module sox_cldaero_mod
 
   logical :: has_msa = .false.
 
+  ! host value of pi (passed at init for bit-for-bit consistency)
+  real(r8) :: pi = -huge(1._r8)
+
+  ! apply the aqueous sulfur oxidation update to the aerosol/gas state here;
+  ! .false. when the chemistry package does its own in-cloud sulfur oxidation
+  ! (e.g. GEOS-Chem), to avoid double counting
+  logical :: do_aqueous_sulfur_chemistry_aerosol_update = .true.
+
 contains
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
 
-  subroutine sox_cldaero_init(aero_props_in)
+  subroutine sox_cldaero_init(aero_props_in, id_msa_in, id_h2so4_in, id_so2_in, &
+       id_h2o2_in, id_nh3_in, pi_in, do_aqueous_sulfur_chemistry_aerosol_update_in, &
+       errmsg, errflg)
     class(aerosol_properties), target, intent(in) :: aero_props_in
+    ! species indices in the chemistry solution array, resolved by the host
+    integer,  intent(in) :: id_msa_in, id_h2so4_in, id_so2_in, id_h2o2_in, id_nh3_in
+    real(r8), intent(in) :: pi_in                ! host value of pi
+    logical,  intent(in) :: do_aqueous_sulfur_chemistry_aerosol_update_in
+    character(len=*), intent(out) :: errmsg
+    integer,          intent(out) :: errflg
 
-    id_msa = get_spc_ndx( 'MSA' )
-    id_h2so4 = get_spc_ndx( 'H2SO4' )
-    id_so2 = get_spc_ndx( 'SO2' )
-    id_h2o2 = get_spc_ndx( 'H2O2' )
-    id_nh3 = get_spc_ndx( 'NH3' )
+    errmsg = ''
+    errflg = 0
+
+    id_msa = id_msa_in
+    id_h2so4 = id_h2so4_in
+    id_so2 = id_so2_in
+    id_h2o2 = id_h2o2_in
+    id_nh3 = id_nh3_in
     has_msa = id_msa>0
 
+    pi = pi_in
+    do_aqueous_sulfur_chemistry_aerosol_update = do_aqueous_sulfur_chemistry_aerosol_update_in
+
     if ( id_so2<1 ) then
-       call endrun('sox_cldaero_init: SO2 is not included in chemistry -- should not invoke sox_cldaero_mod...')
+       errflg = 1
+       errmsg = 'sox_cldaero_init: SO2 is not included in chemistry -- should not invoke sox_cldaero_mod...'
+       return
     endif
 
     aero_props => aero_props_in
@@ -62,13 +83,14 @@ contains
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
-  function sox_cldaero_create_obj(cldfrc, qcw, lwc, cfact, ncol) result( conc_obj )
+  function sox_cldaero_create_obj(cldfrc, qcw, lwc, cfact, ncol, pver) result( conc_obj )
 
     real(r8), intent(in) :: cldfrc(:,:)
     real(r8), intent(in) :: qcw(:,:,:)
     real(r8), intent(in) :: lwc(:,:)
     real(r8), intent(in) :: cfact(:,:)
     integer,  intent(in) :: ncol
+    integer,  intent(in) :: pver
 
     type(cldaero_conc_t), pointer :: conc_obj
 
@@ -77,7 +99,7 @@ contains
     integer :: i,k,mm, ntot_amode
     logical :: mode7
 
-    conc_obj => cldaero_allocate()
+    conc_obj => cldaero_allocate(ncol, pver)
 
     if (aero_props%model_is('BAM')) then
        ! no cloud-borne aerosols
@@ -130,17 +152,17 @@ contains
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
   subroutine sox_cldaero_update( aero_state, &
-       ncol, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+       ncol, pver, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+       gravit, &
        delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, xnh3, xnh4c, xmsa, xso2, xh2o2, qcw, qin, &
        aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
-
-    use physics_types, only: physics_state
 
     ! args
 
     class(aerosol_state), intent(in) :: aero_state
 
     integer,  intent(in) :: ncol
+    integer,  intent(in) :: pver
 
     real(r8), intent(in) :: dtime ! time step (sec)
 
@@ -153,6 +175,8 @@ contains
     real(r8), intent(in) :: cldfrc(:,:)
     real(r8), intent(in) :: cfact(:,:)
     real(r8), intent(in) :: xlwc(:,:)
+
+    real(r8), intent(in) :: gravit ! gravitational acceleration (m/s2)
 
     real(r8), intent(in) :: delso4_hprxn(:,:)
     real(r8), intent(in) :: xh2so4(:,:)
@@ -215,7 +239,8 @@ contains
     ! GEOS-Chem. If running with GEOS-Chem then sulfur oxidation
     ! is performed internally to GEOS-Chem. Here, we just return to the
     ! parent routine and thus we do not apply tendencies calculated by MAM.
-    if ( cam_chempkg_is('geoschem_mam4') ) return
+    ! (The host sets this flag; CAM passes .not. cam_chempkg_is('geoschem_mam4').)
+    if ( .not. do_aqueous_sulfur_chemistry_aerosol_update ) return
 
     where (cldfrc(:ncol,:) >= 1.0e-5_r8)
        delso4_ox(:ncol,:) = xso4(:ncol,:) - xso4_init(:ncol,:)
@@ -244,7 +269,7 @@ contains
 
                 ! faqgain_msa(n) = fraction of total msa_c gain going to mode n
 
-                uptkrate = cldaero_uptakerate( xl, cldnum(i,k), cfact(i,k), cldfrc(i,k), tfld(i,k),  press(i,k) )
+                uptkrate = cldaero_uptakerate( xl, cldnum(i,k), cfact(i,k), cldfrc(i,k), tfld(i,k),  press(i,k), pi )
                 ! average uptake rate over dtime
                 uptkrate = (1.0_r8 - exp(-min(100._r8,dtime*uptkrate))) / dtime
 

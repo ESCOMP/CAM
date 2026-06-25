@@ -59,8 +59,8 @@ module aerosol_state_mod
      procedure :: refractive_index_sw
      procedure :: refractive_index_lw
      procedure(aero_volume), deferred :: dry_volume
-     procedure(aero_volume), deferred :: wet_volume
-     procedure(aero_volume), deferred :: water_volume
+     procedure(aero_wet_volume), deferred :: wet_volume
+     procedure(aero_wet_volume), deferred :: water_volume
      procedure(aero_wet_diam), deferred :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: sol_factb_interstitial
@@ -230,7 +230,8 @@ module aerosol_state_mod
      ! returns aerosol wet diameter and aerosol water concentration for a given
      ! radiation diagnostic list number and bin number
      !------------------------------------------------------------------------------
-     subroutine aero_water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+     subroutine aero_water_uptake(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                                  t, pmid, h2ommr, cldn, dgnumwet, qaerwat)
        import :: aerosol_state, aerosol_properties, r8
 
        class(aerosol_state), intent(in) :: self
@@ -238,6 +239,11 @@ module aerosol_state_mod
        integer, intent(in) :: bin_idx              ! bin number
        integer, intent(in) :: ncol                 ! number of columns
        integer, intent(in) :: nlev                 ! number of levels
+       integer, intent(in) :: top_lev              ! top level for aerosol calculations
+       real(r8),intent(in) :: t(:,:)               ! temperature (K)
+       real(r8),intent(in) :: pmid(:,:)            ! layer pressure (Pa)
+       real(r8),intent(in) :: h2ommr(:,:)          ! specific humidity (kg/kg)
+       real(r8),intent(in) :: cldn(:,:)            ! layer cloud fraction (0-1)
        real(r8),intent(out) :: dgnumwet(ncol,nlev) ! aerosol wet diameter (m)
        real(r8),intent(out) :: qaerwat(ncol,nlev)  ! aerosol water concentration (g/g)
 
@@ -269,6 +275,29 @@ module aerosol_state_mod
        real(r8) :: vol(ncol,nlev)       ! m3/kg
 
      end function aero_volume
+
+     !------------------------------------------------------------------------------
+     ! aerosol wet/water volume interface -- carries the atmospheric state
+     ! needed to recompute water uptake for diagnostic radiation lists
+     !------------------------------------------------------------------------------
+     function aero_wet_volume(self, aero_props, bin_idx, ncol, nlev, top_lev, &
+                              t, pmid, h2ommr, cldn) result(vol)
+       import :: aerosol_state, aerosol_properties, r8
+
+       class(aerosol_state), intent(in) :: self
+       class(aerosol_properties), intent(in) :: aero_props
+       integer, intent(in) :: bin_idx   ! bin number
+       integer, intent(in) :: ncol      ! number of columns
+       integer, intent(in) :: nlev      ! number of levels
+       integer, intent(in) :: top_lev   ! top level for aerosol calculations
+       real(r8),intent(in) :: t(:,:)    ! temperature (K)
+       real(r8),intent(in) :: pmid(:,:) ! layer pressure (Pa)
+       real(r8),intent(in) :: h2ommr(:,:) ! specific humidity (kg/kg)
+       real(r8),intent(in) :: cldn(:,:) ! layer cloud fraction (0-1)
+
+       real(r8) :: vol(ncol,nlev)       ! m3/kg
+
+     end function aero_wet_volume
 
      !------------------------------------------------------------------------------
      ! aerosol wet diameter

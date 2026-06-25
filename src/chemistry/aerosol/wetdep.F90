@@ -7,11 +7,8 @@ module wetdep
 !-----------------------------------------------------------------------
 
 use shr_kind_mod, only: r8 => shr_kind_r8
-use ppgrid,       only: pcols, pver
-use physconst,    only: gravit, rair, tmelt
-use phys_control, only: cam_physpkg_is
-use cam_logfile,  only: iulog
-use cam_abortutils, only: endrun
+use aerosol_properties_mod, only: aerosol_properties
+use shr_infnan_mod,       only: nan => shr_infnan_nan, assignment(=)
 
 implicit none
 save
@@ -19,163 +16,28 @@ private
 
 public :: wetdepa_v1  ! scavenging codes for very soluble aerosols -- CAM4 version
 public :: wetdepa_v2  ! scavenging codes for very soluble aerosols -- CAM5 version
-public :: wetdepg     ! scavenging of gas phase constituents by henry's law
 public :: clddiag     ! calc of cloudy volume and rain mixing ratio
-
-public :: wetdep_inputs_t
-public :: wetdep_init
-public :: wetdep_inputs_set
+public :: init_bcscavcoef  ! build below-cloud impaction scavenging lookup table
+public :: get_bcscavcoefs  ! interpolate below-cloud impaction scavenging coefs
 
 real(r8), parameter :: cmftau = 3600._r8
 real(r8), parameter :: rhoh2o = 1000._r8            ! density of water
-real(r8), parameter :: molwta = 28.97_r8            ! molecular weight dry air gm/mole
 real(r8), parameter :: omsm = 1._r8-2*epsilon(1._r8) ! used to prevent roundoff errors below zero
 
-type wetdep_inputs_t
-   real(r8), pointer :: cldt(:,:) => null()  ! cloud fraction
-   real(r8), pointer :: qme(:,:) => null()
-   real(r8), pointer :: prain(:,:) => null()
-   real(r8), pointer :: bergso(:,:) => null()
-   real(r8), pointer :: evapr(:,:) => null()
-   real(r8) :: cldcu(pcols,pver)     ! convective cloud fraction, currently empty
-   real(r8) :: evapc(pcols,pver)     ! Evaporation rate of convective precipitation
-   real(r8) :: cmfdqr(pcols,pver)    ! convective production of rain
-   real(r8) :: conicw(pcols,pver)    ! convective in-cloud water
-   real(r8) :: totcond(pcols, pver)  ! total condensate
-   real(r8) :: cldv(pcols,pver)      ! cloudy volume undergoing wet chem and scavenging
-   real(r8) :: cldvcu(pcols,pver)    ! Convective precipitation area at the top interface of current layer
-   real(r8) :: cldvst(pcols,pver)    ! Stratiform precipitation area at the top interface of current layer
-end type wetdep_inputs_t
-
-integer :: cld_idx             = 0
-integer :: qme_idx             = 0
-integer :: prain_idx           = 0
-integer :: bergso_idx          = 0
-integer :: nevapr_idx          = 0
-
-integer :: icwmrdp_idx         = 0
-integer :: icwmrsh_idx         = 0
-integer :: rprddp_idx          = 0
-integer :: rprdsh_idx          = 0
-integer :: sh_frac_idx         = 0
-integer :: dp_frac_idx         = 0
-integer :: nevapr_shcu_idx     = 0
-integer :: nevapr_dpcu_idx     = 0
-integer :: ixcldice, ixcldliq
+! variables for table lookup of aerosol impaction/interception scavenging rates
+integer, parameter :: nimptblgrow_mind=-7, nimptblgrow_maxd=12
+real(r8) :: dlndg_nimptblgrow
+real(r8),allocatable :: scavimptblnum(:,:)
+real(r8),allocatable :: scavimptblvol(:,:)
 
 !==============================================================================
 contains
 !==============================================================================
 
-!==============================================================================
-!==============================================================================
-subroutine wetdep_init()
-  use physics_buffer, only: pbuf_get_index
-  use constituents,   only: cnst_get_ind
-
-  integer :: ierr
-
-  cld_idx             = pbuf_get_index('CLD')
-  qme_idx             = pbuf_get_index('QME')
-  prain_idx           = pbuf_get_index('PRAIN')
-  bergso_idx          = pbuf_get_index('BERGSO', errcode=ierr )
-  nevapr_idx          = pbuf_get_index('NEVAPR')
-
-  icwmrdp_idx         = pbuf_get_index('ICWMRDP')
-  rprddp_idx          = pbuf_get_index('RPRDDP')
-  icwmrsh_idx         = pbuf_get_index('ICWMRSH')
-  rprdsh_idx          = pbuf_get_index('RPRDSH')
-  sh_frac_idx         = pbuf_get_index('SH_FRAC' )
-  dp_frac_idx         = pbuf_get_index('DP_FRAC')
-  nevapr_shcu_idx     = pbuf_get_index('NEVAPR_SHCU')
-  nevapr_dpcu_idx     = pbuf_get_index('NEVAPR_DPCU')
-
-  call cnst_get_ind('CLDICE', ixcldice)
-  call cnst_get_ind('CLDLIQ', ixcldliq)
-
-endsubroutine wetdep_init
-
-!==============================================================================
-! gathers up the inputs needed for the wetdepa routines
-!==============================================================================
-subroutine wetdep_inputs_set( state, pbuf, inputs )
-  use physics_types,  only: physics_state
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
-
-  ! args
-
-  type(physics_state),  intent(in )  :: state           !! physics state
-  type(physics_buffer_desc), pointer :: pbuf(:)         !! physics buffer
-  type(wetdep_inputs_t), intent(out) :: inputs          !! collection of wetdepa inputs
-
-  ! local vars
-
-  real(r8), pointer :: icwmrdp(:,:)    ! in cloud water mixing ratio, deep convection
-  real(r8), pointer :: rprddp(:,:)     ! rain production, deep convection
-  real(r8), pointer :: icwmrsh(:,:)    ! in cloud water mixing ratio, deep convection
-  real(r8), pointer :: rprdsh(:,:)     ! rain production, deep convection
-  real(r8), pointer :: sh_frac(:,:)    ! Shallow convective cloud fraction
-  real(r8), pointer :: dp_frac(:,:)    ! Deep convective cloud fraction
-  real(r8), pointer :: evapcsh(:,:)    ! Evaporation rate of shallow convective precipitation >=0.
-  real(r8), pointer :: evapcdp(:,:)    ! Evaporation rate of deep    convective precipitation >=0.
-
-  real(r8) :: rainmr(pcols,pver)       ! mixing ratio of rain within cloud volume
-  real(r8) :: cldst(pcols,pver)        ! Stratiform cloud fraction
-
-  integer :: itim, ncol
-
-  ncol = state%ncol
-  itim = pbuf_old_tim_idx()
-
-  call pbuf_get_field(pbuf, cld_idx,         inputs%cldt, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-  call pbuf_get_field(pbuf, qme_idx,         inputs%qme     )
-  call pbuf_get_field(pbuf, prain_idx,       inputs%prain   )
-  call pbuf_get_field(pbuf, nevapr_idx,      inputs%evapr   )
-  call pbuf_get_field(pbuf, icwmrdp_idx,     icwmrdp )
-  call pbuf_get_field(pbuf, icwmrsh_idx,     icwmrsh )
-  call pbuf_get_field(pbuf, rprddp_idx,      rprddp  )
-  call pbuf_get_field(pbuf, rprdsh_idx,      rprdsh  )
-  call pbuf_get_field(pbuf, sh_frac_idx,     sh_frac )
-  call pbuf_get_field(pbuf, dp_frac_idx,     dp_frac )
-  call pbuf_get_field(pbuf, nevapr_shcu_idx, evapcsh )
-  call pbuf_get_field(pbuf, nevapr_dpcu_idx, evapcdp )
-
-  if (bergso_idx>0) then
-     call pbuf_get_field(pbuf, bergso_idx, inputs%bergso )
-  else
-     if (.not. associated(inputs%bergso)) then
-        allocate(inputs%bergso(pcols,pver))
-        inputs%bergso(:,:) = 0.0_r8
-     endif
-  endif
-
-  inputs%cldcu(:ncol,:)  = dp_frac(:ncol,:) + sh_frac(:ncol,:)
-  cldst(:ncol,:)          = inputs%cldt(:ncol,:) - inputs%cldcu(:ncol,:)       ! Stratiform cloud fraction
-  inputs%evapc(:ncol,:)  = evapcsh(:ncol,:) + evapcdp(:ncol,:)
-  inputs%cmfdqr(:ncol,:) = rprddp(:ncol,:)  + rprdsh(:ncol,:)
-
-  ! sum deep and shallow convection contributions
-  if (cam_physpkg_is('cam5') .or. cam_physpkg_is('cam6')) then
-     ! Dec.29.2009. Sungsu
-     inputs%conicw(:ncol,:) = (icwmrdp(:ncol,:)*dp_frac(:ncol,:) + icwmrsh(:ncol,:)*sh_frac(:ncol,:))/ &
-                              max(0.01_r8, sh_frac(:ncol,:) + dp_frac(:ncol,:))
-  else
-     inputs%conicw(:ncol,:) = icwmrdp(:ncol,:) + icwmrsh(:ncol,:)
-  end if
-
-  inputs%totcond(:ncol,:) = state%q(:ncol,:,ixcldliq) + state%q(:ncol,:,ixcldice)
-
-  call clddiag( state%t,     state%pmid,   state%pdel,   inputs%cmfdqr, inputs%evapc, &
-               inputs%cldt,  inputs%cldcu,       cldst,  inputs%qme,    inputs%evapr, &
-               inputs%prain, inputs%cldv, inputs%cldvcu, inputs%cldvst,       rainmr, &
-                state%ncol )
-
-end subroutine wetdep_inputs_set
-
 subroutine clddiag(t, pmid, pdel, cmfdqr, evapc, &
-                   cldt, cldcu, cldst, cme, evapr, &
+                   cldt, cldcu, cldst, evapr, &
                    prain, cldv, cldvcu, cldvst, rain, &
-                   ncol)
+                   ncol, pver, gravit, tmelt, rair)
 
    ! ------------------------------------------------------------------------------------
    ! Estimate the cloudy volume which is occupied by rain or cloud water as
@@ -188,43 +50,46 @@ subroutine clddiag(t, pmid, pdel, cmfdqr, evapc, &
    ! ------------------------------------------------------------------------------------
 
    ! Input arguments:
-   real(r8), intent(in) :: t(pcols,pver)        ! temperature (K)
-   real(r8), intent(in) :: pmid(pcols,pver)     ! pressure at layer midpoints
-   real(r8), intent(in) :: pdel(pcols,pver)     ! pressure difference across layers
-   real(r8), intent(in) :: cmfdqr(pcols,pver)   ! dq/dt due to convective rainout
-   real(r8), intent(in) :: evapc(pcols,pver)    ! Evaporation rate of convective precipitation ( >= 0 )
-   real(r8), intent(in) :: cldt(pcols,pver)    ! total cloud fraction
-   real(r8), intent(in) :: cldcu(pcols,pver)    ! Cumulus cloud fraction
-   real(r8), intent(in) :: cldst(pcols,pver)    ! Stratus cloud fraction
-   real(r8), intent(in) :: cme(pcols,pver)      ! rate of cond-evap within the cloud
-   real(r8), intent(in) :: evapr(pcols,pver)    ! rate of evaporation of falling precipitation (kg/kg/s)
-   real(r8), intent(in) :: prain(pcols,pver)    ! rate of conversion of condensate to precipitation (kg/kg/s)
+   real(r8), intent(in) :: t(:,:)        ! temperature (K)
+   real(r8), intent(in) :: pmid(:,:)     ! pressure at layer midpoints
+   real(r8), intent(in) :: pdel(:,:)     ! pressure difference across layers
+   real(r8), intent(in) :: cmfdqr(:,:)   ! dq/dt due to convective rainout
+   real(r8), intent(in) :: evapc(:,:)    ! Evaporation rate of convective precipitation ( >= 0 )
+   real(r8), intent(in) :: cldt(:,:)    ! total cloud fraction
+   real(r8), intent(in) :: cldcu(:,:)    ! Cumulus cloud fraction
+   real(r8), intent(in) :: cldst(:,:)    ! Stratus cloud fraction
+   real(r8), intent(in) :: evapr(:,:)    ! rate of evaporation of falling precipitation (kg/kg/s)
+   real(r8), intent(in) :: prain(:,:)    ! rate of conversion of condensate to precipitation (kg/kg/s)
    integer, intent(in) :: ncol
+   integer, intent(in) :: pver
+   real(r8), intent(in) :: gravit       ! gravitational acceleration (m/s2)
+   real(r8), intent(in) :: tmelt        ! freezing point of water (K)
+   real(r8), intent(in) :: rair         ! dry air gas constant (J/K/kg)
 
    ! Output arguments:
-   real(r8), intent(out) :: cldv(pcols,pver)     ! fraction occupied by rain or cloud water
-   real(r8), intent(out) :: cldvcu(pcols,pver)   ! Convective precipitation volume
-   real(r8), intent(out) :: cldvst(pcols,pver)   ! Stratiform precipitation volume
-   real(r8), intent(out) :: rain(pcols,pver)     ! mixing ratio of rain (kg/kg)
+   real(r8), intent(out) :: cldv(:,:)     ! fraction occupied by rain or cloud water
+   real(r8), intent(out) :: cldvcu(:,:)   ! Convective precipitation volume
+   real(r8), intent(out) :: cldvst(:,:)   ! Stratiform precipitation volume
+   real(r8), intent(out) :: rain(:,:)     ! mixing ratio of rain (kg/kg)
 
    ! Local variables:
    integer  i, k
    real(r8) convfw         ! used in fallspeed calculation; taken from findmcnew
-   real(r8) sumppr(pcols)        ! precipitation rate (kg/m2-s)
-   real(r8) sumpppr(pcols)       ! sum of positive precips from above
-   real(r8) cldv1(pcols)         ! precip weighted cloud fraction from above
+   real(r8) sumppr(ncol)        ! precipitation rate (kg/m2-s)
+   real(r8) sumpppr(ncol)       ! sum of positive precips from above
+   real(r8) cldv1(ncol)         ! precip weighted cloud fraction from above
    real(r8) lprec                ! local production rate of precip (kg/m2/s)
    real(r8) lprecp               ! local production rate of precip (kg/m2/s) if positive
    real(r8) rho                  ! air density
    real(r8) vfall
-   real(r8) sumppr_cu(pcols)     ! Convective precipitation rate (kg/m2-s)
-   real(r8) sumpppr_cu(pcols)    ! Sum of positive convective precips from above
-   real(r8) cldv1_cu(pcols)      ! Convective precip weighted convective cloud fraction from above
+   real(r8) sumppr_cu(ncol)     ! Convective precipitation rate (kg/m2-s)
+   real(r8) sumpppr_cu(ncol)    ! Sum of positive convective precips from above
+   real(r8) cldv1_cu(ncol)      ! Convective precip weighted convective cloud fraction from above
    real(r8) lprec_cu             ! Local production rate of convective precip (kg/m2/s)
    real(r8) lprecp_cu            ! Local production rate of convective precip (kg/m2/s) if positive
-   real(r8) sumppr_st(pcols)     ! Stratiform precipitation rate (kg/m2-s)
-   real(r8) sumpppr_st(pcols)    ! Sum of positive stratiform precips from above
-   real(r8) cldv1_st(pcols)      ! Stratiform precip weighted stratiform cloud fraction from above
+   real(r8) sumppr_st(ncol)     ! Stratiform precipitation rate (kg/m2-s)
+   real(r8) sumpppr_st(ncol)    ! Sum of positive stratiform precips from above
+   real(r8) cldv1_st(ncol)      ! Stratiform precip weighted stratiform cloud fraction from above
    real(r8) lprec_st             ! Local production rate of stratiform precip (kg/m2/s)
    real(r8) lprecp_st            ! Local production rate of stratiform precip (kg/m2/s) if positive
    ! -----------------------------------------------------------------------
@@ -290,11 +155,12 @@ end subroutine clddiag
 ! This is the CAM5 version of wetdepa.
 
 subroutine wetdepa_v2(                                  &
-   p, q, pdel, cldt, cldc,                              &
-   cmfdqr, evapc, conicw, precs, conds,                 &
+   pdel, cldt, cldc,                                    &
+   cmfdqr, evapc, conicw, precs,                        &
    evaps, cwat, tracer, deltat, scavt,                  &
    iscavt, cldvcu, cldvst, dlf, fracis,                 &
-   sol_fact, ncol, scavcoef, is_strat_cloudborne, qqcw, &
+   sol_fact, ncol, scavcoef, gravit, pver, errmsg, errflg, &
+   is_strat_cloudborne, qqcw,                            &
    f_act_conv, icscavt, isscavt, bcscavt, bsscavt,      &
    convproc_do_aer, rcscavt, rsscavt,                   &
    sol_facti_in, sol_factic_in, convproc_do_evaprain_atonce_in, bergso_in )
@@ -306,23 +172,20 @@ subroutine wetdepa_v2(                                  &
    !-----------------------------------------------------------------------
 
    real(r8), intent(in) ::&
-      p(pcols,pver),        &! pressure
-      q(pcols,pver),        &! moisture
-      pdel(pcols,pver),     &! pressure thikness
-      cldt(pcols,pver),     &! total cloud fraction
-      cldc(pcols,pver),     &! convective cloud fraction
-      cmfdqr(pcols,pver),   &! rate of production of convective precip
-      evapc(pcols,pver),    &! Evaporation rate of convective precipitation
-      conicw(pcols,pver),   &! convective cloud water
-      cwat(pcols,pver),     &! cloud water amount
-      precs(pcols,pver),    &! rate of production of stratiform precip
-      conds(pcols,pver),    &! rate of production of condensate
-      evaps(pcols,pver),    &! rate of evaporation of precip
-      cldvcu(pcols,pver),   &! Convective precipitation area at the top interface of each layer
-      cldvst(pcols,pver),   &! Stratiform precipitation area at the top interface of each layer
-      dlf(pcols,pver),      &! Detrainment of convective condensate [kg/kg/s]
+      pdel(:,:),     &! pressure thikness
+      cldt(:,:),     &! total cloud fraction
+      cldc(:,:),     &! convective cloud fraction
+      cmfdqr(:,:),   &! rate of production of convective precip
+      evapc(:,:),    &! Evaporation rate of convective precipitation
+      conicw(:,:),   &! convective cloud water
+      cwat(:,:),     &! cloud water amount
+      precs(:,:),    &! rate of production of stratiform precip
+      evaps(:,:),    &! rate of evaporation of precip
+      cldvcu(:,:),   &! Convective precipitation area at the top interface of each layer
+      cldvst(:,:),   &! Stratiform precipitation area at the top interface of each layer
+      dlf(:,:),      &! Detrainment of convective condensate [kg/kg/s]
       deltat,               &! time step
-      tracer(pcols,pver)     ! trace species
+      tracer(:,:)     ! trace species
 
    ! If subroutine is called with just sol_fact:
    !    sol_fact is used for both in- and below-cloud scavenging
@@ -330,13 +193,17 @@ subroutine wetdepa_v2(                                  &
    !    sol_fact  is used for below cloud scavenging
    !    sol_facti is used for in cloud scavenging
 
-   real(r8), intent(in)  :: sol_fact(pcols,pver)
+   real(r8), intent(in)  :: sol_fact(:,:)
    integer,  intent(in)  :: ncol
-   real(r8), intent(in)  :: scavcoef(pcols,pver) ! Dana and Hales coefficient (/mm) (0.1 if not MODAL_AERO)
+   real(r8), intent(in)  :: scavcoef(:,:) ! Dana and Hales coefficient (/mm) (0.1 if not MODAL_AERO)
+   real(r8), intent(in)  :: gravit       ! gravitational acceleration (m/s2)
+   integer,  intent(in)  :: pver
+   character(len=*), intent(out) :: errmsg
+   integer,          intent(out) :: errflg
    real(r8), intent(out) ::&
-      scavt(pcols,pver),   &! scavenging tend
-      iscavt(pcols,pver),  &! incloud scavenging tends
-      fracis(pcols,pver)    ! fraction of species not scavenged
+      scavt(:,:),   &! scavenging tend
+      iscavt(:,:),  &! incloud scavenging tends
+      fracis(:,:)    ! fraction of species not scavenged
 
    ! Setting is_strat_cloudborne=.true. indicates that tracer is stratiform-cloudborne aerosol.
    !   This is only used by MAM code.  The optional args qqcw and f_act_conv are not referenced
@@ -345,74 +212,77 @@ subroutine wetdepa_v2(                                  &
    !   interstitial modal aerosols.  In this case the optional qqcw (the cloud borne mixing ratio
    !   corresponding to the interstitial aerosol) must be provided, as well as the optional f_act_conv.
    logical,  intent(in), optional :: is_strat_cloudborne
-   real(r8), intent(in), optional :: qqcw(pcols,pver)
-   real(r8), intent(in), optional :: f_act_conv(pcols,pver)
+   real(r8), intent(in), optional :: qqcw(:,:)
+   real(r8), intent(in), optional :: f_act_conv(:,:)
 
-   real(r8), intent(in), optional :: sol_facti_in(pcols,pver)   ! solubility factor (frac of aerosol scavenged in cloud)
-   real(r8), intent(in), optional :: sol_factic_in(pcols,pver)  ! sol_facti_in for convective clouds
+   real(r8), intent(in), optional :: sol_facti_in(:,:)   ! solubility factor (frac of aerosol scavenged in cloud)
+   real(r8), intent(in), optional :: sol_factic_in(:,:)  ! sol_facti_in for convective clouds
 
 
-   real(r8), intent(out), optional :: icscavt(pcols,pver)     ! incloud, convective
-   real(r8), intent(out), optional :: isscavt(pcols,pver)     ! incloud, stratiform
-   real(r8), intent(out), optional :: bcscavt(pcols,pver)     ! below cloud, convective
-   real(r8), intent(out), optional :: bsscavt(pcols,pver)     ! below cloud, stratiform
+   real(r8), intent(out), optional :: icscavt(:,:)     ! incloud, convective
+   real(r8), intent(out), optional :: isscavt(:,:)     ! incloud, stratiform
+   real(r8), intent(out), optional :: bcscavt(:,:)     ! below cloud, convective
+   real(r8), intent(out), optional :: bsscavt(:,:)     ! below cloud, stratiform
 
    ! Setting convproc_do_aer=.true. removes the resuspension term from bcscavt and
    ! bsscavt and returns those terms as rcscavt and rsscavt respectively.
    logical,  intent(in),  optional :: convproc_do_aer
-   real(r8), intent(out), optional :: rcscavt(pcols,pver)     ! resuspension, convective
-   real(r8), intent(out), optional :: rsscavt(pcols,pver)     ! resuspension, stratiform
+   real(r8), intent(out), optional :: rcscavt(:,:)     ! resuspension, convective
+   real(r8), intent(out), optional :: rsscavt(:,:)     ! resuspension, stratiform
    logical,  intent(in),  optional :: convproc_do_evaprain_atonce_in
-   real(r8), intent(in),  optional :: bergso_in(pcols,pver)
+   real(r8), intent(in),  optional :: bergso_in(:,:)
 
    ! local variables
 
    integer :: i, k
    logical :: out_resuspension
 
-   real(r8) :: clds(pcols)          ! stratiform cloud fraction
-   real(r8) :: fracev(pcols)        ! fraction of precip from above that is evaporating
-   real(r8) :: fracev_cu(pcols)     ! Fraction of convective precip from above that is evaporating
-   real(r8) :: fracp(pcols)         ! fraction of cloud water converted to precip
-   real(r8) :: pdog(pcols)          ! work variable (pdel/gravit)
-   real(r8) :: rpdog(pcols)         ! work variable (gravit/pdel)
-   real(r8) :: precabc(pcols)       ! conv precip from above (work array)
-   real(r8) :: precabs(pcols)       ! strat precip from above (work array)
-   real(r8) :: rat(pcols)           ! ratio of amount available to amount removed
-   real(r8) :: scavab(pcols)        ! scavenged tracer flux from above (work array)
-   real(r8) :: scavabc(pcols)       ! scavenged tracer flux from above (work array)
-   real(r8) :: srcc(pcols)          ! tend for convective rain
-   real(r8) :: srcs(pcols)          ! tend for stratiform rain
-   real(r8) :: srct(pcols)          ! work variable
+   real(r8) :: clds(ncol)          ! stratiform cloud fraction
+   real(r8) :: fracev(ncol)        ! fraction of precip from above that is evaporating
+   real(r8) :: fracev_cu(ncol)     ! Fraction of convective precip from above that is evaporating
+   real(r8) :: fracp(ncol)         ! fraction of cloud water converted to precip
+   real(r8) :: pdog(ncol)          ! work variable (pdel/gravit)
+   real(r8) :: rpdog(ncol)         ! work variable (gravit/pdel)
+   real(r8) :: precabc(ncol)       ! conv precip from above (work array)
+   real(r8) :: precabs(ncol)       ! strat precip from above (work array)
+   real(r8) :: rat(ncol)           ! ratio of amount available to amount removed
+   real(r8) :: scavab(ncol)        ! scavenged tracer flux from above (work array)
+   real(r8) :: scavabc(ncol)       ! scavenged tracer flux from above (work array)
+   real(r8) :: srcc(ncol)          ! tend for convective rain
+   real(r8) :: srcs(ncol)          ! tend for stratiform rain
+   real(r8) :: srct(ncol)          ! work variable
 
-   real(r8) :: fins(pcols)          ! fraction of rem. rate by strat rain
-   real(r8) :: finc(pcols)          ! fraction of rem. rate by conv. rain
-   real(r8) :: conv_scav_ic(pcols)  ! convective scavenging incloud
-   real(r8) :: conv_scav_bc(pcols)  ! convective scavenging below cloud
-   real(r8) :: st_scav_ic(pcols)    ! stratiform scavenging incloud
-   real(r8) :: st_scav_bc(pcols)    ! stratiform scavenging below cloud
+   real(r8) :: fins(ncol)          ! fraction of rem. rate by strat rain
+   real(r8) :: finc(ncol)          ! fraction of rem. rate by conv. rain
+   real(r8) :: conv_scav_ic(ncol)  ! convective scavenging incloud
+   real(r8) :: conv_scav_bc(ncol)  ! convective scavenging below cloud
+   real(r8) :: st_scav_ic(ncol)    ! stratiform scavenging incloud
+   real(r8) :: st_scav_bc(ncol)    ! stratiform scavenging below cloud
 
-   real(r8) :: odds(pcols)          ! limit on removal rate (proportional to prec)
-   real(r8) :: dblchek(pcols)
+   real(r8) :: odds(ncol)          ! limit on removal rate (proportional to prec)
+   real(r8) :: dblchek(ncol)
    logical :: found
 
-   real(r8) :: trac_qqcw(pcols)
-   real(r8) :: tracer_incu(pcols)
-   real(r8) :: tracer_mean(pcols)
+   real(r8) :: trac_qqcw(ncol)
+   real(r8) :: tracer_incu(ncol)
+   real(r8) :: tracer_mean(ncol)
 
    ! For stratiform cloud, cloudborne aerosol is treated explicitly,
    !    and sol_facti is 1.0 for cloudborne, 0.0 for interstitial.
    ! For convective cloud, cloudborne aerosol is not treated explicitly,
    !    and sol_factic is 1.0 for both cloudborne and interstitial.
 
-   real(r8) :: sol_facti(pcols,pver)  ! in cloud fraction of aerosol scavenged
-   real(r8) :: sol_factb(pcols,pver)  ! below cloud fraction of aerosol scavenged
-   real(r8) :: sol_factic(pcols,pver) ! in cloud fraction of aerosol scavenged for convective clouds
+   real(r8) :: sol_facti(ncol,pver)  ! in cloud fraction of aerosol scavenged
+   real(r8) :: sol_factb(ncol,pver)  ! below cloud fraction of aerosol scavenged
+   real(r8) :: sol_factic(ncol,pver) ! in cloud fraction of aerosol scavenged for convective clouds
 
    real(r8) :: rdeltat
    logical  :: convproc_do_evaprain_atonce
 
    ! ------------------------------------------------------------------------
+
+   errmsg = ''
+   errflg = 0
 
    if (present(convproc_do_evaprain_atonce_in)) then
       convproc_do_evaprain_atonce = convproc_do_evaprain_atonce_in
@@ -437,8 +307,10 @@ subroutine wetdepa_v2(                                  &
              present(rcscavt) .and. present(rsscavt) ) then
             out_resuspension = .true.
          else
-            call endrun('wetdepa_v2: bcscavt, bsscavt, rcscavt, rsscavt'// &
-                        ' must be present when convproc_do_aero true')
+            errmsg = 'wetdepa_v2: bcscavt, bsscavt, rcscavt, rsscavt'// &
+                     ' must be present when convproc_do_aero true'
+            errflg = 1
+            return
          end if
       end if
    end if
@@ -652,13 +524,13 @@ subroutine wetdepa_v2(                                  &
          ! catch the larger negative values, ignore insignificant small negaive values
          if (dblchek(i) < -1.e-10_r8) then
             found = .true.
-            write(iulog,*) ' wetdapa_v2: negative value ', i, k, tracer(i,k), &
-                 dblchek(i), scavt(i,k), srct(i), rat(i), fracev(i)
          endif
       end do
 
       if (found) then
-         call endrun('wetdapa_v2: negative values found')
+         errmsg = 'wetdapa_v2: negative values found'
+         errflg = 1
+         return
       end if
 #endif
 
@@ -672,11 +544,12 @@ end subroutine wetdepa_v2
 ! This is the frozen CAM4 version of wetdepa.
 
 
-   subroutine wetdepa_v1( t, p, q, pdel, &
-                       cldt, cldc, cmfdqr, conicw, precs, conds, &
+   subroutine wetdepa_v1( t, pdel, &
+                       cldt, cmfdqr, conicw, precs, &
                        evaps, cwat, tracer, deltat, &
                        scavt, iscavt, cldv, fracis, sol_fact, ncol, &
-                       scavcoef,icscavt, isscavt, bcscavt, bsscavt, &
+                       scavcoef, tmelt, gravit, pver, errmsg, errflg, &
+                       icscavt, isscavt, bcscavt, bsscavt, &
                        sol_facti_in, sol_factbi_in, sol_factii_in, &
                        sol_factic_in, sol_factiic_in )
 
@@ -691,21 +564,17 @@ end subroutine wetdepa_v2
       implicit none
 
       real(r8), intent(in) ::&
-         t(pcols,pver),        &! temperature
-         p(pcols,pver),        &! pressure
-         q(pcols,pver),        &! moisture
-         pdel(pcols,pver),     &! pressure thikness
-         cldt(pcols,pver),     &! total cloud fraction
-         cldc(pcols,pver),     &! convective cloud fraction
-         cmfdqr(pcols,pver),   &! rate of production of convective precip
-         conicw(pcols,pver),   &! convective cloud water
-         cwat(pcols,pver),     &! cloud water amount
-         precs(pcols,pver),    &! rate of production of stratiform precip
-         conds(pcols,pver),    &! rate of production of condensate
-         evaps(pcols,pver),    &! rate of evaporation of precip
-         cldv(pcols,pver),     &! total cloud fraction
+         t(:,:),        &! temperature
+         pdel(:,:),     &! pressure thikness
+         cldt(:,:),     &! total cloud fraction
+         cmfdqr(:,:),   &! rate of production of convective precip
+         conicw(:,:),   &! convective cloud water
+         cwat(:,:),     &! cloud water amount
+         precs(:,:),    &! rate of production of stratiform precip
+         evaps(:,:),    &! rate of evaporation of precip
+         cldv(:,:),     &! total cloud fraction
          deltat,               &! time step
-         tracer(pcols,pver)     ! trace species
+         tracer(:,:)     ! trace species
       ! If subroutine is called with just sol_fact:
             ! sol_fact is used for both in- and below-cloud scavenging
       ! If subroutine is called with optional argument sol_facti_in:
@@ -715,53 +584,43 @@ end subroutine wetdepa_v2
          real(r8), intent(in), optional :: sol_facti_in   ! solubility factor (frac of aerosol scavenged in cloud)
          real(r8), intent(in), optional :: sol_factbi_in  ! solubility factor (frac of aerosol scavenged below cloud by ice)
          real(r8), intent(in), optional :: sol_factii_in  ! solubility factor (frac of aerosol scavenged in cloud by ice)
-         real(r8), intent(in), optional :: sol_factic_in(pcols,pver)  ! sol_facti_in for convective clouds
+         real(r8), intent(in), optional :: sol_factic_in(:,:)  ! sol_facti_in for convective clouds
          real(r8), intent(in), optional :: sol_factiic_in ! sol_factii_in for convective clouds
-         real(r8), intent(in) :: scavcoef(pcols,pver) ! Dana and Hales coefficient (/mm) (0.1 if not MODAL_AERO)
+         real(r8), intent(in) :: scavcoef(:,:) ! Dana and Hales coefficient (/mm) (0.1 if not MODAL_AERO)
 
       integer, intent(in) :: ncol
+      integer, intent(in) :: pver
+      real(r8), intent(in) :: tmelt        ! freezing point of water (K)
+      real(r8), intent(in) :: gravit       ! gravitational acceleration (m/s2)
+      character(len=*), intent(out) :: errmsg
+      integer,          intent(out) :: errflg
 
       real(r8), intent(out) ::&
-         scavt(pcols,pver),    &! scavenging tend
-         iscavt(pcols,pver),   &! incloud scavenging tends
-         fracis(pcols,pver)     ! fraction of species not scavenged
+         scavt(:,:),    &! scavenging tend
+         iscavt(:,:),   &! incloud scavenging tends
+         fracis(:,:)     ! fraction of species not scavenged
 
-      real(r8), intent(out), optional ::    icscavt(pcols,pver)     ! incloud, convective
-      real(r8), intent(out), optional ::    isscavt(pcols,pver)     ! incloud, stratiform
-      real(r8), intent(out), optional ::    bcscavt(pcols,pver)     ! below cloud, convective
-      real(r8), intent(out), optional ::    bsscavt(pcols,pver)     ! below cloud, stratiform
+      real(r8), intent(out), optional ::    icscavt(:,:)     ! incloud, convective
+      real(r8), intent(out), optional ::    isscavt(:,:)     ! incloud, stratiform
+      real(r8), intent(out), optional ::    bcscavt(:,:)     ! below cloud, convective
+      real(r8), intent(out), optional ::    bsscavt(:,:)     ! below cloud, stratiform
 
       ! local variables
 
       integer i                 ! x index
       integer k                 ! z index
 
-      real(r8) adjfac               ! factor stolen from cmfmca
-      real(r8) aqfrac               ! fraction of tracer in aqueous phase
-      real(r8) cwatc                ! local convective total water amount
-      real(r8) cwats                ! local stratiform total water amount
-      real(r8) cwatp                ! local water amount falling from above precip
-      real(r8) fracev(pcols)        ! fraction of precip from above that is evaporating
+      real(r8) fracev(ncol)        ! fraction of precip from above that is evaporating
       real(r8) fracp                ! fraction of cloud water converted to precip
-      real(r8) gafrac               ! fraction of tracer in gas phasea
-      real(r8) hconst               ! henry's law solubility constant when equation is expressed
-                                ! in terms of mixing ratios
-      real(r8) mpla                 ! moles / liter H2O entering the layer from above
-      real(r8) mplb                 ! moles / liter H2O leaving the layer below
-      real(r8) part                 !  partial pressure of tracer in atmospheres
-      real(r8) patm                 ! total pressure in atmospheres
-      real(r8) pdog                 ! work variable (pdel/gravit)
-      real(r8) precabc(pcols)       ! conv precip from above (work array)
-      real(r8) precabs(pcols)       ! strat precip from above (work array)
-      real(r8) precbl               ! precip falling out of level (work array)
-      real(r8) precmin              ! minimum convective precip causing scavenging
-      real(r8) rat(pcols)           ! ratio of amount available to amount removed
-      real(r8) scavab(pcols)        ! scavenged tracer flux from above (work array)
-      real(r8) scavabc(pcols)       ! scavenged tracer flux from above (work array)
+      real(r8) precabc(ncol)       ! conv precip from above (work array)
+      real(r8) precabs(ncol)       ! strat precip from above (work array)
+      real(r8) rat(ncol)           ! ratio of amount available to amount removed
+      real(r8) scavab(ncol)        ! scavenged tracer flux from above (work array)
+      real(r8) scavabc(ncol)       ! scavenged tracer flux from above (work array)
       real(r8) srcc                 ! tend for convective rain
       real(r8) srcs                 ! tend for stratiform rain
-      real(r8) srct(pcols)          ! work variable
-      real(r8) tracab(pcols)        ! column integrated tracer amount
+      real(r8) srct(ncol)          ! work variable
+      real(r8) tracab(ncol)        ! column integrated tracer amount
 
       real(r8) fins                 ! fraction of rem. rate by strat rain
       real(r8) finc                 ! fraction of rem. rate by conv. rain
@@ -769,15 +628,15 @@ end subroutine wetdepa_v2
       real(r8) srcs2                ! work variable
       real(r8) tc                   ! temp in celcius
       real(r8) weight               ! fraction of condensate which is ice
-      real(r8) cldmabs(pcols)       ! maximum cloud at or above this level
-      real(r8) cldmabc(pcols)       ! maximum cloud at or above this level
+      real(r8) cldmabs(ncol)       ! maximum cloud at or above this level
+      real(r8) cldmabc(ncol)       ! maximum cloud at or above this level
       real(r8) odds                 ! limit on removal rate (proportional to prec)
-      real(r8) dblchek(pcols)
+      real(r8) dblchek(ncol)
       logical :: found
 
       real(r8) sol_facti,  sol_factb  ! in cloud and below cloud fraction of aerosol scavenged
       real(r8) sol_factii, sol_factbi ! in cloud and below cloud fraction of aerosol scavenged by ice
-      real(r8) sol_factic(pcols,pver)             ! sol_facti for convective clouds
+      real(r8) sol_factic(ncol,pver)             ! sol_facti for convective clouds
       real(r8) sol_factiic            ! sol_factii for convective clouds
       ! sol_factic & solfact_iic added for MODAL_AERO.
       ! For stratiform cloud, cloudborne aerosol is treated explicitly,
@@ -786,9 +645,8 @@ end subroutine wetdepa_v2
       !    and sol_factic is 1.0 for both cloudborne and interstitial.
 
       ! ------------------------------------------------------------------------
-      precmin =  0.1_r8/8.64e4_r8      ! set critical value to 0.1 mm/day in kg/m2/s
-
-      adjfac = deltat/(max(deltat,cmftau)) ! adjustment factor from hack scheme
+      errmsg = ''
+      errflg = 0
 
       ! default (if other sol_facts aren't in call, set all to required sol_fact
       sol_facti = sol_fact
@@ -814,7 +672,7 @@ end subroutine wetdepa_v2
       ! the amount of tracer which is pulled out.
       !
 
-      do i = 1,pcols
+      do i = 1,ncol
          precabs(i) = 0
          precabc(i) = 0
          scavab(i) = 0
@@ -829,8 +687,6 @@ end subroutine wetdepa_v2
             tc     = t(i,k) - tmelt
             weight = max(0._r8,min(-tc*0.05_r8,1.0_r8)) ! fraction of condensate that is ice
             weight = 0._r8                                 ! assume no ice
-
-            pdog = pdel(i,k)/gravit
 
             ! ****************** Evaporation **************************
             ! calculate the fraction of strat precip from above
@@ -973,13 +829,13 @@ end subroutine wetdepa_v2
             ! catch the larger negative values, ignore insignificant small negaive values
             if (dblchek(i) < -1.e-10_r8) then
                found = .true.
-               write(iulog,*) ' wetdapa_v1: negative value ', i, k, tracer(i,k), &
-                    dblchek(i), scavt(i,k), srct(i), rat(i), fracev(i)
             endif
          end do
 
          if (found) then
-            call endrun('wetdapa_v1: negative values found')
+            errmsg = 'wetdapa_v1: negative values found'
+            errflg = 1
+            return
          end if
 #endif
 
@@ -987,237 +843,434 @@ end subroutine wetdepa_v2
 
    end subroutine wetdepa_v1
 
-!==============================================================================
-
-! wetdepg is currently being used for both CAM4 and CAM5 by making use of the
-! cam_physpkg_is method.
-
-   subroutine wetdepg( t, p, q, pdel, &
-                       cldt, cldc, cmfdqr, evapc, precs, evaps, &
-                       rain, cwat, tracer, deltat, molwt, &
-                       solconst, scavt, iscavt, cldv, icwmr1, &
-                       icwmr2, fracis, ncol )
-
-      !-----------------------------------------------------------------------
-      ! Purpose:
-      ! scavenging of gas phase constituents by henry's law
-      !
-      ! Author: P. Rasch
-      !-----------------------------------------------------------------------
-
-      real(r8), intent(in) ::&
-         t(pcols,pver),        &! temperature
-         p(pcols,pver),        &! pressure
-         q(pcols,pver),        &! moisture
-         pdel(pcols,pver),     &! pressure thikness
-         cldt(pcols,pver),     &! total cloud fraction
-         cldc(pcols,pver),     &! convective cloud fraction
-         cmfdqr(pcols,pver),   &! rate of production of convective precip
-         rain (pcols,pver),    &! total rainwater mixing ratio
-         cwat(pcols,pver),     &! cloud water amount
-         precs(pcols,pver),    &! rate of production of stratiform precip
-         evaps(pcols,pver),    &! rate of evaporation of precip
-! Sungsu
-         evapc(pcols,pver),    &! Rate of evaporation of convective precipitation
-! Sungsu
-         cldv(pcols,pver),     &! estimate of local volume occupied by clouds
-         icwmr1 (pcols,pver),  &! in cloud water mixing ration for zhang scheme
-         icwmr2 (pcols,pver),  &! in cloud water mixing ration for hack  scheme
-         deltat,               &! time step
-         tracer(pcols,pver),   &! trace species
-         molwt                  ! molecular weights
-
-      integer, intent(in) :: ncol
-
-      real(r8) &
-         solconst(pcols,pver)   ! Henry's law coefficient
-
-      real(r8), intent(out) ::&
-         scavt(pcols,pver),    &! scavenging tend
-         iscavt(pcols,pver),   &! incloud scavenging tends
-         fracis(pcols, pver)    ! fraction of constituent that is insoluble
-
-      ! local variables
-
-      integer i                 ! x index
-      integer k                 ! z index
-
-      real(r8) adjfac               ! factor stolen from cmfmca
-      real(r8) aqfrac               ! fraction of tracer in aqueous phase
-      real(r8) cwatc                ! local convective total water amount
-      real(r8) cwats                ! local stratiform total water amount
-      real(r8) cwatl                ! local cloud liq water amount
-      real(r8) cwatp                ! local water amount falling from above precip
-      real(r8) cwatpl               ! local water amount falling from above precip (liq)
-      real(r8) cwatt                ! local sum of strat + conv total water amount
-      real(r8) cwatti               ! cwatt/cldv = cloudy grid volume mixing ratio
-      real(r8) fracev               ! fraction of precip from above that is evaporating
-      real(r8) fracp                ! fraction of cloud water converted to precip
-      real(r8) gafrac               ! fraction of tracer in gas phasea
-      real(r8) hconst               ! henry's law solubility constant when equation is expressed
-                                ! in terms of mixing ratios
-      real(r8) mpla                 ! moles / liter H2O entering the layer from above
-      real(r8) mplb                 ! moles / liter H2O leaving the layer below
-      real(r8) part                 !  partial pressure of tracer in atmospheres
-      real(r8) patm                 ! total pressure in atmospheres
-      real(r8) pdog                 ! work variable (pdel/gravit)
-      real(r8) precab(pcols)        ! precip from above (work array)
-      real(r8) precbl               ! precip work variable
-      real(r8) precxx               ! precip work variable
-      real(r8) precxx2               !
-      real(r8) precic               ! precip work variable
-      real(r8) rat                  ! ratio of amount available to amount removed
-      real(r8) scavab(pcols)        ! scavenged tracer flux from above (work array)
-      real(r8) scavabc(pcols)       ! scavenged tracer flux from above (work array)
-
-      real(r8) scavmax              ! an estimate of the max tracer avail for removal
-      real(r8) scavbl               ! flux removed at bottom of layer
-      real(r8) fins                 ! in cloud fraction removed by strat rain
-      real(r8) finc                 ! in cloud fraction removed by conv rain
-      real(r8) rate                 ! max removal rate estimate
-      real(r8) scavlimt             ! limiting value 1
-      real(r8) scavt1               ! limiting value 2
-      real(r8) scavin               ! scavenging by incloud processes
-      real(r8) scavbc               ! scavenging by below cloud processes
-      real(r8) tc
-      real(r8) weight               ! ice fraction
-      real(r8) wtpl                 ! work variable
-      real(r8) cldmabs(pcols)       ! maximum cloud at or above this level
-      real(r8) cldmabc(pcols)       ! maximum cloud at or above this level
-      !-----------------------------------------------------------
-
-      adjfac = deltat/(max(deltat,cmftau)) ! adjustment factor from hack scheme
-
-      ! zero accumulators
-      do i = 1,pcols
-         precab(i) = 1.e-36_r8
-         scavab(i) = 0._r8
-         cldmabs(i) = 0._r8
-      end do
-
-      do k = 1,pver
-         do i = 1,ncol
-
-            tc     = t(i,k) - tmelt
-            weight = max(0._r8,min(-tc*0.05_r8,1.0_r8)) ! fraction of condensate that is ice
-
-            cldmabs(i) = max(cldmabs(i),cldt(i,k))
-
-            ! partitioning coefs for gas and aqueous phase
-            !              take as a cloud water amount, the sum of the stratiform amount
-            !              plus the convective rain water amount
-
-            ! convective amnt is just the local precip rate from the hack scheme
-            !              since there is no storage of water, this ignores that falling from above
-            !            cwatc = cmfdqr(i,k)*deltat/adjfac
-            !++mcb -- test cwatc
-            cwatc = (icwmr1(i,k) + icwmr2(i,k)) * (1._r8-weight)
-            !--mcb
-
-            ! strat cloud water amount and also ignore the part falling from above
-            cwats = cwat(i,k)
-
-            ! cloud water as liq
-            !++mcb -- add cwatc later (in cwatti)
-            !            cwatl = (1.-weight)*(cwatc+cwats)
-            cwatl = (1._r8-weight)*cwats
-            ! cloud water as ice
-            !*not used        cwati = weight*(cwatc+cwats)
-
-            ! total suspended condensate as liquid
-            cwatt = cwatl + rain(i,k)
-
-            ! incloud version
-            !++mcb -- add cwatc here
-            cwatti = cwatt/max(cldv(i,k), 0.00001_r8) + cwatc
-
-            ! partitioning terms
-            patm = p(i,k)/1.013e5_r8 ! pressure in atmospheres
-            hconst = molwta*patm*solconst(i,k)*cwatti/rhoh2o
-            aqfrac = hconst/(1._r8+hconst)
-            gafrac = 1/(1._r8+hconst)
-            fracis(i,k) = gafrac
+!##############################################################################
 
 
-            ! partial pressure of the tracer in the gridbox in atmospheres
-            part = patm*gafrac*tracer(i,k)*molwta/molwt
+!##############################################################################
 
-            ! use henrys law to give moles tracer /liter of water
-            ! in this volume
-            ! then convert to kg tracer /liter of water (kg tracer / kg water)
-            mplb = solconst(i,k)*part*molwt/1000._r8
+! below cloud impaction scavenging coefs
+subroutine get_bcscavcoefs( m, ncol, pver, isprx, diam_wet, scavcoefnum, scavcoefvol, aero_props )
 
+  integer,intent(in) :: m, ncol, pver
+  logical,intent(in):: isprx(:,:)
+  real(r8), intent(in) :: diam_wet(:,:)
+  real(r8), intent(out) :: scavcoefnum(:,:), scavcoefvol(:,:)
+  class(aerosol_properties), intent(in) :: aero_props
 
-            pdog = pdel(i,k)/gravit
+  integer i, k, jgrow
+  real(r8) dumdgratio, xgrow, dumfhi, dumflo, scavimpvol, scavimpnum
 
-            ! this part of precip will be carried downward but at a new molarity of mpl
-            precic = pdog*(precs(i,k) + cmfdqr(i,k))
+  do k = 1, pver
+     do i = 1, ncol
 
-            ! we cant take out more than entered, plus that available in the cloud
-            !                  scavmax = scavab(i)+tracer(i,k)*cldt(i,k)/deltat*pdog
-            scavmax = scavab(i)+tracer(i,k)*cldv(i,k)/deltat*pdog
+        ! do only if no precip
+        if ( isprx(i,k) .and. diam_wet(i,k)>0.0_r8) then
+           !
+           ! interpolate table values using log of (actual-wet-size)/(base-dry-size)
 
-            ! flux of tracer by incloud processes
-            scavin = precic*(1._r8-weight)*mplb
+           dumdgratio = diam_wet(i,k)/aero_props%scav_diam(m)
+           if ((dumdgratio >= 0.99_r8) .and. (dumdgratio <= 1.01_r8)) then
+              scavimpvol = scavimptblvol(0,m)
+              scavimpnum = scavimptblnum(0,m)
+           else
+              xgrow = log( dumdgratio ) / dlndg_nimptblgrow
+              jgrow = int( xgrow )
+              if (xgrow < 0._r8) jgrow = jgrow - 1
+              if (jgrow < nimptblgrow_mind) then
+                 jgrow = nimptblgrow_mind
+                 xgrow = jgrow
+              else
+                 jgrow = min( jgrow, nimptblgrow_maxd-1 )
+              end if
 
-            ! fraction of precip which entered above that leaves below
-            if (cam_physpkg_is('cam5') .or. cam_physpkg_is('cam6')) then
-               ! Sungsu added evaporation of convective precipitation below.
-               precxx = precab(i)-pdog*(evaps(i,k)+evapc(i,k))
-            else
-               precxx = precab(i)-pdog*evaps(i,k)
-            end if
-            precxx = max (precxx,0.0_r8)
+              dumfhi = xgrow - jgrow
+              dumflo = 1._r8 - dumfhi
 
-            ! flux of tracer by below cloud processes
-            !++mcb -- removed wtpl because it is now not assigned and previously
-            !          when it was assigned it was unnecessary:  if(tc.gt.0)wtpl=1
-            if (tc>0.0_r8) then
-               !               scavbc = precxx*wtpl*mplb ! if liquid
-               scavbc = precxx*mplb ! if liquid
-            else
-               precxx2=max(precxx,1.e-36_r8)
-               scavbc = scavab(i)*precxx2/(precab(i)) ! if ice
-            endif
+              scavimpvol = dumflo*scavimptblvol(jgrow,m) + &
+                           dumfhi*scavimptblvol(jgrow+1,m)
+              scavimpnum = dumflo*scavimptblnum(jgrow,m) + &
+                           dumfhi*scavimptblnum(jgrow+1,m)
 
-            scavbl = min(scavbc + scavin, scavmax)
+           end if
 
-            ! first guess assuming that henries law works
-            scavt1 = (scavab(i)-scavbl)/pdog*omsm
+           ! impaction scavenging removal amount for volume
+           scavcoefvol(i,k) = exp( scavimpvol )
+           ! impaction scavenging removal amount to number
+           scavcoefnum(i,k) = exp( scavimpnum )
 
-            ! pjr this should not be required, but we put it in to make sure we cant remove too much
-            ! remember, scavt1 is generally negative (indicating removal)
-            scavt1 = max(scavt1,-tracer(i,k)*cldv(i,k)/deltat)
+        else
+           scavcoefvol(i,k) = 0._r8
+           scavcoefnum(i,k) = 0._r8
+        end if
 
-            !++mcb -- remove this limitation for gas species
-            !c use the dana and hales or balkanski limit on scavenging
-            !c            rate = precab(i)*0.1
-            !            rate = (precic + precxx)*0.1
-            !            scavlimt = -tracer(i,k)*cldv(i,k)
-            !     $           *rate/(1.+rate*deltat)
+     end do
+  end do
 
-            !            scavt(i,k) = max(scavt1, scavlimt)
+end subroutine get_bcscavcoefs
 
-            ! instead just set scavt to scavt1
-            scavt(i,k) = scavt1
-            !--mcb
+!##############################################################################
 
-            ! now update the amount leaving the layer
-            scavbl = scavab(i) - scavt(i,k)*pdog
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+subroutine init_bcscavcoef( aero_props, pi, boltz_cgs, rgas_cgs, &
+                            errmsg, errflg )
+  !-----------------------------------------------------------------------
+  !
+  ! Purpose:
+  ! Computes lookup table for aerosol impaction/interception scavenging rates
+  !
+  ! Authors: R. Easter
+  ! Simone Tilmes Nov 2021
+  ! added modifications for bin model, assuming sigma = 1.
+  !
+  !-----------------------------------------------------------------------
 
-            ! in cloud amount is that formed locally over the total flux out bottom
-            fins = scavin/(scavin + scavbc + 1.e-36_r8)
-            iscavt(i,k) = scavt(i,k)*fins
+  class(aerosol_properties), intent(in) :: aero_props
+  real(r8), intent(in)  :: pi           ! ratio of circle circumference to diameter
+  real(r8), intent(in)  :: boltz_cgs    ! Boltzmann's constant (erg/K)
+  real(r8), intent(in)  :: rgas_cgs     ! universal gas constant (erg/mol/K)
+  character(len=*), intent(out) :: errmsg
+  integer,          intent(out) :: errflg
 
-            scavab(i) = scavbl
-            precab(i) = max(precxx + precic,1.e-36_r8)
+  !   local variables
+  integer nnfit_maxd
+  parameter (nnfit_maxd=27)
 
+  integer m, jgrow, nnfit
+  integer astat
 
+  real(r8) dg0, dg0_cgs, press, dg0_base, &
+       rhodryaero, rhowetaero, rhowetaero_cgs, &
+       scavratenum, scavratevol, logsig,                &
+       temp, wetdiaratio, wetvolratio
 
-         end do
-      end do
+  real(r8) :: xxfitnum(1,nnfit_maxd), yyfitnum(nnfit_maxd)
+  real(r8) :: xxfitvol(1,nnfit_maxd), yyfitvol(nnfit_maxd)
 
-   end subroutine wetdepg
+  character(len=*), parameter :: subname = 'wetdep::init_bcscavcoef'
+
+  errmsg = ''
+  errflg = 0
+
+  allocate(scavimptblnum(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()), stat=astat)
+  if (astat/=0) then
+     errmsg = subname//' : not able to allocate scavimptblnum array'
+     errflg = 1
+     return
+  end if
+  allocate(scavimptblvol(nimptblgrow_mind:nimptblgrow_maxd, aero_props%nbins()), stat=astat)
+  if (astat/=0) then
+     errmsg = subname//' : not able to allocate scavimptblvol array'
+     errflg = 1
+     return
+  end if
+  scavimptblnum = nan
+  scavimptblvol = nan
+
+  dlndg_nimptblgrow = log( 1.25_r8 )
+
+  ! bin model: main loop over aerosol bins
+
+  modeloop: do m = 1, aero_props%nbins()
+
+     ! for setting up the lookup table, use the dry density of the first species
+     ! -- assume the first species of the mode/bin is the dominate species
+     call aero_props%get(m,1,density=rhodryaero)
+
+     dg0_base = aero_props%scav_diam(m)
+
+     logsig = aero_props%alogsig(m)
+
+     growloop: do jgrow = nimptblgrow_mind, nimptblgrow_maxd
+
+        wetdiaratio = exp( jgrow*dlndg_nimptblgrow )
+        dg0 = dg0_base*wetdiaratio
+
+        wetvolratio = exp( jgrow*dlndg_nimptblgrow*3._r8 )
+        rhowetaero = 1.0_r8 + (rhodryaero-1.0_r8)/wetvolratio
+        rhowetaero = min( rhowetaero, rhodryaero )
+
+        !
+        !   compute impaction scavenging rates at 1 temp-press pair and save
+        !
+        nnfit = 0
+
+        temp = 273.16_r8
+        press = 0.75e6_r8   ! dynes/cm2
+        rhowetaero = rhodryaero
+
+        dg0_cgs = dg0*1.0e2_r8   ! m to cm
+
+        rhowetaero_cgs = rhowetaero*1.0e-3_r8   ! kg/m3 to g/cm3
+
+        call calc_1_impact_rate( &
+             dg0_cgs, logsig, rhowetaero_cgs, temp, press, &
+             scavratenum, scavratevol, &
+             pi, boltz_cgs, rgas_cgs, errmsg, errflg )
+        if (errflg /= 0) return
+
+        nnfit = nnfit + 1
+        if (nnfit > nnfit_maxd) then
+           errmsg = subname//' : nnfit > nnfit_maxd'
+           errflg = 1
+           return
+        end if
+
+        xxfitnum(1,nnfit) = 1._r8
+        yyfitnum(nnfit) = log( scavratenum )
+
+        xxfitvol(1,nnfit) = 1._r8
+        yyfitvol(nnfit) = log( scavratevol )
+
+       !depends on both bins and different species
+        scavimptblnum(jgrow,m) = yyfitnum(1)
+        scavimptblvol(jgrow,m) = yyfitvol(1)
+
+     enddo growloop
+  enddo modeloop
+
+contains
+
+  !===============================================================================
+  subroutine calc_1_impact_rate(          &
+       dg0, logsig, rhoaero, temp, press, &
+       scavratenum, scavratevol, &
+       pi, boltz_cgs, rgas, errmsg, errflg )
+    !
+    !   routine computes a single impaction scavenging rate
+    !	for precipitation rate of 1 mm/h
+    !
+    !   dg0 = geometric mean diameter of aerosol number size distrib. (cm)
+    !   sigmag = geometric standard deviation of size distrib.
+    !   rhoaero = density of aerosol particles (g/cm^3)
+    !   temp = temperature (K)
+    !   press = pressure (dyne/cm^2)
+    !   scavratenum = number scavenging rate (1/h)
+    !   scavratevol = volume or mass scavenging rate (1/h)
+    !   errmsg/errflg = error message and flag (returned on error)
+    !
+
+    implicit none
+
+    !   subr. parameters
+    real(r8), intent(in) :: dg0, logsig, rhoaero, temp, press
+    real(r8), intent(out) :: scavratenum, scavratevol
+    real(r8), intent(in) :: pi           ! ratio of circle circumference to diameter
+    real(r8), intent(in) :: boltz_cgs    ! Boltzmann's constant (erg/K)
+    real(r8), intent(in) :: rgas         ! universal gas constant (erg/mol/K)
+    character(len=*), intent(out) :: errmsg
+    integer,          intent(out) :: errflg
+
+    !   local variables
+    integer nrainsvmax
+    parameter (nrainsvmax=50)
+    real(r8) rrainsv(nrainsvmax), xnumrainsv(nrainsvmax),&
+         vfallrainsv(nrainsvmax)
+
+    integer naerosvmax
+    parameter (naerosvmax=51)
+    real(r8) aaerosv(naerosvmax), &
+         ynumaerosv(naerosvmax), yvolaerosv(naerosvmax)
+
+    integer i, ja, jr, na, nr
+    real(r8) a, aerodiffus, aeromass, ag0, airdynvisc, airkinvisc
+    real(r8) anumsum, avolsum, cair, chi
+    real(r8) d, dr, dum, dumfuchs, dx
+    real(r8) ebrown, eimpact, eintercept, etotal, freepath
+    real(r8) precip, precipmmhr, precipsum
+    real(r8) r, rainsweepout, reynolds, rhi, rhoair, rlo, rnumsum
+    real(r8) scavsumnum, scavsumnumbb
+    real(r8) scavsumvol, scavsumvolbb
+    real(r8) schmidt, sqrtreynolds, sstar, stokes, sx
+    real(r8) taurelax, vfall, vfallstp
+    real(r8) x, xg0, xg3, xhi, xlo, xmuwaterair
+
+    errmsg = ''
+    errflg = 0
+
+    rlo = .005_r8
+    rhi = .250_r8
+    dr = 0.005_r8
+    nr = 1 + nint( (rhi-rlo)/dr )
+    if (nr > nrainsvmax) then
+       errmsg = subname//' : nr > nrainsvmax'
+       errflg = 1
+       return
+    end if
+
+    precipmmhr = 1.0_r8
+    precip = precipmmhr/36000._r8
+
+    ag0 = dg0/2._r8
+    sx = logsig
+    xg0 = log( ag0 )
+    xg3 = xg0 + 3._r8*sx*sx
+
+    xlo = xg3 - 4._r8*sx
+    xhi = xg3 + 4._r8*sx
+    dx = 0.2_r8*sx
+
+    dx = max( 0.2_r8*sx, 0.01_r8 )
+    xlo = xg3 - max( 4._r8*sx, 2._r8*dx )
+    xhi = xg3 + max( 4._r8*sx, 2._r8*dx )
+
+    na = 1 + nint( (xhi-xlo)/dx )
+    if (na > naerosvmax) then
+       errmsg = subname//' : na > naerosvmax'
+       errflg = 1
+       return
+    end if
+
+    !   air molar density
+    cair = press/(rgas*temp)
+    !   air mass density
+    rhoair = 28.966_r8*cair
+    !   molecular freepath
+    freepath = 2.8052e-10_r8/cair
+    !   air dynamic viscosity
+    airdynvisc = 1.8325e-4_r8 * (416.16_r8/(temp+120._r8)) *    &
+         ((temp/296.16_r8)**1.5_r8)
+    !   air kinemaic viscosity
+    airkinvisc = airdynvisc/rhoair
+    !   ratio of water viscosity to air viscosity (from Slinn)
+    xmuwaterair = 60.0_r8
+
+    !
+    !   compute rain drop number concentrations
+    !	rrainsv = raindrop radius (cm)
+    !	xnumrainsv = raindrop number concentration (#/cm^3)
+    !		(number in the bin, not number density)
+    !	vfallrainsv = fall velocity (cm/s)
+    !
+    precipsum = 0._r8
+    do i = 1, nr
+       r = rlo + (i-1)*dr
+       rrainsv(i) = r
+       xnumrainsv(i) = exp( -r/2.7e-2_r8 )
+
+       d = 2._r8*r
+       if (d <= 0.007_r8) then
+          vfallstp = 2.88e5_r8 * d**2._r8
+       else if (d <= 0.025_r8) then
+          vfallstp = 2.8008e4_r8 * d**1.528_r8
+       else if (d <= 0.1_r8) then
+          vfallstp = 4104.9_r8 * d**1.008_r8
+       else if (d <= 0.25_r8) then
+          vfallstp = 1812.1_r8 * d**0.638_r8
+       else
+          vfallstp = 1069.8_r8 * d**0.235_r8
+       end if
+
+       vfall = vfallstp * sqrt(1.204e-3_r8/rhoair)
+       vfallrainsv(i) = vfall
+       precipsum = precipsum + vfall*(r**3)*xnumrainsv(i)
+    end do
+    precipsum = precipsum*pi*1.333333_r8
+
+    rnumsum = 0._r8
+    do i = 1, nr
+       xnumrainsv(i) = xnumrainsv(i)*(precip/precipsum)
+       rnumsum = rnumsum + xnumrainsv(i)
+    end do
+
+    !
+    !   compute aerosol concentrations
+    !	aaerosv = particle radius (cm)
+    !	fnumaerosv = fraction of total number in the bin (--)
+    !	fvolaerosv = fraction of total volume in the bin (--)
+    !
+    anumsum = 0._r8
+    avolsum = 0._r8
+    do i = 1, na
+       x = xlo + (i-1)*dx
+       a = exp( x )
+       aaerosv(i) = a
+       dum = (x - xg0)/sx
+       ynumaerosv(i) = exp( -0.5_r8*dum*dum )
+       yvolaerosv(i) = ynumaerosv(i)*1.3333_r8*pi*a*a*a
+       anumsum = anumsum + ynumaerosv(i)
+       avolsum = avolsum + yvolaerosv(i)
+    end do
+
+    do i = 1, na
+       ynumaerosv(i) = ynumaerosv(i)/anumsum
+       yvolaerosv(i) = yvolaerosv(i)/avolsum
+    end do
+
+    !
+    !   compute scavenging
+    !
+    scavsumnum = 0._r8
+    scavsumvol = 0._r8
+    !
+    !   outer loop for rain drop radius
+    !
+    jr_loop: do jr = 1, nr
+
+       r = rrainsv(jr)
+       vfall = vfallrainsv(jr)
+
+       reynolds = r * vfall / airkinvisc
+       sqrtreynolds = sqrt( reynolds )
+
+       !
+       !   inner loop for aerosol particle radius
+       !
+       scavsumnumbb = 0._r8
+       scavsumvolbb = 0._r8
+
+       ja_loop: do ja = 1, na
+
+          a = aaerosv(ja)
+
+          chi = a/r
+
+          dum = freepath/a
+          dumfuchs = 1._r8 + 1.246_r8*dum + 0.42_r8*dum*exp(-0.87_r8/dum)
+          taurelax = 2._r8*rhoaero*a*a*dumfuchs/(9._r8*rhoair*airkinvisc)
+
+          aeromass = 4._r8*pi*a*a*a*rhoaero/3._r8
+          aerodiffus = boltz_cgs*temp*taurelax/aeromass
+
+          schmidt = airkinvisc/aerodiffus
+          stokes = vfall*taurelax/r
+
+          ebrown = 4._r8*(1._r8 + 0.4_r8*sqrtreynolds*(schmidt**0.3333333_r8)) /  &
+               (reynolds*schmidt)
+
+          dum = (1._r8 + 2._r8*xmuwaterair*chi) /         &
+               (1._r8 + xmuwaterair/sqrtreynolds)
+          eintercept = 4._r8*chi*(chi + dum)
+
+          dum = log( 1._r8 + reynolds )
+          sstar = (1.2_r8 + dum/12._r8) / (1._r8 + dum)
+          eimpact = 0._r8
+          if (stokes > sstar) then
+             dum = stokes - sstar
+             eimpact = (dum/(dum+0.6666667_r8)) ** 1.5_r8
+          end if
+
+          etotal = ebrown + eintercept + eimpact
+          etotal = min( etotal, 1.0_r8 )
+
+          rainsweepout = xnumrainsv(jr)*4._r8*pi*r*r*vfall
+
+          scavsumnumbb = scavsumnumbb + rainsweepout*etotal*ynumaerosv(ja)
+          scavsumvolbb = scavsumvolbb + rainsweepout*etotal*yvolaerosv(ja)
+
+       enddo ja_loop
+
+       scavsumnum = scavsumnum + scavsumnumbb
+       scavsumvol = scavsumvol + scavsumvolbb
+
+    enddo jr_loop
+
+    scavratenum = scavsumnum*3600._r8
+    scavratevol = scavsumvol*3600._r8
+
+  end subroutine calc_1_impact_rate
+
+end subroutine init_bcscavcoef
 
 !##############################################################################
 
