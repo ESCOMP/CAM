@@ -1837,16 +1837,16 @@ contains
              call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
-          if (trim(cam_take_snapshot_before) == "microp_section") then
-             call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-          end if
-
           call t_startf('microp_aero_run')
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
 
           call t_startf('microp_tend')
+
+          if (trim(cam_take_snapshot_before) == "microp_section") then
+             call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+          end if
 
           if (use_subcol_microp) then
 

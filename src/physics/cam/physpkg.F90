@@ -932,8 +932,6 @@ contains
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
        call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
-       call conv_water_init
-    end if
 
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d)

@@ -2474,7 +2474,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               tnd_qsnow(:ncol,top_lev:),                tnd_nsnow(:ncol,top_lev:),              &
               re_ice(:ncol,top_lev:),                                                           &
               frzimm(:ncol,top_lev:),                   frzcnt(:ncol,top_lev:),                 &
-              frzdep(:ncol,top_lev:),                   rate1cld(:ncol,top_lev:),               &
+              frzdep(:ncol,top_lev:),                                                           &
+              micro_mg_warm_rain,                                                               &
+              rate1cld(:ncol,top_lev:),                                                         &
               tlat(:ncol,top_lev:),                     qvlat(:ncol,top_lev:),                  &
               qcten(:ncol,top_lev:),                    qiten(:ncol,top_lev:),                  &
               ncten(:ncol,top_lev:),                    niten(:ncol,top_lev:),                  &
