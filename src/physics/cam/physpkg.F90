@@ -932,6 +932,8 @@ contains
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
        call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
+       call conv_water_init
+    end if
 
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d)
@@ -2811,6 +2813,10 @@ contains
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
 
+          if (trim(cam_take_snapshot_before) == "pumas_tend") then
+             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+          end if
           call t_startf('microp_tend')
 
           if (use_subcol_microp) then
@@ -2902,9 +2908,17 @@ contains
                (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
              call cam_snapshot_ptend_outfld(ptend, lchnk)
           end if
+          if ( (trim(cam_take_snapshot_after) == "pumas_tend") .and.      &
+               (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+             call cam_snapshot_ptend_outfld(ptend, lchnk)
+          end if
           call physics_update (state, ptend, ztodt, tend)
 
           if (trim(cam_take_snapshot_after) == "microp_section") then
+             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+          end if
+          if (trim(cam_take_snapshot_after) == "pumas_tend") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
                   flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
