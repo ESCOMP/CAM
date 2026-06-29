@@ -1905,7 +1905,7 @@ contains
                   (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
                 call cam_snapshot_ptend_outfld(ptend, lchnk)
              end if
-             if ( (trim(cam_take_snapshot_after) == "pumas") .and. &
+             if ( (trim(cam_take_snapshot_after) == "pumas_tend") .and. &
                   (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
                 call cam_snapshot_ptend_outfld(ptend, lchnk)
              end if
@@ -1915,7 +1915,7 @@ contains
                 call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
                    fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
              end if
-             if (trim(cam_take_snapshot_after) == "pumas") then
+             if (trim(cam_take_snapshot_after) == "pumas_tend") then
                 call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
                    fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
              end if
