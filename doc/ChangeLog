@@ -1,5 +1,92 @@
 ===============================================================
 
+Tag name: cam6_4_185
+Originator(s): fvitt
+Date: 29 Jun 2026
+One-line Summary: Fix water vapor upper boundary bug
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1602
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Registration of water vapor constituent (Q) omitted the fixed upper boundary
+ concentration flag in CAM7 physics.  Thus the inclusion of Q in the upper
+ boundary namelist specifier had no effect in CAM7 LT and WA compsets.
+ See issue #1601: Water vapor upper boundary conditions ignored in cam7
+ (https://github.com/ESCOMP/CAM/issues/1601)
+
+ Here Q has been removed from the default UBC specifier namelist settings
+ for CAM7 LTso and WACCM7 compsets until further testing for including Q
+ UBCs has been completed.  Thus, this tag is bit-for-bit.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - determine if cam7 physics for selection of default WACCM ubc_specifier
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - default waccm7 ubc_specifier (does not include Q)
+
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+ - remove Q upper boundary
+
+M       src/physics/cam7/physpkg.F90
+ - check for fixed upper boundary concentrations of Q
+ - invoke cnst_add with appropriate fixed_ubc flag setting
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+  NLFAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  - remove Q from UBC specifier namelist setting for WACCM7 compsets, otherwise bit-for-bit
+
+derecho/nvhpc/aux_cam:
+  NLFAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem
+ - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+izumi/gnu/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+ - remove UBC namelist settings for LTso and PC7 compsets, otherwise bit-for-bit
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_184
 Originator(s): jimmielin
 Date: 23 Jun 2026
