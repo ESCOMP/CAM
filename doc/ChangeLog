@@ -50,12 +50,33 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+  NLFAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  - remove Q from UBC specifier namelist setting for WACCM7 compsets, otherwise bit-for-bit
 
 derecho/nvhpc/aux_cam:
+  NLFAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
 
 izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem
+ - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
 
 izumi/gnu/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+ - remove UBC namelist settings for LTso and PC7 compsets, otherwise bit-for-bit
 
 CAM tag used for the baseline comparison tests if different than previous
 tag:
