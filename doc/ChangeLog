@@ -8,11 +8,15 @@ Github PR URL: https://github.com/ESCOMP/CAM/pull/1602
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
- In CAM7 physics registration of water vapor constituent (Q) omitted the
- fixed upper boundary concentration flag.  Thus the inclusion of Q in the upper
+ Registration of water vapor constituent (Q) omitted the fixed upper boundary
+ concentration flag in CAM7 physics.  Thus the inclusion of Q in the upper
  boundary namelist specifier had no effect in CAM7 LT and WA compsets.
  See issue #1601: Water vapor upper boundary conditions ignored in cam7
  (https://github.com/ESCOMP/CAM/issues/1601)
+
+ Here Q has been removed from the default UBC specifier namelist settings
+ for CAM7 LTso and WACCM7 compsets until further testing for including Q
+ UBCs has been tested.  Thus, this merge is bit-for-bit.
 
 Describe any changes made to build system: N/A
 
@@ -78,29 +82,7 @@ izumi/gnu/aux_cam:
   NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
  - remove UBC namelist settings for LTso and PC7 compsets, otherwise bit-for-bit
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
-
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+Summarize any changes to answers: bit-for-bit unchanged
 
 ===============================================================
 ===============================================================
