@@ -3,7 +3,7 @@
 Tag name: cam6_4_185
 Originator(s): fvitt
 Date: 29 Jun 2026
-One-line Summary: Fix bug in water vapor upper boundary
+One-line Summary: Fix water vapor upper boundary bug
 Github PR URL: https://github.com/ESCOMP/CAM/pull/1602
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
@@ -16,7 +16,7 @@ Purpose of changes (include the issue number and title text for each relevant Gi
 
  Here Q has been removed from the default UBC specifier namelist settings
  for CAM7 LTso and WACCM7 compsets until further testing for including Q
- UBCs has been tested.  Thus, this merge is bit-for-bit.
+ UBCs has been completed.  Thus, this tag is bit-for-bit.
 
 Describe any changes made to build system: N/A
 
