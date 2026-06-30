@@ -1596,7 +1596,7 @@ module clubb_mf
              if (do_clubb_mf_coldpool_perplume) then
                ddcp(i) = -1._r8*dnw(ddbot(i)+kdir,i)
              else
-               ddcp(:) = ddcp(:) + -1._r8*dna(ddbot(i)+kdir,i)*dnw(ddbot(i)+kdir,i)
+               ddcp(:) = -1._r8*dna(ddbot(i)+kdir,i)*dnw(ddbot(i)+kdir,i) + ddcp(:)
              end if
            end if
          end do
