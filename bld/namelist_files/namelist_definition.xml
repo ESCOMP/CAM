@@ -4664,7 +4664,7 @@ Default: 0.5
        group="clubb_mf_nl" valid_values="" >
 Entrainment efficiency for individual plumes. Not used if
 do_clubb_mf=FALSE.
-Default: 0.22
+Default: 0.20
 </entry>
 
 <entry id="clubb_mf_alphturb" type="real" category="conv"
@@ -4682,7 +4682,7 @@ Default: 10
 <entry id="clubb_mf_max_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Real: limiter on entrainmnet length scale + threshold to disable TKE enhanced entrainmnet
-Default: 10.e3
+Default: 1.e3
 </entry>
 
 <entry id="clubb_mf_fdd" type="real" category="conv"

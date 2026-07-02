@@ -2358,13 +2358,13 @@
 <do_clubb_mf_rad                   > .false. </do_clubb_mf_rad>
 <do_clubb_mf_addtke                > .false. </do_clubb_mf_addtke>
 <clubb_mf_L0                       > 50.0    </clubb_mf_L0>
-<clubb_mf_ent0                     > 0.22     </clubb_mf_ent0>
+<clubb_mf_ent0                     > 0.2     </clubb_mf_ent0>
 <clubb_mf_alphturb                 > 0.0     </clubb_mf_alphturb>
 <clubb_mf_Lopt                     > 0       </clubb_mf_Lopt>
 <clubb_mf_a0                       > 2.0     </clubb_mf_a0>
 <clubb_mf_b0                       > 0.5     </clubb_mf_b0>
 <clubb_mf_nup                      > 10      </clubb_mf_nup>
-<clubb_mf_max_L0                   > 10.e3   </clubb_mf_max_L0>
+<clubb_mf_max_L0                   > 1.e3   </clubb_mf_max_L0>
 <clubb_mf_fdd                      > 0.0     </clubb_mf_fdd>
 <do_clubb_mf_coldpool              > .false. </do_clubb_mf_coldpool>
 <clubb_mf_ddalph                   > 2.e2    </clubb_mf_ddalph>
@@ -2495,9 +2495,6 @@
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
-<!-- ARH - SCAM time-stepping -->
-<cld_macmic_num_steps microphys="mg2" clubb_sgs="1" scam="1"    > 6 </cld_macmic_num_steps>
-<cld_macmic_num_steps microphys="mg3" clubb_sgs="1" scam="1"    > 6 </cld_macmic_num_steps>
 
 <!-- Ice nucleation -->
 <nucleate_ice_subgrid                                  >1.0D0</nucleate_ice_subgrid>

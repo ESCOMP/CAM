@@ -24,7 +24,7 @@ module clubb_intr
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len, fillvalue
 
-  use spmd_utils,          only: masterproc, iam
+  use spmd_utils,          only: masterproc
   use constituents,        only: pcnst, cnst_add, cnst_ndropmixed
   use atmos_phys_pbl_utils,only: calc_friction_velocity, calc_kinematic_heat_flux, calc_ideal_gas_rrho, &
                                  calc_kinematic_water_vapor_flux, calc_kinematic_buoyancy_flux, calc_obukhov_length
@@ -426,13 +426,9 @@ module clubb_intr
     vpwp_idx, &        	! north-south momentum flux
     wpthvp_idx, &       ! buoyancy flux
     wp2thvp_idx, &      ! second order buoyancy term
-    thlm_idx, &        	! mean thetal
-    um_idx, &         	! mean of east-west wind
-    vm_idx, &           ! mean of north-south wind    wp2up_idx, &        ! w'^2 u'
     wp2up_idx, &        ! w'^2 u'
     rtpthvp_idx, &      ! moisture buoyancy correlation
     thlpthvp_idx, &     ! temperature buoyancy correlation
-    sclrpthvp_idx, &    ! passive scalar buoyancy correlation
     wp2rtp_idx, &       ! w'^2 rt'
     wp2thlp_idx, &      ! w'^2 thl'
     uprcp_idx, &        ! < u' r_c' >
@@ -443,7 +439,6 @@ module clubb_intr
     wpvp2_idx, &        ! w'v'^2
     wp2up2_idx, &       ! w'^2 u'^2
     wp2vp2_idx, &       ! w'^2 v'^2
-    cloud_frac_idx, &   ! CLUBB's cloud fraction
     cld_idx, &         	! Cloud fraction
     concld_idx, &       ! Convective cloud fraction
     ast_idx, &          ! Stratiform cloud fraction
@@ -466,10 +461,8 @@ module clubb_intr
     naai_idx, &         ! ice number concentration
     prer_evap_idx, &    ! rain evaporation rate
     qrl_idx, &          ! longwave cooling rate
-    radf_idx, &
     qsatfac_idx, &      ! subgrid cloud water saturation scaling factor
     ice_supersat_idx, & ! ice cloud fraction for SILHS
-    ztodt_idx,&         ! physics timestep for SILHS
     clubbtop_idx        ! level index for CLUBB top
 
   ! For Gravity Wave code
@@ -505,11 +498,6 @@ module clubb_intr
     cmfmc_sh_idx = 0
 
   integer :: &
-    rcm_macmic_idx, &
-    cldfrac_macmic_idx, &
-    wpthlp_macmic_idx, &
-    wprtp_macmic_idx, &
-    wpthvp_macmic_idx, &
     mf_wpthlp_macmic_idx, &
     mf_wprtp_macmic_idx, &
     mf_wpthvp_macmic_idx
@@ -518,14 +506,15 @@ module clubb_intr
     prec_sh_idx, &
     snow_sh_idx
 
-  integer :: ztopmn_idx
-  integer :: ztopma_idx
-  integer :: ztopm1_macmic_idx
-  integer :: ddcp_idx
-  integer :: ddcp_macmic_idx
-  integer :: ddcpmn_idx
-  integer :: cbm1_idx
-  integer :: cbm1_macmic_idx
+  integer ::           &
+    ztopmn_idx,        &
+    ztopma_idx,        &
+    ztopm1_macmic_idx, &
+    ddcp_idx,          &
+    ddcp_macmic_idx,   &
+    ddcpmn_idx,        &
+    cbm1_idx,          &
+    cbm1_macmic_idx
 
   contains
 
@@ -601,10 +590,9 @@ module clubb_intr
     call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   qlst_idx)
     call pbuf_add_field('CONCLD',     'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   concld_idx)
     call pbuf_add_field('CLD',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   cld_idx)
-    call pbuf_add_field('FICE',       'global', dtype_r8, (/pcols,pver/),               fice_idx)
-    call pbuf_add_field('RAD_CLUBB',  'global', dtype_r8, (/pcols,pver/),               radf_idx)
-    call pbuf_add_field('CMELIQ',     'global', dtype_r8, (/pcols,pver/),                  cmeliq_idx)
-    call pbuf_add_field('QSATFAC',    'global', dtype_r8, (/pcols,pver/),                qsatfac_idx)
+    call pbuf_add_field('FICE',       'global', dtype_r8, (/pcols,pver/),                 fice_idx)
+    call pbuf_add_field('CMELIQ',     'global', dtype_r8, (/pcols,pver/),                 cmeliq_idx)
+    call pbuf_add_field('QSATFAC',    'global', dtype_r8, (/pcols,pver/),                 qsatfac_idx)
 
     ! pbuf fields for Gravity Wave scheme
     call pbuf_add_field('TTEND_CLUBB',     'physpkg', dtype_r8, (/pcols,pver /), ttend_clubb_idx )
@@ -673,18 +661,9 @@ module clubb_intr
     ! Only in clubb_intr.F90 or SILHS
     call pbuf_add_field('ISS_FRAC',   'global', dtype_r8, (/pcols,nzt_clubb/), ice_supersat_idx)
 
-    call pbuf_add_field('ZTODT',      'physpkg', dtype_r8, (/pcols/),       ztodt_idx)
-    call pbuf_add_field('CLOUD_FRAC', 'global', dtype_r8, (/pcols,nzt_clubb/), cloud_frac_idx)
-
     ! these extra coord vars don't seem to work for interpolate_output=.true.
     call add_hist_coord('ncyc', cld_macmic_num_steps, 'macro/micro cycle index')
     call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
-
-    call pbuf_add_field('RCM_CLUBB_macmic'    ,'physpkg',  dtype_r8, (/pcols,pver*cld_macmic_num_steps/), rcm_macmic_idx)
-    call pbuf_add_field('CLDFRAC_CLUBB_macmic','physpkg',  dtype_r8, (/pcols,pver*cld_macmic_num_steps/), cldfrac_macmic_idx)
-    call pbuf_add_field('WPTHLP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthlp_macmic_idx)
-    call pbuf_add_field('WPRTP_CLUBB_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wprtp_macmic_idx)
-    call pbuf_add_field('WPTHVP_CLUBB_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), wpthvp_macmic_idx)
 
     if (do_clubb_mf) then
       call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
@@ -1963,12 +1942,6 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_dnqt'     , (/ 'ilev', 'nens' /), 'A', 'kg/kg'   , 'Plume downdraft total water mixing ratio (EDMF)', sampled_on_subcycle=.true. )
     end if
 
-    call addfld ('RCM_CLUBB_macmic'    , (/ 'lev ', 'ncyc' /), 'A', 'kg/kg'   , 'RCM CLUBB at macro/micro substep', sampled_on_subcycle=.true.)
-    call addfld ('CLDFRAC_CLUBB_macmic', (/ 'lev ', 'ncyc' /), 'A', 'fraction', 'CLDFRAC CLUBB at macro/micro substep', sampled_on_subcycle=.true.)
-    call addfld ('WPTHLP_CLUBB_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Heat Flux at macro/micro substep', sampled_on_subcycle=.true.)
-    call addfld ('WPRTP_CLUBB_macmic'  , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Moisture Flux at macro/micro substep', sampled_on_subcycle=.true.)
-    call addfld ('WPTHVP_CLUBB_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2'    , 'Buoyancy Flux at macro/micro substep', sampled_on_subcycle=.true.)
-
     if (do_clubb_mf) then
 !jt      call addfld( 'PRECSH',     horiz_only,   'A', 'm/s',      'Shallow Convection precipitation rate'                     )
       call addfld( 'SNOWSH',     horiz_only,   'A', 'm/s',      'CLUBB-MF Snow precipitation rate'                     )
@@ -2171,7 +2144,6 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf_ini, thlpthvp_idx,      0.0_r8)
        call pbuf_set_field(pbuf_ini, tke_idx,           0.0_r8)
        call pbuf_set_field(pbuf_ini, kvh_idx,           0.0_r8)
-       call pbuf_set_field(pbuf_ini, radf_idx,          0.0_r8)
        call pbuf_set_field(pbuf_ini, wp2rtp_idx,        0.0_r8)
        call pbuf_set_field(pbuf_ini, wp2thlp_idx,       0.0_r8)
        call pbuf_set_field(pbuf_ini, uprcp_idx,         0.0_r8)
@@ -2448,11 +2420,6 @@ end subroutine clubb_init_cnst
     real(r8), pointer :: cbm1(:)
     real(r8), pointer :: cbm1_macmic(:)
 
-    real(r8), pointer :: rcm_macmic(:,:)
-    real(r8), pointer :: cldfrac_macmic(:,:)
-    real(r8), pointer :: wpthlp_macmic(:,:)
-    real(r8), pointer :: wprtp_macmic(:,:)
-    real(r8), pointer :: wpthvp_macmic(:,:)
     real(r8), pointer :: mf_thlflx_macmic(:,:)
     real(r8), pointer :: mf_qtflx_macmic(:,:)
     real(r8), pointer :: mf_thvflx_macmic(:,:)
@@ -2883,7 +2850,7 @@ end subroutine clubb_init_cnst
     logical                              :: cfllim
 
 
-    real(r8), dimension(state%ncol)       :: mf_precc_nadv, mf_snow_nadv,&
+   real(r8), dimension(state%ncol)       :: mf_precc_nadv, mf_snow_nadv,&
                                             mf_cbm1,       mf_cbm1_nadv,   &
                                                            mf_freq_nadv
 
@@ -2999,12 +2966,6 @@ end subroutine clubb_init_cnst
 
     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
     call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
-
-    call pbuf_get_field(pbuf, rcm_macmic_idx, rcm_macmic)
-    call pbuf_get_field(pbuf, cldfrac_macmic_idx, cldfrac_macmic)
-    call pbuf_get_field(pbuf, wpthlp_macmic_idx, wpthlp_macmic)
-    call pbuf_get_field(pbuf, wprtp_macmic_idx, wprtp_macmic)
-    call pbuf_get_field(pbuf, wpthvp_macmic_idx, wpthvp_macmic)
 
     if (do_clubb_mf) then
        call pbuf_get_field(pbuf, mf_wpthlp_macmic_idx, mf_thlflx_macmic)
@@ -5594,11 +5555,6 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    rcm_macmic(:ncol,pver*(macmic_it-1)+1:pver*macmic_it) = rcm(:ncol,:pver)
-    cldfrac_macmic(:ncol,pver*(macmic_it-1)+1:pver*macmic_it) = cld_pbuf(:ncol,:pver)
-    wpthlp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wpthlp_output(:ncol,:pverp)
-    wprtp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wprtp_output(:ncol,:pverp)
-    wpthvp_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = wpthvp_output(:ncol,:pverp)
     if (do_clubb_mf) then
       mf_thlflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thlflx_output(:ncol,:pverp)
       mf_qtflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_qtflx_output(:ncol,:pverp)
@@ -5946,13 +5902,6 @@ end subroutine clubb_init_cnst
     end if
 
     if (macmic_it==cld_macmic_num_steps) then
-
-      call outfld( 'RCM_CLUBB_macmic'     , rcm_macmic,           pcols, lchnk )
-      call outfld( 'CLDFRAC_CLUBB_macmic' , cldfrac_macmic,       pcols, lchnk )
-
-      call outfld( 'WPTHLP_CLUBB_macmic'  , wpthlp_macmic,        pcols, lchnk )
-      call outfld( 'WPRTP_CLUBB_macmic'   , wprtp_macmic,         pcols, lchnk )
-      call outfld( 'WPTHVP_CLUBB_macmic'  , wpthvp_macmic,        pcols, lchnk )
       if (do_clubb_mf) then
         call outfld( 'edmf_thlflx_macmic'   , mf_thlflx_macmic,     pcols, lchnk )
         call outfld( 'edmf_qtflx_macmic'    , mf_qtflx_macmic,      pcols, lchnk )
