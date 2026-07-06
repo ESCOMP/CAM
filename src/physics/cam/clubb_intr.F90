@@ -498,11 +498,6 @@ module clubb_intr
     cmfmc_sh_idx = 0
 
   integer :: &
-    mf_wpthlp_macmic_idx, &
-    mf_wprtp_macmic_idx, &
-    mf_wpthvp_macmic_idx
-
-  integer :: &
     prec_sh_idx, &
     snow_sh_idx
 
@@ -666,9 +661,6 @@ module clubb_intr
     call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
 
     if (do_clubb_mf) then
-      call pbuf_add_field('edmf_thlflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthlp_macmic_idx)
-      call pbuf_add_field('edmf_qtflx_macmic'  ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wprtp_macmic_idx)
-      call pbuf_add_field('edmf_thvflx_macmic' ,'physpkg',  dtype_r8, (/pcols,pverp*cld_macmic_num_steps/), mf_wpthvp_macmic_idx)
       call pbuf_add_field('ZTOPMN'             ,'global' ,  dtype_r8, (/clubb_mf_up_ndt,pcols,clubb_mf_nup/), ztopmn_idx)
       call pbuf_add_field('ZTOPMA'             ,'global' ,  dtype_r8, (/pcols,clubb_mf_nup/), ztopma_idx)
       call pbuf_add_field('ZTOP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols,clubb_mf_nup/), ztopm1_macmic_idx)
@@ -1867,8 +1859,6 @@ end subroutine clubb_init_cnst
     call addfld ('ELEAK_CLUBB',      horiz_only,   'A', 'W/m2', 'CLUBB energy leak',                                  sampled_on_subcycle=.true.)
     call addfld ('TFIX_CLUBB',       horiz_only,   'A', 'K',    'Temperature increment to conserve energy',           sampled_on_subcycle=.true.)
 
-    call addfld ('TKE_CLUBB',        (/ 'ilev' /), 'A', 'm2/s2', 'CLUBB tke on interface levels', sampled_on_subcycle=.true.)
-
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
     ! ---------------------------------------------------------------------------- !
@@ -1945,9 +1935,6 @@ end subroutine clubb_init_cnst
     if (do_clubb_mf) then
 !jt      call addfld( 'PRECSH',     horiz_only,   'A', 'm/s',      'Shallow Convection precipitation rate'                     )
       call addfld( 'SNOWSH',     horiz_only,   'A', 'm/s',      'CLUBB-MF Snow precipitation rate'                     )
-      call addfld ( 'edmf_thlflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'W/m2'  , 'thl flux (EDMF) at macro/micro substep', sampled_on_subcycle=.true. )
-      call addfld ( 'edmf_thvflx_macmic', (/ 'ilev', 'ncyc' /), 'A', 'K m/s'  , 'thv flux (EDMF) at macro/micro substep', sampled_on_subcycle=.true. )
-      call addfld ( 'edmf_qtflx_macmic' , (/ 'ilev', 'ncyc' /), 'A', 'W/m2' , 'qt flux (EDMF) at macro/micro substep', sampled_on_subcycle=.true. )
     end if
 
     if ( trim(subcol_scheme) /= 'SILHS' ) then
@@ -2094,10 +2081,6 @@ end subroutine clubb_init_cnst
        call add_default( 'edmf_freq'       , 1, ' ')
        call add_default( 'edmf_cape'     , 1, ' ')
        call add_default( 'edmf_cfl'     , 1, ' ')
-
-       call add_default( 'edmf_thlflx_macmic' , 1, ' ')
-       call add_default( 'edmf_qtflx_macmic'  , 1, ' ')
-       call add_default( 'edmf_thvflx_macmic' , 1, ' ')
     end if
 
     if (history_budget) then
@@ -2352,14 +2335,12 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: wp2thlp_pbuf               ! w'^2 thl' (thermodynamic levels)
     real(r8), pointer, dimension(:,:) :: uprcp_pbuf                 ! < u' r_c' > (momentum levels)
     real(r8), pointer, dimension(:,:) :: vprcp_pbuf                 ! < v' r_c' > (momentum levels)
-    real(r8), pointer, dimension(:,:) :: rc_coef_pbuf   ! Coef. of X'r_c' in Eq. (34) (t-levs.)
     real(r8), pointer, dimension(:,:) :: rc_coef_zm_pbuf            ! Coef. of X'r_c' in Eq. (34) (t-levs.)
     real(r8), pointer, dimension(:,:) :: wp4_pbuf                   ! w'^4 (momentum levels
     real(r8), pointer, dimension(:,:) :: wpup2_pbuf                 ! w'u'^2 (thermodynamic levels)
     real(r8), pointer, dimension(:,:) :: wpvp2_pbuf                 ! w'v'^2 (thermodynamic levels)
     real(r8), pointer, dimension(:,:) :: wp2up2_pbuf                ! w'^2 u'^2 (momentum levels)
     real(r8), pointer, dimension(:,:) :: wp2vp2_pbuf                ! w'^2 v'^2 (momentum levels)
-    real(r8), pointer, dimension(:)   :: ztodtptr_pbuf ! timestep to send to SILHS
     real(r8), pointer, dimension(:,:) :: cld_pbuf                   ! cloud fraction 				[fraction]
     real(r8), pointer, dimension(:,:) :: concld_pbuf                ! convective cloud fraction			[fraction]
     real(r8), pointer, dimension(:,:) :: ast_pbuf                   ! stratiform cloud fraction			[fraction]
@@ -2384,7 +2365,6 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: npccn_pbuf
     real(r8), pointer, dimension(:,:) :: prer_evap_pbuf
     real(r8), pointer, dimension(:,:) :: qrl_pbuf
-    real(r8), pointer, dimension(:,:) :: radf_clubb_pbuf
 
     ! SILHS covariance contributions
     real(r8), pointer, dimension(:,:) :: rtp2_mc_zt_pbuf
@@ -2420,10 +2400,9 @@ end subroutine clubb_init_cnst
     real(r8), pointer :: cbm1(:)
     real(r8), pointer :: cbm1_macmic(:)
 
-    real(r8), pointer :: mf_thlflx_macmic(:,:)
-    real(r8), pointer :: mf_qtflx_macmic(:,:)
-    real(r8), pointer :: mf_thvflx_macmic(:,:)
-
+    ! ---------------------------------------------------- !
+    !                   Local Variables                    !
+    ! ---------------------------------------------------- !
     !
     ! MF outputs to outfld
     real(r8), dimension(pcols)           :: mf_ztop_output,    mf_L0_output,        &
@@ -2437,47 +2416,45 @@ end subroutine clubb_init_cnst
                                             mf_sqtup_output,     mf_sqtdn_output,     & ! thermodynamic grid
                                             mf_qc_output,        mf_cloudfrac_output    ! thermodynamic grid
 
+    integer :: i,l !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
+
 #ifdef CLUBB_SGS
 
-    ! MF plume level outputs
-    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_upa_flip,         &
-                                                               mf_upw_flip,         &
-                                                               mf_upmf_flip,        &
-                                                               mf_upqt_flip,        &
-                                                               mf_upthl_flip,       &
-                                                               mf_upthv_flip,       &
-                                                               mf_upth_flip,        &
-                                                               mf_upqc_flip,        &
-                                                               mf_upbuoy_flip,      &
-                                                               mf_upent_flip,       &
-                                                               mf_updet_flip
     ! MF plume level outputs to outfld
-    real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_upa_output,       &
-                                                               mf_upw_output,       &
-                                                               mf_upmf_output,      &
-                                                               mf_upqt_output,      &
-                                                               mf_upthl_output,     &
-                                                               mf_upthv_output,     &
-                                                               mf_upth_output,      &
-                                                               mf_upqc_output,      &
-                                                               mf_upent_output,     &
-                                                               mf_updet_output,     &
-                                                               mf_upbuoy_output
-    ! MF plume level outputs
-    real(r8), dimension(pcols,pverp,clubb_mf_nup) ::           mf_dnw_flip,         &
-                                                               mf_dnthl_flip,       &
-                                                               mf_dnqt_flip
+    real(r8), dimension(pcols,pverp*clubb_mf_nup) ::  &
+         mf_upa_output,       &
+         mf_upw_output,       &
+         mf_upmf_output,      &
+         mf_upqt_output,      &
+         mf_upthl_output,     &
+         mf_upthv_output,     &
+         mf_upth_output,      &
+         mf_upqc_output,      &
+         mf_upent_output,     &
+         mf_updet_output,     &
+         mf_upbuoy_output,    &
+         mf_dnw_output,       &
+         mf_dnthl_output,     &
+         mf_dnqt_output
 
-    ! MF plume level outputs to outfld
-    real(r8), dimension(pcols,pverp*clubb_mf_nup) ::           mf_dnw_output,       &
-                                                               mf_dnthl_output,     &
-                                                               mf_dnqt_output
+    ! MF plume level work arrays
+    real(r8), dimension(pcols,pverp,clubb_mf_nup) :: &
+         mf_upa_flip,         &
+         mf_upw_flip,         &
+         mf_upmf_flip,        &
+         mf_upqt_flip,        &
+         mf_upthl_flip,       &
+         mf_upthv_flip,       &
+         mf_upth_flip,        &
+         mf_upqc_flip,        &
+         mf_upbuoy_flip,      &
+         mf_upent_flip,       &
+         mf_updet_flip,       &
+         mf_dnw_flip,         &
+         mf_dnthl_flip,       &
+         mf_dnqt_flip
 
-    ! MF Plume
     real(r8), pointer                    :: tpert(:)
-
-    ! MF outputs to outfld
-    ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
 
     real(r8), dimension(state%ncol,nzm_clubb,clubb_mf_nup) ::     &
       mf_upa,    mf_dna,                                          &
@@ -2491,17 +2468,6 @@ end subroutine clubb_init_cnst
       mf_upbuoy,                                                  &
       mf_updet,                                                   &
       mf_upent
-
-    real(r8), dimension(state%ncol,pverp,clubb_mf_nup) :: flip
-    real(r8), dimension(state%ncol,pverp) :: rho, wpthvp_diag
-#endif
-    ! ---------------------------------------------------- !
-    !                   Local Variables                    !
-    ! ---------------------------------------------------- !
-
-    integer :: i,l !Must be delcared outside "CLUBB_SGS" ifdef for det_s and det_ice zero-ing loops
-
-#ifdef CLUBB_SGS
 
     real(r8), parameter :: &
       rad2deg=180.0_r8/pi
@@ -2589,6 +2555,7 @@ end subroutine clubb_init_cnst
       dz_g,                           & ! thickness of layer                            [m]
       invrs_dz_g,                     & ! Inverse of layer thickness                    [1/m]
       invrs_exner_zt,                 & ! thermodynamic grid
+      !MF Plume Variables on the thermodynamic grid.
       kappa_zt,                       & ! thermodynamic grid
       qc_zt,                          & ! thermodynamic grid
       th_zt,                          & ! thermodynamic grid
@@ -2624,7 +2591,7 @@ end subroutine clubb_init_cnst
       rtpthlp_mc,               &
       zi_g,                     & ! Momentum grid of CLUBB		      	                    [m]
 
-      ! MF Plume
+      ! MF Plume variables on momentum levels.
       mf_dry_a,   mf_moist_a,    &
       mf_dry_w,   mf_moist_w,    &
       mf_dry_qt,  mf_moist_qt,   &
@@ -2786,7 +2753,6 @@ end subroutine clubb_init_cnst
       clubb_s         ! diagnosed dry static energy from clubb
 
     real(r8) :: &
-      inv_exner_tmp,            & ! Inverse exner function consistent with CLUBB  [-]
       dlf2,                     & ! Detraining cld H20 from shallow convection    [kg/kg/day]
       dum1,                     & ! dummy variable                                [units vary]
       invrs_hdtime,             &
@@ -2857,9 +2823,6 @@ end subroutine clubb_init_cnst
     real(r8), dimension(state%ncol,pver) :: esat,      rh
     real(r8), dimension(state%ncol,pver) :: mq,        mqsat
     real(r8), dimension(state%ncol)      :: rhlev,     rhinv
-
-    real(r8) :: inv_rh2o ! To reduce the number of divisions in clubb_tend
-
 
   call t_startf('clubb_tend_cam')
 
@@ -2968,9 +2931,6 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
 
     if (do_clubb_mf) then
-       call pbuf_get_field(pbuf, mf_wpthlp_macmic_idx, mf_thlflx_macmic)
-       call pbuf_get_field(pbuf, mf_wprtp_macmic_idx, mf_qtflx_macmic)
-       call pbuf_get_field(pbuf, mf_wpthvp_macmic_idx, mf_thvflx_macmic)
        call pbuf_get_field(pbuf, tpert_idx, tpert)
 
        call pbuf_get_field(pbuf, ztopmn_idx, ztopmn)
@@ -3925,11 +3885,7 @@ end subroutine clubb_init_cnst
 
         ! pressure,exner on momentum grid needed for mass flux calc.
 
-        th_sfc(:) = 0._r8
         th_sfc(1:ncol) = cam_in%ts(1:ncol)*invrs_exner_zm(1:ncol,nzm_clubb)
-
-        !call calc_ustar( ncol, state_loc%t(:ncol,pver), state_loc%pmid(:ncol,pver), cam_in%wsx(:ncol), cam_in%wsy(:ncol), &
-        !                 rrho(:ncol), ustar2(:ncol) )
         ustar2(1:ncol) = calc_friction_velocity(cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), rrho(1:ncol))
 
         if (t>1) then
@@ -4611,7 +4567,7 @@ end subroutine clubb_init_cnst
 
         call t_stopf('clubb_tend_cam:do_cldcool')
 
-      end if
+     end if
 
       !  Check to see if stats should be output, here stats are read into
       !  output arrays to make them conformable to CAM output
@@ -5555,12 +5511,6 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    if (do_clubb_mf) then
-      mf_thlflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thlflx_output(:ncol,:pverp)
-      mf_qtflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_qtflx_output(:ncol,:pverp)
-      mf_thvflx_macmic(:ncol,pverp*(macmic_it-1)+1:pverp*macmic_it) = mf_thvflx_output(:ncol,:pverp)
-    end if
-
     ! Convert RTP2 and THLP2 to thermo grid for output
     rtp2_zt = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr,  rtp2_pbuf(:ncol,:) )
     thl2_zt = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr, thlp2_pbuf(:ncol,:) )
@@ -5677,7 +5627,6 @@ end subroutine clubb_init_cnst
     call outfld( 'ZMDLFI',           dlf_ice_out,                    pcols, lchnk )
     call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                        pcols, lchnk )
     call outfld( 'QSATFAC',          qsatfac_pbuf,                   pcols, lchnk )
-    call outfld( 'TKE_CLUBB',        tke_pbuf,                       pcols, lchnk )
 
     ! --------------------------------------------------------------- !
     ! Writing state variables after EDMF scheme for detailed analysis !
@@ -5899,14 +5848,6 @@ end subroutine clubb_init_cnst
       call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
       call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
       call outfld( 'ICWMRSH'       , sh_icwmr_pbuf,             pcols, lchnk )
-    end if
-
-    if (macmic_it==cld_macmic_num_steps) then
-      if (do_clubb_mf) then
-        call outfld( 'edmf_thlflx_macmic'   , mf_thlflx_macmic,     pcols, lchnk )
-        call outfld( 'edmf_qtflx_macmic'    , mf_qtflx_macmic,      pcols, lchnk )
-        call outfld( 'edmf_thvflx_macmic'   , mf_thvflx_macmic,     pcols, lchnk )
-      end if
     end if
 
     !  Output CLUBB history here
