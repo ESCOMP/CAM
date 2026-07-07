@@ -107,6 +107,7 @@ OPTIONS
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
+     -tuvx              Switch to build TUV-X library
      -usr_mech_infile   Path and file name of the user supplied chemistry mechanism file.
      -waccm_phys        Switch enables the use of WACCM physics in any chemistry configuration.
                         The user does not need to set this if one of the waccm chemistry options
@@ -305,6 +306,7 @@ GetOptions(
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
     "ext_co2_cool"              => \$opts{'ext_co2_cool'},
+    "tuvx"                      => \$opts{'tuvx'},
 )  or usage();
 
 # Give usage message.
@@ -716,6 +718,12 @@ if (defined $opts{'ext_co2_cool'}) {
     $cfg_ref->set('ext_co2_cool', $opts{'ext_co2_cool'});
 }
 my $ext_co2_cool = $cfg_ref->get('ext_co2_cool');
+
+# TUV-x option
+if (defined $opts{'tuvx'}) {
+    $cfg_ref->set('tuvx', $opts{'tuvx'});
+}
+my $tuvx = $cfg_ref->get('tuvx');
 
 #-----------------------------------------------------------------------------------------------
 
@@ -1788,6 +1796,11 @@ if ($ext_co2_cool) {
     $cfg_cppdefs .= ' -DEXT_CO2_COOL';
 }
 
+# TUV-X
+if ($tuvx) {
+    $cfg_cppdefs .= ' -DTUVX';
+}
+
 # PIO
 my $pio2_build = (defined $opts{'pio2'}) ? 1 : 0;
 
@@ -2173,6 +2186,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/vertical_diffusion\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/beljaars_drag\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/microp_aero\n";
 
     # Dynamics package and test utilities
