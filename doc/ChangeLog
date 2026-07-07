@@ -1,5 +1,380 @@
 ===============================================================
 
+Tag name: cam6_4_185
+Originator(s): fvitt
+Date: 29 Jun 2026
+One-line Summary: Fix water vapor upper boundary bug
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1602
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Registration of water vapor constituent (Q) omitted the fixed upper boundary
+ concentration flag in CAM7 physics.  Thus the inclusion of Q in the upper
+ boundary namelist specifier had no effect in CAM7 LT and WA compsets.
+ See issue #1601: Water vapor upper boundary conditions ignored in cam7
+ (https://github.com/ESCOMP/CAM/issues/1601)
+
+ Here Q has been removed from the default UBC specifier namelist settings
+ for CAM7 LTso and WACCM7 compsets until further testing for including Q
+ UBCs has been completed.  Thus, this tag is bit-for-bit.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - determine if cam7 physics for selection of default WACCM ubc_specifier
+
+M       bld/namelist_files/namelist_defaults_cam.xml
+ - default waccm7 ubc_specifier (does not include Q)
+
+M       bld/namelist_files/use_cases/1850_cam_lt.xml
+M       bld/namelist_files/use_cases/hist_cam_lt.xml
+ - remove Q upper boundary
+
+M       src/physics/cam7/physpkg.F90
+ - check for fixed upper boundary concentrations of Q
+ - invoke cnst_add with appropriate fixed_ubc flag setting
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+  NLFAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  - remove Q from UBC specifier namelist setting for WACCM7 compsets, otherwise bit-for-bit
+
+derecho/nvhpc/aux_cam:
+  NLFAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default
+  - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem
+ - remove UBC namelist settings for LTso compsets, otherwise bit-for-bit
+
+izumi/gnu/aux_cam:
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+ - remove UBC namelist settings for LTso and PC7 compsets, otherwise bit-for-bit
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_184
+Originator(s): jimmielin
+Date: 23 Jun 2026
+One-line Summary: Complete CCPPization of Beljaars orographic form drag scheme; cleanup
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1558
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1555 - Convert Beljaars drag and move to atmos_phys
+
+Describe any changes made to build system: added atmos_phys/schemes/beljaars_drag directory.
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraig, JulioTBacmeister (CAM and atmos_phys), nusbaume (atmos_phys)
+
+List all files eliminated:
+D       src/physics/cam/beljaars_drag.F90
+  - moved to atmos_phys and refactored/cleaned up.
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/atmos_phys
+  - update to atmos_phys0_24_000.
+
+M       bld/configure
+  - add atmos_phys/schemes/beljaars_drag subdirectory.
+
+M       src/physics/cam/beljaars_drag_cam.F90
+  - cleanup and use CCPPized subroutines.
+
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+  - remove unused cam_in from beljaars_drag_tend.
+
+M       src/physics/cam/vertical_diffusion.F90
+  - move beljaars wind damping rate interstitial to proper location instead of
+    diffusion_stubs.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure.
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: All B4B
+
+===============================================================
+
+Tag name: cam6_4_183
+Originator(s): jimmielin
+Date: 22 Jun 2026
+One-line Summary: Complete CCPPization of cloud fraction for two-moment microphys (cldfrc2m); Add rad_diag CARMA testmod to existing Derecho FCARMA2000climo test
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1522
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+- Closes #1521 - Move two-moment cloud fraction scheme (cldfrc2m) to atmos_phys as compute_cloud_fraction_two_moment.
+- cldfrc2m is used broadly across CAM physics (cldwat2m_macro, clubb_intr, CARMA cirrus models) and its namelist parameters are pulled in via USE statements in many places. Moving the computational routines to atmos_phys and making cldfrc2m a thin CAM shim for namelist I/O and parameter distribution facilitates CCPP port of CLUBB, PUMAS, etc. as these namelist parameters will cleanly flow via standard names
+- Added keyword arguments calling into cldfrc for rh threshold etc. for clarity
+- Closes #1560 - Extend CARMA test on Derecho/Intel with rad_diag testing
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume, fvitt (CARMA fix), peverwhee (atmos_phys)
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/shell_commands
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/user_nl_cam
+A       cime_config/testdefs/testmods_dirs/cam/outfrq9s_carma_rad_diag/user_nl_clm
+  - new testmod that exercises rad_diag for CARMA (prev only Izumi for MAM)
+  - new testmod that exercises carma_do_optics for CARMA to write out optics files
+
+List all existing files that have been modified, and describe the changes:
+
+M       .gitmodules
+M       src/atmos_phys
+  - update atmos_phys to atmos_phys0_23_000.
+
+M       bld/namelist_files/namelist_definition.xml
+  - fix typo
+
+M       cime_config/testdefs/testlist_cam.xml
+  - update Derecho Intel FCARMA test to use the new outfrq9s_carma_rad_diag testmod.
+
+M       src/physics/cam/cldfrc2m.F90
+  - Move computational subroutines (astG_PDF, astG_RHU, astG_PDF_single,
+    astG_RHU_single, aist_single, aist_vector) to atmos_phys
+    compute_cloud_fraction_two_moment.
+  - Keep readnl, init, and public namelist-derived constants
+    (rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const,
+    rhminl_const, rhminl_adj_land_const, rhminh_const).
+  - init now calls compute_cloud_fraction_two_moment_init and
+    cldfrc_getparams to distribute parameters.
+  - Newly exposes rhminl_const, rhminl_adj_land_const, rhminh_const
+    (previously internal) so callers can pass them in explicitly.
+
+M       src/physics/cam/cldwat2m_macro.F90
+  - USE compute_cloud_fraction_two_moment directly for subroutines;
+    USE cldfrc2m shim only for rh constants.
+
+M       src/physics/cam/clubb_intr.F90
+  - USE compute_cloud_fraction_two_moment for aist_vector;
+    USE cldfrc2m shim for rh constants including newly-exposed rhminl_const,
+    rhminl_adj_land_const, rhminh_const.
+
+M       src/physics/carma/models/cirrus/carma_cloudfraction.F90
+M       src/physics/carma/models/cirrus_dust/carma_cloudfraction.F90
+  - USE compute_cloud_fraction_two_moment for subroutines;
+    USE cldfrc2m shim for rh constants.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s_carma_rad_diag (Overall: DIFF) details:
+    - the testmod for this test changed to "outfrq9s_carma_rad_diag".
+      I cprnc'd the baseline files manually against
+      /glade/campaign/cesm/community/amwg/cam_baselines/cam6_4_182_intel/
+      SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s
+      The cam.h0a file differs only in the field lists due to new variables introduced in rad_diag_2 and 3.
+      The other files are IDENTICAL.
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+    - pre-existing failure.
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: All B4B
+
+===============================================================
+
+Tag name: cam6_4_182
+Originator(s): fvitt
+Date: 16 Jun 2026
+One-line Summary: Updates to CAM's build of TUV-X library
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1577
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Build TUV-X library only in cases where TUV-X is used.  Configure
+ switch -tuvx has been added to CAM_CONFIG_OPTS which activates
+ the build of the TUV-X library.
+
+ Address issues:
+  #1537: TUV-x build issue when users have Conda environments active
+  https://github.com/ESCOMP/CAM/issues/1570
+
+  #1570: TUV-x copies input files to run directory regardless of whether TUV-x is active
+  https://github.com/ESCOMP/CAM/issues/1570
+
+Describe any changes made to build system:
+ Changes TUV-X library build as described above
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin cacraigucar
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+ - error out if tuvx_active is TRUE and not configured for TUV-X
+
+M       bld/config_files/definition.xml
+M       bld/configure
+ - add "-tuvx" configure switch -- define "TUVX" CPP def
+
+M       cime_config/buildlib
+ - build TUV-X lib only if "-tuvx" is included in CAM_CONFIG_OPTS
+
+M       cime_config/buildnml
+ - copy TUV-X input data to run directory only if "-tuvx" is included in CAM_CONFIG_OPTS
+
+M       cime_config/config_component.xml
+ - remove tuvx and yaml-cpp libs from default setting of CAM_LINKED_LIBS
+   -- buildlib will add these only only if cam is configured for tuvx
+
+M       cime_config/testdefs/testmods_dirs/cam/carma_mixed_sulfate/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_tuvx_waccm_ma_mam5/shell_commands
+M       cime_config/testdefs/testmods_dirs/cam/outfrq9s_waccm_ma_mam4/shell_commands
+ -- append "-tuvx" to CAM_CONFIG_OPTS
+
+M       src/chemistry/mozart/mo_tuvx.F90
+ - use ifdefs to stub out the module for cases where TUV-X lib is not available
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: All PASS
+
+derecho/nvhpc/aux_cam: All PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: All PASS
+
+Summarize any changes to answers: bit-for-bit
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_181
+Originator(s): kdraeder, cacraigucar
+Date: June 11, 2026
+One-line Summary: Modified config_archive.xml to archive CAM+DART files
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1302
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Make st_archive archive CAM+DART output files: https://github.com/ESCOMP/CAM/issues/1301
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, cecilehannay
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/config_archive.xml
+           - modify how DART files are archived
+
+M       src/dynamics/mpas/dycore
+           - commit missing dycore external update
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_180
 Originator(s): fvitt
 Date: 9 June 2026

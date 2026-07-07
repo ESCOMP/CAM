@@ -1690,7 +1690,7 @@ contains
     end if
 
     call trb_mtn_stress_tend(state, pbuf, cam_in)
-    call beljaars_drag_tend(state, pbuf, cam_in)
+    call beljaars_drag_tend(state, pbuf)
 
     if (trim(cam_take_snapshot_after) == "orographic_form_drag_stress") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
