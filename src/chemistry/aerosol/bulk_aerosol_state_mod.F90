@@ -16,6 +16,10 @@ module bulk_aerosol_state_mod
   ! former microp_aero_bulk_scale namelist parameter (always 2.0).
   real(r8), parameter :: bam_sulfate_scale = 2.0_r8
 
+  ! Denominator of the empirical size weight factor (1./25.)
+  ! applied to BAM ice nucleation number densities:
+  real(r8), parameter :: bam_icenuc_size_wght_denom = 25._r8
+
   public :: bulk_aerosol_state
 
   type, extends(aerosol_state) :: bulk_aerosol_state
@@ -270,9 +274,7 @@ contains
     logical, intent(in) :: use_preexisting_ice ! pre-existing ice flag
     real(r8), intent(out) :: wght(:,:)
 
-    ! Empirical 1/25 scaling factor for BAM ice nucleation number densities.
-    ! This was previously hardcoded inline in nucleate_ice_cam.F90:633.
-    wght(:ncol,:nlev) = 1._r8 / 25._r8
+    wght(:ncol,:nlev) = 1._r8 / bam_icenuc_size_wght_denom
 
   end subroutine icenuc_size_wght_arr
 
@@ -288,8 +290,7 @@ contains
     logical, intent(in) :: use_preexisting_ice    ! pre-existing ice flag
     real(r8), intent(out) :: wght
 
-    ! Empirical 1/25 scaling factor for BAM ice nucleation number densities.
-    wght = 1._r8 / 25._r8
+    wght = 1._r8 / bam_icenuc_size_wght_denom
 
   end subroutine icenuc_size_wght_val
 
@@ -610,12 +611,12 @@ contains
           do i = 1, ncol
              select case (trim(spectype))
              case ('dust')
-                dust_num_col(i,k) = dust_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
+                dust_num_col(i,k) = dust_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
              case ('sulfate')
-                sulf_num_col(i,k) = sulf_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
-                sulf_num_tot_col(i,k) = sulf_num_tot_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
+                sulf_num_col(i,k) = sulf_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
+                sulf_num_tot_col(i,k) = sulf_num_tot_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
              case ('black-c')
-                soot_num_col(i,k) = soot_num_col(i,k) + naer2_1bin(i,k) / 25._r8 * per_cm3
+                soot_num_col(i,k) = soot_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
              end select
           end do
        end do

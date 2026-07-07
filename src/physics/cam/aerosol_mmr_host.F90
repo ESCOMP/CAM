@@ -349,10 +349,7 @@ subroutine rad_cnst_get_aer_mmr_by_idx_host(list_idx, aer_idx, host, mmr)
    type(aero_host_binding_t), intent(in) :: host
    real(r8),                  pointer    :: mmr(:,:)
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   pbuf => host%pbuf
-   call rad_cnst_get_aer_mmr_by_idx(list_idx, aer_idx, host%state, pbuf, mmr)
+   call rad_cnst_get_aer_mmr_by_idx(list_idx, aer_idx, host%state, host%pbuf, mmr)
 
 end subroutine rad_cnst_get_aer_mmr_by_idx_host
 
@@ -444,10 +441,7 @@ subroutine rad_cnst_get_mam_mmr_by_idx_host(list_idx, mode_idx, spec_idx, phase,
    type(aero_host_binding_t), intent(in) :: host
    real(r8),                  pointer    :: mmr(:,:)
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   pbuf => host%pbuf
-   call rad_cnst_get_mam_mmr_by_idx(list_idx, mode_idx, spec_idx, phase, host%state, pbuf, mmr)
+   call rad_cnst_get_mam_mmr_by_idx(list_idx, mode_idx, spec_idx, phase, host%state, host%pbuf, mmr)
 
 end subroutine rad_cnst_get_mam_mmr_by_idx_host
 
@@ -539,10 +533,7 @@ subroutine rad_cnst_get_bin_mmr_by_idx_host(list_idx, bin_idx, spec_idx, phase, 
    type(aero_host_binding_t), intent(in) :: host
    real(r8),                  pointer    :: mmr(:,:)
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   pbuf => host%pbuf
-   call rad_cnst_get_bin_mmr_by_idx_cam(list_idx, bin_idx, spec_idx, phase, host%state, pbuf, mmr)
+   call rad_cnst_get_bin_mmr_by_idx_cam(list_idx, bin_idx, spec_idx, phase, host%state, host%pbuf, mmr)
 
 end subroutine rad_cnst_get_bin_mmr_by_idx_host
 
@@ -794,10 +785,7 @@ subroutine rad_cnst_get_mode_num_host(list_idx, mode_idx, phase, host, num)
    type(aero_host_binding_t), intent(in) :: host
    real(r8),                  pointer    :: num(:,:)
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   pbuf => host%pbuf
-   call rad_cnst_get_mode_num_cam(list_idx, mode_idx, phase, host%state, pbuf, num)
+   call rad_cnst_get_mode_num_cam(list_idx, mode_idx, phase, host%state, host%pbuf, num)
 
 end subroutine rad_cnst_get_mode_num_host
 
@@ -881,10 +869,7 @@ subroutine rad_cnst_get_bin_num_host(list_idx, bin_idx, phase, host, num)
    type(aero_host_binding_t), intent(in) :: host
    real(r8),                  pointer    :: num(:,:)
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
-
-   pbuf => host%pbuf
-   call rad_cnst_get_bin_num_cam(list_idx, bin_idx, phase, host%state, pbuf, num)
+   call rad_cnst_get_bin_num_cam(list_idx, bin_idx, phase, host%state, host%pbuf, num)
 
 end subroutine rad_cnst_get_bin_num_host
 

@@ -187,7 +187,7 @@ module radiative_aerosol_definitions
 !! \htmlinclude aerlist_t.html
   type, public :: aerlist_t
      integer                  :: numaerosols = 0  ! number of aerosols
-     character(len=2)         :: list_id      ! set to "  " for climate list, or two character integer
+     character(len=2)         :: list_id = '  '  ! set to "  " for climate list, or two character integer
                                               ! (include leading zero) to identify diagnostic list
      type(aerosol_t), pointer :: aer(:) => null()  ! dimension(numaerosols)
   end type aerlist_t
