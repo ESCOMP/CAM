@@ -166,8 +166,8 @@ subroutine co2_register
 
    local_co2 = .false.
    do i = 1, ncnst
-      call cnst_get_ind(c_names(icnst), c_i(icnst), abort=.false.)
-      if (c_i(icnst) < 0) then
+      call cnst_get_ind(c_names(i), c_i(i), abort=.false.)
+      if (c_i(i) < 0) then
          call cnst_add(c_names(i), c_mw(i), c_cp(i), c_qmin(i), c_i(i), longname=c_names(i), mixtype='dry')
          if (trim(c_names(i)) == 'CO2') then
             local_co2 = .true.
