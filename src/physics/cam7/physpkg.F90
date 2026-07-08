@@ -1404,7 +1404,6 @@ contains
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_timestep_init, check_energy_cam_chng
     use check_energy,       only: tot_energy_phys
-    use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
@@ -1465,9 +1464,6 @@ contains
     type(physics_tend ), intent(inout) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
 
-
-    type(check_tracers_data):: tracerint      ! tracer mass integrals and cummulative boundary fluxes
-
     !
     !---------------------------Local workspace-----------------------------
     !
@@ -1505,7 +1501,6 @@ contains
     real(r8) :: flx_cnd(pcols)
 
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: dlfzm(:,:)            ! ZM detrained convective cloud water mixing ratio.
     real(r8), pointer :: cmfmczm(:,:)          ! ZM convective mass fluxes
@@ -1685,9 +1680,7 @@ contains
     ! get nstep and zero array for energy checker
     zero = 0._r8
     zero_sc(:) = 0._r8
-    zero_tracers(:,:) = 0._r8
     nstep = get_nstep()
-    call check_tracers_init(state, tracerint)
 
     ! Check if latent heat flux exceeds the total moisture content of the
     ! lowest model layer, thereby creating negative moisture.
@@ -2051,9 +2044,6 @@ contains
        call physics_update(state, ptend, ztodt, tend)
        call t_stopf ('convect_deep_tend2')
 
-       ! check tracer integrals
-       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
-
        call t_stopf('aerosol_wet_processes')
 
    endif
@@ -2137,8 +2127,6 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
-         cam_in%cflx)
 
     if (trim(cam_take_snapshot_before) == "co2_cycle_set_ptend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2186,8 +2174,6 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
        end if
        call check_energy_cam_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
-       call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &
-            cam_in%cflx)
     end if
     call t_stopf('adv_tracer_src_snk')
 
@@ -2302,8 +2288,6 @@ contains
       call check_energy_cam_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
            zero, cam_in%shf)
     endif
-
-    call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
 
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
@@ -2658,7 +2642,6 @@ contains
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
     use check_energy,    only: check_energy_cam_chng, check_energy_cam_fix
-    use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
@@ -2762,8 +2745,6 @@ contains
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: flx_cnd(pcols)
     real(r8) :: flx_heat(pcols)
-    type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
@@ -2783,7 +2764,6 @@ contains
     call t_startf('bc_init')
 
     zero = 0._r8
-    zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
 
     lchnk = state%lchnk
@@ -2840,9 +2820,6 @@ contains
     ! Dump out "before physics" state
     !
     call diag_state_b4_phys_write (state)
-
-    ! compute mass integrals of input tracers state
-    call check_tracers_init(state, tracerint)
 
     call t_stopf('bc_init')
 

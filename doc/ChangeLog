@@ -1,5 +1,29 @@
 ===============================================================
 
+Tag name: cam6_4_186
+Originator(s): pel
+Date: 8 Jul 2026
+One-line Summary: Remove defunct tracer mass-conservation check
+Github PR URL: https://github.com/ESCOMP/CAM/pull/???
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Remove check_tracers_init/check_tracers_chng and the check_tracers_data type
+ (https://github.com/ESCOMP/CAM/issues/1592: check_energy tracer mass-conservation
+ check never runs: 'exit' instead of 'cycle').  The check has been a no-op since
+ CAM6, and its design is not valid: individual chemical species are not conserved
+ under reactions (only the column sum is).
+
+List all existing files that have been modified, and describe the changes:
+
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/simple/physpkg.F90
+ - remove defunct tracer mass-conservation check and its data structure
+
+===============================================================
+
 Tag name: cam6_4_185
 Originator(s): fvitt
 Date: 29 Jun 2026
