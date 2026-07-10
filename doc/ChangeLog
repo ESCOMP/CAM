@@ -1,5 +1,65 @@
 ===============================================================
 
+Tag name: cam6_4_186
+Originator(s): gold2718, nusbaume
+Date: 10 July 2026
+One-line Summary: Do not create two CO2 tracers
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1581
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ - Only create one total CO2 tracer when a CO2 chemistry is running and co2_cycle is on
+ - When sharing total CO2 between co2_cycle and chemistry, do not create duplicate CO2 diagnostic fields
+ - The co2_cycle code will use the chemistry CO2 tracer (if it exists) as it's total CO2 quantity.
+   The other tracers (for land, ocean and fossil fuel) are still locally created.
+
+Addresses Github issue #1580
+
+Describe any changes made to build system:
+
+M       bld/configure
+ - Properly set the number of advected constituents when the CO2 cycle
+   is enabled and the chemistry package has a CO2 constituent.
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: fvitt, nusbaume
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       src/physics/cam/co2_cycle.F90
+ - Prevent the creation of a duplicate CO2 tracer when the CO2 cycle is enabled,
+   but a different process (e.g. chemistry) has already added a CO2 constituent.
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: ALL PASS
+
+derecho/nvhpc/aux_cam: ALL PASS
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: ALL PASS
+
+Summarize any changes to answers: bit-for-bit unchanged
+
+===============================================================
+
+===============================================================
+
 Tag name: cam6_4_185
 Originator(s): fvitt
 Date: 29 Jun 2026
