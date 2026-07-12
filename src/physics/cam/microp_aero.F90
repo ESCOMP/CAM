@@ -183,6 +183,9 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    character(len=*), parameter :: routine = 'microp_aero_init'
    logical :: history_amwg
 
+   character(len=512) :: errmsg
+   integer            :: errflg
+
    class(aerosol_properties), pointer :: aero_props_bulk => null()
 
    !-----------------------------------------------------------------------
@@ -321,7 +324,10 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
       call ndrop_bam_init(masterproc, iulog, &
            mwh2o=mwh2o, r_universal=r_universal, tmelt=tmelt, rhoh2o=rhoh2o, &
-           naer_all_out=naer_all)
+           naer_all_out=naer_all, errmsg=errmsg, errflg=errflg)
+      if (errflg /= 0) then
+         call endrun(routine//': ndrop_bam_init: '//trim(errmsg))
+      end if
 
       ! Set module-level props object for BAM (used by nucleate_ice_cam)
       aero_props_obj => aero_props_bulk
@@ -537,6 +543,8 @@ subroutine microp_aero_run ( &
    real(r8), allocatable :: ccn_bam(:,:,:)    ! CCN at 6 supersaturations (#/cm3)
    real(r8), allocatable :: naer2_bam(:,:,:)  ! aerosol number conc for diagnostics
 
+   real(r8) :: wp2_full(pcols,pverp) ! CLUBB wp2 expanded onto the full interface grid (m2/s2)
+
    real(r8) :: wsub(pcols,pver)    ! diagnosed sub-grid vertical velocity st. dev. (m/s)
    real(r8) :: wsubi(pcols,pver)   ! diagnosed sub-grid vertical velocity ice (m/s)
 
@@ -642,12 +650,19 @@ subroutine microp_aero_run ( &
    case ('CLUBB_SGS')
       itim_old = pbuf_old_tim_idx()
       call pbuf_get_field(pbuf, wp2_idx, wp2)
+
+      ! The WP2_nadv pbuf field is dimensioned on the CLUBB momentum subgrid
+      ! (nzm_clubb = pverp + 1 - top_lev), whose index 1 is CAM interface top_lev.
+      ! The scheme expects wp2 on the full interface grid, so expand it here.
+      wp2_full(:ncol, :top_lev-1)    = 0._r8
+      wp2_full(:ncol, top_lev:pverp) = wp2(:ncol, 1:pverp-top_lev+1)
+
       call compute_subgrid_vertical_velocity_clubb_run( &
            ncol    = ncol,    &
            pver    = pver,    &
            pverp   = pverp,   &
            top_lev = top_lev, &
-           wp2     = wp2(:ncol,:), &
+           wp2     = wp2_full(:ncol,:), &
            wsub    = wsub(:ncol,:pver), &
            errmsg  = errmsg,  &
            errflg  = errflg)
