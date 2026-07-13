@@ -86,7 +86,7 @@ type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(pcnst+35)   ! needs to be bigger than pcnst because cam_in%cflx is split by constituent and cam_in%dstflx by bin.
 type (snapshot_type)    ::  cam_out_snapshot(30)
-type (snapshot_type_nd) ::  pbuf_snapshot(300+pcnst)   ! needs headroom beyond the named pbuf fields because FRACIS is split by constituent.
+type (snapshot_type_nd) ::  pbuf_snapshot(npbuf_all+pcnst)   ! needs headroom beyond the named pbuf fields because FRACIS is split by constituent.
 
 contains
 
@@ -1311,7 +1311,7 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
               call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
            case (3)
-              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr4d)
               call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
 
            case (4)
