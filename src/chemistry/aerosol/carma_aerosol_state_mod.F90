@@ -712,7 +712,7 @@ contains
     sad = 0._r8
     reff = 0._r8
     sad_bins = 0._r8
-    dm_aer = 0._r8
+    if (present(dm_aer)) dm_aer = 0._r8
 
     !
     ! Compute surface aero for each bin.
