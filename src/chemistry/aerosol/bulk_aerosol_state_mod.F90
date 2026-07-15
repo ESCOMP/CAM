@@ -440,7 +440,8 @@ contains
   !------------------------------------------------------------------------
   ! aerosol surface area density
   !------------------------------------------------------------------------
-  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, relhum, pmid, temp, sad, reff, sfc, dm_aer)
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+       relhum, pmid, temp, sad, reff, sfc, dm_aer)
     use mo_constants, only : pi, avo => avogadro
     use aerosol_spec_utils, only : spec_type_in_list
 
@@ -449,14 +450,16 @@ contains
     character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
     integer,  intent(in)  :: ncol      ! number of columns
     integer,  intent(in)  :: nlev      ! number of levels
+    integer,  intent(in)  :: beglev(:)
+    integer,  intent(in)  :: endlev(:)
     real(r8), intent(in)  :: relhum(:,:)
     real(r8), intent(in)  :: pmid(:,:)
     real(r8), intent(in)  :: temp(:,:)
 
     real(r8), intent(out) :: sad(:,:)
     real(r8), intent(out) :: reff(:,:)
-    real(r8), intent(out) :: sfc(:,:,:)
-    real(r8), intent(out) :: dm_aer(:,:,:)
+    real(r8), optional, intent(out) :: sfc(:,:,:)
+    real(r8), optional, intent(out) :: dm_aer(:,:,:)
 
     integer  :: i,k
     integer  :: irh, rh_l, rh_u
@@ -464,7 +467,7 @@ contains
     real(r8) :: factor, rfac_sulf, rfac_oc, rfac_bc, rfac_ss
     real(r8) :: dm_sulf_wet
     real(r8) :: dm_orgc_wet
-    real(r8) :: dm_bc_wet !, sfc_b
+    real(r8) :: dm_bc_wet
     real(r8) :: num, vol
     real(r8) :: s_exp
 

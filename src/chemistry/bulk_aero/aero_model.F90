@@ -741,21 +741,23 @@ contains
 
     ! local vars
     integer :: i,k, lchnk, ncol
-
-    real(r8) :: reff_tmp(state%ncol,pver)
+    integer :: beglev(pcols)
+    integer :: endlev(pcols)
 
     class(aerosol_state), pointer :: aero_state
 
     sad_ssa = -huge(1._r8)
-    reff_trop(:,:) = 0._r8
 
     lchnk = state%lchnk
     ncol = state%ncol
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 
-    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
-            sad_total, reff_tmp, sfc, dm_aer)
+    beglev(:ncol)=ltrop(:ncol)+1
+    endlev(:ncol)=pver
+
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
+         relhum, pmid, temp, sad_total, reff_trop, sfc, dm_aer)
 
   end subroutine aero_model_surfarea
 

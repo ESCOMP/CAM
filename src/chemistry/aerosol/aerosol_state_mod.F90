@@ -300,7 +300,8 @@ module aerosol_state_mod
      !------------------------------------------------------------------------
      ! aerosol surface area density
      !------------------------------------------------------------------------
-     subroutine aero_surf_area_dens(self, aero_props, types_list, ncol, nlev, relhum, pmid, temp, sad, reff, sfc, dm_aer)
+     subroutine aero_surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+                                    relhum, pmid, temp, sad, reff, sfc, dm_aer)
        import :: aerosol_state, aerosol_properties, r8
 
        class(aerosol_state), intent(in) :: self
@@ -308,14 +309,16 @@ module aerosol_state_mod
        character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
        integer,  intent(in)  :: ncol      ! number of columns
        integer,  intent(in)  :: nlev      ! number of levels
+       integer,  intent(in)  :: beglev(:)
+       integer,  intent(in)  :: endlev(:)
        real(r8), intent(in)  :: relhum(:,:)
        real(r8), intent(in)  :: pmid(:,:)
        real(r8), intent(in)  :: temp(:,:)
 
        real(r8), intent(out) :: sad(:,:)
        real(r8), intent(out) :: reff(:,:)
-       real(r8), intent(out) :: sfc(:,:,:)
-       real(r8), intent(out) :: dm_aer(:,:,:)
+       real(r8), optional, intent(out) :: sfc(:,:,:)
+       real(r8), optional, intent(out) :: dm_aer(:,:,:)
 
      end subroutine aero_surf_area_dens
 

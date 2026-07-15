@@ -440,35 +440,22 @@ contains
     real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
+    integer :: beglev(pcols)
+    integer :: endlev(pcols)
+
     integer :: i,k, lchnk, ncol
 
-    real(r8) :: sfc_tmp(state%ncol,pver,nbins)
-    real(r8) :: dm_tmp(state%ncol,pver,nbins)
-    real(r8) :: sad_tmp(state%ncol,pver)
-    real(r8) :: reff_tmp(state%ncol,pver)
     class(aerosol_state), pointer :: aero_state
 
-    sad_trop = 0._r8
-    reff_trop = 0._r8
-    sfc = 0._r8
-    dm_aer = 0._r8
     sad_ssa = -huge(1._r8)
 
     lchnk = state%lchnk
     ncol = state%ncol
-
+    beglev(:ncol)=ltrop(:ncol)+1
+    endlev(:ncol)=pver
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
-    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
-            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
-
-    do i = 1,ncol
-       do k = ltrop(i)+1,pver
-          sfc(i,k,:) = sfc_tmp(i,k,:)
-          dm_aer(i,k,:) = dm_tmp(i,k,:)
-          sad_trop(i,k) = sad_tmp(i,k)
-          reff_trop(i,k) = reff_tmp(i,k)
-       enddo
-    enddo
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
+         relhum, pmid, temp, sad_trop, reff_trop, sfc, dm_aer )
 
   end subroutine aero_model_surfarea
 
@@ -491,31 +478,23 @@ contains
     ! local vars
     integer :: i,k, lchnk, ncol
 
-    real(r8) :: sfc_tmp(state%ncol,pver,nbins)
-    real(r8) :: dm_tmp(state%ncol,pver,nbins)
-    real(r8) :: sad_tmp(state%ncol,pver)
-    real(r8) :: reff_tmp(state%ncol,pver)
-    real(r8) :: relhum(state%ncol,pver)
+    real(r8) :: sfc_tmp(pcols,pver,nbins)
+    real(r8) :: dm_tmp(pcols,pver,nbins)
+    real(r8) :: relhum(pcols,pver)
 
     class(aerosol_state), pointer :: aero_state
 
-    reff_strat = 0._r8
-    strato_sad = 0._r8
-    relhum = -huge(1._r8)
+    integer :: beglev(pcols)
+    integer :: endlev(pcols)
 
     lchnk = state%lchnk
     ncol = state%ncol
+    beglev(:ncol) = clim_modal_aero_top_lev
+    endlev(:ncol) = ltrop(:ncol)
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
-    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, relhum, pmid, temp, &
-            sad_tmp, reff_tmp, sfc_tmp, dm_tmp)
-
-    do i = 1,ncol
-       do k = clim_modal_aero_top_lev, ltrop(i)
-          strato_sad(i,k) = sad_tmp(i,k)
-          reff_strat(i,k) = reff_tmp(i,k)
-       enddo
-    enddo
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
+         relhum, pmid, temp, strato_sad, reff_strat)
 
   end subroutine aero_model_strat_surfarea
 

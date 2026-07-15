@@ -668,7 +668,8 @@ contains
   !------------------------------------------------------------------------
   ! aerosol surface area density
   !------------------------------------------------------------------------
-  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, relhum, pmid, temp, sad, reff, sfc, dm_aer)
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+       relhum, pmid, temp, sad, reff, sfc, dm_aer)
     use aerosol_spec_utils, only : spec_type_in_list
 
     class(carma_aerosol_state), intent(in) :: self
@@ -676,19 +677,21 @@ contains
     character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
     integer,  intent(in)  :: ncol      ! number of columns
     integer,  intent(in)  :: nlev      ! number of levels
+    integer,  intent(in)  :: beglev(:)
+    integer,  intent(in)  :: endlev(:)
     real(r8), intent(in)  :: relhum(:,:)
     real(r8), intent(in)  :: pmid(:,:)
     real(r8), intent(in)  :: temp(:,:)
 
     real(r8), intent(out) :: sad(:,:)
     real(r8), intent(out) :: reff(:,:)
-    real(r8), intent(out) :: sfc(:,:,:)
-    real(r8), intent(out) :: dm_aer(:,:,:)
+    real(r8), intent(out), optional :: sfc(:,:,:)
+    real(r8), intent(out), optional :: dm_aer(:,:,:)
 
     ! local vars
     real(r8) :: reffaer(pcols,pver) ! bulk effective radius in cm
 
-    integer  :: icol, ilev, ibin, ispec !!, reff_pbf_ndx
+    integer  :: icol, ilev, ibin, ispec, ierr
     real(r8) :: chm_mass, tot_mass
     character(len=32) :: spectype
     real(r8) :: wetr(pcols,pver)      ! CARMA bin wet radius in cm
@@ -699,9 +702,16 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, indxbin, rc, nchr
 
+    real(r8), allocatable :: sad_bins(:,:,:)
+
+    allocate(sad_bins(ncol,nlev,aero_props%nbins()), stat=ierr)
+    if (ierr/=0) then
+       call endrun('carma_aerosol_state::surf_area_dens: not able to allocate sad_bins')
+    end if
+
     sad = 0._r8
     reff = 0._r8
-    sfc = 0._r8
+    sad_bins = 0._r8
     dm_aer = 0._r8
 
     !
@@ -725,12 +735,12 @@ contains
       wetr(:ncol,:) = wetr(:ncol,:) * 1.e2_r8 ! cm
       call carma_get_sad(self%state, igroup, indxbin, sad_carma, rc)
 
-      dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
-      sfc(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
+      if (present(dm_aer)) dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
+      sad_bins(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
     end do
 
     do icol = 1, ncol
-      do ilev = 1, nlev
+      do ilev = beglev(icol),endlev(icol)
         do ibin = 1, aero_props%nbins() ! loop over aerosol bins
           !
           ! compute a mass weighting of the number
@@ -751,16 +761,22 @@ contains
           end do
           if ( tot_mass > 0._r8 ) then
          ! surface area density
-            sfc(icol,ilev,ibin) = chm_mass  / tot_mass * sfc(icol,ilev,ibin) ! cm^2/cm^3
+            sad_bins(icol,ilev,ibin) = chm_mass  / tot_mass * sad_bins(icol,ilev,ibin) ! cm^2/cm^3
           else
-            sfc(icol,ilev,ibin) = 0._r8
+            sad_bins(icol,ilev,ibin) = 0._r8
           end if
         end do
-        sad(icol,ilev) = sum(sfc(icol,ilev,:))
+        sad(icol,ilev) = sum(sad_bins(icol,ilev,:))
         reff(icol,ilev) = reffaer(icol,ilev)
 
        end do
     end do
+
+    if (present(sfc)) then
+       sfc(:ncol,:,:) = sad_bins(:ncol,:,:)
+    end if
+
+    deallocate(sad_bins)
 
   end subroutine surf_area_dens
 

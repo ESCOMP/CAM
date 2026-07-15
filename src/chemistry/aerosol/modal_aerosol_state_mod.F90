@@ -806,7 +806,8 @@ contains
   !------------------------------------------------------------------------
   ! aerosol surface area density
   !------------------------------------------------------------------------
-  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, relhum, pmid, temp, sad, reff, sfc, dm_aer)
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+       relhum, pmid, temp, sad, reff, sfc, dm_aer)
     use mo_constants, only : pi
     use aerosol_spec_utils, only : spec_type_in_list
 
@@ -815,14 +816,16 @@ contains
     character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
     integer,  intent(in)  :: ncol      ! number of columns
     integer,  intent(in)  :: nlev      ! number of levels
+    integer,  intent(in)  :: beglev(:)
+    integer,  intent(in)  :: endlev(:)
     real(r8), intent(in)  :: relhum(:,:)
     real(r8), intent(in)  :: pmid(:,:)
     real(r8), intent(in)  :: temp(:,:)
 
     real(r8), intent(out) :: sad(:,:)
     real(r8), intent(out) :: reff(:,:)
-    real(r8), intent(out) :: sfc(:,:,:)
-    real(r8), intent(out) :: dm_aer(:,:,:)
+    real(r8), optional, intent(out) :: sfc(:,:,:)
+    real(r8), optional, intent(out) :: dm_aer(:,:,:)
 
 
     ! local vars
@@ -867,7 +870,7 @@ contains
     reff = 0._r8
 
     do i = 1,ncol
-       do k = 1, nlev
+       do k = beglev(i), endlev(i)
           rho_air = pmid(i,k)/(temp(i,k)*287.04_r8)
           do l=1,aero_props%nbins()
              !
@@ -922,8 +925,8 @@ contains
        enddo
     enddo
 
-    sfc(:ncol,:,:) = sad_mode(:ncol,:,:)
-    dm_aer(:ncol,:,:) = diam(:ncol,:,:) * 1.e2_r8 ! convert m to cm
+    if (present(sfc)) sfc(:ncol,:,:) = sad_mode(:ncol,:,:)
+    if (present(dm_aer)) dm_aer(:ncol,:,:) = diam(:ncol,:,:) * 1.e2_r8 ! convert m to cm
 
     deallocate(sad_mode)
     deallocate(vol_mode)
