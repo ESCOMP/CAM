@@ -1062,14 +1062,13 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              471                         -->
-  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s" supported="false">
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq9s_tuvx_waccm_ma_mam5" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
     <options>
-      <option name="comment" >471 tsm, ter</option>
+      <option name="comment" >TUVx in WACCM</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
