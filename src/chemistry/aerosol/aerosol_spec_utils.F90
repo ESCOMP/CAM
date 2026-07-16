@@ -1,3 +1,4 @@
+! Utility module for aerosol species types
 module aerosol_spec_utils
 
   implicit none
@@ -6,6 +7,7 @@ module aerosol_spec_utils
 
 contains
 
+  ! returns TRUE if species type is found in type_list
   logical function spec_type_in_list(spec_type, type_list)
     character(len=*), intent(in) :: spec_type
     character(len=*), intent(in) :: type_list(:)
