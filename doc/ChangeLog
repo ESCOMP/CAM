@@ -1,3 +1,60 @@
+
+===============================================================
+
+Tag name: cam6_4_187
+Originator(s): billsacks, cacraigucar
+Date: July 16, 2026
+One-line Summary: Change specification for CO2 concentration-driven compsets
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1584
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Begin using CESM2 _BGC%BDRD or _BGC%BPRP instead of C or E at end of time period in CESM longname specifiers
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraigucar, fvitt
+
+List all files eliminated:
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/config_component.xml
+M       cime_config/config_compsets.xml
+M       cime_config/testdefs/testlist_cam.xml
+          - Remove "C" from right after the time period in the CESM long name compset
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+     - Namelist setting for calendar changed from NO_LEAP to GREGORIAN.  fvitt indicated GREGORIAN is the correct setting
+     - In one test this changed answers
+
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+    - Automated testing did not run due to the compset name change
+    - Validated the results by comparing the atm_in file with the baseline one and it was ok
+    - Validated a few of the cam history files by hand and they were all BFB
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+    - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_186
