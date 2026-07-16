@@ -14,7 +14,7 @@
     Where for the CAM specific compsets below the following is supported
     TIME = Time period (e.g. 2000, HIST, RCP8...)
     ATM  = [CAM40, CAM50, CAM60, CAM70]
-    LND  = [CLM45, CLM50, CLM60, SLND]
+    LND  = [CLM50, CLM60, SLND]
     ICE  = [CICE, DICE, SICE]
     OCN  = [DOCN, ,AQUAP, SOCN]
     ROF  = [RTM, SROF]
@@ -525,7 +525,7 @@
 
   <compset>
     <alias>FMOZ</alias>
-    <lname>2000_CAM40%TMOZ_CLM45%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+    <lname>2000_CAM40%TMOZ_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
   <compset>
