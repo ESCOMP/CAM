@@ -395,7 +395,7 @@ module ug_spectralmethods_mod
 
   type ZonalAverage_t
      private
-     logical             :: LINEARWGTS = .true.
+     logical             :: LINEARWGTS = .false.      ! DEFAULT: Should be .true. ?
      integer             :: nlat
      real(r8),allocatable:: area   (:)
      real(r8),allocatable:: a_norm (:)
@@ -2623,8 +2623,7 @@ contains
       if(present(GEN_GAUSSLATS)) then
         generate_lats = GEN_GAUSSLATS
       endif
-
-      this%LINEARWGTS = .true.
+      this%LINEARWGTS = .false.                      ! DEFAULT: Should be .true. ?
       if(present(USE_LINEARWGTS)) then
         this%LINEARWGTS = USE_LINEARWGTS
       endif
@@ -2740,6 +2739,35 @@ contains
             endif
           end do
         end do
+
+        ! Compute normalization for weighted sums
+        !-----------------------------------------
+        Asum(:,:) = 0._r8
+        Anorm(:)  = 0._r8
+        count = 0
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            jlat = this%idx_map(cc,lchnk)
+            count=count+1
+            if(this%idx_wgt(cc,lchnk) < -1._r8) then
+              ! South Pole point
+              !------------------
+              Asum(count,jlat) = Asum(count,jlat) + this%area_g(cc,lchnk)
+            elseif(this%idx_wgt(cc,lchnk) > 1._r8) then
+              ! North Pole point
+              !------------------
+              Asum(count,jlat+1) = Asum(count,jlat+1) + this%area_g(cc,lchnk)
+            else
+              ! Distribute area weight to bins
+              !--------------------------------
+              Asum(count,jlat  ) = Asum(count,jlat  ) + this%area_g(cc,lchnk)*       this%idx_wgt(cc,lchnk)
+              Asum(count,jlat+1) = Asum(count,jlat+1) + this%area_g(cc,lchnk)*(1._r8-this%idx_wgt(cc,lchnk))
+            endif
+          end do
+        end do
+        call shr_reprosum_calc(Asum, Anorm, count, nlcols, I_nlat, gbl_count=ngcols_p, commid=mpicom)
+  
       else
         ! Each Gridpoint value is assigned to its Latitude bin
         ! with equal weighting.
@@ -2774,10 +2802,10 @@ contains
           end do
         end do
   
-        ! Initialize 2D Area sums for each bin
+        ! Compute normalization for weighted sums
         !--------------------------------------
         Asum(:,:) = 0._r8
-        Anorm(:) = 0._r8
+        Anorm(:)  = 0._r8
         count = 0
         do lchnk=begchunk,endchunk
           ncols = get_ncols_p(lchnk)
@@ -2787,20 +2815,22 @@ contains
             Asum(count,jlat) = this%area_g(cc,lchnk)
           end do
         end do
-  
         call shr_reprosum_calc(Asum, Anorm, count, nlcols, I_nlat, gbl_count=ngcols_p, commid=mpicom)
   
-        this%a_norm = Anorm
-  
-        if(.not.all(Anorm(:)>0._r8)) then
-           write(iulog,*) 'init_ZonalAverage -- ERROR in Anorm values: '
-           do jlat = 1,I_nlat
-              if (.not.Anorm(jlat)>0._r8) then
-                 write(iulog,*) ' Anorm(',jlat,'): ', Anorm(jlat)
-              endif
-           end do
-           call endrun('init_ZonalAverage -- ERROR in Anorm values')
-        endif
+      endif
+
+      ! Save normalization vallues for future 
+      ! weghted-average calculations
+      !-----------------------------------------
+      this%a_norm = Anorm
+      if(.not.all(Anorm(:)>0._r8)) then
+         write(iulog,*) 'init_ZonalAverage -- ERROR in Anorm values: '
+         do jlat = 1,I_nlat
+            if (.not.Anorm(jlat)>0._r8) then
+               write(iulog,*) ' Anorm(',jlat,'): ', Anorm(jlat)
+            endif
+         end do
+         call endrun('init_ZonalAverage -- ERROR in Anorm values')
       endif
 
       ! End Routine
@@ -2850,28 +2880,62 @@ contains
 
       nlcols = get_nlcols_p()
 
-
       ! Initialize Zonal profile
       !---------------------------
       allocate(Asum(nlcols,this%nlat), stat=astat)
       call handle_allocate_error(astat, subname, 'Asum')
-      Asum(:,:) = 0._r8
 
+      Asum   (:,:)         = 0._r8
       O_Zdata(1:this%nlat) = 0._r8
 
       ! Compute area-weighted sums
       !-----------------------------
-      count = 0
-      do lchnk=begchunk,endchunk
-        ncols = get_ncols_p(lchnk)
-        do cc = 1,ncols
-          jlat = this%idx_map(cc,lchnk)
-          count=count+1
-          Asum(count,jlat) = I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)
+      if(this%LINEARWGTS) then
+        ! Each Gridpoint value is distributed with LINEAR weighting 
+        ! to the two neighboring Latitude bins
+        !------------------------------------------------------
+        count = 0
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            jlat = this%idx_map(cc,lchnk)
+            count=count+1
+            if(this%idx_wgt(cc,lchnk) < -1._r8) then
+              ! South Pole point
+              !------------------
+              Asum(count,jlat) = Asum(count,jlat) + I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)
+            elseif(this%idx_wgt(cc,lchnk) > 1._r8) then
+              ! North Pole point
+              !------------------
+              Asum(count,jlat+1) = Asum(count,jlat+1) + I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)
+            else
+              ! Distribute area weight to bins
+              !--------------------------------
+              Asum(count,jlat  ) = Asum(count,jlat  )                                                   &
+                                 + I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)*       this%idx_wgt(cc,lchnk)
+              Asum(count,jlat+1) = Asum(count,jlat+1)                                                   &
+                                 + I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)*(1._r8-this%idx_wgt(cc,lchnk))
+            endif
+          end do
         end do
-      end do
+        call shr_reprosum_calc(Asum,O_Zdata,count, nlcols, this%nlat,gbl_count=ngcols_p, commid=mpicom)
 
-      call shr_reprosum_calc(Asum,O_Zdata,count, nlcols, this%nlat,gbl_count=ngcols_p, commid=mpicom)
+      else
+        ! Each Gridpoint value is assigned to its Latitude bin
+        ! with equal weighting.
+        !------------------------------------------------------
+        count = 0
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            jlat = this%idx_map(cc,lchnk)
+            count=count+1
+            Asum(count,jlat) = I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)
+          end do
+        end do
+        call shr_reprosum_calc(Asum,O_Zdata,count, nlcols, this%nlat,gbl_count=ngcols_p, commid=mpicom)
+
+      endif
 
       ! Divide by area norm to get the averages
       !-----------------------------------------
@@ -2919,26 +2983,64 @@ contains
       call handle_allocate_error(astat, subname, 'Gsum')
       allocate(Asum(nlcols,Nsum), stat=astat)
       call handle_allocate_error(astat, subname, 'Asum')
-      Asum(:,:) = 0._r8
 
+      Asum   (:,:)                = 0._r8
       O_Zdata(1:this%nlat,1:nlev) = 0._r8
 
       ! Compute area-weighted sums
       !-----------------------------
-      do ilev = 1,nlev
-         count = 0
-         do lchnk=begchunk,endchunk
+      if(this%LINEARWGTS) then
+        ! Each Gridpoint value is distributed with LINEAR weighting 
+        ! to the two neighboring Latitude bins
+        !------------------------------------------------------
+        do ilev = 1,nlev
+          count = 0
+          do lchnk=begchunk,endchunk
             ncols = get_ncols_p(lchnk)
             do cc = 1,ncols
-               jlat = this%idx_map(cc,lchnk)
-               ns = jlat + (ilev-1)*this%nlat
-               count=count+1
-               Asum(count,ns) = I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)
+              jlat = this%idx_map(cc,lchnk)
+              ns = jlat + (ilev-1)*this%nlat
+              count=count+1
+              if(this%idx_wgt(cc,lchnk) < -1._r8) then
+                ! South Pole point
+                !------------------
+                Asum(count,ns) = Asum(count,ns) + I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)
+              elseif(this%idx_wgt(cc,lchnk) > 1._r8) then
+                ! North Pole point
+                !------------------
+                Asum(count,ns+1) = Asum(count,ns+1) + I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)
+              else
+                ! Distribute area weight to bins
+                !--------------------------------
+                Asum(count,ns  ) = Asum(count,ns  )                                                          &
+                                 + I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)*       this%idx_wgt(cc,lchnk)
+                Asum(count,ns+1) = Asum(count,ns+1)                                                          &
+                                 + I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)*(1._r8-this%idx_wgt(cc,lchnk))
+              endif
             end do
-         end do
-      end do
+          end do
+        end do
+        call shr_reprosum_calc(Asum,Gsum, count, nlcols, Nsum, gbl_count=ngcols_p, commid=mpicom)
 
-      call shr_reprosum_calc(Asum,Gsum, count, nlcols, Nsum, gbl_count=ngcols_p, commid=mpicom)
+      else
+        ! Each Gridpoint value is assigned to its Latitude bin
+        ! with equal weighting.
+        !------------------------------------------------------
+        do ilev = 1,nlev
+           count = 0
+           do lchnk=begchunk,endchunk
+              ncols = get_ncols_p(lchnk)
+              do cc = 1,ncols
+                 jlat = this%idx_map(cc,lchnk)
+                 ns = jlat + (ilev-1)*this%nlat
+                 count=count+1
+                 Asum(count,ns) = I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)
+              end do
+           end do
+        end do
+        call shr_reprosum_calc(Asum,Gsum, count, nlcols, Nsum, gbl_count=ngcols_p, commid=mpicom)
+
+      endif
 
       ! Divide by area norm to get the averages
       !-----------------------------------------
