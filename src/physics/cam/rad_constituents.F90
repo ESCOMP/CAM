@@ -312,7 +312,7 @@ end subroutine gas_list_populate
 
 subroutine gas_list_resolve_cnst_idx(gaslist)
    ! CAM index lookup (non-portable):
-   use aerosol_mmr_cam, only: get_cam_idx
+   use aerosol_mmr_host, only: get_host_idx
 
    ! Resolve constituent indices for gas list entries.
    ! Must run at init time (after constituent registration).
@@ -326,7 +326,7 @@ subroutine gas_list_resolve_cnst_idx(gaslist)
    !-----------------------------------------------------------------------------
 
    do i = 1, gaslist%ngas
-      gaslist%gas(i)%idx = get_cam_idx(gaslist%gas(i)%source, gaslist%gas(i)%camname, routine)
+      gaslist%gas(i)%idx = get_host_idx(gaslist%gas(i)%source, gaslist%gas(i)%camname, routine)
    end do
 
 end subroutine gas_list_resolve_cnst_idx
@@ -429,7 +429,7 @@ subroutine rad_cnst_out(list_idx, state, pbuf)
 
    ! Output the mass per layer, and total column burdens for gas
    ! constituents in either the climate or diagnostic lists.
-   ! Aerosol output is now handled by rad_aer_diag_out in aerosol_mmr_cam.
+   ! Aerosol output is now handled by rad_aer_diag_out in aerosol_mmr_host.
 
    ! Arguments
    integer,                     intent(in) :: list_idx

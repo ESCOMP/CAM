@@ -2421,8 +2421,6 @@
 <micro_mg_autocon_lwp_exp microphys="mg2" >  2.47D0    </micro_mg_autocon_lwp_exp>
 <micro_mg_autocon_lwp_exp phys="cam7"     >  2.37D0    </micro_mg_autocon_lwp_exp>
 
-<microp_aero_bulk_scale                  >  2.D0    </microp_aero_bulk_scale>
-
 <microp_aero_npccn_scale                  >  1.D0    </microp_aero_npccn_scale>
 <microp_aero_npccn_scale microphys="mg2"  >  1.D0    </microp_aero_npccn_scale>
 
