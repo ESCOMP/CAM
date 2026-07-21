@@ -30,9 +30,14 @@ List all files added and what they do: N/A
 
 List all existing files that have been modified, and describe the changes:
 M       cime_config/config_compsets.xml
+ - use CLM50 in FMOZ compset
+
 M       cime_config/testdefs/testlist_cam.xml
+ - change QPWmaC6 NAG test to include TUVx photolysis
+
 M       doc/ChangeLog
 M       src/chemistry/mozart/mo_tuvx.F90
+ - scale cloud optical depth by cloud fraction
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
