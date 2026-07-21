@@ -2,12 +2,18 @@
 ! Wrapper for TUV-x photolysis rate constant calculator
 !----------------------------------------------------------------------
 module mo_tuvx
-
+   use shr_kind_mod, only : r8 => shr_kind_r8, cl=>shr_kind_cl
+   use spmd_utils, only : is_main_task => masterproc
+   use spmd_utils, only : main_task_id => masterprocid
+   use cam_abortutils, only : endrun
+   use cam_logfile, only : iulog ! log info output unit
+   use spmd_utils, only : mpicom, mpi_character, mpi_integer, mpi_logical, mpi_success
+   use ppgrid, only : pver, &  ! number of vertical layers
+                      pverp, & ! number of vertical interfaces (pver + 1)
+                      pcols    ! maximum number of columns
+#ifdef TUVX
    use musica_map,              only : map_t
    use musica_string,           only : string_t
-   use ppgrid,                  only : pver, & ! number of vertical layers
-                                       pverp   ! number of vertical interfaces (pver + 1)
-   use shr_kind_mod,            only : r8 => shr_kind_r8, cl=>shr_kind_cl
    use tuvx_core,               only : core_t
    use tuvx_grid_from_host,     only : grid_updater_t
    use tuvx_profile_from_host,  only : profile_updater_t
@@ -19,13 +25,8 @@ module mo_tuvx
    use ppgrid, only : pcols ! maximum number of columns
    use radconstants, only : get_sw_spectral_boundaries
    use cam_history, only : fieldname_len, horiz_only, addfld, outfld !, add_default
-   use spmd_utils, only : is_main_task => masterproc
-   use spmd_utils, only : main_task_id => masterprocid
-   use spmd_utils, only : mpicom, mpi_character, mpi_integer, mpi_logical, mpi_success
-   use cam_abortutils, only : endrun
-   use cam_logfile, only : iulog ! log info output unit
    use shr_const_mod, only : pi => shr_const_pi
-
+#endif
    implicit none
 
    private
@@ -38,6 +39,7 @@ module mo_tuvx
    public :: tuvx_finalize
    public :: tuvx_active
 
+#ifdef TUVX
    ! Inidices for grid updaters
    integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
    integer, parameter :: GRID_INDEX_HEIGHT     = 1 ! Height grid index
@@ -140,21 +142,21 @@ module mo_tuvx
       integer :: index_                      ! index of the photolysis rate constant from TUV-x
    end type diagnostic_t
    type(diagnostic_t), allocatable :: diagnostics(:)
-
+#endif
    ! namelist options
    character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
    logical, protected :: tuvx_active = .false.
-
-  integer :: swaertau_idx   = -1       ! shortwave aerosol extinction optical depth. tau
-  integer :: swaertauw_idx  = -1       ! shortwave aerosol extinction optical depth * single scattering albedo. tau*w
-  integer :: swaertauwg_idx = -1       ! shortwave aerosol extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
-  integer :: swcldtau_idx   = -1       ! shortwave cloud extinction optical depth. tau
-  integer :: swcldtauw_idx  = -1       ! shortwave cloud extinction optical depth * single scattering albedo. tau*w
-  integer :: swcldtauwg_idx = -1       ! shortwave cloud extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
-  type (interp_type) :: interp_wgts
-  real(r8) :: rrtmg_wavelength(nswbands-1)
-  integer :: nwave
-
+#ifdef TUVX
+   integer :: swaertau_idx   = -1       ! shortwave aerosol extinction optical depth. tau
+   integer :: swaertauw_idx  = -1       ! shortwave aerosol extinction optical depth * single scattering albedo. tau*w
+   integer :: swaertauwg_idx = -1       ! shortwave aerosol extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
+   integer :: swcldtau_idx   = -1       ! shortwave cloud extinction optical depth. tau
+   integer :: swcldtauw_idx  = -1       ! shortwave cloud extinction optical depth * single scattering albedo. tau*w
+   integer :: swcldtauwg_idx = -1       ! shortwave cloud extinction optical depth * single scattering albedo * asymmetry parameter. tau*w*g
+   type (interp_type) :: interp_wgts
+   real(r8) :: rrtmg_wavelength(nswbands-1)
+   integer :: nwave
+#endif
 !================================================================================================
 contains
 !================================================================================================
@@ -163,7 +165,7 @@ contains
    ! registers fields in the physics buffer
    !-----------------------------------------------------------------------
    subroutine tuvx_register( )
-
+#ifdef TUVX
       use mo_jeuv,        only : nIonRates
       use physics_buffer, only : pbuf_add_field, dtype_r8
       use ppgrid,         only : pcols ! maximum number of columns
@@ -190,7 +192,7 @@ contains
       call pbuf_add_field('SWCLDTAU',   'global',dtype_r8,(/pcols,pver,nswbands/), swcldtau_idx)   ! shortwave tau
       call pbuf_add_field('SWCLDTAUW',  'global',dtype_r8,(/pcols,pver,nswbands/), swcldtauw_idx)  ! shortwave tau * w
       call pbuf_add_field('SWCLDTAUWG', 'global',dtype_r8,(/pcols,pver,nswbands/), swcldtauwg_idx) ! shortwave tau * w * g
-
+#endif
    end subroutine tuvx_register
 
 !================================================================================================
@@ -200,7 +202,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine tuvx_readnl(nlfile)
 
-      use namelist_utils, only : find_group_name
+     use namelist_utils, only : find_group_name
 
       character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
@@ -235,6 +237,7 @@ contains
       call mpi_bcast(tuvx_active,      1,                     mpi_logical,   main_task_id, mpicom, ierr)
       if (ierr /= mpi_success) call endrun(subname//': mpi_bcast error : tuvx_active')
 
+#ifdef TUVX
       if (tuvx_active .and. tuvx_config_path == 'NONE') then
          call endrun(subname // ' : must set tuvx_config_path when TUV-X is active')
       end if
@@ -243,7 +246,11 @@ contains
          write(iulog,*) 'tuvx_readnl: tuvx_config_path = ', trim(tuvx_config_path)
          write(iulog,*) 'tuvx_readnl: tuvx_active = ', tuvx_active
       end if
-
+#else
+      if (tuvx_active .or. tuvx_config_path /= 'NONE') then
+         call endrun(subname // ' : use -tuvx configure CAM option to build TUV-X library')
+      end if
+#endif
    end subroutine tuvx_readnl
 
 !================================================================================================
@@ -252,7 +259,10 @@ contains
    ! Initializes TUV-x for photolysis calculations
    !-----------------------------------------------------------------------
    subroutine tuvx_init( photon_file, electron_file, max_solar_zenith_angle, pbuf2d )
-
+      use physics_buffer,          only : physics_buffer_desc
+      use physics_buffer,          only : pbuf_set_field
+      use ppgrid,                  only : pcols ! maximum number of columns
+#ifdef TUVX
       use infnan,                  only : nan, assignment(=)
       use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
       use mo_jeuv,                 only : neuv ! number of extreme-UV rates
@@ -262,9 +272,6 @@ contains
                                           musica_mpi_pack, &
                                           musica_mpi_unpack
       use musica_string,           only : string_t, to_char
-      use physics_buffer,          only : physics_buffer_desc
-      use physics_buffer,          only : pbuf_set_field
-      use ppgrid,                  only : pcols ! maximum number of columns
       use solar_irrad_data,        only : has_spectrum
       use tuvx_grid,               only : grid_t
       use tuvx_grid_warehouse,     only : grid_warehouse_t
@@ -273,13 +280,14 @@ contains
       use time_manager,            only : is_first_step
 
       use physics_buffer,  only: pbuf_get_index
-
+#endif
       character(len=*), intent(in) :: photon_file   ! photon file used in extended-UV module setup
       character(len=*), intent(in) :: electron_file ! electron file used in extended-UV module setup
       real(r8),         intent(in) :: max_solar_zenith_angle ! cutoff solar zenith angle for
                                                              !    photo rate calculations [degrees]
       type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
 
+#ifdef TUVX
       character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
       class(core_t), pointer :: core
       character, allocatable :: buffer(:)
@@ -551,7 +559,7 @@ contains
       deallocate(wc)
 
       if( is_main_task ) call log_initialization( labels )
-
+#endif
    end subroutine tuvx_init
 
 !================================================================================================
@@ -564,13 +572,13 @@ contains
       integer :: i_thread
 
       if( .not. tuvx_active ) return
-
+#ifdef TUVX
       do i_thread = 1, size( tuvx_ptrs )
          associate( tuvx => tuvx_ptrs( i_thread ) )
             call set_et_flux( tuvx )
          end associate
       end do
-
+#endif
    end subroutine tuvx_timestep_init
 
 !================================================================================================
@@ -614,6 +622,7 @@ contains
       real(r8), intent(in)    :: liquid_water_content(ncol,pver)    ! liquid water content (kg/kg)
       real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
                                                                     !   constants (1/s)
+#ifdef TUVX
       integer :: ipht, k, idose
       integer  :: i_col   ! column index
       integer  :: i_level ! vertical level index
@@ -669,7 +678,7 @@ contains
          ! ==============================================
 
 
-         call get_aerosol_optical_properties( tuvx, pbuf, ncol, &
+         call get_aerosol_optical_properties( tuvx, pbuf, ncol, cloud_fraction, &
               optical_depth, single_scattering_albedo, asymmetry_factor, &
               optical_depth_cld, single_scattering_albedo_cld, asymmetry_factor_cld )
 
@@ -797,7 +806,7 @@ contains
          end do
          call outfld('CPE_jO3b', cpe_jo3_b(:ncol,:), ncol, lchnk )
       end if
-
+#endif
    end subroutine tuvx_get_photo_rates
 
 !================================================================================================
@@ -806,7 +815,7 @@ contains
    ! Cleans up memory associated with TUV-x calculators
    !-----------------------------------------------------------------------
    subroutine tuvx_finalize( )
-
+#ifdef TUVX
       integer :: i_core, i_diag
 
       if( allocated( tuvx_ptrs ) ) then
@@ -828,9 +837,9 @@ contains
       if (allocated(dose_rate_hist_name)) then
          deallocate(dose_rate_hist_name)
       end if
-
+#endif
    end subroutine tuvx_finalize
-
+#ifdef TUVX
 !================================================================================================
 !================================================================================================
 !
@@ -1760,13 +1769,14 @@ contains
    !   columns from the aerosol package
    !-----------------------------------------------------------------------
 
-   subroutine get_aerosol_optical_properties(this, pbuf, ncol, &
+   subroutine get_aerosol_optical_properties(this, pbuf, ncol, cloud_fraction, &
         optical_depth, single_scattering_albedo, asymmetry_factor, &
         optical_depth_cld, single_scattering_albedo_cld, asymmetry_factor_cld)
 
       class(tuvx_ptr), intent(in) :: this  ! TUV-x calculator
       type(physics_buffer_desc), pointer :: pbuf(:)
       integer, intent(in) :: ncol
+      real(r8), intent(in) :: cloud_fraction(ncol,pver) ! cloud fraction (unitless)
 
       real(r8), intent(out) :: optical_depth(pcols,pver+1,this%n_wavelength_bins_) ! aerosol optical depth [unitless]
       real(r8), intent(out) :: single_scattering_albedo(pcols,pver+1,this%n_wavelength_bins_) ! aerosol single scattering albedo [unitless]
@@ -1863,7 +1873,9 @@ contains
             single_scattering_albedo(i,kk,:) = waer(i,k,:)
             asymmetry_factor(i,kk,:) = gaer(i,k,:)
 
-            optical_depth_cld(i,kk,:) = taucld(i,k,:)
+            ! swcldtau (and hence taucld) is the in-cloud optical depth; dilute
+            ! by the layer cloud fraction to get the grid-box mean optical depth
+            optical_depth_cld(i,kk,:) = taucld(i,k,:) * cloud_fraction(i,k)
             single_scattering_albedo_cld(i,kk,:) = wcld(i,k,:)
             asymmetry_factor_cld(i,kk,:) = gcld(i,k,:)
          end do
@@ -2028,7 +2040,7 @@ contains
       jno(:pver) = work_jno(:pver)
 
    end subroutine calculate_jno
-
+#endif
 !================================================================================================
 
 end module mo_tuvx

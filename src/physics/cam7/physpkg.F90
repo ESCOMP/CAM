@@ -159,12 +159,14 @@ contains
     use surface_emissions_mod, only: surface_emissions_reg
     use elevated_emissions_mod, only: elevated_emissions_reg
     use ctem_diags_mod, only: ctem_diags_reg
+    use upper_bc,       only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
     integer  :: mm       ! constituent index
     integer  :: nmodes
+    logical  :: has_fixed_ubc ! for upper bndy cond
     !-----------------------------------------------------------------------
 
     ! Get physics options
@@ -191,11 +193,12 @@ contains
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
     !                  water vapor is constituent 1.
+    has_fixed_ubc = ubc_fixed_conc('Q') ! check for fixed concentration upper boundary condition
     if (moist_physics) then
-       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.true., is_convtran1=.true.)
     else
-       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.false., is_convtran1=.true.)
     end if
 
@@ -1539,6 +1542,7 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    real(r8) :: tmp_cpcv  (pcols,pver) ! tmp space
     real(r8) :: scaling(pcols,pver)
     logical  :: moist_mixing_ratio_dycore
 
@@ -2225,7 +2229,7 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
 
-    call beljaars_drag_tend(state, pbuf, cam_in)
+    call beljaars_drag_tend(state, pbuf)
 
     ! TMS is not active in CAM7 (it is only for CAM5), but the tms tend subroutine
     ! will initialize the pbuf fields to zero - no logic is computed below:
@@ -2518,12 +2522,6 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
-    !
-    ! update cp/cv for energy computation based in updated water variables
-    !
-    call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
-         to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
-
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore) then
@@ -2536,10 +2534,17 @@ contains
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
+        tmp_cpcv(:ncol,:pver)        = cp_or_cv_dycore(:ncol,:pver,lchnk)
         if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
            call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                       fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
         end if
+        !
+        ! update cp/cv for energy computation based in updated water variables
+        !
+        call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
+             to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
         if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2551,6 +2556,7 @@ contains
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
         state%ps(:ncol)             = tmp_ps(:ncol)
+        cp_or_cv_dycore(:ncol,:pver,lchnk) = tmp_cpcv(:ncol,:pver)
       end if
     else
       !

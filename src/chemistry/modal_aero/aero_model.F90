@@ -29,7 +29,10 @@ module aero_model
 
   use modal_aero_wateruptake, only: modal_strat_sulfate
   use mo_setsox,              only: setsox, has_sox
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_state_mod, only: aerosol_state
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_state, aerosol_instances_get_num_models
 
   implicit none
   private
@@ -99,10 +102,13 @@ module aero_model
 
   logical :: modal_accum_coarse_exch = .false.
 
-  type(modal_aerosol_properties), pointer :: aero_props=>null()
+  class(aerosol_properties), pointer :: aero_props=>null()
+  integer :: iaermod_ = -1
 
   integer :: n_coarse_dust=-1 ! dmleung added n_coarse_dust to determine the index for the
                               ! coarse dust mode for different MAM versions. 29 Oct 2025
+  integer :: ncnst_tot = -1
+  integer :: chem_map_ndx(gas_pcnst) = -1
 
 contains
 
@@ -215,9 +221,29 @@ contains
     character(len=32) :: spec_type
     character(len=32) :: mode_type
     integer :: nspec
+    integer :: mm
+    character(len=32) :: name_a, name_c
+
+    do iaermod_ = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod_, 0)
+       if (aero_props%model_is('MAM')) exit
+    end do
+    ncnst_tot = aero_props%ncnst_tot()
 
     ! aqueous chem initialization
-    call sox_inti()
+    call sox_inti(aero_props)
+
+    do m = 1,aero_props%nbins()
+       do l = 0,aero_props%nspecies(m)
+          mm = aero_props%indexer(m,l)
+          if (l==0) then
+             call aero_props%num_names(m, name_a, name_c)
+          else
+             call aero_props%mmr_names(m,l, name_a, name_c)
+          end if
+          chem_map_ndx(mm) = get_spc_ndx( name_a )
+       end do
+    end do
 
     dgnum_idx       = pbuf_get_index('DGNUM')
     dgnumwet_idx    = pbuf_get_index('DGNUMWET')
@@ -250,7 +276,6 @@ contains
     ! call aero_deposition_cam_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
     if (.not.aerodep_flx_prescribed()) then
-       aero_props => modal_aerosol_properties()
        call aero_deposition_cam_init(aero_props)
     endif
 
@@ -985,11 +1010,12 @@ contains
     use modal_aero_gasaerexch, only : modal_aero_gasaerexch_sub
     use modal_aero_newnuc,     only : modal_aero_newnuc_sub
     use modal_aero_data,       only : cnst_name_cw, qqcw_get_field
+    use mo_chem_utls,          only : get_spc_ndx
 
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
-    type(physics_state), intent(in)    :: state    ! Physics state variables
+    type(physics_state),target,intent(in)  :: state ! Physics state variables
     integer,  intent(in) :: loffset                ! offset applied to modal aero "pointers"
     integer,  intent(in) :: ncol                   ! number columns in chunk
     integer,  intent(in) :: lchnk                  ! chunk index
@@ -1040,6 +1066,13 @@ contains
     real(r8), pointer :: fldcw(:,:)
     real(r8), pointer :: sulfeq(:,:,:)
 
+    real(r8) :: qqcw(ncol,pver,ncnst_tot)
+
+    integer :: mm
+    character(len=32) :: specname
+    class(aerosol_state), pointer :: aero_state
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
 !
 ! ... initialize nh3
 !
@@ -1084,11 +1117,20 @@ contains
     ! aqueous chemistry ...
 
     if( has_sox ) then
-       call setsox( state, &
+
+       ! Temperary code to map cloud-borne aerosol VMRs to aerosol only array (qqcw)
+       ! needed for setsox interface.  When refactoring aero_model_gasaerexch
+       ! with modal_aero_gasaerexch_sub, this mapping should go away.
+       do m = 1,aero_props%nbins()
+          do l = 0,aero_props%nspecies(m)
+             mm = aero_props%indexer(m,l)
+             qqcw(:,:,mm) = vmrcw(:,:,chem_map_ndx(mm))
+          end do
+       end do
+
+       call setsox( aero_state, state, &
               pbuf,     &
               ncol,     &
-              lchnk,    &
-              loffset,  &
               delt,     &
               pmid,     &
               pdel,     &
@@ -1098,7 +1140,7 @@ contains
               cldfr,    &
               cldnum,   &
               invariants, &
-              vmrcw,    &
+              qqcw,     &
               vmr,      &
               xphlwc,   &
               aqso4,    &
@@ -1106,6 +1148,14 @@ contains
               aqso4_h2o2, &
               aqso4_o3  &
               )
+
+       ! Map back to all-species chemistry VMR array
+       do m = 1,aero_props%nbins()
+          do l = 0,aero_props%nspecies(m)
+             mm = aero_props%indexer(m,l)
+             vmrcw(:,:,chem_map_ndx(mm)) = qqcw(:,:,mm)
+          end do
+       end do
 
        do n = 1, ntot_amode
           l = lptr_so4_cw_amode(n)

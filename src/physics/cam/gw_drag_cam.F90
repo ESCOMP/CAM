@@ -552,15 +552,16 @@ subroutine gw_drag_cam_init()
      vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
      wpthlp_clubb_gw_idx = pbuf_get_index('WPTHLP_CLUBB_GW')
      vort4gw_idx         = pbuf_get_index('VORT4GW')
-
-     ttend_dp_idx        = pbuf_get_index('TTEND_DP')
   endif
 
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
      sgh_idx = pbuf_get_index('SGH')
   endif
 
-  if (use_gw_convect_dp) ttend_dp_idx    = pbuf_get_index('TTEND_DP')
+  if (use_gw_convect_dp .or. use_gw_movmtn_pbl) then
+     ttend_dp_idx = pbuf_get_index('TTEND_DP',errflg)
+  end if
+
   if (use_gw_convect_sh) ttend_sh_idx    = pbuf_get_index('TTEND_SH')
 
   ! Output initialization status
@@ -1405,8 +1406,10 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ttend_dp_arr(:,:) = 0._r8
   if(use_gw_movmtn_pbl .or. use_gw_convect_dp) then
     ! Set up heating
-    call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
-    ttend_dp_arr(:ncol, :pver) = ttend_dp(:ncol, :pver)
+    if (ttend_dp_idx > 0) then
+      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
+      ttend_dp_arr(:ncol, :pver) = ttend_dp(:ncol, :pver)
+    end if
   endif
 
   if (use_gw_movmtn_pbl) then
@@ -1572,7 +1575,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('VTGW_MOVMTN', vtgw, pcols, lchnk)
     call outfld('UTGW_MOVMTN', utgw, pcols, lchnk)
     call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, pcols, lchnk)
-    call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
+    call outfld('NETDT_MOVMTN', ttend_dp_arr, pcols, lchnk)
     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk)
     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk)
     call outfld('WPTHLP_CLUBB_GW', wpthlp_clubb_gw, pcols, lchnk)

@@ -25,9 +25,12 @@ module aerosol_state_mod
   !! class can be extended for a specific aerosol package.
   type, abstract :: aerosol_state
      integer :: list_idx_ = 0 ! radiation climate/diagnostic list index
+     integer :: ncol_ = 0     ! number of active columns
    contains
      procedure :: list_idx => get_list_idx
      procedure :: set_list_idx
+     procedure :: ncol => get_ncol
+     procedure :: set_ncol
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
@@ -61,6 +64,8 @@ module aerosol_state_mod
      procedure(aero_wet_diam), deferred :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: sol_factb_interstitial
+     procedure(aero_aqu_gain_binfraction), deferred :: aqu_gain_binfraction
+
   end type aerosol_state
 
   ! for state fields
@@ -279,6 +284,21 @@ module aerosol_state_mod
 
      end function aero_wet_diam
 
+     !------------------------------------------------------------------------------
+     ! aqueous chemistry partitioning -- used in sox_cldaero_update
+     !------------------------------------------------------------------------------
+     subroutine aero_aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+       import :: aerosol_state, aerosol_properties, r8
+
+       class(aerosol_state), intent(in) :: self
+       class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+       character(len=*), intent(in) :: type                ! aerosol species type
+       real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+       real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+       real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
+
+     end subroutine aero_aqu_gain_binfraction
+
   end interface
 
 contains
@@ -301,9 +321,26 @@ contains
   end subroutine set_list_idx
 
   !------------------------------------------------------------------------------
+  ! returns the number of active columns
+  !------------------------------------------------------------------------------
+  pure integer function get_ncol(self)
+    class(aerosol_state), intent(in) :: self
+    get_ncol = self%ncol_
+  end function get_ncol
+
+  !------------------------------------------------------------------------------
+  ! sets the number of active columns
+  !------------------------------------------------------------------------------
+  subroutine set_ncol(self, ncol)
+    class(aerosol_state), intent(inout) :: self
+    integer, intent(in) :: ncol
+    self%ncol_ = ncol
+  end subroutine set_ncol
+
+  !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer( self, aero_props, ncol, nlev,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, ncol, nlev, m, cs, phase, &
                        naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties

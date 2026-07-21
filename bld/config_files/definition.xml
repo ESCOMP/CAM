@@ -59,6 +59,9 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ext_co2_cool" valid_values="0,1" value="0">
 Option to turn on extended non-LTE CO2 cooling: 0 => no, 1 => yes
 </entry>
+<entry id="tuvx" valid_values="0,1" value="0">
+Option to build TUV-X library: 0 => no, 1 => yes
+</entry>
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
@@ -281,6 +284,10 @@ Switch to enable building COSP simulator package.  1 => build COSP.
 </entry>
 <entry id="cosp_libdir" value="">
 Directory containing COSP library.
+</entry>
+<entry id="rttov" valid_values="0,1" value="0">
+Switch to enable building the RTTOV radiative transfer model. With COSP.
+1 => link COSP with RTTOV when building.
 </entry>
 <entry id="fv3core_libdir" value="">
 Directory containing FV3CORE library.

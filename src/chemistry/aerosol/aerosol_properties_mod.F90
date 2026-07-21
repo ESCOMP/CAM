@@ -109,7 +109,7 @@ module aerosol_properties_mod
      !  long wave species refractive indices
      !  species morphology
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro, &
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
           spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
           dryrad)
        import :: aerosol_properties, r8
@@ -118,6 +118,7 @@ module aerosol_properties_mod
        integer, intent(in) :: species_ndx         ! species index
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+       real(r8), optional, intent(out) :: spec_mw ! species molecular weight
        character(len=*), optional, intent(out) :: spectype  ! species type
        character(len=*), optional, intent(out) :: specname  ! species name
        character(len=*), optional, intent(out) :: specmorph ! species morphology

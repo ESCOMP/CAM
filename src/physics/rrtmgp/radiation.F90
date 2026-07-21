@@ -23,7 +23,7 @@ use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, 
 use radiative_aerosol_definitions, only: N_DIAG, active_calls
 use rad_constituents,    only: rad_cnst_out
 !REMOVECAM
-use aerosol_mmr_cam, only: rad_aer_diag_out
+use aerosol_mmr_host, only: rad_aer_diag_out
 !REMOVECAM_END
 
 use radconstants,        only: nradgas, gasnamelength, nswbands, nlwbands, &
@@ -1124,11 +1124,6 @@ subroutine radiation_tend( &
       end do
    end if
 
-   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
-   flns(:) = 0._r8
-   flnt(:) = 0._r8
-   !REMOVECAM_END
-
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
       !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
@@ -1335,6 +1330,11 @@ subroutine radiation_tend( &
       !=======================!
 
       if (dolw) then
+
+         !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+         flns(:) = 0._r8
+         flnt(:) = 0._r8
+         !REMOVECAM_END
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_lw_cloud_optics_run(dolw, ncol, nlay, cld(:ncol,:), cldfsnow_in,     &
