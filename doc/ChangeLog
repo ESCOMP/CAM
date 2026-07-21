@@ -1,5 +1,79 @@
 ===============================================================
 
+Tag name: cam6_4_189
+Originator(s): fvitt
+Date: 7 Jul 2026
+One-line Summary: Fix TUVx bug; Use CLM50 in FMOZ compset
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1621
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Fix TUVx cloud optical depth bug (issue #1619)
+ Update the FMOZ compset to use CLM50 rather than CLM45 (issue #1613)
+ Remove unused mo_setaer module (issue #1582)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin ekluzek
+
+List all files eliminated:
+D       src/chemistry/mozart/mo_setaer.F90
+ - remove dead code
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       cime_config/config_compsets.xml
+M       cime_config/testdefs/testlist_cam.xml
+M       doc/ChangeLog
+M       src/chemistry/mozart/mo_tuvx.F90
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag:
+
+Summarize any changes to answers, i.e.,
+- what code configurations:
+- what platforms/compilers:
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate):
+
+If bitwise differences were observed, how did you show they were no worse
+than roundoff?
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+- source tag (all code used must be in the repository):
+- platform/compilers:
+- configure commandline:
+- build-namelist command (or complete namelist):
+- MSS location of output:
+
+MSS location of control simulations used to validate new climate:
+
+URL for AMWG diagnostics output used to validate new climate:
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_188
 Originator(s): jimmielin
 Date: July 20, 2026
