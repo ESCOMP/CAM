@@ -290,7 +290,7 @@ end subroutine check_energy_readnl
     type(check_tracers_data), intent(inout) :: tracerint! tracers integrals and boundary fluxes
     character*(*),intent(in) :: name               ! parameterization name for fluxes
     integer , intent(in   ) :: nstep               ! current timestep number
-    real(r8), intent(in   ) :: ztodt               ! 2 delta t (model time increment)
+    real(r8), intent(in   ) :: ztodt               ! model physics timestep [s]
     real(r8), intent(in   ) :: cflx(pcols,pcnst)       ! boundary flux of tracers       (kg/m2/s)
 
 !---------------------------Local storage-------------------------------

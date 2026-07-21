@@ -710,7 +710,7 @@ subroutine vertical_diffusion_tend( &
   type(physics_state), intent(inout) :: state                     ! Physics state variables
   type(cam_in_t),      intent(in)    :: cam_in                    ! Surface inputs
 
-  real(r8),            intent(in)    :: ztodt                     ! 2 delta-t [ s ]
+  real(r8),            intent(in)    :: ztodt                     ! model physics timestep [s]
   real(r8),            intent(in)    :: cldn(pcols,pver)          ! New stratus fraction [ fraction ]
 
   ! ---------------------- !
