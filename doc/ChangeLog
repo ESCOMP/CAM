@@ -8,7 +8,7 @@ Github PR URL:
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
- The ztodt argument passed to physics is documented in many routines as
+ Issue 1626: The ztodt argument passed to physics is documented in many routines as
  "2 delta-t" / "two times model timestep", a leftover from the leapfrog
  (Eulerian spectral) dycore.  All current dycores pass the plain physics
  time step (get_step_size()).  Comments only; no code changes.
@@ -45,11 +45,6 @@ M       src/physics/simple/held_suarez_cam.F90
 M       src/physics/simple/physpkg.F90
 M       src/physics/waccmx/majorsp_diffusion.F90
  - correct ztodt comment: model physics timestep, not 2 delta-t
-
-If there were any failures reported from running test_driver.sh on any test
-platform, and checkin with these failures has been OK'd by the gatekeeper,
-then copy the lines from the td.*.status files for the failed tests to the
-appropriate machine below.  All failed tests must be justified.
 
 Summarize any changes to answers: bit-for-bit unchanged (comments only)
 
