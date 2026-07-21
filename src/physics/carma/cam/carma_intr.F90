@@ -1104,7 +1104,7 @@ contains
 
 
     ! Process each column.
-    columns: do icol = 1, state_loc%ncol
+    do icol = 1, state_loc%ncol
 
       if (is_first_step()) then
         t_ptr(icol,:) = state_loc%t(icol,:)
@@ -1504,28 +1504,28 @@ contains
            spdiags(icol, :, SPDIAGS_LNSTEP) = log(zsubsteps(:))
         end where
       end if
+    end do
 
-      ! Report substep diagnostics
-      if (carma_do_substep) then
-         call CARMASTATE_Get(cstate, rc, max_nsubstep=max_nsubstep, max_nretry=max_nretry, &
-              nstep=nstep, nsubstep=nsubstep, nretry=nretry)
-         if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Get failed.')
+
+    ! Report substep diagnostics
+    if (carma_do_substep) then
+      call CARMASTATE_Get(cstate, rc, max_nsubstep=max_nsubstep, max_nretry=max_nretry, &
+        nstep=nstep, nsubstep=nsubstep, nretry=nretry)
+      if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Get failed.')
 
 !$OMP CRITICAL
-         step_max_nsubstep = max(step_max_nsubstep, real(max_nsubstep, f))
-         step_max_nretry   = max(step_max_nretry, max_nretry)
+      step_max_nsubstep = max(step_max_nsubstep, real(max_nsubstep, f))
+      step_max_nretry   = max(step_max_nretry, max_nretry)
 
-         step_nstep        = step_nstep    + nstep
-         step_nsubstep     = step_nsubstep + real(nsubstep, f)
-         step_nretry       = step_nretry   + nretry
+      step_nstep        = step_nstep    + nstep
+      step_nsubstep     = step_nsubstep + real(nsubstep, f)
+      step_nretry       = step_nretry   + nretry
 !$OMP END CRITICAL
-      end if
+    end if
 
-      ! The CARMASTATE object is no longer needed.
-      call CARMASTATE_Destroy(cstate, rc)
-      if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Destroy failed.')
-
-    end do columns
+    ! The CARMASTATE object is no longer needed.
+    call CARMASTATE_Destroy(cstate, rc)
+    if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Destroy failed.')
 
     ! Output diagnostic fields.
     call carma_output_diagnostics(state_loc, ptend, pbuf, cam_in, gpdiags, sbdiags, gsdiags, spdiags, bndiags)
