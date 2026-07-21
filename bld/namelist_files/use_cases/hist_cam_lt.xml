@@ -11,9 +11,11 @@
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- Low top upper boundary conditions -->
+<!-- Remove for now
 <ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
 <ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.1849-2014_c240604.nc</ubc_file_path>
 <ubc_file_input_type>'SERIAL'</ubc_file_input_type>
+ -->
 
 <!-- ozone data -->
 <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>

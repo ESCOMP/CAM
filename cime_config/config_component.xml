@@ -230,7 +230,7 @@
   <entry id="CAM_LINKED_LIBS">
     <type>char</type>
     <valid_values></valid_values>
-    <default_value>-ltuvx -lyaml-cpp -lstdc++</default_value>
+    <default_value>-lstdc++</default_value>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
     <desc>
@@ -251,14 +251,14 @@
       <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
-      <value compset="1850[CE]?_CAM70%LT"     >1850_cam_lt</value>
-      <value compset="1850[CE]?_CAM70%MT"     >1850_cam_mt</value>
+      <value compset="1850_CAM70%LT"     >1850_cam_lt</value>
+      <value compset="1850_CAM70%MT"     >1850_cam_mt</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
-      <value compset="2000[CE]?_CAM70"        >2000_cam6</value>
+      <value compset="2000_CAM70"        >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
@@ -277,7 +277,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
-      <value compset="2000[CE]?_CAM70.*_SLND_SICE_DOCN%AQP">aquaplanet_cam7</value>
+      <value compset="2000_CAM70.*_SLND_SICE_DOCN%AQP">aquaplanet_cam7</value>
       <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
@@ -291,8 +291,8 @@
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
       <value compset="HIST_CAM50"        >1850-2005_cam5</value>
       <value compset="HIST_CAM60"        >hist_cam6</value>
-      <value compset="HIST[CE]?_CAM70%LT">hist_cam_lt</value>
-      <value compset="HIST[CE]?_CAM70%MT">hist_cam_mt</value>
+      <value compset="HIST_CAM70%LT">hist_cam_lt</value>
+      <value compset="HIST_CAM70%MT">hist_cam_mt</value>
       <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
@@ -300,12 +300,12 @@
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
       <value compset="HIST_CAM60%WSLH"   >waccm_tsmlt_hist_cam6_slh</value>
       <value compset="HIST_CAM60%CSLH"   >hist_trop_strat_cam6_slh</value>
-      <value compset="HIST[CE]?_CAM70%WA%CT">waccm_ma_hist_cam7</value>
-      <value compset="HIST[CE]?_CAM70%WA%CSO">waccm_sc_hist_cam7</value>
-      <value compset="HIST[CE]?_CAM70%WX">waccm_ma_hist_cam7</value>
-      <value compset="HIST[CE]?_CAM.*CT1S">hist_trop_strat_vbs_cam6</value>
-      <value compset="HIST[CE]?_CAM7.*CT4S2">hist_trop_strat_t4s_cam7</value>
-      <value compset="1850[CE]?_CAM7.*CT4S2">1850_trop_strat_t4s_cam7</value>
+      <value compset="HIST_CAM70%WA%CT">waccm_ma_hist_cam7</value>
+      <value compset="HIST_CAM70%WA%CSO">waccm_sc_hist_cam7</value>
+      <value compset="HIST_CAM70%WX">waccm_ma_hist_cam7</value>
+      <value compset="HIST_CAM.*CT1S">hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST_CAM7.*CT4S2">hist_trop_strat_t4s_cam7</value>
+      <value compset="1850_CAM7.*CT4S2">1850_trop_strat_t4s_cam7</value>
       <value compset="HIST_CAM60%.*CT[12]S1%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CSLH%NUDG">hist_trop_strat_nudged_cam6_slh</value>
       <value compset="HIST_CAM60%WSLH%NUDG">waccm_tsmlt_nudged_cam6_slh</value>

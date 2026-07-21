@@ -750,6 +750,15 @@ if (not $waccm_phys) {
     add_default($nl, 'p_bot_for_radmrg');
 }
 
+# Check TUV-X configuration
+my $tuvx_active = $nl->get_value('tuvx_active');
+if ($tuvx_active =~ /$TRUE/io) {
+    my $tuvx_config = $cfg->get('tuvx');
+    if (!$tuvx_config) {
+	die "$ProgName - ERROR: must use -tuvx CAM configure flag \n";
+    }
+}
+
 # Solar irradiance
 
 # First check that solar_const and solar_irrad_data_file are not both defined
@@ -2953,9 +2962,17 @@ if ($maxzen>0.0) {
 # upper boundary specifier
 my $ubc_ver;
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) and !$waccmx) {
-    $ubc_ver = 'waccmchem';
+    if ($phys =~ /cam7/) {
+	$ubc_ver = 'waccm7chem';
+    } else {
+	$ubc_ver = 'waccmchem';
+    }
 } elsif ($chem =~ /waccm_sc/ or ($model_top eq "ht" and $chem =~ /ghg_mam/)) {
-    $ubc_ver = 'waccmsc';
+    if ($phys =~ /cam7/) {
+	$ubc_ver = 'waccm7sc';
+    } else {
+	$ubc_ver = 'waccmsc';
+    }
 }
 if (defined $ubc_ver) {
     add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
@@ -3418,7 +3435,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
 }
 
 # Aerosol Namelist options
-add_default($nl, 'microp_aero_bulk_scale');
 add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_scale');
 add_default($nl, 'microp_aero_wsubi_scale');

@@ -2098,6 +2098,13 @@
 <ubc_specifier ver="waccmsc">
   'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr'
 </ubc_specifier>
+<!-- WACCM7 -- do not include water vapor for now -->
+<ubc_specifier ver="waccm7chem">
+  'T->MSIS','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
+</ubc_specifier>
+<ubc_specifier ver="waccm7sc">
+  'T->MSIS','CH4->2.d-10vmr'
+</ubc_specifier>
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>
@@ -2413,8 +2420,6 @@
 <micro_mg_autocon_lwp_exp                 >  2.47D0    </micro_mg_autocon_lwp_exp>
 <micro_mg_autocon_lwp_exp microphys="mg2" >  2.47D0    </micro_mg_autocon_lwp_exp>
 <micro_mg_autocon_lwp_exp phys="cam7"     >  2.37D0    </micro_mg_autocon_lwp_exp>
-
-<microp_aero_bulk_scale                  >  2.D0    </microp_aero_bulk_scale>
 
 <microp_aero_npccn_scale                  >  1.D0    </microp_aero_npccn_scale>
 <microp_aero_npccn_scale microphys="mg2"  >  1.D0    </microp_aero_npccn_scale>

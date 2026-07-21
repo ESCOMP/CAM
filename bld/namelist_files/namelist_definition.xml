@@ -3051,12 +3051,6 @@ Default: .true.
 
 
 <!-- Aerosol microphysics -->
-<entry id="microp_aero_bulk_scale" type="real" category="microphys"
-       group="microp_aero_nl" valid_values="" >
-prescribed aerosol bulk sulfur scale factor
-Default: 2
-</entry>
-
 <entry id="microp_aero_npccn_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
 Unitless scaling factor for the activated number concentration of cloud condensation nuclei.
@@ -3268,7 +3262,7 @@ Default: 700.e2 for CAM5, CAM6 and CAM7; all others=&gt; 750.e2
 <entry id="cldfrc_iceopt" type="integer" category="conv"
        group="cldfrc_nl" valid_values="" >
 Scheme for ice cloud fraction: 1=wang &amp; sassen, 2=schiller (iciwc),
-3=wood &amp; field, 4=Wilson (based on smith), 5=modified slingo (ssat &amp; empyt cloud)
+3=wood &amp; field, 4=Wilson (based on smith), 5=modified slingo (ssat &amp; empty cloud)
 Default: set by build-namelist
 </entry>
 
@@ -3304,7 +3298,7 @@ Default: set by build-namelist
 
 <entry id="cldfrc2m_qist_min" type="real" category="conv"
        group="cldfrc2m_nl" valid_values="" >
-Minimum in-stratus IWC constraint [ kg/kg ]
+Minimum in-stratus IWC constraint greater than 0 [ kg/kg ]
 Default: set by build-namelist
 </entry>
 
