@@ -40,36 +40,21 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  DIFF SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+   - expected baseline failure due to TUVx bug fix
 
-derecho/nvhpc/aux_cam:
+derecho/nvhpc/aux_cam: All PASS
 
 izumi/nag/aux_cam:
+  DIFF ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq9s_tuvx_waccm_ma_mam5
+   - new TUVx test -- no baseline to compare against
 
-izumi/gnu/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
-CAM tag used for the baseline comparison tests if different than previous
-tag:
+izumi/gnu/aux_cam: All PASS
 
-Summarize any changes to answers, i.e.,
-- what code configurations:
-- what platforms/compilers:
-- nature of change (roundoff; larger than roundoff but same climate; new
-  climate):
-
-If bitwise differences were observed, how did you show they were no worse
-than roundoff?
-
-If this tag changes climate describe the run(s) done to evaluate the new
-climate in enough detail that it(they) could be reproduced, i.e.,
-- source tag (all code used must be in the repository):
-- platform/compilers:
-- configure commandline:
-- build-namelist command (or complete namelist):
-- MSS location of output:
-
-MSS location of control simulations used to validate new climate:
-
-URL for AMWG diagnostics output used to validate new climate:
+Summarize any changes to answers: bit-for-bit unchanged
 
 ===============================================================
 ===============================================================
