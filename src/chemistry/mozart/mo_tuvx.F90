@@ -678,7 +678,7 @@ contains
          ! ==============================================
 
 
-         call get_aerosol_optical_properties( tuvx, pbuf, ncol, &
+         call get_aerosol_optical_properties( tuvx, pbuf, ncol, cloud_fraction, &
               optical_depth, single_scattering_albedo, asymmetry_factor, &
               optical_depth_cld, single_scattering_albedo_cld, asymmetry_factor_cld )
 
@@ -1769,13 +1769,14 @@ contains
    !   columns from the aerosol package
    !-----------------------------------------------------------------------
 
-   subroutine get_aerosol_optical_properties(this, pbuf, ncol, &
+   subroutine get_aerosol_optical_properties(this, pbuf, ncol, cloud_fraction, &
         optical_depth, single_scattering_albedo, asymmetry_factor, &
         optical_depth_cld, single_scattering_albedo_cld, asymmetry_factor_cld)
 
       class(tuvx_ptr), intent(in) :: this  ! TUV-x calculator
       type(physics_buffer_desc), pointer :: pbuf(:)
       integer, intent(in) :: ncol
+      real(r8), intent(in) :: cloud_fraction(ncol,pver) ! cloud fraction (unitless)
 
       real(r8), intent(out) :: optical_depth(pcols,pver+1,this%n_wavelength_bins_) ! aerosol optical depth [unitless]
       real(r8), intent(out) :: single_scattering_albedo(pcols,pver+1,this%n_wavelength_bins_) ! aerosol single scattering albedo [unitless]
@@ -1872,7 +1873,9 @@ contains
             single_scattering_albedo(i,kk,:) = waer(i,k,:)
             asymmetry_factor(i,kk,:) = gaer(i,k,:)
 
-            optical_depth_cld(i,kk,:) = taucld(i,k,:)
+            ! swcldtau (and hence taucld) is the in-cloud optical depth; dilute
+            ! by the layer cloud fraction to get the grid-box mean optical depth
+            optical_depth_cld(i,kk,:) = taucld(i,k,:) * cloud_fraction(i,k)
             single_scattering_albedo_cld(i,kk,:) = wcld(i,k,:)
             asymmetry_factor_cld(i,kk,:) = gcld(i,k,:)
          end do
