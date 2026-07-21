@@ -1925,6 +1925,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    integer :: nlev
    integer :: num_dust_bins
 
+   character(len=64) :: scheme_name
    character(512) :: ccpp_errmsg       ! CCPP return status (non-blank for error return)
    character(128) :: pumas_errstring   ! PUMAS return status (non-blank for error return)
 
@@ -2514,7 +2515,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               freqs(:ncol,top_lev:),                    freqr(:ncol,top_lev:),                  &
               nfice(:ncol,top_lev:),                    qcrat(:ncol,top_lev:),                  &
               prer_evap(:ncol,top_lev:),                proc_rates,                             &
-              ccpp_errmsg,                              ierr                                   )
+              scheme_name,        ccpp_errmsg,          ierr                                    )
 
       call handle_errmsg(ccpp_errmsg, subname="micro_pumas_cam_tend")
 
