@@ -511,9 +511,9 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state, &
       call outfld('PM25_SRF', pm25(:,pver),  pcols, lchnk)
       ! dmleung 20 Oct 2025 added history fields below ++
       call outfld('PM25_MMR', pm25_mmr(:,:), pcols, lchnk)
-      call outfld('PM1_SRF',  pm1(:,:),  pcols, lchnk)
+      call outfld('PM1_SRF',  pm1(:,pver)  pcols, lchnk)
       call outfld('PM1_MMR',  pm1_mmr(:,:),  pcols, lchnk)
-      call outfld('PM10_SRF', pm10(:,:),  pcols, lchnk)
+      call outfld('PM10_SRF', pm10(:,pver)  pcols, lchnk)
       call outfld('PM10_MMR', pm10_mmr(:,:), pcols, lchnk)
       call outfld('PMTOT_MMR',pmtot_mmr(:,:),pcols, lchnk)
       call outfld('RHO_AIR',  rhoair(:,:),   pcols, lchnk)
