@@ -639,11 +639,9 @@ contains
           ndx=0
           do ibin = 1, aero_props%nbins()
              do ispc = 1, aero_props%nspecies(ibin)
-             ! if (aero_props%sad_component(bin_ndx=ibin, species_ndx=ispc)) then ...
                 call aero_props%get(bin_ndx=ibin, species_ndx=ispc, spectype=spectype)
                 call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=mmr)
 
-!               if (.not.any(sad_types_list(:)==spectype)) cycle
                 if (.not. spec_type_in_list(spectype, types_list)) cycle
 
                 select case ( trim(spectype) )
