@@ -2099,6 +2099,7 @@ sub write_filepath
 	print $fh "$camsrcdir/src/chemistry/bulk_aero\n";
     }
     print $fh "$camsrcdir/src/chemistry/aerosol\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/modal_aero\n";
 
     if ($waccmx) {
         print $fh "$camsrcdir/src/physics/waccmx\n";
