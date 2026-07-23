@@ -133,6 +133,9 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
+    !++ MCSP
+    use mcsp_intr,          only: mcsp_register
+    !-- MCSP
     use convect_diagnostics,only: convect_diagnostics_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
@@ -303,6 +306,9 @@ contains
 
        ! deep convection
        call convect_deep_register
+
+       ! MCSP
+       call mcsp_register()
 
        ! convection diagnostics
        call convect_diagnostics_register
@@ -734,6 +740,9 @@ contains
     use cldfrc2m,           only: cldfrc2m_init
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
+    !++ MCSP
+    use mcsp_intr,          only: mcsp_intr_init
+    !-- MCSP
     use convect_diagnostics,only: convect_diagnostics_init
     use cam_diagnostics,    only: diag_init
     use gw_drag_cam,        only: gw_drag_cam_init
@@ -924,6 +933,10 @@ contains
     call cldfrc2m_init()
 
     call convect_deep_init(pref_edge)
+
+    !++ MCSP
+    call mcsp_intr_init()
+    !-- MCSP
 
     if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
     call microp_aero_init(phys_state,pbuf2d)
@@ -2679,6 +2692,15 @@ contains
     use aerosol_instances_mod, only: aerosol_instances_get_props, &
          aerosol_instances_get_num_models, aerosol_instances_get_state
     !REMOVECAM_END
+    !++ MCSP
+    use mcsp_intr,       only: mcsp_tend
+    use save_ttend_from_convect_deep, only : save_ttend_from_convect_deep_timestep_init, save_ttend_from_convect_deep_run
+    use save_qtend_from_convect_deep, only : save_qtend_from_convect_deep_timestep_init, save_qtend_from_convect_deep_run
+    use zm_conv_intr,    only: ttend_s
+    use convect_deep,    only: jctop1
+    use physconst,       only: cpair
+    !-- MCSP
+
 
     ! Arguments
 
@@ -2710,6 +2732,12 @@ contains
     real(r8) dlf(pcols,pver)                   ! Detraining cld H20 from shallow + deep convections
     real(r8) dlf2(pcols,pver)                  ! Detraining cld H20 from shallow convections
     real(r8) rtdt                              ! 1./ztodt
+    !++ MCSP
+    real(r8) ttend_dp(pcols,pver)              ! temperature tendency from deep convection
+    real(r8) qtend_dp(pcols,pver)              ! water vapor from deep convection
+    character(len=512) :: errmsg
+    integer            :: errflg
+    !-- MCSP
 
     integer lchnk                              ! chunk identifier
     integer ncol                               ! number of atmospheric columns
@@ -2952,12 +2980,22 @@ contains
            cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)
     end if
 
+    !++ MCSP
+    call save_ttend_from_convect_deep_timestep_init(ncol, pver, ttend_dp, errmsg, errflg)
+    call save_qtend_from_convect_deep_timestep_init(ncol, pver, qtend_dp, errmsg, errflg)
+    !-- MCSP
+
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
          zdu,       &
          rliq,      &
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
+
+    !++ MCSP 
+    call save_ttend_from_convect_deep_run(ncol, pver, ttend_s, cpair, ttend_dp, errmsg, errflg)
+    call save_qtend_from_convect_deep_run(ncol, pver, ptend%q(:,:,1), qtend_dp, errmsg, errflg)
+    !-- MCSP
 
     if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -2978,6 +3016,26 @@ contains
     end if
 
     call t_stopf('convect_deep_tend')
+
+    !++ MCSP
+    call t_startf ('MCSP_tend')
+    if (trim(cam_take_snapshot_before) == "mcsp_tend") then
+       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)     
+    end if
+
+    call mcsp_tend( state, ptend, ztodt, jctop1, ttend_dp, qtend_dp)
+
+    call physics_update(state, ptend, ztodt, tend)
+
+    if (trim(cam_take_snapshot_after) == "mcsp_tend") then
+       call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+           cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, net_flx)     
+    end if
+
+    call t_stopf('MCSP_tend')
+    !-- MCSP
+
 
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )

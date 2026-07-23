@@ -29,6 +29,12 @@ module convect_deep
       convect_deep_tend_2,             &! return tendencies
       deep_scheme_does_scav_trans             ! = .t. if scheme does scavenging and conv. transport
 
+!++ MCSP
+   public :: jctop1
+
+   integer :: jctop1(pcols)
+!-- MCSP
+
 ! Private module data
    character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
 ! Physics buffer indices
@@ -263,6 +269,10 @@ subroutine convect_deep_tend( &
           ztodt   , &
           jctop, jcbot , &
           state   ,ptend   ,landfrac, pbuf)
+
+  !++ MCSP
+     jctop1 = int(jctop(:pcols))
+  !-- MCSP
 
   end select
 
