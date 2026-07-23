@@ -704,9 +704,25 @@ contains
 
     real(r8), allocatable :: sad_bins(:,:,:)
 
-    allocate(sad_bins(ncol,nlev,aero_props%nbins()), stat=ierr)
+    integer :: nbins, nspec_max
+    type(ptr2d_t), allocatable :: mmr_ptr(:,:) ! interstitial mmr field per (bin,species)
+    logical, allocatable :: in_list(:,:)       ! species type is in types_list
+
+    nbins = aero_props%nbins()
+
+    allocate(sad_bins(ncol,nlev,nbins), stat=ierr)
     if (ierr/=0) then
        call endrun('carma_aerosol_state::surf_area_dens: not able to allocate sad_bins')
+    end if
+
+    nspec_max = 0
+    do ibin = 1,nbins
+       nspec_max = max(nspec_max, aero_props%nspecies(ibin))
+    end do
+
+    allocate(mmr_ptr(nbins,nspec_max), in_list(nbins,nspec_max), stat=ierr)
+    if (ierr/=0) then
+       call endrun('carma_aerosol_state::surf_area_dens: not able to allocate bin lookup arrays')
     end if
 
     sad = 0._r8
@@ -721,7 +737,9 @@ contains
 
     reffaer = carma_effecitive_radius(self%host_%state)
 
-    do ibin=1,aero_props%nbins() ! loop over aerosol bins
+    in_list(:,:) = .false.
+
+    do ibin=1,nbins ! loop over aerosol bins
       call rad_aer_get_info_by_bin(self%list_idx_, ibin, bin_name=bin_name)
 
       nchr = len_trim(bin_name)-2
@@ -737,11 +755,18 @@ contains
 
       if (present(dm_aer)) dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
       sad_bins(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
+
+      ! Resolve species types and mmr field pointers that do not vary over columns or levels here:
+      do ispec = 1,aero_props%nspecies(ibin)
+         call aero_props%get(bin_ndx=ibin, species_ndx=ispec, spectype=spectype)
+         call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=mmr_ptr(ibin,ispec)%fld)
+         in_list(ibin,ispec) = spec_type_in_list(spectype, types_list)
+      end do
     end do
 
     do icol = 1, ncol
       do ilev = beglev(icol),endlev(icol)
-        do ibin = 1, aero_props%nbins() ! loop over aerosol bins
+        do ibin = 1, nbins ! loop over aerosol bins
           !
           ! compute a mass weighting of the number
           !
@@ -749,12 +774,11 @@ contains
           chm_mass = 0._r8
           do ispec=1,aero_props%nspecies(ibin)
 
-             call aero_props%get(bin_ndx=ibin, species_ndx=ispec, spectype=spectype)
-             call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=aer_bin_mmr)
+             aer_bin_mmr => mmr_ptr(ibin,ispec)%fld
 
              tot_mass = tot_mass + aer_bin_mmr(icol,ilev)
 
-             if (spec_type_in_list(spectype, types_list)) then
+             if (in_list(ibin,ispec)) then
                 chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
              end if
 
@@ -777,6 +801,7 @@ contains
     end if
 
     deallocate(sad_bins)
+    deallocate(mmr_ptr, in_list)
 
   end subroutine surf_area_dens
 
