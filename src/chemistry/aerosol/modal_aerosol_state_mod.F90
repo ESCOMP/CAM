@@ -840,8 +840,7 @@ contains
 
     character(len=32) :: modetype
     character(len=32) :: spectype
-    character(len=*), parameter :: subname = 'modal_aerosol_state_mod::surf_area_dens'
-    
+
     ! for per-mode / per-species lookups outside the column loop:
     integer :: nbins, nspec_max
     type(ptr2d_t), allocatable :: mmr_ptr(:,:)  ! interstitial mmr field per (bin,species)

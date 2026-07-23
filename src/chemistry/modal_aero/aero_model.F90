@@ -85,10 +85,6 @@ module aero_model
 
   ! for surf_area_dens
   integer,allocatable :: num_idx(:)
-  integer,allocatable :: index_tot_mass(:,:)
-  integer,allocatable :: index_chm_mass(:,:)
-  integer,allocatable :: index_ssa_mass(:,:)
-  integer,allocatable :: index_strat_mass(:,:)
 
   integer :: ndx_h2so4
   character(len=fieldname_len), allocatable :: dgnum_name(:), dgnumwet_name(:)
@@ -533,36 +529,9 @@ contains
        endif
     end do
 
-    allocate(index_tot_mass(nmodes,nspec_max))
-    allocate(index_chm_mass(nmodes,nspec_max))
-    index_tot_mass = -1
-    index_chm_mass = -1
-    allocate(index_ssa_mass(nmodes,nspec_max))
-    index_ssa_mass = -1
-    allocate(index_strat_mass(nmodes,nspec_max))
-    index_strat_mass = -1
-
-    ! for surf_area_dens
-    ! define indices associated with the various aerosol types
+    ! determine coarse dust mode number
     do n = 1,nmodes
        call rad_aer_get_info(0, n, mode_type=mode_type, nspec=nspec)
-       if (.not. spec_type_in_list(mode_type, sad_exclude_mode_types)) then
-          do l = 1, nspec
-             call rad_aer_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
-             index_tot_mass(n,l) = get_spc_ndx(spec_name)
-             if (spec_type_in_list(spec_type, sad_chem_spec_types)) then
-                index_chm_mass(n,l) = get_spc_ndx(spec_name)
-             end if
-             if (spec_type_in_list(spec_type, sad_seasalt_spec_types)) then
-                index_ssa_mass(n,l) = get_spc_ndx(spec_name)
-             end if
-             if (spec_type_in_list(spec_type, sad_strat_spec_types)) then
-                index_strat_mass(n,l) = get_spc_ndx(spec_name)
-             end if
-          enddo
-       endif
-
-       ! determine coarse dust mode number
        if (mode_type=='coarse' .or. mode_type=='coarse_dust') then
           n_coarse_dust = n
        end if
