@@ -840,6 +840,15 @@ contains
 
     character(len=32) :: modetype
     character(len=32) :: spectype
+    character(len=*), parameter :: subname = 'modal_aerosol_state_mod::surf_area_dens'
+    
+    ! for per-mode / per-species lookups outside the column loop:
+    integer :: nbins, nspec_max
+    type(ptr2d_t), allocatable :: mmr_ptr(:,:)  ! interstitial mmr field per (bin,species)
+    type(ptr2d_t), allocatable :: num_ptr(:)    ! interstitial number field per bin
+    logical,  allocatable :: in_list(:,:)       ! species type is in types_list
+    logical,  allocatable :: use_mode(:)        ! mode contributes to the mass weighting
+    real(r8), allocatable :: alogsig(:)         ! ln(geometric standard deviation) per mode
 
     character(len=*), parameter :: subname = 'modal_aerosol_state_mod::surf_area_dens'
 
@@ -849,15 +858,48 @@ contains
     ! Compute surface aero for each mode.
     ! Total over all modes as the surface area for chemical reactions.
     !
-    allocate(sad_mode(ncol,nlev,aero_props%nbins()),stat=ierr)
+    nbins = aero_props%nbins()
+
+    allocate(sad_mode(ncol,nlev,nbins),stat=ierr)
     if (ierr/=0) then
        call endrun(subname//': sad_mode array allocate error')
     end if
 
-    allocate(vol_mode(ncol,nlev,aero_props%nbins()),stat=ierr)
+    allocate(vol_mode(ncol,nlev,nbins),stat=ierr)
     if (ierr/=0) then
        call endrun(subname//': vol_mode array allocate error')
     end if
+
+    ! resolve mode geometry, species types and field pointers that do not vary over columns or levels here:
+    nspec_max = 0
+    do l = 1,nbins
+       nspec_max = max(nspec_max, aero_props%nspecies(l))
+    end do
+
+    allocate(mmr_ptr(nbins,nspec_max), num_ptr(nbins), in_list(nbins,nspec_max), &
+             use_mode(nbins), alogsig(nbins), stat=ierr)
+    if (ierr/=0) then
+       call endrun(subname//': mode lookup arrays allocate error')
+    end if
+
+    in_list(:,:) = .false.
+
+    do l = 1,nbins
+       call self%get_ambient_num(bin_ndx=l, num=num_ptr(l)%fld)
+       alogsig(l) = aero_props%alogsig(l)
+
+       ! ignore primary carbon mode
+       call rad_aer_get_info(self%list_idx_, l, mode_type=modetype)
+       use_mode(l) = trim(modetype) /= 'primary_carbon' ! ignore the primary_carbon mode
+
+       if (use_mode(l)) then
+          do m = 1,aero_props%nspecies(l)
+             call aero_props%get(bin_ndx=l, species_ndx=m, spectype=spectype)
+             call self%get_ambient_mmr(species_ndx=m, bin_ndx=l, mmr=mmr_ptr(l,m)%fld)
+             in_list(l,m) = spec_type_in_list(spectype, types_list)
+          end do
+       end if
+    end do
 
     sad = 0._r8
     sad_mode = 0._r8
@@ -868,26 +910,22 @@ contains
     do i = 1,ncol
        do k = beglev(i), endlev(i)
           rho_air = pmid(i,k)/(temp(i,k)*287.04_r8)
-          do l=1,aero_props%nbins()
+          do l=1,nbins
              !
              ! compute a mass weighting of the number
              !
              tot_mass = 0._r8
              chm_mass = 0._r8
 
-             ! ignore primary carbon mode
-             call rad_aer_get_info(self%list_idx_, l, mode_type=modetype)
-             if ( trim(modetype) /= 'primary_carbon') then ! ignore the primary_carbon mode
+             if ( use_mode(l) ) then
 
                 do m=1,aero_props%nspecies(l)
 
-                   call aero_props%get(bin_ndx=l, species_ndx=m, spectype=spectype)
-
-                   call self%get_ambient_mmr(species_ndx=m, bin_ndx=l, mmr=mmr)
+                   mmr => mmr_ptr(l,m)%fld
 
                    tot_mass = tot_mass + mmr(i,k)
 
-                   if (spec_type_in_list(spectype, types_list)) then
+                   if (in_list(l,m)) then
                       chm_mass = chm_mass + mmr(i,k)
                    end if
                 end do
@@ -896,19 +934,19 @@ contains
 
              if ( tot_mass > 0._r8 ) then
 
-                call self%get_ambient_num(bin_ndx=l,num=num)
+                num => num_ptr(l)%fld
 
               ! surface area density
                sad_mode(i,k,l) = chm_mass /tot_mass &
                                * num(i,k)*rho_air*pi*diam(i,k,l)**2._r8 &
-                               * exp(2._r8*aero_props%alogsig(l)**2._r8)  ! m^2/m^3
+                               * exp(2._r8*alogsig(l)**2._r8)  ! m^2/m^3
 
                sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
 
               ! volume calculation, for use in effective radius calculation
                vol_mode(i,k,l) = chm_mass/tot_mass &
                                * num(i,k)*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
-                               * exp(4.5_r8*aero_props%alogsig(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
+                               * exp(4.5_r8*alogsig(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
              else
                sad_mode(i,k,l) = 0._r8
                vol_mode(i,k,l) = 0._r8
@@ -926,6 +964,7 @@ contains
 
     deallocate(sad_mode)
     deallocate(vol_mode)
+    deallocate(mmr_ptr, num_ptr, in_list, use_mode, alogsig)
 
   end subroutine surf_area_dens
 
