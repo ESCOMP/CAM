@@ -34,7 +34,7 @@ use IO::Handle;
 
 use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
-use Build::ChemPreprocess qw(chem_preprocess chem_number_adv);
+use Build::ChemPreprocess qw(chem_preprocess chem_number_adv get_species_list);
 use File::Copy;
 
 #-----------------------------------------------------------------------------------------------
@@ -1441,8 +1441,19 @@ else {
 
         # co2_cycle
         if ($co2_cycle) {
-            $nadv += 4;
-            if ($print>=2) { print "Advected constituents added by co2_cycle: 4$eol"; }
+            my $nco2;
+            my @species_list;
+            my %hash;
+            @species_list = get_species_list($chem_src_dir);
+            @hash{@species_list}=();
+            if (exists $hash{"CO2"}) {
+                # Do not double count CO2
+                $nco2 = 3;
+            } else {
+                $nco2 = 4;
+            }
+            $nadv += $nco2;
+            if ($print>=2) { print "Advected constituents added by co2_cycle: $nco2$eol"; }
         }
 
         # CARMA package:
@@ -2187,6 +2198,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/holtslag_boville\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/beljaars_drag\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/microp_aero\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
