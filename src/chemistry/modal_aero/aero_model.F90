@@ -1033,7 +1033,7 @@ contains
     endlev(:ncol) = ltrop(:ncol)
 
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
-    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
+    call aero_state%surf_area_dens(aero_props, sad_strat_spec_types, ncol, pver, beglev, endlev, &
          relhum, pmid, temp, strato_sad, reff_strat)
 
   end subroutine aero_model_strat_surfarea
