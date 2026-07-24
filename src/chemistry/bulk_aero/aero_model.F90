@@ -41,8 +41,8 @@ module aero_model
 
  ! Misc private data
 
-  integer :: so4_ndx, nit_ndx
-  integer :: soa_ndx, soai_ndx, soam_ndx, soab_ndx, soat_ndx, soax_ndx
+  integer :: so4_ndx, nit_idx
+  integer :: soa_idx, soai_idx, soam_idx, soab_idx, soat_idx, soax_idx
 
   ! Namelist variables
   character(len=16) :: wetdep_list(pcnst) = ' '
@@ -405,42 +405,17 @@ contains
     endif
 
     ! SO4 is only tested for presence -- when it is absent the offline sulfate
-    ! climatology supplies the sulfate surfaces -- so a chemistry index is enough
+    ! climatology supplies the sulfate SAD
     so4_ndx    = get_spc_ndx( 'SO4' )
 
-    ! the remaining species are read out of state%q, so resolve constituent indices
-    call set_sad_cnst_ndx( 'SOA',    soa_ndx  )
-    call set_sad_cnst_ndx( 'SOAI',   soai_ndx )
-    call set_sad_cnst_ndx( 'SOAM',   soam_ndx )
-    call set_sad_cnst_ndx( 'SOAB',   soab_ndx )
-    call set_sad_cnst_ndx( 'SOAT',   soat_ndx )
-    call set_sad_cnst_ndx( 'SOAX',   soax_ndx )
-    call set_sad_cnst_ndx( 'NH4NO3', nit_ndx  )
-
-  contains
-
-    !---------------------------------------------------------------------------
-    ! Returns the state%q index of a species that contributes supplemental
-    ! surface area, or -1 if the chemical mechanism does not include it.
-    ! supplemental_surf_area_dens reads these species from state%q, so a
-    ! species carried outside state%q (short-lived) cannot be handled and is
-    ! reported rather than silently dropped from the surface area.
-    !---------------------------------------------------------------------------
-    subroutine set_sad_cnst_ndx( name, ndx )
-
-      character(len=*), intent(in)  :: name
-      integer,          intent(out) :: ndx
-
-      ndx = -1
-      if ( get_spc_ndx( name ) < 1 ) return
-
-      call cnst_get_ind( name, ndx, abort=.false. )
-      if ( ndx < 1 ) then
-         call endrun('aero_model_init: ERROR: chemistry species '//trim(name)// &
-              ' is not transported and cannot contribute surface area density')
-      end if
-
-    end subroutine set_sad_cnst_ndx
+    ! constituent indices used to get mmr for supplemental SADs when available.
+    call cnst_get_ind( 'SOA',    soa_idx,  abort=.false. )
+    call cnst_get_ind( 'SOAI',   soai_idx, abort=.false. )
+    call cnst_get_ind( 'SOAM',   soam_idx, abort=.false. )
+    call cnst_get_ind( 'SOAB',   soab_idx, abort=.false. )
+    call cnst_get_ind( 'SOAT',   soat_idx, abort=.false. )
+    call cnst_get_ind( 'SOAX',   soax_idx, abort=.false. )
+    call cnst_get_ind( 'NH4NO3', nit_idx,  abort=.false. )
 
   end subroutine aero_model_init
 
@@ -896,9 +871,9 @@ contains
 
     do_sulf = ( so4_ndx <= 0 ) .and. &
               ( .not. spec_type_in_list('sulfate', sad_chem_spec_types) )
-    do_nit  = ( nit_ndx > 0 ) .and. spec_type_in_list('nitrate', sad_chem_spec_types)
-    do_soa  = ( soa_ndx  > 0 .or. soai_ndx > 0 .or. soam_ndx > 0 .or. &
-                soab_ndx > 0 .or. soat_ndx > 0 .or. soax_ndx > 0 ) .and. &
+    do_nit  = ( nit_idx > 0 ) .and. spec_type_in_list('nitrate', sad_chem_spec_types)
+    do_soa  = ( soa_idx  > 0 .or. soai_idx > 0 .or. soam_idx > 0 .or. &
+                soab_idx > 0 .or. soat_idx > 0 .or. soax_idx > 0 ) .and. &
               spec_type_in_list('s-organic', sad_chem_spec_types)
 
     if (.not. (do_sulf .or. do_nit .or. do_soa)) return
@@ -977,7 +952,7 @@ contains
              !-------------------------------------------------------------------------
              ! ammonium nitrate (follow same procedure as sulfate, using size and density of sulfate)
              !-------------------------------------------------------------------------
-             v = state%q(i,k,nit_ndx) * rho_air/rho_sulf
+             v = state%q(i,k,nit_idx) * rho_air/rho_sulf
              n  = v * (6._r8/pi)*(1._r8/(dm_sulf**3._r8))*n_exp
              s_exp   = exp(2._r8*log_sd_sulf*log_sd_sulf)
              sfc_nit = n * pi * (dm_sulf_wet**2._r8) * s_exp
@@ -990,48 +965,48 @@ contains
              !-------------------------------------------------------------------------
              ! secondary organic carbon (follow same procedure as sulfate)
              !-------------------------------------------------------------------------
-             if( soa_ndx > 0 ) then
-                v = state%q(i,k,soa_ndx) * rho_air/rho_orgc
+             if( soa_idx > 0 ) then
+                v = state%q(i,k,soa_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soa   = n * pi * (dm_orgc_wet**2._r8) * s_exp
              else
                 sfc_soa = 0._r8
              end if
-             if( soai_ndx > 0 ) then
-                v = state%q(i,k,soai_ndx) * rho_air/rho_orgc
+             if( soai_idx > 0 ) then
+                v = state%q(i,k,soai_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soai   = n * pi * (dm_orgc_wet**2._r8) * s_exp
              else
                 sfc_soai = 0._r8
              end if
-             if( soam_ndx > 0 ) then
-                v = state%q(i,k,soam_ndx) * rho_air/rho_orgc
+             if( soam_idx > 0 ) then
+                v = state%q(i,k,soam_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soam   = n * pi * (dm_orgc_wet**2._r8) * s_exp
              else
                 sfc_soam = 0._r8
              end if
-             if( soab_ndx > 0 ) then
-                v = state%q(i,k,soab_ndx) * rho_air/rho_orgc
+             if( soab_idx > 0 ) then
+                v = state%q(i,k,soab_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soab   = n * pi * (dm_orgc_wet**2._r8) * s_exp
              else
                 sfc_soab = 0._r8
              end if
-             if( soat_ndx > 0 ) then
-                v = state%q(i,k,soat_ndx) * rho_air/rho_orgc
+             if( soat_idx > 0 ) then
+                v = state%q(i,k,soat_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soat   = n * pi * (dm_orgc_wet**2._r8) * s_exp
              else
                 sfc_soat = 0._r8
              end if
-             if( soax_ndx > 0 ) then
-                v = state%q(i,k,soax_ndx) * rho_air/rho_orgc
+             if( soax_idx > 0 ) then
+                v = state%q(i,k,soax_idx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soax   = n * pi * (dm_orgc_wet**2._r8) * s_exp
