@@ -1087,9 +1087,8 @@ contains
 
     calday = get_curr_calday()
 
-    ! one slot per aerosol mode/bin, plus the slots aero_model reserves for
-    ! surfaces it computes outside the aerosol representation (bulk only:
-    ! offline sulfate, ammonium nitrate, secondary organics)
+    ! one slot per aerosol mode/bin, plus the slots for supplemental SADs from species not in rad_climate
+    ! (bulk only: offline sulfate, ammonium nitrate, secondary organics)
     if (ntot_amode>0) then
        allocate(sfc_array(pcols,pver,ntot_amode+n_supplemental_sad), &
                 dm_array (pcols,pver,ntot_amode+n_supplemental_sad) )

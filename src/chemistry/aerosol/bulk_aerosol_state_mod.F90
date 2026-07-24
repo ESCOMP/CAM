@@ -616,10 +616,6 @@ contains
 
     ver_loop: do k = 1,nlev
        col_loop: do i = 1,ncol
-          ! compute surfaces only within the caller's per-column level range
-          ! (the chemistry troposphere); levels outside [beglev,endlev] keep zero
-          ! surface area so that tropospheric het rates do not act in the
-          ! stratosphere, where mo_strato_rates handles sulfate het chemistry
           if (k < beglev(i) .or. k > endlev(i)) cycle col_loop
           !-------------------------------------------------------------------------
           ! 	... air density (kg/m3)
