@@ -41,7 +41,7 @@ module aero_model
 
  ! Misc private data
 
-  integer :: so4_ndx, cb2_ndx, oc2_ndx, nit_ndx
+  integer :: so4_ndx, nit_ndx
   integer :: soa_ndx, soai_ndx, soam_ndx, soab_ndx, soat_ndx, soax_ndx
 
   ! Namelist variables
@@ -404,16 +404,43 @@ contains
        endif
     endif
 
+    ! SO4 is only tested for presence -- when it is absent the offline sulfate
+    ! climatology supplies the sulfate surfaces -- so a chemistry index is enough
     so4_ndx    = get_spc_ndx( 'SO4' )
-    soa_ndx    = get_spc_ndx( 'SOA' )
-    soai_ndx   = get_spc_ndx( 'SOAI' )
-    soam_ndx   = get_spc_ndx( 'SOAM' )
-    soab_ndx   = get_spc_ndx( 'SOAB' )
-    soat_ndx   = get_spc_ndx( 'SOAT' )
-    soax_ndx   = get_spc_ndx( 'SOAX' )
-    cb2_ndx    = get_spc_ndx( 'CB2' )
-    oc2_ndx    = get_spc_ndx( 'OC2' )
-    nit_ndx    = get_spc_ndx( 'NH4NO3' )
+
+    ! the remaining species are read out of state%q, so resolve constituent indices
+    call set_sad_cnst_ndx( 'SOA',    soa_ndx  )
+    call set_sad_cnst_ndx( 'SOAI',   soai_ndx )
+    call set_sad_cnst_ndx( 'SOAM',   soam_ndx )
+    call set_sad_cnst_ndx( 'SOAB',   soab_ndx )
+    call set_sad_cnst_ndx( 'SOAT',   soat_ndx )
+    call set_sad_cnst_ndx( 'SOAX',   soax_ndx )
+    call set_sad_cnst_ndx( 'NH4NO3', nit_ndx  )
+
+  contains
+
+    !---------------------------------------------------------------------------
+    ! Returns the state%q index of a species that contributes supplemental
+    ! surface area, or -1 if the chemical mechanism does not include it.
+    ! supplemental_surf_area_dens reads these species from state%q, so a
+    ! species carried outside state%q (short-lived) cannot be handled and is
+    ! reported rather than silently dropped from the surface area.
+    !---------------------------------------------------------------------------
+    subroutine set_sad_cnst_ndx( name, ndx )
+
+      character(len=*), intent(in)  :: name
+      integer,          intent(out) :: ndx
+
+      ndx = -1
+      if ( get_spc_ndx( name ) < 1 ) return
+
+      call cnst_get_ind( name, ndx, abort=.false. )
+      if ( ndx < 1 ) then
+         call endrun('aero_model_init: ERROR: chemistry species '//trim(name)// &
+              ' is not transported and cannot contribute surface area density')
+      end if
+
+    end subroutine set_sad_cnst_ndx
 
   end subroutine aero_model_init
 
@@ -726,16 +753,13 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, mmr, sulfate, m, relhum, pmid, temp, ltrop, &
+                  state, relhum, pmid, temp, ltrop, &
                   sfc, dm_aer, sad_total, reff_trop, sad_ssa )
 
     use mo_constants, only : pi, r2d
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
-    real(r8), intent(in)    :: mmr(:,:,:)   ! chemistry species mass mixing ratios (kg/kg)
-    real(r8), intent(in)    :: sulfate(:,:) ! offline sulfate vmr (mol/mol)
-    real(r8), intent(in)    :: m(:,:)       ! total atm density (/cm^3)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:)
@@ -786,7 +810,7 @@ contains
 
     ! surfaces of aerosols the rad_climate list cannot provide
     ! (offline sulfate, ammonium nitrate, secondary organics)
-    call supplemental_surf_area_dens( ncol, beglev, endlev, mmr, sulfate, m, &
+    call supplemental_surf_area_dens( state, ncol, ltrop, beglev, endlev, &
                                       relhum, pmid, temp, sfc, dm_aer, sad_total )
 
   end subroutine aero_model_surfarea
@@ -805,19 +829,19 @@ contains
   ! gradually and represent natively in the abstract aerosol interface
   ! surf_area_dens:
   !=============================================================================
-  subroutine supplemental_surf_area_dens( ncol, beglev, endlev, mmr, sulfate, m, &
+  subroutine supplemental_surf_area_dens( state, ncol, ltrop, beglev, endlev, &
                                           relhum, pmid, temp, sfc, dm_aer, sad_total )
 
-    use mo_constants, only : pi, avo => avogadro
+    use mo_constants, only : pi, avo => avogadro, boltz_cgs
     use aerosol_spec_utils, only : spec_type_in_list
+    use mo_sulf, only : sulf_interp
 
     ! dummy args
+    type(physics_state), intent(in) :: state       ! Physics state variables
     integer,  intent(in)    :: ncol
+    integer,  intent(in)    :: ltrop(:)     ! chemical tropopause level index
     integer,  intent(in)    :: beglev(:)    ! beginning model level index
     integer,  intent(in)    :: endlev(:)    ! ending model level index
-    real(r8), intent(in)    :: mmr(:,:,:)   ! chemistry species mass mixing ratios (kg/kg)
-    real(r8), intent(in)    :: sulfate(:,:) ! offline sulfate vmr (mol/mol)
-    real(r8), intent(in)    :: m(:,:)       ! total atm density (/cm^3)
     real(r8), intent(in)    :: relhum(:,:)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
@@ -830,6 +854,8 @@ contains
     integer  :: i,k
     integer  :: ndx_sulf, ndx_nit, ndx_soa
     logical  :: do_sulf, do_nit, do_soa
+    real(r8) :: sulfate(pcols,pver)   ! offline sulfate vmr (mol/mol)
+    real(r8) :: m_air                 ! total atm density (/cm^3)
     real(r8) :: rho_air
     real(r8) :: v, n, n_exp
     real(r8) :: dm_sulf, dm_sulf_wet, log_sd_sulf, sfc_sulf, sfc_nit
@@ -854,17 +880,19 @@ contains
 
     real(r8), parameter :: mw_so4 = 98.e-3_r8     ! so4 molecular wt (kg/mole)
 
+    ! Pascals to dyne/cm^2, for the total density paired with the offline
+    ! sulfate vmr; matches the indexm invariant built by mo_setinv
+    real(r8), parameter :: Pa_xfac = 10._r8
+
     integer  ::  irh, rh_l, rh_u
     real(r8) ::  factor, rfac_sulf, rfac_oc
 
     !-----------------------------------------------------------------
     ! 	... table for hygroscopic growth effect on radius (Chin et al)
     !-----------------------------------------------------------------
-    real(r8), dimension(7) :: table_rh, table_rfac_sulf, table_rfac_oc
-
-    data table_rh(1:7)        / 0.0_r8, 0.5_r8, 0.7_r8, 0.8_r8, 0.9_r8, 0.95_r8, 0.99_r8/
-    data table_rfac_sulf(1:7) / 1.0_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8, 1.9_r8,  2.2_r8/
-    data table_rfac_oc(1:7)   / 1.0_r8, 1.2_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8,  2.2_r8/
+    real(r8), parameter :: table_rh(7)        = (/ 0.0_r8, 0.5_r8, 0.7_r8, 0.8_r8, 0.9_r8, 0.95_r8, 0.99_r8 /)
+    real(r8), parameter :: table_rfac_sulf(7) = (/ 1.0_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8, 1.9_r8,  2.2_r8 /)
+    real(r8), parameter :: table_rfac_oc(7)   = (/ 1.0_r8, 1.2_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8,  2.2_r8 /)
 
     do_sulf = ( so4_ndx <= 0 ) .and. &
               ( .not. spec_type_in_list('sulfate', sad_chem_spec_types) )
@@ -874,6 +902,10 @@ contains
               spec_type_in_list('s-organic', sad_chem_spec_types)
 
     if (.not. (do_sulf .or. do_nit .or. do_soa)) return
+
+    if ( do_sulf ) then
+       call sulf_interp( ncol, state%lchnk, sulfate )
+    end if
 
     ! trailing slots reserved for the supplemental surfaces; slots for
     ! inactive branches stay at the zero set by surf_area_dens
@@ -925,12 +957,14 @@ contains
 
           dm_orgc_wet = min(dm_orgc_wet,50.e-6_r8) ! maximum size is 0.5 micron (Chin)
 
-          if ( do_sulf ) then
+          ! offline sulfate climatology only within the chemical troposphere:
+          if ( do_sulf .and. k >= ltrop(i) ) then
              !-------------------------------------------------------------------------
              !  if so4 not simulated, use off-line sulfate and calculate as above
              !  convert sulfate vmr to volume density of aerosol (cm^3_aerosol/cm^3_air)
              !-------------------------------------------------------------------------
-             v = sulfate(i,k) * m(i,k) * mw_so4 / (avo * rho_sulf) *1.e6_r8
+             m_air = Pa_xfac * pmid(i,k) / (boltz_cgs*temp(i,k))
+             v = sulfate(i,k) * m_air * mw_so4 / (avo * rho_sulf) *1.e6_r8
              n  = v * (6._r8/pi)*(1._r8/(dm_sulf**3._r8))*n_exp
              s_exp    = exp(2._r8*log_sd_sulf*log_sd_sulf)
              sfc_sulf = n * pi * (dm_sulf_wet**2._r8) * s_exp
@@ -943,7 +977,7 @@ contains
              !-------------------------------------------------------------------------
              ! ammonium nitrate (follow same procedure as sulfate, using size and density of sulfate)
              !-------------------------------------------------------------------------
-             v = mmr(i,k,nit_ndx) * rho_air/rho_sulf
+             v = state%q(i,k,nit_ndx) * rho_air/rho_sulf
              n  = v * (6._r8/pi)*(1._r8/(dm_sulf**3._r8))*n_exp
              s_exp   = exp(2._r8*log_sd_sulf*log_sd_sulf)
              sfc_nit = n * pi * (dm_sulf_wet**2._r8) * s_exp
@@ -957,7 +991,7 @@ contains
              ! secondary organic carbon (follow same procedure as sulfate)
              !-------------------------------------------------------------------------
              if( soa_ndx > 0 ) then
-                v = mmr(i,k,soa_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soa_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soa   = n * pi * (dm_orgc_wet**2._r8) * s_exp
@@ -965,7 +999,7 @@ contains
                 sfc_soa = 0._r8
              end if
              if( soai_ndx > 0 ) then
-                v = mmr(i,k,soai_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soai_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soai   = n * pi * (dm_orgc_wet**2._r8) * s_exp
@@ -973,7 +1007,7 @@ contains
                 sfc_soai = 0._r8
              end if
              if( soam_ndx > 0 ) then
-                v = mmr(i,k,soam_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soam_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soam   = n * pi * (dm_orgc_wet**2._r8) * s_exp
@@ -981,7 +1015,7 @@ contains
                 sfc_soam = 0._r8
              end if
              if( soab_ndx > 0 ) then
-                v = mmr(i,k,soab_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soab_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soab   = n * pi * (dm_orgc_wet**2._r8) * s_exp
@@ -989,7 +1023,7 @@ contains
                 sfc_soab = 0._r8
              end if
              if( soat_ndx > 0 ) then
-                v = mmr(i,k,soat_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soat_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soat   = n * pi * (dm_orgc_wet**2._r8) * s_exp
@@ -997,7 +1031,7 @@ contains
                 sfc_soat = 0._r8
              end if
              if( soax_ndx > 0 ) then
-                v = mmr(i,k,soax_ndx) * rho_air/rho_orgc
+                v = state%q(i,k,soax_ndx) * rho_air/rho_orgc
                 n  = v * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                 s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
                 sfc_soax   = n * pi * (dm_orgc_wet**2._r8) * s_exp

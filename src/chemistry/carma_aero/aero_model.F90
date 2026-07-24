@@ -427,17 +427,13 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, mmr, sulfate, m, relhum, pmid, temp, ltrop, &
+                  state, relhum, pmid, temp, ltrop, &
                   sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     use mo_constants, only : pi
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
-    real(r8), intent(in)    :: mmr(:,:,:)   ! chemistry species mass mixing ratios; unused here,
-                                            ! consumed by the bulk supplemental SAD path
-    real(r8), intent(in)    :: sulfate(:,:) ! offline sulfate vmr; unused here (bulk supplemental SAD)
-    real(r8), intent(in)    :: m(:,:)       ! total atm density; unused here (bulk supplemental SAD)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:)
@@ -453,7 +449,7 @@ contains
     integer :: beglev(pcols)
     integer :: endlev(pcols)
 
-    integer :: i,k, lchnk, ncol
+    integer :: lchnk, ncol
 
     class(aerosol_state), pointer :: aero_state
 
