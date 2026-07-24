@@ -6714,7 +6714,13 @@ Species types contributing to chemistry-relevant surface area density (SAD)
 for heterogeneous reaction rates. The SAD determines how much aerosol surface
 is available for gas-phase chemical reactions (computed in aero_model, used
 by mo_usrrxt).
-Default: 'sulfate','s-organic','p-organic','black-c','ammonium'
+
+In bulk (BAM) configurations, types not in rad_climate are provided by
+a supplemental path in aero_model_surfarea.
+
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium' (MAM, CARMA);
+'sulfate','black-c','p-organic','s-organic','nitrate' (prognostic bulk);
+UNSET (prescribed bulk)
 </entry>
 
 <entry id="sad_seasalt_spec_types" type="char*32(16)" category="cam_chem"

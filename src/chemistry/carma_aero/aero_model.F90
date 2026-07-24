@@ -83,6 +83,10 @@ module aero_model
   character(len=32) :: sad_chem_spec_types(max_sad_spec) = ' '
   character(len=32) :: sad_strat_spec_types(max_sad_spec) = ' '
 
+  ! sfc/dm_aer slots mo_usrrxt must reserve beyond the aerosol bins; all CARMA
+  ! surfaces come from the aerosol representation, so no extra slots are needed
+  integer, parameter, public :: n_supplemental_sad = 0
+
   logical :: convproc_do_aer
 
   class(aerosol_properties), pointer :: aero_props =>null()
@@ -423,13 +427,17 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, relhum, pmid, temp, ltrop, &
+                  state, mmr, sulfate, m, relhum, pmid, temp, ltrop, &
                   sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
     use mo_constants, only : pi
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
+    real(r8), intent(in)    :: mmr(:,:,:)   ! chemistry species mass mixing ratios; unused here,
+                                            ! consumed by the bulk supplemental SAD path
+    real(r8), intent(in)    :: sulfate(:,:) ! offline sulfate vmr; unused here (bulk supplemental SAD)
+    real(r8), intent(in)    :: m(:,:)       ! total atm density; unused here (bulk supplemental SAD)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:)
