@@ -520,6 +520,7 @@ contains
        relhum, pmid, temp, sad, reff, sfc, dm_aer)
     use mo_constants, only : pi, avo => avogadro
     use aerosol_spec_utils, only : spec_type_in_list
+    use ppgrid, only: pcols, pver
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
@@ -547,6 +548,9 @@ contains
     real(r8) :: dm_bc_wet
     real(r8) :: num, vol
     real(r8) :: s_exp
+
+    real(r8), allocatable :: sadbins(:,:,:)
+    real(r8), allocatable :: diabins(:,:,:)
 
     !-----------------------------------------------------------------
     ! 	... parameters for log-normal distribution by number
@@ -593,12 +597,21 @@ contains
     real(r8), parameter :: table_rfac_ss(7)   = (/ 1.0_r8, 1.6_r8, 1.8_r8, 2.0_r8, 2.4_r8, 2.9_r8,  4.8_r8 /)
 
     real(r8), pointer :: mmr(:,:) ! interstitial aerosol mass, number mixing ratios
-    integer :: ispc, ibin, ndx
+    integer :: ispc, ibin, ndx, astat
     character(len=32) :: spectype
+
     sad = 0.0_r8
     reff = 0.0_r8
-    sfc = 0.0_r8
-    dm_aer = 0.0_r8
+    if (present(sfc)) sfc = 0.0_r8
+    if (present(dm_aer)) dm_aer = 0.0_r8
+
+    allocate(sadbins(ncol,nlev,aero_props%nbins()),stat=astat)
+    if( astat/= 0 ) call endrun('bulk_aerosol_state_mod%surf_area_dens: sadbins allocate error')
+    allocate(diabins(ncol,nlev,aero_props%nbins()),stat=astat)
+    if( astat/= 0 ) call endrun('bulk_aerosol_state_mod%surf_area_dens: diabins allocate error')
+
+    sadbins = 0._r8
+    diabins = 0._r8
 
     ver_loop: do k = 1,nlev
        col_loop: do i = 1,ncol
@@ -672,16 +685,16 @@ contains
                    ! sfc = surface area of wet aerosols (cm^2/cm^3)
                    !-------------------------------------------------------------------------
                    s_exp    = exp(2._r8*log_sd_sulf*log_sd_sulf)
-                   sfc(i,k,ndx) = num * pi * (dm_sulf_wet**2._r8) * s_exp
-                   dm_aer(i,k,ndx) = dm_sulf_wet
+                   sadbins(i,k,ndx) = num * pi * (dm_sulf_wet**2._r8) * s_exp
+                   diabins(i,k,ndx) = dm_sulf_wet
                 case('black-c')
                    if ( aero_props%hydrophilic(ibin) ) then
                       ndx = ndx+1
                       vol = mmr(i,k) * rho_air/rho_bc
                       num = vol * (6._r8/pi)*(1._r8/(dm_bc**3._r8))*n_exp
                       s_exp  = exp(2._r8*log_sd_bc*log_sd_bc)
-                      sfc(i,k,ndx) = num * pi * (dm_bc_wet**2._r8) * s_exp
-                      dm_aer(i,k,ndx) = dm_bc_wet
+                      sadbins(i,k,ndx) = num * pi * (dm_bc_wet**2._r8) * s_exp
+                      diabins(i,k,ndx) = dm_bc_wet
                    end if
                 case('p-organic')
                    if ( aero_props%hydrophilic(ibin) ) then
@@ -689,23 +702,23 @@ contains
                       vol = mmr(i,k) * rho_air/rho_orgc
                       num = vol * (6._r8/pi)*(1._r8/(dm_orgc**3))*n_exp
                       s_exp  = exp(2._r8*log_sd_orgc*log_sd_orgc)
-                      sfc(i,k,ndx) = num * pi * (dm_orgc_wet**2._r8) * s_exp
-                      dm_aer(i,k,ndx) = dm_orgc_wet
+                      sadbins(i,k,ndx) = num * pi * (dm_orgc_wet**2._r8) * s_exp
+                      diabins(i,k,ndx) = dm_orgc_wet
                    end if
                 case('s-organic')
                    ndx = ndx+1
                    vol = mmr(i,k) * rho_air/rho_orgc
                    num = vol * (6._r8/pi)*(1._r8/(dm_orgc**3._r8))*n_exp
                    s_exp     = exp(2._r8*log_sd_orgc*log_sd_orgc)
-                   sfc(i,k,ndx) = num * pi * (dm_orgc_wet**2._r8) * s_exp
-                   dm_aer(i,k,ndx) = dm_orgc_wet
+                   sadbins(i,k,ndx) = num * pi * (dm_orgc_wet**2._r8) * s_exp
+                   diabins(i,k,ndx) = dm_orgc_wet
                 case('nitrate')
                    ndx = ndx+1
                    vol = mmr(i,k) * rho_air/rho_sulf
                    num = vol * (6._r8/pi)*(1._r8/(dm_sulf**3._r8))*n_exp
                    s_exp   = exp(2._r8*log_sd_sulf*log_sd_sulf)
-                   sfc(i,k,ndx) = num * pi * (dm_sulf_wet**2._r8) * s_exp
-                   dm_aer(i,k,ndx) = dm_sulf_wet
+                   sadbins(i,k,ndx) = num * pi * (dm_sulf_wet**2._r8) * s_exp
+                   diabins(i,k,ndx) = dm_sulf_wet
                 end select
              end do
           end do
@@ -713,10 +726,16 @@ contains
           !-------------------------------------------------------------------------
           !  	... add up total surface area density for output
           !-------------------------------------------------------------------------
-          sad(i,k) = sum(sfc(i,k,:))
+          sad(i,k) = sum(sadbins(i,k,:))
 
        enddo col_loop
     enddo ver_loop
+
+    if (present(sfc)) sfc(:ncol,:nlev,:ndx) = sadbins(:ncol,:nlev,:ndx)
+    if (present(dm_aer)) dm_aer(:ncol,:nlev,:ndx) = diabins(:ncol,:nlev,:ndx)
+
+    deallocate(sadbins)
+    deallocate(diabins)
 
   end subroutine surf_area_dens
 

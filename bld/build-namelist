@@ -3919,7 +3919,10 @@ if ($carma ne 'none' and $chem !~ /_mam/) {
     add_default($nl, 'sad_strat_spec_types',
        'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
 }
-
+if ($aer_model eq 'bam' and $prescribed_aero_model eq 'none') {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','black-c','p-organic','s-organic','nitrate'");
+}
 # Gravity wave drag settings
 
 # By default, orographic waves are always on
