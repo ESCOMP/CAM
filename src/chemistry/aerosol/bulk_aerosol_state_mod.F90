@@ -517,10 +517,8 @@ contains
   ! aerosol surface area density
   !------------------------------------------------------------------------
   subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
-       relhum, pmid, temp, sad, reff, sfc, dm_aer)
-    use mo_constants, only : pi, avo => avogadro
+       relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
     use aerosol_spec_utils, only : spec_type_in_list
-    use ppgrid, only: pcols, pver
 
     class(bulk_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
@@ -532,6 +530,7 @@ contains
     real(r8), intent(in)  :: relhum(:,:) ! relative humidity
     real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
     real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+    real(r8), intent(in)  :: pi          ! pi mathematical constant
 
     real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
     real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)
@@ -613,8 +612,15 @@ contains
     sadbins = 0._r8
     diabins = 0._r8
 
+    ndx = 0
+
     ver_loop: do k = 1,nlev
        col_loop: do i = 1,ncol
+          ! compute surfaces only within the caller's per-column level range
+          ! (the chemistry troposphere); levels outside [beglev,endlev] keep zero
+          ! surface area so that tropospheric het rates do not act in the
+          ! stratosphere, where mo_strato_rates handles sulfate het chemistry
+          if (k < beglev(i) .or. k > endlev(i)) cycle col_loop
           !-------------------------------------------------------------------------
           ! 	... air density (kg/m3)
           !-------------------------------------------------------------------------

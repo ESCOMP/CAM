@@ -757,7 +757,7 @@ contains
     endlev(:ncol)=pver
 
     call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
-         relhum, pmid, temp, sad_total, reff_trop, sfc, dm_aer)
+         relhum, pmid, temp, pi, sad_total, reff_trop, sfc, dm_aer)
 
   end subroutine aero_model_surfarea
 

@@ -669,7 +669,7 @@ contains
   ! aerosol surface area density
   !------------------------------------------------------------------------
   subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
-       relhum, pmid, temp, sad, reff, sfc, dm_aer)
+       relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
     use aerosol_spec_utils, only : spec_type_in_list
 
     class(carma_aerosol_state), intent(in) :: self
@@ -682,6 +682,7 @@ contains
     real(r8), intent(in)  :: relhum(:,:) ! relative humidity
     real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
     real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+    real(r8), intent(in)  :: pi          ! pi mathematical constant
 
     real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
     real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)

@@ -304,7 +304,7 @@ module aerosol_state_mod
      ! aerosol surface area density
      !------------------------------------------------------------------------
      subroutine aero_surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
-                                    relhum, pmid, temp, sad, reff, sfc, dm_aer)
+                                    relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
        import :: aerosol_state, aerosol_properties, r8
 
        class(aerosol_state), intent(in) :: self
@@ -317,6 +317,7 @@ module aerosol_state_mod
        real(r8), intent(in)  :: relhum(:,:) ! relative humidity
        real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
        real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+       real(r8), intent(in)  :: pi          ! pi mathematical constant
 
        real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
        real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)

@@ -426,6 +426,8 @@ contains
                   state, relhum, pmid, temp, ltrop, &
                   sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
 
+    use mo_constants, only : pi
+
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
@@ -455,7 +457,7 @@ contains
     endlev(:ncol)=pver
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
     call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
-         relhum, pmid, temp, sad_trop, reff_trop, sfc, dm_aer )
+         relhum, pmid, temp, pi, sad_trop, reff_trop, sfc, dm_aer )
 
   end subroutine aero_model_surfarea
 
@@ -466,6 +468,7 @@ contains
   subroutine aero_model_strat_surfarea( state, pmid, temp, ltrop, strato_sad, reff_strat )
 
     use ref_pres, only: clim_modal_aero_top_lev
+    use mo_constants, only: pi
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
@@ -495,7 +498,7 @@ contains
     aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
     if (len_trim(sad_strat_spec_types(1)) > 0) then
         call aero_state%surf_area_dens(aero_props, sad_strat_spec_types, ncol, pver, beglev, endlev, &
-             relhum, pmid, temp, strato_sad, reff_strat)
+             relhum, pmid, temp, pi, strato_sad, reff_strat)
     end if
 
   end subroutine aero_model_strat_surfarea
