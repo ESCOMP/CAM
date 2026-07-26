@@ -5549,6 +5549,12 @@ Give the user the ability to input LTR high-latitude electric potential.
 Default: FALSE
 </entry>
 
+<entry id="ionos_epotential_mage" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+For 2-way coupling WACCM-X with MAGE magnetosphere
+Default: FALSE
+</entry>
+
 <entry id="ltr_files" type="char*256(20)" input_pathname="abs" category="waccmx"
        group="ionosphere_nl" valid_values="" >
 List of full pathnames of LTR electic potential inputs for both hemispheres.

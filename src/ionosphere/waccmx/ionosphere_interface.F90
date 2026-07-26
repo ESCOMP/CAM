@@ -46,6 +46,10 @@ module ionosphere_interface
    type(var_desc_t)      :: Optm1_vdesc
    logical :: opmmrtm1_initialized
 
+   type(var_desc_t) :: azigm1_vdesc
+   type(var_desc_t) :: azigm2_vdesc
+
+
    integer :: index_ped, index_hall, index_te, index_ti
    integer :: index_ui, index_vi, index_wi
 
@@ -84,10 +88,10 @@ module ionosphere_interface
    character(len=cl) :: amiesh_files(max_num_files) = 'NONE'
    character(len=cl) :: ltr_files(max_num_files) = 'NONE'
 
-
    character(len=16) :: ionos_epotential_model = 'none'
    logical           :: ionos_epotential_amie = .false.
    logical           :: ionos_epotential_ltr = .false.
+   logical           :: ionos_epotential_mage = .false.
    integer           :: indxefx=-1, indxkev=-1
 
    integer           :: oplus_nlon, oplus_nlat   ! Oplus grid
@@ -125,6 +129,7 @@ module ionosphere_interface
       namelist /ionosphere_nl/ oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor, oplus_ring_polar_filter
       namelist /ionosphere_nl/ ionos_epotential_model, ionos_epotential_amie, ionos_epotential_ltr, wei05_coefs_file
       namelist /ionosphere_nl/ amienh_files, amiesh_files, wei05_coefs_file, ltr_files
+      namelist /ionosphere_nl/ ionos_epotential_mage
       namelist /ionosphere_nl/ epot_crit_colats
       namelist /ionosphere_nl/ ionos_npes
       namelist /ionosphere_nl/ oplus_grid, edyn_grid
@@ -156,6 +161,7 @@ module ionosphere_interface
       call mpi_bcast(ionos_epotential_model, len(ionos_epotential_model), mpi_character, masterprocid, mpicom, ierr)
       call mpi_bcast(ionos_epotential_amie,1, mpi_logical, masterprocid, mpicom, ierr)
       call mpi_bcast(ionos_epotential_ltr,1, mpi_logical, masterprocid, mpicom, ierr)
+      call mpi_bcast(ionos_epotential_mage,1, mpi_logical, masterprocid, mpicom, ierr)
       call mpi_bcast(wei05_coefs_file, len(wei05_coefs_file), mpi_character, masterprocid, mpicom, ierr)
       call mpi_bcast(amienh_files, max_num_files*len(amienh_files(1)), mpi_character, masterprocid, mpicom, ierr)
       call mpi_bcast(amiesh_files, max_num_files*len(amiesh_files(1)), mpi_character, masterprocid, mpicom, ierr)
@@ -197,6 +203,7 @@ module ionosphere_interface
          write(iulog,*) 'ionosphere_readnl: ionos_epotential_model = ', trim(ionos_epotential_model)
          write(iulog,*) 'ionosphere_readnl: ionos_epotential_amie  = ', ionos_epotential_amie
          write(iulog,*) 'ionosphere_readnl: ionos_epotential_ltr   = ', ionos_epotential_ltr
+         write(iulog,*) 'ionosphere_readnl: ionos_epotential_mage  = ', ionos_epotential_mage
          write(iulog,'(a,2(g12.4))') &
                         'ionosphere_readnl: epot_crit_colats       = ', epot_crit_colats
          write(iulog,'(a,i0)') 'ionosphere_readnl: ionos_npes = ',ionos_npes
@@ -234,6 +241,7 @@ module ionosphere_interface
       use ref_pres,        only: pref_edge ! target ailev(pverp) interface levels
       use amie_module,     only: init_amie
       use ltr_module,      only: init_ltr
+      use mage_module,     only: mage_init
       use wei05sc,         only: weimer05_init
       use phys_control,    only: phys_getopts
 
@@ -243,7 +251,7 @@ module ionosphere_interface
 
       call phys_getopts(state_debug_checks_out=state_debug_checks)
 
-      if ( ionos_epotential_amie .or. ionos_epotential_ltr) then
+      if ( ionos_epotential_amie .or. ionos_epotential_ltr .or. ionos_epotential_mage) then
          call pbuf_add_field('AUREFX', 'global', dtype_r8, (/pcols/), indxefx)  ! Prescribed Energy flux
          call pbuf_add_field('AURKEV', 'global', dtype_r8, (/pcols/), indxkev)  ! Prescribed Mean energy
       end if
@@ -380,6 +388,11 @@ module ionosphere_interface
          call addfld ('ltr_efx_phys', horiz_only, 'I', 'mW/m2', 'LTR energy flux')
          call addfld ('ltr_kev_phys', horiz_only, 'I', 'keV',  'LTR mean energy')
       end if
+      if ( ionos_epotential_mage ) then
+         call mage_init()
+         call addfld ('mage_efx_phys', horiz_only, 'I', 'mW/m2', 'MAGE energy flux')
+         call addfld ('mage_kev_phys', horiz_only, 'I', 'keV',  'MAGE mean energy')
+      end if
       if ( trim(ionos_epotential_model) == 'weimer' ) then
          call weimer05_init(wei05_coefs_file)
       end if
@@ -390,6 +403,9 @@ module ionosphere_interface
       call addfld ('Z3GMI',      (/ 'lev' /), 'I', 'm',                       &
            'Geometric height (Interfaces)', gridname='physgrid')
 
+      call addfld ('Early_AZIGM2', horiz_only, 'I', ' ','EDYN_ZIGM2' ,gridname='gmag_grid')
+      call addfld ('Early_AZIGM1', horiz_only, 'I', ' ','EDYN_ZIGM2' ,gridname='gmag_grid')
+
    end subroutine ionosphere_init
 
    !----------------------------------------------------------------------------
@@ -397,6 +413,9 @@ module ionosphere_interface
    subroutine ionosphere_run1(pbuf2d)
       use physics_buffer, only: physics_buffer_desc
       use cam_history,    only: outfld, write_inithist
+      use edynamo, only: azigm1, azigm2
+      use savefield_waccm, only: savefld_waccm
+      use edyn_mpi, only: mlon0,omlon1, mlat0,mlat1
 
       ! args
       type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -412,6 +431,9 @@ module ionosphere_interface
       real(r8), pointer :: prescr_efx(:) ! prescribed energy flux
       real(r8), pointer :: prescr_kev(:) ! prescribed characteristic mean energy
 
+      call savefld_waccm(azigm2(mlon0:omlon1,mlat0:mlat1),'Early_AZIGM2',1, mlon0,omlon1,mlat0,mlat1)
+      call savefld_waccm(azigm1(mlon0:omlon1,mlat0:mlat1),'Early_AZIGM1',1, mlon0,omlon1,mlat0,mlat1)
+
       if( write_inithist() .and. ionos_xport_active ) then
          do lchnk = begchunk, endchunk
             call outfld ('OpTM1&IC', opmmrtm1_phys(:,:,lchnk), pcols, lchnk)
@@ -420,7 +442,7 @@ module ionosphere_interface
 
       nullify(prescr_efx)
       nullify(prescr_kev)
-      prescribed_epot: if ( ionos_epotential_amie .or. ionos_epotential_ltr ) then
+      prescribed_epot: if ( ionos_epotential_amie .or. ionos_epotential_ltr .or. ionos_epotential_mage) then
          blksize = 0
          do lchnk = begchunk, endchunk
             blksize = blksize + get_ncols_p(lchnk)
@@ -432,7 +454,7 @@ module ionosphere_interface
          ! data assimilated potential
          call d_pie_epotent(ionos_epotential_model, epot_crit_colats, &
               cols=1, cole=blksize, efx_phys=prescr_efx, kev_phys=prescr_kev, &
-              amie_in=ionos_epotential_amie, ltr_in=ionos_epotential_ltr )
+              amie_in=ionos_epotential_amie, ltr_in=ionos_epotential_ltr, mage_in=ionos_epotential_mage )
 
          ! transform to pbuf for aurora...
 
@@ -456,6 +478,10 @@ module ionosphere_interface
             if ( ionos_epotential_ltr) then
                call outfld('ltr_efx_phys', pbuf_efx, pcols, lchnk )
                call outfld('ltr_kev_phys', pbuf_kev, pcols, lchnk )
+            end if
+            if ( ionos_epotential_mage) then
+               call outfld('mage_efx_phys', pbuf_efx, pcols, lchnk )
+               call outfld('mage_kev_phys', pbuf_kev, pcols, lchnk )
             end if
          end do chnk_loop1
 
@@ -1005,6 +1031,9 @@ module ionosphere_interface
       integer                          :: dimids(3), ndims
       type(cam_grid_header_info_t)     :: info
 
+      integer                          :: mag_grid_id
+      type(cam_grid_header_info_t)     :: mag_grid_info
+
       if (ionos_xport_active) then
          grid_id = cam_grid_id('physgrid')
          call cam_grid_write_attr(File, grid_id, info)
@@ -1014,11 +1043,21 @@ module ionosphere_interface
          end do
          ndims = hdimcnt + 1
 
-         call cam_pio_def_dim(File, 'lev',  pver,  dimids(ndims),             &
-              existOK=.true.)
+         call cam_pio_def_dim(File, 'lev',  pver,  dimids(ndims), existOK=.true.)
 
-         ierr = pio_def_var(File, 'Optm1', pio_double, dimids(1:ndims),       &
-              Optm1_vdesc)
+         ierr = pio_def_var(File, 'Optm1', pio_double, dimids(1:ndims), Optm1_vdesc)
+
+         mag_grid_id = cam_grid_id('gmag_grid')
+         call cam_grid_write_attr(File, mag_grid_id, mag_grid_info)
+
+         ndims = mag_grid_info%num_hdims()
+         do i = 1,mag_grid_info%num_hdims()
+            dimids(i) = mag_grid_info%get_hdimid(i)
+         end do
+
+         ierr = pio_def_var(File, 'azigm1', pio_double, dimids(1:ndims), azigm1_vdesc)
+         ierr = pio_def_var(File, 'azigm2', pio_double, dimids(1:ndims), azigm2_vdesc)
+
       end if
    end subroutine ionosphere_init_restart
 
@@ -1030,6 +1069,8 @@ module ionosphere_interface
       use cam_grid_support, only: cam_grid_id, cam_grid_write_var
       use cam_grid_support, only: cam_grid_get_decomp, cam_grid_dimensions
       use phys_grid,        only: phys_decomp
+      use edynamo,  only: azigm1, azigm2
+      use edyn_mpi, only: mlon0,omlon1, mlat0,mlat1
 
       type(file_desc_t), intent(inout) :: File
 
@@ -1038,6 +1079,9 @@ module ionosphere_interface
       integer                          :: dims(3), gdims(3)
       integer                          :: nhdims
       type(io_desc_t), pointer         :: iodesc3d
+
+      integer                          :: mag_grid_id
+      type(io_desc_t), pointer         :: iodesc2d
 
       if (ionos_xport_active) then
 
@@ -1051,10 +1095,25 @@ module ionosphere_interface
          dims(1) = pcols
          dims(2) = pver
          dims(3) = endchunk - begchunk + 1
-         call cam_grid_get_decomp(physgrid, dims(1:3), gdims(1:nhdims),       &
-              pio_double, iodesc3d)
+         call cam_grid_get_decomp(physgrid, dims(1:3), gdims(1:nhdims), pio_double, iodesc3d)
 
          call pio_write_darray(File, Optm1_vdesc, iodesc3d, opmmrtm1_phys, ierr)
+
+         mag_grid_id = cam_grid_id('gmag_grid')
+
+         ! write coords for GoeMag grid
+         call cam_grid_write_var(File, mag_grid_id)
+
+         ! setup IO decomp
+         call cam_grid_dimensions(mag_grid_id, gdims(1:2), nhdims)
+         dims(1) = omlon1 - mlon0 + 1
+         dims(2) = mlat1 - mlat0 + 1
+         call cam_grid_get_decomp(mag_grid_id, dims(1:2), gdims(1:nhdims), pio_double, iodesc2d)
+
+         ! Write fields on geo-mag grid
+         call pio_write_darray(File, azigm1_vdesc, iodesc2d, azigm1(mlon0:omlon1,mlat0:mlat1), ierr)
+         call pio_write_darray(File, azigm2_vdesc, iodesc2d, azigm2(mlon0:omlon1,mlat0:mlat1), ierr)
+
       end if
 
    end subroutine ionosphere_write_restart
@@ -1064,8 +1123,11 @@ module ionosphere_interface
    subroutine ionosphere_read_restart(File)
       use pio,              only: io_desc_t, file_desc_t, pio_inq_varid
       use pio,              only: pio_read_darray, pio_double
+      use pio,              only: pio_seterrorhandling,  PIO_BCAST_ERROR, PIO_NOERR
       use cam_grid_support, only: cam_grid_id
       use cam_grid_support, only: cam_grid_get_decomp, cam_grid_dimensions
+      use edynamo,  only: azigm1, azigm2
+      use edyn_mpi, only: mlon0,omlon1, mlat0,mlat1
 
       type(file_desc_t), intent(inout) :: File
 
@@ -1074,6 +1136,9 @@ module ionosphere_interface
       integer                          :: dims(3), gdims(3)
       integer                          :: nhdims
       type(io_desc_t), pointer         :: iodesc3d
+      type(io_desc_t), pointer         :: iodesc2d
+      integer                          :: mag_grid_id
+      integer :: err_handling
 
       if (ionos_xport_active) then
          call ionosphere_alloc()
@@ -1085,12 +1150,30 @@ module ionosphere_interface
          dims(1) = pcols
          dims(2) = pver
          dims(3) = endchunk - begchunk + 1
-         call cam_grid_get_decomp(physgrid, dims(1:3), gdims(1:nhdims),       &
-              pio_double, iodesc3d)
+         call cam_grid_get_decomp(physgrid, dims(1:3), gdims(1:nhdims), pio_double, iodesc3d)
 
          ierr = pio_inq_varid(File, 'Optm1', Optm1_vdesc)
          call pio_read_darray(File, Optm1_vdesc, iodesc3d, opmmrtm1_phys, ierr)
          opmmrtm1_initialized = .true.
+
+         mag_grid_id = cam_grid_id('gmag_grid')
+         call cam_grid_dimensions(mag_grid_id, gdims(1:2), nhdims)
+         dims(1) = omlon1 - mlon0 + 1
+         dims(2) = mlat1 - mlat0 + 1
+         call cam_grid_get_decomp(mag_grid_id, dims(1:2), gdims(1:nhdims), pio_double, iodesc2d)
+
+         ! handle errors ourselves
+         call pio_seterrorhandling(File, PIO_BCAST_ERROR, err_handling)
+
+         ! read vars if available on restart file
+         ierr = pio_inq_varid(File, 'azigm1', azigm1_vdesc)
+         if (ierr.eq.PIO_NOERR) call pio_read_darray(File, azigm1_vdesc, iodesc2d, azigm1(mlon0:omlon1,mlat0:mlat1), ierr)
+         ierr = pio_inq_varid(File, 'azigm2', azigm2_vdesc)
+         if (ierr.eq.PIO_NOERR) call pio_read_darray(File, azigm2_vdesc, iodesc2d, azigm2(mlon0:omlon1,mlat0:mlat1), ierr)
+
+         ! restore old error handling
+         call pio_seterrorhandling(File, err_handling)
+
       end if
 
    end subroutine ionosphere_read_restart

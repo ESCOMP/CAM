@@ -13,6 +13,7 @@ module dpie_coupling
   use perf_mod,            only: t_startf, t_stopf
   use amie_module,         only: getamie
   use ltr_module,          only: getltr
+  use mage_module,         only: mage_advance
   use edyn_solve,          only: phihm
   use edyn_params,         only: dtr, rtd
   use aurora_params,       only: prescribed_period ! turns on overwrite of energy fields in aurora phys
@@ -119,7 +120,7 @@ contains
   end subroutine d_pie_init
 
   !-----------------------------------------------------------------------
-  subroutine d_pie_epotent( highlat_potential_model, crit_out, cols, cole, efx_phys, kev_phys, amie_in, ltr_in )
+  subroutine d_pie_epotent( highlat_potential_model, crit_out, cols, cole, efx_phys, kev_phys, amie_in, ltr_in, mage_in )
     use edyn_solve,       only: pfrac    ! NH fraction of potential (nmlonp1,nmlat0)
     use time_manager,     only: get_curr_date
     use heelis,           only: heelis_model
@@ -142,6 +143,7 @@ contains
     integer, optional, intent(in)  :: cols, cole
     logical, optional,intent(in) :: amie_in
     logical, optional,intent(in) :: ltr_in
+    logical, optional,intent(in) :: mage_in
 
     ! Prescribed energy flux
     real(r8), optional, intent(out) :: efx_phys(:)
@@ -151,7 +153,7 @@ contains
     !
     ! local vars
     !
-    logical :: amie_inputs, ltr_inputs
+    logical :: amie_inputs, ltr_inputs, mage_inputs
 
     real(r8)             :: secs               ! time of day in seconds
     integer              :: iyear,imo,iday,tod ! tod is time-of-day in seconds
@@ -202,10 +204,12 @@ contains
 
     amie_inputs=.false.
     ltr_inputs=.false.
+    mage_inputs=.false.
     if (present(amie_in)) amie_inputs=amie_in
     if (present(ltr_in))   ltr_inputs= ltr_in
+    if (present(ltr_in))  mage_inputs= mage_in
 
-    prescribed_inputs: if (amie_inputs .or. ltr_inputs) then
+    prescribed_inputs: if (amie_inputs .or. ltr_inputs .or. mage_inputs) then
 
        if (.not. (present(kev_phys).and.present(efx_phys)) ) then
           call endrun('d_pie_epotent: kev_phys and efx_phys must be present')
@@ -224,6 +228,14 @@ contains
              write(iulog,"('After Calling getamie >>> iamie = ', i2)") iamie
           end if
           prescribed_period = iamie == 1
+       else if (mage_inputs) then
+          if (masterproc) then
+             write(iulog,*) 'Calling mage_advance >>> '
+          end if
+
+          call mage_advance( iyear, imo, iday, tod, &
+                             prescr_phihm, prescr_efxm, prescr_kevm )
+          prescribed_period = .TRUE.
        else
           if (masterproc) then
              write(iulog,*) 'Calling getltr >>> '
