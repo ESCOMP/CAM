@@ -189,9 +189,11 @@ module clubb_mf
                            ktropo,  w,       th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
-                           ustar,   ths,  wthl_sfc,    wqt_sfc,       pblh,         & ! input
-                           wpthlp_env, tke,  tpert,  ztopm1,     rhinv,             & ! input
-                           wpthvp_env, wpqtp_env, mcape,      ddcp, cbm1,           & ! output
+                           ustar,   ths,     wthl_sfc,wqt_sfc,   pblh,              & ! input
+                           tke,     tpert,   rhinv,                                 & ! input
+                           wpthlp_env,       wpthvp_env,         wpqtp_env,         & ! input
+                           ztopm1,           ddcp,               cbm1,              & ! inout
+                           mcape,                                                   & ! output
                            upa,     dna,                                            & ! output
                            upw,     dnw,                                            & ! output
                            upmf,                                                    & ! output

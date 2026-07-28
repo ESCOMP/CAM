@@ -3917,50 +3917,52 @@ end subroutine clubb_init_cnst
 
           trop_mf = troplev(i)
 
-          call integrate_mf( nzm_clubb,  nzt_clubb,                                                            & ! input
-                             rho_zm(i,:),                       zi_g(i,:),       p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
-                             rho_zt(i,:),    dz_g(i,:),         zt_g(i,:),       p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
-                            um(i,:), vm(i,:), thlm(i,:),        rtm(i,:), thv_ds_zt(i,:),                       & ! input
-                             trop_mf,        wm_zm(i,:),       th_zt(i,:),      qv_zt(i,:),      qc_zt(i,:),          & ! input
-                                                               thlm_zm(i,:), rtm_zm(i,:),  thv_ds_zm(i,:),      & ! input
-                                                               th_zm(i,:),      qv_zm(i,:),      qc_zm(i,:),          & ! input
-                             ustar2(i),      th_sfc(i),        wpthlp_sfc(i),   wprtp_sfc(i),    pblh_pbuf(i),             & ! input
-                             wpthlp_pbuf(i,:), tke_pbuf(i,:),      tpert(i),        mf_ztopm1(i,:),  rhinv(i),            & ! input
-                             wpthvp_pbuf(i,:), wprtp_pbuf(i,:),    mf_cape(i,:), mf_ddcp(i,:),   mf_cbm1(i),          & ! output - plume diagnostics
-                             mf_upa(i,:,:),    mf_dna(i,:,:),                                                         & ! output - plume diagnostics
-                             mf_upw(i,:,:),    mf_dnw(i,:,:),                                                         & ! output - plume diagnostics
-                             mf_upmf(i,:,:),                                                                          & ! output - plume diagnostics
-                             mf_upqt(i,:,:),   mf_dnqt(i,:,:),                                                        & ! output - plume diagnostics
-                             mf_upthl(i,:,:),  mf_dnthl(i,:,:),                                                       & ! output - plume diagnostics
-                             mf_upthv(i,:,:),  mf_dnthv(i,:,:),                                                       & ! output - plume diagnostics
-                             mf_upth(i,:,:),   mf_dnth(i,:,:),                                                        & ! output - plume diagnostics
-                             mf_upqc(i,:,:),   mf_dnqc(i,:,:),                                                        & ! output - plume diagnostics
-                             mf_upbuoy(i,:,:),                                                                        & ! output - plume diagnostics
-                             mf_upent(i,:,:),                                                                         & ! output - plume diagnostics
-                             mf_updet(i,:,:),                                                                         & ! output - plume diagnostics
-                            mf_dry_a(i,:),    mf_moist_a(i,:),                                        & ! output - plume diagnostics
-                            mf_dry_w(i,:),    mf_moist_w(i,:),                                        & ! output - plume diagnostics
-                            mf_dry_qt(i,:),   mf_moist_qt(i,:),                                       & ! output - plume diagnostics
-                            mf_dry_thl(i,:),  mf_moist_thl(i,:),                                      & ! output - plume diagnostics
-                            mf_dry_u(i,:),    mf_moist_u(i,:),                                        & ! output - plume diagnostics
-                            mf_dry_v(i,:),    mf_moist_v(i,:),                                        & ! output - plume diagnostics
-                                              mf_moist_qc(i,:),                                       & ! output - plume diagnostics
-                             s_ae(i,:),                                                                               & ! output - plume diagnostics
-                             s_ac(i,:),        s_aup(i,:),      s_adn(i,:),                                           & ! output - plume diagnostics
-                             s_aw(i,:),        s_awup(i,:),     s_awdn(i,:),                                          & ! output - plume diagnostics
-                             s_aww(i,:),       s_awwup(i,:),    s_awwdn(i,:),                                         & ! output - plume diagnostics
-                             s_awthlup(i,:),   s_awqtup(i,:),   s_awuup(i,:),   s_awvup(i,:),                         & ! output - plume diagnostics
-                             s_awthldn(i,:),   s_awqtdn(i,:),   s_awudn(i,:),   s_awvdn(i,:),                         & ! output - plume diagnostics
-                            s_awthl(i,:),     s_awqt(i,:),                                            & ! output - plume diagnostics
-                            s_awu(i,:),       s_awv(i,:),                                             & ! output - plume diagnostics
-                             mf_thlflxup(i,:), mf_qtflxup(i,:), mf_uflxup(i,:), mf_vflxup(i,:),                       & ! output - plume diagnostics
-                             mf_thlflxdn(i,:), mf_qtflxdn(i,:), mf_uflxdn(i,:), mf_vflxdn(i,:),                       & ! output - plume diagnostics
-                             mf_thlflx(i,:),   mf_qtflx(i,:),   mf_uflx(i,:),   mf_vflx(i,:),                         & ! output - variables needed for solver
-                             mf_thvflx(i,:),                                                                          & ! output - plume diagnostics
-                             mf_sqtup(i,:),    mf_sthlup(i,:),                                                        & ! output - plume diagnostics
-                             mf_sqtdn(i,:),    mf_sthldn(i,:),                                                        & ! output - plume diagnostics
-                             mf_sqt(i,:),      mf_sthl(i,:),                                                          & ! output - variables needed for solver
-                             mf_precc(i,:),                                                                           & ! output - plume diagnostics
+          call integrate_mf( nzm_clubb,      nzt_clubb,                                                              & ! input
+                             rho_zm(i,:),    zi_g(i,:),                        p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
+                             rho_zt(i,:),    dz_g(i,:),       zt_g(i,:),       p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
+                             um(i,:),        vm(i,:),         thlm(i,:),       rtm(i,:),        thv_ds_zt(i,:),      & ! input
+                             trop_mf,        wm_zm(i,:),      th_zt(i,:),      qv_zt(i,:),      qc_zt(i,:),          & ! input
+                             thlm_zm(i,:),   rtm_zm(i,:),     thv_ds_zm(i,:),                                        & ! input
+                             th_zm(i,:),     qv_zm(i,:),      qc_zm(i,:),                                            & ! input
+                             ustar2(i),      th_sfc(i),       wpthlp_sfc(i),   wprtp_sfc(i),    pblh_pbuf(i),        & ! input
+                             tke_pbuf(i,:),  tpert(i),        rhinv(i),                                              & ! input
+                             wpthlp_pbuf(i,:),                wpthvp_pbuf(i,:),                 wprtp_pbuf(i,:),     & ! input    
+                             mf_ztopm1(i,:),                  mf_ddcp(i,:),                     mf_cbm1(i),          & ! in-out
+                             mf_cape(i,:),                                                                           & ! output
+                             mf_upa(i,:,:),    mf_dna(i,:,:),                                                        & ! output
+                             mf_upw(i,:,:),    mf_dnw(i,:,:),                                                        & ! output
+                             mf_upmf(i,:,:),                                                                         & ! output
+                             mf_upqt(i,:,:),   mf_dnqt(i,:,:),                                                       & ! output
+                             mf_upthl(i,:,:),  mf_dnthl(i,:,:),                                                      & ! output
+                             mf_upthv(i,:,:),  mf_dnthv(i,:,:),                                                      & ! output
+                             mf_upth(i,:,:),   mf_dnth(i,:,:),                                                       & ! output
+                             mf_upqc(i,:,:),   mf_dnqc(i,:,:),                                                       & ! output
+                             mf_upbuoy(i,:,:),                                                                       & ! output
+                             mf_upent(i,:,:),                                                                        & ! output
+                             mf_updet(i,:,:),                                                                        & ! output
+                             mf_dry_a(i,:),    mf_moist_a(i,:),                                                      & ! output
+                             mf_dry_w(i,:),    mf_moist_w(i,:),                                                      & ! output
+                             mf_dry_qt(i,:),   mf_moist_qt(i,:),                                                     & ! output
+                             mf_dry_thl(i,:),  mf_moist_thl(i,:),                                                    & ! output
+                             mf_dry_u(i,:),    mf_moist_u(i,:),                                                      & ! output
+                             mf_dry_v(i,:),    mf_moist_v(i,:),                                                      & ! output
+                                               mf_moist_qc(i,:),                                                     & ! output
+                             s_ae(i,:),                                                                              & ! output
+                             s_ac(i,:),        s_aup(i,:),      s_adn(i,:),                                          & ! output
+                             s_aw(i,:),        s_awup(i,:),     s_awdn(i,:),                                         & ! output
+                             s_aww(i,:),       s_awwup(i,:),    s_awwdn(i,:),                                        & ! output
+                             s_awthlup(i,:),   s_awqtup(i,:),   s_awuup(i,:),   s_awvup(i,:),                        & ! output
+                             s_awthldn(i,:),   s_awqtdn(i,:),   s_awudn(i,:),   s_awvdn(i,:),                        & ! output
+                             s_awthl(i,:),     s_awqt(i,:),                                                          & ! output
+                             s_awu(i,:),       s_awv(i,:),                                                           & ! output
+                             mf_thlflxup(i,:), mf_qtflxup(i,:), mf_uflxup(i,:), mf_vflxup(i,:),                      & ! output
+                             mf_thlflxdn(i,:), mf_qtflxdn(i,:), mf_uflxdn(i,:), mf_vflxdn(i,:),                      & ! output
+                             mf_thlflx(i,:),   mf_qtflx(i,:),   mf_uflx(i,:),   mf_vflx(i,:),                        & ! output
+                             mf_thvflx(i,:),                                                                         & ! output
+                             mf_sqtup(i,:),    mf_sthlup(i,:),                                                       & ! output
+                             mf_sqtdn(i,:),    mf_sthldn(i,:),                                                       & ! output
+                             mf_sqt(i,:),      mf_sthl(i,:),                                                         & ! output 
+                             mf_precc(i,:),                                                                          & ! output
                              mf_ztop(i,:),     mf_L0(i,:) )
 
         end do
