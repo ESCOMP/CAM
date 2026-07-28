@@ -21,6 +21,9 @@ module chemistry
   use string_utils,        only : to_upper
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_instances_mod, only: aerosol_instances_get_props, &
+       aerosol_instances_get_num_models
 #endif
 
   ! GEOS-Chem derived types
@@ -65,7 +68,6 @@ module chemistry
   ! Private routines:
   !
   private :: sect02_mam4
-  private :: erfc_num_recipes
 
   ! Location of valid geoschem_config.yml and species_database.yml
   ! Use local files in run folder
@@ -170,6 +172,9 @@ module chemistry
   ! for nitrogen deposition fluxes to surface models
   logical, parameter :: chem_has_ndep_flx = .false.
 
+#if defined( MODAL_AERO )
+  class(aerosol_properties), pointer :: aero_props=>null()
+#endif
 contains
 
   !================================================================================================
@@ -203,7 +208,7 @@ contains
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
     use modal_aero_data,     only : ntot_amode, nspec_amode
-    use rad_constituents,    only : rad_cnst_get_info
+    use radiative_aerosol,    only : rad_aer_get_info
 #endif
 
     ! GEOS-Chem interface modules in CAM
@@ -579,7 +584,7 @@ contains
 
     DO M = 1, ntot_amode
        DO L = 1, nspec_amode(M)
-          call rad_cnst_get_info(0,M,L,spec_name=aername)
+          call rad_aer_get_info(0,M,L,spec_name=aername)
           SELECT CASE ( to_upper(aername(:3)) )
              CASE ( 'BC_' )
                 SELECT CASE ( to_upper(aername(4:5)) )
@@ -950,8 +955,6 @@ contains
     ! Purpose: return true if specified constituent is implemented by this package
     ! Author: B. Eaton
 
-    IMPLICIT NONE
-
     CHARACTER(LEN=*), INTENT(IN) :: name   ! constituent name
     LOGICAL :: chem_implements_cnst        ! return value
     INTEGER :: M
@@ -1019,6 +1022,7 @@ contains
     use Photolysis_Mod,        only : Init_Photolysis
     use PhysConstants,         only : PI, PI_180, Re
     use Pressure_Mod,          only : Accept_External_ApBp
+    use precision_mod,         only : MISSING_DBLE, f8
     use State_Chm_Mod,         only : Ind_
     use State_Grid_Mod,        only : Init_State_Grid, Cleanup_State_Grid
     use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
@@ -1044,6 +1048,7 @@ contains
     INTEGER                :: I, J, L, N, M
     INTEGER                :: RC
     INTEGER                :: nLinoz
+    integer                :: iaermod
 
     ! Logicals
     LOGICAL                :: prtDebug
@@ -1171,7 +1176,7 @@ contains
     ! optical properties of aerosols outside of Cloud-J.
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_chem_inputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_aeropt_inputs)
+    Input_Opt%AER_OPTICS_DIR       = TRIM(geoschem_aeropt_inputs)
     Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_photol_inputs)
 
     !----------------------------------------------------------
@@ -1464,6 +1469,17 @@ contains
           State_Chm(I)%Species(N)%Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
        ENDDO
 
+       ! Kludge: Replace State_Chm initialization in GC_Init_Extra
+       ! since it is only ran for BEGCHUNK below.
+       ! This will set the proper tolerances for KPP species.
+       WHERE( State_Chm(I)%KPP_AbsTol == MISSING_DBLE )
+          State_Chm(I)%KPP_AbsTol = 1.0e-2_f8
+       ENDWHERE
+
+       WHERE( State_Chm(I)%KPP_RelTol == MISSING_DBLE )
+          State_Chm(I)%KPP_RelTol = 0.5e-2_f8
+       ENDWHERE
+
     ENDDO
     Input_Opt%amIRoot = MasterProc
 
@@ -1479,6 +1495,46 @@ contains
         ErrMsg = 'Error encountered in "GC_Init_Extra"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    ! Kludge: Copy initialized fields in phot container in State_Chm
+    ! to other chunks because they are being read in GC_Init_Extra -> init_aerosol -> ...
+    DO I = BEGCHUNK, ENDCHUNK
+        IF(I .ne. BEGCHUNK) THEN
+            ! Set in RD_AOD
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+            State_Chm(I)%Phot%RHAA = State_Chm(BEGCHUNK)%Phot%RHAA
+            State_Chm(I)%Phot%RDAA = State_Chm(BEGCHUNK)%Phot%RDAA
+            State_Chm(I)%Phot%RWAA = State_Chm(BEGCHUNK)%Phot%RWAA
+            State_Chm(I)%Phot%SGAA = State_Chm(BEGCHUNK)%Phot%SGAA
+            State_Chm(I)%Phot%REAA = State_Chm(BEGCHUNK)%Phot%REAA
+            State_Chm(I)%Phot%NRLAA = State_Chm(BEGCHUNK)%Phot%NRLAA
+            State_Chm(I)%Phot%NCMAA = State_Chm(BEGCHUNK)%Phot%NCMAA
+            State_Chm(I)%Phot%QQAA = State_Chm(BEGCHUNK)%Phot%QQAA
+            State_Chm(I)%Phot%ALPHAA = State_Chm(BEGCHUNK)%Phot%ALPHAA
+            State_Chm(I)%Phot%SSAA = State_Chm(BEGCHUNK)%Phot%SSAA
+            State_Chm(I)%Phot%ASYMAA = State_Chm(BEGCHUNK)%Phot%ASYMAA
+            State_Chm(I)%Phot%PHAA = State_Chm(BEGCHUNK)%Phot%PHAA
+
+            ! This is a scalar -- very important for later calculations...
+            State_Chm(I)%Phot%IWV1000 = State_Chm(BEGCHUNK)%Phot%IWV1000
+
+            ! Set in CALC_AOD
+            State_Chm(I)%Phot%IWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IWVREQUIRED
+            State_Chm(I)%Phot%IRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%IRTWVREQUIRED
+            State_Chm(I)%Phot%IWVSELECT = State_Chm(BEGCHUNK)%Phot%IWVSELECT
+            State_Chm(I)%Phot%IRTWVSELECT = State_Chm(BEGCHUNK)%Phot%IRTWVSELECT
+            State_Chm(I)%Phot%ACOEF_WV = State_Chm(BEGCHUNK)%Phot%ACOEF_WV
+            State_Chm(I)%Phot%BCOEF_WV = State_Chm(BEGCHUNK)%Phot%BCOEF_WV
+            State_Chm(I)%Phot%CCOEF_WV = State_Chm(BEGCHUNK)%Phot%CCOEF_WV
+            State_Chm(I)%Phot%ACOEF_RTWV = State_Chm(BEGCHUNK)%Phot%ACOEF_RTWV
+            State_Chm(I)%Phot%BCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%BCOEF_RTWV
+            State_Chm(I)%Phot%CCOEF_RTWV = State_Chm(BEGCHUNK)%Phot%CCOEF_RTWV
+            State_Chm(I)%Phot%WVAA = State_Chm(BEGCHUNK)%Phot%WVAA
+
+            State_Chm(I)%Phot%NWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NWVREQUIRED
+            State_Chm(I)%Phot%NRTWVREQUIRED = State_Chm(BEGCHUNK)%Phot%NRTWVREQUIRED
+        ENDIF
+    ENDDO
 
     IF ( Input_Opt%LDryD ) THEN
        !----------------------------------------------------------
@@ -1524,8 +1580,14 @@ contains
     ENDIF
 
 #if defined( MODAL_AERO )
+    ! retrieve MAM aerosol properties from aerosol instances
+    do iaermod = 1, aerosol_instances_get_num_models()
+       aero_props => aerosol_instances_get_props(iaermod, 0)
+       if (aero_props%model_is('MAM')) exit
+    end do
+
     ! Initialize aqueous chem
-    CALL SOx_inti()
+    CALL SOx_inti(aero_props)
 
     ! Initialize aerosols
     CALL aero_model_init( pbuf2d )
@@ -1620,6 +1682,8 @@ contains
     IF ( Input_Opt%ITS_A_FULLCHEM_SIM .or. &
          Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
        DO I = BEGCHUNK, ENDCHUNK
+          ! Restrict prints to one thread only
+          Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
           CALL Init_Photolysis( Input_Opt  = Input_Opt,                &
                                 State_Grid = State_Grid(I),            &
                                 State_Chm  = State_Chm(I),             &
@@ -1634,6 +1698,7 @@ contains
             State_Chm(I)%Phot%OREF = State_Chm(BEGCHUNK)%Phot%OREF
           ENDIF
        ENDDO
+       Input_Opt%amIRoot = MasterProc
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Photolysis"!'
@@ -1885,7 +1950,7 @@ contains
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use phys_grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
     use physconst,           only : MWDry, Gravit
-    use rad_constituents,    only : rad_cnst_get_info
+    use radiative_aerosol,    only : rad_aer_get_info
     use short_lived_species, only : get_short_lived_species_gc, set_short_lived_species_gc
     use spmd_utils,          only : masterproc
     use time_manager,        only : Get_Curr_Calday, Get_Curr_Date ! For computing SZA
@@ -2289,10 +2354,12 @@ contains
           P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
           IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_aer_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           IF ( K > 0 ) State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = 0.0e+00_fp
        ENDDO
@@ -2309,10 +2376,12 @@ contains
           ! species (with cnst index P, which corresponds to index K in
           ! State_Chm)
 
-          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
-          ! will be prescribed (hplin, 5/9/23)
-          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
-          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          if (usePrescribedAerDistribution) then
+             ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+             ! will be prescribed (hplin, 5/9/23)
+             call rad_aer_get_info(0,M,SM,spec_name=aerName)
+             IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+          end if
 
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
@@ -2521,9 +2590,9 @@ contains
                                              + REAL(state%q(:nY,nZ:1:-1,N),fp) *         &
                                                 adv_mass(l_SO4) / adv_mass(mapCnst(N))
        ! SO4_gasRatio is in mol/mol
-       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
-                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
-                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1)
+       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &       ! kg(H2SO4) kg-1 air
+                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &       ! g(SO4) mol(SO4)-1 / g(H2SO4) mol(H2SO4)-1
+                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1) ! kg(SO4) kg-1 air
        MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ)
     ENDIF
 #endif
@@ -4586,11 +4655,7 @@ contains
     use tracer_cnst,      only : init_tracer_cnst_restart
     use tracer_srcs,      only : init_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'chem_init_restart: init restarts for tracer sources and offline fields'
 
     !
     ! data for offline tracers
@@ -4611,11 +4676,7 @@ contains
     use tracer_cnst, only : write_tracer_cnst_restart
     use tracer_srcs, only : write_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'chem_write_restart: writing restarts for tracer sources and offline fields'
 
     ! data for offline tracers
     call write_tracer_cnst_restart(File)
@@ -4633,11 +4694,7 @@ contains
     use tracer_cnst, only : read_tracer_cnst_restart
     use tracer_srcs, only : read_tracer_srcs_restart
 
-    IMPLICIT NONE
-
     TYPE(file_desc_t) :: File
-
-    WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
 
     ! data for offline tracers
     call read_tracer_cnst_restart(File)
@@ -4673,33 +4730,6 @@ contains
     ENDDO
 
   end subroutine chem_emissions
-!
-!   P R E S C R I B E   A E R O S O L   D I S T R I B U T I O N
-!
-! Based on code from Feng et al., 2021 GMD (WRF-GC v2.0), by Xu Feng et al.
-! in module_diag_aero_size_info.F, originally based from WRF-Chem.
-!
-! Reference:
-! Feng, X., Lin, H., Fu, T.-M., Sulprizio, M. P., Zhuang, J., Jacob, D. J., Tian, H., Ma, Y., Zhang, L., Wang, X., Chen, Q., and Han, Z.: WRF-GC (v2.0): online two-way coupling of WRF (v3.9.1.1) and GEOS-Chem (v12.7.2) for modeling regional atmospheric chemistry–meteorology interactions, Geosci. Model Dev., 14, 3741–3768, https://doi.org/10.5194/gmd-14-3741-2021, 2021.
-!
-
-  real(8) function erfc_num_recipes( x )
-    !
-    !   from press et al, numerical recipes, 1990, page 164
-    !
-    implicit none
-    real(r8) :: x, erfc_dbl, dum, t, z
-    z = abs(x)
-    t = 1.0_r8/(1.0_r8 + 0.5_r8*z)
-    dum =  ( -z*z - 1.26551223_r8 + t*(1.00002368_r8 + t*(0.37409196_r8 +   &
-      t*(0.09678418_r8 + t*(-0.18628806_r8 + t*(0.27886807_r8 +   &
-                                       t*(-1.13520398_r8 +   &
-      t*(1.48851587_r8 + t*(-0.82215223_r8 + t*0.17087277_r8 )))))))))
-    erfc_dbl = t * exp(dum)
-    if (x .lt. 0.0_r8) erfc_dbl = 2.0_r8 - erfc_dbl
-    erfc_num_recipes = erfc_dbl
-    return
-  end function erfc_num_recipes
 
   ! sect02_mam4 is based off sect02_new in WRF-GC, which is based off
   ! sect02 in WRF-Chem chem/module_optical_averaging.F.
@@ -4708,76 +4738,81 @@ contains
   ! prog calculates mass and number for each section.
   subroutine sect02_mam4(dgnum_um, sigmag, duma, nbin, dlo_sect, dhi_sect, &
                          xnum_sect, xmas_sect)
-        ! INPUT PARAMETERS:
-        ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
-        ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
-        ! duma                 1.0 ?
-        ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
-        ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
-        ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        ! OUTPUT PARAMETERS:
-        ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
-        ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
+    use shr_spfn_mod, only: erfc => shr_spfn_erfc
 
-        implicit none
-        real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
-        integer                               :: n, nbin
-        real(8)                               :: dgnum, dgnum_um, dhi,  &
-                                                 dlo, duma, dumfrac,    &
-                                                 dx, sigmag,            &
-                                                 sx, sxroot2, thi, tlo, x0, x3, &
-                                                 xhi, xlo, xmtot, xntot
-        real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
-        real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
-        real(8)                               :: pi
-        parameter (pi = 3.141592653589_r8)
+    ! INPUT PARAMETERS:
+    ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
+    ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
+    ! duma                 1.0 ?
+    ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
+    ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
+    ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
 
-        xmtot = duma
-        xntot = duma
+    ! OUTPUT PARAMETERS:
+    ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
+    ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
 
-        ! Compute bins based on number of bins. Originally sect02_new.
-        ! For MAM4, we prescribe the bin ranges as well.
-        ! dlo = dlo_um*1.0E-4_r8
-        ! dhi = dhi_um*1.0E-4_r8
-        ! xlo = log( dlo )
-        ! xhi = log( dhi )
-        ! dx  = (xhi - xlo)/nbin
-        ! do n = 1, nbin
-        !     dlo_sect(n) = exp( xlo + dx*(n-1) )
-        !     dhi_sect(n) = exp( xlo + dx*n )
-        ! end do
+    implicit none
+    real(8), dimension(nbin), intent(out) :: xnum_sect, xmas_sect
+    integer                               :: n, nbin
+    real(8)                               :: dgnum, dgnum_um, dhi,  &
+         dlo, duma, dumfrac,    &
+         dx, sigmag,            &
+         sx, sxroot2, thi, tlo, x0, x3, &
+         xhi, xlo, xmtot, xntot
+    real(8), intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
+    real(8)                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
+    real(8)                               :: pi
+    parameter (pi = 3.141592653589_r8)
 
-        ! dlo_sect and dhi_sect have to be scaled by 1e-4
-        ! in order to fit parameters in the above calculation, if they are prescribed.
+    xmtot = duma
+    xntot = duma
 
-        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
-        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+    ! Compute bins based on number of bins. Originally sect02_new.
+    ! For MAM4, we prescribe the bin ranges as well.
+    ! dlo = dlo_um*1.0E-4_r8
+    ! dhi = dhi_um*1.0E-4_r8
+    ! xlo = log( dlo )
+    ! xhi = log( dhi )
+    ! dx  = (xhi - xlo)/nbin
+    ! do n = 1, nbin
+    !     dlo_sect(n) = exp( xlo + dx*(n-1) )
+    !     dhi_sect(n) = exp( xlo + dx*n )
+    ! end do
 
-        dgnum = dgnum_um*1.0E-4_r8
-        sx = log( sigmag )
-        x0 = log( dgnum )
-        x3 = x0 + 3.0_r8*sx*sx
-        sxroot2 = sx * sqrt( 2.0_r8 )
-        do n = 1, nbin
-            xlo = log( my_dlo_sect(n) )
-            xhi = log( my_dhi_sect(n) )
-            tlo = (xlo - x0)/sxroot2
-            thi = (xhi - x0)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            end if
-            xnum_sect(n) = xntot*dumfrac
-            tlo = (xlo - x3)/sxroot2
-            thi = (xhi - x3)/sxroot2
-            if (tlo .le. 0.0_r8) then
-                dumfrac = 0.5_r8*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
-            else
-                dumfrac = 0.5_r8*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
-            endif
-            xmas_sect(n) = xmtot*dumfrac
-        enddo
+    ! dlo_sect and dhi_sect have to be scaled by 1e-4
+    ! in order to fit parameters in the above calculation, if they are prescribed.
+
+    my_dlo_sect(:) = dlo_sect(:) * 1.0e-4_r8
+    my_dhi_sect(:) = dhi_sect(:) * 1.0e-4_r8
+
+    dgnum = dgnum_um*1.0E-4_r8
+    sx = log( sigmag )
+    x0 = log( dgnum )
+    x3 = x0 + 3.0_r8*sx*sx
+    sxroot2 = sx * sqrt( 2.0_r8 )
+    do n = 1, nbin
+       xlo = log( my_dlo_sect(n) )
+       xhi = log( my_dhi_sect(n) )
+       tlo = (xlo - x0)/sxroot2
+       thi = (xhi - x0)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       end if
+       xnum_sect(n) = xntot*dumfrac
+       tlo = (xlo - x3)/sxroot2
+       thi = (xhi - x3)/sxroot2
+       if (tlo .le. 0.0_r8) then
+          dumfrac = 0.5_r8*( erfc(-thi) - erfc(-tlo) )
+       else
+          dumfrac = 0.5_r8*( erfc(tlo) - erfc(thi) )
+       endif
+       xmas_sect(n) = xmtot*dumfrac
+    enddo
+
   end subroutine sect02_mam4
+
 end module chemistry

@@ -6,26 +6,26 @@
       implicit none
       save
       integer, parameter :: phtcnt = 114, & ! number of photolysis reactions
-                            rxntot = 435, & ! number of total reactions
-                            gascnt = 321, & ! number of gas phase reactions
+                            rxntot = 438, & ! number of total reactions
+                            gascnt = 324, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 151, & ! number of "gas phase" species
+                            gas_pcnst = 152, & ! number of "gas phase" species
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 1584, & ! number of non-zero matrix entries
-                            extcnt = 21, & ! number of species with external forcing
+                            extcnt = 22, & ! number of species with external forcing
                             clscnt1 = 2, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
-                            clscnt4 = 149, & ! number of species in implicit class
+                            clscnt4 = 150, & ! number of species in implicit class
                             clscnt5 = 0, & ! number of species in rodas class
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
-                            rxt_tag_cnt = 435, &
-                            enthalpy_cnt = 54, &
-                            nslvd = 13
+                            rxt_tag_cnt = 438, &
+                            enthalpy_cnt = 56, &
+                            nslvd = 24
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0

@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+
+do_clubb_mf=.true.
+do_clubb_mf_diag=.true.
+deep_scheme='off'

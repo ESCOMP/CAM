@@ -31,6 +31,7 @@ module cam_mpas_subdriver
               cam_mpas_compute_unit_vectors, &
               cam_mpas_update_halo, &
               cam_mpas_cell_to_edge_winds, &
+              cam_mpas_vertex_to_cell_relative_vorticities, &
               cam_mpas_run, &
               cam_mpas_finalize, &
               cam_mpas_debug_stream, &
@@ -261,7 +262,8 @@ contains
        ! MPAS-A setup code that it is operating as a CAM dycore, and that it is necessary to
        ! allocate scalars separately from other Registry-defined fields
        !
-       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
+       ! In MPAS, there must be at least one constituent, `qv`, which denotes water vapor mixing ratio.
+       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', max(1, num_scalars))
 
        mesh_iotype = MPAS_IO_NETCDF  ! Not actually used
        call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype, pio_file_desc=fh_ini)
@@ -481,26 +483,29 @@ contains
           return
        end if
 
-       !
-       ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
-       ! something has gone wrong
-       !
-       if (size(cnst_name) /= num_scalars) then
-          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
-                              messageType=MPAS_LOG_ERR)
-          call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
-                              messageType=MPAS_LOG_ERR)
-          ierr = 1
-          return
-       end if
-
-       !
-       ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
-       ! the case, something has gone wrong
-       !
        if (size(cnst_name) > 0) then
+          !
+          ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
+          ! something has gone wrong
+          !
+          if (size(cnst_name) /= num_scalars) then
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
+                messageType=MPAS_LOG_ERR)
+             call mpas_log_write( &
+                'size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
+                messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+
+          !
+          ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
+          ! the case, something has gone wrong
+          !
           if (trim(cnst_name(1)) /= 'Q') then
-             call mpas_log_write(trim(subname)//': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             call mpas_log_write(trim(subname) // &
+                ': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
           end if
@@ -551,6 +556,10 @@ contains
           cam_from_mpas_cnst(mpas_from_cam_cnst(i)) = i
        end do
 
+       call mpas_pool_add_dimension(statePool, 'index_qv', 1)
+       call mpas_pool_add_dimension(statePool, 'index_qc', 0)
+       call mpas_pool_add_dimension(statePool, 'index_tke', 0)
+
        timeLevs = 2
 
        do i = 1, timeLevs
@@ -564,7 +573,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(statePool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg kg^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Water vapor mixing ratio')
@@ -614,6 +622,10 @@ contains
           return
        end if
 
+       call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
+       call mpas_pool_add_dimension(tendPool, 'index_qc', 0)
+       call mpas_pool_add_dimension(tendPool, 'index_tke', 0)
+
        timeLevs = 1
 
        do i = 1, timeLevs
@@ -627,7 +639,6 @@ contains
              return
           end if
 
-          if (i == 1) call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
           scalarsField % constituentNames(1) = 'tend_qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
@@ -942,13 +953,9 @@ contains
        type (field2DReal), pointer :: zgrid, zxu, zz
        type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
 
-       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
-       type (field2DReal), pointer :: cell_gradient_coef_x, cell_gradient_coef_y
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors
 
        type (MPAS_Stream_type) :: mesh_stream
-
-       nullify(cell_gradient_coef_x)
-       nullify(cell_gradient_coef_y)
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
@@ -1027,14 +1034,6 @@ contains
 
        call mpas_pool_get_field(meshPool, 'edgeNormalVectors', edgeNormalVectors)
        call mpas_pool_get_field(meshPool, 'localVerticalUnitVectors', localVerticalUnitVectors)
-
-       call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
-       call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
-
-       if (use_gw_front .or. use_gw_front_igw) then
-          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_x', cell_gradient_coef_x)
-          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_y', cell_gradient_coef_y)
-       endif
 
        ierr_total = 0
 
@@ -1163,16 +1162,6 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, localVerticalUnitVectors, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, defc_a, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_x, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_y, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       endif
 
        if (ierr_total > 0) then
            write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to static input stream.'
@@ -1252,12 +1241,7 @@ contains
 
        call MPAS_dmpar_exch_halo_field(edgeNormalVectors)
        call MPAS_dmpar_exch_halo_field(localVerticalUnitVectors)
-       call MPAS_dmpar_exch_halo_field(defc_a)
-       call MPAS_dmpar_exch_halo_field(defc_b)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_x)
-          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_y)
-       endif
+
        !
        ! Re-index from global index space to local index space
        !
@@ -1345,8 +1329,7 @@ contains
        type (field2DReal), pointer :: zgrid, zxu, zz
        type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
 
-       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
-       type (field2DReal), pointer :: cell_gradient_coef_x, cell_gradient_coef_y
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors
 
        type (field0DChar), pointer :: initial_time
        type (field0DChar), pointer :: xtime
@@ -1385,9 +1368,6 @@ contains
 
        type (field1DReal), pointer :: u_init
        type (field1DReal), pointer :: qv_init
-
-       nullify(cell_gradient_coef_x)
-       nullify(cell_gradient_coef_y)
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)
@@ -1466,12 +1446,7 @@ contains
 
        call mpas_pool_get_field(allFields, 'edgeNormalVectors', edgeNormalVectors)
        call mpas_pool_get_field(allFields, 'localVerticalUnitVectors', localVerticalUnitVectors)
-       call mpas_pool_get_field(allFields, 'defc_a', defc_a)
-       call mpas_pool_get_field(allFields, 'defc_b', defc_b)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call mpas_pool_get_field(allFields, 'cell_gradient_coef_x', cell_gradient_coef_x)
-          call mpas_pool_get_field(allFields, 'cell_gradient_coef_y', cell_gradient_coef_y)
-       endif
+
        call mpas_pool_get_field(allFields, 'initial_time', initial_time, timeLevel=1)
        call mpas_pool_get_field(allFields, 'xtime', xtime, timeLevel=1)
        call mpas_pool_get_field(allFields, 'u', u, timeLevel=1)
@@ -1637,16 +1612,7 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, localVerticalUnitVectors, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, defc_a, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, defc_b, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       if (use_gw_front .or. use_gw_front_igw) then
-          call MPAS_streamAddField(restart_stream, cell_gradient_coef_x, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-          call MPAS_streamAddField(restart_stream, cell_gradient_coef_y, ierr=ierr)
-          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       endif
+
        call MPAS_streamAddField(restart_stream, initial_time, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xtime, ierr=ierr)
@@ -1853,12 +1819,7 @@ contains
 
        call cam_mpas_update_halo('edgeNormalVectors', endrun)
        call cam_mpas_update_halo('localVerticalUnitVectors', endrun)
-       call cam_mpas_update_halo('defc_a', endrun)
-       call cam_mpas_update_halo('defc_b', endrun)
-       if (use_gw_front .or. use_gw_front_igw) then
-          call cam_mpas_update_halo('cell_gradient_coef_x', endrun)
-          call cam_mpas_update_halo('cell_gradient_coef_y', endrun)
-       endif
+
        call cam_mpas_update_halo('u', endrun)
        call cam_mpas_update_halo('w', endrun)
        call cam_mpas_update_halo('rho_zz', endrun)
@@ -2213,6 +2174,116 @@ contains
 
     end subroutine cam_mpas_cell_to_edge_winds
 
+    !-------------------------------------------------------------------------------
+    ! subroutine cam_mpas_vertex_to_cell_relative_vorticities
+    !
+    !> \brief  Compute the relative vorticities at cell points.
+    !> \author Kuan-Chih Wang
+    !> \date   2025-04-12
+    !> \details
+    !>  MPAS uses staggered C-grid for spatial discretization, where relative
+    !>  vorticities are located at vertex points because wind vectors are located at
+    !>  edge points. However, physics schemes that use relative vorticities as input
+    !>  usually want them at cell points instead.
+    !>  This subroutine computes the relative vorticity at each cell point from its
+    !>  surrounding vertex points and returns the results.
+    !
+    !-------------------------------------------------------------------------------
+    subroutine cam_mpas_vertex_to_cell_relative_vorticities(cell_relative_vorticity)
+        use mpas_derived_types, only: mpas_pool_type
+        use mpas_kind_types, only: rkind
+        use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+
+        real(rkind), allocatable, intent(out) :: cell_relative_vorticity(:, :)
+
+        character(*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_vertex_to_cell_relative_vorticities'
+        integer :: i, k
+        integer :: ierr
+        integer, pointer :: ncellssolve, nvertlevels
+        integer, pointer :: kiteforcell(:, :), nedgesoncell(:), verticesoncell(:, :)
+        real(rkind), pointer :: areacell(:), kiteareasonvertex(:, :), vorticity(:, :)
+        type(mpas_pool_type), pointer :: mpas_pool_diag, mpas_pool_mesh
+
+        nullify(ncellssolve, nvertlevels)
+        nullify(kiteforcell, nedgesoncell, verticesoncell)
+        nullify(areacell, kiteareasonvertex, vorticity)
+        nullify(mpas_pool_diag, mpas_pool_mesh)
+
+        call mpas_pool_get_subpool(domain_ptr % blocklist % allstructs, 'diag', mpas_pool_diag)
+        call mpas_pool_get_subpool(domain_ptr % blocklist % allstructs, 'mesh', mpas_pool_mesh)
+
+        ! Input.
+        call mpas_pool_get_dimension(mpas_pool_mesh, 'nCellsSolve', ncellssolve)
+        call mpas_pool_get_dimension(mpas_pool_mesh, 'nVertLevels', nvertlevels)
+
+        call mpas_pool_get_array(mpas_pool_mesh, 'kiteForCell', kiteforcell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'nEdgesOnCell', nedgesoncell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'verticesOnCell', verticesoncell)
+
+        call mpas_pool_get_array(mpas_pool_mesh, 'areaCell', areacell)
+        call mpas_pool_get_array(mpas_pool_mesh, 'kiteAreasOnVertex', kiteareasonvertex)
+        call mpas_pool_get_array(mpas_pool_diag, 'vorticity', vorticity)
+
+        ! Output.
+        allocate(cell_relative_vorticity(nvertlevels, ncellssolve), stat=ierr)
+
+        if (ierr /= 0) then
+            call endrun(subname // ': Failed to allocate cell_relative_vorticity')
+        end if
+
+        do i = 1, ncellssolve
+            do k = 1, nvertlevels
+                cell_relative_vorticity(k, i) = regrid_from_vertex_to_cell(i, k, &
+                    nedgesoncell, verticesoncell, kiteforcell, kiteareasonvertex, areacell, &
+                    vorticity)
+            end do
+        end do
+
+        nullify(ncellssolve, nvertlevels)
+        nullify(kiteforcell, nedgesoncell, verticesoncell)
+        nullify(areacell, kiteareasonvertex, vorticity)
+        nullify(mpas_pool_diag, mpas_pool_mesh)
+    end subroutine cam_mpas_vertex_to_cell_relative_vorticities
+
+    !-------------------------------------------------------------------------------
+    ! function regrid_from_vertex_to_cell
+    !
+    !> \brief  Regrid values from vertex points to the specified cell point.
+    !> \author Kuan-Chih Wang
+    !> \date   2025-04-12
+    !> \details
+    !>  This function computes the area weighted average (i.e., `cell_value`) at the
+    !>  specified cell point (i.e., `cell_index` and `cell_level`) from the values
+    !>  at its surrounding vertex points (i.e., `vertex_value`).
+    !>  The formulation used here is adapted and generalized from the
+    !>  `atm_compute_solve_diagnostics` subroutine in MPAS.
+    !
+    !-------------------------------------------------------------------------------
+    pure function regrid_from_vertex_to_cell(cell_index, cell_level, &
+            nverticesoncell, verticesoncell, kiteforcell, kiteareasonvertex, areacell, &
+            vertex_value) result(cell_value)
+        use mpas_kind_types, only: rkind
+
+        integer, intent(in) :: cell_index, cell_level
+        integer, intent(in) :: nverticesoncell(:), verticesoncell(:, :), kiteforcell(:, :)
+        real(rkind), intent(in) :: kiteareasonvertex(:, :), areacell(:)
+        real(rkind), intent(in) :: vertex_value(:, :)
+        real(rkind) :: cell_value
+
+        integer :: i, j, vertex_index
+
+        cell_value = 0.0_rkind
+
+        do i = 1, nverticesoncell(cell_index)
+            j = kiteforcell(i, cell_index)
+            vertex_index = verticesoncell(i, cell_index)
+
+            cell_value = cell_value + &
+                kiteareasonvertex(j, vertex_index) * vertex_value(cell_level, vertex_index)
+        end do
+
+        cell_value = cell_value / areacell(cell_index)
+    end function regrid_from_vertex_to_cell
 
     !-----------------------------------------------------------------------
     !  routine cam_mpas_run

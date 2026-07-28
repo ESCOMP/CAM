@@ -48,13 +48,12 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use subcol,              only: subcol_readnl
    use cloud_fraction,      only: cldfrc_readnl
    use cldfrc2m,            only: cldfrc2m_readnl
-   use rk_stratiform,       only: rk_stratiform_readnl
-   use unicon_cam,          only: unicon_cam_readnl
+   use rk_stratiform_cam,   only: rk_stratiform_cam_readnl
    use zm_conv_intr,        only: zm_conv_readnl
    use hk_conv,             only: hkconv_readnl
    use uwshcu,              only: uwshcu_readnl
    use pkg_cld_sediment,    only: cld_sediment_readnl
-   use gw_drag,             only: gw_drag_readnl
+   use gw_drag_cam,         only: gw_drag_cam_readnl
    use qbo,                 only: qbo_readnl
    use iondrag,             only: iondrag_readnl
    use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_readnl
@@ -77,7 +76,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use aircraft_emit,       only: aircraft_emit_readnl
    use cospsimulator_intr,  only: cospsimulator_intr_readnl
    use vertical_diffusion,  only: vd_readnl
-   use rayleigh_friction,   only: rayleigh_friction_readnl
+   use rayleigh_friction_cam, only: rayleigh_friction_readnl
 
    use cam_diagnostics,     only: diag_readnl
    use radheat,             only: radheat_readnl
@@ -105,6 +104,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use surface_emissions_mod, only: surface_emissions_readnl
    use elevated_emissions_mod, only: elevated_emissions_readnl
    use atm_stream_ndep,     only: stream_ndep_readnl
+   use ctem_diags_mod, only: ctem_diags_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -152,13 +152,12 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call subcol_readnl(nlfilename)
    call cldfrc_readnl(nlfilename)
    call cldfrc2m_readnl(nlfilename)
-   call unicon_cam_readnl(nlfilename)
    call zm_conv_readnl(nlfilename)
-   call rk_stratiform_readnl(nlfilename)
+   call rk_stratiform_cam_readnl(nlfilename)
    call hkconv_readnl(nlfilename)
    call uwshcu_readnl(nlfilename)
    call cld_sediment_readnl(nlfilename)
-   call gw_drag_readnl(nlfilename)
+   call gw_drag_cam_readnl(nlfilename)
    call qbo_readnl(nlfilename)
    call lunar_tides_readnl(nlfilename)
    call iondrag_readnl(nlfilename)
@@ -211,6 +210,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call surface_emissions_readnl(nlfilename)
    call elevated_emissions_readnl(nlfilename)
    call stream_ndep_readnl(nlfilename)
+   call ctem_diags_readnl(nlfilename)
 
 end subroutine read_namelist
 

@@ -465,8 +465,9 @@ contains
     ! NOTE: This only needs to be done once at the start of the run and does not need
     ! to be done for restarts.
     !
-    ! NOTE: We only want to do this with RRTMG. If CAM_RT is being used, then skip this.
-    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg") .and. (carma_do_optics)) then
+    ! NOTE: We only want to do this with RRTMG(P). If CAM_RT is being used, then skip this.
+    if ((masterproc) .and. (initial_run) .and. (radiation_scheme == "rrtmg".or.radiation_scheme == "rrtmgp") &
+         .and. (carma_do_optics)) then
       call CARMA_CreateOpticsFile(carma, rc)
        if (rc < 0) call endrun('carma_register::carma_CreateOpticsFiles failed.')
     end if
@@ -2645,7 +2646,7 @@ contains
         do irh = 1, nrh
 
           ! Determine the wet radius.
-          call getwetr(carma, igroup, mie_rh(irh), r(ibin), rwet, rho(ibin), rhopwet, rc)
+          call getwetr(carma, igroup, ibin, mie_rh(irh), r(ibin), rwet, rho(ibin), rhopwet, rc)
           if (rc < 0) call endrun('carma_CreateOpticsFile::wetr failed.')
 
           ! Calculate at each wavelength.
@@ -2992,7 +2993,7 @@ contains
           ! NOTE: Weight percent is normal a result of the getwetr calculation. To build the
           ! table based upon weight percent, we need to pass in the desired value and a
           ! reference temperature. In that case, the RH is ignored.
-          call getwetr(carma, igroup, mie_rh(1), r(ibin), rwet, rho(ibin), rhopwet, rc, wgtpct=mie_wtp(iwtp)*100._f, temp=270._f)
+          call getwetr(carma, igroup, ibin, mie_rh(1), r(ibin), rwet, rho(ibin), rhopwet, rc, wgtpct=mie_wtp(iwtp)*100._f, temp=270._f)
           if (rc < 0) call endrun('carma_CreateOpticsFile::wetr failed.')
 
           ! This is not in Yu (2015), but rather than using the refractive
@@ -3903,6 +3904,13 @@ contains
        call endrun('carma_get_wet_radius ERROR4: rc = ',rc)
     end if
 
+    if (irhswell == I_PETTERS) then
+       call carma_get_kappa(state, igroup, ibin, kappa, rc)
+       if (rc/=RC_OK) then
+          call endrun('carma_get_wet_radius carma_get_kappa ERROR: rc = ',rc)
+       end if
+    end if
+
     do icol = 1, ncol
        do iz = 1, pver
           if (rdry(icol, iz)>0._r8) then
@@ -3922,7 +3930,7 @@ contains
              !
              if (irhswell == I_WTPCT_H2SO4) then
 
-                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
+                call getwetr(carma, igroup, ibin, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
                              h2o_mass=watcon, h2o_vp=wvpres, temp=state%t(icol,iz))
                 if (rc/=RC_OK) then
                    call endrun('carma_get_wet_radius ERROR5: rc = ',rc) ! <======
@@ -3930,12 +3938,7 @@ contains
 
              else if (irhswell == I_PETTERS) then
 
-                call carma_get_kappa(state, igroup, ibin, kappa, rc)
-                if (rc/=RC_OK) then
-                   call endrun('carma_get_wet_radius carma_get_kappa ERROR: rc = ',rc)
-                end if
-
-                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
+                call getwetr(carma, igroup, ibin, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc, &
                              h2o_mass=watcon, h2o_vp=wvpres, temp=state%t(icol,iz), kappa=kappa(icol,iz))
                 if (rc/=RC_OK) then
                    call endrun('carma_get_wet_radius ERROR6: rc = ',rc)
@@ -3943,7 +3946,7 @@ contains
 
              else ! I_GERBER and I_FITZGERALD
 
-                call getwetr(carma, igroup, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc )
+                call getwetr(carma, igroup, ibin, relhum, dryrad, rwet(icol, iz), dryden, rhopwet(icol,iz), rc )
                 if (rc/=RC_OK) then
                    call endrun('carma_get_wet_radius ERROR7: rc = ',rc)
                 end if

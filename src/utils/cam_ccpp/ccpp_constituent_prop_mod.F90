@@ -9,6 +9,7 @@ module ccpp_constituent_prop_mod
       logical, private :: thermo_active = .false.
       logical, private :: water_species = .false.
       logical, private :: species_is_dry
+      logical, private :: species_is_wet
       character(len=256) :: std_name = ''
 
       contains
@@ -20,14 +21,22 @@ module ccpp_constituent_prop_mod
       procedure :: set_water_species => ccp_set_water_species
       procedure :: is_dry            => ccp_is_dry
       procedure :: set_dry           => ccp_set_dry
+      procedure :: is_wet            => ccp_is_wet
+      procedure :: set_wet           => ccp_set_wet
 
    end type ccpp_constituent_prop_ptr_t
+
+   type, public :: ccpp_constituent_properties_t
+      contains
+      procedure :: instantiate
+   end type ccpp_constituent_properties_t
 
    ! CCPP properties init routine
    public :: ccpp_const_props_init
 
    ! Public properties DDT variable:
    type(ccpp_constituent_prop_ptr_t), allocatable, public :: ccpp_const_props(:)
+   integer, public, parameter :: int_unassigned = HUGE(-1)
 
 contains
 
@@ -222,6 +231,46 @@ contains
 
    end subroutine ccp_set_dry
 
+   subroutine ccp_is_wet(this, val_out, errcode, errmsg)
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
+      logical,                              intent(out) :: val_out
+      integer,          optional,           intent(out) :: errcode
+      character(len=*), optional,           intent(out) :: errmsg
+
+      val_out = this%species_is_wet
+
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_is_wet
+
+   !------
+
+   subroutine ccp_set_wet(this, wet_flag, errcode, errmsg)
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(inout) :: this
+      logical,                              intent(in)    :: wet_flag
+      integer,          optional,           intent(out)   :: errcode
+      character(len=*), optional,           intent(out)   :: errmsg
+
+      this%species_is_wet = wet_flag
+
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = ''
+      end if
+
+   end subroutine ccp_set_wet
+
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !CAM-equivalent CCPP constituents initialization routine
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -229,7 +278,7 @@ contains
 subroutine ccpp_const_props_init(ix_qv)
 
     ! Use statements:
-    use constituents,    only: pcnst, cnst_get_type_byind
+    use constituents,    only: pcnst, cnst_name, cnst_get_ind, cnst_get_type_byind
     use cam_abortutils,  only: handle_allocate_error
     use air_composition, only: dry_air_species_num
     use air_composition, only: thermodynamic_active_species_idx
@@ -238,6 +287,7 @@ subroutine ccpp_const_props_init(ix_qv)
     ! Local variables:
     integer :: ierr
     integer :: m
+    integer :: ix_cldliq, ix_cldice, ix_numliq, ix_numice
 
     character(len=*), parameter :: subname = 'ccpp_const_prop_init:'
 
@@ -261,18 +311,80 @@ subroutine ccpp_const_props_init(ix_qv)
        end if
     end do
 
-    ! Set "set_dry" property:
+    ! Set dry/wet properties:
     do m=1,pcnst
        if (cnst_get_type_byind(m).eq.'dry') then
           call ccpp_const_props(m)%set_dry(.true.)
+          call ccpp_const_props(m)%set_wet(.false.)
        else
           call ccpp_const_props(m)%set_dry(.false.)
+          call ccpp_const_props(m)%set_wet(.true.)
        end if
     end do
 
-    ! Set "std_name" property:
-    call ccpp_const_props(ix_qv)%set_standard_name('water_vapor_mixing_ratio_wrt_moist_air_and_condensed_water')
+    ! Set "std_name" for all constituents using cnst_name as baseline.
+    ! This allows chemistry species (O3, NO, NO2, ...) to be looked up
+    ! via ccpp_constituent_index using their constituent name directly.
+    do m=1,pcnst
+       call ccpp_const_props(m)%set_standard_name(trim(cnst_name(m)))
+    end do
+
+    ! Override with proper CCPP standard names for known species:
+    call ccpp_const_props(ix_qv)%set_standard_name( &
+         'water_vapor_mixing_ratio_wrt_moist_air_and_condensed_water')
+
+    call cnst_get_ind('CLDLIQ', ix_cldliq, abort=.false.)
+    if (ix_cldliq > 0) then
+       call ccpp_const_props(ix_cldliq)%set_standard_name( &
+            'cloud_liquid_water_mixing_ratio_wrt_moist_air_and_condensed_water')
+    end if
+
+    call cnst_get_ind('CLDICE', ix_cldice, abort=.false.)
+    if (ix_cldice > 0) then
+       call ccpp_const_props(ix_cldice)%set_standard_name( &
+            'cloud_ice_mixing_ratio_wrt_moist_air_and_condensed_water')
+    end if
+
+    call cnst_get_ind('NUMLIQ', ix_numliq, abort=.false.)
+    if (ix_numliq > 0) then
+       call ccpp_const_props(ix_numliq)%set_standard_name( &
+            'mass_number_concentration_of_cloud_liquid_wrt_moist_air_and_condensed_water')
+    end if
+
+    call cnst_get_ind('NUMICE', ix_numice, abort=.false.)
+    if (ix_numice > 0) then
+       call ccpp_const_props(ix_numice)%set_standard_name( &
+            'mass_number_concentration_of_ice_wrt_moist_air_and_condensed_water')
+    end if
 
 end subroutine ccpp_const_props_init
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!CAM-equivalent stub so dynamic constituents register routines can build
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine instantiate(this, std_name, long_name, diag_name, units, vertical_dim,  &
+        advected, default_value, min_value, molar_mass, water_species,         &
+        mixing_ratio_type, errcode, errmsg)
+      use ccpp_kinds, only: kind_phys
+
+      ! Dummy arguments
+      class(ccpp_constituent_properties_t), intent(inout) :: this
+      character(len=*),                     intent(in)    :: std_name
+      character(len=*),                     intent(in)    :: long_name
+      character(len=*),                     intent(in)    :: diag_name
+      character(len=*),                     intent(in)    :: units
+      character(len=*),                     intent(in)    :: vertical_dim
+      logical, optional,                    intent(in)    :: advected
+      real(kind_phys), optional,            intent(in)    :: default_value
+      real(kind_phys), optional,            intent(in)    :: min_value
+      real(kind_phys), optional,            intent(in)    :: molar_mass
+      logical, optional,                    intent(in)    :: water_species
+      character(len=*), optional,           intent(in)    :: mixing_ratio_type
+      integer,                              intent(out)   :: errcode
+      character(len=*),                     intent(out)   :: errmsg
+
+      ! STUB DOES NOTHING
+
+end subroutine instantiate
 
 end module ccpp_constituent_prop_mod

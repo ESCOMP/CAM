@@ -7,7 +7,11 @@ module radiation_data
   use shr_kind_mod,     only: r8=>shr_kind_r8
   use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
   use cam_history,      only: addfld, add_default, horiz_only, outfld
-  use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_gas, rad_cnst_get_aer_mmr
+  use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_gas
+  use radiative_aerosol, only: rad_aer_get_info
+  !REMOVECAM
+  use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr
+  !REMOVECAM_END
   use radconstants,     only: nradgas, gaslist
   use cam_history_support, only: fieldname_len, fillvalue
   use spmd_utils,       only: masterproc
@@ -259,7 +263,8 @@ contains
        call pbuf_set_field(pbuf2d, tropp_idx, -1.0_r8)
     endif
 
-    call rad_cnst_get_info(0, ngas=ngas, naero=naer, nmodes=nmodes)
+    call rad_cnst_get_info(0, ngas=ngas)
+    call rad_aer_get_info(0, naero=naer, nmodes=nmodes)
 
     ! The code to output the gases assumes that the rad_constituents module has
     ! ordered them in the same way that they are ordered in the "gaslist" array
@@ -274,7 +279,7 @@ contains
 
     if (naer > 0) then
        allocate( aernames(naer) )
-       call rad_cnst_get_info(0, aernames=aernames)
+       call rad_aer_get_info(0, aernames=aernames)
     endif
 
     if (nmodes>0) then
@@ -477,10 +482,10 @@ contains
           call add_default (qaerwat_fldn(m), rad_data_histfile_num, ' ')
 
           ! get mode info
-          call rad_cnst_get_info(0, m, nspec=nspec)
+          call rad_aer_get_info(0, m, nspec=nspec)
           ! aerosol species loop
           do l = 1, nspec
-             call rad_cnst_get_info(0,m,l, spec_name=aername)
+             call rad_aer_get_info(0,m,l, spec_name=aername)
              name = 'rad_'//trim(aername)
              call addfld(trim(name),      (/ 'lev' /), rad_data_avgflag, 'kg/kg', trim(long_name))
              call add_default (trim(name), rad_data_histfile_num, ' ')
@@ -706,10 +711,10 @@ contains
           call outfld( qaerwat_fldn(m),  ptr, pcols, lchnk )
 
           ! get mode info
-          call rad_cnst_get_info(0, m, nspec=nspec)
+          call rad_aer_get_info(0, m, nspec=nspec)
           ! aerosol species loop
           do l = 1, nspec
-             call rad_cnst_get_info(0,m,l, spec_name=aername)
+             call rad_aer_get_info(0,m,l, spec_name=aername)
              call rad_cnst_get_aer_mmr(0, m, l, 'a', state, pbuf, mmr)
              name = 'rad_'//aername
              call outfld(trim(name), mmr, pcols, lchnk)
@@ -975,6 +980,8 @@ contains
           enddo
        endif
 
+       phys_state(c)%rpdel(:ncol,:) = 1.0_r8 / phys_state(c)%pdel(:ncol,:)
+
        ! adjust temperatue input above tropopause for Fixed Dynamical Heating ....
        if (do_fdh) then
           pbuf => pbuf_get_chunk(pbuf2d, c)
@@ -1045,7 +1052,7 @@ contains
 
     use physics_types,    only: physics_state
     use physics_buffer,   only: physics_buffer_desc
-    use rad_constituents, only: rad_cnst_get_info
+    use radiative_aerosol, only: rad_aer_get_info
 
     implicit none
 
@@ -1077,10 +1084,10 @@ contains
     do m = 1, nmodes
 
        ! get mode info
-       call rad_cnst_get_info(0, m, nspec=nspec)
+       call rad_aer_get_info(0, m, nspec=nspec)
        ! aerosol species loop
        do l = 1, nspec
-          call rad_cnst_get_info(0,m,l, spec_name=aername)
+          call rad_aer_get_info(0,m,l, spec_name=aername)
           call read_rad_mam_data( indata, aername, m, l, state, pbuf2d, recno )
        end do
     end do
@@ -1121,7 +1128,6 @@ contains
   !=================================================================================
   !=================================================================================
   subroutine read_rad_aer_data(indata, name, idx, state, pbuf2d, recno )
-    use rad_constituents, only: rad_cnst_get_aer_mmr
     use drv_input_data,   only: drv_input_data_read
 
     type(drv_input_data_t), intent(inout) :: indata
@@ -1152,7 +1158,6 @@ contains
   !=================================================================================
   !=================================================================================
   subroutine read_rad_mam_data(indata, name, mode_idx, spec_idx, state, pbuf2d, recno )
-    use rad_constituents, only: rad_cnst_get_aer_mmr
     use drv_input_data,   only: drv_input_data_read
 
     type(drv_input_data_t), intent(inout) :: indata

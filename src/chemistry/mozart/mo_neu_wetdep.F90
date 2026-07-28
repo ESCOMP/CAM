@@ -4,6 +4,7 @@
 ! model
 !
 ! LKE 2/23/2018 - correct setting flag for mass-limited (HNO3,etc.) vs Henry's Law washout
+! RPF 9/18/2024 - R. Fernandez - Merge vsl03 chemistry (AC2-CSIC-Madrid - A. Saiz-Lopez) ! rpf_CESM2_SLH
 !
 module mo_neu_wetdep
 !
@@ -13,7 +14,7 @@ module mo_neu_wetdep
   use spmd_utils,       only : masterproc
   use cam_abortutils,   only : endrun
   use shr_drydep_mod,   only : n_species_table, species_name_table, dheff
-  use gas_wetdep_opts,  only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt
+  use gas_wetdep_opts,  only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt, gas_wetdep_ice_uptake_list
 !
   implicit none
 !
@@ -28,7 +29,7 @@ module mo_neu_wetdep
   logical ,allocatable, dimension(:) :: ice_uptake
   integer                     :: index_cldice,index_cldliq,nh3_ndx,co2_ndx,so2_ndx
   integer                     :: so4_ndx,so4s_ndx ! geos-chem
-  logical                     :: debug   = .false.
+  logical, parameter          :: debug   = .false.
   integer                     :: hno3_ndx = 0
 !
 ! diagnostics
@@ -54,10 +55,11 @@ subroutine neu_wetdep_init
   use cam_history,  only : addfld, add_default, horiz_only
   use phys_control, only : phys_getopts, cam_chempkg_is
 !
-  integer :: m,l
+  integer :: n,m,l
   character*20 :: test_name
 
   logical :: history_chemistry
+  logical :: found
 
   call phys_getopts(history_chemistry_out=history_chemistry)
 
@@ -97,7 +99,11 @@ subroutine neu_wetdep_init
          test_name = 'H2O2'
       case ( 'SO2t' )
          test_name = 'SO2'
-      case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR', 'Pb', 'HF', 'COF2', 'COFCL')
+      case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR' )
+         if ( .not. any(species_name_table == test_name)) then
+            test_name = 'HNO3'
+         endif
+      case (  'Pb', 'HF', 'COF2', 'COFCL')
          test_name = 'HNO3'
       case ( 'NH_50W', 'NDEP', 'NHDEP', 'NH4', 'NH4NO3' )
          test_name = 'HNO3'
@@ -116,7 +122,7 @@ subroutine neu_wetdep_init
 !
     do l = 1,n_species_table
 !
-!      if ( debug ) print '(i4,a)',l,trim(species_name_table(l))
+!      if ( debug ) print '(i4,a)',l,'  '//trim(species_name_table(l))
 !
        if( trim(test_name) == trim( species_name_table(l) ) ) then
           mapping_to_heff(m)  = l
@@ -186,6 +192,29 @@ subroutine neu_wetdep_init
 !
 !
   end do
+
+  do m = 1,pcnst
+
+     if ( len_trim(gas_wetdep_ice_uptake_list(m)) > 0 ) then
+
+        found = .false.
+        find_loop: do n = 1,gas_wetdep_cnt
+           if ( gas_wetdep_list(n) == gas_wetdep_ice_uptake_list(m) ) then
+              found = .true.
+              exit find_loop
+           endif
+        enddo find_loop
+
+        if ( found ) then
+           ice_uptake(n) = .true.
+        else
+           write(iulog,*) 'neu_wetdep_init: '//trim(gas_wetdep_ice_uptake_list(m))//' is not included in gas_wetdep_list '
+           write(iulog,*) 'neu_wetdep_init: gas_wetdep_list : ',gas_wetdep_list(:gas_wetdep_cnt)
+           call endrun('neu_wetdep_init: gas_wetdep_ice_uptake_list is not consistent with gas_wetdep_list')
+        endif
+
+     endif
+  enddo
 !
 ! indices for cloud quantities
 !
@@ -393,9 +422,9 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   end do
 !
   if ( debug .and. masterproc ) then
-    write(iulog,'(a,50f8.2)')  'tckaqb     ',tckaqb
+    write(iulog,'(a,50L4)')    'tckaqb     ',tckaqb
     write(iulog,'(a,50e12.4)') 'heff       ',heff(1,1,:)
-    write(iulog,'(a,50i4)')    'ice_uptake ',ice_uptake
+    write(iulog,'(a,50L4)')    'ice_uptake ',ice_uptake
     write(iulog,'(a,50f8.2)')  'mol_weight ',mol_weight(:)
     write(iulog,'(a,50f8.2)')  'temp       ',temp(1,:)
     write(iulog,'(a,50f8.2)')  'p          ',p   (1,:)
@@ -586,9 +615,9 @@ end subroutine neu_wetdep_tend
       integer :: LICETYP
 !
       if ( debug .and. masterproc ) then
-        write(iulog,'(a,50f8.2)')  'tckaqb     ',tckaqb
+        write(iulog,'(a,50L4)')    'tckaqb     ',tckaqb
         write(iulog,'(a,50e12.4)') 'hstar      ',hstar(1,:)
-        write(iulog,'(a,50i4)')    'ice_uptake ',TCNION
+        write(iulog,'(a,50L4)')    'ice_uptake ',TCNION
         write(iulog,'(a,50f8.2)')  'mol_weight ',TCMASS(:)
         write(iulog,'(a,50f8.2)')  'temp       ',tem(:)
         write(iulog,'(a,50f8.2)')  'p          ',pofl(:)

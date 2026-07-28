@@ -211,7 +211,7 @@ contains
     use scamMod,         only: scm_crm_mode, single_column
     use phys_control,    only: phys_getopts
     use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
-    use air_composition, only: dry_air_species_num
+    use air_composition, only: dry_air_species_num, thermodynamic_active_species_num, thermodynamic_active_species_idx
     use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -231,6 +231,7 @@ contains
     integer :: ixnumsnow, ixnumrain
     integer :: ncol                                ! number of columns
     integer :: ixh, ixh2    ! constituent indices for H, H2
+    logical :: derive_new_geopotential             ! derive new geopotential fields?
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
@@ -419,9 +420,23 @@ contains
        end do
     end if
 
-    ! Derive new geopotential fields if heating or water tendency not 0.
+    ! Derive new geopotential fields if heating or water species tendency not 0.
+    derive_new_geopotential = .false.
+    if(ptend%ls) then
+        ! Heating tendency not 0
+        derive_new_geopotential = .true.
+    else
+        ! Check all water species and if there are nonzero tendencies
+        const_water_loop: do m = dry_air_species_num + 1, thermodynamic_active_species_num
+            if(ptend%lq(thermodynamic_active_species_idx(m))) then
+                ! does water species have tendency?
+                derive_new_geopotential = .true.
+                exit const_water_loop
+            endif
+        enddo const_water_loop
+    endif
 
-    if (ptend%ls .or. ptend%lq(1)) then
+    if (derive_new_geopotential) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
             state%t     , state%q(:,:,:), rairv_loc(:,:), gravit  , zvirv              , &
@@ -1191,9 +1206,11 @@ end subroutine physics_ptend_copy
 
 !===============================================================================
   subroutine physics_dme_adjust(state, tend, qini, liqini, iceini, dt)
-    use air_composition, only: dry_air_species_num,thermodynamic_active_species_num
-    use air_composition, only: thermodynamic_active_species_idx
-    use dycore,          only: dycore_is
+    use air_composition,           only: dry_air_species_num,thermodynamic_active_species_num
+    use air_composition,           only: thermodynamic_active_species_idx
+    use dycore,                    only: dycore_is
+    use dme_adjust,                only: dme_adjust_run
+    use ccpp_constituent_prop_mod, only: ccpp_const_props
     !-----------------------------------------------------------------------
     !
     ! Purpose: Adjust the dry mass in each layer back to the value of physics input state
@@ -1244,6 +1261,12 @@ end subroutine physics_ptend_copy
 
     real(r8),allocatable :: cpairv_loc(:,:)
     integer :: m_cnst
+
+    logical :: is_dycore_moist
+
+    character(len=512)   :: errmsg
+    integer              :: errflg
+
     !
     !-----------------------------------------------------------------------
 
@@ -1254,19 +1277,19 @@ end subroutine physics_ptend_copy
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! adjust dry mass in each layer back to input value, while conserving
-    ! constituents, momentum, and total energy
-    state%ps(:ncol) = state%pint(:ncol,1)
-
     !
     ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
       do k = 1, pver
-        
+
+        ! adjust dry mass in each layer back to input value, while conserving
+        ! constituents, momentum, and total energy
+        state%ps(:ncol) = state%pint(:ncol,1)
+
         ! adjusment factor is just change in water vapor
         fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-        
+
         ! adjust constituents to conserve mass in each layer
         do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
@@ -1279,26 +1302,14 @@ end subroutine physics_ptend_copy
         state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
       end do
     else
-      do k = 1, pver
-        tot_water(:ncol,1) = qini(:ncol,k) +liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
-        tot_water(:ncol,2) = 0.0_r8
-        do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
-          m = thermodynamic_active_species_idx(m_cnst)
-          tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
-        end do
-        fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
-        ! adjust constituents to conserve mass in each layer
-        do m = 1, pcnst
-          state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
-        end do
-        ! compute new total pressure variables
-        state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
-        state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
-        state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
-        state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
-        state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
-        !note that mid-level variables (e.g. pmid) are not recomputed
-      end do
+      is_dycore_moist = .true.
+      call dme_adjust_run (state%ncol, pver, pcnst, state%ps(:ncol), state%pint(:ncol,:), state%pdel(:ncol,:), &
+                           state%lnpint(:ncol,:), state%rpdel(:ncol,:), &
+                           ccpp_const_props, state%q(:ncol,:,:), qini(:ncol,:), liqini(:ncol,:), iceini(:ncol,:), &
+                           is_dycore_moist, errmsg, errflg)
+      if (errflg /= 0) then
+         call endrun('physics_dme_adjust: '//errmsg)
+      end if
     endif
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
       zvirv(:,:) = shr_const_rwv / rairv(:,:,state%lchnk) - 1._r8

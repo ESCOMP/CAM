@@ -29,29 +29,36 @@ module aerosol_properties_mod
      real(r8), allocatable :: alogsig_(:) ! natural log of geometric deviation of the number distribution for aerosol bin
      real(r8), allocatable :: f1_(:) ! eq 28 Abdul-Razzak et al 1998
      real(r8), allocatable :: f2_(:) ! eq 29 Abdul-Razzak et al 1998
+     real(r8), allocatable :: dgnum_(:)       ! geometric mean diameter (m)
+     real(r8), allocatable :: dgnumhi_(:)     ! upper bound diameter (m)
+     real(r8), allocatable :: dgnumlo_(:)     ! lower bound diameter (m)
+     real(r8), allocatable :: rhcrystal_(:)   ! crystallization RH
+     real(r8), allocatable :: rhdeliques_(:)  ! deliquescence RH
      ! Abdul-Razzak, H., S.J. Ghan, and C. Rivera-Carpio, A parameterization of aerosol activation,
      ! 1, Singleaerosoltype. J. Geophys. Res., 103, 6123-6132, 1998.
      real(r8) :: soa_equivso4_factor_ = -huge(1._r8)
      real(r8) :: pom_equivso4_factor_ = -huge(1._r8)
+     integer, public :: list_idx_ = 0 ! radiation list index (0=climate)
    contains
+     procedure :: list_idx => get_list_idx
      procedure :: initialize => aero_props_init
-     procedure,private :: nbins_0list
-     procedure(aero_nbins_rlist), deferred :: nbins_rlist
-     generic :: nbins => nbins_0list,nbins_rlist
+     procedure :: nbins => get_nbins
      procedure :: ncnst_tot
      procedure,private :: nspecies_per_bin
-     procedure(aero_nspecies_rlist), deferred :: nspecies_per_bin_rlist
      procedure,private :: nspecies_all_bins
-     generic :: nspecies => nspecies_all_bins,nspecies_per_bin,nspecies_per_bin_rlist
+     generic :: nspecies => nspecies_all_bins,nspecies_per_bin
      procedure,private :: n_masses_all_bins
      procedure,private :: n_masses_per_bin
      generic :: nmasses => n_masses_all_bins,n_masses_per_bin
      procedure :: indexer
      procedure :: maxsat
      procedure(aero_amcube), deferred :: amcube
-     procedure :: alogsig_0list
-     procedure(aero_alogsig_rlist), deferred :: alogsig_rlist
-     generic :: alogsig =>  alogsig_0list,alogsig_rlist
+     procedure :: alogsig => get_alogsig
+     procedure :: dgnum => get_dgnum
+     procedure :: dgnumhi => get_dgnumhi
+     procedure :: dgnumlo => get_dgnumlo
+     procedure :: rhcrystal => get_rhcrystal
+     procedure :: rhdeliques => get_rhdeliques
      procedure(aero_number_transported), deferred :: number_transported
      procedure(aero_props_get), deferred :: get
      procedure(aero_actfracs), deferred :: actfracs
@@ -68,17 +75,19 @@ module aerosol_properties_mod
      procedure :: pom_equivso4_factor ! POM Hygroscopicity / Sulfate Hygroscopicity
      procedure(aero_soluble), deferred :: soluble
      procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
-     procedure(aero_optics_params), deferred :: optics_params
+     procedure :: optics_params
+     procedure(aero_physprop_id), deferred :: physprop_id
      procedure(aero_bin_name), deferred :: bin_name
      procedure(aero_scav_diam), deferred :: scav_diam
      procedure(aero_resuspension_resize), deferred :: resuspension_resize
      procedure(aero_rebin_bulk_fluxes), deferred :: rebin_bulk_fluxes
      procedure(aero_hydrophilic), deferred :: hydrophilic
+     procedure(aero_id_query), deferred :: model_is
 
-     procedure :: final=>aero_props_final
+     procedure :: final => aero_props_final
   end type aerosol_properties
 
-  integer,public, parameter :: aero_name_len = 32 ! common length of aersols names, species, etc
+  integer, public, parameter :: aero_name_len = 32 ! common length of aerosols names, species, etc
 
   abstract interface
 
@@ -100,76 +109,34 @@ module aerosol_properties_mod
      !  long wave species refractive indices
      !  species morphology
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, bin_ndx, species_ndx, list_ndx, density, hygro, &
-                               spectype, specname, specmorph, refindex_sw, refindex_lw)
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro, spec_mw, &
+          spectype, specname, specmorph, refindex_sw, refindex_lw, num_to_mass_aer, &
+          dryrad)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
        integer, intent(in) :: species_ndx         ! species index
-       integer, optional, intent(in) :: list_ndx  ! climate or a diagnostic list number
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
+       real(r8), optional, intent(out) :: spec_mw ! species molecular weight
        character(len=*), optional, intent(out) :: spectype  ! species type
        character(len=*), optional, intent(out) :: specname  ! species name
        character(len=*), optional, intent(out) :: specmorph ! species morphology
        complex(r8), pointer, optional, intent(out) :: refindex_sw(:) ! short wave species refractive indices
        complex(r8), pointer, optional, intent(out) :: refindex_lw(:) ! long wave species refractive indices
+       real(r8), optional, intent(out) :: num_to_mass_aer ! ratio of number to mass concentration
+       real(r8), optional, intent(out) :: dryrad  ! dry radius (m)
 
      end subroutine aero_props_get
 
      !------------------------------------------------------------------------
-     ! returns optics type and table parameters
+     ! returns the physprop ID for a given bin index
      !------------------------------------------------------------------------
-     subroutine aero_optics_params(self, list_ndx, bin_ndx, opticstype, extpsw, abspsw, asmpsw, absplw, &
-          refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
-          sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
-          sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
-          corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh )
-
-       import :: aerosol_properties, r8
-
+     integer function aero_physprop_id(self, bin_ndx)
+       import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: bin_ndx             ! bin index
-       integer, intent(in) :: list_ndx            ! rad climate/diags list
-
-       character(len=*), optional, intent(out) :: opticstype
-
-       ! refactive index table parameters
-       real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! short wave specific extinction
-       real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! short wave specific absorption
-       real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! short wave asymmetry factor
-       real(r8),  optional, pointer     :: absplw(:,:,:,:) ! long wave specific absorption
-       real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of short wave real refractive indices for aerosols
-       real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of short wave imaginary refractive indices for aerosols
-       real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of long wave real refractive indices for aerosols
-       real(r8),  optional, pointer     :: refitablw(:,:)  ! table of long wave imaginary refractive indices for aerosols
-       integer,   optional, intent(out) :: ncoef  ! number of chebychev polynomials
-       integer,   optional, intent(out) :: prefr  ! number of real refractive indices in table
-       integer,   optional, intent(out) :: prefi  ! number of imaginary refractive indices in table
-
-       ! hygrowghtpct table parameters
-       real(r8),  optional, pointer     :: sw_hygro_ext_wtp(:,:) ! short wave extinction table
-       real(r8),  optional, pointer     :: sw_hygro_ssa_wtp(:,:) ! short wave single-scatter albedo table
-       real(r8),  optional, pointer     :: sw_hygro_asm_wtp(:,:) ! short wave asymmetry table
-       real(r8),  optional, pointer     :: lw_hygro_ext_wtp(:,:) ! long wave absorption table
-       real(r8),  optional, pointer     :: wgtpct(:)   ! weight precent of H2SO4/H2O solution
-       integer,   optional, intent(out) :: nwtp        ! number of weight precent values
-
-       ! hygrocoreshell table parameters
-       real(r8),  optional, pointer     :: sw_hygro_coreshell_ext(:,:,:,:,:) ! short wave extinction table
-       real(r8),  optional, pointer     :: sw_hygro_coreshell_ssa(:,:,:,:,:) ! short wave single-scatter albedo table
-       real(r8),  optional, pointer     :: sw_hygro_coreshell_asm(:,:,:,:,:) ! short wave asymmetry table
-       real(r8),  optional, pointer     :: lw_hygro_coreshell_ext(:,:,:,:,:) ! long wave absorption table
-       real(r8),  optional, pointer     :: corefrac(:) ! core fraction dimension values
-       real(r8),  optional, pointer     :: bcdust(:)   ! bc/(bc + dust) fraction dimension values
-       real(r8),  optional, pointer     :: kap(:)      ! hygroscopicity dimension values
-       real(r8),  optional, pointer     :: relh(:)     ! relative humidity dimension values
-       integer,   optional, intent(out) :: nfrac       ! core fraction dimension size
-       integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
-       integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
-       integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
-
-     end subroutine aero_optics_params
+       integer, intent(in) :: bin_ndx
+     end function aero_physprop_id
 
      !------------------------------------------------------------------------
      ! returns species type
@@ -284,13 +251,13 @@ module aerosol_properties_mod
      !------------------------------------------------------------------------------
      ! apply max / min to number concentration
      !------------------------------------------------------------------------------
-     subroutine aero_apply_num_limits( self, naerosol, vaerosol, istart, istop, m )
+     subroutine aero_apply_num_limits( self, naerosol, vaerosol, ncol, nlev, m )
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
-       real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
-       real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
-       integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
-       integer,  intent(in) :: istop           ! stop column index
+       real(r8), intent(inout) :: naerosol(:,:)  ! number conc (1/m3)
+       real(r8), intent(in)    :: vaerosol(:,:)  ! volume conc (m3/m3)
+       integer,  intent(in) :: ncol            ! number of columns
+       integer,  intent(in) :: nlev            ! number of vert levels
        integer,  intent(in) :: m               ! mode or bin index
 
      end subroutine aero_apply_num_limits
@@ -333,54 +300,14 @@ module aerosol_properties_mod
      end function aero_soluble
 
      !------------------------------------------------------------------------------
-     ! returns the total number of bins for a given radiation list index
+     ! returns name for a given aerosol bin
      !------------------------------------------------------------------------------
-     function aero_nbins_rlist(self, list_ndx)  result(res)
-       import :: aerosol_properties
+     function aero_bin_name(self, bin_ndx) result(name)
+       import :: aerosol_properties, r8, aero_name_len
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: list_ndx  ! radiation list number
-
-       integer :: res
-
-     end function aero_nbins_rlist
-
-     !------------------------------------------------------------------------------
-     ! returns number of species in a bin for a given radiation list index
-     !------------------------------------------------------------------------------
-     function aero_nspecies_rlist(self, list_ndx,  bin_ndx)  result(res)
-       import :: aerosol_properties
-       class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: list_ndx ! radiation list number
        integer, intent(in) :: bin_ndx  ! bin number
 
-       integer :: res
-
-     end function aero_nspecies_rlist
-
-     !------------------------------------------------------------------------------
-     ! returns the natural log of geometric standard deviation of the number
-     ! distribution for radiation list number and aerosol bin
-     !------------------------------------------------------------------------------
-     function aero_alogsig_rlist(self, list_ndx,  bin_ndx)  result(res)
-       import :: aerosol_properties, r8
-       class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: list_ndx ! radiation list number
-       integer, intent(in) :: bin_ndx  ! bin number
-
-       real(r8) :: res
-
-     end function aero_alogsig_rlist
-
-     !------------------------------------------------------------------------------
-     ! returns name for a given radiation list number and aerosol bin
-     !------------------------------------------------------------------------------
-     function aero_bin_name(self, list_ndx,  bin_ndx) result(name)
-       import :: aerosol_properties, r8
-       class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: list_ndx ! radiation list number
-       integer, intent(in) :: bin_ndx  ! bin number
-
-       character(len=32) name
+       character(len=aero_name_len) :: name
 
      end function aero_bin_name
 
@@ -434,6 +361,15 @@ module aerosol_properties_mod
        integer, intent(in) :: bin_ndx ! bin number
      end function aero_hydrophilic
 
+     !------------------------------------------------------------------------------
+     ! Returns TRUE if the aerosol model matches the query, otherwise FALSE
+     !------------------------------------------------------------------------------
+     logical function aero_id_query(self, query)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       character(len=*),          intent(in) :: query
+    end function aero_id_query
+
   end interface
 
 contains
@@ -441,7 +377,8 @@ contains
   !------------------------------------------------------------------------------
   ! object initializer
   !------------------------------------------------------------------------------
-  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2, ierr )
+  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2, ierr, list_idx, &
+                             dgnum, dgnumhi, dgnumlo, rhcrystal, rhdeliques)
     class(aerosol_properties), intent(inout) :: self
     integer, intent(in) :: nbin               ! number of bins
     integer, intent(in) :: ncnst              ! total number of constituents
@@ -451,6 +388,12 @@ contains
     real(r8),intent(in) :: f1(nbin)           ! eq 28 Abdul-Razzak et al 1998
     real(r8),intent(in) :: f2(nbin)           ! eq 29 Abdul-Razzak et al 1998
     integer,intent(out) :: ierr
+    integer, optional, intent(in) :: list_idx ! radiation list index (0=climate)
+    real(r8), optional, intent(in) :: dgnum(nbin)      ! geometric mean diameter (m)
+    real(r8), optional, intent(in) :: dgnumhi(nbin)    ! upper bound diameter (m)
+    real(r8), optional, intent(in) :: dgnumlo(nbin)    ! lower bound diameter (m)
+    real(r8), optional, intent(in) :: rhcrystal(nbin)  ! crystallization RH
+    real(r8), optional, intent(in) :: rhdeliques(nbin) ! deliquescence RH
 
     integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
@@ -481,6 +424,26 @@ contains
     if( ierr /= 0 ) then
        return
     end if
+    if (present(dgnum)) then
+       allocate(self%dgnum_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
+    end if
+    if (present(dgnumhi)) then
+       allocate(self%dgnumhi_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
+    end if
+    if (present(dgnumlo)) then
+       allocate(self%dgnumlo_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
+    end if
+    if (present(rhcrystal)) then
+       allocate(self%rhcrystal_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
+    end if
+    if (present(rhdeliques)) then
+       allocate(self%rhdeliques_(nbin),stat=ierr)
+       if( ierr /= 0 ) return
+    end if
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)),stat=ierr )
     if( ierr /= 0 ) then
@@ -510,8 +473,30 @@ contains
     self%f1_(:) = f1(:)
     self%f2_(:) = f2(:)
 
+    if (present(dgnum)) then
+       self%dgnum_(:) = dgnum(:)
+    end if
+    if (present(dgnumhi)) then
+       self%dgnumhi_(:) = dgnumhi(:)
+    end if
+    if (present(dgnumlo)) then
+       self%dgnumlo_(:) = dgnumlo(:)
+    end if
+    if (present(rhcrystal)) then
+       self%rhcrystal_(:) = rhcrystal(:)
+    end if
+    if (present(rhdeliques)) then
+       self%rhdeliques_(:) = rhdeliques(:)
+    end if
+
     self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
     self%pom_equivso4_factor_ = spechygro_pom/spechygro_so4
+
+    if (present(list_idx)) then
+       self%list_idx_ = list_idx
+    else
+       self%list_idx_ = 0
+    end if
 
   end subroutine aero_props_init
 
@@ -539,9 +524,25 @@ contains
     if (allocated(self%f2_)) then
        deallocate(self%f2_)
     endif
+    if (allocated(self%dgnum_)) then
+       deallocate(self%dgnum_)
+    endif
+    if (allocated(self%dgnumhi_)) then
+       deallocate(self%dgnumhi_)
+    endif
+    if (allocated(self%dgnumlo_)) then
+       deallocate(self%dgnumlo_)
+    endif
+    if (allocated(self%rhcrystal_)) then
+       deallocate(self%rhcrystal_)
+    endif
+    if (allocated(self%rhdeliques_)) then
+       deallocate(self%rhdeliques_)
+    endif
 
     self%nbins_ = 0
     self%ncnst_tot_ = 0
+    self%list_idx_ = 0
 
   end subroutine aero_props_final
 
@@ -602,12 +603,12 @@ contains
   !------------------------------------------------------------------------------
   ! returns the total number of bins
   !------------------------------------------------------------------------------
-  pure function nbins_0list(self) result(nbins)
+  pure function get_nbins(self) result(nbins)
     class(aerosol_properties), intent(in) :: self
     integer :: nbins
 
     nbins = self%nbins_
-  end function nbins_0list
+  end function get_nbins
 
   !------------------------------------------------------------------------------
   ! returns number of constituents (or elements) totaled across all bins
@@ -621,12 +622,82 @@ contains
   !------------------------------------------------------------------------------
   ! returns the natural log of geometric standard deviation of the number distribution for aerosol bin
   !------------------------------------------------------------------------------
-  pure real(r8) function alogsig_0list(self, bin_ndx)
+  pure real(r8) function get_alogsig(self, bin_ndx)
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
 
-    alogsig_0list = self%alogsig_(bin_ndx)
-  end function alogsig_0list
+    get_alogsig = self%alogsig_(bin_ndx)
+  end function get_alogsig
+
+  !------------------------------------------------------------------------------
+  ! returns the geometric mean diameter for aerosol bin
+  !------------------------------------------------------------------------------
+  pure real(r8) function get_dgnum(self, bin_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx
+
+    if (allocated(self%dgnum_)) then
+       get_dgnum = self%dgnum_(bin_ndx)
+    else
+       get_dgnum = -huge(1._r8)
+    end if
+  end function get_dgnum
+
+  !------------------------------------------------------------------------------
+  ! returns the upper bound diameter for aerosol bin
+  !------------------------------------------------------------------------------
+  pure real(r8) function get_dgnumhi(self, bin_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx
+
+    if (allocated(self%dgnumhi_)) then
+       get_dgnumhi = self%dgnumhi_(bin_ndx)
+    else
+       get_dgnumhi = -huge(1._r8)
+    end if
+  end function get_dgnumhi
+
+  !------------------------------------------------------------------------------
+  ! returns the lower bound diameter for aerosol bin
+  !------------------------------------------------------------------------------
+  pure real(r8) function get_dgnumlo(self, bin_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx
+
+    if (allocated(self%dgnumlo_)) then
+       get_dgnumlo = self%dgnumlo_(bin_ndx)
+    else
+       get_dgnumlo = -huge(1._r8)
+    end if
+  end function get_dgnumlo
+
+  !------------------------------------------------------------------------------
+  ! returns the crystallization RH for aerosol bin
+  !------------------------------------------------------------------------------
+  pure real(r8) function get_rhcrystal(self, bin_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx
+
+    if (allocated(self%rhcrystal_)) then
+       get_rhcrystal = self%rhcrystal_(bin_ndx)
+    else
+       get_rhcrystal = -huge(1._r8)
+    end if
+  end function get_rhcrystal
+
+  !------------------------------------------------------------------------------
+  ! returns the deliquescence RH for aerosol bin
+  !------------------------------------------------------------------------------
+  pure real(r8) function get_rhdeliques(self, bin_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx
+
+    if (allocated(self%rhdeliques_)) then
+       get_rhdeliques = self%rhdeliques_(bin_ndx)
+    else
+       get_rhdeliques = -huge(1._r8)
+    end if
+  end function get_rhdeliques
 
   !------------------------------------------------------------------------------
   ! returns maximum supersaturation
@@ -709,5 +780,149 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
+
+  !------------------------------------------------------------------------------
+  ! returns the radiation list index
+  !------------------------------------------------------------------------------
+  pure integer function get_list_idx(self)
+    class(aerosol_properties), intent(in) :: self
+
+    get_list_idx = self%list_idx_
+
+  end function get_list_idx
+
+  !------------------------------------------------------------------------
+  ! returns optics type and table parameters
+  !
+  ! Generalized implementation that retrieves optics data from phys_prop
+  ! using the physprop ID provided by each concrete subclass.
+  !------------------------------------------------------------------------
+  subroutine optics_params(self, bin_ndx, opticstype, extpsw, abspsw, asmpsw, absplw, &
+       refrtabsw, refitabsw, refrtablw, refitablw, ncoef, prefr, prefi, sw_hygro_ext_wtp, &
+       sw_hygro_ssa_wtp, sw_hygro_asm_wtp, lw_hygro_ext_wtp, wgtpct, nwtp, &
+       sw_hygro_coreshell_ext, sw_hygro_coreshell_ssa, sw_hygro_coreshell_asm, lw_hygro_coreshell_ext, &
+       corefrac, bcdust, kap, relh, nfrac, nbcdust, nkap, nrelh, &
+       sw_hygroscopic_ext, sw_hygroscopic_ssa, sw_hygroscopic_asm, lw_hygroscopic_ext, &
+       sw_insoluble_ext, sw_insoluble_ssa, sw_insoluble_asm, lw_insoluble_ext, &
+       r_sw_ext, r_sw_scat, r_sw_ascat, r_mu, r_lw_abs)
+
+    use phys_prop,    only: physprop_get
+
+    class(aerosol_properties),  intent(in)  :: self
+    integer,                    intent(in)  :: bin_ndx     ! mode/bin index
+
+    character(len=*), optional, intent(out) :: opticstype
+
+    ! refactive index table parameters
+    real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! short wave specific extinction
+    real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! short wave specific absorption
+    real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! short wave asymmetry factor
+    real(r8),  optional, pointer     :: absplw(:,:,:,:) ! long wave specific absorption
+    real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of short wave real refractive indices for aerosols
+    real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of short wave imaginary refractive indices for aerosols
+    real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of long wave real refractive indices for aerosols
+    real(r8),  optional, pointer     :: refitablw(:,:)  ! table of long wave imaginary refractive indices for aerosols
+    integer,   optional, intent(out) :: ncoef  ! number of chebychev polynomials
+    integer,   optional, intent(out) :: prefr  ! number of real refractive indices in table
+    integer,   optional, intent(out) :: prefi  ! number of imaginary refractive indices in table
+
+    ! hygrowghtpct table parameters
+    real(r8),  optional, pointer     :: sw_hygro_ext_wtp(:,:) ! short wave extinction table
+    real(r8),  optional, pointer     :: sw_hygro_ssa_wtp(:,:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer     :: sw_hygro_asm_wtp(:,:) ! short wave asymmetry table
+    real(r8),  optional, pointer     :: lw_hygro_ext_wtp(:,:) ! long wave absorption table
+    real(r8),  optional, pointer     :: wgtpct(:)             ! weight percent of H2SO4/H2O solution
+    integer,   optional, intent(out) :: nwtp                  ! number of weight percent values
+
+    ! hygrocoreshell table parameters
+    real(r8),  optional, pointer     :: sw_hygro_coreshell_ext(:,:,:,:,:) ! short wave extinction table
+    real(r8),  optional, pointer     :: sw_hygro_coreshell_ssa(:,:,:,:,:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer     :: sw_hygro_coreshell_asm(:,:,:,:,:) ! short wave asymmetry table
+    real(r8),  optional, pointer     :: lw_hygro_coreshell_ext(:,:,:,:,:) ! long wave absorption table
+    real(r8),  optional, pointer     :: corefrac(:) ! core fraction dimension values
+    real(r8),  optional, pointer     :: bcdust(:)   ! bc/(bc + dust) fraction dimension values
+    real(r8),  optional, pointer     :: kap(:)      ! hygroscopicity dimension values
+    real(r8),  optional, pointer     :: relh(:)     ! relative humidity dimension values
+    integer,   optional, intent(out) :: nfrac       ! core fraction dimension size
+    integer,   optional, intent(out) :: nbcdust     ! bc/(bc + dust) fraction dimension size
+    integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
+    integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
+
+    ! hygroscopic
+    real(r8),  optional, pointer :: sw_hygroscopic_ext(:,:) ! short wave extinction table
+    real(r8),  optional, pointer :: sw_hygroscopic_ssa(:,:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer :: sw_hygroscopic_asm(:,:) ! short wave asymmetry table
+    real(r8),  optional, pointer :: lw_hygroscopic_ext(:,:) ! long wave absorption table
+
+    ! non-hygroscopic (insoluble)
+    real(r8),  optional, pointer :: sw_insoluble_ext(:) ! short wave extinction table
+    real(r8),  optional, pointer :: sw_insoluble_ssa(:) ! short wave single-scatter albedo table
+    real(r8),  optional, pointer :: sw_insoluble_asm(:) ! short wave asymmetry table
+    real(r8),  optional, pointer :: lw_insoluble_ext(:) ! long wave absorption table
+
+    ! volcanic radius
+    real(r8),  optional, pointer :: r_sw_ext(:,:)
+    real(r8),  optional, pointer :: r_sw_scat (:,:)
+    real(r8),  optional, pointer :: r_sw_ascat(:,:)
+    real(r8),  optional, pointer :: r_mu(:)
+    real(r8),  optional, pointer :: r_lw_abs(:,:)
+
+    integer :: id
+
+    id = self%physprop_id(bin_ndx)
+
+    ! Retrieve all requested parameters from physprop.
+    ! Absent optional arguments are passed through as absent to physprop_get.
+    ! Pointer fields that are not populated for this physprop are nullified
+    ! during physprop_init, so physprop_get returns disassociated pointers
+    ! for unused optics types.
+    !
+    ! Several parameter names differ between this interface and physprop_get:
+    !   lw_hygro_ext_wtp       -> lw_hygro_abs_wtp
+    !   lw_hygro_coreshell_ext -> lw_hygro_coreshell_abs
+    !   sw_hygroscopic_ext     -> sw_hygro_ext
+    !   sw_hygroscopic_ssa     -> sw_hygro_ssa
+    !   sw_hygroscopic_asm     -> sw_hygro_asm
+    !   lw_hygroscopic_ext     -> lw_hygro_abs
+    !   sw_insoluble_ext       -> sw_nonhygro_ext
+    !   sw_insoluble_ssa       -> sw_nonhygro_ssa
+    !   sw_insoluble_asm       -> sw_nonhygro_asm
+    !   lw_insoluble_ext       -> lw_abs
+    !   r_mu                   -> mu
+
+    call physprop_get(id, opticstype=opticstype, &
+         ! refractive index table parameters (modal)
+         extpsw=extpsw, abspsw=abspsw, asmpsw=asmpsw, absplw=absplw, &
+         refrtabsw=refrtabsw, refitabsw=refitabsw, &
+         refrtablw=refrtablw, refitablw=refitablw, &
+         ncoef=ncoef, prefr=prefr, prefi=prefi, &
+         ! hygrowghtpct table parameters (CARMA)
+         sw_hygro_ext_wtp=sw_hygro_ext_wtp, &
+         sw_hygro_ssa_wtp=sw_hygro_ssa_wtp, &
+         sw_hygro_asm_wtp=sw_hygro_asm_wtp, &
+         lw_hygro_abs_wtp=lw_hygro_ext_wtp, &
+         wgtpct=wgtpct, nwtp=nwtp, &
+         ! hygrocoreshell table parameters (CARMA)
+         sw_hygro_coreshell_ext=sw_hygro_coreshell_ext, &
+         sw_hygro_coreshell_ssa=sw_hygro_coreshell_ssa, &
+         sw_hygro_coreshell_asm=sw_hygro_coreshell_asm, &
+         lw_hygro_coreshell_abs=lw_hygro_coreshell_ext, &
+         corefrac=corefrac, bcdust=bcdust, kap=kap, relh=relh, &
+         nfrac=nfrac, nbcdust=nbcdust, nkap=nkap, nrelh=nrelh, &
+         ! hygroscopic table parameters (bulk)
+         sw_hygro_ext=sw_hygroscopic_ext, &
+         sw_hygro_ssa=sw_hygroscopic_ssa, &
+         sw_hygro_asm=sw_hygroscopic_asm, &
+         lw_hygro_abs=lw_hygroscopic_ext, &
+         ! non-hygroscopic / insoluble table parameters (bulk)
+         sw_nonhygro_ext=sw_insoluble_ext, &
+         sw_nonhygro_ssa=sw_insoluble_ssa, &
+         sw_nonhygro_asm=sw_insoluble_asm, &
+         lw_abs=lw_insoluble_ext, &
+         ! volcanic radius table parameters (bulk)
+         r_sw_ext=r_sw_ext, r_sw_scat=r_sw_scat, &
+         r_sw_ascat=r_sw_ascat, r_lw_abs=r_lw_abs, mu=r_mu)
+
+  end subroutine optics_params
 
 end module aerosol_properties_mod

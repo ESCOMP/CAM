@@ -59,6 +59,7 @@ use commap,             only: clat, clon, clat_staggered, londeg_st
 use spmd_dyn,           only: spmd_readnl
 
 use inic_analytic,      only: analytic_ic_active, analytic_ic_set_ic
+use inic_analytic_utils,only: analytic_ic_is_moist
 use dyn_tests_utils,    only: vc_moist_pressure
 
 use cam_control_mod,    only: initial_run, moist_physics
@@ -344,7 +345,7 @@ subroutine dyn_readnl(nlfilename)
    dyn_state%div24del2flag = fv_div24del2flag
    dyn_state%del2coef      = fv_del2coef
 
-   dyn_state%high_order_top= fv_high_order_top  
+   dyn_state%high_order_top= fv_high_order_top
    dyn_state%am_correction = fv_am_correction
    dyn_state%am_geom_crrct = fv_am_geom_crrct
    dyn_state%am_fixer      = fv_am_fixer
@@ -3027,7 +3028,10 @@ subroutine read_inidat(dyn_in)
 
   do m = 1, pcnst
 
-    if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m))) cycle
+    ! skip over water species only if analytic ICs are moist
+    if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m))) then
+       if (analytic_ic_is_moist()) cycle
+    end if
 
     readvar   = .false.
     fieldname = cnst_name(m)
@@ -3089,7 +3093,7 @@ subroutine set_phis(dyn_in)
    jfirstxy =  grid%jfirstxy
    jlastxy  =  grid%jlastxy
 
-   if (associated(fh_topo)) then    
+   if (associated(fh_topo)) then
       !-----------
       ! Check coord sizes
       !-----------
@@ -3103,9 +3107,9 @@ subroutine set_phis(dyn_in)
          write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
          call endrun(sub//': ERROR: model parameters do not match topo dataset parameters')
       end if
-    
+
       fieldname = 'PHIS'
-      readvar   = .false.      
+      readvar   = .false.
       call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
          dyn_in%phis, readvar, gridname='fv_centers')
       if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')

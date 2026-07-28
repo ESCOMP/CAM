@@ -76,7 +76,7 @@ subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
 end subroutine cam_snapshot_init
 
 subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, cmfmc, cmfcme, &
-        zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+        zdu, rliq, dlf, dlf2, rliq2, net_flx)
 
 use time_manager,   only: is_first_step, is_first_restart_step
 
@@ -96,7 +96,6 @@ use time_manager,   only: is_first_step, is_first_restart_step
    real(r8),            intent(in) :: cmfcme(:,:)   ! cmf condensation - evaporation
    real(r8),            intent(in) :: zdu(:,:)      ! detraining mass flux from deep convection
    real(r8),            intent(in) :: rliq(:)       ! vertical integral of liquid not yet in q(ixcldliq)
-   real(r8),            intent(in) :: rice(:)       ! vertical integral of ice not yet in q(ixcldice)
    real(r8),            intent(in) :: dlf(:,:)      ! local copy of DLFZM (copy so need to output)
    real(r8),            intent(in) :: dlf2(:,:)     ! Detraining cld H20 from shallow convections
    real(r8),            intent(in) :: rliq2(:)      ! vertical integral of liquid from shallow scheme
@@ -116,7 +115,6 @@ use time_manager,   only: is_first_step, is_first_restart_step
    call outfld('tphysbc_cmfcme', cmfcme, pcols, lchnk)
    call outfld('tphysbc_zdu', zdu, pcols, lchnk)
    call outfld('tphysbc_rliq', rliq, pcols, lchnk)
-   call outfld('tphysbc_rice', rice, pcols, lchnk)
    call outfld('tphysbc_dlf', dlf, pcols, lchnk)
    call outfld('tphysbc_dlf2', dlf2, pcols, lchnk)
    call outfld('tphysbc_rliq2', rliq2, pcols, lchnk)
@@ -197,7 +195,7 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
      'flx',        'tphysbc_flx_heat',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cmfmc',        'tphysbc_cmfmc',         'unset',              'lev')
+     'cmfmc',        'tphysbc_cmfmc',         'unset',              'ilev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cmfcme',        'tphysbc_cmfcme',         'unset',              'lev')
@@ -207,9 +205,6 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'rliq',        'tphysbc_rliq',         'unset',              horiz_only)
-
-   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rice',        'tphysbc_rice',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'dlf',        'tphysbc_dlf',         'unset',              'lev')

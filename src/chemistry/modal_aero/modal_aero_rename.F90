@@ -23,7 +23,7 @@
   use modal_aero_data, only: modeptr_stracoar
   use modal_aero_data, only: specmw_amode, specdens_amode, lmassptr_amode, lmassptrcw_amode, numptr_amode, numptrcw_amode
   use modal_aero_data, only: dgnumhi_amode, dgnumlo_amode, cnst_name_cw, modeptr_aitken
-  use rad_constituents,only: rad_cnst_get_mode_idx
+  use radiative_aerosol,only: rad_aer_get_mode_idx
 
   implicit none
   private
@@ -109,7 +109,7 @@ contains
     ! 3001 = coarse --> accum
     ! 1005 = accum  --> stracoar
     ! 5001 = stracoar --> accum
-    if( rad_cnst_get_mode_idx(0,'coarse_strat') > 0 ) then
+    if( rad_aer_get_mode_idx(0,'coarse_strat') > 0 ) then
        ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1005, 5001 /)
     else
        ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1003, 3001 /)

@@ -21,6 +21,7 @@ use cam_grid_support,       only: cam_grid_id, cam_grid_get_gcid, &
 use cam_map_utils,          only: iMap
 
 use inic_analytic,          only: analytic_ic_active, analytic_ic_set_ic
+use inic_analytic_utils,    only: analytic_ic_is_moist
 use dyn_tests_utils,        only: vcoord=>vc_dry_pressure
 
 use cam_history,            only: outfld, hist_fld_active, fieldname_len
@@ -116,6 +117,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
+   use control_mod,    only: min_temperature
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
@@ -173,6 +175,8 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
    integer                      :: se_dribble_in_rsplit_loop
+   real(r8)                     :: se_min_temperature = 0.0_r8
+
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
@@ -218,7 +222,8 @@ subroutine dyn_readnl(NLFileName)
       se_kmax_jet,                 &
       se_molecular_diff,           &
       se_pgf_formulation,          &
-      se_dribble_in_rsplit_loop
+      se_dribble_in_rsplit_loop,   &
+      se_min_temperature
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -293,6 +298,8 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_dribble_in_rsplit_loop, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_min_temperature, 1, mpi_real8, masterprocid, mpicom, ierr)
+
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -361,6 +368,8 @@ subroutine dyn_readnl(NLFileName)
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
    dribble_in_rsplit_loop   = se_dribble_in_rsplit_loop
+   min_temperature          = se_min_temperature
+
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -496,6 +505,11 @@ subroutine dyn_readnl(NLFileName)
                             se_write_restart_unstruct
 
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', molecular_diff
+
+      if (min_temperature>0._r8) then
+         write(iulog, '(a,e9.2)') 'dyn_readnl: se_min_temperature  = ', min_temperature
+      end if
+
    end if
 
    call native_mapping_readnl(NLFileName)
@@ -1537,7 +1551,10 @@ subroutine read_inidat(dyn_in)
 
    do m_cnst = 1, pcnst
 
-      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) cycle
+      ! skip over water species only if analytic ICs are moist
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) then
+         if (analytic_ic_is_moist()) cycle
+      end if
 
       found = .false.
       if (cnst_read_iv(m_cnst)) then
@@ -2204,7 +2221,18 @@ subroutine read_dyn_field_2d(fieldname, fh, dimname, buffer)
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
    ! Set NaNs or fillvalue points to zero
-   where (isnan(buffer) .or. (buffer==fillvalue)) buffer = 0.0_r8
+   where (isnan(buffer))
+      ! check for NaN first, as comparing NaN to fillvalue raises floating invalid.
+      buffer = 0.0_r8
+   end where
+
+   if (.not. isnan(fillvalue)) then
+      ! only compare against fillvalue if fillvalue is not NaN, otherwise the comparison
+      ! will raise floating invalid.
+      where (buffer == fillvalue)
+         buffer = 0.0_r8
+      end where
+   end if
 
 end subroutine read_dyn_field_2d
 
@@ -2234,7 +2262,18 @@ subroutine read_dyn_field_3d(fieldname, fh, dimname, buffer)
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
    ! Set NaNs or fillvalue points to zero
-   where (isnan(buffer) .or. (buffer == fillvalue)) buffer = 0.0_r8
+   where (isnan(buffer))
+      ! check for NaN first, as comparing NaN to fillvalue raises floating invalid.
+      buffer = 0.0_r8
+   end where
+
+   if (.not. isnan(fillvalue)) then
+      ! only compare against fillvalue if fillvalue is not NaN, otherwise the comparison
+      ! will raise floating invalid.
+      where (buffer == fillvalue)
+         buffer = 0.0_r8
+      end where
+   end if
 
 end subroutine read_dyn_field_3d
 

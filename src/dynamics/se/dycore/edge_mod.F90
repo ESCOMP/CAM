@@ -222,7 +222,6 @@ contains
     integer :: j,jj,il,mesgid, dst0,src0
     integer :: moveptr
     integer :: nbuf2,ilm1,iem1,lenm1
-    integer,allocatable :: putmap2(:,:),getmap2(:,:)
     integer,allocatable :: scounts(:), rcounts(:)
     integer,allocatable :: sdispls(:), rdispls(:)
     integer :: nInter, nIntra
@@ -290,10 +289,6 @@ contains
     edge%putmap(:,:)=-1
     edge%getmap(:,:)=-1
 
-    allocate(putmap2(max_neigh_edges,nelemd))
-    allocate(getmap2(max_neigh_edges,nelemd))
-    putmap2(:,:)=-1
-    getmap2(:,:)=-1
     do ie=1,nelemd
        do i=1,max_neigh_edges
           edge%reverse(i,ie) = elem(ie)%desc%reverse(i)
@@ -617,34 +612,34 @@ contains
 
 !$OMP BARRIER
 !$OMP MASTER
-    if(allocated(edge%buf))         deallocate(edge%buf)
-    if(allocated(edge%receive))     deallocate(edge%receive)
-    if(associated(edge%putmap))     deallocate(edge%putmap)
-    if(associated(edge%getmap))     deallocate(edge%getmap)
-    if(associated(edge%reverse))    deallocate(edge%reverse)
-    if(associated(edge%moveLength)) deallocate(edge%moveLength)
-    if(associated(edge%movePtr))    deallocate(edge%movePtr)
+    if(allocated(edge%buf))        deallocate(edge%buf)
+    if(allocated(edge%receive))    deallocate(edge%receive)
+    if(allocated(edge%putmap))     deallocate(edge%putmap)
+    if(allocated(edge%getmap))     deallocate(edge%getmap)
+    if(allocated(edge%reverse))    deallocate(edge%reverse)
+    if(allocated(edge%moveLength)) deallocate(edge%moveLength)
+    if(allocated(edge%movePtr))    deallocate(edge%movePtr)
 
     ! All MPI communications
-    if(associated(edge%rcountsFull)) deallocate(edge%rcountsFull)
-    if(associated(edge%scountsFull)) deallocate(edge%scountsFull)
-    if(associated(edge%sdisplsFull)) deallocate(edge%sdisplsFull)
-    if(associated(edge%rdisplsFull)) deallocate(edge%rdisplsFull)
+    if(allocated(edge%rcountsFull)) deallocate(edge%rcountsFull)
+    if(allocated(edge%scountsFull)) deallocate(edge%scountsFull)
+    if(allocated(edge%sdisplsFull)) deallocate(edge%sdisplsFull)
+    if(allocated(edge%rdisplsFull)) deallocate(edge%rdisplsFull)
 
     ! Intra-node MPI Communication
     if(edge%nIntra>0) then
-      if(associated(edge%rcountsIntra)) deallocate(edge%rcountsIntra)
-      if(associated(edge%scountsIntra)) deallocate(edge%scountsIntra)
-      if(associated(edge%sdisplsIntra)) deallocate(edge%sdisplsIntra)
-      if(associated(edge%rdisplsIntra)) deallocate(edge%rdisplsIntra)
+      if(allocated(edge%rcountsIntra)) deallocate(edge%rcountsIntra)
+      if(allocated(edge%scountsIntra)) deallocate(edge%scountsIntra)
+      if(allocated(edge%sdisplsIntra)) deallocate(edge%sdisplsIntra)
+      if(allocated(edge%rdisplsIntra)) deallocate(edge%rdisplsIntra)
     endif
 
     ! Inter-node MPI Communication
     if(edge%nInter>0) then
-      if(associated(edge%rcountsInter)) deallocate(edge%rcountsInter)
-      if(associated(edge%scountsInter)) deallocate(edge%scountsInter)
-      if(associated(edge%sdisplsInter)) deallocate(edge%sdisplsInter)
-      if(associated(edge%rdisplsInter)) deallocate(edge%rdisplsInter)
+      if(allocated(edge%rcountsInter)) deallocate(edge%rcountsInter)
+      if(allocated(edge%scountsInter)) deallocate(edge%scountsInter)
+      if(allocated(edge%sdisplsInter)) deallocate(edge%sdisplsInter)
+      if(allocated(edge%rdisplsInter)) deallocate(edge%rdisplsInter)
     endif
     if(allocated(edge%rRequest)) deallocate(edge%rRequest)
     if(allocated(edge%sRequest)) deallocate(edge%sRequest)
@@ -666,8 +661,8 @@ contains
 
     edge%nbuf=0
     edge%nlyr=0
-    deallocate(edge%buf)
-    deallocate(edge%receive)
+    if(allocated(edge%buf))     deallocate(edge%buf)
+    if(allocated(edge%receive)) deallocate(edge%receive)
 
   end subroutine FreeEdgeBuffer_i8
 

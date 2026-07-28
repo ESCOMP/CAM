@@ -34,22 +34,32 @@ contains
   subroutine seasalt_init(seasalt_emis_scale)
     use sslt_sections, only: sslt_sections_init
     use constituents,  only: cnst_get_ind
-    use rad_constituents, only: rad_cnst_get_info
+    use aerosol_instances_mod, only: aerosol_instances_get_props, aerosol_instances_get_num_models
+    use aerosol_properties_mod, only: aerosol_properties
 
     real(r8), intent(in) :: seasalt_emis_scale
-    integer :: m, l, nspec, ndx
+    integer :: m, l, nspec, ndx, iaermod
     character(len=32) :: spec_name
+    class(aerosol_properties), pointer :: aero_props_modal
     
     seasalt_nbin = nslt
     seasalt_nnum = nslt
     allocate(seasalt_names(2*nslt))
     allocate(seasalt_indices(2*nslt))
 
+    ! Find modal properties object from factory
+    aero_props_modal => null()
+    do iaermod = 1, aerosol_instances_get_num_models()
+       aero_props_modal => aerosol_instances_get_props(iaermod, 0)
+       if (aero_props_modal%model_is('MAM')) exit
+       aero_props_modal => null()
+    end do
+
     ndx=0
     do m = 1, ntot_amode
-       call rad_cnst_get_info(0, m, nspec=nspec)
+       nspec = aero_props_modal%nspecies(m)
        do l = 1, nspec
-          call rad_cnst_get_info(0, m, l, spec_name=spec_name )
+          call aero_props_modal%get(m, l, specname=spec_name)
           if (spec_name(:3) == 'ncl') then
              ndx=ndx+1
              seasalt_names(ndx) = spec_name

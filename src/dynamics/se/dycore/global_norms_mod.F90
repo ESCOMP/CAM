@@ -573,8 +573,7 @@ contains
         enddo !rowind
       enddo !colind
     endif
-    deallocate(gp%points)
-    deallocate(gp%weights)
+    call gp%finalize()
 
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,1.0_r8,'    ')

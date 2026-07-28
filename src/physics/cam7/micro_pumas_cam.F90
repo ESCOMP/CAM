@@ -173,12 +173,6 @@ integer :: &
    cmeliq_idx,         &
    accre_enhan_idx
 
-! Fields for UNICON
-integer :: &
-     am_evp_st_idx,      &! Evaporation area of stratiform precipitation
-     evprain_st_idx,     &! Evaporation rate of stratiform rain [kg/kg/s]. >= 0.
-     evpsnow_st_idx       ! Evaporation rate of stratiform snow [kg/kg/s]. >= 0.
-
 ! Fields needed as inputs to COSP
 integer :: &
      ls_mrprc_idx,    ls_mrsnw_idx,    &
@@ -702,11 +696,6 @@ subroutine micro_pumas_cam_register
    call pbuf_add_field('CC_ni',    'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_ni_idx)
    call pbuf_add_field('CC_qlst',  'global',  dtype_r8, (/pcols,pver,dyn_time_lvls/), cc_qlst_idx)
 
-   ! Fields for UNICON
-   call pbuf_add_field('am_evp_st',  'global', dtype_r8, (/pcols,pver/), am_evp_st_idx)
-   call pbuf_add_field('evprain_st', 'global', dtype_r8, (/pcols,pver/), evprain_st_idx)
-   call pbuf_add_field('evpsnow_st', 'global', dtype_r8, (/pcols,pver/), evpsnow_st_idx)
-
    ! Register subcolumn pbuf fields
    if (use_subcol_microp) then
       ! Global pbuf fields
@@ -866,7 +855,7 @@ end subroutine micro_pumas_cam_init_cnst
 subroutine micro_pumas_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
-   use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
+   use micro_pumas_ccpp, only: micro_pumas_ccpp_init
    use stochastic_tau_cam, only:  stochastic_tau_init_cam
    use stochastic_emulated_cam, only:  stochastic_emulated_init_cam
 
@@ -879,15 +868,15 @@ subroutine micro_pumas_cam_init(pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    integer :: m, mm
-   logical :: history_amwg         ! output the variables used by the AMWG diag package
-   logical :: history_budget       ! Output tendencies and state variables for CAM4
-                                   ! temperature, water vapor, cloud ice and cloud
-                                   ! liquid budgets.
+   logical :: history_amwg          ! output the variables used by the AMWG diag package
+   logical :: history_budget        ! Output tendencies and state variables for CAM4
+                                    ! temperature, water vapor, cloud ice and cloud
+                                    ! liquid budgets.
    logical :: use_subcol_microp
    logical :: do_clubb_sgs
-   integer :: budget_histfile      ! output history file number for budget fields
+   integer :: budget_histfile       ! output history file number for budget fields
    integer :: ierr
-   character(128) :: errstring     ! return status (non-blank for error return)
+   character(len=512) :: errstring  ! return status (non-blank for error return)
 
    character(len=cl) :: stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
                                        stochastic_emulated_filename_output_scale
@@ -928,27 +917,30 @@ subroutine micro_pumas_cam_init(pbuf2d)
                                        stochastic_emulated_filename_output_scale)
    end if
 
-   call micro_mg_init3_0( &
-           r8, gravit, rair, rh2o, cpair, &
-           tmelt, latvap, latice, rhmini, &
-           micro_mg_dcs,                  &
-           micro_mg_do_hail,micro_mg_do_graupel, &
-           microp_uniform, do_cldice, use_hetfrz_classnuc, &
-           micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
-           micro_mg_accre_enhan_fact , &
-           micro_mg_autocon_fact , micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
-           micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
-           micro_mg_iaccr_factor, micro_mg_max_nicons, &
-           allow_sed_supersat, micro_mg_warm_rain, &
-           micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
-           micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-           micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_precip_fall_corr,&
-           micro_mg_accre_sees_auto, micro_mg_implicit_fall, &
-           micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
-           micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
-           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, &
-           stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
-           stochastic_emulated_filename_output_scale, iulog, errstring)
+   call  micro_pumas_ccpp_init(gravit, rair, rh2o, cpair, tmelt, latvap, latice,     &
+                               rhmini, iulog, micro_mg_do_hail, micro_mg_do_graupel, &
+                               microp_uniform, do_cldice, use_hetfrz_classnuc,       &
+                               allow_sed_supersat, micro_mg_evap_sed_off,            &
+                               micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers,   &
+                               micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs,     &
+                               micro_mg_rainfreeze_ifs, micro_mg_ifs_sed,            &
+                               micro_mg_precip_fall_corr, micro_mg_accre_sees_auto,  &
+                               micro_mg_implicit_fall, micro_mg_nccons,              &
+                               micro_mg_nicons, micro_mg_ngcons, micro_mg_nrcons,    &
+                               micro_mg_nscons, micro_mg_precip_frac_method,         &
+                               micro_mg_warm_rain,                                   &
+                               stochastic_emulated_filename_quantile,                &
+                               stochastic_emulated_filename_input_scale,             &
+                               stochastic_emulated_filename_output_scale,            &
+                               micro_mg_dcs,                                         &
+                               micro_mg_berg_eff_factor, micro_mg_accre_enhan_fact,  &
+                               micro_mg_autocon_fact, micro_mg_autocon_nd_exp,       &
+                               micro_mg_autocon_lwp_exp, micro_mg_homog_size,        &
+                               micro_mg_vtrmi_factor,    micro_mg_vtrms_factor,      &
+                               micro_mg_effi_factor,     micro_mg_iaccr_factor,      &
+                               micro_mg_max_nicons, micro_mg_ncnst,                  &
+                               micro_mg_ninst, micro_mg_ngnst, micro_mg_nrnst,       &
+                               micro_mg_nsnst, errstring, ierr)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
@@ -1423,9 +1415,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
       call pbuf_set_field(pbuf2d, acnum_idx,  0)
       call pbuf_set_field(pbuf2d, relvar_idx, 2._r8)
       call pbuf_set_field(pbuf2d, accre_enhan_idx, 1._r8)
-      call pbuf_set_field(pbuf2d, am_evp_st_idx,  0._r8)
-      call pbuf_set_field(pbuf2d, evprain_st_idx, 0._r8)
-      call pbuf_set_field(pbuf2d, evpsnow_st_idx, 0._r8)
       call pbuf_set_field(pbuf2d, prer_evap_idx,  0._r8)
       call pbuf_set_field(pbuf2d, bergso_idx, 0._r8)
       call pbuf_set_field(pbuf2d, icswp_idx, 0._r8)
@@ -1478,7 +1467,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use micro_pumas_utils, only: mg_liq_props, mg_ice_props, avg_diameter
    use micro_pumas_utils, only: rhoi, rhosn, rhow, rhows, rhog, qsmall, mincld
 
-   use micro_pumas_v1,    only: micro_pumas_tend
+   use micro_pumas_ccpp,  only: micro_pumas_ccpp_run
 
    use physics_buffer,  only: pbuf_col_type_index
    use subcol,          only: subcol_field_avg
@@ -1510,9 +1499,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: npccn(:,:)     ! liquid activation number tendency
    real(r8), pointer :: rndst(:,:,:)
    real(r8), pointer :: nacon(:,:,:)
-   real(r8), pointer :: am_evp_st_grid(:,:)    ! Evaporation area of stratiform precipitation. 0<= am_evp_st <=1.
-   real(r8), pointer :: evprain_st_grid(:,:)   ! Evaporation rate of stratiform rain [kg/kg/s]
-   real(r8), pointer :: evpsnow_st_grid(:,:)   ! Evaporation rate of stratiform snow [kg/kg/s]
 
    real(r8), pointer :: prec_str(:)          ! [Total] Sfc flux of precip from stratiform [ m/s ]
    real(r8), pointer :: snow_str(:)          ! [Total] Sfc flux of snow from stratiform   [ m/s ]
@@ -1542,7 +1528,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !proc_rates DDT in order for the subcolumn averaging
    !routine to work properly when writing out diagnostic
    !fields.
-   real(r8) :: evapsnow_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: bergstot_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: qcrestot_sc(state%psetcols,pver-top_lev+1)
    real(r8) :: melttot_sc(state%psetcols,pver-top_lev+1)
@@ -1938,8 +1923,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    integer :: col_type ! Flag to store whether accessing grid or sub-columns in pbuf_get_field
    integer :: ierr
    integer :: nlev
+   integer :: num_dust_bins
 
-   character(128) :: errstring   ! return status (non-blank for error return)
+   character(512) :: ccpp_errmsg       ! CCPP return status (non-blank for error return)
+   character(128) :: pumas_errstring   ! PUMAS return status (non-blank for error return)
 
    ! For rrtmg optics. specified distribution.
    real(r8), parameter :: dcon   = 25.e-6_r8         ! Convective size distribution effective radius (meters)
@@ -1990,9 +1977,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !     all the other arrays in this routine are dimensioned pver.  This is required because
    !     PUMAS only gets the top_lev:pver array subsection, and the proc_rates arrays
    !     need to be the same levels.
-   call proc_rates%allocate(ncol, nlev, ncd, micro_mg_warm_rain, errstring)
+   call proc_rates%allocate(ncol, nlev, ncd, micro_mg_warm_rain, pumas_errstring)
 
-   call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
+   call handle_errmsg(pumas_errstring, subname="micro_pumas_cam_tend")
 
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
@@ -2082,7 +2069,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! initialize subcolumn variables
    if (use_subcol_microp) then
-      evapsnow_sc = 0.0_r8
       bergstot_sc = 0.0_r8
       qcrestot_sc = 0.0_r8
       melttot_sc = 0.0_r8
@@ -2262,10 +2248,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, acnum_idx,       acnum_grid)
    call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq_grid)
    call pbuf_get_field(pbuf, ast_idx,         ast_grid, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
-   call pbuf_get_field(pbuf, evprain_st_idx,  evprain_st_grid)
-   call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
-   call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
    !-----------------------------------------------------------------------
    !        ... Calculate cosine of zenith angle
@@ -2469,60 +2451,70 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    frzcnt(:ncol,:top_lev-1)=0._r8
    frzdep(:ncol,:top_lev-1)=0._r8
 
+   !Determine number of dust size bins:
+   num_dust_bins = size(rndst, dim=3)
+
    do it = 1, num_steps
 
-     call micro_pumas_tend( &
-              ncol,         nlev,           dtime/num_steps,&
-              state_loc%t(:ncol,top_lev:),              state_loc%q(:ncol,top_lev:,ixq),            &
-              state_loc%q(:ncol,top_lev:,ixcldliq),     state_loc%q(:ncol,top_lev:,ixcldice),          &
-              state_loc%q(:ncol,top_lev:,ixnumliq),     state_loc%q(:ncol,top_lev:,ixnumice),       &
-              state_loc%q(:ncol,top_lev:,ixrain),       state_loc%q(:ncol,top_lev:,ixsnow),         &
-              state_loc%q(:ncol,top_lev:,ixnumrain),    state_loc%q(:ncol,top_lev:,ixnumsnow),      &
-              state_loc_graup(:ncol,top_lev:),    state_loc_numgraup(:ncol,top_lev:),     &
-              relvar(:ncol,top_lev:),         accre_enhan(:ncol,top_lev:),     &
-              state_loc%pmid(:ncol,top_lev:),                state_loc%pdel(:ncol,top_lev:),  state_loc%pint(:ncol,top_lev:), &
-              ast(:ncol,top_lev:), alst_mic(:ncol,top_lev:), aist_mic(:ncol,top_lev:), qsatfac(:ncol,top_lev:), &
-              rate1cld(:ncol,top_lev:),                         &
-              naai(:ncol,top_lev:),            npccn(:ncol,top_lev:),           &
-              rndst(:ncol,top_lev:,:),    nacon(:ncol,top_lev:,:),           &
-              tlat(:ncol,top_lev:),            qvlat(:ncol,top_lev:),           &
-              qcten(:ncol,top_lev:),          qiten(:ncol,top_lev:),          &
-              ncten(:ncol,top_lev:),          niten(:ncol,top_lev:),          &
-              qrten(:ncol,top_lev:),          qsten(:ncol,top_lev:),          &
-              nrten(:ncol,top_lev:),          nsten(:ncol,top_lev:),          &
-              qgten(:ncol,top_lev:),          ngten(:ncol,top_lev:),          &
-              rel(:ncol,top_lev:),     rel_fn_dum(:ncol,top_lev:),     rei(:ncol,top_lev:),     &
-              sadice(:ncol,top_lev:),          sadsnow(:ncol,top_lev:),         &
-              prect(:ncol),           preci(:ncol),           &
-              nevapr(:ncol,top_lev:),          am_evp_st(:ncol,top_lev:),       &
-              prain(:ncol,top_lev:),                   &
-              cmeice(:ncol,top_lev:),          dei(:ncol,top_lev:),             &
-              mu(:ncol,top_lev:),              lambdac(:ncol,top_lev:),         &
-              qsout(:ncol,top_lev:),           des(:ncol,top_lev:),             &
-              qgout(:ncol,top_lev:),   ngout(:ncol,top_lev:),   dgout(:ncol,top_lev:),   &
-              cflx(:ncol,top_lev:),    iflx(:ncol,top_lev:),                    &
-              gflx(:ncol,top_lev:),                                    &
-              rflx(:ncol,top_lev:),    sflx(:ncol,top_lev:),    qrout(:ncol,top_lev:),   &
-              reff_rain_dum(:ncol,top_lev:),          reff_snow_dum(:ncol,top_lev:),   reff_grau_dum(:ncol,top_lev:),       &
-              nrout(:ncol,top_lev:),           nsout(:ncol,top_lev:),           &
-              refl(:ncol,top_lev:),    arefl(:ncol,top_lev:),   areflz(:ncol,top_lev:),  &
-              frefl(:ncol,top_lev:),   csrfl(:ncol,top_lev:),   acsrfl(:ncol,top_lev:),  &
-              fcsrfl(:ncol,top_lev:),   &
-              refl10cm(:ncol,top_lev:), reflz10cm(:ncol,top_lev:),    rercld(:ncol,top_lev:),          &
-              ncai(:ncol,top_lev:),            ncal(:ncol,top_lev:),            &
-              qrout2(:ncol,top_lev:),          qsout2(:ncol,top_lev:),          &
-              nrout2(:ncol,top_lev:),          nsout2(:ncol,top_lev:),          &
-              drout_dum(:ncol,top_lev:),              dsout2_dum(:ncol,top_lev:),             &
-              qgout2(:ncol,top_lev:), ngout2(:ncol,top_lev:), dgout2(:ncol,top_lev:), freqg(:ncol,top_lev:),   &
-              freqs(:ncol,top_lev:),           freqr(:ncol,top_lev:),           &
-              nfice(:ncol,top_lev:),           qcrat(:ncol,top_lev:),           &
-              proc_rates,                                                       &
-              errstring, &
-              tnd_qsnow(:ncol,top_lev:),tnd_nsnow(:ncol,top_lev:),re_ice(:ncol,top_lev:),&
-              prer_evap(:ncol,top_lev:),                                     &
-              frzimm(:ncol,top_lev:),  frzcnt(:ncol,top_lev:),  frzdep(:ncol,top_lev:)   )
+     call micro_pumas_ccpp_run( &
+              ncol,    nlev,  nlev+1, num_dust_bins,    dtime/num_steps,                        &
+              state_loc%t(:ncol,top_lev:),              state_loc%q(:ncol,top_lev:,ixq),        &
+              state_loc%q(:ncol,top_lev:,ixcldliq),     state_loc%q(:ncol,top_lev:,ixcldice),   &
+              state_loc%q(:ncol,top_lev:,ixnumliq),     state_loc%q(:ncol,top_lev:,ixnumice),   &
+              state_loc%q(:ncol,top_lev:,ixrain),       state_loc%q(:ncol,top_lev:,ixsnow),     &
+              state_loc%q(:ncol,top_lev:,ixnumrain),    state_loc%q(:ncol,top_lev:,ixnumsnow),  &
+              state_loc_graup(:ncol,top_lev:),          state_loc_numgraup(:ncol,top_lev:),     &
+              relvar(:ncol,top_lev:),                   accre_enhan(:ncol,top_lev:),            &
+              state_loc%pmid(:ncol,top_lev:),           state_loc%pdel(:ncol,top_lev:),         &
+              state_loc%pint(:ncol,top_lev:),                                                   &
+              ast(:ncol,top_lev:),                      alst_mic(:ncol,top_lev:),               &
+              aist_mic(:ncol,top_lev:),                 qsatfac(:ncol,top_lev:),                &
+              naai(:ncol,top_lev:),                     npccn(:ncol,top_lev:),                  &
+              rndst(:ncol,top_lev:,:),                  nacon(:ncol,top_lev:,:),                &
+              tnd_qsnow(:ncol,top_lev:),                tnd_nsnow(:ncol,top_lev:),              &
+              re_ice(:ncol,top_lev:),                                                           &
+              frzimm(:ncol,top_lev:),                   frzcnt(:ncol,top_lev:),                 &
+              frzdep(:ncol,top_lev:),                   rate1cld(:ncol,top_lev:),               &
+              tlat(:ncol,top_lev:),                     qvlat(:ncol,top_lev:),                  &
+              qcten(:ncol,top_lev:),                    qiten(:ncol,top_lev:),                  &
+              ncten(:ncol,top_lev:),                    niten(:ncol,top_lev:),                  &
+              qrten(:ncol,top_lev:),                    qsten(:ncol,top_lev:),                  &
+              nrten(:ncol,top_lev:),                    nsten(:ncol,top_lev:),                  &
+              qgten(:ncol,top_lev:),                    ngten(:ncol,top_lev:),                  &
+              rel(:ncol,top_lev:),                      rel_fn_dum(:ncol,top_lev:),             &
+              rei(:ncol,top_lev:),                                                              &
+              sadice(:ncol,top_lev:),                   sadsnow(:ncol,top_lev:),                &
+              prect(:ncol),                             preci(:ncol),                           &
+              nevapr(:ncol,top_lev:),                   am_evp_st(:ncol,top_lev:),              &
+              prain(:ncol,top_lev:),                                                            &
+              cmeice(:ncol,top_lev:),                   dei(:ncol,top_lev:),                    &
+              mu(:ncol,top_lev:),                       lambdac(:ncol,top_lev:),                &
+              qsout(:ncol,top_lev:),                    des(:ncol,top_lev:),                    &
+              qgout(:ncol,top_lev:),                    ngout(:ncol,top_lev:),                  &
+              dgout(:ncol,top_lev:),                                                            &
+              cflx(:ncol,top_lev:),                     iflx(:ncol,top_lev:),                   &
+              gflx(:ncol,top_lev:),                                                             &
+              rflx(:ncol,top_lev:),                     sflx(:ncol,top_lev:),                   &
+              qrout(:ncol,top_lev:),                    reff_rain_dum(:ncol,top_lev:),          &
+              reff_snow_dum(:ncol,top_lev:),            reff_grau_dum(:ncol,top_lev:),          &
+              nrout(:ncol,top_lev:),                    nsout(:ncol,top_lev:),                  &
+              refl(:ncol,top_lev:),                     arefl(:ncol,top_lev:),                  &
+              areflz(:ncol,top_lev:),                   frefl(:ncol,top_lev:),                  &
+              csrfl(:ncol,top_lev:),                    acsrfl(:ncol,top_lev:),                 &
+              fcsrfl(:ncol,top_lev:),                   refl10cm(:ncol,top_lev:),               &
+              reflz10cm(:ncol,top_lev:),                rercld(:ncol,top_lev:),                 &
+              ncai(:ncol,top_lev:),                     ncal(:ncol,top_lev:),                   &
+              qrout2(:ncol,top_lev:),                   qsout2(:ncol,top_lev:),                 &
+              nrout2(:ncol,top_lev:),                   nsout2(:ncol,top_lev:),                 &
+              drout_dum(:ncol,top_lev:),                dsout2_dum(:ncol,top_lev:),             &
+              qgout2(:ncol,top_lev:),                   ngout2(:ncol,top_lev:),                 &
+              dgout2(:ncol,top_lev:),                   freqg(:ncol,top_lev:),                  &
+              freqs(:ncol,top_lev:),                    freqr(:ncol,top_lev:),                  &
+              nfice(:ncol,top_lev:),                    qcrat(:ncol,top_lev:),                  &
+              prer_evap(:ncol,top_lev:),                proc_rates,                             &
+              ccpp_errmsg,                              ierr                                   )
 
-      call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
+      call handle_errmsg(ccpp_errmsg, subname="micro_pumas_cam_tend")
 
       call physics_ptend_init(ptend_loc, psetcols, "micro_pumas", &
                               ls=.true., lq=lq)
@@ -2685,9 +2677,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          icimrst(i,k)   = min( state_loc%q(i,k,ixcldice) / max(mincld,icecldf(i,k)),0.005_r8 )
          icwmrst(i,k)   = min( state_loc%q(i,k,ixcldliq) / max(mincld,liqcldf(i,k)),0.005_r8 )
          icinc(i,k)     = state_loc%q(i,k,ixnumice) / max(mincld,icecldf(i,k)) * &
-              state_loc%pmid(i,k) / (287.15_r8*state_loc%t(i,k))
+              state_loc%pmid(i,k) / (rair*state_loc%t(i,k))
          icwnc(i,k)     = state_loc%q(i,k,ixnumliq) / max(mincld,liqcldf(i,k)) * &
-              state_loc%pmid(i,k) / (287.15_r8*state_loc%t(i,k))
+              state_loc%pmid(i,k) / (rair*state_loc%t(i,k))
          ! Calculate micro_pumas_cam cloud water paths in each layer
          ! Note: uses stratiform cloud fraction!
          iciwpst(i,k)   = min(state_loc%q(i,k,ixcldice)/max(mincld,ast(i,k)),0.005_r8) * state_loc%pdel(i,k) / gravit
@@ -2767,12 +2759,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
 
-      evapsnow_sc(:ncol,:) = proc_rates%evapsnow(:ncol,1:nlev)
-      call subcol_field_avg(evapsnow_sc,  ngrdcol, lchnk, evpsnow_st_grid(:,top_lev:))
       bergstot_sc(:ncol,:) = proc_rates%bergstot(:ncol,1:nlev)
       call subcol_field_avg(bergstot_sc,    ngrdcol, lchnk, bergso_grid(:,top_lev:))
-
-      call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
       ! Average fields which are not in pbuf
       call subcol_field_avg(qrout,     ngrdcol, lchnk, qrout_grid)
@@ -2950,9 +2938,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       prain_grid      => prain
 
       bergso_grid(:ncol,top_lev:)    =  proc_rates%bergstot
-      am_evp_st_grid  = am_evp_st
 
-      evpsnow_st_grid(:ncol,top_lev:) = proc_rates%evapsnow
       qrout_grid      = qrout
       qsout_grid      = qsout
       nsout_grid      = nsout
@@ -3469,15 +3455,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
             fcti_grid(i)  = icecldf_grid(i,k)
             exit
          end if
-      end do
-   end do
-
-   ! Evaporation of stratiform precipitation fields for UNICON
-   evprain_st_grid(:ngrdcol,:pver) = nevapr_grid(:ngrdcol,:pver) - evpsnow_st_grid(:ngrdcol,:pver)
-   do k = top_lev, pver
-      do i = 1, ngrdcol
-         evprain_st_grid(i,k) = max(evprain_st_grid(i,k), 0._r8)
-         evpsnow_st_grid(i,k) = max(evpsnow_st_grid(i,k), 0._r8)
       end do
    end do
 

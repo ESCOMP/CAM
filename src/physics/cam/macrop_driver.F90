@@ -85,6 +85,10 @@
     cmeliq_idx,   &
     shfrc_idx
 
+  ! Physics buffer indices for convective_cloud_cover
+  integer :: sh_frac_idx   = 0
+  integer :: dp_frac_idx   = 0
+
   integer :: &
     dlfzm_idx  = -1,    & ! ZM detrained convective cloud water mixing ratio.
     dnlfzm_idx = -1,    & ! ZM detrained convective cloud water num concen.
@@ -92,12 +96,6 @@
 
 
   integer :: &
-    tke_idx = -1,       &! tke defined at the model interfaces
-    qtl_flx_idx = -1,   &! overbar(w'qtl' where qtl = qv + ql) from the PBL scheme
-    qti_flx_idx = -1,   &! overbar(w'qti' where qti = qv + qi) from the PBL scheme
-    cmfr_det_idx = -1,  &! detrained convective mass flux from UNICON
-    qlr_det_idx = -1,   &! detrained convective ql from UNICON
-    qir_det_idx = -1,   &! detrained convective qi from UNICON
     cmfmc_sh_idx = -1
 
   contains
@@ -220,7 +218,6 @@ end subroutine macrop_driver_readnl
     !-----------------------------------------------------------------------
 
     ! Initialization routine for cloud macrophysics
-    if (shallow_scheme .eq. 'UNICON') rhminl_opt = 1
     call ini_macro(rhminl_opt, rhmini_opt)
 
     call phys_getopts(history_aerosol_out              = history_aerosol      , &
@@ -326,30 +323,8 @@ end subroutine macrop_driver_readnl
     CC_qlst_idx = pbuf_get_index('CC_qlst')
     cmfmc_sh_idx = pbuf_get_index('CMFMC_SH')
 
-    if (rhminl_opt > 0 .or. rhmini_opt > 0) then
-       cmfr_det_idx = pbuf_get_index('cmfr_det', istat)
-       if (istat < 0) call endrun(subname//': macrop option requires cmfr_det in pbuf')
-       if (rhminl_opt > 0) then
-          qlr_det_idx  = pbuf_get_index('qlr_det', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qlr_det in pbuf')
-       end if
-       if (rhmini_opt > 0) then
-          qir_det_idx  = pbuf_get_index('qir_det', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qir_det in pbuf')
-       end if
-    end if
-
-    if (rhminl_opt == 2 .or. rhmini_opt == 2) then
-       tke_idx = pbuf_get_index('tke')
-       if (rhminl_opt == 2) then
-          qtl_flx_idx = pbuf_get_index('qtl_flx', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qtl_flx in pbuf')
-       end if
-       if (rhmini_opt == 2) then
-          qti_flx_idx = pbuf_get_index('qti_flx', istat)
-          if (istat < 0) call endrun(subname//': macrop option requires qti_flx in pbuf')
-       end if
-    end if
+    sh_frac_idx = pbuf_get_index('SH_FRAC')
+    dp_frac_idx = pbuf_get_index('DP_FRAC')
 
     ! Init pbuf fields.  Note that the fields CLD, CONCLD, QCWAT, LCWAT,
     ! ICCWAT, and TCWAT are initialized in phys_inidat.
@@ -394,7 +369,6 @@ end subroutine macrop_driver_readnl
   !                                                         !
   !-------------------------------------------------------- !
 
-  use cloud_fraction,   only: cldfrc
   use cloud_fraction_fice,  only: cloud_fraction_fice_run
   use physics_types,    only: physics_state, physics_ptend
   use physics_types,    only: physics_ptend_init, physics_update
@@ -403,10 +377,15 @@ end subroutine macrop_driver_readnl
   use cam_history,      only: outfld
   use constituents,     only: cnst_get_ind, pcnst
   use cldwat2m_macro,   only: mmacro_pcond
-  use physconst,        only: cpair, tmelt, gravit
+  use physconst,        only: cpair, tmelt, gravit, cappa, rair, pref, lapse_rate
   use time_manager,     only: get_nstep
 
   use ref_pres,         only: top_lev => trop_cloud_top_lev
+
+  ! CCPPized schemes
+  use convective_cloud_cover, only: convective_cloud_cover_run
+  use compute_cloud_fraction, only: compute_cloud_fraction_run
+  use ref_pres,         only: trop_cloud_top_lev ! bring in explicitly for CCPPized scheme
 
   !
   ! Input arguments
@@ -473,13 +452,6 @@ end subroutine macrop_driver_readnl
 
   real(r8), pointer, dimension(:,:) :: cmeliq
 
-  real(r8), pointer, dimension(:,:) :: tke
-  real(r8), pointer, dimension(:,:) :: qtl_flx
-  real(r8), pointer, dimension(:,:) :: qti_flx
-  real(r8), pointer, dimension(:,:) :: cmfr_det
-  real(r8), pointer, dimension(:,:) :: qlr_det
-  real(r8), pointer, dimension(:,:) :: qir_det
-
   ! Convective cloud to the physics buffer for purposes of ql contrib. to radn.
 
   real(r8), pointer, dimension(:,:) :: fice_ql      ! Cloud ice/water partitioning ratio.
@@ -501,7 +473,6 @@ end subroutine macrop_driver_readnl
 
   real(r8)  cldst(pcols,pver)                       ! Stratus cloud fraction
   real(r8)  rhcloud(pcols,pver)                     ! Relative humidity cloud (last timestep)
-  real(r8)  clc(pcols)                              ! Column convective cloud amount
   real(r8)  rhu00(pcols,pver)                       ! RH threshold for cloud
   real(r8)  icecldf(pcols,pver)                     ! Ice cloud fraction
   real(r8)  liqcldf(pcols,pver)                     ! Liquid cloud fraction (combined into cloud)
@@ -598,6 +569,10 @@ end subroutine macrop_driver_readnl
 
   ! CloudSat equivalent ice mass mixing ratio (kg/kg)
   real(r8) :: cldsice(pcols,pver)
+
+  ! shallowcu, deepcu pbuf fields
+  real(r8), pointer, dimension(:,:) :: deepcu      ! deep convection cloud fraction
+  real(r8), pointer, dimension(:,:) :: shallowcu   ! shallow convection cloud fraction
 
   ! For CCPPized schemes
   character(len=512)   :: errmsg
@@ -817,14 +792,6 @@ end subroutine macrop_driver_readnl
 
    concld_old(:ncol,top_lev:pver) = concld(:ncol,top_lev:pver)
 
-   nullify(tke, qtl_flx, qti_flx, cmfr_det, qlr_det, qir_det)
-   if (tke_idx      > 0) call pbuf_get_field(pbuf, tke_idx, tke)
-   if (qtl_flx_idx  > 0) call pbuf_get_field(pbuf, qtl_flx_idx,  qtl_flx)
-   if (qti_flx_idx  > 0) call pbuf_get_field(pbuf, qti_flx_idx,  qti_flx)
-   if (cmfr_det_idx > 0) call pbuf_get_field(pbuf, cmfr_det_idx, cmfr_det)
-   if (qlr_det_idx  > 0) call pbuf_get_field(pbuf, qlr_det_idx,  qlr_det)
-   if (qir_det_idx  > 0) call pbuf_get_field(pbuf, qir_det_idx,  qir_det)
-
    clrw_old(:ncol,:top_lev-1) = 0._r8
    clri_old(:ncol,:top_lev-1) = 0._r8
    do k = top_lev, pver
@@ -848,14 +815,78 @@ end subroutine macrop_driver_readnl
 
    call t_startf("cldfrc")
 
-   call cldfrc( lchnk, ncol, pbuf,                                                 &
-                state_loc%pmid, state_loc%t, state_loc%q(:,:,1), state_loc%omega,  &
-                state_loc%phis, shfrc, use_shfrc,                                  &
-                cld, rhcloud, clc, state_loc%pdel,                                 &
-                cmfmc, cmfmc_sh, landfrac,snowh, concld, cldst,                    &
-                ts, sst, state_loc%pint(:,pverp), zdu, ocnfrac, rhu00,             &
-                state_loc%q(:,:,ixcldice), icecldf, liqcldf,                       &
-                relhum, 0 )
+   call pbuf_get_field(pbuf, sh_frac_idx, shallowcu )
+   call pbuf_get_field(pbuf, dp_frac_idx, deepcu )
+
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   shallowcu(:,:) = 0._r8
+   deepcu(:,:) = 0._r8
+   concld(:,:) = 0._r8
+   !REMOVECAM_END
+
+   ! compute convective cloud fraction using CCPP-ized subroutine
+   call convective_cloud_cover_run( &
+      ncol        = ncol, &
+      pver        = pver, &
+      top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
+      use_shfrc   = use_shfrc, &
+      shfrc       = shfrc(:ncol,:), &
+      cmfmc_total = cmfmc(:ncol,:), &
+      cmfmc_sh    = cmfmc_sh(:ncol,:), &
+      shallowcu   = shallowcu(:ncol,:), &
+      deepcu      = deepcu(:ncol,:), &
+      concld      = concld(:ncol,:), &
+      errmsg      = errmsg, &
+      errflg      = errflg)
+
+   ! write out convective cloud fraction diagnostic.
+   call outfld( 'SH_CLD  ', shallowcu   , pcols, lchnk )
+   call outfld( 'DP_CLD  ', deepcu      , pcols, lchnk )
+
+   !REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   cld(:,:) = 0._r8
+   rhcloud(:,:) = 0._r8
+   cldst(:,:) = 0._r8
+   rhu00(:,:) = 0._r8
+   icecldf(:,:) = 0._r8
+   liqcldf(:,:) = 0._r8
+   relhum(:,:) = 0._r8
+   !REMOVECAM_END
+
+   ! call CCPPized cloud fraction scheme
+   call compute_cloud_fraction_run( &
+      ncol = ncol, &
+      pver = pver, &
+      cappa = cappa, &
+      gravit = gravit, &
+      rair = rair, &
+      tmelt = tmelt, &
+      pref = pref, &
+      lapse_rate = lapse_rate, &
+      top_lev_cloudphys = trop_cloud_top_lev, & ! CAM5 macrophysics.
+      pmid = state_loc%pmid(:ncol,:), &
+      ps = state_loc%pint(:ncol,pverp), &
+      temp = state_loc%t(:ncol,:), &
+      sst = sst(:ncol), &
+      q = state_loc%q(:ncol,:,1), & ! note: assumes wv is at index 1.
+      cldice = state_loc%q(:ncol,:,ixcldice), &
+      phis = state_loc%phis(:ncol), &
+      shallowcu = shallowcu(:ncol,:), &
+      deepcu = deepcu(:ncol,:), &
+      concld = concld(:ncol,:), &
+      landfrac = landfrac(:ncol), &
+      ocnfrac = ocnfrac(:ncol), &
+      snowh = snowh(:ncol), &
+      rhpert_flag = .false., & ! below output:
+      cloud = cld(:ncol, :), &
+      rhcloud = rhcloud(:ncol, :), &
+      cldst = cldst(:ncol,:), &
+      rhu00 = rhu00(:ncol,:), &
+      icecldf = icecldf(:ncol,:), &
+      liqcldf = liqcldf(:ncol,:), &
+      relhum = relhum(:ncol,:), &
+      errmsg = errmsg, &
+      errflg = errflg)
 
    call t_stopf("cldfrc")
 
@@ -963,7 +994,6 @@ end subroutine macrop_driver_readnl
                       CC_T, CC_qv, CC_ql, CC_qi, CC_nl, CC_ni, CC_qlst,          &
                       dlf_T, dlf_qv, dlf_ql, dlf_qi, dlf_nl, dlf_ni,             &
                       concld_old, concld, clrw_old, clri_old, landfrac, snowh,   &
-                      tke, qtl_flx, qti_flx, cmfr_det, qlr_det, qir_det,         &
                       tlat, qvlat, qcten, qiten, ncten, niten,                   &
                       cmeliq, qvadj, qladj, qiadj, qllim, qilim,                 &
                       cld, alst, aist, qlst, qist, do_cldice )
