@@ -73,6 +73,57 @@ izumi/gnu/aux_cam: all BFB
 ===============================================================
 ===============================================================
 
+Tag name: cam6_4_190
+Originator(s): pel
+Date: 21 Jul 2026
+One-line Summary: Correct outdated ztodt "2 delta-t" comments
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Issue 1626: The ztodt argument passed to physics is documented in many routines as
+ "2 delta-t" / "two times model timestep", a leftover from the leapfrog
+ (Eulerian spectral) dycore.  All current dycores pass the plain physics
+ time step (get_step_size()).  Comments only; no code changes.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by:
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       doc/ChangeLog
+M       src/chemistry/aerosol/aero_convproc.F90
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/convect_deep.F90
+M       src/physics/cam/convect_shallow.F90
+M       src/physics/cam/molec_diff.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam/qneg_module.F90
+M       src/physics/cam/vertical_diffusion.F90
+M       src/physics/cam/waccmx_phys_intr.F90
+M       src/physics/cam/zm_conv_intr.F90
+M       src/physics/cam7/convect_diagnostics.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/simple/held_suarez_cam.F90
+M       src/physics/simple/physpkg.F90
+M       src/physics/waccmx/majorsp_diffusion.F90
+ - correct ztodt comment: model physics timestep, not 2 delta-t
+
+Summarize any changes to answers: bit-for-bit unchanged (comments only)
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_189
 Originator(s): fvitt
 Date: 21 Jul 2026

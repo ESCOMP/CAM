@@ -388,7 +388,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    type(physics_ptend), intent(out)         :: ptend_all      ! individual parameterization tendencies
    type(physics_buffer_desc), pointer       :: pbuf(:)
 
-   real(r8), intent(in) :: ztodt                       ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt                       ! model physics timestep [s]
    real(r8), intent(in) :: pblh(pcols)                 ! Planetary boundary layer height
    real(r8), intent(in) :: tpert(pcols)                ! Thermal temperature excess
    real(r8), intent(in) :: landfrac(pcols)             ! RBN - Landfrac
@@ -817,7 +817,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
 
    type(physics_buffer_desc), pointer :: pbuf(:)
 
-   real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt                          ! model physics timestep [s]
 
 ! Local variables
    integer :: i, lchnk, istat

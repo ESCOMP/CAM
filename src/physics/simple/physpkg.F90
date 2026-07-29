@@ -314,7 +314,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt            ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt            ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -403,7 +403,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt                       ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt                       ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -510,7 +510,7 @@ contains
 
     ! Arguments
     !
-    real(r8),                  intent(in)    :: ztodt ! Two times model timestep (2 delta-t)
+    real(r8),                  intent(in)    :: ztodt ! model physics timestep [s]
 
     type(cam_in_t),            intent(inout) :: cam_in
     type(cam_out_t),           intent(inout) :: cam_out
