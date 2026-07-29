@@ -737,7 +737,6 @@ contains
     use time_manager,      only: get_nstep
     use check_energy,      only: check_energy_cam_chng, check_energy_cam_fix
     use check_energy,      only: check_energy_timestep_init
-    use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend
     use held_suarez_cam,   only: held_suarez_tend
@@ -784,7 +783,6 @@ contains
 
     real(r8)                 :: zero(pcols) ! array of zeros
     real(r8)                 :: flx_heat(pcols)
-    type(check_tracers_data) :: tracerint   ! energy integrals and cummulative boundary fluxes
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -824,9 +822,6 @@ contains
 
     ! Dump out "before tphysbc" state
     call diag_state_b4_phys_write(state)
-
-    ! compute mass integrals of input tracers state
-    call check_tracers_init(state, tracerint)
 
     call t_stopf('bc_init')
 
@@ -981,8 +976,6 @@ contains
     if (chem_is_active()) then
       call t_startf('simple_chem')
 
-      call check_tracers_init(state, tracerint)
-
       if (trim(cam_take_snapshot_before) == "chem_timestep_tend") then
          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
       end if
@@ -997,8 +990,6 @@ contains
       if (trim(cam_take_snapshot_after) == "chem_timestep_tend") then
          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
       end if
-
-      call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, cam_in%cflx)
 
       call t_stopf('simple_chem')
     end if
