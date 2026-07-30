@@ -381,7 +381,7 @@ module clubb_mf
      real(r8), dimension(nzm,clubb_mf_nup) :: upqv,     upqs,          & ! momentum grid
                                               upql,     upqi,          & ! momentum grid
                                               upu,      upv,           & ! momentum grid
-                                              uplmix,   upauto           ! momentum grid
+                                              uplmix                     ! momentum grid
      ! downdraft properties
      real(r8), dimension(nzm,clubb_mf_nup) ::           dnqs,          & ! momentum grid
                                               dnql,     dnqi,          & ! momentum grid
@@ -389,7 +389,8 @@ module clubb_mf
                                               dnlmix                     ! momentum grid
      ! microphyiscs terms
      real(r8), dimension(nzt,clubb_mf_nup) :: supqt,    supthl,        & ! thermodynamic grid
-                                              sdnqt,    sdnthl           ! thermodynamic grid
+                                              sdnqt,    sdnthl,        & ! thermodynamic grid
+                                              upauto                     ! thermodynamic grid
      ! precipitation rates
      real(r8), dimension(nzm,clubb_mf_nup) :: uprr,     dnrr             ! momentum grid
      !        
@@ -1055,7 +1056,7 @@ module clubb_mf
 
              ! convert source terms to a tendency (convert from S*dz/w to S)
              supqt(kt,i) = supqt(kt,i)*upw(k,i)/dzt(kt)
-             upauto(kn,i) = supqt(kt,i)
+             upauto(kt,i) = supqt(kt,i)
              supthl(kt,i) = supthl(kt,i)*upw(k,i)/dzt(kt)
 
              ! get cloud, momentum levels
@@ -1221,7 +1222,7 @@ module clubb_mf
              dnthv(ddtop,i) = thv_zm(ddtop) ! includes condensate loading (!)
 
              ! get rain generated in the updraft, appropriate it to the downdraft
-             dnrr(ddtop,i)  = -1._r8*dzt(ddtop - (1+kdir)/2)*rho_zt(ddtop - (1+kdir)/2)*upauto(ddtop,i)*clubb_mf_fdd
+             dnrr(ddtop,i)  = -1._r8*dzt(ddtop - (1+kdir)/2)*rho_zt(ddtop - (1+kdir)/2)*upauto(ddtop - (1+kdir)/2,i)*clubb_mf_fdd
 
              if (fixent) then
                entn = fixent_ent
@@ -1256,7 +1257,7 @@ module clubb_mf
 
                ! compute rain rate (rain above - evaporation + appropriate updraft rain)
                dnrr(kn,i) = max( dnrr(k,i) &
-                                - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
+                                - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(kt,i)*clubb_mf_fdd) , 0._r8 )
 
                ! include eturb?
                entexp  = exp(-1._r8*entn*eturb*dzt(kt))
@@ -1297,7 +1298,7 @@ module clubb_mf
 
                  ! adjust rain
                  dnrr(kn,i) = max( dnrr(k,i) &
-                                  - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
+                                  - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(kt,i)*clubb_mf_fdd) , 0._r8 )
                end if
 
                ! get virtual temperature
