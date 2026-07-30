@@ -3708,6 +3708,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_ddbeta');
    add_default($nl, 'clubb_mf_pwfac');
    add_default($nl, 'clubb_mf_ddexp');
+   add_default($nl, 'clubb_mf_pwmin');
+   add_default($nl, 'clubb_mf_pwmax');
    add_default($nl, 'clubb_mf_cldfrac_fac');
    add_default($nl, 'do_clubb_mf_ustar');
    add_default($nl, 'do_clubb_mf_mixd');

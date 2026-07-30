@@ -53,6 +53,8 @@ module clubb_mf
   real(r8) :: clubb_mf_ddbeta  = 0._r8
   real(r8) :: clubb_mf_pwfac   = 0._r8
   real(r8) :: clubb_mf_ddexp   = 0._r8
+  real(r8) :: clubb_mf_pwmin   = 0._r8
+  real(r8) :: clubb_mf_pwmax   = 0._r8
   real(r8) :: clubb_mf_cldfrac_fac = 1._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
@@ -98,7 +100,7 @@ module clubb_mf
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
                            do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
-                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_cldfrac_fac
+                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_pwmin, clubb_mf_pwmax, clubb_mf_cldfrac_fac
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -172,6 +174,10 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
     call mpi_bcast(do_clubb_mf_aloft, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aloft")
+    call mpi_bcast(clubb_mf_pwmin,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmin")
+    call mpi_bcast(clubb_mf_pwmax,  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmax")
     call mpi_bcast(clubb_mf_cldfrac_fac,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cldfrac_fac")
 
@@ -258,22 +264,22 @@ module clubb_mf
 
      integer,  intent(in)                 :: nzm, nzt, ktropo
      real(r8), dimension(nzt), intent(in) :: u,      v,            & ! thermodynamic grid
-                                            thl,    thv,          & ! thermodynamic grid
-                                            th,     qv,           & ! thermodynamic grid
-                                            qt,     qc,           & ! thermodynamic grid
-                                            p_zt,   iexner_zt,    & ! thermodynamic grid
-                                            dzt,    rho_zt,       & ! thermodynamic grid
-                                            zt
+                                             thl,    thv,          & ! thermodynamic grid
+                                             th,     qv,           & ! thermodynamic grid
+                                             qt,     qc,           & ! thermodynamic grid
+                                             p_zt,   iexner_zt,    & ! thermodynamic grid
+                                             dzt,    rho_zt,       & ! thermodynamic grid
+                                             zt
 
      real(r8), dimension(nzm), intent(in) :: thl_zm, thv_zm,       & ! momentum grid
-                                            w,                    &
-                                            th_zm,  qv_zm,        &
-                                            qt_zm,  qc_zm,        & ! momentum grid
-                                            p_zm,   iexner_zm,    & ! momentum grid
-                                                    rho_zm,       & ! momentum grid
-                                            zm,                   & ! momentum grid
-                                            tke,    wpthlp_env,   & ! momentum grid
-                                            wpthvp_env, wpqtp_env
+                                             w,                    &
+                                             th_zm,  qv_zm,        &
+                                             qt_zm,  qc_zm,        & ! momentum grid
+                                             p_zm,   iexner_zm,    & ! momentum grid
+                                                     rho_zm,       & ! momentum grid
+                                             zm,                   & ! momentum grid
+                                             tke,    wpthlp_env,   & ! momentum grid
+                                             wpthvp_env, wpqtp_env
 
      real(r8), intent(in)                :: wthl_sfc,wqt_sfc
      real(r8), intent(in)                :: pblh,tpert
@@ -284,49 +290,49 @@ module clubb_mf
      real(r8),dimension(clubb_mf_nup), intent(inout)  :: ztopm1,ddcp
 
      real(r8),dimension(nzm,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
-                                                         upw,     & ! momentum grid
-                                                         upmf,    & ! momentum grid
-                                                         upqt,    & ! momentum grid
-                                                         upthl,   & ! momentum grid
-                                                         upthv,   & ! momentum grid
-                                                         upth,    & ! momentum grid
-                                                         upqc,    & ! momentum grid
-                                                         upbuoy,  & ! momentum grid
-                                                         upent,   & ! momentum grid
-                                                         updet
+                                                          upw,     & ! momentum grid
+                                                          upmf,    & ! momentum grid
+                                                          upqt,    & ! momentum grid
+                                                          upthl,   & ! momentum grid
+                                                          upthv,   & ! momentum grid
+                                                          upth,    & ! momentum grid
+                                                          upqc,    & ! momentum grid
+                                                          upbuoy,  & ! momentum grid
+                                                          upent,   & ! momentum grid
+                                                          updet
 
      real(r8),dimension(nzm,clubb_mf_nup), intent(out) :: dna,     & ! momentum grid
-                                                         dnw,     & ! momentum grid
-                                                         dnqt,    & ! momentum grid
-                                                         dnthl,   & ! momentum grid
-                                                         dnthv,   & ! momentum grid
-                                                         dnth,    & ! momentum grid
-                                                         dnqc
+                                                          dnw,     & ! momentum grid
+                                                          dnqt,    & ! momentum grid
+                                                          dnthl,   & ! momentum grid
+                                                          dnthv,   & ! momentum grid
+                                                          dnth,    & ! momentum grid
+                                                          dnqc
 
      real(r8),dimension(nzm), intent(out) :: dry_a,   moist_a,     & ! momentum grid
-                                            dry_w,   moist_w,     & ! momentum grid
-                                            dry_qt,  moist_qt,    & ! momentum grid
-                                            dry_thl, moist_thl,   & ! momentum grid
-                                            dry_u,   moist_u,     & ! momentum grid
-                                            dry_v,   moist_v,     & ! momentum grid
-                                                     moist_qc       ! momentum grid
+                                             dry_w,   moist_w,     & ! momentum grid
+                                             dry_qt,  moist_qt,    & ! momentum grid
+                                             dry_thl, moist_thl,   & ! momentum grid
+                                             dry_u,   moist_u,     & ! momentum grid
+                                             dry_v,   moist_v,     & ! momentum grid
+                                                      moist_qc       ! momentum grid
 
      real(r8),dimension(nzm), intent(out) :: ae,                                &
-                                            ac,      aup,     adn,              &
-                                            aw,      awup,    awdn,             &
-                                            aww,     awwup,  awwdn,             &
-                                            awthlup, awqtup, awuup, awvup,      & ! momentum grid
-                                            awthldn, awqtdn, awudn, awvdn,      & ! momentum grid
-                                            awthl,   awqt,                      & ! momentum grid
-                                            awu,     awv,                       & ! momentum grid
-                                            thlflxup,qtflxup, uflxup, vflxup,   & ! momentum grid
-                                            thlflxdn,qtflxdn, uflxdn, vflxdn,   & ! momentum grid
-                                            thlflx,  qtflx,   uflx,   vflx,     & ! momentum grid
-                                            thvflx,  precc
+                                             ac,      aup,     adn,              &
+                                             aw,      awup,    awdn,             &
+                                             aww,     awwup,  awwdn,             &
+                                             awthlup, awqtup, awuup, awvup,      & ! momentum grid
+                                             awthldn, awqtdn, awudn, awvdn,      & ! momentum grid
+                                             awthl,   awqt,                      & ! momentum grid
+                                             awu,     awv,                       & ! momentum grid
+                                             thlflxup,qtflxup, uflxup, vflxup,   & ! momentum grid
+                                             thlflxdn,qtflxdn, uflxdn, vflxdn,   & ! momentum grid
+                                             thlflx,  qtflx,   uflx,   vflx,     & ! momentum grid
+                                             thvflx,  precc
 
      real(r8),dimension(nzt), intent(out) :: sqtup,   sthlup,                   & ! thermodynamic grid
-                                            sqtdn,   sthldn,                    & ! thermodynamic grid
-                                            sqt,     sthl                         ! thermodynamic grid
+                                             sqtdn,   sthldn,                    & ! thermodynamic grid
+                                             sqt,     sthl                         ! thermodynamic grid
 
      real(r8),dimension(clubb_mf_nup), intent(out) :: ztop, dynamic_L0, mcape
 
@@ -366,29 +372,31 @@ module clubb_mf
      integer :: ksfcm, ktopm, ksfct, ktopt, kdir, kt, kn, kt_up, kt_dn
 
      ! sums over all plumes
-     real(r8), dimension(nzm)              :: moist_th,   dry_th,       &
-                                             thl_env,    qt_env,       &
-                                             thv_env,                  &
-                                             thvflxup,   thvflxdn,     &
-                                             awthvup,    awthvdn
+     real(r8), dimension(nzm)              :: moist_th,   dry_th,      &
+                                              thl_env,    qt_env,      &
+                                              thv_env,                 &
+                                              thvflxup,   thvflxdn,    &
+                                              awthvup,    awthvdn
      ! updraft properties
-     real(r8), dimension(nzm,clubb_mf_nup) :: upqv,     upqs,           & ! momentum grid
-                                             upql,     upqi,           & ! momentum grid
-                                             upu,      upv,            & ! momentum grid
-                                             uplmix,   upauto            ! momentum grid
+     real(r8), dimension(nzm,clubb_mf_nup) :: upqv,     upqs,          & ! momentum grid
+                                              upql,     upqi,          & ! momentum grid
+                                              upu,      upv,           & ! momentum grid
+                                              uplmix,   upauto           ! momentum grid
      ! downdraft properties
-     real(r8), dimension(nzm,clubb_mf_nup) ::           dnqs,           & ! momentum grid
-                                             dnql,     dnqi,           & ! momentum grid
-                                             dnu,      dnv,            & ! momentum grid
-                                             dnlmix                      ! momentum grid
+     real(r8), dimension(nzm,clubb_mf_nup) ::           dnqs,          & ! momentum grid
+                                              dnql,     dnqi,          & ! momentum grid
+                                              dnu,      dnv,           & ! momentum grid
+                                              dnlmix                     ! momentum grid
      ! microphyiscs terms
-     real(r8), dimension(nzt,clubb_mf_nup) :: supqt,    supthl,         & ! thermodynamic grid
-                                             sdnqt,    sdnthl,         & ! thermodynamic grid
-                                             uprr,     dnrr
+     real(r8), dimension(nzt,clubb_mf_nup) :: supqt,    supthl,        & ! thermodynamic grid
+                                              sdnqt,    sdnthl           ! thermodynamic grid
+     ! precipitation rates
+     real(r8), dimension(nzm,clubb_mf_nup) :: uprr,     dnrr             ! momentum grid
+     !        
      ! entrainment profiles
-     real(r8), dimension(nzt,clubb_mf_nup) :: entf,     mix               ! thermodynamic grid
-     integer,  dimension(nzt,clubb_mf_nup) :: enti                        ! thermodynamic grid
-
+     real(r8), dimension(nzt,clubb_mf_nup) :: entf,     mix              ! thermodynamic grid
+     integer,  dimension(nzt,clubb_mf_nup) :: enti                       ! thermodynamic grid
+     !
      ! other variables
      integer                              :: k,i,kstart,ddtop,kcb,kpbl,kmid,nbot
      integer,  dimension(clubb_mf_nup)    :: ddbot,kcbarr
@@ -418,13 +426,6 @@ module clubb_mf
                                              zsub,    wcb,    rh_L0,   &
                                              dzext
 
-     real(r8), dimension(nzt-1,1)           :: dmpdz
-     real(r8), dimension(1)                 :: tl,                     &
-                                               cape,     cin
-     integer,  dimension(1)                 :: lcl,      lel
-     real(r8)                               :: landfrac
-     integer                                :: msg,          &
-                                               lon,      mx
      ! limit convective area
      logical                                :: limarea = .false.
      real(r8),parameter                     :: amax = 0.6_r8
@@ -444,56 +445,63 @@ module clubb_mf
                                                thln0,   qtn0,    wn0,     &
                                                entn,    detn,    mfn,     &
                                                ee2,     ud2
-
+     ! aloft trigger flag
+     logical                                :: aloft = .false.
+     ! rng seed
      real(r8), dimension(4)                 :: u_seed
-
-     ! parameters defining initial conditions for updrafts
-     real(r8),parameter                   :: pwmin = 1.5_r8,           &
-                                             pwmax = 3._r8
-
+     
      ! alpha relates star qunataties to stddev after Suselj etal 2019
-     real(r8),parameter                   :: alphw   = 0.572_r8,       &
-                                             alphqt  = 2.890_r8,       &
-                                             alphthv = 2.890_r8
+     real(r8),parameter                     :: alphw   = 0.572_r8,        &
+                                               alphqt  = 2.890_r8,        &
+                                               alphthv = 2.890_r8
      ! w' covariance after Suselj etal 2019
-     real(r8),parameter                   :: cwqt  = 0.32_r8,          &
-                                             cwthv = 0.58_r8
+     real(r8),parameter                     :: cwqt  = 0.32_r8,           &
+                                               cwthv = 0.58_r8
      ! virtual mass coefficients for w-eqn after Suselj etal 2019
-     real(r8),parameter                   :: wa = 1.0_r8,              &
-                                             wb = 1.5_r8
+     real(r8),parameter                     :: wa = 1.0_r8,               &
+                                               wb = 1.5_r8
      ! min values to avoid singularities
-     real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
-                                             pblhmin  = 100._r8
+     real(r8),parameter                     :: wstarmin = 1.e-3_r8,       &
+                                               pblhmin  = 100._r8
      ! evaporation efficiency after Suselj etal 2019
-     real(r8),parameter                   :: ke = 2.5e-4_r8
+     real(r8),parameter                     :: ke = 2.5e-4_r8
+     !
      ! height here downdrafts feel the surface
-     real(r8),parameter                   :: z00dn = 1.e3_r8, &
-                                             tinynum = 1.e-7_r8
+     real(r8),parameter                     :: z00dn = 1.e3_r8, &
+                                               tinynum = 1.e-7_r8
      ! to fix entrainmnet rate
-     logical                              :: fixent = .false.
+     logical                                :: fixent = .false.
+     !
      ! fixed entrainment rate
-     real(r8),parameter                   :: fixent_ent = 2.e-4_r8
+     real(r8),parameter                     :: fixent_ent = 2.e-4_r8
+     !
      ! Arakawa and Schubert detrainment limiter
-     logical                              :: do_aspd = .false.
+     logical                                :: do_aspd = .false.
+     !
      ! Lower limit on entrainment length scale
-     real(r8),parameter                   :: min_L0 = 0.5_r8
+     real(r8),parameter                     :: min_L0 = 0.5_r8
+     !
      ! limiter for tke enahnced fractional entrainment
      ! (only used when do_aspd = .true.)
-     real(r8),parameter                   :: max_eturb = 10._r8
+     real(r8),parameter                     :: max_eturb = 10._r8
+     !
      ! to condensate or not to condensate
-     logical                              :: do_condensation = .true.
+     logical                                :: do_condensation = .true.
+     !
      ! use implicit method for plume updraft velocity
-     logical                              :: do_implicit = .false.
+     logical                                :: do_implicit = .false.
+     !
      ! to scale surface fluxes
-     logical                              :: scalesrf = .false.
+     logical                                :: scalesrf = .false.
+     !
      ! minimum downdraft speed
-     real(r8),parameter                   :: mindnw = 1.E-2_r8
+     real(r8),parameter                     :: mindnw = 1.E-2_r8
+     !
      ! limiter on cold pool effects
-     real(r8),parameter                   :: max_cpfac = 5._r8
+     real(r8),parameter                     :: max_cpfac = 5._r8
+     !
      ! max limiter on cold pool init effects
-     real(r8),parameter                   :: max_cpinit = 0.5_r8
-     ! to scale surface fluxes
-     logical                              :: aloft = .false.
+     real(r8),parameter                     :: max_cpinit = 0.5_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -733,8 +741,8 @@ module clubb_mf
            sigmathv = alphthv * abs(thvstar)
          end if
 
-         wmin = sigmaw * pwmin
-         wmax = sigmaw * pwmax
+         wmin = sigmaw * clubb_mf_pwmin
+         wmax = sigmaw * clubb_mf_pwmax
 
          wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
@@ -1161,16 +1169,16 @@ module clubb_mf
              sevap = ke*(1._r8 - qtovqs)*sqrt(max(uprr(k,i),0._r8))
 
              ! limit evaporation to available precip
-             sevap = min(sevap,( uprr(k,i)/(rho_zt(kt)*dzt(kt)) - supqt(k,i)*(1._r8-clubb_mf_fdd) ))
+             sevap = min(sevap,( uprr(k,i)/(rho_zt(kt)*dzt(kt)) - supqt(kt,i)*(1._r8-clubb_mf_fdd) ))
 
              ! get rain rate
              uprr(kn,i) = uprr(k,i) &
-                         - rho_zt(kt)*dzt(kt)*( supqt(k,i)*(1._r8-clubb_mf_fdd) + sevap )
+                         - rho_zt(kt)*dzt(kt)*( supqt(kt,i)*(1._r8-clubb_mf_fdd) + sevap )
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(kn,i))
-             supqt(k,i) = supqt(k,i) + sevap
-             supthl(k,i) = supthl(k,i) - lmixt*sevap*iexner_zt(kt)/cpair
+             supqt(kt,i) = supqt(kt,i) + sevap
+             supthl(kt,i) = supthl(kt,i) - lmixt*sevap*iexner_zt(kt)/cpair
            end do
          end do
        end if
@@ -1243,12 +1251,12 @@ module clubb_mf
                sthlint = -1._r8*latvap*sqtint*iexner_zt(kt)/cpair
 
                ! get rain evaporation in tendency form
-               sdnqt(kn,i) = max( (dnqs(k,i) - dnqt(k,i))*taum1, 0._r8 )
-               sdnthl(kn,i) = -1._r8*latvap*sdnqt(kn,i)*iexner_zt(kt)/cpair
+               sdnqt(kt,i) = max( (dnqs(k,i) - dnqt(k,i))*taum1, 0._r8 )
+               sdnthl(kt,i) = -1._r8*latvap*sdnqt(kt,i)*iexner_zt(kt)/cpair
 
                ! compute rain rate (rain above - evaporation + appropriate updraft rain)
                dnrr(kn,i) = max( dnrr(k,i) &
-                                - rho_zt(kt)*dzt(kt)*(sdnqt(kn,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
+                                - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
 
                ! include eturb?
                entexp  = exp(-1._r8*entn*eturb*dzt(kt))
@@ -1278,18 +1286,18 @@ module clubb_mf
                  ! find new evap tendency
                  if ((alphint - 1._r8) /= 0._r8) then
                    qtmp = dnqs(k,i) + sqtint/(alphint - 1._r8)
-                   sdnqt(kn,i) = max( (dnqs(k,i) - qtmp)*taum1, 0._r8 )
+                   sdnqt(kt,i) = max( (dnqs(k,i) - qtmp)*taum1, 0._r8 )
                  else
-                   sdnqt(kn,i) = 0._r8
+                   sdnqt(kt,i) = 0._r8
                  end if
-                 sdnthl(kn,i) = -1._r8*latvap*sdnqt(kn,i)*iexner_zt(kt)/cpair
+                 sdnthl(kt,i) = -1._r8*latvap*sdnqt(kt,i)*iexner_zt(kt)/cpair
 
                  ! re-compute thl with new evaporation rate
                  dnthl(kn,i) = thl(kt)*(1._r8-entexp ) + dnthl(k,i)*entexp + sthlint
 
                  ! adjust rain
                  dnrr(kn,i) = max( dnrr(k,i) &
-                                  - rho_zt(kt)*dzt(kt)*(sdnqt(kn,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
+                                  - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(k,i)*clubb_mf_fdd) , 0._r8 )
                end if
 
                ! get virtual temperature
@@ -1727,7 +1735,6 @@ module clubb_mf
 
      ! intialize local variables
      cape      = 0._r8
-     mcape     = 0._r8
      dmpdz     = 0._r8
 
      if (zt(1) < zt(nzt)) then

@@ -1933,8 +1933,9 @@ end subroutine clubb_init_cnst
     end if
 
     if (do_clubb_mf) then
+!+++arh PRECSH addfld is already in convect_shallow.F90 
 !jt      call addfld( 'PRECSH',     horiz_only,   'A', 'm/s',      'Shallow Convection precipitation rate'                     )
-      call addfld( 'SNOWSH',     horiz_only,   'A', 'm/s',      'CLUBB-MF Snow precipitation rate'                     )
+!arh      call addfld( 'SNOWSH',     horiz_only,   'A', 'm/s',      'CLUBB-MF Snow precipitation rate'                     )
     end if
 
     if ( trim(subcol_scheme) /= 'SILHS' ) then
@@ -2025,8 +2026,9 @@ end subroutine clubb_init_cnst
     end if
 
     if (do_clubb_mf_diag) then
-       call add_default('PRECSH',             1, ' ')
-       call add_default('SNOWSH',             1, ' ')
+!+++arh PRECSH issue
+       !call add_default('PRECSH',             1, ' ')
+       !call add_default('SNOWSH',             1, ' ')
        call add_default( 'edmf_DRY_A'    , 1, ' ')
        call add_default( 'edmf_MOIST_A'  , 1, ' ')
        call add_default( 'edmf_DRY_W'    , 1, ' ')
@@ -2550,8 +2552,8 @@ end subroutine clubb_init_cnst
       pre,                            & ! input for precip evaporation
       qrl_clubb,                      &
       qclvar,                         & ! cloud water variance                          [kg^2/kg^2]
+      Lscale,                         & ! Length scale                                  [m]
       zt_g,                           & ! Thermodynamic grid of CLUBB		      	        [m]
-      Lscale,                         &
       dz_g,                           & ! thickness of layer                            [m]
       invrs_dz_g,                     & ! Inverse of layer thickness                    [1/m]
       invrs_exner_zt,                 & ! thermodynamic grid
@@ -2589,6 +2591,7 @@ end subroutine clubb_init_cnst
       wprtp_mc,                 &
       wpthlp_mc,                &
       rtpthlp_mc,               &
+      Lscale_zm,                & ! Length scale                                                    [m]
       zi_g,                     & ! Momentum grid of CLUBB		      	                    [m]
 
       ! MF Plume variables on momentum levels.
@@ -3349,6 +3352,7 @@ end subroutine clubb_init_cnst
       mf_ztop_nadv   = 0._r8
       mf_ztopm1      = 0._r8
       mf_ztopm1_nadv = 0._r8
+      mf_cape        = 0._r8
       mf_cape_nadv   = 0._r8
       mf_ddcp_nadv   = 0._r8
       mf_cbm1        = 0._r8
@@ -4595,12 +4599,13 @@ end subroutine clubb_init_cnst
     end do
 
     if (do_clubb_mf .and. do_clubb_mf_addtke) then
+       Lscale_zm = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, Lscale )
        !$acc parallel loop gang vector collapse(2) default(present)
        do k = 1, nzm_clubb
           do i = 1, ncol
              k_cam = top_lev - 1 + k
              khzm_pbuf(i,k_cam) = khzm(i,k) + &
-                  clubb_params(i,ic_K) * Lscale(i,k) * sqrt(0.5_r8 * s_aww(i,k))
+                  clubb_params(i,ic_K) * Lscale_zm(i,k) * sqrt(0.5_r8 * s_aww(i,k))
           end do
        end do
     else
@@ -5779,8 +5784,9 @@ end subroutine clubb_init_cnst
         end do
       end do
 
-      call outfld( 'PRECSH'        , prec_sh(:ncol),            pcols, lchnk )
-      call outfld( 'SNOWSH'        , snow_sh(:ncol),            pcols, lchnk )
+!+++arh PRECSH issue
+      !call outfld( 'PRECSH'        , prec_sh(:ncol),            pcols, lchnk )
+      !call outfld( 'SNOWSH'        , snow_sh(:ncol),            pcols, lchnk )
       call outfld( 'edmf_DRY_A'    , mf_dry_a_output,           pcols, lchnk )
       call outfld( 'edmf_MOIST_A'  , mf_moist_a_output,         pcols, lchnk )
       call outfld( 'edmf_DRY_W'    , mf_dry_w_output,           pcols, lchnk )
@@ -5849,7 +5855,8 @@ end subroutine clubb_init_cnst
       call outfld( 'edmf_freq'     , mf_freq_output,            pcols, lchnk )
       call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
       call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
-      call outfld( 'ICWMRSH'       , sh_icwmr_pbuf,             pcols, lchnk )
+!+++arh no corresponding addfld call for ICWMRSH
+      !call outfld( 'ICWMRSH'       , sh_icwmr_pbuf,             pcols, lchnk )
     end if
 
     !  Output CLUBB history here
