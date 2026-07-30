@@ -4105,10 +4105,6 @@ end subroutine clubb_init_cnst
 
         call t_startf('clubb_tend_cam:ascending_grid_flip')
 
-        thlm_forcing              =              thlm_forcing(:,nzt_clubb:1:-1)
-        rtm_forcing               =               rtm_forcing(:,nzt_clubb:1:-1)
-        um_forcing                =                um_forcing(:,nzt_clubb:1:-1)
-        vm_forcing                =                vm_forcing(:,nzt_clubb:1:-1)
         wm_zt                     =                     wm_zt(:,nzt_clubb:1:-1)
         rho_zt                    =                    rho_zt(:,nzt_clubb:1:-1)
         rho_ds_zt                 =                 rho_ds_zt(:,nzt_clubb:1:-1)
@@ -4340,10 +4336,6 @@ end subroutine clubb_init_cnst
         ! so we need to flip them back. This section should flip every array that was flipped
         ! before the advance_clubb_core call.
 
-        thlm_forcing               =               thlm_forcing(:,nzt_clubb:1:-1)
-        rtm_forcing                =                rtm_forcing(:,nzt_clubb:1:-1)
-        um_forcing                 =                 um_forcing(:,nzt_clubb:1:-1)
-        vm_forcing                 =                 vm_forcing(:,nzt_clubb:1:-1)
         wm_zt                      =                      wm_zt(:,nzt_clubb:1:-1)
         rho_zt                     =                     rho_zt(:,nzt_clubb:1:-1)
         rho_ds_zt                  =                  rho_ds_zt(:,nzt_clubb:1:-1)
