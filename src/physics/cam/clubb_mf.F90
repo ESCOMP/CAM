@@ -399,8 +399,8 @@ module clubb_mf
      integer,  dimension(nzt,clubb_mf_nup) :: enti                       ! thermodynamic grid
      !
      ! other variables
-     integer                              :: k,i,kstart,ddtop,kcb,kpbl,kmid,nbot
-     integer,  dimension(clubb_mf_nup)    :: ddbot,kcbarr
+     integer                              :: k,i,kstart,ddtopm,kcb,kpbl,kmid,nbot
+     integer,  dimension(clubb_mf_nup)    :: ddbotm,kcbarr
      real(r8), dimension(clubb_mf_nup)    :: zcb,cpfac
      real(r8)                             :: zcb_unset,                &
                                              wthv_sfc, wthv,   wqt,    &
@@ -641,7 +641,7 @@ module clubb_mf
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
-     ddbot= 0
+     ddbotm = 0
 
      if (bsort) then
        niter_xc = 3
@@ -1194,35 +1194,36 @@ module clubb_mf
            ! find cloud base
            do k = ksfcm, ktopm, kdir
              if (upqc(k,i) > 0._r8) then
-               ddbot(i) = k
+               ddbotm(i) = k
                exit
              end if
            end do
 
            ! find cloud top
-           ddtop = 0
+           ddtopm = 0
            do k = ksfcm, ktopm, kdir
-             if (uprr(k,i) > 0._r8) ddtop = k
+             if (uprr(k,i) > 0._r8) ddtopm = k
            end do
 
-           if (ddtop /= 0) then
+           if (ddtopm /= 0) then
              ! initilaize downdrafts
 
              ! Kay initializes using negative of the updraft velocity
              ! this causes anomalouly large downdrafts at the initializaiton level
              ! I am intializing with zero velocity as that is more physically defensible
-             dnw(ddtop,i)   = -1._r8*mindnw
-             dna(ddtop,i)   = upa(ddtop,i)
-             dnu(ddtop,i)   = 0.5_r8*(u(ddtop - (1-kdir)/2)+u(ddtop - (1+kdir)/2))
-             dnv(ddtop,i)   = 0.5_r8*(v(ddtop - (1-kdir)/2)+v(ddtop - (1+kdir)/2))
-             dnqt(ddtop,i)  = qt_zm(ddtop)
+             dnw(ddtopm,i)   = -1._r8*mindnw
+             dna(ddtopm,i)   = upa(ddtopm,i)
+             dnu(ddtopm,i)   = 0.5_r8*(u(ddtopm - (1-kdir)/2)+u(ddtopm - (1+kdir)/2))
+             dnv(ddtopm,i)   = 0.5_r8*(v(ddtopm - (1-kdir)/2)+v(ddtopm - (1+kdir)/2))
+             dnqt(ddtopm,i)  = qt_zm(ddtopm)
 
              ! no cloud in downdrafts, set to cloud free thl
-             dnthl(ddtop,i) = thl_zm(ddtop)
-             dnthv(ddtop,i) = thv_zm(ddtop) ! includes condensate loading (!)
+             dnthl(ddtopm,i) = thl_zm(ddtopm)
+             dnthv(ddtopm,i) = thv_zm(ddtopm) ! includes condensate loading (!)
 
              ! get rain generated in the updraft, appropriate it to the downdraft
-             dnrr(ddtop,i)  = -1._r8*dzt(ddtop - (1+kdir)/2)*rho_zt(ddtop - (1+kdir)/2)*upauto(ddtop - (1+kdir)/2,i)*clubb_mf_fdd
+             ! (we are using an upward sweep notation to be consistent with how uprr(ddtop) was computed)
+             dnrr(ddtopm,i)  = -1._r8*dzt(ddtopm - (1-kdir)/2)*rho_zt(ddtopm - (1-kdir)/2)*upauto(ddtopm - (1-kdir)/2,i)*clubb_mf_fdd
 
              if (fixent) then
                entn = fixent_ent
@@ -1232,9 +1233,9 @@ module clubb_mf
              end if
 
              ! downdraft qsat
-             call qsat(dnthl(ddtop,i)/iexner_zm(ddtop),p_zm(ddtop),es,dnqs(ddtop,i))
+             call qsat(dnthl(ddtopm,i)/iexner_zm(ddtopm),p_zm(ddtopm),es,dnqs(ddtopm,i))
 
-             do k = ddtop, ksfcm+kdir, -kdir
+             do k = ddtopm, ksfcm+kdir, -kdir
 
                kt = k - (1+kdir)/2
                kn = k - kdir
@@ -1304,7 +1305,7 @@ module clubb_mf
                ! get virtual temperature
                dnthv(kn,i) = dnthl(kn,i)*(1._r8+zvir*dnqt(kn,i))
 
-               if ((kn - ddbot(i))*kdir > 0) then
+               if ((kn - ddbotm(i))*kdir > 0) then
                  ! get virtual temperature
                  dnthv(kn,i) = dnthl(kn,i)*(1._r8+zvir*dnqt(kn,i))
 
@@ -1326,8 +1327,8 @@ module clubb_mf
                  dnw(kn,i) = -1._r8*sqrt(wn2)
 
                else
-                 zsub = zm(ddbot(i)+kdir)
-                 wcb  = dnw(ddbot(i)+kdir,i)
+                 zsub = zm(ddbotm(i)+kdir)
+                 wcb  = dnw(ddbotm(i)+kdir,i)
                  dnw(kn,i) = wcb - (wcb/(zsub**clubb_mf_ddexp))*(zsub - zm(kn))**clubb_mf_ddexp
                  dnw(kn,i) = min(dnw(kn,i),-1._r8*mindnw)
                end if
@@ -1601,13 +1602,13 @@ module clubb_mf
          ! use single level for cold pool param.
          ! reset ddcp
          do i=1,clubb_mf_nup
-           if (ddbot(i) == 0) then
+           if (ddbotm(i) == 0) then
              continue
            else
              if (do_clubb_mf_coldpool_perplume) then
-               ddcp(i) = -1._r8*dnw(ddbot(i)+kdir,i)
+               ddcp(i) = -1._r8*dnw(ddbotm(i)+kdir,i)
              else
-               ddcp(:) = -1._r8*dna(ddbot(i)+kdir,i)*dnw(ddbot(i)+kdir,i) + ddcp(:)
+               ddcp(:) = -1._r8*dna(ddbotm(i)+kdir,i)*dnw(ddbotm(i)+kdir,i) + ddcp(:)
              end if
            end if
          end do
