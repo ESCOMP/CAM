@@ -2625,8 +2625,7 @@ end subroutine clubb_init_cnst
       mf_qc,            mf_cloudfrac,                             &
       mf_qc_nadv,       mf_cloudfrac_nadv,                        &
       mf_qc_zt,         mf_cloudfrac_zt,                          &
-      mf_rcm,           mf_rcm_nadv,                              &
-      mf_ent_nadv,                                                &
+      mf_rcm,           mf_rcm_nadv 
 
       ! MF local momentum vars
       rtm_zm,     thlm_zm,       & ! momentum grid
@@ -3387,7 +3386,6 @@ end subroutine clubb_init_cnst
       mf_qtforcdn_nadv(:ncol,:nzt_clubb)  = 0._r8
       mf_thlforc_nadv(:ncol,:nzt_clubb)   = 0._r8
       mf_qtforc_nadv(:ncol,:nzt_clubb)    = 0._r8
-      mf_ent_nadv(:ncol,:nzm_clubb)       = 0._r8
 
       max_cfl_nadv(:ncol) = 0._r8
    end if
@@ -4087,8 +4085,6 @@ end subroutine clubb_init_cnst
            mf_qtforcdn_nadv(i,:nzt_clubb)  = mf_qtforcdn_nadv(i,:nzt_clubb) + mf_qtforcdn(i,:nzt_clubb)
            mf_thlforc_nadv(i,:nzt_clubb) = mf_thlforc_nadv(i,:nzt_clubb) + thlm_forcing(i,:nzt_clubb)
            mf_qtforc_nadv(i,:nzt_clubb)  = mf_qtforc_nadv(i,:nzt_clubb) + rtm_forcing(i,:nzt_clubb)
-
-           mf_ent_nadv(i,:nzm_clubb)     = mf_ent_nadv(i,:nzm_clubb) + s_awu(i,:nzm_clubb)
 
            max_cfl_nadv(i) = MAX(max_cfl(i),max_cfl_nadv(i))
         end do
@@ -5070,8 +5066,6 @@ end subroutine clubb_init_cnst
       mf_qtforcdn_nadv(:ncol,:nzt_clubb)  = mf_qtforcdn_nadv(:ncol,:nzt_clubb)/REAL(nadv)
       mf_thlforc_nadv(:ncol,:nzt_clubb)   = mf_thlforc_nadv(:ncol,:nzt_clubb)/REAL(nadv)
       mf_qtforc_nadv(:ncol,:nzt_clubb)    = mf_qtforc_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-
-      mf_ent_nadv(:ncol,:nzm_clubb) = mf_ent_nadv(:ncol,:nzm_clubb)/REAL(nadv)
 
     end if !clubbmf
 

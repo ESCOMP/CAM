@@ -1479,8 +1479,7 @@ module clubb_mf
 
          aw (k) = awup(k)+ awdn(k)
          aww(k) = awwup(k)+ awwdn(k)
-         if (aloft) awu(k) = 1._r8
-
+         awu(k) = awuup(k)+ awudn(k)
          awv(k) = awvup(k)+ awvdn(k)
        enddo
 
