@@ -2625,7 +2625,7 @@ end subroutine clubb_init_cnst
       mf_qc,            mf_cloudfrac,                             &
       mf_qc_nadv,       mf_cloudfrac_nadv,                        &
       mf_qc_zt,         mf_cloudfrac_zt,                          &
-      mf_rcm,           mf_rcm_nadv 
+      mf_rcm,           mf_rcm_nadv,                              & 
 
       ! MF local momentum vars
       rtm_zm,     thlm_zm,       & ! momentum grid
