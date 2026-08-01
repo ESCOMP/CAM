@@ -188,11 +188,11 @@ module clubb_mf
   end subroutine clubb_mf_readnl
 
 
-  subroutine integrate_mf( nzm, nzt,                                                & ! input
+  subroutine integrate_mf( nzm,     nzt,                                            & ! input
                            rho_zm,           zm,      p_zm,      iexner_zm,         & ! input
                            rho_zt,  dzt,     zt,      p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
-                           ktropo,  w,       th,      qv,        qc,                & ! input
+                                    w,       th,      qv,        qc,                & ! input
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                            ustar,   ths,     wthl_sfc,wqt_sfc,   pblh,              & ! input
@@ -262,7 +262,7 @@ module clubb_mf
 
      use wv_saturation,      only : qsat
 
-     integer,  intent(in)                 :: nzm, nzt, ktropo
+     integer,  intent(in)                 :: nzm, nzt 
      real(r8), dimension(nzt), intent(in) :: u,      v,            & ! thermodynamic grid
                                              thl,    thv,          & ! thermodynamic grid
                                              th,     qv,           & ! thermodynamic grid
@@ -1491,17 +1491,18 @@ module clubb_mf
          ! In top-down (-1): cell 58 -> interface 59
          ! In bottom-up (1): cell 2 -> interface 1
          kn = k - kdir
+         kt_dn = k - (1+kdir)/2
 
          do i=1,clubb_mf_nup
-           sqtup(k)  = sqtup(k)  + upa(kn,i)*supqt(k,i)
-           sthlup(k) = sthlup(k) + upa(kn,i)*supthl(k,i)
+           sqtup(kt_dn)  = sqtup(kt_dn)  + upa(kn,i)*supqt(kt_dn,i)
+           sthlup(kt_dn) = sthlup(kt_dn) + upa(kn,i)*supthl(kt_dn,i)
 
-           sqtdn(k)  = sqtdn(k)  + dna(kn,i)*sdnqt(k,i)
-           sthldn(k) = sthldn(k) + dna(kn,i)*sdnthl(k,i)
+           sqtdn(kt)  = sqtdn(kt_dn)  + dna(k,i)*sdnqt(kt_dn,i)
+           sthldn(kt) = sthldn(kt_dn) + dna(k,i)*sdnthl(kt_dn,i)
          end do
 
-         sqt(k)  = sqtup(k)  + sqtdn(k)
-         sthl(k) = sthlup(k) + sthldn(k)
+         sqt(kt_dn)  = sqtup(kt_dn)  + sqtdn(kt_dn)
+         sthl(kt_dn) = sthlup(kt_dn) + sthldn(kt_dn)
        enddo
        ! --------------------------------------------------------- !
        ! ztopm1 calculation                                        !
@@ -1618,7 +1619,7 @@ module clubb_mf
        ! --------------------------------------------------------- !
        do k = ktopm, ksfcm+kdir, -kdir
          kt_dn = k - (1+kdir)/2
-         precc(k-kdir) = precc(k) - rho_zt(kt_dn)*dzt(kt_dn)*sqt(k)
+         precc(k-kdir) = precc(k) - rho_zt(kt_dn)*dzt(kt_dn)*sqt(kt_dn)
        end do
 
        ! --------------------------------------------------------- !
