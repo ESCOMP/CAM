@@ -1,4 +1,92 @@
+===============================================================
 
+Tag name: cam6_4_191
+Originator(s): patc, jet, fvitt
+Date: Aug 3, 2026
+One-line Add Spectral Nudging Option and Fix Nudging Behavior When Files Are Missing- #1402
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1402
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+This pull request addresses issues #1393 and #1273
+
+For Issue #1273 an error exit with a message is invoked if a missing nudging file is encountered.
+
+For Issue #1393 a module for computing spherical harmonics on the physics grid is implemented. The nudging module has additional functionality that uses this module to optionally filter nudging tendencies to scales larger then a specified truncation scale.
+
+This functionality is controlled by 2 additional variables in the &nudging_nl namelist.
+Nudge_SpectralFilter- LOGICAL Option to apply spherical harminic filtering to
+the model state and target data so that nudging
+tendencies are only applied to scales larger than
+the specified truncation.
+
+Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+for spectral filtering. The nominal horizontal scale of
+the filtering can be estimated as:
+     Hscale = PI*6350/Nudge_SpectralNtrunc
+	i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal nudging scale  Hscale~500km.
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: New namelist variables added:
+
+	New Namelist variables added
+	- nudge_bwindow_file
+	- nudge_psscal
+	- nudge_spectralfilter
+	- nudge_spectralnring
+	- nudge_spectralntrunc
+	- nudge_zonalfilter
+	- nudge_zonalnbasis
+
+	New Namelist Defaults
+	- nudge_pscoef 1.00 => 0.00
+	- nudge_psprof 1 => 0
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jet, fvitt
+
+List all files eliminated:
+D       src/utils/zonal_mean_mod.F90
+
+List all files added and what they do:
+A       src/utils/ug_spectralmethods_mod.F90
+	- Refactored spectral methods which added spectral functionality and replace zonal_mean_mod.F90
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_definition.xml
+	- new spectral namelist variables
+M       cime_config/testdefs/testmods_dirs/cam/nudging/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq3s_nudging_f10_L26/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq3s_nudging_ne5_L26/user_nl_cam
+	- new  user_nl_cam files for spectral nudge testing
+M       src/physics/cam/nudging.F90
+	- refactor of nudging routine.
+M       src/physics/cam/phys_grid_ctem.F90
+	- new location for zonal_mean procedures, moved from zonal_mean_mod.F90
+M       tools/nudging/user_nl_cam-NUDGING_TEMPLATE
+	- nudgeting template
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+
+izumi/gnu/aux_cam: all BFB
+  NLFAIL ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 NLCOMP
+     - expected due to addition of new nl variables
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_190
