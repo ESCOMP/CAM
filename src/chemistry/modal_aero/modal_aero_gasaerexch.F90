@@ -98,7 +98,7 @@ use modal_aero_data,   only:  alnsg_amode,lmassptr_amode,cnst_name_cw
 use modal_aero_data,   only:  lptr_so4_a_amode,lptr_nh4_a_amode
 use modal_aero_data,   only:  modeptr_pcarbon,nspec_amode,specmw_amode,specdens_amode
 use modal_aero_rename, only:  modal_aero_rename_sub
-use rad_constituents,  only: rad_cnst_get_info
+use radiative_aerosol,  only: rad_aer_get_info
 use constituents,      only: pcnst, cnst_mw
 
 use cam_history,       only:  outfld, fieldname_len
@@ -599,7 +599,7 @@ implicit none
             ! get molecular weight from the host model
             do n = 1, ntot_amode
               do l = 1, nspec_amode(n)
-                  call rad_cnst_get_info(0, n, l, spec_type=spec_type )
+                  call rad_aer_get_info(0, n, l, spec_type=spec_type )
                   select case( spec_type )
                    case('s-organic')
                      mw_soa_host(:) = specmw_amode(l,n)

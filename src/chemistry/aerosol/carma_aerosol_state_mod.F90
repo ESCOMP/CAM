@@ -2,11 +2,13 @@ module carma_aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
 
-  use rad_constituents, only: rad_cnst_get_bin_mmr_by_idx, rad_cnst_get_bin_num !, rad_cnst_get_bin_mmr
-  use rad_constituents, only: rad_cnst_get_info_by_bin
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
-  use physics_types, only: physics_state
+  use radiative_aerosol, only: rad_aer_get_info_by_bin
+  use aerosol_mmr_host, only: rad_cnst_get_bin_mmr_by_idx, rad_cnst_get_bin_num, aero_host_binding_t
+  !REMOVECAM: no longer need pbuf and state after CAM is retired
+  use physics_buffer, only: pbuf_get_field, pbuf_get_index
+  !REMOVECAM_END
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+  use cam_abortutils, only: endrun
 
   use physconst, only: pi
   use carma_intr, only: carma_get_total_mmr, carma_get_dry_radius, carma_get_number, carma_get_number_cld
@@ -22,15 +24,16 @@ module carma_aerosol_state_mod
 
   type, extends(aerosol_state) :: carma_aerosol_state
      private
-     type(physics_state), pointer :: state => null()
-     type(physics_buffer_desc), pointer :: pbuf(:) => null()
+      ! Opaque host-binding handle used to retrieve aerosol fields from
+      ! host model data; built by aerosol_instances_mod.
+      ! This keeps model-specific data structures outside of the aerosol interface.
+     type(aero_host_binding_t) :: host_
    contains
 
      procedure :: get_transported
      procedure :: set_transported
      procedure :: ambient_total_bin_mmr
-     procedure :: get_ambient_mmr_0list
-     procedure :: get_ambient_mmr_rlist
+     procedure :: get_ambient_mmr
      procedure :: get_cldbrne_mmr
      procedure :: get_ambient_num
      procedure :: get_cldbrne_num
@@ -46,6 +49,7 @@ module carma_aerosol_state_mod
      procedure :: wet_volume
      procedure :: water_volume
      procedure :: wet_diameter
+     procedure :: aqu_gain_binfraction
 
      final :: destructor
 
@@ -61,9 +65,10 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf) result(newobj)
-    type(physics_state), target, optional :: state
-    type(physics_buffer_desc), pointer, optional :: pbuf(:)
+  function constructor(ncol,host,list_idx) result(newobj)
+    integer, intent(in) :: ncol
+    type(aero_host_binding_t), intent(in) :: host
+    integer, intent(in), optional :: list_idx
 
     type(carma_aerosol_state), pointer :: newobj
 
@@ -75,8 +80,13 @@ contains
        return
     end if
 
-    newobj%state => state
-    newobj%pbuf => pbuf
+    newobj%host_ = host
+
+    ! set number of active columns internally to prevent loops from accessing beyond
+    ! meaningful data in arrays
+    call newobj%set_ncol(ncol)
+
+    if (present(list_idx)) call newobj%set_list_idx(list_idx)
 
   end function constructor
 
@@ -85,8 +95,8 @@ contains
   subroutine destructor(self)
     type(carma_aerosol_state), intent(inout) :: self
 
-    nullify(self%state)
-    nullify(self%pbuf)
+    ! disassociate the host binding (data referenced within is not owned here)
+    self%host_ = aero_host_binding_t()
 
   end subroutine destructor
 
@@ -128,7 +138,7 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(self%list_idx_, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -137,7 +147,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_total_mmr(self%state, igroup, ibin, totmmr, rc)
+    call carma_get_total_mmr(self%host_%state, igroup, ibin, totmmr, rc)
 
     mmr_tot = totmmr(col_ndx,lyr_ndx)
 
@@ -146,30 +156,15 @@ contains
   !------------------------------------------------------------------------------
   ! returns ambient aerosol mass mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
-  subroutine get_ambient_mmr_0list(self, species_ndx, bin_ndx, mmr)
+  subroutine get_ambient_mmr(self, species_ndx, bin_ndx, mmr)
     class(carma_aerosol_state), intent(in) :: self
     integer, intent(in) :: species_ndx  ! species index
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_bin_mmr_by_idx(0, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
+    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'a', self%host_, mmr)
 
-  end subroutine get_ambient_mmr_0list
-
-  !------------------------------------------------------------------------------
-  ! returns ambient aerosol mass mixing ratio for a given radiation diagnostics
-  ! list index, species index and bin index
-  !------------------------------------------------------------------------------
-  subroutine get_ambient_mmr_rlist(self, list_ndx, species_ndx, bin_ndx, mmr)
-    class(carma_aerosol_state), intent(in) :: self
-    integer, intent(in) :: list_ndx     ! rad climate list index
-    integer, intent(in) :: species_ndx  ! species index
-    integer, intent(in) :: bin_ndx      ! bin index
-    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
-
-    call rad_cnst_get_bin_mmr_by_idx(list_ndx, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
-
-  end subroutine get_ambient_mmr_rlist
+  end subroutine get_ambient_mmr
 
   !------------------------------------------------------------------------------
   ! returns cloud-borne aerosol number mixing ratio for a given species index and bin index
@@ -180,7 +175,7 @@ contains
     integer, intent(in) :: bin_ndx      ! bin index
     real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
-    call rad_cnst_get_bin_mmr_by_idx(0, bin_ndx, species_ndx, 'c', self%state, self%pbuf, mmr)
+    call rad_cnst_get_bin_mmr_by_idx(self%list_idx_, bin_ndx, species_ndx, 'c', self%host_, mmr)
 
   end subroutine get_cldbrne_mmr
 
@@ -196,9 +191,9 @@ contains
     integer :: igroup, ibin, rc, nchr, ncol
     real(r8) :: nmr(pcols,pver)
 
-    ncol = self%state%ncol
+    ncol = self%ncol()
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(self%list_idx_, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -207,9 +202,9 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call rad_cnst_get_bin_num(0, bin_ndx, 'a', self%state, self%pbuf, num)
+    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'a', self%host_, num)
 
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     num(:ncol,:) = nmr(:ncol,:)
 
@@ -227,9 +222,9 @@ contains
     integer :: igroup, ibin, rc, nchr, ncol
     real(r8) :: nmr(pcols,pver)
 
-    ncol = self%state%ncol
+    ncol = self%ncol()
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(self%list_idx_, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -238,9 +233,9 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call rad_cnst_get_bin_num(0, bin_ndx, 'c', self%state, self%pbuf, num)
+    call rad_cnst_get_bin_num(self%list_idx_, bin_ndx, 'c', self%host_, num)
 
-    call carma_get_number_cld(self%pbuf, igroup, ibin,  ncol, pver, nmr, rc)
+    call carma_get_number_cld(self%host_%pbuf, igroup, ibin,  ncol, pver, nmr, rc)
 
     num(:ncol,:) = nmr(:ncol,:)
 
@@ -263,8 +258,8 @@ contains
        call self%get_cldbrne_num(ibin, qqcw(indx)%fld)
        do ispc = 1, aero_props%nspecies(ibin)
           indx = aero_props%indexer(ibin, ispc)
-          call self%get_ambient_mmr(ispc,ibin, raer(indx)%fld)
-          call self%get_cldbrne_mmr(ispc,ibin, qqcw(indx)%fld)
+          call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=raer(indx)%fld)
+          call self%get_cldbrne_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=qqcw(indx)%fld)
        end do
     end do
 
@@ -288,9 +283,13 @@ contains
     real(r8) :: diamdry
     integer :: igroup, ibin, rc, nchr
 
+    if (self%list_idx_ /= 0) then
+       call endrun('carma_aerosol_state::icenuc_size_wght_arr: only valid for climate list (list_idx=0)')
+    end if
+
     wght = 0._r8
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -298,7 +297,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_dry_radius(self%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
 
     do k = 1,nlev
        do i = 1,ncol
@@ -325,7 +324,7 @@ contains
 
     real(r8) :: wght_arr(pcols,pver)
 
-    call self%icenuc_size_wght(bin_ndx, self%state%ncol, pver, species_type, use_preexisting_ice, wght_arr)
+    call self%icenuc_size_wght(bin_ndx, self%ncol(), pver, species_type, use_preexisting_ice, wght_arr)
 
     wght = wght_arr(col_ndx,lyr_ndx)
 
@@ -370,9 +369,13 @@ contains
     real(r8) :: diamdry
     integer :: igroup, ibin, rc, nchr
 
+    if (self%list_idx_ /= 0) then
+       call endrun('carma_aerosol_state::hetfrz_size_wght: only valid for climate list (list_idx=0)')
+    end if
+
     wght = 0._r8
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -380,7 +383,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_dry_radius(self%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, rdry, rhopdry, rc) ! m, kg/m3
 
     do k = 1,nlev
        do i = 1,ncol
@@ -397,16 +400,15 @@ contains
   ! returns hygroscopicity for a given radiation diagnostic list number and
   ! bin number
   !------------------------------------------------------------------------------
-  subroutine hygroscopicity(self, list_ndx, bin_ndx, kappa)
+  subroutine hygroscopicity(self, bin_ndx, kappa)
     class(carma_aerosol_state), intent(in) :: self
-    integer, intent(in) :: list_ndx        ! rad climate list number
     integer, intent(in) :: bin_ndx         ! bin number
     real(r8), intent(out) :: kappa(:,:)    ! hygroscopicity (ncol,nlev)
 
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr, ncol
 
-    call rad_cnst_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_ndx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -415,7 +417,7 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_kappa(self%state, igroup, ibin, kappa, rc)
+    call carma_get_kappa(self%host_%state, igroup, ibin, kappa, rc)
 
   end subroutine hygroscopicity
 
@@ -423,11 +425,10 @@ contains
   ! returns aerosol wet diameter and aerosol water concentration for a given
   ! radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  subroutine water_uptake(self, aero_props, list_idx, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+  subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
 
     class(carma_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
-    integer, intent(in) :: list_idx             ! rad climate/diags list number
     integer, intent(in) :: bin_idx              ! bin number
     integer, intent(in) :: ncol                 ! number of columns
     integer, intent(in) :: nlev                 ! number of levels
@@ -440,26 +441,25 @@ contains
   end subroutine water_uptake
 
   !------------------------------------------------------------------------------
-  ! aerosol weight precent of H2SO4/H2O solution
+  ! aerosol weight percent of H2SO4/H2O solution
   !------------------------------------------------------------------------------
   function wgtpct(self, ncol, nlev) result(wtp)
     class(carma_aerosol_state), intent(in) :: self
     integer, intent(in) ::  ncol, nlev
-    real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+    real(r8) :: wtp(ncol,nlev)  ! weight percent of H2SO4/H2O solution for given icol, ilev
 
-    wtp(:,:) = carma_get_wght_pct(ncol,nlev,self%state)
+    wtp(:,:) = carma_get_wght_pct(ncol,nlev,self%host_%state)
 
   end function wgtpct
 
   !------------------------------------------------------------------------------
   ! aerosol dry volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function dry_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function dry_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(carma_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
@@ -473,7 +473,7 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
 
-    call rad_cnst_get_info_by_bin(0, bin_idx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -484,8 +484,8 @@ contains
 
     vol = 0._r8
 
-    call carma_get_dry_radius(self%state, igroup, ibin, raddry, rhodry, rc)
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_dry_radius(self%host_%state, igroup, ibin, raddry, rhodry, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     vol(:ncol,:) = four_thirds_pi * (raddry(:ncol,:)**3) * nmr(:ncol,:) ! units = m3/kg
 
@@ -494,12 +494,11 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol wet volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function wet_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function wet_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(carma_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
@@ -513,7 +512,7 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
 
-    call rad_cnst_get_info_by_bin(0, bin_idx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -524,8 +523,8 @@ contains
 
     vol = 0._r8
 
-    call carma_get_wet_radius(self%state, igroup, ibin, radwet, rhowet, rc)
-    call carma_get_number(self%state, igroup, ibin, nmr, rc)
+    call carma_get_wet_radius(self%host_%state, igroup, ibin, radwet, rhowet, rc)
+    call carma_get_number(self%host_%state, igroup, ibin, nmr, rc)
 
     vol(:ncol,:) = four_thirds_pi * (radwet(:ncol,:)**3) * nmr(:ncol,:) ! units = m3/kg
 
@@ -534,12 +533,11 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol water volume (m3/kg) for given radiation diagnostic list number and bin number
   !------------------------------------------------------------------------------
-  function water_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+  function water_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
 
     class(carma_aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer, intent(in) :: list_idx  ! rad climate/diags list number
     integer, intent(in) :: bin_idx   ! bin number
     integer, intent(in) :: ncol      ! number of columns
     integer, intent(in) :: nlev      ! number of levels
@@ -549,8 +547,8 @@ contains
     real(r8) :: wetvol(ncol,nlev)
     real(r8) :: dryvol(ncol,nlev)
 
-    wetvol = self%wet_volume(aero_props, list_idx, bin_idx, ncol, nlev)
-    dryvol = self%dry_volume(aero_props, list_idx, bin_idx, ncol, nlev)
+    wetvol = self%wet_volume(aero_props, bin_idx, ncol, nlev)
+    dryvol = self%dry_volume(aero_props, bin_idx, ncol, nlev)
 
     vol(:ncol,:) = wetvol(:ncol,:) - dryvol(:ncol,:)
 
@@ -577,7 +575,7 @@ contains
     character(len=aero_name_len) :: bin_name, shortname
     integer :: igroup, ibin, rc, nchr
 
-    call rad_cnst_get_info_by_bin(0, bin_idx, bin_name=bin_name)
+    call rad_aer_get_info_by_bin(0, bin_idx, bin_name=bin_name)
 
     nchr = len_trim(bin_name)-2
     shortname = bin_name(:nchr)
@@ -586,10 +584,84 @@ contains
 
     read(bin_name(nchr+1:),*) ibin
 
-    call carma_get_wet_radius(self%state, igroup, ibin, radwet, rhowet, rc)
+    call carma_get_wet_radius(self%host_%state, igroup, ibin, radwet, rhowet, rc)
 
     diam(:ncol,:nlev) = 2._r8*radwet(:ncol,:nlev)
 
   end function wet_diameter
+
+  !------------------------------------------------------------------------------
+  ! aqueous chemistry partitioning -- used in sox_cldaero_update
+  !------------------------------------------------------------------------------
+  subroutine aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+
+    class(carma_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: type                ! aerosol species type
+    real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+    real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+    real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
+
+    real(r8) :: raddry(pcols,pver)   ! dry radius (m)
+    real(r8) :: rhodry(pcols,pver)   ! dry density (kg/m3)
+    character(len=aero_name_len) :: bin_name, shortname
+    integer :: igroup, ibin, jbin, rc, nchr
+    integer :: icol, klev, nbins, ncol
+    real(r8), allocatable :: rad_cm(:,:,:)
+    real(r8), allocatable :: wt_mass(:)
+    real(r8) :: wt_sum
+
+    ! To calculate the fraction of sulfate mass produced by aq.chemistry that will be
+    ! distributed across different bins, we need to conserve particle number. In CARMA,
+    ! this is done following the formula for mass transfer for, following
+    ! Yu et al., 2015, A3.2:  https://doi.org/10.1002/2014MS000421. The mass fraction
+    ! for each bin can be calculated by normalizing the mass transfer rate in each bin:
+    ! M/D^2 as: fra = Mi/D^2/sum(Mi/D^2).
+
+    ncol = self%host_%state%ncol
+    nbins = aero_props%nbins()
+    faqgain(:,:,:) = 0._r8
+
+    allocate(wt_mass(nbins))
+    allocate(rad_cm(nbins,pcols,pver))
+    rad_cm(:,:,:) = 0._r8
+
+    do ibin = 1, nbins
+       call rad_aer_get_info_by_bin(0, ibin, bin_name=bin_name)
+       nchr = len_trim(bin_name)-2
+       shortname = bin_name(:nchr)
+       call carma_get_group_by_name(shortname, igroup, rc)
+       read(bin_name(nchr+1:),*) jbin
+       call carma_get_dry_radius(self%host_%state, igroup, jbin, raddry, rhodry, rc)
+       if (index(bin_name,'MXAER')>0) then
+          rad_cm(ibin,:ncol,:) = raddry(:ncol,:)*1.e2_r8 ! m -> cm
+       end if
+    end do
+
+    lev_loop: do klev = 1,pver
+       col_loop: do icol = 1,ncol
+
+          !faqgain = fraction of total so4_c gain going to bin n
+          wt_sum = 0._r8
+          wt_mass(:) = 0._r8
+
+          do ibin = 1, nbins
+             if (rad_cm(ibin,icol,klev) > 0._r8) then
+                wt_mass(ibin) = delso4_o3rxn(icol,klev) / rad_cm(ibin,icol,klev) / rad_cm(ibin,icol,klev)
+                wt_sum = wt_sum + wt_mass(ibin)
+             end if
+          end do
+          do ibin = 1, nbins
+             if (wt_mass(ibin) > 0._r8) then
+                faqgain(ibin,icol,klev) = wt_mass(ibin)/wt_sum
+             end if
+          end do
+
+       end do col_loop
+    end do lev_loop
+
+    deallocate(rad_cm, wt_mass)
+
+  end subroutine aqu_gain_binfraction
 
 end module carma_aerosol_state_mod

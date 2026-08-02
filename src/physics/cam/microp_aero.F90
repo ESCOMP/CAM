@@ -23,38 +23,44 @@ module microp_aero
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
-use ppgrid,           only: pcols, pver, pverp, begchunk, endchunk
+use ppgrid,           only: pcols, pver, pverp
 use ref_pres,         only: top_lev => trop_cloud_top_lev
-use physconst,        only: rair
+use physconst,        only: rair, gravit, tmelt, cpair, rh2o, rhoh2o, latvap, &
+                            r_universal, mwh2o
 use constituents,     only: cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init, physics_ptend_sum, &
                             physics_state_copy, physics_update
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
-                            pbuf_get_chunk
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
 use phys_control,     only: phys_getopts, use_hetfrz_classnuc
-use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, rad_cnst_get_aer_props, &
-                            rad_cnst_get_mode_num
+use aerosol_instances_mod, only: aerosol_instances_get_num_models, &
+                                 aerosol_instances_is_active, &
+                                 aerosol_instances_get_props, &
+                                 aerosol_instances_create_states, &
+                                 aerosol_instances_destroy_states, &
+                                 aero_state_entry_t
 
 use nucleate_ice_cam, only: use_preexisting_ice, nucleate_ice_cam_readnl, nucleate_ice_cam_register, &
                             nucleate_ice_cam_init, nucleate_ice_cam_calc
 
 use ndrop,            only: ndrop_init, dropmixnuc
-use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
+use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_calc, &
+                            aername, psat, ccn_name
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
                                hetfrz_classnuc_cam_calc
+
+use compute_subgrid_vertical_velocity, only: compute_subgrid_vertical_velocity_tke_run, &
+                                             compute_subgrid_vertical_velocity_kvh_run, &
+                                             compute_subgrid_vertical_velocity_clubb_run
+use scale_subgrid_vertical_velocity,   only: scale_subgrid_vertical_velocity_run
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
 use cam_abortutils,       only: endrun
 
 use aerosol_properties_mod, only: aerosol_properties
-use modal_aerosol_properties_mod, only: modal_aerosol_properties
-use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
 use aerosol_state_mod, only: aerosol_state
-use modal_aerosol_state_mod, only: modal_aerosol_state
-use carma_aerosol_state_mod, only: carma_aerosol_state
 
 implicit none
 private
@@ -77,7 +83,6 @@ real(r8), parameter :: rn_dst3 = 1.576e-6_r8
 real(r8), parameter :: rn_dst4 = 3.026e-6_r8
 
 ! Namelist parameters
-real(r8) :: bulk_scale    ! prescribed aerosol bulk sulfur scale factor
 real(r8) :: npccn_scale   ! scaling for activated number
 real(r8) :: wsub_scale    ! scaling for sub-grid vertical velocity (liquid)
 real(r8) :: wsubi_scale   ! scaling for sub-grid vertical velocity (ice)
@@ -103,21 +108,13 @@ integer :: ast_idx = -1
 integer :: cldo_idx = -1
 integer :: dgnumwet_idx = -1
 
-! Bulk aerosols
-character(len=20), allocatable :: aername(:)
-real(r8), allocatable :: num_to_mass_aer(:)
-
-integer :: naer_all      ! number of aerosols affecting climate
-integer :: idxsul   = -1 ! index in aerosol list for sulfate
-integer :: idxdst2  = -1 ! index in aerosol list for dust2
-integer :: idxdst3  = -1 ! index in aerosol list for dust3
-integer :: idxdst4  = -1 ! index in aerosol list for dust4
-
 ! carma aerosols
 logical :: clim_carma_aero
 
 ! modal aerosols
 logical :: clim_modal_aero
+
+integer :: iaermod_clim_modal_carma
 
 integer :: mode_accum_idx  = -1  ! index of accumulation mode
 integer :: mode_aitken_idx = -1  ! index of aitken mode
@@ -128,16 +125,12 @@ integer :: coarse_dust_idx = -1  ! index of dust in coarse mode
 integer :: coarse_nacl_idx = -1  ! index of nacl in coarse mode
 integer :: coarse_so4_idx = -1  ! index of sulfate in coarse mode
 
+integer :: naer_all = 0
 integer :: npccn_idx, rndst_idx, nacon_idx
 
 logical  :: separate_dust = .false.
 
-type aero_state_t
-   class(aerosol_state), pointer :: obj=>null()
-end type aero_state_t
-
 class(aerosol_properties), pointer :: aero_props_obj=>null()
-type(aero_state_t), pointer :: aero_state(:) => null()
 
 !=========================================================================================
 contains
@@ -182,15 +175,18 @@ subroutine microp_aero_init(phys_state,pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    ! local variables
-   integer  :: iaer, ierr
-   integer  :: m, n, nmodes, nspec
-   integer :: nbins
+   integer  :: iaer
+   integer  :: m, n, nspec
+   integer  :: iaermod
 
    character(len=32) :: str32
    character(len=*), parameter :: routine = 'microp_aero_init'
    logical :: history_amwg
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   integer :: c
+
+   character(len=512) :: errmsg
+   integer            :: errflg
+
+   class(aerosol_properties), pointer :: aero_props_bulk => null()
 
    !-----------------------------------------------------------------------
 
@@ -218,19 +214,25 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
    ! The modal aerosols can be either prognostic or prescribed.
-   call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
-   clim_modal_aero = (nmodes > 0)
-   clim_carma_aero = (nbins> 0)
+   clim_modal_aero = aerosol_instances_is_active('modal')
+   clim_carma_aero = aerosol_instances_is_active('carma')
+   iaermod_clim_modal_carma = -1
 
    ast_idx = pbuf_get_index('AST')
 
    if (clim_modal_aero .or. clim_carma_aero) then
       cldo_idx = pbuf_get_index('CLDO')
-      if (clim_modal_aero) then
-         aero_props_obj => modal_aerosol_properties()
-      else if (clim_carma_aero) then
-         aero_props_obj => carma_aerosol_properties()
-      end if
+      ! Get modal/CARMA properties object from factory (factory owns the object)
+      do iaermod = 1, aerosol_instances_get_num_models()
+         aero_props_obj => aerosol_instances_get_props(iaermod, 0)
+         if (associated(aero_props_obj)) then
+            if (aero_props_obj%model_is('modal') .or. aero_props_obj%model_is('CARMA')) then
+               ! store idx for providing to dycore via aerosol_state_object...
+               iaermod_clim_modal_carma = iaermod
+               exit
+            end if
+         end if
+      end do
       call ndrop_init(aero_props_obj)
    end if
 
@@ -238,20 +240,11 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
       dgnumwet_idx = pbuf_get_index('DGNUMWET')
 
-      allocate(aero_state(begchunk:endchunk))
-      do c = begchunk,endchunk
-         pbuf => pbuf_get_chunk(pbuf2d, c)
-         aero_state(c)%obj => modal_aerosol_state( phys_state(c), pbuf )
-         if (.not.associated(aero_state(c)%obj)) then
-            call endrun('microp_aero_init: construction of modal_aerosol_state object failed')
-         end if
-      end do
-
       ! Init indices for specific modes/species
 
       ! mode index for specified mode types
-      do m = 1, nmodes
-         call rad_cnst_get_info(0, m, mode_type=str32)
+      do m = 1, aero_props_obj%nbins()
+         str32 = aero_props_obj%bin_name(m)
          select case (trim(str32))
          case ('accum')
             mode_accum_idx = m
@@ -283,26 +276,26 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
       ! species indices for specified types
       ! find indices for the dust and seasalt species in the coarse mode
-      call rad_cnst_get_info(0, mode_coarse_dst_idx, nspec=nspec)
+      nspec = aero_props_obj%nspecies(mode_coarse_dst_idx)
       do n = 1, nspec
-         call rad_cnst_get_info(0, mode_coarse_dst_idx, n, spec_type=str32)
+         call aero_props_obj%species_type(mode_coarse_dst_idx, n, str32)
          select case (trim(str32))
          case ('dust')
             coarse_dust_idx = n
          end select
       end do
-      call rad_cnst_get_info(0, mode_coarse_slt_idx, nspec=nspec)
+      nspec = aero_props_obj%nspecies(mode_coarse_slt_idx)
       do n = 1, nspec
-         call rad_cnst_get_info(0, mode_coarse_slt_idx, n, spec_type=str32)
+         call aero_props_obj%species_type(mode_coarse_slt_idx, n, str32)
          select case (trim(str32))
          case ('seasalt')
             coarse_nacl_idx = n
          end select
       end do
       if (mode_coarse_idx>0) then
-         call rad_cnst_get_info(0, mode_coarse_idx, nspec=nspec)
+         nspec = aero_props_obj%nspecies(mode_coarse_idx)
          do n = 1, nspec
-            call rad_cnst_get_info(0, mode_coarse_idx, n, spec_type=str32)
+            call aero_props_obj%species_type(mode_coarse_idx, n, str32)
             select case (trim(str32))
             case ('sulfate')
                coarse_so4_idx = n
@@ -319,26 +312,25 @@ subroutine microp_aero_init(phys_state,pbuf2d)
 
    else if (.not.clim_carma_aero) then
 
-      ! Props needed for BAM number concentration calcs.
-
-      call rad_cnst_get_info(0, naero=naer_all)
-      allocate( &
-         aername(naer_all),        &
-         num_to_mass_aer(naer_all) )
-
-      do iaer = 1, naer_all
-         call rad_cnst_get_aer_props(0, iaer, &
-            aername         = aername(iaer), &
-            num_to_mass_aer = num_to_mass_aer(iaer) )
-
-         ! Look for sulfate, dust, and soot in this list (Bulk aerosol only)
-         if (trim(aername(iaer)) == 'SULFATE') idxsul = iaer
-         if (trim(aername(iaer)) == 'DUST2') idxdst2 = iaer
-         if (trim(aername(iaer)) == 'DUST3') idxdst3 = iaer
-         if (trim(aername(iaer)) == 'DUST4') idxdst4 = iaer
+      ! Find bulk properties object from factory
+      aero_props_bulk => null()
+      do iaermod = 1, aerosol_instances_get_num_models()
+         aero_props_bulk => aerosol_instances_get_props(iaermod, 0)
+         if (associated(aero_props_bulk)) then
+            if (aero_props_bulk%model_is('BAM')) exit
+         end if
+         aero_props_bulk => null()
       end do
 
-      call ndrop_bam_init()
+      call ndrop_bam_init(masterproc, iulog, &
+           mwh2o=mwh2o, r_universal=r_universal, tmelt=tmelt, rhoh2o=rhoh2o, &
+           naer_all_out=naer_all, errmsg=errmsg, errflg=errflg)
+      if (errflg /= 0) then
+         call endrun(routine//': ndrop_bam_init: '//trim(errmsg))
+      end if
+
+      ! Set module-level props object for BAM (used by nucleate_ice_cam)
+      aero_props_obj => aero_props_bulk
 
    end if
 
@@ -351,10 +343,29 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       call add_default ('WSUB     ', 1, ' ')
    end if
 
+   ! BAM-specific history fields (moved from ndrop_bam for CCPP portability)
+   if (.not.clim_modal_aero .and. .not.clim_carma_aero) then
+      do iaer = 1, naer_all
+         call addfld(trim(aername(iaer))//'_m3', (/ 'lev' /), 'A', 'm-3', &
+              'aerosol number concentration', sampled_on_subcycle=.true.)
+      end do
+      call addfld ('CCN1', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=0.02%', sampled_on_subcycle=.true.)
+      call addfld ('CCN2', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=0.05%', sampled_on_subcycle=.true.)
+      call addfld ('CCN3', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=0.1%',  sampled_on_subcycle=.true.)
+      call addfld ('CCN4', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=0.2%',  sampled_on_subcycle=.true.)
+      call addfld ('CCN5', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=0.5%',  sampled_on_subcycle=.true.)
+      call addfld ('CCN6', (/ 'lev' /), 'A', '#/cm3', 'CCN concentration at S=1.0%',  sampled_on_subcycle=.true.)
+      if (history_amwg) then
+         call add_default('CCN3', 1, ' ')
+      end if
+   end if
+
    if (associated(aero_props_obj)) then
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+      call nucleate_ice_cam_init(mincld, pbuf2d, aero_props=aero_props_obj)
    else
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
+      ! this path is used for aquaplanet compsets with two-moment microphysics
+      ! where nucleatei still runs Meyers nucleation deposition even without aerosol.
+      call nucleate_ice_cam_init(mincld, pbuf2d)
    end if
    if (use_hetfrz_classnuc) then
       if (associated(aero_props_obj)) then
@@ -368,12 +379,18 @@ end subroutine microp_aero_init
 
 !=========================================================================================
 ! returns a pointer to an aerosol state object for a given chunk index
+! compatibility: for use by the dycore
 function aerosol_state_object(lchnk) result(obj)
+   use aerosol_instances_mod, only: aerosol_instances_get_state
 
   integer,intent(in) :: lchnk ! local chunk index
   class(aerosol_state), pointer :: obj ! aerosol state object pointer for local chunk
 
-  obj => aero_state(lchnk)%obj
+  if (iaermod_clim_modal_carma > 0) then
+    obj => aerosol_instances_get_state(iaermod_clim_modal_carma, list_idx=0, lchnk=lchnk)
+  else
+    obj => null()
+  end if
 
 end function aerosol_state_object
 
@@ -393,18 +410,8 @@ subroutine microp_aero_final
 
   integer :: c
 
-  if (associated(aero_props_obj)) then
-     deallocate(aero_props_obj)
-  end if
+  ! aerosol_instances_mod owns the props obj, so just nullify the pointer.
   nullify(aero_props_obj)
-
-  if (associated(aero_state)) then
-     do c = begchunk,endchunk
-        deallocate(aero_state(c)%obj)
-     end do
-     deallocate(aero_state)
-     nullify(aero_state)
-  end if
 
 end subroutine microp_aero_final
 
@@ -419,7 +426,6 @@ subroutine microp_aero_readnl(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = unset_r8   ! prescribed aerosol bulk sulfur scale factor
    real(r8) :: microp_aero_npccn_scale = unset_r8  ! prescribed aerosol bulk sulfur scale factor
    real(r8) :: microp_aero_wsub_scale = unset_r8   ! subgrid vertical velocity (liquid) scale factor
    real(r8) :: microp_aero_wsubi_scale = unset_r8  ! subgrid vertical velocity (ice) scale factor
@@ -431,7 +437,7 @@ subroutine microp_aero_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'microp_aero_readnl'
 
-   namelist /microp_aero_nl/ microp_aero_bulk_scale, microp_aero_npccn_scale, microp_aero_wsub_min, &
+   namelist /microp_aero_nl/ microp_aero_npccn_scale, microp_aero_wsub_min, &
                              microp_aero_wsubi_min, microp_aero_wsub_scale, microp_aero_wsubi_scale, microp_aero_wsub_min_asf
    !-----------------------------------------------------------------------------
 
@@ -450,8 +456,6 @@ subroutine microp_aero_readnl(nlfile)
    end if
 
    ! Broadcast namelist variables
-   call mpi_bcast(microp_aero_bulk_scale, 1, mpi_real8, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_bulk_scale")
    call mpi_bcast(microp_aero_npccn_scale, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_npccn_scale")
    call mpi_bcast(microp_aero_wsub_scale, 1, mpi_real8, mstrid, mpicom, ierr)
@@ -466,7 +470,6 @@ subroutine microp_aero_readnl(nlfile)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_min")
 
    ! set local variables
-   bulk_scale = microp_aero_bulk_scale
    npccn_scale = microp_aero_npccn_scale
    wsub_scale = microp_aero_wsub_scale
    wsubi_scale = microp_aero_wsubi_scale
@@ -474,7 +477,6 @@ subroutine microp_aero_readnl(nlfile)
    wsub_min_asf = microp_aero_wsub_min_asf
    wsubi_min = microp_aero_wsubi_min
 
-   if(bulk_scale == unset_r8) call endrun(subname//": FATAL: bulk_scale is not set")
    if(npccn_scale == unset_r8) call endrun(subname//": FATAL: npccn_scale is not set")
    if(wsub_scale == unset_r8) call endrun(subname//": FATAL: wsub_scale is not set")
    if(wsubi_scale == unset_r8) call endrun(subname//": FATAL: wsubi_scale is not set")
@@ -528,35 +530,37 @@ subroutine microp_aero_run ( &
 
    real(r8), pointer :: dgnumwet(:,:,:) ! aerosol mode diameter
 
-   real(r8), pointer :: aer_mmr(:,:)    ! aerosol mass mixing ratio
-
    real(r8) :: rho(pcols,pver)     ! air density (kg m-3)
-
-   real(r8) :: lcldm(pcols,pver)   ! liq cloud fraction
 
    real(r8) :: lcldn(pcols,pver)   ! fractional coverage of new liquid cloud
    real(r8) :: lcldo(pcols,pver)   ! fractional coverage of old liquid cloud
    real(r8) :: cldliqf(pcols,pver) ! fractional of total cloud that is liquid
    real(r8) :: qcld                ! total cloud water
    real(r8) :: nctend_mixnuc(pcols,pver)
-   real(r8) :: dum, dum2           ! temporary dummy variable
    real(r8) :: dmc, ssmc, so4mc    ! variables for modal scheme.
 
-   ! bulk aerosol variables
-   real(r8), allocatable :: naer2(:,:,:)    ! bulk aerosol number concentration (1/m3)
-   real(r8), allocatable :: maerosol(:,:,:) ! bulk aerosol mass conc (kg/m3)
+   ! BAM diagnostic output from ndrop_bam_calc
+   real(r8), allocatable :: ccn_bam(:,:,:)    ! CCN at 6 supersaturations (#/cm3)
+   real(r8), allocatable :: naer2_bam(:,:,:)  ! aerosol number conc for diagnostics
+
+   real(r8) :: wp2_full(pcols,pverp) ! CLUBB wp2 expanded onto the full interface grid (m2/s2)
 
    real(r8) :: wsub(pcols,pver)    ! diagnosed sub-grid vertical velocity st. dev. (m/s)
    real(r8) :: wsubi(pcols,pver)   ! diagnosed sub-grid vertical velocity ice (m/s)
-   real(r8) :: nucboas
 
    real(r8) :: wght
 
-   integer :: lchnk, ncol, astat
+   integer :: l, lchnk, ncol, astat
 
    real(r8), allocatable :: factnum(:,:,:) ! activation fraction for aerosol number
 
    class(aerosol_state), pointer :: aero_state1_obj
+   type(aero_state_entry_t), allocatable :: aero_states1(:)
+   integer :: nstates1, iaermod
+   class(aerosol_properties), pointer :: props_tmp
+
+   character(len=512)   :: errmsg
+   integer              :: errflg
 
    !-------------------------------------------------------------------------------
 
@@ -568,7 +572,6 @@ subroutine microp_aero_run ( &
    ncol  = state1%ncol
 
    itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx,      ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
    call pbuf_get_field(pbuf, npccn_idx, npccn)
 
@@ -577,18 +580,26 @@ subroutine microp_aero_run ( &
 
    call physics_ptend_init(ptend_all, state%psetcols, 'microp_aero')
 
-   ! create the aerosol state object
-   if (clim_modal_aero) then
-      aero_state1_obj => modal_aerosol_state( state1, pbuf )
-      if (.not.associated(aero_state1_obj)) then
-         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
+   !REMOVECAM: when microp_aero is brought into SIMA intermediate state1 updates should split into separate
+   ! physics schemes, run tendency updaters, then the aerosol state is updated, so no need for factory pattern.
+   ! create aerosol state objects via factory
+   call aerosol_instances_create_states(list_idx=0, state=state1, pbuf=pbuf, aero_states=aero_states1, nstates=nstates1)
+   !REMOVECAM_END
+
+   ! find the appropriate state object for the active aerosol model
+   do iaermod = 1, nstates1
+      props_tmp => aerosol_instances_get_props(iaermod, 0)
+      if (clim_modal_aero .and. props_tmp%model_is('modal')) then
+         aero_state1_obj => aero_states1(iaermod)%obj
+         exit
+      else if (clim_carma_aero .and. props_tmp%model_is('CARMA')) then
+         aero_state1_obj => aero_states1(iaermod)%obj
+         exit
+      else if (.not.clim_modal_aero .and. .not.clim_carma_aero .and. props_tmp%model_is('BAM')) then
+         aero_state1_obj => aero_states1(iaermod)%obj
+         exit
       end if
-   else if (clim_carma_aero) then
-      aero_state1_obj => carma_aerosol_state( state1, pbuf )
-      if (.not.associated(aero_state1_obj)) then
-         call endrun('microp_aero_run: construction of aero_state1_obj carma_aerosol_state object failed')
-      end if
-   end if
+   end do
 
    if (clim_modal_aero.or.clim_carma_aero) then
 
@@ -620,93 +631,79 @@ subroutine microp_aero_run ( &
       end do
    end do
 
-   if (clim_modal_aero) then
-      ! mode number mixing ratios
-      call rad_cnst_get_mode_num(0, mode_coarse_dst_idx, 'a', state1, pbuf, num_coarse)
-
-      ! mode specie mass m.r.
-      call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_dust_idx, 'a', state1, pbuf, coarse_dust)
-      call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_nacl_idx, 'a', state1, pbuf, coarse_nacl)
-      if (mode_coarse_idx>0) then
-         call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_so4_idx, 'a', state1, pbuf, coarse_so4)
-      endif
-
-   else
-      ! init number/mass arrays for bulk aerosols
-      allocate( &
-         naer2(pcols,pver,naer_all), &
-         maerosol(pcols,pver,naer_all))
-
-      do m = 1, naer_all
-         call rad_cnst_get_aer_mmr(0, m, state1, pbuf, aer_mmr)
-         maerosol(:ncol,:,m) = aer_mmr(:ncol,:)*rho(:ncol,:)
-
-         if (m .eq. idxsul) then
-            naer2(:ncol,:,m) = maerosol(:ncol,:,m)*num_to_mass_aer(m)*bulk_scale
-         else
-            naer2(:ncol,:,m) = maerosol(:ncol,:,m)*num_to_mass_aer(m)
-         end if
-      end do
-   end if
-
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! More refined computation of sub-grid vertical velocity
    ! Set to be zero at the surface by initialization.
-
+   wsub(:,:) = 0._r8
    select case (trim(eddy_scheme))
    case ('diag_TKE')
       call pbuf_get_field(pbuf, tke_idx, tke)
+      call compute_subgrid_vertical_velocity_tke_run( &
+           ncol    = ncol,    &
+           pver    = pver,    &
+           top_lev = top_lev, &
+           tke     = tke(:ncol,:pverp), &
+           wsub    = wsub(:ncol,:pver), &
+           errmsg  = errmsg,  &
+           errflg  = errflg)
+      if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_tke_run: ' // errmsg)
    case ('CLUBB_SGS')
       itim_old = pbuf_old_tim_idx()
-      call pbuf_get_field(pbuf, wp2_idx, wp2, start=(/1,1,itim_old/),kount=(/pcols,pverp,1/))
-      allocate(tke(pcols,pverp))
-      tke(:ncol,:) = (3._r8/2._r8)*wp2(:ncol,:)
+      call pbuf_get_field(pbuf, wp2_idx, wp2)
 
+      ! The WP2_nadv pbuf field is dimensioned on the CLUBB momentum subgrid
+      ! (nzm_clubb = pverp + 1 - top_lev), whose index 1 is CAM interface top_lev.
+      ! The scheme expects wp2 on the full interface grid, so expand it here.
+      wp2_full(:ncol, :top_lev-1)    = 0._r8
+      wp2_full(:ncol, top_lev:pverp) = wp2(:ncol, 1:pverp-top_lev+1)
+
+      call compute_subgrid_vertical_velocity_clubb_run( &
+           ncol    = ncol,    &
+           pver    = pver,    &
+           pverp   = pverp,   &
+           top_lev = top_lev, &
+           wp2     = wp2_full(:ncol,:), &
+           wsub    = wsub(:ncol,:pver), &
+           errmsg  = errmsg,  &
+           errflg  = errflg)
+      if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_clubb_run: ' // errmsg)
    case default
       call pbuf_get_field(pbuf, kvh_idx, kvh)
+      call compute_subgrid_vertical_velocity_kvh_run( &
+           ncol    = ncol,    &
+           pver    = pver,    &
+           top_lev = top_lev, &
+           kvh     = kvh(:ncol,:pverp), &
+           wsub    = wsub(:ncol,:pver), &
+           errmsg  = errmsg,  &
+           errflg  = errflg)
+      if(errflg /= 0) call endrun('compute_subgrid_vertical_velocity_kvh_run: ' // errmsg)
    end select
 
-   ! Set minimum values above top_lev.
-   wsub(:ncol,:top_lev-1)  = wsub_min
-   wsubi(:ncol,:top_lev-1) = wsubi_min
-
-   do k = top_lev, pver
-      do i = 1, ncol
-
-         select case (trim(eddy_scheme))
-         case ('diag_TKE', 'CLUBB_SGS')
-            wsub(i,k) = sqrt(0.5_r8*(tke(i,k) + tke(i,k+1))*(2._r8/3._r8))
-            wsub(i,k) = min(wsub(i,k),10._r8)
-         case default
-            ! get sub-grid vertical velocity from diff coef.
-            ! following morrison et al. 2005, JAS
-            ! assume mixing length of 30 m
-            dum = (kvh(i,k) + kvh(i,k+1))/2._r8/30._r8
-            ! use maximum sub-grid vertical vel of 10 m/s
-            dum = min(dum, 10._r8)
-            ! set wsub to value at current vertical level
-            wsub(i,k)  = dum
-         end select
-
-         wsubi(i,k) = max(wsubi_min, wsub(i,k)) * wsubi_scale
-         if (.not. use_preexisting_ice) then
-            wsubi(i,k) = min(wsubi(i,k), 0.2_r8)
-         endif
-
-         wsub(i,k)  = max(wsub_min, wsub(i,k)) * wsub_scale
-
-      end do
-   end do
+   ! Apply min/max/scale and derive wsubi (for ice nucleation)
+   call scale_subgrid_vertical_velocity_run( &
+        ncol                = ncol,                &
+        pver                = pver,                &
+        top_lev             = top_lev,             &
+        wsub_min            = wsub_min,            &
+        wsubi_min           = wsubi_min,           &
+        wsub_scale          = wsub_scale,          &
+        wsubi_scale         = wsubi_scale,         &
+        use_preexisting_ice = use_preexisting_ice, &
+        wsub                = wsub(:ncol,:pver),   &
+        wsubi               = wsubi(:ncol,:pver),  &
+        errmsg              = errmsg,              &
+        errflg              = errflg)
+   if(errflg /= 0) call endrun('scale_subgrid_vertical_velocity_run: ' // errmsg)
 
    call outfld('WSUB',   wsub, pcols, lchnk)
    call outfld('WSUBI', wsubi, pcols, lchnk)
 
-   if (trim(eddy_scheme) == 'CLUBB_SGS') deallocate(tke)
 
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !ICE Nucleation
 
-   if (associated(aero_props_obj).and.associated(aero_state1_obj)) then
+   if (associated(aero_props_obj) .and. associated(aero_state1_obj)) then
       call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc, aero_props_obj, aero_state1_obj)
    else
       call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc)
@@ -715,18 +712,8 @@ subroutine microp_aero_run ( &
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
    call physics_update(state1, ptend_loc, deltatin)
 
-   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-   ! get liquid cloud fraction, check for minimum
-
-   do k = top_lev, pver
-      do i = 1, ncol
-         lcldm(i,k) = max(ast(i,k), mincld)
-      end do
-   end do
-
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Droplet Activation
-
    if (clim_modal_aero .or. clim_carma_aero) then
 
       ! for modal or carma aerosol
@@ -755,6 +742,8 @@ subroutine microp_aero_run ( &
 
       ! If not using preexsiting ice, then only use cloudbourne aerosol for the
       ! liquid clouds. This is the same behavior as CAM5.
+      !
+      ! ptend_loc is initialized inside dropmixnuc
       if (use_preexisting_ice) then
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
               state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
@@ -768,34 +757,63 @@ subroutine microp_aero_run ( &
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
+      ! this scale is ONLY applied to modal/carma
       npccn(:ncol,:) = npccn(:ncol,:) * npccn_scale
 
    else
 
-      ! for bulk aerosol
-
-      ! no tendencies returned from ndrop_bam_run, so just init ptend here
+      ! ndrop_bam has no tendencies; this is initialized unconditionally in order
+      ! for ptend_loc accummulation to happen the same as dropmixnuc above,
+      ! including when no aerosols are present at all (aquaplanet compsets).
       call physics_ptend_init(ptend_loc, state1%psetcols, 'none')
 
-      do k = top_lev, pver
-         do i = 1, ncol
+      ! for bulk aerosol: activation, contact freezing, CCN diagnostics
+      ! do not run for aquaplanet compsets which also gets in this path.
+      if (associated(aero_state1_obj)) then
+         ! get liquid cloud fraction. scaling is done within the ndrop_bam scheme.
+         call pbuf_get_field(pbuf, ast_idx,      ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
-            if (naer_all > 0 .and. state1%q(i,k,cldliq_idx) >= qsmall) then
+         allocate(ccn_bam(pcols, pver, psat))
+         allocate(naer2_bam(pcols, pver, naer_all))
 
-               ! get droplet activation rate
+         ! zero output to pcols
+         npccn(:,:) = 0._r8
+         nacon(:,:,:) = 0._r8
+         ccn_bam(:,:,:) = 0._r8
+         naer2_bam(:,:,:) = 0._r8
 
-               call ndrop_bam_run( &
-                  wsub(i,k), state1%t(i,k), rho(i,k), naer2(i,k,:), naer_all, &
-                  naer_all, maerosol(i,k,:),  &
-                  dum2)
-               dum = dum2
-            else
-               dum = 0._r8
-            end if
-
-            npccn(i,k) = (dum*lcldm(i,k) - state1%q(i,k,numliq_idx))/deltatin
-         end do
-      end do
+         ! Run CCPPized subroutine for droplet activation and contact freezing
+         call ndrop_bam_calc( &
+              aero_state = aero_state1_obj,                  &
+              aero_props = aero_props_obj,                   &
+              ncol       = ncol,                             &
+              pver       = pver,                             &
+              top_lev    = top_lev,                          &
+              gravit     = gravit,                           &
+              rair       = rair,                             &
+              tmelt      = tmelt,                            &
+              cpair      = cpair,                            &
+              rh2o       = rh2o,                             &
+              rhoh2o     = rhoh2o,                           &
+              latvap     = latvap,                           &
+              rho        = rho(:ncol,:),                     &
+              tair       = state1%t(:ncol,:),                &
+              wsub       = wsub(:ncol,:),                    &
+              qcld       = state1%q(:ncol,:,cldliq_idx),     &
+              qsmall_in  = qsmall,                           &
+              ast        = ast(:ncol,:),                     &
+              numliq     = state1%q(:ncol,:,numliq_idx),     &
+              deltatin   = deltatin,                         &
+              npccn      = npccn(:ncol,:),                   &
+              nacon      = nacon(:ncol,:,:),                 &
+              ccn        = ccn_bam(:ncol,:,:),               &
+              naer2_diag = naer2_bam(:ncol,:,:),             &
+              errmsg     = errmsg, &
+              errflg     = errflg)
+         if(errflg /= 0) then
+            call endrun('ndrop_bam_calc: ' // errmsg)
+         end if
+      end if
 
    end if
 
@@ -805,19 +823,29 @@ subroutine microp_aero_run ( &
 
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! Contact freezing  (-40<T<-3 C) (Young, 1974) with hooks into simulated dust
-   ! estimate rndst and nanco for 4 dust bins here to pass to MG microphysics
+   ! estimate rndst and nacon for 4 dust bins here to pass to MG microphysics
+   !
+   ! For bulk aerosol contact freezing is handled inside ndrop_bam_calc
+   ! (nacon is output from ndrop_bam_calc)
+   ! Below for modal aerosol only:
+   if(clim_modal_aero) then
+      ! For modal aerosols:
+      ! mode number mixing ratios
+      call aero_state1_obj%get_ambient_num(mode_coarse_dst_idx, num_coarse)
 
-   do k = top_lev, pver
-      do i = 1, ncol
+      ! mode specie mass m.r.
+      call aero_state1_obj%get_ambient_mmr(species_ndx=coarse_dust_idx, bin_ndx=mode_coarse_dst_idx, mmr=coarse_dust)
+      call aero_state1_obj%get_ambient_mmr(species_ndx=coarse_nacl_idx, bin_ndx=mode_coarse_slt_idx, mmr=coarse_nacl)
+      if (mode_coarse_idx>0) then
+         call aero_state1_obj%get_ambient_mmr(species_ndx=coarse_so4_idx, bin_ndx=mode_coarse_idx, mmr=coarse_so4)
+      endif
 
-         if (state1%t(i,k) < 269.15_r8) then
 
-            if (clim_modal_aero) then
-
-               ! For modal aerosols:
-               !  use size '3' for dust coarse mode...
-               !  scale by dust fraction in coarse mode
-
+      !  use size '3' for dust coarse mode...
+      !  scale by dust fraction in coarse mode
+      do k = top_lev, pver
+         do i = 1, ncol
+            if (state1%t(i,k) < 269.15_r8) then
                dmc  = coarse_dust(i,k)
                ssmc = coarse_nacl(i,k)
 
@@ -836,46 +864,30 @@ subroutine microp_aero_run ( &
                   nacon(i,k,3) = 0._r8
                end if
 
-               !also redefine parameters based on size...
-
+               ! also redefine parameters based on size...
                rndst(i,k,3) = 0.5_r8*dgnumwet(i,k,mode_coarse_dst_idx)
                if (rndst(i,k,3) <= 0._r8) then
                   rndst(i,k,3) = rn_dst3
                end if
-
-            else
-
-               !For Bulk Aerosols: set equal to aerosol number for dust for bins 2-4 (bin 1=0)
-
-               if (idxdst2 > 0) then
-                  nacon(i,k,2) = naer2(i,k,idxdst2)
-               end if
-               if (idxdst3 > 0) then
-                  nacon(i,k,3) = naer2(i,k,idxdst3)
-               end if
-               if (idxdst4 > 0) then
-                  nacon(i,k,4) = naer2(i,k,idxdst4)
-               end if
             end if
-
-         end if
+         end do
       end do
-   end do
-
-   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-   !bulk aerosol ccn concentration (modal does it in ndrop, from dropmixnuc)
-
-   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero)) then
-
-      ! ccn concentration as diagnostic
-      call ndrop_bam_ccn(lchnk, ncol, maerosol, naer2)
-
-      deallocate( &
-         naer2,    &
-         maerosol)
-
    end if
 
+   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+   ! BAM diagnostic output (CCN concentration and aerosol number)
+   if ((.not. clim_modal_aero) .and. (.not.clim_carma_aero) .and. &    ! not modal / carma
+       allocated(ccn_bam) .and. allocated(naer2_bam)) then             ! and bulk aerosols are active (not aquap)
+      do l = 1, psat
+         call outfld(ccn_name(l), ccn_bam(1,1,l), pcols, lchnk)
+      end do
+      do l = 1, naer_all
+         call outfld(trim(aername(l))//'_m3', naer2_bam(1,1,l), pcols, lchnk)
+      end do
+      deallocate(ccn_bam, naer2_bam)
+   end if
+
+   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    ! heterogeneous freezing
    if (use_hetfrz_classnuc) then
 
@@ -887,11 +899,9 @@ subroutine microp_aero_run ( &
       deallocate(factnum)
    end if
 
-   if (associated(aero_state1_obj)) then
-      ! destroy the aerosol state object
-      deallocate(aero_state1_obj)
-      nullify(aero_state1_obj)
-   endif
+   ! destroy all aerosol state objects created for this chunk
+   nullify(aero_state1_obj)
+   call aerosol_instances_destroy_states(aero_states1)
 
  end subroutine microp_aero_run
 

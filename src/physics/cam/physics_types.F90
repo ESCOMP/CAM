@@ -1281,11 +1281,13 @@ end subroutine physics_ptend_copy
     ! original code for backwards compatability with FV
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
-      do k = 1, pver
 
-        ! adjust dry mass in each layer back to input value, while conserving
-        ! constituents, momentum, and total energy
-        state%ps(:ncol) = state%pint(:ncol,1)
+      !Initialize the surface pressure
+      state%ps(:ncol) = state%pint(:ncol,1)
+
+      ! adjust dry mass in each layer back to input value, while conserving
+      ! constituents, momentum, and total energy
+      do k = 1, pver
 
         ! adjusment factor is just change in water vapor
         fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)

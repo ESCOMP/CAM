@@ -16,16 +16,13 @@ module aero_wetdep_cam
   use cam_history,   only: addfld, add_default, horiz_only, outfld
   use wetdep,        only: wetdep_init
 
-  use rad_constituents, only: rad_cnst_get_info
-
   use aerosol_properties_mod, only: aero_name_len
   use aerosol_properties_mod, only: aerosol_properties
-  use modal_aerosol_properties_mod, only: modal_aerosol_properties
-  use carma_aerosol_properties_mod, only: carma_aerosol_properties
 
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
-  use modal_aerosol_state_mod, only: modal_aerosol_state
-  use carma_aerosol_state_mod, only: carma_aerosol_state
+  use aerosol_instances_mod, only: aerosol_instances_get_state, &
+                                   aerosol_instances_get_props, &
+                                   aerosol_instances_get_num_models
 
   use aero_convproc, only: aero_convproc_readnl, aero_convproc_init, aero_convproc_intr
   use aero_convproc, only: convproc_do_evaprain_atonce
@@ -65,8 +62,6 @@ module aero_wetdep_cam
   real(r8),allocatable :: scavimptblnum(:,:)
   real(r8),allocatable :: scavimptblvol(:,:)
 
-  integer :: nmodes=0
-  integer :: nbins=0
   integer :: nspec_max=0
   integer :: nele_tot            ! total number of aerosol elements
   class(aerosol_properties), pointer :: aero_props=>null()
@@ -157,8 +152,9 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_chemistry
 
-    integer :: l,m, id, astat
+    integer :: l, m, id, astat, iaermod
     character(len=2) :: binstr
+    class(aerosol_properties), pointer :: props_tmp
 
     fracis_idx = pbuf_get_index('FRACIS')
     rprddp_idx      = pbuf_get_index('RPRDDP')
@@ -172,21 +168,21 @@ contains
                       history_chemistry_out=history_chemistry, &
                       convproc_do_aer_out = convproc_do_aer)
 
-    call rad_cnst_get_info(0, nmodes=nmodes, nbins=nbins)
-
-    if (nmodes>0) then
-       aero_props => modal_aerosol_properties()
-       if (.not.associated(aero_props)) then
-          call endrun(subrname//' : construction of aero_props modal_aerosol_properties object failed')
+    ! get the persistent properties for the aerosol model wetdep is working on
+    ! (wetdep does not work with BAM)
+    nullify(aero_props)
+    do iaermod = 1, aerosol_instances_get_num_models()
+       props_tmp => aerosol_instances_get_props(iaermod, 0)
+       if (associated(props_tmp)) then
+          if (.not. props_tmp%model_is('BAM')) then
+             aero_props => props_tmp
+             exit
+          end if
        end if
-    else if (nbins>0) then
-       aero_props => carma_aerosol_properties()
-       if (.not.associated(aero_props)) then
-          call endrun(subrname//' : construction of aero_props carma_aerosol_properties object failed')
-       end if
-    else
-       call endrun(subrname//' : cannot determine aerosol model')
-    endif
+    end do
+    if (.not.associated(aero_props)) then
+       call endrun(subrname//' : no non-BAM aerosol properties instance available')
+    end if
 
     nele_tot = aero_props%ncnst_tot()
 
@@ -308,12 +304,12 @@ contains
          call add_default (trim(name)//'SFWET', 1, ' ')
       endif
       if ( history_aerosol ) then
-         call add_default (trim(name)//'SFSEC', 1, ' ')
          call add_default (trim(name)//'SFSIC', 1, ' ')
          call add_default (trim(name)//'SFSIS', 1, ' ')
          call add_default (trim(name)//'SFSBC', 1, ' ')
          call add_default (trim(name)//'SFSBS', 1, ' ')
          if (convproc_do_aer) then
+            call add_default (trim(name)//'SFSEC', 1, ' ')
             call add_default (trim(name)//'SFSES', 1, ' ')
             call add_default (trim(name)//'SFSBD', 1, ' ')
          end if
@@ -409,6 +405,8 @@ contains
     real(r8) :: sflxbc(pcols), sflxbcdp(pcols)  ! deposition flux
 
     class(aerosol_state), pointer :: aero_state
+    class(aerosol_properties), pointer :: props_tmp
+    integer :: iaermod
 
     nullify(aero_state)
 
@@ -416,19 +414,21 @@ contains
 
     dcondt_resusp3d(:,:,:) = 0._r8
 
-    if (nmodes>0) then
-       aero_state => modal_aerosol_state(state,pbuf)
-       if (.not.associated(aero_state)) then
-          call endrun(subrname//' : construction of aero_state modal_aerosol_state object failed')
+    !REMOVECAM - get persistent state from factory; under CAM-SIMA states will be passed as scheme inputs
+    nullify(aero_state)
+    do iaermod = 1, aerosol_instances_get_num_models()
+       props_tmp => aerosol_instances_get_props(iaermod, 0)
+       if (associated(props_tmp)) then
+          if (.not. props_tmp%model_is('BAM')) then
+             aero_state => aerosol_instances_get_state(iaermod, 0, state%lchnk)
+             exit
+          end if
        end if
-    else if (nbins>0) then
-       aero_state => carma_aerosol_state(state,pbuf)
-       if (.not.associated(aero_state)) then
-          call endrun(subrname//' : construction of aero_state carma_aerosol_state object failed')
-       end if
-    else
-       call endrun(subrname//' : cannot determine aerosol model')
-    endif
+    end do
+    if (.not.associated(aero_state)) then
+       call endrun(subrname//' : no non-BAM aerosol state available for wetdep')
+    end if
+    !REMOVECAM_END
 
     lchnk = state%lchnk
     ncol = state%ncol
@@ -601,7 +601,7 @@ contains
                    qqcw_in(:ncol,:) = qqcw(mm)%fld(:ncol,:)
                 end if
 
-                f_act_conv(:ncol,:) = aero_state%convcld_actfrac( m, l, ncol, pver)
+                f_act_conv(:ncol,:) = aero_state%convcld_actfrac( aero_props, m, l, ncol, pver)
                 name = aname
              end if
 
@@ -796,10 +796,7 @@ contains
 
     end do bins_loop
 
-    if (associated(aero_state)) then
-       deallocate(aero_state)
-       nullify(aero_state)
-    end if
+    nullify(aero_state)
 
     ! if the user has specified prescribed aerosol dep fluxes then
     ! do not set cam_out dep fluxes according to the prognostic aerosols

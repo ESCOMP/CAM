@@ -789,6 +789,9 @@ subroutine radiation_tend( &
    use radsw,               only: radcswmx
    use radlw,               only: radclwmx
    use rad_constituents,    only: rad_cnst_get_gas, rad_cnst_out
+   !REMOVECAM
+   use aerosol_mmr_host, only: rad_aer_diag_out
+   !REMOVECAM_END
    use aer_rad_props,       only: aer_rad_props_sw, aer_rad_props_lw
    use interpolate_data,    only: vertinterp
    use radiation_data,      only: rad_data_write
@@ -1158,8 +1161,9 @@ subroutine radiation_tend( &
 
       end if  ! dolw
 
-      ! Output aerosol mmr
+      ! Output gas and aerosol diagnostics
       if (write_output) call rad_cnst_out(0, state, pbuf)
+      if (write_output) call rad_aer_diag_out(0, state, pbuf)
 
       ! Cloud cover diagnostics
       ! radsw can change pmxrgn and nmxrgn so cldsav needs to follow radsw

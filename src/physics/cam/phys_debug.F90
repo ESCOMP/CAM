@@ -23,7 +23,8 @@ use camsrfexch,      only: cam_in_t
 use cam_logfile,     only: iulog
 use cam_history,     only: addfld, add_default, outfld
 use constituents,    only: pcnst, cnst_get_ind, cnst_name
-use rad_constituents,only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
+use radiative_aerosol, only: rad_aer_get_info
+use aerosol_mmr_host, only: rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
 
 implicit none
 private
@@ -83,11 +84,11 @@ subroutine phys_debug_state_init(tags)
    ! Set arrays to identify the modal aerosol constituents
    cnst_is_mam_num = .false.
    cnst_is_mam_mmr = .false.
-   call rad_cnst_get_info(0, nmodes=nmodes)
+   call rad_aer_get_info(0, nmodes=nmodes)
    do i = 1, nmodes
       call rad_cnst_get_mode_num_idx(i, icnst)
       cnst_is_mam_num(icnst) = .true.
-      call rad_cnst_get_info(0, i, nspec=nspec)
+      call rad_aer_get_info(0, i, nspec=nspec)
       do j = 1, nspec
          call rad_cnst_get_mam_mmr_idx(i, j, icnst)
          cnst_is_mam_mmr(icnst) = .true.

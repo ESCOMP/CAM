@@ -1,0 +1,59 @@
+! This namelist determines how RTTOV will be run for a single instrument instance.
+&RTTOV_INPUT
+  !-------------- Logical for constructing outputs and determining settings
+  Lrttov_bt=.true.,                 ! Calculate RTTOV brightness temps
+  Lrttov_rad=.true.,                ! Calculate RTTOV radiances
+  Lrttov_refl=.false.,              ! Calculate RTTOV reflectances
+  Lrttov_cld=.true.,                ! Calculate RTTOV all-sky + cloudy-sky values
+  Lrttov_aer=.false.,                ! Calculate RTTOV all-sky + cloudy-sky values
+  Lrttov_cldparam=.false.,          ! Use user input cloud optical parameters
+  Lrttov_aerparam=.false.,          ! Use user input aerosol optical parameters
+  Lrttov_gridbox_cldmmr=.true.,     ! Do cloud mixing ratios represent gridcell means?
+  Ldo_nlte_correction=.false.,       ! Correct for non-local thermal equilibrium effects? Requires appropriate coefficients.
+  Lrttov_pc=.false.,                ! Run with PC-RTTOV
+  !-------------- Number of channels to reconstruct. Should match the length of entries in "channel_filepath"
+  nchannels_rec=5, ! 2645 for all AIRS L1C channels
+  !-------------- RTTOV Filepaths 
+  Lchannel_filepath=.true.,
+  channel_filepath='${PathToCOSPRTTOVExamples}/rttov_channel_input_AIRSL1C_subset.csv'
+  rttov_srcDir='${PathToRTTOV}',
+  rttov_coefDir='rtcoef_rttov13/', ! Assumed subdirectory of rttov_srcDir
+  OD_coef_filepath='AIRS_L1C/rtcoef_eos_2_airs_l1c_7gas.H5',
+  cld_coef_filepath='AIRS_L1C/sccldcoef_eos_2_airs_l1c.H5',
+  !-------------- RTTOV Trace Gas Logicals (must match coefficient files)
+  SO2_data=.false.,
+  N2O_data=.true., ! .true. for 7gas
+  CO_data=.false.,
+  CO2_data=.true.,
+  CH4_data=.true., ! .true. for 7gas
+  ozone_data=.true.,
+  clw_data=.false.,        ! Only used for MW calculations
+  ! -------------- RTTOV Trace Gas Concentrations
+  ! -------------- Specify units in RTTOV options set-up
+  ! ---------------Standard units are kg/kg over moist air
+  rttov_gas_units=3, ! 0: ppmv over dry air, 1: kg/kg over moist air, 2: ppmv over moist air, 3: kg/kg over dry air. ! CAM uses option 3.
+  user_tracegas_input=.false., ! Set to .true. to have RTTOV use constant trace gas concentrations as specified below
+  CO2_mr=6.09e-04, 
+  CH4_mr=9.139e-07,
+  CO_mr=2.098e-07,
+  N2O_mr=4.665e-07,
+  SO2_mr=2.0e-11,  ! RTTOV hard lower limit is 1.0e-11 ppmv
+  !-------------- PC-RTTOV ------------------
+  ipcbnd=1,       ! Always 1 for RTTOV v13
+  ipcreg=2,       ! Set the number of predictors (channel outputs)
+  npcscores=100,  ! Determine how many principal components are used (greater accuracy, greater cost)
+  !-------------- RTTOV Other --------------- 
+  ! Control degree of parallelization in RTTOV 1=no parallel, >1 more parallel
+  rttov_nthreads=1,
+  rttov_ZenAng=0.0,               ! Satellite Zenith Angle
+  ! Set local time sampling with swath widths
+  rttov_Nlocaltime=0,            	! Number of local times to sample at
+  rttov_localtime=1,0,     	! Local times to sample at in hrs [0,24]
+  rttov_localtime_width=1550,0,  ! Swath width (km)
+  ! ---------------------- How to parameterize the optical properties of cloud ice and cloud liquid (see RTTOVv13.2 user manual pg 75)
+  rttov_clw_scheme=2,   ! Should be 2 if model supplies effective radius and not cloud type.
+  rttov_ice_scheme=1,   ! 1 uses effective radii values if rttov_icede_param=0, 2 and 3 ignore icede entirely.
+  rttov_icede_param=4,  ! 0 if icede should be used from model, if ice_scheme = 1 then 1-4 are different options for computing icede separately.
+  ! ---------------------- How to handle atmosphere between the top of supplied values and the RTTOV instrument.  
+  rttov_extendatmos=1,    ! 0: Atmosphere ends at the top of supplied values. 1: CAM-like additional interfaces at 1e-4 Pa and 2.25 Pa.
+/

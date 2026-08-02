@@ -9,7 +9,7 @@ cosp_histfile_aux=.true.
 cosp_histfile_aux_num=3
 fexcl2='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS','CS_MIXCERT','CS_MIXPOSS','CS_NOPRECIP',
        'CS_PIA','CS_RAINPOSS','CS_RAINPROB','CS_RAINCERT','CS_RAINHARD','CS_SNOWCERT','CS_SNOWPOSS',
-       'CS_UN'
+       'CS_UN', 'CS_WR_CFODD_REFF_LARGE'
 
  mode_defs=
 'mam4_mode1:accum:=', 'A:num_a1:N:num_c1:num_mr:+',

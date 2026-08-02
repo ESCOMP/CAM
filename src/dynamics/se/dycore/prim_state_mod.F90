@@ -27,6 +27,7 @@ CONTAINS
     use se_dyn_time_mod,        only: tstep
     use control_mod,            only: rsplit, qsplit
     use perf_mod,       only: t_startf, t_stopf
+    use hycoef,                 only: hyai, ps0
     type (element_t),             intent(inout) :: elem(:)
     type (TimeLevel_t), target,   intent(in)    :: tl
     type (hybrid_t),              intent(in)    :: hybrid
@@ -62,7 +63,7 @@ CONTAINS
     ! moist surface pressure
     if (use_cslam) then
       do ie=nets,nete
-        moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
+        moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)+hyai(1)*ps0
         do q=dry_air_species_num+1,thermodynamic_active_species_num
           m_cnst = thermodynamic_active_species_idx(q)
           do k=1,nlev
@@ -134,10 +135,10 @@ CONTAINS
         max_local(ie,5)  = 0.0_r8
       end if
       if (use_cslam) then
-        min_local(ie,6) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
-        max_local(ie,6) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
+        min_local(ie,6) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))+hyai(1)*ps0
+        max_local(ie,6) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))+hyai(1)*ps0
         min_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
-        max_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
+        max_local(ie,7) = MAXVAL(moist_ps_fvm(:,:,ie))
         min_local(ie,8)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,8)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,9)  = MINVAL(moist_ps(:,:,ie))
@@ -207,7 +208,7 @@ CONTAINS
           tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%c(1:nc,1:nc,:,q)*fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         end do
         q=statediag_numtrac+1
-        tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
+        tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)+hyai(1)*ps0
         q=statediag_numtrac+2
         tmp_fvm(:,:,q,ie) = moist_ps_fvm(:,:,ie)
       end do
@@ -291,7 +292,9 @@ CONTAINS
 101 format (A12,A23,A23,A23,A23)
 
 #ifdef waccm_debug
-    call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+    if (use_cslam) then
+       call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+    end if
 #endif
     call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
   end subroutine prim_printstate
