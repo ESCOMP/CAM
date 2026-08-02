@@ -1312,7 +1312,7 @@ module clubb_mf
                  ! get buoyancy
                  ! (midpoint k is surrounded by interface k and k-1,
                  ! and therefore we can't compute B at the midpoint properly)
-                 B = gravit*(dnthv(kn,i)/thv(kn + kdir)-1._r8)
+                 B = gravit*(dnthv(kn,i)/thv(kt)-1._r8)
 
                  ! get wn2
                  wp = wb*entn*eturb  &
@@ -1497,8 +1497,8 @@ module clubb_mf
            sqtup(kt_dn)  = sqtup(kt_dn)  + upa(kn,i)*supqt(kt_dn,i)
            sthlup(kt_dn) = sthlup(kt_dn) + upa(kn,i)*supthl(kt_dn,i)
 
-           sqtdn(kt)  = sqtdn(kt_dn)  + dna(k,i)*sdnqt(kt_dn,i)
-           sthldn(kt) = sthldn(kt_dn) + dna(k,i)*sdnthl(kt_dn,i)
+           sqtdn(kt_dn)  = sqtdn(kt_dn)  + dna(k,i)*sdnqt(kt_dn,i)
+           sthldn(kt_dn) = sthldn(kt_dn) + dna(k,i)*sdnthl(kt_dn,i)
          end do
 
          sqt(kt_dn)  = sqtup(kt_dn)  + sqtdn(kt_dn)
