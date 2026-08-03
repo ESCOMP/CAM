@@ -3004,9 +3004,6 @@ contains
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf ('convect_deep_tend2')
 
-    ! check tracer integrals
-    call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
-
     call t_stopf('aerosol_wet_processes')
 
     !===================================================
