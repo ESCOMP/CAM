@@ -25,18 +25,25 @@ the filtering can be estimated as:
      Hscale = PI*6350/Nudge_SpectralNtrunc
 	i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal nudging scale  Hscale~500km.
 
+New Functionality was also added for PS nudging and user defined nudging windows.
+	- PS nudging is now available via namelist variables nudge_pscoef, nudge_psprof,
+	  and nudge_psscal
+        - User-defined nudging window can be specified via a netcdf file defining the
+	  horizontal boundaries and using a profile index of 3 for nudge_uprof,
+	  nudge_vprof, nudge_tprof, nudge_qprof or nudge_psprof
+
 Describe any changes made to build system: N/A
 
-Describe any changes made to the namelist: New namelist variables added:
+Describe any changes made to the namelist:
 
-	New Namelist variables added
-	- nudge_bwindow_file
-	- nudge_psscal
-	- nudge_spectralfilter
-	- nudge_spectralnring
-	- nudge_spectralntrunc
-	- nudge_zonalfilter
-	- nudge_zonalnbasis
+	New Namelist variables added - see nudging.F90 for more information.
+	- nudge_bwindow_file - CHAR path to the Horizonal Boundary Window file.
+	- nudge_psscal - REAL Coeffcient controling the vertical influence function.
+	- nudge_spectralfilter - LOGICAL Option to apply spherical harminic filtering to model state
+	- nudge_spectralnring - INT number of sampling rings used for local area avg of spherical harmonic modes
+	- nudge_spectralntrunc - INT number of meridional spherical harmonic modes
+	- nudge_zonalfilter - LOGICAL apply zonal mean filtering
+	- nudge_zonalnbasis - INT number of meridional modes(Legendre Polynomials) used for filtering
 
 	New Namelist Defaults
 	- nudge_pscoef 1.00 => 0.00
@@ -75,6 +82,8 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+    FAIL SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging NLCOMP
+	- expected due to addition of new nl variables
 
 derecho/nvhpc/aux_cam: all BFB
 
@@ -82,10 +91,10 @@ izumi/nag/aux_cam:
   FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
      - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
 
-
-izumi/gnu/aux_cam: all BFB
+izumi/gnu/aux_cam:
   NLFAIL ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 NLCOMP
      - expected due to addition of new nl variables
+
 ===============================================================
 ===============================================================
 
@@ -1189,8 +1198,8 @@ but without RTTOV output), RTTOV will not be compiled.
 
 Describe any changes made to the namelist:
 Trigger use of COSP-RTTOV with cosp_lrttov_sim, cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists
-Allows COSP output to apply simple swathing using “cosp_N_SWATHS_[INSTRUMENT_NAME]”, “cosp_SWATH_LOCALTIMES_[INSTRUMENT_NAME]”,
-“cosp_SWATH_WIDTHS_[INSTRUMENT_NAME]"
+Allows COSP output to apply simple swathing using ?cosp_N_SWATHS_[INSTRUMENT_NAME]?, ?cosp_SWATH_LOCALTIMES_[INSTRUMENT_NAME]?,
+?cosp_SWATH_WIDTHS_[INSTRUMENT_NAME]"
 
 List any changes to the defaults for the boundary datasets: N/A
 
@@ -13400,7 +13409,7 @@ Github PR URL: https://github.com/ESCOMP/CAM/pull/1117
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
   - Continuing development of gravity wave parameterization (//github.com/ESCOMP/CAM/issues/1115)
   - Added vorticity calculation to SE dycore.  Vorticity is passed to the gravity wave (GW) scheme in
-    model physics to provide a possible source for ‘moving mountain’ GW, i.e., low-phase speed GW forced
+    model physics to provide a possible source for ?moving mountain? GW, i.e., low-phase speed GW forced
     by atmospheric circulations. This provides another forcing option, in addition to boundary layer
     momentum flux implemented earlier. Vorticity anomalies as sources for GW have been proposed by other
     researchers in published papers.
@@ -35832,7 +35841,7 @@ Purpose of changes (include the issue number and title text for each relevant Gi
  - add value of zmconv_parcel_pbl in the namelist #498
  - Update externals to cesm2_3_beta07 #499
  - default pecount for ne120xx needs to be increased to run "out of the box" #500
- - Update dyn_grid to read from the INI grid if the initial conditions file has dimension ‘ncol.’ Always write using the GLL grid. (no issue opened for this bug)
+ - Update dyn_grid to read from the INI grid if the initial conditions file has dimension ?ncol.? Always write using the GLL grid. (no issue opened for this bug)
 
 Describe any changes made to build system:
 
@@ -62508,7 +62517,7 @@ yellowstone/intel/aux_cam:
   SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s (Overall: FAIL) details:
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s NLCOMP
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s RUN time=118
-  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAI≈ßL) details:
+  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAI?�L) details:
     FAIL SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d NLCOMP
 
   Run failures for SPCAM and WACCMX are pre-existing due to CLM version
@@ -64175,8 +64184,8 @@ Describe any changes made to build system:
 Describe any changes made to the namelist:
  - Added the following namelist variables for gw_rdg
      gw_rdg_do_divstream -- If .true. use separate dividing streamlines for downslope wind and
-                            flow splitting regimes (“DS” configuration). If .false. use single
-                            dividing streamline as in Scinocca&McFarlane 2000 (“SM” configuration).
+                            flow splitting regimes (?DS? configuration). If .false. use single
+                            dividing streamline as in Scinocca&McFarlane 2000 (?SM? configuration).
      gw_rdg_C_BetaMax_DS -- Enhancement factor for downslope wind stress in DS configuration
      gw_rdg_C_GammaMax -- Enhancement factor for depth of downslope wind regime in DS configuration
      gw_rdg_Frx0 -- Lower inverse Froude number limits on linear ramp terminating downslope wind
@@ -65157,7 +65166,7 @@ Purpose of changes:
  Modify the chemical tropopause definition poleward of 50 degrees from using a
  fixed 300 hPa level (see note for 5_4_89) to use the lapse rate tropopause at
  P > 125 hPa and the climatology if the lapse rate tropopause is found at
- P < 125 hPa or is not found. This eliminates “false” tropopause detection in the
+ P < 125 hPa or is not found. This eliminates ?false? tropopause detection in the
  75 hPa < P < 125 hPa range that are not physical and have a detrimental effect on
  heterogeneous chemistry in the polar stratosphere, provides a diagnostic that can
  respond to some climate change, and gives a smoother and more physical tropopause
@@ -89755,7 +89764,7 @@ M   models/atm/cam/test/system/tests_chem_mpi
  - updates to chemistry regression tests
 
 M   models/atm/cam/src/chemistry/utils/tracer_data.F90
- -- Bugzilla – Bug 1824 -- don't use cyc_ndx_beg before it is defined
+ -- Bugzilla ? Bug 1824 -- don't use cyc_ndx_beg before it is defined
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
