@@ -2570,7 +2570,8 @@ end subroutine clubb_init_cnst
       mf_thlforc_nadv,  mf_qtforc_nadv,   & !thermodynamic grid (nzt_clubb).
       mf_sqtup,   mf_sthlup,     &
       mf_sqtdn,   mf_sthldn,     &
-      mf_sqt,     mf_sthl
+      mf_sqt,     mf_sthl,       &
+      mf_qc_zt,   mf_cloudfrac_zt
 
     real(r8), dimension(state%ncol,nzm_clubb) :: &
       thlp2_rad,                &
@@ -2625,8 +2626,7 @@ end subroutine clubb_init_cnst
       mf_thvflx,                                                  &
       mf_qc,            mf_cloudfrac,                             &
       mf_qc_nadv,       mf_cloudfrac_nadv,                        &
-      mf_qc_zt,         mf_cloudfrac_zt,                          &
-      mf_rcm,           mf_rcm_nadv,                              & 
+      mf_rcm,           mf_rcm_nadv,                              &
 
       ! MF local momentum vars
       rtm_zm,     thlm_zm,       & ! momentum grid
@@ -3618,18 +3618,12 @@ end subroutine clubb_init_cnst
 
           ! NOTE: the 'tke' pbuf field is dimensioned (pcols,pverp) rather than
           ! (pcols,nzm_clubb), so unlike every other input to integrate_mf it is
-          ! NOT already restricted to the CLUBB sub-column. The physically
-          ! correct index would be k_cam, but the legacy call passed
-          ! tke_pbuf(i,:) into an nzm-sized dummy, which sequence-associates
-          ! elements 1..nzm_clubb. Indexing with k reproduces that exactly, so
-          ! descending-grid results stay bit-for-bit for any top_lev, and the
-          ! ascending grid becomes its exact mirror image.
-          !
-          ! TODO: for top_lev > 1 this is misaligned by top_lev-1 levels (and
-          ! the top top_lev-1 entries are never written by the fill loop over
-          ! k = top_lev, pverp). Switch to tke_pbuf(i,k_cam) as a separate,
-          ! deliberately non-bit-for-bit commit.
-          tke_zm(i,k)     = tke_pbuf(i,k)
+          ! NOT already restricted to the CLUBB sub-column and must be indexed
+          ! with k_cam. (This differs from the legacy code, which sequence-
+          ! associated tke_pbuf(i,:) into an nzm-sized dummy — a top_lev-1
+          ! level misalignment whenever top_lev > 1; bit-identical for
+          ! top_lev = 1.)
+          tke_zm(i,k)     = tke_pbuf(i,k_cam)
         end do
       end do
 
@@ -4202,8 +4196,7 @@ end subroutine clubb_init_cnst
         ! rather than in index order: from gr%k_ub_zt to gr%k_lb_zt with a step
         ! of -gr%grid_dir_indx (+1 descending, -1 ascending). For thermodynamic
         ! level k the bounding interfaces are k+(1+kdir)/2 above and
-        ! k+(1-kdir)/2 below, which reduce to k and k+1 on a descending grid,
-        ! recovering the original loop exactly.
+        ! k+(1-kdir)/2 below, which reduce to k and k+1 on a descending grid.
         mf_precc(:ncol,:) = 0._r8
         do k = gr%k_ub_zt, gr%k_lb_zt, -gr%grid_dir_indx
           k_above = k + ( 1 + gr%grid_dir_indx ) / 2
@@ -4381,7 +4374,6 @@ end subroutine clubb_init_cnst
         ! so we need to flip them back. This section should flip every array that was flipped
         ! before the advance_clubb_core call.
 
-!+++ arh -- reverting this as I think they do need to be flipped to descending grid for correct diagnostic output
         thlm_forcing               =               thlm_forcing(:,nzt_clubb:1:-1)
         rtm_forcing                =                rtm_forcing(:,nzt_clubb:1:-1)
         um_forcing                 =                 um_forcing(:,nzt_clubb:1:-1)
@@ -4664,7 +4656,7 @@ end subroutine clubb_init_cnst
       ! substepping loop can assume the host convention, as the rest of this
       ! module does.
       !
-      ! This is done once per physics step rather than inside the per-substep
+      ! This is done once per macmic step rather than inside nadv
       ! flip-back block, because only the final substep's values reach the
       ! output mapping. Note that some of those expressions pair an MF flux with
       ! rho_zm, which is already restored to descending, so flipping here also
@@ -4894,13 +4886,16 @@ end subroutine clubb_init_cnst
       mf_qc_zt = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr, mf_qc)
       mf_cloudfrac_zt = zm2zt_api( nzm_clubb, nzt_clubb, ncol, gr, mf_cloudfrac)
 
-      ! No orientation branch needed: the substep accumulators were restored to
-      ! descending order after the substepping loop, so mf_qc_zt and
-      ! mf_cloudfrac_zt are already on the host convention here.
+      ! Select output arrays are set to pbuf variables and need to be on the CAM grid
       do i=1,ncol
-        do k=1,pver
-          mf_cloudfrac_output(i,k)          = mf_cloudfrac_zt(i,k)
-          mf_qc_output(i,k)                 = mf_qc_zt(i,k)
+        do k=1,top_lev-1
+          mf_cloudfrac_output(i,k)          = 0._r8
+          mf_qc_output(i,k)                 = 0._r8
+        end do
+        do k=top_lev,pver
+          k_clubb = k + 1 - top_lev
+          mf_cloudfrac_output(i,k)          = mf_cloudfrac_zt(i,k_clubb)
+          mf_qc_output(i,k)                 = mf_qc_zt(i,k_clubb)
         end do
       end do
 
@@ -5493,7 +5488,12 @@ end subroutine clubb_init_cnst
              !  "cloud_frac") and CLUBB+MF cloud fraction ("shalcu") compute the convective cloud
              !  fraction.  This follows the formulation found in macrophysics code.  Assumes that convective
              !  cloud is all nonstratiform cloud from CLUBB or CLUBB+MF plus the deep convective cloud fraction
-             concld_pbuf(i,k) = min(cloud_frac(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k)+shalcu_pbuf(i,k),0.80_r8)
+             ! NOTE: concld_pbuf used to be calculated in the commented-out version below, but since we
+             ! set alst_pbuf=cloud_frac_pbuf, this simplifies to only using deepcu_pbuf and shalcu_pbuf.
+             ! This is potentially a bug, but there's not really a "right" way to combine the different
+             ! cloud factions, so it has been left to only use deepcu_pbuf and shalcu_pbuf for now
+             !concld_pbuf(i,k) = min(cloud_frac(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k)+shalcu_pbuf(i,k),0.80_r8)
+             concld_pbuf(i,k) = min(deepcu_pbuf(i,k)+shalcu_pbuf(i,k),0.80_r8)
           enddo
        enddo
     end if
