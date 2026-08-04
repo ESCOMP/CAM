@@ -4721,6 +4721,18 @@ Elevation power law exponent for downdrafts velocities in the subcloud layer
 Default: 3.0
 </entry>
 
+<entry id="clubb_mf_pwmin" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Standardized lower limit of subgrid distribution for initializing plumes
+Default: 1.5
+</entry>
+
+<entry id="clubb_mf_pwmax" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Standarized upper limit of subgrid distribution for initializing plumes
+Default: 3.0
+</entry>
+
 <entry id="clubb_mf_cldfrac_fac" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Factor to increase the ensemble MF plume cloud fractions
