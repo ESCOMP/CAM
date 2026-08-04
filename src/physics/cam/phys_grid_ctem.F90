@@ -7,7 +7,7 @@ module phys_grid_ctem
   use ppgrid,        only: begchunk, endchunk, pcols, pver
   use physics_types, only: physics_state
   use cam_history,   only: addfld, outfld
-  use zonal_mean_mod,only: ZonalAverage_t, ZonalMean_t
+  use ug_spectralmethods_mod,only: ZonalAverage_t, ZonalMean_t
   use physconst,     only: pi
   use cam_logfile,   only: iulog
   use cam_abortutils,only: endrun, handle_allocate_error
