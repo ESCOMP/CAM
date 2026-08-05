@@ -1,3 +1,93 @@
+
+===============================================================
+
+Tag name: cam6_4_192
+Originator(s): cacraigucar, peterhjortlauritzen, duncanwp, nusbaume, jimmielin
+Date: August 5, 2026
+One-line Summary: Next round of CAM misc updates
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1635
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - check_energy tracer mass-conservation check never runs: 'exit' instead of 'cycle:
+            https://github.com/ESCOMP/CAM/issues/1592 and https://github.com/ESCOMP/CAM/pull/1607
+     Remove check_tracers_init/check_tracers_chng and the check_tracers_data type:
+     check_energy tracer mass-conservation check never runs: 'exit' instead of 'cycle').  The check has been a no-op since
+     CAM6, and its design is not valid: individual chemical species are not conserved
+     under reactions (only the column sum is).
+ - Outputting of gravity wave diagnostics should be using pcols:
+            https://github.com/ESCOMP/CAM/issues/1603
+ - Certain constituent-dimensioned or dust(4)-dimensioned fields are not written correctly into CAM snapshots:
+            https://github.com/ESCOMP/CAM/issues/1609 and https://github.com/ESCOMP/CAM/pull/1610
+ - Add AGENTS.md to CAM repository:
+            https://github.com/ESCOMP/CAM/issues/1611 and https://github.com/ESCOMP/CAM/pull/1612
+ - Ztdodt comment fix:
+            https://github.com/ESCOMP/CAM/issues/1626 and https://github.com/ESCOMP/CAM/pull/1627
+     The ztodt argument passed to physics is documented in many routines as
+     "2 delta-t" / "two times model timestep", a leftover from the leapfrog
+     (Eulerian spectral) dycore.  All current dycores pass the plain physics
+     time step (get_step_size()).  Comments only; no code changes.
+ - GEOS-Chem coupling has incorrect molecular weights in mo_sim_dat.F90 (mismatched) breaking MAM coupling:
+            https://github.com/ESCOMP/CAM/issues/1630 and  https://github.com/ESCOMP/CAM/pull/1631
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: peverwhee
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       AGENTS.md
+         - add file for AI use
+
+List all existing files that have been modified, and describe the changes:
+
+M       src/chemistry/aerosol/aero_convproc.F90
+M       src/chemistry/geoschem/mo_sim_dat.F90
+M       src/control/cam_snapshot_common.F90
+M       src/dynamics/mpas/dycore
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/convect_deep.F90
+M       src/physics/cam/convect_shallow.F90
+M       src/physics/cam/gw_drag_cam.F90
+M       src/physics/cam/molec_diff.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam/qneg_module.F90
+M       src/physics/cam/vertical_diffusion.F90
+M       src/physics/cam/waccmx_phys_intr.F90
+M       src/physics/cam/zm_conv_intr.F90
+M       src/physics/cam7/convect_diagnostics.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/simple/held_suarez_cam.F90
+M       src/physics/simple/physpkg.F90
+M       src/physics/waccmx/majorsp_diffusion.F90
+M       src/utils/ug_spectralmethods_mod.F90
+          - mods as described above
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+    - Answer difference expected for GEOS-Chem runs
+
+derecho/nvhpc/aux_cam: All BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+
+izumi/gnu/aux_cam: All BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_191
@@ -561,7 +651,6 @@ izumi/gnu/aux_cam: ALL PASS
 Summarize any changes to answers: bit-for-bit unchanged
 
 ===============================================================
-
 ===============================================================
 
 Tag name: cam6_4_185
@@ -62517,7 +62606,7 @@ yellowstone/intel/aux_cam:
   SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s (Overall: FAIL) details:
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s NLCOMP
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s RUN time=118
-  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAI?ßL) details:
+  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
     FAIL SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d NLCOMP
 
   Run failures for SPCAM and WACCMX are pre-existing due to CLM version
