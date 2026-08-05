@@ -1,39 +1,39 @@
 module ug_spectralmethods_mod
 !======================================================================
 !
-! Purpose: Implement Spherical Harmonic Analysis/Synthesis methods 
+! Purpose: Implement Spherical Harmonic Analysis/Synthesis methods
 !          for Unstructured Grids(UG).
 !
 !    Spherical Harmonic Analysis/Synthesis:
 !    ======================================
-!    This module implements 2 classes for the spectral analysis and 
+!    This module implements 2 classes for the spectral analysis and
 !    synthesis of spherical harmonic functions. For each, the global
-!    integrals to compute basis amlitudes are implemented with an area 
+!    integrals to compute basis amlitudes are implemented with an area
 !    weighted sum of the UG gridpoints on the surface of the sphere.
 !
-!    One computes ampitudes via a least-squares fit in the typical mannor. 
-!    This approach distributes numerical errors in the basis representation 
-!    based on covariances, but it can be very costly for the MPI environment. 
-!    The other approach orthogonalizes the spherical harmonic basis functions 
-!    via the Gram-Schmidt method. While this is much less computationally 
+!    One computes ampitudes via a least-squares fit in the typical mannor.
+!    This approach distributes numerical errors in the basis representation
+!    based on covariances, but it can be very costly for the MPI environment.
+!    The other approach orthogonalizes the spherical harmonic basis functions
+!    via the Gram-Schmidt method. While this is much less computationally
 !    expensive, it propagates numerical errors in the basis representations
 !    from the gravest scales down to the higher resolution modes.
 !
 !      SphericalHarmonic_COV_t:  For the analysis/synthesis of spherical harmonic
-!                                functions and amplitudes on a 2D/3D grids of points 
+!                                functions and amplitudes on a 2D/3D grids of points
 !                                distributed over the surface of a sphere.
-!                                Amplitudes are computed based on COV values between 
+!                                Amplitudes are computed based on COV values between
 !                                basis functions.
 !
 !      SphericalHarmonic_GS_t:   For the analysis/synthesis of spherical harmonic
-!                                functions and amplitudes on a 2D/3D grids of points 
+!                                functions and amplitudes on a 2D/3D grids of points
 !                                distributed over the surface of a sphere.
 !                                Orthonormal basis functions are constructed via
-!                                Gram-Schmidt. 
+!                                Gram-Schmidt.
 !
 !    Zonal Mean Analysis/Synthesis:
 !    ======================================
-!    This module implements 3 classes for the spectral analysis and 
+!    This module implements 3 classes for the spectral analysis and
 !    synthesis of zonal mean values based on m=0 spherical harmonics.
 !
 !      ZonalMean_t:    For the analysis/synthesis of zonal mean values
@@ -57,47 +57,47 @@ module ug_spectralmethods_mod
 !    ======================
 !    BASIS SAMPLING ERRORS:
 !    ======================
-!      The variable values on the unstructured gridpoints represent the 
+!      The variable values on the unstructured gridpoints represent the
 !      average value over the associated gridpoint's area, but the basis
 !      values used at these gridpoints are just the spherical harmonics
 !      evaluated at that point. These sampling errors can be significant
-!      particularly in the polar regions where the range of lat/lon values 
-!      can vary greatly over the domain of a finite area. 
+!      particularly in the polar regions where the range of lat/lon values
+!      can vary greatly over the domain of a finite area.
 !
-!      To suppress these errors, during the initailization process, each 
-!      spherical harmonic basis functions is averaged over a local circular 
-!      domain centered at each gridpoint. The radius of this domain is set 
+!      To suppress these errors, during the initailization process, each
+!      spherical harmonic basis functions is averaged over a local circular
+!      domain centered at each gridpoint. The radius of this domain is set
 !      to match the area associated with the given gridpoint. The number of
-!      equal-area gridpoints within this circular domain is specified by the 
+!      equal-area gridpoints within this circular domain is specified by the
 !      user via an optional argument to the initialization routine. While the
-!      representation of the area is approximate, the goal here is for the 
-!      gridpoint values of each basis function to also represent the local 
+!      representation of the area is approximate, the goal here is for the
+!      gridpoint values of each basis function to also represent the local
 !      area average over the associated gridpoint's area.
-!   
-!      The gridpoints in the circular domain are constructed in the the form 
-!      of concentric rings such that each point has equal area weighting. The
-!      users controls the density of samping points by setting the number of 
-!      rings. 
 !
-!         There is always 1 point at center, each additional 
-!         ring (kk) contains 8*(kk-1) sample points. The total 
+!      The gridpoints in the circular domain are constructed in the the form
+!      of concentric rings such that each point has equal area weighting. The
+!      users controls the density of samping points by setting the number of
+!      rings.
+!
+!         There is always 1 point at center, each additional
+!         ring (kk) contains 8*(kk-1) sample points. The total
 !         number of sample points (Nsamp) is thus:
 !
 !             SAMPLE_NRING=1   Nsamp=1      (DEFAULT SampleGrid NOT used)
-!             SAMPLE_NRING=2   Nsamp=9  
-!             SAMPLE_NRING=3   Nsamp=25  
-!             SAMPLE_NRING=4   Nsamp=49  
+!             SAMPLE_NRING=2   Nsamp=9
+!             SAMPLE_NRING=3   Nsamp=25
+!             SAMPLE_NRING=4   Nsamp=49
 !
-!      The SampleGrid is only used during initialization, after that there 
+!      The SampleGrid is only used during initialization, after that there
 !      is no additional computational cost.
-!    
+!
 !
 ! USAGE:
 !
 !    Spherical Harmonic Analysis/Synthesis:
 !    ======================================
 !    Compute Spherical Harmonic amplitudes and synthesize values on 2D/3D physgrid.
-!    All of the differences between these classes are internal, so methods/interfaces 
+!    All of the differences between these classes are internal, so methods/interfaces
 !    are the same for the user:
 !
 !         Usage: type(SphericalHarmonic_COV_t):: SH
@@ -105,8 +105,8 @@ module ug_spectralmethods_mod
 !         =========================================
 !           call SH%init(nmax,nbas,SAMPLE_NRING)
 !           ------------------
-!               - Initialize the data structure for the given spherical 
-!                 truncation 'nmax' and return 'nbas',the number of spherical 
+!               - Initialize the data structure for the given spherical
+!                 truncation 'nmax' and return 'nbas',the number of spherical
 !                 harmonic basis functions.
 !
 !               Arguments:
@@ -116,7 +116,7 @@ module ug_spectralmethods_mod
 !
 !           call SH%calc_amps(Gdata,Bamp)
 !           -----------------------------
-!               - For the initialized SphericalHarmonic_t; Given Gdata() values on 
+!               - For the initialized SphericalHarmonic_t; Given Gdata() values on
 !                 the physgrid, compute the harmonic basis amplitudes Bamp().
 !
 !               Interface: 2D data on the physgrid
@@ -129,7 +129,7 @@ module ug_spectralmethods_mod
 !
 !           call SH%eval_grid(Bamp,Gdata)
 !           -----------------------------
-!               - For the initialized SphericalHarmonic_t; Given Bamp() spherical 
+!               - For the initialized SphericalHarmonic_t; Given Bamp() spherical
 !                 harmonic basis amplitudes, compute the Gdata() values on the physgrid.
 !
 !               Interface: 2D data on the physgrid
@@ -251,9 +251,9 @@ module ug_spectralmethods_mod
 !                 latitude gridpoints. The generated grid over-writes the given values
 !                 lats and area passed by the user.
 !
-!                 The optional USE_LINEARWGTS flag allows for the linear weighting of 
-!                 gridpoint values as they are distributed to latitude bins, or to assign 
-!                 grid point values to a single bin with equal weighting. 
+!                 The optional USE_LINEARWGTS flag allows for the linear weighting of
+!                 gridpoint values as they are distributed to latitude bins, or to assign
+!                 grid point values to a single bin with equal weighting.
 !                 (default=TRUE for linear weighting)
 !
 !               Arguments:
@@ -425,7 +425,7 @@ contains
     !=======================================================================
     subroutine init_SphericalHarmonic_COV(this,I_nmax,O_nbas,SAMPLE_NRING)
       !
-      ! init_SphericalHarmonic: Initialize the SphericalHarmonic data structure 
+      ! init_SphericalHarmonic: Initialize the SphericalHarmonic data structure
       !                 for the physics grid. It is assumed that the domain
       !                 of these gridpoints spans the surface of the sphere.
       !                 The representation of basis functions is
@@ -456,7 +456,7 @@ contains
       real(r8),allocatable:: Rs    (:)
       real(r8),allocatable:: As    (:)
       real(r8):: Rc,Dth,Ws
-      real(r8):: Slat0,Slon0,X0,Y0,Z0  
+      real(r8):: Slat0,Slon0,X0,Y0,Z0
       real(r8):: Slon, Slat,Xs,Ys,Zs
       real(r8):: Rot(3,3),Rse,Bavg,Pnm
       integer :: kk,ns,Nsamp
@@ -563,8 +563,8 @@ contains
       end do
       Nsamp = Nr_sum(this%nring)
 
-      ! Init the equal area grid with the center point, 
-      ! then add the polar coordinate gridpoints for 
+      ! Init the equal area grid with the center point,
+      ! then add the polar coordinate gridpoints for
       ! each ring for a reference domain radius=1.
       !-------------------------------------------------
       allocate(Rs(Nsamp))
@@ -593,7 +593,7 @@ contains
         write(iulog,*) ' '
         write(iulog,*) 'SphericalHarmonic_COV%init: SAMPLE GRID: Nsamp=',Nsamp
         do ns=1,Nsamp
-          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360./twoPI
+          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360._r8/twoPI
         end do
         write(iulog,*) ' '
       ENDIF
@@ -636,14 +636,14 @@ contains
                end do
              end do
            else
-             ! Optionally Compute local area averge of 
+             ! Optionally Compute local area averge of
              ! basis values for each gridpoiont
              !---------------------------------------
              do lchnk=begchunk,endchunk
                ncols = get_ncols_p(lchnk)
                do cc = 1,ncols
 
-                 ! Set values to rotate/scale the sample 
+                 ! Set values to rotate/scale the sample
                  ! grid to the current SE gridpoint
                  !-----------------------------------------
                  Rse      = sqrt(this%area(cc,lchnk)/pi)
@@ -667,24 +667,24 @@ contains
                    !---------------------------------------------------------
                    Slat0 = halfPI - Rse*Rs(ns)
                    Slon0 = As(ns)
-   
+
                    ! Compute cartesian coordinates
                    !-------------------------------
                    X0 = cos(Slon0)*cos(Slat0)
                    Y0 = sin(Slon0)*cos(Slat0)
                    Z0 = sin(Slat0)
-   
+
                    ! Apply the Rotation from the NP
                    !--------------------------------
                    Xs = X0*Rot(1,1) + Y0*Rot(2,1) + Z0*Rot(3,1)
                    Ys = X0*Rot(1,2) + Y0*Rot(2,2) + Z0*Rot(3,2)
                    Zs = X0*Rot(1,3) + Y0*Rot(2,3) + Z0*Rot(3,3)
-   
+
                    ! Compute resulting lat/lon gridpoint
                    !-------------------------------------
                    Slon = atan2(Ys,Xs)
                    Slat = halfPI + asin(Zs)
-   
+
                    ! Compute basis value and add the result to the average
                    !    Slat shifted by PI/2 for SH's SP origin
                    !-------------------------------------------------------
@@ -1012,7 +1012,7 @@ contains
     !=======================================================================
     subroutine init_SphericalHarmonic_GS(this,I_nmax,O_nbas,SAMPLE_NRING)
       !
-      ! init_SphericalHarmonic: Initialize the SphericalHarmonic data structure 
+      ! init_SphericalHarmonic: Initialize the SphericalHarmonic data structure
       !                 for the physics grid. It is assumed that the domain
       !                 of these gridpoints spans the surface of the sphere.
       !                 The representation of basis functions is
@@ -1042,7 +1042,7 @@ contains
       real(r8),allocatable:: Rs    (:)
       real(r8),allocatable:: As    (:)
       real(r8):: Rc,Dth,Ws
-      real(r8):: Slat0,Slon0,X0,Y0,Z0  
+      real(r8):: Slat0,Slon0,X0,Y0,Z0
       real(r8):: Slon, Slat,Xs,Ys,Zs
       real(r8):: Rot(3,3),Rse,Bavg,Bavg_e,Bavg_o
       integer :: kk,ns,Nsamp
@@ -1126,8 +1126,8 @@ contains
       end do
       Nsamp = Nr_sum(this%nring)
 
-      ! Init the equal area grid with the center point, 
-      ! then add the polar coordinate gridpoints for 
+      ! Init the equal area grid with the center point,
+      ! then add the polar coordinate gridpoints for
       ! each ring for a reference domain radius=1.
       !-------------------------------------------------
       allocate(Rs(Nsamp))
@@ -1156,7 +1156,7 @@ contains
         write(iulog,*) ' '
         write(iulog,*) 'SphericalHarmonic_GS%init: SAMPLE GRID: Nsamp=',Nsamp
         do ns=1,Nsamp
-          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360./twoPI
+          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360._r8/twoPI
         end do
         write(iulog,*) ' '
       ENDIF
@@ -1166,8 +1166,8 @@ contains
       this%nbas = 1
       this%basis(:,begchunk:endchunk,1) = invSqrt4pi
 
-      ! Loop over the remaining meridional modes, 
-      ! The ordering of the basis functions here is 
+      ! Loop over the remaining meridional modes,
+      ! The ordering of the basis functions here is
       ! set to accomodate Gram-Schmidt
       !------------------------------------------------
       do nb=2,(this%nmax+1)
@@ -1189,14 +1189,14 @@ contains
             end do
           end do
         else
-          ! Optionally Compute local area averge of 
+          ! Optionally Compute local area averge of
           ! basis values for each gridpoiont
           !---------------------------------------
           do lchnk=begchunk,endchunk
             ncols = get_ncols_p(lchnk)
             do cc = 1,ncols
 
-              ! Set values to rotate/scale the sample 
+              ! Set values to rotate/scale the sample
               ! grid to the current SE gridpoint
               !-----------------------------------------
               Rse      = sqrt(this%area(cc,lchnk)/pi)
@@ -1220,24 +1220,24 @@ contains
                 !---------------------------------------------------------
                 Slat0 = halfPI - Rse*Rs(ns)
                 Slon0 = As(ns)
-   
+
                 ! Compute cartesian coordinates
                 !-------------------------------
                 X0 = cos(Slon0)*cos(Slat0)
                 Y0 = sin(Slon0)*cos(Slat0)
                 Z0 = sin(Slat0)
-   
+
                 ! Apply the Rotation from the NP
                 !--------------------------------
                 Xs = X0*Rot(1,1) + Y0*Rot(2,1) + Z0*Rot(3,1)
                 Ys = X0*Rot(1,2) + Y0*Rot(2,2) + Z0*Rot(3,2)
                 Zs = X0*Rot(1,3) + Y0*Rot(2,3) + Z0*Rot(3,3)
-   
+
                 ! Compute resulting lat/lon gridpoint
                 !-------------------------------------
                 Slon = atan2(Ys,Xs)
                 Slat = halfPI + asin(Zs)
-   
+
                 ! Compute basis value and add the result to the average
                 !    Slat shifted by PI/2 for SH's SP origin
                 !-------------------------------------------------------
@@ -1272,14 +1272,14 @@ contains
               end do
             end do
           else
-            ! Optionally Compute local area averge of 
+            ! Optionally Compute local area averge of
             ! basis values for each gridpoiont
             !---------------------------------------
             do lchnk=begchunk,endchunk
               ncols = get_ncols_p(lchnk)
               do cc = 1,ncols
 
-                ! Set values to rotate/scale the sample 
+                ! Set values to rotate/scale the sample
                 ! grid to the current SE gridpoint
                 !-----------------------------------------
                 Rse      = sqrt(this%area(cc,lchnk)/pi)
@@ -1304,24 +1304,24 @@ contains
                   !---------------------------------------------------------
                   Slat0 = halfPI - Rse*Rs(ns)
                   Slon0 = As(ns)
-   
+
                   ! Compute cartesian coordinates
                   !-------------------------------
                   X0 = cos(Slon0)*cos(Slat0)
                   Y0 = sin(Slon0)*cos(Slat0)
                   Z0 = sin(Slat0)
-   
+
                   ! Apply the Rotation from the NP
                   !--------------------------------
                   Xs = X0*Rot(1,1) + Y0*Rot(2,1) + Z0*Rot(3,1)
                   Ys = X0*Rot(1,2) + Y0*Rot(2,2) + Z0*Rot(3,2)
                   Zs = X0*Rot(1,3) + Y0*Rot(2,3) + Z0*Rot(3,3)
-   
+
                   ! Compute resulting lat/lon gridpoint
                   !-------------------------------------
                   Slon = atan2(Ys,Xs)
                   Slat = halfPI + asin(Zs)
-   
+
                   ! Compute basis value and add the result to the average
                   !    Slat shifted by PI/2 for SH's SP origin
                   !-------------------------------------------------------
@@ -1401,9 +1401,9 @@ contains
             Bsum(count,1) = this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
           end do
         end do
-  
+
         call shr_reprosum_calc(Bsum, Bnorm, count, nlcols, 1, gbl_count=ngcols_p, commid=mpicom)
-  
+
         do lchnk=begchunk,endchunk
           ncols = get_ncols_p(lchnk)
           this%basis(:ncols,lchnk,nn) = this%basis(:ncols,lchnk,nn)/sqrt(Bnorm(1))
@@ -1549,7 +1549,7 @@ contains
       nlev   = size(I_Gdata,dim=2)
       nlcols = get_nlcols_p()
 
-      ! Flatten the vertical and basis dimensions to 
+      ! Flatten the vertical and basis dimensions to
       ! allow a single MPI reduction
       !-----------------------------------------------
       nbas_x_nlev = this%nbas*nlev
@@ -1706,7 +1706,7 @@ contains
       real(r8),allocatable:: Rs    (:)
       real(r8),allocatable:: As    (:)
       real(r8):: Rc,Dth,Ws
-      real(r8):: Slat0,Slon0,X0,Y0,Z0  
+      real(r8):: Slat0,Slon0,X0,Y0,Z0
       real(r8):: Slon, Slat,Xs,Ys,Zs
       real(r8):: Rot(3,3),Rse,Bavg,Pnm
       integer :: kk,ns,mm,Nsamp
@@ -1806,8 +1806,8 @@ contains
       end do
       Nsamp = Nr_sum(this%nring)
 
-      ! Init the equal area grid with the center point, 
-      ! then add the polar coordinate gridpoints for 
+      ! Init the equal area grid with the center point,
+      ! then add the polar coordinate gridpoints for
       ! each ring for a reference domain radius=1.
       !-------------------------------------------------
       allocate(Rs(Nsamp))
@@ -1836,7 +1836,7 @@ contains
         write(iulog,*) ' '
         write(iulog,*) 'ZonalMean%init: SAMPLE GRID: Nsamp=',Nsamp
         do ns=1,Nsamp
-          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360./twoPI
+          write(iulog,*) ' ns=',ns,' Grid: Rs=',Rs(ns),' As=',As(ns),As(ns)*360._r8/twoPI
         end do
         write(iulog,*) ' '
       ENDIF
@@ -1866,14 +1866,14 @@ contains
               end do
            end do
          else
-           ! Optionally Compute local area averge of 
+           ! Optionally Compute local area averge of
            ! basis values for each gridpoiont
            !---------------------------------------
            do lchnk=begchunk,endchunk
              ncols = get_ncols_p(lchnk)
              do cc = 1,ncols
 
-               ! Set values to rotate/scale the sample 
+               ! Set values to rotate/scale the sample
                ! grid to the current SE gridpoint
                !-----------------------------------------
                Rse      = sqrt(this%area(cc,lchnk)/pi)
@@ -1897,24 +1897,24 @@ contains
                  !---------------------------------------------------------
                  Slat0 = halfPI - Rse*Rs(ns)
                  Slon0 = As(ns)
- 
+
                  ! Compute cartesian coordinates
                  !-------------------------------
                  X0 = cos(Slon0)*cos(Slat0)
                  Y0 = sin(Slon0)*cos(Slat0)
                  Z0 = sin(Slat0)
- 
+
                  ! Apply the Rotation from the NP
                  !--------------------------------
                  Xs = X0*Rot(1,1) + Y0*Rot(2,1) + Z0*Rot(3,1)
                  Ys = X0*Rot(1,2) + Y0*Rot(2,2) + Z0*Rot(3,2)
                  Zs = X0*Rot(1,3) + Y0*Rot(2,3) + Z0*Rot(3,3)
- 
+
                  ! Compute resulting lat/lon gridpoint
                  !-------------------------------------
                  Slon = atan2(Ys,Xs)
                  Slat = halfPI + asin(Zs)
- 
+
                  ! Compute basis value and add the result to the average
                  !    Slat shifted by PI/2 for SH's SP origin
                  !-------------------------------------------------------
@@ -2588,9 +2588,9 @@ contains
       !                    over-writes the values of IO_lats/IO_area passed by
       !                    the user.
       !
-      !                    The optional USE_LINEARWGTS flag allows for the 
-      !                    linear weighting of gridpoint values as they are 
-      !                    distributed to latitude bins, or to assign grid point 
+      !                    The optional USE_LINEARWGTS flag allows for the
+      !                    linear weighting of gridpoint values as they are
+      !                    distributed to latitude bins, or to assign grid point
       !                    values to a single bin with equal weighting.
       !                      (default=TRUE for linear weighting)
       !=====================================================================
@@ -2715,7 +2715,7 @@ contains
       end do
 
       if(this%LINEARWGTS) then
-        ! Each Gridpoint value is distributed with LINEAR weighting 
+        ! Each Gridpoint value is distributed with LINEAR weighting
         ! to the two neighboring Latitude bins
         !------------------------------------------------------
         do lchnk=begchunk,endchunk
@@ -2767,7 +2767,7 @@ contains
           end do
         end do
         call shr_reprosum_calc(Asum, Anorm, count, nlcols, I_nlat, gbl_count=ngcols_p, commid=mpicom)
-  
+
       else
         ! Each Gridpoint value is assigned to its Latitude bin
         ! with equal weighting.
@@ -2801,7 +2801,7 @@ contains
             this%idx_map(cc,lchnk) = jlat
           end do
         end do
-  
+
         ! Compute normalization for weighted sums
         !--------------------------------------
         Asum(:,:) = 0._r8
@@ -2816,10 +2816,10 @@ contains
           end do
         end do
         call shr_reprosum_calc(Asum, Anorm, count, nlcols, I_nlat, gbl_count=ngcols_p, commid=mpicom)
-  
+
       endif
 
-      ! Save normalization vallues for future 
+      ! Save normalization vallues for future
       ! weghted-average calculations
       !-----------------------------------------
       this%a_norm = Anorm
@@ -2891,7 +2891,7 @@ contains
       ! Compute area-weighted sums
       !-----------------------------
       if(this%LINEARWGTS) then
-        ! Each Gridpoint value is distributed with LINEAR weighting 
+        ! Each Gridpoint value is distributed with LINEAR weighting
         ! to the two neighboring Latitude bins
         !------------------------------------------------------
         count = 0
@@ -2990,7 +2990,7 @@ contains
       ! Compute area-weighted sums
       !-----------------------------
       if(this%LINEARWGTS) then
-        ! Each Gridpoint value is distributed with LINEAR weighting 
+        ! Each Gridpoint value is distributed with LINEAR weighting
         ! to the two neighboring Latitude bins
         !------------------------------------------------------
         do ilev = 1,nlev
@@ -3061,7 +3061,7 @@ contains
     !=======================================================================
     subroutine set_ZonalAverage_2Dgrid(this,I_Zdata,O_Gdata)
       !
-      ! set_ZonalAverage_2Dgrid: Set the 2D data values given 
+      ! set_ZonalAverage_2Dgrid: Set the 2D data values given
       !                          the 1D zonal Average profile values,
       !=====================================================================
       !
@@ -3119,7 +3119,7 @@ contains
     !=======================================================================
     subroutine set_ZonalAverage_3Dgrid(this,I_Zdata,O_Gdata)
       !
-      ! set_ZonalAverage_3Dgrid: Set the 3D data values given 
+      ! set_ZonalAverage_3Dgrid: Set the 3D data values given
       !                          the 2D zonal Average profile values,
       !=====================================================================
       !
