@@ -1,3 +1,355 @@
+
+===============================================================
+
+Tag name: cam6_4_193
+Originator(s):cacraigucar
+Date: August 6, 2026
+One-line Summary: Update externals to match cesm3_0_beta09
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1637
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals to match cesm3_0_beta09:  https://github.com/ESCOMP/CAM/issues/1636
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       ccs_config
+M       cime
+M       components/cdeps
+M       components/cice
+M       components/clm
+M       components/cmeps
+M       components/mizuRoute
+M       doc/ChangeLog
+M       libraries/FMS
+M       share
+M       src/dynamics/mpas/dycore
+         - update externals
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: FAIL) details:
+     - Failure which was previously discovered in CESM alpha tag testing:  See https://github.com/ESCOMP/CAM/issues/1569
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to fail this time
+
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s
+(Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default MODEL_BUILD time=1699
+    error message: NVFORTRAN-S-0038-Symbol, chkerr, has not been explicitly declared (/glade/u/home/cacraig/cam_update_beta09/components/cmeps/cime_con fig/../mediator/esmFldsExchange_cesm_mod.F90)
+      - reported to Jian Sun and Chris Fischer via email
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF) details:
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_192
+Originator(s): cacraigucar, peterhjortlauritzen, duncanwp, nusbaume, jimmielin
+Date: August 5, 2026
+One-line Summary: Next round of CAM misc updates
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1635
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - check_energy tracer mass-conservation check never runs: 'exit' instead of 'cycle:
+            https://github.com/ESCOMP/CAM/issues/1592 and https://github.com/ESCOMP/CAM/pull/1607
+     Remove check_tracers_init/check_tracers_chng and the check_tracers_data type:
+     check_energy tracer mass-conservation check never runs: 'exit' instead of 'cycle').  The check has been a no-op since
+     CAM6, and its design is not valid: individual chemical species are not conserved
+     under reactions (only the column sum is).
+ - Outputting of gravity wave diagnostics should be using pcols:
+            https://github.com/ESCOMP/CAM/issues/1603
+ - Certain constituent-dimensioned or dust(4)-dimensioned fields are not written correctly into CAM snapshots:
+            https://github.com/ESCOMP/CAM/issues/1609 and https://github.com/ESCOMP/CAM/pull/1610
+ - Add AGENTS.md to CAM repository:
+            https://github.com/ESCOMP/CAM/issues/1611 and https://github.com/ESCOMP/CAM/pull/1612
+ - Ztdodt comment fix:
+            https://github.com/ESCOMP/CAM/issues/1626 and https://github.com/ESCOMP/CAM/pull/1627
+     The ztodt argument passed to physics is documented in many routines as
+     "2 delta-t" / "two times model timestep", a leftover from the leapfrog
+     (Eulerian spectral) dycore.  All current dycores pass the plain physics
+     time step (get_step_size()).  Comments only; no code changes.
+ - GEOS-Chem coupling has incorrect molecular weights in mo_sim_dat.F90 (mismatched) breaking MAM coupling:
+            https://github.com/ESCOMP/CAM/issues/1630 and  https://github.com/ESCOMP/CAM/pull/1631
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: peverwhee
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       AGENTS.md
+         - add file for AI use
+
+List all existing files that have been modified, and describe the changes:
+
+M       src/chemistry/aerosol/aero_convproc.F90
+M       src/chemistry/geoschem/mo_sim_dat.F90
+M       src/control/cam_snapshot_common.F90
+M       src/dynamics/mpas/dycore
+M       src/physics/cam/check_energy.F90
+M       src/physics/cam/convect_deep.F90
+M       src/physics/cam/convect_shallow.F90
+M       src/physics/cam/gw_drag_cam.F90
+M       src/physics/cam/molec_diff.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam/qneg_module.F90
+M       src/physics/cam/vertical_diffusion.F90
+M       src/physics/cam/waccmx_phys_intr.F90
+M       src/physics/cam/zm_conv_intr.F90
+M       src/physics/cam7/convect_diagnostics.F90
+M       src/physics/cam7/physpkg.F90
+M       src/physics/simple/held_suarez_cam.F90
+M       src/physics/simple/physpkg.F90
+M       src/physics/waccmx/majorsp_diffusion.F90
+M       src/utils/ug_spectralmethods_mod.F90
+          - mods as described above
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+    - Answer difference expected for GEOS-Chem runs
+
+derecho/nvhpc/aux_cam: All BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+
+izumi/gnu/aux_cam: All BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_191
+Originator(s): patc, jet, fvitt
+Date: Aug 3, 2026
+One-line Add Spectral Nudging Option and Fix Nudging Behavior When Files Are Missing- #1402
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1402
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+This pull request addresses issues #1393 and #1273
+
+For Issue #1273 an error exit with a message is invoked if a missing nudging file is encountered.
+
+For Issue #1393 a module for computing spherical harmonics on the physics grid is implemented. The nudging module has additional functionality that uses this module to optionally filter nudging tendencies to scales larger then a specified truncation scale.
+
+This functionality is controlled by 2 additional variables in the &nudging_nl namelist.
+Nudge_SpectralFilter- LOGICAL Option to apply spherical harminic filtering to
+the model state and target data so that nudging
+tendencies are only applied to scales larger than
+the specified truncation.
+
+Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+for spectral filtering. The nominal horizontal scale of
+the filtering can be estimated as:
+     Hscale = PI*6350/Nudge_SpectralNtrunc
+	i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal nudging scale  Hscale~500km.
+
+New Functionality was also added for PS nudging and user defined nudging windows.
+	- PS nudging is now available via namelist variables nudge_pscoef, nudge_psprof,
+	  and nudge_psscal
+        - User-defined nudging window can be specified via a netcdf file defining the
+	  horizontal boundaries and using a profile index of 3 for nudge_uprof,
+	  nudge_vprof, nudge_tprof, nudge_qprof or nudge_psprof
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+
+	New Namelist variables added - see nudging.F90 for more information.
+	- nudge_bwindow_file - CHAR path to the Horizonal Boundary Window file.
+	- nudge_psscal - REAL Coeffcient controling the vertical influence function.
+	- nudge_spectralfilter - LOGICAL Option to apply spherical harminic filtering to model state
+	- nudge_spectralnring - INT number of sampling rings used for local area avg of spherical harmonic modes
+	- nudge_spectralntrunc - INT number of meridional spherical harmonic modes
+	- nudge_zonalfilter - LOGICAL apply zonal mean filtering
+	- nudge_zonalnbasis - INT number of meridional modes(Legendre Polynomials) used for filtering
+
+	New Namelist Defaults
+	- nudge_pscoef 1.00 => 0.00
+	- nudge_psprof 1 => 0
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jet, fvitt
+
+List all files eliminated:
+D       src/utils/zonal_mean_mod.F90
+
+List all files added and what they do:
+A       src/utils/ug_spectralmethods_mod.F90
+	- Refactored spectral methods which added spectral functionality and replace zonal_mean_mod.F90
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_definition.xml
+	- new spectral namelist variables
+M       cime_config/testdefs/testmods_dirs/cam/nudging/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq3s_nudging_f10_L26/user_nl_cam
+M       cime_config/testdefs/testmods_dirs/cam/outfrq3s_nudging_ne5_L26/user_nl_cam
+	- new  user_nl_cam files for spectral nudge testing
+M       src/physics/cam/nudging.F90
+	- refactor of nudging routine.
+M       src/physics/cam/phys_grid_ctem.F90
+	- new location for zonal_mean procedures, moved from zonal_mean_mod.F90
+M       tools/nudging/user_nl_cam-NUDGING_TEMPLATE
+	- nudgeting template
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+    FAIL SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging NLCOMP
+	- expected due to addition of new nl variables
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam:
+  NLFAIL ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 NLCOMP
+     - expected due to addition of new nl variables
+
+===============================================================
+===============================================================
+
+Tag name: cam6_4_190
+Originator(s): cacraigucar, jimmielin, gold2718, duncanwp
+Date: July 23, 2026
+One-line Summary: Misc changes
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1629
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - mo_setaer.F90 not needed: https://github.com/ESCOMP/CAM/issues/1582
+  - physics_dme_adjust_rebuilds surface pressure inside the vertical loop, orrupting state%ps (FV/FV3/EUL):
+  https://github.com/ESCOMP/CAM/issues/1588
+  - Graupel cloud fraction averaged into cldfsnow_grid (overwrites snow, leaves CLDFGRAU empty) in micro_pumas_cam.F90:
+  https://github.com/ESCOMP/CAM/issues/1593
+  - deep_scheme_does_scav_trans is no longer needed: https://github.com/ESCOMP/CAM/issues/1598
+  - PM1/PM10_SRF (MAM) wrong vertical dimensions being passed into horiz_only field: https://github.com/ESCOMP/CAM/issues/1599
+  - qh2o in GEOS-Chem chemisty.F90 should be sized pcols - stack corruption: https://github.com/ESCOMP/CAM/issues/1604
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin, cacraigucar
+
+List all files eliminated:
+D       src/chemistry/mozart/mo_setaer.F90
+          - issue #1582
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/geoschem/chemistry.F90
+           - issue #1604
+
+M       src/chemistry/utils/modal_aero_wateruptake.F90
+           - issue #1599
+
+M       src/physics/cam/convect_deep.F90
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+          - issue #1598
+
+M       src/physics/cam/micro_pumas_cam.F90
+          - issue #1593
+
+M       src/physics/cam/physics_types.F90
+          - issue #1588
+
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+     - issue #1604 expected GEOS-Chem baseline diff
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_189
@@ -391,7 +743,6 @@ izumi/gnu/aux_cam: ALL PASS
 Summarize any changes to answers: bit-for-bit unchanged
 
 ===============================================================
-
 ===============================================================
 
 Tag name: cam6_4_185
@@ -1028,8 +1379,8 @@ but without RTTOV output), RTTOV will not be compiled.
 
 Describe any changes made to the namelist:
 Trigger use of COSP-RTTOV with cosp_lrttov_sim, cosp_rttov_Ninstruments, cosp_rttov_instrument_namelists
-Allows COSP output to apply simple swathing using “cosp_N_SWATHS_[INSTRUMENT_NAME]”, “cosp_SWATH_LOCALTIMES_[INSTRUMENT_NAME]”,
-“cosp_SWATH_WIDTHS_[INSTRUMENT_NAME]"
+Allows COSP output to apply simple swathing using ?cosp_N_SWATHS_[INSTRUMENT_NAME]?, ?cosp_SWATH_LOCALTIMES_[INSTRUMENT_NAME]?,
+?cosp_SWATH_WIDTHS_[INSTRUMENT_NAME]"
 
 List any changes to the defaults for the boundary datasets: N/A
 
@@ -13239,7 +13590,7 @@ Github PR URL: https://github.com/ESCOMP/CAM/pull/1117
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
   - Continuing development of gravity wave parameterization (//github.com/ESCOMP/CAM/issues/1115)
   - Added vorticity calculation to SE dycore.  Vorticity is passed to the gravity wave (GW) scheme in
-    model physics to provide a possible source for ‘moving mountain’ GW, i.e., low-phase speed GW forced
+    model physics to provide a possible source for ?moving mountain? GW, i.e., low-phase speed GW forced
     by atmospheric circulations. This provides another forcing option, in addition to boundary layer
     momentum flux implemented earlier. Vorticity anomalies as sources for GW have been proposed by other
     researchers in published papers.
@@ -35671,7 +36022,7 @@ Purpose of changes (include the issue number and title text for each relevant Gi
  - add value of zmconv_parcel_pbl in the namelist #498
  - Update externals to cesm2_3_beta07 #499
  - default pecount for ne120xx needs to be increased to run "out of the box" #500
- - Update dyn_grid to read from the INI grid if the initial conditions file has dimension ‘ncol.’ Always write using the GLL grid. (no issue opened for this bug)
+ - Update dyn_grid to read from the INI grid if the initial conditions file has dimension ?ncol.? Always write using the GLL grid. (no issue opened for this bug)
 
 Describe any changes made to build system:
 
@@ -62347,7 +62698,7 @@ yellowstone/intel/aux_cam:
   SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s (Overall: FAIL) details:
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s NLCOMP
     FAIL SMS_D_Ln9.f19_f19.FXHIST.yellowstone_intel.cam-outfrq9s RUN time=118
-  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAI≈ßL) details:
+  SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
     FAIL SMS_Ld1.f09_f09.FW1850.yellowstone_intel.cam-reduced_hist1d NLCOMP
 
   Run failures for SPCAM and WACCMX are pre-existing due to CLM version
@@ -64014,8 +64365,8 @@ Describe any changes made to build system:
 Describe any changes made to the namelist:
  - Added the following namelist variables for gw_rdg
      gw_rdg_do_divstream -- If .true. use separate dividing streamlines for downslope wind and
-                            flow splitting regimes (“DS” configuration). If .false. use single
-                            dividing streamline as in Scinocca&McFarlane 2000 (“SM” configuration).
+                            flow splitting regimes (?DS? configuration). If .false. use single
+                            dividing streamline as in Scinocca&McFarlane 2000 (?SM? configuration).
      gw_rdg_C_BetaMax_DS -- Enhancement factor for downslope wind stress in DS configuration
      gw_rdg_C_GammaMax -- Enhancement factor for depth of downslope wind regime in DS configuration
      gw_rdg_Frx0 -- Lower inverse Froude number limits on linear ramp terminating downslope wind
@@ -64996,7 +65347,7 @@ Purpose of changes:
  Modify the chemical tropopause definition poleward of 50 degrees from using a
  fixed 300 hPa level (see note for 5_4_89) to use the lapse rate tropopause at
  P > 125 hPa and the climatology if the lapse rate tropopause is found at
- P < 125 hPa or is not found. This eliminates “false” tropopause detection in the
+ P < 125 hPa or is not found. This eliminates ?false? tropopause detection in the
  75 hPa < P < 125 hPa range that are not physical and have a detrimental effect on
  heterogeneous chemistry in the polar stratosphere, provides a diagnostic that can
  respond to some climate change, and gives a smoother and more physical tropopause
@@ -89594,7 +89945,7 @@ M   models/atm/cam/test/system/tests_chem_mpi
  - updates to chemistry regression tests
 
 M   models/atm/cam/src/chemistry/utils/tracer_data.F90
- -- Bugzilla – Bug 1824 -- don't use cyc_ndx_beg before it is defined
+ -- Bugzilla ? Bug 1824 -- don't use cyc_ndx_beg before it is defined
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,
