@@ -1,6 +1,98 @@
 
 ===============================================================
 
+Tag name: cam6_4_193
+Originator(s):cacraigucar
+Date: August 6, 2026
+One-line Summary: Update externals to match cesm3_0_beta09
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1637
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals to match cesm3_0_beta09:  https://github.com/ESCOMP/CAM/issues/1636
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       ccs_config
+M       cime
+M       components/cdeps
+M       components/cice
+M       components/clm
+M       components/cmeps
+M       components/mizuRoute
+M       doc/ChangeLog
+M       libraries/FMS
+M       share
+M       src/dynamics/mpas/dycore
+         - update externals
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: FAIL) details:
+     - Failure which was previously discovered in CESM alpha tag testing:  See https://github.com/ESCOMP/CAM/issues/1569
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to fail this time
+
+  ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s
+(Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default MODEL_BUILD time=1699
+    error message: NVFORTRAN-S-0038-Symbol, chkerr, has not been explicitly declared (/glade/u/home/cacraig/cam_update_beta09/components/cmeps/cime_con fig/../mediator/esmFldsExchange_cesm_mod.F90)
+      - reported to Jian Sun and Chris Fischer via email
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+     - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: DIFF) details:
+  SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+     - Answer differences due to external updates
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_192
 Originator(s): cacraigucar, peterhjortlauritzen, duncanwp, nusbaume, jimmielin
 Date: August 5, 2026
