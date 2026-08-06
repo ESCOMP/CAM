@@ -2026,22 +2026,21 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf_ini, pdf_zm_varnce_w_2_idx, 0.0_r8)
        call pbuf_set_field(pbuf_ini, pdf_zm_mixt_frac_idx,  0.0_r8)
 
-       call pbuf_set_field(pbuf_ini,  ttend_clubb_idx,      0.0_r8)
-       call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_idx,    0.0_r8)
-       call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_idx,    0.0_r8)
-       call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_idx,  0.0_r8)
-
-       call pbuf_set_field(pbuf_ini,  ttend_clubb_mc_idx,     0.0_r8)
-       call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_mc_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_mc_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_mc_idx,  0.0_r8)
-       call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_mc_idx, 0.0_r8)
-
     endif
 
     ! The following is physpkg, so it needs to be initialized every time
-    call pbuf_set_field(pbuf_ini, fice_idx,    0.0_r8)
+    call pbuf_set_field(pbuf_ini,  fice_idx,               0.0_r8)
+    call pbuf_set_field(pbuf_ini,  ttend_clubb_idx,        0.0_r8)
+    call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_idx,      0.0_r8)
+    call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_idx,      0.0_r8)
+    call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_idx,     0.0_r8)
+    call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_idx,    0.0_r8)
+
+    call pbuf_set_field(pbuf_ini,  ttend_clubb_mc_idx,     0.0_r8)
+    call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_mc_idx,   0.0_r8)
+    call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_mc_idx,   0.0_r8)
+    call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_mc_idx,  0.0_r8)
+    call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_mc_idx, 0.0_r8)
 
     ! --------------- !
     ! End             !
