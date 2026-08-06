@@ -53,8 +53,8 @@ module clubb_mf
   real(r8) :: clubb_mf_ddbeta  = 0._r8
   real(r8) :: clubb_mf_pwfac   = 0._r8
   real(r8) :: clubb_mf_ddexp   = 0._r8
-  real(r8) :: clubb_mf_pwmin   = 0._r8
-  real(r8) :: clubb_mf_pwmax   = 0._r8
+  real(r8) :: clubb_mf_pwmin   = 1.5_r8
+  real(r8) :: clubb_mf_pwmax   = 3.0_r8
   real(r8) :: clubb_mf_cldfrac_fac = 1._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
@@ -641,6 +641,7 @@ module clubb_mf
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
+     mcape = 0._r8
      ddbotm = 0
 
      if (bsort) then
@@ -1737,6 +1738,8 @@ module clubb_mf
 
      ! intialize local variables
      cape      = 0._r8
+     mcape     = 0._r8
+     ztop      = 0._r8
      dmpdz     = 0._r8
 
      if (zt(1) < zt(nzt)) then
