@@ -541,7 +541,7 @@ contains
     integer  :: i,k
     integer  :: irh, rh_l, rh_u
     real(r8) :: rho_air
-    real(r8) :: factor, rfac_sulf, rfac_oc, rfac_bc, rfac_ss
+    real(r8) :: factor, rfac_sulf, rfac_oc, rfac_bc
     real(r8) :: dm_sulf_wet
     real(r8) :: dm_orgc_wet
     real(r8) :: dm_bc_wet
@@ -593,11 +593,33 @@ contains
     real(r8), parameter :: table_rfac_sulf(7) = (/ 1.0_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8, 1.9_r8,  2.2_r8 /)
     real(r8), parameter :: table_rfac_oc(7)   = (/ 1.0_r8, 1.2_r8, 1.4_r8, 1.5_r8, 1.6_r8, 1.8_r8,  2.2_r8 /)
     real(r8), parameter :: table_rfac_bc(7)   = (/ 1.0_r8, 1.0_r8, 1.0_r8, 1.2_r8, 1.4_r8, 1.5_r8,  1.9_r8 /)
-    real(r8), parameter :: table_rfac_ss(7)   = (/ 1.0_r8, 1.6_r8, 1.8_r8, 2.0_r8, 2.4_r8, 2.9_r8,  4.8_r8 /)
 
+    ! for per-mode / per-species lookups outside the column loop:
+    integer :: nbins, nspec_max
+    type(ptr2d_t), allocatable :: mmr_ptr(:,:)  ! interstitial mmr field per (bin,species)
+    character(len=32), allocatable :: spectypes(:,:)
     real(r8), pointer :: mmr(:,:) ! interstitial aerosol mass, number mixing ratios
     integer :: ispc, ibin, ndx, astat
-    character(len=32) :: spectype
+
+    mmr => null()
+
+    nspec_max = 1 ! 1 species per bin in bulk representation
+    nbins = aero_props%nbins()
+    allocate(mmr_ptr(nbins,nspec_max), spectypes(nbins,nspec_max), stat=astat)
+    if( astat/= 0 ) call endrun('bulk_aerosol_state_mod%surf_area_dens: mmr_ptr,spectypes allocate error')
+
+    spectypes(:,:) = ' '
+
+    do ibin = 1, aero_props%nbins()
+       do ispc = 1, aero_props%nspecies(ibin)
+          call aero_props%get(bin_ndx=ibin, species_ndx=ispc, spectype=spectypes(ibin,ispc))
+          if (spec_type_in_list(spectypes(ibin,ispc),types_list)) then
+             call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=mmr_ptr(ibin,ispc)%fld)
+          else
+             mmr_ptr(ibin,ispc)%fld => null()
+          end if
+       end do
+    end do
 
     sad = 0.0_r8
     reff = 0.0_r8
@@ -654,12 +676,12 @@ contains
           ndx=0
           do ibin = 1, aero_props%nbins()
              do ispc = 1, aero_props%nspecies(ibin)
-                call aero_props%get(bin_ndx=ibin, species_ndx=ispc, spectype=spectype)
-                call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=ibin, mmr=mmr)
 
-                if (.not. spec_type_in_list(spectype, types_list)) cycle
+                if (.not. associated(mmr_ptr(ibin,ispc)%fld)) cycle
 
-                select case ( trim(spectype) )
+                mmr => mmr_ptr(ibin,ispc)%fld
+
+                select case ( trim(spectypes(ibin,ispc)) )
                 case('sulfate')
                    ndx = ndx+1
                    !-------------------------------------------------------------------------
@@ -738,6 +760,7 @@ contains
 
     deallocate(sadbins)
     deallocate(diabins)
+    deallocate(mmr_ptr, spectypes)
 
   end subroutine surf_area_dens
 
