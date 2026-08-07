@@ -84,9 +84,9 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num
 type (snapshot_type)    ::  state_snapshot(30)
 type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
-type (snapshot_type)    ::  cam_in_snapshot(pcnst+31)   ! needs to be bigger than pcnst because cam_in is split by constituent.
+type (snapshot_type)    ::  cam_in_snapshot(pcnst+35)   ! needs to be bigger than pcnst because cam_in%cflx is split by constituent and cam_in%dstflx by bin.
 type (snapshot_type)    ::  cam_out_snapshot(30)
-type (snapshot_type_nd) ::  pbuf_snapshot(300)
+type (snapshot_type_nd) ::  pbuf_snapshot(npbuf_all+pcnst)   ! needs headroom beyond the named pbuf fields because FRACIS is split by constituent.
 
 contains
 
@@ -441,6 +441,7 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
 
    ! for constituent loop.
    integer :: mcnst
+   integer :: ibin
    character(len=64)  :: fname
    character(len=128) :: lname
 
@@ -529,9 +530,16 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
       'cam_in%ram1',            'cam_in_ram1',              'unset',          horiz_only)
 
-    if (associated (cam_in%dstflx)) &
-    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%dstflx',          'cam_in_dstflx',            'unset',          horiz_only)
+   ! cam_in%dstflx is sized (pcols, bins); a single horiz_only snapshot variable would
+   ! only capture the first bin, so it is split into a series of snapshot variables
+   ! cam_in_dstflx_bin(N), mirroring the per-constituent handling of cam_in%cflx.
+    if (associated (cam_in%dstflx)) then
+       do ibin = 1, size(cam_in%dstflx, 2)
+          write(fname, '(a,i0)') 'cam_in_dstflx_bin', ibin
+          call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+                                trim(fname), trim(fname), 'kg m-2 s-1', horiz_only)
+       end do
+    end if
 
 end subroutine cam_in_snapshot_init
 
@@ -640,14 +648,18 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 !--------------------------------------------------------
 
    use physics_buffer, only: pbuf_get_dim_strings
+   use constituents,   only: cnst_name
 
    integer,                   intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
    type(physics_buffer_desc), intent(in) :: pbuf(:)
 
    integer :: i, j, npbuf
+   integer :: ipbuf, mcnst
    type(pbuf_info_type) :: pbuf_info(size(pbuf))
    character(len=40) :: const_cname(ncnst_var)
    character(len=40) :: dim_strings(size(pbuf),6) ! Hardwired 6 potential dimensions in pbuf
+   character(len=64) :: fname, sname
+   character(len=100) :: fracis_dim_string(6) ! per-constituent FRACIS slices are (pcols,pver)
 
    npbuf = size(pbuf(:))
 
@@ -674,15 +686,32 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
       end if
    end do
 
+   ! The per-constituent FRACIS slices are (pcols,pver), i.e. a single 'lev' dimension.
+   fracis_dim_string(:) = ''
+   fracis_dim_string(1) = 'lev'
+
    !--------------------------------------------------------
    ! Now that all of the information for the pbufs is stored, call the addfld
    !--------------------------------------------------------
-   npbuf_var = 0 ! Updated inside snapshot_addfld
+   npbuf_var = 0 ! Updated inside snapshot_addfld_nd
 
-   do while (npbuf_var < npbuf)
-      call snapshot_addfld_nd( npbuf_var, pbuf_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-        pbuf_info(npbuf_var+1)%name,   pbuf_info(npbuf_var+1)%standard_name,   pbuf_info(npbuf_var+1)%units,&
-        pbuf_info(npbuf_var+1)%dim_string)
+   do ipbuf = 1, npbuf
+      if (trim(pbuf_info(ipbuf)%name) == 'FRACIS') then
+         ! FRACIS is dimensioned (pcols,pver,pcnst).  Because the constituent indices in the
+         ! model reading the snapshot may not match those in the model writing it, FRACIS is
+         ! split into a series of per-constituent fields pbuf_FRACIS_(constituent name),
+         ! mirroring the handling of cam_in%cflx.
+         do mcnst = 1, pcnst
+            fname = 'FRACIS_'//trim(cnst_name(mcnst))
+            sname = 'pbuf_FRACIS_'//trim(cnst_name(mcnst))
+            call snapshot_addfld_nd( npbuf_var, pbuf_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+              fname, sname, pbuf_info(ipbuf)%units, fracis_dim_string)
+         end do
+      else
+         call snapshot_addfld_nd( npbuf_var, pbuf_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+           pbuf_info(ipbuf)%name,   pbuf_info(ipbuf)%standard_name,   pbuf_info(ipbuf)%units,&
+           pbuf_info(ipbuf)%dim_string)
+      end if
    end do
 
 end subroutine cam_pbuf_snapshot_init
@@ -1013,6 +1042,7 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
    integer :: i
    integer :: mcnst
+   integer :: ibin
    character(len=64) :: fname
 
    do i=1, ncam_in_var
@@ -1073,13 +1103,12 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
       case ('cam_in%ram1')
          if (associated (cam_in%ram1)) &
          call outfld(cam_in_snapshot(i)%standard_name, cam_in%ram1, pcols, lchnk)
-      case ('cam_in%dstflx')
-         if (associated (cam_in%dstflx)) &
-         call outfld(cam_in_snapshot(i)%standard_name, cam_in%dstflx, pcols, lchnk)
 
       case default
          if (cam_in_snapshot(i)%ddt_string(1:12) == 'cam_in_cflx_') then
             ! This case is handled below in a loop (not looked up here as it would be i*pcnst iterations)
+         else if (cam_in_snapshot(i)%ddt_string(1:17) == 'cam_in_dstflx_bin') then
+            ! This case is handled below in a loop over dust bins
          else
             call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
          endif
@@ -1098,6 +1127,17 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
       call outfld(fname, cam_in%cflx(:,mcnst), pcols, lchnk)
       call cam_history_snapshot_deactivate(trim(fname))
    end do
+
+   ! Handle cam_in%dstflx bin loop
+   if (associated (cam_in%dstflx)) then
+      do ibin = 1, size(cam_in%dstflx, 2)
+         write(fname, '(a,i0)') 'cam_in_dstflx_bin', ibin
+
+         call cam_history_snapshot_activate(trim(fname), file_num)
+         call outfld(trim(fname), cam_in%dstflx(:,ibin), pcols, lchnk)
+         call cam_history_snapshot_deactivate(trim(fname))
+      end do
+   end if
 
 end subroutine cam_in_snapshot_all_outfld
 
@@ -1210,12 +1250,15 @@ end subroutine cam_out_snapshot_all_outfld
 
 subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
    use physics_buffer, only: pbuf_is_used
+   use constituents,   only: cnst_name
 
    integer,                   intent(in) :: lchnk
    integer,                            intent(in) :: file_num
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
 
    integer :: i, pbuf_idx, ndims
+   integer :: mcnst, ierr
+   character(len=64) :: fname
    real(r8), pointer, dimension(:,:)           :: tmpptr2d
    real(r8), pointer, dimension(:,:,:)         :: tmpptr3d
    real(r8), pointer, dimension(:,:,:,:)       :: tmpptr4d
@@ -1226,6 +1269,9 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
 
    do i=1, npbuf_var
+
+      ! The constituent-split FRACIS fields are written in a dedicated loop below.
+      if (pbuf_snapshot(i)%ddt_string(1:7) == 'FRACIS_') cycle
 
       pbuf_idx= pbuf_get_index(pbuf_snapshot(i)%ddt_string)
 
@@ -1265,7 +1311,7 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
               call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
            case (3)
-              call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+              call pbuf_get_field(pbuf, pbuf_idx, tmpptr4d)
               call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
 
            case (4)
@@ -1282,6 +1328,22 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
       end if
 
    end do
+
+   ! Handle the constituent-split FRACIS field.  FRACIS is (pcols,pver,pcnst); it is written
+   ! as per-constituent fields pbuf_FRACIS_(constituent name) so the constituent indices need
+   ! not match between the writing and reading models (mirrors cam_in%cflx handling).
+   pbuf_idx = pbuf_get_index('FRACIS', errcode=ierr)
+   if (pbuf_idx > 0) then
+      if (pbuf_is_used(pbuf(pbuf_idx))) then
+         call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+         do mcnst = 1, pcnst
+            fname = 'pbuf_FRACIS_'//trim(cnst_name(mcnst))
+            call cam_history_snapshot_activate(trim(fname), file_num)
+            call outfld(fname, tmpptr3d(:,:,mcnst), pcols, lchnk)
+            call cam_history_snapshot_deactivate(trim(fname))
+         end do
+      end if
+   end if
 
 end subroutine cam_pbuf_snapshot_all_outfld
 

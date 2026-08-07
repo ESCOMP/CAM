@@ -1095,7 +1095,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt            ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt            ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -1221,7 +1221,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt                       ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt                       ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -1404,7 +1404,6 @@ contains
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_timestep_init, check_energy_cam_chng
     use check_energy,       only: tot_energy_phys
-    use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
@@ -1434,7 +1433,7 @@ contains
     use subcol_SILHS,       only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,       only: subcol_SILHS_hydromet_conc_tend_lim
     use micro_pumas_cam,       only: massless_droplet_destroyer
-    use convect_deep,       only: convect_deep_tend_2, deep_scheme_does_scav_trans
+    use convect_deep,       only: convect_deep_tend_2
     use cloud_diagnostics,  only: cloud_diagnostics_calc
     use radiation,          only: radiation_tend
     use tropopause,         only: tropopause_output
@@ -1457,16 +1456,13 @@ contains
     !
     ! Arguments
     !
-    real(r8), intent(in) :: ztodt                  ! Two times model timestep (2 delta-t)
+    real(r8), intent(in) :: ztodt                  ! model physics timestep [s]
 
     type(cam_in_t),      intent(inout) :: cam_in
     type(cam_out_t),     intent(inout) :: cam_out
     type(physics_state), intent(inout), target :: state
     type(physics_tend ), intent(inout) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
-
-
-    type(check_tracers_data):: tracerint      ! tracer mass integrals and cummulative boundary fluxes
 
     !
     !---------------------------Local workspace-----------------------------
@@ -1505,7 +1501,6 @@ contains
     real(r8) :: flx_cnd(pcols)
 
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: dlfzm(:,:)            ! ZM detrained convective cloud water mixing ratio.
     real(r8), pointer :: cmfmczm(:,:)          ! ZM convective mass fluxes
@@ -1685,9 +1680,7 @@ contains
     ! get nstep and zero array for energy checker
     zero = 0._r8
     zero_sc(:) = 0._r8
-    zero_tracers(:,:) = 0._r8
     nstep = get_nstep()
-    call check_tracers_init(state, tracerint)
 
     ! Check if latent heat flux exceeds the total moisture content of the
     ! lowest model layer, thereby creating negative moisture.
@@ -1975,88 +1968,83 @@ contains
        snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
     end if
 
-    if ( .not. deep_scheme_does_scav_trans() ) then
 
-       ! -------------------------------------------------------------------------------
-       ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
-       ! 2. Convective Transport of Non-Water Aerosol Species.
-       !
-       !  . Aerosol wet chemistry determines scavenging fractions, and transformations
-       !  . Then do convective transport of all trace species except qv,ql,qi.
-       !  . We needed to do the scavenging first to determine the interstitial fraction.
-       ! -------------------------------------------------------------------------------
+    ! -------------------------------------------------------------------------------
+    ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
+    ! 2. Convective Transport of Non-Water Aerosol Species.
+    !
+    !  . Aerosol wet chemistry determines scavenging fractions, and transformations
+    !  . Then do convective transport of all trace species except qv,ql,qi.
+    !  . We needed to do the scavenging first to determine the interstitial fraction.
+    ! -------------------------------------------------------------------------------
 
-       call t_startf('aerosol_wet_processes')
-       if (clim_modal_aero) then
-          ! Find the modal aerosol model properties object.
-          do iaermod_lcl = 1, aerosol_instances_get_num_models()
-             aero_props => aerosol_instances_get_props(iaermod_lcl, list_idx=0)
-             if (associated(aero_props)) then
-                if (aero_props%model_is('MAM')) exit
-             end if
-          end do
-          !REMOVECAM - get persistent state from factory; under CAM-SIMA states will be passed as scheme inputs
-          aero_state_obj => aerosol_instances_get_state(iaermod_lcl, 0, state%lchnk)
-          !REMOVECAM_END
+    call t_startf('aerosol_wet_processes')
+    if (clim_modal_aero) then
+       ! Find the modal aerosol model properties object.
+       do iaermod_lcl = 1, aerosol_instances_get_num_models()
+          aero_props => aerosol_instances_get_props(iaermod_lcl, list_idx=0)
+          if (associated(aero_props)) then
+             if (aero_props%model_is('MAM')) exit
+          end if
+       end do
+       !REMOVECAM - get persistent state from factory; under CAM-SIMA states will be passed as scheme inputs
+       aero_state_obj => aerosol_instances_get_state(iaermod_lcl, 0, state%lchnk)
+       !REMOVECAM_END
 
-          if (prog_modal_aero) then
-             call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
-             ! Do calculations of mode radius and water uptake if:
-             ! 1) modal aerosols are affecting the climate, or
-             ! 2) prognostic modal aerosols are enabled
-             call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf, aero_props, aero_state_obj)
-             ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
-             ! modes is done in conjunction with the dry radius calculation
-             call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
-             call physics_update(state, ptend, ztodt, tend)
-          else
-             call modal_aero_calcsize_diag(state, pbuf, aero_props, aero_state_obj)
-             call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
-          endif
-       endif
-
-       if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
-          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-       end if
-
-       call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
-       if ( (trim(cam_take_snapshot_after) == "aero_model_wetdep") .and.      &
-            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-          call cam_snapshot_ptend_outfld(ptend, lchnk)
-       end if
-       call physics_update(state, ptend, ztodt, tend)
-
-       if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
-          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-       end if
-
-       if (carma_do_wetdep) then
-          ! CARMA wet deposition
-          !
-          ! NOTE: It needs to follow aero_model_wetdep, so that
-          ! cam_out%xxxwetxxx
-          ! fields have already been set for CAM aerosols and cam_out can be
-          ! added
-          ! to for CARMA aerosols.
-          call t_startf ('carma_wetdep_tend')
-          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+       if (prog_modal_aero) then
+          call physics_ptend_init(ptend, state%psetcols, 'aero_water_uptake', lq=wetdep_lq)
+          ! Do calculations of mode radius and water uptake if:
+          ! 1) modal aerosols are affecting the climate, or
+          ! 2) prognostic modal aerosols are enabled
+          call modal_aero_calcsize_sub(state, ptend, ztodt, pbuf, aero_props, aero_state_obj)
+          ! for prognostic modal aerosols the transfer of mass between aitken and accumulation
+          ! modes is done in conjunction with the dry radius calculation
+          call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
           call physics_update(state, ptend, ztodt, tend)
-          call t_stopf ('carma_wetdep_tend')
-       end if
+       else
+          call modal_aero_calcsize_diag(state, pbuf, aero_props, aero_state_obj)
+          call modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state_obj)
+       endif
+    endif
 
-       call t_startf ('convect_deep_tend2')
-       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf )
+    if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+               fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+    end if
+
+    call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
+    if ( (trim(cam_take_snapshot_after) == "aero_model_wetdep") .and.      &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+       call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    call physics_update(state, ptend, ztodt, tend)
+
+    if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+               fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+    end if
+
+    if (carma_do_wetdep) then
+       ! CARMA wet deposition
+       !
+       ! NOTE: It needs to follow aero_model_wetdep, so that
+       ! cam_out%xxxwetxxx
+       ! fields have already been set for CAM aerosols and cam_out can be
+       ! added
+       ! to for CARMA aerosols.
+       call t_startf ('carma_wetdep_tend')
+       call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
        call physics_update(state, ptend, ztodt, tend)
-       call t_stopf ('convect_deep_tend2')
+       call t_stopf ('carma_wetdep_tend')
+    end if
 
-       ! check tracer integrals
-       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+    call t_startf ('convect_deep_tend2')
+    call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf )
+    call physics_update(state, ptend, ztodt, tend)
+    call t_stopf ('convect_deep_tend2')
 
-       call t_stopf('aerosol_wet_processes')
+    call t_stopf('aerosol_wet_processes')
 
-   endif
 
     !===================================================
     ! Moist physical parameteriztions complete:
@@ -2137,8 +2125,6 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
-         cam_in%cflx)
 
     if (trim(cam_take_snapshot_before) == "co2_cycle_set_ptend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2186,8 +2172,6 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
        end if
        call check_energy_cam_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
-       call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &
-            cam_in%cflx)
     end if
     call t_stopf('adv_tracer_src_snk')
 
@@ -2302,8 +2286,6 @@ contains
       call check_energy_cam_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
            zero, cam_in%shf)
     endif
-
-    call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
 
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
@@ -2658,7 +2640,6 @@ contains
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
     use check_energy,    only: check_energy_cam_chng, check_energy_cam_fix
-    use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
@@ -2682,7 +2663,7 @@ contains
 
     ! Arguments
 
-    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+    real(r8), intent(in) :: ztodt                          ! model physics timestep [s]
 
     type(physics_state), intent(inout), target :: state
     type(physics_tend ), intent(inout) :: tend
@@ -2762,8 +2743,6 @@ contains
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: flx_cnd(pcols)
     real(r8) :: flx_heat(pcols)
-    type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
@@ -2783,7 +2762,6 @@ contains
     call t_startf('bc_init')
 
     zero = 0._r8
-    zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
 
     lchnk = state%lchnk
@@ -2840,9 +2818,6 @@ contains
     ! Dump out "before physics" state
     !
     call diag_state_b4_phys_write (state)
-
-    ! compute mass integrals of input tracers state
-    call check_tracers_init(state, tracerint)
 
     call t_stopf('bc_init')
 
