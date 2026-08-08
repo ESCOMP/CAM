@@ -13,7 +13,7 @@ module carma_aerosol_state_mod
   use physconst, only: pi
   use carma_intr, only: carma_get_total_mmr, carma_get_dry_radius, carma_get_number, carma_get_number_cld
   use carma_intr, only: carma_get_group_by_name, carma_get_kappa, carma_get_dry_radius, carma_get_wet_radius
-  use carma_intr, only: carma_get_wght_pct
+  use carma_intr, only: carma_get_wght_pct, carma_effecitive_radius, carma_get_sad
   use ppgrid, only: begchunk, endchunk, pcols, pver
 
   implicit none
@@ -50,6 +50,7 @@ module carma_aerosol_state_mod
      procedure :: water_volume
      procedure :: wet_diameter
      procedure :: aqu_gain_binfraction
+     procedure :: surf_area_dens
 
      final :: destructor
 
@@ -663,5 +664,146 @@ contains
     deallocate(rad_cm, wt_mass)
 
   end subroutine aqu_gain_binfraction
+
+  !------------------------------------------------------------------------
+  ! aerosol surface area density
+  !------------------------------------------------------------------------
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+       relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
+    use aerosol_spec_utils, only : spec_type_in_list
+
+    class(carma_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
+    integer,  intent(in)  :: ncol        ! number of columns
+    integer,  intent(in)  :: nlev        ! number of levels
+    integer,  intent(in)  :: beglev(:)   ! beginning model level index
+    integer,  intent(in)  :: endlev(:)   ! ending model level index
+    real(r8), intent(in)  :: relhum(:,:) ! relative humidity
+    real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
+    real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+    real(r8), intent(in)  :: pi          ! pi mathematical constant
+
+    real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
+    real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)
+    real(r8), optional, intent(out) :: sfc(:,:,:) ! surface area density per bin (cm2/cm3)
+    real(r8), optional, intent(out) :: dm_aer(:,:,:) ! diameter per bin (cm)
+
+    ! local vars
+    real(r8) :: reffaer(pcols,pver) ! bulk effective radius in cm
+
+    integer  :: icol, ilev, ibin, ispec, ierr
+    real(r8) :: chm_mass, tot_mass
+    character(len=32) :: spectype
+    real(r8) :: wetr(pcols,pver)      ! CARMA bin wet radius in cm
+    real(r8) :: wetrho(pcols,pver)    ! CARMA bin wet density
+    real(r8) :: sad_carma(pcols,pver) ! CARMA bin wet surface area density in cm2/cm3
+    real(r8), pointer :: aer_bin_mmr(:,:)
+
+    character(len=aero_name_len) :: bin_name, shortname
+    integer :: igroup, indxbin, rc, nchr
+
+    real(r8), allocatable :: sad_bins(:,:,:)
+
+    integer :: nbins, nspec_max
+    type(ptr2d_t), allocatable :: mmr_ptr(:,:) ! interstitial mmr field per (bin,species)
+    logical, allocatable :: in_list(:,:)       ! species type is in types_list
+
+    nbins = aero_props%nbins()
+
+    allocate(sad_bins(ncol,nlev,nbins), stat=ierr)
+    if (ierr/=0) then
+       call endrun('carma_aerosol_state::surf_area_dens: not able to allocate sad_bins')
+    end if
+
+    nspec_max = 0
+    do ibin = 1,nbins
+       nspec_max = max(nspec_max, aero_props%nspecies(ibin))
+    end do
+
+    allocate(mmr_ptr(nbins,nspec_max), in_list(nbins,nspec_max), stat=ierr)
+    if (ierr/=0) then
+       call endrun('carma_aerosol_state::surf_area_dens: not able to allocate bin lookup arrays')
+    end if
+
+    sad = 0._r8
+    reff = 0._r8
+    sad_bins = 0._r8
+    if (present(dm_aer)) dm_aer = 0._r8
+
+    !
+    ! Compute surface aero for each bin.
+    ! Total over all bins as the surface area for chemical reactions.
+    !
+
+    reffaer = carma_effecitive_radius(self%host_%state)
+
+    in_list(:,:) = .false.
+
+    do ibin=1,nbins ! loop over aerosol bins
+      call rad_aer_get_info_by_bin(self%list_idx_, ibin, bin_name=bin_name)
+
+      nchr = len_trim(bin_name)-2
+      shortname = bin_name(:nchr)
+
+      call carma_get_group_by_name(shortname, igroup, rc)
+
+      read(bin_name(nchr+1:),*) indxbin
+
+      call carma_get_wet_radius(self%host_%state, igroup, indxbin, wetr, wetrho, rc) ! m
+      wetr(:ncol,:) = wetr(:ncol,:) * 1.e2_r8 ! cm
+      call carma_get_sad(self%host_%state, igroup, indxbin, sad_carma, rc)
+
+      if (present(dm_aer)) dm_aer(:ncol,:,ibin) = 2._r8 * wetr(:ncol,:) ! convert wet radius (cm) to wet diameter (cm)
+      sad_bins(:ncol,:,ibin) = sad_carma(:ncol,:) ! cm^2/cm^3
+
+      ! Resolve species types and mmr field pointers that do not vary over columns or levels here:
+      do ispec = 1,aero_props%nspecies(ibin)
+         call aero_props%get(bin_ndx=ibin, species_ndx=ispec, spectype=spectype)
+         call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=mmr_ptr(ibin,ispec)%fld)
+         in_list(ibin,ispec) = spec_type_in_list(spectype, types_list)
+      end do
+    end do
+
+    do icol = 1, ncol
+      do ilev = beglev(icol),endlev(icol)
+        do ibin = 1, nbins ! loop over aerosol bins
+          !
+          ! compute a mass weighting of the number
+          !
+          tot_mass = 0._r8
+          chm_mass = 0._r8
+          do ispec=1,aero_props%nspecies(ibin)
+
+             aer_bin_mmr => mmr_ptr(ibin,ispec)%fld
+
+             tot_mass = tot_mass + aer_bin_mmr(icol,ilev)
+
+             if (in_list(ibin,ispec)) then
+                chm_mass = chm_mass + aer_bin_mmr(icol,ilev)
+             end if
+
+          end do
+          if ( tot_mass > 0._r8 ) then
+         ! surface area density
+            sad_bins(icol,ilev,ibin) = chm_mass  / tot_mass * sad_bins(icol,ilev,ibin) ! cm^2/cm^3
+          else
+            sad_bins(icol,ilev,ibin) = 0._r8
+          end if
+        end do
+        sad(icol,ilev) = sum(sad_bins(icol,ilev,:))
+        reff(icol,ilev) = reffaer(icol,ilev)
+
+       end do
+    end do
+
+    if (present(sfc)) then
+       sfc(:ncol,:,:) = sad_bins(:ncol,:,:)
+    end if
+
+    deallocate(sad_bins)
+    deallocate(mmr_ptr, in_list)
+
+  end subroutine surf_area_dens
 
 end module carma_aerosol_state_mod

@@ -1,5 +1,193 @@
 ===============================================================
 
+Tag name: cam6_4_195
+Originator(s): fvitt, jimmielin
+Date: 8 Aug 2026
+One-line Summary: Refactor aerosol surface area densities
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1628
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+ Aerosol surface area densities abstraction
+ #1625
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+
+ New namelist parameters:
+
+ sad_chem_spec_types
+  Species types contributing to chemistry-relevant surface area density (SAD)
+  for heterogeneous reaction rates. The SAD determines how much aerosol surface
+  is available for gas-phase chemical reactions (computed in aero_model, used
+  by mo_usrrxt).
+
+  In bulk (BAM) configurations, types not in rad_climate are provided by
+  a supplemental path in aero_model_surfarea.
+
+ sad_seasalt_spec_types
+  Species types contributing to sea-salt surface area density (SAD).
+  Computed separately from chemistry SAD and used for sea-salt-specific
+  heterogeneous reactions.
+
+ sad_strat_spec_types
+  Species types contributing to stratospheric surface area density (SAD).
+  Used by aero_model_strat_surfarea to compute strato_sad, which is passed
+  to sad_strat_calc (mo_sad.F90) for STS/NAT/ICE thermodynamic partitioning.
+  Note: sad_strat_calc currently assumes all incoming SAD is sulfate aerosol
+  (via sulfate_sad_calc and calc_radius_lbs). Supporting non-sulfate species
+  in the stratospheric SAD pathway requires refactoring mo_sad.F90 to handle
+  multiple aerosol types independently. The physically correct default would
+  be 'sulfate' only, but the current default matches sad_chem_spec_types for
+  bit-for-bit consistency with prior hardcoded behavior.
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do:
+A       src/chemistry/aerosol/aerosol_spec_utils.F90
+ - utility module for aerosol types in SAD calculations
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+ - set defaults SAD types lists
+
+M       bld/namelist_files/namelist_definition.xml
+ -  SAD types lists
+
+M       src/chemistry/aerosol/aerosol_state_mod.F90
+M       src/chemistry/aerosol/bulk_aerosol_state_mod.F90
+M       src/chemistry/aerosol/carma_aerosol_state_mod.F90
+M       src/chemistry/aerosol/modal_aerosol_state_mod.F90
+ - new aero_surf_area routine
+
+M       src/chemistry/bulk_aero/aero_model.F90
+ - read SAD types list in namelist
+ - invoke aero_state%surf_area
+ - include supplemental SAD calcs for aerosols not included in rad_climate
+
+M       src/chemistry/carma_aero/aero_model.F90
+M       src/chemistry/modal_aero/aero_model.F90
+ - read SAD types list in namelist
+ - invoke aero_state%surf_area
+
+M       src/chemistry/mozart/mo_gas_phase_chemdr.F90
+M       src/chemistry/mozart/mo_usrrxt.F90
+ - clean up args for surf area routine
+
+M       src/chemistry/mozart/mo_sulf.F90
+ - move SULFATE hist outfld call to gas_phyase_chemdr
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+  NLFAIL ERC_D_Ln9.f09_f09_mt232.FHIST_BDRD.derecho_intel.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.f19_f19_mt232.QPC6.derecho_intel.cam-outfrq3s_cosp
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.F2000climo.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.mpasa120_mpasa120.FHISTC_LTso.derecho_intel.cam-outfrq9s_mpasa120
+  NLFAIL ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERC_Ln9.C96_C96_mt232.F2000climo.derecho_intel.cam-outfrq9s
+  NLFAIL ERI_D_Ln18.f09_f09_mt232.FHIST.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERI_D_Ln18.f19_f19_mt232.FHIST_C5.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri
+  NLFAIL ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_D_Ln9_P64x2.f09_f09_mg17.QSC6.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d
+  NLFAIL ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa
+  NLFAIL ERP_Ln9.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s
+  NLFAIL ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s
+  NLFAIL ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic
+  NLFAIL ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s
+  NLFAIL ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s
+  NLFAIL ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem
+  NLFAIL SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep
+  NLFAIL SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ld5.f09_f09_mt232.PC6.derecho_intel.cam-cam6_port_f09
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCts2nudged.derecho_intel.cam-outfrq9s_leapday
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FCvbsxHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f09_f09_mg17.FSD.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FCARMA2000climo.derecho_intel.cam-outfrq9s_carma_rad_diag
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FCHIST_SLH.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4
+  NLFAIL SMS_D_Ln9.f19_f19_mg17.QPC2000climo.derecho_intel.cam-outfrq3s_usecase
+  NLFAIL SMS_D_Ln9.f19_f19_mt232.FHIST_C5.derecho_intel.cam-mam7
+  NLFAIL SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.ne30pg3_ne30pg3_mt232.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust
+  NLFAIL SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s
+  NLFAIL SMS_Ld1.f09_f09_mg17.FCHIST_GC.derecho_intel.cam-outfrq1d
+  NLFAIL SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d
+  NLFAIL SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d
+  NLFAIL SMS_Lh12.f09_f09_mg17.FCSD_HCO.derecho_intel.cam-outfrq3h
+  NLFAIL SMS_Ln9.f09_f09_mg17.F2010climo.derecho_intel.cam-nudging
+  NLFAIL SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s
+  NLFAIL SMS_Ln9.f19_f19_mt232.F2000climo.derecho_intel.cam-silhs
+  NLFAIL SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp
+   - new SAD species types lists
+
+  DIFF ERC_D_Ln9.f19_f19_mg17.QPMOZ.derecho_intel.cam-outfrq3s
+   - expected baseline failure due to BAM SAD refactor
+
+derecho/nvhpc/aux_cam:
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default MODEL_BUILD time=0
+   - pre-existing failure as of cam6_4_193
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+  NLFAIL ERC_D_Ln27.ne3pg3_ne3pg3_mt232.FKESSLER.izumi_nag.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq9s_tuvx_waccm_ma_mam5
+  NLFAIL ERC_D_Ln9.f10_f10_mt232.FHIST.izumi_nag.cam-outfrq3s_cospsathist
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHS94.izumi_nag.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags
+  NLFAIL SMS_D_Ld2.f45_f45_mg37.PC5.izumi_nag.cam-outfrq24h_port
+  NLFAIL SMS_D_Ln9.f10_f10_mt232.F1850.izumi_nag.cam-outfrq9s
+  NLFAIL SMS_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_nag.cam-carma_test_tracers
+  NLFAIL TMC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-mc_ttrac
+   - new SAD species types lists
+
+izumi/gnu/aux_cam:
+  DIFF SMS_D_Ln3.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc
+   - expected baseline failure due to BAM SAD refactor
+
+  NLFAIL ERC_D_Ln9.C48_C48_mg17.QPC6.izumi_gnu.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.f19_f19_mt232.FHIST.izumi_gnu.cam-lonlat_fv_diags
+  NLFAIL ERC_D_Ln9.mpasa480_mpasa480_mt232.FHISTC_LTso.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FGRAYRAD.izumi_gnu.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FTJ16.izumi_gnu.cam-outfrq9s
+  NLFAIL ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s
+  NLFAIL ERS_Ln9_P24x1.mpasa480_mpasa480.F2000climo.izumi_gnu.cam-outfrq9s_mpasa480
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal0
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal1
+  NLFAIL PLB_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_gnu.cam-ttrac_loadbal3
+  NLFAIL SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6
+  NLFAIL SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3
+  NLFAIL SMS_D_Ln9.f10_f10_mg37.FWmaHIST.izumi_gnu.cam-outfrq9s_mee_fluxes
+  NLFAIL SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s
+   - new SAD species types lists
+
+Summarize any changes to answers:
+  larger than roundoff for prognostic BAM, otherwise bit-for-bit
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_194
 Originator(s): jimmielin
 Date: Aug 7, 2026

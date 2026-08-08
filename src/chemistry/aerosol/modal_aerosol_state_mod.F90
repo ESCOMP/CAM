@@ -48,6 +48,7 @@ module modal_aerosol_state_mod
      procedure :: convcld_actfrac
      procedure :: wgtpct
      procedure :: aqu_gain_binfraction
+     procedure :: surf_area_dens
 
      final :: destructor
 
@@ -798,5 +799,172 @@ contains
     deallocate(qnum_c)
 
   end subroutine aqu_gain_binfraction
+
+  !------------------------------------------------------------------------
+  ! aerosol surface area density
+  !------------------------------------------------------------------------
+  subroutine surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+       relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
+    use aerosol_spec_utils, only : spec_type_in_list
+
+    class(modal_aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
+    integer,  intent(in)  :: ncol        ! number of columns
+    integer,  intent(in)  :: nlev        ! number of levels
+    integer,  intent(in)  :: beglev(:)   ! beginning model level index
+    integer,  intent(in)  :: endlev(:)   ! ending model level index
+    real(r8), intent(in)  :: relhum(:,:) ! relative humidity
+    real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
+    real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+    real(r8), intent(in)  :: pi          ! pi mathematical constant
+
+    real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
+    real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)
+    real(r8), optional, intent(out) :: sfc(:,:,:) ! surface area density per bin (cm2/cm3)
+    real(r8), optional, intent(out) :: dm_aer(:,:,:) ! diameter per bin (cm)
+
+    ! local vars
+    real(r8), allocatable ::sad_mode(:,:,:)
+    real(r8), allocatable ::vol_mode(:,:,:)
+
+    real(r8) :: radeff(ncol,nlev)
+    real(r8) :: vol(ncol,nlev)
+    real(r8) :: rho_air
+    integer  :: i,k,l,m
+    real(r8) :: chm_mass, tot_mass
+    integer  :: idx_chm_val, ierr
+    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
+    real(r8), pointer :: num(:,:)
+    real(r8), pointer :: diam(:,:,:)
+
+    character(len=32) :: modetype
+    character(len=32) :: spectype
+
+    ! for per-mode / per-species lookups outside the column loop:
+    integer :: nbins, nspec_max
+    type(ptr2d_t), allocatable :: mmr_ptr(:,:)  ! interstitial mmr field per (bin,species)
+    type(ptr2d_t), allocatable :: num_ptr(:)    ! interstitial number field per bin
+    logical,  allocatable :: in_list(:,:)       ! species type is in types_list
+    logical,  allocatable :: use_mode(:)        ! mode contributes to the mass weighting
+    real(r8), allocatable :: alogsig(:)         ! ln(geometric standard deviation) per mode
+
+    character(len=*), parameter :: subname = 'modal_aerosol_state_mod::surf_area_dens'
+
+    call pbuf_get_field(self%host_%pbuf, pbuf_get_index('DGNUMWET'), diam)
+
+    !
+    ! Compute surface aero for each mode.
+    ! Total over all modes as the surface area for chemical reactions.
+    !
+    nbins = aero_props%nbins()
+
+    allocate(sad_mode(ncol,nlev,nbins),stat=ierr)
+    if (ierr/=0) then
+       call endrun(subname//': sad_mode array allocate error')
+    end if
+
+    allocate(vol_mode(ncol,nlev,nbins),stat=ierr)
+    if (ierr/=0) then
+       call endrun(subname//': vol_mode array allocate error')
+    end if
+
+    ! resolve mode geometry, species types and field pointers that do not vary over columns or levels here:
+    nspec_max = 0
+    do l = 1,nbins
+       nspec_max = max(nspec_max, aero_props%nspecies(l))
+    end do
+
+    allocate(mmr_ptr(nbins,nspec_max), num_ptr(nbins), in_list(nbins,nspec_max), &
+             use_mode(nbins), alogsig(nbins), stat=ierr)
+    if (ierr/=0) then
+       call endrun(subname//': mode lookup arrays allocate error')
+    end if
+
+    in_list(:,:) = .false.
+
+    do l = 1,nbins
+       call self%get_ambient_num(bin_ndx=l, num=num_ptr(l)%fld)
+       alogsig(l) = aero_props%alogsig(l)
+
+       ! ignore primary carbon mode
+       call rad_aer_get_info(self%list_idx_, l, mode_type=modetype)
+       use_mode(l) = trim(modetype) /= 'primary_carbon' ! ignore the primary_carbon mode
+
+       if (use_mode(l)) then
+          do m = 1,aero_props%nspecies(l)
+             call aero_props%get(bin_ndx=l, species_ndx=m, spectype=spectype)
+             call self%get_ambient_mmr(species_ndx=m, bin_ndx=l, mmr=mmr_ptr(l,m)%fld)
+             in_list(l,m) = spec_type_in_list(spectype, types_list)
+          end do
+       end if
+    end do
+
+    sad = 0._r8
+    sad_mode = 0._r8
+    vol = 0._r8
+    vol_mode = 0._r8
+    reff = 0._r8
+
+    do i = 1,ncol
+       do k = beglev(i), endlev(i)
+          rho_air = pmid(i,k)/(temp(i,k)*287.04_r8)
+          do l=1,nbins
+             !
+             ! compute a mass weighting of the number
+             !
+             tot_mass = 0._r8
+             chm_mass = 0._r8
+
+             if ( use_mode(l) ) then
+
+                do m=1,aero_props%nspecies(l)
+
+                   mmr => mmr_ptr(l,m)%fld
+
+                   tot_mass = tot_mass + mmr(i,k)
+
+                   if (in_list(l,m)) then
+                      chm_mass = chm_mass + mmr(i,k)
+                   end if
+                end do
+
+             end if
+
+             if ( tot_mass > 0._r8 ) then
+
+                num => num_ptr(l)%fld
+
+              ! surface area density
+               sad_mode(i,k,l) = chm_mass /tot_mass &
+                               * num(i,k)*rho_air*pi*diam(i,k,l)**2._r8 &
+                               * exp(2._r8*alogsig(l)**2._r8)  ! m^2/m^3
+
+               sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
+
+              ! volume calculation, for use in effective radius calculation
+               vol_mode(i,k,l) = chm_mass/tot_mass &
+                               * num(i,k)*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
+                               * exp(4.5_r8*alogsig(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
+             else
+               sad_mode(i,k,l) = 0._r8
+               vol_mode(i,k,l) = 0._r8
+             end if
+          end do
+          sad(i,k) = sum(sad_mode(i,k,:))
+          vol(i,k) = sum(vol_mode(i,k,:))
+          reff(i,k) = 3._r8*vol(i,k)/sad(i,k)
+
+       enddo
+    enddo
+
+    if (present(sfc)) sfc(:ncol,:,:) = sad_mode(:ncol,:,:)
+    if (present(dm_aer)) dm_aer(:ncol,:,:) = diam(:ncol,:,:) * 1.e2_r8 ! convert m to cm
+
+    deallocate(sad_mode)
+    deallocate(vol_mode)
+    deallocate(mmr_ptr, num_ptr, in_list, use_mode, alogsig)
+
+  end subroutine surf_area_dens
 
 end module modal_aerosol_state_mod
