@@ -6784,6 +6784,43 @@ Tuning for seasalt_emis
 Default: set by build-namelist.
 </entry>
 
+<entry id="sad_chem_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to chemistry-relevant surface area density (SAD)
+for heterogeneous reaction rates. The SAD determines how much aerosol surface
+is available for gas-phase chemical reactions (computed in aero_model, used
+by mo_usrrxt).
+
+In bulk (BAM) configurations, types not in rad_climate are provided by
+a supplemental path in aero_model_surfarea.
+
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium' (MAM, CARMA);
+'sulfate','black-c','p-organic','s-organic','nitrate' (prognostic bulk);
+UNSET (prescribed bulk)
+</entry>
+
+<entry id="sad_seasalt_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to sea-salt surface area density (SAD).
+Computed separately from chemistry SAD and used for sea-salt-specific
+heterogeneous reactions.
+Default: 'seasalt'
+</entry>
+
+<entry id="sad_strat_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to stratospheric surface area density (SAD).
+Used by aero_model_strat_surfarea to compute strato_sad, which is passed
+to sad_strat_calc (mo_sad.F90) for STS/NAT/ICE thermodynamic partitioning.
+Note: sad_strat_calc currently assumes all incoming SAD is sulfate aerosol
+(via sulfate_sad_calc and calc_radius_lbs). Supporting non-sulfate species
+in the stratospheric SAD pathway requires refactoring mo_sad.F90 to handle
+multiple aerosol types independently. The physically correct default would
+be 'sulfate' only, but the current default matches sad_chem_spec_types for
+bit-for-bit consistency with prior hardcoded behavior.
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium'
+</entry>
+
 <entry id="aer_sol_facti" type="real(1000)" category="cam_chem"
        group="aerosol_nl" valid_values="" >
 In-cloud solubility factor used in BULK aerosol wet removal
