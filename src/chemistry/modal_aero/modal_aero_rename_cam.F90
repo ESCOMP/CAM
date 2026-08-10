@@ -295,7 +295,7 @@ contains
 
          write(lunout,9310)
 
-         do 2900 ipair = 1, npair_renamexf
+         do ipair = 1, npair_renamexf
             mfrm = modefrm_renamexf(ipair)
             mtoo = modetoo_renamexf(ipair)
             write(lunout,9320) ipair, mfrm, mtoo
@@ -321,7 +321,7 @@ contains
                end if
             end do
 
-2900     continue
+         end do
          write(lunout,*)
 
       end if ! ( masterproc )
@@ -432,7 +432,7 @@ contains
 !   define species involved in each tail-xfer pairing
 !        (include aerosol water)
 !
-      do 1900 ipair = 1, npair_renamexf
+      do ipair = 1, npair_renamexf
          mfrm = modefrm_renamexf(ipair)
          mtoo = modetoo_renamexf(ipair)
          ixferable_all_renamexf(ipair) = 1
@@ -453,7 +453,7 @@ contains
          end if
 
          nspec = 0
-         do 1490 iqfrm = -1, nspec_amode(mfrm)
+         do iqfrm = -1, nspec_amode(mfrm)
             if (iqfrm .eq. -1) then
                lsfrma = numptr_amode(mfrm)
                lstooa = numptr_amode(mtoo)
@@ -461,7 +461,7 @@ contains
                lstooc = numptrcw_amode(mtoo)
             else if (iqfrm .eq. 0) then
 !   bypass transfer of aerosol water due to renaming
-               goto 1490
+               cycle
 !               lsfrma = lwaterptr_amode(mfrm)
 !               lsfrmc = 0
 !               lstooa = lwaterptr_amode(mtoo)
@@ -551,10 +551,10 @@ contains
                   ixferable_c_renamexf(iqfrm,ipair) = 1
                end if
             end if
-1490     continue
+         end do
 
          nspecfrm_renamexf(ipair) = nspec
-1900  continue
+      end do
 
 9100  format( / '*** subr. modal_aero_rename_acc_crs_init' /   &
              'lspecfrma out of range' /   &
