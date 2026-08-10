@@ -26,6 +26,8 @@ module tracer_data
                                pio_get_var, pio_get_att, pio_nowrite, pio_inq_dimlen, &
                                pio_inq_vardimid, pio_inq_dimlen, pio_closefile, &
                                pio_inquire_variable
+  use cam_shmem_mod,    only : cam_shmem_alloc_r8_3d, cam_shmem_fence, &
+                               cam_shmem_free, cam_shmem_is_leader, cam_shmem_npes_per_node
 
   implicit none
 
@@ -133,6 +135,20 @@ module tracer_data
      logical :: top_bndry = .false.
      logical :: top_layer = .false.
      logical :: stepTime = .false.  ! Do not interpolate in time, but use stepwise times
+     ! Bookkeeping for in-memory carry-forward of the overlapping time slice.
+     ! When the bracketing window advances by exactly one record, the new lower
+     ! record equals the previous upper record already resident in input(2), so
+     ! it can be copied forward instead of re-read from disk.
+     integer :: loaded_recno(2) = -1  ! file record numbers resident in input(1:2)
+     integer :: loaded_fh(2)    = -1  ! PIO file handle (curr vs next) owning each
+     ! Per-node MPI shared-memory buffer holding ONE global source field
+     ! (nlon x nlat x nlev) in flight during a read.  The node leader reads the
+     ! field once (serial netCDF) and every rank on the node interpolates from
+     ! this single shared copy, instead of all ranks redundantly reading and
+     ! storing the full field.  Allocated once in trcdata_init for lat-lon
+     ! (non-unstructured, non-zonal) files; reused across fields and updates.
+     real(r8), pointer, dimension(:,:,:) :: shr_src => null()
+     integer :: win_shr_src = -1
   endtype trfile
 
   integer, public, parameter :: MAXTRCRS = 100
@@ -392,6 +408,24 @@ contains
     ! For some bizarre reason, netCDF with older gcc is keeping a pointer to the dimid, and overwriting it later!
     ! Hackish workaround is to make a copy...
     lev_dimid = old_dimid
+
+    ! Allocate the per-node shared source-field buffer used by read_2d_trc /
+    ! read_3d_trc.  Only lat-lon files (which go through the redundant
+    ! "every rank reads the whole field then interpolates" path) need it; files
+    ! already on the unstructured physics grid (read_physgrid_*) and zonal-average
+    ! files (read_za_trc) do not.  One physical copy per node; reused across all
+    ! fields of this file and all subsequent updates (freed at MPI_Finalize).
+    if ( .not.file%unstructured .and. .not.file%zonal_ave .and. &
+         .not.associated(file%shr_src) ) then
+       call cam_shmem_alloc_r8_3d( file%shr_src, file%win_shr_src, &
+                                   file%nlon, file%nlat, max(file%nlev,1) )
+       if (masterproc) then
+          write(iulog,*) 'trcdata_init: ', trim(file%curr_filename), &
+               ' source field in per-node shared memory (', &
+               file%nlon,'x',file%nlat,'x',max(file%nlev,1),'); ', &
+               cam_shmem_npes_per_node()-1,' redundant copies/node avoided'
+       end if
+    end if
 
     if (file%has_ps) then
 
@@ -1285,6 +1319,7 @@ contains
     integer :: strt3(3)           ! array of starting indices
     type(file_desc_t) :: fids(4)
     logical :: times_found
+    logical :: carry   ! .true. when input(1) can be carried from the resident input(2)
 
     integer :: cur_yr, cur_mon, cur_day, cur_sec, yr1, yr2, mon, date, sec
     real(r8) :: series1_time, series2_time
@@ -1367,7 +1402,27 @@ contains
     ! Set up hyperslab corners
     !
 
+    ! If the bracketing window advanced by exactly one record, the new lower
+    ! record (recnos(1)) equals the previous upper record already resident in
+    ! input(2)/ps_in(2).  Carry it forward in memory instead of re-reading it
+    ! from disk (this halves the per-update forcing I/O, time-axis broadcast and
+    ! interpolation work).  Only the 2-record path is eligible.
+    carry = ( file%interp_recs == 2 .and. file%initialized .and. &
+              recnos(1) == file%loaded_recno(2) .and. fids(1)%fh == file%loaded_fh(2) )
+
     do i=1,file%interp_recs
+
+       if ( carry .and. i == 1 ) then
+          ! input(2) -> input(1) (and ps_in(2) -> ps_in(1)) is bit-identical to
+          ! the value the old code re-read for this record.
+          do f = 1,nflds
+             flds(f)%input(1)%data(:,:,:) = flds(f)%input(2)%data(:,:,:)
+          end do
+          if ( file%has_ps ) then
+             file%ps_in(1)%data(:,:) = file%ps_in(2)%data(:,:)
+          end if
+          cycle
+       end if
 
        strt4(:) = 1
        strt3(:) = 1
@@ -1442,6 +1497,17 @@ contains
 
     enddo
 
+    ! Remember which records are now resident so the next update can carry the
+    ! overlapping slice forward.  Only the 2-record path supports carry; other
+    ! paths (stepTime=1 record, fill_in_months=4 records) invalidate it.
+    if ( file%interp_recs == 2 ) then
+       file%loaded_recno(1:2) = recnos(1:2)
+       file%loaded_fh(1:2)    = (/ fids(1)%fh, fids(2)%fh /)
+    else
+       file%loaded_recno(:) = -1
+       file%loaded_fh(:)    = -1
+    end if
+
   end subroutine read_next_trcdata
 
 !------------------------------------------------------------------------
@@ -1455,6 +1521,9 @@ contains
     use dycore,       only: dycore_is
     use polar_avg,    only: polar_average
     use horizontal_interpolate, only : xy_interp
+    use ioFileMod,    only: getfil
+    use netcdf,       only: nf90_open, nf90_close, nf90_get_var, &
+                            nf90_inq_varid, nf90_nowrite, nf90_noerr
 
     implicit none
     type(file_desc_t), intent(in) :: fid
@@ -1472,29 +1541,78 @@ contains
     type(interp_type) :: lon_wgts, lat_wgts
     integer :: lons(pcols), lats(pcols)
     real(r8) :: file_lats(file%nlat)
+    logical :: use_shmem
+    character(len=shr_kind_cl) :: srcname, srcpath, locfn, varname
+    integer :: nfid, nfvid, iret
 
      nullify(wrk2d_in)
-     allocate( wrk2d(cnt(1),cnt(2)), stat=ierr )
-     if( ierr /= 0 ) then
-        write(iulog,*) 'read_2d_trc: wrk2d allocation error = ',ierr
-        call endrun
-     end if
 
-     if(order(1)/=1 .or. order(2)/=2 .or. cnt(1)/=file%nlon .or. cnt(2)/=file%nlat) then
-        allocate( wrk2d_in(file%nlon, file%nlat), stat=ierr )
+     ! Per-node shared read: leader reads the whole field once (serial netCDF)
+     ! into the shared buffer; every rank interpolates from that single copy.
+     ! Falls back to the per-rank PIO read when the buffer is absent.
+     use_shmem = associated(file%shr_src)
+
+     if (use_shmem) then
+        iret = pio_inquire_variable(fid, vid, name=varname)
+        if (fid%fh == file%curr_fileid%fh) then
+           srcname = file%curr_filename
+        else
+           srcname = file%next_filename
+        end if
+        if (len_trim(file%pathname) == 0) then
+           srcpath = trim(srcname)
+        else
+           srcpath = trim(file%pathname) // '/' // trim(srcname)
+        end if
+
+        call cam_shmem_fence(file%win_shr_src)
+        if (cam_shmem_is_leader()) then
+           call getfil( srcpath, locfn, 0 )
+           iret = nf90_open( trim(locfn), nf90_nowrite, nfid )
+           if (iret /= nf90_noerr) call endrun('read_2d_trc: nf90_open failed: '//trim(locfn))
+           iret = nf90_inq_varid( nfid, trim(varname), nfvid )
+           if (iret /= nf90_noerr) call endrun('read_2d_trc: nf90_inq_varid failed: '//trim(varname))
+           allocate( wrk2d(cnt(1),cnt(2)), stat=ierr )
+           if( ierr /= 0 ) then
+              write(iulog,*) 'read_2d_trc: wrk2d allocation error = ',ierr
+              call endrun
+           end if
+           iret = nf90_get_var( nfid, nfvid, wrk2d, start=strt, count=cnt )
+           if (iret /= nf90_noerr) call endrun('read_2d_trc: nf90_get_var failed: '//trim(varname))
+           iret = nf90_close( nfid )
+           if(order(1)/=1 .or. order(2)/=2 .or. cnt(1)/=file%nlon .or. cnt(2)/=file%nlat) then
+              file%shr_src(:,:,1) = reshape( wrk2d(:,:),(/file%nlon,file%nlat/), order=order )
+           else
+              file%shr_src(:,:,1) = wrk2d(:,:)
+           end if
+           deallocate(wrk2d)
+        end if
+        call cam_shmem_fence(file%win_shr_src)
+        wrk2d_in => file%shr_src(:,:,1)
+
+     else
+        allocate( wrk2d(cnt(1),cnt(2)), stat=ierr )
         if( ierr /= 0 ) then
-           write(iulog,*) 'read_2d_trc: wrk2d_in allocation error = ',ierr
+           write(iulog,*) 'read_2d_trc: wrk2d allocation error = ',ierr
            call endrun
         end if
-     end if
+
+        if(order(1)/=1 .or. order(2)/=2 .or. cnt(1)/=file%nlon .or. cnt(2)/=file%nlat) then
+           allocate( wrk2d_in(file%nlon, file%nlat), stat=ierr )
+           if( ierr /= 0 ) then
+              write(iulog,*) 'read_2d_trc: wrk2d_in allocation error = ',ierr
+              call endrun
+           end if
+        end if
 
 
-    ierr = pio_get_var( fid, vid, strt, cnt, wrk2d )
-    if(associated(wrk2d_in)) then
-       wrk2d_in = reshape( wrk2d(:,:),(/file%nlon,file%nlat/), order=order )
-       deallocate(wrk2d)
-    else
-       wrk2d_in => wrk2d
+       ierr = pio_get_var( fid, vid, strt, cnt, wrk2d )
+       if(associated(wrk2d_in)) then
+          wrk2d_in = reshape( wrk2d(:,:),(/file%nlon,file%nlat/), order=order )
+          deallocate(wrk2d)
+       else
+          wrk2d_in => wrk2d
+       end if
     end if
 
     ! PGI 13.9 bug workaround.
@@ -1559,10 +1677,12 @@ contains
 
     end if
 
-    if(allocated(wrk2d)) then
-       deallocate(wrk2d)
-    else
-       deallocate(wrk2d_in)
+    if (.not. use_shmem) then
+       if(allocated(wrk2d)) then
+          deallocate(wrk2d)
+       else
+          deallocate(wrk2d_in)
+       end if
     end if
     if(dycore_is('LR')) call polar_average(loc_arr)
   end subroutine read_2d_trc
@@ -1706,6 +1826,9 @@ contains
     use dycore,           only : dycore_is
     use polar_avg,        only : polar_average
     use horizontal_interpolate, only : xy_interp
+    use ioFileMod,        only : getfil
+    use netcdf,           only : nf90_open, nf90_close, nf90_get_var, &
+                                 nf90_inq_varid, nf90_nowrite, nf90_noerr
 
     implicit none
 
@@ -1726,28 +1849,79 @@ contains
     real(r8) :: to_lons(pcols), to_lats(pcols)
     real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
     type(interp_type) :: lon_wgts, lat_wgts
+    logical :: use_shmem
+    character(len=shr_kind_cl) :: srcname, srcpath, locfn, varname
+    integer :: nfid, nfvid, iret
 
     loc_arr(:,:,:) = 0._r8
     nullify(wrk3d_in)
-    allocate(wrk3d(cnt(1),cnt(2),cnt(3)), stat=ierr)
-    if( ierr /= 0 ) then
-       write(iulog,*) 'read_3d_trc: wrk3d allocation error = ',ierr
-       call endrun
-    end if
 
-    ierr = pio_get_var( fid, vid, strt, cnt, wrk3d )
+    ! When the per-node shared source buffer is present (lat-lon files), the
+    ! node leader reads the whole field once (serial netCDF) into the shared
+    ! buffer and every rank interpolates from that single copy.  Otherwise fall
+    ! back to the original path where every rank reads the field via PIO.
+    use_shmem = associated(file%shr_src)
 
-    if(order(1)/=1 .or. order(2)/=2 .or. order(3)/=3 .or. &
-         cnt(1)/=file%nlon.or.cnt(2)/=file%nlat.or.cnt(3)/=file%nlev) then
-       allocate(wrk3d_in(file%nlon,file%nlat,file%nlev),stat=ierr)
+    if (use_shmem) then
+       iret = pio_inquire_variable(fid, vid, name=varname)
+       if (fid%fh == file%curr_fileid%fh) then
+          srcname = file%curr_filename
+       else
+          srcname = file%next_filename
+       end if
+       if (len_trim(file%pathname) == 0) then
+          srcpath = trim(srcname)
+       else
+          srcpath = trim(file%pathname) // '/' // trim(srcname)
+       end if
+
+       call cam_shmem_fence(file%win_shr_src)              ! open the window epoch
+       if (cam_shmem_is_leader()) then
+          call getfil( srcpath, locfn, 0 )
+          iret = nf90_open( trim(locfn), nf90_nowrite, nfid )
+          if (iret /= nf90_noerr) call endrun('read_3d_trc: nf90_open failed: '//trim(locfn))
+          iret = nf90_inq_varid( nfid, trim(varname), nfvid )
+          if (iret /= nf90_noerr) call endrun('read_3d_trc: nf90_inq_varid failed: '//trim(varname))
+          allocate(wrk3d(cnt(1),cnt(2),cnt(3)), stat=ierr)
+          if( ierr /= 0 ) then
+             write(iulog,*) 'read_3d_trc: wrk3d allocation error = ',ierr
+             call endrun
+          end if
+          iret = nf90_get_var( nfid, nfvid, wrk3d, start=strt, count=cnt )
+          if (iret /= nf90_noerr) call endrun('read_3d_trc: nf90_get_var failed: '//trim(varname))
+          iret = nf90_close( nfid )
+          if(order(1)/=1 .or. order(2)/=2 .or. order(3)/=3 .or. &
+               cnt(1)/=file%nlon.or.cnt(2)/=file%nlat.or.cnt(3)/=file%nlev) then
+             file%shr_src(:,:,:) = reshape( wrk3d(:,:,:),(/file%nlon,file%nlat,file%nlev/), order=order )
+          else
+             file%shr_src(:,:,:) = wrk3d(:,:,:)
+          end if
+          deallocate(wrk3d)
+       end if
+       call cam_shmem_fence(file%win_shr_src)              ! publish to all ranks on node
+       wrk3d_in => file%shr_src
+
+    else
+       allocate(wrk3d(cnt(1),cnt(2),cnt(3)), stat=ierr)
        if( ierr /= 0 ) then
           write(iulog,*) 'read_3d_trc: wrk3d allocation error = ',ierr
           call endrun
        end if
-       wrk3d_in = reshape( wrk3d(:,:,:),(/file%nlon,file%nlat,file%nlev/), order=order )
-       deallocate(wrk3d)
-    else
-       wrk3d_in => wrk3d
+
+       ierr = pio_get_var( fid, vid, strt, cnt, wrk3d )
+
+       if(order(1)/=1 .or. order(2)/=2 .or. order(3)/=3 .or. &
+            cnt(1)/=file%nlon.or.cnt(2)/=file%nlat.or.cnt(3)/=file%nlev) then
+          allocate(wrk3d_in(file%nlon,file%nlat,file%nlev),stat=ierr)
+          if( ierr /= 0 ) then
+             write(iulog,*) 'read_3d_trc: wrk3d allocation error = ',ierr
+             call endrun
+          end if
+          wrk3d_in = reshape( wrk3d(:,:,:),(/file%nlon,file%nlat,file%nlev/), order=order )
+          deallocate(wrk3d)
+       else
+          wrk3d_in => wrk3d
+       end if
     end if
 
 ! If weighting by latitude, then perform horizontal interpolation by using weight_x, weight_y
@@ -1796,15 +1970,17 @@ contains
     end do
    endif
 
-    if(allocated(wrk3d)) then
-       deallocate( wrk3d, stat=astat )
-    else
-       deallocate( wrk3d_in, stat=astat )
+    if (.not. use_shmem) then
+       if(allocated(wrk3d)) then
+          deallocate( wrk3d, stat=astat )
+       else
+          deallocate( wrk3d_in, stat=astat )
+       end if
+       if( astat/= 0 ) then
+          write(iulog,*) 'read_3d_trc: failed to deallocate wrk3d array; error = ',astat
+          call endrun
+       endif
     end if
-    if( astat/= 0 ) then
-       write(iulog,*) 'read_3d_trc: failed to deallocate wrk3d array; error = ',astat
-       call endrun
-    endif
     if(dycore_is('LR')) call polar_average(file%nlev, loc_arr)
   end subroutine read_3d_trc
 

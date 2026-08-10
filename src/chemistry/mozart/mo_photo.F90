@@ -18,7 +18,7 @@ module mo_photo
 
   private
 
-  public :: photo_inti, table_photo
+  public :: photo_inti, photo_final, table_photo
   public :: set_ub_col
   public :: setcol
   public :: photo_timestep_init
@@ -533,6 +533,18 @@ contains
     end if has_abs_columns
 
   end subroutine photo_inti
+
+  subroutine photo_final
+    !----------------------------------------------------------------------
+    !	... release the photolysis lookup tables held in per-node shared
+    !       memory.  Mirrors photo_inti -> jlong_init; called on every rank
+    !       from chem_final, before MPI shutdown.
+    !----------------------------------------------------------------------
+    use mo_jlong, only : jlong_final
+
+    call jlong_final
+
+  end subroutine photo_final
 
   subroutine table_photo( photos, pmid, pdel, temper, zmid, zint, &
                           col_dens, zen_angle, srf_alb, lwc, clouds, &

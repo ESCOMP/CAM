@@ -1333,6 +1333,7 @@ contains
     use phys_grid_ctem, only : phys_grid_ctem_final
     use nudging, only: Nudge_Model, nudging_final
     use ctem_diags_mod, only: ctem_diags_final
+    use phys_prop, only : physprop_final
 
     !-----------------------------------------------------------------------
     !
@@ -1352,6 +1353,7 @@ contains
     deallocate(phys_state)
     deallocate(phys_tend)
     call chem_final
+    call physprop_final
     call carma_final
     call wv_sat_final
     call microp_aero_final()
