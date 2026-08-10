@@ -251,8 +251,8 @@ contains
       call rad_cnst_get_gas(0, 'CO2', state, pbuf, co2_mass_mixing_ratio)
 
       ! call the portable subroutine:
-      call setsox_sub(
-      aero_state = aero_state, &
+      call setsox_sub( &
+         aero_state = aero_state, &
          ncol       = ncol,       &
          pver       = pver,       &
          dtime      = dtime,      &
