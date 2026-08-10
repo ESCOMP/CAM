@@ -16,9 +16,10 @@ module cam_shmem_mod
 ! further synchronization.  Free it with cam_shmem_free(ptr, win) at finalize
 ! (collective over the node communicator); otherwise MPI_Finalize reclaims it.
 !
-! This module uses the F90 'mpi' module (not mpif.h) because the TYPE(C_PTR)
-! overloads of MPI_WIN_ALLOCATE_SHARED / MPI_WIN_SHARED_QUERY are only guaranteed
-! to be available through the 'mpi'/'mpi_f08' modules (MPI-3.0).
+! This module uses the F90 'mpi' module (not mpif.h).  MPI-3.0 makes the TYPE(C_PTR)
+! overloads of MPI_WIN_ALLOCATE_SHARED / MPI_WIN_SHARED_QUERY optional in the 'mpi'
+! module, and some implementations (cray-mpich) do not expose those two routines
+! there at all, so explicit interfaces for them are declared below instead.
 !-------------------------------------------------------------------------------
 
    use shr_kind_mod,   only: r4 => shr_kind_r4, r8 => shr_kind_r8
@@ -26,7 +27,10 @@ module cam_shmem_mod
 
 #ifdef SPMD
    use spmd_utils,     only: mpicom
-   use mpi
+   use mpi,            only: MPI_ADDRESS_KIND, MPI_COMM_NULL, MPI_COMM_TYPE_SHARED,   &
+                             MPI_INFO_NULL, MPI_SUCCESS, MPI_UNDEFINED, MPI_WIN_NULL, &
+                             mpi_comm_rank, mpi_comm_size, mpi_comm_split,            &
+                             mpi_comm_split_type, mpi_win_fence, mpi_win_free
    use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
 #endif
 
@@ -61,6 +65,36 @@ module cam_shmem_mod
    integer, parameter :: bytes_r8 = 8
 
 #ifdef SPMD
+   ! MPI_WIN_ALLOCATE_SHARED and MPI_WIN_SHARED_QUERY take a TYPE(C_PTR) baseptr in
+   ! MPI-3, but that overload is not exposed by every implementation's F90 'mpi'
+   ! module (cray-mpich does not expose these two routines at all), so they cannot be
+   ! named in the 'only' list above.  Declare explicit interfaces here rather than
+   ! relying on implicit ones, so the argument types are still checked.  Both forms
+   ! resolve to the same mpi_win_allocate_shared_ / mpi_win_shared_query_ bindings,
+   ! so this is equivalent on implementations that do expose them.
+   interface
+      subroutine mpi_win_allocate_shared(nbytes, disp_unit, info, comm, baseptr, win, ierror)
+         import :: MPI_ADDRESS_KIND, c_ptr
+         integer(kind=MPI_ADDRESS_KIND), intent(in)  :: nbytes
+         integer,                        intent(in)  :: disp_unit
+         integer,                        intent(in)  :: info
+         integer,                        intent(in)  :: comm
+         type(c_ptr),                    intent(out) :: baseptr
+         integer,                        intent(out) :: win
+         integer,                        intent(out) :: ierror
+      end subroutine mpi_win_allocate_shared
+
+      subroutine mpi_win_shared_query(win, rank, segsize, disp_unit, baseptr, ierror)
+         import :: MPI_ADDRESS_KIND, c_ptr
+         integer,                        intent(in)  :: win
+         integer,                        intent(in)  :: rank
+         integer(kind=MPI_ADDRESS_KIND), intent(out) :: segsize
+         integer,                        intent(out) :: disp_unit
+         type(c_ptr),                    intent(out) :: baseptr
+         integer,                        intent(out) :: ierror
+      end subroutine mpi_win_shared_query
+   end interface
+
    logical, save :: initialized = .false.
    integer, save :: node_comm   = MPI_COMM_NULL  ! ranks sharing a node
    integer, save :: leader_comm = MPI_COMM_NULL  ! one rank per node (the leaders)

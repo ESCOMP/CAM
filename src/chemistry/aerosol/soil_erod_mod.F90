@@ -45,12 +45,14 @@ contains
     character(len=cl)     :: infile
     integer :: did, vid, nlat, nlon
     integer :: ncid, iret
-    integer :: win_serod = -1   ! per-node shared-memory window for soil_erodibility_in
+    integer :: win_serod        ! per-node shared-memory window for soil_erodibility_in
 
     type(interp_type) :: lon_wgts, lat_wgts
     real(r8) :: to_lats(pcols), to_lons(pcols)
     integer :: c, ncols, ierr
     real(r8), parameter :: zero=0._r8, twopi=2._r8*pi
+
+    win_serod = -1
 
     soil_erod_fact = dust_emis_fact
 

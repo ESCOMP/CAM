@@ -536,7 +536,7 @@ contains
 
   subroutine photo_final
     !----------------------------------------------------------------------
-    !	... release the photolysis lookup tables held in per-node shared
+    !   ... release the photolysis lookup tables held in per-node shared
     !       memory.  Mirrors photo_inti -> jlong_init; called on every rank
     !       from chem_final, before MPI shutdown.
     !----------------------------------------------------------------------

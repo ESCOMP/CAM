@@ -78,13 +78,15 @@ contains
     stream_ndep_year_first    = 1 ! first year in stream to use
     stream_ndep_year_last     = 1 ! last  year in stream to use
     stream_ndep_year_align    = 1 ! align stream_ndep_year_first with this model year
-    ! Spatial mapping from the stream grid to the model grid.  Use 'bilinear' when
-    ! the ndep file is on a different (coarser) grid than the model.  Use 'redist'
-    ! (pure index-based redistribution -- no interpolation weights, no ESMF route
-    ! handle) when the ndep file is already on the model grid; this avoids building
-    ! an ESMF regrid over the full grid and is far cheaper in memory at high
-    ! resolution (e.g. ne1024pg2).
-    stream_ndep_mapalgo       = 'bilinear'
+    ! Spatial mapping from the stream grid to the model grid.  Initialized to an
+    ! invalid sentinel rather than a usable value so that an unset namelist variable
+    ! fails loudly instead of running on a hidden compiled-in default; build-namelist
+    ! supplies the value (default 'bilinear').  Use 'bilinear' when the ndep file is
+    ! on a different (coarser) grid than the model.  Use 'redist' (pure index-based
+    ! redistribution -- no interpolation weights, no ESMF route handle) when the ndep
+    ! file is already on the model grid; this avoids building an ESMF regrid over the
+    ! full grid and is far cheaper in memory at high resolution (e.g. ne1024pg2).
+    stream_ndep_mapalgo       = 'UNSET'
 
     ! For now variable list in stream data file is hard-wired
     stream_varlist_ndep = (/'NDEP_NHx_month', 'NDEP_NOy_month'/)
@@ -128,6 +130,15 @@ contains
        endif
        return
     endif
+
+    ! The ndep stream is active, so stream_ndep_mapalgo must have been supplied by
+    ! build-namelist (add_default, alongside stream_ndep_data_filename).  Still holding
+    ! the sentinel means the namelist is inconsistent with an active ndep stream; fail
+    ! here rather than silently mapping with an unintended algorithm.
+    if (trim(stream_ndep_mapalgo) == 'UNSET') then
+       call endrun(trim(subname)//": FATAL: ndep stream is active but stream_ndep_mapalgo"// &
+            " is not set"//errMsg(sourcefile, __LINE__))
+    end if
 
     if (masterproc) then
        write(iulog,'(a)'   ) ' '
