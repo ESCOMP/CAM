@@ -1,26 +1,14 @@
-! CAM wrapper for modal_aero_newnuc.
-! Resolves CAM-specific species indices and aitken-mode so4/nh4 properties,
-! hands them (with the host physical constants) to the portable
-! modal_aero_newnuc_init, and registers history fields.
-!----------------------------------------------------------------------
+! CAM wrapper for modal_aero_newnuc
 module modal_aero_newnuc_cam
-
-! !USES:
   use shr_kind_mod, only: r8 => shr_kind_r8
 
   implicit none
   private
 
-! !PUBLIC MEMBER FUNCTIONS:
   public :: modal_aero_newnuc_cam_init
-
-!----------------------------------------------------------------------
 contains
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
 subroutine modal_aero_newnuc_cam_init
-
 !-----------------------------------------------------------------------
 !
 ! Purpose:
@@ -46,13 +34,6 @@ use spmd_utils,       only:  masterproc
 use phys_control,     only: phys_getopts
 
 
-implicit none
-
-!-----------------------------------------------------------------------
-! arguments
-
-!-----------------------------------------------------------------------
-! local
    integer  :: l_h2so4, l_nh3
    integer  :: lnumait, lnh4ait, lso4ait
    integer  :: l, l1, l2
@@ -74,7 +55,7 @@ implicit none
 
    !-----------------------------------------------------------------------
 
-        call phys_getopts( history_aerosol_out        = history_aerosol   )
+   call phys_getopts( history_aerosol_out        = history_aerosol   )
 
 
 !   set these indices
@@ -136,8 +117,7 @@ implicit none
            mw_nh4a_host = mw_so4a_host
         end if
 
-!   hand the resolved indices, aitken-mode properties, and host physical
-!   constants to the portable scheme
+   ! call portable science subroutine:
 	call modal_aero_newnuc_init(                          &
 	   l_h2so4_in         = l_h2so4,                      &
 	   l_nh3_in           = l_nh3,                        &
@@ -193,8 +173,6 @@ implicit none
 		'modal_aero_newnuc_init addfld', fieldname, unit
 	end do ! l = ...
 
+end subroutine modal_aero_newnuc_cam_init
+end module modal_aero_newnuc_cam
 
-      return
-      end subroutine modal_aero_newnuc_cam_init
-
-  end module modal_aero_newnuc_cam

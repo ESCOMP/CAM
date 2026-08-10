@@ -1,15 +1,11 @@
 module modal_aero_wateruptake_cam
-
 !  CAM wrapper for modal_aero_wateruptake.
-!  Handles pbuf registration, initialization, history output,
-!  state/pbuf/aero_props marshaling, and calls the portable
-!  science routines.
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use physconst,        only: pi, rhoh2o, rair
 use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
 use aerosol_properties_mod, only: aerosol_properties
 use aerosol_state_mod, only: aerosol_state
@@ -46,10 +42,7 @@ integer :: drymass_idx    = 0
 integer :: so4dryvol_idx  = 0
 integer :: naer_idx       = 0
 
-
-!===============================================================================
 contains
-!===============================================================================
 
 subroutine modal_aero_wateruptake_reg()
 
@@ -166,9 +159,9 @@ subroutine modal_aero_wateruptake_cam_init(pbuf2d)
    end if
 
    ! Register the diagnostic-list water uptake recompute with the aerosol
-   ! interface (called by modal_aerosol_state%water_uptake for diagnostic
-   ! radiation lists; wired at init because the portable modal aerosol
-   ! schemes are not part of every build).
+   ! interface
+   !
+   ! Pass a procedure pointer in since MAM is not always built in every config.
    call modal_aerosol_state_register_water_uptake_diag(modal_aero_wateruptake_diag)
 
 end subroutine modal_aero_wateruptake_cam_init
@@ -199,7 +192,6 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state)
    integer  :: ncol               ! number of columns
 
    integer :: i, k, m
-   integer :: itim_old
    integer :: nmodes
    integer :: tropLev(pcols)
 
@@ -298,8 +290,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, aero_props, aero_state)
    t      => state%t
    pmid   => state%pmid
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1/), kount=(/pcols,pver/) )
 
    ! Zero output arrays (allocated at pcols, _sub only writes 1:ncol)
    wetrad(:,:,:)       = 0._r8

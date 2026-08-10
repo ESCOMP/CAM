@@ -481,7 +481,6 @@ contains
     integer :: icol
     integer :: lchnk, ncol
     integer :: num_aero_models
-    integer :: itim_old
 
     real(r8), pointer :: cldn(:,:)   ! layer cloud fraction (0-1)
 
@@ -652,8 +651,7 @@ contains
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
     ! layer cloud fraction, for the water uptake recompute of diagnostic lists
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1/), kount=(/pcols,pver/))
 
     bam_cnt = 0
 
@@ -1140,7 +1138,6 @@ contains
     integer :: iwav, ilev
     integer :: ncol, icol
     integer :: num_aero_models
-    integer :: itim_old
 
     real(r8), pointer :: cldn(:,:)   ! layer cloud fraction (0-1)
 
@@ -1183,8 +1180,7 @@ contains
     relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
 
     ! layer cloud fraction, for the water uptake recompute of diagnostic lists
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1/), kount=(/pcols,pver/))
 
     aeromodel: do iaermod = 1,num_aero_models
 

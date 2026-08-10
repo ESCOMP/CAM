@@ -1120,22 +1120,25 @@ contains
     real(r8) :: qsrflx(pcols,gas_pcnst,nsrflx)
     real(r8) :: qqcwsrflx(pcols,gas_pcnst,nsrflx)
     real(r8) :: qsrflx_gaexch_out(ncol,gas_pcnst)     ! column-integrated gaexch source/sink from the scheme
+
     ! Local arrays for refactored newnuc call
     real(r8) :: dqdt_nnuc(ncol,pver,gas_pcnst)
     logical  :: dotend_nnuc(gas_pcnst)
     real(r8) :: qsrflx_nnuc(pcols,gas_pcnst,1)        ! column-integrated nucleation source/sink
-    ! Local arrays for refactored coag call (dqdt_coag is diagnostic-only;
-    ! the scheme updates vmr in place)
+
+    ! Local arrays for refactored coag call
+    ! dqdt_coag is diagnostic-only, vmr is updated in-place
     real(r8) :: dqdt_coag(ncol,pver,gas_pcnst)
     logical  :: dotend_coag(gas_pcnst)
     real(r8) :: qsrflx_coag(pcols)                    ! column-integrated coagulation source/sink
     character(len=fieldname_len+3) :: fieldname
     integer  :: jac, jsrf, jsoa, lb
     logical  :: use_sulfeq
+
     character(len=512) :: errmsg_local
     integer :: errflg_local
     ! Zero-initialized dummy array for intent(in) placeholders (e.g. sulfeq
-    ! when use_sulfeq=.false.). Sized to the common (ncol,pver,ntot_amode) shape.
+    ! when use_sulfeq=.false.)
     real(r8) :: dummy_3d(ncol,pver,ntot_amode)
 
     ! SOA condensation/evaporation diagnostics
@@ -1301,7 +1304,7 @@ contains
        call modal_aero_gasaerexch_run(                       &
             ncol      = ncol,                                &
             pver      = pver,                                &
-            deltat    = delt,                                 &
+            deltat    = delt,                                &
             top_lev   = top_lev,                             &
             loffset   = loffset,                             &
             t         = tfld(:ncol,:),                       &
@@ -1312,7 +1315,7 @@ contains
             dgncur_a  = dgnum(:ncol,:,:),                    &
             dgncur_awet = dgnumwet(:ncol,:,:),               &
             use_sulfeq = .false.,                            &
-            sulfeq    = dummy_3d,                             &
+            sulfeq    = dummy_3d,                            &
             num_q     = gas_pcnst,                           &
             q         = vmr(:ncol,:,:),                      &
             dqdt      = dqdt_gaex,                           &
@@ -1326,91 +1329,89 @@ contains
        call endrun('aero_model_gasaerexch: ' // trim(errmsg_local))
     end if
 
-    ! Snapshot conden-only tendencies before modal_aero_rename_run adds its
-    ! mode-transfer tendencies into dqdt_gaex in place. The _sfgaex1 and SOA
-    ! cond/evap diagnostics below use these pre-rename values, matching the
-    ! original where qsrflx/qcon were accumulated before the rename call.
+    ! Save conden-only tendencies before modal_aero_rename_run
+    ! adds mode-transfer tendencies into dqdt_gaex
+    ! since they are used by _sfgaex1 and SOA cond/evap diagnostics
     dqdt_gaex_conden(:,:,:) = dqdt_gaex(:,:,:)
 
     if (ndx_h2so4 > 0) then
-       ! Snapshot h2so4 vmr before applying tendencies. del_h2so4_aeruptk is
-       ! recovered below as (vmr_after - vmr_before) after the apply loop, matching
-       ! the original which bracketed the in-place gasaerexch_sub update.
+       ! Save h2so4 vmr before applying tendencies.
+       ! del_h2so4_aeruptk is computed by (vmr_after - vmr_before) after
+       ! the apply loop for bfb.
+       !
        ! A clearer formulation is
        ! del_h2so4_aeruptk(1:ncol,:) = dqdt_gaex(1:ncol,:,ndx_h2so4) * delt
-       ! but is not bit-for-bit and the difference propagates down to newnuc.
+       ! but is not bfb and the difference propagates down to newnuc.
        del_h2so4_aeruptk(1:ncol,:) = vmr(1:ncol,:,ndx_h2so4)
     else
        del_h2so4_aeruptk(:,:) = 0.0_r8
     end if
 
-    ! Call rename as a separate step (was embedded in gasaerexch_sub).
-    ! Marshal MAM mode metadata + the resolved renaming-pair tables (owned by
-    ! modal_aero_rename_cam) into the portable modal_aero_rename_run directly.
+    ! Call portable mode merging (renaming):
     dqqcwdt_gaex(:,:,:) = 0.0_r8
     dotendrn(:) = .false.
     dotendqqcwrn(:) = .false.
     dorename_atik(1:ncol,:) = .true.
     is_dorename_atik = .true.
-    ! Zero the (pcols-padded) column-tendency outputs over the full domain; the
-    ! scheme is called on :ncol and defines only that subset.
+
+    ! zero to pcols:
     qsrflx(:,:,:)    = 0.0_r8
     qqcwsrflx(:,:,:) = 0.0_r8
-    call modal_aero_rename_run(                                             &
-       ncol                    = ncol,                                      &
-       loffset                 = loffset,                                   &
-       deltat                  = delt,                                      &
-       pdel                    = pdel(:ncol,:),                             &
-       troplev                 = troplev(:ncol),                            &
-       dotendrn                = dotendrn,                                  &
-       q                       = vmr(:ncol,:,:),                            &
-       dqdt                    = dqdt_gaex(:ncol,:,:),                       &
-       dqdt_other              = dvmrdt(:ncol,:,:),                         &
-       dotendqqcwrn            = dotendqqcwrn,                              &
-       qqcw                    = vmrcw(:ncol,:,:),                          &
-       dqqcwdt                 = dqqcwdt_gaex(:ncol,:,:),                    &
-       dqqcwdt_other           = dvmrcwdt(:ncol,:,:),                       &
-       is_dorename_atik        = is_dorename_atik,                         &
-       dorename_atik           = dorename_atik(:ncol,:),                     &
-       jsrflx_rename           = jsrflx_rename,                            &
-       nsrflx                  = nsrflx,                                    &
-       qsrflx                  = qsrflx(:ncol,:,:),                          &
-       qqcwsrflx               = qqcwsrflx(:ncol,:,:),                       &
-       dqdt_rnpos              = dqdt_rnpos_unused,                          &
-       ntot_amode              = ntot_amode,                               &
-       npair_renamexf          = npair_renamexf,                            &
-       modefrm_renamexf        = modefrm_renamexf,                          &
-       modetoo_renamexf        = modetoo_renamexf,                          &
-       nspecfrm_renamexf       = nspecfrm_renamexf,                         &
-       lspecfrma_renamexf      = lspecfrma_renamexf,                        &
-       lspecfrmc_renamexf      = lspecfrmc_renamexf,                        &
-       lspectooa_renamexf      = lspectooa_renamexf,                        &
-       lspectooc_renamexf      = lspectooc_renamexf,                        &
-       alnsg_amode             = alnsg_amode,                              &
-       voltonumblo_amode       = voltonumblo_amode,                        &
-       voltonumbhi_amode       = voltonumbhi_amode,                        &
-       dgnum_amode             = dgnum_amode,                              &
-       nspec_amode             = nspec_amode,                              &
-       specmw_amode            = specmw_amode,                             &
-       specdens_amode          = specdens_amode,                           &
-       lmassptr_amode          = lmassptr_amode,                           &
-       lmassptrcw_amode        = lmassptrcw_amode,                         &
-       numptr_amode            = numptr_amode,                             &
-       numptrcw_amode          = numptrcw_amode,                           &
-       pi                      = pi,                                        &
-       modeptr_accum           = modeptr_accum,                            &
-       modeptr_coarse          = modeptr_coarse,                           &
-       modeptr_stracoar        = modeptr_stracoar,                         &
-       igrow_shrink_renamexf   = igrow_shrink_renamexf,                    &
-       ixferable_all_renamexf  = ixferable_all_renamexf,                   &
-       ixferable_a_renamexf    = ixferable_a_renamexf,                     &
-       ixferable_c_renamexf    = ixferable_c_renamexf,                     &
-       strat_only_renamexf     = strat_only_renamexf,                      &
-       modal_accum_coarse_exch = modal_accum_coarse_exch,                  &
-       pver                    = pver,                                      &
-       gravit                  = gravit,                                    &
-       errmsg                  = errmsg_local,                             &
-       errflg                  = errflg_local                             )
+    call modal_aero_rename_run( &
+       ncol                    = ncol,                          &
+       loffset                 = loffset,                       &
+       deltat                  = delt,                          &
+       pdel                    = pdel(:ncol,:),                 &
+       troplev                 = troplev(:ncol),                &
+       dotendrn                = dotendrn,                      &
+       q                       = vmr(:ncol,:,:),                &
+       dqdt                    = dqdt_gaex(:ncol,:,:),          &
+       dqdt_other              = dvmrdt(:ncol,:,:),             &
+       dotendqqcwrn            = dotendqqcwrn,                  &
+       qqcw                    = vmrcw(:ncol,:,:),              &
+       dqqcwdt                 = dqqcwdt_gaex(:ncol,:,:),       &
+       dqqcwdt_other           = dvmrcwdt(:ncol,:,:),           &
+       is_dorename_atik        = is_dorename_atik,              &
+       dorename_atik           = dorename_atik(:ncol,:),        &
+       jsrflx_rename           = jsrflx_rename,                 &
+       nsrflx                  = nsrflx,                        &
+       qsrflx                  = qsrflx(:ncol,:,:),             &
+       qqcwsrflx               = qqcwsrflx(:ncol,:,:),          &
+       dqdt_rnpos              = dqdt_rnpos_unused,             &
+       ntot_amode              = ntot_amode,                    &
+       npair_renamexf          = npair_renamexf,                &
+       modefrm_renamexf        = modefrm_renamexf,              &
+       modetoo_renamexf        = modetoo_renamexf,              &
+       nspecfrm_renamexf       = nspecfrm_renamexf,             &
+       lspecfrma_renamexf      = lspecfrma_renamexf,            &
+       lspecfrmc_renamexf      = lspecfrmc_renamexf,            &
+       lspectooa_renamexf      = lspectooa_renamexf,            &
+       lspectooc_renamexf      = lspectooc_renamexf,            &
+       alnsg_amode             = alnsg_amode,                   &
+       voltonumblo_amode       = voltonumblo_amode,             &
+       voltonumbhi_amode       = voltonumbhi_amode,             &
+       dgnum_amode             = dgnum_amode,                   &
+       nspec_amode             = nspec_amode,                   &
+       specmw_amode            = specmw_amode,                  &
+       specdens_amode          = specdens_amode,                &
+       lmassptr_amode          = lmassptr_amode,                &
+       lmassptrcw_amode        = lmassptrcw_amode,              &
+       numptr_amode            = numptr_amode,                  &
+       numptrcw_amode          = numptrcw_amode,                &
+       pi                      = pi,                            &
+       modeptr_accum           = modeptr_accum,                 &
+       modeptr_coarse          = modeptr_coarse,                &
+       modeptr_stracoar        = modeptr_stracoar,              &
+       igrow_shrink_renamexf   = igrow_shrink_renamexf,         &
+       ixferable_all_renamexf  = ixferable_all_renamexf,        &
+       ixferable_a_renamexf    = ixferable_a_renamexf,          &
+       ixferable_c_renamexf    = ixferable_c_renamexf,          &
+       strat_only_renamexf     = strat_only_renamexf,           &
+       modal_accum_coarse_exch = modal_accum_coarse_exch,       &
+       pver                    = pver,                          &
+       gravit                  = gravit,                        &
+       errmsg                  = errmsg_local,                  &
+       errflg                  = errflg_local)
 
     if (errflg_local /= 0) then
        call endrun('aero_model_gasaerexch (rename): ' // trim(errmsg_local))
@@ -1434,16 +1435,16 @@ contains
        end if
     end do
 
-    ! Recover del_h2so4_aeruptk = vmr_after - vmr_before (see snapshot above).
+    ! Get del_h2so4_aeruptk = vmr_after - vmr_before:
     if (ndx_h2so4 > 0) then
        del_h2so4_aeruptk(1:ncol,:) = vmr(1:ncol,:,ndx_h2so4) - del_h2so4_aeruptk(1:ncol,:)
     end if
 
     ! Diagnostics: column tendencies for gas-aerosol exchange and renaming.
-    ! The gaexch column source/sink (qsrflx, jsrflx_gaexch) is accumulated inside the
-    ! scheme: the per-mode and primary-carbon-aging contributions must be summed term
-    ! by term (and with pdel/gravit in that operand order) to stay bit-for-bit with the
-    ! original; the host only sees the combined tendency and cannot reproduce it.
+    ! The gaexch column source/sink (qsrflx, jsrflx_gaexch)
+    ! is accumulated inside the scheme:
+    ! the per-mode and primary-carbon-aging contributions
+    ! are sum'd term by term for bfb.
     qsrflx(:ncol,:,jsrflx_gaexch) = qsrflx_gaexch_out(:ncol,:)
 
     ! Output history fields
@@ -1486,8 +1487,8 @@ contains
     ! SOA condensation/evaporation diagnostics
     ! Reconstruct from the pre-rename conden tendencies (dqdt_gaex_conden).
     ! NOTE: for the accumulation mode this is not exactly b4b with the original,
-    ! which used the per-mode conden tendency dqdt_soa(n,jsoa); the species-indexed
-    ! tendency here also absorbs primary-carbon-aged SOA. History-diagnostic only.
+    ! which used the per-mode conden tendency dqdt_soa(n,jsoa);
+    ! the species-indexed tendency here also absorbs primary-carbon-aged SOA
     qconff(:,:) = 0.0_r8
     qevapff(:,:) = 0.0_r8
     qconbb(:,:) = 0.0_r8
@@ -1560,8 +1561,6 @@ contains
     call t_startf('modal_nucl')
 
     ! do aerosol nucleation (new particle formation)
-    ! Zero the (pcols-padded) column-tendency output over the full domain; the
-    ! scheme is called on :ncol and defines only that subset.
     qsrflx_nnuc(:,:,:) = 0.0_r8
     call modal_aero_newnuc_run(                          &
          ncol      = ncol,                               &
@@ -1618,9 +1617,9 @@ contains
     call t_startf('modal_coag')
 
     ! do aerosol coagulation
-    ! vmr is updated in place by the scheme; dqdt_coag is returned for the
-    ! history diagnostics only (dqdt*delt is not bit-identical to the stored
-    ! change, so it must not be re-applied)
+    ! vmr is updated in place by the scheme.
+    ! dqdt_coag is returned for the history diagnostics only
+    ! (dqdt*delt is not bit-identical to the stored change so it cannot be applied directly)
     call modal_aero_coag_run(                            &
          ncol      = ncol,                               &
          pver      = pver,                               &

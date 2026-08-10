@@ -19,7 +19,7 @@ module modal_aerosol_state_mod
   type, extends(aerosol_state) :: modal_aerosol_state
      private
      ! Opaque host-binding handle used to retrieve aerosol fields from
-     ! host model data; built by host-side wiring (aerosol_instances_mod).
+     ! host model data; built by aerosol_instances_mod.
      ! This keeps model-specific data structures outside of the aerosol interface.
      type(aero_host_binding_t) :: host_
    contains
@@ -56,12 +56,9 @@ module modal_aerosol_state_mod
      procedure :: constructor
   end interface modal_aerosol_state
 
-  ! Interface of the diagnostic-list water uptake recompute. The science
-  ! (modal_aero_wateruptake_diag) lives with the portable modal aerosol
-  ! schemes, which are not part of every build, so it is wired in by host
-  ! code at initialization through a procedure pointer rather than
-  ! referenced directly; when nothing is registered, diagnostic-list
-  ! water uptake aborts as unavailable.
+  ! Abstract interface for computing diagnostic-list water uptake.
+  ! Use a procedure pointer since some model configurations do not compile
+  ! the portable modal aerosol science code.
   abstract interface
      subroutine water_uptake_diag_i(aero_props, aero_state, ncol, nlev, top_lev, &
           pi, rhoh2o, t, pmid, h2ommr, cldn, bin_idx, dgnumwet, qaerwat, errmsg, errflg)
@@ -92,9 +89,7 @@ module modal_aerosol_state_mod
 contains
 
   !------------------------------------------------------------------------------
-  ! register the diagnostic-list water uptake implementation (host wiring;
-  ! called at initialization from code that has access to the portable
-  ! modal aerosol schemes)
+  ! register the diagnostic-list water uptake implementation
   !------------------------------------------------------------------------------
   subroutine modal_aerosol_state_register_water_uptake_diag(fn)
     procedure(water_uptake_diag_i) :: fn
@@ -493,14 +488,6 @@ contains
 
   !------------------------------------------------------------------------------
   ! returns aerosol wet diameter and aerosol water concentration for a given mode
-  !
-  ! For the climate list (list_idx==0) these were pre-computed by the water
-  ! uptake calculation and are retrieved via the aerosol_mmr_host accessors
-  ! (DGNUMWET/QAERWAT pbuf fields in CAM; dgncur_awet/qaerwat_aer registry
-  ! fields written by the CCPPized wateruptake scheme in CAM-SIMA).
-  ! Diagnostic lists are recomputed from the atmospheric state passed in by
-  ! the caller, via the registered portable implementation (see the
-  ! water_uptake_diag_i interface above).
   !------------------------------------------------------------------------------
   subroutine water_uptake(self, aero_props, bin_idx, ncol, nlev, top_lev, &
                           t, pmid, h2ommr, cldn, dgnumwet, qaerwat)

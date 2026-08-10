@@ -127,9 +127,7 @@ integer :: coarse_so4_idx = -1  ! index of sulfate in coarse mode
 integer :: naer_all = 0
 integer :: npccn_idx, rndst_idx, nacon_idx
 
-! dropmixnuc CAM interface data (moved from ndrop)
-! psat/ccn_name serve the CCN diagnostics of both the modal (dropmixnuc) and
-! bulk (ndrop_bam) paths; the values match the psat/supersat conventions of both.
+! dropmixnuc CAM interface data
 integer, parameter :: psat = 6   ! number of supersaturations used to calc ccn concentration
 character(len=8) :: ccn_name(psat)= &
                     (/'CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'/)
@@ -144,7 +142,8 @@ integer, allocatable :: aer_cnst_idx(:,:)
 logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
                                ! in the ptend object
 
-! true for aerosol elements resolving to advected constituents (dropmixnuc tendency-return)
+! true for aerosol elements resolving to advected constituents
+! (dropmixnuc returns tendencies)
 logical, allocatable :: dotend(:)
 
 logical  :: separate_dust = .false.
@@ -658,7 +657,7 @@ subroutine microp_aero_run ( &
 
    real(r8), allocatable :: factnum(:,:,:) ! activation fraction for aerosol number
 
-   ! dropmixnuc work arrays and diagnostics (CAM marshal, moved from ndrop)
+   ! dropmixnuc work arrays and diagnostics
    real(r8), allocatable :: raertend_out(:,:,:) ! tendency of interstitial aerosol mass, number mixing ratios
    real(r8), allocatable :: coltend(:,:)       ! column tendency for diagnostic output
    real(r8), allocatable :: coltend_cw(:,:)    ! column tendency
@@ -861,8 +860,6 @@ subroutine microp_aero_run ( &
          call endrun('microp_aero_run: not able to allocate dropmixnuc work arrays')
       endif
 
-      ! dropmixnuc CAM marshaling (moved from ndrop): kvh from pbuf, ptend
-      ! initialized with the aerosol lq mask.
       call pbuf_get_field(pbuf, kvh_idx, kvh)
 
       ! initialize aerosol tendencies

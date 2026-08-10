@@ -2,10 +2,9 @@ module wetdep_cam
 
 !-----------------------------------------------------------------------
 !
-! CAM host interface for the portable wetdep module.  Gathers the wetdepa
-! inputs from the physics state/pbuf (wetdep_inputs_t / wetdep_init /
-! wetdep_inputs_set) and retains wetdepg (gas-phase Henry's-law scavenging),
-! which has no portable caller.
+! CAM host interface for the portable wetdep module
+! Calls portable wetdepa.
+! Retains gas-phase Henry's law scavenging (wetdepg).
 !
 !-----------------------------------------------------------------------
 
@@ -17,7 +16,6 @@ use phys_control, only: cam_physpkg_is
 use wetdep,       only: clddiag
 
 implicit none
-save
 private
 
 public :: wetdepg     ! scavenging of gas phase constituents by henry's law
@@ -60,12 +58,8 @@ integer :: nevapr_shcu_idx     = 0
 integer :: nevapr_dpcu_idx     = 0
 integer :: ixcldice, ixcldliq
 
-!==============================================================================
 contains
-!==============================================================================
 
-!==============================================================================
-!==============================================================================
 subroutine wetdep_init()
   use physics_buffer, only: pbuf_get_index
   use constituents,   only: cnst_get_ind
@@ -89,7 +83,7 @@ subroutine wetdep_init()
   call cnst_get_ind('CLDICE', ixcldice)
   call cnst_get_ind('CLDLIQ', ixcldliq)
 
-endsubroutine wetdep_init
+end subroutine wetdep_init
 
 !==============================================================================
 ! gathers up the inputs needed for the wetdepa routines

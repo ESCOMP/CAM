@@ -1,9 +1,5 @@
 module modal_aero_calcsize_cam
-
-!  CAM wrapper for modal_aero_calcsize.
-!  Handles pbuf registration, initialization, history output,
-!  state/ptend/qqcw marshaling, and calls the portable science
-!  routine modal_aero_calcsize_run.
+! CAM wrapper for modal_aero_calcsize.
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use spmd_utils,       only: masterproc
@@ -255,13 +251,6 @@ end subroutine modal_aero_calcsize_init
 
 subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, aero_props, aero_state, &
    do_adjust_in, do_aitacc_transfer_in)
-
-   !-----------------------------------------------------------------------
-   ! CAM wrapper for modal_aero_calcsize_run.
-   ! Marshals state/ptend/pbuf/qqcw into explicit arrays, calls the
-   ! portable science routine, then applies tendencies and history output.
-   !-----------------------------------------------------------------------
-
    ! arguments
    type(physics_state), target, intent(in)    :: state
    type(physics_ptend), target, intent(inout) :: ptend
@@ -513,10 +502,6 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, aero_props, aero_
 
 end subroutine modal_aero_calcsize_sub
 
-
-!----------------------------------------------------------------------
-
-
 subroutine modal_aero_calcsize_diag(state, pbuf, aero_props, aero_state)
 
    !-----------------------------------------------------------------------
@@ -667,7 +652,6 @@ subroutine modal_aero_calcdry(state, pbuf, aero_props, aero_state)
    call pbuf_get_field(pbuf, so4dryvol_idx, so4dryvol)
    call pbuf_get_field(pbuf, naer_idx,      naer)
 
-   ! Zero output fields (allocated to pcols, _run writes 1:ncol)
    hygro(:,:,:)     = 0._r8
    dryvol(:,:,:)    = 0._r8
    dryrad(:,:,:)    = 0._r8
@@ -675,6 +659,7 @@ subroutine modal_aero_calcdry(state, pbuf, aero_props, aero_state)
    so4dryvol(:,:,:) = 0._r8
    naer(:,:,:)      = 0._r8
 
+   ! call portable subroutine:
    call modal_aero_calcdry_run( &
       aero_props       = aero_props,            &
       aero_state       = aero_state,            &
@@ -697,6 +682,5 @@ subroutine modal_aero_calcdry(state, pbuf, aero_props, aero_state)
    end if
 
 end subroutine modal_aero_calcdry
-!----------------------------------------------------------------------
 
 end module modal_aero_calcsize_cam

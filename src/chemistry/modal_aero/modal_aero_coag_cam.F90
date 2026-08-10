@@ -1,20 +1,15 @@
 ! CAM wrapper for modal_aero_coag.
-! Owns the pair_option_acoag build-time selection, resolves the
-! coagulation-pair tables from CAM constituent metadata (with the pcage
-! aging tables from modal_aero_gasaerexch), hands them (with the mode
-! metadata and host physical constants) to the portable
-! modal_aero_coag_init, and registers history fields.
+! Select pair_option_acoag at build time
+! Resolve the coagulation-pair tables from CAM constituents metadata
+! with the pcage aging tables from modal_aero_gasaerexch,
+! registers history fields, and calls portable subroutines
 !----------------------------------------------------------------------
-  module modal_aero_coag_cam
-
-! !USES:
+module modal_aero_coag_cam
   use shr_kind_mod, only: r8 => shr_kind_r8
 
   implicit none
   private
-  save
 
-! !PUBLIC MEMBER FUNCTIONS:
   public :: modal_aero_coag_cam_init
 
 #if ( defined MODAL_AERO_7MODE || defined MODAL_AERO_4MODE || defined MODAL_AERO_5MODE)
@@ -31,9 +26,6 @@
 
 !----------------------------------------------------------------------
 contains
-
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
 	subroutine modal_aero_coag_cam_init
 !
 !   computes pointers for species transfer during coagulation
@@ -50,19 +42,17 @@ contains
 	use constituents,    only: pcnst, cnst_name
 	use physconst,       only: r_universal, pstd, tmelt, boltz
 	use spmd_utils,      only: masterproc
-        use phys_control,    only: phys_getopts
-
-	implicit none
+  use phys_control,    only: phys_getopts
+  use cam_logfile,     only: iulog
 
 !   local variables
 	integer :: ipair, iq, iqfrm, iqfrm_aa, iqtoo, iqtoo_aa
-        integer :: jsoa
-	integer :: l, l1, l2, lsfrm, lstoo, lunout
+  integer :: jsoa
+	integer :: l, l1, l2, lsfrm, lstoo
 	integer :: m, mait, mpca, mfrm, mtoo, mtef
 	integer :: nchfrm, nchfrmskip, nchtoo, nchtooskip, nspec
 
-!   resolved coagulation-pair tables (host constituent-index space),
-!   handed to the portable modal_aero_coag_init at the end
+!   resolved coagulation-pair tables (host constituent-index space)
 	integer :: maxspec_acoag
 	integer :: npair_acoag
 	integer :: modefrm_acoag(maxpair_acoag)
@@ -80,31 +70,28 @@ contains
 	character(8)                   :: unit
 
 	logical :: dotend(pcnst)
-        logical :: history_aerosol      ! Output the MAM aerosol tendencies
+  logical :: history_aerosol      ! Output the MAM aerosol tendencies
 
 	character(len=200) :: msg
 
 	character(len=512) :: errmsg
 	integer            :: errflg
 
-        !-----------------------------------------------------------------------
-        call phys_getopts( history_aerosol_out        = history_aerosol   )
+  call phys_getopts( history_aerosol_out        = history_aerosol   )
 
-        lunout = 6
-
-        maxspec_acoag = nspec_max
-        allocate( lspecfrm_acoag(maxspec_acoag,maxpair_acoag) )
-        allocate( lspectoo_acoag(maxspec_acoag,maxpair_acoag) )
-        allocate( fac_m2v_aitage(nspec_max), fac_m2v_pcarbon(nspec_max) )
+  maxspec_acoag = nspec_max
+  allocate( lspecfrm_acoag(maxspec_acoag,maxpair_acoag) )
+  allocate( lspectoo_acoag(maxspec_acoag,maxpair_acoag) )
+  allocate( fac_m2v_aitage(nspec_max), fac_m2v_pcarbon(nspec_max) )
 
 !   default-initialize the tables so the unused slots are well-defined when
 !   the whole arrays are handed to the portable modal_aero_coag_init
-        modefrm_acoag(:)    = 0
-        modetoo_acoag(:)    = 0
-        modetooeff_acoag(:) = 0
-        nspecfrm_acoag(:)   = 0
-        lspecfrm_acoag(:,:) = 0
-        lspectoo_acoag(:,:) = 0
+  modefrm_acoag(:)    = 0
+  modetoo_acoag(:)    = 0
+  modetooeff_acoag(:) = 0
+  nspecfrm_acoag(:)   = 0
+  lspecfrm_acoag(:,:) = 0
+  lspectoo_acoag(:,:) = 0
 
 !
 !   define "from mode" and "to mode" for each coagulation pairing
@@ -221,27 +208,27 @@ aa_iqfrm: do iqfrm = 1, nspec_amode(mfrm)
 !
 	if ( masterproc ) then
 
-	write(lunout,9310)
+	write(iulog,9310)
 
 	do ipair = 1, npair_acoag
 	  mfrm = modefrm_acoag(ipair)
 	  mtoo = modetoo_acoag(ipair)
 	  mtef = modetooeff_acoag(ipair)
-	  write(lunout,9320) ipair, mfrm, mtoo, mtef
+	  write(iulog,9320) ipair, mfrm, mtoo, mtef
 
 	  do iq = 1, nspecfrm_acoag(ipair)
 	    lsfrm = lspecfrm_acoag(iq,ipair)
 	    lstoo = lspectoo_acoag(iq,ipair)
 	    if (lstoo .gt. 0) then
-		write(lunout,9330) lsfrm, cnst_name(lsfrm),   &
+		write(iulog,9330) lsfrm, cnst_name(lsfrm),   &
       			lstoo, cnst_name(lstoo)
 	    else
-		write(lunout,9340) lsfrm, cnst_name(lsfrm)
+		write(iulog,9340) lsfrm, cnst_name(lsfrm)
 	    end if
 	  end do
 
 	end do ! ipair = ...
-	write(lunout,*)
+	write(iulog,*)
 
 	end if ! ( masterproc ) 
 
@@ -317,8 +304,7 @@ aa_iqfrm: do iqfrm = 1, nspec_amode(mfrm)
 	    ip_aitpca = -999888777
 	end if
 
-!   hand the resolved tables, mode metadata, and host physical constants
-!   to the portable scheme
+	! call the portable subroutine:
 	call modal_aero_coag_init(                            &
 	   pair_option_acoag_in = pair_option_acoag,          &
 	   npair_acoag_in       = npair_acoag,                &
@@ -409,8 +395,6 @@ aa_iqfrm: do iqfrm = 1, nspec_amode(mfrm)
 		'modal_aero_coag_init addfld', fieldname, unit
 	end do ! l = ...
 
-
-	return
 	end subroutine modal_aero_coag_cam_init
 
-  end module modal_aero_coag_cam
+end module modal_aero_coag_cam

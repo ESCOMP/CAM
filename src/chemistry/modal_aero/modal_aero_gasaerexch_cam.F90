@@ -31,6 +31,7 @@ contains
     use cam_abortutils, only: endrun
     use spmd_utils, only: masterproc
     use phys_control, only: phys_getopts, cam_chempkg_is
+    use cam_logfile, only: iulog
 
     ! indices are in pcnst (q) space
     ! run phase receives loffset for gas_pcnst (vmr) space
@@ -38,7 +39,7 @@ contains
     ! local
     integer                          :: ipair, iq, iqfrm, iqtoo
     integer                          :: jac, jsoa, j
-    integer                          :: l, lsfrm, lstoo, lunout
+    integer                          :: l, lsfrm, lstoo
     integer                          :: mfrm, mtoo
     integer                          :: n, nspec
     integer                          :: nchfrm, nchfrmskip, nchtoo, nchtooskip
@@ -75,7 +76,6 @@ contains
     integer            :: errflg
 
     call phys_getopts(history_aerosol_out=history_aerosol)
-    lunout = 6
 
     !-----------------------------------------------------------------------
     ! Part A: Resolve arguments and call portable _init
@@ -225,21 +225,21 @@ contains
 
         ! output results
         if (masterproc) then
-          write (lunout, 9310)
-          write (lunout, 9320) 1, mfrm, mtoo
+          write (iulog, 9310)
+          write (iulog, 9320) 1, mfrm, mtoo
 
           do iq = 1, nspecfrm_pcage_resolved
             lsfrm = lspecfrm_pcage_resolved(iq)
             lstoo = lspectoo_pcage_resolved(iq)
             if (lstoo > 0) then
-              write (lunout, 9330) lsfrm, cnst_name(lsfrm), &
+              write (iulog, 9330) lsfrm, cnst_name(lsfrm), &
                 lstoo, cnst_name(lstoo)
             else
-              write (lunout, 9340) lsfrm, cnst_name(lsfrm)
+              write (iulog, 9340) lsfrm, cnst_name(lsfrm)
             end if
           end do
 
-          write (lunout, *)
+          write (iulog, *)
         end if ! ( masterproc )
 
 9310    format(/'subr. modal_aero_gasaerexch_cam_init - primary carbon aging pointers')

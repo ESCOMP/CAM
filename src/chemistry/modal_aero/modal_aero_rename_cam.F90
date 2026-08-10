@@ -1,11 +1,6 @@
-! CAM wrapper for modal_aero_rename.
-! Owns the resolved renaming-pair tables (consumed by other CAM aerosol
-! wrappers), performs the cnst_name-based pair resolution, and hands the
-! tables + mode metadata to the portable modal_aero_rename_init.
-!----------------------------------------------------------------------
-  module modal_aero_rename_cam
+! CAM wrapper for modal_aero_rename
+module modal_aero_rename_cam
 
-! !USES:
   use shr_kind_mod,    only: r8 => shr_kind_r8
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
@@ -23,12 +18,10 @@
 
   implicit none
   private
-  save
 
-! !PUBLIC MEMBER FUNCTIONS:
   public :: modal_aero_rename_cam_init
 
-! !PUBLIC DATA MEMBERS:
+! PUBLIC DATA MEMBERS:
 ! Resolved renaming-pair tables (host constituent-index space).  These are
 ! consumed by modal_aero_calcsize_cam and modal_aero_gasaerexch_cam.
   integer, public :: npair_renamexf = -123456789
@@ -49,8 +42,9 @@
 ! 5001 = stracoar --> accum
   integer :: ipair_select_renamexf(maxpair_renamexf)
 
-! Renaming-pair flags resolved here and consumed by the portable science: handed
-! to modal_aero_rename_init, and passed by aero_model to modal_aero_rename_run.
+! Renaming-pair flags resolved here and consumed by the portable science:
+! passed to modal_aero_rename_init,
+! and passed by aero_model to modal_aero_rename_run.
   integer, protected, public :: igrow_shrink_renamexf(maxpair_renamexf)
   integer, protected, public :: ixferable_all_renamexf(maxpair_renamexf)
   integer :: ixferable_all_needed_renamexf(maxpair_renamexf)
@@ -65,11 +59,6 @@
 
 !----------------------------------------------------------------------
 contains
-
-  !------------------------------------------------------------------
-  ! Resolve the renaming-pair tables from CAM constituent metadata, then hand
-  ! them (with the mode metadata) to the portable modal_aero_rename_init.
-  !------------------------------------------------------------------
   subroutine modal_aero_rename_cam_init(modal_accum_coarse_exch_in)
     use modal_aero_rename, only: modal_aero_rename_init
 
@@ -98,9 +87,8 @@ contains
     allocate( ixferable_a_renamexf(maxspec_renamexf,maxpair_renamexf) )
     allocate( ixferable_c_renamexf(maxspec_renamexf,maxpair_renamexf) )
 
-    ! Default-initialize the accum-coarse-exchange flags: the no_acc_crs
-    ! resolution path leaves them unset, and they are handed (unused) to the
-    ! portable code on that path.
+    ! Default-initialize the accum-coarse-exchange flags:
+    ! unset in the no_acc_crs resolution path
     igrow_shrink_renamexf(:)  = 0
     ixferable_all_renamexf(:) = 0
     ixferable_a_renamexf(:,:) = 0
@@ -117,9 +105,7 @@ contains
        call modal_aero_rename_no_acc_crs_init()
     endif
 
-    ! Precompute rename's own accum-coarse-exchange physics coefficients. Only
-    ! the metadata the precompute + one-time log needs is handed over; the shared
-    ! tables/metadata are passed per-call to modal_aero_rename_run instead.
+    ! Precompute rename's own accum-coarse-exchange physics coefficients:
     call modal_aero_rename_init(                                     &
        modal_accum_coarse_exch = modal_accum_coarse_exch,            &
        ntot_amode            = ntot_amode,                           &
@@ -169,8 +155,6 @@ contains
 !	water_a
 !
 
-	implicit none
-
 !   local variables
 	integer :: ipair, iq, iqfrm, iqtoo
 	integer :: lsfrma, lsfrmc, lstooa, lstooc, lunout
@@ -216,7 +200,7 @@ aa_ipair: do ipair = 1, npair_renamexf
 	    nchtooskip = 3
 	end if
 	nspec = 0
-aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
+   aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
 	    if (iqfrm == -1) then
 		lsfrma = numptr_amode(mfrm)
 		lstooa = numptr_amode(mtoo)
@@ -350,10 +334,7 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
 9340	format( 5x, 'spec', i3, '=', a, ' ---> LOSS' )
 9350	format( 5x, 'no corresponding activated species' )
 
-	return
 	end subroutine modal_aero_rename_no_acc_crs_init
-
-
 
 	subroutine modal_aero_rename_acc_crs_init
 !
@@ -362,8 +343,6 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
 !   transfers include number_a, number_c, mass_a, mass_c and
 !	water_a
 !
-
-	implicit none
 
 !   local variables
 	integer :: i, ipair, iq, iqfrm, iqtooa, iqtooc, itmpa
@@ -450,7 +429,6 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
 		'*** subr. modal_aero_rename_acc_crs_init -- npair_renamexf = 0'
 	    return
 	end if
-
 
 !
 !   define species involved in each tail-xfer pairing

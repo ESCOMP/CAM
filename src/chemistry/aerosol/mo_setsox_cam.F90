@@ -1,11 +1,5 @@
 !-----------------------------------------------------------------------
 ! CAM wrapper for mo_setsox (portable aqueous sulfur chemistry).
-!
-! Resolves the species indices / invariant flags and Henry's Law table
-! indices, hands them (with the host physical constants) to the portable
-! setsox_init / sox_cldaero_init, and marshals CAM structures (physics
-! state / pbuf CO2, shr_drydep dheff table) into plain arguments for the
-! portable setsox_sub.
 !-----------------------------------------------------------------------
 module mo_setsox_cam
 
@@ -23,9 +17,6 @@ module mo_setsox_cam
   logical :: has_sox = .true.
 
 contains
-
-!-----------------------------------------------------------------------
-!-----------------------------------------------------------------------
   subroutine sox_inti(aero_props)
     !-----------------------------------------------------------------------
     !	... initialize the hetero sox routine
@@ -161,6 +152,7 @@ contains
        return
     end if
 
+    ! call the portable init subroutines:
     call setsox_init( cloud_borne_in=cloud_borne, &
          id_so2_in=id_so2,     inv_so2_in=inv_so2,   &
          id_nh3_in=id_nh3,     inv_nh3_in=inv_nh3,   &
@@ -173,11 +165,11 @@ contains
          heff_id_nh3_in=heff_id_nh3,   heff_id_co2_in=heff_id_co2,   &
          heff_id_h2o2_in=heff_id_h2o2, heff_id_o3_in=heff_id_o3 )
 
-    ! sulfur oxidation is performed internally to GEOS-Chem, so the aerosol
-    ! and gas updates are not applied here (avoids double counting)
     call sox_cldaero_init(aero_props, &
          id_msa_in=id_msa, id_h2so4_in=id_h2so4, id_so2_in=id_so2, &
          id_h2o2_in=id_h2o2, id_nh3_in=id_nh3, pi_in=pi, &
+         ! sulfur oxidation is performed internally to GEOS-Chem, so the aerosol
+         ! and gas updates are not applied here (avoids double counting)
          do_aqueous_sulfur_chemistry_aerosol_update_in=.not. cam_chempkg_is('geoschem_mam4'), &
          errmsg=errmsg, errflg=errflg)
     if (errflg /= 0) then
@@ -211,12 +203,6 @@ contains
        aqso4_h2o2_3d, &
        aqso4_o3_3d &
        )
-
-    !-----------------------------------------------------------------------
-    ! CAM-facing setsox: marshal CAM structures (pbuf CO2 via rad_cnst,
-    ! shr_drydep dheff table, host physical constants) and call the
-    ! portable setsox_sub.
-    !-----------------------------------------------------------------------
 
     use physconst,    only : avogad, boltz, r_universal, mwco2, mwdry, gravit
     use ppgrid,       only : pver
@@ -264,7 +250,9 @@ contains
 
     call rad_cnst_get_gas(0, 'CO2', state, pbuf, co2_mass_mixing_ratio)
 
-    call setsox_sub( aero_state = aero_state, &
+    ! call the portable subroutine:
+    call setsox_sub(
+         aero_state = aero_state, &
          ncol       = ncol,       &
          pver       = pver,       &
          dtime      = dtime,      &
