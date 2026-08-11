@@ -3815,6 +3815,17 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_parcel_hscale');
 }
 
+# MCSP
+if (!$simple_phys) {
+    add_default($nl, 'MCSP_heat_coeff');
+    add_default($nl, 'MCSP_moisture_coeff');
+    add_default($nl, 'MCSP_uwind_coeff');
+    add_default($nl, 'MCSP_vwind_coeff');
+    add_default($nl, 'MCSP_storm_speed_pref');
+    add_default($nl, 'MCSP_conv_depth_min');
+    add_default($nl, 'mcsp_shear_min');
+}
+
 # moist convection rainwater coefficients
 my $shallow_scheme = $nl->get_value('shallow_scheme');
 $shallow_scheme =~ s/['"]//g;            # strip quotes "'

@@ -3477,6 +3477,51 @@ Convective adjustment timescale in units of (s)
 Default: 3600.0 s
 </entry>
 
+<!-- MCSP nl -->
+
+<entry id="MCSP_heat_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+MCSP heating coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="MCSP_moisture_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+MCSP moistening coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="MCSP_uwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+MCSP uwnd tendency coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="MCSP_vwind_coeff" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+MCSP vwnd tendency coefficient controlling the tendency intensity added.
+Default: 0.0
+</entry>
+
+<entry id="MCSP_storm_speed_pref" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Reference pressure level in Pa for low-level zonal wind shear calculation for MCSP.
+Default: 60000.0
+</entry>
+
+<entry id="MCSP_conv_depth_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum convection depth for MCSP to be activated in Pa.
+Default: 50000.0
+</entry>
+
+<entry id="mcsp_shear_min" type="real" category="conv"
+       group="mcsp_nl" valid_values="" >
+Minimum uwind difference/shear between reference pressure level and surface for MCSP to be activated.
+Default: 3.0
+</entry>
+
+
 <!-- Cloud sedimentation -->
 
 <entry id="cldsed_ice_stokes_fac" type="real" category="cldsed"
