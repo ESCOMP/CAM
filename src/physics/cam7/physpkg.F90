@@ -1834,10 +1834,6 @@ contains
              call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
-          if (trim(cam_take_snapshot_before) == "microp_section") then
-             call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-          end if
           call t_startf('microp_aero_run')
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
@@ -1902,17 +1898,9 @@ contains
                   (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
                 call cam_snapshot_ptend_outfld(ptend, lchnk)
              end if
-             if ( (trim(cam_take_snapshot_after) == "pumas_tend") .and. &
-                  (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-                call cam_snapshot_ptend_outfld(ptend, lchnk)
-             end if
              call physics_update (state_sc, ptend_sc, ztodt, tend_sc)
 
              if (trim(cam_take_snapshot_after) == "microp_driver_tend_subcol") then
-                call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                   fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-             end if
-             if (trim(cam_take_snapshot_after) == "pumas_tend") then
                 call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
                    fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
              end if
@@ -1938,20 +1926,12 @@ contains
 
           call diag_clip_tend_writeout(state, ptend, ncol, lchnk, ixcldliq, ixcldice, ixq, ztodt, rtdt)
 
-          if ( (trim(cam_take_snapshot_after) == "microp_section") .and.      &
-               (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-             call cam_snapshot_ptend_outfld(ptend, lchnk)
-          end if
           if ( (trim(cam_take_snapshot_after) == "pumas_tend") .and.      &
                (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
              call cam_snapshot_ptend_outfld(ptend, lchnk)
           end if
           call physics_update (state, ptend, ztodt, tend)
 
-          if (trim(cam_take_snapshot_after) == "microp_section") then
-             call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
-          end if
           if (trim(cam_take_snapshot_after) == "pumas_tend") then
              call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
                   fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
