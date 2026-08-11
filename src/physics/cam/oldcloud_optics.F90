@@ -6,7 +6,7 @@ module oldcloud_optics
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use constituents,     only: cnst_get_ind
 use physconst,        only: gravit
 use radconstants,     only: nlwbands
@@ -101,7 +101,7 @@ subroutine oldcloud_lw(state,pbuf,cld_abs_od,oldwp)
 
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: rei 
-   integer :: ncol, itim_old, lwband, i, k, lchnk
+   integer :: ncol, lwband, i, k, lchnk
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
    real(r8) :: kabs, kabsi
@@ -111,9 +111,8 @@ subroutine oldcloud_lw(state,pbuf,cld_abs_od,oldwp)
    ncol = state%ncol
    lchnk = state%lchnk
 
-   itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
-   call pbuf_get_field(pbuf, cld_idx,   cldn,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,   cldn)
 
    if (oldwp) then
      do k=1,pver
@@ -177,7 +176,7 @@ subroutine old_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: rei
-   integer :: ncol, itim_old, lwband, i, k, lchnk 
+   integer :: ncol, lwband, i, k, lchnk 
 
    real(r8) :: kabs, kabsi
    real(r8), parameter :: kabsl = 0.090361_r8 ! longwave liquid absorption coeff (m**2/g)
@@ -187,9 +186,8 @@ subroutine old_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    ncol=state%ncol
    lchnk = state%lchnk
 
-   itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
-   call pbuf_get_field(pbuf, cld_idx,   cldn,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,   cldn)
 
    if (oldliqwp) then
      do k=1,pver
@@ -258,7 +256,7 @@ subroutine old_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
 
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: rei
-   integer :: ncol, itim_old, lwband, i, k, lchnk
+   integer :: ncol, lwband, i, k, lchnk
 
    real(r8) :: kabs, kabsi
    real(r8), parameter :: kabsl = 0.090361_r8 ! longwave liquid absorption coeff (m**2/g)
@@ -269,9 +267,8 @@ subroutine old_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    ncol = state%ncol
    lchnk = state%lchnk
 
-   itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
-   call pbuf_get_field(pbuf, cld_idx,   cldn,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,   cldn)
 
    if(oldicewp) then
      do k=1,pver

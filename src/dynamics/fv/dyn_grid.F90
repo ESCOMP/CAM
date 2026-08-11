@@ -60,8 +60,6 @@ integer, parameter, public :: dyn_ustag_decomp   = 102
 integer, parameter, public :: dyn_vstag_decomp   = 103
 integer, parameter, public :: dyn_zonal_decomp   = 104
 
-integer, parameter, public :: ptimelevels = 2  ! number of time levels in the dycore
-
 integer :: ngcols_d = 0     ! number of dynamics columns
 
 type(t_fvdycore_grid), pointer :: grid

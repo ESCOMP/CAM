@@ -186,7 +186,7 @@ end subroutine conv_water_readnl
    !---------------------------------------------------------------------- !
 
    
-   use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+   use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
    use physics_types,   only: physics_state
    use cam_history,     only: outfld
@@ -228,7 +228,7 @@ end subroutine conv_water_readnl
    real(r8) :: tot_ice(pcols,pver)                ! Total IC ice
    real(r8) :: tot_liq(pcols,pver)                ! Total IC liquid
 
-   integer  :: i,k,itim_old                       ! Lon, lev indices buff stuff.
+   integer  :: i, k                       ! Lon, lev indices buff stuff.
    real(r8) :: cu_icwmr                           ! Convective  water for this grid-box.   
    real(r8) :: ls_icwmr                           ! Large-scale water for this grid-box. 
    real(r8) :: tot_icwmr                          ! Large-scale water for this grid-box.  
@@ -277,8 +277,7 @@ end subroutine conv_water_readnl
    call pbuf_get_field(pbuf, dp_frac_idx,  dp_frac )
    call pbuf_get_field(pbuf, rei_idx,      rei )
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, ast_idx,  ast,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/) ) 
+   call pbuf_get_field(pbuf, ast_idx,  ast ) 
 
    ! Fields computed below and stored in pbuf.
    call pbuf_get_field(pbuf, gb_totcldicemr_idx, totg_ice)

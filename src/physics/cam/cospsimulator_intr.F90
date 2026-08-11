@@ -1442,7 +1442,7 @@ CONTAINS
                                     cld_swtau_in, snow_tau_in, snow_emis_in)
 
     use physics_types,        only: physics_state
-    use physics_buffer,       only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
     use camsrfexch,           only: cam_in_t
     use constituents,         only: cnst_get_ind
     use rad_constituents,     only: rad_cnst_get_gas
@@ -1479,7 +1479,6 @@ CONTAINS
     integer :: lchnk                             ! chunk identifier
     integer :: ncol                              ! number of active atmospheric columns
     integer :: i, k, kk
-    integer :: itim_old
     integer :: ip, it
     integer :: ipt
     integer :: ih, ihd, ihs, ihsc, ihm, ihmt, ihml
@@ -2104,9 +2103,8 @@ CONTAINS
     ! Note: no radiatively active CO or SO2 in RRTMG or at least in CESM2.
 
     ! fields from physics buffer
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, cld_idx,    cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, concld_idx, concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, cld_idx,    cld )
+    call pbuf_get_field(pbuf, concld_idx, concld )
     call pbuf_get_field(pbuf, rel_idx, rel  )
     call pbuf_get_field(pbuf, rei_idx, rei  )
     call pbuf_get_field(pbuf, dei_idx, dei  )

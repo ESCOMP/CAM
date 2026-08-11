@@ -1944,7 +1944,7 @@ contains
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use mo_setinv,           only : setinv
     use orbit,               only : zenith                         ! For computing SZA
-    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field
     use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
     use perf_mod,            only : t_startf, t_stopf
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
@@ -2141,7 +2141,6 @@ contains
     REAL(r8), POINTER      :: pbuf_i(:)             ! ptr to pbuf data (/pcols/) horizontal only (horiz_only)
     INTEGER                :: tmpIdx                ! pbuf field id
 
-    INTEGER                :: TIM_NDX
     INTEGER                :: IERR
 
     INTEGER, SAVE          :: iStep = 0
@@ -2660,11 +2659,10 @@ contains
     CALL Zenith( Calday, Rlats, Rlons, CSZA, nY )
 
     ! Get all required data from physics buffer
-    TIM_NDX = pbuf_old_tim_idx()
     CALL pbuf_get_field( pbuf, NDX_PBLH,     PblH   )
     CALL pbuf_get_field( pbuf, NDX_FSDS,     Fsds   )
     CALL pbuf_get_field( pbuf, NDX_CLDTOP,   cldTop )
-    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1,TIM_NDX/), KOUNT=(/NCOL,PVER,1/) )
+    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc )
     CALL pbuf_get_field( pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
     CALL pbuf_get_field( pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
     CALL pbuf_get_field( pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))

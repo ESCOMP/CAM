@@ -518,7 +518,7 @@ module clubb_intr
     !------------------------------------------------ !
 
     !  Add CLUBB fields to pbuf
-    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
+    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4
     use subcol_utils,    only: subcol_get_scheme
 
     !----- Begin Code -----
@@ -561,13 +561,13 @@ module clubb_intr
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/),               tke_idx)
     call pbuf_add_field('kvh',        'global', dtype_r8, (/pcols, pverp/),               kvh_idx)
     call pbuf_add_field('tpert',      'global', dtype_r8, (/pcols/),                      tpert_idx)
-    call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   ast_idx)
-    call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   aist_idx)
-    call pbuf_add_field('ALST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   alst_idx)
-    call pbuf_add_field('QIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   qist_idx)
-    call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   qlst_idx)
-    call pbuf_add_field('CONCLD',     'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   concld_idx)
-    call pbuf_add_field('CLD',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),   cld_idx)
+    call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver/),   ast_idx)
+    call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver/),   aist_idx)
+    call pbuf_add_field('ALST',       'global', dtype_r8, (/pcols,pver/),   alst_idx)
+    call pbuf_add_field('QIST',       'global', dtype_r8, (/pcols,pver/),   qist_idx)
+    call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver/),   qlst_idx)
+    call pbuf_add_field('CONCLD',     'global', dtype_r8, (/pcols,pver/),   concld_idx)
+    call pbuf_add_field('CLD',        'global', dtype_r8, (/pcols,pver/),   cld_idx)
     call pbuf_add_field('FICE',       'physpkg',dtype_r8, (/pcols,pver/),                 fice_idx)
     call pbuf_add_field('CMELIQ',     'physpkg',dtype_r8, (/pcols,pver/),                 cmeliq_idx)
     call pbuf_add_field('QSATFAC',    'physpkg',dtype_r8, (/pcols,pver/),                 qsatfac_idx)
@@ -2073,7 +2073,7 @@ end subroutine clubb_init_cnst
                               physics_state_copy, physics_ptend_init, &
                               physics_ptend_sum, physics_update, set_wet_to_dry
 
-    use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
+    use physics_buffer, only: pbuf_get_field, physics_buffer_desc
     use physics_buffer, only: pbuf_set_field
 
     use constituents,   only: cnst_get_ind, cnst_type
@@ -2550,7 +2550,6 @@ end subroutine clubb_init_cnst
       k_cam, k_clubb, sclr, iedsclr, & ! Loop variables
       ixcldice, ixcldliq, ixnumliq, &
       ixnumice, ixq, &
-      itim_old, &
       ncol, lchnk, &                  ! # of columns, and chunk identifier
       icnt, &
       stats_nsamp, stats_nout         ! Stats sampling and output intervals for CLUBB [timestep]
@@ -2592,7 +2591,6 @@ end subroutine clubb_init_cnst
     call cnst_get_ind('NUMICE',ixnumice)
 
     !  Determine time step of physics buffer
-    itim_old = pbuf_old_tim_idx()
 
     !  Establish associations between pointers and physics buffer fields
     call pbuf_get_field(pbuf, wp2_idx,        wp2_pbuf )
@@ -2638,13 +2636,13 @@ end subroutine clubb_init_cnst
     call pbuf_get_field(pbuf, tke_idx,     tke_pbuf)
     call pbuf_get_field(pbuf, qrl_idx,     qrl_pbuf)
 
-    call pbuf_get_field(pbuf, cld_idx,     cld_pbuf,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, concld_idx,  concld_pbuf,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, ast_idx,     ast_pbuf,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, alst_idx,    alst_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, aist_idx,    aist_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, qlst_idx,    qlst_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-    call pbuf_get_field(pbuf, qist_idx,    qist_pbuf,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, cld_idx,     cld_pbuf)
+    call pbuf_get_field(pbuf, concld_idx,  concld_pbuf)
+    call pbuf_get_field(pbuf, ast_idx,     ast_pbuf)
+    call pbuf_get_field(pbuf, alst_idx,    alst_pbuf)
+    call pbuf_get_field(pbuf, aist_idx,    aist_pbuf)
+    call pbuf_get_field(pbuf, qlst_idx,    qlst_pbuf)
+    call pbuf_get_field(pbuf, qist_idx,    qist_pbuf)
 
     call pbuf_get_field(pbuf, qsatfac_idx, qsatfac_pbuf)
 

@@ -65,8 +65,6 @@ character(len=3), protected :: ini_grid_name
 ! Name of horizontal grid dimension in initial file.
 character(len=6), protected :: ini_grid_hdim_name = ''
 
-integer, parameter :: ptimelevels = 2
-
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
 type (hvcoord_t)           :: hvcoord
 type(element_t),   pointer :: elem(:) => null()  ! local GLL elements for this task
@@ -75,7 +73,6 @@ type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this t
 public :: dyn_decomp
 public :: ini_grid_name
 public :: ini_grid_hdim_name
-public :: ptimelevels
 public :: TimeLevel
 public :: hvcoord
 public :: elem

@@ -1163,7 +1163,7 @@ end function chem_is_active
 !
 !-----------------------------------------------------------------------
 
-    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field
     use cam_history,         only : outfld
     use time_manager,        only : get_curr_calday
     use mo_gas_phase_chemdr, only : gas_phase_chemdr
@@ -1214,7 +1214,6 @@ end function chem_is_active
     real(r8) :: nhx_nitrogen_flx(pcols)
     real(r8) :: noy_nitrogen_flx(pcols)
 
-    integer :: tim_ndx
 
     logical :: lq(pcnst)
 
@@ -1260,11 +1259,10 @@ end function chem_is_active
        call tropopause_findChemTrop(state, tropLevChem)
     endif
 
-    tim_ndx = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, ndx_fsds,       fsds)
     call pbuf_get_field(pbuf, ndx_pblh,       pblh)
     call pbuf_get_field(pbuf, ndx_prain,      prain,  start=(/1,1/), kount=(/ncol,pver/))
-    call pbuf_get_field(pbuf, ndx_cld,        cldfr,  start=(/1,1,tim_ndx/), kount=(/ncol,pver,1/) )
+    call pbuf_get_field(pbuf, ndx_cld,        cldfr )
     call pbuf_get_field(pbuf, ndx_cmfdqr,     cmfdqr, start=(/1,1/),         kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/),         kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )

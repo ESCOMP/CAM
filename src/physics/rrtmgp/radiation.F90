@@ -13,7 +13,7 @@ use ref_pres,            only: pref_edge
 use physics_types,       only: physics_state, physics_ptend
 use phys_control,        only: phys_getopts
 use physics_buffer,      only: physics_buffer_desc, pbuf_add_field, dtype_r8, pbuf_get_index, &
-                               pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
+                               pbuf_set_field, pbuf_get_field
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair, gravit, stebol
 
@@ -882,7 +882,6 @@ subroutine radiation_tend( &
    real(r8) :: clon(pcols)     ! current longitudes(radians)
    real(r8) :: coszrs(pcols)   ! Cosine solar zenith angle
 
-   integer :: itim_old
    integer :: nextsw_nstep
    integer :: offset
    real(r8) :: next_cday
@@ -1089,17 +1088,16 @@ subroutine radiation_tend( &
    end if
 
    ! Associate pointers to physics buffer fields
-   itim_old = pbuf_old_tim_idx()
    nullify(cldfsnow)
    if (cldfsnow_idx > 0) then
-      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow )
    end if
    nullify(cldfgrau)
    if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-      call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau )
    endif
 
-   call pbuf_get_field(pbuf, cld_idx, cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx, cld )
 
    call pbuf_get_field(pbuf, qrs_idx, qrs)
    call pbuf_get_field(pbuf, qrl_idx, qrl)
