@@ -31,7 +31,7 @@
 	url = https://github.com/ESCOMP/atmospheric_physics
 	fxtag = atmos_phys0_27_000
         fxrequired = AlwaysRequired
-        fxDONOTUSEurl = https://github.com/nusbaume/atmospheric_physics
+        fxDONOTUSEurl = https://github.com/ESCOMP/atmospheric_physics
 
 [submodule "cam-sima"]
         path = src/utils/cam-sima
