@@ -42,7 +42,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine waccmx_phys_mspd_tend(ztodt, state, ptend)
 
-    real(r8), intent(in) :: ztodt                  ! 2 delta-t
+    real(r8), intent(in) :: ztodt                  ! model physics timestep [s]
     type(physics_state), intent(in)     :: state   ! Physics state variables
     type(physics_ptend), intent(inout)  :: ptend   ! indivdual parameterization tendencies
 

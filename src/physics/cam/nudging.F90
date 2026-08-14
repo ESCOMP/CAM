@@ -19,13 +19,11 @@ module nudging
 !    forcing discontinues.
 !
 !    Some analyses products can have gaps in the available data, where values
-!    are missing for some interval of time. When files are missing, the nudging
-!    force is switched off for that interval of time, so we effectively 'coast'
-!    thru the gap.
-!
-!    Currently, the nudging module is set up to accomodate nudging of PS
-!    values, however that functionality requires forcing that is applied in
-!    the selected dycore and is not yet implemented.
+!    are missing for some interval of time. The default behavior is now for the 
+!    model to error exit if there is a gap. Users with known gaps in their nuding 
+!    data can manually change the gap behavior to accomodate their needs. 
+!    When files are missing, the nudging force can be switched off for that interval 
+!    of time, in order to effectively 'coast' thru the gap. 
 !
 !    The nudging of the model toward the analyses data is controlled by
 !    the 'nudging_nl' namelist in 'user_nl_cam'; whose variables control the
@@ -43,13 +41,41 @@ module nudging
 !
 !           F_nudge = Alpha*((Target-Model(t_curr))/TimeScale
 !
+!    SURFACE PRESSURE NUDGING:
+!    ------------------------
+!    Surface pressure is not a prognostic variable, so nudging cannot be implemented directly.
+!    Hydrostatic balance provides a constraint on the values of pressure, temperature, and model 
+!    layer thicknesses(geopotential heights). Since any change in thickness values will translate
+!    into a momentum tendency via the gradient of height, we require that dZ/dn must remain constant
+!    under changes to pressures so that the result does not indirectly impose a momentum nudging.
+!    The nudging of surface pressure values then has a corresponding nudging of temperature values.
+!    Surface pressure nudging is just an alternate form of temperature nudging, thus both temperature
+!    and surface pressure cannot be applied at the same time.
 !
+!    Vertical Influence Function:
+!    To convey the effect of the 2D surface pressure changes to the 3D temperature values, there are
+!    two choices for the vertical influence function. The first, most natural choice, is to just 
+!    convey the surface pressures using the (Bn) hybrid pressure coeffcients. However, due to the 
+!    inherent structure of the hybrid coeffcients this results in a vertical profile that is small 
+!    at the surface increases to a maximum at the upper levels, and then abruptly drops to 0 for the
+!    pure-pressure levels at the mode top. Very un-physical behavior, but that is what the mathematics
+!    dictates for the current (An,Bn) values. An alternative vertical influence function is implemented
+!    based on the reference profile of the atmosphere. 
+!                                                      (Pref/P0)**scl = exp[-scl*(Ztop/H)*(1-n)]. (H=7km)
+!    For scl=1.0, the vertical profile is similar to the Bn profile, but with a smaller amplitude. 
+!    For larger values of scl, the profile transitions to one in which the vertical influence function 
+!    falls off with height from a maximum at the surface layer. There is typically a discontinuity in 
+!    the profile at the transition to pure pressure levels, which gets smaller with increasing scl values.
+!      
 !    WINDOWING:
 !    ----------
 !    The region of applied nudging can be limited using Horizontal/Vertical
 !    window functions that are constructed using a parameterization of the
 !    Heaviside step function.
 !
+!        -------------------------------------------------------------------------------
+!        HEAVISIDE WINDOW:   (Nudge_Xprof = 2)  where X=[U,V,T,Q,PS]
+!        -------------------------------------------------------------------------------
 !    The Heaviside window function is the product of separate horizonal and vertical
 !    windows that are controled via 12 parameters:
 !
@@ -93,16 +119,43 @@ module nudging
 !    running the model. Lookat_NudgeWindow.ncl is a script avalable in the tools directory
 !    which will read in the values for a given namelist and display the resulting window.
 !
-!    The module is currently configured for only 1 window function. It can readily be
-!    extended for multiple windows if the need arises.
+!        -------------------------------------------------------------------------------
+!        USER-DEFINED WINDOW:  (Nudge_Xprof = 3)  where X=[U,V,T,Q,PS]
+!        -------------------------------------------------------------------------------
+!    The horizontal window domain can be customized by providing a netCDF file containing 
+!    a lat/lon grid of window coeffcients [0.,1.], where 1.0 represents the nudged domain
+!    and the values taper to 0. for un-nudged gridpoints. The Horizonal window values at 
+!    model gridpoints are linearly interpolated from the given reclilinear grid. For this 
+!    case the user specifies the Nudge_Bwindow_File file in the namelist and setting 
+!    (Nudge_Hwin_Invert=.true.) will invert the window given in the file, but all of the 
+!    other Nudge_Hwin_* namelist values are ignored. The vertical domain of the window is 
+!    still specified via the Nudge_Vwin_* namelist values.
 !
+!    The format for the Nudge_Bwindow_File can be either:
 !
-! Input/Output Values:
+!        dimensions:                                 !      dimensions:
+!           latitude;                                !         latitude;
+!           longitude;                               !         longitude;
+!        variables:                                  !      variables:
+!           double latitude(latitude);               !         double latitude(latitude);
+!           double longitude(longitude);             !         double longitude(longitude);
+!           double refineMap(latitude, longitude);   !         double boundaryMap(latitude, longitude);
+!
+!    The left format is the REFMAP file output that is created from the variable mesh VRM editor 
+!    program. The default resolution for these files is [720,360]. There is no restriction on the 
+!    horizonal dimensions, so higher resoultion domains can be provided as lonag as the grid points
+!    span the lat/lon domain.
+!    
+!
+!    INPUT/OUTPUT VALUES:
+!    ---------------------
 !    Forcing contributions are available for history file output by
-!    the names:    {'Nudge_U','Nudge_V','Nudge_T',and 'Nudge_Q'}
+!    the names:    {'Nudge_U','Nudge_V','Nudge_T','Nudge_Q', and 'Nudge_PS'}
 !    The target values that the model state is nudged toward are available for history
-!    file output via the variables:  {'Target_U','Target_V','Target_T',and 'Target_Q'}
+!    file output via the variables: {'Target_U','Target_V','Target_T','Target_Q',and 'Target_PS'}
 !
+!    NAMELIST SPECIFICATION:
+!    ---------------------
 !    &nudging_nl
 !      Nudge_Model         - LOGICAL toggle to activate nudging.
 !                              TRUE  -> Nudging is on.
@@ -149,25 +202,68 @@ module nudging
 !                              0 -->  TimeScale = 1/Tdlt_Anal                      [DEFAULT]
 !                              1 -->  TimeScale = 1/(t'_next - t_curr )
 !
-!      Nudge_Uprof         - INT index of profile structure to use for U.  [0,1,2]
-!      Nudge_Vprof         - INT index of profile structure to use for V.  [0,1,2]
-!      Nudge_Tprof         - INT index of profile structure to use for T.  [0,1,2]
-!      Nudge_Qprof         - INT index of profile structure to use for Q.  [0,1,2]
-!      Nudge_PSprof        - INT index of profile structure to use for PS. [0,N/A]
+!      Nudge_ZonalFilter    - LOGICAL Option to apply zonal mean filtering to the 
+!                                     model state and target data.
+!
+!      Nudge_ZonalNbasis    - INT The number of meridional modes(Legendre Polynomials)
+!                                     used for zonal filtering. 
+!
+!      Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to 
+!                                     the model state and target data so that nudging 
+!                                     tendencies are only applied to scales larger than
+!                                     the specified truncation.
+!
+!      Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used 
+!                                 for spectral filtering. The nominal horizontal scale (km) of 
+!                                 the filtering can be estimated as:
+!
+!                                     Hscale = PI*6350/Nudge_SpectralNtrunc
+!
+!                                 i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal 
+!                                      nudging scale  Hscale~500km.
+!
+!      Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging 
+!                                 of spherical harmonic modes, to suppress sampling errors.
+!                                 When initializing each basis, a local average of SH values 
+!                                 is computed for the area associated with each grid point.
+!                                 SpectralNring set the number of rings of equal-area points 
+!                                 in this sampling domain. 
+!                                 Each ring (kk) contains 8*(kk-1) sample points.
+!
+!                                    Nudge_SpectralNring     Number of Samping Points
+!                                    -------------------     -------------------------
+!                                       1                        1      (DEFAULT SampleGrid NOT used)
+!                                       2                        9
+!                                       3                       25
+!                                       4                       49
+!
+!      Nudge_Uprof         - INT index of profile structure to use for U.  [0,1,2,3]
+!      Nudge_Vprof         - INT index of profile structure to use for V.  [0,1,2,3]
+!      Nudge_Tprof         - INT index of profile structure to use for T.  [0,1,2,3]
+!      Nudge_Qprof         - INT index of profile structure to use for Q.  [0,1,2,3]
 !
 !                                The spatial distribution is specified with a profile index.
 !                                 Where:  0 == OFF      (No Nudging of this variable)
 !                                         1 == CONSTANT (Spatially Uniform Nudging)
 !                                         2 == HEAVISIDE WINDOW FUNCTION
+!                                         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+!                                              and USER SPECIFIED HORIZONAL DOMAIN 
+!                                              (Specified by user via Nudge_Bwindow_File)
 !
 !      Nudge_Ucoef         - REAL fractional nudging coeffcient for U.
 !      Nudge_Vcoef         - REAL fractional nudging coeffcient for V.
 !      Nudge_Tcoef         - REAL fractional nudging coeffcient for T.
 !      Nudge_Qcoef         - REAL fractional nudging coeffcient for Q.
-!      Nudge_PScoef        - REAL fractional nudging coeffcient for PS.
 !
 !                                 The strength of the nudging is specified as a fractional
 !                                 coeffcient between [0,1].
+!
+!      Nudge_PSprof        - INT index of (Horizontal Only) window structure to use for PS. [0,1,2,3]
+!      Nudge_PScoef        - REAL fractional nudging coeffcient for PS.
+!      Nudge_PSscal        - REAL Coeffcient controling the vertical influence function.
+!                                 for:  Nudge_PSscal < 1.0 : P'(n) = [    B(n)      ]*(Target_Ps - Model_Ps)
+!                                       Nudge_PSscal > 1.0 : P'(n) = [(Pref/P0)**scl]*(Target_Ps - Model_Ps)
+!                             (default: Nudge_PSscal = 0.0)
 !
 !      Nudge_Hwin_lat0     - REAL latitudinal center of window in degrees.
 !      Nudge_Hwin_lon0     - REAL longitudinal center of window in degrees.
@@ -183,13 +279,9 @@ module nudging
 !      Nudge_Vwin_Hdelta   - REAL HI transition length
 !      Nudge_Vwin_Invert   - LOGICAL FALSE= value=1 inside the specified window, 0 outside
 !                                    TRUE = value=0 inside the specified window, 1 outside
+!      Nudge_Bwindow_File  - CHAR path to the Horizonal Boundary Window file.
+!                              (e.g. '/glade/scratch/USER/inputdata/nudging/BoundaryWindowFile.nc')
 !    /
-!
-!================
-!
-! TO DO:
-! -----------
-!    ** Implement Ps Nudging????
 !
 !=====================================================================
   ! Useful modules
@@ -201,7 +293,7 @@ module nudging
   use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom, mpi_success
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
-  use zonal_mean_mod, only: ZonalMean_t
+  use ug_spectralmethods_mod, only: SphericalHarmonic_GS_t, ZonalMean_t
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -215,10 +307,12 @@ module nudging
   public  :: nudging_timestep_init
   public  :: nudging_timestep_tend
   private :: nudging_update_analyses
-  private :: nudging_set_PSprofile
   private :: nudging_set_profile
-  private :: calc_DryStaticEnergy
+  private :: nudging_set_PSprofile
+  private :: nudging_set_Vwindow
   public  :: nudging_final
+  private :: calc_DryStaticEnergy
+  private :: interp_Bwin
 
   ! Nudging Parameters
   !--------------------
@@ -237,6 +331,7 @@ module nudging
   real(r8)          :: Nudge_Qcoef,Nudge_Tcoef
   integer           :: Nudge_Qprof,Nudge_Tprof
   real(r8)          :: Nudge_PScoef
+  real(r8)          :: Nudge_PSscal
   integer           :: Nudge_PSprof
   integer           :: Nudge_Beg_Year ,Nudge_Beg_Month
   integer           :: Nudge_Beg_Day  ,Nudge_Beg_Sec
@@ -272,14 +367,23 @@ module nudging
   real(r8)          :: Nudge_Hwin_lonWidthH
   real(r8)          :: Nudge_Hwin_max
   real(r8)          :: Nudge_Hwin_min
+  character(len=cl) :: Nudge_Bwindow_File
 
-  ! Nudging Zonal Filter variables
-  !---------------------------------
+  ! Nudging Zonal/Spectral Filter variables
+  !-----------------------------------------
   logical             :: Nudge_ZonalFilter =.false.
   integer             :: Nudge_ZonalNbasis = -1
   type(ZonalMean_t)   :: ZM
   real(r8),allocatable:: Zonal_Bamp2d(:)
   real(r8),allocatable:: Zonal_Bamp3d(:,:)
+
+  logical             :: Nudge_SpectralFilter =.false.
+  integer             :: Nudge_SpectralNtrunc = -1
+  integer             :: Nudge_SpectralNbasis = -1
+  integer             :: Nudge_SpectralNring  =  1
+  type(SphericalHarmonic_GS_t):: SH
+  real(r8),allocatable:: Spectral_Bamp2d(:)
+  real(r8),allocatable:: Spectral_Bamp3d(:,:)
 
   ! Nudging State Arrays
   !-----------------------
@@ -295,7 +399,8 @@ module nudging
   real(r8),allocatable:: Model_T     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_S     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_Q     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable:: Model_PS    (:,:)    !(pcols,begchunk:endchunk)
+  real(r8),allocatable:: Model_PS    (:,:)    !(pcols,begchunk:endchunk)        
+  real(r8),allocatable:: Model_PSfilt(:,:)    !(pcols,begchunk:endchunk)
   real(r8),allocatable:: Nudge_Utau  (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Nudge_Vtau  (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Nudge_Stau  (:,:,:)  !(pcols,pver,begchunk:endchunk)
@@ -343,11 +448,13 @@ contains
                          Nudge_File_Template, Nudge_Force_Opt,                &
                          Nudge_TimeScale_Opt,                                 &
                          Nudge_Times_Per_Day, Model_Times_Per_Day,            &
+                         Nudge_SpectralFilter, Nudge_SpectralNtrunc,          &
+                         Nudge_SpectralNring,                                 &
                          Nudge_Ucoef , Nudge_Uprof,                           &
                          Nudge_Vcoef , Nudge_Vprof,                           &
                          Nudge_Qcoef , Nudge_Qprof,                           &
                          Nudge_Tcoef , Nudge_Tprof,                           &
-                         Nudge_PScoef, Nudge_PSprof,                          &
+                         Nudge_PScoef, Nudge_PSprof, Nudge_PSscal,            &
                          Nudge_Beg_Year, Nudge_Beg_Month, Nudge_Beg_Day,      &
                          Nudge_End_Year, Nudge_End_Month, Nudge_End_Day,      &
                          Nudge_Hwin_lat0, Nudge_Hwin_lon0,                    &
@@ -356,7 +463,7 @@ contains
                          Nudge_Hwin_Invert,                                   &
                          Nudge_Vwin_Lindex, Nudge_Vwin_Hindex,                &
                          Nudge_Vwin_Ldelta, Nudge_Vwin_Hdelta,                &
-                         Nudge_Vwin_Invert
+                         Nudge_Vwin_Invert, Nudge_Bwindow_File
 
    ! For Zonal Mean Filtering
    namelist /nudging_nl/ Nudge_ZonalFilter, Nudge_ZonalNbasis
@@ -383,11 +490,12 @@ contains
    Nudge_Vcoef         = 0._r8
    Nudge_Qcoef         = 0._r8
    Nudge_Tcoef         = 0._r8
-   Nudge_PScoef        = 0._r8
    Nudge_Uprof         = 0
    Nudge_Vprof         = 0
    Nudge_Qprof         = 0
    Nudge_Tprof         = 0
+   Nudge_PScoef        = 0._r8
+   Nudge_PSscal        = 0._r8
    Nudge_PSprof        = 0
    Nudge_Beg_Year      = 2008
    Nudge_Beg_Month     = 5
@@ -411,6 +519,13 @@ contains
    Nudge_Vwin_Invert   = .false.
    Nudge_Vwin_lo       = 0.0_r8
    Nudge_Vwin_hi       = 1.0_r8
+   Nudge_Bwindow_File  = 'BoundaryWindowFile.nc'
+   Nudge_ZonalFilter   =.false.
+   Nudge_ZonalNbasis   = -1
+   Nudge_SpectralFilter =.false.
+   Nudge_SpectralNtrunc = -1
+   Nudge_SpectralNbasis = -1
+   Nudge_SpectralNring  =  1
 
    ! Read in namelist values
    !------------------------
@@ -458,7 +573,7 @@ contains
      call endrun('nudging_readnl:: ERROR in namelist')
    endif
 
-   if((Nudge_Vwin_Lindex > Nudge_Vwin_Hindex)                          .or.   &
+   if((Nudge_Vwin_Lindex > Nudge_Vwin_Hindex)                              .or.  &
       (Nudge_Vwin_Hindex > float(pver+1)) .or. (Nudge_Vwin_Hindex < 0._r8) .or.  &
       (Nudge_Vwin_Lindex > float(pver+1)) .or. (Nudge_Vwin_Lindex < 0._r8)   ) then
      write(iulog,*) 'NUDGING: Window Lindex must be in [0,pver+1]'
@@ -484,6 +599,27 @@ contains
      write(iulog,*) 'NUDGING: Window widths must be positive'
      write(iulog,*) 'NUDGING:  Nudge_Hwin_latWidth=',Nudge_Hwin_latWidth
      write(iulog,*) 'NUDGING:  Nudge_Hwin_lonWidth=',Nudge_Hwin_lonWidth
+     call endrun('nudging_readnl:: ERROR in namelist')
+   endif
+
+   if((Nudge_ZonalFilter).and.(Nudge_SpectralFilter)) then
+     write(iulog,*) 'NUDGING: Zonal Nudging and Spectral Nudging cannot both be active'
+     write(iulog,*) 'NUDGING:  Nudge_SpectralFilter=',Nudge_SpectralFilter
+     write(iulog,*) 'NUDGING:     Nudge_ZonalFilter=',Nudge_ZonalFilter
+     call endrun('nudging_readnl:: ERROR in namelist')
+   endif
+
+   if((Nudge_ZonalFilter).and.(Nudge_ZonalNbasis.le.0)) then
+     write(iulog,*) 'NUDGING: Zonal Nudging requires that (Nudge_ZonalNbasis > 0)'
+     write(iulog,*) 'NUDGING:  Nudge_ZonalFilter=',Nudge_ZonalFilter
+     write(iulog,*) 'NUDGING:  Nudge_ZonalNbasis=',Nudge_ZonalNbasis
+     call endrun('nudging_readnl:: ERROR in namelist')
+   endif
+
+   if((Nudge_SpectralFilter).and.(Nudge_SpectralNtrunc.le.0)) then
+     write(iulog,*) 'NUDGING: Spectral Nudging requires that (Nudge_SpectralNtrunc > 0)'
+     write(iulog,*) 'NUDGING:  Nudge_SpectralFilter=',Nudge_SpectralFilter
+     write(iulog,*) 'NUDGING:  Nudge_SpectralNtrunc=',Nudge_SpectralNtrunc
      call endrun('nudging_readnl:: ERROR in namelist')
    endif
 
@@ -521,6 +657,8 @@ contains
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Qcoef')
    call MPI_bcast(Nudge_PScoef       , 1, mpi_real8 ,  mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_PScoef')
+   call MPI_bcast(Nudge_PSscal       , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_PSscal')
    call MPI_bcast(Nudge_Uprof        , 1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Uprof')
    call MPI_bcast(Nudge_Vprof        , 1, mpi_integer, mstrid, mpicom, ierr)
@@ -579,10 +717,18 @@ contains
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Ldelta')
    call MPI_bcast(Nudge_Vwin_Invert,   1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Invert')
+   call MPI_bcast(Nudge_Bwindow_File, len(Nudge_Bwindow_File), mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Bwindow_File')
    call MPI_bcast(Nudge_ZonalFilter,   1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalFilter')
    call MPI_bcast(Nudge_ZonalNbasis,   1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalNbasis')
+   call MPI_bcast(Nudge_SpectralFilter,   1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralFilter')
+   call MPI_bcast(Nudge_SpectralNtrunc,   1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralNtrunc')
+   call MPI_bcast(Nudge_SpectralNring,    1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_SpectralNring')
 
    ! End Routine
    !------------
@@ -601,9 +747,10 @@ contains
    use dycore        ,only: dycore_is
    use dyn_grid      ,only: get_horiz_grid_dim_d
    use phys_grid     ,only: get_rlat_p,get_rlon_p,get_ncols_p
-   use cam_history   ,only: addfld
+   use cam_history   ,only: addfld,horiz_only
    use shr_const_mod ,only: SHR_CONST_PI
    use filenames     ,only: interpret_filename_spec
+   use netcdf
 
    ! Local values
    !----------------
@@ -621,6 +768,13 @@ contains
    real(r8) :: Val1_0,Val2_0,Val3_0,Val4_0
    real(r8) :: Val1_n,Val2_n,Val3_n,Val4_n
    integer :: nn
+
+   real(r8),allocatable:: Bwindow(:,:)
+   real(r8),allocatable:: B_lon  (:)
+   real(r8),allocatable:: B_lat  (:)
+   integer :: Bnlon,Bnlat,ncid,varid
+   real(r8):: Hcoef
+   real(r8):: Vwindow(pver)
 
    character(len=*), parameter :: prefix = 'nudging_init: '
 
@@ -655,6 +809,8 @@ contains
    call alloc_err(istat,'nudging_init','Model_Q',pcols*pver*((endchunk-begchunk)+1))
    allocate(Model_PS(pcols,begchunk:endchunk),stat=istat)
    call alloc_err(istat,'nudging_init','Model_PS',pcols*((endchunk-begchunk)+1))
+   allocate(Model_PSfilt(pcols,begchunk:endchunk),stat=istat)
+   call alloc_err(istat,'nudging_init','Model_PSfilt',pcols*((endchunk-begchunk)+1))
 
    ! Allocate Space for spatial dependence of
    ! Nudging Coefs and Nudging Forcing.
@@ -690,7 +846,10 @@ contains
    call addfld('Target_U',(/ 'lev' /),'A','m/s'    ,'U Nudging Target'  )
    call addfld('Target_V',(/ 'lev' /),'A','m/s'    ,'V Nudging Target'  )
    call addfld('Target_T',(/ 'lev' /),'A','K'      ,'T Nudging Target'  )
-   call addfld('Target_Q',(/ 'lev' /),'A','kg/kg'  ,'Q Nudging Target  ')
+   call addfld('Target_Q',(/ 'lev' /),'A','kg/kg'  ,'Q Nudging Target'  )
+   call addfld( 'Nudge_PS',horiz_only,'A','hPa/s'  ,'PS Nudging Tendency')
+   call addfld('Target_PS',horiz_only,'A','hPa'    ,'PS Nudging Target'  )
+   call addfld( 'Model_PS',horiz_only,'A','hPa'    ,'PS Model Surface P' )
 
    !-----------------------------------------
    ! Values initialized only by masterproc
@@ -848,11 +1007,15 @@ contains
      write(iulog,*) 'NUDGING: Model_Step=',Model_Step
      write(iulog,*) 'NUDGING: Nudge_ZonalFilter=',Nudge_ZonalFilter
      write(iulog,*) 'NUDGING: Nudge_ZonalNbasis=',Nudge_ZonalNbasis
+     write(iulog,*) 'NUDGING: Nudge_SpectralFilter=',Nudge_SpectralFilter
+     write(iulog,*) 'NUDGING: Nudge_SpectralNtrunc=',Nudge_SpectralNtrunc
+     write(iulog,*) 'NUDGING: Nudge_SpectralNring=',Nudge_SpectralNring
      write(iulog,*) 'NUDGING: Nudge_Ucoef  =',Nudge_Ucoef
      write(iulog,*) 'NUDGING: Nudge_Vcoef  =',Nudge_Vcoef
      write(iulog,*) 'NUDGING: Nudge_Qcoef  =',Nudge_Qcoef
      write(iulog,*) 'NUDGING: Nudge_Tcoef  =',Nudge_Tcoef
      write(iulog,*) 'NUDGING: Nudge_PScoef =',Nudge_PScoef
+     write(iulog,*) 'NUDGING: Nudge_PSscal =',Nudge_PSscal
      write(iulog,*) 'NUDGING: Nudge_Uprof  =',Nudge_Uprof
      write(iulog,*) 'NUDGING: Nudge_Vprof  =',Nudge_Vprof
      write(iulog,*) 'NUDGING: Nudge_Qprof  =',Nudge_Qprof
@@ -884,10 +1047,49 @@ contains
      write(iulog,*) 'NUDGING: Nudge_Hwin_lonWidthH=',Nudge_Hwin_lonWidthH
      write(iulog,*) 'NUDGING: Nudge_Hwin_max      =',Nudge_Hwin_max
      write(iulog,*) 'NUDGING: Nudge_Hwin_min      =',Nudge_Hwin_min
+     write(iulog,*) 'NUDGING: Nudge_Bwindow_File  =',trim(Nudge_Bwindow_File)
      write(iulog,*) 'NUDGING: Nudge_Initialized   =',Nudge_Initialized
      write(iulog,*) ' '
      write(iulog,*) 'NUDGING: Nudge_NumObs=',Nudge_NumObs
      write(iulog,*) ' '
+
+     ! Error Check TSmode usage 
+     !---------------------------
+     if((Nudge_ZonalFilter).or.(Nudge_SpectralFilter).or.(Nudge_PSprof.ne.0)) then
+       if(Nudge_TSmode.ne.0) then
+         write(iulog,*) 'NUDGING:  Nudge_TSmode must be set to 0 when nudging Ps or '
+         write(iulog,*) 'NUDGING:  when spectral filtering is active. Until this module '
+         write(iulog,*) 'NUDGING:  is restructured to fix it, the computation DSE gives '
+         write(iulog,*) 'NUDGING:  inconsistent results for the Model and Target states.'
+         call endrun('NUDGING: Eror with TSmode nudging option')
+       endif
+     endif
+
+     ! Error Check and set up for Ps Nudging option
+     !---------------------------------------------
+     if(Nudge_PSprof.ne.0) then
+       ! Ps Nudging is activated. 
+       ! Make sure that Direct nudging of T is disbled
+       !------------------------------------------------
+       if(Nudge_Tprof.ne.0) then
+         write(iulog,*) 'NUDGING:  ***ERROR STOP*** '
+         write(iulog,*) 'NUDGING: Nudge_Tprof  and Nudge_PSprof cannot both be non-zero'
+         write(iulog,*) 'NUDGING:  at the same time. The effects of PS nudging are implemented '
+         write(iulog,*) 'NUDGING:  via temperature tendenies in the near surface layers. '
+         write(iulog,*) 'NUDGING:  Set Nudge_Tprof=0 if you wish to apply Ps nudging. '
+         call endrun('NUDGING: Eror with PS nudging option')
+       endif
+
+       ! Internally turn on T nudging and set the 
+       ! nudging coef with the Nudge_PScoef value
+       !------------------------------------------
+       Nudge_Tprof = Nudge_PSprof
+       Nudge_Tcoef = Nudge_PScoef
+
+       write(iulog,*) 'NUDGING:   Activating Surface Pressure (Ps) nudging '
+       write(iulog,*) 'NUDGING: Nudge_Tprof  =',Nudge_Tprof
+       write(iulog,*) 'NUDGING: Nudge_Tcoef  =',Nudge_Tcoef
+     endif
 
    endif ! (masterproc) then
 
@@ -937,6 +1139,10 @@ contains
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_latWidthH')
    call MPI_bcast(Nudge_NumObs        , 1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_NumObs')
+   call MPI_bcast(Nudge_Tprof         , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Tprof')
+   call MPI_bcast(Nudge_Tcoef         , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Tcoef')
 
    ! All non-masterproc processes also need to allocate space
    ! before the broadcast of Nudge_NumObs dependent data.
@@ -985,14 +1191,26 @@ contains
    endif
 !!DIAG
 
-   ! Initialize the Zonal Mean type if needed
-   !------------------------------------------
+   ! Initialize the Zonal Mean Spectral type if needed
+   !--------------------------------------------------
    if(Nudge_ZonalFilter) then
      call ZM%init(Nudge_ZonalNbasis)
      allocate(Zonal_Bamp2d(Nudge_ZonalNbasis),stat=istat)
      call alloc_err(istat,'nudging_init','Zonal_Bamp2d',Nudge_ZonalNbasis)
      allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver),stat=istat)
      call alloc_err(istat,'nudging_init','Zonal_Bamp3d',Nudge_ZonalNbasis*pver)
+   endif
+
+   if(Nudge_SpectralFilter) then
+     write(iulog,*) 'NUDGING: calling SH%init() Nudge_SpectralNtrunc =',Nudge_SpectralNtrunc
+     write(iulog,*) 'NUDGING: calling SH%init() Nudge_SpectralNring  =',Nudge_SpectralNring
+     call SH%init(Nudge_SpectralNtrunc,Nudge_SpectralNbasis,SAMPLE_NRING=Nudge_SpectralNring)
+     write(iulog,*) 'NUDGING: done    SH%init() Nudge_SpectralNbasis =',Nudge_SpectralNbasis
+     allocate(Spectral_Bamp2d(Nudge_SpectralNbasis),stat=istat)
+     call alloc_err(istat,'nudging_init','Spectral_Bamp2d',Nudge_SpectralNbasis)
+     allocate(Spectral_Bamp3d(Nudge_SpectralNbasis,pver),stat=istat)
+     call alloc_err(istat,'nudging_init','Spectral_Bamp3d',Nudge_SpectralNbasis*pver)
+     write(iulog,*) 'NUDGING: SH% Arrays allocated'
    endif
 
    ! Initialize the analysis filename at the NEXT time for startup.
@@ -1012,6 +1230,110 @@ contains
    !----------------------------------------------------------
    call nudging_update_analyses (trim(Nudge_Path)//trim(Nudge_File))
 
+   ! Prepare needed variables if a custom window 
+   !  (Nudge_Xprof==3) is used
+   !-------------------------------------------------
+   if((Nudge_Uprof.eq.3).or.(Nudge_Vprof.eq.3).or.                   &
+      (Nudge_Tprof.eq.3).or.(Nudge_Qprof.eq.3).or.(Nudge_PSprof.eq.3)) then
+
+     ! Initialize values that specify the 
+     ! custom horizonal Boundary window
+     !-------------------------------------
+     istat = nf90_open(trim(Nudge_Bwindow_File),NF90_NOWRITE,ncid)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) 'NF90_OPEN: failed for file:',trim(Nudge_Bwindow_File)
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     else
+       if(masterproc) then
+         write(iulog,*) 'NUDGING: Opened Boundary Window File:',trim(Nudge_Bwindow_File)
+       endif
+     endif
+
+     istat=nf90_inq_dimid(ncid,'longitude',varid)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+     istat=nf90_inquire_dimension(ncid,varid,len=Bnlon)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+
+     istat=nf90_inq_dimid(ncid,'latitude',varid)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+     istat=nf90_inquire_dimension(ncid,varid,len=Bnlat)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+
+     allocate(Bwindow(Bnlon,Bnlat))
+     allocate(B_lon  (Bnlon))
+     allocate(B_lat  (Bnlat))
+
+     istat=nf90_inq_varid(ncid,'longitude',varid)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+     istat=nf90_get_var(ncid,varid,B_lon)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+
+     istat=nf90_inq_varid(ncid,'latitude',varid)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+     istat=nf90_get_var(ncid,varid,B_lat)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+
+     istat=nf90_inq_varid(ncid,'refineMap',varid)
+     if(istat.ne.NF90_NOERR) then
+       istat=nf90_inq_varid(ncid,'boundaryMap',varid)
+       if(istat.ne.NF90_NOERR) then
+         write(iulog,*) nf90_strerror(istat)
+         call endrun('subroutine nudging_init')
+       endif
+       istat=nf90_get_var(ncid,varid,Bwindow)
+       if(istat.ne.NF90_NOERR) then
+         write(iulog,*) nf90_strerror(istat)
+         call endrun('subroutine nudging_init')
+       endif
+     endif
+     istat=nf90_get_var(ncid,varid,Bwindow)
+     if(istat.ne.NF90_NOERR) then
+       write(iulog,*) nf90_strerror(istat)
+       call endrun('subroutine nudging_init')
+     endif
+     istat = nf90_close(ncid)
+
+     ! Check Bwindow values are in range [0,1]
+     !------------------------------------------
+     if((MAXVAL(Bwindow).gt.1._r8).or.(MINVAL(Bwindow).lt.0._r8)) then
+       write(iulog,*) 'NUDGING: ERROR Boundary Window values are not in the range [0,1]'
+       write(iulog,*) 'NUDGING: ERROR Boundary Window MAX =',MAXVAL(Bwindow)
+       write(iulog,*) 'NUDGING: ERROR Boundary Window MIN =',MINVAL(Bwindow)
+       call endrun('subroutine nudging_init')
+     endif
+
+     ! Optionally: Invert the Boudnary window
+     !----------------------------------------
+     if(Nudge_Hwin_Invert) then
+       Bwindow(:,:) = 1._r8 - Bwindow(:,:)
+     endif
+   endif
+
    ! Initialize Nudging Coeffcient profiles in local arrays
    ! Load zeros into nudging arrays
    !------------------------------------------------------
@@ -1021,17 +1343,81 @@ contains
        rlat=get_rlat_p(lchnk,icol)*180._r8/SHR_CONST_PI
        rlon=get_rlon_p(lchnk,icol)*180._r8/SHR_CONST_PI
 
-       call nudging_set_profile(rlat,rlon,Nudge_Uprof,Wprof,pver)
-       Nudge_Utau(icol,:,lchnk)=Wprof(:)
-       call nudging_set_profile(rlat,rlon,Nudge_Vprof,Wprof,pver)
-       Nudge_Vtau(icol,:,lchnk)=Wprof(:)
-       call nudging_set_profile(rlat,rlon,Nudge_Tprof,Wprof,pver)
-       Nudge_Stau(icol,:,lchnk)=Wprof(:)
-       call nudging_set_profile(rlat,rlon,Nudge_Qprof,Wprof,pver)
-       Nudge_Qtau(icol,:,lchnk)=Wprof(:)
+       if(Nudge_Uprof.eq.3) then
+         ! Interp Horizontal window values from user input
+         ! Initialize the vertical profile from namelist parameters
+         !------------------------------------------------
+         call nudging_set_Vwindow(Vwindow,pver)
+         Hcoef = interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,Bnlon,Bnlat)
+         Nudge_Utau(icol,:,lchnk)=Hcoef*Vwindow(:)
+       else
+         ! Set prodfile for Nudge_Uprof = [0,1,2]
+         !---------------------------------------
+         call nudging_set_profile(rlat,rlon,Nudge_Uprof,Wprof,pver)
+         Nudge_Utau(icol,:,lchnk)=Wprof(:)
+       endif
 
-       Nudge_PStau(icol,lchnk)=nudging_set_PSprofile(rlat,rlon,Nudge_PSprof)
+       if(Nudge_Vprof.eq.3) then
+         ! Interp Horizontal window values from user input
+         ! Initialize the vertical profile from namelist parameters
+         !------------------------------------------------
+         call nudging_set_Vwindow(Vwindow,pver)
+         Hcoef = interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,Bnlon,Bnlat)
+         Nudge_Vtau(icol,:,lchnk)=Hcoef*Vwindow(:)
+       else
+         ! Set prodfile for Nudge_Uprof = [0,1,2]
+         !---------------------------------------
+         call nudging_set_profile(rlat,rlon,Nudge_Vprof,Wprof,pver)
+         Nudge_Vtau(icol,:,lchnk)=Wprof(:)
+       endif
+
+       if(Nudge_Tprof.eq.3) then
+         ! Interp Horizontal window values from user input
+         ! Initialize the vertical profile from namelist parameters
+         !------------------------------------------------
+         call nudging_set_Vwindow(Vwindow,pver)
+         Hcoef = interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,Bnlon,Bnlat)
+         Nudge_Stau(icol,:,lchnk)=Hcoef*Vwindow(:)
+       else
+         ! Set prodfile for Nudge_Uprof = [0,1,2]
+         !---------------------------------------
+         call nudging_set_profile(rlat,rlon,Nudge_Tprof,Wprof,pver)
+         Nudge_Stau(icol,:,lchnk)=Wprof(:)
+       endif
+
+       if(Nudge_Qprof.eq.3) then
+         ! Interp Horizontal window values from user input
+         ! Initialize the vertical profile from namelist parameters
+         !------------------------------------------------
+         call nudging_set_Vwindow(Vwindow,pver)
+         Hcoef = interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,Bnlon,Bnlat)
+         Nudge_Qtau(icol,:,lchnk)=Hcoef*Vwindow(:)
+       else
+         ! Set prodfile for Nudge_Uprof = [0,1,2]
+         !---------------------------------------
+         call nudging_set_profile(rlat,rlon,Nudge_Qprof,Wprof,pver)
+         Nudge_Qtau(icol,:,lchnk)=Wprof(:)
+       endif
+
+       if(Nudge_PSprof.eq.3) then
+         ! Interp Horizontal window values from user input
+         !------------------------------------------------
+         Hcoef = interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,Bnlon,Bnlat)
+         Nudge_PStau(icol,lchnk)=Hcoef
+       else
+         ! Set prodfile for Nudge_Uprof = [0,1,2]
+         !---------------------------------------
+         Nudge_PStau(icol,lchnk)=nudging_set_PSprofile(rlat,rlon,Nudge_PSprof)
+       endif
+
      end do
+   end do
+
+   ! Initialize windowed Coeffcient profiles
+   ! Load zeros into nudging arrays
+   !------------------------------------------------------
+   do lchnk=begchunk,endchunk
+     ncol=get_ncols_p(lchnk)
      Nudge_Utau(:ncol,:pver,lchnk) =                             &
      Nudge_Utau(:ncol,:pver,lchnk) * Nudge_Ucoef/float(Nudge_Step)
      Nudge_Vtau(:ncol,:pver,lchnk) =                             &
@@ -1058,7 +1444,9 @@ contains
 
    ! End Routine
    !------------
-
+   if(allocated(Bwindow)) deallocate(Bwindow)
+   if(allocated(B_lon  )) deallocate(B_lon)
+   if(allocated(B_lat  )) deallocate(B_lat)
   end subroutine nudging_init
   !================================================================
 
@@ -1071,12 +1459,14 @@ contains
    !                 arrays when necessary. Toggle the Nudging flag
    !                 when the time is withing the nudging window.
    !===============================================================
-   use physconst    ,only: cpair
-   use physics_types,only: physics_state
-   use constituents ,only: cnst_get_ind
-   use dycore       ,only: dycore_is
-   use ppgrid       ,only: pver,pcols,begchunk,endchunk
-   use filenames    ,only: interpret_filename_spec
+   use hycoef        ,only: hyai, hybi, ps0, hyam, hybm
+   use error_messages,only: alloc_err
+   use physconst     ,only: cpair
+   use physics_types ,only: physics_state
+   use constituents  ,only: cnst_get_ind
+   use dycore        ,only: dycore_is
+   use ppgrid        ,only: pver,pverp,pcols,begchunk,endchunk
+   use filenames     ,only: interpret_filename_spec
    use ESMF
 
    ! Arguments
@@ -1102,10 +1492,30 @@ contains
    real(r8)                :: Sbar,Qbar,Wsum
    integer                 :: dtime
 
+   real(r8),allocatable:: hyai_w(:,:,:)
+   real(r8),allocatable:: hybi_w(:,:,:)
+   real(r8):: hyai_m(pcols,pverp)
+   real(r8):: hybi_m(pcols,pverp)
+   real(r8):: WETsum(pcols,pver)
+   real(r8):: PSpert(pcols)
+   real(r8):: Dlt_PS(pcols)
+   real(r8):: lnP0  (pcols,pverp)
+   real(r8):: lnP1  (pcols,pverp)
+   integer :: istat
+
    ! Check if Nudging is initialized
    !---------------------------------
    if(.not.Nudge_Initialized) then
      call endrun('nudging_timestep_init:: Nudging NOT Initialized')
+   endif
+
+   !  PS nudging Needs some workspace
+   !-------------------------------------
+   if(Nudge_PSprof.ne.0) then
+     allocate(hyai_w(pcols,pverp,begchunk:endchunk),stat=istat)
+     call alloc_err(istat,'nudging_timestep_init','hyai_w',pcols*pverp*((endchunk-begchunk)+1))
+     allocate(hybi_w(pcols,pverp,begchunk:endchunk),stat=istat)
+     call alloc_err(istat,'nudging_timestep_init','hybi_w',pcols*pverp*((endchunk-begchunk)+1))
    endif
 
    ! Get time step size
@@ -1176,7 +1586,8 @@ contains
        Model_V(:ncol,:pver,lchnk)=phys_state(lchnk)%v(:ncol,:pver)
        Model_T(:ncol,:pver,lchnk)=phys_state(lchnk)%t(:ncol,:pver)
        Model_Q(:ncol,:pver,lchnk)=phys_state(lchnk)%q(:ncol,:pver,indw)
-       Model_PS(:ncol,lchnk)=phys_state(lchnk)%ps(:ncol)
+       Model_PS    (:ncol,lchnk)=phys_state(lchnk)%ps(:ncol)
+       Model_PSfilt(:ncol,lchnk)=Model_PS(:ncol,lchnk)
      end do
 
      ! Load Dry Static Energy values for Model
@@ -1199,27 +1610,93 @@ contains
        end do
      endif
 
-     ! Optionally: Apply Zonal Filtering to Model state data
-     !-------------------------------------------------------
-     if(Nudge_ZonalFilter) then
-       call ZM%calc_amps(Model_U,Zonal_Bamp3d)
-       call ZM%eval_grid(Zonal_Bamp3d,Model_U)
+     ! Process values differently if PS nudging is active
+     !----------------------------------------------------
+     if(Nudge_PSprof.ne.0) then
+       ! Ps Nudging is active:
+       ! Compute hybrid coef for wet pressures on dry pressure surfaces.
+       !----------------------------------------------------------------
+       do lchnk=begchunk,endchunk
+         ncol=phys_state(lchnk)%ncol
 
-       call ZM%calc_amps(Model_V,Zonal_Bamp3d)
-       call ZM%eval_grid(Zonal_Bamp3d,Model_V)
+         ! Forumate WET factor
+         !-----------------------
+         WETsum(:ncol,:pver) = 1._r8 + Model_Q(:ncol,:pver,lchnk)
 
-       call ZM%calc_amps(Model_T,Zonal_Bamp3d)
-       call ZM%eval_grid(Zonal_Bamp3d,Model_T)
+         ! Integrate downward to compute moist A/B values
+         !----------------------------------------------
+         hyai_m(:ncol,1) = hyai(1)
+         hybi_m(:ncol,1) = hybi(1)
+         do kk=1,pver
+           hyai_m(:ncol,kk+1) = hyai_m(:ncol,kk) + WETsum(:ncol,kk)*(hyai(kk+1)-hyai(kk))
+           hybi_m(:ncol,kk+1) = hybi_m(:ncol,kk) + WETsum(:ncol,kk)*(hybi(kk+1)-hybi(kk))
+         end do
 
-       call ZM%calc_amps(Model_S,Zonal_Bamp3d)
-       call ZM%eval_grid(Zonal_Bamp3d,Model_S)
+         ! Now formulate the A/B coefs for wet surface pressures
+         !------------------------------------------------------
+         do kk=1,pverp
+           hybi_w(:ncol,kk,lchnk) =  hybi_m(:ncol,kk)/hybi_m(:ncol,pverp)
+           hyai_w(:ncol,kk,lchnk) = (hyai_m(:ncol, 1)+hyai_m(:ncol,  kk))                       &
+                                   -(hyai_m(:ncol, 1)+hyai_m(:ncol,pverp))*hybi_w(:ncol,kk,lchnk)
+         end do
+       end do
 
-       call ZM%calc_amps(Model_Q,Zonal_Bamp3d)
-       call ZM%eval_grid(Zonal_Bamp3d,Model_Q)
-
-       call ZM%calc_amps(Model_PS,Zonal_Bamp2d)
-       call ZM%eval_grid(Zonal_Bamp2d,Model_PS)
+       ! Optionally: Apply Zonal/Spectral Filtering to only to U,V,Q,Ps Model state data
+       !---------------------------------------------------------------------------------
+       if(Nudge_ZonalFilter) then
+         call ZM%calc_amps(Model_U,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_U)
+         call ZM%calc_amps(Model_V,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_V)
+         call ZM%calc_amps(Model_Q,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_Q)
+         call ZM%calc_amps(Model_PSfilt,Zonal_Bamp2d)
+         call ZM%eval_grid(Zonal_Bamp2d,Model_PSfilt)
+       endif
+       if(Nudge_SpectralFilter) then
+         call SH%calc_amps(Model_U,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_U)
+         call SH%calc_amps(Model_V,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_V)
+         call SH%calc_amps(Model_Q,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_Q)
+         call SH%calc_amps(Model_PSfilt,Spectral_Bamp2d)
+         call SH%eval_grid(Spectral_Bamp2d,Model_PSfilt)
+       endif
+     else
+       ! Ps Nudging is not active:
+       ! Optionally: Apply Zonal/Spectral Filtering to all Model state data
+       !--------------------------------------------------------------------
+       if(Nudge_ZonalFilter) then
+         call ZM%calc_amps(Model_U,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_U)
+         call ZM%calc_amps(Model_V,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_V)
+         call ZM%calc_amps(Model_T,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_T)
+         call ZM%calc_amps(Model_S,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_S)
+         call ZM%calc_amps(Model_Q,Zonal_Bamp3d)
+         call ZM%eval_grid(Zonal_Bamp3d,Model_Q)
+         call ZM%calc_amps(Model_PSfilt,Zonal_Bamp2d)
+         call ZM%eval_grid(Zonal_Bamp2d,Model_PSfilt)
+       endif
+       if(Nudge_SpectralFilter) then
+         call SH%calc_amps(Model_U,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_U)
+         call SH%calc_amps(Model_V,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_V)
+         call SH%calc_amps(Model_T,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_T)
+         call SH%calc_amps(Model_S,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_S)
+         call SH%calc_amps(Model_Q,Spectral_Bamp3d)
+         call SH%eval_grid(Spectral_Bamp3d,Model_Q)
+         call SH%calc_amps(Model_PSfilt,Spectral_Bamp2d)
+         call SH%eval_grid(Spectral_Bamp2d,Model_PSfilt)
+       endif
      endif
+
    endif ! ((Before_End) .and. (Update_Model)) then
 
    !----------------------------------------------------------------
@@ -1286,9 +1763,11 @@ contains
      endif
      if(.not.Nudge_ON) then
        if(masterproc) then
-         write(iulog,*) 'NUDGING: WARNING - analyses file NOT FOUND. Switching '
-         write(iulog,*) 'NUDGING:           nudging OFF to coast thru the gap. '
+         write(iulog,*) 'NUDGING: WARNING - analyses file NOT FOUND. You can switch nudging '
+         write(iulog,*) 'NUDGING:           OFF to coast thru a known gap in your files '
+         write(iulog,*) 'NUDGING:           by commenting out the following endrun command.'
        endif
+       call endrun('nudging_timestep_init:: ERROR Missing Nudging File')
      endif
    else
      Nudge_ON=.false.
@@ -1344,24 +1823,85 @@ contains
        call endrun('nudging_timestep_init:: ERROR unknown Nudging_Force_Opt')
      endif
 
-     ! Now load Dry Static Energy values for Target
-     !---------------------------------------------
-     if(Nudge_TSmode == 0) then
-       ! DSE tendencies from Temperature only
-       !---------------------------------------
-       do lchnk=begchunk,endchunk
-         ncol=phys_state(lchnk)%ncol
-         Target_S(:ncol,:pver,lchnk)=cpair*Target_T(:ncol,:pver,lchnk)
-       end do
-     elseif(Nudge_TSmode == 1) then
-       ! Caluculate DSE tendencies from Temperature, Water Vapor, and Surface Pressure
-       !------------------------------------------------------------------------------
-       do lchnk=begchunk,endchunk
-         ncol=phys_state(lchnk)%ncol
-         call calc_DryStaticEnergy(Target_T(:,:,lchnk), Target_Q(:,:,lchnk), &
-                                 phys_state(lchnk)%phis, Target_PS(:,lchnk), &
-                                                  Target_S(:,:,lchnk), ncol)
-       end do
+     ! Set the Target_S() values used for Temperature nudging
+     !--------------------------------------------------------
+     if(Nudge_PSprof.ne.0) then
+       ! Ps Nudging is active
+       !----------------------
+       if(Nudge_PSscal < 1._r8) then
+         ! Use hybrid Bn coeffcients for the vertical 
+         ! influence of Ps perturbations
+         !-----------------------------------------------------
+         do lchnk=begchunk,endchunk
+           ncol=phys_state(lchnk)%ncol
+
+           ! Compute moist pressures for hybi vertical influence
+           !-----------------------------------------------------
+           Dlt_PS(:ncol)=(Target_PS(:ncol,lchnk) - Model_PSfilt(:ncol,lchnk))
+           do kk=1,pverp
+             lnP0(:ncol,kk) = ps0*hyai_w(:ncol,kk,lchnk) + hybi_w(:ncol,kk,lchnk)*Model_PS(:ncol,lchnk)
+             lnP1(:ncol,kk) = lnP0(:ncol,kk)             + hybi_w(:ncol,kk,lchnk)*Dlt_PS(:ncol)
+             lnP0(:ncol,kk) = log(lnP0(:ncol,kk))
+             lnP1(:ncol,kk) = log(lnP1(:ncol,kk))
+           end do
+
+           ! Compute Target_T/Target_S values for Ps perturbation
+           !------------------------------------------------------
+           do kk=1,pver
+             PSpert(:ncol)= (lnP0(:ncol,kk+1)-lnP0(:ncol,kk))/(lnP1(:ncol,kk+1)-lnP1(:ncol,kk))
+             Target_T(:ncol,kk,lchnk)=Model_T(:ncol,kk,lchnk)*PSpert(:ncol)
+             Target_S(:ncol,kk,lchnk)=cpair*Target_T(:ncol,kk,lchnk)
+           end do ! kk=1,pver
+         end do
+       else! (Nudge_PSscal >= 1._r8)
+         ! Use the value of Nudge_PSscal to set the scale 
+         ! height for the vertical influence function:
+         !                 (Pref/P0)**Nudge_PSscal
+         !-----------------------------------------------------
+         do lchnk=begchunk,endchunk
+           ncol=phys_state(lchnk)%ncol
+
+           ! Compute moist pressures for (Pref/P0) vertical influence
+           !---------------------------------------------------------
+           Dlt_PS(:ncol)=(Target_PS(:ncol,lchnk) - Model_PSfilt(:ncol,lchnk))
+           do kk=1,pverp
+             lnP0(:ncol,kk) = ps0*hyai_w(:ncol,kk,lchnk) + hybi_w(:ncol,kk,lchnk)*Model_PS(:ncol,lchnk)
+             lnP1(:ncol,kk) = lnP0(:ncol,kk)                                                              &
+                             +Dlt_PS(:ncol)*((hyai_w(:ncol,kk,lchnk)+hybi_w(:ncol,kk,lchnk))**Nudge_PSscal)
+             lnP0(:ncol,kk) = log(lnP0(:ncol,kk))
+             lnP1(:ncol,kk) = log(lnP1(:ncol,kk))
+           end do
+
+           ! Compute Target_T/Target_S values for Ps perturbation
+           !------------------------------------------------------
+           do kk=1,pver
+             PSpert(:ncol)= (lnP0(:ncol,kk+1)-lnP0(:ncol,kk))/(lnP1(:ncol,kk+1)-lnP1(:ncol,kk))
+             Target_T(:ncol,kk,lchnk)=Model_T(:ncol,kk,lchnk)*PSpert(:ncol)
+             Target_S(:ncol,kk,lchnk)=cpair*Target_T(:ncol,kk,lchnk)
+           end do ! kk=1,pver
+         end do
+       endif
+     else
+       ! Ps Nudging is NOT active
+       ! Now load Dry Static Energy values for Target
+       !---------------------------------------------
+       if(Nudge_TSmode == 0) then
+         ! DSE tendencies from Temperature only
+         !---------------------------------------
+         do lchnk=begchunk,endchunk
+           ncol=phys_state(lchnk)%ncol
+           Target_S(:ncol,:pver,lchnk)=cpair*Target_T(:ncol,:pver,lchnk)
+         end do
+       elseif(Nudge_TSmode == 1) then
+         ! Caluculate DSE tendencies from Temperature, Water Vapor, and Surface Pressure
+         !------------------------------------------------------------------------------
+         do lchnk=begchunk,endchunk
+           ncol=phys_state(lchnk)%ncol
+           call calc_DryStaticEnergy(Target_T(:,:,lchnk), Target_Q(:,:,lchnk), &
+                                   phys_state(lchnk)%phis, Target_PS(:,lchnk), &
+                                                    Target_S(:,:,lchnk), ncol)
+         end do
+       endif
      endif
 
      ! Set Tscale for the specified Forcing Option
@@ -1410,7 +1950,8 @@ contains
 !      write(iulog,*) 'PFC: Target_S(1,:pver,begchunk)=',Target_S(1,:pver,begchunk)
 !      write(iulog,*) 'PFC:  Model_S(1,:pver,begchunk)=',Model_S(1,:pver,begchunk)
 !      write(iulog,*) 'PFC:      Target_PS(1,begchunk)=',Target_PS(1,begchunk)
-!      write(iulog,*) 'PFC:       Model_PS(1,begchunk)=',Model_PS(1,begchunk)
+!      write(iulog,*) 'PFC:       Model_PS(1,begchunk)=',Model_PS    (1,begchunk) 
+!      write(iulog,*) 'PFC:   Model_PSfilt(1,begchunk)=',Model_PSfilt(1,begchunk)
 !      write(iulog,*) 'PFC: Nudge_Sstep(1,:pver,begchunk)=',Nudge_Sstep(1,:pver,begchunk)
 !      write(iulog,*) 'PFC: Nudge_Xstep arrays updated:'
 !    endif
@@ -1418,7 +1959,8 @@ contains
 
    ! End Routine
    !------------
-
+   if(allocated(hyai_w)) deallocate(hyai_w)
+   if(allocated(hybi_w)) deallocate(hybi_w)
   end subroutine nudging_timestep_init
   !================================================================
 
@@ -1468,6 +2010,9 @@ contains
      call outfld('Target_V',Target_V(:,:,lchnk),pcols,lchnk)
      call outfld('Target_T',Target_T(:,:,lchnk),pcols,lchnk)
      call outfld('Target_Q',Target_Q(:,:,lchnk),pcols,lchnk)
+     call outfld( 'Nudge_PS',Nudge_PSstep(:,lchnk),pcols,lchnk)
+     call outfld('Target_PS',   Target_PS(:,lchnk),pcols,lchnk)
+     call outfld( 'Model_PS',Model_PSfilt(:,lchnk),pcols,lchnk)
    endif
 
    ! End Routine
@@ -1556,6 +2101,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "U" is missing in '//trim(anal_file))
@@ -1568,6 +2117,10 @@ contains
      if(Nudge_ZonalFilter) then
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
      endif
      Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
@@ -1582,6 +2135,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "T" is missing in '//trim(anal_file))
@@ -1595,6 +2152,10 @@ contains
        call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
        call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
      endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp3D,Spectral_Bamp3d)
+       call SH%eval_grid(Spectral_Bamp3d,Tmp3D)
+     endif
      Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Variable "Q" is missing in '//trim(anal_file))
@@ -1607,6 +2168,10 @@ contains
      if(Nudge_ZonalFilter) then
        call ZM%calc_amps(Tmp2D,Zonal_Bamp2d)
        call ZM%eval_grid(Zonal_Bamp2d,Tmp2D)
+     endif
+     if(Nudge_SpectralFilter) then
+       call SH%calc_amps(Tmp2D,Spectral_Bamp2d)
+       call SH%eval_grid(Spectral_Bamp2d,Tmp2D)
      endif
      Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
    else
@@ -1675,7 +2240,7 @@ contains
        !------------------------------------------
        latx=rlat-Nudge_Hwin_lat0
        lonx=rlon-Nudge_Hwin_lon0
-       if(lonx > 180._r8) lonx=lonx-360._r8
+       if(lonx >   180._r8) lonx=lonx-360._r8
        if(lonx <= -180._r8) lonx=lonx+360._r8
 
        ! Calcualte RAW window value
@@ -1733,6 +2298,131 @@ contains
   end subroutine nudging_set_profile
   !================================================================
 
+
+  !================================================================
+  real(r8) function nudging_set_PSprofile(rlat,rlon,Nudge_PSprof)
+   !
+   ! NUDGING_SET_PSPROFILE: for the given lat and lon set the surface
+   !                      pressure profile value for the specified index.
+   !                      Values range from 0. to 1. to affect spatial
+   !                      variations on nudging strength.
+   !===============================================================
+
+   ! Arguments
+   !--------------
+   real(r8) :: rlat,rlon
+   integer  :: Nudge_PSprof
+
+   ! Local values
+   !----------------
+   real(r8) :: Hcoef,latx,lonx
+   real(r8) :: lon_lo,lon_hi,lat_lo,lat_hi,lev_lo,lev_hi
+
+   !---------------
+   ! set coeffcient
+   !---------------
+   if(Nudge_PSprof == 0) then
+     ! No Nudging
+     !-------------
+     nudging_set_PSprofile=0.0_r8
+   elseif(Nudge_PSprof == 1) then
+     ! Uniform Nudging
+     !-----------------
+     nudging_set_PSprofile=1.0_r8
+   elseif(Nudge_PSprof == 2) then
+     ! Localized Nudging with specified Heaviside window function
+     !------------------------------------------------------------
+     if(Nudge_Hwin_max <= Nudge_Hwin_min) then
+       ! For a constant Horizontal window function,
+       ! just set Hcoef to the maximum of Hlo/Hhi.
+       !--------------------------------------------
+       Hcoef=max(Nudge_Hwin_lo,Nudge_Hwin_hi)
+     else
+       ! get lat/lon relative to window center
+       !------------------------------------------
+       latx=rlat-Nudge_Hwin_lat0
+       lonx=rlon-Nudge_Hwin_lon0
+       if(lonx >   180._r8) lonx=lonx-360._r8
+       if(lonx <= -180._r8) lonx=lonx+360._r8
+
+       ! Calcualte RAW window value
+       !-------------------------------
+       lon_lo=(Nudge_Hwin_lonWidthH+lonx)/Nudge_Hwin_lonDelta
+       lon_hi=(Nudge_Hwin_lonWidthH-lonx)/Nudge_Hwin_lonDelta
+       lat_lo=(Nudge_Hwin_latWidthH+latx)/Nudge_Hwin_latDelta
+       lat_hi=(Nudge_Hwin_latWidthH-latx)/Nudge_Hwin_latDelta
+       Hcoef=((1._r8+tanh(lon_lo))/2._r8)*((1._r8+tanh(lon_hi))/2._r8) &
+            *((1._r8+tanh(lat_lo))/2._r8)*((1._r8+tanh(lat_hi))/2._r8)
+
+       ! Scale the horizontal window coef for specfied range of values.
+       !--------------------------------------------------------
+       Hcoef=(Hcoef-Nudge_Hwin_min)/(Nudge_Hwin_max-Nudge_Hwin_min)
+       Hcoef=(1._r8-Hcoef)*Nudge_Hwin_lo + Hcoef*Nudge_Hwin_hi
+     endif
+     nudging_set_PSprofile=Hcoef
+   else
+     call endrun('nudging_set_PSprofile:: Unknown Nudge_prof value')
+   endif
+
+   ! End Routine
+   !------------
+
+  end function nudging_set_PSprofile
+  !================================================================
+
+
+  !================================================================
+  subroutine nudging_set_Vwindow(Wprof,nlev)
+   !
+   ! NUDGING_SET_VWINDOW: for the currently set namelist values
+   !                      return the verical profile of window coeffcients.
+   !                      Values range from 0. to 1. to affect spatial
+   !                      variations on nudging strength.
+   !===============================================================
+
+   ! Arguments
+   !--------------
+   integer :: nlev
+   real(r8) :: Wprof(nlev)
+
+   ! Local values
+   !----------------
+   real(r8) :: latx,lonx,Vmax,Vmin
+   real(r8) :: lev_lo,lev_hi
+   integer :: ilev
+
+   ! Load the RAW vertical window
+   !------------------------------
+   do ilev=1,nlev
+     lev_lo=(float(ilev)-Nudge_Vwin_Lindex)/Nudge_Vwin_Ldelta
+     lev_hi=(Nudge_Vwin_Hindex-float(ilev))/Nudge_Vwin_Hdelta
+     Wprof(ilev)=((1._r8+tanh(lev_lo))/2._r8)*((1._r8+tanh(lev_hi))/2._r8)
+   end do
+
+   ! Scale the Window function to span the values between Vlo and Vhi:
+   !-----------------------------------------------------------------
+   Vmax=maxval(Wprof)
+   Vmin=minval(Wprof)
+   if((Vmax <= Vmin) .or. ((Nudge_Vwin_Hindex >= (nlev+1)) .and.  &
+                           (Nudge_Vwin_Lindex <= 0      )     )) then
+     ! For a constant Vertical window function,
+     ! load maximum of Vlo/Vhi into Wprof()
+     !--------------------------------------------
+     Vmax=max(Nudge_Vwin_lo,Nudge_Vwin_hi)
+     Wprof(:)=Vmax
+   else
+     ! Scale the RAW vertical window for specfied range of values.
+     !--------------------------------------------------------
+     Wprof(:)=(Wprof(:)-Vmin)/(Vmax-Vmin)
+     Wprof(:)=Nudge_Vwin_lo + Wprof(:)*(Nudge_Vwin_hi-Nudge_Vwin_lo)
+   endif
+
+   ! End Routine
+   !------------
+  end subroutine nudging_set_Vwindow
+  !================================================================
+
+
   !================================================================
   subroutine nudging_final
 
@@ -1748,6 +2438,7 @@ contains
     if (allocated(Model_S)) deallocate(Model_S)
     if (allocated(Model_Q)) deallocate(Model_Q)
     if (allocated(Model_PS)) deallocate(Model_PS)
+    if (allocated(Model_PSfilt)) deallocate(Model_PSfilt)
     if (allocated(Nudge_Utau)) deallocate(Nudge_Utau)
     if (allocated(Nudge_Vtau)) deallocate(Nudge_Vtau)
     if (allocated(Nudge_Stau)) deallocate(Nudge_Stau)
@@ -1768,48 +2459,13 @@ contains
     if (allocated(Nobs_PS)) deallocate(Nobs_PS)
     if (allocated(Zonal_Bamp2d)) deallocate(Zonal_Bamp2d)
     if (allocated(Zonal_Bamp3d)) deallocate(Zonal_Bamp3d)
+    if (allocated(Spectral_Bamp2d)) deallocate(Spectral_Bamp2d)
+    if (allocated(Spectral_Bamp3d)) deallocate(Spectral_Bamp3d)
 
     call ZM%final()
+    call SH%final()
 
   end subroutine nudging_final
-  !================================================================
-
-  !================================================================
-  real(r8) function nudging_set_PSprofile(rlat,rlon,Nudge_PSprof)
-   !
-   ! NUDGING_SET_PSPROFILE: for the given lat and lon set the surface
-   !                      pressure profile value for the specified index.
-   !                      Values range from 0. to 1. to affect spatial
-   !                      variations on nudging strength.
-   !===============================================================
-
-   ! Arguments
-   !--------------
-   real(r8) :: rlat,rlon
-   integer  :: Nudge_PSprof
-
-   ! Local values
-   !----------------
-
-   !---------------
-   ! set coeffcient
-   !---------------
-   if(Nudge_PSprof == 0) then
-     ! No Nudging
-     !-------------
-     nudging_set_PSprofile=0.0_r8
-   elseif(Nudge_PSprof == 1) then
-     ! Uniform Nudging
-     !-----------------
-     nudging_set_PSprofile=1.0_r8
-   else
-     call endrun('nudging_set_PSprofile:: Unknown Nudge_prof value')
-   endif
-
-   ! End Routine
-   !------------
-
-  end function nudging_set_PSprofile
   !================================================================
 
 
@@ -1904,6 +2560,112 @@ contains
    !-----------
 
   end subroutine calc_DryStaticEnergy
+  !================================================================
+
+
+  !================================================================
+  real(r8) function interp_Bwin(rlon,rlat,B_lon,B_lat,Bwindow,nlon,nlat)
+   !
+   ! interp_Bwin: for the given lat and lon return the interpolated
+   !              Bounary Nudinging coef from the given lat,lon
+   !              array of coeffcients.
+   !===============================================================
+
+   ! Arguments
+   !--------------
+   integer  nlat,nlon
+   real(r8) rlat,rlon
+   real(r8) B_lon  (nlon)
+   real(r8) B_lat  (nlat)
+   real(r8) Bwindow(nlon,nlat)
+
+   ! Local values
+   !----------------
+   integer  ii
+   integer  LonLo,LonHi,LatLo,LatHi
+   integer  LonLx,LonHx,LatLx,LatHx
+   real(r8) LonFrac,LatFrac
+
+   ! Get the Bounding indices for longitude
+   !----------------------------------------
+   if(rlon.lt.B_lon(1)) then
+     LonLo   = nlon
+     LonHi   = 1
+     LonFrac = ( rlon   +360._r8 - B_lon(nlon)) &
+              /(B_lon(1)+360._r8 - B_lon(nlon))
+   elseif(rlon.gt.B_lon(nlon)) then
+     LonLo   = nlon
+     LonHi   = 1
+     LonFrac = ( rlon            - B_lon(nlon)) &
+              /(B_lon(1)+360._r8 - B_lon(nlon))
+   else
+     do ii=1,(nlon-1)
+       if((rlon.ge.B_lon(ii)).and.(rlon.lt.B_lon(ii+1))) then
+         LonLo   = ii
+         LonHi   = ii+1
+         LonFrac = ( rlon       - B_lon(ii)) &
+                  /(B_lon(ii+1) - B_lon(ii))
+         exit
+       endif
+     end do
+   endif
+
+   ! Get the Bounding indices for latitude
+   !---------------------------------------
+   if(rlat.lt.B_lat(1)) then
+     LatLo   = 0
+     LatHi   = 1
+     LatFrac = (rlat + B_lat(1))/(2._r8*B_lat(1))
+   elseif(rlat.gt.B_lat(nlat)) then
+     LatLo   = nlat
+     LatHi   = nlat + 1
+     LatFrac =  ( rlat         - B_lat(nlat)) &
+               /(180._r8 - 2._r8*B_lat(nlat))
+   else
+     do ii=1,(nlat-1)
+       if((rlat.ge.B_lat(ii)).and.(rlat.lt.B_lat(ii+1))) then
+         LatLo   = ii
+         LatHi   = ii+1
+         LatFrac = ( rlat       - B_lat(ii)) &
+                  /(B_lat(ii+1) - B_lat(ii))
+         exit
+       endif
+     end do
+   endif
+
+   ! Interpolate
+   !-------------
+   if(LatHi.gt.nlat) then
+     LatHx = LatLo
+     LonLx = LonHi + (nlon/2)
+     LonHx = LonLo + (nlon/2)
+     if(LonLx.gt.nlon)  LonLx = LonLx - nlon
+     if(LonHx.gt.nlon)  LonHx = LonHx - nlon
+     interp_Bwin = Bwindow(LonLo,LatLo)*(1._r8-LonFrac)*(1._r8-LatFrac) &
+                  +Bwindow(LonHi,LatLo)*       LonFrac *(1._r8-LatFrac) &
+                  +Bwindow(LonHx,LatHx)*       LonFrac *       LatFrac  &
+                  +Bwindow(LonLx,LatHx)*(1._r8-LonFrac)*       LatFrac
+   elseif(LatLo.lt. 1  ) then
+     LatLx = LatHi
+     LonLx = LonHi + (nlon/2)
+     LonHx = LonLo + (nlon/2)
+     if(LonLx.gt.nlon)  LonLx = LonLx - nlon
+     if(LonHx.gt.nlon)  LonHx = LonHx - nlon
+     interp_Bwin = Bwindow(LonLx,LatLx)*(1._r8-LonFrac)*(1._r8-LatFrac) &
+                  +Bwindow(LonHx,LatLx)*       LonFrac *(1._r8-LatFrac) &
+                  +Bwindow(LonHi,LatHi)*       LonFrac *       LatFrac  &
+                  +Bwindow(LonLo,LatHi)*(1._r8-LonFrac)*       LatFrac
+   else
+     interp_Bwin = Bwindow(LonLo,LatLo)*(1._r8-LonFrac)*(1._r8-LatFrac) &
+                  +Bwindow(LonHi,LatLo)*       LonFrac *(1._r8-LatFrac) &
+                  +Bwindow(LonHi,LatHi)*       LonFrac *       LatFrac  &
+                  +Bwindow(LonLo,LatHi)*(1._r8-LonFrac)*       LatFrac
+   endif
+
+   ! End Routine
+   !------------
+   return
+  end function ! interp_Bwin
   !================================================================
 
 end module nudging

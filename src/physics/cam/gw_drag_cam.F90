@@ -1483,8 +1483,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   ! Call the CCPPized subroutine for the moving mountain gravity waves.
   if (use_gw_movmtn_pbl) then
-    call outfld('U_MOVMTN_IN', state1%u, ncol, lchnk)
-    call outfld('V_MOVMTN_IN', state1%v, ncol, lchnk)
+    call outfld('U_MOVMTN_IN', state1%u, pcols, lchnk)
+    call outfld('V_MOVMTN_IN', state1%v, pcols, lchnk)
 
     tau0(:,:) = 0._r8
     gwut0(:,:) = 0._r8
@@ -1570,8 +1570,8 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
     call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
 
-    call outfld('TAU_MOVMTN', tau0, ncol, lchnk)
-    call outfld('GWUT_MOVMTN', gwut0, ncol, lchnk)
+    call outfld('TAU_MOVMTN', tau0, pcols, lchnk)
+    call outfld('GWUT_MOVMTN', gwut0, pcols, lchnk)
     call outfld('VTGW_MOVMTN', vtgw, pcols, lchnk)
     call outfld('UTGW_MOVMTN', utgw, pcols, lchnk)
     call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, pcols, lchnk)
@@ -1957,7 +1957,7 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
     endif
 
     ! Write output fields to history file
-    call outfld('TAUAORO', taua,  ncol, lchnk)
+    call outfld('TAUAORO', taua,  pcols, lchnk)
     call outfld('UTGWORO', utgw, pcols, lchnk)
     call outfld('VTGWORO', vtgw, pcols, lchnk)
     call outfld('TTGWORO', ttgw, pcols, lchnk)
@@ -1970,11 +1970,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   if (use_gw_rdg_beta) then
     ! Save state at top of routine
     ! Useful for unit testing checks
-    call outfld('UEGW', state1%u ,  ncol, lchnk)
-    call outfld('VEGW', state1%v ,  ncol, lchnk)
-    call outfld('TEGW', state1%t ,  ncol, lchnk)
-    call outfld('ZEGW', state1%zi , ncol, lchnk)
-    call outfld('ZMGW', state1%zm , ncol, lchnk)
+    call outfld('UEGW', state1%u ,  pcols, lchnk)
+    call outfld('VEGW', state1%v ,  pcols, lchnk)
+    call outfld('TEGW', state1%t ,  pcols, lchnk)
+    call outfld('ZEGW', state1%zi , pcols, lchnk)
+    call outfld('ZMGW', state1%zm , pcols, lchnk)
 
     call gravity_wave_drag_ridge_beta_run( &
       ncol                    = ncol, &
@@ -2050,11 +2050,11 @@ subroutine gw_drag_cam_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   if (use_gw_rdg_gamma) then
     ! Save state at top of routine
     ! Useful for unit testing checks
-    call outfld('UEGW', state1%u ,  ncol, lchnk)
-    call outfld('VEGW', state1%v ,  ncol, lchnk)
-    call outfld('TEGW', state1%t ,  ncol, lchnk)
-    call outfld('ZEGW', state1%zi , ncol, lchnk)
-    call outfld('ZMGW', state1%zm , ncol, lchnk)
+    call outfld('UEGW', state1%u ,  pcols, lchnk)
+    call outfld('VEGW', state1%v ,  pcols, lchnk)
+    call outfld('TEGW', state1%t ,  pcols, lchnk)
+    call outfld('ZEGW', state1%zi , pcols, lchnk)
+    call outfld('ZMGW', state1%zm , pcols, lchnk)
 
     call gravity_wave_drag_ridge_gamma_run( &
       ncol                    = ncol, &

@@ -220,6 +220,53 @@
        Default: FALSE
        </entry>
 
+<entry id="Nudge_SpectralFilter" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+	Toggle Spectral Filtering of Nudging Tendencies ON/OFF.
+
+        Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to
+                                       the model state and target data so that nudging
+                                       tendencies are only applied to scales larger than
+                                       the specified truncation.
+       Default: FALSE
+       </entry>
+
+<entry id="Nudge_SpectralNtrunc" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Set Horizonal Scale for Spectral Filtering
+
+       Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+                                  for spectral filtering. The nominal horizontal scale of
+                                  the filtering can be estimated as:
+
+                                     Hscale = PI*6350/Nudge_SpectralNtrunc
+
+                             i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal
+                                  nudging scale  Hscale~500km.
+       Default: -1
+       </entry>
+
+<entry id="Nudge_SpectralNring" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Set size of local-area grid used to suppress Sampling Errors.
+
+       Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging
+                                  of spherical harmonic modes, to suppress sampling errors.
+                                  When initializing each basis, a local average of SH values
+                                  is computed for the area associated with each grid point.
+                                  SpectralNring set the number of rings of equal-area points
+                                  in this sampling domain.
+                                  Each ring (kk) contains 8*(kk-1) sample points.
+ 
+                                     Nudge_SpectralNring     Number of Sampling Points
+                                     -------------------     -------------------------
+                                        1                        1      (DEFAULT SampleGrid NOT used)
+                                        2                        9
+                                        3                       25
+                                        4                       49
+       Default:  1
+       </entry>
+
 <entry id="Nudge_Path" type="char*256" input_pathname="abs" category="nudging"
        group="nudging_nl" valid_values="" >
        Full pathname of analyses data to use for nudging.
@@ -307,6 +354,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -323,6 +373,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -339,6 +392,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -355,6 +411,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -367,10 +426,12 @@
 
 <entry id="Nudge_PSprof" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Profile index for PS nudging.
+       Profile index for PS nudging.(Horizontal Only)
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -378,6 +439,14 @@
        group="nudging_nl" valid_values="" >
        Normalized Coeffcient for PS nudging.
          [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_PSscal" type="real" category="nudging"
+	group="nudging_nl" valid_values="" >
+       Coeffcient controling the vertical influence function.
+          Nudge_PSscal < 1.0 : P'(n) = [    B(n)      ]*(Target_Ps - Model_Ps)
+          Nudge_PSscal > 1.0 : P'(n) = [(Pref/P0)**scl]*(Target_Ps - Model_Ps)
        Default: 0.
        </entry>
 
@@ -459,6 +528,13 @@
          TRUE  = value=0 inside the specified window, 1 outside
          FALSE = value=1 inside the specified window, 0 outside
        Default: FALSE
+       </entry>
+
+<entry id="Nudge_Bwindow_File" type="char*256" input_pathname="abs" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Filename for the Horizonal Boundary Window to use for nudging with profile option 3.
+        (e.g. '/$DIN_LOC_ROOT/atm/cam/nudging/BoundaryWindowFile.nc')
+       Default: 'BoundaryWindowFile.nc'
        </entry>
 
 <entry id="Nudge_ZonalFilter" type="logical" category="nudging"
@@ -6712,6 +6788,43 @@ Default: set by build-namelist.
        group="aerosol_nl" valid_values="" >
 Tuning for seasalt_emis
 Default: set by build-namelist.
+</entry>
+
+<entry id="sad_chem_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to chemistry-relevant surface area density (SAD)
+for heterogeneous reaction rates. The SAD determines how much aerosol surface
+is available for gas-phase chemical reactions (computed in aero_model, used
+by mo_usrrxt).
+
+In bulk (BAM) configurations, types not in rad_climate are provided by
+a supplemental path in aero_model_surfarea.
+
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium' (MAM, CARMA);
+'sulfate','black-c','p-organic','s-organic','nitrate' (prognostic bulk);
+UNSET (prescribed bulk)
+</entry>
+
+<entry id="sad_seasalt_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to sea-salt surface area density (SAD).
+Computed separately from chemistry SAD and used for sea-salt-specific
+heterogeneous reactions.
+Default: 'seasalt'
+</entry>
+
+<entry id="sad_strat_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to stratospheric surface area density (SAD).
+Used by aero_model_strat_surfarea to compute strato_sad, which is passed
+to sad_strat_calc (mo_sad.F90) for STS/NAT/ICE thermodynamic partitioning.
+Note: sad_strat_calc currently assumes all incoming SAD is sulfate aerosol
+(via sulfate_sad_calc and calc_radius_lbs). Supporting non-sulfate species
+in the stratospheric SAD pathway requires refactoring mo_sad.F90 to handle
+multiple aerosol types independently. The physically correct default would
+be 'sulfate' only, but the current default matches sad_chem_spec_types for
+bit-for-bit consistency with prior hardcoded behavior.
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium'
 </entry>
 
 <entry id="aer_sol_facti" type="real(1000)" category="cam_chem"
