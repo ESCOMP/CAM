@@ -662,8 +662,8 @@ contains
              factor = (relhum(i,k) - table_rh(rh_l))/(table_rh(rh_u) - table_rh(rh_l))
 
              rfac_sulf = table_rfac_sulf(rh_l) + factor*(table_rfac_sulf(rh_u) - table_rfac_sulf(rh_l))
-             rfac_oc = table_rfac_oc(rh_u) + factor*(table_rfac_oc(rh_u) - table_rfac_oc(rh_l))
-             rfac_bc = table_rfac_bc(rh_u) + factor*(table_rfac_bc(rh_u) - table_rfac_bc(rh_l))
+             rfac_oc = table_rfac_oc(rh_l) + factor*(table_rfac_oc(rh_u) - table_rfac_oc(rh_l))
+             rfac_bc = table_rfac_bc(rh_l) + factor*(table_rfac_bc(rh_u) - table_rfac_bc(rh_l))
           end if
 
           dm_sulf_wet = dm_sulf * rfac_sulf
