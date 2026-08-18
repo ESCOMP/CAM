@@ -14,6 +14,8 @@ module co2_cycle
    use shr_kind_mod,    only: r8 => shr_kind_r8, cl => shr_kind_cl
    use co2_data_flux,   only: co2_data_flux_type
    use srf_field_check, only: active_Faoo_fco2_ocn
+   use constituents,    only: cnst_get_ind
+   use ppgrid,          only: begchunk, endchunk, pcols, pver
 
    implicit none
 
@@ -29,6 +31,7 @@ module co2_cycle
    public co2_time_interp_ocn           ! time interpolate co2 flux
    public co2_time_interp_fuel          ! time interpolate co2 flux
    public co2_cycle_set_ptend           ! set tendency from aircraft emissions
+   public :: co2vmr_surf                ! global mean of CO2 in the lowest model layer
 
    ! Public data
    public data_flux_ocn                 ! data read in for co2 flux from ocn
@@ -66,6 +69,7 @@ module co2_cycle
    integer, dimension(ncnst) :: c_i                   ! global index
 
    logical :: local_co2 = .false.  ! .true. if CO2 const. added in this module
+   integer :: co2_cnst_ndx = -1
 
 !===============================================================================
 contains
@@ -208,6 +212,29 @@ function co2_transport()
 end function co2_transport
 
 !===============================================================================
+! Returns global mean of advected CO2 (mole/mole) in the lowest model layer
+function co2vmr_surf(phys_state) result(co2vmr)
+  use physics_types,only: physics_state
+  use physconst,    only: mwdry, mwco2
+  use gmean_mod,    only: gmean
+
+  type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
+  real(r8) :: co2vmr ! VMR (mole/mole) of advected CO2
+
+  integer :: lchnk, ncol
+  real(r8) :: vmr_arr(pcols,begchunk:endchunk)
+
+  do lchnk = begchunk, endchunk
+     ncol = phys_state(lchnk)%ncol
+     ! convert to VMR
+     vmr_arr(:ncol,lchnk) = phys_state(lchnk)%q(:ncol,pver,co2_cnst_ndx) &
+                          * mwdry / mwco2
+  end do
+  call gmean(vmr_arr,co2vmr) ! global mean
+
+end function co2vmr_surf
+
+!===============================================================================
 
 function co2_implements_cnst(name)
 
@@ -320,11 +347,12 @@ subroutine co2_init
       call addfld(trim(cnst_name(mm))//'_BOT', horiz_only,  'A', 'kg/kg',   trim(cnst_longname(mm))//', Bottom Layer')
       if (co2_implements_cnst(cnst_name(mm))) then
          call addfld(cnst_name(mm),            (/ 'lev' /), 'A', 'kg/kg',   cnst_longname(mm))
-         call addfld(sflxnam(mm),              horiz_only,  'A', 'kg/m2/s', trim(cnst_name(mm))//' surface flux')
+         call add_default(cnst_name(mm), 1, ' ')
       end if
-
-      call add_default(cnst_name(mm), 1, ' ')
-      call add_default(sflxnam(mm),   1, ' ')
+      if (co2_implements_cnst(cnst_name(mm)) .or. cnst_name(mm)=='CO2') then
+         call addfld(sflxnam(mm),              horiz_only,  'A', 'kg/m2/s', trim(cnst_name(mm))//' surface flux')
+         call add_default(sflxnam(mm),   1, ' ')
+      end if
 
       ! The addfld call for the 'TM*' fields are made by default in the
       ! constituent_burden module.
@@ -339,6 +367,9 @@ subroutine co2_init
    if (co2_readFlux_fuel) then
       call co2_data_flux_init ( co2flux_fuel_file, 'CO2_flux', data_flux_fuel )
    end if
+
+   ! get CO2 constituent index
+   call cnst_get_ind('CO2',co2_cnst_ndx)
 
 end subroutine co2_init
 

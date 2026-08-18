@@ -3120,6 +3120,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use phys_grid_ctem,      only: phys_grid_ctem_diags
   use surface_emissions_mod,only: surface_emissions_adv
   use elevated_emissions_mod,only: elevated_emissions_adv
+  use co2_cycle,           only: co2_transport, co2vmr_surf
 
   implicit none
 
@@ -3128,6 +3129,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   type(cam_out_t),     intent(inout), dimension(begchunk:endchunk) :: cam_out
 
   type(physics_buffer_desc), pointer                 :: pbuf2d(:,:)
+  real(r8) :: co2vmr
 
   !-----------------------------------------------------------------------------
 
@@ -3139,7 +3141,12 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   endif
 
   ! Chemistry surface values
-  call chem_surfvals_set()
+  if (co2_transport()) then
+     co2vmr = co2vmr_surf(phys_state)
+     call chem_surfvals_set(co2vmr_in=co2vmr)
+  else
+     call chem_surfvals_set()
+  end if
   call surface_emissions_adv(pbuf2d, phys_state)
   call elevated_emissions_adv(pbuf2d, phys_state)
 

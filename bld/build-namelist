@@ -3110,19 +3110,29 @@ if (defined  $lbc_file) {
     # Make sure the flbc_list specifies all the GHGs needed for radiation.
     my $flbc_list = $nl->get_value('flbc_list');
     if (defined $flbc_list) {
+        my @ghg_list;
+        # should not include CO2 in BGC configuration
+        if ($co2_cycle) {
+            @ghg_list = qw(CH4 N2O CFC11 CFC12);
+        } else {
+            @ghg_list = qw(CO2 CH4 N2O CFC11 CFC12');
+        }
         # If flbc_list has already been defined, check that it contains all
         # the GHGs needed by the radiation code.
-        foreach my $ghg ('CO2','CH4','N2O','CFC11','CFC12') {
+        foreach my $ghg (@ghg_list) {
             if ($flbc_list !~ /$ghg/) {
                 die "$ProgName - ERROR: $ghg is missing from flbc_list \n";
             }
         }
     }
     else {
-        my $val = "'CO2','CH4','N2O','CFC11','CFC12'";
+        my $val = "'CH4','N2O','CFC11','CFC12'";
+        if (!$co2_cycle) {
+            # include CO2 if not in BGC configuration
+            $val = "'CO2',". $val;
+        }
         add_default($nl, 'flbc_list', 'val'=>$val);
     }
-
 }
 else {
 
