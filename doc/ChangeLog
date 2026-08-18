@@ -1,3 +1,61 @@
+
+===============================================================
+
+Tag name: cam6_4_196
+Originator(s): cacraigucar
+Date: August 17, 2026
+One-line Summary: Modifications for bringing in PUMAS round3 ccpp'ization
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1600
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - bring in PUMAS round3 (no issue)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume, jimmielin
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       .gitmodules
+M       src/atmos_phys
+           - update atmos_phys tag to bring in PUMAS round3
+
+M       bld/build-namelist
+M       bld/namelist_files/namelist_definition.xml
+M       src/physics/cam/physpkg.F90
+M       src/physics/cam7/physpkg.F90
+           - add pumas_tend snapshot flag and remove microp_section
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB
+
+derecho/nvhpc/aux_cam: still broken, but tested this tag with upcoming CMEPS external (cmeps1.1.58) and it ran to completion
+                       This one-off test has its baselines saved so that the next tag which comes in
+		       using the updated CMEPS has an appropriate baseline comparison.
+  FAIL ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default MODEL_BUILD time=0
+   - pre-existing failure as of cam6_4_193
+
+
+izumi/nag/aux_cam:
+  FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+   - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_195
