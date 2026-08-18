@@ -86,12 +86,14 @@ contains
     integer, intent(in), optional :: list_idx
     type(bulk_aerosol_state), pointer :: newobj
 
+    character(len=*), parameter :: subname = 'bulk_aerosol_state::constructor'
     integer :: ierr
+    character(len=256) :: alloc_errmsg
 
-    allocate(newobj,stat=ierr)
+    allocate(newobj, stat=ierr, errmsg=alloc_errmsg)
     if( ierr /= 0 ) then
        nullify(newobj)
-       return
+       call endrun(subname//': newobj allocation error: '//trim(alloc_errmsg))
     end if
 
     newobj%host_ = host
@@ -104,11 +106,15 @@ contains
 
     ! Allocate per-object workspace for derived number fields.
     ! Thread-safe: in CAM, each chunk has its own state object.
-    allocate(newobj%num_work_(pcols, pver), stat=ierr)
-    if (ierr /= 0) call endrun('bulk_aerosol_state constructor: num_work_ allocation error')
+    allocate(newobj%num_work_(pcols, pver), stat=ierr, errmsg=alloc_errmsg)
+    if (ierr /= 0) then
+       call endrun(subname//': num_work_ allocation error: '//trim(alloc_errmsg))
+    end if
     newobj%num_work_(:,:) = 0._r8
-    allocate(newobj%zero_fld_(pcols, pver), stat=ierr)
-    if (ierr /= 0) call endrun('bulk_aerosol_state constructor: zero_fld_ allocation error')
+    allocate(newobj%zero_fld_(pcols, pver), stat=ierr, errmsg=alloc_errmsg)
+    if (ierr /= 0) then
+       call endrun(subname//': zero_fld_ allocation error: '//trim(alloc_errmsg))
+    end if
     newobj%zero_fld_(:,:) = 0._r8
 
   end function constructor
