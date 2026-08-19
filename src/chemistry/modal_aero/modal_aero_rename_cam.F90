@@ -349,8 +349,6 @@ contains
       integer :: n1, n2, nspec
       integer :: nch_lfrm, nch_ltoo, nch_mfrmid, nch_mtooid
 
-      real (r8) :: frelax
-
       lunout = iulog
 
 !

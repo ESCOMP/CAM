@@ -46,7 +46,7 @@ contains
       use cam_logfile,     only: iulog
 
 !   local variables
-      integer :: ipair, iq, iqfrm, iqfrm_aa, iqtoo, iqtoo_aa
+      integer :: ipair, iq, iqfrm, iqtoo
       integer :: jsoa
       integer :: l, l1, l2, lsfrm, lstoo
       integer :: m, mait, mpca, mfrm, mtoo, mtef

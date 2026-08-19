@@ -20,14 +20,13 @@ module aero_convproc_cam
    use spmd_utils,      only: masterproc
    use physconst,       only: gravit, rair
    use physconst,       only: pi, rhoh2o, rh2o, latvap, cpair
-   use ppgrid,          only: pver, pcols, pverp
+   use ppgrid,          only: pver, pcols
    use constituents,    only: pcnst, cnst_get_ind
    use constituents,    only: cnst_species_class, cnst_spec_class_aerosol
    use phys_control,    only: phys_getopts
 
    use physics_types,   only: physics_state, physics_ptend
    use physics_buffer,  only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
-   use time_manager,    only: get_nstep
    use cam_history,     only: outfld, addfld, add_default, horiz_only
    use cam_logfile,     only: iulog
    use cam_abortutils,  only: endrun
@@ -64,13 +63,9 @@ module aero_convproc_cam
    integer :: fracis_idx         = 0
 
    integer :: rprddp_idx         = 0
-   integer :: rprdsh_idx         = 0
-   integer :: nevapr_shcu_idx    = 0
    integer :: nevapr_dpcu_idx    = 0
 
    integer :: icwmrdp_idx        = 0
-   integer :: icwmrsh_idx        = 0
-   integer :: sh_frac_idx        = 0
    integer :: dp_frac_idx        = 0
 
    integer :: zm_eu_idx          = 0
@@ -80,9 +75,6 @@ module aero_convproc_cam
    integer :: zm_jt_idx          = 0
    integer :: zm_maxg_idx        = 0
    integer :: zm_ideep_idx       = 0
-
-   integer :: cmfmc_sh_idx       = 0
-   integer :: sh_e_ed_ratio_idx  = 0
 
    integer :: istat
 
@@ -230,14 +222,10 @@ contains
       fracis_idx      = pbuf_get_index('FRACIS')
 
       rprddp_idx      = pbuf_get_index('RPRDDP')
-      rprdsh_idx      = pbuf_get_index('RPRDSH')
       nevapr_dpcu_idx = pbuf_get_index('NEVAPR_DPCU')
-      nevapr_shcu_idx = pbuf_get_index('NEVAPR_SHCU')
 
       icwmrdp_idx     = pbuf_get_index('ICWMRDP')
-      icwmrsh_idx     = pbuf_get_index('ICWMRSH')
       dp_frac_idx     = pbuf_get_index('DP_FRAC')
-      sh_frac_idx     = pbuf_get_index('SH_FRAC')
 
       zm_eu_idx       = pbuf_get_index('ZM_EU')
       zm_du_idx       = pbuf_get_index('ZM_DU')
@@ -246,9 +234,6 @@ contains
       zm_jt_idx       = pbuf_get_index('ZM_JT')
       zm_maxg_idx     = pbuf_get_index('ZM_MAXG')
       zm_ideep_idx    = pbuf_get_index('ZM_IDEEP')
-
-      cmfmc_sh_idx    = pbuf_get_index('CMFMC_SH')
-      sh_e_ed_ratio_idx = pbuf_get_index('SH_E_ED_RATIO', istat)
 
       if (masterproc ) then
 
@@ -334,12 +319,9 @@ contains
       type(ptr2d_t) :: raer(ncnstaer)     ! aerosol mass, number mixing ratios
       type(ptr2d_t) :: qqcw(ncnstaer)
 
-      logical  :: dotend(pcnst)
       logical  :: applytend
 
       !-------------------------------------------------------------------------------------------------
-
-      dotend = .false.
 
       ! Initialize
       lchnk = state%lchnk
@@ -366,7 +348,6 @@ contains
             applytend = .false.
             if ( ndx > 0 ) then
                applytend = ptend%lq(ndx)
-               dotend(ndx) = applytend
             endif
 
             qptr => raer(mm)%fld
@@ -486,7 +467,6 @@ contains
 
       integer :: i, l, m, mm
       integer :: lchnk
-      integer :: nstep
 
       real(r8) :: dpdry(pcols,pver)     ! layer delta-p-dry (mb)
       real(r8) :: fracice(pcols,pver)   ! Ice fraction of cloud droplets
@@ -521,7 +501,6 @@ contains
       ! Initialize
 
       lchnk = state%lchnk
-      nstep = get_nstep()
 
       ! Associate pointers with physics buffer fields
       call pbuf_get_field(pbuf, rprddp_idx,      rprddp)

@@ -6,7 +6,7 @@ module aerosol_optics_cam
   use radconstants, only: get_lw_spectral_boundaries
   use phys_prop,    only: ot_length, numrh=>nrh
   use physics_types,only: physics_state
-  use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
+  use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use ppgrid, only: pcols, pver
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun

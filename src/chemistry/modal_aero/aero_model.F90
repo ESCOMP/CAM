@@ -1034,7 +1034,7 @@ contains
                                       ixferable_a_renamexf, ixferable_c_renamexf, strat_only_renamexf
     use modal_aero_newnuc,     only : modal_aero_newnuc_run
     use modal_aero_data,       only : cnst_name_cw, qqcw_get_field, &
-                                      nsoa, lptr2_soa_a_amode, lptr2_soa_g_amode, &
+                                      nsoa, lptr2_soa_a_amode, &
                                       nspec_amode, &
                                       alnsg_amode, voltonumblo_amode, voltonumbhi_amode, &
                                       dgnum_amode, specmw_amode, specdens_amode, &

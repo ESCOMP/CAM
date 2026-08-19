@@ -10,7 +10,6 @@ module modal_aero_wateruptake_cam
    use aerosol_properties_mod, only: aerosol_properties
    use aerosol_state_mod, only: aerosol_state
    use cam_history,      only: addfld, add_default, outfld, horiz_only
-   use cam_logfile,      only: iulog
    use ref_pres,         only: top_lev => clim_modal_aero_top_lev
    use phys_control,     only: phys_getopts
    use cam_abortutils,   only: endrun
@@ -74,8 +73,6 @@ contains
       use radiative_aerosol, only: rad_aer_get_info
       use modal_aero_wateruptake, only: modal_aero_wateruptake_diag
       use modal_aerosol_state_mod, only: modal_aerosol_state_register_water_uptake_diag
-
-      use shr_const_mod, only: shr_const_pi
 
       type(physics_buffer_desc), pointer :: pbuf2d(:,:)
       real(r8) :: real_nan
@@ -152,7 +149,7 @@ contains
          endif
       endif
 
-      call modal_aero_wateruptake_init(shr_const_pi, errmsg_local, errflg_local)
+      call modal_aero_wateruptake_init(pi, errmsg_local, errflg_local)
       if (errflg_local /= 0) then
          call endrun('modal_aero_wateruptake_cam_init: ' // trim(errmsg_local))
       end if
