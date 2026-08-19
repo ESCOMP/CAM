@@ -61,8 +61,6 @@ module bulk_aerosol_state_mod
      procedure :: aqu_gain_binfraction
      procedure :: surf_area_dens
      procedure :: get_bulk_num_and_mass
-     ! for bit-for-bit
-     procedure :: nuclice_get_numdens => nuclice_get_numdens_bam
 
      final :: destructor
 
@@ -807,79 +805,5 @@ contains
     end select
 
   end subroutine get_bulk_num_and_mass
-
-  ! NOTE on bit-for-bit: The base-class nuclice_get_numdens computes:
-  !   size_wght * type_wght * num_col(#/kg) * rho * per_cm3
-  ! where for BAM: num_col = mmr * ntm [* bam_sulfate_scale], size_wght = 1/25, type_wght = 1.0
-  ! giving: (1/25) * 1.0 * (mmr * ntm) * rho * 1e-6
-  !
-  ! The original inline BAM code (nucleate_ice_cam.F90, removed) computed:
-  !   naer2 = aer_mmr * rho * ntm  (mmr * rho first, then * ntm)
-  !   dust_num = naer2 / 25 * 1e-6
-  ! giving: (mmr * rho * ntm) / 25 * 1e-6
-  !
-  ! These differ only in floating-point operation order (associativity).
-  ! It has been shown that this rearranging causes answer differences, so we
-  ! use this subroutine to replicate the original behavior.
-  subroutine nuclice_get_numdens_bam(self, aero_props, use_preexisting_ice, &
-       ncol, nlev, rho, dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col)
-    !REMOVECAM: host-model specific dimensions
-    use ppgrid, only: pcols, pver
-    !REMOVECAM_END
-
-    class(bulk_aerosol_state), intent(in) :: self
-    class(aerosol_properties), intent(in) :: aero_props
-    logical, intent(in) :: use_preexisting_ice
-    integer, intent(in) :: ncol
-    integer, intent(in) :: nlev
-    real(r8), intent(in) :: rho(:,:)
-    real(r8), intent(out) :: dust_num_col(:,:)
-    real(r8), intent(out) :: sulf_num_col(:,:)
-    real(r8), intent(out) :: soot_num_col(:,:)
-    real(r8), intent(out) :: sulf_num_tot_col(:,:)
-
-    real(r8) :: naer2_1bin(ncol,nlev)
-    real(r8) :: maerosol_1bin(ncol,nlev)
-    character(len=32) :: spectype, aname
-    integer :: m, i, k
-    real(r8), parameter :: per_cm3 = 1.e-6_r8
-
-    dust_num_col(:,:) = 0._r8
-    sulf_num_col(:,:) = 0._r8
-    soot_num_col(:,:) = 0._r8
-    sulf_num_tot_col(:,:) = 0._r8
-
-    do m = 1, aero_props%nbins()
-       call aero_props%species_type(m, 1, spectype)
-       call self%get_bulk_num_and_mass(m, ncol, rho, naer2_1bin, maerosol_1bin)
-
-       ! get_bulk_num_and_mass only applied bam_sulfate_scale to SULFATE (by name).
-       ! For the nucleate_ice path, volcanic aerosol (spectype 'sulfate', name 'volc*')
-       ! also needs the scale, matching the original inline code which scaled ALL
-       ! spectype=='sulfate' bins including volcanic aerosol, so we will do it here:
-       ! (but do not do it again for SULFATE)
-       if (spectype == 'sulfate') then
-          call rad_aer_get_props(self%list_idx_, m, aername=aname)
-          if (to_lower(aname(:4)) == 'volc') then
-             naer2_1bin(:ncol,:nlev) = naer2_1bin(:ncol,:nlev) * bam_sulfate_scale
-          end if
-       end if
-
-       do k = 1, nlev
-          do i = 1, ncol
-             select case (trim(spectype))
-             case ('dust')
-                dust_num_col(i,k) = dust_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
-             case ('sulfate')
-                sulf_num_col(i,k) = sulf_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
-                sulf_num_tot_col(i,k) = sulf_num_tot_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
-             case ('black-c')
-                soot_num_col(i,k) = soot_num_col(i,k) + naer2_1bin(i,k) / bam_icenuc_size_wght_denom * per_cm3
-             end select
-          end do
-       end do
-    end do
-
-  end subroutine nuclice_get_numdens_bam
 
 end module bulk_aerosol_state_mod
