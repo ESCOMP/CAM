@@ -793,8 +793,8 @@ contains
     ! Note: only SULFATE gets the scale factor here.
     ! Volcanic aerosol (which also has spectype 'sulfate') does not get scaled in the
     ! ndrop_bam/CCN path (which only scales idxsul, SULFATE here)
-    ! Ice nucleation has been unified to also use this path, but it does scale volcanic
-    ! aerosol; it will apply this scale factor separately.
+    ! Ice nucleation instead derives numbers via get_ambient_num, which does apply
+    ! the scale factor to volcanic aerosol as well.
     maerosol(:ncol,:) = mmr(:ncol,:) * rho(:ncol,:)
 
     select case ( to_lower( aname(:4) ) )
