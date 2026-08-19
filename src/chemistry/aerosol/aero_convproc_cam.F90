@@ -76,8 +76,6 @@ module aero_convproc_cam
    integer :: zm_maxg_idx        = 0
    integer :: zm_ideep_idx       = 0
 
-   integer :: istat
-
    integer :: nbins = 0
    integer :: ncnstaer = 0
 
@@ -534,7 +532,7 @@ contains
                              fracice,     dqdt,      nsrflx,     qsrflx,  &
                              xx_mfup_max, xx_wcldbase, xx_kcldbase,       &
                              dcondt_resusp3d, conu2,  dcondt2,           &
-                             state%ncol, pver,       ncnstaer,   nbins,   &
+                             pver,       ncnstaer,   nbins,               &
                              pi, rhoh2o, rh2o, gravit, latvap, cpair, rair, &
                              convproc_do_evaprain_atonce,                 &
                              convproc_pom_spechygro,                      &

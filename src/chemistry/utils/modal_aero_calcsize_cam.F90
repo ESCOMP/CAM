@@ -364,7 +364,6 @@ contains
          pdel               = state%pdel(:ncol,:),     &
          gravit             = gravit,                  &
          pi                 = pi,                      &
-         num_q              = pcnst,                   &
          q                  = q_local,                 &
          q_cw               = q_cw_local,              &
          do_adjust          = do_adjust,               &

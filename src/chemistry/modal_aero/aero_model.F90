@@ -1374,7 +1374,6 @@ contains
        is_dorename_atik        = is_dorename_atik,              &
        dorename_atik           = dorename_atik(:ncol,:),        &
        jsrflx_rename           = jsrflx_rename,                 &
-       nsrflx                  = nsrflx,                        &
        qsrflx                  = qsrflx(:ncol,:,:),             &
        qqcwsrflx               = qqcwsrflx(:ncol,:,:),          &
        dqdt_rnpos              = dqdt_rnpos_unused,             &
@@ -1624,13 +1623,11 @@ contains
          ncol      = ncol,                               &
          pver      = pver,                               &
          top_lev   = top_lev,                            &
-         num_q     = gas_pcnst,                          &
          loffset   = loffset,                            &
          nstep     = nstep,                              &
          deltat_main = delt,                             &
          t         = tfld(:ncol,:),                      &
          pmid      = pmid(:ncol,:),                      &
-         pdel      = pdel(:ncol,:),                      &
          q         = vmr(:ncol,:,:),                     &
          dgncur_a  = dgnum(:ncol,:,:),                   &
          dgncur_awet = dgnumwet(:ncol,:,:),              &
