@@ -8,7 +8,8 @@
 
 <!-- LBC Files -->
 <flbc_type>'SERIAL'</flbc_type>
-<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+<flbc_list co2_cycle="0">'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+<flbc_list co2_cycle="1">'CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- ozone data -->
 <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>

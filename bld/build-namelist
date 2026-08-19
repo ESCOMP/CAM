@@ -3113,6 +3113,9 @@ if (defined  $lbc_file) {
         my @ghg_list;
         # should not include CO2 in BGC configuration
         if ($co2_cycle) {
+	    if ($flbc_list =~ /CO2/) {
+		die "$ProgName - ERROR: flbc_cycle cannot include CO2 in BGC configuration\n";
+	    }
             @ghg_list = qw(CH4 N2O CFC11 CFC12);
         } else {
             @ghg_list = qw(CO2 CH4 N2O CFC11 CFC12');
