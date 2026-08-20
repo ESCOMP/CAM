@@ -61,10 +61,8 @@ contains
     use cam_history_support, only: fillvalue
 
     !
-    !    Read MAGE outputs from mage_ncfile file, returning electric potential,
-    !    auroral mean energy and energy flux at current date and time,
-    !    and the data is linearly interpolated to the model time
-    !
+    !    Returns updated electric potential, auroral mean energy and
+    !    energy fluxes from MAGE
     !
     !    Args:
 
@@ -76,7 +74,7 @@ contains
     real(r8), intent(out)   :: mage_efxm(nmlonp1,nmlat) ! on geomag grid
     real(r8), intent(out)   :: mage_kevm(nmlonp1,nmlat) ! on geomag grid
 
-    if (mytid .eq. 0) then
+    if (masterproc) then
        write(iulog,'(A,I4,1X,I2.2,1X,I2.2,1X,I2,":",I2.2,":",I2.2)') "WCMX Coupling at ", &
              iyear, imo, iday, iutsec/3600, mod(iutsec,3600)/60, mod(iutsec,60)
     endif
@@ -143,10 +141,11 @@ contains
     integer :: ierr,color,i
     integer :: tmpComm
     character(len=*), parameter :: preface = 'mage_module::mp_coupling : '
+    character(len=128) :: msg
 
-    ! Create a second communicator to transfer data between TIEGCM and MAGE
+    ! Create a second communicator to transfer data between WACCM-X and MAGE
     ! This communicator only includes the root processes
-    ! TIEGCM root sends/receives data from/to MAGE root
+    ! WACCM-X root sends/receives data from/to MAGE root
 
     color = mageId
     tmpComm = MPI_COMM_WORLD
@@ -157,30 +156,32 @@ contains
 
     call mpi_comm_size(CplComm,CplCommSize,ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from mpi_comm_size: ierr=',i4)") ierr
-       call endrun(preface//'mpi_comm_size')
+       write(msg,"(a,'>>> Error from mpi_comm_size: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
-    ! At most two processes will register in CplComm (TIEGCM root, REMIX root)
+    ! At most two processes will register in CplComm (WACCM-X root, REMIX root)
     ! Therefore CplCommSize is either 1 or 2
     if (CplCommSize == 1) then
 
-       ! Only one process registered in CplComm (TIEGCM root)
+       ! Only one process registered in CplComm (WACCM-X root)
        ! No coupling will take place, free up the resources
        call mpi_comm_free(CplComm,ierr)
        if (ierr == MPI_ERROR) then
-          write(6,"('>>> Error from mpi_comm_free: ierr=',i4)") ierr
-          call endrun(preface//'mpi_comm_free')
+          write(msg,"(a,'>>> Error from mpi_comm_free: ierr=',i4)") preface,ierr
+          if (masterproc) write(iulog,*) msg
+          call endrun(msg)
        endif
        CplComm = MPI_COMM_NULL
     else
 
        ! There is another process registered in CplComm (REMIX root)
        call mpi_comm_rank(CplComm,CplRank,ierr)
-       !write(*,*) "W cplrank: ",CplRank
        if (ierr == MPI_ERROR) then
-          write(6,"('>>> Error from mpi_comm_rank: ierr=',i4)") ierr
-          call endrun(preface//'mpi_comm_rank')
+          write(msg,"(a,'>>> Error from mpi_comm_rank: ierr=',i4)") preface,ierr
+          if (masterproc) write(iulog,*) msg
+          call endrun(msg)
        endif
 
        if (.not.allocated(IAm)) allocate(IAm(CplCommSize))
@@ -194,8 +195,9 @@ contains
        do i=1,CplCommSize
           call mpi_bcast(IAm(i), 1, MPI_INTEGER, i-1, CplComm, ierr)
           if (ierr == MPI_ERROR) then
-             write(6,"('>>> Error from mpi_bcast: ierr=',i4)") ierr
-             call endrun(preface//'mpi_bcast')
+             write(msg,"(a,'>>> Error from mpi_bcast: ierr=',i4)") preface,ierr
+             if (masterproc) write(iulog,*) msg
+             call endrun(msg)
           endif
        enddo
 
@@ -244,6 +246,7 @@ contains
 
     integer :: ierr, myRank, appIdCpy
     character(len=*), parameter :: preface = 'mage_module::mp_get_coupling_comm : '
+    character(len=128) :: msg
 
     appIdCpy = appId
 
@@ -254,35 +257,40 @@ contains
     ! create a smaller pool that excludes that app
     call MPI_comm_rank(couplingPool, myRank, ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from MPI_comm_rank: ierr=',i4)") ierr
-       call endrun(preface//'MPI_comm_rank')
+       write(msg,"(a,'>>> Error from mpi_comm_rank: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
     call MPI_Allreduce(MPI_IN_PLACE, myRank, 1, MPI_INTEGER, MPI_MAX, couplingPool, ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from MPI_Allreduce: ierr=',i4)") ierr
-       call endrun(preface//'MPI_Allreduce')
+       write(msg,"(a,'>>> Error from MPI_Allreduce: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
     ! This Bcast is causing a lot of issues. I don't know if this is needed or
     ! if it will cause problems for voltron and other models. The behavior here is odd.
     call MPI_Bcast(appIdCpy, 1, MPI_INTEGER, myRank, couplingPool, ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from MPI_Bcast: ierr=',i4)") ierr
-       call endrun(preface//'MPI_Bcast')
+       write(msg,"(a,'>>> Error from MPI_Bcast: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
     call MPI_comm_split(couplingPool, appIdCpy, key, coupledComm, ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from MPI_comm_split: ierr=',i4)") ierr
-       call endrun(preface//'MPI_comm_split')
+       write(msg,"(a,'>>> Error from MPI_comm_split: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
     ! key is never used when making the exclusion pool, 0 is used to preserve order
     call MPI_comm_split(couplingPool, myAppId, 0, couplingPool, ierr)
     if (ierr == MPI_ERROR) then
-       write(6,"('>>> Error from MPI_comm_split: ierr=',i4)") ierr
-       call endrun(preface//'MPI_comm_split')
+       write(msg,"(a,'>>> Error from MPI_comm_split: ierr=',i4)") preface,ierr
+       if (masterproc) write(iulog,*) msg
+       call endrun(msg)
     endif
 
   end subroutine mp_get_coupling_comm
@@ -331,10 +339,6 @@ contains
        do j=1,nmlat
           do i=1,nmlonp1
              phihm(i,j) = avar2d(j,i,1)
-             !if (avar2d(j,i,2) .ne. avar2d(j,i,2)) write(*,*) "AVAR2?? ",avar2d(j,i,2),j,i
-             !if (avar2d(j,i,3) .ne. avar2d(j,i,3)) write(*,*) "AVAR3?? ",avar2d(j,i,3),j,i
-             !if (avar2d(j,i,2) .lt. 0) write(*,*) "AVAR4?? ",avar2d(j,i,2),j,i
-             !if (avar2d(j,i,3) .lt. 0) write(*,*) "AVAR5?? ",avar2d(j,i,3),j,i
              mage_kevm(i,j) = max(avar2d(j,i,2),0.5_r8) ! keV
              mage_efxm(i,j) = max(avar2d(j,i,2) * avar2d(j,i,3),0.01_r8)*1.602e-9_r8 ! Convert from keV/cm^s to mW/m^2
           enddo
@@ -351,19 +355,22 @@ contains
     integer :: ierr
     real(r8),dimension(:,:,:) :: avar2d,gvar2d
     character(len=*), parameter :: preface = 'mage_module::import_remix : '
+    character(len=128) :: msg
 
     if (nmixingeo .ne. 0) then
        call MPI_BCAST(gvar2d, nlatp2*nlonp1*nmixingeo, MPI_DOUBLE_PRECISION, mixCplRank, CplComm, ierr)
        if (ierr == MPI_ERROR) then
-          write(6,"('>>> Error from MPI_BCAST: ierr=',i4)") ierr
-          call endrun(preface//'MPI_BCAST')
+          write(msg,"(a,'>>> Error from MPI_BCAST: ierr=',i4)") preface,ierr
+          if (masterproc) write(iulog,*) msg
+          call endrun(msg)
        endif
     endif
     if (nmixinapex .ne. 0) then
        call MPI_BCAST(avar2d, nmlat*nmlonp1*nmixinapex, MPI_DOUBLE_PRECISION, mixCplRank, CplComm, ierr)
        if (ierr == MPI_ERROR) then
-          write(6,"('>>> Error from MPI_BCAST: ierr=',i4)") ierr
-          call endrun(preface//'MPI_BCAST')
+          write(msg,"(a,'>>> Error from MPI_BCAST: ierr=',i4)") preface,ierr
+          if (masterproc) write(iulog,*) msg
+          call endrun(msg)
        endif
        if (masterproc) then
           write(iulog,*) "WCMX Done Import2: ",mixCplRank,nmlat*nmlonp1*nmixinapex
@@ -468,6 +475,7 @@ contains
     real(r8),dimension(:,:,:) :: avar2d,gvar2d
     integer :: ierr
     character(len=*), parameter :: preface = 'mage_module::export_remix : '
+    character(len=128) :: msg
 
     ! Export the data
     if (mytid .eq. 0) then
@@ -476,8 +484,9 @@ contains
           call mpi_send(gvar2d, nlatp2*nlonp1*nmixoutgeo, MPI_DOUBLE_PRECISION, mixCplRank, &
                (myAppId+voltId)*100, CplComm, ierr)
           if (ierr == MPI_ERROR) then
-             write(6,"('>>> Error from mpi_send: ierr=',i4)") ierr
-             call endrun(preface//'mpi_comm_size')
+             write(msg,"(a,'>>> Error from mpi_send: ierr=',i4)") preface,ierr
+             if (masterproc) write(iulog,*) msg
+             call endrun(msg)
           endif
        endif
 
@@ -487,8 +496,9 @@ contains
           call mpi_send(avar2d, nmlat*nmlonp1*nmixoutapex, MPI_DOUBLE_PRECISION, mixCplRank, &
                (myAppId+voltId)*100, CplComm, ierr)
           if (ierr == MPI_ERROR) then
-             write(6,"('>>> Error from mpi_send: ierr=',i4)") ierr
-             call endrun(preface//'mpi_comm_size')
+             write(msg,"(a,'>>> Error from mpi_send: ierr=',i4)") preface,ierr
+             if (masterproc) write(iulog,*) msg
+             call endrun(msg)
           endif
        endif
        !write(iulog,*) "WCMX Done to export2:"

@@ -3256,6 +3256,19 @@ if ($waccmx) {
   if ($cfg->get('hgrid') =~ /ne120/) {
     add_default($nl,'se_min_temperature', 'val'=>'105.D0');
   }
+  # consistancy checking of high-latitude e-potential options
+  my $amie_opt = $nl->get_value('ionos_epotential_amie');
+  my $ltr_opt = $nl->get_value('ionos_epotential_ltr');
+  my $mage_opt = $nl->get_value('ionos_epotential_mage');
+  if ($amie_opt =~ m/$TRUE/io and $ltr_opt=~ m/$TRUE/io) {
+    die "ERROR: ionos_epotential_amie and ionos_epotential_ltr cannot both be TRUE";
+  }
+  if ($amie_opt =~ m/$TRUE/io and $mage_opt=~ m/$TRUE/io) {
+    die "ERROR: ionos_epotential_amie and ionos_epotential_mage cannot both be TRUE";
+  }
+  if ($ltr_opt =~ m/$TRUE/io and $mage_opt=~ m/$TRUE/io) {
+    die "ERROR: ionos_epotential_ltr and ionos_epotential_mage cannot both be TRUE";
+  }
 }
 
 # Chemistry options

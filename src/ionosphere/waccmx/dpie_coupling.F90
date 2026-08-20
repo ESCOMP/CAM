@@ -205,9 +205,9 @@ contains
     amie_inputs=.false.
     ltr_inputs=.false.
     mage_inputs=.false.
-    if (present(amie_in)) amie_inputs=amie_in
-    if (present(ltr_in))   ltr_inputs= ltr_in
-    if (present(ltr_in))  mage_inputs= mage_in
+    if (present(amie_in)) amie_inputs = amie_in
+    if (present(ltr_in))   ltr_inputs = ltr_in
+    if (present(mage_in)) mage_inputs = mage_in
 
     prescribed_inputs: if (amie_inputs .or. ltr_inputs .or. mage_inputs) then
 
