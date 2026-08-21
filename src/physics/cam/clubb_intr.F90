@@ -1543,8 +1543,6 @@ end subroutine clubb_init_cnst
     ! The similar name to clubb_history is unfortunate...
     logical :: history_amwg, history_clubb
 
-    integer :: cld_macmic_num_steps
-
     type(err_info_type) :: &
       err_info          ! err_info struct used in CLUBB containing err_code and err_header
 
@@ -1604,8 +1602,7 @@ end subroutine clubb_init_cnst
 
     call phys_getopts(history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb, &
-                      do_hb_above_clubb_out=do_hb_above_clubb, &
-                      cld_macmic_num_steps_out=cld_macmic_num_steps)
+                      do_hb_above_clubb_out=do_hb_above_clubb)
 
     !  Select variables to apply tendencies back to CAM
 
@@ -2403,19 +2400,6 @@ end subroutine clubb_init_cnst
 
     real(r8), pointer                    :: tpert(:)
 
-    real(r8), dimension(state%ncol,nzm_clubb,clubb_mf_nup) ::     &
-      mf_upa,    mf_dna,                                          &
-      mf_upw,    mf_dnw,                                          &
-      mf_upmf,                                                    &
-      mf_upqt,   mf_dnqt,                                         &
-      mf_upthl,  mf_dnthl,                                        &
-      mf_upthv,  mf_dnthv,                                        &
-      mf_upth,   mf_dnth,                                         &
-      mf_upqc,   mf_dnqc,                                         &
-      mf_upbuoy,                                                  &
-      mf_updet,                                                   &
-      mf_upent
-
     real(r8), parameter :: &
       rad2deg=180.0_r8/pi
 
@@ -2582,6 +2566,19 @@ end subroutine clubb_init_cnst
       tke_zm,                    & ! momentum grid
       invrs_exner_zm               ! momentum grid
 
+    real(r8), dimension(state%ncol,nzm_clubb,clubb_mf_nup) ::     &
+      mf_upa,    mf_dna,                                          &
+      mf_upw,    mf_dnw,                                          &
+      mf_upmf,                                                    &
+      mf_upqt,   mf_dnqt,                                         &
+      mf_upthl,  mf_dnthl,                                        &
+      mf_upthv,  mf_dnthv,                                        &
+      mf_upth,   mf_dnth,                                         &
+      mf_upqc,   mf_dnqc,                                         &
+      mf_upbuoy,                                                  &
+      mf_updet,                                                   &
+      mf_upent
+
     real(r8), dimension(state%ncol,nzt_clubb,sclr_dim) :: &
       sclrm_forcing,  & ! Passive scalar forcing                        [{units vary}/s]
       sclrm,          & ! Passive scalar mean (thermo. levels)          [units vary]
@@ -2624,9 +2621,6 @@ end subroutine clubb_init_cnst
       thlp2_output,             &
       dlf_liq_out,              & ! Detrained liquid water from ZM                [kg/kg/s]
       dlf_ice_out,              & ! Detrained ice water from ZM                   [kg/kg/s]
-
-      ! MF outputs to outfld
-      ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
       mf_dry_a_output,   mf_moist_a_output,   &
       mf_dry_w_output,   mf_moist_w_output,   &
       mf_dry_qt_output,  mf_moist_qt_output,  &
@@ -4711,11 +4705,9 @@ end subroutine clubb_init_cnst
 
     end if
 
-
     !$acc parallel loop gang vector collapse(2) default(present)
     do k = 1, nzt_clubb
       do i = 1, ncol
-        k_cam = top_lev - 1 + k
         qclvar(i,k)        = min( 1._r8, qclvar(i,k) ) ! We should move this clipping inside clubb
       end do
     end do
@@ -5465,22 +5457,6 @@ end subroutine clubb_init_cnst
 
     aist_pbuf(:,:top_lev-1) = 0._r8
     qsatfac_pbuf(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
-
-!+++arh -- debug statements
-!      if (iam == 444) then
-!        write(iam+1000,*) '------------ lchnk=',lchnk,'------------'
-!        write(iam+1000,*) 'nstep=',get_nstep(),' macmic_it=',macmic_it
-!        do i=1,ncol
-!          do k = top_lev,pver
-!            write(iam+1000,*) 'i=',i,' k=',k
-!            write(iam+1000,*) 'state_loc%q(i,k,ixq) = ',state_loc%q(i,k,ixq)
-!            write(iam+1000,*) 'state_loc%q(i,k,ixcldice) = ',state_loc%q(i,k,ixcldice)
-!            !write(iam+1000,*) 'state_loc%q(i,k,ixnumice) = ',state_loc%q(i,k,ixnumice)
-!            write(iam+1000,*) 'state_loc%t(i,k) = ',state_loc%t(i,k)
-!            write(iam+1000,*) 'state_loc%pmid(i,k) = ',state_loc%pmid(i,k)
-!          end do
-!        end do
-!      end if
 
     do k = top_lev, pver
 
