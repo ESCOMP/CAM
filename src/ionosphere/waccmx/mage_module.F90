@@ -90,10 +90,9 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine mage_init()
-    use mpi, only: MPI_DOUBLE_PRECISION, MPI_INTEGER, MPI_ERROR
+    use mpi, only: MPI_DOUBLE_PRECISION, MPI_INTEGER
 
     integer :: i,ierr
-    character(len=*), parameter :: preface = 'mage_module::mage_init : WACCMX send to REMIX : '
 
     ! Initialize the MPI Coupling interface
 
@@ -104,29 +103,21 @@ contains
 
        i = i + 1
        call mpi_send(nmlat, 1, MPI_INTEGER, mixCplRank, (myAppId+voltId)*100+i, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          call endrun(preface//'nmlat')
-       end if
+       call check_mpi_err(ierr, 'mage_init: mpi_send of nmlat to REMIX')
 
        i = i + 1
        call mpi_send(nmlonp1, 1, MPI_INTEGER, mixCplRank, (myAppId+voltId)*100+i, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          call endrun(preface//'nmlonp1')
-       end if
+       call check_mpi_err(ierr, 'mage_init: mpi_send of nmlonp1 to REMIX')
 
        i = i + 1
        call mpi_send(gmlat, nmlat, MPI_DOUBLE_PRECISION, mixCplRank, (myAppId+voltId)*100+i, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          call endrun(preface//'gmlat')
-       end if
+       call check_mpi_err(ierr, 'mage_init: mpi_send of gmlat to REMIX')
 
        i = i + 1
        ! Making a note here. For whatever reason, WACCM-X's conductance is flipped 180 degrees compared to TIEGCM.
        !I'm going to hack it here so that it's straight up 180 degrees shifted but I do not know why and what the consequences are.
        call mpi_send(gmlon, nmlonp1, MPI_DOUBLE_PRECISION, mixCplRank, (myAppId+voltId)*100+i, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          call endrun(preface//'gmlon, nmlonp1')
-       end if
+       call check_mpi_err(ierr, 'mage_init: mpi_send of gmlon to REMIX')
 
        if (masterproc) write(iulog,*)  "WCMX: Done init_mpi_remix"
     endif
@@ -134,14 +125,12 @@ contains
   end subroutine mage_init
 
   !-----------------------------------------------------------------------
-
   subroutine mp_coupling()
-    use mpi, only: mpi_comm_size, mpi_comm_free, MPI_COMM_WORLD, MPI_ERROR, MPI_COMM_NULL, MPI_INTEGER
+    use mpi, only: mpi_comm_size, mpi_comm_free, mpi_comm_rank
+    use mpi, only: MPI_COMM_WORLD, MPI_COMM_NULL, MPI_INTEGER
 
     integer :: ierr,color,i
     integer :: tmpComm
-    character(len=*), parameter :: preface = 'mage_module::mp_coupling : '
-    character(len=128) :: msg
 
     ! Create a second communicator to transfer data between WACCM-X and MAGE
     ! This communicator only includes the root processes
@@ -155,11 +144,7 @@ contains
     call mp_get_coupling_comm(tmpComm,color, 0, CplComm)
 
     call mpi_comm_size(CplComm,CplCommSize,ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from mpi_comm_size: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_coupling: mpi_comm_size')
 
     ! At most two processes will register in CplComm (WACCM-X root, REMIX root)
     ! Therefore CplCommSize is either 1 or 2
@@ -168,21 +153,13 @@ contains
        ! Only one process registered in CplComm (WACCM-X root)
        ! No coupling will take place, free up the resources
        call mpi_comm_free(CplComm,ierr)
-       if (ierr == MPI_ERROR) then
-          write(msg,"(a,'>>> Error from mpi_comm_free: ierr=',i4)") preface,ierr
-          if (masterproc) write(iulog,*) msg
-          call endrun(msg)
-       endif
+       call check_mpi_err(ierr, 'mp_coupling: mpi_comm_free')
        CplComm = MPI_COMM_NULL
     else
 
        ! There is another process registered in CplComm (REMIX root)
        call mpi_comm_rank(CplComm,CplRank,ierr)
-       if (ierr == MPI_ERROR) then
-          write(msg,"(a,'>>> Error from mpi_comm_rank: ierr=',i4)") preface,ierr
-          if (masterproc) write(iulog,*) msg
-          call endrun(msg)
-       endif
+       call check_mpi_err(ierr, 'mp_coupling: mpi_comm_rank')
 
        if (.not.allocated(IAm)) allocate(IAm(CplCommSize))
 
@@ -194,11 +171,7 @@ contains
 
        do i=1,CplCommSize
           call mpi_bcast(IAm(i), 1, MPI_INTEGER, i-1, CplComm, ierr)
-          if (ierr == MPI_ERROR) then
-             write(msg,"(a,'>>> Error from mpi_bcast: ierr=',i4)") preface,ierr
-             if (masterproc) write(iulog,*) msg
-             call endrun(msg)
-          endif
+          call check_mpi_err(ierr, 'mp_coupling: mpi_bcast of coupling IDs')
        enddo
 
        do i=1,CplCommSize
@@ -238,15 +211,14 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine mp_get_coupling_comm(couplingPool,appId,key,coupledComm)
-    use mpi,only: MPI_comm_rank, MPI_comm_split, MPI_ERROR, MPI_IN_PLACE, MPI_INTEGER, MPI_MAX
+    use mpi, only: MPI_comm_rank, MPI_comm_split
+    use mpi, only: MPI_IN_PLACE, MPI_INTEGER, MPI_MAX
 
     integer, intent(inout) :: couplingPool
     integer, intent(in) :: appId, key
     integer, intent(inout) :: coupledComm
 
     integer :: ierr, myRank, appIdCpy
-    character(len=*), parameter :: preface = 'mage_module::mp_get_coupling_comm : '
-    character(len=128) :: msg
 
     appIdCpy = appId
 
@@ -256,42 +228,22 @@ contains
     ! broadcast which app I'm creating a communicator with, split with it, and then
     ! create a smaller pool that excludes that app
     call MPI_comm_rank(couplingPool, myRank, ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from mpi_comm_rank: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_get_coupling_comm: MPI_comm_rank')
 
     call MPI_Allreduce(MPI_IN_PLACE, myRank, 1, MPI_INTEGER, MPI_MAX, couplingPool, ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from MPI_Allreduce: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_get_coupling_comm: MPI_Allreduce of root rank')
 
     ! This Bcast is causing a lot of issues. I don't know if this is needed or
     ! if it will cause problems for voltron and other models. The behavior here is odd.
     call MPI_Bcast(appIdCpy, 1, MPI_INTEGER, myRank, couplingPool, ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from MPI_Bcast: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_get_coupling_comm: MPI_Bcast of appId')
 
     call MPI_comm_split(couplingPool, appIdCpy, key, coupledComm, ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from MPI_comm_split: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_get_coupling_comm: MPI_comm_split for coupled communicator')
 
     ! key is never used when making the exclusion pool, 0 is used to preserve order
     call MPI_comm_split(couplingPool, myAppId, 0, couplingPool, ierr)
-    if (ierr == MPI_ERROR) then
-       write(msg,"(a,'>>> Error from MPI_comm_split: ierr=',i4)") preface,ierr
-       if (masterproc) write(iulog,*) msg
-       call endrun(msg)
-    endif
+    call check_mpi_err(ierr, 'mp_get_coupling_comm: MPI_comm_split for exclusion pool')
 
   end subroutine mp_get_coupling_comm
 
@@ -350,28 +302,18 @@ contains
   !-------------------------------------------------------------------
 
   subroutine import_remix(avar2d,gvar2d)
-    use mpi, only: MPI_DOUBLE_PRECISION, MPI_ERROR
+    use mpi, only: MPI_DOUBLE_PRECISION
 
     integer :: ierr
     real(r8),dimension(:,:,:) :: avar2d,gvar2d
-    character(len=*), parameter :: preface = 'mage_module::import_remix : '
-    character(len=128) :: msg
 
     if (nmixingeo .ne. 0) then
        call MPI_BCAST(gvar2d, nlatp2*nlonp1*nmixingeo, MPI_DOUBLE_PRECISION, mixCplRank, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          write(msg,"(a,'>>> Error from MPI_BCAST: ierr=',i4)") preface,ierr
-          if (masterproc) write(iulog,*) msg
-          call endrun(msg)
-       endif
+       call check_mpi_err(ierr, 'import_remix: MPI_BCAST of geographic imports')
     endif
     if (nmixinapex .ne. 0) then
        call MPI_BCAST(avar2d, nmlat*nmlonp1*nmixinapex, MPI_DOUBLE_PRECISION, mixCplRank, CplComm, ierr)
-       if (ierr == MPI_ERROR) then
-          write(msg,"(a,'>>> Error from MPI_BCAST: ierr=',i4)") preface,ierr
-          if (masterproc) write(iulog,*) msg
-          call endrun(msg)
-       endif
+       call check_mpi_err(ierr, 'import_remix: MPI_BCAST of apex imports')
        if (masterproc) then
           write(iulog,*) "WCMX Done Import2: ",mixCplRank,nmlat*nmlonp1*nmixinapex
           write(iulog,*) "WCMX Import Check1: ",minval(avar2d(:,:,1)),maxval(avar2d(:,:,1))
@@ -389,7 +331,6 @@ contains
     logical :: hidra_prep
     real(r8),dimension(:,:,:), allocatable :: mixgeoout,mixapexout
     integer :: nreq,i
-    character(len=*), parameter :: preface = 'mage_module::export_mage : '
 
     ! Prepare the export data
     hidra_prep = .false.
@@ -470,12 +411,10 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine export_remix(avar2d,gvar2d)
-    use mpi, only: MPI_DOUBLE_PRECISION, MPI_ERROR
+    use mpi, only: MPI_DOUBLE_PRECISION
 
     real(r8),dimension(:,:,:) :: avar2d,gvar2d
     integer :: ierr
-    character(len=*), parameter :: preface = 'mage_module::export_remix : '
-    character(len=128) :: msg
 
     ! Export the data
     if (mytid .eq. 0) then
@@ -483,11 +422,7 @@ contains
        if ( nmixoutgeo .ne. 0) then
           call mpi_send(gvar2d, nlatp2*nlonp1*nmixoutgeo, MPI_DOUBLE_PRECISION, mixCplRank, &
                (myAppId+voltId)*100, CplComm, ierr)
-          if (ierr == MPI_ERROR) then
-             write(msg,"(a,'>>> Error from mpi_send: ierr=',i4)") preface,ierr
-             if (masterproc) write(iulog,*) msg
-             call endrun(msg)
-          endif
+          call check_mpi_err(ierr, 'export_remix: mpi_send of geographic exports to REMIX')
        endif
 
        !write(iulog,*) "WCMX Waiting to export2:",mixCplRank,(myAppId+voltId)*100,nmlat*nmlonp1*nmixoutapex
@@ -495,11 +430,7 @@ contains
        if ( nmixoutapex .ne. 0) then
           call mpi_send(avar2d, nmlat*nmlonp1*nmixoutapex, MPI_DOUBLE_PRECISION, mixCplRank, &
                (myAppId+voltId)*100, CplComm, ierr)
-          if (ierr == MPI_ERROR) then
-             write(msg,"(a,'>>> Error from mpi_send: ierr=',i4)") preface,ierr
-             if (masterproc) write(iulog,*) msg
-             call endrun(msg)
-          endif
+          call check_mpi_err(ierr, 'export_remix: mpi_send of apex exports to REMIX')
        endif
        !write(iulog,*) "WCMX Done to export2:"
 
@@ -562,5 +493,36 @@ contains
     !if (mytid .eq. 0) write(iulog,*) "WCMX: Done Preparing Export"
 
   end subroutine prep_export_remix
+
+  !-----------------------------------------------------------------------
+
+  subroutine check_mpi_err(ierr, context)
+    use mpi, only: MPI_SUCCESS, MPI_MAX_ERROR_STRING, mpi_error_string
+
+    ! If <ierr> is not MPI_SUCCESS, generate an error message and abort.
+    ! Note that this is only reached if the coupling communicator has an
+    ! error handler of MPI_ERRORS_RETURN -- with the default handler
+    ! (MPI_ERRORS_ARE_FATAL) MPI aborts internally instead of returning a code.
+
+    integer,          intent(in) :: ierr
+    character(len=*), intent(in) :: context
+
+    character(len=MPI_MAX_ERROR_STRING) :: errstring
+    character(len=MPI_MAX_ERROR_STRING+128) :: msg
+    integer :: len_errstring, istat
+
+    if (ierr /= MPI_SUCCESS) then
+       call mpi_error_string(ierr, errstring, len_errstring, istat)
+       if (istat == MPI_SUCCESS) then
+          write(msg,'(5a,i0,a)') 'MPI ERROR: mage_module::', trim(context), &
+               ': ', errstring(:len_errstring), ' (ierr=', ierr, ')'
+       else
+          write(msg,'(3a,i0)') 'MPI ERROR: mage_module::', trim(context), &
+               ': ierr=', ierr
+       end if
+       call endrun(trim(msg))
+    end if
+
+  end subroutine check_mpi_err
 
 end module mage_module
