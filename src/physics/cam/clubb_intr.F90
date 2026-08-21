@@ -4030,12 +4030,6 @@ end subroutine clubb_init_cnst
       if (do_clubb_mf) then
         call t_startf('clubb_tend_cam:do_clubb_mf')
 
-        rtm_zm(:,:)  = 0._r8
-        thlm_zm(:,:) = 0._r8
-        th_zm(:,:)   = 0._r8
-        qv_zm(:,:)   = 0._r8
-        qc_zm(:,:)   = 0._r8
-
         ! fields on momentum grid needed for mass flux calc.
         rtm_zm     = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr,  rtm(:ncol,:) )
         thlm_zm    = zt2zm_api( nzm_clubb, nzt_clubb, ncol, gr, thlm(:ncol,:) )
@@ -4096,7 +4090,7 @@ end subroutine clubb_init_cnst
                              th_zm(i,:),     qv_zm(i,:),      qc_zm(i,:),                                            & ! input
                              ustar2(i),      th_sfc(i),       wpthlp_sfc(i),   wprtp_sfc(i),    pblh_pbuf(i),        & ! input
                              tke_zm(i,:),    tpert(i),        rhinv(i),                                              & ! input
-                             wpthlp_pbuf(i,:),                wpthvp_pbuf(i,:),                 wprtp_pbuf(i,:),     & ! input    
+                             wpthlp_pbuf(i,:),                wpthvp_pbuf(i,:),                 wprtp_pbuf(i,:),     & ! input
                              mf_ztopm1(i,:),                  mf_ddcp(i,:),                     mf_cbm1(i),          & ! in-out
                              mf_cape(i,:),                                                                           & ! output
                              mf_upa(i,:,:),    mf_dna(i,:,:),                                                        & ! output
@@ -4131,7 +4125,7 @@ end subroutine clubb_init_cnst
                              mf_thvflx(i,:),                                                                         & ! output
                              mf_sqtup(i,:),    mf_sthlup(i,:),                                                       & ! output
                              mf_sqtdn(i,:),    mf_sthldn(i,:),                                                       & ! output
-                             mf_sqt(i,:),      mf_sthl(i,:),                                                         & ! output 
+                             mf_sqt(i,:),      mf_sthl(i,:),                                                         & ! output
                              mf_precc(i,:),                                                                          & ! output
                              mf_ztop(i,:),     mf_L0(i,:) )
 
@@ -4840,10 +4834,10 @@ end subroutine clubb_init_cnst
           end do
           ztopma(:ncol,:) = ztopma(:ncol,:)/REAL(clubb_mf_up_ndt)
         end if
-      
+
         if (clubb_mf_cp_ndt == 1) then
           ddcp(:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
-        else 
+        else
           ddcpmn(2:clubb_mf_cp_ndt,:ncol,:) = ddcpmn(1:clubb_mf_cp_ndt-1,:ncol,:)
           ddcpmn(1,:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
           ddcp(:ncol,:) = 0._r8
@@ -5259,25 +5253,25 @@ end subroutine clubb_init_cnst
                                        + pdf_params_chnk(lchnk)%varnce_rt_2(i,k) )
       end do
     end do
-!jt check with Adam  These are not bfb with nonclubbmf run
-!jt check with Adam    ! Values to use above top_lev, for variables that have not already been
-!jt check with Adam    ! set up there. These are mostly fill values that should not actually be
-!jt check with Adam    ! used in the run, but may end up in diagnostic output.
-!jt check with Adam    !$acc parallel loop gang vector collapse(2) default(present)
-!jt check with Adam    do k=1, top_lev-1
-!jt check with Adam      do i=1, ncol
-!jt check with Adam        upwp_pbuf(i,k)         = 0._r8
-!jt check with Adam        vpwp_pbuf(i,k)         = 0._r8
-!jt check with Adam        rcm(i,k)          = 0._r8
-!jt check with Adam        wprcp(i,k)        = 0._r8
-!jt check with Adam        cloud_frac(i,k)   = 0._r8
-!jt check with Adam        rcm_in_layer(i,k) = 0._r8
-!jt check with Adam        zt_output(i,k)       = 0._r8
-!jt check with Adam        zi_output(i,k)       = 0._r8
-!jt check with Adam        khzm_pbuf(i,k)         = 0._r8
-!jt check with Adam        qclvar(i,k)       = 2._r8
-!jt check with Adam      end do
-!jt check with Adam    end do
+
+    ! Values to use above top_lev, for variables that have not already been
+    ! set up there. These are mostly fill values that should not actually be
+    ! used in the run, but may end up in diagnostic output.
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k=1, top_lev-1
+      do i=1, ncol
+        upwp_pbuf(i,k)    = 0._r8
+        vpwp_pbuf(i,k)    = 0._r8
+        rcm(i,k)          = 0._r8
+        wprcp(i,k)        = 0._r8
+        cloud_frac(i,k)   = 0._r8
+        rcm_in_layer(i,k) = 0._r8
+        zt_output(i,k)    = 0._r8
+        zi_output(i,k)    = 0._r8
+        khzm_pbuf(i,k)    = 0._r8
+        qclvar(i,k)       = 2._r8
+      end do
+    end do
 
 
     ! ------------------------------------------------------------ !
