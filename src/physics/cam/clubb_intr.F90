@@ -3591,14 +3591,6 @@ end subroutine clubb_init_cnst
         do i = 1, ncol
           k_cam = top_lev - 1 + k
           p_in_Pa_zm(i,k) = state_loc%pint(i,k_cam)
-
-          ! NOTE: the 'tke' pbuf field is dimensioned (pcols,pverp) rather than
-          ! (pcols,nzm_clubb), so unlike every other input to integrate_mf it is
-          ! NOT already restricted to the CLUBB sub-column and must be indexed
-          ! with k_cam. (This differs from the legacy code, which sequence-
-          ! associated tke_pbuf(i,:) into an nzm-sized dummy — a top_lev-1
-          ! level misalignment whenever top_lev > 1; bit-identical for
-          ! top_lev = 1.)
           tke_zm(i,k)     = tke_pbuf(i,k_cam)
         end do
       end do
