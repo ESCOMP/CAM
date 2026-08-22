@@ -2092,18 +2092,30 @@
 <!-- WACCM Upper boundary conditions -->
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1993_c100204.nc</tgcm_ubc_file>
 <snoe_ubc_file>atm/waccm/ub/snoe_eof.nc</snoe_ubc_file>
-<ubc_specifier ver="waccmchem">
+<ubc_specifier ver="waccmchem" age_of_air_trcs="0">
   'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
 </ubc_specifier>
-<ubc_specifier ver="waccmsc">
+<ubc_specifier ver="waccmchem" age_of_air_trcs="1">
+  'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE','AOA1->0.D0'
+</ubc_specifier>
+<ubc_specifier ver="waccmsc" age_of_air_trcs="0">
   'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr'
 </ubc_specifier>
+<ubc_specifier ver="waccmsc" age_of_air_trcs="1">
+  'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr','AOA1->0.D0'
+</ubc_specifier>
 <!-- WACCM7 -- do not include water vapor for now -->
-<ubc_specifier ver="waccm7chem">
+<ubc_specifier ver="waccm7chem" age_of_air_trcs="0">
   'T->MSIS','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
 </ubc_specifier>
-<ubc_specifier ver="waccm7sc">
+<ubc_specifier ver="waccm7chem" age_of_air_trcs="1">
+  'T->MSIS','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE','AOA1->0.D0'
+</ubc_specifier>
+<ubc_specifier ver="waccm7sc" age_of_air_trcs="0">
   'T->MSIS','CH4->2.d-10vmr'
+</ubc_specifier>
+<ubc_specifier ver="waccm7sc" age_of_air_trcs="1">
+  'T->MSIS','CH4->2.d-10vmr','AOA1->0.D0'
 </ubc_specifier>
 
 <!-- Boundary data for Tropopheric Chemistry -->
