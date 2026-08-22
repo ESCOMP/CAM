@@ -79,7 +79,7 @@ module aoa_tracers
   real(r8) :: calday0 = -huge(1._r8)
   real(r8) :: years = -huge(1._r8)
 
-  real(r8), parameter :: SMALLVAL = 1.e-6_r8
+  real(r8), parameter :: ZERO = 0._r8
   real(r8), parameter :: NOTSET = -huge(1._r8)
   real(r8) :: mmr0 = NOTSET   ! initial lower boundary mmr
 
@@ -126,6 +126,11 @@ contains
        call endrun(subname//': MPI_BCAST ERROR: aoa_read_from_ic_file')
     end if
 
+    if (masterproc) then
+       write(iulog,*) subname//' : aoa_tracers_flag: ',aoa_tracers_flag
+       write(iulog,*) subname//' : aoa_read_from_ic_file: ',aoa_read_from_ic_file
+    end if
+
   endsubroutine aoa_tracers_readnl
 
 !================================================================================
@@ -144,12 +149,11 @@ contains
     if (.not. aoa_tracers_flag) return
 
     call cnst_add(c_names(1), mwdry, cpair, 0._r8, ixaoa, readiv=aoa_read_from_ic_file, &
-                  longname='mixing ratio LB tracer', cam_outfld=.false.)
-
-    call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,   readiv=aoa_read_from_ic_file, &
-                  longname='horizontal tracer', cam_outfld=.false.)
-    call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,   readiv=aoa_read_from_ic_file, &
-                  longname='vertical tracer', cam_outfld=.false.)
+                  longname='mixing ratio LB tracer', cam_outfld=.false., mixtype='dry')
+    call cnst_add(c_names(2), mwdry, cpair, 1._r8, ixht,  readiv=aoa_read_from_ic_file, &
+                  longname='horizontal tracer', cam_outfld=.false., mixtype='dry')
+    call cnst_add(c_names(3), mwdry, cpair, 0._r8, ixvt,  readiv=aoa_read_from_ic_file, &
+                  longname='vertical tracer', cam_outfld=.false., mixtype='dry')
 
     ifirst = ixaoa
 
@@ -308,7 +312,7 @@ contains
     end if
     years = (yr-yr0) + (calday-calday0)/dpy
 
-    ! if AOA1 is not found in the IC file mmr0 is set to SMALLVAL
+    ! if AOA1 is not found in the IC file mmr0 is set to ZERO
     ! if AOA1 is initialized from IC file mmr0 is not set
     ! --> set mmr0 to global mean in lowest layer
     if (mmr0==NOTSET) then
@@ -382,7 +386,12 @@ contains
     ! AOA1
     xmmr = mmr0*(1._r8 + per_yr*years)
 
+    ! Lower boundary
     ptend%q(1:ncol,pver,ixaoa) = (xmmr - state%q(1:ncol,pver,ixaoa)) / dt
+
+    ! ??? Hard-wired in code here OR include 'AOA1->0.D0mmr' in ubc_specifier namelist ???
+    ! Upper boundary AOA1 -> 0.0 mmr
+!    ptend%q(1:ncol,1,ixaoa) = -state%q(1:ncol,1,ixaoa) / dt
 
     do k = 1, pver
        do i = 1, ncol
@@ -437,7 +446,7 @@ contains
     if (m == ixaoa) then
 
        ! AOA1
-       mmr0 = SMALLVAL  ! initial lower boundary mmr
+       mmr0 = ZERO ! initial lower boundary mmr
        q(:,:) = mmr0
 
     else if (m == ixht) then
