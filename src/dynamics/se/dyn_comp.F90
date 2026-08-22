@@ -110,7 +110,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: hypervis_subcycle_q, statefreq, runtype
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_uvTq_alg, vert_remap_tracer_alg
-   use control_mod,    only: tstep_type, rk_stage_user
+   use control_mod,    only: tstep_type
    use control_mod,    only: ftype, limiter_option, partmethod
    use control_mod,    only: topology
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
@@ -310,8 +310,6 @@ subroutine dyn_readnl(NLFileName)
    partmethod               = SFCURVE
    npart                    = se_npes
    ! CAM requires forward-in-time, subcycled dynamics
-   ! RK2 3 stage tracers, sign-preserving conservative
-   rk_stage_user            = 3
    topology                 = "cube"
    ! Finally, set the HOMME variables which have different names
    fine_ne                  = se_fine_ne
