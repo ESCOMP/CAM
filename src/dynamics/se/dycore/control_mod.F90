@@ -13,7 +13,6 @@ module control_mod
 
   integer, public  :: tstep_type= 0                           ! 0 = leapfrog
                                                               ! 1 = RK (foward-in-time)
-  integer, public  :: rk_stage_user  = 0                      ! number of RK stages to use
   integer, public  :: ftype = 2                               ! Forcing Type
   integer, public  :: ftype_conserve = 1  !conserve momentum (dp*u)
   integer, public  :: dribble_in_rsplit_loop = 0
@@ -25,34 +24,23 @@ module control_mod
 
   logical, public :: refined_mesh
 
-  integer, public :: vert_remap_q_alg = 10
-
-
   integer, public :: cubed_sphere_map = -1  ! -1 = chosen at run time
                                             !  0 = equi-angle Gnomonic (default)
                                             !  1 = equi-spaced Gnomonic (not yet coded)
                                             !  2 = element-local projection  (for var-res)
                                             !  3 = parametric (not yet coded)
 
-!tolerance to define smth small, was introduced for lim 8 in 2d and 3d
-  real (kind=r8), public, parameter :: tol_limiter=1.0e-13_r8
-
   integer              , public :: limiter_option = 0
 
   integer              , public :: partmethod     ! partition methods
   character(len=MAX_STRING_LEN)    , public :: topology       ! options: "cube" is supported
-  integer              , public :: tasknum
-  integer              , public :: remapfreq      ! remap frequency of synopsis of system state (steps)
-  character(len=MAX_STRING_LEN) :: remap_type     ! selected remapping option
   integer              , public :: statefreq      ! output frequency of synopsis of system state (steps)
   integer              , public :: runtype
-  integer              , public :: timerdetail
   integer              , public :: numnodes
   integer              , public :: multilevel
 
   character(len=MAX_STRING_LEN)    , public :: columnpackage
 
-  integer              , public :: maxits         ! max iterations of solver
   real (kind=r8), public :: tol            ! solver tolerance (convergence criteria)
 
   integer              , public :: fine_ne = -1              ! set for refined exodus meshes (variable viscosity)
@@ -82,8 +70,6 @@ module control_mod
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
   integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
-  integer, public :: psurf_vis = 0        ! 0 = use laplace on eta surfaces
-                                          ! 1 = use (approx.) laplace on p surfaces
 
   real (kind=r8), public :: hypervis_power=0     ! if not 0, use variable hyperviscosity based on element area
   real (kind=r8), public :: hypervis_scaling=0      ! use tensor hyperviscosity
