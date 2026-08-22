@@ -29,7 +29,7 @@ contains
     use parallel_mod,           only: syncmp
     use se_dyn_time_mod,        only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
     use prim_state_mod,         only: prim_printstate
-    use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
+    use control_mod,            only: runtype, topology, rsplit, qsplit,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
                                       hypervis_subcycle_sponge
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h

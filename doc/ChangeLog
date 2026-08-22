@@ -1,4 +1,117 @@
+===============================================================
 
+Tag name:
+Originator(s): pel
+Date: August 22, 2026
+One-line Summary: Automatic dynamics-splitting defaults for the SE dycore; remove unused SE namelist options
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  - #1655  Add automatic dynamics-splitting defaults to the SE dycore
+
+  - #969   Clean-up unused and/or unsupported namelist options in SE dycore
+
+Describe any changes made to build system:
+  - bld/build-namelist: removed se_fvm_supercycling_jet, se_kmin_jet, and
+    se_kmax_jet from the SE dycore namelist variable list.
+
+Describe any changes made to the namelist:
+
+  Changed defaults (automatic dynamics splitting):
+  - se_rsplit, se_hypervis_subcycle, se_hypervis_subcycle_sponge default
+    changed to -1 ("automatic"); the effective value is computed at runtime
+    from the CFL stability limits.  WACCM, WACCM-X, variable-resolution, and
+    ne3 grids are pinned to their previous explicit values, so those
+    configurations are unchanged.
+
+  Removed namelist options (unused/untested):
+  - se_fvm_supercycling_jet, se_kmin_jet, se_kmax_jet
+  - se_met_nudge_u, se_met_nudge_t, se_met_nudge_p, se_met_tevolve
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by:
+
+List all files eliminated:
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+           - remove se_fvm_supercycling_jet/se_kmin_jet/se_kmax_jet from the
+             SE dycore variable list
+M       bld/namelist_files/namelist_definition.xml
+           - document the -1 "automatic" sentinel for the split variables;
+             remove the jet-supercycling and se_met_nudge_* entries
+M       bld/namelist_files/namelist_defaults_cam.xml
+           - set se_rsplit/se_hypervis_subcycle/se_hypervis_subcycle_sponge
+             defaults to -1; pin WACCM/WACCM-X/variable-resolution/ne3 to
+             their prior values; remove jet-supercycling defaults
+M       src/dynamics/se/dyn_comp.F90
+           - accept the rsplit == -1 sentinel in dyn_readnl; remove the
+             se_fvm_supercycling_jet / se_kmin_jet / se_kmax_jet and
+             variable_nsplit plumbing
+M       src/dynamics/se/dyn_grid.F90
+           - dyn_grid_init: resolve automatic (-1) rsplit and the fvm
+             supercycling default from the CFL stability limits
+M       src/dynamics/se/dycore/global_norms_mod.F90
+           - compute the automatic hyperviscosity subcycle counts from the
+             grid stability constants in print_cfl
+M       src/dynamics/se/dycore/prim_driver_mod.F90
+           - remove variable_nsplit machinery; the CFL dt computation is now
+             done in print_cfl
+M       src/dynamics/se/dycore/prim_state_mod.F90
+           - remove variable_nsplit / nsplit_baseline / rsplit_baseline
+M       src/dynamics/se/dycore/se_dyn_time_mod.F90
+           - remove variable_nsplit plumbing
+M       src/dynamics/se/dycore/control_mod.F90
+           - remove variable_nsplit
+M       src/dynamics/se/dycore/dimensions_mod.F90
+           - remove kmin_jet, kmax_jet, and fvm_supercycling_jet declarations
+M       src/dynamics/se/dycore/fvm_mod.F90
+           - remove jet-supercycling logic
+M       src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+           - large_Courant_incr now operates over the full column (1..nlev)
+             instead of the removed [kmin_jet, kmax_jet] jet region
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: cam6_4_196
+
+Summarize any changes to answers, i.e.,
+- what code configurations: SE dycore.  Low/mid-top uniform-grid
+  configurations whose automatically selected se_hypervis_subcycle is smaller
+  than the previous hard-coded value change answers.  Observed in the aux_cam
+  SE suite for:
+      ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4      (hypervis_subcycle 3 -> 1)
+      ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged          (hypervis_subcycle 3 -> 2)
+      SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo       (hypervis_subcycle 3 -> 2)
+  All other SE configurations (including all WACCM, WACCM-X,
+  variable-resolution, and ne3 grids, which are pinned) are bit-for-bit.
+  The namelist-option cleanup (#969) is bit-for-bit by construction (removal
+  of unused/dead code and orphaned definition entries).
+- what platforms/compilers: derecho/intel
+- nature of change: larger than roundoff (fewer hyperviscosity subcycles where
+  the CFL stability estimate permits); same climate <CONFIRM / describe any
+  climate evaluation>.
+
+===============================================================
 ===============================================================
 
 Tag name: cam6_4_196
