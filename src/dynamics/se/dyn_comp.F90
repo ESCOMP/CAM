@@ -309,9 +309,6 @@ subroutine dyn_readnl(NLFileName)
    call initomp()
 
 
-   if (se_fvm_supercycling < 0) se_fvm_supercycling = se_rsplit
-   if (se_fvm_supercycling_jet < 0) se_fvm_supercycling_jet = se_rsplit
-
    ! Go ahead and enforce ne = 0 for refined mesh runs
    if (se_refined_mesh) then
       se_ne = 0
@@ -384,8 +381,10 @@ subroutine dyn_readnl(NLFileName)
       use_cslam = .false.
    end if
 
-   if (rsplit < 1) then
-      call endrun('dyn_readnl: rsplit must be > 0')
+   ! rsplit == -1 is the "automatic" sentinel, resolved later in dyn_grid_init
+   ! (via auto_rsplit); only reject other non-positive values here.
+   if (rsplit < 1 .and. rsplit /= -1) then
+      call endrun('dyn_readnl: rsplit must be > 0 (or -1 for automatic subcycling)')
    end if
 
    ! if restart or branch run

@@ -8601,12 +8601,14 @@ Default: 0 (i.e., not used)
 <entry id="se_hypervis_subcycle" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
 <entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
@@ -8796,6 +8798,7 @@ Default: FALSE
 <entry id="se_rsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Vertically lagrangian code vertically remaps every rsplit tracer timesteps.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist.
 </entry>
 

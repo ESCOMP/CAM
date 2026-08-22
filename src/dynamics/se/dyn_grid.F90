@@ -135,6 +135,8 @@ subroutine dyn_grid_init()
                                   get_loop_ranges, config_thread_region
    use control_mod,         only: qsplit, rsplit
    use se_dyn_time_mod,     only: tstep, nsplit
+   use dimensions_mod,      only: fvm_supercycling, fvm_supercycling_jet
+   use global_norms_mod,    only: auto_rsplit, set_global_max_normDinv
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
@@ -150,6 +152,8 @@ subroutine dyn_grid_init()
    type(hybrid_t)              :: hybrid
    integer                     :: ierr
    integer                     :: dtime
+   integer                     :: ie
+   real(r8)                    :: max_normDinv_loc ! task-local max of the mesh metric
 
    real(r8), allocatable       ::clat(:), clon(:), areaa(:)
    integer                     :: nets, nete
@@ -209,11 +213,31 @@ subroutine dyn_grid_init()
    ! nelemd (# of elements on this task) is set by prim_init1
    call init_loop_ranges(nelemd)
 
+   ! Global max of the mesh metric normDinv, used for CFL-based "automatic"
+   ! (se_*=-1) subcycling below and reused by print_cfl (the reduction moved
+   ! here from print_cfl; none is added)
+   max_normDinv_loc = 0.0_r8
+   do ie = 1, nelemd
+      max_normDinv_loc = max(max_normDinv_loc, elem(ie)%normDinv)
+   end do
+   call set_global_max_normDinv(max_normDinv_loc, mpicom)
+
    ! Dynamics timestep
    !
    !  Note: dtime = timestep for physics/dynamics coupling
    !        tstep = the dynamics timestep:
    dtime = get_step_size()
+   if (rsplit == -1) then
+      ! "automatic" rsplit: smallest value keeping the dynamics timestep within
+      ! the advective/gravity-wave stability limit. Resolved here, before tstep
+      ! and TimeLevel%nstep are set, so restart reading and all downstream
+      ! initialization see the final timestep.
+      rsplit = auto_rsplit(dtime/real(nsplit,r8), hvcoord%hyai(1)*hvcoord%ps0)
+      if (masterproc) write(iulog,'(a,i0)') 'dyn_grid_init: automatic (se_rsplit=-1) rsplit = ', rsplit
+   end if
+   ! default (se_fvm_supercycling(_jet) < 0): inherit rsplit
+   if (fvm_supercycling     < 0) fvm_supercycling     = rsplit
+   if (fvm_supercycling_jet < 0) fvm_supercycling_jet = rsplit
    tstep = dtime / real(nsplit*qsplit*rsplit, r8)
    TimeLevel%nstep = get_nstep()*nsplit*qsplit*rsplit
 
