@@ -135,7 +135,7 @@ subroutine dyn_grid_init()
                                   get_loop_ranges, config_thread_region
    use control_mod,         only: qsplit, rsplit
    use se_dyn_time_mod,     only: tstep, nsplit
-   use dimensions_mod,      only: fvm_supercycling, fvm_supercycling_jet
+   use dimensions_mod,      only: fvm_supercycling
    use global_norms_mod,    only: auto_rsplit, set_global_max_normDinv
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
    use dimensions_mod,      only: irecons_tracer
@@ -235,9 +235,8 @@ subroutine dyn_grid_init()
       rsplit = auto_rsplit(dtime/real(nsplit,r8), hvcoord%hyai(1)*hvcoord%ps0)
       if (masterproc) write(iulog,'(a,i0)') 'dyn_grid_init: automatic (se_rsplit=-1) rsplit = ', rsplit
    end if
-   ! default (se_fvm_supercycling(_jet) < 0): inherit rsplit
+   ! default (se_fvm_supercycling < 0): inherit rsplit
    if (fvm_supercycling     < 0) fvm_supercycling     = rsplit
-   if (fvm_supercycling_jet < 0) fvm_supercycling_jet = rsplit
    tstep = dtime / real(nsplit*qsplit*rsplit, r8)
    TimeLevel%nstep = get_nstep()*nsplit*qsplit*rsplit
 
