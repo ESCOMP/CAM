@@ -58,11 +58,6 @@ contains
     ! Local variables
     ! ==================================
 
-!   variables used to calculate CFL
-    real (kind=r8) :: dtnu            ! timestep*viscosity parameter
-    real (kind=r8) :: dt_dyn_del2_sponge
-    real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
-    real (kind=r8) :: dt_dyn_vis      ! viscosity timestep
     real (kind=r8) :: dt_remap        ! remapping timestep
 
     real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
@@ -83,23 +78,6 @@ contains
     ! ==========================
     !call prim_advance_init(hybrid%par,elem)
 
-    ! compute most restrictive dt*nu for use by variable res viscosity:
-    ! compute timestep seen by viscosity operator:
-    dt_dyn_vis = tstep
-    dt_dyn_del2_sponge = tstep
-    dt_tracer_vis=tstep*qsplit
-    dt_remap=dt_tracer_vis*rsplit
-    ! compute most restrictive condition:
-    ! note: dtnu ignores subcycling
-    dtnu=max(dt_dyn_vis*max(nu,nu_div), dt_tracer_vis*nu_q)
-    ! compute actual viscosity timesteps with subcycling
-    dt_tracer_vis = dt_tracer_vis/hypervis_subcycle_q
-    dt_dyn_vis = dt_dyn_vis/hypervis_subcycle
-    dt_dyn_del2_sponge = dt_dyn_del2_sponge/hypervis_subcycle_sponge
-    if (variable_nsplit) then
-       nsplit_baseline=nsplit
-       rsplit_baseline=rsplit
-    end if
     ! ==================================
     ! Initialize derivative structure
     ! ==================================
@@ -122,13 +100,14 @@ contains
 
     ! CAM has set tstep based on dtime before calling prim_init2(),
     ! so only now does HOMME learn the timstep.  print them out:
-    call print_cfl(elem,hybrid,nets,nete,dtnu,&
+    call print_cfl(elem,hybrid,nets,nete,&
          !p top and p mid levels
-         hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd,&
-         !dt_remap,dt_tracer_fvm,dt_tracer_se
-         tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
-         !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
-         tstep,dt_dyn_vis,dt_dyn_del2_sponge,dt_tracer_vis,tstep*nsplit*qsplit*rsplit)
+         hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd)
+    dt_remap = tstep*qsplit*rsplit
+    if (variable_nsplit) then
+       nsplit_baseline=nsplit
+       rsplit_baseline=rsplit
+    end if
 
     if (hybrid%masterthread) then
        if (phys_tscale/=0) then
