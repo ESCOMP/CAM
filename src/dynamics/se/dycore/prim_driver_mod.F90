@@ -196,6 +196,8 @@ contains
     use control_mod,            only: statefreq,qsplit, rsplit, dribble_in_rsplit_loop
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
+    use prim_advance_mod,       only: hypervis_Qdp
+    use dimensions_mod,         only: del4_cslam_qgll
     use prim_state_mod,         only: prim_printstate
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
@@ -278,6 +280,8 @@ contains
       if (use_cslam.and.nsubstep==1.and.r==1) then
          call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
          call cslam2gll(elem, fvm, hybrid,nets,nete, tl%n0, n0_qdp)
+         if (del4_cslam_qgll) &
+            call hypervis_Qdp(elem, deriv, hybrid, tl%n0, n0_qdp, dt_remap, nets, nete)
          call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
       end if
       call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBL')
@@ -408,8 +412,9 @@ contains
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
     use derivative_mod,         only: subcell_integration
+    use prim_advance_mod,       only: hypervis_Qdp
     use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
-    use dimensions_mod,         only: use_cslam,fvm_supercycling
+    use dimensions_mod,         only: use_cslam,fvm_supercycling,del4_cslam_qgll
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
     use se_dyn_time_mod,        only: timelevel_qdp
     use fvm_mapping,            only: cslam2gll
@@ -579,7 +584,9 @@ contains
           end do
        end do
        call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
-       if (.not.last_step) call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
+       call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
+       if (del4_cslam_qgll) &
+            call hypervis_Qdp(elem, deriv, hybrid, tl%np1, np1_qdp, dt_remap, nets, nete)
       end if
 
 #ifdef waccm_debug

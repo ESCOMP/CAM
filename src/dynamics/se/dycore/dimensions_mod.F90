@@ -38,6 +38,8 @@ module dimensions_mod
   integer         :: ntrac = 0           !ntrac is set in dyn_comp
   logical, public :: use_cslam = .false. !logical for CSLAM
   integer         :: qsize = 0           !qsize is set in dyn_comp
+  integer, public :: wv_idx_dycore = -1  !water vapor index in dycore Qdp; set in dyn_comp
+  logical, public :: del4_cslam_qgll = .true. !apply del4 hyperviscosity to water vapor on GLL after cslam2gll
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging

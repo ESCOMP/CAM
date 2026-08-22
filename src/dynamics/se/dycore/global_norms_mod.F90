@@ -23,8 +23,11 @@ module global_norms_mod
   public :: global_integrals_general
   public :: wrap_repro_sum
 
+  public :: nu_q_cslam
+
   private :: global_maximum
   type (EdgeBuffer_t), private :: edgebuf
+  real(r8), save :: nu_q_cslam = -1.0_r8
 
   real(kind=r8), parameter :: ugw = 342.0_r8 ! max gravity-wave speed [m/s]
 
@@ -223,7 +226,7 @@ contains
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
-    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,del4_cslam_qgll
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
@@ -554,6 +557,7 @@ contains
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
+    nu_q_cslam = 3.0_r8 * nu_p
 
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
@@ -618,7 +622,7 @@ contains
     else if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
       if (sponge_del4_lev       <0) sponge_del4_lev        = 20
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
     else
       if (sponge_del4_lev       <0) sponge_del4_lev        = 1
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8

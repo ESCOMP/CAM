@@ -583,6 +583,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
    use air_composition,    only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
    use air_composition,    only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use air_composition,    only: wv_idx
+   use dimensions_mod,     only: wv_idx_dycore
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -697,6 +699,17 @@ subroutine dyn_init(dyn_in, dyn_out)
        cnst_longname_gll(m)                = cnst_longname(m)
      end if
    end do
+
+   ! map water vapor constituent index (wv_idx) to dycore Qdp index
+   do m=1,thermodynamic_active_species_num
+     if (thermodynamic_active_species_idx(m) == wv_idx) then
+       wv_idx_dycore = thermodynamic_active_species_idx_dycore(m)
+       exit
+     end if
+   end do
+   if (masterproc) then
+     write(iulog,*) sub//": wv_idx_dycore (water vapor index in dycore Qdp) = ",wv_idx_dycore
+   end if
 
    do m=1,thermodynamic_active_species_liq_num
      if (use_cslam) then

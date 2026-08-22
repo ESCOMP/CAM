@@ -11,15 +11,17 @@ module prim_advance_mod
   save
 
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, tot_energy_dyn, compute_omega
+  public :: hypervis_Qdp
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
+  type (EdgeBuffer_t) :: edgeQdp
   real (kind=r8), allocatable :: ur_weights(:)
 contains
 
   subroutine prim_advance_init(par, elem)
     use edge_mod,       only: initEdgeBuffer
     use element_mod,    only: element_t
-    use dimensions_mod, only: nlev,ksponge_end
+    use dimensions_mod, only: nlev,ksponge_end,use_cslam,del4_cslam_qgll
     use control_mod,    only: qsplit
 
     type (parallel_t)                       :: par
@@ -27,6 +29,9 @@ contains
     integer                                 :: i
 
     call initEdgeBuffer(par,edge3   ,elem,4*nlev   ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    ! del4_cslam_qgll operates on water vapor only -> single-tracer edge buffer
+    if (use_cslam.and.del4_cslam_qgll) &
+      call initEdgeBuffer(par,edgeQdp,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     if (ksponge_end>0) then
        call initEdgeBuffer(par,edgeSponge,elem,4*ksponge_end,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     end if
@@ -50,7 +55,7 @@ contains
   subroutine prim_advance_exp(elem, fvm, deriv, hvcoord, hybrid,dt, tl,  nets, nete)
     use control_mod,       only: tstep_type, qsplit
     use derivative_mod,    only: derivative_t
-    use dimensions_mod,    only: np, nlev
+    use dimensions_mod,    only: np, nlev, use_cslam
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
@@ -1840,4 +1845,75 @@ contains
      end if
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
+
+  !-----------------------------------------------------------------------
+  ! hypervis_Qdp
+  !
+  ! Apply del4 (weak biharmonic) to q = Qdp/dp3d for water vapor only
+  ! after cslam2gll, damping element-boundary noise from the FVM->GLL mapping.
+  ! Water vapor carries by far the largest mass among the thermodynamically
+  ! active species so the other tracers are not worth the extra cost.
+  ! Uses actual dp3d (not reference dp0) so that Qdp and q stay consistent
+  ! with the dry-mass coordinate.  Conservation of dry mass on the GLL grid
+  ! within each SE element is maintained; the small imbalance from del4 is
+  ! accepted (same as the existing SE tracer hypervis).
+  !
+  ! dt_fvm should be the FVM remapping timestep (dt_remap = rsplit*qsplit*dt).
+  !-----------------------------------------------------------------------
+  subroutine hypervis_Qdp(elem, deriv, hybrid, tl_f, tl_qdp, dt_fvm, nets, nete)
+    use dimensions_mod,   only: np, nlev, wv_idx_dycore
+    use element_mod,      only: element_t
+    use hybrid_mod,       only: hybrid_t
+    use derivative_mod,   only: derivative_t
+    use global_norms_mod, only: nu_q_cslam
+    use viscosity_mod,    only: biharmonic_wk_scalar1
+    use edge_mod,         only: edgeVpack, edgeVunpack
+    use bndry_mod,        only: bndry_exchange
+
+    type(element_t),    intent(inout) :: elem(:)
+    type(derivative_t), intent(in)    :: deriv
+    type(hybrid_t),     intent(in)    :: hybrid
+    integer,            intent(in)    :: tl_f, tl_qdp, nets, nete
+    real(r8),           intent(in)    :: dt_fvm
+
+    real(r8) :: qtens(np,np,nlev,nets:nete)
+    real(r8) :: dt_sub
+    integer  :: ie, k, isub
+    integer, parameter :: hypervis_subcycle_cslam_q = 2
+
+    dt_sub = dt_fvm / real(hypervis_subcycle_cslam_q, r8)
+
+    do isub = 1, hypervis_subcycle_cslam_q
+
+      do ie = nets, nete
+        do k = 1, nlev
+          qtens(:,:,k,ie) = elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) &
+                           / elem(ie)%state%dp3d(:,:,k,tl_f)
+        end do
+      end do
+
+      call biharmonic_wk_scalar1(elem, qtens, deriv, edgeQdp, hybrid, nets, nete)
+
+      ! DSS the weak-form increment so it is continuous across element edges
+      ! before being added to Qdp.
+      do ie = nets, nete
+        call edgeVpack(edgeQdp, qtens(:,:,:,ie), nlev, 0, ie)
+      end do
+      call bndry_exchange(hybrid, edgeQdp, location='hypervis_Qdp')
+      do ie = nets, nete
+        call edgeVunpack(edgeQdp, qtens(:,:,:,ie), nlev, 0, ie)
+      end do
+
+      do ie = nets, nete
+        do k = 1, nlev
+          elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) = elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) &
+            - dt_sub * nu_q_cslam * elem(ie)%state%dp3d(:,:,k,tl_f) &
+            * qtens(:,:,k,ie) * elem(ie)%rspheremp(:,:)
+        end do
+      end do
+
+    end do
+
+  end subroutine hypervis_Qdp
+
 end module prim_advance_mod

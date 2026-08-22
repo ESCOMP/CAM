@@ -1353,7 +1353,7 @@ contains
      end if
      !------------------
 
-     llimiter(1:nflds) = .false.
+     llimiter(1:nflds) = .true.
      do ie=nets,nete
        do m_cnst=1,thermodynamic_active_species_num
          do k=1,nlev
