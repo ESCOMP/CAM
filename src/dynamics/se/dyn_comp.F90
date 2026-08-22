@@ -112,7 +112,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use control_mod,    only: tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
-   use control_mod,    only: topology, variable_nsplit
+   use control_mod,    only: topology
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
@@ -120,8 +120,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: min_temperature
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
-   use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
-   use dimensions_mod, only: kmin_jet, kmax_jet
+   use dimensions_mod, only: fvm_supercycling
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
@@ -169,9 +168,6 @@ subroutine dyn_readnl(NLFileName)
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
    integer                      :: se_fvm_supercycling
-   integer                      :: se_fvm_supercycling_jet
-   integer                      :: se_kmin_jet
-   integer                      :: se_kmax_jet
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
    integer                      :: se_dribble_in_rsplit_loop
@@ -217,9 +213,6 @@ subroutine dyn_readnl(NLFileName)
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
       se_fvm_supercycling,         &
-      se_fvm_supercycling_jet,     &
-      se_kmin_jet,                 &
-      se_kmax_jet,                 &
       se_molecular_diff,           &
       se_pgf_formulation,          &
       se_dribble_in_rsplit_loop,   &
@@ -292,9 +285,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_fvm_supercycling, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_fvm_supercycling_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_dribble_in_rsplit_loop, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -358,10 +348,6 @@ subroutine dyn_readnl(NLFileName)
    fv_nphys                 = se_fv_nphys
    large_Courant_incr       = se_large_Courant_incr
    fvm_supercycling         = se_fvm_supercycling
-   fvm_supercycling_jet     = se_fvm_supercycling_jet
-   kmin_jet                 = se_kmin_jet
-   kmax_jet                 = se_kmax_jet
-   variable_nsplit          = .false.
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
    dribble_in_rsplit_loop   = se_dribble_in_rsplit_loop
@@ -423,9 +409,6 @@ subroutine dyn_readnl(NLFileName)
 
    write_restart_unstruct = se_write_restart_unstruct
 
-   if (se_kmin_jet<0            ) kmin_jet             = 1
-   if (se_kmax_jet<0            ) kmax_jet             = nlev
-
    if (masterproc) then
       write(iulog, '(a,i0)')   'dyn_readnl: se_ftype                    = ',ftype
       write(iulog, '(a,i0)')   'dyn_readnl: se_statediag_numtrac        = ',statediag_numtrac
@@ -459,9 +442,6 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_uvTq_alg        = ',trim(se_vert_remap_uvTq_alg)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_tracer_alg      = ',trim(se_vert_remap_tracer_alg)
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
-      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                   = ',kmin_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                   = ',kmax_jet
 
       write(iulog, *)   'dyn_readnl: se_sponge_del4_nu_fac         = ',se_sponge_del4_nu_fac
       if (se_sponge_del4_nu_fac < 0) write(iulog, '(a)')   ' (automatically set based on model top location)'

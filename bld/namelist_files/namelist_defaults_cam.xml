@@ -3390,9 +3390,6 @@
 <se_rsplit hgrid="ne0np4TESTONLY.ne5x4"                    > 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
-<se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>
-<se_kmin_jet>-1</se_kmin_jet>
-<se_kmax_jet>-1</se_kmax_jet>
 
 <se_statediag_numtrac>3</se_statediag_numtrac>
 

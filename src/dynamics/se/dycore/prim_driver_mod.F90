@@ -28,11 +28,10 @@ contains
     use dimensions_mod,         only: fv_nphys, nc
     use parallel_mod,           only: syncmp
     use se_dyn_time_mod,        only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
-    use se_dyn_time_mod,        only: nsplit_baseline,rsplit_baseline
     use prim_state_mod,         only: prim_printstate
     use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
-                                      hypervis_subcycle_sponge, variable_nsplit
+                                      hypervis_subcycle_sponge
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: print_cfl
@@ -104,10 +103,6 @@ contains
          !p top and p mid levels
          hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd)
     dt_remap = tstep*qsplit*rsplit
-    if (variable_nsplit) then
-       nsplit_baseline=nsplit
-       rsplit_baseline=rsplit
-    end if
 
     if (hybrid%masterthread) then
        if (phys_tscale/=0) then
@@ -198,10 +193,10 @@ contains
 !
     use hybvcoord_mod, only : hvcoord_t
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-    use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit, dribble_in_rsplit_loop
+    use control_mod,            only: statefreq,qsplit, rsplit, dribble_in_rsplit_loop
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
-    use prim_state_mod,         only: prim_printstate, adjust_nsplit
+    use prim_state_mod,         only: prim_printstate
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
@@ -245,7 +240,7 @@ contains
     !
     ! initialize variables for computing vertical Courant number
     !
-    if (variable_nsplit.or.compute_diagnostics) then
+    if (compute_diagnostics) then
       if (nsubstep==1) then
         do ie=nets,nete
           omega_cn(1,ie) = 0.0_r8
@@ -308,7 +303,7 @@ contains
 
     call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
 
-    if (variable_nsplit.or.compute_diagnostics) then
+    if (compute_diagnostics) then
       !
       ! initialize variables for computing vertical Courant number
       !
@@ -353,7 +348,7 @@ contains
     !
     ! Compute vertical Courant numbers
     !
-    if (variable_nsplit.or.compute_diagnostics) then
+    if (compute_diagnostics) then
       do ie=nets,nete
         do k=1,nlev
           do j=1,np
@@ -369,11 +364,6 @@ contains
           end do
         end do
       end do
-      if (nsubstep==nsplit.and.variable_nsplit) then
-         call t_startf('adjust_nsplit')
-         call adjust_nsplit(elem, tl, hybrid,nets,nete, fvm, omega_cn)
-         call t_stopf('adjust_nsplit')
-      end if
     end if
 
     ! ============================================================
@@ -419,10 +409,8 @@ contains
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
     use derivative_mod,         only: subcell_integration
     use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
-    use dimensions_mod,         only: use_cslam,fvm_supercycling,fvm_supercycling_jet
-    use dimensions_mod,         only: kmin_jet, kmax_jet
+    use dimensions_mod,         only: use_cslam,fvm_supercycling
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
-    use fvm_mod,                only: ghostBufQ1_h,ghostBufQnhcJet_h, ghostBufFluxJet_h
     use se_dyn_time_mod,        only: timelevel_qdp
     use fvm_mapping,            only: cslam2gll
 #ifdef waccm_debug
@@ -561,7 +549,7 @@ contains
       !
       ! FVM transport
       !
-      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then
+      if (mod(rstep,fvm_supercycling) == 0) then
 
 !        call omp_set_nested(.true.)
 !        !$OMP PARALLEL NUM_THREADS(vert_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,kbeg,kend)
@@ -592,12 +580,6 @@ contains
        end do
        call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
        if (.not.last_step) call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
-      else if ((mod(rstep,fvm_supercycling_jet) == 0)) then
-        !
-        ! shorter fvm time-step in jet region
-        !
-        call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-             dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
       end if
 
 #ifdef waccm_debug

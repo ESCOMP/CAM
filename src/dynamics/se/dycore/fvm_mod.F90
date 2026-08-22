@@ -33,8 +33,6 @@ module fvm_mod
   type (EdgeBuffer_t), public  :: ghostBufQ1_vh
 !  type (EdgeBuffer_t), private  :: ghostBufFlux_h
   type (EdgeBuffer_t), public  :: ghostBufFlux_vh
-  type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h
-  type (EdgeBuffer_t), public  :: ghostBufFluxJet_h
   type (EdgeBuffer_t), public  :: ghostBufPG_s
   type (EdgeBuffer_t), public  :: ghostBuf_cslam2gll
 
@@ -291,10 +289,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use cam_logfile,            only: iulog
     use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
-    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
+    use dimensions_mod,         only: fvm_supercycling
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr, use_cslam
-    use dimensions_mod,         only: large_Courant_incr
-    use dimensions_mod,         only: kmin_jet,kmax_jet
 
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
@@ -318,8 +314,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       !
       ! PARAMETER ERROR CHECKING
       !
-      if (kmin_jet>kmax_jet) &
-           call endrun("PARAMETER ERROR for fvm: kmin_jet must be < kmax_jet")
       if (ntrac>ntrac_d) &
            call endrun("PARAMETER ERROR for fvm: ntrac > ntrac_d")
 
@@ -330,23 +324,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
           write(iulog,*)'rsplit must be a multiple of fvm_supercycling=',fvm_supercycling
         end if
         call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling)<>0")
-      endif
-
-      if (qsize>0.and.mod(rsplit,fvm_supercycling_jet).ne.0) then
-        if (par%masterproc) then
-          write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
-          write(iulog,*)'with this choice of rsplit =',rsplit
-          write(iulog,*)'rsplit must be a multiple of fvm_supercycling_jet=',fvm_supercycling_jet
-        end if
-        call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling_jet)<>0")
-      endif
-
-      if (large_Courant_incr.and.(fvm_supercycling.ne.fvm_supercycling_jet)) then
-        if (par%masterproc) then
-          write(iulog,*)'Large Courant number increment requires no level dependent supercycling'
-          write(iulog,*)'i.e. fvm_supercycling must be equal to fvm_supercycling_jet'
-        end if
-        call endrun("PARAMETER ERROR for fvm: large_courant_incr requires fvm_supercycling=fvm_supercycling_jet")
       endif
 
       if (par%masterproc) then
@@ -446,8 +423,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
     use dimensions_mod,         only: nhc_phys, fv_nphys
-    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
     use air_composition,        only: thermodynamic_active_species_num
@@ -492,7 +467,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     call initghostbuffer(hybrid%par,ghostBufQnhc_t1,elem,nlev, nhc,nc,nthreads=1)
     call initghostbuffer(hybrid%par,ghostBufQnhc_h,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufQnhc_vh,elem,nlev*(ntrac+1),nhc,nc,nthreads=vert_num_threads*horz_num_threads)
-    klev = kmax_jet-kmin_jet+1
+    klev = nlev
     call initghostbuffer(hybrid%par,ghostBufQ1_h,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufQ1_vh,elem,klev*(ntrac+1),1,nc,nthreads=vert_num_threads*horz_num_threads)
 !    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
@@ -505,15 +480,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
        call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
     else
        call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*3,nhc_phys,fv_nphys,nthreads=1)
-    end if
-
-    if (fvm_supercycling.ne.fvm_supercycling_jet) then
-      !
-      ! buffers for running different fvm time-steps in the jet region
-      !
-      klev = kmax_jet-kmin_jet+1
-      call initghostbuffer(hybrid%par,ghostBufQnhcJet_h,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
-      call initghostbuffer(hybrid%par,ghostBufFluxJet_h,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
     end if
   end subroutine fvm_init2
 
