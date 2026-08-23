@@ -460,7 +460,7 @@ subroutine aero_convproc_intr( aero_props, aero_state, state, ptend, pbuf, ztodt
 
             ndx = aer_cnst_ndx(mm)
 
-            if (ndx>0) call outfld( trim(cnst_name_extd(1,mm))//'SFWET', aerdepwetis(:,ndx), pcols, lchnk )
+            if (ndx>0) call outfld( trim(cnst_name_extd(1,mm))//'SFWETC', aerdepwetis(:,ndx), pcols, lchnk )
             call outfld( trim(cnst_name_extd(1,mm))//'SFSIC', sflxic(:,mm), pcols, lchnk )
             call outfld( trim(cnst_name_extd(1,mm))//'SFSEC', sflxec(:,mm), pcols, lchnk )
 
@@ -1711,8 +1711,8 @@ end subroutine aero_convproc_tend
    character(len=32) :: spec_type
 
    real(r8) :: tmpa, tmpb, tmpc ! working variable
-   real(r8) :: naerosol_a(1)    ! number conc (1/m3)
-   real(r8) :: vaerosol_a(1)    ! volume conc (m3/m3)
+   real(r8) :: naerosol_a(1,1)    ! number conc (1/m3)
+   real(r8) :: vaerosol_a(1,1)    ! volume conc (m3/m3)
 
 !-----------------------------------------------------------------------
 
@@ -1779,12 +1779,12 @@ end subroutine aero_convproc_tend
       tmpa = tmpa + max( conent(2,mm), 0.0_r8 )
       naerosol(m) = tmpa * rhoair
 
-      naerosol_a(1) = naerosol(m)
-      vaerosol_a(1) = vaerosol(m)
+      naerosol_a(1,1) = naerosol(m)
+      vaerosol_a(1,1) = vaerosol(m)
 
       call aero_props%apply_number_limits( naerosol_a, vaerosol_a, 1, 1, m )
 
-      naerosol(m) = naerosol_a(1)
+      naerosol(m) = naerosol_a(1,1)
    end do
 
 ! call Razzak-Ghan activation routine with single updraft
@@ -1918,8 +1918,8 @@ end subroutine aero_convproc_tend
    character(len=32) :: spec_type
 
    real(r8) :: tmpa, tmpb, tmpc ! working variable
-   real(r8) :: naerosol_a(1)    ! number conc (1/m3)
-   real(r8) :: vaerosol_a(1)    ! volume conc (m3/m3)
+   real(r8) :: naerosol_a(1,1)    ! number conc (1/m3)
+   real(r8) :: vaerosol_a(1,1)    ! volume conc (m3/m3)
 
 !-----------------------------------------------------------------------
 
@@ -1999,12 +1999,12 @@ end subroutine aero_convproc_tend
       tmpa = tmpa + max( conu(2,mm), 0.0_r8 )
       naerosol(m) = tmpa * rhoair
 
-      naerosol_a(1) = naerosol(m)
-      vaerosol_a(1) = vaerosol(m)
+      naerosol_a(1,1) = naerosol(m)
+      vaerosol_a(1,1) = vaerosol(m)
 
       call aero_props%apply_number_limits( naerosol_a, vaerosol_a, 1, 1, m )
 
-      naerosol(m) = naerosol_a(1)
+      naerosol(m) = naerosol_a(1,1)
 
    end do
 

@@ -46,6 +46,8 @@ module radheat
   logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Fomichev scheme
   logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS for the cooling rate calculation
   integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
+  logical :: nlte_use_extco2 = .false. ! If true, use the extended CO2 scheme of Lopez-Puertas et al. 2024
+  real(r8), public :: p_top_for_equil_rad = 0._r8 ! Pressure top for blending layer
 
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
@@ -77,7 +79,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use spmd_utils,     only : mpicom, masterprocid, mpi_logical, mpi_integer
+    use spmd_utils,     only : mpicom, masterprocid, mpi_logical, mpi_integer, mpi_real8
 
     use waccm_forcing,   only: waccm_forcing_readnl
 
@@ -87,7 +89,8 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X, &
+                          nlte_use_extco2, p_top_for_equil_rad
 
     if (masterproc) then
        unitn = getunit()
@@ -112,7 +115,17 @@ contains
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
     call mpi_bcast (nlte_aliarms_every_X, 1, mpi_integer, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_aliarms_every_X")
+    call mpi_bcast (nlte_use_extco2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_extco2")
+    call mpi_bcast(p_top_for_equil_rad, 1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: p_top_for_equil_rad")
 
+#ifndef EXT_CO2_COOL
+    if (nlte_use_extco2) then
+       call endrun(subname // ':: model not configured for extended non-LTE CO2 coooling')
+    end if
+#endif
+    
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
 
@@ -243,7 +256,8 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms, &
+                      nlte_aliarms_every_X, nlte_use_extco2)
     endif
 
 ! Add history variables to master field list
@@ -290,7 +304,7 @@ contains
 !================================================================================================
 
   subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
-       fsnt, flns, flnt, asdir, net_flx)
+       fsnt, flns, flnt, asdir, coszrs, net_flx)
 !-----------------------------------------------------------------------
 ! Compute net radiative heating from qrs and qrl, and the associated net
 ! boundary flux.
@@ -319,6 +333,7 @@ contains
     real(r8),            intent(in)  :: flns(pcols)       ! Srf longwave cooling (up-down) flux
     real(r8),            intent(in)  :: flnt(pcols)       ! Net outgoing lw flux at model top
     real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
+    real(r8),            intent(in)  :: coszrs(pcols)     ! cosine solar zenith angle
     real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables

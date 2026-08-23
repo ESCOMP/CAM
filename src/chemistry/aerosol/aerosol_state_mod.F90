@@ -24,13 +24,14 @@ module aerosol_state_mod
   !! Please see the modal_aerosol_state module for an example of how the aerosol_state
   !! class can be extended for a specific aerosol package.
   type, abstract :: aerosol_state
+     integer :: list_idx_ = 0 ! radiation climate/diagnostic list index
    contains
+     procedure :: list_idx => get_list_idx
+     procedure :: set_list_idx
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
-     procedure(aero_get_state_mmr), deferred :: get_ambient_mmr_0list
-     procedure(aero_get_list_mmr), deferred :: get_ambient_mmr_rlist
-     generic :: get_ambient_mmr=>get_ambient_mmr_0list,get_ambient_mmr_rlist
+     procedure(aero_get_state_mmr), deferred :: get_ambient_mmr
      procedure(aero_get_state_mmr), deferred :: get_cldbrne_mmr
      procedure(aero_get_state_num), deferred :: get_ambient_num
      procedure(aero_get_state_num), deferred :: get_cldbrne_num
@@ -60,7 +61,9 @@ module aerosol_state_mod
      procedure(aero_wet_diam), deferred :: wet_diameter
      procedure :: convcld_actfrac
      procedure :: sol_factb_interstitial
- end type aerosol_state
+     procedure(aero_aqu_gain_binfraction), deferred :: aqu_gain_binfraction
+
+  end type aerosol_state
 
   ! for state fields
   type ptr2d_t
@@ -98,19 +101,6 @@ module aerosol_state_mod
        integer, intent(in) :: bin_ndx      ! bin index
        real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
      end subroutine aero_get_state_mmr
-
-     !------------------------------------------------------------------------
-     ! returns aerosol mass mixing ratio for a given species index, bin index
-     ! and raditaion climate or diagnsotic list number
-     !------------------------------------------------------------------------
-     subroutine aero_get_list_mmr(self, list_ndx, species_ndx, bin_ndx, mmr)
-       import :: aerosol_state, r8
-       class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
-       integer, intent(in) :: species_ndx  ! species index
-       integer, intent(in) :: bin_ndx      ! bin index
-       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
-     end subroutine aero_get_list_mmr
 
      !------------------------------------------------------------------------
      ! returns aerosol number mixing ratio for a given species index and bin index
@@ -223,10 +213,9 @@ module aerosol_state_mod
      ! returns hygroscopicity for a given radiation diagnostic list number and
      ! bin number
      !------------------------------------------------------------------------------
-     subroutine aero_hygroscopicity(self, list_ndx, bin_ndx, kappa)
+     subroutine aero_hygroscopicity(self, bin_ndx, kappa)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
        integer, intent(in) :: bin_ndx      ! bin number
 
        real(r8), intent(out) :: kappa(:,:)              ! hygroscopicity (ncol,nlev)
@@ -237,12 +226,11 @@ module aerosol_state_mod
      ! returns aerosol wet diameter and aerosol water concentration for a given
      ! radiation diagnostic list number and bin number
      !------------------------------------------------------------------------------
-     subroutine aero_water_uptake(self, aero_props, list_idx, bin_idx, ncol, nlev, dgnumwet, qaerwat)
+     subroutine aero_water_uptake(self, aero_props, bin_idx, ncol, nlev, dgnumwet, qaerwat)
        import :: aerosol_state, aerosol_properties, r8
 
        class(aerosol_state), intent(in) :: self
        class(aerosol_properties), intent(in) :: aero_props
-       integer, intent(in) :: list_idx             ! rad climate/diags list number
        integer, intent(in) :: bin_idx              ! bin number
        integer, intent(in) :: ncol                 ! number of columns
        integer, intent(in) :: nlev                 ! number of levels
@@ -252,25 +240,24 @@ module aerosol_state_mod
      end subroutine aero_water_uptake
 
      !------------------------------------------------------------------------------
-     ! aerosol weight precent of H2SO4/H2O solution
+     ! aerosol weight percent of H2SO4/H2O solution
      !------------------------------------------------------------------------------
      function aero_wgtpct(self, ncol, nlev) result(wtp)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) ::  ncol,nlev
-       real(r8) :: wtp(ncol,nlev)  ! weight precent of H2SO4/H2O solution for given icol, ilev
+       real(r8) :: wtp(ncol,nlev)  ! weight percent of H2SO4/H2O solution for given icol, ilev
 
      end function aero_wgtpct
 
      !------------------------------------------------------------------------------
      ! aerosol volume interface
      !------------------------------------------------------------------------------
-     function aero_volume(self, aero_props, list_idx, bin_idx, ncol, nlev) result(vol)
+     function aero_volume(self, aero_props, bin_idx, ncol, nlev) result(vol)
        import :: aerosol_state, aerosol_properties, r8
 
        class(aerosol_state), intent(in) :: self
        class(aerosol_properties), intent(in) :: aero_props
-       integer, intent(in) :: list_idx  ! rad climate/diags list number
        integer, intent(in) :: bin_idx   ! bin number
        integer, intent(in) :: ncol      ! number of columns
        integer, intent(in) :: nlev      ! number of levels
@@ -294,14 +281,46 @@ module aerosol_state_mod
 
      end function aero_wet_diam
 
+     !------------------------------------------------------------------------------
+     ! aqueous chemistry partitioning -- used in sox_cldaero_update
+     !------------------------------------------------------------------------------
+     subroutine aero_aqu_gain_binfraction(self, aero_props, type, qcw, delso4_o3rxn, faqgain)
+       import :: aerosol_state, aerosol_properties, r8
+
+       class(aerosol_state), intent(in) :: self
+       class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+       character(len=*), intent(in) :: type                ! aerosol species type
+       real(r8), intent(in) :: qcw(:,:,:)                  ! cloud-borne aerosol volume mixing ratio
+       real(r8), intent(in) :: delso4_o3rxn(:,:)           ! sulfate concentration change due to oxidation
+       real(r8), intent(out) :: faqgain(:,:,:)             ! fraction gain in each mode / bin
+
+     end subroutine aero_aqu_gain_binfraction
+
   end interface
 
 contains
 
   !------------------------------------------------------------------------------
+  ! returns the radiation climate/diagnostic list index
+  !------------------------------------------------------------------------------
+  pure integer function get_list_idx(self)
+    class(aerosol_state), intent(in) :: self
+    get_list_idx = self%list_idx_
+  end function get_list_idx
+
+  !------------------------------------------------------------------------------
+  ! sets the radiation climate/diagnostic list index
+  !------------------------------------------------------------------------------
+  subroutine set_list_idx(self, list_idx)
+    class(aerosol_state), intent(inout) :: self
+    integer, intent(in) :: list_idx
+    self%list_idx_ = list_idx
+  end subroutine set_list_idx
+
+  !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer( self, aero_props, istart, istop, k,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, ncol, nlev,  m, cs, phase, &
                        naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties
@@ -310,17 +329,15 @@ contains
     class(aerosol_state), intent(in) :: self
     class(aerosol_properties), intent(in) :: aero_props
 
-    integer,  intent(in) :: istart      ! start column index (1 <= istart <= istop <= pcols)
-    integer,  intent(in) :: istop       ! stop column index
-    integer,  intent(in) :: k           ! level index
+    integer,  intent(in) :: ncol, nlev
     integer,  intent(in) :: m           ! mode or bin index
     real(r8), intent(in) :: cs(:,:)     ! air density (kg/m3)
     integer,  intent(in) :: phase       ! phase of aerosol: 1 for interstitial, 2 for cloud-borne, 3 for sum
 
     ! output arguments
-    real(r8), intent(out) :: naerosol(:)  ! number conc (1/m3)
-    real(r8), intent(out) :: vaerosol(:)  ! volume conc (m3/m3)
-    real(r8), intent(out) :: hygro(:)     ! bulk hygroscopicity of mode
+    real(r8), intent(out) :: naerosol(:,:)  ! number conc (1/m3)
+    real(r8), intent(out) :: vaerosol(:,:)  ! volume conc (m3/m3)
+    real(r8), intent(out) :: hygro(:,:)     ! bulk hygroscopicity of mode
 
     integer ,         intent(out) :: errnum
     character(len=*), intent(out) :: errstr
@@ -333,20 +350,18 @@ contains
     real(r8) :: specdens, spechygro
     character(len=aero_name_len) :: spectype
 
-    real(r8) :: vol(istart:istop) ! aerosol volume mixing ratio
-    integer  :: i, l
+    real(r8) :: vol(ncol,nlev) ! aerosol volume mixing ratio
+    integer  :: l
     !-------------------------------------------------------------------------------
     errnum = 0
 
-    do i = istart, istop
-       vaerosol(i) = 0._r8
-       hygro(i)    = 0._r8
-    end do
+    vaerosol(:,:) = 0._r8
+    hygro(:,:)    = 0._r8
 
     do l = 1, aero_props%nspecies(m)
 
-       call self%get_ambient_mmr(l,m, raer)
-       call self%get_cldbrne_mmr(l,m, qqcw)
+       call self%get_ambient_mmr(species_ndx=l, bin_ndx=m, mmr=raer)
+       call self%get_cldbrne_mmr(species_ndx=l, bin_ndx=m, mmr=qqcw)
        call aero_props%get(m,l, density=specdens, hygro=spechygro, spectype=spectype)
        if (present(pom_hygro)) then
           if (spectype=='p-organic'.and.pom_hygro>0._r8) then
@@ -355,59 +370,42 @@ contains
        endif
 
        if (phase == 3) then
-          do i = istart, istop
-             vol(i) = max(raer(i,k) + qqcw(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(raer(:ncol,:) + qqcw(:ncol,:), 0._r8)/specdens
        else if (phase == 2) then
-          do i = istart, istop
-             vol(i) = max(qqcw(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(qqcw(:ncol,:), 0._r8)/specdens
        else if (phase == 1) then
-          do i = istart, istop
-             vol(i) = max(raer(i,k), 0._r8)/specdens
-          end do
+          vol(:ncol,:) = max(raer(:ncol,:), 0._r8)/specdens
        else
           errnum = -1
           write(errstr,*)'phase = ',phase,' in aerosol_state::loadaer not recognized'
           return
        end if
 
-       do i = istart, istop
-          vaerosol(i) = vaerosol(i) + vol(i)
-          hygro(i)    = hygro(i) + vol(i)*spechygro
-       end do
-
+       vaerosol(:ncol,:) = vaerosol(:ncol,:) + vol(:ncol,:)
+       hygro(:ncol,:)    = hygro(:ncol,:) + vol(:ncol,:)*spechygro
     end do
 
-    do i = istart, istop
-       if (vaerosol(i) > 1.0e-30_r8) then
-          hygro(i)    = hygro(i)/(vaerosol(i))
-          vaerosol(i) = vaerosol(i)*cs(i,k)
-       else
-          hygro(i)    = 0.0_r8
-          vaerosol(i) = 0.0_r8
-       end if
-    end do
+    where(vaerosol(:ncol,:) > 1.0e-30_r8)
+       hygro(:ncol,:)    = hygro(:ncol,:)/(vaerosol(:ncol,:))
+       vaerosol(:ncol,:) = vaerosol(:ncol,:)*cs(:ncol,:)
+    elsewhere
+       hygro(:ncol,:)    = 0._r8
+       vaerosol(:ncol,:) = 0._r8
+    end where
 
     ! aerosol number mixing ratios (#/kg)
     call self%get_ambient_num(m, raer)
     call self%get_cldbrne_num(m, qqcw)
     if (phase == 3) then
-       do i = istart, istop
-          naerosol(i) = (raer(i,k) + qqcw(i,k))*cs(i,k) ! #/kg -> #/m3
-       end do
+       naerosol(:ncol,:) = (raer(:ncol,:) + qqcw(:ncol,:))*cs(:ncol,:) ! #/kg -> #/m3
     else if (phase == 2) then
-       do i = istart, istop
-          naerosol(i) = qqcw(i,k)*cs(i,k)
-       end do
+       naerosol(:ncol,:) = qqcw(:ncol,:)*cs(:ncol,:)
     else
-       do i = istart, istop
-          naerosol(i) = raer(i,k)*cs(i,k)
-       end do
+       naerosol(:ncol,:) = raer(:ncol,:)*cs(:ncol,:)
     end if
 
     ! adjust number
-    call aero_props%apply_number_limits( naerosol, vaerosol, istart, istop, m )
+    call aero_props%apply_number_limits( naerosol, vaerosol, ncol, nlev, m )
 
   end subroutine loadaer
 
@@ -512,9 +510,9 @@ contains
     do ispc = 1, aero_props%nspecies(bin_ndx)
 
        if (cldbrne) then
-          call self%get_cldbrne_mmr(ispc, bin_ndx, aer_bin)
+          call self%get_cldbrne_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_bin)
        else
-          call self%get_ambient_mmr(ispc, bin_ndx, aer_bin)
+          call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_bin)
        end if
        call aero_props%species_type(bin_ndx, ispc, spectype=spectype)
 
@@ -665,22 +663,22 @@ contains
 
     if (sulf_ndx>0) then
        call aero_props%get(bin_ndx, sulf_ndx, density=specdens_so4)
-       call self%get_ambient_mmr(sulf_ndx, bin_ndx, sulf_mmr)
+       call self%get_ambient_mmr(species_ndx=sulf_ndx, bin_ndx=bin_ndx, mmr=sulf_mmr)
        vol_shell(:ncol,:) = vol_shell(:ncol,:) + sulf_mmr(:ncol,:)/specdens_so4
     end if
     if (pom_ndx>0) then
        call aero_props%get(bin_ndx, pom_ndx, density=specdens_pom)
-       call self%get_ambient_mmr(pom_ndx, bin_ndx, pom_mmr)
+       call self%get_ambient_mmr(species_ndx=pom_ndx, bin_ndx=bin_ndx, mmr=pom_mmr)
        vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*aero_props%pom_equivso4_factor()/specdens_pom
     end if
     if (soa_ndx>0) then
        call aero_props%get(bin_ndx, soa_ndx, density=specdens_soa)
-       call self%get_ambient_mmr(soa_ndx, bin_ndx, soa_mmr)
+       call self%get_ambient_mmr(species_ndx=soa_ndx, bin_ndx=bin_ndx, mmr=soa_mmr)
        vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*aero_props%soa_equivso4_factor()/specdens_soa
     end if
 
     call aero_props%get(bin_ndx, species_ndx, density=specdens)
-    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr)
+    call self%get_ambient_mmr(species_ndx=species_ndx, bin_ndx=bin_ndx, mmr=aer_mmr)
     vol_core(:ncol,:) = aer_mmr(:ncol,:)/specdens
 
     alnsg = aero_props%alogsig(bin_ndx)
@@ -734,7 +732,7 @@ contains
     call aero_props%species_type(bin_ndx, species_ndx, spectype=species_type)
 
     call aero_props%get(bin_ndx, species_ndx, density=specdens) ! kg/m3
-    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr) ! kg/kg
+    call self%get_ambient_mmr(species_ndx=species_ndx, bin_ndx=bin_ndx, mmr=aer_mmr) ! kg/kg
     call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3
 
     aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)*wght(:ncol,:) ! kg/m3
@@ -789,11 +787,11 @@ contains
           call aero_props%species_type(bin_ndx, ispc, spectype)
 
           if (trim(spectype)=='black-c' .or. trim(spectype)=='p-organic' .or. trim(spectype)=='s-organic') then
-             call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+             call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_mmr)
              tot2_mmr(:ncol,:) = tot2_mmr(:ncol,:) + aer_mmr(:ncol,:)
           end if
           if (trim(spectype)=='sulfate') then
-             call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+             call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_mmr)
              tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
           end if
        end do
@@ -824,12 +822,11 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol short wave refactive index
   !------------------------------------------------------------------------------
-  function refractive_index_sw(self, ncol, ilev, ilist, ibin, iwav, aero_props) result(crefin)
+  function refractive_index_sw(self, ncol, ilev, ibin, iwav, aero_props) result(crefin)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: ncol   ! number of columes
     integer, intent(in) :: ilev   ! level index
-    integer, intent(in) :: ilist  ! radiation diagnostics list index
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: iwav   ! wave length index
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
@@ -844,10 +841,10 @@ contains
 
     crefin(:ncol) = (0._r8, 0._r8)
 
-    do ispec = 1, aero_props%nspecies(ilist,ibin)
+    do ispec = 1, aero_props%nspecies(ibin)
 
-       call self%get_ambient_mmr(ilist,ispec,ibin,specmmr)
-       call aero_props%get(ibin, ispec, list_ndx=ilist, density=specdens,  refindex_sw=specrefindex)
+       call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=specmmr)
+       call aero_props%get(ibin, ispec, density=specdens,  refindex_sw=specrefindex)
 
        do icol = 1, ncol
           vol(icol) = specmmr(icol,ilev)/specdens
@@ -860,12 +857,11 @@ contains
   !------------------------------------------------------------------------------
   ! aerosol long wave refactive index
   !------------------------------------------------------------------------------
-  function refractive_index_lw(self, ncol, ilev, ilist, ibin, iwav, aero_props) result(crefin)
+  function refractive_index_lw(self, ncol, ilev, ibin, iwav, aero_props) result(crefin)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: ncol   ! number of columes
     integer, intent(in) :: ilev   ! level index
-    integer, intent(in) :: ilist  ! radiation diagnostics list index
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: iwav   ! wave length index
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
@@ -880,10 +876,10 @@ contains
 
     crefin(:ncol) = (0._r8, 0._r8)
 
-    do ispec = 1, aero_props%nspecies(ilist,ibin)
+    do ispec = 1, aero_props%nspecies(ibin)
 
-       call self%get_ambient_mmr(ilist,ispec,ibin,specmmr)
-       call aero_props%get(ibin, ispec, list_ndx=ilist, density=specdens,  refindex_lw=specrefindex)
+       call self%get_ambient_mmr(species_ndx=ispec, bin_ndx=ibin, mmr=specmmr)
+       call aero_props%get(ibin, ispec, density=specdens,  refindex_lw=specrefindex)
 
        do icol = 1, ncol
           vol(icol) = specmmr(icol,ilev)/specdens
@@ -896,9 +892,10 @@ contains
   !------------------------------------------------------------------------------
   ! prescribed aerosol activation fraction for convective cloud
   !------------------------------------------------------------------------------
-  function convcld_actfrac(self, ibin, ispc, ncol, nlev) result(frac)
+  function convcld_actfrac(self, aero_props, ibin, ispc, ncol, nlev) result(frac)
 
     class(aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     integer, intent(in) :: ibin   ! bin index
     integer, intent(in) :: ispc   ! species index
     integer, intent(in) :: ncol   ! number of columns
@@ -927,7 +924,7 @@ contains
     real(r8) :: totmmr(ncol,nlev)
     real(r8) :: solmmr(ncol,nlev)
     integer :: ispc
-    character(len=aero_name_len) :: spectype
+    real(r8) :: spechygro
 
     sol_factb(:,:) = 0.0_r8
 
@@ -936,38 +933,16 @@ contains
 
     do ispc = 1, aero_props%nspecies(bin_ndx)
 
-       call aero_props%species_type(bin_ndx, ispc, spectype)
-       call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+       call aero_props%get(bin_ndx, ispc, hygro=spechygro)
+       call self%get_ambient_mmr(species_ndx=ispc, bin_ndx=bin_ndx, mmr=aer_mmr)
 
        totmmr(:ncol,:) = totmmr(:ncol,:) + aer_mmr(:ncol,:)
-
-       if (trim(spectype) == 'sulfate') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.5_r8
-       end if
-       if (trim(spectype) == 'p-organic') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
-       end if
-       if (trim(spectype) == 's-organic') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.2_r8
-       end if
-       if (trim(spectype) == 'dust') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.1_r8
-       end if
-       if (trim(spectype) == 'seasalt') then
-          solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*0.8_r8
-       end if
+       solmmr(:ncol,:) = solmmr(:ncol,:) + aer_mmr(:ncol,:)*spechygro
 
     end do   !nspec
 
     where ( totmmr > 0._r8 )
        sol_factb = solmmr/totmmr
-    end where
-
-    where ( sol_factb > 0.8_r8 )
-       sol_factb = 0.8_r8
-    end where
-    where ( sol_factb < 0.1_r8 )
-       sol_factb = 0.1_r8
     end where
 
   end function sol_factb_interstitial

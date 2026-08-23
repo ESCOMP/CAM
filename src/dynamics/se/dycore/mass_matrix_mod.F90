@@ -84,8 +84,7 @@ contains
     end do
 !$OMP BARRIER
 
-    deallocate(gp%points)
-    deallocate(gp%weights)
+    call gp%finalize()
 
     ! =============================================
     ! compute spherical element mass matrix

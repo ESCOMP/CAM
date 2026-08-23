@@ -1,3 +1,4 @@
+#define FVM_TIMERS .FALSE.
 module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
@@ -107,7 +108,7 @@ contains
     endif
 
     kblk = kmax-kmin+1
-    !call t_startf('fvm:before_Qnhc')
+    if(FVM_TIMERS) call t_startf('fvm:before_Qnhc')
     do ie=nets,nete
        do k=kmin,kmax
           elem(ie)%sub_elem_mass_flux(:,:,:,k) = dt_fvm*elem(ie)%sub_elem_mass_flux(:,:,:,k)*fvm(ie)%dp_ref_inverse(k)
@@ -120,11 +121,11 @@ contains
           call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
        enddo
     end do
-    !call t_stopf('fvm:before_Qnhc')
-    !call t_startf('fvm:ghost_exchange:Qnhc')
+    if(FVM_TIMERS) call t_stopf('fvm:before_Qnhc')
+    if(FVM_TIMERS) call t_startf('fvm:ghost_exchange:Qnhc')
     call ghost_exchange(hybridnew,ghostbufQnhc,location='ghostbufQnhc')
-    !call t_stopf('fvm:ghost_exchange:Qnhc')
-    !call t_startf('fvm:orthogonal_swept_areas')
+    if(FVM_TIMERS) call t_stopf('fvm:ghost_exchange:Qnhc')
+    if(FVM_TIMERS) call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
       do k=kmin,kmax
         fvm(ie)%se_flux    (1:nc,1:nc,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k)
@@ -152,14 +153,14 @@ contains
       end do
     enddo
 
-    !call t_stopf('fvm:orthogonal_swept_areas')
+    if(FVM_TIMERS) call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
        ! Intel compiler version 2023.0.0 on derecho had significant slowdown on subroutine interface without
        ! these pointers.
       fcube => fvm(ie)%c(:,:,:,:)
       spherecentroid => fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe)
       do k=kmin,kmax
-         !call t_startf('FVM:tracers_reconstruct')
+         if(FVM_TIMERS) call t_startf('FVM:tracers_reconstruct')
          call reconstruction(fcube,nlev,k,&
              ctracer(:,:,:,:),irecons_tracer,llimiter,ntrac,&
              nc,nhe,nhr,nhc,nht,ns,nhr+(nhe-1),&
@@ -170,10 +171,10 @@ contains
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
              fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart,&
              irecons_tracer_lev(k))
-         !call t_stopf('FVM:tracers_reconstruct')
-         !call t_startf('fvm:swept_flux')
+         if(FVM_TIMERS) call t_stopf('FVM:tracers_reconstruct')
+         if(FVM_TIMERS) call t_startf('fvm:swept_flux')
          call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k),gsweights,gspts)
-         !call t_stopf('fvm:swept_flux')
+         if(FVM_TIMERS) call t_stopf('fvm:swept_flux')
       end do
     end do
     !
@@ -193,7 +194,7 @@ contains
     !
     !
     if (large_Courant_incr) then
-      !call t_startf('fvm:fill_halo_fvm:large_Courant')
+      if(FVM_TIMERS) call t_startf('fvm:fill_halo_fvm:large_Courant')
       !if (kmin_jet<kmin.or.kmax_jet>kmax) then
       !  call endrun('ERROR: kmax_jet must be .le. kmax passed to run_consistent_se_cslam')
       !end if      
@@ -203,8 +204,8 @@ contains
       kmax_jet_local = min(kmax_jet,kmax)
       klev = kmax_jet-kmin_jet+1
       call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev,active=ActiveJetThread)
-      !call t_stopf('fvm:fill_halo_fvm:large_Courant')
-      !call t_startf('fvm:large_Courant_number_increment')
+      if(FVM_TIMERS) call t_stopf('fvm:fill_halo_fvm:large_Courant')
+      if(FVM_TIMERS) call t_startf('fvm:large_Courant_number_increment')
       if(ActiveJetThread) then 
         do k=kmin_jet_local,kmax_jet_local !1,nlev
           do ie=nets,nete
@@ -212,10 +213,10 @@ contains
           end do
         end do
       endif
-      !call t_stopf('fvm:large_Courant_number_increment')
+      if(FVM_TIMERS) call t_stopf('fvm:large_Courant_number_increment')
     end if
 
-    !call t_startf('fvm:end_of_reconstruct_subroutine')
+    if(FVM_TIMERS) call t_startf('fvm:end_of_reconstruct_subroutine')
     do k=kmin,kmax
       !
       ! convert to mixing ratio
@@ -251,7 +252,7 @@ contains
         elem(ie)%sub_elem_mass_flux(:,:,:,k)=0
       end do
     end do
-    !call t_stopf('fvm:end_of_reconstruct_subroutine')
+    if(FVM_TIMERS) call t_stopf('fvm:end_of_reconstruct_subroutine')
     !$OMP END PARALLEL 
     call omp_set_nested(.false.)
   end subroutine run_consistent_se_cslam
@@ -281,7 +282,7 @@ contains
     REAL(KIND=r8), dimension(2,8) :: x_start, dgam_vec
     REAL(KIND=r8) :: gamma_max, displ_first_guess
 
-    REAL(KIND=r8) :: flux,flux_tracer(ntrac)
+    REAL(KIND=r8) :: flux,flux_tracer(ntrac),w
 
     REAL(KIND=r8), dimension(num_area) :: dp_area
 
@@ -306,7 +307,6 @@ contains
     !
     ! prepare for air/tracer update
     !
-!    dp = fvm%dp_fvm(1-nhe:nc+nhe,1-nhe:nc+nhe,ilev)
     dp = fvm%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,ilev)
     fvm%dp_fvm(1:nc,1:nc,ilev) = fvm%dp_fvm(1:nc,1:nc,ilev)*fvm%area_sphere
     do itr=1,ntrac
@@ -538,14 +538,14 @@ contains
             !
             ! iterate to get flux area
             !
-            !call t_startf('fvm:swept_area:get_gamma')
+            if(FVM_TIMERS) call t_startf('fvm:swept_area:get_gamma')
             do iarea=1,num_area
               dp_area(iarea) = dp(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside))
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
                  num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
                  gsweights,gspts,ilev)
-            !call t_stopf('fvm:swept_area:get_gamma')
+            if(FVM_TIMERS) call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
             !
@@ -560,10 +560,10 @@ contains
             !
             ! compute higher-order weights
             !
-            !call t_startf('fvm:swept_area:get_high_order_w')
+            if(FVM_TIMERS) call t_startf('fvm:swept_area:get_high_order_w')
             call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,&
                  gsweights, gspts,irecons_tracer)
-            !call t_stopf('fvm:swept_area:get_high_order_w')
+            if(FVM_TIMERS) call t_stopf('fvm:swept_area:get_high_order_w')
             !
             !**************************************************
             !
@@ -571,16 +571,17 @@ contains
             !
             !**************************************************
             !
-            !call t_startf('fvm:swept_area:remap')
+            if(FVM_TIMERS) call t_startf('fvm:swept_area:remap')
             flux=0.0_r8; flux_tracer=0.0_r8
             do iarea=1,num_area
               if (num_seg(iarea)>0) then
                 ii=idx(1,iarea,i,j,iside); jj=idx(2,iarea,i,j,iside)
                 flux=flux+weights(1,iarea)*dp(ii,jj)
-                do itr=1,ntrac
-                  do iw=1,irecons_tracer_actual
-                    flux_tracer(itr) = flux_tracer(itr)+weights(iw,iarea)*ctracer(iw,ii,jj,itr)
-                  end do
+                do iw=1,irecons_tracer_actual
+                   w = weights(iw,iarea)
+                   do itr=1,ntrac
+                      flux_tracer(itr) = flux_tracer(itr)+w*ctracer(iw,ii,jj,itr)
+                   end do
                 end do
               end if
             end do
@@ -614,7 +615,7 @@ contains
               fvm%dp_fvm(i-1,j,ilev        ) = fvm%dp_fvm(i-1,j,ilev        )+flux
               fvm%     c(i-1,j,ilev,1:ntrac) = fvm%     c(i-1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
-            !call t_stopf('fvm:swept_area:remap')
+            if(FVM_TIMERS) call t_stopf('fvm:swept_area:remap')
           end if
         end do
       end do

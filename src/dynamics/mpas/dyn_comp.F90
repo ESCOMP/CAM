@@ -18,6 +18,7 @@ use cam_grid_support,   only: cam_grid_id, &
 use cam_map_utils,      only: iMap
 
 use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
+use inic_analytic_utils,only: analytic_ic_is_moist
 use dyn_tests_utils,    only: vcoord=>vc_height
 
 use cam_history,        only: addfld, horiz_only
@@ -38,7 +39,7 @@ use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
 
-use phys_control,       only: use_gw_front, use_gw_front_igw
+use phys_control,       only: use_gw_front, use_gw_front_igw, use_gw_movmtn_pbl
 
 implicit none
 private
@@ -197,10 +198,13 @@ type dyn_export_t
    !
    ! Invariant -- needed for computing the frontogenesis function
    !
-   real(r8), dimension(:,:),   pointer :: defc_a
-   real(r8), dimension(:,:),   pointer :: defc_b
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
+   real(r8), allocatable :: defc_a(:, :) ! Backward compatibility for CAM relying on pre-MPAS 8.4.0.
+   real(r8), allocatable :: defc_b(:, :) ! Backward compatibility for CAM relying on pre-MPAS 8.4.0.
+   real(r8), pointer :: deformation_coef_c2(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_s2(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_cs(:, :) ! Introduced in MPAS 8.4.0, replacing defc_{a,b}.
+   real(r8), pointer :: deformation_coef_c(:, :)  ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_x.
+   real(r8), pointer :: deformation_coef_s(:, :)  ! Introduced in MPAS 8.4.0, replacing cell_gradient_coef_y.
    real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
    real(r8), dimension(:),     pointer :: dvEdge
    real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
@@ -233,6 +237,9 @@ end type dyn_export_t
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
+
+! Index of vorticity in physics buffer for the "moving mountain" gravity wave scheme.
+integer, protected, public :: vort4gw_idx = -1
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
@@ -295,7 +302,6 @@ subroutine dyn_readnl(NLFileName)
    call mpas_pool_add_config(domain_ptr % configs, 'config_restart_timestamp_name', 'restart_timestamp')
    call mpas_pool_add_config(domain_ptr % configs, 'config_IAU_option', 'off')
    call mpas_pool_add_config(domain_ptr % configs, 'config_do_DAcycling', .false.)
-   call mpas_pool_add_config(domain_ptr % configs, 'config_halo_exch_method', 'mpas_halo')
 
    call cam_mpas_init_phase2(pio_subsystem, endrun, timemgr_get_calendar_cf())
 
@@ -321,6 +327,11 @@ subroutine dyn_register()
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
    end if
 
+   if (use_gw_movmtn_pbl) then
+      ! Add vorticity field to physics buffer for the "moving mountain" gravity wave scheme.
+      ! This field will be updated during dynamics-physics coupling.
+      call pbuf_add_field("VORT4GW", "global", dtype_r8, (/pcols, pver/), vort4gw_idx)
+   end if
 end subroutine dyn_register
 
 !=========================================================================================
@@ -499,13 +510,21 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! for frontogenesis calc
 
+   nullify(dyn_out % deformation_coef_c2)
+   nullify(dyn_out % deformation_coef_s2)
+   nullify(dyn_out % deformation_coef_cs)
+   nullify(dyn_out % deformation_coef_c)
+   nullify(dyn_out % deformation_coef_s)
+
    if (use_gw_front .or. use_gw_front_igw) then
       dyn_out % areaCell => dyn_in % areaCell
       dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
-      call mpas_pool_get_array(mesh_pool, 'defc_a',               dyn_out % defc_a)
-      call mpas_pool_get_array(mesh_pool, 'defc_b',               dyn_out % defc_b)
-      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_x', dyn_out % cell_gradient_coef_x)
-      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_y', dyn_out % cell_gradient_coef_y)
+
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_c2',  dyn_out % deformation_coef_c2)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_s2',  dyn_out % deformation_coef_s2)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_cs',  dyn_out % deformation_coef_cs)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_c',   dyn_out % deformation_coef_c)
+      call mpas_pool_get_array(mesh_pool, 'deformation_coef_s',   dyn_out % deformation_coef_s)
       call mpas_pool_get_array(mesh_pool, 'edgesOnCell_sign',     dyn_out % edgesOnCell_sign)
       call mpas_pool_get_array(mesh_pool, 'dvEdge',               dyn_out % dvEdge)
       call mpas_pool_get_array(mesh_pool, 'edgesOnCell',          dyn_out % edgesOnCell)
@@ -540,6 +559,27 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    call cam_mpas_init_phase4(endrun)
+
+   ! Get the old deformation coefficients back for compatibility with `calc_frontogenesis` in `dp_coupling`.
+   ! Ideally, this should have been done as soon as `deformation_coef_*` become associated. However, they are not initialized
+   ! until `cam_mpas_init_phase4` completes.
+   if (associated(dyn_out % deformation_coef_c2) .and. &
+      associated(dyn_out % deformation_coef_s2) .and. &
+      associated(dyn_out % deformation_coef_cs)) then
+
+      allocate(dyn_out % defc_a, mold=dyn_out % deformation_coef_c2, stat=ierr)
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate "defc_a" array')
+      end if
+
+      allocate(dyn_out % defc_b, mold=dyn_out % deformation_coef_cs, stat=ierr)
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to allocate "defc_b" array')
+      end if
+
+      dyn_out % defc_a(:, :) = dyn_out % deformation_coef_c2(:, :) - dyn_out % deformation_coef_s2(:, :)
+      dyn_out % defc_b(:, :) = 2.0_r8 * dyn_out % deformation_coef_cs(:, :)
+   end if
 
    !
    ! Set pointers to tendency fields that are not allocated until the call to cam_mpas_init_phase4
@@ -734,6 +774,17 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % rho)
    nullify(dyn_out % ux)
    nullify(dyn_out % uy)
+   nullify(dyn_out % deformation_coef_c2)
+   nullify(dyn_out % deformation_coef_s2)
+   nullify(dyn_out % deformation_coef_cs)
+   nullify(dyn_out % deformation_coef_c)
+   nullify(dyn_out % deformation_coef_s)
+   if (allocated(dyn_out % defc_a)) then
+      deallocate(dyn_out % defc_a)
+   end if
+   if (allocated(dyn_out % defc_b)) then
+      deallocate(dyn_out % defc_b)
+   end if
    deallocate(dyn_out % pmiddry)
    deallocate(dyn_out % pintdry)
    nullify(dyn_out % vorticity)
@@ -1161,7 +1212,11 @@ subroutine read_inidat(dyn_in)
 
       cam_idx = mpas_from_cam_cnst(mpas_idx)
 
-      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(cam_idx))) cycle
+      ! skip over water species only if analytic ICs are moist
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(cam_idx))) then
+         if (analytic_ic_is_moist()) cycle
+      end if
+
 
       ! The name translation is hardcoded here temporarily...
       trac_name = cnst_name(cam_idx)
@@ -1378,7 +1433,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_coef_3rd_order = 0.25_r8
    real(r8)                :: mpas_smagorinsky_coef = 0.125_r8
    logical                 :: mpas_mix_full = .true.
-   real(r8)                :: mpas_epssm = 0.1_r8
    real(r8)                :: mpas_smdiv = 0.1_r8
    real(r8)                :: mpas_apvm_upwinding = 0.5_r8
    logical                 :: mpas_h_ScaleWithMesh = .true.
@@ -1389,6 +1443,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
    integer                 :: mpas_number_rayleigh_damp_u_levels = 3
+   real(r8)                :: mpas_epssm_minimum = 0.1_r8
+   real(r8)                :: mpas_epssm_maximum = 0.5_r8
+   real(r8)                :: mpas_epssm_transition_bottom_z = 30000.0_r8
+   real(r8)                :: mpas_epssm_transition_top_z = 50000.0_r8
    logical                 :: mpas_apply_lbcs = .false.
    logical                 :: mpas_jedi_da = .false.
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
@@ -1396,6 +1454,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    logical                 :: mpas_print_global_minmax_vel = .true.
    logical                 :: mpas_print_detailed_minmax_vel = .false.
    logical                 :: mpas_print_global_minmax_sca = .false.
+   character (len=StrKIND) :: mpas_halo_exch_method = 'mpas_halo'
+   logical                 :: mpas_gpu_aware_mpi = .false.
 
    namelist /nhyd_model/ &
            mpas_time_integration, &
@@ -1427,7 +1487,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_coef_3rd_order, &
            mpas_smagorinsky_coef, &
            mpas_mix_full, &
-           mpas_epssm, &
            mpas_smdiv, &
            mpas_apvm_upwinding, &
            mpas_h_ScaleWithMesh
@@ -1439,7 +1498,11 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_cam_damping_levels, &
            mpas_rayleigh_damp_u, &
            mpas_rayleigh_damp_u_timescale_days, &
-           mpas_number_rayleigh_damp_u_levels
+           mpas_number_rayleigh_damp_u_levels, &
+           mpas_epssm_minimum, &
+           mpas_epssm_maximum, &
+           mpas_epssm_transition_bottom_z, &
+           mpas_epssm_transition_top_z
 
    namelist /limited_area/ &
            mpas_apply_lbcs
@@ -1458,12 +1521,23 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_print_detailed_minmax_vel, &
            mpas_print_global_minmax_sca
 
+   namelist /development/ &
+           mpas_halo_exch_method, &
+           mpas_gpu_aware_mpi
+
    ! These configuration parameters must be set in the MPAS configPool, but can't
    ! be changed in CAM.
-   integer                :: config_num_halos = 2
-   integer                :: config_number_of_blocks = 0
-   logical                :: config_explicit_proc_decomp = .false.
-   character(len=StrKIND) :: config_proc_decomp_file_prefix = 'graph.info.part'
+   integer, parameter                :: config_num_halos = 2
+   integer, parameter                :: config_number_of_blocks = 0
+   logical, parameter                :: config_explicit_proc_decomp = .false.
+   character(len=StrKIND), parameter :: config_proc_decomp_file_prefix = 'graph.info.part'
+   real(r8), parameter               :: config_epssm = 0.0_r8
+   character(len=StrKIND), parameter :: config_les_model = 'none'
+   character(len=StrKIND), parameter :: config_les_surface = 'none'
+   real(r8), parameter               :: config_surface_heat_flux = 0.0_r8
+   real(r8), parameter               :: config_surface_moisture_flux = 0.0_r8
+   real(r8), parameter               :: config_surface_drag_coefficient = 0.0_r8
+   logical, parameter                :: config_mix_scalars = .false.
 
    character(len=*), parameter :: subname = 'dyn_comp::cam_mpas_namelist_read'
    !----------------------------------------------------------------------------
@@ -1516,7 +1590,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_coef_3rd_order,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_smagorinsky_coef,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_mix_full,                     1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_epssm,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_smdiv,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_apvm_upwinding,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_h_ScaleWithMesh,              1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
@@ -1550,7 +1623,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_coef_3rd_order', mpas_coef_3rd_order)
    call mpas_pool_add_config(configPool, 'config_smagorinsky_coef', mpas_smagorinsky_coef)
    call mpas_pool_add_config(configPool, 'config_mix_full', mpas_mix_full)
-   call mpas_pool_add_config(configPool, 'config_epssm', mpas_epssm)
    call mpas_pool_add_config(configPool, 'config_smdiv', mpas_smdiv)
    call mpas_pool_add_config(configPool, 'config_apvm_upwinding', mpas_apvm_upwinding)
    call mpas_pool_add_config(configPool, 'config_h_ScaleWithMesh', mpas_h_ScaleWithMesh)
@@ -1576,6 +1648,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_rayleigh_damp_u,                1, mpi_logical, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_rayleigh_damp_u_timescale_days, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_number_rayleigh_damp_u_levels,  1, mpi_integer, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_epssm_minimum,                  1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_epssm_maximum,                  1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_epssm_transition_bottom_z,      1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_epssm_transition_top_z,         1, mpi_real8, masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_zd', mpas_zd)
    call mpas_pool_add_config(configPool, 'config_xnutr', mpas_xnutr)
@@ -1584,6 +1660,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u', mpas_rayleigh_damp_u)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
+   call mpas_pool_add_config(configPool, 'config_epssm_minimum', mpas_epssm_minimum)
+   call mpas_pool_add_config(configPool, 'config_epssm_maximum', mpas_epssm_maximum)
+   call mpas_pool_add_config(configPool, 'config_epssm_transition_bottom_z', mpas_epssm_transition_bottom_z)
+   call mpas_pool_add_config(configPool, 'config_epssm_transition_top_z', mpas_epssm_transition_top_z)
 
    ! Read namelist group &limited_area
    if (masterproc) then
@@ -1682,6 +1762,29 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_print_detailed_minmax_vel', mpas_print_detailed_minmax_vel)
    call mpas_pool_add_config(configPool, 'config_print_global_minmax_sca', mpas_print_global_minmax_sca)
 
+   ! Read namelist group &development
+   if (masterproc) then
+      rewind(unitnumber)
+
+      call find_group_name(unitnumber, 'development', ierr)
+
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to find namelist group &development')
+      end if
+
+      read(unitnumber, development, iostat=ierr)
+
+      if (ierr /= 0) then
+         call endrun(subname // ': Failed to read namelist group &development')
+      end if
+   end if
+
+   call mpi_bcast(mpas_halo_exch_method, strkind, mpi_character, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_gpu_aware_mpi,          1, mpi_logical, masterprocid, mpicom, mpi_ierr)
+
+   call mpas_pool_add_config(configPool, 'config_halo_exch_method', mpas_halo_exch_method)
+   call mpas_pool_add_config(configPool, 'config_gpu_aware_mpi', mpas_gpu_aware_mpi)
+
    if (masterproc) then
       close(unit=unitNumber)
    end if
@@ -1691,7 +1794,13 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_number_of_blocks', config_number_of_blocks)
    call mpas_pool_add_config(configPool, 'config_explicit_proc_decomp', config_explicit_proc_decomp)
    call mpas_pool_add_config(configPool, 'config_proc_decomp_file_prefix', config_proc_decomp_file_prefix)
-
+   call mpas_pool_add_config(configPool, 'config_epssm', config_epssm)
+   call mpas_pool_add_config(configPool, 'config_les_model', config_les_model)
+   call mpas_pool_add_config(configPool, 'config_les_surface', config_les_surface)
+   call mpas_pool_add_config(configPool, 'config_surface_heat_flux', config_surface_heat_flux)
+   call mpas_pool_add_config(configPool, 'config_surface_moisture_flux', config_surface_moisture_flux)
+   call mpas_pool_add_config(configPool, 'config_surface_drag_coefficient', config_surface_drag_coefficient)
+   call mpas_pool_add_config(configPool, 'config_mix_scalars', config_mix_scalars)
 
    if (masterproc) then
       write(iulog,*) 'MPAS-A dycore configuration:'
@@ -1724,7 +1833,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_coef_3rd_order = ', mpas_coef_3rd_order
       write(iulog,*) '   mpas_smagorinsky_coef = ', mpas_smagorinsky_coef
       write(iulog,*) '   mpas_mix_full = ', mpas_mix_full
-      write(iulog,*) '   mpas_epssm = ', mpas_epssm
       write(iulog,*) '   mpas_smdiv = ', mpas_smdiv
       write(iulog,*) '   mpas_apvm_upwinding = ', mpas_apvm_upwinding
       write(iulog,*) '   mpas_h_ScaleWithMesh = ', mpas_h_ScaleWithMesh
@@ -1735,6 +1843,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_rayleigh_damp_u = ', mpas_rayleigh_damp_u
       write(iulog,*) '   mpas_rayleigh_damp_u_timescale_days = ', mpas_rayleigh_damp_u_timescale_days
       write(iulog,*) '   mpas_number_rayleigh_damp_u_levels = ', mpas_number_rayleigh_damp_u_levels
+      write(iulog,*) '   mpas_epssm_minimum = ', mpas_epssm_minimum
+      write(iulog,*) '   mpas_epssm_maximum = ', mpas_epssm_maximum
+      write(iulog,*) '   mpas_epssm_transition_bottom_z = ', mpas_epssm_transition_bottom_z
+      write(iulog,*) '   mpas_epssm_transition_top_z = ', mpas_epssm_transition_top_z
       write(iulog,*) '   mpas_apply_lbcs = ', mpas_apply_lbcs
       write(iulog,*) '   mpas_jedi_da = ', mpas_jedi_da
       write(iulog,*) '   mpas_block_decomp_file_prefix = ', trim(mpas_block_decomp_file_prefix)
@@ -1742,6 +1854,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_print_global_minmax_vel = ', mpas_print_global_minmax_vel
       write(iulog,*) '   mpas_print_detailed_minmax_vel = ', mpas_print_detailed_minmax_vel
       write(iulog,*) '   mpas_print_global_minmax_sca = ', mpas_print_global_minmax_sca
+      write(iulog,*) '   mpas_halo_exch_method = ', trim(mpas_halo_exch_method)
+      write(iulog,*) '   mpas_gpu_aware_mpi = ', mpas_gpu_aware_mpi
    end if
 
 end subroutine cam_mpas_namelist_read

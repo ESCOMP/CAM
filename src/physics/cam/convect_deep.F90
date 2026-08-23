@@ -92,7 +92,7 @@ subroutine convect_deep_register
   case('ZM') !    Zhang-McFarlane (default)
      call zm_conv_register
 
-  case('off', 'UNICON') ! Off needs to setup the following fields
+  case('off') ! Off needs to setup the following fields
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
    call pbuf_add_field('NEVAPR_DPCU','physpkg',dtype_r8,(/pcols,pver/),nevapr_dpcu_idx)
@@ -138,8 +138,6 @@ subroutine convect_deep_init(pref_edge)
   case('ZM')
      if (masterproc) write(iulog,*)'convect_deep initializing Zhang-McFarlane convection'
      call zm_conv_init(pref_edge)
-  case('UNICON')
-     if (masterproc) write(iulog,*)'convect_deep: deep convection done by UNICON'
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select
@@ -167,7 +165,7 @@ end subroutine convect_deep_init
 subroutine convect_deep_tend( &
      mcon    ,cme     ,          &
      zdu      , &
-     rliq    ,rice     , &
+     rliq    , &
      ztodt   , &
      state   ,ptend   ,landfrac ,pbuf)
 
@@ -196,7 +194,6 @@ subroutine convect_deep_tend( &
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
-   real(r8), intent(out) :: rice(pcols) ! reserved ice (not yet in cldice) for energy integrals
 
    real(r8), pointer :: prec(:)   ! total precipitation
    real(r8), pointer :: snow(:)   ! snow from ZM convection
@@ -225,13 +222,12 @@ subroutine convect_deep_tend( &
    call pbuf_get_field(pbuf, icwmrdp_idx, ql    )
 
   select case ( deep_scheme )
-  case('off', 'UNICON', 'CLUBB_SGS') ! in UNICON case the run method is called from convect_shallow_tend
+  case('off', 'CLUBB_SGS')
     zero = 0
     mcon = 0
     cme = 0
     zdu = 0
     rliq = 0
-    rice = 0
 
     call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
 
@@ -263,7 +259,7 @@ subroutine convect_deep_tend( &
 
      call zm_conv_tend( pblh    ,mcon    ,cme     , &
           tpert   ,zdu      , &
-          rliq    ,rice    , &
+          rliq    , &
           ztodt   , &
           jctop, jcbot , &
           state   ,ptend   ,landfrac, pbuf)

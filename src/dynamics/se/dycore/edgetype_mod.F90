@@ -38,25 +38,25 @@ module edgetype_mod
   type, public :: EdgeBuffer_t
      real (kind=r8), allocatable :: buf(:)
      real (kind=r8), allocatable :: receive(:)
-     integer,        pointer     :: putmap(:,:) => null()
-     integer,        pointer     :: getmap(:,:) => null()
-     logical,        pointer     :: reverse(:,:) => null()
-     integer,        pointer     :: moveLength(:) => null()
-     integer,        pointer     :: movePtr(:) => null()
-     integer,        pointer     :: rcountsFull(:) => null()
-     integer,        pointer     :: scountsFull(:) => null()
-     integer,        pointer     :: sdisplsFull(:) => null()
-     integer,        pointer     :: rdisplsFull(:) => null()
-     integer,        pointer     :: rcountsInter(:) => null()
-     integer,        pointer     :: scountsInter(:) => null()
-     integer,        pointer     :: sdisplsInter(:) => null()
-     integer,        pointer     :: rdisplsInter(:) => null()
-     integer,        pointer     :: rcountsIntra(:) => null()
-     integer,        pointer     :: scountsIntra(:) => null()
-     integer,        pointer     :: sdisplsIntra(:) => null()
-     integer,        pointer     :: rdisplsIntra(:) => null()
-     integer,        pointer     :: getDisplsFull(:) => null()
-     integer,        pointer     :: putDisplsFull(:) => null()
+     integer,        allocatable :: putmap(:,:)
+     integer,        allocatable :: getmap(:,:)
+     logical,        allocatable :: reverse(:,:)
+     integer,        allocatable :: moveLength(:)
+     integer,        allocatable :: movePtr(:)
+     integer,        allocatable :: rcountsFull(:)
+     integer,        allocatable :: scountsFull(:)
+     integer,        allocatable :: sdisplsFull(:)
+     integer,        allocatable :: rdisplsFull(:)
+     integer,        allocatable :: rcountsInter(:)
+     integer,        allocatable :: scountsInter(:)
+     integer,        allocatable :: sdisplsInter(:)
+     integer,        allocatable :: rdisplsInter(:)
+     integer,        allocatable :: rcountsIntra(:)
+     integer,        allocatable :: scountsIntra(:)
+     integer,        allocatable :: sdisplsIntra(:)
+     integer,        allocatable :: rdisplsIntra(:)
+     integer,        allocatable :: getDisplsFull(:)
+     integer,        allocatable :: putDisplsFull(:)
      integer,        allocatable :: Rrequest(:),Srequest(:)
      integer,        allocatable :: status(:,:)
      type (gbarrier_t) :: gbarrier
@@ -76,13 +76,13 @@ module edgetype_mod
   type, public :: LongEdgeBuffer_t
      integer          :: nlyr
      integer          :: nbuf
-     integer, pointer :: buf(:,:) => null()
-     integer, pointer :: receive(:,:) => null()
+     integer, allocatable :: buf(:,:)
+     integer, allocatable :: receive(:,:)
   end type LongEdgeBuffer_t
 
   type, public :: GhostBuffer3D_t
-     real (kind=r8), dimension(:,:,:,:), pointer :: buf => null()
-     real (kind=r8), dimension(:,:,:,:), pointer :: receive => null()
+     real (kind=r8), dimension(:,:,:,:), allocatable :: buf
+     real (kind=r8), dimension(:,:,:,:), allocatable :: receive
      integer :: nlyr ! Number of layers
      integer :: nhc  ! Number of layers of ghost cells
      integer :: np   ! Number of points in a cell
