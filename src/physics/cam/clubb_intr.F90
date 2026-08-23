@@ -2766,7 +2766,6 @@ end subroutine clubb_init_cnst
       errflg, &
       j, k, t, ixind, nadv, n,      & ! Loop variables
       k_cam, k_clubb, k_clubb_pver, sclr, iedsclr, & ! Loop variables
-      k_above, k_below, &             ! Interfaces bounding thermo level k (MF precip sweep)
       ixcldice, ixcldliq, ixnumliq, &
       ixnumice, ixq, &
       itim_old, &
@@ -2784,6 +2783,7 @@ end subroutine clubb_init_cnst
     ! CFL limiter vars
     real(r8), parameter                  :: cflval = 1._r8
     real(r8)                             :: lambda
+    character(len=256)                   :: lambda_errmsg
     real(r8), dimension(state%ncol)      :: cflfac,     max_cfl,        &
                                             th_sfc,     max_cfl_nadv
     logical                              :: cfllim
@@ -4067,7 +4067,7 @@ end subroutine clubb_init_cnst
 
         do i = 1, ncol
 
-          call integrate_mf( nzm_clubb,      nzt_clubb,                                                              & ! input
+          call integrate_mf( nzm_clubb,      nzt_clubb,       dtime,                                                 & ! input
                              rho_zm(i,:),    zi_g(i,:),                        p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
                              rho_zt(i,:),    dz_g(i,:),       zt_g(i,:),       p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
                              um(i,:),        vm(i,:),         thlm(i,:),       rtm(i,:),        thv_ds_zt(i,:),      & ! input
@@ -4133,34 +4133,16 @@ end subroutine clubb_init_cnst
           if (max_cfl(i).gt.cflval.and.cfllim) cflfac(i) = cflval/max_cfl(i)
         end do
 
-           ! Scale microphys so it can't drive qt negative
+        ! check for mass conservation
         do k=1,nzt_clubb
           do i=1,ncol
             if ((-1._r8*mf_sqt(i,k)*dtime) > rtm(i,k)) then
               lambda = -1._r8*rtm(i,k)/(mf_sqt(i,k)*dtime)
-              mf_sqt(i,k) = lambda*mf_sqt(i,k)
-              mf_sthl(i,k) = lambda*mf_sthl(i,k)
-              mf_sqtup(i,k) = lambda*mf_sqtup(i,k)
-              mf_sthlup(i,k) = lambda*mf_sthlup(i,k)
-              mf_sqtdn(i,k) = lambda*mf_sqtdn(i,k)
-              mf_sthldn(i,k) = lambda*mf_sthldn(i,k)
+              write(lambda_errmsg,'(a,3i6,4es16.8)') &
+                'MF drying exceeds rtm. lchnk,i,k,lambda,mf_sqt,rtm,dtime = ', &
+                lchnk, i, k, lambda, mf_sqt(i,k), rtm(i,k), dtime
+              call endrun('clubb_tend_cam: '//trim(lambda_errmsg))
             end if
-          end do
-        end do
-
-        ! Recalculate precip using new microphys forcing.
-        ! Precip accumulates downward across the interfaces, starting from zero
-        ! at the model top, so the sweep must run top-to-bottom in ALTITUDE
-        ! rather than in index order: from gr%k_ub_zt to gr%k_lb_zt with a step
-        ! of -gr%grid_dir_indx (+1 descending, -1 ascending). For thermodynamic
-        ! level k the bounding interfaces are k+(1+kdir)/2 above and
-        ! k+(1-kdir)/2 below, which reduce to k and k+1 on a descending grid.
-        mf_precc(:ncol,:) = 0._r8
-        do k = gr%k_ub_zt, gr%k_lb_zt, -gr%grid_dir_indx
-          k_above = k + ( 1 + gr%grid_dir_indx ) / 2
-          k_below = k + ( 1 - gr%grid_dir_indx ) / 2
-          do i = 1, ncol
-             mf_precc(i,k_below) = mf_precc(i,k_above) - rho_zt(i,k)*dz_g(i,k)*mf_sqt(i,k)
           end do
         end do
 
