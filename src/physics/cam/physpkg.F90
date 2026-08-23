@@ -2138,6 +2138,7 @@ contains
     use physics_types,   only: physics_state, physics_tend, physics_ptend, &
                                physics_update, physics_ptend_init, physics_ptend_sum, &
                                physics_state_check, physics_ptend_scale, &
+                               physics_state_copy, physics_ptend_copy, &
                                dyn_te_idx
     use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
     use cam_diagnostics, only: diag_clip_tend_writeout
@@ -2206,6 +2207,8 @@ contains
     type(physics_ptend)   :: ptend_sc         ! ptend for sub-columns
     type(physics_ptend)   :: ptend_aero       ! ptend for microp_aero
     type(physics_ptend)   :: ptend_aero_sc    ! ptend for microp_aero on sub-columns
+    type(physics_state)   :: state_snap       ! state copy for the post-apply microp_aero snapshot
+    type(physics_ptend)   :: ptend_snap       ! ptend_aero copy for the snapshot apply
     type(physics_tend)    :: tend_sc          ! tend for sub-columns
 
     integer :: nstep                          ! current timestep number
@@ -2788,9 +2791,31 @@ contains
 
           call carma_diags_obj%update(cam_in, state, pbuf)
 
+          if (trim(cam_take_snapshot_before) == "microp_aero") then
+             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+          end if
+
           call t_startf('microp_aero_run')
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
+
+          if ( (trim(cam_take_snapshot_after) == "microp_aero") .and.      &
+               (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+             call cam_snapshot_ptend_outfld(ptend_aero, lchnk)
+          end if
+
+          if (trim(cam_take_snapshot_after) == "microp_aero") then
+             ! ptend_aero is only applied to state by the combined physics_update
+             ! after the microphysics, so apply it to copies here to snapshot the
+             ! post-apply constituents:
+             call physics_state_copy(state, state_snap)
+             call physics_ptend_copy(ptend_aero, ptend_snap)
+             call physics_update(state_snap, ptend_snap, cld_macmic_ztodt)
+             call cam_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state_snap, tend, cam_in, cam_out, pbuf, &
+                  flx_heat, cmfmc, cmfcme, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+             call physics_state_dealloc(state_snap)
+          end if
 
           if (trim(cam_take_snapshot_before) == "pumas_tend") then
              call cam_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &

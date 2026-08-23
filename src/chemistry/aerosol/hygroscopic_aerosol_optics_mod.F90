@@ -159,6 +159,13 @@ contains
     deallocate(self%wrh)
     deallocate(self%krh)
 
+    ! table and mmr pointers are views of data owned elsewhere; disassociate only
+    nullify(self%ext_sw)
+    nullify(self%ssa_sw)
+    nullify(self%asm_sw)
+    nullify(self%abs_lw)
+    nullify(self%mmr)
+
   end subroutine destructor
 
 end module hygroscopic_aerosol_optics_mod
