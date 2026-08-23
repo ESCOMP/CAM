@@ -1330,6 +1330,12 @@ contains
        if (ib==seast) degenerate(nc+1,1   ) = 1
     end if
 
+    !
+    ! preset =1 and only ever clear to 0 below: the sgn loop runs sgn=-1 then
+    ! sgn=+1, so an else-branch reset on the sgn=+1 pass would wipe a
+    ! circular-flow detection made at sgn=-1.  Detection for either sign sticks.
+    !
+    circular_flow = 1
     do j=1,nc+1
        do i=1,nc+1
           do sgn=-1,1,2
@@ -1337,8 +1343,6 @@ contains
                   sgn*flux_sum(i-1,j,1)<0.0_r8.and.sgn*flux_sum(i,j-1,2)>0.0_r8.and.&
                   sgn*flux_sum(i  ,j,1)>0.0_r8.and.sgn*flux_sum(i,j  ,2)<0.0_r8) then
                 circular_flow(i,j) = 0
-             else
-                circular_flow(i,j) = 1
              end if
           end do
        end do

@@ -95,7 +95,7 @@ contains
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk   ,kptr,ie)
        do q=1,ntrac
           kptr = kptr + ksize
-          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   kblk,kptr,ie)
+          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q),   kblk,kptr,ie)
        enddo
     enddo
     if(FVM_TIMERS) call t_stopf('FVM:Unpack')
@@ -501,6 +501,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     integer                 :: ie, ixy, ivertex, i, j,istart,itot,ishft,imin,imax
     integer, dimension(2,4) :: unit_vec
     integer                 :: rot90_matrix(2,2), iside
+    real (kind=r8)          :: displ_ns, displ_ew
 
     type (cartesian2D_t)                :: tmpgnom
     type (cartesian2D_t)                :: gnom
@@ -627,20 +628,25 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
              ! set flux vector to zero in non-existent cells (corner halo)
              !
              fvm(ie)%flux_vec        (ixy,i,j,1:4) = fvm(ie)%ifct(i,j)*fvm(ie)%flux_vec(ixy,i,j,1:4)
-
-             iside=1
-             fvm(ie)%displ_max(i,j,iside) = fvm(ie)%displ_max(i,j,iside)+&
-                  ABS(fvm(ie)%vtx_cart(4,ixy,i,j)-fvm(ie)%vtx_cart(1,ixy,i,j))
-             iside=2
-             fvm(ie)%displ_max(i,j,iside) = fvm(ie)%displ_max(i,j,iside)+&
-                  ABS(fvm(ie)%vtx_cart(1,ixy,i,j)-fvm(ie)%vtx_cart(2,ixy,i,j))
-             iside=3
-             fvm(ie)%displ_max(i,j,iside) = fvm(ie)%displ_max(i,j,iside)+&
-                  ABS(fvm(ie)%vtx_cart(2,ixy,i,j)-fvm(ie)%vtx_cart(3,ixy,i,j))
-             iside=4
-             fvm(ie)%displ_max(i,j,iside) = fvm(ie)%displ_max(i,j,iside)+&
-                  ABS(fvm(ie)%vtx_cart(2,ixy,i,j)-fvm(ie)%vtx_cart(1,ixy,i,j))
            end do
+           !
+           ! displacement cap per side = cell extent perpendicular to the face
+           ! (L1 length).  Use MIN of the two parallel cell edges so the cap is
+           ! mirror/rotation symmetric and conservative on trapezoidal cells.
+           ! Previously side 4 reused the side-2 (1-2) edge -- asymmetric where
+           ! cells are distorted (panel edges/corners), biasing the gamma_max
+           ! swept-area clamp when Courant ~ 1.
+           !
+           displ_ns = MIN( &
+                SUM(ABS(fvm(ie)%vtx_cart(4,:,i,j)-fvm(ie)%vtx_cart(1,:,i,j))), &
+                SUM(ABS(fvm(ie)%vtx_cart(3,:,i,j)-fvm(ie)%vtx_cart(2,:,i,j))) )
+           displ_ew = MIN( &
+                SUM(ABS(fvm(ie)%vtx_cart(2,:,i,j)-fvm(ie)%vtx_cart(1,:,i,j))), &
+                SUM(ABS(fvm(ie)%vtx_cart(3,:,i,j)-fvm(ie)%vtx_cart(4,:,i,j))) )
+           fvm(ie)%displ_max(i,j,1) = displ_ns
+           fvm(ie)%displ_max(i,j,2) = displ_ew
+           fvm(ie)%displ_max(i,j,3) = displ_ns
+           fvm(ie)%displ_max(i,j,4) = displ_ew
          end do
        end do
      end do
