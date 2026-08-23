@@ -3324,8 +3324,8 @@
 <se_sponge_del4_nu_fac    > -1 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_fac hgrid="ne120np4" nlev="273" waccmx="1"> 3.0 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
-<se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0"> 7.5 </se_sponge_del4_nu_div_fac>
-<se_sponge_del4_nu_div_fac model_top="ht"                           > 7.5 </se_sponge_del4_nu_div_fac>
+<se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0">-1</se_sponge_del4_nu_div_fac>
+<se_sponge_del4_nu_div_fac model_top="ht"                           >-1</se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1" model_top="mt"> -1 </se_sponge_del4_lev>
