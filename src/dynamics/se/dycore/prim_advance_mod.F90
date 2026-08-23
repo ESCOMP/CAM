@@ -447,7 +447,7 @@ contains
     use cam_thermo,     only: get_molecular_diff_coef, get_rho_dry
     use dimensions_mod, only: np, nlev, nc, use_cslam, npsq, qsize, ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use dimensions_mod, only: nu_t_lev
+    use dimensions_mod, only: nu_t_lev, nu_p_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff,sponge_del4_lev, min_temperature
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
@@ -542,7 +542,7 @@ contains
           do j=1,np
             do i=1,np
               ttens(i,j,k,ie)   = -nu_t_lev(k)*ttens(i,j,k,ie)
-              dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
+              dptens(i,j,k,ie)  = -nu_p_lev(k)*dptens(i,j,k,ie)
               vtens(i,j,1,k,ie) = -nu_lev(k)*vtens(i,j,1,k,ie)
               vtens(i,j,2,k,ie) = -nu_lev(k)*vtens(i,j,2,k,ie)
             enddo
@@ -557,7 +557,7 @@ contains
                 ! del4 mass flux for CSLAM
                 !
                 elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                     rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+                     rhypervis_subcycle*eta_ave_w*nu_p_lev(k)*dpflux(i,j,:,k,ie)
               enddo
             enddo
           endif
@@ -1734,7 +1734,8 @@ contains
   end subroutine util_function
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
-     use control_mod,    only: nu_p, hypervis_subcycle
+     use dimensions_mod, only: nu_p_lev
+     use control_mod,    only: hypervis_subcycle
      use dimensions_mod, only: np, nlev, qsize
      use hybrid_mod,     only: hybrid_t
      use element_mod,    only: element_t
@@ -1825,7 +1826,7 @@ contains
          call biharmonic_wk_omega(elem,Otens,deriv,edgeOmega,hybrid,nets,nete,1,nlev)
          do ie=nets,nete
            do k=1,nlev
-             Otens(:,:,k,ie) = -dt_hyper*nu_p*Otens(:,:,k,ie)
+             Otens(:,:,k,ie) = -dt_hyper*nu_p_lev(k)*Otens(:,:,k,ie)
            end do
            kptr=0
            call edgeVpack(edgeOmega,Otens(:,:,:,ie) ,nlev,kptr, ie)

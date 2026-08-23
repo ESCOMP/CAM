@@ -226,7 +226,7 @@ contains
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
-    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,del4_cslam_qgll
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,del4_cslam_qgll,nu_p_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
@@ -562,6 +562,7 @@ contains
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
     nu_t_lev(:)   = nu_p
+    nu_p_lev(:)   = nu_p
 
     !
     ! sponge layer strength needed for stability depends on model top location
@@ -660,13 +661,21 @@ contains
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
     end do
+    !
+    ! For WACCM and WACCM-x, apply the same sponge-layer ramp to dp (pressure)
+    ! damping as is used for temperature damping. For lower-top configurations
+    ! nu_p_lev remains uniform at nu_p (no ramp).
+    !
+    if (top_090_140km .or. top_140_600km) then
+      nu_p_lev(:) = nu_t_lev(:)
+    end if
 
     if (hybrid%masterthread)then
       write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
       call std_atm_height(pmid(:),z(:))
-      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_div_lev"
+      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_p_lev,nu_div_lev"
       do k=1,nlev
-        write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
+        write(iulog,'(i3,6e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_p_lev(k),nu_div_lev(k)
       end do
       if (nu_top>0) then
         write(iulog,*) ": ksponge_end = ",ksponge_end
