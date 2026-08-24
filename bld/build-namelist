@@ -2358,7 +2358,10 @@ if ($phys =~ /cam6/ or $phys =~ /cam7/) {
                   'num_a4_oc_srf_file'  => 'num_a4',
                   'num_a4_bb_srf_file'  => 'num_a4',
                   'num_pom_bb_srf_file' => 'num_a4' );
-      if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+      # match the species field of the specifier entries (e.g. 'DMS -> /path/file.nc'),
+      # not the file path, which may also contain the species name
+      my $csw_specifier = $nl->get_value('csw_specifier');
+      if ((not defined $csw_specifier) or ($csw_specifier !~ /\bDMS\s*->/)) {
         %species = (%species,
                     'dms_ot_srf_file'     => 'DMS' );
       }
@@ -5362,8 +5365,7 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
-                             "'microp_aero'",
-                             "'pumas_tend'"));
+                             "'microp_section'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
         }
@@ -5404,8 +5406,7 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
-            push (@validList_bc, ("'microp_aero'"));
-            push (@validList_bc, ("'pumas_tend'"));
+            push (@validList_bc, ("'microp_section'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }
