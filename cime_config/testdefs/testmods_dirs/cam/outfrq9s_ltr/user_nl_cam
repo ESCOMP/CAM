@@ -7,4 +7,3 @@ ionos_epotential_ltr=.true.
 ltr_files = '$DIN_LOC_ROOT/atm/waccm/amie_data/REMIX_3-4_Aug_2010_c210302.nc'
 fincl6 = 'prescr_phihm','prescr_efxm','prescr_kevm','prescr_efxp','prescr_kevp','ltr_efx_phys','ltr_kev_phys'
 fincl8 = 'AZIGM1','AZIGM2'
-ionos_npes = 120

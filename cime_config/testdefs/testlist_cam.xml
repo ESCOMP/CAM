@@ -2223,10 +2223,15 @@
       <option name="comment">WACCM-X multi-instance test</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_P256x3" testmods="cam/outfrq9s_ltr">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9_P128x4" testmods="cam/outfrq9s_ltr">
     <machines>
       <machine name="derecho" compiler="intel" category="waccmx"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">WACCM-X LTR threaded test</option>
+    </options>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3"   testmods="cam/outfrq1d_ltr">
     <machines>
