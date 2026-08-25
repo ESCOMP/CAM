@@ -79,7 +79,6 @@ module aoa_tracers
   real(r8) :: calday0 = -huge(1._r8)
   real(r8) :: years = -huge(1._r8)
 
-  real(r8), parameter :: ZERO = 0._r8
   real(r8), parameter :: NOTSET = -huge(1._r8)
   real(r8) :: mmr0 = NOTSET   ! initial lower boundary mmr
 
@@ -312,7 +311,7 @@ contains
     end if
     years = (yr-yr0) + (calday-calday0)/dpy
 
-    ! if AOA1 is not found in the IC file mmr0 is set to ZERO
+    ! if AOA1 is not found in the IC file mmr0 is set to small value
     ! if AOA1 is initialized from IC file mmr0 is not set
     ! --> set mmr0 to global mean in lowest layer
     if (mmr0==NOTSET) then
@@ -446,8 +445,8 @@ contains
     if (m == ixaoa) then
 
        ! AOA1
-       mmr0 = 1.e-6_r8 ! initial lower boundary mmr
-       q(:,:) = 0.0_r8
+       mmr0 = 1.e-6_r8 ! initial lower boundary mmr (small non-zero value)
+       q(:,:) = 0.0_r8 ! initialize AOA1 mixing ratios to zero
 
     else if (m == ixht) then
 
