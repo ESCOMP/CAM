@@ -27,7 +27,7 @@ check_r8_has_dot() {
 
   [ -d "$dir" ] || return 0
 
-  filelist=$(find "$dir" -type f \( -name '*.F90' -o -name '*.f90' -o -name '*.F' -o -name '*.f' \) 2>/dev/null)
+  filelist=$(cd "$dir" && find . -type f \( -name '*.F90' -o -name '*.f90' -o -name '*.F' -o -name '*.f' \) 2>/dev/null)
 
   if [ -n "$skiplist" ]; then
     old_ifs="$IFS"
@@ -52,14 +52,22 @@ check_r8_has_dot() {
   # against the literal (e.g. "res.gt.1.e-14_r8"), so only a dot that is
   # itself preceded by a digit (i.e. an actual decimal point of the same
   # number, as in "...3.5_r8") disqualifies a fresh match start.
-  bad=$(printf '%s\n' "$filelist" | xargs -d '\n' perl -ne '
+  bad=$(cd "$dir" && printf '%s\n' "$filelist" | tr '\n' '\0' | xargs -0 perl -ne '
     my $bad = 0;
     while (/(?<![0-9A-Za-z_])(?<!\d\.)(\d+\.?\d*|\.\d+)([eEdD][+-]?\d+)?_[rR]8\b/g) {
       if (!defined($2) && $1 !~ /\./) { $bad = 1; last }
     }
     print "$ARGV:$.:$_" if $bad;
     close ARGV if eof;
-  ' 2>/dev/null)
+  ')
+  scan_rc=$?
+
+  # check exit status for the scan actually completing
+  # e.g., missing perl, an xargs without "-0", and any future typo in the perl above.
+  if [ $scan_rc -ne 0 ]; then
+    echo "TR8_enhanced: ERROR: the _r8 scan of \"${dir}\" failed to run (rc = ${scan_rc})"
+    return 1
+  fi
 
   if [ -n "$bad" ]; then
     echo "TR8_enhanced:  found _r8-tagged literal(s) with no decimal point/exponent under \"${dir}\":"
@@ -76,6 +84,12 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/cam
 rc=$?
 check_r8_has_dot $CAM_ROOT/components/cam/src/physics/cam
 rc=`expr $? + $rc`
+#ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/atmos_phys/schemes -s mmm,musica
+#rc=`expr $? + $rc`
+#check_r8_has_dot $CAM_ROOT/components/cam/src/atmos_phys/schemes
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/cam7
+rc=`expr $? + $rc`
+check_r8_has_dot $CAM_ROOT/components/cam/src/physics/cam7
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/camrt
 rc=`expr $? + $rc`
 check_r8_has_dot $CAM_ROOT/components/cam/src/physics/camrt
@@ -111,6 +125,12 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/cam
 rc=$?
 check_r8_has_dot $CAM_ROOT/src/physics/cam
 rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/cam7
+rc=`expr $? + $rc`
+check_r8_has_dot $CAM_ROOT/src/physics/cam7
+#ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/atmos_phys/schemes -s mmm,musica
+#rc=`expr $? + $rc`
+#check_r8_has_dot $CAM_ROOT/src/atmos_phys/schemes
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/camrt
 rc=`expr $? + $rc`
 check_r8_has_dot $CAM_ROOT/src/physics/camrt
@@ -265,7 +285,7 @@ fi
 
 echo $rc
 
-if [ $rc = 255 ]; then
+if [ $rc -ne  0 ]; then
    rc=1
 fi
 
