@@ -31,7 +31,6 @@ module fvm_mod
   type (EdgeBuffer_t), public  :: ghostBufQnhc_h
   type (EdgeBuffer_t), public  :: ghostBufQ1_h
   type (EdgeBuffer_t), public  :: ghostBufQ1_vh
-!  type (EdgeBuffer_t), private  :: ghostBufFlux_h
   type (EdgeBuffer_t), public  :: ghostBufFlux_vh
   type (EdgeBuffer_t), public  :: ghostBufPG_s
   type (EdgeBuffer_t), public  :: ghostBuf_cslam2gll
