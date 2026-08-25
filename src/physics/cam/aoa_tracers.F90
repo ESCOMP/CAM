@@ -446,8 +446,8 @@ contains
     if (m == ixaoa) then
 
        ! AOA1
-       mmr0 = ZERO ! initial lower boundary mmr
-       q(:,:) = mmr0
+       mmr0 = 1.e-6_r8 ! initial lower boundary mmr
+       q(:,:) = 0.0_r8
 
     else if (m == ixht) then
 
