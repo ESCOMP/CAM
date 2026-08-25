@@ -442,7 +442,7 @@ subroutine hetfrz_classnuc_cam_calc(aero_props, aero_state, state, deltatin, fac
       call outfld(amb_dens_hnames(i), amb_aer_num(:,:,i), pcols, lchnk)
       call outfld(cld_dens_hnames(i), cld_aer_num(:,:,i), pcols, lchnk)
 
-      aer_radius(:ncol,:,i) = aero_state%mass_mean_radius( indices(i)%bin_ndx, indices(i)%spc_ndx,  ncol, pver, aero_props, rho )
+      aer_radius(:ncol,:,i) = aero_state%mass_mean_radius( indices(i)%bin_ndx, indices(i)%spc_ndx,  ncol, pver, aero_props, rho, pi )
 
       coated(:ncol,:,i) = aero_state%coated_frac( indices(i)%bin_ndx, types(i), ncol, pver, aero_props, aer_radius(:,:,i) )
 

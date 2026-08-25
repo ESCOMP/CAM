@@ -1,7 +1,6 @@
 module aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
-  use physconst, only: pi
 
   implicit none
 
@@ -782,7 +781,7 @@ contains
   ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
   ! the same size and only species `species_ndx` contributes to the particle volume
   !------------------------------------------------------------------------------
-  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho, pi) result(radius)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -791,6 +790,7 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(in) :: pi
 
     real(r8) :: radius(ncol,nlev) ! m
 
