@@ -801,7 +801,7 @@ contains
   ! se_stability_constants: single source for the stability constants used by
   ! print_cfl and auto_rsplit.
   !=============================================================================
-  subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
+  pure subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
     use dimensions_mod, only: np
     use control_mod,    only: tstep_type
 
