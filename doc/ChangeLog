@@ -69,7 +69,7 @@ M       src/dynamics/se/dycore/prim_state_mod.F90
 M       src/dynamics/se/dycore/se_dyn_time_mod.F90
            - remove variable_nsplit plumbing
 M       src/dynamics/se/dycore/control_mod.F90
-           - remove variable_nsplit
+           - remove 'variable_nsplit' and other unused control variables.
 M       src/dynamics/se/dycore/dimensions_mod.F90
            - remove kmin_jet, kmax_jet, and fvm_supercycling_jet declarations
 M       src/dynamics/se/dycore/fvm_mod.F90
