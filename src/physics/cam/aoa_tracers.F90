@@ -5,7 +5,7 @@
 
 module aoa_tracers
 
-  use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: r8 => shr_kind_r8, cl => shr_kind_cl
   use spmd_utils,   only: masterproc
   use ppgrid,       only: pcols, pver, begchunk, endchunk
   use constituents, only: pcnst, cnst_add, cnst_name, cnst_longname
@@ -209,9 +209,22 @@ contains
     real(r8),         intent(out) :: q(:,:)   ! kg tracer/kg dry air (gcol, plev)
 
     integer :: m
+    character(len=cl) :: errstr
     !-----------------------------------------------------------------------
 
     if (.not. aoa_tracers_flag) return
+
+    ! if aoa_read_from_ic_file is FALSE this routine is called
+    ! if aoa_read_from_ic_file is TRUE and the AOA tracer is not found in the IC file this routine is called
+    ! abort the run if the user expects the IC to include AOA tracers and not found in the IC file
+    if (aoa_read_from_ic_file) then
+       write(errstr,*) 'AGE_OF_AIR_CONSTITUENTS ERROR: '//trim(name)//' not found in IC file'
+       if (masterproc) then
+          write (iulog,*) trim(errstr)
+          write (iulog,*) ' --> Need to provide IC which includes AOA tracers or set aoa_read_from_ic_file to .FALSE.'
+       end if
+       call endrun(trim(errstr))
+    end if
 
     do m = 1, ncnst
        if (name ==  c_names(m))  then
@@ -325,7 +338,7 @@ contains
 
     if (is_first_step().or.is_first_restart_step()) then
        if (masterproc) then
-         write(iulog,*) 'AGE_OF_AIR_CONSTITUENTS: mmr0 set to: ',mmr0
+         write(iulog,'(a,e20.12)') 'AGE_OF_AIR_CONSTITUENTS: mmr0 set to: ',mmr0
        end if
     end if
 
@@ -439,7 +452,7 @@ contains
     !-----------------------------------------------------------------------
 
     if (masterproc) then
-       write(iulog,*) 'AGE-OF-AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
+       write(iulog,*) 'AGE_OF_AIR CONSTITUENTS: INITIALIZING ',cnst_name(m),m
     end if
 
     if (m == ixaoa) then
