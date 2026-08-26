@@ -507,7 +507,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       sepstr="################################################################"
       echo "${sepstr}" | tee -a ${logfile}
       ark_file="/fs/cgd/csm/tools/addrealkind/addrealkind"
-      tr8_script="${CAM_ROOT}/test/system/TR8.sh"
+      tr8_script="${CAM_ROOT}/test/system/TR8_enhanced.sh"
       export ADDREALKIND_EXE="${ark_file}"; ${tr8_script} | tee -a ${logfile}
       res=${PIPESTATUS[0]}
       if [ $res -eq 0 ]; then
