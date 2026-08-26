@@ -3,3 +3,4 @@ ndens=1,1,1,1,1,1
 nhtfrq=9,9,9,9,9,9
 write_nstep0=.true.
 inithist='ENDOFRUN'
+aoa_read_from_ic_file = .false.
