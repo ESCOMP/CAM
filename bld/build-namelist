@@ -4332,6 +4332,7 @@ if ($dyn =~ /se/) {
                   se_ftype
                   se_horz_num_threads
 		  se_large_Courant_incr
+                  se_cslam_q_filter
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q

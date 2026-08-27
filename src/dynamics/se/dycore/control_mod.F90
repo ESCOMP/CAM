@@ -70,6 +70,9 @@ module control_mod
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
   integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
+  integer, public :: cslam_q_filter_nsub=1  ! number of subcycles for the CSLAM-grid del4 Q filter
+                                            ! (apply_cslam_q_filter_del4); auto-set in print_cfl from the
+                                            ! 2D del4 von Neumann stability bound
 
   real (kind=r8), public :: hypervis_power=0     ! if not 0, use variable hyperviscosity based on element area
   real (kind=r8), public :: hypervis_scaling=0      ! use tensor hyperviscosity

@@ -335,7 +335,7 @@
 <bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace0200_noleak_greenlndantarcsgh30fac2.50_20250825.nc</bnd_topo>
 <bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250828.nc</bnd_topo>
 <bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
+<bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_gmted2010_modis_bedmachine_nc3000_Laplace0025_noleak_20250904.nc</bnd_topo>
 <bnd_topo hgrid="ne240np4" npg="3">atm/cam/topo/se/ne240pg3_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171015.nc</bnd_topo>
 
 <bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
@@ -3241,14 +3241,11 @@
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
+<se_cslam_q_filter> .false. </se_cslam_q_filter>
+
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 
 <se_hypervis_subcycle                                                           >-1 </se_hypervis_subcycle>
-<se_hypervis_subcycle  waccm_phys="1"  model_top="mt"                           > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1"            model_top="none"> 10 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"  waccm_phys="1" waccmx="0" model_top="none"> 9 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="0" model_top="none"> 8 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4"  waccm_phys="1" waccmx="1" model_top="none"> 5 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"                             > 2  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.POLARCAP.ne30x4"                           > 2  </se_hypervis_subcycle>
@@ -3256,7 +3253,6 @@
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"                         > 1  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.NATL.ne30x8"                               > 1  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4" model_top="ht"                           >-1</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           >-1</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
@@ -3327,7 +3323,6 @@
 <se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0">-1</se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac model_top="ht"                           >-1</se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
-<se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1" model_top="mt"> -1 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccm_phys="1">-1</se_sponge_del4_lev>
 <se_sponge_del4_lev model_top="ht">-1</se_sponge_del4_lev>
@@ -3367,6 +3362,7 @@
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"                    > 7 </se_nsplit>
 <se_nsplit waccmx="1" hgrid="ne120np4" nlev="273"          > 10 </se_nsplit>
 <se_nsplit hgrid="ne120np4"  model_top="mt"                > 8 </se_nsplit>
+<se_nsplit hgrid="ne120np4"  model_top="ht"                > 3 </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" model_top="mt"       > 4 </se_nsplit>
 <se_nsplit hgrid="ne0np4.ARCTICGRIS.ne30x8" model_top="mt" > 4 </se_nsplit>
 <se_nsplit hgrid="ne0np4.NATL.ne30x8" model_top="mt"       > 4 </se_nsplit>

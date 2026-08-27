@@ -227,6 +227,7 @@ contains
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
     use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,del4_cslam_qgll,nu_p_lev
+    use dimensions_mod, only: cslam_q_filter, cslam_q_filter_nu_fac
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
@@ -236,6 +237,7 @@ contains
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use control_mod,    only: rsplit, qsplit, hypervis_subcycle, hypervis_subcycle_sponge, hypervis_subcycle_q
+    use control_mod,    only: cslam_q_filter_nsub
     use se_dyn_time_mod,only: tstep
     use time_manager,   only: get_step_size
     use cam_abortutils, only: endrun
@@ -276,6 +278,7 @@ contains
     real (kind=r8) :: s_laplacian, s_hypervis, s_rk, s_rk_tracer !Stability region
     real (kind=r8) :: dt_max_adv, dt_max_gw, dt_max_tracer_se, dt_max_tracer_fvm
     real (kind=r8) :: dt_max_hypervis, dt_max_hypervis_tracer, dt_max_laplacian_top
+    real (kind=r8) :: dt_max_cslam_q_filter, min_area_fvm_m2, lam4_fvm
 
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: fld(np,np,nets:nete)
@@ -557,7 +560,14 @@ contains
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
-    nu_q_cslam = 3.0_r8 * nu_p
+    if (cslam_q_filter) then
+      ! With the CSLAM-grid del4 Q filter active the GLL-side del4-on-qdp
+      ! (hypervis_Qdp) is retuned to a weak background value; the CSLAM-grid
+      ! filter provides the primary damping of water vapor.
+      nu_q_cslam = 0.5_r8 * nu_p
+    else
+      nu_q_cslam = 3.0_r8 * nu_p
+    end if
 
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
@@ -755,6 +765,34 @@ contains
     dt_dyn_del2_actual     = tstep/hypervis_subcycle_sponge
     dt_tracer_visco_actual = tstep*qsplit/hypervis_subcycle_q
     dt_phys                = dtime
+    !
+    ! auto-set cslam_q_filter_nsub for the CSLAM-grid del4 Q filter
+    ! (apply_cslam_q_filter_del4 in fvm_filter_mod.F90) from
+    ! the 2D von Neumann bound dt*nu*(8/A_min)^2 < s_hypervis (checkerboard
+    ! eigenvalue 8/A; 1.25 covers gnomonic cell distortion).  nu = cslam_q_filter_nu_fac*nu_p
+    ! (background del4 coefficient, constant in the vertical).
+    !
+    if (use_cslam .and. cslam_q_filter) then
+      ! Smallest CSLAM cell area = 0.833 * mean cell area on the equiangular
+      ! gnomonic cubed sphere.  The area Jacobian
+      !   g(X,Y) = (1+X^2)(1+Y^2)/(1+X^2+Y^2)^(3/2),   X=tan(alpha), Y=tan(beta)
+      ! is largest at the face centre (g=1) and smallest at the panel-edge
+      ! midpoints (g_min = 2/2^(3/2) = 0.7071); its face-average is
+      !   g_mean = (2*pi/3)/(pi/2)^2 = 8/(3*pi) = 0.8488,
+      ! so A_min/A_mean = g_min/g_mean = 0.7071/0.8488 = 0.833.  This ratio is
+      ! independent of resolution (the per-cell solid angle cancels in min/mean)
+      ! and of nc; 0.83 below is that value rounded down -> mildly conservative
+      ! (at most one extra subcycle).  Valid because CSLAM runs only on the
+      ! quasi-uniform cubed sphere: on a variable-resolution mesh the smallest
+      ! cell could be far below 0.83*mean and this estimate would be too loose.
+      min_area_fvm_m2 = 0.83_r8*4.0_r8*pi/dble(6*ne*ne*nc*nc)*rearth*rearth
+      lam4_fvm = 1.25_r8*(8.0_r8/min_area_fvm_m2)**2
+      dt_max_cslam_q_filter = s_hypervis/(cslam_q_filter_nu_fac*nu_p*lam4_fvm)
+      cslam_q_filter_nsub = max(1, ceiling(dt_tracer_fvm_actual/dt_max_cslam_q_filter))
+    else
+      dt_max_cslam_q_filter = -1.0_r8
+      cslam_q_filter_nsub = 1
+    end if
 
     if (hybrid%masterthread) then
       write(iulog,'(a,f10.2,a)') ' '
@@ -781,6 +819,10 @@ contains
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
              's ',dt_tracer_fvm_actual
         if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
+        if (cslam_q_filter) then
+          write(iulog,'(a,f10.2,a,i4)') '* dt_max_cslam_q_filter (CSLAM-grid del4 Q filter) < ',&
+               dt_max_cslam_q_filter,'s ; cslam_q_filter_nsub = ',cslam_q_filter_nsub
+        end if
       end if
       write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual
       do k=1,ksponge_end

@@ -2,6 +2,7 @@
 module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
+  use dimensions_mod,         only: cslam_q_filter
   use dimensions_mod,         only: irecons_tracer
   use cam_abortutils,         only: endrun
   use cam_logfile,            only: iulog
@@ -10,7 +11,8 @@ module fvm_consistent_se_cslam
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges, threadOwnsVertLevel
-  use perf_mod,               only: t_startf, t_stopf 
+  use perf_mod,               only: t_startf, t_stopf
+  use fvm_filter_mod,         only: apply_cslam_q_filter_del4
   implicit none
   private
   save
@@ -249,7 +251,13 @@ contains
       end do
     end do
     if(FVM_TIMERS) call t_stopf('fvm:end_of_reconstruct_subroutine')
-    !$OMP END PARALLEL 
+    if (cslam_q_filter) then
+      if(FVM_TIMERS) call t_startf('fvm:cslam_q_filter')
+      call apply_cslam_q_filter_del4(fvm, hybridnew, nets, nete, kmin, kmax, dt_fvm, &
+           limiter=.true., xdiff=.true.)
+      if(FVM_TIMERS) call t_stopf('fvm:cslam_q_filter')
+    end if
+    !$OMP END PARALLEL
     call omp_set_nested(.false.)
   end subroutine run_consistent_se_cslam
 

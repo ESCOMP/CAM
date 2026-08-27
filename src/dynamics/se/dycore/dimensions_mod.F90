@@ -40,6 +40,8 @@ module dimensions_mod
   integer         :: qsize = 0           !qsize is set in dyn_comp
   integer, public :: wv_idx_dycore = -1  !water vapor index in dycore Qdp; set in dyn_comp
   logical, public :: del4_cslam_qgll = .true. !apply del4 hyperviscosity to water vapor on GLL after cslam2gll
+  logical, public :: cslam_q_filter = .false. !mass-conservative del4 damping of water vapor on the CSLAM grid
+  real(r8), parameter, public :: cslam_q_filter_nu_fac = 0.5_r8 !fixed factor on nu_p for the CSLAM-grid del4
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging

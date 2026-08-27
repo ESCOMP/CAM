@@ -8752,6 +8752,16 @@ Default: Set by build-namelist.
   a low-order increment for tracer mass more than one grid cell width away
 </entry>
 
+<entry id="se_cslam_q_filter" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE apply a mass-conservative del4 (biharmonic) filter to water vapor
+  on the CSLAM grid every tracer time-step.  The filter damps grid-scale
+  noise in water vapor that seeds surface-pressure noise at cube-sphere
+  panel edges and vertices.  Total tracer mass is conserved exactly and
+  dry air mass (dp_fvm) is not modified.
+  Default: FALSE
+</entry>
+
 <entry id="se_fvm_supercycling" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of SE rsplit time-steps CSLAM supercycles
