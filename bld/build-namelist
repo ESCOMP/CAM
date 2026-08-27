@@ -5360,6 +5360,7 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
+                             "'microp_aero'",
                              "'pumas_tend'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
@@ -5401,6 +5402,7 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
+            push (@validList_bc, ("'microp_aero'"));
             push (@validList_bc, ("'pumas_tend'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));

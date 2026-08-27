@@ -617,7 +617,7 @@ contains
       end do
     end do
 
-    ! Cleanup interp_p 
+    ! Cleanup interp_p
     call interp_p%finalize()
 
     ! Cleanup interpdata
@@ -660,8 +660,8 @@ contains
     dx = 2.0_r8/dble(fv_nphys)
     do j=1,fv_nphys
       do i=1,fv_nphys
-        interpdata%interp_xy(ioff)%x = -1_r8+(i-0.5_r8)*dx
-        interpdata%interp_xy(ioff)%y = -1_r8+(j-0.5_r8)*dx
+        interpdata%interp_xy(ioff)%x = -1._r8+(i-0.5_r8)*dx
+        interpdata%interp_xy(ioff)%y = -1._r8+(j-0.5_r8)*dx
         interpdata%ilon(ioff) = i
         interpdata%ilat(ioff) = j
         ioff=ioff+1
@@ -740,7 +740,7 @@ contains
     gll_points(3) =  sqrt(1.0_r8/5.0_r8)
     gll_points(4) =  1.0_r8
 
-    dx = 2_r8/dble(nc)
+    dx = 2._r8/dble(nc)
     do k=1-nc,2*nc
       nc_points(k) = -1.0_r8+dx*0.5_r8+dble(k-1)*dx
     end do
