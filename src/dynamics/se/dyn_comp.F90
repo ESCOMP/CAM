@@ -120,7 +120,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: min_temperature
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
-   use dimensions_mod, only: cslam_q_filter
+   use dimensions_mod, only: cslam_q_filter, cslam_q_filter_nu_fac
    use dimensions_mod, only: fvm_supercycling
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
@@ -169,6 +169,7 @@ subroutine dyn_readnl(NLFileName)
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
    logical                      :: se_cslam_q_filter
+   real(r8)                     :: se_cslam_q_filter_nu_fac
    integer                      :: se_fvm_supercycling
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
@@ -215,6 +216,7 @@ subroutine dyn_readnl(NLFileName)
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
       se_cslam_q_filter,           &
+      se_cslam_q_filter_nu_fac,    &
       se_fvm_supercycling,         &
       se_molecular_diff,           &
       se_pgf_formulation,          &
@@ -288,6 +290,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_cslam_q_filter, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_cslam_q_filter_nu_fac, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_fvm_supercycling, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -350,6 +353,7 @@ subroutine dyn_readnl(NLFileName)
    fv_nphys                 = se_fv_nphys
    large_Courant_incr       = se_large_Courant_incr
    cslam_q_filter           = se_cslam_q_filter
+   cslam_q_filter_nu_fac    = se_cslam_q_filter_nu_fac
    fvm_supercycling         = se_fvm_supercycling
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
@@ -420,6 +424,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
       write(iulog, '(a,l4)')   'dyn_readnl: se_cslam_q_filter           = ',se_cslam_q_filter
+      write(iulog, '(a,f8.3)') 'dyn_readnl: se_cslam_q_filter_nu_fac    = ',se_cslam_q_filter_nu_fac
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
       if (.not. se_refined_mesh) then
          write(iulog, '(a,i0)')'dyn_readnl: se_ne                       = ',se_ne

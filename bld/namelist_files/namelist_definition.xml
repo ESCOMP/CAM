@@ -8762,6 +8762,14 @@ Default: Set by build-namelist.
   Default: FALSE
 </entry>
 
+<entry id="se_cslam_q_filter_nu_fac" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Factor on nu_p giving the del4 damping coefficient of the CSLAM-grid
+  water vapor filter (se_cslam_q_filter): nu_filter = se_cslam_q_filter_nu_fac*nu_p.
+  Only used when se_cslam_q_filter is TRUE.
+  Default: 0.5
+</entry>
+
 <entry id="se_fvm_supercycling" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of SE rsplit time-steps CSLAM supercycles
