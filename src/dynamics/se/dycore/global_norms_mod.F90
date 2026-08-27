@@ -282,11 +282,11 @@ contains
 
     call se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
 
-    if ((lambda_max.eq.0_r8).and.(hybrid%masterthread)) then
+    if ((lambda_max.eq.0._r8).and.(hybrid%masterthread)) then
       print*, "lambda_max not calculated for NP = ",np
       print*, "Estimate of gravity wave timestep will be incorrect"
     end if
-    if ((lambda_vis.eq.0_r8).and.(hybrid%masterthread)) then
+    if ((lambda_vis.eq.0._r8).and.(hybrid%masterthread)) then
       print*, "lambda_vis not calculated for NP = ",np
       print*, "Estimate of viscous CFLs will be incorrect"
     end if

@@ -1,3 +1,83 @@
+
+===============================================================
+
+Tag name: cam6_4_198
+Originator(s): cacraig
+Date: August 26, 2026
+One-line Summary: Fix constants that were missing . in _r8 declarations
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1661
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Some _r8 constants are missing '.' and are being used as integers - need to fix these:  https://github.com/ESCOMP/CAM/issues/1659
+
+Describe any changes made to build system:
+
+Describe any changes made to the namelist:
+
+List any changes to the defaults for the boundary datasets:
+
+Describe any substantial timing or memory changes:
+
+Code reviewed by: jimmielin, peverwhee
+
+List all files eliminated:
+D       test/system/TR8.sh
+          - replaced with TR8_enhanced.sh
+
+List all files added and what they do:
+A       test/system/TR8_enhanced.sh
+          - script enhanced (with Claude help) to look for constants with _r8, but are integer
+	    The old capability of looking for missing _r8 still exists in this script as well
+
+List all existing files that have been modified, and describe the changes:
+M       src/chemistry/mozart/mo_usrrxt.F90
+M       src/chemistry/mozart/ocean_emis.F90
+M       src/chemistry/utils/horizontal_interpolate.F90
+M       src/chemistry/utils/tracer_data.F90
+M       src/dynamics/mpas/dycore
+M       src/dynamics/se/dycore/comp_ctr_vol_around_gll_pts.F90
+M       src/dynamics/se/dycore/edge_mod.F90
+M       src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+M       src/dynamics/se/dycore/fvm_mapping.F90
+M       src/dynamics/se/dycore/global_norms_mod.F90
+M       src/dynamics/se/dycore/prim_advance_mod.F90
+M       src/dynamics/se/dycore/vertremap_mod.F90
+M       src/dynamics/se/interp_mod.F90
+M       src/dynamics/se/native_mapping.F90
+M       src/dynamics/se/test_fvm_mapping.F90
+M       src/physics/cam/boundarydata.F90
+M       src/physics/cam/nudging.F90
+M       src/physics/cam/tracers.F90
+M       src/physics/carma/models/dust/carma_model_mod.F90
+M       src/physics/carma/models/trop_strat_soa1/carma_model_mod.F90
+M       src/physics/carma/models/trop_strat_soa5/carma_model_mod.F90
+M       src/physics/rrtmg/rrtmg_state.F90
+M       src/utils/interpolate_data.F90
+           - address issues found via the new TR8_enhanced.sh script
+
+M       test/system/test_driver.sh
+           - use the new TR8_enhanced.sh script
+
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam: all BFB except:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: PASS) details:
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to fail this time
+
+derecho/nvhpc/aux_cam: all BFB
+
+izumi/nag/aux_cam: all BFB except:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+    FAIL ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol COMPARE_base_rest
+  - pre-existing failure -- see https://github.com/ESCOMP/CAM/issues/1514
+
+izumi/gnu/aux_cam: all BFB
+
+===============================================================
 ===============================================================
 
 Tag name:

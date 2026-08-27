@@ -108,7 +108,7 @@ contains
     call omp_set_nested(.true.)
 
     ! default weights for computing mean dynamics fluxes
-    eta_ave_w = 1.0_r8/qsplit
+    eta_ave_w = 1._r8/qsplit
 
     ! ==================================
     ! Take timestep
