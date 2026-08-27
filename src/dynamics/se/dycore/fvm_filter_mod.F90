@@ -1,7 +1,27 @@
 #define FVM_TIMERS .FALSE.
 module fvm_filter_mod
   !
-  ! Mass-conservative del4 filter on the fvm grid
+  ! CSLAM-grid del4 tracer filter: an optional, mass-conservative fourth-order
+  ! hyperdiffusion of water vapor on the CSLAM finite-volume grid, applied as
+  ! two successive flux-form Laplacians.
+  ! The Laplacian at cell i is the two-point flux approximation
+  !   Sum_faces (l_f/d_f)*(Q_j - Q_i) / A_i,
+  ! with spherical face arc lengths l_f, center-to-center great-circle
+  ! distances d_f, and cell areas A_i; the second pass is layer-mass (dp)
+  ! weighted, so tracer mass is conserved exactly and fluxes are antisymmetric
+  ! across element and panel boundaries.  The coefficient is
+  ! nu4 = se_cslam_q_filter_nu_fac * nu_p
+  ! subcycled to satisfy the checkerboard stability
+  ! bound dt*nu4*(8/A_min)^2 < 2 (cf. Andrews et al. 2025, arXiv:2505.05624).
+  ! Two optional refinements:
+  !  (i) a non-orthogonality (cross-diffusion) correction adding the
+  !      tangential-gradient contribution the two-point flux omits on the
+  !      skewed gnomonic mesh -- the discrete analogue of the g12 metric term
+  !      in analytic cubed-sphere Laplacians (Ullrich et al. 2010, JCP);
+  ! (ii) Zalesak (1979, JCP) flux-corrected limiting of the del4 fluxes, with
+  !      a common coefficient on both sides of each face, so the filter is
+  !      shape-preserving (each cell stays within its pre-filter 5-point
+  !      min/max) while remaining conservative.
   !
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nlev, cslam_q_filter
@@ -20,31 +40,6 @@ module fvm_filter_mod
 
 contains
 
-  !
-  ! Mass-conservative del4 filter on water vapor (fvm%c(:,:,:,ixwv_fvm)) on
-  ! the CSLAM grid: two flux-form del2 passes,
-  !   Pass 1:  L_i  = ( Sum_faces w_face*(Q_j - Q_i) ) / area_i
-  !   Pass 2:  Q_i -= dt*Sum_faces( nu4*dp_face*w_face*(L_j - L_i) )/(dp_i*area_i)
-  ! w_face = face arc-length / center-to-center arc distance, precomputed at
-  ! init (cslam_q_filter_geom_init) and stored in fvm%qfilter_*.
-  ! nu4 = cslam_q_filter_nu_fac * nu_p (SE background del4)
-  !
-  ! Conservation: fluxes antisymmetric across all element/panel boundaries
-  ! (halo geometry evaluated in the owner's frame); dp_fvm not modified.
-  ! limiter: Zalesak FCT on pass-2 fluxes; keeps each cell in the
-  !   pre-filter 5-point [min,max] (positivity, no ringing at fronts);
-  !   both sides of a face use the same coefficient -> still conservative.
-  ! xdiff: adds the tangential-gradient flux that the two-point difference
-  !   drops on the skewed gnomonic mesh (worst at panel edges); exact for
-  !   tangent-plane-linear Q; TPFA fallback at cube-vertex wedge faces.
-  !   Corrected operator not provably dissipative (matrix not symmetric).
-  ! Stability: dt_sub*nu_p*(8/A_min)^2 < 2 (2D checkerboard bound);
-  !   cslam_q_filter_nsub auto-set in print_cfl.
-  ! Cost per subcycle: 2 ghost exchanges (+1 with limiter), on the 1-deep
-  !   buffer ghostBufQfilter; halo rings 2..nhc left stale.
-  ! The GLL-side del4 on water vapor (hypervis_Qdp) stays active alongside
-  ! this filter but is retuned to nu_q_cslam = 0.5*nu_p in global_norms_mod.
-  !
   subroutine apply_cslam_q_filter_del4(fvm, hybrid, nets, nete, kmin, kmax, dt_fvm, limiter, xdiff)
     use edge_mod       , only: ghostpack, ghostunpack
     use bndry_mod      , only: ghost_exchange
@@ -408,7 +403,6 @@ contains
     real (kind=r8) :: c3d_own(3, 1:nc, 1:nc)   ! byproduct, not stored
     integer        :: ie
 
-    if (.not. cslam_q_filter) return
     !
     ! 1-deep halo buffer for the CSLAM Q filter (its stencils only read
     ! halo ring 1); 2*nlev layers hold dp_fvm and Q in one exchange.
@@ -508,6 +502,7 @@ contains
           dist       = arc_length(c3d(:, i, j), c3d(:, i+1, j))
           w_ew(i, j) = face_len / dist
 
+          
           if (do_x) then
              xw_ew(i, j) = w_ew(i, j)
              xt_ew(i, j) = 0.0_r8

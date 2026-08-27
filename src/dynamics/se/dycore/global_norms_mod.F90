@@ -237,7 +237,7 @@ contains
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use control_mod,    only: rsplit, qsplit, hypervis_subcycle, hypervis_subcycle_sponge, hypervis_subcycle_q
-    use control_mod,    only: cslam_q_filter_nsub
+    use control_mod,    only: cslam_q_filter_nsub, hypervis_subcycle_cslam_q
     use se_dyn_time_mod,only: tstep
     use time_manager,   only: get_step_size
     use cam_abortutils, only: endrun
@@ -279,6 +279,7 @@ contains
     real (kind=r8) :: dt_max_adv, dt_max_gw, dt_max_tracer_se, dt_max_tracer_fvm
     real (kind=r8) :: dt_max_hypervis, dt_max_hypervis_tracer, dt_max_laplacian_top
     real (kind=r8) :: dt_max_cslam_q_filter, min_area_fvm_m2, lam4_fvm
+    real (kind=r8) :: dt_max_hypervis_cslam_q
 
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: fld(np,np,nets:nete)
@@ -793,6 +794,26 @@ contains
       dt_max_cslam_q_filter = -1.0_r8
       cslam_q_filter_nsub = 1
     end if
+    !
+    ! Subcycling of the GLL-side del4 on water vapor after cslam2gll
+    ! (hypervis_Qdp, stepped with dt_remap).
+    !
+    if (use_cslam .and. del4_cslam_qgll) then
+      dt_max_hypervis_cslam_q = s_hypervis/(nu_q_cslam*normDinv_hypervis)
+      if (cslam_q_filter) then
+        ! weak background coefficient (nu_q_cslam = 0.5*nu_p): auto-resolve
+        ! from the del4 stability bound (2 at ne30, 1 at ne120)
+        hypervis_subcycle_cslam_q = max(1, ceiling(dt_remap_actual/dt_max_hypervis_cslam_q))
+      else
+        ! operational configuration (nu_q_cslam = 3*nu_p): 2 subcycles,
+        ! empirically stable although beyond the linear del4 bound (which
+        ! would demand ~8 at ne30); kept at the validated value
+        hypervis_subcycle_cslam_q = 2
+      end if
+    else
+      dt_max_hypervis_cslam_q = -1.0_r8
+      hypervis_subcycle_cslam_q = 1
+    end if
 
     if (hybrid%masterthread) then
       write(iulog,'(a,f10.2,a)') ' '
@@ -822,6 +843,10 @@ contains
         if (cslam_q_filter) then
           write(iulog,'(a,f10.2,a,i4)') '* dt_max_cslam_q_filter (CSLAM-grid del4 Q filter) < ',&
                dt_max_cslam_q_filter,'s ; cslam_q_filter_nsub = ',cslam_q_filter_nsub
+        end if
+        if (del4_cslam_qgll) then
+          write(iulog,'(a,f10.2,a,i4)') '* dt_max_hypervis_cslam_q (del4 q on GLL after cslam2gll) < ',&
+               dt_max_hypervis_cslam_q,'s ; hypervis_subcycle_cslam_q = ',hypervis_subcycle_cslam_q
         end if
       end if
       write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual

@@ -1867,6 +1867,7 @@ contains
     use hybrid_mod,       only: hybrid_t
     use derivative_mod,   only: derivative_t
     use global_norms_mod, only: nu_q_cslam
+    use control_mod,      only: hypervis_subcycle_cslam_q
     use viscosity_mod,    only: biharmonic_wk_scalar1
     use edge_mod,         only: edgeVpack, edgeVunpack
     use bndry_mod,        only: bndry_exchange
@@ -1880,7 +1881,6 @@ contains
     real(r8) :: qtens(np,np,nlev,nets:nete)
     real(r8) :: dt_sub
     integer  :: ie, k, isub
-    integer, parameter :: hypervis_subcycle_cslam_q = 2
 
     dt_sub = dt_fvm / real(hypervis_subcycle_cslam_q, r8)
 

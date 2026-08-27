@@ -73,6 +73,9 @@ module control_mod
   integer, public :: cslam_q_filter_nsub=1  ! number of subcycles for the CSLAM-grid del4 Q filter
                                             ! (apply_cslam_q_filter_del4); auto-set in print_cfl from the
                                             ! 2D del4 von Neumann stability bound
+  integer, public :: hypervis_subcycle_cslam_q=2 ! number of subcycles for the GLL-side del4 on water vapor
+                                            ! after cslam2gll (hypervis_Qdp); auto-set in print_cfl when
+                                            ! the CSLAM Q filter is active, else the operational value 2
 
   real (kind=r8), public :: hypervis_power=0     ! if not 0, use variable hyperviscosity based on element area
   real (kind=r8), public :: hypervis_scaling=0      ! use tensor hyperviscosity
