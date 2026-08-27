@@ -4,7 +4,7 @@ module fvm_filter_mod
   ! Mass-conservative del4 hyperfilter on water vapor on the CSLAM (fvm) grid,
   ! plus its one-time geometry / halo-buffer initialization.  Extracted from
   ! fvm_consistent_se_cslam for separation of concerns.  Optional operator,
-  ! enabled by namelist se_cslam_q_filter (dimensions_mod::cslam_q_filter);
+  ! enabled by namelist se_cslam_q_filter_nu_fac > 0 (dimensions_mod::cslam_q_filter);
   ! a no-op (and the buffer is never allocated) when the filter is off.
   !
   use shr_kind_mod,           only: r8=>shr_kind_r8
