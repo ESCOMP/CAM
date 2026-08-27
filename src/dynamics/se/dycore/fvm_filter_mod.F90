@@ -1,11 +1,7 @@
 #define FVM_TIMERS .FALSE.
 module fvm_filter_mod
   !
-  ! Mass-conservative del4 hyperfilter on water vapor on the CSLAM (fvm) grid,
-  ! plus its one-time geometry / halo-buffer initialization.  Extracted from
-  ! fvm_consistent_se_cslam for separation of concerns.  Optional operator,
-  ! enabled by namelist se_cslam_q_filter_nu_fac > 0 (dimensions_mod::cslam_q_filter);
-  ! a no-op (and the buffer is never allocated) when the filter is off.
+  ! Mass-conservative del4 filter on the fvm grid
   !
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nlev, cslam_q_filter
@@ -17,10 +13,6 @@ module fvm_filter_mod
   private
   save
 
-  !
-  ! 1-deep halo exchange buffer for the filter; allocated in
-  ! cslam_q_filter_geom_init when the filter is active.
-  !
   type (EdgeBuffer_t), public :: ghostBufQfilter
 
   public :: apply_cslam_q_filter_del4   ! the filter (called from run_consistent_se_cslam)
@@ -35,7 +27,7 @@ contains
   !   Pass 2:  Q_i -= dt*Sum_faces( nu4*dp_face*w_face*(L_j - L_i) )/(dp_i*area_i)
   ! w_face = face arc-length / center-to-center arc distance, precomputed at
   ! init (cslam_q_filter_geom_init) and stored in fvm%qfilter_*.
-  ! nu4 = cslam_q_filter_nu_fac * nu_p (SE background del4), constant in the vertical.
+  ! nu4 = cslam_q_filter_nu_fac * nu_p (SE background del4)
   !
   ! Conservation: fluxes antisymmetric across all element/panel boundaries
   ! (halo geometry evaluated in the owner's frame); dp_fvm not modified.
