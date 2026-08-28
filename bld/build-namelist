@@ -3303,8 +3303,17 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 
+# clubb-mf unified convection scheme
+add_default($nl, 'do_clubb_mf');
+my $clubb_mf = $nl->get_value('do_clubb_mf');
+
+if ($clubb_mf eq '.true.') {
+    add_default($nl, 'deep_scheme', 'val'=>'off');
+} else { 
+    add_default($nl, 'deep_scheme');
+}	
+
 # Deep convection scheme
-add_default($nl, 'deep_scheme');
 my $deep_scheme = $nl->get_value('deep_scheme');
 
 # Aerosol convective processes
@@ -3690,38 +3699,48 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 
    #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');
-   add_default($nl, 'do_clubb_mf_diag');
-   add_default($nl, 'do_clubb_mf_rad');
-   add_default($nl, 'do_clubb_mf_precip');
-   add_default($nl, 'do_clubb_mf_addtke');
-   add_default($nl, 'clubb_mf_L0');
-   add_default($nl, 'clubb_mf_ent0');
-   add_default($nl, 'clubb_mf_alphturb');
-   add_default($nl, 'clubb_mf_Lopt');
-   add_default($nl, 'clubb_mf_a0');
-   add_default($nl, 'clubb_mf_b0');
-   add_default($nl, 'clubb_mf_nup');
-   add_default($nl, 'clubb_mf_max_L0');
-   add_default($nl, 'clubb_mf_fdd');
-   add_default($nl, 'do_clubb_mf_coldpool');
-   add_default($nl, 'clubb_mf_ddalph');
-   add_default($nl, 'clubb_mf_ddbeta');
-   add_default($nl, 'clubb_mf_pwfac');
-   add_default($nl, 'clubb_mf_ddexp');
-   add_default($nl, 'clubb_mf_pwmin');
-   add_default($nl, 'clubb_mf_pwmax');
-   add_default($nl, 'clubb_mf_cldfrac_fac');
-   add_default($nl, 'do_clubb_mf_ustar');
-   add_default($nl, 'do_clubb_mf_mixd');
-   add_default($nl, 'clubb_mf_up_ndt');
-   add_default($nl, 'clubb_mf_cp_ndt');
-   add_default($nl, 'do_clubb_mf_rhtke');
-   add_default($nl, 'do_clubb_mf_cmt');
-   add_default($nl, 'clubb_mf_kseed');
-   add_default($nl, 'do_clubb_mf_lscale_perplume');
-   add_default($nl, 'do_clubb_mf_coldpool_perplume');
-   add_default($nl, 'do_clubb_mf_coldpool_init');
-   add_default($nl, 'do_clubb_mf_aloft');
+   my $clubb_mf = $nl->get_value('do_clubb_mf');
+   if ($clubb_sgs  =~ /$TRUE/io) {
+
+       #CLUBB+MF tunings
+       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'val'=>'.false.');
+       add_default($nl, 'microp_aero_wsub_scale', 'val'=>'0.5');
+       add_default($nl, 'microp_aero_wsubi_scale', 'val'=>'0.5');
+       add_default($nl, 'clubb_l_predict_upwp_vpwp', 'val'=>'.false.');
+
+       add_default($nl, 'do_clubb_mf_diag');
+       add_default($nl, 'do_clubb_mf_rad');
+       add_default($nl, 'do_clubb_mf_precip');
+       add_default($nl, 'do_clubb_mf_addtke');
+       add_default($nl, 'clubb_mf_L0');
+       add_default($nl, 'clubb_mf_ent0');
+       add_default($nl, 'clubb_mf_alphturb');
+       add_default($nl, 'clubb_mf_Lopt');
+       add_default($nl, 'clubb_mf_a0');
+       add_default($nl, 'clubb_mf_b0');
+       add_default($nl, 'clubb_mf_nup');
+       add_default($nl, 'clubb_mf_max_L0');
+       add_default($nl, 'clubb_mf_fdd');
+       add_default($nl, 'do_clubb_mf_coldpool');
+       add_default($nl, 'clubb_mf_ddalph');
+       add_default($nl, 'clubb_mf_ddbeta');
+       add_default($nl, 'clubb_mf_pwfac');
+       add_default($nl, 'clubb_mf_ddexp');
+       add_default($nl, 'clubb_mf_pwmin');
+       add_default($nl, 'clubb_mf_pwmax');
+       add_default($nl, 'clubb_mf_cldfrac_fac');
+       add_default($nl, 'do_clubb_mf_ustar');
+       add_default($nl, 'do_clubb_mf_mixd');
+       add_default($nl, 'clubb_mf_up_ndt');
+       add_default($nl, 'clubb_mf_cp_ndt');
+       add_default($nl, 'do_clubb_mf_rhtke');
+       add_default($nl, 'do_clubb_mf_cmt');
+       add_default($nl, 'clubb_mf_kseed');
+       add_default($nl, 'do_clubb_mf_lscale_perplume');
+       add_default($nl, 'do_clubb_mf_coldpool_perplume');
+       add_default($nl, 'do_clubb_mf_coldpool_init');
+       add_default($nl, 'do_clubb_mf_aloft');
+   }
 }
 
 # Tuning for wet scavenging of modal aerosols

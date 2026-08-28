@@ -4620,19 +4620,19 @@ Default: .false.
 <entry id="do_clubb_mf_precip" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. turn on Suselj et al 2019 microphysics.
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="do_clubb_mf_rad" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. couple MF plumes to radiation
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="do_clubb_mf_addtke" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. add MF contribution to TKE pbuf variable
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="clubb_mf_L0" type="real" category="conv"
@@ -4645,19 +4645,19 @@ Default: 50.0
 <entry id="clubb_mf_Lopt" type="integer" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Integer: dynamic entrainment length scale option
-Default: 0
+Default: 6
 </entry>
 
 <entry id="clubb_mf_a0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Real: linear coefficient relating ztop/cape to entrainment length scale
-Default: 2.0
+Default: 0.15
 </entry>
 
 <entry id="clubb_mf_b0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Real: exponential coefficient relating ztop/cape to entrainment length scale
-Default: 0.5
+Default: 1.0
 </entry>
 
 <entry id="clubb_mf_ent0" type="real" category="conv"
@@ -4670,13 +4670,13 @@ Default: 0.20
 <entry id="clubb_mf_alphturb" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Weighting factor for CLUBB TKE on plume entrainment
-Default: 0.0
+Default: 3.0
 </entry>
 
 <entry id="clubb_mf_nup" type="integer" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Real: number of plumes in mass flux ensemble
-Default: 10
+Default: 25
 </entry>
 
 <entry id="clubb_mf_max_L0" type="real" category="conv"
@@ -4688,19 +4688,19 @@ Default: 1.e3
 <entry id="clubb_mf_fdd" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Fraction of autoconversion partitioned to downdrafts (zero means no downdrafts)
-Default: 0.0
+Default: 0.5
 </entry>
 
 <entry id="do_clubb_mf_coldpool" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. turn on cold pool feedback parameterizations
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="clubb_mf_ddalph" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Linear enhancement factor to the downdrafts used for the cold pool calculations
-Default: 200.0
+Default: 12.0
 </entry>
 
 <entry id="clubb_mf_ddbeta" type="real" category="conv"
@@ -4736,7 +4736,7 @@ Default: 3.0
 <entry id="clubb_mf_cldfrac_fac" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
 Factor to increase the ensemble MF plume cloud fractions
-Default: 1.0
+Default: 10.0
 </entry>
 
 <entry id="do_clubb_mf_ustar" type="logical" category="conv"
@@ -4766,7 +4766,7 @@ Default: 1
 <entry id="do_clubb_mf_rhtke" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. use relative humidity thresholds to turn off TKE enhanced entrainment
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="do_clubb_mf_cmt" type="logical" category="conv"
@@ -4778,7 +4778,7 @@ Default: .false.
 <entry id="do_clubb_mf_lscale_perplume" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. set unique entrainment length scale for each plume member
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="do_clubb_mf_coldpool_init" type="logical" category="conv"
@@ -4790,7 +4790,7 @@ Default: .false.
 <entry id="do_clubb_mf_coldpool_perplume" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. set cold pool feedback to unique to each plume member
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="clubb_mf_kseed" type="integer" category="conv"
@@ -4802,7 +4802,7 @@ Default: 1
 <entry id="do_clubb_mf_aloft" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. turn on elevated convective initialization
-Default: .false.
+Default: .true.
 </entry>
 
 <!-- CARMA Sectional Microphysics -->
