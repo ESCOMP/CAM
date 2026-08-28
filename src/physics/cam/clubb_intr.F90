@@ -4700,6 +4700,7 @@ end subroutine clubb_init_cnst
       do k = 1, nzm_clubb
         do i = 1, ncol
           k_cam = top_lev - 1 + k
+          wp2_pbuf(i,k_cam) = wp2_pbuf(i,k_cam) + s_aww(i,k)
           khzm_pbuf(i,k_cam) = khzm(i,k) + &
                clubb_params(i,ic_K) * Lscale_zm(i,k) * sqrt(0.5_r8 * s_aww(i,k))
         end do
@@ -4709,7 +4710,7 @@ end subroutine clubb_init_cnst
       do k = 1, nzm_clubb
         do i = 1, ncol
           k_cam = top_lev - 1 + k
-          khzm_pbuf(i,k_cam)         = khzm(i,k)
+          khzm_pbuf(i,k_cam) = khzm(i,k)
         end do
       end do
     end if
