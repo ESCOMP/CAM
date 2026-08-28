@@ -3303,7 +3303,7 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 
-# clubb-mf unified convection scheme
+# CLUBB-MF unified convection scheme
 add_default($nl, 'do_clubb_mf');
 my $clubb_mf = $nl->get_value('do_clubb_mf');
 
@@ -3701,13 +3701,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'do_clubb_mf');
    my $clubb_mf = $nl->get_value('do_clubb_mf');
    if ($clubb_sgs  =~ /$TRUE/io) {
-
-       #CLUBB+MF tunings
-       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'val'=>'.false.');
-       add_default($nl, 'microp_aero_wsub_scale', 'val'=>'0.5');
-       add_default($nl, 'microp_aero_wsubi_scale', 'val'=>'0.5');
-       add_default($nl, 'clubb_l_predict_upwp_vpwp', 'val'=>'.false.');
-
        add_default($nl, 'do_clubb_mf_diag');
        add_default($nl, 'do_clubb_mf_rad');
        add_default($nl, 'do_clubb_mf_precip');
