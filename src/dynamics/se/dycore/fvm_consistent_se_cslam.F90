@@ -3,7 +3,6 @@ module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
   use dimensions_mod,         only: irecons_tracer
-  use dimensions_mod,         only: kmin_jet,kmax_jet
   use cam_abortutils,         only: endrun
   use cam_logfile,            only: iulog
 
@@ -195,14 +194,11 @@ contains
     !
     if (large_Courant_incr) then
       if(FVM_TIMERS) call t_startf('fvm:fill_halo_fvm:large_Courant')
-      !if (kmin_jet<kmin.or.kmax_jet>kmax) then
-      !  call endrun('ERROR: kmax_jet must be .le. kmax passed to run_consistent_se_cslam')
-      !end if
       ! Determine the extent of the JET that is owned by this thread
-      ActiveJetThread = threadOwnsVertLevel(hybridnew,kmin_jet) .or. threadOwnsVertLevel(hybridnew,kmax_jet)
-      kmin_jet_local = max(kmin_jet,kmin)
-      kmax_jet_local = min(kmax_jet,kmax)
-      klev = kmax_jet-kmin_jet+1
+      ActiveJetThread = threadOwnsVertLevel(hybridnew,1) .or. threadOwnsVertLevel(hybridnew,nlev)
+      kmin_jet_local = max(1,kmin)
+      kmax_jet_local = min(nlev,kmax)
+      klev = nlev
       call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev,active=ActiveJetThread)
       if(FVM_TIMERS) call t_stopf('fvm:fill_halo_fvm:large_Courant')
       if(FVM_TIMERS) call t_startf('fvm:large_Courant_number_increment')
@@ -259,7 +255,6 @@ contains
 
   subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual,gsweights,gspts)
     use fvm_analytic_mod      , only: get_high_order_weights_over_areas
-    use dimensions_mod, only : kmin_jet,kmax_jet
     implicit none
     type (element_t) , intent(in)   :: elem
     type (fvm_struct), intent(inout):: fvm
@@ -586,13 +581,6 @@ contains
               end if
             end do
             fvm%se_flux(i,j,iside,ilev) = mass_flux_se(i,j,iside)-flux
-            if (fvm%se_flux(i,j,iside,ilev)>1.0E-13_r8.and.(ilev<kmin_jet.or.ilev>kmax_jet)) then
-              write(iulog,*) "CN excess flux outside of pre-scribed jet region"
-              write(iulog,*) "Increase jet region with kmin_jet and kmax_jet ",&
-                   ilev,fvm%se_flux(i,j,iside,ilev),mass_flux_se(i,j,iside),flux,flowcase,&
-                   kmin_jet,kmax_jet
-              call endrun('ERROR in CSLAM: local Courant number is > 1; Increase kmin_jet/kmax_jet?')
-            end if
 
             fvm%dp_fvm(i  ,j  ,ilev        ) = fvm%dp_fvm(i  ,j  ,ilev        )-flux
             fvm%     c(i  ,j  ,ilev,1:ntrac) = fvm%     c(i  ,j  ,ilev,1:ntrac)-flux_tracer(1:ntrac)

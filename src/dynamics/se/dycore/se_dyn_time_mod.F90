@@ -4,8 +4,6 @@ module se_dyn_time_mod
   !------------------
   implicit none
   integer,public                :: nsplit=1
-  integer,public                :: nsplit_baseline=-1
-  integer,public                :: rsplit_baseline=-1
   integer,public                :: nmax          ! Max number of timesteps
   integer,public                :: nEndStep      ! Number of End Step
   integer,public                :: ndays         ! Max number of days

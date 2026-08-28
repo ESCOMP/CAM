@@ -8601,12 +8601,14 @@ Default: 0 (i.e., not used)
 <entry id="se_hypervis_subcycle" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
 <entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
@@ -8756,31 +8758,6 @@ Number of SE rsplit time-steps CSLAM supercycles
 rsplit/se_fvm_supercycling must be an integer
 </entry>
 
-<entry id="se_fvm_supercycling_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Number of SE rsplit time-steps CSLAM supercycles in the jet region
-(which is specified by kmin_jet and kmax_jet)
-rsplit/se_fvm_supercycling_jet must be an integer
-se_fvm_supercycling_jet/se_fvm_supercyling must be an integer
-</entry>
-
-<entry id="se_kmin_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Min level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  min index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
-<entry id="se_kmax_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Max level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  max index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
-
 <entry id="se_qsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Tracer advection is done every qsplit dynamics timesteps.
@@ -8796,6 +8773,7 @@ Default: FALSE
 <entry id="se_rsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Vertically lagrangian code vertically remaps every rsplit tracer timesteps.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist.
 </entry>
 
@@ -8879,34 +8857,6 @@ unstructured grid format.  This allows the restart file to be used as an
 initial file, but its use as a restart file will introduce roundoff size
 differences into the simulation.
 Default: .false.
-</entry>
-
-<!-- Nudging -->
-<entry id="se_met_nudge_u" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed winds in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_t" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed temperature in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_p" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed surface pressure in SE dycore
-Units: 1/sec
-Default: 0.0
-</entry>
-
-<entry id="se_met_tevolve" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1" >
-Switch to turn on/off time evolution of dynamics nudging
-Default: 0
 </entry>
 
 <!-- Physics grid entries -->
