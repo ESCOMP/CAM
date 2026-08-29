@@ -3307,7 +3307,7 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
 add_default($nl, 'do_clubb_mf');
 my $clubb_mf = $nl->get_value('do_clubb_mf');
 
-if ($clubb_mf eq '.true.') {
+if ($clubb_mf =~ "true") {
     add_default($nl, 'deep_scheme', 'val'=>'off');
 } else { 
     add_default($nl, 'deep_scheme');
@@ -3429,11 +3429,18 @@ if ($cfg->get('microphys') =~ /^mg/) {
 # Aerosol Namelist options
 add_default($nl, 'microp_aero_bulk_scale');
 add_default($nl, 'microp_aero_npccn_scale');
-add_default($nl, 'microp_aero_wsub_scale');
-add_default($nl, 'microp_aero_wsubi_scale');
 add_default($nl, 'microp_aero_wsub_min');
 add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
+
+# CLUBB-MF cloud droplet activation tuning
+if ($clubb_mf =~ "true") {
+    add_default($nl, 'microp_aero_wsub_scale', 'val'=>'0.5');
+    add_default($nl, 'microp_aero_wsubi_scale', 'val'=>'0.5');
+} else {
+    add_default($nl, 'microp_aero_wsub_scale');
+    add_default($nl, 'microp_aero_wsubi_scale');
+}
 
 # Ice nucleation options
 if (!$simple_phys) {
@@ -3647,7 +3654,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
    add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
-   add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
    add_default($nl, 'clubb_l_e3sm_config');
    add_default($nl, 'clubb_l_enable_relaxed_clipping');
    add_default($nl, 'clubb_l_godunov_upwind_wpxp_ta');
@@ -3663,7 +3669,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_mono_flux_lim_um');
    add_default($nl, 'clubb_l_mono_flux_lim_vm');
    add_default($nl, 'clubb_l_partial_upwind_wp3');
-   add_default($nl, 'clubb_l_predict_upwp_vpwp');
    add_default($nl, 'clubb_l_ho_nontrad_coriolis');
    add_default($nl, 'clubb_l_ho_trad_coriolis');
    add_default($nl, 'clubb_l_rcm_supersat_adj');
@@ -3694,13 +3699,20 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_wpxp_Ri_exp');
    add_default($nl, 'clubb_z_displace');
 
+   # CLUBB-MF runs w/o expldiff & prognostic momentum fluxes 
+   if ($clubb_mf =~ "true") {
+       add_default($nl, 'clubb_l_predict_upwp_vpwp', 'val'=>'.false.');
+       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'val'=>'.false.');
+   } else {
+       add_default($nl, 'clubb_l_predict_upwp_vpwp');
+       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
+   }
+
    #Turn on HB scheme where CLUBB not active
    add_default($nl, 'do_hb_above_clubb');
 
-   #CLUBB+MF options
-   add_default($nl, 'do_clubb_mf');
-   my $clubb_mf = $nl->get_value('do_clubb_mf');
-   if ($clubb_sgs  =~ /$TRUE/io) {
+   # CLUBB-MF options
+   if ($clubb_mf =~ "true") {
        add_default($nl, 'do_clubb_mf_diag');
        add_default($nl, 'do_clubb_mf_rad');
        add_default($nl, 'do_clubb_mf_precip');

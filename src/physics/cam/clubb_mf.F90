@@ -44,7 +44,7 @@ module clubb_mf
   integer  :: clubb_mf_Lopt    = 6
   real(r8) :: clubb_mf_a0      = 0.15_r8
   real(r8) :: clubb_mf_b0      = 1.0_r8
-  real(r8) :: clubb_mf_L0      = 50._r8
+  real(r8) :: clubb_mf_L0      = 200._r8
   real(r8) :: clubb_mf_ent0    = 0.2_r8
   real(r8) :: clubb_mf_alphturb= 3.0_r8
   real(r8) :: clubb_mf_max_L0  = 1.e3_r8

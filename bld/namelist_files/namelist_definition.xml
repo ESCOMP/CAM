@@ -4639,7 +4639,7 @@ Default: .true.
        group="clubb_mf_nl" valid_values="" >
 Entrainment length scale in meters for individual plumes. Not used if
 do_clubb_mf=FALSE.
-Default: 50.0
+Default: 200.0
 </entry>
 
 <entry id="clubb_mf_Lopt" type="integer" category="conv"
