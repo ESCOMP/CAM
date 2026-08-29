@@ -8248,6 +8248,15 @@ Nitrogen deposition stream data filename.
 Grid mesh file corresponding to stream_ndep_data_filename.
 </entry>
 
+<entry id="stream_ndep_mapalgo" type="char*40" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="bilinear,nn,consf,consd,redist,none" >
+Spatial mapping (regrid) method used to map the nitrogen deposition stream data from
+the stream grid to the model grid.  Default 'bilinear'.  Use 'redist' (pure index-based
+redistribution -- no interpolation weights or ESMF route handle) when the ndep data file
+is already on the model grid; this greatly reduces memory and setup cost at high
+resolution (e.g. ne1024pg2).
+</entry>
+
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 File containing MEGAN emissions factors.

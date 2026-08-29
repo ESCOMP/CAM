@@ -1371,6 +1371,7 @@ end function chem_is_active
     use species_sums_diags, only: species_sums_final
     use mo_tuvx, only: tuvx_finalize, tuvx_active
     use short_lived_species, only: short_lived_species_final
+    use mo_photo, only: photo_final
 
     call mee_ion_final()
     call rate_diags_final()
@@ -1379,6 +1380,7 @@ end function chem_is_active
        call tuvx_finalize()
     end if
     call short_lived_species_final()
+    call photo_final()
 
   end subroutine chem_final
 
