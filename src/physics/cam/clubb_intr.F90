@@ -1893,7 +1893,7 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_qtflxup'  , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt updraft flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_thlflxdn' , (/ 'ilev' /), 'A', 'K m/s'    , 'thl downdraft flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_qtflxdn'  , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt downdraft flux (EDMF)', sampled_on_subcycle=.true. )
-      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux (EDMF)', sampled_on_subcycle=.true. )
+      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thl flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'kg/kg m/s', 'qt flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_thvflx'   , (/ 'ilev' /), 'A', 'K m/s'    , 'thv flux (EDMF)', sampled_on_subcycle=.true. )
       call addfld ( 'edmf_uflxup'   , (/ 'ilev' /), 'A', 'm2/s2'    , 'u updraft flux (EDMF)', sampled_on_subcycle=.true. )
