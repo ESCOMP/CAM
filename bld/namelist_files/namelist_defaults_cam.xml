@@ -2924,6 +2924,7 @@
 <zmconv_tiedtke_add                                                    > 0.5     </zmconv_tiedtke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
 <zmconv_tau                                                           > 3600.0    </zmconv_tau>
+<zmconv_tau                                        hgrid="ne120np4"   > 1200.0    </zmconv_tau>
 
 <zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
 <zmconv_parcel_hscale                                                 >  0.5    </zmconv_parcel_hscale>
