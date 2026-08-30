@@ -46,7 +46,7 @@ contains
   ! map all mass variables from gll to fvm
   !
   subroutine phys2dyn_forcings_fvm(elem, fvm, hybrid,nets,nete,no_cslam, tl_f, tl_qdp)
-    use dimensions_mod,         only: np, nc,nlev
+    use dimensions_mod,         only: np, nc,nlev, gll_advect_q
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
     use hybrid_mod,             only: hybrid_t
     use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx
@@ -59,6 +59,8 @@ contains
 
     integer                                             :: ie,i,j,k,m_cnst,nq
     real (kind=r8), dimension(:,:,:,:,:)  , allocatable :: fld_phys, fld_gll
+    real (kind=r8), dimension(:,:,:,:,:)  , allocatable :: fld_fvm
+    real (kind=r8), allocatable, dimension(:,:,:,:,:)   :: qgll
     real (kind=r8)  :: element_ave
     !
     ! for tensor product Lagrange interpolation
@@ -67,6 +69,19 @@ contains
     logical, allocatable :: llimiter(:)
 
     integer :: ierr
+
+    if (gll_advect_q) then
+      allocate(qgll(np,np,nlev,thermodynamic_active_species_num,nets:nete), stat=ierr)
+      if( ierr /= 0 ) then
+         write(iulog,*) 'phys2dyn_forcings_fvm:  qgll allocation error = ',ierr
+         call endrun('phys2dyn_forcings_fvm: failed to allocate qgll array')
+      end if
+      do ie=nets,nete
+        do nq=1,thermodynamic_active_species_num
+          qgll(:,:,:,nq,ie) = elem(ie)%state%Qdp(:,:,:,nq,tl_qdp)/elem(ie)%state%dp3d(:,:,:,tl_f)
+        end do
+      end do
+    end if
 
     if (no_cslam) then
       call endrun("phys2dyn_forcings_fvm: no cslam case: NOT SUPPORTED")
@@ -90,7 +105,11 @@ contains
          write(iulog,*) 'phys2dyn_forcings_fvm:  fld_gll allocation error = ',ierr
          call endrun('phys2dyn_forcings_fvm: failed to allocate fld_gll array')
       end if
-      allocate(llimiter(3), stat=ierr)
+      if (gll_advect_q) then
+         allocate(llimiter(max(3,thermodynamic_active_species_num)), stat=ierr)
+      else
+         allocate(llimiter(3), stat=ierr)
+      end if
       if( ierr /= 0 ) then
          write(iulog,*) 'phys2dyn_forcings_fvm:  llimiter allocation error = ',ierr
          call endrun('phys2dyn_forcings_fvm: failed to allocate llimiter array')
@@ -140,6 +159,34 @@ contains
          end do
        end do
        call t_stopf('p2d-pg2:phys2fvm')
+       if (gll_advect_q) then
+         !
+         ! overwrite SE Q with cslam Q (via forcing)
+         !
+         nflds = thermodynamic_active_species_num
+         allocate(fld_gll(np,np,nlev,nflds,nets:nete))
+         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,nflds,nets:nete))
+         do ie=nets,nete
+           ! compute cslam updated Q value
+           do m_cnst=1,thermodynamic_active_species_num
+             fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_idx(m_cnst))+&
+                  fvm(ie)%fc(1:nc,1:nc,:,thermodynamic_active_species_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:)
+           enddo
+         end do
+         call t_startf('p2d-pg2:fvm2dyn')
+         llimiter(1:nflds) = .false.
+         call fvm2dyn(fld_fvm,fld_gll,hybrid,nets,nete,nlev,nflds,fvm,llimiter(1:nflds))
+         call t_stopf('p2d-pg2:fvm2dyn')
+         !
+         ! fld_gll now holds q cslam value on gll grid; convert to increment (q_new-q_old)
+         !
+         do ie=nets,nete
+           do m_cnst=1,thermodynamic_active_species_num
+             elem(ie)%derived%fq(:,:,:,m_cnst) = fld_gll(:,:,:,m_cnst,ie)-qgll(:,:,:,m_cnst,ie)
+           end do
+         end do
+         deallocate(fld_fvm, fld_gll)
+       end if
        !deallocate arrays allocated in dyn2phys_all_vars
        deallocate(save_air_mass_overlap,save_q_phys,save_q_overlap,&
             save_overlap_area,save_num_overlap,save_overlap_idx,save_dp_phys)
@@ -153,7 +200,11 @@ contains
        !*****************************************************************************************
        !
        ! nflds is ft, fu, fv, + thermo species
-       nflds = 3
+       if (gll_advect_q) then
+         nflds = 3+thermodynamic_active_species_num
+       else
+         nflds = 3
+       end if
        allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
        allocate(fld_gll(np,np,nlev,nflds,nets:nete))
        allocate(llimiter(nflds))
@@ -165,6 +216,18 @@ contains
          fld_phys(1:fv_nphys,1:fv_nphys,:,1,ie)       = fvm(ie)%ft(1:fv_nphys,1:fv_nphys,:)
          fld_phys(1:fv_nphys,1:fv_nphys,:,2,ie)       = fvm(ie)%fm(1:fv_nphys,1:fv_nphys,1,:)
          fld_phys(1:fv_nphys,1:fv_nphys,:,3,ie)       = fvm(ie)%fm(1:fv_nphys,1:fv_nphys,2,:)
+         if (gll_advect_q) then
+           !
+           ! compute cslam mixing ratio with physics update
+           !
+           do m_cnst=1,thermodynamic_active_species_num
+             do k=1,nlev
+               fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst+3,ie) = &
+                    fvm(ie)%c(1:fv_nphys,1:fv_nphys,k,thermodynamic_active_species_idx(m_cnst))+&
+                    fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,thermodynamic_active_species_idx(m_cnst))
+             end do
+           end do
+         end if
        end do
        !
        ! do mapping
@@ -175,6 +238,16 @@ contains
          elem(ie)%derived%fM(:,:,1,:) = fld_gll(:,:,:,2,ie)
          elem(ie)%derived%fM(:,:,2,:) = fld_gll(:,:,:,3,ie)
        end do
+       if (gll_advect_q) then
+         do ie=nets,nete
+           do m_cnst=1,thermodynamic_active_species_num
+             !
+             ! convert fq so that it will effectively overwrite SE q with CSLAM q
+             !
+             elem(ie)%derived%fq(:,:,:,m_cnst) = fld_gll(:,:,:,m_cnst+3,ie)-qgll(:,:,:,m_cnst,ie)
+           end do
+         end do
+       end if
        deallocate(fld_gll)
        do ie=nets,nete
          do m_cnst = 1,ntrac
@@ -183,6 +256,7 @@ contains
        end do
      end if
      deallocate(fld_phys,llimiter)
+     if (allocated(qgll)) deallocate(qgll)
   end subroutine phys2dyn_forcings_fvm
 
   ! for multiple fields

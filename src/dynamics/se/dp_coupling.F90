@@ -352,7 +352,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    use fvm_mapping,      only: phys2dyn_forcings_fvm
    use test_fvm_mapping, only: test_mapping_overwrite_tendencies
    use test_fvm_mapping, only: test_mapping_output_mapped_tendencies
-   use dimensions_mod,   only: use_cslam
+   use dimensions_mod,   only: use_cslam, gll_advect_q
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
@@ -515,16 +515,24 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                            &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                       &
                  dyn_in%elem(ie)%spheremp(:,:)
+            if (gll_advect_q) then
+               do m = 1, qsize
+                  dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                    &
+                       dyn_in%elem(ie)%derived%FQ(:,:,k,m) *               &
+                       dyn_in%elem(ie)%spheremp(:,:)
+               end do
+            end if
          end do
       end if
       kptr = 0
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FM(:,:,:,:), 2*nlev, kptr, ie)
       kptr = kptr + 2*nlev
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
-      if (.not. use_cslam) then
+      if (.not. use_cslam .or. gll_advect_q) then
          !
          ! if using CSLAM qdp is being overwritten with CSLAM values in the dynamics
          ! so no need to do boundary exchange of tracer tendency on GLL grid here
+         ! (unless gll_advect_q, in which case the GLL tracers are forced via FQ too)
          !
          kptr = kptr + nlev
          call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
@@ -541,7 +549,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       kptr = kptr + 2*nlev
       call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
       kptr = kptr + nlev
-      if (.not. use_cslam) then
+      if (.not. use_cslam .or. gll_advect_q) then
          call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
       end if
       if (fv_nphys > 0) then
@@ -555,6 +563,13 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                               &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                          &
                  dyn_in%elem(ie)%rspheremp(:,:)
+            if (gll_advect_q) then
+               do m = 1, qsize
+                  dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                       &
+                       dyn_in%elem(ie)%derived%FQ(:,:,k,m) *                  &
+                       dyn_in%elem(ie)%rspheremp(:,:)
+               end do
+            end if
          end do
       end if
    end do

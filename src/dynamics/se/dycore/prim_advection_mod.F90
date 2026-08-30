@@ -62,7 +62,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam
+    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam,gll_advect_q
     use parallel_mod,   only: parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -88,7 +88,7 @@ contains
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
-    if (.not.use_cslam) then
+    if (.not.use_cslam .or. gll_advect_q) then
       call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
            nthreads=horz_num_threads*advec_remap_num_threads)
       call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &

@@ -753,7 +753,7 @@ contains
     ! limits above. (rsplit=-1 is resolved earlier, in dyn_grid_init via
     ! auto_rsplit)
     !
-    if (hypervis_subcycle==-1)        hypervis_subcycle        = max(1, ceiling(tstep/(1.2_r8*dt_max_hypervis)))
+    if (hypervis_subcycle==-1)        hypervis_subcycle        = max(1, ceiling(tstep/dt_max_hypervis))
     if (hypervis_subcycle_sponge==-1) hypervis_subcycle_sponge = max(1, ceiling(tstep/dt_max_laplacian_top))
     !
     ! actual time-steps with final subcycling (printed below)
@@ -768,24 +768,10 @@ contains
     dt_phys                = dtime
     !
     ! auto-set cslam_q_filter_nsub for the CSLAM-grid del4 Q filter
-    ! (apply_cslam_q_filter_del4 in fvm_filter_mod.F90) from
-    ! the 2D von Neumann bound dt*nu*(8/A_min)^2 < s_hypervis (checkerboard
-    ! eigenvalue 8/A; 1.25 covers gnomonic cell distortion).  nu = cslam_q_filter_nu_fac*nu_p
-    ! (background del4 coefficient, constant in the vertical).
     !
     if (use_cslam .and. cslam_q_filter) then
       ! Smallest CSLAM cell area = 0.833 * mean cell area on the equiangular
-      ! gnomonic cubed sphere.  The area Jacobian
-      !   g(X,Y) = (1+X^2)(1+Y^2)/(1+X^2+Y^2)^(3/2),   X=tan(alpha), Y=tan(beta)
-      ! is largest at the face centre (g=1) and smallest at the panel-edge
-      ! midpoints (g_min = 2/2^(3/2) = 0.7071); its face-average is
-      !   g_mean = (2*pi/3)/(pi/2)^2 = 8/(3*pi) = 0.8488,
-      ! so A_min/A_mean = g_min/g_mean = 0.7071/0.8488 = 0.833.  This ratio is
-      ! independent of resolution (the per-cell solid angle cancels in min/mean)
-      ! and of nc; 0.83 below is that value rounded down -> mildly conservative
-      ! (at most one extra subcycle).  Valid because CSLAM runs only on the
-      ! quasi-uniform cubed sphere: on a variable-resolution mesh the smallest
-      ! cell could be far below 0.83*mean and this estimate would be too loose.
+      ! gnomonic cubed sphere.
       min_area_fvm_m2 = 0.83_r8*4.0_r8*pi/dble(6*ne*ne*nc*nc)*rearth*rearth
       lam4_fvm = 1.25_r8*(8.0_r8/min_area_fvm_m2)**2
       dt_max_cslam_q_filter = s_hypervis/(cslam_q_filter_nu_fac*nu_p*lam4_fvm)
@@ -802,12 +788,11 @@ contains
       dt_max_hypervis_cslam_q = s_hypervis/(nu_q_cslam*normDinv_hypervis)
       if (cslam_q_filter) then
         ! weak background coefficient (nu_q_cslam = 0.5*nu_p): auto-resolve
-        ! from the del4 stability bound (2 at ne30, 1 at ne120)
+        ! from the del4 stability bound
         hypervis_subcycle_cslam_q = max(1, ceiling(dt_remap_actual/dt_max_hypervis_cslam_q))
       else
         ! operational configuration (nu_q_cslam = 3*nu_p): 2 subcycles,
-        ! empirically stable although beyond the linear del4 bound (which
-        ! would demand ~8 at ne30); kept at the validated value
+        ! empirically stable although beyond the linear del4 bound
         hypervis_subcycle_cslam_q = 2
       end if
     else
@@ -881,7 +866,7 @@ contains
   ! se_stability_constants: single source for the stability constants used by
   ! print_cfl and auto_rsplit.
   !=============================================================================
-  subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
+  pure subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
     use dimensions_mod, only: np
     use control_mod,    only: tstep_type
 

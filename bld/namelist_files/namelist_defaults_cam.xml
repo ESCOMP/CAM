@@ -3241,12 +3241,9 @@
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
-<!-- CSLAM-grid Q filter: on (nu = 1.0*nu_p, the validated filter configuration)
-     everywhere except ne30pg3 LT/MT, which run the operational no-filter setup -->
-<se_cslam_q_filter_nu_fac> 1.0 </se_cslam_q_filter_nu_fac>
-<se_cslam_q_filter_nu_fac hgrid="ne30np4" npg="3" model_top="lt"> -1 </se_cslam_q_filter_nu_fac>
-<se_cslam_q_filter_nu_fac hgrid="ne30np4" npg="3" model_top="mt"> -1 </se_cslam_q_filter_nu_fac>
-<se_cslam_q_filter_nu_fac hgrid="ne30np4" npg="3" model_top="mt" waccm_phys="1"> 1.0 </se_cslam_q_filter_nu_fac>
+<se_cslam_q_filter_nu_fac> -1 </se_cslam_q_filter_nu_fac>
+
+<se_gll_advect_q               > .false. </se_gll_advect_q>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 

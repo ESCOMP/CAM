@@ -8766,6 +8766,20 @@ Default: Set by build-namelist.
   Default: -1 (off)
 </entry>
 
+<entry id="se_gll_advect_q" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE (SE-CSLAM only), the thermodynamically active tracers are also
+  advected on the GLL grid (with the standard scalar tracer hyperviscosity)
+  and coupled to CAM physics through a forcing increment computed in
+  dynamics-physics coupling (the pre-cam6_3_152 formulation), instead of
+  overwriting the GLL tracer state with CSLAM values every vertical
+  remapping time-step.  Removes the surface-pressure noise associated with
+  the overwrite.  The GLL-side del4 applied after cslam2gll (and retuned by
+  se_cslam_q_filter_nu_fac) is not used when TRUE.
+  Ignored for non-CSLAM (se_fv_nphys=0) configurations.
+  Default: FALSE
+</entry>
+
 <entry id="se_fvm_supercycling" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of SE rsplit time-steps CSLAM supercycles

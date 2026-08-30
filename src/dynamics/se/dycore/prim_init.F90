@@ -24,6 +24,7 @@ contains
     use thread_mod,             only: max_num_threads
     use dimensions_mod,         only: np, nlev, nelem, nelemd, nelemdmax, qsize_d
     use dimensions_mod,         only: GlobalUniqueCols, fv_nphys,irecons_tracer
+    use dimensions_mod,         only: gll_advect_q
     use control_mod,            only: topology, partmethod
     use element_mod,            only: element_t, allocate_element_desc
     use fvm_mod,                only: fvm_init1
@@ -72,6 +73,7 @@ contains
     integer                        :: nets, nete
     integer                        :: nelem_edge
     integer                        :: ierr=0, j
+    integer                        :: qdp_tl
     logical,           parameter   :: Debug = .FALSE.
 
     real(r8),          allocatable :: aratio(:,:)
@@ -172,8 +174,13 @@ contains
        call allocate_element_desc(elem)
        !Allocate Qdp and derived FQ arrays:
        if(fv_nphys > 0) then !SE-CSLAM
+          if (gll_advect_q) then
+             qdp_tl = 2  ! GLL double advection needs two Qdp time levels
+          else
+             qdp_tl = 1  ! Qdp overwritten by cslam2gll every remap step
+          end if
           do ie=1,nelemd
-             allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,1), stat=ierr)
+             allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,qdp_tl), stat=ierr)
              if( ierr /= 0 ) then
                 call endrun('prim_init1: failed to allocate Qdp array')
              end if

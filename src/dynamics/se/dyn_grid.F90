@@ -41,7 +41,7 @@ use cam_abortutils,         only: endrun
 use pio,                    only: file_desc_t
 
 use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
-use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
+use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam, gll_advect_q
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t
@@ -188,7 +188,12 @@ subroutine dyn_grid_init()
       end if
 
       if (fv_nphys > 0) then
-         qsize_local = 3
+         if (gll_advect_q) then
+            ! FM, FT + FQ for the GLL-advected thermodynamic tracers
+            qsize_local = thermodynamic_active_species_num + 3
+         else
+            qsize_local = 3
+         end if
       else
          qsize_local = pcnst + 3
       end if

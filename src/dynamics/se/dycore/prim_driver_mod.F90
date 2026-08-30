@@ -203,7 +203,7 @@ contains
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc_h
-    use dimensions_mod,         only: use_cslam,fv_nphys
+    use dimensions_mod,         only: use_cslam,fv_nphys,gll_advect_q
     use fvm_mapping,            only: cslam2gll
     type (element_t) , intent(inout) :: elem(:)
     type(fvm_struct), intent(inout)  :: fvm(:)
@@ -277,7 +277,7 @@ contains
       !
       ! right after physics overwrite Qdp with CSLAM values
       !
-      if (use_cslam.and.nsubstep==1.and.r==1) then
+      if (use_cslam.and..not.gll_advect_q.and.nsubstep==1.and.r==1) then
          call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
          call cslam2gll(elem, fvm, hybrid,nets,nete, tl%n0, n0_qdp)
          if (del4_cslam_qgll) &
@@ -414,7 +414,7 @@ contains
     use derivative_mod,         only: subcell_integration
     use prim_advance_mod,       only: hypervis_Qdp
     use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
-    use dimensions_mod,         only: use_cslam,fvm_supercycling,del4_cslam_qgll
+    use dimensions_mod,         only: use_cslam,fvm_supercycling,del4_cslam_qgll,gll_advect_q
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
     use se_dyn_time_mod,        only: timelevel_qdp
     use fvm_mapping,            only: cslam2gll
@@ -538,17 +538,27 @@ contains
     ! special case in CAM: if CSLAM tracers are turned on , qsize=1 but this tracer should
     ! not be advected.  This will be cleaned up when the physgrid is merged into CAM trunk
     ! Currently advecting all species
-    if (.not.use_cslam) then
+    if (.not.use_cslam .or. gll_advect_q) then
       call t_startf('prim_advec_tracers_remap')
-      region_num_threads=tracer_num_threads
+      if (use_cslam) then
+        ! Deactivate threading in the tracer dimension if this is a CSLAM run
+        region_num_threads = 1
+      else
+        region_num_threads = tracer_num_threads
+      end if
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-      hybridnew = config_thread_region(hybrid,'tracer')
+      if (use_cslam) then
+        hybridnew = config_thread_region(hybrid,'serial')
+      else
+        hybridnew = config_thread_region(hybrid,'tracer')
+      end if
       call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
       call t_stopf('prim_advec_tracers_remap')
-   else
+    end if
+   if (use_cslam) then
       !
       ! only run fvm transport every fvm_supercycling rstep
       !
@@ -583,10 +593,12 @@ contains
             end do
           end do
        end do
-       call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
-       call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
-       if (del4_cslam_qgll) &
-            call hypervis_Qdp(elem, deriv, hybrid, tl%np1, np1_qdp, dt_remap, nets, nete)
+       if (.not.gll_advect_q) then
+          call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
+          call cslam2gll(elem, fvm, hybrid,nets,nete, tl%np1, np1_qdp)
+          if (del4_cslam_qgll) &
+               call hypervis_Qdp(elem, deriv, hybrid, tl%np1, np1_qdp, dt_remap, nets, nete)
+       end if
       end if
 
 #ifdef waccm_debug

@@ -268,7 +268,7 @@ contains
 
 
   subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
-    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, use_cslam
+    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, use_cslam, gll_advect_q
     use element_mod,            only: element_t
     use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
@@ -340,7 +340,7 @@ contains
       !
       ! tracers
       !
-      if (.not.use_cslam.and.dt_local_tracer>0) then
+      if ((.not.use_cslam.or.gll_advect_q).and.dt_local_tracer>0) then
 #if (defined COLUMN_OPENMP)
     !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
 #endif
