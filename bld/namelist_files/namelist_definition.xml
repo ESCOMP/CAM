@@ -8763,7 +8763,7 @@ Default: Set by build-namelist.
   nu_filter = se_cslam_q_filter_nu_fac*nu_p (and the GLL-side del4 on water
   vapor after cslam2gll is retuned to a weak background value).
   If &lt;= 0 the filter is off.
-  Default: -1 (off)
+  Default: 0.5
 </entry>
 
 <entry id="se_gll_advect_q" type="logical" category="se"
@@ -8777,7 +8777,7 @@ Default: Set by build-namelist.
   the overwrite.  The GLL-side del4 applied after cslam2gll (and retuned by
   se_cslam_q_filter_nu_fac) is not used when TRUE.
   Ignored for non-CSLAM (se_fv_nphys=0) configurations.
-  Default: FALSE
+  Default: TRUE
 </entry>
 
 <entry id="se_fvm_supercycling" type="integer" category="se"

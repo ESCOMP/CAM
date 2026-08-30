@@ -3241,9 +3241,9 @@
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
-<se_cslam_q_filter_nu_fac> -1 </se_cslam_q_filter_nu_fac>
+<se_cslam_q_filter_nu_fac> 0.5 </se_cslam_q_filter_nu_fac>
 
-<se_gll_advect_q               > .false. </se_gll_advect_q>
+<se_gll_advect_q               > .true.  </se_gll_advect_q>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 
