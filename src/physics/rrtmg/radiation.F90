@@ -10,7 +10,7 @@ use shr_kind_mod,        only: r8=>shr_kind_r8
 use spmd_utils,          only: masterproc
 use ppgrid,              only: pcols, pver, pverp, begchunk, endchunk
 use physics_types,       only: physics_state, physics_ptend
-use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+use physics_buffer,      only: physics_buffer_desc, pbuf_get_field
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair
 
@@ -803,7 +803,6 @@ subroutine radiation_tend( &
    integer :: IdxDay(pcols)  ! Indices of daylight columns
    integer :: IdxNite(pcols) ! Indices of night columns
 
-   integer :: itim_old
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds- whatever they are"
@@ -954,15 +953,14 @@ subroutine radiation_tend( &
    end do
 
    ! Associate pointers to physics buffer fields
-   itim_old = pbuf_old_tim_idx()
    if (cldfsnow_idx > 0) then
-      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow )
    endif
    if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-      call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau )
    endif
 
-   call pbuf_get_field(pbuf, cld_idx, cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx, cld )
 
    call pbuf_get_field(pbuf, qrs_idx, qrs)
    call pbuf_get_field(pbuf, qrl_idx, qrl)

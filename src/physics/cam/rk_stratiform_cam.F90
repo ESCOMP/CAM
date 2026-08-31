@@ -174,7 +174,7 @@ subroutine rk_stratiform_cam_register
    use constituents, only: cnst_add, pcnst
    use physconst,    only: mwh2o, cpair
 
-   use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
+   use physics_buffer, only : pbuf_add_field, dtype_r8
 
    !-----------------------------------------------------------------------
 
@@ -187,13 +187,13 @@ subroutine rk_stratiform_cam_register
    call cnst_add(cnst_names(2), mwh2o, cpair, 0._r8, ixcldice, &
       longname='Grid box averaged cloud ice amount', is_convtran1=.true.)
 
-   call pbuf_add_field('QCWAT',  'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), qcwat_idx)
-   call pbuf_add_field('LCWAT',  'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), lcwat_idx)
-   call pbuf_add_field('TCWAT',  'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tcwat_idx)
+   call pbuf_add_field('QCWAT',  'global', dtype_r8, (/pcols,pver/), qcwat_idx)
+   call pbuf_add_field('LCWAT',  'global', dtype_r8, (/pcols,pver/), lcwat_idx)
+   call pbuf_add_field('TCWAT',  'global', dtype_r8, (/pcols,pver/), tcwat_idx)
 
-   call pbuf_add_field('CLD',    'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), cld_idx) ! cloud_area_fraction
-   call pbuf_add_field('AST',    'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), ast_idx) ! stratiform_cloud_area_fraction
-   call pbuf_add_field('CONCLD', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), concld_idx) ! convective_cloud_area_fraction
+   call pbuf_add_field('CLD',    'global', dtype_r8, (/pcols,pver/), cld_idx) ! cloud_area_fraction
+   call pbuf_add_field('AST',    'global', dtype_r8, (/pcols,pver/), ast_idx) ! stratiform_cloud_area_fraction
+   call pbuf_add_field('CONCLD', 'global', dtype_r8, (/pcols,pver/), concld_idx) ! convective_cloud_area_fraction
 
    call pbuf_add_field('FICE',   'physpkg', dtype_r8, (/pcols,pver/), fice_idx) ! mass_fraction_of_ice_content_within_stratiform_cloud
 
@@ -457,7 +457,7 @@ subroutine rk_stratiform_cam_tend( &
    use physics_types,    only: physics_ptend_sum,  physics_state_copy
    use physics_types,    only: physics_state_dealloc
    use cam_history,      only: outfld
-   use physics_buffer,   only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+   use physics_buffer,   only: physics_buffer_desc, pbuf_get_field
 
    ! ccppized version of the RK scheme
    use rk_stratiform,    only: rk_stratiform_sedimentation_run
@@ -512,7 +512,6 @@ subroutine rk_stratiform_cam_tend( &
    integer :: i, k, m
    integer :: lchnk                                  ! Chunk identifier
    integer :: ncol                                   ! Number of atmospheric columns
-   integer :: itim_old
 
    ! Physics buffer fields
    real(r8), pointer :: landm(:)             ! Land fraction ramped over water
@@ -629,14 +628,13 @@ subroutine rk_stratiform_cam_tend( &
 
    call pbuf_get_field(pbuf, landm_idx,   landm) ! smoothed_land_area_fraction
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, qcwat_idx,   qcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-   call pbuf_get_field(pbuf, tcwat_idx,   tcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-   call pbuf_get_field(pbuf, lcwat_idx,   lcwat,   start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, qcwat_idx,   qcwat )
+   call pbuf_get_field(pbuf, tcwat_idx,   tcwat )
+   call pbuf_get_field(pbuf, lcwat_idx,   lcwat )
 
-   call pbuf_get_field(pbuf, cld_idx,     cld,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-   call pbuf_get_field(pbuf, concld_idx,  concld,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-   call pbuf_get_field(pbuf, ast_idx,     ast,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx,     cld )
+   call pbuf_get_field(pbuf, concld_idx,  concld )
+   call pbuf_get_field(pbuf, ast_idx,     ast )
 
    call pbuf_get_field(pbuf, fice_idx,    fice)
 

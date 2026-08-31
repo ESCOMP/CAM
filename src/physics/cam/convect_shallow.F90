@@ -83,7 +83,7 @@
   ! Purpose : Register fields with the physics buffer !
   !-------------------------------------------------- !
 
-  use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
+  use physics_buffer, only : pbuf_add_field, dtype_r8
   use phys_control, only: use_gw_convect_sh
 
   call phys_getopts( shallow_scheme_out = shallow_scheme, microp_scheme_out = microp_scheme)
@@ -93,7 +93,7 @@
   call pbuf_add_field('RPRDTOT',    'physpkg' ,dtype_r8,(/pcols,pver/),       rprdtot_idx )
   call pbuf_add_field('CLDTOP',     'physpkg' ,dtype_r8,(/pcols,1/),          cldtop_idx )
   call pbuf_add_field('CLDBOT',     'physpkg' ,dtype_r8,(/pcols,1/),          cldbot_idx )
-  call pbuf_add_field('cush',       'global'  ,dtype_r8,(/pcols,dyn_time_lvls/), cush_idx )
+  call pbuf_add_field('cush',       'global'  ,dtype_r8,(/pcols/), cush_idx )
   call pbuf_add_field('NEVAPR_SHCU','physpkg' ,dtype_r8,(/pcols,pver/),       nevapr_shcu_idx )
   call pbuf_add_field('PREC_SH',    'physpkg' ,dtype_r8,(/pcols/),            prec_sh_idx )
   call pbuf_add_field('SNOW_SH',    'physpkg' ,dtype_r8,(/pcols/),            snow_sh_idx )
@@ -309,7 +309,7 @@
                                    qc     , qc2     , rliq     , rliq2    , &
                                    state  , ptend_all, pbuf, cam_in)
 
-   use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field, pbuf_old_tim_idx
+   use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
    use cam_history,     only : outfld
    use physics_types,   only : physics_state, physics_ptend
    use physics_types,   only : physics_ptend_init, physics_update
@@ -410,7 +410,7 @@
    type(physics_state) :: state1                                         ! Locally modify for evaporation to use, not returned
    type(physics_ptend) :: ptend_loc                                      ! Local tendency from processes, added up to return as ptend_all
 
-   integer itim_old, ifld
+   integer ifld
    real(r8), pointer, dimension(:,:) :: cld
    real(r8), pointer, dimension(:,:) :: concld
    real(r8), pointer, dimension(:,:) :: icwmr                            ! In cloud water + ice mixing ratio
@@ -457,9 +457,8 @@
    ! Associate pointers with physics buffer fields
 
 
-   itim_old   =  pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-   call pbuf_get_field(pbuf, concld_idx,      concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,         cld)
+   call pbuf_get_field(pbuf, concld_idx,      concld)
 
    call pbuf_get_field(pbuf, icwmrsh_idx,     icwmr)
 
@@ -545,7 +544,7 @@
       lq(:) = .TRUE.
       call physics_ptend_init( ptend_loc, state%psetcols, 'UWSHCU', ls=.true., lu=.true., lv=.true., lq=lq  )
 
-      call pbuf_get_field(pbuf, cush_idx, cush  ,(/1,itim_old/),  (/pcols,1/))
+      call pbuf_get_field(pbuf, cush_idx, cush  )
       call pbuf_get_field(pbuf, tke_idx,  tke)
 
 

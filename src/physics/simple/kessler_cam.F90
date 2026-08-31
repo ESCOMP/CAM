@@ -2,7 +2,7 @@ module kessler_cam
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use ppgrid,         only: pcols, pver
-  use physics_buffer, only: physics_buffer_desc, pbuf_init_time, dtype_r8, &
+  use physics_buffer, only: physics_buffer_desc, dtype_r8, &
                             pbuf_add_field, pbuf_get_field
 
   implicit none

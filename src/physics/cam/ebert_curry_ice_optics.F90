@@ -5,7 +5,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use physconst,        only: gravit
 use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use constituents,     only: cnst_get_ind
 use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
@@ -102,14 +102,12 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
    real(r8), parameter :: cldeps = 0.0_r8
 
    integer :: ns, i, k, indxsl, lchnk, Nday
-   integer :: itim_old
    real(r8) :: tmp1i, tmp2i, tmp3i, g
 
    Nday = state%ncol
    lchnk = state%lchnk
 
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx,cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,cldn)
    call pbuf_get_field(pbuf, rei_idx,rei)
 
    if(oldicewp) then
@@ -194,7 +192,7 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
 
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: rei
-   integer :: ncol, itim_old, lwband, i, k, lchnk
+   integer :: ncol, lwband, i, k, lchnk
 
     real(r8) :: kabs, kabsi
 
@@ -207,9 +205,8 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    ncol = state%ncol
    lchnk = state%lchnk
 
-   itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
-   call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, cld_idx,   cldn)
 
 
    if(oldicewp) then

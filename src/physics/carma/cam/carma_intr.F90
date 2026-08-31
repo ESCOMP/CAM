@@ -46,7 +46,7 @@ module carma_intr
   use constituents,   only: pcnst, cnst_add, cnst_get_ind, &
                             cnst_name, cnst_longname
   use cam_abortutils, only: endrun
-  use physics_buffer, only: physics_buffer_desc, pbuf_add_field, pbuf_old_tim_idx, &
+  use physics_buffer, only: physics_buffer_desc, pbuf_add_field, &
                             pbuf_get_index, pbuf_get_field, dtype_r8, pbuf_set_field
   use pio,            only: var_desc_t
   use radconstants,   only: nlwbands, nswbands
@@ -2098,7 +2098,6 @@ contains
     integer                             :: maxbin
 
     ! physics buffer
-    integer itim_old
     real(r8), pointer, dimension(:,:)   :: cldn                   ! cloud fraction
     real(r8), pointer, dimension(:,:)   :: cme
     real(r8), pointer, dimension(:,:)   :: prain
@@ -2126,9 +2125,8 @@ contains
     lchnk = state%lchnk
 
     ! Associate pointers with physics buffer fields
-    itim_old = pbuf_old_tim_idx()
 
-    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, (/1,1,itim_old/),(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn)
     call pbuf_get_field(pbuf, pbuf_get_index('QME'), cme )
     call pbuf_get_field(pbuf, pbuf_get_index('PRAIN'), prain )
     call pbuf_get_field(pbuf, pbuf_get_index('NEVAPR'), evapr )

@@ -374,7 +374,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physics_types, only: physics_ptend_sum, physics_ptend_dealloc
 
    use time_manager,  only: get_nstep, is_first_step
-   use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
+   use physics_buffer, only : pbuf_get_field, physics_buffer_desc
    use constituents,  only: pcnst, cnst_get_ind, cnst_is_convtran1
    use physconst,     only: gravit, latice, latvap, tmelt, cpwv, cpliq, rh2o
    use phys_grid,     only: get_rlat_all_p, get_rlon_all_p
@@ -411,7 +411,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
    integer :: lchnk                   ! chunk identifier
    integer :: ncol                    ! number of atmospheric columns
-   integer :: itim_old                ! for physics buffer fields
 
    real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
    real(r8) :: ntprprd(pcols,pver)    ! evap outfld: net precip production in layer
@@ -505,8 +504,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
 ! Associate pointers with physics buffer fields
 !
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   call pbuf_get_field(pbuf, cld_idx,         cld )
 
    call pbuf_get_field(pbuf, icwmrdp_idx,     ql )
    call pbuf_get_field(pbuf, rprddp_idx,      rprd )

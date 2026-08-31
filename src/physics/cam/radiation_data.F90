@@ -507,7 +507,7 @@ contains
     use physics_types,    only: physics_state
     use camsrfexch,       only: cam_in_t     
     use constituents,     only: cnst_get_ind
-    use physics_buffer,   only: pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,   only: pbuf_get_field
     use drv_input_data,   only: drv_input_data_freq
     use physconst,        only: cpair
 
@@ -524,7 +524,7 @@ contains
     character(len=32) :: name, aername
     real(r8), pointer :: mmr(:,:)
 
-    integer :: lchnk, itim_old, ifld
+    integer :: lchnk, ifld
     integer :: ixcldice              ! cloud ice water index
     integer :: ixcldliq              ! cloud liquid water index
     integer :: icol
@@ -622,9 +622,8 @@ contains
     call outfld(lwup_fldn,  cam_in%lwup,  pcols, lchnk   )
     call outfld(ts_fldn,    cam_in%ts,    pcols, lchnk   )
 
-    itim_old = pbuf_old_tim_idx()
 
-    call pbuf_get_field(pbuf, cld_ifld,    ptr, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, cld_ifld,    ptr )
     call outfld(cld_fldn,    ptr, pcols, lchnk )
 
     call pbuf_get_field(pbuf, rel_ifld,    ptr )
@@ -656,7 +655,7 @@ contains
        call pbuf_get_field(pbuf,  icswp_ifld, ptr   )
        call outfld(icswp_fldn,    ptr, pcols, lchnk   )       
 
-       call pbuf_get_field(pbuf,  cldfsnow_ifld, ptr, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+       call pbuf_get_field(pbuf,  cldfsnow_ifld, ptr )
        call outfld(cldfsnow_fldn, ptr, pcols, lchnk   )
 
     else
@@ -743,7 +742,7 @@ contains
   subroutine rad_data_read(indata, phys_state, pbuf2d, cam_in, recno )
 
     use camsrfexch,       only: cam_in_t
-    use physics_buffer,   only: pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,   only: pbuf_get_field
     use constituents,     only: cnst_get_ind
     use tropopause,       only: tropopause_find_cam, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
 
@@ -812,7 +811,7 @@ contains
     type(drv_input_3d_t) :: volcgeom2_ptrs(begchunk:endchunk)
     type(drv_input_3d_t) :: volcgeom3_ptrs(begchunk:endchunk)
 
-    integer :: i, k, c, ncol, itim
+    integer :: i, k, c, ncol
 
     integer :: ixcldice   ! cloud ice water index
     integer :: ixcldliq   ! cloud liquid water index
@@ -833,7 +832,6 @@ contains
     call cnst_get_ind('CLDLIQ', ixcldliq)
 
     ! phys buffer time index
-    itim = pbuf_old_tim_idx()
 
     ! setup the data pointers
 !$OMP PARALLEL DO PRIVATE (C,pbuf)
@@ -864,7 +862,7 @@ contains
        lwup_ptrs     (c)%array => cam_in(c)%lwup
        ts_ptrs       (c)%array => cam_in(c)%ts
 
-       call pbuf_get_field(pbuf, cld_ifld, cld_ptrs   (c)%array, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+       call pbuf_get_field(pbuf, cld_ifld, cld_ptrs   (c)%array )
        call pbuf_get_field(pbuf, rel_ifld,   rel_ptrs(c)%array )
        call pbuf_get_field(pbuf, rei_ifld,   rei_ptrs(c)%array )
 
@@ -879,7 +877,7 @@ contains
           call pbuf_get_field(pbuf, iciwp_ifld, iciwp_ptrs  (c)%array )
           call pbuf_get_field(pbuf, iclwp_ifld, iclwp_ptrs  (c)%array )
           call pbuf_get_field(pbuf, icswp_ifld, icswp_ptrs  (c)%array )
-          call pbuf_get_field(pbuf, cldfsnow_ifld, cldfsnow_ptrs(c)%array, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+          call pbuf_get_field(pbuf, cldfsnow_ifld, cldfsnow_ptrs(c)%array )
        else
           call pbuf_get_field(pbuf, nmxrgn_ifld,   nmxrgn_ptrs(c)%array )
           call pbuf_get_field(pbuf, pmxrgn_ifld,   pmxrgn_ptrs(c)%array )

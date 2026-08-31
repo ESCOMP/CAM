@@ -16,7 +16,6 @@ module physics_buffer
   use ppgrid,         only: pcols, begchunk, endchunk, psubcols
   use cam_logfile,    only: iulog
   use pio,            only: var_desc_t
-  use dyn_grid,       only: ptimelevels
   use cam_abortutils, only: endrun
   use buffer,         only: buffer_field_allocate, buffer_field_deallocate, buffer_get_field_ptr, buffer_set_field, &
                             dtype_i4, dtype_r4, dtype_r8, buffer_field_default_type, buffer_field_is_alloc
@@ -40,8 +39,6 @@ module physics_buffer
   !      NB: There should be ngrid_types entries
   !
   character(len=5), parameter :: field_grid_suff(ngrid_types) = (/ "     ", "_SCOL" /)
-
-  integer :: old_time_idx = 1
 
   ! The API has strings 'GLOBAL' and 'PHYSPKG' which correspond to these
   ! integer constants if global_allocate_all is false fields allocated with
@@ -120,9 +117,6 @@ module physics_buffer
 
   public :: pbuf_initialize,      &
             pbuf_readnl,          &! read namelist options
-            pbuf_init_time,       &! Initialize dyn_time_lvls
-            pbuf_old_tim_idx,     &! return the index for the oldest time
-            pbuf_update_tim_idx,  &! update the index for the oldest time
             pbuf_col_type_index,  &
             pbuf_get_field_name,  &
             pbuf_get_field,       &
@@ -147,9 +141,6 @@ module physics_buffer
   public :: pbuf_get_dim_strings
   public :: pbuf_cam_snapshot_register
 
-   integer, public :: dyn_time_lvls  ! number of time levels in physics buffer (dycore dependent)
-
-
   !
   !  Currentpbufflds is incremented in calls to pbuf_add_field and determines the size
   !  of the allocated pbuf2d
@@ -163,11 +154,6 @@ module physics_buffer
   !
 
   logical :: buffer_initialized =.false.
-
-  !
-  ! private pio descriptor for time
-  !
-  type(var_desc_t) :: timeidx_desc
 
   ! Set to .true. for more output
   logical :: debug = .false.
@@ -223,30 +209,6 @@ subroutine pbuf_readnl(nlfile)
 end subroutine pbuf_readnl
 
 !===============================================================================
-
-  !
-  ! Initialize dyn_time_lvls
-  !
-  subroutine pbuf_init_time()
-     dyn_time_lvls = ptimelevels - 1
-  end subroutine pbuf_init_time
-
-  !
-  ! Return index of oldest time sample in the physics buffer.
-  !
-
-  function pbuf_old_tim_idx()
-     integer :: pbuf_old_tim_idx
-     pbuf_old_tim_idx = old_time_idx
-  end function pbuf_old_tim_idx
-
-  !
-  ! Update index of old time sample in the physics buffer.
-  !
-
-  subroutine pbuf_update_tim_idx()
-     old_time_idx = mod(old_time_idx, dyn_time_lvls) + 1
-  end subroutine pbuf_update_tim_idx
 
   !
   ! pbuf_col_type_index returns an index for use with pbuf calls
@@ -1335,7 +1297,7 @@ end subroutine pbuf_readnl
 ! in the file if it does not already exist.
 !
   subroutine pbuf_init_restart(File, pbuf2d)
-    use pio,              only: file_desc_t, pio_int
+    use pio,              only: file_desc_t
     use cam_pio_utils,    only: cam_pio_def_dim, cam_pio_def_var
     use phys_grid,        only: phys_decomp
     use cam_grid_support, only: cam_grid_get_file_dimids, cam_grid_dimensions
@@ -1388,14 +1350,11 @@ end subroutine pbuf_readnl
 
     end do
 
-    call cam_pio_def_var(File, 'pbuf_time_idx', pio_int, timeidx_desc,        &
-         existOK=.false.)
-
   end subroutine pbuf_init_restart
 
 
   subroutine pbuf_write_restart(File, pbuf2d)
-    use pio,              only: file_desc_t, pio_put_var
+    use pio,              only: file_desc_t
     use cam_grid_support, only: cam_grid_dimensions
     use phys_grid,        only: phys_decomp
 
@@ -1406,7 +1365,7 @@ end subroutine pbuf_readnl
     ! Local Variables
     type(physics_buffer_desc), pointer                :: pbufhdr(:)
 
-    integer                                           :: index, dtype, ierr
+    integer                                           :: index, dtype
     integer                                           :: gdimlens(2)
     integer                                           :: grank
 
@@ -1427,7 +1386,6 @@ end subroutine pbuf_readnl
         end select
       end if
     end do
-    ierr = pio_put_var(File, timeidx_desc, (/old_time_idx/))
 
   end subroutine pbuf_write_restart
 
@@ -1521,7 +1479,7 @@ end subroutine pbuf_readnl
   subroutine pbuf_read_restart(File, pbuf2d)
     use cam_grid_support, only: cam_grid_dimensions
     use phys_grid,        only: phys_decomp
-    use pio,              only: file_desc_t, pio_inq_varid, pio_get_var
+    use pio,              only: file_desc_t
 
     ! Dummy Variables
     type(File_desc_t),                 intent(inout) :: File
@@ -1530,7 +1488,7 @@ end subroutine pbuf_readnl
     ! Local Variables
     type(physics_buffer_desc), pointer               :: pbufhdr(:)
 
-    integer                                          :: index, dtype, ierr
+    integer                                          :: index, dtype
     integer                                          :: gdimlens(2) ! Horizontal grid dimensions
     integer                                          :: grank
 
@@ -1540,8 +1498,6 @@ end subroutine pbuf_readnl
 
     gdimlens = 1
     call cam_grid_dimensions(phys_decomp, gdimlens(1:2), grank)
-    ierr = pio_inq_varid(File, 'pbuf_time_idx', timeidx_desc)
-    ierr = pio_get_var(File, timeidx_desc, old_time_idx)
 
     do index = 1, currentpbufflds
       if(pbufhdr(index)%hdr%persistence == persistence_global) then

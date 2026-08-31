@@ -113,7 +113,7 @@ contains
     !
     !-----------------------------------------------------------------------
     use cam_abortutils,     only: endrun
-    use physics_buffer,     only: pbuf_init_time, pbuf_cam_snapshot_register
+    use physics_buffer,     only: pbuf_cam_snapshot_register
     use physics_buffer,     only: pbuf_add_field, dtype_r8, pbuf_register_subcol
     use constituents,       only: cnst_add, cnst_chk_dim
 
@@ -183,9 +183,6 @@ contains
                       cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     subcol_scheme = subcol_get_scheme()
-
-    ! Initialize dyn_time_lvls
-    call pbuf_init_time()
 
     ! Register the subcol scheme
     call subcol_register()
@@ -366,7 +363,7 @@ contains
   subroutine phys_inidat( cam_out, pbuf2d )
     use cam_abortutils,      only: endrun
 
-    use physics_buffer,      only: pbuf_get_index, physics_buffer_desc, pbuf_set_field, dyn_time_lvls
+    use physics_buffer,      only: pbuf_get_index, physics_buffer_desc, pbuf_set_field
 
 
     use cam_initfiles,       only: initial_file_get_id, topo_file_get_id
@@ -382,7 +379,7 @@ contains
 
     type(cam_out_t),     intent(inout) :: cam_out(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    integer :: lchnk, m, n, i, k, ncol
+    integer :: lchnk, m, i, k, ncol
     type(file_desc_t), pointer :: fh_ini, fh_topo
     character(len=8) :: fieldname
     real(r8), pointer :: tptr(:,:), tptr_2(:,:), tptr3d(:,:,:), tptr3d_2(:,:,:)
@@ -491,9 +488,7 @@ contains
           if(masterproc) write(iulog,*) trim(fieldname), ' initialized to 1000.'
           tptr=1000._r8
        end if
-       do n=1,dyn_time_lvls
-          call pbuf_set_field(pbuf2d, m, tptr, start=(/1,n/), kount=(/pcols,1/))
-       end do
+          call pbuf_set_field(pbuf2d, m, tptr)
        deallocate(tptr)
     end if
 
@@ -511,9 +506,7 @@ contains
     call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
          tptr3d, found, gridname='physgrid')
     if(found) then
-       do n = 1, dyn_time_lvls
-          call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-       end do
+          call pbuf_set_field(pbuf2d, m, tptr3d)
     else
        call pbuf_set_field(pbuf2d, m, 0._r8)
        if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
@@ -535,9 +528,7 @@ contains
              tptr3d = huge(1.0_r8)
           end if
        end if
-       do n = 1, dyn_time_lvls
-          call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-       end do
+          call pbuf_set_field(pbuf2d, m, tptr3d)
     end if
 
     fieldname = 'ICCWAT'
@@ -546,17 +537,13 @@ contains
        call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
           tptr3d, found, gridname='physgrid')
        if(found) then
-          do n = 1, dyn_time_lvls
-             call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-          end do
+             call pbuf_set_field(pbuf2d, m, tptr3d)
        else
           call cnst_get_ind('CLDICE', ixcldice)
           call infld('CLDICE',fh_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
              tptr3d, found, gridname='physgrid')
           if(found) then
-             do n = 1, dyn_time_lvls
-                call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-             end do
+                call pbuf_set_field(pbuf2d, m, tptr3d)
           else
              call pbuf_set_field(pbuf2d, m, 0._r8)
           end if
@@ -576,9 +563,7 @@ contains
        call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
             tptr3d, found, gridname='physgrid')
        if(found) then
-          do n = 1, dyn_time_lvls
-             call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-          end do
+             call pbuf_set_field(pbuf2d, m, tptr3d)
        else
           allocate(tptr3d_2(pcols,pver,begchunk:endchunk), stat=ierr)
           if (ierr /= 0) then
@@ -604,9 +589,7 @@ contains
           end if
 
           if (found .or. found2) then
-             do n = 1, dyn_time_lvls
-                call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-             end do
+                call pbuf_set_field(pbuf2d, m, tptr3d)
              if(dycore_is('LR')) call polar_average(pver, tptr3d)
           else
              call pbuf_set_field(pbuf2d, m, 0._r8)
@@ -632,9 +615,7 @@ contains
              tptr3d = huge(1._r8)
           end if
        end if
-       do n = 1, dyn_time_lvls
-          call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-       end do
+          call pbuf_set_field(pbuf2d, m, tptr3d)
     end if
 
     fieldname = 'CONCLD'
@@ -643,9 +624,7 @@ contains
        call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
             tptr3d, found, gridname='physgrid')
        if(found) then
-          do n = 1, dyn_time_lvls
-             call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-          end do
+             call pbuf_set_field(pbuf2d, m, tptr3d)
        else
           call pbuf_set_field(pbuf2d, m, 0._r8)
           if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
@@ -1208,7 +1187,7 @@ contains
     ! Second part of atmospheric physics package after updating of surface models
     !
     !-----------------------------------------------------------------------
-    use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_deallocate, pbuf_update_tim_idx
+    use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_deallocate
     use mo_lightning,    only: lightning_no_prod
     use cam_diagnostics, only: diag_deallocate, diag_surf
     use carma_intr,      only: carma_accumulate_stats
@@ -1310,7 +1289,6 @@ contains
     call t_startf ('physpkg_st2')
     call pbuf_deallocate(pbuf2d, 'physpkg')
 
-    call pbuf_update_tim_idx()
     call diag_deallocate()
     call t_stopf ('physpkg_st2')
 
@@ -1387,7 +1365,7 @@ contains
     !   o Ion Drag ( Only for WACCM )
     !   o Scale Dry Mass Energy
     !-----------------------------------------------------------------------
-    use physics_buffer, only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer, only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag_cam,        only: gw_drag_cam_tend
@@ -1551,7 +1529,7 @@ contains
     integer :: iaermod_lcl
 
     ! physics buffer fields for total energy and mass adjustment
-    integer itim_old, ifld
+    integer ifld
 
     real(r8), pointer, dimension(:,:) :: cld
     real(r8), pointer, dimension(:,:) :: qini
@@ -1591,12 +1569,11 @@ contains
 
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
-    itim_old = pbuf_old_tim_idx()
 
-    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore )
+    call pbuf_get_field(pbuf, ducore_idx, ducore )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
@@ -1605,10 +1582,10 @@ contains
     call pbuf_get_field(pbuf, toticeini_idx, toticeini)
 
     ifld = pbuf_get_index('CLD')
-    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, ifld, cld)
 
     ifld = pbuf_get_index('AST')
-    call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, ifld, ast )
 
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -2504,7 +2481,7 @@ contains
     !
     ! This call must be after the last parameterization and call to physics_update
     !
-    call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx), (/1,itim_old/),(/pcols,1/))
+    call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx))
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
@@ -2648,8 +2625,8 @@ contains
     !-----------------------------------------------------------------------
 
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
-    use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx
-    use physics_buffer,  only: col_type_subcol, dyn_time_lvls
+    use physics_buffer,  only: pbuf_get_index
+    use physics_buffer,  only: col_type_subcol
 
     use dadadj_cam,      only: dadadj_tend
     use physics_types,   only: physics_update, &
@@ -2726,7 +2703,7 @@ contains
     integer :: m, m_cnst
 
     ! physics buffer fields to compute tendencies for stratiform package
-    integer itim_old, ifld
+    integer ifld
     real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
 
     ! physics buffer fields for total energy and mass adjustment
@@ -2798,11 +2775,10 @@ contains
     nstep = get_nstep()
 
     ! Associate pointers with physics buffer fields
-    itim_old = pbuf_old_tim_idx()
     ifld = pbuf_get_index('CLD')
-    call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim_old/),(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, ifld, cld)
 
-    call pbuf_get_field(pbuf, teout_idx, teout, (/1,itim_old/), (/pcols,1/))
+    call pbuf_get_field(pbuf, teout_idx, teout)
 
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
@@ -2810,10 +2786,10 @@ contains
     call pbuf_get_field(pbuf, totliqini_idx, totliqini)
     call pbuf_get_field(pbuf, toticeini_idx, toticeini)
 
-    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore )
+    call pbuf_get_field(pbuf, ducore_idx, ducore )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore )
 
     ifld    = pbuf_get_index('FRACIS')
     call pbuf_get_field(pbuf, ifld, fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/)  )
@@ -2899,7 +2875,7 @@ contains
     call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )
 
     ! T, U, V tendency due to dynamics
-    if ( nstep > dyn_time_lvls-1 ) then
+    if ( nstep > 0 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
        dqcore(:ncol,:pver) = (state%q(:ncol,:pver,ixq) - dqcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
