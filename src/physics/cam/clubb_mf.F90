@@ -41,39 +41,39 @@ module clubb_mf
   !      6 = ztopm1
   !      7 = rel.hum. at 500 hPa
   !      8 = column int. rel.hum.
-  integer  :: clubb_mf_Lopt    = 0
-  real(r8) :: clubb_mf_a0      = 0._r8
-  real(r8) :: clubb_mf_b0      = 0._r8
-  real(r8) :: clubb_mf_L0      = 0._r8
-  real(r8) :: clubb_mf_ent0    = 0._r8
-  real(r8) :: clubb_mf_alphturb= 0._r8
-  real(r8) :: clubb_mf_max_L0  = 0._r8
-  real(r8) :: clubb_mf_fdd     = 0._r8
-  real(r8) :: clubb_mf_ddalph  = 0._r8
-  real(r8) :: clubb_mf_ddbeta  = 0._r8
-  real(r8) :: clubb_mf_pwfac   = 0._r8
-  real(r8) :: clubb_mf_ddexp   = 0._r8
+  integer  :: clubb_mf_Lopt    = 6
+  real(r8) :: clubb_mf_a0      = 0.15_r8
+  real(r8) :: clubb_mf_b0      = 1.0_r8
+  real(r8) :: clubb_mf_L0      = 200._r8
+  real(r8) :: clubb_mf_ent0    = 0.2_r8
+  real(r8) :: clubb_mf_alphturb= 3.0_r8
+  real(r8) :: clubb_mf_max_L0  = 1.e3_r8
+  real(r8) :: clubb_mf_fdd     = 0.5_r8
+  real(r8) :: clubb_mf_ddalph  = 12.0_r8
+  real(r8) :: clubb_mf_ddbeta  = 1.0_r8
+  real(r8) :: clubb_mf_pwfac   = 1.0_r8
+  real(r8) :: clubb_mf_ddexp   = 3.0_r8
   real(r8) :: clubb_mf_pwmin   = 1.5_r8
   real(r8) :: clubb_mf_pwmax   = 3.0_r8
-  real(r8) :: clubb_mf_cldfrac_fac = 1._r8
+  real(r8) :: clubb_mf_cldfrac_fac = 10._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
   integer  :: clubb_mf_kseed = 1
   integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
-  logical, protected :: do_clubb_mf_rad = .false.
-  logical, protected :: do_clubb_mf_addtke = .false.
-  logical, protected :: do_clubb_mf_coldpool = .false.
+  logical, protected :: do_clubb_mf_rad = .true.
+  logical, protected :: do_clubb_mf_addtke = .true.
+  logical, protected :: do_clubb_mf_coldpool = .true.
   logical, protected :: do_clubb_mf_ustar = .false.
   logical, protected :: do_clubb_mf_mixd = .false.
-  logical, protected :: do_clubb_mf_precip = .false.
-  logical, protected :: do_clubb_mf_rhtke = .false.
+  logical, protected :: do_clubb_mf_precip = .true.
+  logical, protected :: do_clubb_mf_rhtke = .true.
   logical, protected :: do_clubb_mf_cmt = .false.
-  logical, protected :: do_clubb_mf_aloft = .false.
+  logical, protected :: do_clubb_mf_aloft = .true.
   logical, protected :: do_clubb_mf_coldpool_init = .false.
-  logical, protected :: do_clubb_mf_coldpool_perplume = .false.
-  logical, protected :: do_clubb_mf_lscale_perplume = .false.
+  logical, protected :: do_clubb_mf_coldpool_perplume = .true.
+  logical, protected :: do_clubb_mf_lscale_perplume = .true.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -188,7 +188,7 @@ module clubb_mf
   end subroutine clubb_mf_readnl
 
 
-  subroutine integrate_mf( nzm,     nzt,                                            & ! input
+  subroutine integrate_mf( nzm,     nzt,     dtime,                                 & ! input
                            rho_zm,           zm,      p_zm,      iexner_zm,         & ! input
                            rho_zt,  dzt,     zt,      p_zt,      iexner_zt,         & ! input
                            u,       v,       thl,     qt,        thv,               & ! input
@@ -262,7 +262,8 @@ module clubb_mf
 
      use wv_saturation,      only : qsat
 
-     integer,  intent(in)                 :: nzm, nzt 
+     integer,  intent(in)                 :: nzm, nzt
+     real(r8), intent(in)                 :: dtime                   ! host-model physics timestep [s]
      real(r8), dimension(nzt), intent(in) :: u,      v,            & ! thermodynamic grid
                                              thl,    thv,          & ! thermodynamic grid
                                              th,     qv,           & ! thermodynamic grid
@@ -393,6 +394,16 @@ module clubb_mf
                                               upauto                     ! thermodynamic grid
      ! precipitation rates
      real(r8), dimension(nzm,clubb_mf_nup) :: uprr,     dnrr             ! momentum grid
+     !
+     ! grid-mean (area-weighted) rain reservoirs. uprr/dnrr above are
+     ! per-unit-plume-area and drive the local evaporation physics; uprg/dnrg carry
+     ! the same budgets in grid-mean units (weighted by the plume areas used in the
+     ! sqtup/sqtdn accumulations) so that the area-weighted evaporation can never
+     ! exceed the area-weighted rain supply. This guarantees the column integral of
+     ! sqt (and hence surface precc / PRECC) is non-negative.
+     real(r8), dimension(nzm,clubb_mf_nup) :: uprg,     dnrg             ! momentum grid
+     real(r8)                              :: drytot,   lamk,   sdnmax
+     real(r8), parameter                   :: mf_dry_frac_max = 0.9_r8   ! max fractional total water removable per timestep
      !        
      ! entrainment profiles
      real(r8), dimension(nzt,clubb_mf_nup) :: entf,     mix              ! thermodynamic grid
@@ -616,6 +627,7 @@ module clubb_mf
      upbuoy= 0._r8
      uplmix= 0._r8
      uprr  = 0._r8
+     uprg  = 0._r8
      supqt = 0._r8
      supthl= 0._r8
      upent = 0._r8
@@ -630,6 +642,7 @@ module clubb_mf
      dnthl = 0._r8
      dnthv = 0._r8
      dnrr  = 0._r8
+     dnrg  = 0._r8
      dnth  = 0._r8
      dnqc  = 0._r8
      dnql  = 0._r8
@@ -1152,6 +1165,42 @@ module clubb_mf
          enddo
        enddo
 
+       ! ---------------------------------------------------------- !
+       ! In-scheme production limiter                               !
+       ! Cap the area-weighted plume drying at each level so the    !
+       ! grid-mean microphysical sink cannot remove more than       !
+       ! mf_dry_frac_max of the grid-cell total water in a timestep.!
+       ! Because the cap is applied BEFORE the rain/evaporation     !
+       ! sweeps and the downdraft section, all downstream rain      !
+       ! accounting is consistent with the limited production. A    !
+       ! common per-level factor lamk preserves the relative        !
+       ! weighting of the plumes in the ensemble. The limiter       !
+       ! establishes the invariant -sqt*dtime <= mf_dry_frac_max*qt !
+       ! (asserted in clubb_intr.F90); the margin below 1.0 leaves  !
+       ! room for other same-step moisture sinks and puts the       !
+       ! assertion safely beyond roundoff.                          !
+       ! ---------------------------------------------------------- !
+       if (do_clubb_mf_precip) then
+         do k = ksfcm+kdir, ktopm, kdir
+           kt = k - (1+kdir)/2
+           kn = k - kdir
+           drytot = 0._r8
+           do i=1,clubb_mf_nup
+             drytot = drytot + upa(kn,i)*max(-1._r8*supqt(kt,i), 0._r8)
+           end do
+           if (drytot*dtime > mf_dry_frac_max*max(qt(kt),0._r8)) then
+             lamk = mf_dry_frac_max*max(qt(kt),0._r8)/(drytot*dtime)
+             do i=1,clubb_mf_nup
+               if (supqt(kt,i) < 0._r8) then
+                 supqt(kt,i)  = lamk*supqt(kt,i)
+                 supthl(kt,i) = lamk*supthl(kt,i)
+                 upauto(kt,i) = lamk*upauto(kt,i)
+               end if
+             end do
+           end if
+         end do
+       end if
+
        ! --------------------------------------------------------- !
        ! downward sweep for rain evaporation, snow melting         !
        ! --------------------------------------------------------- !
@@ -1173,9 +1222,23 @@ module clubb_mf
              ! limit evaporation to available precip
              sevap = min(sevap,( uprr(k,i)/(rho_zt(kt)*dzt(kt)) - supqt(kt,i)*(1._r8-clubb_mf_fdd) ))
 
+             ! further limit the area-weighted evaporation to the
+             ! area-weighted (grid-mean) rain supply. Weight is upa
+             ! at the interface below the cell, matching the sqtup accumulation
+             if (upa(kn,i) > 0._r8) then
+               sevap = min(sevap, uprg(k,i)/(rho_zt(kt)*dzt(kt)*upa(kn,i)) &
+                                  - supqt(kt,i)*(1._r8-clubb_mf_fdd) )
+             end if
+             sevap = max(sevap, 0._r8)
+
              ! get rain rate
              uprr(kn,i) = uprr(k,i) &
                          - rho_zt(kt)*dzt(kt)*( supqt(kt,i)*(1._r8-clubb_mf_fdd) + sevap )
+
+             ! grid-mean rain reservoir (max() only guards roundoff;
+             ! the cap above keeps this non-negative by construction)
+             uprg(kn,i) = max( uprg(k,i) &
+                         - rho_zt(kt)*dzt(kt)*upa(kn,i)*( supqt(kt,i)*(1._r8-clubb_mf_fdd) + sevap ), 0._r8 )
 
              ! update source terms
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(kn,i))
@@ -1226,6 +1289,13 @@ module clubb_mf
              ! (we are using an upward sweep notation to be consistent with how uprr(ddtop) was computed)
              dnrr(ddtopm,i)  = -1._r8*dzt(ddtopm - (1-kdir)/2)*rho_zt(ddtopm - (1-kdir)/2)*upauto(ddtopm - (1-kdir)/2,i)*clubb_mf_fdd
 
+             ! grid-mean downdraft rain reservoir seed. area weight is
+             ! upa at the interface below the generating cell, which is ddtopm
+             ! itself (matching the sqtup accumulation weighting of the
+             ! production that this rain came from).
+             dnrg(ddtopm,i)  = -1._r8*dzt(ddtopm - (1-kdir)/2)*rho_zt(ddtopm - (1-kdir)/2) &
+                               *upa(ddtopm,i)*upauto(ddtopm - (1-kdir)/2,i)*clubb_mf_fdd
+
              if (fixent) then
                entn = fixent_ent
              else
@@ -1255,6 +1325,17 @@ module clubb_mf
 
                ! get rain evaporation in tendency form
                sdnqt(kt,i) = max( (dnqs(k,i) - dnqt(k,i))*taum1, 0._r8 )
+
+               ! cap the tendency-form downdraft evaporation by the
+               ! area-weighted rain actually available to the downdraft.
+               ! weights: dna at the interface above the cell
+               ! (matching the sqtdn accumulation), upa at the interface below
+               ! (matching sqtup).
+               if (dna(k,i) > 0._r8) then
+                 sdnmax = ( dnrg(k,i)/(rho_zt(kt)*dzt(kt)) &
+                            - upa(kn,i)*upauto(kt,i)*clubb_mf_fdd ) / dna(k,i)
+                 sdnqt(kt,i) = min( sdnqt(kt,i), max(sdnmax, 0._r8) )
+               end if
                sdnthl(kt,i) = -1._r8*latvap*sdnqt(kt,i)*iexner_zt(kt)/cpair
 
                ! compute rain rate (rain above - evaporation + appropriate updraft rain)
@@ -1293,6 +1374,14 @@ module clubb_mf
                  else
                    sdnqt(kt,i) = 0._r8
                  end if
+
+                 ! apply the same area-weighted available-rain cap to
+                 ! the recomputed (saturation-adjusted) evaporation tendency
+                 if (dna(k,i) > 0._r8) then
+                   sdnmax = ( dnrg(k,i)/(rho_zt(kt)*dzt(kt)) &
+                              - upa(kn,i)*upauto(kt,i)*clubb_mf_fdd ) / dna(k,i)
+                   sdnqt(kt,i) = min( sdnqt(kt,i), max(sdnmax, 0._r8) )
+                 end if
                  sdnthl(kt,i) = -1._r8*latvap*sdnqt(kt,i)*iexner_zt(kt)/cpair
 
                  ! re-compute thl with new evaporation rate
@@ -1302,6 +1391,13 @@ module clubb_mf
                  dnrr(kn,i) = max( dnrr(k,i) &
                                   - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(kt,i)*clubb_mf_fdd) , 0._r8 )
                end if
+
+               ! grid-mean downdraft rain reservoir, using the final
+               ! (capped) evaporation tendency. max() only guards roundoff; the
+               ! sdnqt cap keeps this non-negative by construction.
+               dnrg(kn,i) = max( dnrg(k,i) &
+                    - rho_zt(kt)*dzt(kt)*( dna(k,i)*sdnqt(kt,i) &
+                                           + upa(kn,i)*upauto(kt,i)*clubb_mf_fdd ), 0._r8 )
 
                ! get virtual temperature
                dnthv(kn,i) = dnthl(kn,i)*(1._r8+zvir*dnqt(kn,i))
@@ -1622,6 +1718,9 @@ module clubb_mf
          kt_dn = k - (1+kdir)/2
          precc(k-kdir) = precc(k) - rho_zt(kt_dn)*dzt(kt_dn)*sqt(kt_dn)
        end do
+
+       ! this clamp only removes roundoff (upstream limiters conserve mass)
+       precc(ksfcm) = max( precc(ksfcm), 0._r8 )
 
        ! --------------------------------------------------------- !
        ! get turbulent fluxes                                      !
