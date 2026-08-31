@@ -160,7 +160,6 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2,nu_ratio2)
     do k=kbeg,kend
       ! recompute nu_ratio2 per level (see first loop); it is level-dependent
-      ! and must not carry over the k=kend value from the first loop
       nu_ratio2=1
       if (nu_div_lev(k)/=nu_lev(k)) then
         if(hypervis_scaling /= 0) then

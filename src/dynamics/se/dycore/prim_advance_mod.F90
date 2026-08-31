@@ -1848,18 +1848,9 @@ contains
    end subroutine compute_omega
 
   !-----------------------------------------------------------------------
-  ! hypervis_Qdp
   !
   ! Apply del4 (weak biharmonic) to q = Qdp/dp3d for water vapor only
-  ! after cslam2gll, damping element-boundary noise from the FVM->GLL mapping.
-  ! Water vapor carries by far the largest mass among the thermodynamically
-  ! active species so the other tracers are not worth the extra cost.
-  ! Uses actual dp3d (not reference dp0) so that Qdp and q stay consistent
-  ! with the dry-mass coordinate.  Conservation of dry mass on the GLL grid
-  ! within each SE element is maintained; the small imbalance from del4 is
-  ! accepted (same as the existing SE tracer hypervis).
   !
-  ! dt_fvm should be the FVM remapping timestep (dt_remap = rsplit*qsplit*dt).
   !-----------------------------------------------------------------------
   subroutine hypervis_Qdp(elem, deriv, hybrid, tl_f, tl_qdp, dt_fvm, nets, nete)
     use dimensions_mod,   only: np, nlev, wv_idx_dycore
