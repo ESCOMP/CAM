@@ -434,17 +434,19 @@ contains
     real (kind=r8)   , intent(out) :: w_ew(0:nc, 1:nc)
     real (kind=r8)   , intent(out) :: w_ns(1:nc, 0:nc)
     !
-    ! Optional xdiff coefficients: full tangent-plane gradient at the face
-    ! from the normal difference (along d, center-to-center) plus a
-    ! tangential difference (along t, diagonal ring-1 pairs), via the dual
-    ! basis of {d,t}: e1 = (m x t)/den, e2 = -(m x d)/den, den = m.(t x d).
+    ! Optional xdiff coefficients.  The two-point (TPFA) flux w*(Q_hi - Q_lo)
+    ! misses the part of grad(Q) not along the center-to-center direction d.
+    ! xdiff adds it back: with a tangential difference T along t (diagonal
+    ! ring-1 pairs), the dual basis of {d,t} about the face anchor m gives
+    ! the full tangent-plane gradient, hence two-point plus transverse terms
     !   F = face_len*(g.n) = xw*(Q_hi - Q_lo) + xt*T
     !   xw = face_len*(e1.n)/dist,  xt = 0.5*face_len*(e2.n)/arc_t
-    ! Orthogonal limit: xw = w, xt = 0.  Exact for tangent-plane-linear Q.
-    ! Both sides of a face build from the same owner-frame points, so
-    ! F' = -F to ULP (conservation).  TPFA fallback (xw=w, xt=0) when the
-    ! tangential stencil touches a wedge cell (f%ifct == 0), identically
-    ! on both sides.
+    !   e1 = (m x t)/den,  e2 = -(m x d)/den,  den = m.(t x d)
+    ! Exact for tangent-plane-linear Q; reduces to TPFA (xw = w, xt = 0) for
+    ! d normal to the face, and falls back to it where the tangential stencil
+    ! hits a missing wedge cell (f%ifct == 0).  Both sides of a face use the
+    ! same owner-frame points, and take the fallback together, so F' = -F to
+    ! ULP (conservation).
     !
     real (kind=r8)   , intent(out), optional :: xw_ew(0:nc, 1:nc)
     real (kind=r8)   , intent(out), optional :: xt_ew(0:nc, 1:nc)
