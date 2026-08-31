@@ -387,9 +387,7 @@ contains
   end subroutine apply_cslam_q_filter_del4
 
   !
-  ! One-time precompute of the static face-metric weights (w and xw/xt)
-  ! into fvm%qfilter_*.  Call after fvm_init3 (vtx_cart/flux_orient/ifct
-  ! halos final).  No-op when cslam_q_filter = .false.
+  ! One-time precompute of the static face-metric weights
   !
   subroutine cslam_q_filter_geom_init(elem, fvm, hybrid, nets, nete)
     use edge_mod  , only: initghostbuffer

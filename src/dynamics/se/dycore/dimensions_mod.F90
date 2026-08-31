@@ -41,9 +41,9 @@ module dimensions_mod
   integer, public :: wv_idx_dycore = -1  !water vapor index in dycore Qdp; set in dyn_comp
   logical, public :: del4_cslam_qgll = .true. !apply del4 hyperviscosity to water vapor on GLL after cslam2gll
   logical, public :: gll_advect_q = .false.   !GLL double advection of thermodynamic tracers under CSLAM
-                                              !(151-style forcing coupling; cslam2gll overwrite not used)
+                                              !(cslam2gll overwrite not used)
   logical, public :: cslam_q_filter = .false. !mass-conservative del4 damping of water vapor on the CSLAM grid
-  real(r8), public :: cslam_q_filter_nu_fac = 0.5_r8 !factor on nu_p for the CSLAM-grid del4 (se_cslam_q_filter_nu_fac)
+  real(r8), public :: cslam_q_filter_nu_fac = 0.5_r8 !factor on nu_p for the CSLAM-grid del4
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging

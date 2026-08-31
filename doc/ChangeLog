@@ -2,6 +2,214 @@
 
 Tag name:
 Originator(s): pel
+Date: August 31, 2026
+	One-line Summary: Remove PS noise in SE-CSLAM, WACCM stability
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+
+  - #1595  Remove subtle noise in PS in SE-CSLAM
+
+    Two distinct phenomena, both addressed:
+
+    (a) Element-scale ABS_dPSdt noise in full-physics low/mid-top runs
+        (present since cam6_3_152).  Caused by the cslam2gll hard overwrite of
+        the GLL water tracers every remap step -- a moist-mass pressure shock
+        that rings as gravity waves -- compounded by a marginally stable
+        automatic se_hypervis_subcycle.  Fixed by restoring the cam6_3_151
+        "double advection" path behind se_gll_advect_q: thermodynamic tracers
+        are advected on the GLL grid with the standard scalar tracer
+        hyperviscosity and coupled to physics through derived%fq, so the
+        overwrite (and hypervis_Qdp) is bypassed.  The 1.2 fudge factor in the
+        automatic hyperviscosity-subcycle formula, which allowed a timestep 20%
+        past the linear del4 limit, is also removed (noise in abs_dps_dt).
+
+    (b) Cube-vertex and panel-edge PS noise (predates cam6_3_152).  The vertex
+        structure lives in the prognostic CSLAM water vapor itself, so no
+        delivery-side smoothing of the physics increment helps.  Fixed by a new
+        mass-conservative del4 filter applied to water vapor on the CSLAM
+        finite-volume grid (se_cslam_q_filter_nu_fac).
+
+  - #1648  Wrong dycore settings when running WACCM physics with LT
+
+  - #1523  optimize SE dycore for WACCM ne30pg3 and ne16pg3
+
+  - #1487  2 degree (ne16pg3) out-of-the-box LT and MT functionality
+
+  - #574   Setting time-steps based on model top location
+
+  - #1655  Add automatic dynamics-splitting defaults to the SE dycore
+
+Describe any changes made to build system:
+  - bld/build-namelist: added se_gll_advect_q and se_cslam_q_filter_nu_fac to
+    the SE dycore namelist variable list (without this the XML defaults never
+    reach atm_in).
+
+Describe any changes made to the namelist:
+
+  New options:
+  - se_gll_advect_q (logical, default .true.): advect the thermodynamic tracers
+    on the GLL grid under CSLAM and force them through derived%fq, instead of
+    overwriting GLL water from CSLAM each remap step.  .false. reproduces the
+    previous path exactly.  When .true., del4_cslam_qgll is forced .false. and
+    hypervis_Qdp is not called (logged at startup).
+  - se_cslam_q_filter_nu_fac (real, default 0.5): coefficient, as a factor on
+    nu_p, of the del4 water-vapor filter on the CSLAM grid.  <= 0 disables the
+    filter and reproduces the previous behaviour.  The filter is subcycled
+    automatically (cslam_q_filter_nsub, resolved in print_cfl).
+
+  Changed defaults, physics:
+  - zmconv_tau: 1200 s at ne120np4 (was 3600 s) and 600 s at ne240np4.
+  - diff_sponge_fac: 0.1 (was 0.0) for WACCM, WACCM-X and high-top
+    configurations, i.e. the physics sponge-layer vertical diffusion is now on.
+
+  Changed defaults, WACCM and high-top time-stepping and damping (these now use
+  the automatic -1 sentinel resolved from the CFL stability limits instead of
+  hard-coded values):
+  - se_rsplit: -1 for waccm_phys and for model_top="ht" (were 2).
+  - se_hypervis_subcycle: -1 for ne16/ne30 model_top="ht" (were 18); the
+    waccm_phys entries at 2, 3, 8, 9 and 10 are removed so those grids fall
+    through to the automatic default.
+  - se_hypervis_subcycle_sponge: -1 for ne16/ne30 waccm_phys and for ne16/ne30
+    model_top="ht" (were 2 and 4).
+  - se_sponge_del4_nu_div_fac: -1 for ne16 waccm_phys and for model_top="ht"
+    (were 7.5).
+  - se_sponge_del4_lev: -1 for waccm_phys and for model_top="ht" (were 30);
+    the unconditional -1 default is also restored.
+  - se_nsplit: 2 at ne16 model_top="ht" (was 3); 3 at ne30 waccm_phys and at
+    ne30 model_top="ht" (were 4); new entry 3 at ne120 model_top="ht".
+
+  Changed defaults, dp (pressure) damping:
+  - nu_p is now level dependent (nu_p_lev).  For WACCM and WACCM-X model tops
+    (90-140 km and 140-600 km) the sponge-layer ramp already applied to the
+    temperature damping is now applied to dp as well; lower-top configurations
+    keep a uniform nu_p and are unchanged.
+
+List any changes to the defaults for the boundary datasets:
+  - ne120pg3 bnd_topo changed to
+    atm/cam/topo/se/ne120pg3_gmted2010_modis_bedmachine_nc3000_Laplace0025_noleak_20250904.nc
+    (was ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc), matching the
+    GMTED2010/MODIS/BedMachine topography already used at ne16pg3 and ne30pg3.
+  - waccm_ma_hist_cam7.xml: ne16pg3 nlev=135 (WAt1ma) default ncdata changed to
+    the water-vapor-corrected spinup file.
+
+Describe any substantial timing or memory changes:
+  Month-long ne30pg3 FLT A/B, same executable and PE layout:
+    dyn_run  832.6 -> 872.6 s/month  (+4.8%)
+    ATM       63.2 ->  65.2 s/mday   (+3.1%)
+  The GLL tracer advection (78 s) is cheaper than the cslam2gll overwrite it
+  replaces (91 s); the water-vapor filter costs 28 s and the remainder is the
+  additional hyperviscosity subcycle from the stability fix.
+
+Code reviewed by:
+
+List all files eliminated: none
+
+List all files added and what they do:
+
+A       src/dynamics/se/dycore/fvm_filter_mod.F90
+           - mass-conservative del4 filter for water vapor on the CSLAM grid,
+             as two successive flux-form Laplacians (second pass dp-weighted),
+             with fluxes antisymmetric across element and panel boundaries.
+             Includes a cross-diffusion correction for the non-orthogonality of
+             the gnomonic mesh and a Zalesak flux-corrected limiter, so the
+             filter is conservative and shape-preserving.  Face metrics are
+             precomputed once by cslam_q_filter_geom_init.
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/build-namelist
+           - wire se_gll_advect_q and se_cslam_q_filter_nu_fac
+M       bld/namelist_files/namelist_definition.xml
+           - document se_gll_advect_q and se_cslam_q_filter_nu_fac
+M       bld/namelist_files/namelist_defaults_cam.xml
+           - defaults for the two new SE options; zmconv_tau at ne120/ne240;
+             WACCM nu_p / se_nsplit / sponge settings
+M       bld/namelist_files/use_cases/waccm_ma_hist_cam7.xml
+           - ne16pg3 default initial condition
+M       src/dynamics/se/dyn_comp.F90
+           - read the two new namelist variables; force del4_cslam_qgll
+             .false. when se_gll_advect_q is set; relax the FQ scaling guard so
+             GLL tracers are forced under CSLAM
+M       src/dynamics/se/dyn_grid.F90
+           - initialize the CSLAM filter face metrics after fvm_init3; size the
+             GLL tracer edge buffer under double advection
+M       src/dynamics/se/dp_coupling.F90
+           - DSS the FQ increment (pack, boundary exchange, unpack) alongside
+             FM and FT when advecting the thermodynamic tracers on the GLL grid
+M       src/dynamics/se/dycore/fvm_mapping.F90
+           - phys2dyn_forcings_fvm: build derived%fq as the difference between
+             the physics-updated field mapped to GLL and Qdp/dp3d; limiter on
+             the pg3-to-GLL mapping
+M       src/dynamics/se/dycore/fvm_consistent_se_cslam.F90
+           - call the water-vapor filter at the end of run_consistent_se_cslam;
+             CSLAM fixes affecting Courant numbers greater than one
+M       src/dynamics/se/dycore/fvm_mod.F90
+           - edge buffers sized for the GLL tracer advection; CSLAM fixes for
+             Courant numbers greater than one
+M       src/dynamics/se/dycore/fvm_analytic_mod.F90
+M       src/dynamics/se/dycore/fvm_overlap_mod.F90
+           - CSLAM fixes affecting Courant numbers greater than one
+M       src/dynamics/se/dycore/fvm_control_volume_mod.F90
+           - storage for the precomputed filter face metrics
+M       src/dynamics/se/dycore/global_norms_mod.F90
+           - print_cfl: remove the 1.2 factor from the automatic
+             hyperviscosity-subcycle formula; resolve cslam_q_filter_nsub and
+             hypervis_subcycle_cslam_q from the stability bounds; level
+             dependent nu_p; set nu_q_cslam only when the term that reads it
+             (hypervis_Qdp) is actually applied
+M       src/dynamics/se/dycore/prim_advance_mod.F90
+           - hypervis_Qdp: del4 on water vapor on the GLL grid after cslam2gll;
+             dribble the FQ increment over the dynamics substeps under double
+             advection; WACCM sponge settings
+M       src/dynamics/se/dycore/prim_driver_mod.F90
+           - gate the GLL tracer advection and both cslam2gll call sites on the
+             double-advection switch
+M       src/dynamics/se/dycore/prim_advection_mod.F90
+           - allocate the GLL tracer edge buffers under CSLAM when advecting
+             the thermodynamic tracers on the GLL grid
+M       src/dynamics/se/dycore/prim_init.F90
+           - allocate two Qdp time levels under CSLAM for double advection
+M       src/dynamics/se/dycore/se_dyn_time_mod.F90
+           - restore Qdp time-level cycling under double advection
+M       src/dynamics/se/dycore/viscosity_mod.F90
+           - biharmonic_wk_scalar1 for the single-tracer del4 on water vapor
+M       src/dynamics/se/dycore/control_mod.F90
+M       src/dynamics/se/dycore/dimensions_mod.F90
+           - declarations for the new switches, filter coefficient, and
+             subcycle counts
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: cam6_4_198
+
+Summarize any changes to answers, i.e.,
+- what code configurations: SE dycore with CSLAM.  All CSLAM configurations
+  change answers, because se_gll_advect_q and se_cslam_q_filter_nu_fac default
+  to .true. and 0.5.  With se_gll_advect_q=.false.,
+  se_cslam_q_filter_nu_fac=-1 and se_hypervis_subcycle pinned to its previous
+  value, the branch is bit-for-bit with the baseline (verified over one day at
+  ne30pg3 FHISTC_LTso, every prim_printstate line identical).  Non-CSLAM (GLL
+  tracer) configurations are unaffected.
+
+
+
+===============================================================
+
+Tag name:
+Originator(s): pel
 Date: August 22, 2026
 One-line Summary: Automatic dynamics-splitting defaults for the SE dycore; remove unused SE namelist options
 Github PR URL:

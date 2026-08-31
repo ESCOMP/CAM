@@ -378,7 +378,7 @@ subroutine dyn_readnl(NLFileName)
    gll_advect_q   = se_gll_advect_q .and. use_cslam
    if (gll_advect_q) then
       !
-      ! 151-style double advection: thermodynamic tracers are advected on the
+      ! double advection of thermodynamic tracers on the
       ! GLL grid (with the standard scalar tracer hyperviscosity) and coupled
       ! to physics through derived%fq; the cslam2gll overwrite and the GLL-side
       ! del4 on qdp (hypervis_Qdp) are not used.

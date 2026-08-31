@@ -561,13 +561,16 @@ contains
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
-    if (cslam_q_filter) then
-      ! With the CSLAM-grid del4 Q filter active the GLL-side del4-on-qdp
-      ! (hypervis_Qdp) is retuned to a weak background value; the CSLAM-grid
-      ! filter provides the primary damping of water vapor.
-      nu_q_cslam = 0.5_r8 * nu_p
-    else
-      nu_q_cslam = 3.0_r8 * nu_p
+    !
+    ! Coefficient for the GLL-side del4 on water vapor after cslam2gll
+    ! (hypervis_Qdp)
+    !
+    if (use_cslam .and. del4_cslam_qgll) then
+      if (cslam_q_filter) then
+        nu_q_cslam = 0.5_r8 * nu_p
+      else
+        nu_q_cslam = 3.0_r8 * nu_p
+      end if
     end if
 
     nu_div_lev(:) = nu_div
