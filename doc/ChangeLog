@@ -208,11 +208,11 @@ Summarize any changes to answers, i.e.,
 
 ===============================================================
 
-Tag name:
-Originator(s): pel
-Date: August 22, 2026
+Tag name: cam6_4_199
+Originator(s): pel, peverwhee
+Date: August 28, 2026
 One-line Summary: Automatic dynamics-splitting defaults for the SE dycore; remove unused SE namelist options
-Github PR URL:
+Github PR URL: https://github.com/ESCOMP/CAM/pull/1656
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
@@ -241,7 +241,7 @@ List any changes to the defaults for the boundary datasets: N/A
 
 Describe any substantial timing or memory changes: N/A
 
-Code reviewed by:
+Code reviewed by: nusbaume
 
 List all files eliminated:
 
@@ -266,6 +266,8 @@ M       src/dynamics/se/dyn_comp.F90
 M       src/dynamics/se/dyn_grid.F90
            - dyn_grid_init: resolve automatic (-1) rsplit and the fvm
              supercycling default from the CFL stability limits
+M       src/dynamics/se/dycore/namelist_mod.F90
+           - remove tasknum, remapfreq defaults
 M       src/dynamics/se/dycore/global_norms_mod.F90
            - compute the automatic hyperviscosity subcycle counts from the
              grid stability constants in print_cfl
@@ -277,7 +279,7 @@ M       src/dynamics/se/dycore/prim_state_mod.F90
 M       src/dynamics/se/dycore/se_dyn_time_mod.F90
            - remove variable_nsplit plumbing
 M       src/dynamics/se/dycore/control_mod.F90
-           - remove variable_nsplit
+           - remove 'variable_nsplit' and other unused control variables.
 M       src/dynamics/se/dycore/dimensions_mod.F90
            - remove kmin_jet, kmax_jet, and fvm_supercycling_jet declarations
 M       src/dynamics/se/dycore/fvm_mod.F90
@@ -292,15 +294,72 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  - expected SE dycore answer changes due to new auto-splitting functionality (discussed below)
+
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  - no baselines from previous tag; b4b when compared against cam6_4_197
+
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: NLFAIL) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: NLFAIL) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: NLFAIL) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: NLFAIL) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: NLFAIL) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: NLFAIL) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep (Overall: NLFAIL) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: NLFAIL) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: NLFAIL) details:
+  - All remaining SE dycore tests NLFAIL due to removed namelist variables
 
 derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: NLFAIL) details:
+  - SE dycore tests NLFAIL due to removed namelist variables
 
 izumi/nag/aux_cam:
+  ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
+  - existing test failure
+
+  ERC_D_Ln27.ne3pg3_ne3pg3_mt232.FKESSLER.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-cosp_rad_diags (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_nag.cam-outfrq9s_nochem (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC4.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9_P1x1.ne3pg3_ne3pg3_mt232.FADIAB.izumi_nag.cam-outfrq9s (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: NLFAIL) details:
+  SMS_D_Ln6.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_nag.cam-carma_test_tracers (Overall: NLFAIL) details:
+  - SE dycore tests NLFAIL due to removed namelist variables
 
 izumi/gnu/aux_cam:
+  ERC_D_Ln9.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 (Overall: DIFF) details:
+  - expected SE dycore answer changes due to new auto-splitting functionality (discussed below)
+
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.F1850_C4.izumi_gnu.cam-co2rmp (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FGRAYRAD.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST_C5.izumi_gnu.cam-carma_cosp_rad_diag_mam (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHISTC_LTso.izumi_gnu.cam-sat_lcltod (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-nochem_clubbmf (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.FTJ16.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC5.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  ERC_D_Ln9.ne3pg3_ne3pg3_mt232.QPC7.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC6.izumi_gnu.cam-scm_prep_c6 (Overall: NLFAIL) details:
+  SMS_D_Ln3.ne3pg3_ne3pg3_mt232.PC7.izumi_gnu.cam-pc7_ne3pg3 (Overall: NLFAIL) details:
+  SUB_D_Ln9.ne3pg3_ne3pg3_mt232.FHIST.izumi_gnu.cam-outfrq9s (Overall: NLFAIL) details:
+  - All remaining SE dycore tests NLFAIL due to removed namelist variables
+
 
 CAM tag used for the baseline comparison tests if different than previous
-tag: cam6_4_196
+tag:
 
 Summarize any changes to answers, i.e.,
 - what code configurations: SE dycore.  Low/mid-top uniform-grid
@@ -310,6 +369,7 @@ Summarize any changes to answers, i.e.,
       ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4      (hypervis_subcycle 3 -> 1)
       ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged          (hypervis_subcycle 3 -> 2)
       SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo       (hypervis_subcycle 3 -> 2)
+      ERC_D_Ln9.ne5_ne5_mg37.QPC4                    (hypervis_subcycle 3 -> 2)
   All other SE configurations (including all WACCM, WACCM-X,
   variable-resolution, and ne3 grids, which are pinned) are bit-for-bit.
   The namelist-option cleanup (#969) is bit-for-bit by construction (removal
