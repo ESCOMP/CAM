@@ -3303,17 +3303,30 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 
-# CLUBB-MF unified convection scheme
+# CLUBB_SGS
+my $do_clubb_sgs = $nl->get_value('do_clubb_sgs');
+if (defined $do_clubb_sgs) {
+    die "CAM Namelist ERROR: User may not specify the value of do_clubb_sgs.\n".
+        "This variable is set by build-namelist based on information\n".
+        "from the configure cache file.\n";
+}
+add_default($nl, 'do_clubb_sgs');
+my $clubb_sgs = $nl->get_value('do_clubb_sgs');
+
+# Evaluate do_clubb_mf early to handle overrides
 add_default($nl, 'do_clubb_mf');
 my $clubb_mf = $nl->get_value('do_clubb_mf');
 
-if ($clubb_mf =~ "true") {
-    add_default($nl, 'deep_scheme', 'val'=>'off');
-} else { 
+# Deep convection scheme and CLUBB+MF dependency check
+if (defined $do_clubb_mf and $do_clubb_mf =~ /$TRUE/io) {
+    if ($clubb_sgs !~ /$TRUE/io) {
+        die "CAM Namelist ERROR: do_clubb_mf is set to .true. but do_clubb_sgs is not active.\n" .
+            "CLUBB+MF requires the CLUBB_SGS package to be enabled.\n";
+    }
+    add_default($nl, 'deep_scheme', 'val'=>"'off'");
+} else {
     add_default($nl, 'deep_scheme');
-}	
-
-# Deep convection scheme
+}
 my $deep_scheme = $nl->get_value('deep_scheme');
 
 # Aerosol convective processes
@@ -3531,13 +3544,6 @@ if ($use_subcol_microp =~ /$TRUE/io) {
 }
 
 # CLUBB_SGS
-my $do_clubb_sgs = $nl->get_value('do_clubb_sgs');
-if (defined $do_clubb_sgs) {
-    die "CAM Namelist ERROR: User may not specify the value of do_clubb_sgs.\n".
-        "This variable is set by build-namelist based on information\n".
-        "from the configure cache file.\n";
-}
-add_default($nl, 'do_clubb_sgs');
 my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 if ($clubb_sgs  =~ /$TRUE/io) {
    my $clubb_do_adv = $cfg->get('clubb_do_adv');
