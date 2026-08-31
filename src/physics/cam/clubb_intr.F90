@@ -656,11 +656,10 @@ module clubb_intr
     ! Only in clubb_intr.F90 or SILHS
     call pbuf_add_field('ISS_FRAC',   'global', dtype_r8, (/pcols,nzt_clubb/), ice_supersat_idx)
 
-    ! these extra coord vars don't seem to work for interpolate_output=.true.
-    call add_hist_coord('ncyc', cld_macmic_num_steps, 'macro/micro cycle index')
-    call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
-
     if (do_clubb_mf) then
+      ! note that the extra coord dim doesn't seem to work for interpolate_output=.true.
+      call add_hist_coord('nens', clubb_mf_nup, 'clubb+mf ensemble size')
+
       call pbuf_add_field('ZTOPMN'             ,'global' ,  dtype_r8, (/clubb_mf_up_ndt,pcols,clubb_mf_nup/), ztopmn_idx)
       call pbuf_add_field('ZTOPMA'             ,'global' ,  dtype_r8, (/pcols,clubb_mf_nup/), ztopma_idx)
       call pbuf_add_field('ZTOP_MACMIC'        ,'physpkg',  dtype_r8, (/pcols,clubb_mf_nup/), ztopm1_macmic_idx)
