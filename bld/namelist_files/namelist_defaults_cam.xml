@@ -2222,6 +2222,7 @@
 <clubb_c_K9                                       > 0.25    </clubb_c_K9>
 <clubb_C_uu_shr                                   > 0.3     </clubb_C_uu_shr>
 <clubb_C_uu_shr phys="cam7"                       > 0.1     </clubb_C_uu_shr>
+<clubb_C_uu_shr phys="cam7" hgrid="ne120np4"      > 0.6     </clubb_C_uu_shr>
 <clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
 <clubb_C_wp2_splat                                > 0.0     </clubb_C_wp2_splat>
 <clubb_C_wp3_pr_turb                              > 0.4     </clubb_C_wp3_pr_turb>
