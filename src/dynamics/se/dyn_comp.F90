@@ -620,6 +620,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
+   use global_norms_mod,   only: nu_top_default
    use control_mod,        only: molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
@@ -841,9 +842,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! compute scaling of traditional sponge layer damping (following cd_core.F90 in CAM-FV)
    !
+   ptop = hvcoord%hyai(1)*hvcoord%ps0
+   !
+   ! resolve automatic (-1) top-of-model del2 sponge coefficient from the model
+   ! top location; must happen before nu_scale_top below reads nu_top
+   !
+   if (nu_top<0.0_r8) then
+      nu_top = nu_top_default(ptop)
+      if (masterproc) write(iulog,'(a,e9.2)') sub//': se_nu_top=-1 -> nu_top = ',nu_top
+   end if
+
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-      ptop  = hvcoord%hyai(1)*hvcoord%ps0
       if (ptop>300.0_r8) then
          !
          ! for low tops the tanh formulae below makes the sponge excessively deep

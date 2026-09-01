@@ -2147,6 +2147,7 @@
 <!-- Sponge layer vertical diffusion factor -->
 <diff_sponge_fac               > 0.0D0 </diff_sponge_fac>
 <diff_sponge_fac  waccm_phys="1" waccmx="0"> 0.1D0 </diff_sponge_fac>
+<diff_sponge_fac  waccm_phys="1" waccmx="0" model_top="lt"> 0.0D0 </diff_sponge_fac>
 <diff_sponge_fac  waccmx="1"              > 0.1D0 </diff_sponge_fac>
 <diff_sponge_fac  model_top="ht"         > 0.1D0 </diff_sponge_fac>
 
@@ -3312,11 +3313,7 @@
 <se_nu_p hgrid="ne16np4">6.e15</se_nu_p>
 <se_nu_p waccmx="1">5.e15</se_nu_p>
 
-<se_nu_top                                   > 1.25e5 </se_nu_top>
-<se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>
-<se_nu_top model_top="mt"                    > 1.0e6 </se_nu_top>
-<se_nu_top model_top="ht"                    > 1.0e6 </se_nu_top>
-<se_nu_top waccm_phys="1"                    > 1.0e6 </se_nu_top>
+<se_nu_top                                   > -1 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>

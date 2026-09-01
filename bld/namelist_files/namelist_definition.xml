@@ -8705,7 +8705,10 @@ Default: Set by build-namelist.
 <entry id="se_nu_top" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Second-order viscosity applied only near the model top [m^2/s].
-Default: Set by build-namelist.
+If negative the value is set at runtime from the model top location:
+1.25e5 for a model top below ~42km, 1.0e6 for the CAM7 middle/high tops,
+WACCM and WACCM-x.
+Default: -1 (automatic)
 </entry>
 
 <entry id="se_sponge_del4_nu_fac" type="real" category="se"

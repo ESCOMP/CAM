@@ -18,6 +18,7 @@ module global_norms_mod
 
   public :: print_cfl
   public :: auto_rsplit
+  public :: nu_top_default
   public :: set_global_max_normDinv
   public :: global_integral
   public :: global_integrals_general
@@ -869,6 +870,22 @@ contains
   ! se_stability_constants: single source for the stability constants used by
   ! print_cfl and auto_rsplit.
   !=============================================================================
+  !
+  ! Default top-of-model del2 sponge coefficient when se_nu_top < 0.  The 100 Pa
+  ! boundary is the same one separating a low top from the CAM7/WACCM tops in
+  ! print_cfl and se_stability_constants.
+  !
+  pure function nu_top_default(ptop) result(nu_top_auto)
+    real(kind=r8), intent(in) :: ptop         ! model top pressure [Pa]
+    real(kind=r8)             :: nu_top_auto  ! [m^2/s]
+
+    if (ptop>100.0_r8) then
+      nu_top_auto = 1.25e5_r8   ! model top below ~42km (CAM6/CAM7 low top)
+    else
+      nu_top_auto = 1.0e6_r8    ! CAM7 middle/high top, WACCM and WACCM-x
+    end if
+  end function nu_top_default
+
   pure subroutine se_stability_constants(ptop, lambda_max, lambda_vis, s_rk, umax)
     use dimensions_mod, only: np
     use control_mod,    only: tstep_type
