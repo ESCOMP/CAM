@@ -138,7 +138,7 @@ subroutine dyn_grid_init()
    use dimensions_mod,      only: fvm_supercycling
    use global_norms_mod,    only: auto_rsplit, set_global_max_normDinv
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
-   use fvm_filter_mod, only: cslam_q_filter_geom_init
+   use fvm_filter_mod,      only: cslam_q_filter_geom_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
    use air_composition,     only: thermodynamic_active_species_num

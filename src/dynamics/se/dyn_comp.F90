@@ -438,7 +438,8 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
       write(iulog, '(a,f8.3)') 'dyn_readnl: se_cslam_q_filter_nu_fac    = ',se_cslam_q_filter_nu_fac
       write(iulog, '(a,l4)')   'dyn_readnl: cslam_q_filter (derived)    = ',cslam_q_filter
-      write(iulog, '(a,l4)')   'dyn_readnl: se_gll_advect_q             = ',gll_advect_q
+      write(iulog, '(a,l4)')   'dyn_readnl: se_gll_advect_q             = ',se_gll_advect_q
+      write(iulog, '(a,l4)')   'dyn_readnl: gll_advect_q (derived)      = ',gll_advect_q
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
       if (.not. se_refined_mesh) then
          write(iulog, '(a,i0)')'dyn_readnl: se_ne                       = ',se_ne

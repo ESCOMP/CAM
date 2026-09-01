@@ -33,7 +33,7 @@ module fvm_filter_mod
   private
   save
 
-  type (EdgeBuffer_t), public :: ghostBufQfilter
+  type (EdgeBuffer_t), private :: ghostBufQfilter
 
   public :: apply_cslam_q_filter_del4   ! the filter (called from run_consistent_se_cslam)
   public :: cslam_q_filter_geom_init    ! precompute face weights + alloc buffer (called from dyn_grid)
@@ -56,7 +56,7 @@ contains
 
     integer       , parameter :: ixwv_fvm = 1
     real (kind=r8)            :: rearth4_inv        ! = 1 / rearth^4
-    real (kind=r8)            :: nu4k               ! nu_p / rearth^4 (constant in the vertical)
+    real (kind=r8)            :: nu4k               ! cslam_q_filter_nu_fac * nu_p / rearth^4
 
     real (kind=r8), allocatable :: L(:,:,:,:)      ! (0:nc+1, 0:nc+1, kmin:kmax, nets:nete); ring-1 halo only
     !
@@ -97,6 +97,7 @@ contains
     q           = ixwv_fvm
     kblk        = kmax - kmin + 1
     rearth4_inv = 1.0_r8 / (rearth*rearth*rearth*rearth)
+    nu4k        = cslam_q_filter_nu_fac * nu_p * rearth4_inv
     dt_sub      = dt_fvm / real(cslam_q_filter_nsub, r8)
 
     allocate(L(0:nc+1, 0:nc+1, kmin:kmax, nets:nete))
@@ -204,7 +205,6 @@ contains
        end if
 
        do k = kmin, kmax
-          nu4k = cslam_q_filter_nu_fac * nu_p * rearth4_inv   ! constant in the vertical
           if (xdiff) then
              ! corrected dp-weighted face fluxes of L, then divergence per cell
              do j = 1, nc
@@ -269,7 +269,6 @@ contains
        end if
 
        do k = kmin, kmax
-          nu4k = cslam_q_filter_nu_fac * nu_p * rearth4_inv   ! constant in the vertical
           if (xdiff) then
              ! corrected raw fluxes; the FCT limiter below applies unchanged
              ! (it only ever reduces fluxes, so bounds/conservation hold)
@@ -398,8 +397,9 @@ contains
     type (hybrid_t)  , intent(in)    :: hybrid
     integer          , intent(in)    :: nets, nete
 
-    real (kind=r8) :: c3d_own(3, 1:nc, 1:nc)   ! byproduct, not stored
     integer        :: ie
+
+    if (.not. cslam_q_filter) return
 
     !
     ! 1-deep halo buffer for the CSLAM Q filter (its stencils only read
@@ -407,7 +407,7 @@ contains
     !
     call initghostbuffer(hybrid%par,ghostBufQfilter,elem,2*nlev,1,nc,nthreads=vert_num_threads*horz_num_threads)
     do ie = nets, nete
-       call compute_face_weights(fvm(ie), elem(ie)%FaceNum, c3d_own,   &
+       call compute_face_weights(fvm(ie), elem(ie)%FaceNum,             &
             fvm(ie)%qfilter_w_ew , fvm(ie)%qfilter_w_ns ,              &
             fvm(ie)%qfilter_xw_ew, fvm(ie)%qfilter_xt_ew,              &
             fvm(ie)%qfilter_xw_ns, fvm(ie)%qfilter_xt_ns)
@@ -421,14 +421,13 @@ contains
   ! great-circle midpoints under gnomonic projection).  Halo-cell centers
   ! are evaluated in the OWNER's tan-plane frame (panel from flux_orient),
   ! so both elements sharing a face agree to ULP -> antisymmetric fluxes
-  ! across element and panel boundaries.  c3d_own returned as byproduct.
+  ! across element and panel boundaries.
   !
-  subroutine compute_face_weights(f, face_num, c3d_own, w_ew, w_ns, &
+  subroutine compute_face_weights(f, face_num, w_ew, w_ns, &
                                   xw_ew, xt_ew, xw_ns, xt_ns)
     implicit none
     type (fvm_struct), intent(in)  :: f
     integer          , intent(in)  :: face_num
-    real (kind=r8)   , intent(out) :: c3d_own(3, 1:nc, 1:nc)
     real (kind=r8)   , intent(out) :: w_ew(0:nc, 1:nc)
     real (kind=r8)   , intent(out) :: w_ns(1:nc, 0:nc)
     !
@@ -458,7 +457,7 @@ contains
     logical        :: do_x
     ! xdiff work variables
     real (kind=r8) :: vmid(3), vd(3), vt(3), vp(3), vm(3), vn(3)
-    real (kind=r8) :: e1(3), e2(3), den, arc_t, rnorm
+    real (kind=r8) :: e1(3), e2(3), den, arc_t
     ! den is a sine of the angle between the d and t directions; below this
     ! the dual basis is ill-conditioned (never approached on a sane mesh)
     real (kind=r8), parameter :: den_min = 0.2_r8
@@ -484,7 +483,6 @@ contains
           call tan_to_3d(cx, cy, ipanel, c3d(:, i, j))
        end do
     end do
-    c3d_own(:,:,:) = c3d(:, 1:nc, 1:nc)
 
     !-- East-west face weights: index i = face between cell i and cell i+1 --
     do j = 1, nc
@@ -502,7 +500,6 @@ contains
           dist       = arc_length(c3d(:, i, j), c3d(:, i+1, j))
           w_ew(i, j) = face_len / dist
 
-          
           if (do_x) then
              xw_ew(i, j) = w_ew(i, j)
              xt_ew(i, j) = 0.0_r8
