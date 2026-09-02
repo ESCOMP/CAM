@@ -24,8 +24,7 @@ contains
     use thread_mod,             only: max_num_threads
     use dimensions_mod,         only: np, nlev, nelem, nelemd, nelemdmax, qsize_d
     use dimensions_mod,         only: GlobalUniqueCols, fv_nphys,irecons_tracer
-    use dimensions_mod,         only: gll_advect_q
-    use control_mod,            only: topology, partmethod
+    use control_mod,            only: topology, partmethod, gll_advect_q
     use element_mod,            only: element_t, allocate_element_desc
     use fvm_mod,                only: fvm_init1
     use mesh_mod,               only: MeshUseMeshFile

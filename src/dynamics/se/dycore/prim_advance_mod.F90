@@ -21,8 +21,8 @@ contains
   subroutine prim_advance_init(par, elem)
     use edge_mod,       only: initEdgeBuffer
     use element_mod,    only: element_t
-    use dimensions_mod, only: nlev,ksponge_end,use_cslam,del4_cslam_qgll
-    use control_mod,    only: qsplit
+    use dimensions_mod, only: nlev,ksponge_end,use_cslam
+    use control_mod,    only: qsplit, del4_cslam_qgll
 
     type (parallel_t)                       :: par
     type (element_t), target, intent(inout) :: elem(:)
@@ -268,9 +268,9 @@ contains
 
 
   subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
-    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, use_cslam, gll_advect_q
+    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, use_cslam
     use element_mod,            only: element_t
-    use control_mod,            only: ftype, ftype_conserve
+    use control_mod,            only: ftype, ftype_conserve, gll_advect_q
     use fvm_control_volume_mod, only: fvm_struct
     use air_composition,        only: thermodynamic_active_species_idx_dycore
     use cam_thermo,             only: get_dp, MASS_MIXING_RATIO

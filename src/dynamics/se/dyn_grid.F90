@@ -41,7 +41,8 @@ use cam_abortutils,         only: endrun
 use pio,                    only: file_desc_t
 
 use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
-use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam, gll_advect_q
+use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
+use control_mod,            only: gll_advect_q
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t

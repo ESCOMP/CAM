@@ -175,9 +175,10 @@ M       src/dynamics/se/dycore/se_dyn_time_mod.F90
 M       src/dynamics/se/dycore/viscosity_mod.F90
            - biharmonic_wk_scalar1 for the single-tracer del4 on water vapor
 M       src/dynamics/se/dycore/control_mod.F90
-M       src/dynamics/se/dycore/dimensions_mod.F90
            - declarations for the new switches, filter coefficient, and
              subcycle counts
+M       src/dynamics/se/dycore/dimensions_mod.F90
+           - water vapor index in the dycore tracer array; level dependent nu_p
 
 If there were any failures reported from running test_driver.sh on any test
 platform, and checkin with these failures has been OK'd by the gatekeeper,

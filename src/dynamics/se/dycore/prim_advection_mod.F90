@@ -24,6 +24,7 @@ module prim_advection_mod
   use hybvcoord_mod,          only: hvcoord_t
   use se_dyn_time_mod,        only: TimeLevel_t, TimeLevel_Qdp
   use control_mod,            only: nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
+  use control_mod,            only: gll_advect_q
   use edge_mod,               only: edgevpack, edgevunpack, initedgebuffer, initedgesbuffer
 
   use edgetype_mod,           only: EdgeBuffer_t
@@ -62,7 +63,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam,gll_advect_q
+    use dimensions_mod, only: nlev, qsize, nelemd,ntrac,use_cslam
     use parallel_mod,   only: parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)

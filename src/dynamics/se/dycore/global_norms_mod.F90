@@ -227,8 +227,7 @@ contains
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nc,nhe,use_cslam,nlev,large_Courant_incr
-    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,del4_cslam_qgll,nu_p_lev
-    use dimensions_mod, only: cslam_q_filter, cslam_q_filter_nu_fac
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev,nu_p_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
@@ -239,6 +238,7 @@ contains
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use control_mod,    only: rsplit, qsplit, hypervis_subcycle, hypervis_subcycle_sponge, hypervis_subcycle_q
     use control_mod,    only: cslam_q_filter_nsub, hypervis_subcycle_cslam_q
+    use control_mod,    only: cslam_q_filter, cslam_q_filter_nu_fac, del4_cslam_qgll
     use se_dyn_time_mod,only: tstep
     use time_manager,   only: get_step_size
     use cam_abortutils, only: endrun

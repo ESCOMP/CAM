@@ -2,8 +2,8 @@
 module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
-  use dimensions_mod,         only: cslam_q_filter
   use dimensions_mod,         only: irecons_tracer
+  use control_mod,            only: cslam_q_filter
   use cam_abortutils,         only: endrun
   use cam_logfile,            only: iulog
 

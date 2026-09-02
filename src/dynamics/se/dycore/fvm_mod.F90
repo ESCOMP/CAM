@@ -422,7 +422,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
     use dimensions_mod,         only: nhc_phys, fv_nphys
-    use dimensions_mod,         only: gll_advect_q
+    use control_mod,            only: gll_advect_q
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
     use air_composition,        only: thermodynamic_active_species_num

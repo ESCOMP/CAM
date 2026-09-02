@@ -78,7 +78,8 @@ contains
   !locations for nm1 and n0 for Qdp - because
   !it only has 2 levels for storage
   subroutine TimeLevel_Qdp(tl, qsplit, n0, np1)
-    use dimensions_mod, only: use_cslam, gll_advect_q
+    use dimensions_mod, only: use_cslam
+    use control_mod,    only: gll_advect_q
     type (TimeLevel_t) :: tl
     integer, intent(in) :: qsplit
     integer, intent(inout) :: n0

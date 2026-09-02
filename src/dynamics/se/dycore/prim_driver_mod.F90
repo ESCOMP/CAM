@@ -194,16 +194,16 @@ contains
     use hybvcoord_mod, only : hvcoord_t
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,qsplit, rsplit, dribble_in_rsplit_loop
+    use control_mod,            only: del4_cslam_qgll, gll_advect_q
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
     use prim_advance_mod,       only: hypervis_Qdp
-    use dimensions_mod,         only: del4_cslam_qgll
     use prim_state_mod,         only: prim_printstate
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc_h
-    use dimensions_mod,         only: use_cslam,fv_nphys,gll_advect_q
+    use dimensions_mod,         only: use_cslam,fv_nphys
     use fvm_mapping,            only: cslam2gll
     type (element_t) , intent(inout) :: elem(:)
     type(fvm_struct), intent(inout)  :: fvm(:)
@@ -408,13 +408,14 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
+    use control_mod,            only: del4_cslam_qgll, gll_advect_q
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
     use derivative_mod,         only: subcell_integration
     use prim_advance_mod,       only: hypervis_Qdp
     use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
-    use dimensions_mod,         only: use_cslam,fvm_supercycling,del4_cslam_qgll,gll_advect_q
+    use dimensions_mod,         only: use_cslam,fvm_supercycling
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
     use se_dyn_time_mod,        only: timelevel_qdp
     use fvm_mapping,            only: cslam2gll

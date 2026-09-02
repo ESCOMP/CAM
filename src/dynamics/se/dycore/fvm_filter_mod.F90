@@ -24,7 +24,8 @@ module fvm_filter_mod
   !      min/max) while remaining conservative.
   !
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use dimensions_mod,         only: nc, nlev, cslam_q_filter
+  use dimensions_mod,         only: nc, nlev
+  use control_mod,            only: cslam_q_filter
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use hybrid_mod,             only: hybrid_t
@@ -44,8 +45,7 @@ contains
     use edge_mod       , only: ghostpack, ghostunpack
     use bndry_mod      , only: ghost_exchange
     use physconst      , only: rearth
-    use control_mod    , only: cslam_q_filter_nsub, nu_p
-    use dimensions_mod , only: cslam_q_filter_nu_fac
+    use control_mod    , only: cslam_q_filter_nsub, cslam_q_filter_nu_fac, nu_p
     implicit none
     type (fvm_struct)   , intent(inout) :: fvm(:)
     type (hybrid_t)     , intent(in)    :: hybrid

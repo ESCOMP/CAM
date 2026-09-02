@@ -46,8 +46,9 @@ contains
   ! map all mass variables from gll to fvm
   !
   subroutine phys2dyn_forcings_fvm(elem, fvm, hybrid,nets,nete,no_cslam, tl_f, tl_qdp)
-    use dimensions_mod,         only: np, nc,nlev, gll_advect_q
+    use dimensions_mod,         only: np, nc,nlev
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
+    use control_mod,            only: gll_advect_q
     use hybrid_mod,             only: hybrid_t
     use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx
     type (element_t), intent(inout):: elem(:)

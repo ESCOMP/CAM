@@ -118,11 +118,11 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use control_mod,    only: min_temperature
+   use control_mod,    only: cslam_q_filter, cslam_q_filter_nu_fac
+   use control_mod,    only: gll_advect_q, del4_cslam_qgll
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
-   use dimensions_mod, only: cslam_q_filter, cslam_q_filter_nu_fac
    use dimensions_mod, only: fvm_supercycling
-   use dimensions_mod, only: gll_advect_q, del4_cslam_qgll
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
@@ -1037,10 +1037,10 @@ subroutine dyn_run(dyn_state)
    use air_composition,  only: thermodynamic_active_species_num, dry_air_species_num
    use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_driver_mod,  only: prim_run_subcycle
-   use dimensions_mod,   only: cnst_name_gll, gll_advect_q
+   use dimensions_mod,   only: cnst_name_gll
    use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
-   use control_mod,      only: qsplit, rsplit, ftype_conserve
+   use control_mod,      only: qsplit, rsplit, ftype_conserve, gll_advect_q
    use thread_mod,       only: horz_num_threads
    use scamMod,          only: single_column, use_3dfrc
    use se_single_column_mod, only: apply_SC_forcing,ie_scm
