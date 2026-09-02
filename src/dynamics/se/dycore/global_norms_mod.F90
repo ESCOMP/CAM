@@ -28,7 +28,7 @@ module global_norms_mod
 
   private :: global_maximum
   type (EdgeBuffer_t), private :: edgebuf
-  real(r8), save :: nu_q_cslam = -1.0_r8
+  real(r8) :: nu_q_cslam = -1.0_r8
 
   real(kind=r8), parameter :: ugw = 342.0_r8 ! max gravity-wave speed [m/s]
 
