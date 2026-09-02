@@ -401,9 +401,8 @@ contains
     ! Lower boundary
     ptend%q(1:ncol,pver,ixaoa) = (xmmr - state%q(1:ncol,pver,ixaoa)) / dt
 
-    ! ??? Hard-wired in code here OR include 'AOA1->0.D0mmr' in ubc_specifier namelist ???
     ! Upper boundary AOA1 -> 0.0 mmr
-!    ptend%q(1:ncol,1,ixaoa) = -state%q(1:ncol,1,ixaoa) / dt
+    ptend%q(1:ncol,1,ixaoa) = -state%q(1:ncol,1,ixaoa) / dt
 
     do k = 1, pver
        do i = 1, ncol

@@ -2977,11 +2977,6 @@ if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) and
 if (defined $ubc_ver) {
     add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
 }
-if ($cfg->get('age_of_air_trcs')) {
-    if (not defined $nl->get_value('ubc_specifier')){
-	add_default($nl, 'ubc_specifier', 'val'=>'AOA1->0.D0mmr');
-    }
-}
 
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) {
