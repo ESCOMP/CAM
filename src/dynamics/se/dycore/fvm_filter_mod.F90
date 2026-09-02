@@ -91,7 +91,7 @@ contains
     real (kind=r8) :: Gx(0:nc, 1:nc), Gy(1:nc, 0:nc)
     real (kind=r8) :: dp_fw, dp_fe, dp_fs, dp_fn
     real (kind=r8) :: flux_w, flux_e, flux_s, flux_n
-    real (kind=r8) :: q_new(nc,nc), inv_dp_area, inv_area
+    real (kind=r8) :: q_new(nc,nc), inv_dp_area
     real (kind=r8) :: dt_sub
     integer        :: ie, k, q, i, j, kblk, kptr, isub
 
@@ -176,20 +176,19 @@ contains
              end do
              do j = 1, nc
                 do i = 1, nc
-                   inv_area = 1.0_r8 / fvm(ie)%area_sphere(i, j)
-                   L(i, j, k, ie) = (Gx(i, j) - Gx(i-1, j) + Gy(i, j) - Gy(i, j-1)) * inv_area
+                   L(i, j, k, ie) = (Gx(i, j) - Gx(i-1, j) + Gy(i, j) - Gy(i, j-1)) * &
+                                    fvm(ie)%inv_area_sphere(i, j)
                 end do
              end do
           else
              do j = 1, nc
                 do i = 1, nc
-                   inv_area = 1.0_r8 / fvm(ie)%area_sphere(i, j)
                    L(i, j, k, ie) = (                                                       &
                         w_ew(i-1, j  ) * (fvm(ie)%c(i-1, j  , k, q) - fvm(ie)%c(i, j, k, q)) + &
                         w_ew(i  , j  ) * (fvm(ie)%c(i+1, j  , k, q) - fvm(ie)%c(i, j, k, q)) + &
                         w_ns(i  , j-1) * (fvm(ie)%c(i  , j-1, k, q) - fvm(ie)%c(i, j, k, q)) + &
                         w_ns(i  , j  ) * (fvm(ie)%c(i  , j+1, k, q) - fvm(ie)%c(i, j, k, q))   &
-                        ) * inv_area
+                        ) * fvm(ie)%inv_area_sphere(i, j)
                 end do
              end do
           end if
