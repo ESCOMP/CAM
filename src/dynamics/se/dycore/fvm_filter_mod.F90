@@ -34,7 +34,8 @@ module fvm_filter_mod
   private
   save
 
-  type (EdgeBuffer_t), private :: ghostBufQfilter
+  type (EdgeBuffer_t), private :: ghostBufQfilter  ! 2*nlev: dp_fvm and Q, exchanged once per call
+  type (EdgeBuffer_t), private :: ghostBufQfilter1 ! nlev: Q (subcycles 2+) and L
 
   public :: apply_cslam_q_filter_del4   ! the filter (called from run_consistent_se_cslam)
   public :: cslam_q_filter_geom_init    ! precompute face weights + alloc buffer (called from dyn_grid)
@@ -111,14 +112,11 @@ contains
        Rm = 1.0_r8
     end if
 
-    !
-    ! Subcycle loop (cslam_q_filter_nsub auto-set in print_cfl); both halo
-    ! exchanges must be inside the loop.
-    !
-    do isub = 1, cslam_q_filter_nsub
-
     !----- 1. Halo exchange of dp_fvm and Q_wv -----
-    ! ghostBufQfilter is 1-deep: both stencil passes only read halo ring 1.
+    ! The buffers are 1-deep: both stencil passes only read halo ring 1.
+    ! dp_fvm is not modified by the filter, so it is exchanged once here,
+    ! together with the first Q; later subcycles re-exchange Q only.
+    !
     do ie = nets, nete
        kptr = kmin - 1
        call ghostpack(ghostBufQfilter, fvm(ie)%dp_fvm(0:nc+1, 0:nc+1, kmin:kmax), kblk, kptr, ie)
@@ -132,6 +130,24 @@ contains
        kptr = kmin - 1 + nlev
        call ghostunpack(ghostBufQfilter, fvm(ie)%c(0:nc+1, 0:nc+1, kmin:kmax, q), kblk, kptr, ie)
     end do
+
+    !
+    ! Subcycle loop (cslam_q_filter_nsub auto-set in print_cfl)
+    !
+    do isub = 1, cslam_q_filter_nsub
+
+    if (isub > 1) then
+       ! refresh the Q halo updated by the previous subcycle
+       do ie = nets, nete
+          kptr = kmin - 1
+          call ghostpack(ghostBufQfilter1, fvm(ie)%c(0:nc+1, 0:nc+1, kmin:kmax, q), kblk, kptr, ie)
+       end do
+       call ghost_exchange(hybrid, ghostBufQfilter1, location='cslam_q_filter_del4_passQsub')
+       do ie = nets, nete
+          kptr = kmin - 1
+          call ghostunpack(ghostBufQfilter1, fvm(ie)%c(0:nc+1, 0:nc+1, kmin:kmax, q), kblk, kptr, ie)
+       end do
+    end if
 
     !----- 2. Pass 1: discrete Laplacian L on own cells (1:nc, 1:nc), with metric weights -----
     do ie = nets, nete
@@ -183,12 +199,12 @@ contains
     !----- 3. Halo exchange of L -----
     do ie = nets, nete
        kptr = kmin - 1
-       call ghostpack(ghostBufQfilter, L(0:nc+1, 0:nc+1, kmin:kmax, ie), kblk, kptr, ie)
+       call ghostpack(ghostBufQfilter1, L(0:nc+1, 0:nc+1, kmin:kmax, ie), kblk, kptr, ie)
     end do
-    call ghost_exchange(hybrid, ghostBufQfilter, location='cslam_q_filter_del4_passL')
+    call ghost_exchange(hybrid, ghostBufQfilter1, location='cslam_q_filter_del4_passL')
     do ie = nets, nete
        kptr = kmin - 1
-       call ghostunpack(ghostBufQfilter, L(0:nc+1, 0:nc+1, kmin:kmax, ie), kblk, kptr, ie)
+       call ghostunpack(ghostBufQfilter1, L(0:nc+1, 0:nc+1, kmin:kmax, ie), kblk, kptr, ie)
     end do
 
     !----- 4. Pass 2: flux-form del2 of L, dp-weighted with metric, MINUS sign for del4 -----
@@ -402,10 +418,12 @@ contains
     if (.not. cslam_q_filter) return
 
     !
-    ! 1-deep halo buffer for the CSLAM Q filter (its stencils only read
-    ! halo ring 1); 2*nlev layers hold dp_fvm and Q in one exchange.
+    ! 1-deep halo buffers for the CSLAM Q filter (its stencils only read halo
+    ! ring 1).  2*nlev holds dp_fvm and Q in the one exchange per filter call;
+    ! nlev holds the single fields exchanged per subcycle (Q and L).
     !
-    call initghostbuffer(hybrid%par,ghostBufQfilter,elem,2*nlev,1,nc,nthreads=vert_num_threads*horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQfilter ,elem,2*nlev,1,nc,nthreads=vert_num_threads*horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQfilter1,elem,  nlev,1,nc,nthreads=vert_num_threads*horz_num_threads)
     do ie = nets, nete
        call compute_face_weights(fvm(ie), elem(ie)%FaceNum,             &
             fvm(ie)%qfilter_w_ew , fvm(ie)%qfilter_w_ns ,              &
