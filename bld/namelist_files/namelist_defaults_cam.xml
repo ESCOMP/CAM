@@ -3266,9 +3266,6 @@
 <se_hypervis_subcycle  hgrid="ne0np4TESTONLY.ne5x4"                             > 3 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                                 >-1  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="mt" waccm_phys="1"   > 3  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne16np4"  waccm_phys="1" waccmx="0"      >-1</se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4"  waccm_phys="1" waccmx="0"      >-1</se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                                      > 20 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4" waccmx="1" model_top="none"     > 60 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"                    > 2  </se_hypervis_subcycle_sponge>
@@ -3277,8 +3274,6 @@
 <se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8"                > 5  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.NATL.ne30x8"                      > 5  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"       > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne16np4" model_top="ht"                  >-1</se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="ht"                  >-1</se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne30np4" model_top="xt"                  > 40 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1" hgrid="ne120np4" nlev="273"          > 180</se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4" model_top="mt"     > 3  </se_hypervis_subcycle_sponge>
@@ -3321,14 +3316,8 @@
 <se_sponge_del4_nu_fac    > -1 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_fac hgrid="ne120np4" nlev="273" waccmx="1"> 3.0 </se_sponge_del4_nu_fac>
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
-<se_sponge_del4_nu_div_fac hgrid="ne16np4" waccm_phys="1" waccmx="0">-1</se_sponge_del4_nu_div_fac>
-<se_sponge_del4_nu_div_fac model_top="ht"                           >-1</se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
-<se_sponge_del4_lev waccm_phys="1" model_top="mt"> -1 </se_sponge_del4_lev>
-<se_sponge_del4_lev waccm_phys="1">-1</se_sponge_del4_lev>
-<se_sponge_del4_lev model_top="ht">-1</se_sponge_del4_lev>
-<se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccmx="1" hgrid="ne120np4" nlev="273"> 100 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
