@@ -776,7 +776,7 @@ contains
     if (use_cslam .and. cslam_q_filter) then
       ! Smallest CSLAM cell area = 0.833 * mean cell area on the equiangular
       ! gnomonic cubed sphere.
-      min_area_fvm_m2 = 0.83_r8*4.0_r8*pi/dble(6*ne*ne*nc*nc)*rearth*rearth
+      min_area_fvm_m2 = 0.83_r8*4.0_r8*pi/real(6*ne*ne*nc*nc, r8)*rearth*rearth
       lam4_fvm = 1.25_r8*(8.0_r8/min_area_fvm_m2)**2
       dt_max_cslam_q_filter = s_hypervis/(cslam_q_filter_nu_fac*nu_p*lam4_fvm)
       cslam_q_filter_nsub = max(1, ceiling(dt_tracer_fvm_actual/dt_max_cslam_q_filter))
