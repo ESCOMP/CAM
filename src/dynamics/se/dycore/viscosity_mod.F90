@@ -162,9 +162,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
       ! recompute nu_ratio2 per level (see first loop); it is level-dependent
       nu_ratio2=1
       if (nu_div_lev(k)/=nu_lev(k)) then
-        if(hypervis_scaling /= 0) then
-          nu_ratio2=1
-        else
+        if(hypervis_scaling == 0) then
           nu_ratio2=sqrt(nu_div_lev(k)/nu_lev(k))
         endif
       endif
