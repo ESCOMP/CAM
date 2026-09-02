@@ -3260,7 +3260,6 @@
 <se_hypervis_subcycle  hgrid="ne0np4.NATL.ne30x8"                               > 1  </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4" model_top="xt"                           > 18</se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4" model_top="ht"                           >-1</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne30np4" model_top="xt"                           > 18</se_hypervis_subcycle>
 <se_hypervis_subcycle  waccmx="1" hgrid="ne120np4" nlev="273"                   > 30</se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne3np4"                                           > 3 </se_hypervis_subcycle>
