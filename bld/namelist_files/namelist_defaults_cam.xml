@@ -3318,6 +3318,7 @@
 <se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_nu_div_fac hgrid="ne120np4" nlev="273" waccmx="1"   > 5.0 </se_sponge_del4_nu_div_fac>
 <se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+<se_sponge_del4_lev model_top="xt"> 30 </se_sponge_del4_lev>
 <se_sponge_del4_lev waccmx="1" hgrid="ne120np4" nlev="273"> 100 </se_sponge_del4_lev>
 
 <se_qsplit > 1 </se_qsplit>
