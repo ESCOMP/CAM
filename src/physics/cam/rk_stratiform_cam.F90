@@ -798,11 +798,15 @@ subroutine rk_stratiform_cam_tend( &
    call rk_stratiform_detrain_convective_condensate_run( &
       ncol        = ncol,                          &
       dlf         = dlf(:ncol,:),                  &
-      rliq        = rliq(:ncol),                   &
-      prec_str    = prec_str(:ncol),               &
       tend_cldliq = ptend_loc%q(:ncol,:,ixcldliq), &
       errmsg      = errmsg, &
       errflg      = errflg)
+
+   ! PREC_STR is bookkeeping for the cldwat_tend energy check only: the reserved
+   ! convective liquid (rliq) enters the column here as cloud liquid, so it is
+   ! removed from the water flux the check sees. The physical large-scale
+   ! precipitation sent to the coupler and written as PRECL is prec_sed + prec_pcw.
+   prec_str(:ncol) = prec_str(:ncol) - rliq(:ncol)
 
    if(errflg /= 0) then
       call endrun('rk_stratiform_tend:' // errmsg)
