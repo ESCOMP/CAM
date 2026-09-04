@@ -25,6 +25,7 @@ module viscosity_mod
   save
 
   public :: biharmonic_wk_scalar
+  public :: biharmonic_wk_scalar1
   public :: biharmonic_wk_omega
   public :: neighbor_minmax, neighbor_minmax_start,neighbor_minmax_finish
 
@@ -90,7 +91,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
   do ie=nets,nete
-!$omp parallel do num_threads(vert_num_threads) private(k,tmp)
+!$omp parallel do num_threads(vert_num_threads) private(k,tmp,nu_ratio1,nu_ratio2)
     do k=kbeg,kend
       nu_ratio1=1
       nu_ratio2=1
@@ -156,8 +157,15 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     endif
 
     ! apply inverse mass matrix, then apply laplace again
-    !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2)
+    !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2,nu_ratio2)
     do k=kbeg,kend
+      ! recompute nu_ratio2 per level (see first loop); it is level-dependent
+      nu_ratio2=1
+      if (nu_div_lev(k)/=nu_lev(k)) then
+        if(hypervis_scaling == 0) then
+          nu_ratio2=sqrt(nu_div_lev(k)/nu_lev(k))
+        endif
+      endif
 !CLEAN      tmp(:,:)=rspheremv(:,:)*ttens(:,:,k,ie)
       tmp(:,:)=elem(ie)%rspheremp(:,:)*ttens(:,:,k,ie)
       call laplace_sphere_wk(tmp,deriv,elem(ie),ttens(:,:,k,ie),var_coef=.true.)
@@ -298,6 +306,58 @@ integer :: kblk,qblk   ! The per thead size of the vertical and tracers
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end subroutine biharmonic_wk_scalar
+
+
+subroutine biharmonic_wk_scalar1(elem,qtens,deriv,edgeq,hybrid,nets,nete)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! single-tracer version of biharmonic_wk_scalar
+!    input:  qtens(np,np,nlev,nets:nete) = scalar field
+!    output: qtens = weak biharmonic of input
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+type (hybrid_t)      , intent(in) :: hybrid
+type (element_t)     , intent(inout), target :: elem(:)
+integer :: nets,nete
+real (kind=r8), dimension(np,np,nlev,nets:nete) :: qtens
+type (EdgeBuffer_t)  , intent(inout) :: edgeq
+type (derivative_t)  , intent(in) :: deriv
+
+! local
+integer :: k,kptr,ie
+integer :: kbeg,kend,qbeg,qend
+real (kind=r8), dimension(np,np) :: lap_p
+logical var_coef1
+integer :: kblk
+
+   call get_loop_ranges(hybrid,kbeg=kbeg,kend=kend,qbeg=qbeg,qend=qend)
+
+   var_coef1 = .true.
+   if(hypervis_scaling > 0)    var_coef1 = .false.
+
+   kblk = kend - kbeg + 1
+
+   do ie=nets,nete
+      do k=kbeg,kend
+         lap_p(:,:)=qtens(:,:,k,ie)
+         call laplace_sphere_wk(lap_p,deriv,elem(ie),qtens(:,:,k,ie),var_coef=var_coef1)
+      enddo
+      kptr = kbeg - 1
+      call edgeVpack(edgeq, qtens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+   enddo
+
+   call bndry_exchange(hybrid,edgeq,location='biharmonic_wk_scalar1')
+
+   do ie=nets,nete
+      kptr = kbeg - 1
+      call edgeVunpack(edgeq, qtens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+      do k=kbeg,kend
+         lap_p(:,:)=elem(ie)%rspheremp(:,:)*qtens(:,:,k,ie)
+         call laplace_sphere_wk(lap_p,deriv,elem(ie),qtens(:,:,k,ie),var_coef=.true.)
+      enddo
+   enddo
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+end subroutine biharmonic_wk_scalar1
 
 
 subroutine make_C0(zeta,elem,hybrid,nets,nete)

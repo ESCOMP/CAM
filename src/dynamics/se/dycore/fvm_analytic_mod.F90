@@ -610,7 +610,7 @@ CONTAINS
   subroutine get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,gsweights, gspts,irecons)
     implicit none
     integer                                                 , intent(in)    :: num_area, num_seg_max, irecons
-    REAL(KIND=r8), dimension(2,num_seg_max,num_area ), intent(inout) :: x, dx
+    REAL(KIND=r8), dimension(2,num_seg_max,num_area ), intent(in)    :: x, dx
     integer                                                 , intent(in)    :: ngpc
     integer             , dimension(num_area               ), intent(in)    :: num_seg
     REAL(KIND=r8), dimension(irecons,num_area), intent(out)   :: weights

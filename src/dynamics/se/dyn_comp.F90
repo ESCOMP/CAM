@@ -118,6 +118,8 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use control_mod,    only: min_temperature
+   use control_mod,    only: cslam_q_filter, cslam_q_filter_nu_fac
+   use control_mod,    only: gll_advect_q, del4_cslam_qgll
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
    use dimensions_mod, only: fvm_supercycling
@@ -167,6 +169,8 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_tracer_num_threads
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
+   real(r8)                     :: se_cslam_q_filter_nu_fac
+   logical                      :: se_gll_advect_q
    integer                      :: se_fvm_supercycling
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
@@ -212,6 +216,8 @@ subroutine dyn_readnl(NLFileName)
       se_tracer_num_threads,       &
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
+      se_cslam_q_filter_nu_fac,    &
+      se_gll_advect_q,             &
       se_fvm_supercycling,         &
       se_molecular_diff,           &
       se_pgf_formulation,          &
@@ -284,6 +290,8 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_cslam_q_filter_nu_fac, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_gll_advect_q, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_fvm_supercycling, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -345,6 +353,8 @@ subroutine dyn_readnl(NLFileName)
    vert_remap_tracer_alg    = set_vert_remap(se_vert_remap_T, se_vert_remap_tracer_alg)
    fv_nphys                 = se_fv_nphys
    large_Courant_incr       = se_large_Courant_incr
+   cslam_q_filter           = se_cslam_q_filter_nu_fac > 0._r8
+   cslam_q_filter_nu_fac    = se_cslam_q_filter_nu_fac
    fvm_supercycling         = se_fvm_supercycling
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
@@ -363,6 +373,18 @@ subroutine dyn_readnl(NLFileName)
       qsize = pcnst
       ntrac = 0
       use_cslam = .false.
+   end if
+
+   gll_advect_q   = se_gll_advect_q .and. use_cslam
+   if (gll_advect_q) then
+      !
+      ! double advection of thermodynamic tracers on the
+      ! GLL grid (with the standard scalar tracer hyperviscosity) and coupled
+      ! to physics through derived%fq; the cslam2gll overwrite and the GLL-side
+      ! del4 on qdp (hypervis_Qdp) are not used.
+      !
+      del4_cslam_qgll = .false.
+      if (masterproc) write(iulog, '(a)') 'dyn_readnl: se_gll_advect_q=.true. -> forcing del4_cslam_qgll = .false.'
    end if
 
    ! rsplit == -1 is the "automatic" sentinel, resolved later in dyn_grid_init
@@ -414,6 +436,10 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_sponge = ',se_hypervis_subcycle_sponge
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
+      write(iulog, '(a,f8.3)') 'dyn_readnl: se_cslam_q_filter_nu_fac    = ',se_cslam_q_filter_nu_fac
+      write(iulog, '(a,l4)')   'dyn_readnl: cslam_q_filter (derived)    = ',cslam_q_filter
+      write(iulog, '(a,l4)')   'dyn_readnl: se_gll_advect_q             = ',se_gll_advect_q
+      write(iulog, '(a,l4)')   'dyn_readnl: gll_advect_q (derived)      = ',gll_advect_q
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
       if (.not. se_refined_mesh) then
          write(iulog, '(a,i0)')'dyn_readnl: se_ne                       = ',se_ne
@@ -583,6 +609,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
    use air_composition,    only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
    use air_composition,    only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use air_composition,    only: wv_idx
+   use dimensions_mod,     only: wv_idx_dycore
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -593,6 +621,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
+   use global_norms_mod,   only: nu_top_default
    use control_mod,        only: molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
@@ -697,6 +726,17 @@ subroutine dyn_init(dyn_in, dyn_out)
        cnst_longname_gll(m)                = cnst_longname(m)
      end if
    end do
+
+   ! map water vapor constituent index (wv_idx) to dycore Qdp index
+   do m=1,thermodynamic_active_species_num
+     if (thermodynamic_active_species_idx(m) == wv_idx) then
+       wv_idx_dycore = thermodynamic_active_species_idx_dycore(m)
+       exit
+     end if
+   end do
+   if (masterproc) then
+     write(iulog,*) sub//": wv_idx_dycore (water vapor index in dycore Qdp) = ",wv_idx_dycore
+   end if
 
    do m=1,thermodynamic_active_species_liq_num
      if (use_cslam) then
@@ -803,9 +843,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! compute scaling of traditional sponge layer damping (following cd_core.F90 in CAM-FV)
    !
+   ptop = hvcoord%hyai(1)*hvcoord%ps0
+   !
+   ! resolve automatic (-1) top-of-model del2 sponge coefficient from the model
+   ! top location; must happen before nu_scale_top below reads nu_top
+   !
+   if (nu_top<0.0_r8) then
+      nu_top = nu_top_default(ptop)
+      if (masterproc) write(iulog,'(a,e9.2)') sub//': se_nu_top=-1 -> nu_top = ',nu_top
+   end if
+
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-      ptop  = hvcoord%hyai(1)*hvcoord%ps0
       if (ptop>300.0_r8) then
          !
          ! for low tops the tanh formulae below makes the sponge excessively deep
@@ -991,7 +1040,7 @@ subroutine dyn_run(dyn_state)
    use dimensions_mod,   only: cnst_name_gll
    use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
-   use control_mod,      only: qsplit, rsplit, ftype_conserve
+   use control_mod,      only: qsplit, rsplit, ftype_conserve, gll_advect_q
    use thread_mod,       only: horz_num_threads
    use scamMod,          only: single_column, use_3dfrc
    use se_single_column_mod, only: apply_SC_forcing,ie_scm
@@ -1030,7 +1079,6 @@ subroutine dyn_run(dyn_state)
    if (ldiag) then
       allocate(ps_before(np,np,nelemd))
       allocate(abs_ps_tend(np,np,nelemd))
-
    end if
 
    !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k,ftmp)
@@ -1072,7 +1120,7 @@ subroutine dyn_run(dyn_state)
    end do
 
    ! convert elem(ie)%derived%fq to mass tendency
-   if (.not.use_cslam) then
+   if (.not.use_cslam .or. gll_advect_q) then
      do ie = nets, nete
        do m = 1, qsize
          do k = 1, nlev

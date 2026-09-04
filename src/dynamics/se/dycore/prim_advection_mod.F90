@@ -24,6 +24,7 @@ module prim_advection_mod
   use hybvcoord_mod,          only: hvcoord_t
   use se_dyn_time_mod,        only: TimeLevel_t, TimeLevel_Qdp
   use control_mod,            only: nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
+  use control_mod,            only: gll_advect_q
   use edge_mod,               only: edgevpack, edgevunpack, initedgebuffer, initedgesbuffer
 
   use edgetype_mod,           only: EdgeBuffer_t
@@ -88,7 +89,7 @@ contains
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
-    if (.not.use_cslam) then
+    if (.not.use_cslam .or. gll_advect_q) then
       call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
            nthreads=horz_num_threads*advec_remap_num_threads)
       call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &

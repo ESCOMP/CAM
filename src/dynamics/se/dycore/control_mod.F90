@@ -70,6 +70,17 @@ module control_mod
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
   integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
+  logical, public :: cslam_q_filter = .false. ! mass-conservative del4 damping of water vapor on the CSLAM grid
+  real(r8), public :: cslam_q_filter_nu_fac = 0.5_r8 ! factor on nu_p for the CSLAM-grid del4
+  logical, public :: del4_cslam_qgll = .true. ! apply del4 hyperviscosity to water vapor on GLL after cslam2gll
+  logical, public :: gll_advect_q = .false.   ! GLL double advection of thermodynamic tracers under CSLAM
+                                              ! (cslam2gll overwrite not used)
+  integer, public :: cslam_q_filter_nsub=1  ! number of subcycles for the CSLAM-grid del4 Q filter
+                                            ! (apply_cslam_q_filter_del4); auto-set in print_cfl from the
+                                            ! 2D del4 von Neumann stability bound
+  integer, public :: hypervis_subcycle_cslam_q=2 ! number of subcycles for the GLL-side del4 on water vapor
+                                            ! after cslam2gll (hypervis_Qdp); auto-set in print_cfl when
+                                            ! the CSLAM Q filter is active, else the operational value 2
 
   real (kind=r8), public :: hypervis_power=0     ! if not 0, use variable hyperviscosity based on element area
   real (kind=r8), public :: hypervis_scaling=0      ! use tensor hyperviscosity
