@@ -8705,7 +8705,10 @@ Default: Set by build-namelist.
 <entry id="se_nu_top" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Second-order viscosity applied only near the model top [m^2/s].
-Default: Set by build-namelist.
+If negative the value is set at runtime from the model top location:
+1.25e5 for a model top below ~42km, 1.0e6 for the CAM7 middle/high tops,
+WACCM and WACCM-x.
+Default: -1 (automatic)
 </entry>
 
 <entry id="se_sponge_del4_nu_fac" type="real" category="se"
@@ -8750,6 +8753,33 @@ Default: Set by build-namelist.
        group="dyn_se_inparm" valid_values="" >
   If TRUE the CSLAM algorithm will work for Courant number larger than 1 with
   a low-order increment for tracer mass more than one grid cell width away
+</entry>
+
+<entry id="se_cslam_q_filter_nu_fac" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Controls the mass-conservative del4 (biharmonic) filter applied to water
+  vapor on the CSLAM grid every tracer time-step.  The filter damps
+  grid-scale noise in water vapor that seeds surface-pressure noise at
+  cube-sphere panel edges and vertices; total tracer mass is conserved
+  exactly and dry air mass (dp_fvm) is not modified.
+  If &gt; 0 the filter is active with damping coefficient
+  nu_filter = se_cslam_q_filter_nu_fac*nu_p (and the GLL-side del4 on water
+  vapor after cslam2gll is retuned to a weak background value).
+  If &lt;= 0 the filter is off.
+  Default: 0.5
+</entry>
+
+<entry id="se_gll_advect_q" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE (SE-CSLAM only), the thermodynamically active tracers are also
+  advected on the GLL grid (with the standard scalar tracer hyperviscosity)
+  and coupled to CAM physics through a forcing increment computed in
+  dynamics-physics coupling, instead of
+  overwriting the GLL tracer state with CSLAM values every vertical
+  remapping time-step.  Removes the surface-pressure noise associated with
+  the overwrite.  The GLL-side del4 applied after cslam2gll is not used when TRUE.
+  Ignored for non-CSLAM (se_fv_nphys=0) configurations.
+  Default: TRUE
 </entry>
 
 <entry id="se_fvm_supercycling" type="integer" category="se"
