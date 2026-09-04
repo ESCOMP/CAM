@@ -4332,6 +4332,8 @@ if ($dyn =~ /se/) {
                   se_ftype
                   se_horz_num_threads
 		  se_large_Courant_incr
+                  se_cslam_q_filter_nu_fac
+                  se_gll_advect_q
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
@@ -4355,9 +4357,6 @@ if ($dyn =~ /se/) {
                   se_vert_remap_uvTq_alg
                   se_vert_remap_tracer_alg
 		  se_fvm_supercycling
-		  se_fvm_supercycling_jet
-		  se_kmin_jet
-		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
 	          se_dribble_in_rsplit_loop
@@ -5362,6 +5361,7 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
+                             "'microp_aero'",
                              "'pumas_tend'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
@@ -5403,6 +5403,7 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
+            push (@validList_bc, ("'microp_aero'"));
             push (@validList_bc, ("'pumas_tend'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));

@@ -11,22 +11,27 @@ module prim_advance_mod
   save
 
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, tot_energy_dyn, compute_omega
+  public :: hypervis_Qdp
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
+  type (EdgeBuffer_t) :: edgeQdp
   real (kind=r8), allocatable :: ur_weights(:)
 contains
 
   subroutine prim_advance_init(par, elem)
     use edge_mod,       only: initEdgeBuffer
     use element_mod,    only: element_t
-    use dimensions_mod, only: nlev,ksponge_end
-    use control_mod,    only: qsplit
+    use dimensions_mod, only: nlev,ksponge_end,use_cslam
+    use control_mod,    only: qsplit, del4_cslam_qgll
 
     type (parallel_t)                       :: par
     type (element_t), target, intent(inout) :: elem(:)
     integer                                 :: i
 
     call initEdgeBuffer(par,edge3   ,elem,4*nlev   ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    ! del4_cslam_qgll operates on water vapor only -> single-tracer edge buffer
+    if (use_cslam.and.del4_cslam_qgll) &
+      call initEdgeBuffer(par,edgeQdp,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     if (ksponge_end>0) then
        call initEdgeBuffer(par,edgeSponge,elem,4*ksponge_end,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     end if
@@ -50,7 +55,7 @@ contains
   subroutine prim_advance_exp(elem, fvm, deriv, hvcoord, hybrid,dt, tl,  nets, nete)
     use control_mod,       only: tstep_type, qsplit
     use derivative_mod,    only: derivative_t
-    use dimensions_mod,    only: np, nlev
+    use dimensions_mod,    only: np, nlev, use_cslam
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
@@ -108,7 +113,7 @@ contains
     call omp_set_nested(.true.)
 
     ! default weights for computing mean dynamics fluxes
-    eta_ave_w = 1_r8/qsplit
+    eta_ave_w = 1._r8/qsplit
 
     ! ==================================
     ! Take timestep
@@ -265,7 +270,7 @@ contains
   subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
     use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, use_cslam
     use element_mod,            only: element_t
-    use control_mod,            only: ftype, ftype_conserve
+    use control_mod,            only: ftype, ftype_conserve, gll_advect_q
     use fvm_control_volume_mod, only: fvm_struct
     use air_composition,        only: thermodynamic_active_species_idx_dycore
     use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
@@ -335,7 +340,7 @@ contains
       !
       ! tracers
       !
-      if (.not.use_cslam.and.dt_local_tracer>0) then
+      if ((.not.use_cslam.or.gll_advect_q).and.dt_local_tracer>0) then
 #if (defined COLUMN_OPENMP)
     !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
 #endif
@@ -442,7 +447,7 @@ contains
     use cam_thermo,     only: get_molecular_diff_coef, get_rho_dry
     use dimensions_mod, only: np, nlev, nc, use_cslam, npsq, qsize, ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use dimensions_mod, only: nu_t_lev
+    use dimensions_mod, only: nu_t_lev, nu_p_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff,sponge_del4_lev, min_temperature
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
@@ -537,7 +542,7 @@ contains
           do j=1,np
             do i=1,np
               ttens(i,j,k,ie)   = -nu_t_lev(k)*ttens(i,j,k,ie)
-              dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
+              dptens(i,j,k,ie)  = -nu_p_lev(k)*dptens(i,j,k,ie)
               vtens(i,j,1,k,ie) = -nu_lev(k)*vtens(i,j,1,k,ie)
               vtens(i,j,2,k,ie) = -nu_lev(k)*vtens(i,j,2,k,ie)
             enddo
@@ -552,7 +557,7 @@ contains
                 ! del4 mass flux for CSLAM
                 !
                 elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                     rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+                     rhypervis_subcycle*eta_ave_w*nu_p_lev(k)*dpflux(i,j,:,k,ie)
               enddo
             enddo
           endif
@@ -1729,7 +1734,8 @@ contains
   end subroutine util_function
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
-     use control_mod,    only: nu_p, hypervis_subcycle
+     use dimensions_mod, only: nu_p_lev
+     use control_mod,    only: hypervis_subcycle
      use dimensions_mod, only: np, nlev, qsize
      use hybrid_mod,     only: hybrid_t
      use element_mod,    only: element_t
@@ -1820,7 +1826,7 @@ contains
          call biharmonic_wk_omega(elem,Otens,deriv,edgeOmega,hybrid,nets,nete,1,nlev)
          do ie=nets,nete
            do k=1,nlev
-             Otens(:,:,k,ie) = -dt_hyper*nu_p*Otens(:,:,k,ie)
+             Otens(:,:,k,ie) = -dt_hyper*nu_p_lev(k)*Otens(:,:,k,ie)
            end do
            kptr=0
            call edgeVpack(edgeOmega,Otens(:,:,:,ie) ,nlev,kptr, ie)
@@ -1840,4 +1846,66 @@ contains
      end if
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
+
+  !-----------------------------------------------------------------------
+  !
+  ! Apply del4 (weak biharmonic) to q = Qdp/dp3d for water vapor only
+  !
+  !-----------------------------------------------------------------------
+  subroutine hypervis_Qdp(elem, deriv, hybrid, tl_f, tl_qdp, dt_fvm, nets, nete)
+    use dimensions_mod,   only: np, nlev, wv_idx_dycore
+    use element_mod,      only: element_t
+    use hybrid_mod,       only: hybrid_t
+    use derivative_mod,   only: derivative_t
+    use global_norms_mod, only: nu_q_cslam
+    use control_mod,      only: hypervis_subcycle_cslam_q
+    use viscosity_mod,    only: biharmonic_wk_scalar1
+    use edge_mod,         only: edgeVpack, edgeVunpack
+    use bndry_mod,        only: bndry_exchange
+
+    type(element_t),    intent(inout) :: elem(:)
+    type(derivative_t), intent(in)    :: deriv
+    type(hybrid_t),     intent(in)    :: hybrid
+    integer,            intent(in)    :: tl_f, tl_qdp, nets, nete
+    real(r8),           intent(in)    :: dt_fvm
+
+    real(r8) :: qtens(np,np,nlev,nets:nete)
+    real(r8) :: dt_sub
+    integer  :: ie, k, isub
+
+    dt_sub = dt_fvm / real(hypervis_subcycle_cslam_q, r8)
+
+    do isub = 1, hypervis_subcycle_cslam_q
+
+      do ie = nets, nete
+        do k = 1, nlev
+          qtens(:,:,k,ie) = elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) &
+                           / elem(ie)%state%dp3d(:,:,k,tl_f)
+        end do
+      end do
+
+      call biharmonic_wk_scalar1(elem, qtens, deriv, edgeQdp, hybrid, nets, nete)
+
+      ! DSS the weak-form increment so it is continuous across element edges
+      ! before being added to Qdp.
+      do ie = nets, nete
+        call edgeVpack(edgeQdp, qtens(:,:,:,ie), nlev, 0, ie)
+      end do
+      call bndry_exchange(hybrid, edgeQdp, location='hypervis_Qdp')
+      do ie = nets, nete
+        call edgeVunpack(edgeQdp, qtens(:,:,:,ie), nlev, 0, ie)
+      end do
+
+      do ie = nets, nete
+        do k = 1, nlev
+          elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) = elem(ie)%state%Qdp(:,:,k,wv_idx_dycore,tl_qdp) &
+            - dt_sub * nu_q_cslam * elem(ie)%state%dp3d(:,:,k,tl_f) &
+            * qtens(:,:,k,ie) * elem(ie)%rspheremp(:,:)
+        end do
+      end do
+
+    end do
+
+  end subroutine hypervis_Qdp
+
 end module prim_advance_mod

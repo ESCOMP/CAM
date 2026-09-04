@@ -5976,7 +5976,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5984,7 +5984,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -8601,12 +8601,14 @@ Default: 0 (i.e., not used)
 <entry id="se_hypervis_subcycle" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
 <entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
@@ -8703,7 +8705,10 @@ Default: Set by build-namelist.
 <entry id="se_nu_top" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Second-order viscosity applied only near the model top [m^2/s].
-Default: Set by build-namelist.
+If negative the value is set at runtime from the model top location:
+1.25e5 for a model top below ~42km, 1.0e6 for the CAM7 middle/high tops,
+WACCM and WACCM-x.
+Default: -1 (automatic)
 </entry>
 
 <entry id="se_sponge_del4_nu_fac" type="real" category="se"
@@ -8750,36 +8755,38 @@ Default: Set by build-namelist.
   a low-order increment for tracer mass more than one grid cell width away
 </entry>
 
+<entry id="se_cslam_q_filter_nu_fac" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Controls the mass-conservative del4 (biharmonic) filter applied to water
+  vapor on the CSLAM grid every tracer time-step.  The filter damps
+  grid-scale noise in water vapor that seeds surface-pressure noise at
+  cube-sphere panel edges and vertices; total tracer mass is conserved
+  exactly and dry air mass (dp_fvm) is not modified.
+  If &gt; 0 the filter is active with damping coefficient
+  nu_filter = se_cslam_q_filter_nu_fac*nu_p (and the GLL-side del4 on water
+  vapor after cslam2gll is retuned to a weak background value).
+  If &lt;= 0 the filter is off.
+  Default: 0.5
+</entry>
+
+<entry id="se_gll_advect_q" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE (SE-CSLAM only), the thermodynamically active tracers are also
+  advected on the GLL grid (with the standard scalar tracer hyperviscosity)
+  and coupled to CAM physics through a forcing increment computed in
+  dynamics-physics coupling, instead of
+  overwriting the GLL tracer state with CSLAM values every vertical
+  remapping time-step.  Removes the surface-pressure noise associated with
+  the overwrite.  The GLL-side del4 applied after cslam2gll is not used when TRUE.
+  Ignored for non-CSLAM (se_fv_nphys=0) configurations.
+  Default: TRUE
+</entry>
+
 <entry id="se_fvm_supercycling" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of SE rsplit time-steps CSLAM supercycles
 rsplit/se_fvm_supercycling must be an integer
 </entry>
-
-<entry id="se_fvm_supercycling_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Number of SE rsplit time-steps CSLAM supercycles in the jet region
-(which is specified by kmin_jet and kmax_jet)
-rsplit/se_fvm_supercycling_jet must be an integer
-se_fvm_supercycling_jet/se_fvm_supercyling must be an integer
-</entry>
-
-<entry id="se_kmin_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Min level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  min index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
-<entry id="se_kmax_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Max level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  max index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
 
 <entry id="se_qsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
@@ -8796,6 +8803,7 @@ Default: FALSE
 <entry id="se_rsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Vertically lagrangian code vertically remaps every rsplit tracer timesteps.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist.
 </entry>
 
@@ -8879,34 +8887,6 @@ unstructured grid format.  This allows the restart file to be used as an
 initial file, but its use as a restart file will introduce roundoff size
 differences into the simulation.
 Default: .false.
-</entry>
-
-<!-- Nudging -->
-<entry id="se_met_nudge_u" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed winds in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_t" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed temperature in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_p" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed surface pressure in SE dycore
-Units: 1/sec
-Default: 0.0
-</entry>
-
-<entry id="se_met_tevolve" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1" >
-Switch to turn on/off time evolution of dynamics nudging
-Default: 0
 </entry>
 
 <!-- Physics grid entries -->

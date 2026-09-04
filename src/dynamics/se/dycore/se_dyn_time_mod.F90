@@ -4,8 +4,6 @@ module se_dyn_time_mod
   !------------------
   implicit none
   integer,public                :: nsplit=1
-  integer,public                :: nsplit_baseline=-1
-  integer,public                :: rsplit_baseline=-1
   integer,public                :: nmax          ! Max number of timesteps
   integer,public                :: nEndStep      ! Number of End Step
   integer,public                :: ndays         ! Max number of days
@@ -81,6 +79,7 @@ contains
   !it only has 2 levels for storage
   subroutine TimeLevel_Qdp(tl, qsplit, n0, np1)
     use dimensions_mod, only: use_cslam
+    use control_mod,    only: gll_advect_q
     type (TimeLevel_t) :: tl
     integer, intent(in) :: qsplit
     integer, intent(inout) :: n0
@@ -88,7 +87,7 @@ contains
 
     integer :: i_temp
 
-    if (use_cslam) then
+    if (use_cslam .and. .not. gll_advect_q) then
        n0 = 1
        if (present(np1)) np1 = 1
     else

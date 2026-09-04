@@ -38,6 +38,7 @@ module dimensions_mod
   integer         :: ntrac = 0           !ntrac is set in dyn_comp
   logical, public :: use_cslam = .false. !logical for CSLAM
   integer         :: qsize = 0           !qsize is set in dyn_comp
+  integer, public :: wv_idx_dycore = -1  !water vapor index in dycore Qdp; set in dyn_comp
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging
@@ -55,15 +56,14 @@ module dimensions_mod
   integer, parameter, public :: ubc = nc+nhc
   logical, public            :: large_Courant_incr
 
-  integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
-  integer, public :: fvm_supercycling    
-  integer, public :: fvm_supercycling_jet
+  integer, public :: fvm_supercycling
 
   integer, allocatable, public :: kord_tr(:), kord_tr_cslam(:)
   
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
   real(r8), public :: nu_lev(PLEV)      ! level dependent del4 (u,v) damping
   real(r8), public :: nu_t_lev(PLEV)    ! level depedendet del4 T damping
+  real(r8), public :: nu_p_lev(PLEV)    ! level dependent del4 dp damping
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)
