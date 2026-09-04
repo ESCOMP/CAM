@@ -2199,6 +2199,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/atmos_phys/schemes/bretherton_park\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/beljaars_drag\n";
     print $fh "$camsrcdir/src/atmos_phys/schemes/microp_aero\n";
+    print $fh "$camsrcdir/src/atmos_phys/schemes/cloud_water\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
