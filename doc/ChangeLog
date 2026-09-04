@@ -1,10 +1,10 @@
 ===============================================================
 
-Tag name:
+Tag name: cam6_4_200
 Originator(s): pel
-Date: August 31, 2026
+Date: Sept 4, 2026
 	One-line Summary: Remove PS noise in SE-CSLAM, WACCM stability
-Github PR URL:
+Github PR URL:https://github.com/ESCOMP/CAM/pull/1664
 
 Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
@@ -101,7 +101,7 @@ Describe any substantial timing or memory changes:
   replaces (91 s); the water-vapor filter costs 28 s and the remainder is the
   additional hyperviscosity subcycle from the stability fix.
 
-Code reviewed by:
+Code reviewed by:jet, nusbaume
 
 List all files eliminated: none
 
@@ -186,8 +186,47 @@ then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
 derecho/intel/aux_cam:
+  SMS_D_Ln9_P1536x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.derecho_intel.cam-outfrq9s (Overall: FAIL)
+    - intermittent failure in CTSM code (lnd_set_decomp_and_domain.F90)  - It happened to fail this time
+
+  ERC_D_Ln9.ne30pg2_ne30pg2_mt232.QPC7.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERC_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_LTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERI_D_Ln18.ne16pg3_ne16pg3_mt232.FHIST_C4.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERI_D_Ln18.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq3s_eri (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mt232.F1850C_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3.ne16pg3_ne16pg3_mg17.FHISTC_WAt1ma.derecho_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Ld3.ne30pg3_ne30pg3_mt232.FHISTC_MTt4s.derecho_intel.cam-outfrq1d_aoa (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FCnudged.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WAma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERR_Ln9.ne16pg3_ne16pg3_mt232.FHISTC_LTso.derecho_intel.cam-outfrq9s_bwic (Overall: DIFF) details:
+  ERS_Ln9.ne30pg3_ne30pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s_ctem (Overall: DIFF) details:
+  SMS_C2_D_Ln9.ne16pg3_ne16pg3_mg17.FHISTC_WXma.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne16_ne16_mg17.QPX2000.derecho_intel.cam-outfrq9s_amie (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_MTso.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mt233.1850_CAM70%MT%CT4S2_CLM60%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_P1280x1.ne30pg3_ne30pg3_mt232.FHISTC_MTt1s.derecho_intel.cam-outfrq9s_Leung_dust (Overall: DIFF) details:
+  SMS_Ld1.ne30pg3_ne30pg3_mg17.FC2010climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ln9.ne30pg3_ne30pg3_mg17.FW2000climo.derecho_intel.cam-outfrq9s_rrtmgp (Overall: DIFF) details:
+  - expected SE dycore answer changes due to new filtering and double advection (discussed below)
+
+  ERP_Lh12.f19_f19_mg17.FW4madSD.derecho_intel.cam-outfrq3h (Overall: DIFF) details:
+  ERP_Ln9.f19_f19_mg17.FWsc1850.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9.f09_f09_mg17.FX2000.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9.f19_f19_mg17.FXSD.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.f19_f19_mg17.FWma2000climo.derecho_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+  SMS_Ld1.f09_f09_mg17.FW2000climo.derecho_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ln9.f09_f09_mg17.FW1850.derecho_intel.cam-reduced_hist3s (Overall: DIFF) details:
+  - expected FV dycore answer changes due to new sponge defaults diff_sponge_fac = 0.0D0 => 0.1D0
+
+  ERC_D_Ln9.ne3_ne3_mg37.QPC7.derecho_intel.cam-outfrq9s_rttov (Overall: NLFAIL) details:
+  SCT_D_Ln7.ne3_ne3_mg37.QPC5.derecho_intel.cam-scm_prep (Overall: NLFAIL) details:
+  SMS_D_Ln9.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.derecho_intel.cam-outfrq9s (Overall: NLFAIL) details:
+  - expected failure. Namelist using -1 to allow dycore calculation of parameter which is the same as previous default value
 
 derecho/nvhpc/aux_cam:
+  ERS_Ln9.ne30pg3_ne30pg3_mt232.FHISTC_LTso.derecho_nvhpc.cam-outfrq9s_gpu_default (Overall: DIFF)
+  - expected SE dycore answer changes due to filtering and double advection (discussed below)
 
 izumi/nag/aux_cam:
   ERC_D_Ln9.f10_f10_mt232.FHIST_C5.izumi_nag.cam-outfrq3s_subcol (Overall: FAIL) details:
@@ -239,8 +278,6 @@ Summarize any changes to answers, i.e.,
   value, the branch is bit-for-bit with the baseline (verified over one day at
   ne30pg3 FHISTC_LTso, every prim_printstate line identical).  Non-CSLAM (GLL
   tracer) configurations are unaffected.
-
-
 
 ===============================================================
 
