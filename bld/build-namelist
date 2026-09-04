@@ -3898,6 +3898,34 @@ if ($chem =~ /_mam(\d)/) {
     }
 }
 
+# SAD process participation spec_types
+if ($chem =~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # sad_seasalt_spec_types is MAM-only: CARMA does not compute separate
+    # sea-salt SAD (its aero_model_surfarea sets sad_ssa to a sentinel value).
+    add_default($nl, 'sad_seasalt_spec_types',
+       'val'=>"'seasalt'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+if ($carma ne 'none' and $chem !~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+if ($aer_model eq 'bam' and $prescribed_aero_model eq 'none') {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','black-c','p-organic','s-organic','nitrate'");
+}
+# ...for prescribed BAM with chemistry (WACCM-4) sad_chem_spec_types should
+# be empty as sulfate is from supplemental SAD from sulf_file, not here.
+
 # Gravity wave drag settings
 
 # By default, orographic waves are always on
@@ -4327,9 +4355,6 @@ if ($dyn =~ /se/) {
                   se_vert_remap_uvTq_alg
                   se_vert_remap_tracer_alg
 		  se_fvm_supercycling
-		  se_fvm_supercycling_jet
-		  se_kmin_jet
-		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
 	          se_dribble_in_rsplit_loop
@@ -5334,7 +5359,8 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
-                             "'microp_section'"));
+                             "'microp_aero'",
+                             "'pumas_tend'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
         }
@@ -5375,7 +5401,8 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
-            push (@validList_bc, ("'microp_section'"));
+            push (@validList_bc, ("'microp_aero'"));
+            push (@validList_bc, ("'pumas_tend'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }

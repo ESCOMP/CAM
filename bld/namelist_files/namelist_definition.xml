@@ -220,6 +220,53 @@
        Default: FALSE
        </entry>
 
+<entry id="Nudge_SpectralFilter" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+	Toggle Spectral Filtering of Nudging Tendencies ON/OFF.
+
+        Nudge_SpectralFilter - LOGICAL Option to apply spherical harminic filtering to
+                                       the model state and target data so that nudging
+                                       tendencies are only applied to scales larger than
+                                       the specified truncation.
+       Default: FALSE
+       </entry>
+
+<entry id="Nudge_SpectralNtrunc" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Set Horizonal Scale for Spectral Filtering
+
+       Nudge_SpectralNtrunc - INT The number of meridional spherical harmonic modes used
+                                  for spectral filtering. The nominal horizontal scale of
+                                  the filtering can be estimated as:
+
+                                     Hscale = PI*6350/Nudge_SpectralNtrunc
+
+                             i.e. Nudge_SpectralNtrunc=40 corresponds to a horizontal
+                                  nudging scale  Hscale~500km.
+       Default: -1
+       </entry>
+
+<entry id="Nudge_SpectralNring" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Set size of local-area grid used to suppress Sampling Errors.
+
+       Nudge_SpectralNring  - INT The number of sampling rings used for local area averaging
+                                  of spherical harmonic modes, to suppress sampling errors.
+                                  When initializing each basis, a local average of SH values
+                                  is computed for the area associated with each grid point.
+                                  SpectralNring set the number of rings of equal-area points
+                                  in this sampling domain.
+                                  Each ring (kk) contains 8*(kk-1) sample points.
+
+                                     Nudge_SpectralNring     Number of Sampling Points
+                                     -------------------     -------------------------
+                                        1                        1      (DEFAULT SampleGrid NOT used)
+                                        2                        9
+                                        3                       25
+                                        4                       49
+       Default:  1
+       </entry>
+
 <entry id="Nudge_Path" type="char*256" input_pathname="abs" category="nudging"
        group="nudging_nl" valid_values="" >
        Full pathname of analyses data to use for nudging.
@@ -307,6 +354,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -323,6 +373,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -339,6 +392,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -355,6 +411,9 @@
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == HEAVISIDE WINDOW FUNCTION IN VERTICAL
+              and USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -367,10 +426,12 @@
 
 <entry id="Nudge_PSprof" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Profile index for PS nudging.
+       Profile index for PS nudging.(Horizontal Only)
          0 == OFF      (No Nudging of this variable)
          1 == CONSTANT (Spatially Uniform Nudging)
          2 == HEAVISIDE WINDOW FUNCTION
+         3 == USER SPECIFIED HORIZONAL DOMAIN
+              (Specified by user via Nudge_Bwindow_File)
        Default: 0
        </entry>
 
@@ -378,6 +439,14 @@
        group="nudging_nl" valid_values="" >
        Normalized Coeffcient for PS nudging.
          [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_PSscal" type="real" category="nudging"
+	group="nudging_nl" valid_values="" >
+       Coeffcient controling the vertical influence function.
+          Nudge_PSscal < 1.0 : P'(n) = [    B(n)      ]*(Target_Ps - Model_Ps)
+          Nudge_PSscal > 1.0 : P'(n) = [(Pref/P0)**scl]*(Target_Ps - Model_Ps)
        Default: 0.
        </entry>
 
@@ -459,6 +528,13 @@
          TRUE  = value=0 inside the specified window, 1 outside
          FALSE = value=1 inside the specified window, 0 outside
        Default: FALSE
+       </entry>
+
+<entry id="Nudge_Bwindow_File" type="char*256" input_pathname="abs" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Filename for the Horizonal Boundary Window to use for nudging with profile option 3.
+        (e.g. '/$DIN_LOC_ROOT/atm/cam/nudging/BoundaryWindowFile.nc')
+       Default: 'BoundaryWindowFile.nc'
        </entry>
 
 <entry id="Nudge_ZonalFilter" type="logical" category="nudging"
@@ -2478,11 +2554,11 @@ Number of RTTOV instruments to simulate.
 This default logical is set in cospsimulator_intr.F90
 Default: 0
 </entry>
-    
+
 <entry id="cosp_rttov_instrument_namelists" type="char*256(50)"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 List of RTTOV instrument namelist files to read when running RTTOV in COSP.
-File paths are read relative to the case run directory 
+File paths are read relative to the case run directory
 (e.g. /glade/derecho/scratch/$USER/$CASENAME/run/) if an absolute path is not provided (recommended). Each namelist file
 contains information specifying the simulated instrument, channels, and
 outputs. Templates and instructions can be found in src/physics/cosp2/COSP-RTTOV_examples/.
@@ -2528,48 +2604,48 @@ Default: none
 
 <entry id="cosp_SWATH_LOCALTIMES_ISCCP" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP ISCCP data. The sampling 
-"local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP ISCCP data. The sampling
+"local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
 <entry id="cosp_SWATH_LOCALTIMES_MISR" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP MISR data. The sampling 
-"local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP MISR data. The sampling
+"local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
 <entry id="cosp_SWATH_LOCALTIMES_MODIS" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP MODIS data. The sampling 
-"local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP MODIS data. The sampling
+"local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
 <entry id="cosp_SWATH_LOCALTIMES_CSCAL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data. The  
-sampling "local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP CloudSat-CALIPSO data. The
+sampling "local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
 <entry id="cosp_SWATH_LOCALTIMES_PARASOL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP PARASOL data. The sampling 
-"local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP PARASOL data. The sampling
+"local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
 
 <entry id="cosp_SWATH_LOCALTIMES_ATLID" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
-Swath localtimes (hours) for masking COSP ATLID data. The sampling 
-"local time" refers to a linear shift from UTC as a function of a 
+Swath localtimes (hours) for masking COSP ATLID data. The sampling
+"local time" refers to a linear shift from UTC as a function of a
 gridcell’s longitude (t_local = t_UTC − longitude * 24/360).
 Default: none
 </entry>
@@ -2577,7 +2653,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_ISCCP" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP ISCCP data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -2587,7 +2663,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_MISR" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP MISR data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -2597,7 +2673,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_MODIS" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP MODIS data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -2607,7 +2683,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_CSCAL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP CSCAL data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -2617,7 +2693,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_PARASOL" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP PARASOL data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -2627,7 +2703,7 @@ Default: none
 <entry id="cosp_SWATH_WIDTHS_ATLID" type="real*10"  category="cosp"
        group="cospsimulator_nl" valid_values="" >
 Swath widths (kilometers) for masking COSP ATLID data. The "swath width"
-determines the spatial region around each local time that is simulated. 
+determines the spatial region around each local time that is simulated.
 Supplying a swath width in units of distance rather than radians produces
 a larger sampling density at higher latitudes that is consistent with
 observations.
@@ -3864,7 +3940,7 @@ the dynamics core. Very experimental.
 <entry id="clubb_l_ascending_grid" type="logical" category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Causes advance_clubb_core to run in ascending mode, where the surface is at k=1, which is opposite
-of the descending cam grid. This is mainly a testing/debugging option - it requires an expensive 
+of the descending cam grid. This is mainly a testing/debugging option - it requires an expensive
 data flipping step and should not change answers significantly.
 </entry>
 
@@ -4144,7 +4220,7 @@ Valid values: 0 (no grid adaptation), 1 (use Lscale and wp2)
 
 <entry id="clubb_fill_holes_type" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="0,1,2,3,4,5,6" >
-Selects which algorithm the fill_holes routine uses to correct 
+Selects which algorithm the fill_holes routine uses to correct
 below threshold values in field solutions.
 0: off - Skip the mass conservative hole filling step, rely on blunt clipping
 1: global - Fast but minimally local, most methods use this as a fallback step
@@ -4376,7 +4452,7 @@ calculated by down-gradient diffusion.
 
 <entry id="clubb_l_ho_nontrad_coriolis" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to implement the nontraditional Coriolis terms in the 
+Flag to implement the nontraditional Coriolis terms in the
 prognostic equations of w'w', u'w', and u'u.
 </entry>
 
@@ -5900,7 +5976,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -5908,7 +5984,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
+       group="phys_ctl_nl" valid_values="pumas_tend,chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,orographic_form_drag_stress,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,,microp_aero,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,rk_stratiform_tend,rayleigh_friction_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -6706,6 +6782,43 @@ Default: set by build-namelist.
        group="aerosol_nl" valid_values="" >
 Tuning for seasalt_emis
 Default: set by build-namelist.
+</entry>
+
+<entry id="sad_chem_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to chemistry-relevant surface area density (SAD)
+for heterogeneous reaction rates. The SAD determines how much aerosol surface
+is available for gas-phase chemical reactions (computed in aero_model, used
+by mo_usrrxt).
+
+In bulk (BAM) configurations, types not in rad_climate are provided by
+a supplemental path in aero_model_surfarea.
+
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium' (MAM, CARMA);
+'sulfate','black-c','p-organic','s-organic','nitrate' (prognostic bulk);
+UNSET (prescribed bulk)
+</entry>
+
+<entry id="sad_seasalt_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to sea-salt surface area density (SAD).
+Computed separately from chemistry SAD and used for sea-salt-specific
+heterogeneous reactions.
+Default: 'seasalt'
+</entry>
+
+<entry id="sad_strat_spec_types" type="char*32(16)" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Species types contributing to stratospheric surface area density (SAD).
+Used by aero_model_strat_surfarea to compute strato_sad, which is passed
+to sad_strat_calc (mo_sad.F90) for STS/NAT/ICE thermodynamic partitioning.
+Note: sad_strat_calc currently assumes all incoming SAD is sulfate aerosol
+(via sulfate_sad_calc and calc_radius_lbs). Supporting non-sulfate species
+in the stratospheric SAD pathway requires refactoring mo_sad.F90 to handle
+multiple aerosol types independently. The physically correct default would
+be 'sulfate' only, but the current default matches sad_chem_spec_types for
+bit-for-bit consistency with prior hardcoded behavior.
+Default: 'sulfate','s-organic','p-organic','black-c','ammonium'
 </entry>
 
 <entry id="aer_sol_facti" type="real(1000)" category="cam_chem"
@@ -8488,12 +8601,14 @@ Default: 0 (i.e., not used)
 <entry id="se_hypervis_subcycle" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
 <entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist
 </entry>
 
@@ -8643,31 +8758,6 @@ Number of SE rsplit time-steps CSLAM supercycles
 rsplit/se_fvm_supercycling must be an integer
 </entry>
 
-<entry id="se_fvm_supercycling_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Number of SE rsplit time-steps CSLAM supercycles in the jet region
-(which is specified by kmin_jet and kmax_jet)
-rsplit/se_fvm_supercycling_jet must be an integer
-se_fvm_supercycling_jet/se_fvm_supercyling must be an integer
-</entry>
-
-<entry id="se_kmin_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Min level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  min index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
-<entry id="se_kmax_jet" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-  Max level index where CSLAM runs with se_fvm_supercycling_jet
-  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
-  max index where are Courant number increment is active
-  (se_large_Courant_incr=.true.)
-</entry>
-
-
 <entry id="se_qsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Tracer advection is done every qsplit dynamics timesteps.
@@ -8683,6 +8773,7 @@ Default: FALSE
 <entry id="se_rsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Vertically lagrangian code vertically remaps every rsplit tracer timesteps.
+Set to -1 to have the value selected automatically at runtime from the CFL stability limits.
 Default: Set by build-namelist.
 </entry>
 
@@ -8766,34 +8857,6 @@ unstructured grid format.  This allows the restart file to be used as an
 initial file, but its use as a restart file will introduce roundoff size
 differences into the simulation.
 Default: .false.
-</entry>
-
-<!-- Nudging -->
-<entry id="se_met_nudge_u" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed winds in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_t" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed temperature in SE dycore
-Units: 1/sec
-Default: 2e-5
-</entry>
-
-<entry id="se_met_nudge_p" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Nudging factor for prescribed surface pressure in SE dycore
-Units: 1/sec
-Default: 0.0
-</entry>
-
-<entry id="se_met_tevolve" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1" >
-Switch to turn on/off time evolution of dynamics nudging
-Default: 0
 </entry>
 
 <!-- Physics grid entries -->

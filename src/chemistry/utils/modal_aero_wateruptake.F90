@@ -115,7 +115,7 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
          'dry dgnum, interstitial, mode '//trnum(2:3))
       call addfld('dgnw_a'//trnum(2:3), (/ 'lev' /), 'A', 'm', &
          'wet dgnum, interstitial, mode '//trnum(2:3))
-      call addfld('wat_a'//trnum(3:3),  (/ 'lev' /), 'A', 'm', &
+      call addfld('wat_a'//trnum(3:3),  (/ 'lev' /), 'A', 'kg kg-1', &
          'aerosol water, interstitial, mode '//trnum(2:3))
 
       ! determine default variables

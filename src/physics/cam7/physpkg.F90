@@ -1095,7 +1095,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt            ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt            ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -1221,7 +1221,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt                       ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt                       ! model physics timestep [s]
     !
     ! Input/Output arguments
     !
@@ -1404,7 +1404,6 @@ contains
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_timestep_init, check_energy_cam_chng
     use check_energy,       only: tot_energy_phys
-    use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
     use dycore,             only: dycore_is
@@ -1424,7 +1423,8 @@ contains
     use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use lunar_tides,        only: lunar_tides_tend
     use ssatcontrail,       only: ssatcontrail_d0
-    use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale
+    use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale, &
+                                  physics_state_copy, physics_ptend_copy
     use microp_driver,      only: microp_driver_tend
     use microp_aero,        only: microp_aero_run
     use clubb_intr,         only: clubb_tend_cam, clubb_emissions_cam
@@ -1457,16 +1457,13 @@ contains
     !
     ! Arguments
     !
-    real(r8), intent(in) :: ztodt                  ! Two times model timestep (2 delta-t)
+    real(r8), intent(in) :: ztodt                  ! model physics timestep [s]
 
     type(cam_in_t),      intent(inout) :: cam_in
     type(cam_out_t),     intent(inout) :: cam_out
     type(physics_state), intent(inout), target :: state
     type(physics_tend ), intent(inout) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
-
-
-    type(check_tracers_data):: tracerint      ! tracer mass integrals and cummulative boundary fluxes
 
     !
     !---------------------------Local workspace-----------------------------
@@ -1477,6 +1474,8 @@ contains
     type(physics_ptend)   :: ptend_sc         ! ptend for sub-columns
     type(physics_ptend)   :: ptend_aero       ! ptend for microp_aero
     type(physics_ptend)   :: ptend_aero_sc    ! ptend for microp_aero on sub-columns
+    type(physics_state)   :: state_snap       ! state copy for the post-apply microp_aero snapshot
+    type(physics_ptend)   :: ptend_snap       ! ptend_aero copy for the snapshot apply
     type(physics_tend)    :: tend_sc          ! tend for sub-columns
 
     integer  :: nstep                         ! current timestep number
@@ -1505,7 +1504,6 @@ contains
     real(r8) :: flx_cnd(pcols)
 
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: dlfzm(:,:)            ! ZM detrained convective cloud water mixing ratio.
     real(r8), pointer :: cmfmczm(:,:)          ! ZM convective mass fluxes
@@ -1685,9 +1683,7 @@ contains
     ! get nstep and zero array for energy checker
     zero = 0._r8
     zero_sc(:) = 0._r8
-    zero_tracers(:,:) = 0._r8
     nstep = get_nstep()
-    call check_tracers_init(state, tracerint)
 
     ! Check if latent heat flux exceeds the total moisture content of the
     ! lowest model layer, thereby creating negative moisture.
@@ -1841,7 +1837,7 @@ contains
              call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
           end if
 
-          if (trim(cam_take_snapshot_before) == "microp_section") then
+          if (trim(cam_take_snapshot_before) == "microp_aero") then
              call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
                   fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
           end if
@@ -1850,7 +1846,30 @@ contains
           call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf)
           call t_stopf('microp_aero_run')
 
+          if ( (trim(cam_take_snapshot_after) == "microp_aero") .and.      &
+               (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+             call cam_snapshot_ptend_outfld(ptend_aero, lchnk)
+          end if
+
+          if (trim(cam_take_snapshot_after) == "microp_aero") then
+             ! ptend_aero is only applied to state by the combined physics_update
+             ! after the microphysics, so apply it to copies here to snapshot the
+             ! post-apply constituents:
+             call physics_state_copy(state, state_snap)
+             call physics_ptend_copy(ptend_aero, ptend_snap)
+             call physics_update(state_snap, ptend_snap, cld_macmic_ztodt)
+             call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_snap, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+             call physics_state_dealloc(state_snap)
+          end if
+
           call t_startf('microp_tend')
+
+          if (trim(cam_take_snapshot_before) == "pumas_tend") then
+             call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
+          end if
+
 
           if (use_subcol_microp) then
 
@@ -1932,13 +1951,13 @@ contains
 
           call diag_clip_tend_writeout(state, ptend, ncol, lchnk, ixcldliq, ixcldice, ixq, ztodt, rtdt)
 
-          if ( (trim(cam_take_snapshot_after) == "microp_section") .and.      &
+          if ( (trim(cam_take_snapshot_after) == "pumas_tend") .and.      &
                (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
              call cam_snapshot_ptend_outfld(ptend, lchnk)
           end if
           call physics_update (state, ptend, ztodt, tend)
 
-          if (trim(cam_take_snapshot_after) == "microp_section") then
+          if (trim(cam_take_snapshot_after) == "pumas_tend") then
              call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
                   fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
           end if
@@ -2050,9 +2069,6 @@ contains
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf ('convect_deep_tend2')
 
-    ! check tracer integrals
-    call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
-
     call t_stopf('aerosol_wet_processes')
 
 
@@ -2135,8 +2151,6 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
-         cam_in%cflx)
 
     if (trim(cam_take_snapshot_before) == "co2_cycle_set_ptend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2184,8 +2198,6 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
        end if
        call check_energy_cam_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
-       call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &
-            cam_in%cflx)
     end if
     call t_stopf('adv_tracer_src_snk')
 
@@ -2300,8 +2312,6 @@ contains
       call check_energy_cam_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
            zero, cam_in%shf)
     endif
-
-    call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
 
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
@@ -2656,7 +2666,6 @@ contains
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
     use check_energy,    only: check_energy_cam_chng, check_energy_cam_fix
-    use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
@@ -2680,7 +2689,7 @@ contains
 
     ! Arguments
 
-    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+    real(r8), intent(in) :: ztodt                          ! model physics timestep [s]
 
     type(physics_state), intent(inout), target :: state
     type(physics_tend ), intent(inout) :: tend
@@ -2760,8 +2769,6 @@ contains
     real(r8) :: rliq2(pcols)                   ! vertical integral of liquid from shallow scheme
     real(r8) :: flx_cnd(pcols)
     real(r8) :: flx_heat(pcols)
-    type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
-    real(r8) :: zero_tracers(pcols,pcnst)
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
@@ -2781,7 +2788,6 @@ contains
     call t_startf('bc_init')
 
     zero = 0._r8
-    zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
 
     lchnk = state%lchnk
@@ -2838,9 +2844,6 @@ contains
     ! Dump out "before physics" state
     !
     call diag_state_b4_phys_write (state)
-
-    ! compute mass integrals of input tracers state
-    call check_tracers_init(state, tracerint)
 
     call t_stopf('bc_init')
 

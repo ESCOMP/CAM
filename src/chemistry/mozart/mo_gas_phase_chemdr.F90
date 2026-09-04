@@ -298,7 +298,7 @@ contains
     use mo_usrrxt,         only : usrrxt, has_ice_trp_rxts
     use mo_setinv,         only : setinv
     use mo_negtrc,         only : negtrc
-    use mo_sulf,           only : sulf_interp
+    use mo_sulf,           only : sulf_interp, read_sulf
     use mo_setext,         only : setext
     use fire_emissions,    only : fire_emissions_vrt
     use mo_sethet,         only : sethet
@@ -674,7 +674,7 @@ contains
        strato_sad(:,:) = 0._r8
 
        ! Prognostic modal stratospheric sulfate: compute dry strato_sad
-       call aero_model_strat_surfarea( state, ncol, mmr, pmid, tfld, troplevchem, pbuf, strato_sad, reff_strat )
+       call aero_model_strat_surfarea( state, pmid, tfld, troplevchem, strato_sad, reff_strat )
 
     endif
 
@@ -811,6 +811,7 @@ contains
     if ( .not. carma_hetchem_feedback ) then
        if( so4_ndx < 1 ) then ! get offline so4 field if not prognostic
           call sulf_interp( ncol, lchnk, sulfate )
+          if (read_sulf) call outfld( 'SULFATE', sulfate(:ncol,:), ncol, lchnk )
        else
           sulfate(:,:) = vmr(:,:,so4_ndx)
        endif
