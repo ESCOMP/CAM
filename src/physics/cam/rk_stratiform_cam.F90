@@ -96,6 +96,7 @@ contains
 
    ! Local variables
    integer :: unitn, ierr
+   logical :: one_mom_clouds_dummy
    character(len=*), parameter :: subname = 'rk_stratiform_readnl'
 
    character(len=512) :: errmsg
@@ -150,6 +151,7 @@ contains
       r3lcrit_in = rk_strat_r3lcrit, &
       do_psrhmin_in = do_psrhmin, &
       psrhmin_in = rk_strat_polstrat_rhmin, &
+      one_mom_clouds = one_mom_clouds_dummy, &
       errmsg = errmsg, &
       errflg = errflg)
 
