@@ -281,7 +281,6 @@ contains
     ! Provides a place to reinitialize diagnostic constituents HORZ and VERT
     !-----------------------------------------------------------------------
 
-    use ppgrid,         only: begchunk, endchunk
     use physics_types,  only: physics_state
     use gmean_mod,      only: gmean
     use time_manager,   only: is_first_step, is_first_restart_step
