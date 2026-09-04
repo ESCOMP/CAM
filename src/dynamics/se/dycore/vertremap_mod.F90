@@ -293,7 +293,7 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
 
         zv1 = 0
         do k=1,nlev
-          if (zgam(k+1)>1_r8) then
+          if (zgam(k+1)>1._r8) then
             WRITE(*,*) 'r not in [0:1]', zgam(k+1)
             abort=.true.
           endif

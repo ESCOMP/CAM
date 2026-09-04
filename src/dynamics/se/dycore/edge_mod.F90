@@ -116,7 +116,7 @@ module edge_mod
 ! routines which including element edge data
 ! (used for FVM arrays where edge data is not shared by neighboring elements)
 ! these routines pack/unpack element data with user specified halo size
-                                  
+
   ! Wrap pointer so we can make an array of them.
   type :: wrap_ptr
     real (kind=r8), dimension(:,:), pointer :: ptr => null()
@@ -152,13 +152,13 @@ contains
     call initEdgeBuffer(par,edge,elem,nlyr,bndry_type=bndry_type, &
                          nthreads=nthreads,CardinalLength=ndepth*npoints,OrdinalLength=ndepth*ndepth)
     ! set some parameters need to support deep halos
-    edge%ndepth  = ndepth 
+    edge%ndepth  = ndepth
     edge%npoints = npoints
     edge%lb      = 1 - edge%ndepth
     edge%ub      = edge%npoints + edge%ndepth
 
   end subroutine initGhostBuffer
-   
+
 
 
   subroutine zeroEdgeBuffer(edge)
@@ -187,7 +187,7 @@ contains
     type (EdgeBuffer_t), target,   intent(out) :: edge
     type (element_t),              intent(in)  :: elem(:)
     integer,                       intent(in)  :: nlyr
-    integer,             optional, intent(in)  :: bndry_type 
+    integer,             optional, intent(in)  :: bndry_type
     integer,             optional, intent(in)  :: nthreads
     integer,             optional, intent(in)  :: CardinalLength
     integer,             optional, intent(in)  :: OrdinalLength
@@ -241,7 +241,7 @@ contains
     character(len=80)                 :: errorstring
     character(len=80), parameter      :: subname='initedgeBuffer'
 
-    if(present(bndry_type)) then 
+    if(present(bndry_type)) then
       if ( MPI_VERSION >= 3 ) then
         edge%bndry_type = bndry_type
       else
@@ -252,12 +252,12 @@ contains
     endif
 
     ! Set the length of the cardinal and ordinal message lengths
-    if(present(CardinalLength)) then 
+    if(present(CardinalLength)) then
        CardinalLen = CardinalLength
     else
        CardinalLen = np
     endif
-    if(present(OrdinalLength)) then 
+    if(present(OrdinalLength)) then
        OrdinalLen = OrdinalLength
     else
        OrdinalLen = 1
@@ -329,7 +329,7 @@ contains
     ie        = pSchedule%pIndx(j)%elemid
     len       = CalcSegmentLength(pSchedule%pIndx(j),CardinalLen,OrdinalLen,nlyr)
     edge%putmap(il,ie) = 0
-    if(nSendCycles>0) then 
+    if(nSendCycles>0) then
         edge%sdisplsFull(icycle) = edge%putmap(il,ie)
         edge%scountsFull(icycle) = len
     endif
@@ -1209,9 +1209,9 @@ contains
             v(1,1,1)%z=edge%receive(2*nce+isw+1)
             exit
         else
-            v(1,1,1)%x=0_r8
-            v(1,1,1)%y=0_r8
-            v(1,1,1)%z=0_r8
+            v(1,1,1)%x=0._r8
+            v(1,1,1)%y=0._r8
+            v(1,1,1)%z=0._r8
         endif
     end do
 
@@ -1225,9 +1225,9 @@ contains
             v(2,np,1)%z=edge%receive(2*nce+ise+1)
             exit
         else
-            v(2,np,1)%x=0_r8
-            v(2,np,1)%y=0_r8
-            v(2,np,1)%z=0_r8
+            v(2,np,1)%x=0._r8
+            v(2,np,1)%y=0._r8
+            v(2,np,1)%z=0._r8
         endif
     end do
 
@@ -1241,9 +1241,9 @@ contains
             v(3,np,np)%z=edge%receive(2*nce+ine+1)
             exit
         else
-            v(3,np,np)%x=0_r8
-            v(3,np,np)%y=0_r8
-            v(3,np,np)%z=0_r8
+            v(3,np,np)%x=0._r8
+            v(3,np,np)%y=0._r8
+            v(3,np,np)%z=0._r8
         endif
     end do
 
@@ -1257,9 +1257,9 @@ contains
             v(4,1,np)%z=edge%receive(2*nce+inw+1)
             exit
         else
-            v(4,1,np)%x=0_r8
-            v(4,1,np)%y=0_r8
-            v(4,1,np)%z=0_r8
+            v(4,1,np)%x=0._r8
+            v(4,1,np)%y=0._r8
+            v(4,1,np)%z=0._r8
         endif
     end do
 
@@ -1743,7 +1743,7 @@ contains
 
 
 subroutine ghostpack(edge,v,vlyr,kptr,ielem)
-  
+
   use dimensions_mod, only : max_corner_elem
   use control_mod, only : north, south, east, west, neast, nwest, seast, swest
   use edgetype_mod, only : EdgeDescriptor_t
@@ -1978,8 +1978,8 @@ subroutine ghostunpack(edge,v,vlyr,kptr,ielem)
   do l=swest,swest+max_corner_elem-1
      isw = edge%getmap(l,ielem)
      if(isw /= -1) then
-        ! note the following is the the correct meaning of reverse in this code.  
-        ! It is  best described as a transponse operation 
+        ! note the following is the the correct meaning of reverse in this code.
+        ! It is  best described as a transponse operation
         if (edge%reverse(l,ielem)) then
            do k=1,vlyr
               ktmp = nhc*(kptr+k-1)
@@ -2015,7 +2015,7 @@ subroutine ghostunpack(edge,v,vlyr,kptr,ielem)
 ! SEAST
   do l=swest+max_corner_elem,swest+2*max_corner_elem-1
      ise = edge%getmap(l,ielem)
-     if(ise /= -1) then 
+     if(ise /= -1) then
         if (edge%reverse(l,ielem)) then
            do k=1,vlyr
               ktmp = nhc*(kptr+k-1)
@@ -2051,7 +2051,7 @@ subroutine ghostunpack(edge,v,vlyr,kptr,ielem)
 ! NEAST
   do l=swest+3*max_corner_elem,swest+4*max_corner_elem-1
      ine = edge%getmap(l,ielem)
-     if(ine /= -1) then 
+     if(ine /= -1) then
         if (edge%reverse(l,ielem)) then
            do k=1,vlyr
               ktmp = nhc*(kptr+k-1)
@@ -2087,7 +2087,7 @@ subroutine ghostunpack(edge,v,vlyr,kptr,ielem)
 ! NWEST
   do l=swest+2*max_corner_elem,swest+3*max_corner_elem-1
      inw = edge%getmap(l,ielem)
-     if(inw /= -1) then 
+     if(inw /= -1) then
         if (edge%reverse(l,ielem)) then
            do k=1,vlyr
               ktmp = nhc*(kptr+k-1)

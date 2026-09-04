@@ -98,14 +98,14 @@ CONTAINS
     use element_mod,            only: element_t
     use dof_mod,                only: UniquePoints
     use coordinate_systems_mod, only: cart2spherical
-    
+
     ! Inputs
     type(element_t),   intent(in) :: elem(:)
     character(len=*),  intent(in) :: grid_format
     character(len=*),  intent(in) :: filename_in
-    
+
     real(r8), parameter :: rad2deg = 180._r8/pi
-    
+
     ! Local variables
 !!XXgoldyXX: v debug only
 #ifdef USE_PIO3D
@@ -1899,9 +1899,9 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
 
       do j=1,np
         do i=1,np
-          cvlist(ie)%vert(:,i,j)%x = 0_r8
-          cvlist(ie)%vert(:,i,j)%y = 0_r8
-          cvlist(ie)%vert(:,i,j)%z = 0_r8
+          cvlist(ie)%vert(:,i,j)%x = 0._r8
+          cvlist(ie)%vert(:,i,j)%y = 0._r8
+          cvlist(ie)%vert(:,i,j)%z = 0._r8
         end do
       end do
 
@@ -2083,9 +2083,9 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
 
       do j=2,np-1
         do i=2,np-1
-          vertpack(i,j,1) =0_r8
-          vertpack(i,j,2) =0_r8
-          vertpack(i,j,3) =0_r8
+          vertpack(i,j,1) =0._r8
+          vertpack(i,j,2) =0._r8
+          vertpack(i,j,3) =0._r8
         end do
       end do
 
@@ -2199,7 +2199,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
            - (v12%x*v23%z - v12%z*v23%x)*v12%y &
            + (v12%x*v23%y - v12%y*v23%x)*v12%z
 
-      if (test > 0_r8)then
+      if (test > 0._r8)then
         orient=.TRUE.
       end if
 
@@ -2287,7 +2287,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
     end do
     call wrap_repro_sum(nvars=6, comm=hybrid%par%comm)
 
-    ptot=0_r8
+    ptot=0._r8
     do face=1,6
       red_sum%buf(1) = global_shared_sum(face)
       psum = red_sum%buf(1)
@@ -2296,13 +2296,13 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
 
       if(hybrid%masterthread) then
         write(*,'(a,i2,a,2e23.15)') "cube face:",face," : SURFACE FV =",&
-             6_r8*psum/(4_r8 * pi), &
-             6_r8*psum/(4_r8 * pi)-1
+             6._r8*psum/(4._r8 * pi), &
+             6._r8*psum/(4._r8 * pi)-1
       end if
     end do
 
     if(hybrid%masterthread) then
-      write(iulog, *) "SURFACE FV (total)= ", ptot/(4_r8 * pi)
+      write(iulog, *) "SURFACE FV (total)= ", ptot/(4._r8 * pi)
     end if
 
   end subroutine VerifVolumes

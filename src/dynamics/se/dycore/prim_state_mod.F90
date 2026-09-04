@@ -14,7 +14,7 @@ module prim_state_mod
   implicit none
   private
 
-  public :: prim_printstate, adjust_nsplit
+  public :: prim_printstate
 
 CONTAINS
 
@@ -344,91 +344,6 @@ CONTAINS
     end if
   end subroutine prim_printstate_cslam_gamma
 #endif
-
-  subroutine adjust_nsplit(elem, tl,hybrid,nets,nete, fvm, omega_cn)
-    use dimensions_mod,         only: ksponge_end
-    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use se_dyn_time_mod,        only: tstep
-    use control_mod,            only: rsplit, qsplit
-    use perf_mod,               only: t_startf, t_stopf
-    use se_dyn_time_mod,        only: nsplit, nsplit_baseline,rsplit_baseline
-    use control_mod,            only: qsplit, rsplit
-    use time_manager,           only: get_step_size
-    use cam_abortutils,         only: endrun
-    use control_mod,    only: nu_top
-    !
-    type (element_t),             intent(inout) :: elem(:)
-    type (TimeLevel_t), target,   intent(in)    :: tl
-    type (hybrid_t),              intent(in)    :: hybrid
-    integer,                      intent(in)    :: nets,nete
-    type(fvm_struct),             intent(inout) :: fvm(:)
-    real (kind=r8),               intent(in)    :: omega_cn(2,nets:nete)
-    ! Local variables...
-    integer            :: k,ie
-    real (kind=r8), dimension(1) :: min_o
-    real (kind=r8), dimension(1) :: max_o
-    real (kind=r8)               :: dtime
-    character(len=128)           :: errmsg
-    real (kind=r8)               :: threshold=0.90_r8
-    real (kind=r8)               :: max_abs_omega_cn(nets:nete)
-    real (kind=r8)               :: min_abs_omega_cn(nets:nete)
-    !
-    ! The threshold values for when to double nsplit are empirical.
-    ! In FW2000climo runs the Courant numbers are large in the sponge
-    !
-    ! The model was found to be stable if regular del4 is increased
-    ! in the sponge and nu_top is increased (when nsplit doubles)
-    !
-    !
-    do ie=nets,nete
-      max_abs_omega_cn(ie) = MAXVAL(ABS(omega_cn(:,ie)))
-    end do
-
-    !JMD This is a Thread Safe Reduction
-    do k = 1,1
-      max_o(k) = ParallelMax(max_abs_omega_cn(:),hybrid)
-!      min_o(k) = ParallelMin(min_abs_omega_cn(:),hybrid)
-    end do
-    if (max_o(1)>threshold.and.nsplit==nsplit_baseline) then
-      !
-      ! change vertical remap time-step
-      !
-       nsplit=2*nsplit_baseline
-       fvm_supercycling     = rsplit
-       fvm_supercycling_jet = rsplit
-       nu_top=2.0_r8*nu_top
-      !
-      ! write diagnostics to log file
-      !
-       if(hybrid%masterthread) then
-          !dynamics variables in n0 are at time =  'time': time=tl%nstep*tstep
-          !dt=tstep*qsplit
-          !    dt_remap = tstep*qsplit*rsplit  ! vertical REMAP timestep
-          !
-          write(iulog,*)   'adj. nsplit: doubling nsplit; t=',Time_at(tl%nstep)/(24*3600)," [day]; max OMEGA",max_o(1)
-       end if
-       dtime = get_step_size()
-       tstep = dtime / real(nsplit*qsplit*rsplit, r8)
-
-    else if (nsplit.ne.nsplit_baseline.and.max_o(1)<0.4_r8*threshold) then
-      !
-      ! should nsplit be reduced again?
-      !
-       nsplit=nsplit_baseline
-       rsplit=rsplit_baseline
-       fvm_supercycling     = rsplit
-       fvm_supercycling_jet = rsplit
-       nu_top=nu_top/2.0_r8
-
-!       nu_div_scale_top(:) = 1.0_r8
-
-       dtime = get_step_size()
-       tstep = dtime / real(nsplit*qsplit*rsplit, r8)
-       if(hybrid%masterthread) then
-         write(iulog,*)   'adj. nsplit: reset nsplit   ; t=',Time_at(tl%nstep)/(24*3600)," [day]; max OMEGA",max_o(1)
-       end if
-    end if
-  end subroutine adjust_nsplit
 
   subroutine prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
     type (element_t),             intent(inout) :: elem(:)

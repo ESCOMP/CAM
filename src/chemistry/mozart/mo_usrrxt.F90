@@ -2818,19 +2818,19 @@ contains
         rxt(:,k,nir_ndx(5)) = 1.3e-11_r8 * tp(:)**1.64_r8
         rxt(:,k,nir_ndx(6)) = 3.3e-11_r8 * tp(:)**2.38_r8
 
-        call comp_exp( exp_fac, -7300_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7300._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(7)) = (1.0e-3_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -7050_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7050._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(8)) = (7.2e-4_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -6800_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -6800._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(9)) = (6.5e-3_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -7600_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7600._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(10)) = (5.7e-4_r8 * tp(:)) * exp_fac(:)
 
-        call comp_exp( exp_fac, -7150_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7150._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(11)) = (1.5e-2_r8 * tp(:)) * exp_fac(:)
 
-        call comp_exp( exp_fac, -13130_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -13130._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(12)) = (6.0e-3_r8 * tp(:)) * exp_fac(:)
         rxt(:,k,nir_ndx(13)) = 5.22e-28_r8 * tp(:)**2.62_r8
 

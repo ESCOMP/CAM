@@ -4355,9 +4355,6 @@ if ($dyn =~ /se/) {
                   se_vert_remap_uvTq_alg
                   se_vert_remap_tracer_alg
 		  se_fvm_supercycling
-		  se_fvm_supercycling_jet
-		  se_kmin_jet
-		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
 	          se_dribble_in_rsplit_loop
