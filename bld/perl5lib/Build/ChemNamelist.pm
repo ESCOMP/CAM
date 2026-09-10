@@ -1,6 +1,5 @@
 package Build::ChemNamelist;
 
-no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 
 #-------------------------------------------------------------------------------------
 # generates species lists for chemistry namelist settings
@@ -311,7 +310,9 @@ sub get_dep_list
     if ($print_lvl>=2){ print "Using chemistry master list file $master_file \n"; }
 
     my @species_list = @{$species_list_ref};
-    my @nottransported_list = @{$nottransported_list_ref};
+
+    # create a hash keyed on species name -- used for the membership test below
+    my %nottransported = map { $_ => 1 } @{$nottransported_list_ref};
 
     my @master_list = read_master_list_file($master_file);
 
@@ -319,7 +320,7 @@ sub get_dep_list
     my $first = 1; my $pre = "";
     foreach my $name (sort @species_list) {
 	foreach my $item (@master_list) {
-	    if (!($item ~~ @nottransported_list)) {
+	    if (!$nottransported{$item}) {
 		if ($name eq $item) {
 		    $list .= $pre .  quote_string($name) ;
 		    if ($first) { $pre = ","; $first = 0; }
