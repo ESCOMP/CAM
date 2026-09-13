@@ -4628,7 +4628,7 @@ Default: .true.
 <entry id="do_clubb_mf_addtke" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. add MF contribution to TKE pbuf variable
-Default: .true.
+Default: .false.
 </entry>
 
 <entry id="clubb_mf_L0" type="real" category="conv"

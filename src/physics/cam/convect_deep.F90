@@ -120,8 +120,14 @@ subroutine convect_deep_register
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
    call pbuf_add_field('NEVAPR_DPCU','physpkg',dtype_r8,(/pcols,pver/),nevapr_dpcu_idx)
-   call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
-   call pbuf_add_field('SNOW_DP',    'physpkg',dtype_r8,(/pcols/),     snow_dp_idx)
+   ! the MF plume precipitation is produced in tphysac, but cam_export reads
+   ! PREC_DP/SNOW_DP at the end of tphysbc.  'global' persistence carries the
+   ! values across the run2/run1 boundary (and through restarts) so the
+   ! coupler receives them with the same one-timestep lag as the stratiform
+   ! PREC_SED/PREC_PCW fields; 'physpkg' fields are deallocated at the end of
+   ! phys_run2 and the precipitation would never reach cam_out%precc/precsc.
+   call pbuf_add_field('PREC_DP',    'global',dtype_r8,(/pcols/),     prec_dp_idx)
+   call pbuf_add_field('SNOW_DP',    'global',dtype_r8,(/pcols/),     snow_dp_idx)
 
    call pbuf_add_field('ZM_MU',      'physpkg', dtype_r8, (/pcols,pver/), zm_mu_idx)
    call pbuf_add_field('ZM_EU',      'physpkg', dtype_r8, (/pcols,pver/), zm_eu_idx)
@@ -298,8 +304,13 @@ subroutine convect_deep_tend( &
     call pbuf_get_field(pbuf, prec_dp_idx,     prec )
     call pbuf_get_field(pbuf, snow_dp_idx,     snow )
 
-    prec=0
-    snow=0
+    ! for CLUBB_MF, PREC_DP/SNOW_DP hold the previous timestep's plume
+    ! precipitation (produced in tphysac, 'global' persistence) on its way to
+    ! cam_export at the end of this tphysbc -- do not clear them here
+    if (deep_scheme /= 'CLUBB_MF') then
+       prec=0
+       snow=0
+    end if
 
     jctop = pver
     jcbot = 1._r8
