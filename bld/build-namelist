@@ -3313,24 +3313,26 @@ if (defined $do_clubb_sgs) {
 add_default($nl, 'do_clubb_sgs');
 my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 
-# Evaluate do_clubb_mf early to handle overrides
-add_default($nl, 'do_clubb_mf');
-my $clubb_mf = $nl->get_value('do_clubb_mf');
-
-# Deep convection scheme and CLUBB+MF dependency check
-if (defined $do_clubb_mf and $do_clubb_mf =~ /$TRUE/io) {
-    if ($clubb_sgs !~ /$TRUE/io) {
-        die "CAM Namelist ERROR: do_clubb_mf is set to .true. but do_clubb_sgs is not active.\n" .
-            "CLUBB+MF requires the CLUBB_SGS package to be enabled.\n";
-    }
-    add_default($nl, 'deep_scheme', 'val'=>"'off'");
-} else {
-    add_default($nl, 'deep_scheme');
-}
+# Deep convection scheme
+add_default($nl, 'deep_scheme');
 my $deep_scheme = $nl->get_value('deep_scheme');
 
+# CLUBB+MF dependency checks
+if ($deep_scheme =~ /CLUBB_MF/) {
+    if ($clubb_sgs !~ /$TRUE/io) {
+        die "CAM Namelist ERROR: deep_scheme='CLUBB_MF' but do_clubb_sgs is not active.\n" .
+            "CLUBB+MF requires the CLUBB_SGS package to be enabled.\n";
+    }
+    # CLUBB+MF is only valid cam7 physics
+    if ($phys !~ /cam7/) {
+        die "CAM Namelist ERROR: deep_scheme='CLUBB_MF' but the physics package is '$phys'.\n" .
+            "CLUBB+MF is only supported with cam7 physics (configure with -phys cam7).\n";
+    }
+}
+
 # Aerosol convective processes
-if (($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/) {
+if ((($phys =~ /cam6/ or $phys =~ /cam7/) and $deep_scheme =~ /ZM/)
+    or $deep_scheme =~ /CLUBB_MF/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
@@ -3445,15 +3447,8 @@ add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_min');
 add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
-
-# CLUBB-MF cloud droplet activation tuning
-if ($clubb_mf =~ "true") {
-    add_default($nl, 'microp_aero_wsub_scale', 'val'=>'0.5');
-    add_default($nl, 'microp_aero_wsubi_scale', 'val'=>'0.5');
-} else {
-    add_default($nl, 'microp_aero_wsub_scale');
-    add_default($nl, 'microp_aero_wsubi_scale');
-}
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
 
 # Ice nucleation options
 if (!$simple_phys) {
@@ -3706,7 +3701,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_z_displace');
 
    # CLUBB-MF runs w/o expldiff & prognostic momentum fluxes 
-   if ($clubb_mf =~ "true") {
+   if ($deep_scheme =~ /CLUBB_MF/) {
        add_default($nl, 'clubb_l_predict_upwp_vpwp', 'val'=>'.false.');
        add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'val'=>'.false.');
    } else {
@@ -3718,7 +3713,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'do_hb_above_clubb');
 
    # CLUBB-MF options
-   if ($clubb_mf =~ "true") {
+   if ($deep_scheme =~ /CLUBB_MF/) {
        add_default($nl, 'do_clubb_mf_diag');
        add_default($nl, 'do_clubb_mf_rad');
        add_default($nl, 'do_clubb_mf_precip');
@@ -3751,6 +3746,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
        add_default($nl, 'do_clubb_mf_coldpool_perplume');
        add_default($nl, 'do_clubb_mf_coldpool_init');
        add_default($nl, 'do_clubb_mf_aloft');
+       add_default($nl, 'do_clubb_mf_aspd');
+       add_default($nl, 'do_clubb_mf_pblcull');
+       add_default($nl, 'do_clubb_mf_invswitch');
    }
 }
 
@@ -4032,7 +4030,8 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
 }
 # Check if deep convection scheme used.  If not set use_gw_convect_dp=.false.
-if ($deep_scheme =~ /off/) {
+# CLUBB_MF does not (yet) provide TTEND_DP, so treat it like 'off' here
+if ($deep_scheme =~ /off/ or $deep_scheme =~ /CLUBB_MF/) {
     $use_gw_convect_dp = '.false.';
 }
 add_default($nl, 'use_gw_convect_dp', 'val'=>$use_gw_convect_dp);

@@ -2352,11 +2352,10 @@
 
 
 <!-- CLUBB+MF options -->
-<do_clubb_mf                       > .false. </do_clubb_mf>
 <do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
 <do_clubb_mf_precip                > .true.  </do_clubb_mf_precip>
 <do_clubb_mf_rad                   > .true.  </do_clubb_mf_rad>
-<do_clubb_mf_addtke                > .true.  </do_clubb_mf_addtke>
+<do_clubb_mf_addtke                > .false. </do_clubb_mf_addtke>
 <clubb_mf_L0                       > 200.0   </clubb_mf_L0>
 <clubb_mf_ent0                     > 0.2     </clubb_mf_ent0>
 <clubb_mf_alphturb                 > 3.0     </clubb_mf_alphturb>
@@ -2378,13 +2377,16 @@
 <do_clubb_mf_mixd                  > .false. </do_clubb_mf_mixd>
 <clubb_mf_up_ndt                   > 1       </clubb_mf_up_ndt>
 <clubb_mf_cp_ndt                   > 1       </clubb_mf_cp_ndt>
-<do_clubb_mf_rhtke                 > .true.  </do_clubb_mf_rhtke>
+<do_clubb_mf_rhtke                 > .false. </do_clubb_mf_rhtke>
 <do_clubb_mf_cmt                   > .false. </do_clubb_mf_cmt>
 <do_clubb_mf_lscale_perplume       > .true.  </do_clubb_mf_lscale_perplume>
 <do_clubb_mf_coldpool_init         > .false. </do_clubb_mf_coldpool_init>
 <do_clubb_mf_coldpool_perplume     > .true.  </do_clubb_mf_coldpool_perplume>
 <clubb_mf_kseed                    > 1       </clubb_mf_kseed>
 <do_clubb_mf_aloft                 > .true.  </do_clubb_mf_aloft>
+<do_clubb_mf_aspd                  > .false. </do_clubb_mf_aspd>
+<do_clubb_mf_pblcull               > .false. </do_clubb_mf_pblcull>
+<do_clubb_mf_invswitch             > .true.  </do_clubb_mf_invswitch>
 
 <!-- Set radiation intervals based on mpas hgrids -->
 <iradlw hgrid="mpasa15"  > 10 </iradlw>

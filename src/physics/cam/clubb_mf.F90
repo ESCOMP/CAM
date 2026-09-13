@@ -60,7 +60,11 @@ module clubb_mf
   integer  :: clubb_mf_cp_ndt  = 1
   integer  :: clubb_mf_kseed = 1
   integer, protected :: clubb_mf_nup     = 0
+  ! do_clubb_mf is NOT a namelist variable: it is derived in
+  ! clubb_mf_readnl from deep_scheme='CLUBB_MF' (phys_ctl_nl),
+  ! making the deep-scheme choice and the MF plume ensemble a single switch
   logical, protected :: do_clubb_mf = .false.
+  !
   logical, protected :: do_clubb_mf_diag = .false.
   logical, protected :: do_clubb_mf_rad = .true.
   logical, protected :: do_clubb_mf_addtke = .true.
@@ -68,12 +72,21 @@ module clubb_mf
   logical, protected :: do_clubb_mf_ustar = .false.
   logical, protected :: do_clubb_mf_mixd = .false.
   logical, protected :: do_clubb_mf_precip = .true.
-  logical, protected :: do_clubb_mf_rhtke = .true.
+  logical, protected :: do_clubb_mf_rhtke = .false.
   logical, protected :: do_clubb_mf_cmt = .false.
   logical, protected :: do_clubb_mf_aloft = .true.
   logical, protected :: do_clubb_mf_coldpool_init = .false.
   logical, protected :: do_clubb_mf_coldpool_perplume = .true.
   logical, protected :: do_clubb_mf_lscale_perplume = .true.
+  logical, protected :: do_clubb_mf_aspd = .false.
+  logical, protected :: do_clubb_mf_pblcull = .false.
+  ! shut off the MF plume ensemble where the lower-tropospheric
+  ! inversion is strong (thl700 - thl1000 >= 20 K), mirroring the CLUBB-core
+  ! expldiff criterion (advance_clubb_core_module).  Strong-inversion
+  ! columns are the marine-Sc regime, where CLUBB should own the boundary
+  ! layer; unlike do_clubb_mf_rhtke this is a direct on/off trigger rather
+  ! than an indirect entrainment enhancement.
+  logical, protected :: do_clubb_mf_invswitch = .true.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -87,20 +100,23 @@ module clubb_mf
 
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer, mpi_logical
+    use phys_control,    only: phys_getopts
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     character(len=*), parameter :: sub = 'clubb_mf_readnl'
 
     integer :: iunit, read_status, ierr
+    character(len=16) :: deep_scheme
 
 
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
-                           clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
+                           clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
                            do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
-                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_pwmin, clubb_mf_pwmax, clubb_mf_cldfrac_fac
+                           do_clubb_mf_addtke, do_clubb_mf_aloft, clubb_mf_pwmin, clubb_mf_pwmax, clubb_mf_cldfrac_fac, &
+                           do_clubb_mf_aspd, do_clubb_mf_pblcull, do_clubb_mf_invswitch
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -130,8 +146,6 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
     call mpi_bcast(clubb_mf_max_L0,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_max_L0")
-    call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
     call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
     call mpi_bcast(do_clubb_mf_precip, 1, mpi_logical, mstrid, mpicom, ierr)
@@ -174,12 +188,24 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
     call mpi_bcast(do_clubb_mf_aloft, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aloft")
+    call mpi_bcast(do_clubb_mf_aspd, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_aspd")
+    call mpi_bcast(do_clubb_mf_pblcull, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_pblcull")
+    call mpi_bcast(do_clubb_mf_invswitch, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_invswitch")
     call mpi_bcast(clubb_mf_pwmin,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmin")
     call mpi_bcast(clubb_mf_pwmax,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_pwmax")
     call mpi_bcast(clubb_mf_cldfrac_fac,  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_cldfrac_fac")
+
+    ! CLUBB-MF is selected with deep_scheme='CLUBB_MF'; deriving the
+    ! switch here (on all ranks) removes any possibility of an
+    ! inconsistent do_clubb_mf / deep_scheme combination
+    call phys_getopts(deep_scheme_out = deep_scheme)
+    do_clubb_mf = (trim(deep_scheme) == 'CLUBB_MF')
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -196,7 +222,7 @@ module clubb_mf
                                              thl_zm,  qt_zm,     thv_zm,            & ! input
                                              th_zm,   qv_zm,     qc_zm,             & ! input
                            ustar,   ths,     wthl_sfc,wqt_sfc,   pblh,              & ! input
-                           tke,     tpert,   rhinv,                                 & ! input
+                           tke,     tpert,   lts,                                   & ! input
                            wpthlp_env,       wpthvp_env,         wpqtp_env,         & ! input
                            ztopm1,           ddcp,               cbm1,              & ! inout
                            mcape,                                                   & ! output
@@ -218,10 +244,10 @@ module clubb_mf
                            dry_u,   moist_u,                                        & ! output
                            dry_v,   moist_v,                                        & ! output
                                     moist_qc,                                       & ! output
-                           ae,                                                      &
-                           ac,      aup,     adn,                                   &
-                           aw,      awup,    awdn,                                  &
-                           aww,     awwup,   awwdn,                                 &
+                           ae,                                                      & ! output
+                           ac,      aup,     adn,                                   & ! output
+                           aw,      awup,    awdn,                                  & ! output
+                           aww,     awwup,   awwdn,                                 & ! output
                            awthlup, awqtup,  awuup, awvup,                          & ! output
                            awthldn, awqtdn,  awudn, awvdn,                          & ! output
                            awthl,   awqt,                                           & ! output
@@ -233,8 +259,12 @@ module clubb_mf
                            sqtup,   sthlup,                                         & ! output
                            sqtdn,   sthldn,                                         & ! output
                            sqt,     sthl,                                           & ! output - variables needed for solver
+                           sac,     sev,                                            & ! output - plume autoconversion / evaporation
                            precc,                                                   & ! output
-                           ztop,    dynamic_L0 )
+                           ztop,    dynamic_L0,                                     & ! output
+                           mfup,    entup,   detup,                                 & ! output
+                           mfdn,    entdn,   detdn,                                 & ! output
+                           kctop )                                                    ! output
 
   ! ================================================================================= !
   ! Mass-flux algorithm                                                               !
@@ -284,7 +314,16 @@ module clubb_mf
 
      real(r8), intent(in)                :: wthl_sfc,wqt_sfc
      real(r8), intent(in)                :: pblh,tpert
-     real(r8), intent(in)                :: rhinv
+     ! lower-tropospheric stability thl(700 hPa) - thl(1000 hPa) (K),
+     ! computed in clubb_intr (kept there verbatim for bit-for-bit
+     ! reproducibility of the trigger; see the note at the computation site)
+     real(r8), intent(in)                :: lts
+     ! the rhinv predictor is computed locally from the column inputs
+     ! (previously preprocessed in clubb_intr)
+     real(r8)                            :: rhinv, rhlev
+     real(r8), dimension(nzt)            :: rhprof
+     real(r8)                            :: tmpt_rh, es_rh, qs_rh, tmpmq, tmpmqs
+     integer                             :: k_rh
      real(r8), intent(in)                :: ths,ustar
      real(r8), intent(inout)             :: cbm1
 
@@ -333,7 +372,16 @@ module clubb_mf
 
      real(r8),dimension(nzt), intent(out) :: sqtup,   sthlup,                   & ! thermodynamic grid
                                              sqtdn,   sthldn,                    & ! thermodynamic grid
-                                             sqt,     sthl                         ! thermodynamic grid
+                                             sqt,     sthl,                      & ! thermodynamic grid
+                                             sac,     sev                          ! thermodynamic grid
+
+     ! ensemble plume mass flux [kg/m2/s], fractional entrainment/detrainment [1/m]
+     ! for updrafts/downdrafts (momentum grid), and ensemble plume-top index
+     ! (counted in momentum interfaces from the surface, orientation independent)
+     ! needed to populate deep pbuf variables for use by convtran2 and convproc_aer
+     real(r8),dimension(nzm), intent(out) :: mfup, entup, detup, &
+                                             mfdn, entdn, detdn
+     real(r8), intent(out)                :: kctop
 
      real(r8),dimension(clubb_mf_nup), intent(out) :: ztop, dynamic_L0, mcape
 
@@ -391,7 +439,9 @@ module clubb_mf
      ! microphyiscs terms
      real(r8), dimension(nzt,clubb_mf_nup) :: supqt,    supthl,        & ! thermodynamic grid
                                               sdnqt,    sdnthl,        & ! thermodynamic grid
-                                              upauto                     ! thermodynamic grid
+                                              upauto,   upevap           ! thermodynamic grid
+     ! ensemble updraft rain evaporation (area-weighted sum over plumes)
+     real(r8), dimension(nzt)              :: sevup                      ! thermodynamic grid
      ! precipitation rates
      real(r8), dimension(nzm,clubb_mf_nup) :: uprr,     dnrr             ! momentum grid
      !
@@ -459,6 +509,9 @@ module clubb_mf
                                                ee2,     ud2
      ! aloft trigger flag
      logical                                :: aloft = .false.
+
+     ! strong-inversion (marine-Sc) plume inhibition (do_clubb_mf_invswitch)
+     logical                                :: mf_inhibit
      ! rng seed
      real(r8), dimension(4)                 :: u_seed
      
@@ -487,15 +540,17 @@ module clubb_mf
      ! fixed entrainment rate
      real(r8),parameter                     :: fixent_ent = 2.e-4_r8
      !
-     ! Arakawa and Schubert detrainment limiter
-     logical                                :: do_aspd = .false.
-     !
      ! Lower limit on entrainment length scale
      real(r8),parameter                     :: min_L0 = 0.5_r8
      !
      ! limiter for tke enahnced fractional entrainment
-     ! (only used when do_aspd = .true.)
      real(r8),parameter                     :: max_eturb = 10._r8
+     !
+     ! floor on the ensemble mass flux for the deep-hookup ratio
+     ! diagnostics (entup/detup/entdn/detdn): near plume tops the
+     ! mass-flux-weighted entrainment divides by a vanishing mfup while
+     ! upent ~ 1/upw diverges, producing immense (finite) ratios
+     real(r8),parameter                     :: mf_tiny = 1.e-12_r8
      !
      ! to condensate or not to condensate
      logical                                :: do_condensation = .true.
@@ -514,6 +569,9 @@ module clubb_mf
      !
      ! max limiter on cold pool init effects
      real(r8),parameter                     :: max_cpinit = 0.5_r8
+     !
+     ! minimum depth of plume expressed as number of levels
+     integer,parameter                      :: kspan_min = 4
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -603,6 +661,18 @@ module clubb_mf
      sthl      = 0._r8
      precc     = 0._r8
 
+     sac       = 0._r8
+     sev       = 0._r8
+     sevup     = 0._r8
+
+     mfup      = 0._r8
+     entup     = 0._r8
+     detup     = 0._r8
+     mfdn      = 0._r8
+     entdn     = 0._r8
+     detdn     = 0._r8
+     kctop     = 1._r8
+
      mix       = 0._r8
      entf      = 0._r8
      enti      = 0
@@ -633,6 +703,7 @@ module clubb_mf
      upent = 0._r8
      updet = 0._r8
      upauto= 0._r8
+     upevap= 0._r8
 
      dnw   = 0._r8
      dna   = 0._r8
@@ -662,6 +733,11 @@ module clubb_mf
        limarea = .true.
      end if
 
+     ! with the ASPD limiter, area growth is only bounded per layer, so the
+     ! accumulated column area must be capped by the existing limarea
+     ! machinery (total convective area rescaled to amax)
+     if (do_clubb_mf_aspd) limarea = .true.
+
      ! unique identifier
      zcb_unset = 9999999._r8
      zcb       = zcb_unset
@@ -670,18 +746,17 @@ module clubb_mf
      !wthv = wthl+zvir*ths*wqt
      wthv_sfc = wthl_sfc+zvir*ths*wqt_sfc
 
+     ! PBL-top index
+     kpbl = ksfcm
+     do while (zm(kpbl) < pblh .and. kpbl /= ktopm)
+       kpbl = kpbl + kdir
+     end do
+
      if (do_clubb_mf_aloft .and. wthv_sfc < 0.01_r8) then
        aloft = .true.
-       kpbl = ksfcm
-       do while (zm(kpbl) < pblh)
-         kpbl = kpbl + kdir
-       end do
 
        kmid = ksfcm
-       ! Use a pressure-based criterion to locate the mid-level within the
-       ! troposphere. A threshold of ~500 hPa is preferred over the previous
-       ! fixed height (9 km) because it better represents the tropopause
-       ! location across different atmospheric conditions.
+       ! Use a pressure-based criterion to locate the mid-level within the troposphere
        do while (p_zm(kmid) > 500.E2_r8)
          kmid = kmid + kdir
        end do
@@ -705,9 +780,59 @@ module clubb_mf
        wqt  = wqt_sfc
      end if
 
+     ! ------------------------------------------------------------------- !
+     ! local predictors, computed from the column inputs (previously        !
+     ! preprocessed in clubb_intr):                                         !
+     !                                                                      !
+     ! (1) rhinv, consumed by the do_clubb_mf_rhtke entrainment factor and  !
+     !     by get_Lscale under clubb_mf_Lopt 7/8 -- computed only when one  !
+     !     of those consumers is active.  Lopt 7 (and the rhtke factor)     !
+     !     use RH interpolated to 500 hPa; Lopt 8 uses the column-          !
+     !     integrated RH (rho_zt*dzt = dp/g, so the mass weighting matches  !
+     !     the previous state%pdel/g integral exactly).                     !
+     ! (2) the lower-tropospheric stability thl(700 hPa) - thl(1000 hPa)    !
+     !     for the marine-Sc inhibition is computed in clubb_intr and       !
+     !     passed in as lts -- exactly the CLUBB-core expldiff criterion    !
+     !     (advance_clubb_core_module).                                     !
+     ! ------------------------------------------------------------------- !
+     rhinv = 0._r8
+     if (do_clubb_mf_rhtke .or. clubb_mf_Lopt==7 .or. clubb_mf_Lopt==8) then
+       if (clubb_mf_Lopt == 8) then
+         tmpmq  = 0._r8
+         tmpmqs = 0._r8
+         do k_rh = 1, nzt
+           ! T from the full potential temperature (matches the state%t the
+           ! previous clubb_intr preprocessing used)
+           tmpt_rh = th(k_rh)/iexner_zt(k_rh)
+           call qsat(tmpt_rh, p_zt(k_rh), es_rh, qs_rh)
+           tmpmq  = tmpmq  + rho_zt(k_rh)*dzt(k_rh)*qv(k_rh)
+           tmpmqs = tmpmqs + rho_zt(k_rh)*dzt(k_rh)*qs_rh
+         end do
+         rhlev = tmpmq/max(tmpmqs, 1.e-30_r8)
+       else
+         do k_rh = 1, nzt
+           tmpt_rh = th(k_rh)/iexner_zt(k_rh)
+           call qsat(tmpt_rh, p_zt(k_rh), es_rh, qs_rh)
+           rhprof(k_rh) = qv(k_rh)/max(qs_rh, 1.e-30_r8)
+         end do
+         rhlev = mf_pinterp(nzt, p_zt, rhprof, 50000._r8)
+       end if
+       if (rhlev >= 1._r8) rhlev = 0.990_r8
+       if (rhlev > 0._r8) rhinv = 1._r8/((1._r8/rhlev) - 1._r8)
+     end if
+
+     ! marine-Sc inhibition: mirror the CLUBB-core expldiff
+     ! criterion (advance_clubb_core_module: expldiff is applied only where
+     ! thlm700 - thlm1000 < 20 K).  Where the lower-tropospheric inversion is
+     ! at least that strong -- the marine stratocumulus regime -- the MF plume
+     ! ensemble is shut off entirely and CLUBB owns the boundary layer.  All
+     ! plume outputs were zeroed above, so the inhibited column follows the
+     ! same code path as a negatively buoyant (no-convection) one.
+     mf_inhibit = do_clubb_mf_invswitch .and. (lts >= 20._r8)
+
      ! if surface buoyancy is positive then do mass-flux
      !if ( wthv > 0._r8 ) then
-     if ( wthv > 0._r8 .and. wqt > 0._r8) then
+     if ( wthv > 0._r8 .and. wqt > 0._r8 .and. (.not. mf_inhibit) ) then
 
        if (do_clubb_mf_mixd) then
          convh = max(cbm1,pblhmin)
@@ -1135,8 +1260,9 @@ module clubb_mf
              updet(kn,i) = detn
 
            else
-             ! zero out plumes that terminate at k<3
-             if (abs(k-kstart+kdir)<4) then
+             ! cull plumes terminating at/below the PBL top (do_clubb_mf_pblcull),
+             if ( abs(k-kstart+kdir)<kspan_min .or. &
+                  (do_clubb_mf_pblcull .and. (k - kpbl)*kdir <= 0) ) then
                supqt(:,i) = 0._r8
                upauto(:,i)= 0._r8
                supthl(:,i)= 0._r8
@@ -1244,6 +1370,7 @@ module clubb_mf
              lmixt = 0.5_r8*(uplmix(k,i)+uplmix(kn,i))
              supqt(kt,i) = supqt(kt,i) + sevap
              supthl(kt,i) = supthl(kt,i) - lmixt*sevap*iexner_zt(kt)/cpair
+             upevap(kt,i) = sevap
            end do
          end do
        end if
@@ -1342,7 +1469,16 @@ module clubb_mf
                dnrr(kn,i) = max( dnrr(k,i) &
                                 - rho_zt(kt)*dzt(kt)*(sdnqt(kt,i) + upauto(kt,i)*clubb_mf_fdd) , 0._r8 )
 
-               ! include eturb?
+               ! compute the TKE entrainment enhancement locally for the downdraft.
+               eturb = 1._r8 + clubb_mf_alphturb*sqrt(tke(k))/abs(dnw(k,i))
+               if (do_clubb_mf_rhtke) then
+                 rh_L0 = 50._r8*(rhinv**3._r8)
+                 if (rh_L0 >= 733.34_r8) eturb = 1._r8
+               else
+                 if (dynamic_L0(i) >= clubb_mf_max_L0) eturb = 1._r8
+               end if
+               eturb = min(eturb, max_eturb)
+
                entexp  = exp(-1._r8*entn*eturb*dzt(kt))
                entexpu = exp(-1._r8*entn*dzt(kt)/3._r8)
 
@@ -1452,26 +1588,94 @@ module clubb_mf
        ! end computing downdrafts
 
        ! --------------------------------------------------------- !
-       ! AS.pd limiter                                             !
+       ! Arakawa-Schubert positive detrainment limiter             !
        ! --------------------------------------------------------- !
-       if (do_aspd) then
-         do k = ksfcm, ktopm-kdir, kdir
+       !   Arakawa-Schubert positive detrainment limiter, repaired:
+       ! - the scheme's mass-continuity convention is the detn diagnosis in the
+       !   ascent loop: 1/M dM/dz = upent - updet, where upent ALREADY contains
+       !   the TKE eturb enhancement.  The old code multiplied by the scalar
+       !   eturb again, which both double counted the enhancement and used a
+       !   stale value (whatever the last ascent/downdraft iteration left in
+       !   it) rather than the (k,i) being limited.
+       ! - the entrainment used for the pure-entrainment regrowth is capped at
+       !   mix*max_eturb, restoring the documented purpose of max_eturb
+       !   (eturb = 1 + alphturb*sqrt(tke)/w diverges as w -> 0 and an uncapped
+       !   exp(upent*dz) can produce runaway plume areas).
+       ! - guard against M(k)=0 (plume base and aloft-launch levels) and start
+       !   at kstart so the aloft downward extension is untouched.
+       ! - upmf/updet are kept consistent with the adjusted areas (downstream
+       !   ensemble sums and the deep-hookup mass fluxes use upa/upw directly
+       !   and are computed after this block).
+       if (do_clubb_mf_aspd) then
+         do k = kstart, ktopm-kdir, kdir
            kt = k - (1-kdir)/2
            kn = k + kdir
            do i=1,clubb_mf_nup
-             if (upw(kn,i)>0._r8) then
+             if (upw(kn,i)>0._r8 .and. upa(k,i)*upw(k,i)>0._r8) then
+               ! capped effective entrainment for mass continuity
+               entn = min(upent(kn,i), mix(kt,i)*max_eturb)
                ! diagnose detrainment
                Mn = rho_zm(k)*upa(k,i)*upw(k,i)
-               det = upent(kn,i)*eturb - (rho_zm(kn)*upa(kn,i)*upw(kn,i) - Mn) &
+               det = entn - (rho_zm(kn)*upa(kn,i)*upw(kn,i) - Mn) &
                              /(Mn*dzt(kt))
                if (det < 0._r8) then
-                 ! diagnose area to eliminate detrainment and conserve mass
-                 Mn = rho_zm(k)*upa(k,i)*upw(k,i)*exp(upent(kn,i)*eturb*dzt(kt))
-                 upa(kn,i) = Mn/(rho_zm(kn)*upw(kn,i))
+                 ! eliminate negative detrainment: grow M by pure entrainment
+                 ! and absorb the change into the plume area.
+                 ! cap the per-layer growth exponent: where dynamic_L0 is small the capped
+                 ! entrainment mix*max_eturb can still reach O(1) m^-1 and exp(entn*dz)
+                 ! overflows, producing runaway plume areas (found as area >> 1 in the
+                 ! edmf_S_AE diagnostics of the first ASPD test runs)
+                 Mn = Mn*exp(min(entn*dzt(kt), 0.5_r8))
+                 upa(kn,i)   = Mn/(rho_zm(kn)*upw(kn,i))
+                 upmf(kn,i)  = Mn
+                 updet(kn,i) = 0._r8
                end if
              end if
            end do
          end do
+         ! downdraft counterpart: enforce non-negative detrainment along the
+         ! descent.  The downdraft mass entrainment rate mirrors its construction
+         ! (per-plume constant entn; fixed dna with dnw from the w equation), so
+         ! where |Md| grows downward faster than entrainment allows, cap the
+         ! growth and absorb it into dna.
+         ! Interaction with the sub-cloud exponential dnw boundary condition
+         ! (which keeps flux gradients across the lowest levels gentle and
+         ! dz-insensitive): the decaying |Md| tail is positive detrainment, so
+         ! the limiter never modifies it; sweeping downward with the current
+         ! (already-limited) upper-level dna means any in-cloud dna reduction
+         ! cascades smoothly across cloud base (bounded by exp(entn*dz) per
+         ! layer) instead of leaving a discontinuity there; and since the cap
+         ! only ever REDUCES dna, near-surface flux gradients can only become
+         ! gentler.  Do NOT restrict this loop to the in-cloud region: that
+         ! would strand reduced in-cloud dna against the unmodified sub-cloud
+         ! constant and reintroduce a cloud-base flux-gradient discontinuity.
+         if (do_clubb_mf_precip .and. clubb_mf_fdd > 0._r8) then
+           do i=1,clubb_mf_nup
+             if (fixent) then
+               entn = fixent_ent
+             else if (dynamic_L0(i) > 0._r8) then
+               entn = clubb_mf_ent0/dynamic_L0(i)
+             else
+               cycle
+             end if
+             do k = ktopm, ksfcm+kdir, -kdir
+               kt = k - (1+kdir)/2
+               kn = k - kdir
+               if (dna(kn,i)*abs(dnw(kn,i))>0._r8 .and. &
+                   dna(k,i)*abs(dnw(k,i))>0._r8) then
+                 ! mass flux magnitude above (k) and below (kn)
+                 Mn = rho_zm(k)*dna(k,i)*abs(dnw(k,i))
+                 det = entn - (rho_zm(kn)*dna(kn,i)*abs(dnw(kn,i)) - Mn) &
+                               /(Mn*dzt(kt))
+                 if (det < 0._r8) then
+                   ! same per-layer growth cap as the updraft limiter
+                   Mn = Mn*exp(min(entn*dzt(kt), 0.5_r8))
+                   dna(kn,i) = Mn/(rho_zm(kn)*abs(dnw(kn,i)))
+                 end if
+               end if
+             end do
+           end do
+         end if
        end if
 
        ! --------------------------------------------------------- !
@@ -1596,10 +1800,65 @@ module clubb_mf
 
            sqtdn(kt_dn)  = sqtdn(kt_dn)  + dna(k,i)*sdnqt(kt_dn,i)
            sthldn(kt_dn) = sthldn(kt_dn) + dna(k,i)*sdnthl(kt_dn,i)
+
+           sac(kt_dn)   = sac(kt_dn)   + upa(kn,i)*upauto(kt_dn,i)
+           sevup(kt_dn) = sevup(kt_dn) + upa(kn,i)*upevap(kt_dn,i)
          end do
 
          sqt(kt_dn)  = sqtup(kt_dn)  + sqtdn(kt_dn)
          sthl(kt_dn) = sthlup(kt_dn) + sthldn(kt_dn)
+
+         sev(kt_dn) = sevup(kt_dn) + sqtdn(kt_dn)
+       enddo
+
+       ! --------------------------------------------------------- !
+       ! ensemble mass flux, entrainment and detrainment for the   !
+       ! deep-convection hookup.                                   !
+       ! Total updraft (downdraft) mass flux =                     !
+       !   rho * sum_i a_i*w_i = rho*awup (awdn).                  !
+       ! Fractional entrainment is the mass-flux-weighted plume    !
+       ! entrainment; detrainment is then derived from discrete    !
+       ! mass continuity so that (ent-det) is consistent with      !
+       ! d(mf)/dz, which keeps the downstream ZM_MU/EU/DU arrays   !
+       ! internally consistent.                                    !
+       ! --------------------------------------------------------- !
+       do k = ksfcm, ktopm, kdir
+         mfup(k) = rho_zm(k)*awup(k)
+         mfdn(k) = rho_zm(k)*awdn(k)
+         do i=1,clubb_mf_nup
+           entup(k) = entup(k) + rho_zm(k)*upa(k,i)*upw(k,i)*upent(k,i)
+         enddo
+         if (mfup(k) > mf_tiny) then
+           entup(k) = entup(k)/mfup(k)
+         else
+           entup(k) = 0._r8
+         end if
+       enddo
+       do k = ksfcm+kdir, ktopm, kdir
+         kn = k - kdir
+         kt_dn = k - (1+kdir)/2
+         ! updraft: det = ent - d(ln mf)/dz, clipped >= 0
+         if (mfup(kn) > mf_tiny .and. mfup(k) > mf_tiny) then
+           detup(k) = entup(k) - (mfup(k) - mfup(kn))/(mfup(kn)*dzt(kt_dn))
+           if (detup(k) < 0._r8) detup(k) = 0._r8
+         end if
+       enddo
+       do k = ktopm, ksfcm+kdir, -kdir
+         kt = k - (1+kdir)/2
+         kn = k - kdir
+         ! downdraft grows downward: ent from d(|mf|)/dz descending, det clipped
+         if (abs(mfdn(k)) > mf_tiny .and. abs(mfdn(kn)) > mf_tiny) then
+           entdn(kn) = (abs(mfdn(kn)) - abs(mfdn(k)))/(abs(mfdn(k))*dzt(kt))
+           if (entdn(kn) < 0._r8) then
+             detdn(kn) = -entdn(kn)
+             entdn(kn) = 0._r8
+           end if
+         end if
+       enddo
+       ! ensemble plume-top index, counted in momentum interfaces from the
+       ! surface (1 = surface interface); orientation independent
+       do k = ksfcm, ktopm-kdir, kdir
+         if (ac(k) > 0._r8) kctop = real(abs(k-ksfcm)+1, r8)
        enddo
        ! --------------------------------------------------------- !
        ! ztopm1 calculation                                        !
@@ -1763,6 +2022,42 @@ module clubb_mf
      end if
 
   end subroutine integrate_mf
+
+
+  ! clamped linear-in-pressure interpolation of a column field
+  ! to a target pressure level, mirroring the CLUBB-core pvertinterp
+  ! (advance_helper_module): outside the sounding the boundary value is used,
+  ! so the criterion degrades gracefully over high terrain exactly as the
+  ! CLUBB-core expldiff switch does.  Orientation-agnostic (brackets on the
+  ! pressure array itself), so it works for either vertical index convention.
+  function mf_pinterp(nz, p, fld, pout) result(val)
+    integer,  intent(in) :: nz
+    real(r8), intent(in) :: p(nz)     ! level pressures (Pa)
+    real(r8), intent(in) :: fld(nz)   ! field on the same levels
+    real(r8), intent(in) :: pout      ! target pressure (Pa)
+    real(r8)             :: val
+
+    integer  :: k, kbot(1), ktop(1)
+    real(r8) :: wgt
+
+    kbot = maxloc(p)
+    ktop = minloc(p)
+    if (pout >= p(kbot(1))) then
+      val = fld(kbot(1))
+    else if (pout <= p(ktop(1))) then
+      val = fld(ktop(1))
+    else
+      val = fld(kbot(1))
+      do k = 1, nz-1
+        if ((pout - p(k))*(pout - p(k+1)) <= 0._r8 .and. p(k) /= p(k+1)) then
+          wgt = (pout - p(k+1))/(p(k) - p(k+1))
+          val = wgt*fld(k) + (1._r8 - wgt)*fld(k+1)
+          exit
+        end if
+      end do
+    end if
+
+  end function mf_pinterp
 
 
   subroutine get_Lscale(nzt, nzm, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
