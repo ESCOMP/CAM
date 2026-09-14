@@ -2154,6 +2154,15 @@ end subroutine clubb_init_cnst
     !  Is this the first time step?  If so then initialize CLUBB variables as follows
     if (is_first_step()) then
 
+       if (do_clubb_mf) then
+          ! PREC_DP/SNOW_DP are 'global' pbuf fields (registered in
+          ! convect_deep) written in tphysac but exported to the coupler at
+          ! the end of tphysbc; on the first step cam_export reads them
+          ! before clubb has ever run, so they must start at zero
+          call pbuf_set_field(pbuf_ini, prec_dp_idx, 0.0_r8)
+          call pbuf_set_field(pbuf_ini, snow_dp_idx, 0.0_r8)
+       end if
+
        call pbuf_set_field(pbuf_ini, wp2_idx,     w_tol_sqd)
        call pbuf_set_field(pbuf_ini, wp3_idx,     0.0_r8)
        call pbuf_set_field(pbuf_ini, wpthlp_idx,  0.0_r8)
@@ -2466,7 +2475,7 @@ end subroutine clubb_init_cnst
     real(r8), pointer :: s_awup_macmic(:,:)
     real(r8), pointer :: wup_gath(:,:)
 
-    ! covnetive memory varaibles for CLUBB_MF
+    ! convective memory varaibles for CLUBB_MF
     real(r8), pointer :: ztopmn(:,:,:)
     real(r8), pointer :: ztopma(:,:)
     real(r8), pointer :: ztopm1_macmic(:,:)

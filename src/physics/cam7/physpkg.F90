@@ -3051,8 +3051,18 @@ contains
     end if
 
     ! Check energy integrals, including "reserved liquid"
-    flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
-    call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
+    if (do_clubb_mf) then
+       ! CLUBB_MF: the deep ptend is empty here (the plume tendencies are
+       ! applied by clubb in tphysac, where their precipitation enters the
+       ! energy check through flx_cnd).  PREC_DP/SNOW_DP hold the PREVIOUS
+       ! timestep's plume precipitation for cam_export and must not be
+       ! counted as a boundary flux of this (empty) tendency.
+       flx_cnd(:ncol) = 0._r8
+       call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, zero, zero)
+    else
+       flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
+       call check_energy_cam_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
+    end if
 
     !===================================================
     ! Compute convect diagnostics
