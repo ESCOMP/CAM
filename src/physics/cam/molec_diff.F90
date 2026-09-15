@@ -249,7 +249,7 @@ contains
     type(BoundaryType), intent(in) :: interface_boundary ! Boundary on grid edge.
     type(BoundaryType), intent(in) :: molec_boundary ! Boundary at edge of molec_diff region.
     real(r8), intent(in)    :: tint(:,:)    ! Air temperature [ K ], interfaces
-    real(r8), intent(in)    :: ztodt                 ! 2 delta-t [ s ]
+    real(r8), intent(in)    :: ztodt                 ! model physics timestep [s]
 
     real(r8), intent(in)    :: t(:,:)	    ! Air temperature [ K ]
     integer,  intent(in)    :: m 		    ! cnst index

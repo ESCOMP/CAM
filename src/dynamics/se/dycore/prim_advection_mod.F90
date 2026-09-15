@@ -24,6 +24,7 @@ module prim_advection_mod
   use hybvcoord_mod,          only: hvcoord_t
   use se_dyn_time_mod,        only: TimeLevel_t, TimeLevel_Qdp
   use control_mod,            only: nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
+  use control_mod,            only: gll_advect_q
   use edge_mod,               only: edgevpack, edgevunpack, initedgebuffer, initedgesbuffer
 
   use edgetype_mod,           only: EdgeBuffer_t
@@ -88,7 +89,7 @@ contains
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
-    if (.not.use_cslam) then
+    if (.not.use_cslam .or. gll_advect_q) then
       call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
            nthreads=horz_num_threads*advec_remap_num_threads)
       call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
@@ -953,7 +954,7 @@ contains
     use physconst,              only: pi
     use air_composition,        only: thermodynamic_active_species_idx_dycore
     use cam_thermo,             only: get_enthalpy, get_virtual_temp, get_dp, MASS_MIXING_RATIO
-    use thread_mod,             only: omp_set_nested
+    use thread_mod,             only: omp_set_max_active_levels
     use control_mod,            only: vert_remap_uvTq_alg
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
@@ -1093,14 +1094,14 @@ contains
           end do
         end do
         if(ntrac>tracer_num_threads) then
-          call omp_set_nested(.true.)
+          call omp_set_max_active_levels(2)
           !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
           hybridnew2 = config_thread_region(hybrid,'ctracer')
           call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
-          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star, &
-                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,qbeg:qend),nc,1,qend-qbeg+1,qend-qbeg+1,dpc_star, &
+                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam(qbeg:qend))
           !$OMP END PARALLEL
-          call omp_set_nested(.false.)
+          call omp_set_max_active_levels(1)
         else
           call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star, &
                       fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)

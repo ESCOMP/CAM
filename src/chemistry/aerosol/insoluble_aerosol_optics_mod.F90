@@ -74,6 +74,13 @@ contains
 
     type(insoluble_aerosol_optics), intent(inout) :: self
 
+    ! table and mmr pointers are views of data owned elsewhere; disassociate only
+    nullify(self%lw_abs)
+    nullify(self%sw_ext)
+    nullify(self%sw_ssa)
+    nullify(self%sw_asm)
+    nullify(self%mmr)
+
   end subroutine destructor
 
   !------------------------------------------------------------------------------

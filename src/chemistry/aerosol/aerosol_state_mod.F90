@@ -1,7 +1,6 @@
 module aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
-  use physconst, only: pi
 
   implicit none
 
@@ -25,9 +24,12 @@ module aerosol_state_mod
   !! class can be extended for a specific aerosol package.
   type, abstract :: aerosol_state
      integer :: list_idx_ = 0 ! radiation climate/diagnostic list index
+     integer :: ncol_ = 0     ! number of active columns
    contains
      procedure :: list_idx => get_list_idx
      procedure :: set_list_idx
+     procedure :: ncol => get_ncol
+     procedure :: set_ncol
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
@@ -62,6 +64,7 @@ module aerosol_state_mod
      procedure :: convcld_actfrac
      procedure :: sol_factb_interstitial
      procedure(aero_aqu_gain_binfraction), deferred :: aqu_gain_binfraction
+     procedure(aero_surf_area_dens), deferred :: surf_area_dens
 
   end type aerosol_state
 
@@ -296,6 +299,32 @@ module aerosol_state_mod
 
      end subroutine aero_aqu_gain_binfraction
 
+     !------------------------------------------------------------------------
+     ! aerosol surface area density
+     !------------------------------------------------------------------------
+     subroutine aero_surf_area_dens(self, aero_props, types_list, ncol, nlev, beglev, endlev, &
+                                    relhum, pmid, temp, pi, sad, reff, sfc, dm_aer)
+       import :: aerosol_state, aerosol_properties, r8
+
+       class(aerosol_state), intent(in) :: self
+       class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+       character(len=*), intent(in) :: types_list(:) ! list of aerosol types to include
+       integer,  intent(in)  :: ncol        ! number of columns
+       integer,  intent(in)  :: nlev        ! number of levels
+       integer,  intent(in)  :: beglev(:)   ! beginning model level index
+       integer,  intent(in)  :: endlev(:)   ! ending model level index
+       real(r8), intent(in)  :: relhum(:,:) ! relative humidity
+       real(r8), intent(in)  :: pmid(:,:)   ! mid-level pressure (Pa)
+       real(r8), intent(in)  :: temp(:,:)   ! temperature (K)
+       real(r8), intent(in)  :: pi          ! pi mathematical constant
+
+       real(r8), intent(out) :: sad(:,:)    ! surface area density (cm2/cm3)
+       real(r8), intent(out) :: reff(:,:)   ! effective radius (units cm)
+       real(r8), optional, intent(out) :: sfc(:,:,:) ! surface area density per bin (cm2/cm3)
+       real(r8), optional, intent(out) :: dm_aer(:,:,:) ! diameter per bin (cm)
+
+     end subroutine aero_surf_area_dens
+
   end interface
 
 contains
@@ -318,9 +347,26 @@ contains
   end subroutine set_list_idx
 
   !------------------------------------------------------------------------------
+  ! returns the number of active columns
+  !------------------------------------------------------------------------------
+  pure integer function get_ncol(self)
+    class(aerosol_state), intent(in) :: self
+    get_ncol = self%ncol_
+  end function get_ncol
+
+  !------------------------------------------------------------------------------
+  ! sets the number of active columns
+  !------------------------------------------------------------------------------
+  subroutine set_ncol(self, ncol)
+    class(aerosol_state), intent(inout) :: self
+    integer, intent(in) :: ncol
+    self%ncol_ = ncol
+  end subroutine set_ncol
+
+  !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer( self, aero_props, ncol, nlev,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, ncol, nlev, m, cs, phase, &
                        naerosol, vaerosol, hygro, errnum, errstr, pom_hygro)
 
     use aerosol_properties_mod, only: aerosol_properties
@@ -706,7 +752,7 @@ contains
   ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
   ! the same size and only species `species_ndx` contributes to the particle volume
   !------------------------------------------------------------------------------
-  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho, pi) result(radius)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -715,6 +761,7 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(in) :: pi
 
     real(r8) :: radius(ncol,nlev) ! m
 
@@ -946,6 +993,5 @@ contains
     end where
 
   end function sol_factb_interstitial
-
 
 end module aerosol_state_mod

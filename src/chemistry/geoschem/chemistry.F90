@@ -2040,7 +2040,7 @@ contains
     REAL(r8)          :: relHum (state%NCOL,PVER)     ! Relative humidity [0-1]
     REAL(r8)          :: satV   (state%NCOL,PVER)     ! Work arrays
     REAL(r8)          :: satQ   (state%NCOL,PVER)     ! Work arrays
-    REAL(r8)          :: qH2O   (state%NCOL,PVER)     ! Specific humidity [kg/kg]
+    REAL(r8)          :: qH2O   (pcols,     PVER)     ! Specific humidity [kg/kg] has to be pcols for newnuc.
     REAL(r8)          :: h2ovmr (state%NCOL,PVER)     ! H2O volume mixing ratio
     REAL(r8)          :: mBar   (state%NCOL,PVER)     ! Mean wet atmospheric mass [amu]
     REAL(r8)          :: invariants(state%NCOL,PVER,nfs)

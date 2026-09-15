@@ -334,7 +334,7 @@
    ! ---------------------- !
    type(physics_buffer_desc), pointer :: pbuf(:)
    type(physics_state), intent(in)    :: state                           ! Physics state variables
-   real(r8),            intent(in)    :: ztodt                           ! 2 delta-t  [ s ]
+   real(r8),            intent(in)    :: ztodt                           ! model physics timestep [s]
 
    type(physics_ptend), intent(out)   :: ptend_all                       ! Indivdual parameterization tendencies
    real(r8),            intent(out)   :: rliq2(pcols)                    ! Vertically-integrated reserved cloud condensate [ m/s ]

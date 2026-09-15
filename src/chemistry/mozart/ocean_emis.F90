@@ -165,7 +165,7 @@ contains
     real(r8)              :: to_lats(pcols), to_lons(pcols)
     type(interp_type)     :: lon_wgts, lat_wgts
 
-    real(r8), parameter   :: zero=0_r8, twopi=2_r8*pi, degs2rads = pi/180._r8
+    real(r8), parameter   :: zero=0._r8, twopi=2._r8*pi, degs2rads = pi/180._r8
 
     character(len=*), parameter :: subname = 'ocean_emis_init'
 

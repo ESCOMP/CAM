@@ -796,7 +796,7 @@ contains
     use physics_buffer,  only : physics_buffer_desc
     use physics_types,   only : physics_state
     use carma_flags_mod, only : carma_hetchem_feedback
-    use aero_model,      only : aero_model_surfarea
+    use aero_model,      only : aero_model_surfarea, n_supplemental_sad
     use radiative_aerosol,only : rad_aer_get_info
     use time_manager,     only : get_curr_calday
     use infnan,           only : nan
@@ -1049,7 +1049,7 @@ contains
     real(r8), parameter  :: pH            =  4.5e+00_r8
 
     real(r8), pointer :: sfc(:), dm_aer(:)
-    integer :: ntot_amode, nbins
+    integer :: ntot_amode, nbins, naero
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
  !TS2
@@ -1087,12 +1087,18 @@ contains
 
     calday = get_curr_calday()
 
+    ! one slot per aerosol mode/bin, plus the slots for supplemental SADs from species not in rad_climate
+    ! (bulk only: offline sulfate, ammonium nitrate, secondary organics)
     if (ntot_amode>0) then
-       allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
+       allocate(sfc_array(pcols,pver,ntot_amode+n_supplemental_sad), &
+                dm_array (pcols,pver,ntot_amode+n_supplemental_sad) )
     else if (nbins>0) then
-       allocate(sfc_array(pcols,pver,nbins), dm_array(pcols,pver,nbins) )
+       allocate(sfc_array(pcols,pver,nbins+n_supplemental_sad), &
+                dm_array (pcols,pver,nbins+n_supplemental_sad) )
     else
-       allocate(sfc_array(pcols,pver,5), dm_array(pcols,pver,5) )
+       call rad_aer_get_info(0, naero=naero)
+       allocate(sfc_array(pcols,pver,naero+n_supplemental_sad), &
+                dm_array (pcols,pver,naero+n_supplemental_sad) )
     endif
 
     sfc_array(:,:,:) = 0._r8
@@ -1109,8 +1115,8 @@ contains
           sad_trop(:ncol,:pver)=strato_sad(:ncol,:pver)
        else
           call aero_model_surfarea( &
-               state, mmr, rm1, relhum, pmid, temp, strato_sad, sulfate, m, tropchemlev, dlat, &
-               het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop, sad_sslt )
+               state, relhum, pmid, temp, tropchemlev, &
+               sfc_array, dm_array, sad_trop, reff_trop, sad_sslt )
        endif
     endif
 
@@ -2812,19 +2818,19 @@ contains
         rxt(:,k,nir_ndx(5)) = 1.3e-11_r8 * tp(:)**1.64_r8
         rxt(:,k,nir_ndx(6)) = 3.3e-11_r8 * tp(:)**2.38_r8
 
-        call comp_exp( exp_fac, -7300_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7300._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(7)) = (1.0e-3_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -7050_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7050._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(8)) = (7.2e-4_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -6800_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -6800._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(9)) = (6.5e-3_r8 * tp(:)) * exp_fac(:)
-        call comp_exp( exp_fac, -7600_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7600._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(10)) = (5.7e-4_r8 * tp(:)) * exp_fac(:)
 
-        call comp_exp( exp_fac, -7150_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -7150._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(11)) = (1.5e-2_r8 * tp(:)) * exp_fac(:)
 
-        call comp_exp( exp_fac, -13130_r8 * tinv, ncol )
+        call comp_exp( exp_fac, -13130._r8 * tinv, ncol )
         rxt(:,k,nir_ndx(12)) = (6.0e-3_r8 * tp(:)) * exp_fac(:)
         rxt(:,k,nir_ndx(13)) = 5.22e-28_r8 * tp(:)**2.62_r8
 

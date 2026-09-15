@@ -26,8 +26,7 @@ module convect_deep
       convect_deep_register,           &! register fields in physics buffer
       convect_deep_init,               &! initialize donner_deep module
       convect_deep_tend,               &! return tendencies
-      convect_deep_tend_2,             &! return tendencies
-      deep_scheme_does_scav_trans             ! = .t. if scheme does scavenging and conv. transport
+      convect_deep_tend_2               ! return tendencies
 
 ! Private module data
    character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
@@ -49,25 +48,6 @@ module convect_deep
 
 !=========================================================================================
   contains
-
-!=========================================================================================
-function deep_scheme_does_scav_trans()
-!
-! Function called by tphysbc to determine if it needs to do scavenging and convective transport
-! or if those have been done by the deep convection scheme. Each scheme could have its own
-! identical query function for a less-knowledgable interface but for now, we know that KE
-! does scavenging & transport, and ZM doesn't
-!
-
-  logical deep_scheme_does_scav_trans
-
-  deep_scheme_does_scav_trans = .false.
-
-  if ( deep_scheme .eq. 'KE' ) deep_scheme_does_scav_trans = .true.
-
-  return
-
-end function deep_scheme_does_scav_trans
 
 !=========================================================================================
 subroutine convect_deep_register
@@ -185,7 +165,7 @@ subroutine convect_deep_tend( &
 
 
    type(physics_buffer_desc), pointer :: pbuf(:)
-   real(r8), intent(in) :: ztodt               ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt               ! model physics timestep [s]
    real(r8), intent(in) :: landfrac(pcols)     ! Land fraction
 
 
@@ -293,7 +273,7 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
 
    type(physics_buffer_desc), pointer :: pbuf(:)
 
-   real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt                          ! model physics timestep [s]
 
 
    if ( deep_scheme .eq. 'ZM' ) then  ! Zhang-McFarlane

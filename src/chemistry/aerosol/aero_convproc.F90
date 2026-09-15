@@ -330,7 +330,7 @@ subroutine aero_convproc_intr( aero_props, aero_state, state, ptend, pbuf, ztodt
    type(physics_state),target,intent(in )   :: state      ! Physics state variables
    type(physics_ptend),       intent(inout) :: ptend      ! %lq set in aero_model_wetdep
    type(physics_buffer_desc), pointer       :: pbuf(:)
-   real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt                          ! model physics timestep [s]
 
    integer,  intent(in)    :: nsrflx_mzaer2cnvpr
    real(r8), intent(in)    :: qsrflx_mzaer2cnvpr(pcols,ncnstaer,nsrflx_mzaer2cnvpr)

@@ -24,21 +24,15 @@ module check_energy
   use ppgrid,          only: pcols, pver
   use spmd_utils,      only: masterproc
 
-  use physconst,       only: rga
   use air_composition, only: cpairv, cp_or_cv_dycore
   use physics_types,   only: physics_state
-  use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
+  use constituents,    only: cnst_get_ind, pcnst
   use cam_logfile,     only: iulog
 
   implicit none
   private
 
-  ! Public types:
-  public check_tracers_data
-
   ! Public methods - not CCPP-ized
-  public :: check_tracers_init              ! initialize tracer integrals and cumulative boundary fluxes
-  public :: check_tracers_chng              ! check changes in integrals against cumulative boundary fluxes
   public :: tot_energy_phys                 ! calculate and output total energy and axial angular momentum diagnostics
 
   ! These subroutines cannot be CCPP-ized
@@ -72,13 +66,6 @@ module check_energy
   integer, public  :: dqcore_idx = 0       ! dqcore index in physics buffer
   integer, public  :: ducore_idx = 0       ! ducore index in physics buffer
   integer, public  :: dvcore_idx = 0       ! dvcore index in physics buffer
-
-  type check_tracers_data
-     real(r8) :: tracer(pcols,pcnst)       ! initial vertically integrated total (kinetic + static) energy
-     real(r8) :: tracer_tnd(pcols,pcnst)   ! cumulative boundary flux of total energy
-     integer :: count(pcnst)               ! count of values with significant imbalances
-  end type check_tracers_data
-
 
 !===============================================================================
 contains
@@ -200,213 +187,6 @@ end subroutine check_energy_readnl
     end if
 
   end subroutine check_energy_init
-
-!===============================================================================
-  subroutine check_tracers_init(state, tracerint)
-
-!-----------------------------------------------------------------------
-! Compute initial values of tracers integrals,
-! zero cumulative tendencies
-!-----------------------------------------------------------------------
-
-!------------------------------Arguments--------------------------------
-
-    type(physics_state),   intent(in)    :: state
-    type(check_tracers_data), intent(out)   :: tracerint
-
-!---------------------------Local storage-------------------------------
-
-    real(r8) :: tr(pcols)                          ! vertical integral of tracer
-    real(r8) :: trpdel(pcols, pver)                ! pdel for tracer
-
-    integer ncol                                   ! number of atmospheric columns
-    integer  i,k,m                                 ! column, level,constituent indices
-    integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
-    integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
-    integer :: ixgrau                              ! GRAUQM index
-!-----------------------------------------------------------------------
-
-    ncol  = state%ncol
-    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-    call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
-    call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
-    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
-
-
-    do m = 1,pcnst
-
-       if ( any(m == (/ 1, ixcldliq, ixcldice, &
-                           ixrain,   ixsnow, ixgrau /)) ) exit   ! dont process water substances
-                                                                 ! they are checked in check_energy
-
-       if (cnst_get_type_byind(m).eq.'dry') then
-          trpdel(:ncol,:) = state%pdeldry(:ncol,:)
-       else
-          trpdel(:ncol,:) = state%pdel(:ncol,:)
-       endif
-
-       ! Compute vertical integrals of tracer
-       tr = 0._r8
-       do k = 1, pver
-          do i = 1, ncol
-             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)*rga
-          end do
-       end do
-
-       ! Compute vertical integrals of frozen static tracers and total water.
-       do i = 1, ncol
-          tracerint%tracer(i,m) = tr(i)
-       end do
-
-       ! zero cummulative boundary fluxes
-       tracerint%tracer_tnd(:ncol,m) = 0._r8
-
-       tracerint%count(m) = 0
-
-    end do
-
-    return
-  end subroutine check_tracers_init
-
-!===============================================================================
-  subroutine check_tracers_chng(state, tracerint, name, nstep, ztodt, cflx)
-
-!-----------------------------------------------------------------------
-! Check that the tracers and water change matches the boundary fluxes
-! these checks are not save when there are tracers transformations, as
-! they only check to see whether a mass change in the column is
-! associated with a flux
-!-----------------------------------------------------------------------
-
-    use cam_abortutils, only: endrun
-
-
-    implicit none
-
-!------------------------------Arguments--------------------------------
-
-    type(physics_state)    , intent(in   ) :: state
-    type(check_tracers_data), intent(inout) :: tracerint! tracers integrals and boundary fluxes
-    character*(*),intent(in) :: name               ! parameterization name for fluxes
-    integer , intent(in   ) :: nstep               ! current timestep number
-    real(r8), intent(in   ) :: ztodt               ! 2 delta t (model time increment)
-    real(r8), intent(in   ) :: cflx(pcols,pcnst)       ! boundary flux of tracers       (kg/m2/s)
-
-!---------------------------Local storage-------------------------------
-
-    real(r8) :: tracer_inp(pcols,pcnst)                   ! total tracer of new (input) state
-    real(r8) :: tracer_xpd(pcols,pcnst)                   ! expected value (w0 + dt*boundary_flux)
-    real(r8) :: tracer_dif(pcols,pcnst)                   ! tracer_inp - original tracer
-    real(r8) :: tracer_tnd(pcols,pcnst)                   ! tendency from last process
-    real(r8) :: tracer_rer(pcols,pcnst)                   ! relative error in tracer column
-
-    real(r8) :: tr(pcols)                           ! vertical integral of tracer
-    real(r8) :: trpdel(pcols, pver)                       ! pdel for tracer
-
-    integer lchnk                                  ! chunk identifier
-    integer ncol                                   ! number of atmospheric columns
-    integer  i,k                                   ! column, level indices
-    integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
-    integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
-    integer :: ixgrau                              ! GRAUQM index
-    integer :: m                            ! tracer index
-    character(len=8) :: tracname   ! tracername
-!-----------------------------------------------------------------------
-
-    lchnk = state%lchnk
-    ncol  = state%ncol
-    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-    call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
-    call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
-    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
-
-    do m = 1,pcnst
-
-       if ( any(m == (/ 1, ixcldliq, ixcldice, &
-                           ixrain,   ixsnow, ixgrau /)) ) exit   ! dont process water substances
-                                                                 ! they are checked in check_energy
-       tracname = cnst_name(m)
-       if (cnst_get_type_byind(m).eq.'dry') then
-          trpdel(:ncol,:) = state%pdeldry(:ncol,:)
-       else
-          trpdel(:ncol,:) = state%pdel(:ncol,:)
-       endif
-
-       ! Compute vertical integrals tracers
-       tr = 0._r8
-       do k = 1, pver
-          do i = 1, ncol
-             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)*rga
-          end do
-       end do
-
-       ! Compute vertical integrals of tracer
-       do i = 1, ncol
-          tracer_inp(i,m) = tr(i)
-       end do
-
-       ! compute expected values and tendencies
-       do i = 1, ncol
-          ! change in tracers
-          tracer_dif(i,m) = tracer_inp(i,m) - tracerint%tracer(i,m)
-
-          ! expected tendencies from boundary fluxes for last process
-          tracer_tnd(i,m) = cflx(i,m)
-
-          ! cummulative tendencies from boundary fluxes
-          tracerint%tracer_tnd(i,m) = tracerint%tracer_tnd(i,m) + tracer_tnd(i,m)
-
-          ! expected new values from original values plus boundary fluxes
-          tracer_xpd(i,m) = tracerint%tracer(i,m) + tracerint%tracer_tnd(i,m)*ztodt
-
-          ! relative error, expected value - input value / original
-          tracer_rer(i,m) = (tracer_xpd(i,m) - tracer_inp(i,m)) / tracerint%tracer(i,m)
-       end do
-
-!! final loop for error checking
-!    do i = 1, ncol
-
-!! error messages
-!       if (abs(enrgy_rer(i)) > 1.E-14 .or. abs(water_rer(i)) > 1.E-14) then
-!          tracerint%count = tracerint%count + 1
-!          write(iulog,*) "significant conservations error after ", name,        &
-!               " count", tracerint%count, " nstep", nstep, "chunk", lchnk, "col", i
-!          write(iulog,*) enrgy_inp(i),enrgy_xpd(i),enrgy_dif(i),tracerint%enrgy_tnd(i)*ztodt,  &
-!               enrgy_tnd(i)*ztodt,enrgy_rer(i)
-!          write(iulog,*) water_inp(i),water_xpd(i),water_dif(i),tracerint%water_tnd(i)*ztodt,  &
-!               water_tnd(i)*ztodt,water_rer(i)
-!       end if
-!    end do
-
-
-       ! final loop for error checking
-       if ( maxval(tracer_rer) > 1.E-14_r8 ) then
-          write(iulog,*) "CHECK_TRACERS TRACER large rel error"
-          write(iulog,*) tracer_rer
-       endif
-
-       do i = 1, ncol
-          ! error messages
-          if (abs(tracer_rer(i,m)) > 1.E-14_r8 ) then
-             tracerint%count = tracerint%count + 1
-             write(iulog,*) "CHECK_TRACERS TRACER significant conservation error after ", name,        &
-                  " count", tracerint%count, " nstep", nstep, "chunk", lchnk, "col",i
-             write(iulog,*)' process name, tracname, index ',  name, tracname, m
-             write(iulog,*)" input integral              ",tracer_inp(i,m)
-             write(iulog,*)" expected integral           ", tracer_xpd(i,m)
-             write(iulog,*)" input - inital integral     ",tracer_dif(i,m)
-             write(iulog,*)" cumulative tend      ",tracerint%tracer_tnd(i,m)*ztodt
-             write(iulog,*)" process tend         ",tracer_tnd(i,m)*ztodt
-             write(iulog,*)" relative error       ",tracer_rer(i,m)
-             call endrun()
-          end if
-       end do
-    end do
-
-    return
-  end subroutine check_tracers_chng
 
 !#######################################################################
 

@@ -337,7 +337,7 @@ contains
     integer, intent(in) :: lchnk             ! chunk index
     integer, intent(in) :: ncol              ! number of atmospheric columns
     !
-    real(r8), intent(in) :: ztodt            ! two times model timestep (2 delta-t)
+    real(r8), intent(in) :: ztodt            ! model physics timestep [s]
     real(r8), intent(in) :: qbot(ncol,pcnst) ! moisture at lowest model level
     real(r8), intent(in) :: srfrpdel(ncol)   ! 1./(pint(K+1)-pint(K))
     !
