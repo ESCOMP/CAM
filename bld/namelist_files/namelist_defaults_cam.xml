@@ -2308,6 +2308,7 @@
 <clubb_Skw_denom_coef                             > 0.0     </clubb_Skw_denom_coef>
 <clubb_skw_max_mag                                > 4.5     </clubb_skw_max_mag>
 <clubb_tridiag_solve_method                       > 1       </clubb_tridiag_solve_method>
+<clubb_a_const                                    > 1.8     </clubb_a_const>
 <clubb_up2_sfc_coef                               > 2.0     </clubb_up2_sfc_coef>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
 <clubb_wpxp_Ri_exp                                > 0.5     </clubb_wpxp_Ri_exp>

@@ -252,6 +252,7 @@ module clubb_intr
   real(r8) :: clubb_mult_coef = unset_r8
   real(r8) :: clubb_Skw_denom_coef = unset_r8
   real(r8) :: clubb_skw_max_mag = unset_r8
+  real(r8) :: clubb_a_const = unset_r8
   real(r8) :: clubb_up2_sfc_coef = unset_r8
   real(r8) :: clubb_C_wp2_splat = unset_r8
   real(r8) :: clubb_wpxp_L_thresh = unset_r8
@@ -896,6 +897,7 @@ end subroutine clubb_init_cnst
          clubb_Skw_denom_coef, &
          clubb_skw_max_mag, &
          clubb_tridiag_solve_method, &
+         clubb_a_const, &
          clubb_up2_sfc_coef, &
          clubb_wpxp_L_thresh, &
          clubb_wpxp_Ri_exp, &
@@ -1148,6 +1150,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_stability_correct_tau_zm")
     call mpi_bcast(clubb_gamma_coefb, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_gamma_coefb")
+    call mpi_bcast(clubb_a_const, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_a_const")
     call mpi_bcast(clubb_up2_sfc_coef, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_up2_sfc_coef")
     call mpi_bcast(clubb_detliq_rad, 1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1345,6 +1349,7 @@ end subroutine clubb_init_cnst
     if ( clubb_mult_coef                  == unset_r8 ) call endrun( sub//": FATAL: clubb_mult_coef is not set")
     if ( clubb_Skw_denom_coef             == unset_r8 ) call endrun( sub//": FATAL: clubb_Skw_denom_coef is not set")
     if ( clubb_skw_max_mag                == unset_r8 ) call endrun( sub//": FATAL: clubb_skw_max_mag is not set")
+    if ( clubb_a_const                    == unset_r8 ) call endrun( sub//": FATAL: clubb_a_const is not set")
     if ( clubb_up2_sfc_coef               == unset_r8 ) call endrun( sub//": FATAL: clubb_up2_sfc_coef is not set")
     if ( clubb_C_wp2_splat                == unset_r8 ) call endrun( sub//": FATAL: clubb_C_wp2_splat is not set")
     if ( clubb_bv_efold                   == unset_r8 ) call endrun( sub//": FATAL: clubb_bv_efold is not set")
@@ -1461,7 +1466,7 @@ end subroutine clubb_init_cnst
     use clubb_api_module, only: &
          core_rknd, em_min, &
          ilambda0_stability_coef, ic_K10, ic_K10h, iC7, iC7b, iC8, iC8b, iC11, iC11b, iC4, iC_uu_shr, iC_uu_buoy, &
-         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thl, iC6thlb, iC6thlc, iup2_sfc_coef, iwpxp_L_thresh, &
+         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thl, iC6thlb, iC6thlc, ia_const, iup2_sfc_coef, iwpxp_L_thresh, &
          iC14, iC_wp3_pr_turb, igamma_coef, igamma_coefb, imult_coef, ilmin_coef, &
          iSkw_denom_coef, ibeta, iskw_max_mag, &
          iC_invrs_tau_bkgnd,iC_invrs_tau_sfc,iC_invrs_tau_shear,iC_invrs_tau_N2,iC_invrs_tau_N2_wp2, &
@@ -1685,6 +1690,7 @@ end subroutine clubb_init_cnst
     clubb_params_single_col(1,iC1)                            = clubb_C1
     clubb_params_single_col(1,iC1b)                           = clubb_C1b
     clubb_params_single_col(1,igamma_coefb)                   = clubb_gamma_coefb
+    clubb_params_single_col(1,ia_const)                       = clubb_a_const
     clubb_params_single_col(1,iup2_sfc_coef)                  = clubb_up2_sfc_coef
     clubb_params_single_col(1,iC4)                            = clubb_C4
     clubb_params_single_col(1,iC_uu_shr)                      = clubb_C_uu_shr
