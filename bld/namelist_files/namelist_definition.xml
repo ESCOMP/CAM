@@ -4581,6 +4581,14 @@ Specifier for method to solve tri-diagonal systems that are common in CLUBB.
 Experimental option and currently the only valid value is 1: lapack
 </entry>
 
+<entry id="clubb_a_const" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Factor used in calculating the surface values of wp2 (variance of the w wind
+component), up2 (variance of the u wind component), and vp2 (variance of the v
+wind component), usually =1.8 if l_vary_convect_depth=F, =0.6 if T. Increasing
+clubb_a_const increases the values of wp2, up2, and vp2 at the surface.
+</entry>
+
 <entry id="clubb_up2_sfc_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Factor used in calculating the surface values of up2 (variance of the u wind
