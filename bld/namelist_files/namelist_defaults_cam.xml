@@ -2234,10 +2234,10 @@
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
-<clubb_gamma_coef phys="cam7"                     > 0.3     </clubb_gamma_coef>
+<clubb_gamma_coef phys="cam7"                     > 0.298   </clubb_gamma_coef>
 <clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
-<clubb_gamma_coefb phys="cam7"                    > 0.3     </clubb_gamma_coefb>
+<clubb_gamma_coefb phys="cam7"                    > 0.298   </clubb_gamma_coefb>
 <clubb_grid_adapt_in_time_method                  > 0       </clubb_grid_adapt_in_time_method>
 <clubb_fill_holes_type                            > 2       </clubb_fill_holes_type>
 <clubb_grid_remap_method                          > 1       </clubb_grid_remap_method>
@@ -2305,9 +2305,11 @@
 <clubb_nu2                                        > 5.0     </clubb_nu2>
 <clubb_nu9                                        > 20.0    </clubb_nu9>
 <clubb_penta_solve_method                         > 1       </clubb_penta_solve_method>
+<clubb_penta_solve_method phys="cam7"             > 2       </clubb_penta_solve_method>
 <clubb_Skw_denom_coef                             > 0.0     </clubb_Skw_denom_coef>
 <clubb_skw_max_mag                                > 4.5     </clubb_skw_max_mag>
 <clubb_tridiag_solve_method                       > 1       </clubb_tridiag_solve_method>
+<clubb_tridiag_solve_method phys="cam7"           > 2       </clubb_tridiag_solve_method>
 <clubb_up2_sfc_coef                               > 2.0     </clubb_up2_sfc_coef>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
 <clubb_wpxp_Ri_exp                                > 0.5     </clubb_wpxp_Ri_exp>
