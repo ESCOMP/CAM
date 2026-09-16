@@ -3684,9 +3684,12 @@ Default: 10
 <!-- Moist Convection and Microphysics -->
 
 <entry id="deep_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="ZM,off,CLUBB_SGS" >
+       group="phys_ctl_nl" valid_values="ZM,off,CLUBB_SGS,CLUBB_MF" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
-'off' for none.
+'off' for none; 'CLUBB_MF' for the CLUBB-MF EDMF plume ensemble (adds
+ensemble mass fluxes to CLUBB's higher-order equation set and drives
+aerosol convective transport/scavenging and tracer transport through the
+deep-convection pbuf interface; requires cam7 physics and CLUBB_SGS).
 Default: 'ZM' unless using 'pbl=none'
 </entry>
 
@@ -4603,17 +4606,10 @@ Exponent for Richardson number in calculation of invrs_tau_wpxp term
 Displacement of log law profile above ground  (units: m)
 </entry>
 
-<!-- for CLUBB+MF -->
-<entry id="do_clubb_mf" type="logical" category="conv"
-       group="clubb_mf_nl" valid_values="" >
-If .true. add ensemble mass fluxes to CLUBB's higher-order equation set.
-Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach.
-Default: .false.
-</entry>
-
+<!-- for CLUBB+MF (selected with deep_scheme='CLUBB_MF') -->
 <entry id="do_clubb_mf_diag" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
-If .true. add detailed budget terms to output by default.  Note that do_clubb_mf must also be set to .true.
+If .true. add detailed budget terms to output by default.  Note that deep_scheme='CLUBB_MF' must also be set.
 Default: .false.
 </entry>
 
@@ -4632,13 +4628,13 @@ Default: .true.
 <entry id="do_clubb_mf_addtke" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. add MF contribution to TKE pbuf variable
-Default: .true.
+Default: .false.
 </entry>
 
 <entry id="clubb_mf_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Entrainment length scale in meters for individual plumes. Not used if
-do_clubb_mf=FALSE.
+Entrainment length scale in meters for individual plumes. Not used unless
+deep_scheme='CLUBB_MF'.
 Default: 200.0
 </entry>
 
@@ -4671,8 +4667,8 @@ Default: 1.0
 
 <entry id="clubb_mf_ent0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Entrainment efficiency for individual plumes. Not used if
-do_clubb_mf=FALSE.
+Entrainment efficiency for individual plumes. Not used unless
+deep_scheme='CLUBB_MF'.
 Default: 0.20
 </entry>
 
@@ -4775,7 +4771,7 @@ Default: 1
 <entry id="do_clubb_mf_rhtke" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. use relative humidity thresholds to turn off TKE enhanced entrainment
-Default: .true.
+Default: .false.
 </entry>
 
 <entry id="do_clubb_mf_cmt" type="logical" category="conv"
@@ -4811,6 +4807,26 @@ Default: 1
 <entry id="do_clubb_mf_aloft" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
 If .true. turn on elevated convective initialization
+Default: .true.
+</entry>
+
+<entry id="do_clubb_mf_aspd" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. turn on the Arakawa-Schubert positive detrainment limiter
+Default: .false.
+</entry>
+
+<entry id="do_clubb_mf_pblcull" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. cull plumes entirely contained within the PBL
+Default: .false.
+</entry>
+
+<entry id="do_clubb_mf_invswitch" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. shut off the MF plume ensemble where the lower-tropospheric stability
+(thl700 - thl1000) is at least 20 K (the marine stratocumulus regime), mirroring
+the CLUBB-core expldiff criterion.
 Default: .true.
 </entry>
 

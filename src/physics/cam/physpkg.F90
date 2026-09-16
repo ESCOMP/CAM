@@ -42,7 +42,8 @@ module physpkg
 
   use offline_driver,  only: offline_driver_dorun
 
-  use clubb_mf,        only: do_clubb_mf
+!+++arh clubb_mf dependency removed: CLUBB-MF is only supported with cam7
+!       physics (enforced in bld/build-namelist)
 
   implicit none
   private
@@ -2291,10 +2292,6 @@ contains
     real(r8) :: prec_sed_macmic(pcols)
     real(r8) :: snow_sed_macmic(pcols)
 
-    ! CLUBB+MF
-    real(r8) :: prec_sh_macmic(pcols)
-    real(r8) :: snow_sh_macmic(pcols)
-
     ! energy checking variables
     real(r8) :: zero(pcols)                    ! array of zeros
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
@@ -2676,12 +2673,6 @@ contains
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
 
-       if (do_clubb_mf) then
-          ! CLUBB+MF
-          prec_sh_macmic = 0._r8
-          snow_sh_macmic = 0._r8
-       end if
-
        ! contrail parameterization
        ! see Chen et al., 2012: Global contrail coverage simulated
        !                        by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
@@ -2762,12 +2753,7 @@ contains
 
              ! Since we "added" the reserved liquid back in this routine, we need
              ! to account for it in the energy checker
-             if (do_clubb_mf) then
-                ! CLUBB+MF: add MF precip to flx_cnd [m/s]
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol) + prec_sh(:ncol)
-             else
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol)
-             end if
+             flx_cnd(:ncol) = -1._r8*rliq(:ncol)
              flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
 
              ! Unfortunately, physics_update does not know what time period
@@ -2801,12 +2787,6 @@ contains
           endif
 
           call t_stopf('macrop_tend')
-
-          if (do_clubb_mf) then
-             ! CLUBB+MF
-             prec_sh_macmic(:ncol) = prec_sh_macmic(:ncol) + prec_sh(:ncol)
-             snow_sh_macmic(:ncol) = snow_sh_macmic(:ncol) + snow_sh(:ncol)
-          end if
 
           !===================================================
           ! Calculate cloud microphysics
@@ -2960,12 +2940,6 @@ contains
        snow_pcw(:ncol) = snow_pcw_macmic(:ncol)/cld_macmic_num_steps
        prec_str(:ncol) = prec_pcw(:ncol) + prec_sed(:ncol)
        snow_str(:ncol) = snow_pcw(:ncol) + snow_sed(:ncol)
-
-       if (do_clubb_mf) then 
-          ! CLUBB+MF
-          prec_sh(:ncol) = prec_sh_macmic(:ncol)/cld_macmic_num_steps
-          snow_sh(:ncol) = snow_sh_macmic(:ncol)/cld_macmic_num_steps
-       end if
 
     endif
 
