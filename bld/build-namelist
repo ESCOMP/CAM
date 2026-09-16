@@ -3313,12 +3313,10 @@ if (defined $do_clubb_sgs) {
 add_default($nl, 'do_clubb_sgs');
 my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 
-# Evaluate do_clubb_mf early to handle overrides
-add_default($nl, 'do_clubb_mf');
-my $clubb_mf = $nl->get_value('do_clubb_mf');
-
+# Evaluate clubb_mf early to handle overrides
 # Deep convection scheme and CLUBB+MF dependency check
-if (defined $do_clubb_mf and $do_clubb_mf =~ /$TRUE/io) {
+my $clubb_mf = $nl->get_value('do_clubb_mf');
+if ($clubb_mf =~ /$TRUE/io) {
     if ($clubb_sgs !~ /$TRUE/io) {
         die "CAM Namelist ERROR: do_clubb_mf is set to .true. but do_clubb_sgs is not active.\n" .
             "CLUBB+MF requires the CLUBB_SGS package to be enabled.\n";
@@ -3327,6 +3325,7 @@ if (defined $do_clubb_mf and $do_clubb_mf =~ /$TRUE/io) {
 } else {
     add_default($nl, 'deep_scheme');
 }
+add_default($nl, 'do_clubb_mf');
 my $deep_scheme = $nl->get_value('deep_scheme');
 
 # Aerosol convective processes
@@ -3446,14 +3445,8 @@ add_default($nl, 'microp_aero_wsub_min');
 add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
 
-# CLUBB-MF cloud droplet activation tuning
-if ($clubb_mf =~ "true") {
-    add_default($nl, 'microp_aero_wsub_scale', 'val'=>'0.5');
-    add_default($nl, 'microp_aero_wsubi_scale', 'val'=>'0.5');
-} else {
-    add_default($nl, 'microp_aero_wsub_scale');
-    add_default($nl, 'microp_aero_wsubi_scale');
-}
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
 
 # Ice nucleation options
 if (!$simple_phys) {

@@ -936,7 +936,7 @@ module clubb_mf
              mix(kt,i) = fixent_ent
            else
              ! get entrainment, ent=ent0/dz*P(dz/L0)
-             mix(kt,i) = real( enti(kt,i))*clubb_mf_ent0/dzt(kt)
+             mix(kt,i) = real( enti(kt,i),r8)*clubb_mf_ent0/dzt(kt)
            end if
 
            do iter_xc = 1, niter_xc
@@ -1657,7 +1657,7 @@ module clubb_mf
          cbm1 = cbm1 + zm(kcbarr(i))
 
        end do
-       cbm1 = cbm1/REAL(clubb_mf_nup)
+       cbm1 = cbm1/REAL(clubb_mf_nup,r8)
 
        ! --------------------------------------------------------- !
        ! bulk downdraft velocity for coldpool parameterization     !
@@ -1913,10 +1913,6 @@ module clubb_mf
                           kpbl-kdir  ,lcl        ,lel        ,lon      ,mx   , &
                           msg-kdir   ,tpert      ,landfrac )
 
-       !do i=1,clubb_mf_nup
-       !  mcape = mcape + cape(i)
-       !end do
-       !mcape = mcape/REAL(clubb_mf_nup)
        mcape = max(cape(1),25._r8)
 
        if (clubb_mf_Lopt==4) then

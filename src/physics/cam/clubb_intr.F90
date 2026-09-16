@@ -2779,8 +2779,8 @@ end subroutine clubb_init_cnst
                                                    mf_cape,    mf_cape_nadv
 #endif
 
-    ! CFL limiter vars
-    real(r8), parameter                  :: cflval = 1._r8
+    ! Courant number limiter vars
+    real(r8), parameter                  :: cflval = 1._r8    ! Upper limit on Courant number for stability
     real(r8)                             :: lambda
     character(len=256)                   :: lambda_errmsg
     real(r8), dimension(state%ncol)      :: cflfac,     max_cfl,        &
@@ -2993,7 +2993,7 @@ end subroutine clubb_init_cnst
 
 
     if (do_clubb_mf) then
-       ! SVP
+       ! Saturation Vapor Pressure calculation
        do k = 1, pver
           call qsat(state_loc%t(1:ncol,k), state_loc%pmid(1:ncol,k), esat(1:ncol,k), rh(1:ncol,k), ncol)
        end do
@@ -3335,9 +3335,11 @@ end subroutine clubb_init_cnst
 
       end if
 
-      !+++ARH - Temporary hack - pbuf_set_field is apparently not taking?
+      ! check on pbuf_set_field
       if (is_first_step() .and. macmic_it==1) then
-         ddcp(:ncol,:) = 0._r8
+         if (any(ddcp(:ncol,:) /= 0._r8)) then
+            call endrun(subr//':  ddcp not set to 0 on first step and macmic iteration')
+         end if
       end if
 
       mf_precc_nadv(:ncol)      = 0._r8
@@ -3875,7 +3877,7 @@ end subroutine clubb_init_cnst
         rtm                       =                       rtm(:,nzt_clubb:1:-1)
         thlm                      =                      thlm(:,nzt_clubb:1:-1)
 
-        ! flipping grid defintion
+        ! flipping grid definition
         zt_g                      =                      zt_g(:,nzt_clubb:1:-1)
 
         if (do_clubb_mf) then
@@ -3920,7 +3922,7 @@ end subroutine clubb_init_cnst
         upwp_pert                 =                 upwp_pert(:,nzm_clubb:1:-1)
         vpwp_pert                 =                 vpwp_pert(:,nzm_clubb:1:-1)
 
-        ! flipping grid defintion
+        ! flipping grid definition
         zi_g                      =                      zi_g(:,nzm_clubb:1:-1)
 
         if (do_clubb_mf) then
@@ -4227,7 +4229,7 @@ end subroutine clubb_init_cnst
            max_cfl_nadv(i)               = MAX(max_cfl(i),max_cfl_nadv(i))
         end do
         call t_stopf('clubb_tend_cam:do_clubb_mf')
-      end if
+      end if  ! if (do_clubb_mf)
 
       !  Advance CLUBB CORE one timestep in the future
       call t_startf('clubb_tend_cam:advance_clubb_core_api')
@@ -4316,7 +4318,6 @@ end subroutine clubb_init_cnst
         um_forcing                 =                 um_forcing(:,nzt_clubb:1:-1)
         vm_forcing                 =                 vm_forcing(:,nzt_clubb:1:-1)
 
-!+++ arh -- I think we should do the array flipping for all clubb-mf variables here, around a do_clubb_mf if statement
         mf_qtforcup                =                mf_qtforcup(:,nzt_clubb:1:-1)
         mf_thlforcup               =               mf_thlforcup(:,nzt_clubb:1:-1)
         mf_qtforcdn                =                mf_qtforcdn(:,nzt_clubb:1:-1)
@@ -4758,27 +4759,27 @@ end subroutine clubb_init_cnst
     ! process clubb-mf accumulated arrays
     if (do_clubb_mf) then
       ! average over nadv
-      mf_L0_nadv   = mf_L0_nadv/REAL(nadv)
-      mf_ztop_nadv = mf_ztop_nadv/REAL(nadv)
-      mf_ztopm1_nadv = mf_ztopm1_nadv/REAL(nadv)
-      mf_cape_nadv = mf_cape_nadv/REAL(nadv)
-      mf_ddcp_nadv = mf_ddcp_nadv/REAL(nadv)
-      mf_cbm1_nadv = mf_cbm1_nadv/REAL(nadv)
-      mf_freq_nadv = mf_freq_nadv/REAL(nadv)
+      mf_L0_nadv   = mf_L0_nadv/REAL(nadv,r8)
+      mf_ztop_nadv = mf_ztop_nadv/REAL(nadv,r8)
+      mf_ztopm1_nadv = mf_ztopm1_nadv/REAL(nadv,r8)
+      mf_cape_nadv = mf_cape_nadv/REAL(nadv,r8)
+      mf_ddcp_nadv = mf_ddcp_nadv/REAL(nadv,r8)
+      mf_cbm1_nadv = mf_cbm1_nadv/REAL(nadv,r8)
+      mf_freq_nadv = mf_freq_nadv/REAL(nadv,r8)
 
-      mf_qc(:ncol,:nzm_clubb)        = mf_qc_nadv(:ncol,:nzm_clubb)/REAL(nadv)
-      mf_rcm(:ncol,:nzm_clubb)       = mf_rcm_nadv(:ncol,:nzm_clubb)/REAL(nadv)
-      mf_cloudfrac(:ncol,:nzm_clubb) = mf_cloudfrac_nadv(:ncol,:nzm_clubb)/REAL(nadv)
-      prec_sh_pbuf(:ncol)            = mf_precc_nadv(:ncol)/REAL(nadv)
-      snow_sh_pbuf(:ncol)            = mf_snow_nadv(:ncol)/REAL(nadv)
+      mf_qc(:ncol,:nzm_clubb)        = mf_qc_nadv(:ncol,:nzm_clubb)/REAL(nadv,r8)
+      mf_rcm(:ncol,:nzm_clubb)       = mf_rcm_nadv(:ncol,:nzm_clubb)/REAL(nadv,r8)
+      mf_cloudfrac(:ncol,:nzm_clubb) = mf_cloudfrac_nadv(:ncol,:nzm_clubb)/REAL(nadv,r8)
+      prec_sh_pbuf(:ncol)            = mf_precc_nadv(:ncol)/REAL(nadv,r8)
+      snow_sh_pbuf(:ncol)            = mf_snow_nadv(:ncol)/REAL(nadv,r8)
 
-      mf_thlforcup_nadv(:ncol,:nzt_clubb) = mf_thlforcup_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_qtforcup_nadv(:ncol,:nzt_clubb)  = mf_qtforcup_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_thlforcdn_nadv(:ncol,:nzt_clubb) = mf_thlforcdn_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_qtforcdn_nadv(:ncol,:nzt_clubb)  = mf_qtforcdn_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_thlforc_nadv(:ncol,:nzt_clubb)   = mf_thlforc_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_qtforc_nadv(:ncol,:nzt_clubb)    = mf_qtforc_nadv(:ncol,:nzt_clubb)/REAL(nadv)
-      mf_ent_nadv(:ncol,:nzm_clubb)       = mf_ent_nadv(:ncol,:nzm_clubb)/REAL(nadv)
+      mf_thlforcup_nadv(:ncol,:nzt_clubb) = mf_thlforcup_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_qtforcup_nadv(:ncol,:nzt_clubb)  = mf_qtforcup_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_thlforcdn_nadv(:ncol,:nzt_clubb) = mf_thlforcdn_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_qtforcdn_nadv(:ncol,:nzt_clubb)  = mf_qtforcdn_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_thlforc_nadv(:ncol,:nzt_clubb)   = mf_thlforc_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_qtforc_nadv(:ncol,:nzt_clubb)    = mf_qtforc_nadv(:ncol,:nzt_clubb)/REAL(nadv,r8)
+      mf_ent_nadv(:ncol,:nzm_clubb)       = mf_ent_nadv(:ncol,:nzm_clubb)/REAL(nadv,r8)
 
       ! accumulate in buffer
       ztopm1_macmic(:ncol,:) = ztopm1_macmic(:ncol,:) + mf_ztopm1_nadv(:ncol,:)
@@ -4787,35 +4788,35 @@ end subroutine clubb_init_cnst
 
       if (macmic_it == cld_macmic_num_steps) then
 
-        cbm1(:ncol) = cbm1_macmic(:ncol)/REAL(cld_macmic_num_steps)
+        cbm1(:ncol) = cbm1_macmic(:ncol)/REAL(cld_macmic_num_steps,r8)
 
         if (clubb_mf_up_ndt == 1) then
-          ztopma(:ncol,:) = ztopm1_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
+          ztopma(:ncol,:) = ztopm1_macmic(:ncol,:)/REAL(cld_macmic_num_steps,r8)
         else
           ztopmn(2:clubb_mf_up_ndt,:ncol,:) = ztopmn(1:clubb_mf_up_ndt-1,:ncol,:)
-          ztopmn(1,:ncol,:) = ztopm1_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
+          ztopmn(1,:ncol,:) = ztopm1_macmic(:ncol,:)/REAL(cld_macmic_num_steps,r8)
           ztopma(:ncol,:) = 0._r8
           do t=1,clubb_mf_up_ndt
             ztopma(:ncol,:) = ztopma(:ncol,:) + ztopmn(t,:ncol,:)
           end do
-          ztopma(:ncol,:) = ztopma(:ncol,:)/REAL(clubb_mf_up_ndt)
+          ztopma(:ncol,:) = ztopma(:ncol,:)/REAL(clubb_mf_up_ndt,r8)
         end if
 
         if (clubb_mf_cp_ndt == 1) then
-          ddcp(:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
+          ddcp(:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps,r8)
         else
           ddcpmn(2:clubb_mf_cp_ndt,:ncol,:) = ddcpmn(1:clubb_mf_cp_ndt-1,:ncol,:)
-          ddcpmn(1,:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps)
+          ddcpmn(1,:ncol,:) = ddcp_macmic(:ncol,:)/REAL(cld_macmic_num_steps,r8)
           ddcp(:ncol,:) = 0._r8
           do t=1,clubb_mf_cp_ndt
             ddcp(:ncol,:) = ddcp(:ncol,:) + ddcpmn(t,:ncol,:)
           end do
-          ddcp(:ncol,:) = ddcp(:ncol,:)/REAL(clubb_mf_cp_ndt)
-        end if
+          ddcp(:ncol,:) = ddcp(:ncol,:)/REAL(clubb_mf_cp_ndt,r8)
+        end if ! if (clubb_mf_cp_ndt == 1) then
 
         ddcp(:ncol,:) = clubb_mf_ddalph*ddcp(:ncol,:)
 
-      end if
+     end if ! if (macmic_it == cld_macmic_num_steps)
 
       ! Need moist_qc and cloudfrac on thermo grid for output
       mf_qc_zt(:,:) = 0._r8
@@ -5378,9 +5379,6 @@ end subroutine clubb_init_cnst
         !  from CLUBB plus the deep convective cloud fraction
         ! NOTE: concld_pbuf used to be calculated in the commented-out version below, but since we
         ! set alst_pbuf=cloud_frac_pbuf, this simplifies to only using deepcu_pbuf.
-        ! This is potentially a bug, but there's not really a "right" way to combine the different
-        ! cloud fractions, so it has been left to only use deepcu_pbuf for now
-        !concld_pbuf(i,k) = min(cloud_frac_pbuf(i,k)-alst_pbuf(i,k)+deepcu_pbuf(i,k),0.80_r8)
         concld_pbuf(i,k) = min(deepcu_pbuf(i,k),0.80_r8)
       enddo
     enddo
@@ -5936,7 +5934,7 @@ end subroutine clubb_init_cnst
       call outfld( 'edmf_freq'     , mf_freq_output,            pcols, lchnk )
       call outfld( 'edmf_cape'     , mf_cape_output,            pcols, lchnk )
       call outfld( 'edmf_cfl'      , mf_cfl_output,             pcols, lchnk )
-    end if
+    end if  ! if (do_clubb_mf)
 
     !  Output CLUBB history here
     if (stats_metadata%l_stats) then
@@ -6840,7 +6838,7 @@ end subroutine ice_macro_tend
        do k = 1, kk
 
           if ( n(1,1,k,m) > 0 ) then
-             x(1,1,k,m) = x(1,1,k,m) / real( n(1,1,k,m) )
+             x(1,1,k,m) = x(1,1,k,m) / real( n(1,1,k,m),r8 )
           end if
 
        end do
