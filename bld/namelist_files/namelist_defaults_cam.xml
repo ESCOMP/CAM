@@ -2117,10 +2117,10 @@
 <soil_erod_file phys="cam4" hgrid="0.9x1.25">atm/cam/dst/dst_source1x1tuned-cam4-06202012.nc</soil_erod_file>
 
 <!-- nitrogen deposition to surface models -->
-<stream_ndep_mesh_filename>share/meshes/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260911.nc</stream_ndep_mesh_filename>
+<stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
 
 <stream_ndep_data_filename >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
-<stream_ndep_data_filename sim_year="1850">atm/cam/chem/trop_strat_mam5_ts4_aero_spinup/ndep/fndep_clm_B1850C_MT4s.1850monthly.ne30_c251220.nc</stream_ndep_data_filename>
+<stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260911.nc</stream_ndep_data_filename>
 
 <!-- Turbulent Mountain Stress -->
 <do_tms                                                     > .false. </do_tms>
@@ -2617,11 +2617,10 @@
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
 <seasalt_emis_scale                                                      >1.35D0</seasalt_emis_scale>
-<seasalt_emis_scale  phys="cam7"                                         >1.6D0 </seasalt_emis_scale>
 <seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.55D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam7"                >1.6D0 </seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
 
