@@ -2322,8 +2322,6 @@
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
 <clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
 <clubb_C2thl                            silhs="1" > 0.2     </clubb_C2thl>
-<clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
-<clubb_C2thl                            silhs="1" > 0.2     </clubb_C2thl>
 <clubb_C2rtthl                          silhs="1" > 0.2     </clubb_C2rtthl>
 <clubb_C4                               silhs="1" > 5.2     </clubb_C4>
 <clubb_C7b                              silhs="1" > 0.8     </clubb_C7b>
@@ -4271,6 +4269,3 @@
 </rad_climate>
 
 </namelist_defaults>
-<?xml version="1.0"?>
-
-<namelist_defaults>
