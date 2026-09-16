@@ -1,6 +1,55 @@
 
 ===============================================================
 
+Tag name: cam6_4_203
+Originator(s): pel
+Date: Sep 16, 2026
+One-line Summary: set se_nsplit=2 for ne16pg3 cam7 low and mid top
+Github PR URL:
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - se_nsplit not set correctly for ne16 low and mid top
+   https://github.com/ESCOMP/CAM/issues/1678
+   ne16 cam7 LT/MT had no model_top-specific se_nsplit entries
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+ - se_nsplit default 1 -> 2 for ne16pg3 model_top="lt"/"mt" (changes answers
+   for these configurations; not b4b)
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by:
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/namelist_files/namelist_defaults_cam.xml
+          - add se_nsplit=2 entries for ne16np4 model_top lt/mt
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+Expect any ne16 run to have answer changes
+
+derecho/intel/aux_cam:
+
+derecho/nvhpc/aux_cam:
+
+izumi/nag/aux_cam:
+
+izumi/gnu/aux_cam:
+
+===============================================================
+===============================================================
+
 Tag name: cam6_4_202
 Originator(s): briandobbins, jimmielin, cacraigucar
 Date: Sept 10, 2026
