@@ -2242,9 +2242,10 @@
 <clubb_l_damp_wp3_Skw_squared                     > .false. </clubb_l_damp_wp3_Skw_squared>
 <clubb_l_diagnose_correlations                    > .false. </clubb_l_diagnose_correlations>
 <clubb_l_diffuse_rtm_and_thlm                     > .false. </clubb_l_diffuse_rtm_and_thlm>
-<clubb_l_do_expldiff_rtm_thlm                        > .false. </clubb_l_do_expldiff_rtm_thlm>
-<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1"          > .true.  </clubb_l_do_expldiff_rtm_thlm>
-<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" silhs="1"> .false.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm                                       > .false. </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1"                         > .true.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" silhs="1"               > .false.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" deep_scheme="CLUBB_MF"  > .false.  </clubb_l_do_expldiff_rtm_thlm>
 <clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
 <clubb_l_enable_relaxed_clipping                  > .false. </clubb_l_enable_relaxed_clipping>
 <clubb_l_fix_w_chi_eta_correlations               > .true.  </clubb_l_fix_w_chi_eta_correlations>
@@ -2264,6 +2265,7 @@
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_predict_upwp_vpwp phys="cam7"            > .true.  </clubb_l_predict_upwp_vpwp>
+<clubb_l_predict_upwp_vpwp phys="cam7" deep_scheme="CLUBB_MF" > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_ho_nontrad_coriolis                      > .false. </clubb_l_ho_nontrad_coriolis>
 <clubb_l_ho_trad_coriolis                         > .false. </clubb_l_ho_trad_coriolis>
 <clubb_l_prescribed_avg_deltaz                    > .false. </clubb_l_prescribed_avg_deltaz>

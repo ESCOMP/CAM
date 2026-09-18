@@ -3317,6 +3317,7 @@ my $clubb_sgs = $nl->get_value('do_clubb_sgs');
 add_default($nl, 'deep_scheme');
 
 my $deep_scheme = $nl->get_value('deep_scheme');
+$deep_scheme =~ s/['"]//g;  # Strip quotes for exact XML attribute matching
 
 # CLUBB+MF dependency checks
 if ($deep_scheme =~ /CLUBB_MF/) {
@@ -3701,14 +3702,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_wpxp_Ri_exp');
    add_default($nl, 'clubb_z_displace');
 
-   # CLUBB-MF runs w/o expldiff & prognostic momentum fluxes 
-   if ($deep_scheme =~ /CLUBB_MF/) {
-       add_default($nl, 'clubb_l_predict_upwp_vpwp', 'val'=>'.false.');
-       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'val'=>'.false.');
-   } else {
-       add_default($nl, 'clubb_l_predict_upwp_vpwp');
-       add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
-   }
+   add_default($nl, 'clubb_l_predict_upwp_vpwp', 'deep_scheme'=>$deep_scheme);
+   add_default($nl, 'clubb_l_do_expldiff_rtm_thlm', 'deep_scheme'=>$deep_scheme);
 
    #Turn on HB scheme where CLUBB not active
    add_default($nl, 'do_hb_above_clubb');
