@@ -2120,7 +2120,7 @@
 <stream_ndep_mesh_filename>share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_ndep_mesh_filename>
 
 <stream_ndep_data_filename >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_ndep_data_filename>
-<stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260911.nc</stream_ndep_data_filename>
+<stream_ndep_data_filename sim_year="1850">lnd/clm2/ndepdata/fndep_clm_MTt4s_3Dmonthly_1850climo360_c20260918.nc</stream_ndep_data_filename>
 
 <!-- Turbulent Mountain Stress -->
 <do_tms                                                     > .false. </do_tms>
