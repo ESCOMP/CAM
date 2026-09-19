@@ -454,7 +454,7 @@ module clubb_mf
      real(r8), dimension(nzm,clubb_mf_nup) :: uprg,     dnrg             ! momentum grid
      real(r8)                              :: drytot,   lamk,   sdnmax
      real(r8), parameter                   :: mf_dry_frac_max = 0.9_r8   ! max fractional total water removable per timestep
-     !        
+     !
      ! entrainment profiles
      real(r8), dimension(nzt,clubb_mf_nup) :: entf,     mix              ! thermodynamic grid
      integer,  dimension(nzt,clubb_mf_nup) :: enti                       ! thermodynamic grid
@@ -514,7 +514,7 @@ module clubb_mf
      logical                                :: mf_inhibit
      ! rng seed
      real(r8), dimension(4)                 :: u_seed
-     
+
      ! alpha relates star qunataties to stddev after Suselj etal 2019
      real(r8),parameter                     :: alphw   = 0.572_r8,        &
                                                alphqt  = 2.890_r8,        &
@@ -2153,7 +2153,7 @@ module clubb_mf
      else if (clubb_mf_Lopt==1) then
        !TKE
        do k = ktop-2*kdir, ksfc+kdir, -kdir
-         if (zm(k) < 20000 .and. tke(k) - tke(k+kdir) > 1e-5) then
+         if (zm(k) < 20000._r8 .and. tke(k) - tke(k+kdir) > 1e-5_r8) then
            ztop = zm(k)
            exit
          endif
@@ -2163,7 +2163,7 @@ module clubb_mf
      else if (clubb_mf_Lopt==2) then
        !Heat flux
        do k = ktop-2*kdir, ksfc+kdir, -kdir
-         if (zm(k) < 20000 .and. abs(abs(wpthlp_env(k))-abs(wpthlp_env(k-kdir))) > 1e-4) then
+         if (zm(k) < 20000_r8 .and. abs(abs(wpthlp_env(k))-abs(wpthlp_env(k-kdir))) > 1e-4_r8) then
            ztop = zm(k)
            exit
          endif
