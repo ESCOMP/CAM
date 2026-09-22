@@ -30,7 +30,8 @@
 
     use camsrfexch,       only : cam_in_t
     use ppgrid,           only : pcols, pver, pverp
-    use cldfrc2m,         only : astG_RHU_single, astG_PDF_single, aist_single, CAMstfrac
+    use compute_cloud_fraction_two_moment, only : astG_RHU_single, astG_PDF_single, aist_single, CAMstfrac
+    use cldfrc2m,         only : rhmini_const, rhmaxi_const, rhminl_const, rhminl_adj_land_const, rhminh_const
   
     type(carma_type)        :: carma            !! the carma object
     type(carmastate_type)   :: cstate           !! the carma state object
@@ -113,15 +114,21 @@
       ! it starts to be used, then a general routine astG_single should be written.
       if (CAMstfrac) then
         call astG_RHU_single(ssl + 1._f, state%pmid(icol, iz), state%q(icol, iz, 1), &
-                cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, rhcrit(iz))
+                cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, &
+                rhminl=rhminl_const, rhminl_adj_land=rhminl_adj_land_const, &
+                rhminh=rhminh_const, orhmin=rhcrit(iz))
       else
         call astG_PDF_single(ssl + 1._f, state%pmid(icol, iz), state%q(icol, iz, 1), &
-                cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, rhcrit(iz))
+                cam_in%landfrac(icol), cam_in%snowhland(icol), liqcldf(iz), Ga, &
+                rhminl=rhminl_const, rhminl_adj_land=rhminl_adj_land_const, &
+                rhminh=rhminh_const, orhmin=rhcrit(iz))
       end if
 
       ! Now get the ice cloud fraction.
       call aist_single(state%q(icol, iz, 1), state%t(icol, iz), state%pmid(icol, iz), &
-              qi(iz), cam_in%landfrac(icol), cam_in%snowhland(icol), icecldf(iz))
+              qi(iz), cam_in%landfrac(icol), cam_in%snowhland(icol), icecldf(iz), &
+              rhmaxi=rhmaxi_const, rhmini=rhmini_const, rhminl=rhminl_const, &
+              rhminl_adj_land=rhminl_adj_land_const, rhminh=rhminh_const)
     end do
               
     ! Calculate an overall cloud fraction. This may vary depending upon the model,

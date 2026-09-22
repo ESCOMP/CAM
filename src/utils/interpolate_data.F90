@@ -99,12 +99,12 @@ contains
     if(present(cyclicmin)) then
        cmin=cyclicmin
     else
-       cmin=0_r8
+       cmin=0._r8
     end if
     if(present(cyclicmax)) then
        cmax=cyclicmax
     else
-       cmax=360_r8
+       cmax=360._r8
     end if
     if(cmax<=cmin) then
        call endrun('LININTERP: cyclic min value must be < max value')
@@ -925,7 +925,7 @@ subroutine vertinterp(ncol, ncold, nlev, pin, pout, arrin, arrout, &
    real(r8),         optional, intent(in) :: ps(ncold)   ! surface pressure
    real(r8),         optional, intent(in) :: phis(ncold) ! surface geopotential
    real(r8),         optional, intent(in) :: tbot(ncold) ! temperature at bottom level
-   
+
    !---------------------------Local variables-----------------------------
    real(r8) :: alpha
    logical  :: linear_interp

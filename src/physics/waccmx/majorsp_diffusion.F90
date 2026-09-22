@@ -139,7 +139,7 @@ contains
     use air_composition, only: rairv, mbarv
 
 !------------------------------Arguments--------------------------------
-    real(r8), intent(in) :: ztodt                  ! 2 delta-t
+    real(r8), intent(in) :: ztodt                  ! model physics timestep [s]
     type(physics_state), intent(in)     :: state   ! Physics state variables
     type(physics_ptend), intent(inout)  :: ptend   ! indivdual parameterization tendencies
 !---------------------------Local storage-------------------------------
@@ -228,7 +228,7 @@ contains
     real(r8), intent(in) :: pmid(pcols,pver)       ! midpoint pressures
     real(r8), intent(in) :: pint(pcols,pverp)      ! interface pressures
     real(r8), intent(in) :: pdel(pcols,pver)       ! thickness between interfaces
-    real(r8), intent(in) :: ztodt                  ! 2 delta-t
+    real(r8), intent(in) :: ztodt                  ! model physics timestep [s]
     real(r8), intent(in) :: rairv(pcols,pver)                  ! composition dependent gas "constant"
     real(r8), intent(in) :: mbarv(pcols,pver)                  ! composition dependent mean mass
 

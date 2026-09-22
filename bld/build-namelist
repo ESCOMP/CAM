@@ -750,6 +750,15 @@ if (not $waccm_phys) {
     add_default($nl, 'p_bot_for_radmrg');
 }
 
+# Check TUV-X configuration
+my $tuvx_active = $nl->get_value('tuvx_active');
+if ($tuvx_active =~ /$TRUE/io) {
+    my $tuvx_config = $cfg->get('tuvx');
+    if (!$tuvx_config) {
+	die "$ProgName - ERROR: must use -tuvx CAM configure flag \n";
+    }
+}
+
 # Solar irradiance
 
 # First check that solar_const and solar_irrad_data_file are not both defined
@@ -2953,9 +2962,17 @@ if ($maxzen>0.0) {
 # upper boundary specifier
 my $ubc_ver;
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /waccm_t4ma/) and !$waccmx) {
-    $ubc_ver = 'waccmchem';
+    if ($phys =~ /cam7/) {
+	$ubc_ver = 'waccm7chem';
+    } else {
+	$ubc_ver = 'waccmchem';
+    }
 } elsif ($chem =~ /waccm_sc/ or ($model_top eq "ht" and $chem =~ /ghg_mam/)) {
-    $ubc_ver = 'waccmsc';
+    if ($phys =~ /cam7/) {
+	$ubc_ver = 'waccm7sc';
+    } else {
+	$ubc_ver = 'waccmsc';
+    }
 }
 if (defined $ubc_ver) {
     add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
@@ -3444,7 +3461,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
 }
 
 # Aerosol Namelist options
-add_default($nl, 'microp_aero_bulk_scale');
 add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_min');
 add_default($nl, 'microp_aero_wsub_min_asf');
@@ -3934,6 +3950,34 @@ if ($chem =~ /_mam(\d)/) {
     }
 }
 
+# SAD process participation spec_types
+if ($chem =~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # sad_seasalt_spec_types is MAM-only: CARMA does not compute separate
+    # sea-salt SAD (its aero_model_surfarea sets sad_ssa to a sentinel value).
+    add_default($nl, 'sad_seasalt_spec_types',
+       'val'=>"'seasalt'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+if ($carma ne 'none' and $chem !~ /_mam/) {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+    # b4b default matches sad_chem_spec_types; mo_sad.F90 currently assumes
+    # all strat SAD is sulfate aerosol (see sad_strat_calc/sulfate_sad_calc).
+    add_default($nl, 'sad_strat_spec_types',
+       'val'=>"'sulfate','s-organic','p-organic','black-c','ammonium'");
+}
+if ($aer_model eq 'bam' and $prescribed_aero_model eq 'none') {
+    add_default($nl, 'sad_chem_spec_types',
+       'val'=>"'sulfate','black-c','p-organic','s-organic','nitrate'");
+}
+# ...for prescribed BAM with chemistry (WACCM-4) sad_chem_spec_types should
+# be empty as sulfate is from supplemental SAD from sulf_file, not here.
+
 # Gravity wave drag settings
 
 # By default, orographic waves are always on
@@ -4341,6 +4385,8 @@ if ($dyn =~ /se/) {
                   se_ftype
                   se_horz_num_threads
 		  se_large_Courant_incr
+                  se_cslam_q_filter_nu_fac
+                  se_gll_advect_q
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
@@ -4364,9 +4410,6 @@ if ($dyn =~ /se/) {
                   se_vert_remap_uvTq_alg
                   se_vert_remap_tracer_alg
 		  se_fvm_supercycling
-		  se_fvm_supercycling_jet
-		  se_kmin_jet
-		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
 	          se_dribble_in_rsplit_loop
@@ -5371,7 +5414,8 @@ sub check_snapshot_settings {
         # cam7 physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'clubb_tend_cam'",
-                             "'microp_section'"));
+                             "'microp_aero'",
+                             "'pumas_tend'"));
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
         }
@@ -5412,7 +5456,8 @@ sub check_snapshot_settings {
             } else {
                 push (@validList_bc, ("'macrop_driver_tend'"));
             }
-            push (@validList_bc, ("'microp_section'"));
+            push (@validList_bc, ("'microp_aero'"));
+            push (@validList_bc, ("'pumas_tend'"));
             if ($use_subcol_microp =~ /$TRUE/io) {
                 push (@validList_bc, ("'microp_driver_tend_subcol'"));
             }

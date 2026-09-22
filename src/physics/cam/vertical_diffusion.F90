@@ -673,7 +673,7 @@ subroutine vertical_diffusion_tend( &
   use diffusion_solver,     only: implicit_surface_stress_add_drag_coefficient_run
   use diffusion_stubs,      only: turbulent_mountain_stress_add_drag_coefficient_run
   use diffusion_solver,     only: vertical_diffusion_wind_damping_rate_run
-  use diffusion_stubs,      only: beljaars_add_wind_damping_rate_run
+  use beljaars_drag_interstitials, only: beljaars_add_wind_damping_rate_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_horizontal_momentum_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_dry_static_energy_run
   use diffusion_solver,     only: vertical_diffusion_diffuse_tracers_run
@@ -710,7 +710,7 @@ subroutine vertical_diffusion_tend( &
   type(physics_state), intent(inout) :: state                     ! Physics state variables
   type(cam_in_t),      intent(in)    :: cam_in                    ! Surface inputs
 
-  real(r8),            intent(in)    :: ztodt                     ! 2 delta-t [ s ]
+  real(r8),            intent(in)    :: ztodt                     ! model physics timestep [s]
   real(r8),            intent(in)    :: cldn(pcols,pver)          ! New stratus fraction [ fraction ]
 
   ! ---------------------- !

@@ -85,9 +85,6 @@ module aero_model
 
   ! for surf_area_dens
   integer,allocatable :: num_idx(:)
-  integer,allocatable :: index_tot_mass(:,:)
-  integer,allocatable :: index_chm_mass(:,:)
-  integer,allocatable :: index_ssa_mass(:,:)
 
   integer :: ndx_h2so4
   character(len=fieldname_len), allocatable :: dgnum_name(:), dgnumwet_name(:)
@@ -95,6 +92,20 @@ module aero_model
   ! Namelist variables
   character(len=16) :: drydep_list(pcnst) = ' '
   real(r8)          :: seasalt_emis_scale
+
+  integer, parameter :: max_sad_spec = 16
+  character(len=32) :: sad_chem_spec_types(max_sad_spec) = ' '
+  character(len=32) :: sad_seasalt_spec_types(max_sad_spec) = ' '
+  character(len=32) :: sad_strat_spec_types(max_sad_spec) = ' '
+
+  ! sfc/dm_aer slots mo_usrrxt must reserve beyond the aerosol bins; all modal
+  ! surfaces come from the aerosol representation, so no extra slots are needed
+  integer, parameter, public :: n_supplemental_sad = 0
+
+  ! Mode types excluded from SAD: primary_carbon should not contribute
+  integer, parameter :: num_sad_exclude_modes = 1
+  character(len=32), parameter :: sad_exclude_mode_types(num_sad_exclude_modes) = (/ &
+     'primary_carbon                  ' /)
 
   integer :: ndrydep = 0
   integer,allocatable :: drydep_indices(:)
@@ -132,7 +143,8 @@ contains
     ! Namelist variables
     character(len=16) :: aer_drydep_list(pcnst) = ' '
 
-    namelist /aerosol_nl/ aer_drydep_list, modal_strat_sulfate, modal_accum_coarse_exch, seasalt_emis_scale
+    namelist /aerosol_nl/ aer_drydep_list, modal_strat_sulfate, modal_accum_coarse_exch, seasalt_emis_scale, &
+       sad_chem_spec_types, sad_seasalt_spec_types, sad_strat_spec_types
 
     !-----------------------------------------------------------------------------
 
@@ -157,6 +169,9 @@ contains
     call mpibcast(modal_strat_sulfate,     1,                       mpilog,  0, mpicom)
     call mpibcast(seasalt_emis_scale, 1,                            mpir8,   0, mpicom)
     call mpibcast(modal_accum_coarse_exch, 1,                       mpilog,  0, mpicom)
+    call mpibcast(sad_chem_spec_types,    len(sad_chem_spec_types(1))*max_sad_spec,    mpichar, 0, mpicom)
+    call mpibcast(sad_seasalt_spec_types, len(sad_seasalt_spec_types(1))*max_sad_spec, mpichar, 0, mpicom)
+    call mpibcast(sad_strat_spec_types,  len(sad_strat_spec_types(1))*max_sad_spec,   mpichar, 0, mpicom)
 #endif
 
     drydep_list = aer_drydep_list
@@ -197,6 +212,7 @@ contains
     use modal_aero_gasaerexch, only: modal_aero_gasaerexch_init
     use modal_aero_newnuc,     only: modal_aero_newnuc_init
     use modal_aero_rename,     only: modal_aero_rename_init
+    use aerosol_spec_utils,    only: spec_type_in_list
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -517,39 +533,34 @@ contains
        endif
     end do
 
-    allocate(index_tot_mass(nmodes,nspec_max))
-    allocate(index_chm_mass(nmodes,nspec_max))
-    index_tot_mass = -1
-    index_chm_mass = -1
-    allocate(index_ssa_mass(nmodes,nspec_max))
-    index_ssa_mass = -1
-
-    ! for surf_area_dens
-    ! define indices associated with the various aerosol types
+    ! determine coarse dust mode number
     do n = 1,nmodes
        call rad_aer_get_info(0, n, mode_type=mode_type, nspec=nspec)
-       if ( trim(mode_type) /= 'primary_carbon') then ! ignore the primary_carbon mode
-          do l = 1, nspec
-             call rad_aer_get_info(0, n, l, spec_type=spec_type, spec_name=spec_name)
-             index_tot_mass(n,l) = get_spc_ndx(spec_name)
-             if ( trim(spec_type) == 'sulfate'   .or. &
-                  trim(spec_type) == 's-organic' .or. &
-                  trim(spec_type) == 'p-organic' .or. &
-                  trim(spec_type) == 'black-c'   .or. &
-                  trim(spec_type) == 'ammonium') then
-                index_chm_mass(n,l) = get_spc_ndx(spec_name)
-             endif
-             if ( trim(spec_type) == 'seasalt')  then
-                index_ssa_mass(n,l) = get_spc_ndx(spec_name)
-             endif
-          enddo
-       endif
-
-       ! determine coarse dust mode number
        if (mode_type=='coarse' .or. mode_type=='coarse_dust') then
           n_coarse_dust = n
        end if
     enddo
+
+    if (masterproc) then
+       write(iulog,*) 'SAD chemistry spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_chem_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_chem_spec_types(l))
+          end if
+       end do
+       write(iulog,*) 'SAD seasalt spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_seasalt_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_seasalt_spec_types(l))
+          end if
+       end do
+       write(iulog,*) 'SAD stratospheric spec_types:'
+       do l = 1, max_sad_spec
+          if (len_trim(sad_strat_spec_types(l)) > 0) then
+             write(iulog,*) '  ', trim(sad_strat_spec_types(l))
+          end if
+       end do
+    end if
 
     if (has_sox) then
        do m = 1, ntot_amode
@@ -917,24 +928,17 @@ contains
   ! called from mo_usrrxt
   !-------------------------------------------------------------------------
   subroutine aero_model_surfarea( &
-                  state, mmr, radmean, relhum, pmid, temp, strato_sad, sulfate, rho, ltrop, &
-                  dlat, het1_ndx, pbuf, ncol, sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
+                  state, relhum, pmid, temp, ltrop, &
+                  sfc, dm_aer, sad_trop, reff_trop, sad_ssa )
+
+    use mo_constants, only : pi
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
-    real(r8), intent(in)    :: mmr(:,:,:)
-    real(r8), intent(in)    :: radmean      ! mean radii in cm
-    real(r8), intent(in)    :: strato_sad(:,:)
-    integer,  intent(in)    :: ncol
     integer,  intent(in)    :: ltrop(:)
-    real(r8), intent(in)    :: dlat(:)                    ! degrees latitude
-    integer,  intent(in)    :: het1_ndx
     real(r8), intent(in)    :: relhum(:,:)
-    real(r8), intent(in)    :: rho(:,:) ! total atm density (/cm^3)
-    real(r8), intent(in)    :: sulfate(:,:)
-    type(physics_buffer_desc), pointer :: pbuf(:)
 
     real(r8), intent(inout) :: sfc(:,:,:)
     real(r8), intent(inout) :: dm_aer(:,:,:)
@@ -943,22 +947,30 @@ contains
     real(r8), intent(out)   :: sad_ssa(:,:)
 
     ! local vars
-    real(r8), pointer, dimension(:,:,:) :: dgnumwet
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
-    integer :: i,k
+    integer :: beglev(pcols)
+    integer :: endlev(pcols)
+    integer :: lchnk, ncol
+    real(r8) :: reff_ssa(pcols,pver)
 
-    call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet )
+    class(aerosol_state), pointer :: aero_state
+
+    sad_ssa = -huge(1._r8)
+
+    lchnk = state%lchnk
+    ncol = state%ncol
 
     beglev(:ncol)=ltrop(:ncol)+1
     endlev(:ncol)=pver
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, sad_trop, reff_trop, sfc=sfc, sad_ssa=sad_ssa )
 
-    do i = 1,ncol
-       do k = ltrop(i)+1,pver
-          dm_aer(i,k,:) = dgnumwet(i,k,:) * 1.e2_r8 ! convert m to cm
-       enddo
-    enddo
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+
+    if (len_trim(sad_seasalt_spec_types(1))>0) then
+       call aero_state%surf_area_dens(aero_props, sad_seasalt_spec_types, ncol, pver, beglev, endlev, &
+            relhum, pmid, temp, pi, sad_ssa, reff_ssa )
+    end if
+
+    call aero_state%surf_area_dens(aero_props, sad_chem_spec_types, ncol, pver, beglev, endlev, &
+         relhum, pmid, temp, pi, sad_trop, reff_trop, sfc, dm_aer )
 
   end subroutine aero_model_surfarea
 
@@ -966,34 +978,42 @@ contains
   ! provides WET stratospheric aerosol surface area info for modal aerosols
   ! if modal_strat_sulfate = TRUE -- called from mo_gas_phase_chemdr
   !-------------------------------------------------------------------------
-  subroutine aero_model_strat_surfarea( state, ncol, mmr, pmid, temp, ltrop, pbuf, strato_sad, reff_strat )
+  subroutine aero_model_strat_surfarea( state, pmid, temp, ltrop, strato_sad, reff_strat )
+
+    use mo_constants, only : pi
 
     ! dummy args
     type(physics_state), intent(in) :: state           ! Physics state variables
-    integer,  intent(in)    :: ncol
-    real(r8), intent(in)    :: mmr(:,:,:)
     real(r8), intent(in)    :: pmid(:,:)
     real(r8), intent(in)    :: temp(:,:)
     integer,  intent(in)    :: ltrop(:) ! tropopause level indices
-    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), intent(out)   :: strato_sad(:,:)
     real(r8), intent(out)   :: reff_strat(:,:)
 
     ! local vars
-    real(r8), pointer, dimension(:,:,:) :: dgnumwet
-    integer :: beglev(ncol)
-    integer :: endlev(ncol)
+    integer :: i,k, lchnk, ncol
+
+    real(r8) :: relhum(state%ncol,pver)
+
+    class(aerosol_state), pointer :: aero_state
+    integer :: beglev(pcols)
+    integer :: endlev(pcols)
 
     reff_strat = 0._r8
     strato_sad = 0._r8
 
     if (.not.modal_strat_sulfate) return
 
-    call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet )
+    relhum = huge(1._r8)
 
-    beglev(:ncol)=top_lev
-    endlev(:ncol)=ltrop(:ncol)
-    call surf_area_dens( ncol, mmr, pmid, temp, dgnumwet, beglev, endlev, strato_sad, reff_strat )
+    lchnk = state%lchnk
+    ncol = state%ncol
+    beglev(:ncol) = top_lev
+    endlev(:ncol) = ltrop(:ncol)
+
+    aero_state => aerosol_instances_get_state(iaermod_, 0, lchnk)
+    call aero_state%surf_area_dens(aero_props, sad_strat_spec_types, ncol, pver, beglev, endlev, &
+         relhum, pmid, temp, pi, strato_sad, reff_strat)
 
   end subroutine aero_model_strat_surfarea
 
@@ -1326,112 +1346,6 @@ contains
 
   !===============================================================================
   ! private methods
-
-
-  !=============================================================================
-  !=============================================================================
-  subroutine surf_area_dens( ncol, mmr, pmid, temp, diam, beglev, endlev, sad, reff, sfc, sad_ssa )
-    use mo_constants,    only : pi
-    use modal_aero_data, only : nspec_amode, alnsg_amode
-
-    ! dummy args
-    integer,  intent(in)  :: ncol
-    real(r8), intent(in)  :: mmr(:,:,:)
-    real(r8), intent(in)  :: pmid(:,:)
-    real(r8), intent(in)  :: temp(:,:)
-    real(r8), intent(in)  :: diam(:,:,:)
-    integer,  intent(in)  :: beglev(:)
-    integer,  intent(in)  :: endlev(:)
-    real(r8), intent(out) :: sad(:,:)
-    real(r8), intent(out) :: reff(:,:)
-    real(r8),optional, intent(out) :: sfc(:,:,:)
-    real(r8),optional, intent(out) :: sad_ssa(:,:)
-
-    ! local vars
-    real(r8) :: sad_mode(pcols,pver,ntot_amode),radeff(pcols,pver)
-    real(r8) :: vol(pcols,pver),vol_mode(pcols,pver,ntot_amode)
-    real(r8) :: rho_air
-    integer  :: i,k,l,m
-    real(r8) :: chm_mass, tot_mass
-    real(r8) :: ssa_mass
-    real(r8) :: sad_mode_ssa(pcols,pver,ntot_amode)
-
-    !
-    ! Compute surface aero for each mode.
-    ! Total over all modes as the surface area for chemical reactions.
-    !
-
-    sad = 0._r8
-    sad_mode = 0._r8
-    vol = 0._r8
-    vol_mode = 0._r8
-    reff = 0._r8
-    if (present(sad_ssa)) then
-      sad_ssa = 0._r8
-      sad_mode_ssa = 0._r8
-    end if
-
-    do i = 1,ncol
-       do k = beglev(i),endlev(i)
-          rho_air = pmid(i,k)/(temp(i,k)*287.04_r8)
-          do l=1,ntot_amode
-             !
-             ! compute a mass weighting of the number
-             !
-             tot_mass = 0._r8
-             chm_mass = 0._r8
-             ssa_mass = 0._r8
-             do m=1,nspec_amode(l)
-               if ( index_tot_mass(l,m) > 0 ) &
-                    tot_mass = tot_mass + mmr(i,k,index_tot_mass(l,m))
-               if ( index_chm_mass(l,m) > 0 ) &
-                    chm_mass = chm_mass + mmr(i,k,index_chm_mass(l,m))
-               if (present(sad_ssa)) then
-                 if ( index_ssa_mass(l,m) > 0 ) &
-                      ssa_mass = ssa_mass + mmr(i,k,index_ssa_mass(l,m))
-               end if
-             end do
-             if ( tot_mass > 0._r8 ) then
-              ! surface area density
-               sad_mode(i,k,l) = chm_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
-                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
-               sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
-
-               if (present(sad_ssa)) then
-                 sad_mode_ssa(i,k,l) = ssa_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
-                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
-                 sad_mode_ssa(i,k,l) = 1.e-2_r8 * sad_mode_ssa(i,k,l) ! cm^2/cm^3
-               end if
-
-              ! volume calculation, for use in effective radius calculation
-               vol_mode(i,k,l) = chm_mass/tot_mass &
-                               * mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
-                               * exp(4.5_r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
-             else
-               sad_mode(i,k,l) = 0._r8
-               vol_mode(i,k,l) = 0._r8
-               if (present(sad_ssa)) then
-                 sad_mode_ssa(i,k,l) = 0._r8
-               end if
-             end if
-          end do
-          sad(i,k) = sum(sad_mode(i,k,:))
-          vol(i,k) = sum(vol_mode(i,k,:))
-          reff(i,k) = 3._r8*vol(i,k)/sad(i,k)
-          if (present(sad_ssa)) then
-            sad_ssa(i,k) = sum(sad_mode_ssa(i,k,:))
-          end if
-
-       enddo
-    enddo
-
-    if (present(sfc)) then
-       sfc(:,:,:) = sad_mode(:,:,:)
-    endif
-
-  end subroutine surf_area_dens
 
   !===============================================================================
   !===============================================================================

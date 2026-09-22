@@ -10,7 +10,7 @@ module radiation_data
   use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_gas
   use radiative_aerosol, only: rad_aer_get_info
   !REMOVECAM
-  use aerosol_mmr_cam, only: rad_cnst_get_aer_mmr
+  use aerosol_mmr_host, only: rad_cnst_get_aer_mmr
   !REMOVECAM_END
   use radconstants,     only: nradgas, gaslist
   use cam_history_support, only: fieldname_len, fillvalue

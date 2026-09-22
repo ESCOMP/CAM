@@ -523,7 +523,7 @@ function test_func(name, lat, lon, k, z) result(fout)
      !
      ! approximately Y32_16 spherical harmonic
      !
-     fout = 0.5_r8 + 0.5_r8*(cos(16*lon)*(sin(2_r8*lat)**16))
+     fout = 0.5_r8 + 0.5_r8*(cos(16._r8*lon)*(sin(2._r8*lat)**16))
 
    case('TT_LATP2')
      fout = 2.0_r8 + lat

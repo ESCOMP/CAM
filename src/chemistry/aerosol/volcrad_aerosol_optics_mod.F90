@@ -196,6 +196,14 @@ contains
     deallocate(self%wmu)
     deallocate(self%kmu)
 
+    ! table and mmr pointers are views of data owned elsewhere; disassociate only
+    nullify(self%r_sw_ext)
+    nullify(self%r_sw_scat)
+    nullify(self%r_sw_ascat)
+    nullify(self%r_lw_abs)
+    nullify(self%r_mu)
+    nullify(self%mmr)
+
   end subroutine destructor
 
 end module volcrad_aerosol_optics_mod

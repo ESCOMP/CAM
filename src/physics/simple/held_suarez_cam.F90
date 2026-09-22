@@ -68,7 +68,7 @@ contains
     ! Input arguments
     !
     type(physics_state), intent(inout) :: state
-    real(r8),            intent(in)    :: ztodt            ! Two times model timestep (2 delta-t)
+    real(r8),            intent(in)    :: ztodt            ! model physics timestep [s]
                                                            !
                                                            ! Output argument
                                                            !

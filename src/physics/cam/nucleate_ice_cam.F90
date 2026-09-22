@@ -55,7 +55,6 @@ real(r8)                   :: nucleate_ice_strat = 0.0_r8
 
 ! Vars set via init method.
 real(r8) :: mincld      ! minimum allowed cloud fraction
-real(r8) :: bulk_scale  ! prescribed aerosol bulk sulfur scale factor
 
 ! constituent indices
 integer :: &
@@ -72,18 +71,6 @@ integer :: &
 
 integer :: &
     qsatfac_idx = -1
-
-! Bulk aerosols
-character(len=20), allocatable :: aername(:)
-real(r8), allocatable :: num_to_mass_aer(:)
-
-integer :: naer_all = -1 ! number of aerosols affecting climate
-integer :: idxsul   = -1 ! index in aerosol list for sulfate
-integer :: idxdst1  = -1 ! index in aerosol list for dust1
-integer :: idxdst2  = -1 ! index in aerosol list for dust2
-integer :: idxdst3  = -1 ! index in aerosol list for dust3
-integer :: idxdst4  = -1 ! index in aerosol list for dust4
-integer :: idxbcphi = -1 ! index in aerosol list for Soot (BCPHIL)
 
 ! MODAL or CARMA aerosols
 logical :: clim_modal_carma = .false.
@@ -153,12 +140,11 @@ end subroutine nucleate_ice_cam_register
 
 !================================================================================================
 
-subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
+subroutine nucleate_ice_cam_init(mincld_in, pbuf2d, aero_props)
    use phys_control, only: phys_getopts
    use time_manager, only: is_first_step
 
    real(r8), intent(in) :: mincld_in
-   real(r8), intent(in) :: bulk_scale_in
    class(aerosol_properties), optional, intent(in) :: aero_props
 
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -186,7 +172,6 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    end if
 
    mincld     = mincld_in
-   bulk_scale = bulk_scale_in
 
    lq(:) = .false.
 
@@ -244,7 +229,6 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    if( masterproc ) then
       write(iulog,*) 'nucleate_ice parameters:'
       write(iulog,*) '  mincld                     = ', mincld_in
-      write(iulog,*) '  bulk_scale                 = ', bulk_scale_in
       write(iulog,*) '  use_preexisiting_ice       = ', use_preexisting_ice
       write(iulog,*) '  hist_preexisiting_ice      = ', hist_preexisting_ice
       write(iulog,*) '  nucleate_ice_subgrid       = ', nucleate_ice_subgrid
@@ -328,33 +312,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
       end if
    end if
 
-   if (.not. clim_modal_carma) then
-
-      ! Props needed for BAM number concentration calcs.
-
-      if (present(aero_props)) then
-         naer_all = aero_props%nbins()
-      else
-         naer_all = 0
-      end if
-      allocate( &
-         aername(naer_all),        &
-         num_to_mass_aer(naer_all) )
-
-      do iaer = 1, naer_all
-         call aero_props%get(iaer, 1, &
-            specname        = aername(iaer), &
-            num_to_mass_aer = num_to_mass_aer(iaer))
-         ! Look for sulfate, dust, and soot in this list (Bulk aerosol only)
-         if (trim(aername(iaer)) == 'SULFATE') idxsul = iaer
-         if (trim(aername(iaer)) == 'DUST1') idxdst1 = iaer
-         if (trim(aername(iaer)) == 'DUST2') idxdst2 = iaer
-         if (trim(aername(iaer)) == 'DUST3') idxdst3 = iaer
-         if (trim(aername(iaer)) == 'DUST4') idxdst4 = iaer
-         if (trim(aername(iaer)) == 'BCPHI') idxbcphi = iaer
-      end do
-   end if
-
+   ! BAM-specific init code (naer_all, aername, num_to_mass_aer, species index
+   ! lookups) has been removed. BAM assumptions are now encoded in the abstract
+   ! aerosol interface: bulk_aerosol_state%get_ambient_num, icenuc_size_wght,
+   ! and icenuc_type_wght.
 
    call nucleati_init(use_preexisting_ice, use_hetfrz_classnuc, nucleate_ice_incloud, iulog, pi, &
         mincld)
@@ -399,15 +360,11 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), pointer :: ni(:,:)         ! cloud ice number conc (1/kg)
    real(r8), pointer :: pmid(:,:)       ! pressure at layer midpoints (pa)
 
-   real(r8), pointer :: aer_mmr(:,:)    ! aerosol mass mixing ratio
    real(r8), pointer :: aist(:,:)
    real(r8) :: icecldf(pcols,pver)  ! ice cloud fraction
    real(r8), pointer :: qsatfac(:,:)      ! Subgrid cloud water saturation scaling factor.
 
    real(r8) :: rho(pcols,pver)      ! air density (kg m-3)
-
-   real(r8), allocatable :: naer2(:,:,:)    ! bulk aerosol number concentration (1/m3)
-   real(r8), allocatable :: maerosol(:,:,:) ! bulk aerosol mass conc (kg/m3)
 
    real(r8) :: qs(pcols)            ! liquid-ice weighted sat mixing rat (kg/kg)
    real(r8) :: es(pcols)            ! liquid-ice weighted sat vapor press (pa)
@@ -487,40 +444,28 @@ subroutine nucleate_ice_cam_calc( &
 
    rho(:ncol,:) = pmid(:ncol,:)/(rair*t(:ncol,:))
 
-   if (clim_modal_carma) then
-      if (.not.(present(aero_props).and.present(aero_state))) then
-         call endrun('nucleate_ice_cam_calc: aero_props and aero_state must be present when MAM/CARMA is active')
-      end if
-
+   if (present(aero_props)) then
+      ! all aerosol models are handled unified here, including BAM (BAM has one bin per species.)
+      ! BAM assumptions are now encoded in bulk_aerosol_state methods:
+      !   get_ambient_num derives #/kg from mass * num_to_mass [* bam_sulfate_scale]
+      !   icenuc_size_wght returns 1/25 (BAM scaling)
+      !   icenuc_type_wght returns 1.0/0.0 for single-species bins
       nbins = aero_props%nbins()
       nmaxspc = maxval(aero_props%nspecies())
 
       allocate(size_wght(ncol,pver,nbins,nmaxspc))
       allocate(amb_num_bins(ncol,pver,nbins))
-
-      ! initiate ice nucleation tendencies
-      call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
    else
+      ! no aerosol models running (aquaplanet), nucleati still runs Meyers depnuc.
       nbins = 0
       nmaxspc = 0
+   end if
 
-      ! init number/mass arrays for bulk aerosols
-      allocate( &
-           naer2(pcols,pver,naer_all), &
-           maerosol(pcols,pver,naer_all))
-
-      do m = 1, naer_all
-         call aero_state%get_ambient_mmr(species_ndx=1, bin_ndx=m, mmr=aer_mmr)
-         maerosol(:ncol,:,m) = aer_mmr(:ncol,:)*rho(:ncol,:)
-
-         if (m .eq. idxsul) then
-            naer2(:ncol,:,m) = maerosol(:ncol,:,m)*num_to_mass_aer(m)*bulk_scale
-         else
-            naer2(:ncol,:,m) = maerosol(:ncol,:,m)*num_to_mass_aer(m)
-         end if
-      end do
-
-      ! initiate ice nucleation tendencies for bulk aerosol
+   if (clim_modal_carma .and. use_preexisting_ice) then
+      ! Constituent tendencies for interstitial to cloud-borne transfer (MAM/CARMA only)
+      call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
+   else
+      ! Other cases including BAM or no-aerosol will not have constituent tendencies.
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei')
    end if
 
@@ -610,9 +555,12 @@ subroutine nucleate_ice_cam_calc( &
    sulf_num_tot_col = 0._r8
    soot_num_col = 0._r8
 
-   if (clim_modal_carma) then
-
-      ! collect number densities (#/cm^3) for dust, sulfate, and soot
+   ! Collect number densities [# cm-3] for dust, sulfate, and soot.
+   ! Unified for all aerosol models via the abstract interface.
+   ! For BAM: get_ambient_num returns mmr*num_to_mass (*bam_sulfate_scale for {sulf, volc} = "sulfate"),
+   !          icenuc_size_wght returns 1/25, icenuc_type_wght returns 1.0 ("sulfate_strat" or "sulfate") or 0.0.
+   ! When no aerosols are active, all *_num_col are zero and nucleati runs Meyers depnuc which only depend on T and qc.
+   if (present(aero_props) .and. present(aero_state)) then
       call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, ncol, pver, rho, &
                                            dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
 
@@ -622,26 +570,9 @@ subroutine nucleate_ice_cam_calc( &
          do l = 1, aero_props%nspecies(m)
             call aero_props%species_type(m, l, spectype)
             call aero_state%icenuc_size_wght( m, ncol, pver, spectype, use_preexisting_ice, size_wght(:,:,m,l))
-
-            !size_wght(:ncol,:,m,l) = wght(:ncol,:)
          end do
       end do
-
-   else
-      ! for bulk model
-      if (idxdst1 > 0 .and. idxdst2 > 0 .and. idxdst3 > 0 .and. idxdst4 > 0) then
-         dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
-                                 + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
-                                 + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
-                                 + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
-      end if
-      if (idxsul > 0) then
-         sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
-      end if
-      if (idxbcphi > 0) then
-         soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
-      end if
-   endif
+   end if
 
    kloop: do k = top_lev, pver
       iloop: do i = 1, ncol
@@ -879,12 +810,6 @@ subroutine nucleate_ice_cam_calc( &
          end if freezing
       end do iloop
    end do kloop
-
-   if (.not. clim_modal_carma) then
-      deallocate( &
-           naer2, &
-           maerosol)
-   end if
 
    if (cam_physpkg_is("cam7")) then
       ! Updates for PUMAS v1.21+

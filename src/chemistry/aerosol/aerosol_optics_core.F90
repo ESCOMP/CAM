@@ -13,7 +13,8 @@ module aerosol_optics_core
   public :: aerosol_optics_sw_bin
   public :: aerosol_optics_lw_bin
 
-  ! Jasper Kok et al. (2017) Fig. 1d: 20-60 % higher mass extinction efficiency
+  ! Jasper Kok et al. (2017) https://doi.org/10.1038/ngeo2912
+  ! Fig. 1d: 20-60 % higher mass extinction efficiency
   ! because dust is aspherical. Currently not captured by the spherical assumption
   ! in the optical calculation. Asphericity is strong for D > 1 um (coarse mode).
   real(r8), parameter, public :: dustaspherical_opts = 1.3_r8

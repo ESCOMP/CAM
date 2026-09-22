@@ -409,21 +409,21 @@ module clubb_intr
   !             Indices for physics buffer (pbuf)                !
   ! ------------------------------------------------------------ !
   integer :: &
-    wp2_idx, &         	! vertical velocity variances
-    wp3_idx, &         	! third moment of vertical velocity
-    wpthlp_idx, &      	! turbulent flux of thetal
-    wprtp_idx, &       	! turbulent flux of total water
-    rtpthlp_idx, &     	! covariance of thetal and rt
-    rtp2_idx, &        	! variance of total water
-    thlp2_idx, &       	! variance of thetal
-    rtp3_idx, &        	! total water 3rd order
-    thlp3_idx, &       	! thetal 3rd order
-    up2_idx, &         	! variance of east-west wind
-    vp2_idx, &         	! variance of north-south wind
-    up3_idx, &         	! east-west wind 3rd order
-    vp3_idx, &         	! north-south wind 3rd order
-    upwp_idx, &        	! east-west momentum flux
-    vpwp_idx, &        	! north-south momentum flux
+    wp2_idx, &          ! vertical velocity variances
+    wp3_idx, &          ! third moment of vertical velocity
+    wpthlp_idx, &       ! turbulent flux of thetal
+    wprtp_idx, &        ! turbulent flux of total water
+    rtpthlp_idx, &      ! covariance of thetal and rt
+    rtp2_idx, &         ! variance of total water
+    thlp2_idx, &        ! variance of thetal
+    rtp3_idx, &         ! total water 3rd order
+    thlp3_idx, &        ! thetal 3rd order
+    up2_idx, &          ! variance of east-west wind
+    vp2_idx, &          ! variance of north-south wind
+    up3_idx, &          ! east-west wind 3rd order
+    vp3_idx, &          ! north-south wind 3rd order
+    upwp_idx, &         ! east-west momentum flux
+    vpwp_idx, &         ! north-south momentum flux
     wpthvp_idx, &       ! buoyancy flux
     wp2thvp_idx, &      ! second order buoyancy term
     wp2up_idx, &        ! w'^2 u'
@@ -439,7 +439,7 @@ module clubb_intr
     wpvp2_idx, &        ! w'v'^2
     wp2up2_idx, &       ! w'^2 u'^2
     wp2vp2_idx, &       ! w'^2 v'^2
-    cld_idx, &         	! Cloud fraction
+    cld_idx, &          ! Cloud fraction
     concld_idx, &       ! Convective cloud fraction
     ast_idx, &          ! Stratiform cloud fraction
     alst_idx, &         ! Liquid stratiform cloud fraction
@@ -448,9 +448,9 @@ module clubb_intr
     qist_idx, &         ! Physical in-cloud IWC
     dp_frac_idx, &      ! deep convection cloud fraction
     sh_frac_idx, &      ! shallow convection cloud fraction
-    kvh_idx, &		      ! CLUBB eddy diffusivity on thermo levels
+    kvh_idx, &          ! CLUBB eddy diffusivity on thermo levels
     pblh_idx, &         ! PBL pbuf
-    icwmrdp_idx, &	    ! In cloud mixing ratio for deep convection
+    icwmrdp_idx, &      ! In cloud mixing ratio for deep convection
     tke_idx, &          ! turbulent kinetic energy
     tpert_idx, &        ! temperature perturbation from PBL
     fice_idx, &         ! fice_idx index in physics buffer
@@ -2222,22 +2222,21 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf_ini, pdf_zm_varnce_w_2_idx, 0.0_r8)
        call pbuf_set_field(pbuf_ini, pdf_zm_mixt_frac_idx,  0.0_r8)
 
-       call pbuf_set_field(pbuf_ini,  ttend_clubb_idx,      0.0_r8)
-       call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_idx,    0.0_r8)
-       call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_idx,    0.0_r8)
-       call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_idx,  0.0_r8)
-
-       call pbuf_set_field(pbuf_ini,  ttend_clubb_mc_idx,     0.0_r8)
-       call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_mc_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_mc_idx,   0.0_r8)
-       call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_mc_idx,  0.0_r8)
-       call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_mc_idx, 0.0_r8)
-
     endif
 
     ! The following is physpkg, so it needs to be initialized every time
-    call pbuf_set_field(pbuf_ini, fice_idx,    0.0_r8)
+    call pbuf_set_field(pbuf_ini,  fice_idx,               0.0_r8)
+    call pbuf_set_field(pbuf_ini,  ttend_clubb_idx,        0.0_r8)
+    call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_idx,      0.0_r8)
+    call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_idx,      0.0_r8)
+    call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_idx,     0.0_r8)
+    call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_idx,    0.0_r8)
+
+    call pbuf_set_field(pbuf_ini,  ttend_clubb_mc_idx,     0.0_r8)
+    call pbuf_set_field(pbuf_ini,  upwp_clubb_gw_mc_idx,   0.0_r8)
+    call pbuf_set_field(pbuf_ini,  vpwp_clubb_gw_mc_idx,   0.0_r8)
+    call pbuf_set_field(pbuf_ini,  thlp2_clubb_gw_mc_idx,  0.0_r8)
+    call pbuf_set_field(pbuf_ini,  wpthlp_clubb_gw_mc_idx, 0.0_r8)
 
     ! --------------- !
     ! End             !
@@ -2321,7 +2320,9 @@ end subroutine clubb_init_cnst
       init_err_info_api,    &
       cleanup_err_info_api
 
-    use cldfrc2m,                  only: aist_vector, rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const
+    use compute_cloud_fraction_two_moment, only: aist_vector
+    use cldfrc2m,                  only: rhmini_const, rhmaxi_const, rhminis_const, rhmaxis_const, &
+                                         rhminl_const, rhminl_adj_land_const, rhminh_const
     use cam_history,               only: outfld
 
     use macrop_driver,             only: liquid_macro_tend
@@ -2363,26 +2364,26 @@ end subroutine clubb_init_cnst
     !                Pointers for pbuf                     !
     ! ---------------------------------------------------- !
 
-    real(r8), pointer, dimension(:,:) :: wp2_pbuf                   ! vertical velocity variance			[m^2/s^2]
-    real(r8), pointer, dimension(:,:) :: wp3_pbuf                   ! third moment of vertical velocity		[m^3/s^3]
-    real(r8), pointer, dimension(:,:) :: wpthlp_pbuf                ! turbulent flux of thetal			[m/s K]
-    real(r8), pointer, dimension(:,:) :: wprtp_pbuf                 ! turbulent flux of moisture			[m/s kg/kg]
-    real(r8), pointer, dimension(:,:) :: rtpthlp_pbuf               ! covariance of thetal and qt			[kg/kg K]
-    real(r8), pointer, dimension(:,:) :: rtp2_pbuf                  ! moisture variance				[kg^2/kg^2]
-    real(r8), pointer, dimension(:,:) :: thlp2_pbuf                 ! temperature variance				[K^2]
-    real(r8), pointer, dimension(:,:) :: rtp3_pbuf                  ! moisture 3rd order				[kg^3/kg^3]
-    real(r8), pointer, dimension(:,:) :: thlp3_pbuf                 ! temperature 3rd order			[K^3]
-    real(r8), pointer, dimension(:,:) :: up2_pbuf                   ! east-west wind variance			[m^2/s^2]
-    real(r8), pointer, dimension(:,:) :: vp2_pbuf                   ! north-south wind variance			[m^2/s^2]
-    real(r8), pointer, dimension(:,:) :: up3_pbuf                   ! east-west wind 3rd order			[m^3/s^3]
-    real(r8), pointer, dimension(:,:) :: vp3_pbuf                   ! north-south wind 3rd order			[m^3/s^3]
-    real(r8), pointer, dimension(:,:) :: upwp_pbuf                  ! east-west momentum flux			[m^2/s^2]
-    real(r8), pointer, dimension(:,:) :: vpwp_pbuf                  ! north-south momentum flux			[m^2/s^2]
-    real(r8), pointer, dimension(:,:) :: wpthvp_pbuf                ! w'th_v' (momentum levels)			[m/s K]
-    real(r8), pointer, dimension(:,:) :: wp2thvp_pbuf               ! w'^2 th_v' (thermodynamic levels)		[m^2/s^2 K]
-    real(r8), pointer, dimension(:,:) :: wp2up_pbuf                 ! w'^2 u' (thermodynamic levels)		[m^3/s^3]
-    real(r8), pointer, dimension(:,:) :: rtpthvp_pbuf               ! r_t'th_v' (momentum levels)			[kg/kg K]
-    real(r8), pointer, dimension(:,:) :: thlpthvp_pbuf              ! th_l'th_v' (momentum levels)			[K^2]
+    real(r8), pointer, dimension(:,:) :: wp2_pbuf                   ! vertical velocity variance      [m^2/s^2]
+    real(r8), pointer, dimension(:,:) :: wp3_pbuf                   ! third moment of vertical velocity   [m^3/s^3]
+    real(r8), pointer, dimension(:,:) :: wpthlp_pbuf                ! turbulent flux of thetal      [m/s K]
+    real(r8), pointer, dimension(:,:) :: wprtp_pbuf                 ! turbulent flux of moisture      [m/s kg/kg]
+    real(r8), pointer, dimension(:,:) :: rtpthlp_pbuf               ! covariance of thetal and qt     [kg/kg K]
+    real(r8), pointer, dimension(:,:) :: rtp2_pbuf                  ! moisture variance       [kg^2/kg^2]
+    real(r8), pointer, dimension(:,:) :: thlp2_pbuf                 ! temperature variance        [K^2]
+    real(r8), pointer, dimension(:,:) :: rtp3_pbuf                  ! moisture 3rd order        [kg^3/kg^3]
+    real(r8), pointer, dimension(:,:) :: thlp3_pbuf                 ! temperature 3rd order     [K^3]
+    real(r8), pointer, dimension(:,:) :: up2_pbuf                   ! east-west wind variance     [m^2/s^2]
+    real(r8), pointer, dimension(:,:) :: vp2_pbuf                   ! north-south wind variance     [m^2/s^2]
+    real(r8), pointer, dimension(:,:) :: up3_pbuf                   ! east-west wind 3rd order      [m^3/s^3]
+    real(r8), pointer, dimension(:,:) :: vp3_pbuf                   ! north-south wind 3rd order      [m^3/s^3]
+    real(r8), pointer, dimension(:,:) :: upwp_pbuf                  ! east-west momentum flux     [m^2/s^2]
+    real(r8), pointer, dimension(:,:) :: vpwp_pbuf                  ! north-south momentum flux     [m^2/s^2]
+    real(r8), pointer, dimension(:,:) :: wpthvp_pbuf                ! w'th_v' (momentum levels)     [m/s K]
+    real(r8), pointer, dimension(:,:) :: wp2thvp_pbuf               ! w'^2 th_v' (thermodynamic levels)   [m^2/s^2 K]
+    real(r8), pointer, dimension(:,:) :: wp2up_pbuf                 ! w'^2 u' (thermodynamic levels)    [m^3/s^3]
+    real(r8), pointer, dimension(:,:) :: rtpthvp_pbuf               ! r_t'th_v' (momentum levels)     [kg/kg K]
+    real(r8), pointer, dimension(:,:) :: thlpthvp_pbuf              ! th_l'th_v' (momentum levels)      [K^2]
     real(r8), pointer, dimension(:,:) :: pdf_zm_w_1_pbuf            ! work pointer for pdf_params_zm
     real(r8), pointer, dimension(:,:) :: pdf_zm_w_2_pbuf            ! work pointer for pdf_params_zm
     real(r8), pointer, dimension(:,:) :: pdf_zm_varnce_w_1_pbuf     ! work pointer for pdf_params_zm
@@ -2398,15 +2399,15 @@ end subroutine clubb_init_cnst
     real(r8), pointer, dimension(:,:) :: wpvp2_pbuf                 ! w'v'^2 (thermodynamic levels)
     real(r8), pointer, dimension(:,:) :: wp2up2_pbuf                ! w'^2 u'^2 (momentum levels)
     real(r8), pointer, dimension(:,:) :: wp2vp2_pbuf                ! w'^2 v'^2 (momentum levels)
-    real(r8), pointer, dimension(:,:) :: cld_pbuf                   ! cloud fraction 				[fraction]
-    real(r8), pointer, dimension(:,:) :: concld_pbuf                ! convective cloud fraction			[fraction]
-    real(r8), pointer, dimension(:,:) :: ast_pbuf                   ! stratiform cloud fraction			[fraction]
-    real(r8), pointer, dimension(:,:) :: alst_pbuf                  ! liquid stratiform cloud fraction		[fraction]
-    real(r8), pointer, dimension(:,:) :: aist_pbuf                  ! ice stratiform cloud fraction		[fraction]
-    real(r8), pointer, dimension(:,:) :: qlst_pbuf                  ! Physical in-stratus LWC			[kg/kg]
-    real(r8), pointer, dimension(:,:) :: qist_pbuf                  ! Physical in-stratus IWC			[kg/kg]
-    real(r8), pointer, dimension(:,:) :: deepcu_pbuf                ! deep convection cloud fraction		[fraction]
-    real(r8), pointer, dimension(:,:) :: shalcu_pbuf                ! shallow convection cloud fraction 		[fraction]
+    real(r8), pointer, dimension(:,:) :: cld_pbuf                   ! cloud fraction        [fraction]
+    real(r8), pointer, dimension(:,:) :: concld_pbuf                ! convective cloud fraction     [fraction]
+    real(r8), pointer, dimension(:,:) :: ast_pbuf                   ! stratiform cloud fraction     [fraction]
+    real(r8), pointer, dimension(:,:) :: alst_pbuf                  ! liquid stratiform cloud fraction    [fraction]
+    real(r8), pointer, dimension(:,:) :: aist_pbuf                  ! ice stratiform cloud fraction   [fraction]
+    real(r8), pointer, dimension(:,:) :: qlst_pbuf                  ! Physical in-stratus LWC     [kg/kg]
+    real(r8), pointer, dimension(:,:) :: qist_pbuf                  ! Physical in-stratus IWC     [kg/kg]
+    real(r8), pointer, dimension(:,:) :: deepcu_pbuf                ! deep convection cloud fraction    [fraction]
+    real(r8), pointer, dimension(:,:) :: shalcu_pbuf                ! shallow convection cloud fraction     [fraction]
     real(r8), pointer, dimension(:,:) :: khzm_pbuf                  ! CLUBB's eddy diffusivity of heat/moisture on momentum  levels [m^2/s]
     real(r8), pointer, dimension(:)   :: pblh_pbuf                  ! planetary boundary layer height                [m]
     real(r8), pointer, dimension(:,:) :: tke_pbuf                   ! turbulent kinetic energy                     [m^2/s^2]
@@ -2518,9 +2519,9 @@ end subroutine clubb_init_cnst
 
     real(r8), dimension(state%ncol) :: &
       deltaz, &
-      fcor, &                             ! Coriolis forcing 			      	              [s^-1]
-      fcor_y, &                           ! Non-traditional coriolis forcing 			      [s^-1]
-      sfc_elevation, &    		            ! Elevation of ground			      	            [m AMSL][m]
+      fcor, &                             ! Coriolis forcing                            [s^-1]
+      fcor_y, &                           ! Non-traditional coriolis forcing            [s^-1]
+      sfc_elevation, &                    ! Elevation of ground                         [m AMSL][m]
       wpthlp_sfc, &                       ! w' theta_l' at surface                      [(m K)/s]
       wprtp_sfc, &                        ! w' r_t' at surface                          [(kg m)/( kg s)]
       upwp_sfc, &                         ! u'w' at surface                             [m^2/s^2]
@@ -2537,28 +2538,28 @@ end subroutine clubb_init_cnst
       wpedsclrp_sfc        ! Eddy-scalar flux at surface                   [{units vary} m/s]
 
     real(r8), dimension(state%ncol,nzt_clubb) :: &
-      rtm,                            & ! mean moisture mixing ratio			              [kg/kg]
-      thlm,                           & ! mean temperature				                      [K]
+      rtm,                            & ! mean moisture mixing ratio                    [kg/kg]
+      thlm,                           & ! mean temperature                              [K]
       rcm,                            & ! CLUBB cloud water mixing ratio                [kg/kg]
-      um,                             & ! mean east-west wind				                    [m/s]
-      vm,                             & ! mean north-south wind			                    [m/s]
+      um,                             & ! mean east-west wind                           [m/s]
+      vm,                             & ! mean north-south wind                         [m/s]
       thlm_forcing,                   & ! theta_l forcing (thermodynamic levels)        [K/s]
       rtm_forcing,                    & ! r_t forcing (thermodynamic levels)            [(kg/kg)/s]
-      um_forcing,                     & ! u wind forcing (thermodynamic levels)     	  [m/s/s]
-      vm_forcing,                     & ! v wind forcing (thermodynamic levels)     	  [m/s/s]
-      wm_zt,                          & ! w mean wind component on thermo. levels   	  [m/s]
+      um_forcing,                     & ! u wind forcing (thermodynamic levels)         [m/s/s]
+      vm_forcing,                     & ! v wind forcing (thermodynamic levels)         [m/s/s]
+      wm_zt,                          & ! w mean wind component on thermo. levels       [m/s]
       rtm_ref,                        & ! Initial profile of rtm                        [kg/kg]
       thlm_ref,                       & ! Initial profile of thlm                       [K]
       um_ref,                         & ! Initial profile of um                         [m/s]
       vm_ref,                         & ! Initial profile of vm                         [m/s]
       ug,                             & ! U geostrophic wind                            [m/s]
       vg,                             & ! V geostrophic wind                            [m/s]
-      p_in_Pa,                        & ! Air pressure (thermodynamic levels)       	  [Pa]
+      p_in_Pa,                        & ! Air pressure (thermodynamic levels)           [Pa]
       rho_zt,                         & ! Air density on thermo levels                  [kg/m^3]
       exner,                          & ! Exner function (thermodynamic levels)         [-]
-      rho_ds_zt,                      & ! Dry, static density on thermodynamic levels 	[kg/m^3]
-      invrs_rho_ds_zt,                & ! Inv. dry, static density on thermo. levels  	[m^3/kg]
-      thv_ds_zt,                      & ! Dry, base-state theta_v on thermo. levels   	[K]
+      rho_ds_zt,                      & ! Dry, static density on thermodynamic levels   [kg/m^3]
+      invrs_rho_ds_zt,                & ! Inv. dry, static density on thermo. levels    [m^3/kg]
+      thv_ds_zt,                      & ! Dry, base-state theta_v on thermo. levels     [K]
       rfrzm,                          &
       rvm,                            & ! water vapor mixing ratio                      [kg/kg]
       rtp2_zt,                        & ! CLUBB R-tot variance on thermo levs
@@ -2578,7 +2579,7 @@ end subroutine clubb_init_cnst
       qrl_clubb,                      &
       qclvar,                         & ! cloud water variance                          [kg^2/kg^2]
       Lscale,                         & ! Length scale                                  [m]
-      zt_g,                           & ! Thermodynamic grid of CLUBB		      	        [m]
+      zt_g,                           & ! Thermodynamic grid of CLUBB		      	[m]
       dz_g,                           & ! thickness of layer                            [m]
       invrs_dz_g,                     & ! Inverse of layer thickness                    [1/m]
       invrs_exner_zt,                 & ! thermodynamic grid
@@ -2607,11 +2608,11 @@ end subroutine clubb_init_cnst
       rtp2_forcing,             &
       thlp2_forcing,            &
       rtpthlp_forcing,          &
-      wm_zm,                    & ! w mean wind component on momentum levels  	          [m/s]
+      wm_zm,                    & ! w mean wind component on momentum levels              [m/s]
       rho_zm,                   & ! Air density on momentum levels                        [kg/m^3]
-      rho_ds_zm,                & ! Dry, static density on momentum levels      	        [kg/m^3]
-      invrs_rho_ds_zm,          & ! Inv. dry, static density on momentum levels 	        [m^3/kg]
-      thv_ds_zm,                & ! Dry, base-state theta_v on momentum levels  	        [K]
+      rho_ds_zm,                & ! Dry, static density on momentum levels                [kg/m^3]
+      invrs_rho_ds_zm,          & ! Inv. dry, static density on momentum levels           [m^3/kg]
+      thv_ds_zm,                & ! Dry, base-state theta_v on momentum levels            [K]
       upwp_pert,                & ! Perturbed u'w'                                        [m^2/s^2]
       vpwp_pert,                & ! Perturbed v'w'                                        [m^2/s^2]
       khzm,                     & ! Eddy diffusivity of heat/moisture on momentum levels  [m^2/s]
@@ -2623,8 +2624,8 @@ end subroutine clubb_init_cnst
       wprtp_mc,                 &
       wpthlp_mc,                &
       rtpthlp_mc,               &
-      Lscale_zm,                & ! Length scale                                                    [m]
-      zi_g,                     & ! Momentum grid of CLUBB		      	                    [m]
+      Lscale_zm,                & ! Length scale                                          [m]
+      zi_g,                     & ! Momentum grid of CLUBB		      	          [m]
 
       ! MF Plume variables on momentum levels.
       mf_dry_a,   mf_moist_a,    &
@@ -2789,7 +2790,7 @@ end subroutine clubb_init_cnst
       wp3_output,                     & ! wp3 output                                    [m^3/s^3]
       thl2_zt_output,                 & ! CLUBB Theta-l variance on thermo levs
       wp2_zt_output,                  &
-      rcm_in_layer_output,            & ! CLUBB in-cloud liquid water mixing ratio	    [kg/kg]
+      rcm_in_layer_output,            & ! CLUBB in-cloud liquid water mixing ratio      [kg/kg]
       pdfp_rtp2_output,               & ! Calculated R-tot variance from pdf_params     [kg^2/kg^2]
       wm_zt_output,                   & ! CLUBB mean W on thermo levs output            [m/s]
       rcm_output,                     &
@@ -2812,6 +2813,11 @@ end subroutine clubb_init_cnst
       kinwat,           & ! Kinematic water vapor flux                    [m/s]
       dummy2,           & ! dummy variable                                [units vary]
       dummy3              ! dummy variable                                [units vary]
+    real(r8)                          :: rhmini_default(pcols)
+    real(r8)                          :: rhmaxi_default(pcols)
+    real(r8)                          :: rhminl_arr(pcols)
+    real(r8)                          :: rhminl_adj_land_arr(pcols)
+    real(r8)                          :: rhminh_arr(pcols)
 
     real(r8), dimension(pcols,pver) :: &
       invrs_cpairv, &
@@ -2822,7 +2828,7 @@ end subroutine clubb_init_cnst
       qvtend,       &
       qctend,       &
       inctend,      &
-      thv,          & ! virtual potential temperature			            [K]
+      thv,          & ! virtual potential temperature                 [K]
       th              ! potential temperature                         [K]
 
     real(r8), dimension(pcols,nzt_clubb) :: &
@@ -2837,7 +2843,7 @@ end subroutine clubb_init_cnst
       mixt_frac_max_mag,        &
       dtime,                    & ! CLUBB time step                               [s]
       ubar,                     & ! surface wind                                  [m/s]
-      ustar,                    & ! surface stress				                        [m/s]
+      ustar,                    & ! surface stress                                [m/s]
       bflx22,                   & ! Variable for buoyancy flux for pbl            [K m/s]
       zo,                       & ! roughness height                              [m]
       relvarmax,                &
@@ -5509,6 +5515,12 @@ end subroutine clubb_init_cnst
     aist_pbuf(:,:top_lev-1) = 0._r8
     qsatfac_pbuf(:, :) = 0._r8 ! Zero out entire profile in case qsatfac is left undefined in aist_vector below
 
+    rhmini_default(:) = rhmini_const
+    rhmaxi_default(:) = rhmaxi_const
+    rhminl_arr(:) = rhminl_const
+    rhminl_adj_land_arr(:) = rhminl_adj_land_const
+    rhminh_arr(:) = rhminh_const
+
     do k = top_lev, pver
 
       ! For Type II PSC and for thin cirrus, the clouds can be thin, but
@@ -5527,13 +5539,30 @@ end subroutine clubb_init_cnst
         rhmaxi = rhmaxi_const
       end where
 
+      !REMOVECAM: this is no longer needed when CAM is retired and pcols no longer exists
+      aist_pbuf(:,k) = 0._r8
+      !REMOVECAM_END
       if ( trim(subcol_scheme) == 'SILHS' ) then
-        call aist_vector(state_loc%q(:,k,ixq),state_loc%t(:,k),state_loc%pmid(:,k),state_loc%q(:,k,ixcldice), &
-             state_loc%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist_pbuf(:,k),ncol )
+        call aist_vector(state_loc%q(:ncol,k,ixq), state_loc%t(:ncol,k), &
+             state_loc%pmid(:ncol,k), state_loc%q(:ncol,k,ixcldice), &
+             state_loc%q(:ncol,k,ixnumice), cam_in%landfrac(:ncol), &
+             cam_in%snowhland(:ncol), aist_pbuf(:ncol,k), ncol, &
+             rhmaxi_in=rhmaxi_default(:ncol), &
+             rhmini_in=rhmini_default(:ncol), &
+             rhminl_in=rhminl_arr(:ncol), &
+             rhminl_adj_land_in=rhminl_adj_land_arr(:ncol), &
+             rhminh_in=rhminh_arr(:ncol))
       else
-        call aist_vector(state_loc%q(:,k,ixq),state_loc%t(:,k),state_loc%pmid(:,k),state_loc%q(:,k,ixcldice), &
-              state_loc%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist_pbuf(:,k),ncol,&
-              qsatfac_out=qsatfac_pbuf(:,k), rhmini_in=rhmini, rhmaxi_in=rhmaxi)
+        call aist_vector(state_loc%q(:ncol,k,ixq), state_loc%t(:ncol,k), &
+             state_loc%pmid(:ncol,k), state_loc%q(:ncol,k,ixcldice), &
+             state_loc%q(:ncol,k,ixnumice), cam_in%landfrac(:ncol), &
+             cam_in%snowhland(:ncol), aist_pbuf(:ncol,k), ncol, &
+             rhmaxi_in=rhmaxi(:ncol), &
+             rhmini_in=rhmini(:ncol), &
+             rhminl_in=rhminl_arr(:ncol), &
+             rhminl_adj_land_in=rhminl_adj_land_arr(:ncol), &
+             rhminh_in=rhminh_arr(:ncol), &
+             qsatfac_out=qsatfac_pbuf(:ncol,k))
       endif
     enddo
 

@@ -21,13 +21,14 @@
 
       private
       public  :: sulf_inti, set_sulf_time, sulf_interp, sulf_readnl
+      public  :: read_sulf   ! TRUE when offline sulfate data are available
 
       save
 
       type(trfld), pointer :: fields(:) => null()
       type(trfile) :: file
 
-      logical :: read_sulf = .false.
+      logical, protected :: read_sulf = .false.
 
       character(len=16)  :: fld_name = 'SULFATE'
       character(len=256) :: filename = 'NONE'
@@ -208,9 +209,6 @@ end subroutine sulf_readnl
 !-----------------------------------------------------------------------
 ! 	... Time interpolate sulfatei to current time
 !-----------------------------------------------------------------------
-      use cam_history,  only : outfld
-
-      implicit none
 
 !-----------------------------------------------------------------------
 ! 	... Dummy arguments
@@ -228,8 +226,6 @@ end subroutine sulf_readnl
       if ( .not. read_sulf ) return
 
       ccm_sulf(:ncol,:) = fields(1)%data(:ncol,:,lchnk)
-
-      call outfld( 'SULFATE', ccm_sulf(:ncol,:), ncol, lchnk )
 
       end subroutine sulf_interp
 

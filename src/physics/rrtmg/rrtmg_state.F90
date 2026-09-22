@@ -1,8 +1,8 @@
 !--------------------------------------------------------------------------------
-! Manages the absorber concentrations in the layers RRTMG operates 
+! Manages the absorber concentrations in the layers RRTMG operates
 ! including an extra layer over the model if needed.
 !
-! Creator: Francis Vitt 
+! Creator: Francis Vitt
 ! 9 May 2011
 !--------------------------------------------------------------------------------
 module rrtmg_state
@@ -14,7 +14,7 @@ module rrtmg_state
   implicit none
   private
   save
-  
+
   public :: rrtmg_state_t
   public :: rrtmg_state_init
   public :: rrtmg_state_create
@@ -26,10 +26,10 @@ module rrtmg_state
 
      real(r8), allocatable :: h2ovmr(:,:)   ! h2o volume mixing ratio
      real(r8), allocatable :: o3vmr(:,:)    ! o3 volume mixing ratio
-     real(r8), allocatable :: co2vmr(:,:)   ! co2 volume mixing ratio 
-     real(r8), allocatable :: ch4vmr(:,:)   ! ch4 volume mixing ratio 
-     real(r8), allocatable :: o2vmr(:,:)    ! o2  volume mixing ratio 
-     real(r8), allocatable :: n2ovmr(:,:)   ! n2o volume mixing ratio 
+     real(r8), allocatable :: co2vmr(:,:)   ! co2 volume mixing ratio
+     real(r8), allocatable :: ch4vmr(:,:)   ! ch4 volume mixing ratio
+     real(r8), allocatable :: o2vmr(:,:)    ! o2  volume mixing ratio
+     real(r8), allocatable :: n2ovmr(:,:)   ! n2o volume mixing ratio
      real(r8), allocatable :: cfc11vmr(:,:) ! cfc11 volume mixing ratio
      real(r8), allocatable :: cfc12vmr(:,:) ! cfc12 volume mixing ratio
      real(r8), allocatable :: cfc22vmr(:,:) ! cfc22 volume mixing ratio
@@ -68,7 +68,7 @@ contains
     num_rrtmg_levs = count( pref_edge(:) > 1._r8 ) ! pascals (1.e-2 mbar)
 
   end subroutine rrtmg_state_init
-  
+
 !--------------------------------------------------------------------------------
 ! creates (alloacates) an rrtmg_state object
 !--------------------------------------------------------------------------------
@@ -137,10 +137,10 @@ contains
 
     ! top layer thickness
     if (num_rrtmg_levs==pverp) then
-       rstate%pmidmb(:ncol,1) = 0.5_r8 * rstate%pintmb(:ncol,2) 
+       rstate%pmidmb(:ncol,1) = 0.5_r8 * rstate%pintmb(:ncol,2)
        rstate%pintmb(:ncol,1) = 1.e-4_r8 ! mbar
     endif
-    
+
   endfunction rrtmg_state_create
 
 !--------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ contains
     real(r8), pointer, dimension(:,:) :: cfc12  ! cfc12 mass mixing ratio
     real(r8), pointer, dimension(:,:) :: o3     ! Ozone mass mixing ratio
     real(r8), pointer, dimension(:,:) :: co2    ! co2   mass mixing ratio
-    
+
     integer  :: ncol, i, kk, k, lchnk
     real(r8) :: H, P_top, P_surface
     real(r8), dimension(pcols) :: P_int, P_mid, alpha, beta, a, b, chi_mid, chi_0, chi_eff
@@ -207,11 +207,11 @@ contains
        rstate%ccl4vmr(:ncol,k)  = 0._r8
 
     enddo
-     
-    ! For the purpose of attenuating solar fluxes above the CAM model top, we assume that ozone 
-    ! mixing decreases linearly in each column from the value in the top layer of CAM to zero at 
-    ! the pressure level set by P_top. P_top has been set to 50 Pa (0.5 hPa) based on model tuning 
-    ! to produce temperatures at the top of CAM that are most consistent with WACCM at similar pressure levels. 
+
+    ! For the purpose of attenuating solar fluxes above the CAM model top, we assume that ozone
+    ! mixing decreases linearly in each column from the value in the top layer of CAM to zero at
+    ! the pressure level set by P_top. P_top has been set to 50 Pa (0.5 hPa) based on model tuning
+    ! to produce temperatures at the top of CAM that are most consistent with WACCM at similar pressure levels.
 
     P_top = 50.0_r8                     ! pressure (Pa) at which we assume O3 = 0 in linear decay from CAM top
     P_int(:ncol) = pstate%pint(:ncol,1) ! pressure (Pa) at upper interface of CAM
@@ -222,7 +222,7 @@ contains
     beta(:ncol) =  log(P_mid(:ncol)/P_int(:ncol))/log(P_mid(:ncol)/P_top)
 
     a(:ncol) =  ( (1._r8 + alpha(:ncol)) * exp(-alpha(:ncol)) - 1._r8 ) / alpha(:ncol)
-    b(:ncol) =  1_r8 - exp(-alpha(:ncol))
+    b(:ncol) =  1._r8 - exp(-alpha(:ncol))
 
     where(alpha .gt. 0)                               ! only apply where top level is below 80 km
       chi_mid(:) = o3(:,1)*amdo                       ! molar mixing ratio of O3 at midpoint of top layer
@@ -232,7 +232,7 @@ contains
       chi_eff(:) = chi_eff(:) * P_int(:) / amdo / 9.8_r8 ! O3 column above in kg m-2
       chi_eff(:) = chi_eff(:) / 2.1415e-5_r8             ! O3 column above in DU
     endwhere
-    
+
     call outfld('O3colAbove', chi_eff(:ncol), ncol, lchnk)
 
   end subroutine rrtmg_state_update

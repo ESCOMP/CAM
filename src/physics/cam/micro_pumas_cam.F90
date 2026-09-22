@@ -2898,7 +2898,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       if (micro_mg_version > 2) then
          call subcol_field_avg(icgrauwp,    ngrdcol, lchnk, icgrauwp_grid)
-         call subcol_field_avg(cldfgrau,    ngrdcol, lchnk, cldfsnow_grid)
+         call subcol_field_avg(cldfgrau,    ngrdcol, lchnk, cldfgrau_grid)
       end if
 
       if (rate1_cw2pr_st_idx > 0) then

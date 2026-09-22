@@ -24,7 +24,7 @@ use cam_logfile,     only: iulog
 use cam_history,     only: addfld, add_default, outfld
 use constituents,    only: pcnst, cnst_get_ind, cnst_name
 use radiative_aerosol, only: rad_aer_get_info
-use aerosol_mmr_cam, only: rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
+use aerosol_mmr_host, only: rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
 
 implicit none
 private
