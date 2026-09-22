@@ -558,7 +558,7 @@ subroutine gw_drag_cam_init()
      sgh_idx = pbuf_get_index('SGH')
   endif
 
-  if (use_gw_convect_dp .or. use_gw_movmtn_pbl) then
+  if (deep_scheme == 'ZM' .and. (use_gw_convect_dp .or. use_gw_movmtn_pbl)) then
      ttend_dp_idx = pbuf_get_index('TTEND_DP',errflg)
   end if
 

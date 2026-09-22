@@ -3216,7 +3216,7 @@ end subroutine clubb_init_cnst
     !$acc              err_info, err_info%err_header, &
     !$acc              cpairv, rairv, se_dis, eleak, cld_pbuf, clubb_params_single_col, grid_dx, grid_dy ) &
     !$acc     copyout( clubb_s, clubbtop_pbuf, &
-    !$acc              qclvar, wprcp, rcm_in_layer, rcm, cloud_frac, thlm, rtm, &
+    !$acc              qclvar, wprcp, rcm_in_layer, rcm, cloud_frac, thlm, rtm, qc_zt, qv_zt, th_zt, &
     !$acc              um, vm, wm_zt, exner, zt_g, zi_g, invrs_cpairv, &
     !$acc              rho_zm, rho_zt, &
     !$acc              pdf_params_chnk(lchnk)%rt_1,                pdf_params_chnk(lchnk)%rt_2,  &
