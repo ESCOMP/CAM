@@ -762,7 +762,12 @@ contains
        call export_fields( gcomp, model_mesh, model_clock, cam_out, rc=rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+       if (single_column) then
+          hdim1_d = 1
+          hdim2_d = 1
+       else
+          call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+       end if
        call State_SetScalar(dble(hdim1_d), flds_scalar_index_nx, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
