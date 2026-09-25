@@ -2255,9 +2255,10 @@
 <clubb_l_damp_wp3_Skw_squared                     > .false. </clubb_l_damp_wp3_Skw_squared>
 <clubb_l_diagnose_correlations                    > .false. </clubb_l_diagnose_correlations>
 <clubb_l_diffuse_rtm_and_thlm                     > .false. </clubb_l_diffuse_rtm_and_thlm>
-<clubb_l_do_expldiff_rtm_thlm                        > .false. </clubb_l_do_expldiff_rtm_thlm>
-<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1"          > .true.  </clubb_l_do_expldiff_rtm_thlm>
-<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" silhs="1"> .false.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm                                       > .false. </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1"                         > .true.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" silhs="1"               > .false.  </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_do_expldiff_rtm_thlm clubb_sgs="1" deep_scheme="CLUBB_MF"  > .false.  </clubb_l_do_expldiff_rtm_thlm>
 <clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
 <clubb_l_enable_relaxed_clipping                  > .false. </clubb_l_enable_relaxed_clipping>
 <clubb_l_fix_w_chi_eta_correlations               > .true.  </clubb_l_fix_w_chi_eta_correlations>
@@ -2277,6 +2278,7 @@
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_predict_upwp_vpwp phys="cam7"            > .true.  </clubb_l_predict_upwp_vpwp>
+<clubb_l_predict_upwp_vpwp phys="cam7" deep_scheme="CLUBB_MF" > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_ho_nontrad_coriolis                      > .false. </clubb_l_ho_nontrad_coriolis>
 <clubb_l_ho_trad_coriolis                         > .false. </clubb_l_ho_trad_coriolis>
 <clubb_l_prescribed_avg_deltaz                    > .false. </clubb_l_prescribed_avg_deltaz>
@@ -2367,11 +2369,41 @@
 
 
 <!-- CLUBB+MF options -->
-<do_clubb_mf                       > .false. </do_clubb_mf>
 <do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
-<clubb_mf_L0                       > 50.0    </clubb_mf_L0>
-<clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
-<clubb_mf_nup                      > 10      </clubb_mf_nup>
+<do_clubb_mf_precip                > .true.  </do_clubb_mf_precip>
+<do_clubb_mf_rad                   > .true.  </do_clubb_mf_rad>
+<do_clubb_mf_addtke                > .false. </do_clubb_mf_addtke>
+<clubb_mf_L0                       > 200.0   </clubb_mf_L0>
+<clubb_mf_ent0                     > 0.2     </clubb_mf_ent0>
+<clubb_mf_alphturb                 > 3.0     </clubb_mf_alphturb>
+<clubb_mf_Lopt                     > 6       </clubb_mf_Lopt>
+<clubb_mf_a0                       > 0.15    </clubb_mf_a0>
+<clubb_mf_b0                       > 1.0     </clubb_mf_b0>
+<clubb_mf_nup                      > 25      </clubb_mf_nup>
+<clubb_mf_max_L0                   > 1.e3    </clubb_mf_max_L0>
+<clubb_mf_fdd                      > 0.5     </clubb_mf_fdd>
+<do_clubb_mf_coldpool              > .true.  </do_clubb_mf_coldpool>
+<clubb_mf_ddalph                   > 12.0    </clubb_mf_ddalph>
+<clubb_mf_ddbeta                   > 1.0     </clubb_mf_ddbeta>
+<clubb_mf_pwfac                    > 1.0     </clubb_mf_pwfac>
+<clubb_mf_ddexp                    > 3.0     </clubb_mf_ddexp>
+<clubb_mf_pwmin                    > 1.5     </clubb_mf_pwmin>
+<clubb_mf_pwmax                    > 3.0     </clubb_mf_pwmax>
+<clubb_mf_cldfrac_fac	           > 10.0    </clubb_mf_cldfrac_fac>
+<do_clubb_mf_ustar                 > .false. </do_clubb_mf_ustar>
+<do_clubb_mf_mixd                  > .false. </do_clubb_mf_mixd>
+<clubb_mf_up_ndt                   > 1       </clubb_mf_up_ndt>
+<clubb_mf_cp_ndt                   > 1       </clubb_mf_cp_ndt>
+<do_clubb_mf_rhtke                 > .false. </do_clubb_mf_rhtke>
+<do_clubb_mf_cmt                   > .false. </do_clubb_mf_cmt>
+<do_clubb_mf_lscale_perplume       > .true.  </do_clubb_mf_lscale_perplume>
+<do_clubb_mf_coldpool_init         > .false. </do_clubb_mf_coldpool_init>
+<do_clubb_mf_coldpool_perplume     > .true.  </do_clubb_mf_coldpool_perplume>
+<clubb_mf_kseed                    > 1       </clubb_mf_kseed>
+<do_clubb_mf_aloft                 > .true.  </do_clubb_mf_aloft>
+<do_clubb_mf_aspd                  > .false. </do_clubb_mf_aspd>
+<do_clubb_mf_pblcull               > .false. </do_clubb_mf_pblcull>
+<do_clubb_mf_invswitch             > .true.  </do_clubb_mf_invswitch>
 
 <!-- Set radiation intervals based on mpas hgrids -->
 <iradlw hgrid="mpasa15"  > 10 </iradlw>

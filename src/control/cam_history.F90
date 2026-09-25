@@ -5414,6 +5414,7 @@ end subroutine print_active_fldlst
              pio_double, tape(t)%hlist(fld)%hbuf, varid)
       else
         ! We are doing output via the field's grid
+
         if (interpolate) then
 
           !Determine what the output field kind should be:
@@ -5423,10 +5424,6 @@ end subroutine print_active_fldlst
             ncreal = pio_real
           end if
 
-          mdimsize = tape(t)%hlist(fld)%field%enddim2 - tape(t)%hlist(fld)%field%begdim2 + 1
-          if (mdimsize == 0) then
-            mdimsize = tape(t)%hlist(fld)%field%numlev
-          end if
           if (tape(t)%hlist(fld)%field%meridional_complement > 0) then
             compind = tape(t)%hlist(fld)%field%meridional_complement
             compid => tape(t)%hlist(compind)%varid(index)
@@ -5434,12 +5431,12 @@ end subroutine print_active_fldlst
             call pio_setframe(tape(t)%Files(f), compid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
             call write_interpolated(tape(t)%Files(f), varid, compid,              &
                  tape(t)%hlist(fld)%hbuf, tape(t)%hlist(compind)%hbuf,          &
-                 mdimsize, ncreal, fdecomp)
+                 fdims(2:frank), ncreal, fdecomp)
           else if (tape(t)%hlist(fld)%field%zonal_complement <= 0) then
             ! Scalar field
             call write_interpolated(tape(t)%Files(f), varid,                      &
-                 tape(t)%hlist(fld)%hbuf, mdimsize, ncreal, fdecomp)
-          end if
+                 tape(t)%hlist(fld)%hbuf, fdims(2:frank), ncreal, fdecomp)
+         end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
            if ((tape(t)%hlist(fld)%hwrt_prec == 4) .and. (.not. restart)) then

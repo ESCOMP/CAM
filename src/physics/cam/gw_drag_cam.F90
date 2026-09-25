@@ -474,6 +474,7 @@ subroutine gw_drag_cam_init()
   character(len=cl)              :: gw_drag_file_loc
   character(len=cl)              :: gw_drag_file_mm_loc
   character(len=cl)              :: gw_drag_file_sh_loc
+  character(len=16)              :: deep_scheme
 
   !-----------------------------------------------------------------------
 
@@ -551,7 +552,9 @@ subroutine gw_drag_cam_init()
      sgh_idx = pbuf_get_index('SGH')
   endif
 
-  if (use_gw_convect_dp .or. use_gw_movmtn_pbl) then
+  call phys_getopts(deep_scheme_out = deep_scheme)
+
+  if (deep_scheme == 'ZM' .and. (use_gw_convect_dp .or. use_gw_movmtn_pbl)) then
      ttend_dp_idx = pbuf_get_index('TTEND_DP',errflg)
   end if
 
